@@ -1,0 +1,2870 @@
+{
+  "run_at": "2026-07-09T17:22:27.168Z",
+  "git_sha": "070a769a",
+  "label": "R5 W4 FULL BATTERY — all 40 R5_ANSWER_BATTERY_v1_0.md items, live prod",
+  "mcp_url": "https://amjis-mcp-qm256lasva-el.a.run.app/mcp",
+  "native_chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "abhinandan_chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "tool_estate_at_run_time": {
+    "total_tools": 127,
+    "source": "live tools/list call at run start"
+  },
+  "items": [
+    {
+      "id": "Q1-N-1",
+      "chart": "N",
+      "question": "What is my lagna? (N)",
+      "regime": "surgical",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "query_chart_facts",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "about": "lagna"
+          },
+          "latencyMs": 2326,
+          "bytes": 1468,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "contains_aries",
+          "pass": true,
+          "detail": "aries_present=true"
+        },
+        {
+          "name": "degree_nakshatra_pada_present",
+          "pass": true,
+          "detail": "degree/pada markers present=true"
+        },
+        {
+          "name": "call_count_1",
+          "pass": true,
+          "detail": "calls=1"
+        },
+        {
+          "name": "bytes_le_2kb",
+          "pass": true,
+          "detail": "bytes=1468"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "PASS",
+      "totalLatencyMs": 2326,
+      "totalBytes": 1468
+    },
+    {
+      "id": "Q1-N-2",
+      "chart": "N",
+      "question": "What sign is my Sun, and is it a good placement? (N)",
+      "regime": "surgical",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "query_chart_facts",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "about": {
+              "graha": "Sun"
+            }
+          },
+          "latencyMs": 360.4,
+          "bytes": 2325,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "contains_capricorn",
+          "pass": true,
+          "detail": "capricorn=true"
+        },
+        {
+          "name": "dignity_term_present",
+          "pass": true,
+          "detail": "dignity_term=true"
+        },
+        {
+          "name": "epistemic_grade_on_judgment",
+          "pass": true,
+          "detail": "checked for epistemic/grade markers"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "PASS",
+      "totalLatencyMs": 360.4,
+      "totalBytes": 2325
+    },
+    {
+      "id": "Q1-N-3",
+      "chart": "N",
+      "question": "What is my Moon nakshatra and pada? (N)",
+      "regime": "surgical",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "query_chart_facts",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "about": {
+              "graha": "Moon"
+            }
+          },
+          "latencyMs": 303.5,
+          "bytes": 2349,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "purva_bhadrapada_present",
+          "pass": true,
+          "detail": "pb=true"
+        },
+        {
+          "name": "bytes_le_2kb",
+          "pass": false,
+          "detail": "bytes=2349"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 303.5,
+      "totalBytes": 2349
+    },
+    {
+      "id": "Q1-N-4",
+      "chart": "N",
+      "question": "What dasha am I running today, down to antardasha? (N)",
+      "regime": "surgical",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "ganita_dashas_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "as_of_date": "2026-07-09"
+          },
+          "latencyMs": 244.9,
+          "bytes": 3479,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "md_ad_present",
+          "pass": true,
+          "detail": "checked for MD/AD level markers"
+        },
+        {
+          "name": "dates_present",
+          "pass": true,
+          "detail": "dates_present=true"
+        },
+        {
+          "name": "ages_present",
+          "pass": false,
+          "detail": "ages_present=false"
+        },
+        {
+          "name": "zero_pre_birth_rows",
+          "pass": true,
+          "detail": "pre_birth_rows=false"
+        },
+        {
+          "name": "call_count_1",
+          "pass": true,
+          "detail": "calls=1"
+        },
+        {
+          "name": "bytes_le_1kb",
+          "pass": false,
+          "detail": "bytes=3479 (ceiling 1024; W1 gate)"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 244.9,
+      "totalBytes": 3479
+    },
+    {
+      "id": "Q1-A-1",
+      "chart": "A",
+      "question": "What's Abhinandan's lagna exactly? (A)",
+      "regime": "surgical",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "query_chart_facts",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "about": "lagna"
+          },
+          "latencyMs": 234.7,
+          "bytes": 1468,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "contains_aries",
+          "pass": true,
+          "detail": "aries=true"
+        },
+        {
+          "name": "degree_23_32_present",
+          "pass": false,
+          "detail": "deg_marker=false"
+        },
+        {
+          "name": "bharani_pada4_present",
+          "pass": true,
+          "detail": "bharani_pada4=true"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 234.7,
+      "totalBytes": 1468
+    },
+    {
+      "id": "Q1-A-2",
+      "chart": "A",
+      "question": "Where is his Venus and what condition? (A)",
+      "regime": "surgical",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "query_chart_facts",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "about": {
+              "graha": "Venus"
+            }
+          },
+          "latencyMs": 294.2,
+          "bytes": 2328,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "pisces_h12_exalted_present",
+          "pass": true,
+          "detail": "pisces_and_exalted=true"
+        },
+        {
+          "name": "house_12_present",
+          "pass": false,
+          "detail": "checked for H12 marker"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 294.2,
+      "totalBytes": 2328
+    },
+    {
+      "id": "Q1-A-3",
+      "chart": "A",
+      "question": "His current maha-antar-pratyantar? (A)",
+      "regime": "surgical",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "ganita_dashas_get",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "as_of_date": "2026-07-09",
+            "all_levels": false
+          },
+          "latencyMs": 191.3,
+          "bytes": 3455,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "three_levels_with_dates",
+          "pass": true,
+          "detail": "dates_present=true"
+        },
+        {
+          "name": "bytes_le_1_5kb",
+          "pass": false,
+          "detail": "bytes=3455"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 191.3,
+      "totalBytes": 3455
+    },
+    {
+      "id": "Q1-N-5",
+      "chart": "N",
+      "question": "Which vargas is my Jupiter vargottama in? (N)",
+      "regime": "surgical",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "query_chart_facts",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "about": {
+              "graha": "Jupiter"
+            },
+            "keyword": "vargottama"
+          },
+          "latencyMs": 211.5,
+          "bytes": 503,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "honest_result_or_list",
+          "pass": false,
+          "detail": "has_list=false; empty_reason_markers=false"
+        },
+        {
+          "name": "no_transport_error",
+          "pass": true,
+          "detail": "transport_error=false"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 211.5,
+      "totalBytes": 503
+    },
+    {
+      "id": "Q2-N-1",
+      "chart": "N",
+      "question": "How is my Saturn? (N)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "graha_portrait",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "graha": "Saturn",
+            "response_format": "v3"
+          },
+          "latencyMs": 2182.9,
+          "bytes": 11741,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "single_call_graha_portrait",
+          "pass": true,
+          "detail": "calls=1"
+        },
+        {
+          "name": "dignity_chain_present",
+          "pass": true,
+          "detail": "dignity=true"
+        },
+        {
+          "name": "shadbala_rupas_grade_present",
+          "pass": true,
+          "detail": "shadbala=true"
+        },
+        {
+          "name": "yoga_ge_1",
+          "pass": true,
+          "detail": "yoga_mention=true"
+        },
+        {
+          "name": "dasha_periods_present",
+          "pass": true,
+          "detail": "dasha=true"
+        },
+        {
+          "name": "functional_nature_present",
+          "pass": true,
+          "detail": "functional=true"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 2182.9,
+      "totalBytes": 11741
+    },
+    {
+      "id": "Q2-A-1",
+      "chart": "A",
+      "question": "How strong is his debilitated Jupiter really? (A)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "graha_portrait",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "graha": "Jupiter",
+            "response_format": "v3"
+          },
+          "latencyMs": 665.6,
+          "bytes": 11634,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "capricorn_h10_named",
+          "pass": true,
+          "detail": "cap_h10=true"
+        },
+        {
+          "name": "neecha_named",
+          "pass": false,
+          "detail": "neecha=false"
+        },
+        {
+          "name": "bhanga_explicitly_checked",
+          "pass": false,
+          "detail": "bhanga_mentioned=false"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 665.6,
+      "totalBytes": 11634
+    },
+    {
+      "id": "Q3-N-1",
+      "chart": "N",
+      "question": "How is my career? (N)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "judgment_query",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "domain": "career",
+            "response_format": "v3"
+          },
+          "latencyMs": 605.2,
+          "bytes": 11660,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "receipt_object_present",
+          "pass": true,
+          "detail": "receipt_present=false"
+        },
+        {
+          "name": "checklist_bhava_bhavesha_karaka_frommoon_varga_yogas_timing",
+          "pass": true,
+          "detail": "{\"hasBhava\":true,\"hasBhavesha\":true,\"hasKaraka\":true,\"hasFromMoon\":true,\"hasVarga\":true,\"hasYogas\":true,\"hasTiming\":true}"
+        },
+        {
+          "name": "dissent_or_contradiction_ge_1",
+          "pass": true,
+          "detail": "dissent_marker=true"
+        },
+        {
+          "name": "verse_inline",
+          "pass": true,
+          "detail": "verse=true"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 605.2,
+      "totalBytes": 11660
+    },
+    {
+      "id": "Q3-A-1",
+      "chart": "A",
+      "question": "His marriage prospects? (A)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "judgment_query",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "domain": "marriage",
+            "response_format": "v3"
+          },
+          "latencyMs": 326.3,
+          "bytes": 11248,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "d9_present",
+          "pass": true,
+          "detail": "d9=true"
+        },
+        {
+          "name": "venus_exalted_and_12th_both_present",
+          "pass": true,
+          "detail": "venus_exalted=true; twelfth=true"
+        },
+        {
+          "name": "time_sensitivity_flag_present",
+          "pass": false,
+          "detail": "flag=false"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 326.3,
+      "totalBytes": 11248
+    },
+    {
+      "id": "Q3-N-2",
+      "chart": "N",
+      "question": "My wealth outlook per my chart? (N)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "judgment_query",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "domain": "wealth",
+            "response_format": "v3"
+          },
+          "latencyMs": 455.3,
+          "bytes": 11733,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "second_eleventh_jupiter_hora_addressed",
+          "pass": false,
+          "detail": "2nd=true; 11th=false; jup=true; hora=false"
+        },
+        {
+          "name": "epistemic_grades_differentiate_fact_vs_judgment",
+          "pass": true,
+          "detail": "grades=true"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 455.3,
+      "totalBytes": 11733
+    },
+    {
+      "id": "Q2-N-2",
+      "chart": "N",
+      "question": "How is my 10th house FROM THE MOON? (N) [Q-frame]",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "judgment_query",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "bhava": 10,
+            "response_format": "v3"
+          },
+          "latencyMs": 496.4,
+          "bytes": 11660,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        },
+        {
+          "tool": "bodha_signals_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "domain": "career",
+            "frame": "chandra",
+            "top_k": 15
+          },
+          "latencyMs": 714.4,
+          "bytes": 21732,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "frame_chandra_honored",
+          "pass": true,
+          "detail": "chandra_marker=true; texts_differ=true"
+        },
+        {
+          "name": "call_count_le_2",
+          "pass": true,
+          "detail": "calls=2"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 1210.8,
+      "totalBytes": 33392
+    },
+    {
+      "id": "Q3-A-2",
+      "chart": "A",
+      "question": "What does Jaimini say about his career — chara karakas? (A) [Q-paradigm]",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "bodha_signals_get",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "domain": "career",
+            "paradigm": "jaimini",
+            "top_k": 15
+          },
+          "latencyMs": 454.7,
+          "bytes": 21632,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "paradigm_jaimini_present",
+          "pass": true,
+          "detail": "jaimini_marker=true; status=200"
+        },
+        {
+          "name": "amk_or_karaka_present",
+          "pass": true,
+          "detail": "amk=true"
+        },
+        {
+          "name": "no_parashari_jaimini_mixing_heuristic",
+          "pass": true,
+          "detail": "parashari_term_present=false"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 454.7,
+      "totalBytes": 21632
+    },
+    {
+      "id": "Q5-N-1",
+      "chart": "N",
+      "question": "Will I change jobs in the next year? (N)",
+      "regime": "pact",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "pact_query",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "domain": "career",
+            "response_format": "v3",
+            "as_of_date": "2026-07-09"
+          },
+          "latencyMs": 471.6,
+          "bytes": 7591,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "pact_chain_visible",
+          "pass": true,
+          "detail": "pact_terms=true"
+        },
+        {
+          "name": "posterior_in_0_1_with_baserate_lineage",
+          "pass": false,
+          "detail": "posterior_terms=false"
+        },
+        {
+          "name": "structured_falsifier_present",
+          "pass": false,
+          "detail": "falsifier=false"
+        },
+        {
+          "name": "window_dates_and_ages",
+          "pass": true,
+          "detail": "dates=true; ages=true"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 471.6,
+      "totalBytes": 7591
+    },
+    {
+      "id": "Q5-N-2",
+      "chart": "N",
+      "question": "Chances of a major health event in 5 years? (N)",
+      "regime": "pact",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "pact_query",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "domain": "health",
+            "response_format": "v3",
+            "as_of_date": "2026-07-09"
+          },
+          "latencyMs": 333.8,
+          "bytes": 7503,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "posterior_present",
+          "pass": false,
+          "detail": "posterior=false"
+        },
+        {
+          "name": "falsifier_present",
+          "pass": false,
+          "detail": "falsifier=false"
+        },
+        {
+          "name": "no_alarmist_certainty_language",
+          "pass": true,
+          "detail": "alarmist_language_absent=true"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 333.8,
+      "totalBytes": 7503
+    },
+    {
+      "id": "Q5-A-1",
+      "chart": "A",
+      "question": "Will he settle abroad? (A)",
+      "regime": "pact",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "pact_query",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "bhava": 12,
+            "response_format": "v3",
+            "as_of_date": "2026-07-09"
+          },
+          "latencyMs": 6227.9,
+          "bytes": 7301,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "calibration_state_structural_disclosed_in_judgment_flags",
+          "pass": true,
+          "detail": "structural_marker=true"
+        },
+        {
+          "name": "posterior_epistemic_grade_present",
+          "pass": true,
+          "detail": "grade_marker=true"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 6227.9,
+      "totalBytes": 7301
+    },
+    {
+      "id": "Q5-A-2",
+      "chart": "A",
+      "question": "Does his chart promise a kingly Raja-yoga rise to power? (A) [denial path]",
+      "regime": "pact",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "pact_query",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "domain": "career",
+            "response_format": "v3",
+            "as_of_date": "2026-07-09"
+          },
+          "latencyMs": 785.4,
+          "bytes": 7626,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "chain_halts_or_denies_if_promise_absent",
+          "pass": true,
+          "detail": "denial=true; conditions=false"
+        },
+        {
+          "name": "call_count_le_3",
+          "pass": true,
+          "detail": "calls=1"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 785.4,
+      "totalBytes": 7626
+    },
+    {
+      "id": "Q6-N-1",
+      "chart": "N",
+      "question": "When in the next 3 months should I sign an important contract? (N)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "muhurta_finder",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "action_type": "business",
+            "date_range": {
+              "start": "2026-07-09",
+              "end": "2026-10-09"
+            }
+          },
+          "latencyMs": 1930.3,
+          "bytes": 308,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "ranked_windows_present_or_honest_empty",
+          "pass": true,
+          "detail": "has_windows=true; empty_reason=false"
+        },
+        {
+          "name": "no_transport_error",
+          "pass": true,
+          "detail": "error=false"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 1930.3,
+      "totalBytes": 308
+    },
+    {
+      "id": "Q6-N-2",
+      "chart": "N",
+      "question": "When does my current dasha end and what comes next — should I worry? (N)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "ganita_dashas_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "as_of_date": "2026-07-09"
+          },
+          "latencyMs": 247.5,
+          "bytes": 3479,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "dates_and_ages_present",
+          "pass": false,
+          "detail": "dates=true; ages=false"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 247.5,
+      "totalBytes": 3479
+    },
+    {
+      "id": "Q7-N-1",
+      "chart": "N",
+      "question": "Give me a full reading — strengths and weaknesses. (N)",
+      "regime": "investigation",
+      "rubricFloor": 12,
+      "calls": [
+        {
+          "tool": "synth_chart_brief_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "depth": "complete"
+          },
+          "latencyMs": 359.5,
+          "bytes": 45534,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "coverage_receipt_present",
+          "pass": false,
+          "detail": "9/9=false; 12/12=false; coverage_word=false"
+        },
+        {
+          "name": "tail_check_dissent_ge_1",
+          "pass": true,
+          "detail": "dissent=true"
+        },
+        {
+          "name": "ranked_themes_with_evidence",
+          "pass": true,
+          "detail": "ranked=true"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 12,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 359.5,
+      "totalBytes": 45534
+    },
+    {
+      "id": "Q7-A-1",
+      "chart": "A",
+      "question": "Read his chart for his parents — what should they focus on? (A)",
+      "regime": "investigation",
+      "rubricFloor": 12,
+      "calls": [
+        {
+          "tool": "synth_chart_brief_get",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "depth": "deep"
+          },
+          "latencyMs": 376.4,
+          "bytes": 39836,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "receipt_complete_present",
+          "pass": false,
+          "detail": "receipt=false"
+        },
+        {
+          "name": "contradictions_acknowledged",
+          "pass": true,
+          "detail": "contradictions=true"
+        },
+        {
+          "name": "no_lel_structural_disclosed",
+          "pass": true,
+          "detail": "no_lel_structural=true"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 12,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 376.4,
+      "totalBytes": 39836
+    },
+    {
+      "id": "Q7-N-2",
+      "chart": "N",
+      "question": "Q7-N-1 then \"Go deeper on the weakest area you found\" [Q-drill, 2-turn]",
+      "regime": "investigation",
+      "rubricFloor": 12,
+      "calls": [
+        {
+          "tool": "synth_chart_brief_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "depth": "complete"
+          },
+          "latencyMs": 332.2,
+          "bytes": 45534,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        },
+        {
+          "tool": "bodha_discoveries_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "limit": 10
+          },
+          "latencyMs": 248.1,
+          "bytes": 282,
+          "httpStatus": 200,
+          "toolIsError": true,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "turn1_produced_drill_pointers_field",
+          "pass": true,
+          "detail": "drill_pointers_field_present_in_turn1=true"
+        },
+        {
+          "name": "turn2_answers",
+          "pass": true,
+          "detail": "status=200"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 12,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "INCONCLUSIVE BY DESIGN: this harness has no orchestrating LLM to (a) read turn1's free-text answer, identify \"the weakest area\", and (b) issue a genuine turn-2 tool call using turn1's actual drill_pointers/pin. Substituted bodha_discoveries_get as a structural stand-in for turn2, which does NOT exercise true same-pin drill continuity or self-contradiction-checking. Flag for Ring-3 — requires a live NL-answer-synthesis harness to test properly."
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 580.3,
+      "totalBytes": 45816
+    },
+    {
+      "id": "Q8-N-1",
+      "chart": "N",
+      "question": "Remedies for my Saturn issues? (N)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "bodha_remedies_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+          },
+          "latencyMs": 257.2,
+          "bytes": 30989,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "resonance_ranked_present",
+          "pass": true,
+          "detail": "ranked=true"
+        },
+        {
+          "name": "named_affliction_mapping",
+          "pass": true,
+          "detail": "named=true"
+        },
+        {
+          "name": "cost_tiers_present",
+          "pass": true,
+          "detail": "cost_tiers=true"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 257.2,
+      "totalBytes": 30989
+    },
+    {
+      "id": "Q8-A-1",
+      "chart": "A",
+      "question": "His Jupiter is debilitated — what can be done, and does it even need fixing? (A)",
+      "regime": "composed",
+      "rubricFloor": 11,
+      "calls": [
+        {
+          "tool": "graha_portrait",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "graha": "Jupiter",
+            "response_format": "v3"
+          },
+          "latencyMs": 393.1,
+          "bytes": 11634,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        },
+        {
+          "tool": "bodha_remedies_get",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+          },
+          "latencyMs": 411.2,
+          "bytes": 30998,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "bhanga_or_functional_check_present",
+          "pass": true,
+          "detail": "bhanga_functional=true"
+        },
+        {
+          "name": "remedies_present",
+          "pass": true,
+          "detail": "remedies=true"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 11,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 804.3,
+      "totalBytes": 42632
+    },
+    {
+      "id": "Q9-N-1",
+      "chart": "N",
+      "question": "An astrologer told me I have Kala Sarpa dosha. True? (N)",
+      "regime": "composed",
+      "rubricFloor": 12,
+      "calls": [
+        {
+          "tool": "ganita_structural_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "facet": "dosha_fires"
+          },
+          "latencyMs": 332.2,
+          "bytes": 71925,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "rahu_ketu_axis_or_grahas_outside_cited",
+          "pass": false,
+          "detail": "rahu_ketu=false"
+        },
+        {
+          "name": "verdict_explicit",
+          "pass": true,
+          "detail": "verdict=true"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 12,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 332.2,
+      "totalBytes": 71925
+    },
+    {
+      "id": "Q9-A-1",
+      "chart": "A",
+      "question": "Someone said his Venus guarantees a rich marriage. Verify. (A)",
+      "regime": "composed",
+      "rubricFloor": 12,
+      "calls": [
+        {
+          "tool": "graha_portrait",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "graha": "Venus",
+            "response_format": "v3"
+          },
+          "latencyMs": 288.2,
+          "bytes": 11407,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "exaltation_confirmed",
+          "pass": true,
+          "detail": "exalt=true"
+        },
+        {
+          "name": "twelfth_house_counterweight_cited",
+          "pass": true,
+          "detail": "twelfth=true"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": true,
+        "floor": 12,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 288.2,
+      "totalBytes": 11407
+    },
+    {
+      "id": "Q9-N-2",
+      "chart": "N",
+      "question": "Why do you say my Sun is strong? Show your work. (N)",
+      "regime": "composed",
+      "rubricFloor": 12,
+      "calls": [
+        {
+          "tool": "graha_portrait",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "graha": "Sun",
+            "response_format": "v3"
+          },
+          "latencyMs": 426.8,
+          "bytes": 11745,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        },
+        {
+          "tool": "ref_classical_citation_get",
+          "args": {
+            "keyword": "sun dignity"
+          },
+          "latencyMs": 649.2,
+          "bytes": 334,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "derivation_chain_fact_id_present",
+          "pass": true,
+          "detail": "fact_id=true"
+        },
+        {
+          "name": "verse_with_text_present",
+          "pass": false,
+          "detail": "verse=false"
+        },
+        {
+          "name": "audience_seam_diagnostics_on_request",
+          "pass": true,
+          "detail": "not mechanically checkable — this call explicitly requested v3/diagnostic detail, so seam behavior is unobserved either way"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 12,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 1076,
+      "totalBytes": 12079
+    },
+    {
+      "id": "Q9-N-3",
+      "chart": "N",
+      "question": "Do I have any Pancha Mahapurusha yoga? (N) [Q-negative]",
+      "regime": "composed",
+      "rubricFloor": 12,
+      "calls": [
+        {
+          "tool": "ganita_yogas_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "limit": 100,
+            "response_format": "v3"
+          },
+          "latencyMs": 218.6,
+          "bytes": 68615,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "ge_2_named_yogas_addressed",
+          "pass": true,
+          "detail": "named_yogas_matched=2/5 (bhadra,sasa)"
+        },
+        {
+          "name": "formed_or_not_formed_language",
+          "pass": false,
+          "detail": "formed_language=false"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": true,
+        "floor": 12,
+        "structuralProxyScore": null,
+        "status": "NOT_LLM_GRADED",
+        "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+        "grader": "none",
+        "grading_latency_ms": 0
+      },
+      "verdict": "INCONCLUSIVE",
+      "totalLatencyMs": 218.6,
+      "totalBytes": 68615
+    },
+    {
+      "id": "X-1",
+      "chart": "A",
+      "question": "He's Pisces lagna, right? Tell me about his 1st house. (A) [D1 REGRESSION CANARY]",
+      "regime": "adversarial",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "judgment_query",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "bhava": 1,
+            "response_format": "v3"
+          },
+          "latencyMs": 536.9,
+          "bytes": 11306,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "chart_header_shows_aries_not_pisces",
+          "pass": true,
+          "detail": "header_aries=true; header_pisces=false; chart_header_json={\"content\":{\"chart_id_short\":\"1c826d5a\",\"name\":\"Abhinandan Mohanty\",\"lagna_sign\":\"Aries\",\"lagna_deg\":23.5264715224494,\"moon_sign\":\"Gemini\",\"sun_sign\":\"Aquarius\",\"ayanamsha\":\"lahiri_chitrapaksha\",\"current_maha_antar\":\"Saturn MD / Rahu AD\"},\"is_error\":false}"
+        },
+        {
+          "name": "answer_never_silently_adopts_false_pisces_frame",
+          "pass": true,
+          "detail": "pisces_frame_adopted_unrebutted=false"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "PASS",
+      "totalLatencyMs": 536.9,
+      "totalBytes": 11306
+    },
+    {
+      "id": "X-2",
+      "chart": "N/A",
+      "question": "Entitlement: query a chart id the session lacks",
+      "regime": "adversarial",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "judgment_query",
+          "args": {
+            "chart_id": "00000000-0000-0000-0000-000000000000",
+            "domain": "career"
+          },
+          "latencyMs": 297.1,
+          "bytes": 431,
+          "httpStatus": 200,
+          "toolIsError": true,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "denial_not_empty",
+          "pass": true,
+          "detail": "denial=true; status=200"
+        },
+        {
+          "name": "no_data_leak",
+          "pass": true,
+          "detail": "raw_leak=false"
+        },
+        {
+          "name": "no_raw_401_403_text",
+          "pass": true,
+          "detail": "raw_401_403=false"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "PASS",
+      "totalLatencyMs": 297.1,
+      "totalBytes": 431
+    },
+    {
+      "id": "X-3",
+      "chart": "N",
+      "question": "Budget abuse: \"Give me every signal you have\" (N)",
+      "regime": "adversarial",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "bodha_signals_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "domain": "career",
+            "top_k": 200
+          },
+          "latencyMs": 1976.1,
+          "bytes": 15860,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "response_le_ceiling",
+          "pass": true,
+          "detail": "bytes=15860 (63KB-class ceiling)"
+        },
+        {
+          "name": "trim_report_or_pointers_present_if_capped",
+          "pass": true,
+          "detail": "trim_marker=true; bytes=15860"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "PASS",
+      "totalLatencyMs": 1976.1,
+      "totalBytes": 15860
+    },
+    {
+      "id": "X-4",
+      "chart": "A",
+      "question": "Paradigm bait: \"Use KP sub-lords to confirm the Parashari D9 promise in one verdict\"",
+      "regime": "adversarial",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "judgment_query",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "domain": "marriage",
+            "response_format": "v3"
+          },
+          "latencyMs": 370.2,
+          "bytes": 11248,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        },
+        {
+          "tool": "bodha_signals_get",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "domain": "marriage",
+            "paradigm": "kp",
+            "top_k": 10
+          },
+          "latencyMs": 1794.5,
+          "bytes": 2686,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "paradigms_kept_distinct_separate_calls",
+          "pass": true,
+          "detail": "distinct=true"
+        },
+        {
+          "name": "kp_paradigm_surfaced_not_silently_blended",
+          "pass": true,
+          "detail": "kp_marker=true"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "PASS",
+      "totalLatencyMs": 2164.7,
+      "totalBytes": 13934
+    },
+    {
+      "id": "X-5",
+      "chart": "N",
+      "question": "Broken-organ honesty: call a known-degraded surface (synth_tail_divergence_get per system_health / prior ledger P6 finding)",
+      "regime": "adversarial",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "synth_tail_divergence_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+          },
+          "latencyMs": 284.7,
+          "bytes": 276,
+          "httpStatus": 200,
+          "toolIsError": true,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "serving_fault_flag_or_explicit_error_not_silent_success",
+          "pass": true,
+          "detail": "silent_success=false; status=200; isError=true"
+        },
+        {
+          "name": "workaround_suggestion_present_if_faulted",
+          "pass": true,
+          "detail": "fault_flag=false"
+        }
+      ],
+      "allDeterministicPass": true,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "PASS",
+      "totalLatencyMs": 284.7,
+      "totalBytes": 276
+    },
+    {
+      "id": "X-6",
+      "chart": "N",
+      "question": "Time-sensitivity (N pre/post-R4): \"What does his D60 say about past-life karma?\"",
+      "regime": "adversarial",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "query_chart_facts",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "divisional_chart": "D60"
+          },
+          "latencyMs": 1045.3,
+          "bytes": 127631,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "time_sensitivity_grade_present",
+          "pass": false,
+          "detail": "time_sens=false"
+        },
+        {
+          "name": "no_transport_error",
+          "pass": true,
+          "detail": "error=false"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 1045.3,
+      "totalBytes": 127631
+    },
+    {
+      "id": "X-7",
+      "chart": "A",
+      "question": "Mixed-frame trap: \"Is Saturn in his 8th?\" then \"and from the Moon?\" (A)",
+      "regime": "adversarial",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "ganita_positions_get",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "frame": "lagna"
+          },
+          "latencyMs": 393.9,
+          "bytes": 67227,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        },
+        {
+          "tool": "ganita_positions_get",
+          "args": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "frame": "chandra"
+          },
+          "latencyMs": 265.8,
+          "bytes": 67988,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "lagna_frame_scorpio_h8_confirmed",
+          "pass": false,
+          "detail": "scorpio_h8=false"
+        },
+        {
+          "name": "moon_frame_recomputed_not_copied",
+          "pass": true,
+          "detail": "responses_differ=true"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 659.7,
+      "totalBytes": 135215
+    },
+    {
+      "id": "X-8",
+      "chart": "N",
+      "question": "Stale-note check: any response carrying provenance notes",
+      "regime": "adversarial",
+      "rubricFloor": null,
+      "calls": [
+        {
+          "tool": "bodha_signals_get",
+          "args": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "domain": "career",
+            "top_k": 5
+          },
+          "latencyMs": 284.9,
+          "bytes": 9224,
+          "httpStatus": 200,
+          "toolIsError": null,
+          "transportError": null
+        }
+      ],
+      "assertions": [
+        {
+          "name": "every_note_has_as_of",
+          "pass": true,
+          "detail": "has_note=true; has_as_of=true"
+        },
+        {
+          "name": "no_note_contradicts_same_response_rows",
+          "pass": false,
+          "detail": "known_stale_marker_present=true (W0a P4 finding — check if still present)"
+        }
+      ],
+      "allDeterministicPass": false,
+      "rubric": {
+        "applicable": false,
+        "floor": null,
+        "structuralProxyScore": null,
+        "status": "NOT_APPLICABLE",
+        "note": "Q1/X deterministic-only item — no rubric floor per battery."
+      },
+      "verdict": "FAIL",
+      "totalLatencyMs": 284.9,
+      "totalBytes": 9224
+    }
+  ],
+  "slo_sample_vs_w0a_baseline": {
+    "w0a_baseline": {
+      "ganita_dashas_get": {
+        "n": 15,
+        "p50": 2451.7,
+        "p95": 4923.1,
+        "min": 1779.3,
+        "max": 7737.6
+      },
+      "bodha_chart_digest_get": {
+        "n": 15,
+        "p50": 580.5,
+        "p95": 686.9,
+        "min": 417.3,
+        "max": 766.1
+      },
+      "bodha_signals_get": {
+        "n": 15,
+        "p50": 437.5,
+        "p95": 649.7,
+        "min": 349,
+        "max": 756
+      },
+      "phala_outlook_get": {
+        "n": 10,
+        "p50": 575.4,
+        "p95": 1771.4,
+        "min": 515.1,
+        "max": 2645
+      }
+    },
+    "w4_measured": [
+      {
+        "tool": "ganita_dashas_get",
+        "n": 15,
+        "p50": 214.7,
+        "p95": 283.7,
+        "min": 169.5,
+        "max": 283.7,
+        "errors": 0
+      },
+      {
+        "tool": "bodha_chart_digest_get",
+        "n": 15,
+        "p50": 101.6,
+        "p95": 284.3,
+        "min": 91,
+        "max": 284.3,
+        "errors": 0
+      },
+      {
+        "tool": "bodha_signals_get",
+        "n": 15,
+        "p50": 103.7,
+        "p95": 162.5,
+        "min": 92.4,
+        "max": 162.5,
+        "errors": 0
+      },
+      {
+        "tool": "phala_outlook_get",
+        "n": 10,
+        "p50": 94.5,
+        "p95": 100.8,
+        "min": 82.8,
+        "max": 100.8,
+        "errors": 0
+      }
+    ]
+  },
+  "utilization": {
+    "grounding_ledger_citation_ratio_investigation_class": [
+      {
+        "id": "Q7-N-1",
+        "note": "No separately-synthesized NL answer exists in this harness to check true citation-vs-retrieved ratio against — TRUE utilization metric NOT MEASURED here (requires the product-level answer-synthesis harness). See honest gap note in the results doc."
+      },
+      {
+        "id": "Q7-A-1",
+        "note": "No separately-synthesized NL answer exists in this harness to check true citation-vs-retrieved ratio against — TRUE utilization metric NOT MEASURED here (requires the product-level answer-synthesis harness). See honest gap note in the results doc."
+      },
+      {
+        "id": "Q7-N-2",
+        "note": "No separately-synthesized NL answer exists in this harness to check true citation-vs-retrieved ratio against — TRUE utilization metric NOT MEASURED here (requires the product-level answer-synthesis harness). See honest gap note in the results doc."
+      }
+    ],
+    "tool_estate_coverage_breadth": {
+      "distinct_tools_used_by_battery": 15,
+      "tool_estate_size": 127,
+      "fraction": 0.118
+    }
+  },
+  "summary": {
+    "total_items": 38,
+    "pass": 7,
+    "fail": 9,
+    "inconclusive": 22,
+    "q1_x_items_100pct_deterministic_required": [
+      {
+        "id": "Q1-N-1",
+        "chart": "N",
+        "question": "What is my lagna? (N)",
+        "regime": "surgical",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "query_chart_facts",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "about": "lagna"
+            },
+            "latencyMs": 2326,
+            "bytes": 1468,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "contains_aries",
+            "pass": true,
+            "detail": "aries_present=true"
+          },
+          {
+            "name": "degree_nakshatra_pada_present",
+            "pass": true,
+            "detail": "degree/pada markers present=true"
+          },
+          {
+            "name": "call_count_1",
+            "pass": true,
+            "detail": "calls=1"
+          },
+          {
+            "name": "bytes_le_2kb",
+            "pass": true,
+            "detail": "bytes=1468"
+          }
+        ],
+        "allDeterministicPass": true,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "PASS",
+        "totalLatencyMs": 2326,
+        "totalBytes": 1468
+      },
+      {
+        "id": "Q1-N-2",
+        "chart": "N",
+        "question": "What sign is my Sun, and is it a good placement? (N)",
+        "regime": "surgical",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "query_chart_facts",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "about": {
+                "graha": "Sun"
+              }
+            },
+            "latencyMs": 360.4,
+            "bytes": 2325,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "contains_capricorn",
+            "pass": true,
+            "detail": "capricorn=true"
+          },
+          {
+            "name": "dignity_term_present",
+            "pass": true,
+            "detail": "dignity_term=true"
+          },
+          {
+            "name": "epistemic_grade_on_judgment",
+            "pass": true,
+            "detail": "checked for epistemic/grade markers"
+          }
+        ],
+        "allDeterministicPass": true,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "PASS",
+        "totalLatencyMs": 360.4,
+        "totalBytes": 2325
+      },
+      {
+        "id": "Q1-N-3",
+        "chart": "N",
+        "question": "What is my Moon nakshatra and pada? (N)",
+        "regime": "surgical",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "query_chart_facts",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "about": {
+                "graha": "Moon"
+              }
+            },
+            "latencyMs": 303.5,
+            "bytes": 2349,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "purva_bhadrapada_present",
+            "pass": true,
+            "detail": "pb=true"
+          },
+          {
+            "name": "bytes_le_2kb",
+            "pass": false,
+            "detail": "bytes=2349"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 303.5,
+        "totalBytes": 2349
+      },
+      {
+        "id": "Q1-N-4",
+        "chart": "N",
+        "question": "What dasha am I running today, down to antardasha? (N)",
+        "regime": "surgical",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "ganita_dashas_get",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "as_of_date": "2026-07-09"
+            },
+            "latencyMs": 244.9,
+            "bytes": 3479,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "md_ad_present",
+            "pass": true,
+            "detail": "checked for MD/AD level markers"
+          },
+          {
+            "name": "dates_present",
+            "pass": true,
+            "detail": "dates_present=true"
+          },
+          {
+            "name": "ages_present",
+            "pass": false,
+            "detail": "ages_present=false"
+          },
+          {
+            "name": "zero_pre_birth_rows",
+            "pass": true,
+            "detail": "pre_birth_rows=false"
+          },
+          {
+            "name": "call_count_1",
+            "pass": true,
+            "detail": "calls=1"
+          },
+          {
+            "name": "bytes_le_1kb",
+            "pass": false,
+            "detail": "bytes=3479 (ceiling 1024; W1 gate)"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 244.9,
+        "totalBytes": 3479
+      },
+      {
+        "id": "Q1-A-1",
+        "chart": "A",
+        "question": "What's Abhinandan's lagna exactly? (A)",
+        "regime": "surgical",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "query_chart_facts",
+            "args": {
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "about": "lagna"
+            },
+            "latencyMs": 234.7,
+            "bytes": 1468,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "contains_aries",
+            "pass": true,
+            "detail": "aries=true"
+          },
+          {
+            "name": "degree_23_32_present",
+            "pass": false,
+            "detail": "deg_marker=false"
+          },
+          {
+            "name": "bharani_pada4_present",
+            "pass": true,
+            "detail": "bharani_pada4=true"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 234.7,
+        "totalBytes": 1468
+      },
+      {
+        "id": "Q1-A-2",
+        "chart": "A",
+        "question": "Where is his Venus and what condition? (A)",
+        "regime": "surgical",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "query_chart_facts",
+            "args": {
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "about": {
+                "graha": "Venus"
+              }
+            },
+            "latencyMs": 294.2,
+            "bytes": 2328,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "pisces_h12_exalted_present",
+            "pass": true,
+            "detail": "pisces_and_exalted=true"
+          },
+          {
+            "name": "house_12_present",
+            "pass": false,
+            "detail": "checked for H12 marker"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 294.2,
+        "totalBytes": 2328
+      },
+      {
+        "id": "Q1-A-3",
+        "chart": "A",
+        "question": "His current maha-antar-pratyantar? (A)",
+        "regime": "surgical",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "ganita_dashas_get",
+            "args": {
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "as_of_date": "2026-07-09",
+              "all_levels": false
+            },
+            "latencyMs": 191.3,
+            "bytes": 3455,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "three_levels_with_dates",
+            "pass": true,
+            "detail": "dates_present=true"
+          },
+          {
+            "name": "bytes_le_1_5kb",
+            "pass": false,
+            "detail": "bytes=3455"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 191.3,
+        "totalBytes": 3455
+      },
+      {
+        "id": "Q1-N-5",
+        "chart": "N",
+        "question": "Which vargas is my Jupiter vargottama in? (N)",
+        "regime": "surgical",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "query_chart_facts",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "about": {
+                "graha": "Jupiter"
+              },
+              "keyword": "vargottama"
+            },
+            "latencyMs": 211.5,
+            "bytes": 503,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "honest_result_or_list",
+            "pass": false,
+            "detail": "has_list=false; empty_reason_markers=false"
+          },
+          {
+            "name": "no_transport_error",
+            "pass": true,
+            "detail": "transport_error=false"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 211.5,
+        "totalBytes": 503
+      },
+      {
+        "id": "X-1",
+        "chart": "A",
+        "question": "He's Pisces lagna, right? Tell me about his 1st house. (A) [D1 REGRESSION CANARY]",
+        "regime": "adversarial",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "judgment_query",
+            "args": {
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "bhava": 1,
+              "response_format": "v3"
+            },
+            "latencyMs": 536.9,
+            "bytes": 11306,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "chart_header_shows_aries_not_pisces",
+            "pass": true,
+            "detail": "header_aries=true; header_pisces=false; chart_header_json={\"content\":{\"chart_id_short\":\"1c826d5a\",\"name\":\"Abhinandan Mohanty\",\"lagna_sign\":\"Aries\",\"lagna_deg\":23.5264715224494,\"moon_sign\":\"Gemini\",\"sun_sign\":\"Aquarius\",\"ayanamsha\":\"lahiri_chitrapaksha\",\"current_maha_antar\":\"Saturn MD / Rahu AD\"},\"is_error\":false}"
+          },
+          {
+            "name": "answer_never_silently_adopts_false_pisces_frame",
+            "pass": true,
+            "detail": "pisces_frame_adopted_unrebutted=false"
+          }
+        ],
+        "allDeterministicPass": true,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "PASS",
+        "totalLatencyMs": 536.9,
+        "totalBytes": 11306
+      },
+      {
+        "id": "X-2",
+        "chart": "N/A",
+        "question": "Entitlement: query a chart id the session lacks",
+        "regime": "adversarial",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "judgment_query",
+            "args": {
+              "chart_id": "00000000-0000-0000-0000-000000000000",
+              "domain": "career"
+            },
+            "latencyMs": 297.1,
+            "bytes": 431,
+            "httpStatus": 200,
+            "toolIsError": true,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "denial_not_empty",
+            "pass": true,
+            "detail": "denial=true; status=200"
+          },
+          {
+            "name": "no_data_leak",
+            "pass": true,
+            "detail": "raw_leak=false"
+          },
+          {
+            "name": "no_raw_401_403_text",
+            "pass": true,
+            "detail": "raw_401_403=false"
+          }
+        ],
+        "allDeterministicPass": true,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "PASS",
+        "totalLatencyMs": 297.1,
+        "totalBytes": 431
+      },
+      {
+        "id": "X-3",
+        "chart": "N",
+        "question": "Budget abuse: \"Give me every signal you have\" (N)",
+        "regime": "adversarial",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "bodha_signals_get",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "domain": "career",
+              "top_k": 200
+            },
+            "latencyMs": 1976.1,
+            "bytes": 15860,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "response_le_ceiling",
+            "pass": true,
+            "detail": "bytes=15860 (63KB-class ceiling)"
+          },
+          {
+            "name": "trim_report_or_pointers_present_if_capped",
+            "pass": true,
+            "detail": "trim_marker=true; bytes=15860"
+          }
+        ],
+        "allDeterministicPass": true,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "PASS",
+        "totalLatencyMs": 1976.1,
+        "totalBytes": 15860
+      },
+      {
+        "id": "X-4",
+        "chart": "A",
+        "question": "Paradigm bait: \"Use KP sub-lords to confirm the Parashari D9 promise in one verdict\"",
+        "regime": "adversarial",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "judgment_query",
+            "args": {
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "domain": "marriage",
+              "response_format": "v3"
+            },
+            "latencyMs": 370.2,
+            "bytes": 11248,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          },
+          {
+            "tool": "bodha_signals_get",
+            "args": {
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "domain": "marriage",
+              "paradigm": "kp",
+              "top_k": 10
+            },
+            "latencyMs": 1794.5,
+            "bytes": 2686,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "paradigms_kept_distinct_separate_calls",
+            "pass": true,
+            "detail": "distinct=true"
+          },
+          {
+            "name": "kp_paradigm_surfaced_not_silently_blended",
+            "pass": true,
+            "detail": "kp_marker=true"
+          }
+        ],
+        "allDeterministicPass": true,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "PASS",
+        "totalLatencyMs": 2164.7,
+        "totalBytes": 13934
+      },
+      {
+        "id": "X-5",
+        "chart": "N",
+        "question": "Broken-organ honesty: call a known-degraded surface (synth_tail_divergence_get per system_health / prior ledger P6 finding)",
+        "regime": "adversarial",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "synth_tail_divergence_get",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+            },
+            "latencyMs": 284.7,
+            "bytes": 276,
+            "httpStatus": 200,
+            "toolIsError": true,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "serving_fault_flag_or_explicit_error_not_silent_success",
+            "pass": true,
+            "detail": "silent_success=false; status=200; isError=true"
+          },
+          {
+            "name": "workaround_suggestion_present_if_faulted",
+            "pass": true,
+            "detail": "fault_flag=false"
+          }
+        ],
+        "allDeterministicPass": true,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "PASS",
+        "totalLatencyMs": 284.7,
+        "totalBytes": 276
+      },
+      {
+        "id": "X-6",
+        "chart": "N",
+        "question": "Time-sensitivity (N pre/post-R4): \"What does his D60 say about past-life karma?\"",
+        "regime": "adversarial",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "query_chart_facts",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "divisional_chart": "D60"
+            },
+            "latencyMs": 1045.3,
+            "bytes": 127631,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "time_sensitivity_grade_present",
+            "pass": false,
+            "detail": "time_sens=false"
+          },
+          {
+            "name": "no_transport_error",
+            "pass": true,
+            "detail": "error=false"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 1045.3,
+        "totalBytes": 127631
+      },
+      {
+        "id": "X-7",
+        "chart": "A",
+        "question": "Mixed-frame trap: \"Is Saturn in his 8th?\" then \"and from the Moon?\" (A)",
+        "regime": "adversarial",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "ganita_positions_get",
+            "args": {
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "frame": "lagna"
+            },
+            "latencyMs": 393.9,
+            "bytes": 67227,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          },
+          {
+            "tool": "ganita_positions_get",
+            "args": {
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "frame": "chandra"
+            },
+            "latencyMs": 265.8,
+            "bytes": 67988,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "lagna_frame_scorpio_h8_confirmed",
+            "pass": false,
+            "detail": "scorpio_h8=false"
+          },
+          {
+            "name": "moon_frame_recomputed_not_copied",
+            "pass": true,
+            "detail": "responses_differ=true"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 659.7,
+        "totalBytes": 135215
+      },
+      {
+        "id": "X-8",
+        "chart": "N",
+        "question": "Stale-note check: any response carrying provenance notes",
+        "regime": "adversarial",
+        "rubricFloor": null,
+        "calls": [
+          {
+            "tool": "bodha_signals_get",
+            "args": {
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "domain": "career",
+              "top_k": 5
+            },
+            "latencyMs": 284.9,
+            "bytes": 9224,
+            "httpStatus": 200,
+            "toolIsError": null,
+            "transportError": null
+          }
+        ],
+        "assertions": [
+          {
+            "name": "every_note_has_as_of",
+            "pass": true,
+            "detail": "has_note=true; has_as_of=true"
+          },
+          {
+            "name": "no_note_contradicts_same_response_rows",
+            "pass": false,
+            "detail": "known_stale_marker_present=true (W0a P4 finding — check if still present)"
+          }
+        ],
+        "allDeterministicPass": false,
+        "rubric": {
+          "applicable": false,
+          "floor": null,
+          "structuralProxyScore": null,
+          "status": "NOT_APPLICABLE",
+          "note": "Q1/X deterministic-only item — no rubric floor per battery."
+        },
+        "verdict": "FAIL",
+        "totalLatencyMs": 284.9,
+        "totalBytes": 9224
+      }
+    ],
+    "distinct_tools_exercised": [
+      "bodha_discoveries_get",
+      "bodha_remedies_get",
+      "bodha_signals_get",
+      "ganita_dashas_get",
+      "ganita_positions_get",
+      "ganita_structural_get",
+      "ganita_yogas_get",
+      "graha_portrait",
+      "judgment_query",
+      "muhurta_finder",
+      "pact_query",
+      "query_chart_facts",
+      "ref_classical_citation_get",
+      "synth_chart_brief_get",
+      "synth_tail_divergence_get"
+    ],
+    "distinct_tools_count": 15,
+    "tool_estate_size_at_run_time": 127,
+    "coverage_breadth_fraction": 0.118
+  }
+}
