@@ -310,6 +310,7 @@ jobs:
             SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:1
             MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
+            MCP_CANARY_KEY=mcp-canary-key:latest
 
       - name: Post-deploy smoke
         id: smoke
