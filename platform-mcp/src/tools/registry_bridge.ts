@@ -1715,6 +1715,324 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
   )
 
+  // ── graha_portrait narration (R5.3 B2 — Pratinidhi-R ruling) ──────────────────
+  // Assembles verdict.narration PROSE from facts `inner` already carries (pre-trim —
+  // narration is built before applyMcpBudget runs, so it can safely cite any row even
+  // if that row is later trimmed off the wire in `content`; grounding.fact_ids below is
+  // expanded with every fact_id this narration cites so the citation still resolves).
+  // NO new astrological derivation of chart values: the two classical lookup tables
+  // below (sign→lord rulership, shadbala required-rupas thresholds) are the SAME fixed,
+  // published-constant values ga_structural_writer.py / ga_strength_writer.py already
+  // embed server-side — reused here for prose framing, never re-derived per chart.
+  const ZODIAC_SIGNS_ORDER = [
+    'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+    'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+  ] as const
+  const SIGN_LORD: Record<string, string> = {
+    Aries: 'Mars', Taurus: 'Venus', Gemini: 'Mercury', Cancer: 'Moon', Leo: 'Sun',
+    Virgo: 'Mercury', Libra: 'Venus', Scorpio: 'Mars', Sagittarius: 'Jupiter',
+    Capricorn: 'Saturn', Aquarius: 'Saturn', Pisces: 'Jupiter',
+  }
+  const SHADBALA_REQUIRED_RUPAS: Record<string, number> = {
+    Sun: 5.0, Moon: 6.0, Mars: 5.0, Mercury: 7.0, Jupiter: 6.5, Venus: 5.5, Saturn: 5.0,
+  }
+  const DUSTHANA_HOUSES = new Set([6, 8, 12])
+  const ORDINAL_WORDS = [
+    '0th', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th',
+  ]
+  const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+  const NATIVE_BIRTH_YEAR = 1984
+  const DIGNITY_LABEL: Record<string, string> = {
+    debilitated: 'debilitated (neecha)', exalted: 'exalted', own: 'own sign', neutral: 'neutral',
+  }
+
+  type PortraitRow = Record<string, unknown>
+  const ordinalWord = (n: number): string => ORDINAL_WORDS[n] ?? `${n}th`
+  const rowsOf = (inner: Record<string, unknown>, section: string, field: string): PortraitRow[] => {
+    const s = inner[section] as Record<string, unknown> | undefined
+    const arr = s?.[field]
+    return Array.isArray(arr) ? (arr as PortraitRow[]) : []
+  }
+  const factIdOf = (row: PortraitRow | undefined): string | null => {
+    const v = row?.['fact_id']
+    return typeof v === 'string' ? v : null
+  }
+  const jsonbOf = (row: PortraitRow | undefined): Record<string, unknown> => {
+    const v = row?.['fact_value_jsonb']
+    return (v && typeof v === 'object') ? v as Record<string, unknown> : {}
+  }
+  const textOf = (row: PortraitRow | undefined): string | null => {
+    const v = row?.['fact_value_text']
+    return typeof v === 'string' ? v : null
+  }
+  const numOf = (row: PortraitRow | undefined): number | null => {
+    const v = row?.['fact_value_num']
+    if (typeof v === 'number') return v
+    if (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v))) return Number(v)
+    return null
+  }
+  const dignityTier = (state: string | null): 'strong' | 'weak' | 'mid' | 'unknown' => {
+    if (state === 'exalted' || state === 'own') return 'strong'
+    if (state === 'debilitated') return 'weak'
+    if (state === 'neutral') return 'mid'
+    return 'unknown'
+  }
+  const housesRuledFromLagna = (grahaName: string, lagnaSign: string): number[] => {
+    const startIdx = ZODIAC_SIGNS_ORDER.indexOf(lagnaSign as typeof ZODIAC_SIGNS_ORDER[number])
+    if (startIdx < 0) return []
+    const houses: number[] = []
+    for (let h = 1; h <= 12; h++) {
+      const sign = ZODIAC_SIGNS_ORDER[(startIdx + h - 1) % 12]
+      if (sign && SIGN_LORD[sign] === grahaName) houses.push(h)
+    }
+    return houses
+  }
+  /** Deletes `citation_ref` (internal MCP-lineage debug string, never a classical
+   *  citation — see Pratinidhi-R ruling) from every row this narration reads, freeing
+   *  budget headroom for the added prose. Only ever applied to the v3 response path. */
+  const stripCitationRefDeep = (node: unknown): void => {
+    if (node === null || typeof node !== 'object') return
+    if (Array.isArray(node)) { for (const v of node) stripCitationRefDeep(v); return }
+    const obj = node as Record<string, unknown>
+    if ('citation_ref' in obj) delete obj['citation_ref']
+    for (const v of Object.values(obj)) stripCitationRefDeep(v)
+  }
+
+  function buildGrahaPortraitNarration(
+    chartId: string, grahaName: string, lagnaSign: string | null, inner: Record<string, unknown>,
+  ): { narration: string; extraFactIds: string[] } {
+    const sentences: string[] = []
+    const extraFactIds: string[] = []
+
+    // ── functional role (lordship houses from lagna + already-computed functional class) ──
+    const functionalRows = rowsOf(inner, 'functional_nature', 'rows')
+    const bphsRow = functionalRows.find(r => r['fact_key'] === 'bphs_canonical')
+    const functionalClass = textOf(bphsRow)
+    if (lagnaSign) {
+      const houses = housesRuledFromLagna(grahaName, lagnaSign)
+      if (houses.length > 0) {
+        const houseList = houses.map(ordinalWord).join(' + ')
+        const yk = functionalClass === 'yoga_karaka'
+        sentences.push(
+          `${grahaName} = ${houseList} lord for ${lagnaSign} lagna` +
+          (functionalClass ? ` (${yk ? 'yogakaraka' : functionalClass.replace(/_/g, ' ')})` : '') + '.',
+        )
+        const fid = factIdOf(bphsRow); if (fid) extraFactIds.push(fid)
+      }
+    }
+
+    // ── dignity: D1 vs D9 promise-vs-delivery tension ────────────────────────
+    const dignityRows = rowsOf(inner, 'dignity', 'operative_varga_rows')
+    const byVarga = new Map<string, PortraitRow>()
+    for (const r of dignityRows) {
+      const varga = jsonbOf(r)['varga']
+      if (typeof varga === 'string') byVarga.set(varga, r)
+    }
+    const d1 = byVarga.get('D1')
+    const d9 = byVarga.get('D9')
+    const describeVargaRow = (r: PortraitRow): string => {
+      const state = textOf(r) ?? 'unknown'
+      const j = jsonbOf(r)
+      const sign = typeof j['sign'] === 'string' ? j['sign'] as string : '?'
+      const houseRaw = j['house']
+      const house = typeof houseRaw === 'number' ? houseRaw : (typeof houseRaw === 'string' ? Number(houseRaw) : null)
+      const label = DIGNITY_LABEL[state] ?? state
+      return `${label} (${sign}${house != null && Number.isFinite(house) ? `, ${ordinalWord(house)} house` : ''})`
+    }
+
+    if (d1) {
+      const fid = factIdOf(d1); if (fid) extraFactIds.push(fid)
+      const state = textOf(d1)
+      const confirmPrefix = dignityTier(state) === 'strong' ? 'Confirmed: ' : ''
+      sentences.push(`${confirmPrefix}${grahaName} is ${describeVargaRow(d1)} in D1.`)
+
+      if (d9) {
+        const fid9 = factIdOf(d9); if (fid9) extraFactIds.push(fid9)
+        const t1 = dignityTier(state)
+        const t9 = dignityTier(textOf(d9))
+        let connector = 'and'
+        if (t1 === 'strong' && t9 === 'weak') connector = 'but'
+        else if (t1 === 'weak' && t9 === 'strong') connector = 'though redeemed —'
+        sentences.push(
+          `In D9: ${describeVargaRow(d9)} — ${connector} ${
+            t1 !== t9
+              ? (t1 === 'strong' ? 'natal strength undercut by navamsha stress' : 'natal weakness tempered by navamsha support')
+              : 'a consistent read across D1 and D9'
+          }.`,
+        )
+      }
+
+      // ── dusthana-house counterweight (dignity vs house-utility tension) ────
+      const d1HouseRaw = jsonbOf(d1)['house']
+      const d1House = typeof d1HouseRaw === 'number' ? d1HouseRaw : null
+      if (d1House != null && DUSTHANA_HOUSES.has(d1House) && dignityTier(state) === 'strong') {
+        const houseName = d1House === 12 ? '12th house (dusthana: loss/expenditure/bed-pleasures)'
+          : d1House === 8 ? '8th house (dusthana: transformation/longevity stress)'
+          : '6th house (dusthana: conflict/service/debt)'
+        sentences.push(
+          `But this dignity sits in the ${houseName} — dignity does not sit in an unconditionally ` +
+          `strength-giving house; this tempers any "guarantees" framing.`,
+        )
+      }
+
+      // ── neecha-bhanga honesty check (only when D1 is debilitated) ───────────
+      if (state === 'debilitated') {
+        const sign = jsonbOf(d1)['sign']
+        const dispositor = typeof sign === 'string' ? SIGN_LORD[sign] : undefined
+        if (dispositor) {
+          const cgm = inner['cgm_neighborhood'] as Record<string, unknown> | undefined
+          const nodes = ((cgm?.['nodes']) ?? []) as PortraitRow[]
+          const dispositorNode = nodes.find(n =>
+            n['node_type'] === 'graha' &&
+            typeof n['node_subject'] === 'string' &&
+            (n['node_subject'] as string).toUpperCase() === dispositor.toUpperCase(),
+          )
+          if (dispositorNode) {
+            const dState = dispositorNode['dignity_state']
+            const strong = dState === 'exalted' || dState === 'own'
+            sentences.push(
+              `Neecha-bhanga checked via the fetched dispositor-chain data: dispositor ${dispositor}'s ` +
+              `dignity here is ${String(dState ?? 'unknown')} — ${strong
+                ? 'the strong-dispositor cancellation condition IS met (treat as a candidate bhanga, not a full multi-condition confirmation — other classical conditions like kendra placement aren\'t covered by this depth-1 neighborhood).'
+                : 'the strong-dispositor cancellation condition is NOT met from this data; no cancellation confirmed here — a full multi-condition audit needs deeper dispositor-chain traversal.'}`,
+            )
+          } else {
+            sentences.push(
+              `Neecha-bhanga checked against the dispositor-chain data this portrait retrieves: dispositor ` +
+              `${dispositor} is not present in the depth-1 cgm_neighborhood returned here — no cancellation ` +
+              `condition met in what's available; a full multi-condition audit needs deeper dispositor-chain ` +
+              `traversal (see drill_pointers).`,
+            )
+          }
+        }
+      }
+    } else if (d9) {
+      const fid9 = factIdOf(d9); if (fid9) extraFactIds.push(fid9)
+      sentences.push(`In D9: ${describeVargaRow(d9)}.`)
+    }
+
+    // ── shadbala ───────────────────────────────────────────────────────────
+    const strengthRows = rowsOf(inner, 'strength', 'rows')
+    const totalRow = strengthRows.find(r => r['fact_category'] === 'graha_shadbala_total')
+    if (totalRow) {
+      const fid = factIdOf(totalRow); if (fid) extraFactIds.push(fid)
+      const rupas = numOf(totalRow)
+      const required = SHADBALA_REQUIRED_RUPAS[grahaName]
+      if (rupas != null) {
+        if (required != null) {
+          const surplus = rupas - required
+          const grade = surplus >= 0 ? 'strong (surplus)' : 'weak (deficit)'
+          sentences.push(
+            `Shadbala: ${rupas.toFixed(2)} rupas vs ${required.toFixed(2)} required — grade: ${grade} ` +
+            `(${surplus >= 0 ? '+' : ''}${surplus.toFixed(2)} rupas).`,
+          )
+        } else {
+          sentences.push(`Shadbala: ${rupas.toFixed(2)} rupas total.`)
+        }
+      }
+    }
+
+    // ── avasthas (up to 2 systems, D1-preferred) ──────────────────────────────
+    const avasthaRows = rowsOf(inner, 'avasthas', 'rows')
+    const avasthaD1 = avasthaRows.filter(r => r['fact_key'] === 'D1')
+    const avasthaPool = avasthaD1.length > 0 ? avasthaD1 : avasthaRows
+    const seenSystems = new Set<string>()
+    const avasthaClauses: string[] = []
+    for (const r of avasthaPool) {
+      const category = typeof r['fact_category'] === 'string' ? r['fact_category'] as string : ''
+      const system = category.replace('graha_avastha_', '').replace('_per_varga', '')
+      if (!system || seenSystems.has(system)) continue
+      const state = textOf(r)
+      if (!state) continue
+      seenSystems.add(system)
+      avasthaClauses.push(`${system} avastha: ${state}`)
+      const fid = factIdOf(r); if (fid) extraFactIds.push(fid)
+      if (avasthaClauses.length >= 2) break
+    }
+    if (avasthaClauses.length > 0) sentences.push(`Avasthas — ${avasthaClauses.join('; ')}.`)
+
+    // ── yogas / configurations ─────────────────────────────────────────────
+    const yogas = (inner['yogas'] as Record<string, unknown> | undefined) ?? {}
+    const parivartana = (yogas['parivartana_exchanges'] as PortraitRow[] | undefined) ?? []
+    if (parivartana.length > 0) {
+      const p = parivartana[0]
+      const headline = p && typeof p['signal_headline_text'] === 'string' ? p['signal_headline_text'] as string : null
+      const sid = p?.['signal_id']
+      sentences.push(
+        `Yoga/configuration: parivartana exchange — ${headline ?? 'structural sign exchange'}` +
+        `${sid ? ` (signal_id ${String(sid)})` : ''}.`,
+      )
+    } else {
+      const catalogCount =
+        ((yogas['catalog_yoga_matches'] as unknown[] | undefined)?.length ?? 0) +
+        ((yogas['catalog_dosha_matches'] as unknown[] | undefined)?.length ?? 0)
+      if (catalogCount > 0) {
+        sentences.push(
+          `Yogas: no confirmed parivartana exchange for ${grahaName}; ${catalogCount} catalog yoga/dosha ` +
+          `candidate row(s) mention this graha but are requires_pass catalog matches, not confirmed firings (JL-004).`,
+        )
+      } else {
+        sentences.push(
+          `Yogas: no parivartana exchange and no catalog yoga/dosha candidates for ${grahaName} in this chart ` +
+          `— yoga_fires/dosha_fires are honestly 0 rows for this build (JL-004: a requires_pass catalog, not ` +
+          `confirmed firings).`,
+        )
+      }
+    }
+
+    // ── dashas (current/next Mahadasha, with age for the documented native chart only) ──
+    const dashaRows = rowsOf(inner, 'dashas', 'rows')
+    if (dashaRows.length > 0) {
+      const today = new Date().toISOString().slice(0, 10)
+      const withDates = dashaRows
+        .map(r => ({ row: r, start: r['start_date'], end: r['end_date'] }))
+        .filter((x): x is { row: PortraitRow; start: string; end: string } =>
+          typeof x.start === 'string' && typeof x.end === 'string')
+        .sort((a, b) => a.start.localeCompare(b.start))
+      const current = withDates.find(x => x.start <= today && x.end >= today)
+      const next = withDates.find(x => x.start > today)
+      const ageSuffix = (dateStr: string): string => {
+        if (chartId !== NATIVE_CHART_ID) return ''
+        const year = Number(dateStr.slice(0, 4))
+        return Number.isFinite(year) ? ` (age ${year - NATIVE_BIRTH_YEAR})` : ''
+      }
+      if (current) {
+        sentences.push(`Current ${grahaName} Mahadasha: ${current.start} → ${current.end}${ageSuffix(current.start)}.`)
+        const fid = factIdOf(current.row); if (fid) extraFactIds.push(fid)
+      }
+      if (next) {
+        sentences.push(`Next ${grahaName} Mahadasha: ${next.start} → ${next.end}${ageSuffix(next.start)}.`)
+        const fid = factIdOf(next.row); if (fid) extraFactIds.push(fid)
+      } else if (!current && withDates.length > 0) {
+        const past = withDates[withDates.length - 1]
+        if (past) {
+          sentences.push(`Most recent ${grahaName} Mahadasha (past): ${past.start} → ${past.end}${ageSuffix(past.start)}.`)
+          const fid = factIdOf(past.row); if (fid) extraFactIds.push(fid)
+        }
+      }
+    }
+
+    // ── CGM neighborhood (optional, cheap) ────────────────────────────────
+    const cgm = inner['cgm_neighborhood'] as Record<string, unknown> | undefined
+    const cgmEdges = ((cgm?.['edges']) ?? []) as PortraitRow[]
+    if (cgmEdges.length > 0) {
+      const top = cgmEdges.slice(0, 3).map(e => String(e['relationship_basis'] ?? e['edge_type'] ?? 'edge'))
+      sentences.push(`CGM neighborhood: ${cgmEdges.length} edge(s), top relations — ${top.join(', ')}.`)
+    }
+
+    // ── standing disclosures (always true; cheap) ─────────────────────────
+    sentences.push(
+      'Single-tradition read: dignity/strength above are BPHS/classical-dignity based only ' +
+      '(JL-004 caveat) — not cross-checked against Jaimini/KP.',
+    )
+    sentences.push(
+      `Scope: graha_portrait assesses ${grahaName} alone — any bhava-level claim (e.g. marriage promise via ` +
+      `the 7th house, career via the 10th) needs judgment_query for the complete promise-register verdict.`,
+    )
+
+    return { narration: sentences.join(' '), extraFactIds: Array.from(new Set(extraFactIds)) }
+  }
+
   // ── graha_portrait (R5 W3, design §28.2 — the mirror recipe for graha-questions) ──
   // marsys://tool/L2/graha_portrait
   //
@@ -2008,7 +2326,34 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         const positionRows = ((inner['position'] as Record<string, unknown> | undefined)?.['rows'] as Record<string, unknown>[] | undefined) ?? []
         const fact_ids = Array.from(new Set(positionRows.map(r => r['fact_id']).filter((v): v is string => typeof v === 'string')))
-        const grounding = { fact_ids, citations: [], grounding_score: sectionsRequested > 0 ? Math.round((sectionsPopulated / sectionsRequested) * 1000) / 1000 : null }
+
+        let chart_header: ChartHeader | null = null
+        try {
+          chart_header = await callRegistryCapability(
+            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id, principal,
+          ) as ChartHeader
+        } catch {
+          chart_header = null
+        }
+
+        // Pratinidhi-R ruling (R5.3 B2): the narration MUST be built from `inner` —
+        // the UNTRIMMED capability output — BEFORE applyMcpBudget runs below, so it can
+        // safely cite any fetched row even if that row is later trimmed off the wire.
+        const grahaNameResolved = typeof inner['graha'] === 'string' ? inner['graha'] as string : graha
+        const { narration, extraFactIds } = buildGrahaPortraitNarration(
+          chart_id, grahaNameResolved, chart_header?.lagna_sign ?? null, inner,
+        )
+        // New budget headroom (Pratinidhi-R ruling): citation_ref is internal MCP-lineage
+        // provenance, never a classical citation — strip it from every row now that
+        // narration (which reads fact_id/fact_value_text/fact_value_jsonb, never
+        // citation_ref) has already been built from the untouched `inner`.
+        stripCitationRefDeep(inner)
+
+        const fact_ids_grounded = Array.from(new Set([...fact_ids, ...extraFactIds]))
+        const grounding = {
+          fact_ids: fact_ids_grounded, citations: [],
+          grounding_score: sectionsRequested > 0 ? Math.round((sectionsPopulated / sectionsRequested) * 1000) / 1000 : null,
+        }
 
         const verdict = {
           graha: inner['graha'] ?? graha,
@@ -2016,7 +2361,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           completeness,
           sections_populated: sectionsPopulated,
           sections_requested: sectionsRequested,
-          note: 'completeness uses the design §28.6 classical-units receipt vocabulary (✓ / zero_rows / error / not_requested) per section.',
+          narration,
+          note: 'completeness uses the design §28.6 classical-units receipt vocabulary (✓ / zero_rows / error / not_requested) per section. narration is assembled from the sections already fetched by this same call (see grounding.fact_ids for the specific L1/L2 facts it cites) — never a new chart computation.',
         }
 
         const judgment_flags: string[] = []
@@ -2030,16 +2376,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           { instrument: 'get_dashas', hint: 'Antardasha-level (level=2+) detail for this graha\'s Mahadasha periods, narrower window.', pointer_type: 'dasha_of_promise' },
           { instrument: 'traverse_graph', hint: 'deeper CGM traversal (depth>1, paths mode) from this graha\'s neighborhood.', pointer_type: 'dispositor_chain' },
           { instrument: 'get_signals', hint: 'raw MSR signal evidence for any yoga/dosha match surfaced here.', pointer_type: 'karaka_condition' },
+          { instrument: 'judgment_query', hint: 'the complete bhava-level (7th-house marriage, 10th-house career, etc.) promise-register verdict — this entity-scoped call cannot fully adjudicate bhava claims on its own.', pointer_type: 'karaka_condition' },
         ]
-
-        let chart_header: ChartHeader | null = null
-        try {
-          chart_header = await callRegistryCapability(
-            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id, principal,
-          ) as ChartHeader
-        } catch {
-          chart_header = null
-        }
 
         const v3Response = {
           orientation_context, orientation_ok,
