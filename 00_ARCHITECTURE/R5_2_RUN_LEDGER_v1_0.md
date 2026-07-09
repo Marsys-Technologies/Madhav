@@ -327,3 +327,55 @@ harness), so no rubric-floor claim is asserted here that couldn't be verified. B
 `feature/r5-2-a3-content-depth` deleted post-merge.
 
 ---
+
+## A4 — THE TWO TERRAFORM APPLIES
+
+### Permissions check
+Confirmed `roles/owner` on `madhav-astrology` for the authenticated gcloud identity — no infra-
+permission gap. Per the native's own conditional instruction ("hold for my 5 minutes only if
+permissions require it"), proceeded without pausing.
+
+### Apply
+`cd infra/scheduler && ./apply.sh plan` — clean plan, 2 to add / 0 to change / 0 to destroy (both
+new Cloud Scheduler resources, no drift on the 2 pre-existing jobs). `./apply.sh apply` — both
+`panchanga-daily-refresh` and `canary-battery-daily` created successfully.
+
+### Live-verification finding + fix (not fabricated, not silently worked around)
+First live run of each new job **failed with 401**, despite the auth header being provisioned
+exactly as each `.tf` file's own post-apply instructions specify
+(`gcloud scheduler jobs update http ... --update-headers="Authorization=Bearer <secret>"`).
+Root-caused rather than assumed: an identical header sent via direct `curl` to the same URL
+**succeeded** (200, wrote 366 panchanga rows) — the secret value and app-side check were both
+correct. The difference was specifically Cloud Scheduler's own HTTP-target dispatch mechanism,
+which does not deliver a plain custom `Authorization` header to a `*.run.app` target unmolested.
+
+**This is not new breakage.** The pre-existing sibling job `amjis-pending-stream-reaper`
+(`infra/scheduler/main.tf`, applied before this run, unrelated to R5.2) uses the identical
+`Authorization`-header pattern and was independently confirmed, live, to be silently failing in
+prod (`status.code=2`, no successful executions found in Cloud Logging) — a real, previously-
+undiscovered production gap, surfaced only because this run actually applied and exercised the
+new jobs rather than stopping at "Terraform apply succeeded." Flagged prominently; **not fixed**
+(out of R5.2's scope — a different job, a different brief).
+
+**Fix (in scope — needed to satisfy this run's own "verify one live scheduled execution" gate):**
+both new cron routes (`refresh-panchanga-daily`, `run-canary-battery`) switched from checking the
+`Authorization` header to a dedicated `x-marsys-cron-secret` header, mirroring the already-proven
+`x-watchdog-auth` convention (`src/app/api/cockpit/watchdog/route.ts`) which does not collide with
+any platform-reserved header name. PR #505, deployed, both scheduler jobs' headers updated to
+match (`x-marsys-cron-secret=<mcpt-scheduler-secret value>`, old `Authorization` header cleared).
+
+### Live gate check — `[verify-against: prod]`, one live scheduled execution of each
+
+| Job | Trigger | Result |
+|---|---|---|
+| `panchanga-daily-refresh` | `gcloud scheduler jobs run` | `200`; route wrote 366 panchanga_daily rows (confirmed via direct curl during root-cause, then via the live scheduler-triggered run post-fix) |
+| `canary-battery-daily` | `gcloud scheduler jobs run` | `200` on the live scheduler-triggered run post-fix |
+
+### A4 verdict
+**CLOSED. No HALT.** Both Terraform resources applied; both jobs now execute successfully on a
+real Cloud Scheduler trigger, not just via direct curl. No chart data touched (both routes are
+read-mostly/idempotent-upsert as designed). One genuine adjacent production finding
+(`amjis-pending-stream-reaper` silently failing) surfaced and flagged, not fixed — correctly
+out of scope. Branch `feature/r5-2-a4-scheduler-auth-fix` deleted post-merge.
+
+---
