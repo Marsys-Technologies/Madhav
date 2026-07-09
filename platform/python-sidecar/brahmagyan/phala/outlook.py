@@ -297,23 +297,49 @@ def _fetch_auspicious_windows(
         windows = []
         for row in rows:
             r = dict(row)
-            # Extract auspicious metadata (JSONB column from migration 069)
-            auspicious_data = r.get("auspicious") or {}
-            if not isinstance(auspicious_data, dict):
+            # Extract auspicious metadata (JSONB column; list[Timing dict] shape as of
+            # migration 427 panchanga_daily_reprovision — panchang_engine's canonical
+            # serialization is list-shaped, e.g. [{"label": "abhijit", "start_utc": ...,
+            # "end_utc": ...}, ...]. Fold into a label-keyed dict so this endpoint's own
+            # output contract (auspicious_metadata: dict) is unchanged for callers.
+            auspicious_raw = r.get("auspicious")
+            if isinstance(auspicious_raw, list):
+                auspicious_data = {
+                    (t.get("label") or f"item_{i}"): t
+                    for i, t in enumerate(auspicious_raw)
+                    if isinstance(t, dict)
+                }
+            elif isinstance(auspicious_raw, dict):
+                auspicious_data = auspicious_raw
+            else:
                 auspicious_data = {}
 
-            # Build top_windows from choghadiya auspicious slots
+            # Build top_windows from choghadiya auspicious slots.
+            # panchang_engine's canonical choghadiya shape (serialize.py
+            # _serialize_choghadiya) is {"day": [Timing...], "night": [Timing...]},
+            # each Timing serialized as {"label": "choghadiya_<name>", "start_utc",
+            # "end_utc"} — not the flat {slot_name: {is_auspicious, start, end, score}}
+            # shape this code was originally written against (pre-migration-427, when
+            # panchanga_daily always returned 0 rows via the WHERE-FALSE stub view, so
+            # this path was never actually exercised against real data).
+            # Classical choghadiya auspicious names (MC §5): Amrit, Shubh, Labh, Chal.
             choghadiya = r.get("choghadiya") or {}
             auspicious_slots = []
+            _AUSPICIOUS_CHOGHADIYA = {"amrit", "shubh", "labh", "chal"}
             if isinstance(choghadiya, dict):
-                for slot_name, slot_data in choghadiya.items():
-                    if isinstance(slot_data, dict) and slot_data.get("is_auspicious"):
-                        auspicious_slots.append({
-                            "type": slot_name,
-                            "start_time": slot_data.get("start"),
-                            "end_time": slot_data.get("end"),
-                            "score": float(slot_data.get("score", 0.7)),
-                        })
+                for period_key in ("day", "night"):
+                    for slot in (choghadiya.get(period_key) or []):
+                        if not isinstance(slot, dict):
+                            continue
+                        label = str(slot.get("label", ""))
+                        name = label.removeprefix("choghadiya_")
+                        if name in _AUSPICIOUS_CHOGHADIYA:
+                            auspicious_slots.append({
+                                "type": name,
+                                "start_time": slot.get("start_utc"),
+                                "end_time": slot.get("end_utc"),
+                                "score": 0.7,
+                            })
 
             window_entry: dict[str, Any] = {
                 "date": r["date"],

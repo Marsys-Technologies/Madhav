@@ -181,6 +181,51 @@ async def compute_panchanga_endpoint(req: PanchangaRequest):
     }
 
 
+class PanchangaRefreshRequest(BaseModel):
+    """R5.1 C3 — scheduled monthly refresh request body. All fields optional."""
+    days: Optional[int] = Field(
+        None, ge=1, le=730,
+        description="Window length in days from today (default: 365, the rolling +12-month contract).",
+    )
+
+
+@router.post("/panchanga/refresh")
+async def refresh_panchanga_daily_endpoint(req: PanchangaRefreshRequest = PanchangaRefreshRequest()):
+    """
+    R5.1 C3 — triggers panchanga_daily_writer.write_window() for a rolling
+    window starting today. Intended to be called by the monthly Cloud Scheduler
+    job (infra/scheduler/panchanga_refresh.tf — documented, not yet applied;
+    see that file's header) via the Next.js cron proxy
+    (/api/admin/cron/refresh-panchanga-daily), matching the existing
+    watchdog-reaper / mv-refresh / pending-stream-reaper pattern.
+
+    Idempotent: panchanga_daily_writer upserts (ON CONFLICT (date) DO UPDATE),
+    so re-running never accretes duplicate rows and always reflects the
+    current computation_version/ephemeris_version.
+
+    Deterministic-first (B.10): calls panchang_engine.compute_panchang()
+    (Swiss Ephemeris) directly — no LLM involved anywhere in this path.
+    """
+    from datetime import date as _date, timedelta as _timedelta
+    from scripts.panchanga_daily_writer import write_window, DEFAULT_WINDOW_DAYS
+
+    days = req.days or DEFAULT_WINDOW_DAYS
+    date_from = _date.today()
+    date_to = date_from + _timedelta(days=days)
+
+    try:
+        n = write_window(date_from, date_to, dry_run=False)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"panchanga_daily_writer failed: {exc}")
+
+    return {
+        "ok": True,
+        "rows_written": n,
+        "date_from": date_from.isoformat(),
+        "date_to": date_to.isoformat(),
+    }
+
+
 @router.post("/panchanga/range")
 async def compute_panchanga_range_endpoint(req: PanchangaRangeRequest):
     """

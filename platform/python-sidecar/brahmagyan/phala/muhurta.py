@@ -413,12 +413,13 @@ def fetch_muhurta_windows(
     range_end: datetime,
     min_score: float = 0.0,
     limit: int = 20,
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """
     Fetch pre-computed phala_muhurta rows for a chart/action_type within the window.
 
     If no pre-computed rows exist for this chart_id + action_type + range,
-    falls back to on-the-fly computation (generate_muhurta_windows).
+    falls back to on-the-fly computation (generate_muhurta_windows), which
+    reads REAL panchanga_daily rows and never fabricates coverage.
 
     Args:
         chart_id:    Chart UUID.
@@ -429,7 +430,8 @@ def fetch_muhurta_windows(
         limit:       Maximum number of windows to return (default 20).
 
     Returns:
-        list[dict] — window dicts with start, end, score, factors, source_citation.
+        {"windows": list[dict], "checked": int, "skipped_no_panchanga": int,
+         "coverage": (min_date, max_date), "source": "phala_muhurta"|"on_the_fly"}
     """
     try:
         db_url = _get_db_url()
@@ -469,12 +471,19 @@ def fetch_muhurta_windows(
                             normalised[k] = v
                     rows.append(normalised)
         if rows:
-            return rows
+            return {
+                "windows": rows,
+                "checked": len(rows),
+                "skipped_no_panchanga": 0,
+                "coverage": (None, None),
+                "source": "phala_muhurta",
+            }
     except Exception as exc:
         logger.warning("phala_muhurta DB read failed (%s); falling back to on-the-fly", exc)
 
-    # On-the-fly fallback: generate and score windows without DB
-    return generate_muhurta_windows(
+    # On-the-fly fallback: generate and score windows without DB, using REAL
+    # panchanga_daily rows only (never fabricated — see generate_muhurta_windows).
+    result = generate_muhurta_windows(
         chart_id=chart_id,
         action_type=action_type,
         range_start=range_start,
@@ -482,17 +491,31 @@ def fetch_muhurta_windows(
         min_score=min_score,
         limit=limit,
     )
+    result["source"] = "on_the_fly"
+    return result
 
 
 def _fetch_panchanga_row(
     window_start: datetime,
     db_url: str,
-) -> dict[str, Any]:
+) -> Optional[dict[str, Any]]:
     """
     Read panchanga_daily for the given date (UTC midnight).
 
-    Returns a dict with tithi_name, vara_lord, moon_nakshatra, yoga,
-    or defaults when unavailable.
+    Returns a dict with tithi_name, vara_lord, moon_nakshatra, yoga when a real
+    row exists, or None when the date is outside the populated rolling window.
+
+    R5.1 C3 fix: this previously queried a non-existent column
+    (`panchanga_date`) against panchanga_daily (whose real column is `date` —
+    see migration 427_panchanga_daily_reprovision.sql), so every lookup threw,
+    was silently swallowed, and fell back to HARD-CODED placeholder values
+    ("Shukla Panchami"/"Hasta"/"Shubha") presented as if real — a B.10
+    fabricated-computation violation. Fixed to read the real column and to
+    return None (never a fabricated substitute) when no row exists — the
+    caller (generate_muhurta_windows) now skips windows lacking real
+    panchanga data instead of fabricating them, and the top-level response
+    surfaces empty-with-reason when nothing in the requested range has
+    coverage.
     """
     target_date = window_start.date()
     try:
@@ -503,7 +526,7 @@ def _fetch_panchanga_row(
                 moon_nakshatra,
                 yoga
             FROM public.panchanga_daily
-            WHERE panchanga_date = %s
+            WHERE date = %s
             LIMIT 1
         """
         with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
@@ -515,14 +538,21 @@ def _fetch_panchanga_row(
     except Exception as exc:
         logger.debug("panchanga_daily lookup failed for %s: %s", target_date, exc)
 
-    # Defaults when panchanga_daily is unavailable
-    weekday_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    return {
-        "tithi_name": "Shukla Panchami",
-        "vara_lord": weekday_names[target_date.weekday()],
-        "moon_nakshatra": "Hasta",
-        "yoga": "Shubha",
-    }
+    return None
+
+
+def _panchanga_coverage(db_url: str) -> tuple[Optional[str], Optional[str]]:
+    """Return (min_date, max_date) ISO strings currently populated in panchanga_daily."""
+    try:
+        with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT MIN(date) AS min_date, MAX(date) AS max_date FROM public.panchanga_daily")
+                row = cur.fetchone()
+                if row and row.get("min_date") and row.get("max_date"):
+                    return row["min_date"].isoformat(), row["max_date"].isoformat()
+    except Exception as exc:
+        logger.debug("panchanga_daily coverage lookup failed: %s", exc)
+    return None, None
 
 
 def generate_muhurta_windows(
@@ -532,7 +562,7 @@ def generate_muhurta_windows(
     range_end: datetime,
     min_score: float = 0.0,
     limit: int = 20,
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """
     On-the-fly muhurta window generation.
 
@@ -540,7 +570,9 @@ def generate_muhurta_windows(
     auspiciousness_score from panchanga_quality × dasha_quality
     × transit_quality × signal_activation.
 
-    Returns windows with score >= min_score, ranked by score DESC, capped at `limit`.
+    Returns {"windows": [...], "checked": int, "skipped_no_panchanga": int,
+    "coverage": (min_date, max_date) | (None, None)}. Windows with score
+    >= min_score, ranked by score DESC, capped at `limit`.
 
     B.10 compliance:
         panchanga_quality — derived from panchanga_daily table (classical rules)
@@ -548,6 +580,11 @@ def generate_muhurta_windows(
         transit_quality   — simplified lunar-phase approximation
         signal_activation — from MSR v5.0 (native) or chart_facts
         NO Swiss Ephemeris recomputation inside this function.
+
+    R5.1 C3: a date with no real panchanga_daily row (outside the rolling
+    +12-month populated window) is SKIPPED, never fabricated with placeholder
+    values — the caller uses `skipped_no_panchanga`/`coverage` to build an
+    honest empty-with-reason response when nothing in range has coverage.
     """
     # Pre-fetch dasha and signal quality (chart-level, constant across windows)
     dasha_q = _dasha_quality_for_chart(chart_id, range_start)
@@ -559,7 +596,13 @@ def generate_muhurta_windows(
     except RuntimeError:
         db_url = ""
 
+    coverage: tuple[Optional[str], Optional[str]] = (None, None)
+    if db_url:
+        coverage = _panchanga_coverage(db_url)
+
     windows: list[dict[str, Any]] = []
+    checked = 0
+    skipped_no_panchanga = 0
     current = range_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
     while current < range_end and len(windows) < MAX_DATE_RANGE_DAYS:
@@ -567,22 +610,19 @@ def generate_muhurta_windows(
         if window_end > range_end:
             break
 
-        # Panchanga lookup
-        if db_url:
-            panchanga = _fetch_panchanga_row(current, db_url)
-        else:
-            weekday_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-            panchanga = {
-                "tithi_name": "Shukla Panchami",
-                "vara_lord": weekday_names[current.weekday()],
-                "moon_nakshatra": "Hasta",
-                "yoga": "Shubha",
-            }
+        checked += 1
 
-        tithi_name = panchanga.get("tithi_name", "Shukla Panchami")
-        vara_lord = panchanga.get("vara_lord", "Wednesday")
-        moon_nakshatra = panchanga.get("moon_nakshatra", "Hasta")
-        yoga = panchanga.get("yoga", "Shubha")
+        # Panchanga lookup — real data only, never fabricated (B.10).
+        panchanga = _fetch_panchanga_row(current, db_url) if db_url else None
+        if panchanga is None:
+            skipped_no_panchanga += 1
+            current = current + timedelta(days=2)  # 48-hour step
+            continue
+
+        tithi_name = panchanga.get("tithi_name", "")
+        vara_lord = panchanga.get("vara_lord", "")
+        moon_nakshatra = panchanga.get("moon_nakshatra", "")
+        yoga = panchanga.get("yoga", "")
 
         panchanga_q = _panchanga_quality_for_action(
             tithi_name, vara_lord, moon_nakshatra, yoga, action_type
@@ -638,7 +678,12 @@ def generate_muhurta_windows(
 
     # Sort by score DESC, cap at limit
     windows.sort(key=lambda w: w["auspiciousness_score"], reverse=True)
-    return windows[:limit]
+    return {
+        "windows": windows[:limit],
+        "checked": checked,
+        "skipped_no_panchanga": skipped_no_panchanga,
+        "coverage": coverage,
+    }
 
 
 def muhurta_finder(
@@ -748,7 +793,7 @@ def muhurta_finder(
     )
 
     # Fetch / compute windows
-    raw_windows = fetch_muhurta_windows(
+    fetch_result = fetch_muhurta_windows(
         chart_id=chart_id,
         action_type=action_type,
         range_start=range_start_utc,
@@ -756,6 +801,7 @@ def muhurta_finder(
         min_score=effective_min_score,
         limit=effective_limit,
     )
+    raw_windows = fetch_result["windows"]
 
     # Normalise window shape for the response
     formatted_windows = []
@@ -772,7 +818,33 @@ def muhurta_finder(
     b3_compliant = all(bool(w.get("source_citation")) for w in raw_windows)
     queried_at = datetime.now(tz=timezone.utc).isoformat()
 
-    return {
+    # R5.1 C3 — empty-with-reason: distinguish "no windows because nothing in the
+    # requested range met min_score / has real panchanga coverage" from a normal
+    # empty result, and NEVER fabricate rows for out-of-window dates. If the
+    # on-the-fly path skipped every checked date for lack of a real panchanga_daily
+    # row, surface an explicit reason citing the actual populated coverage window.
+    empty_reason: Optional[str] = None
+    if len(formatted_windows) == 0 and fetch_result.get("source") == "on_the_fly":
+        checked = fetch_result.get("checked", 0)
+        skipped = fetch_result.get("skipped_no_panchanga", 0)
+        coverage_min, coverage_max = fetch_result.get("coverage", (None, None))
+        if checked > 0 and skipped == checked:
+            if coverage_min and coverage_max:
+                empty_reason = (
+                    f"date_range {range_start_date.isoformat()}..{range_end_date.isoformat()} "
+                    f"falls outside the panchanga_daily populated window "
+                    f"({coverage_min}..{coverage_max}, rolling +12 months from the last "
+                    "panchanga_daily_writer.py run). No windows fabricated for dates "
+                    "outside the populated window — re-run the writer to extend coverage, "
+                    "or query a date_range inside it."
+                )
+            else:
+                empty_reason = (
+                    "panchanga_daily has no populated rows at all (writer has not run, "
+                    "or DB unreachable). No windows fabricated."
+                )
+
+    response: dict[str, Any] = {
         "ok": True,
         "chart_id": chart_id,
         "action_type": action_type,
@@ -795,12 +867,17 @@ def muhurta_finder(
             "queried_at": queried_at,
             "l1_ground_truth": (
                 "FORENSIC v8.0 §5.1 DSH.V.023 Mercury MD (2026-2043); "
-                "panchanga_daily (Phase 4C-3 bootstrap); "
+                "panchanga_daily (real rolling +12mo table — migration "
+                "427_panchanga_daily_reprovision.sql, R5.1 C3); "
                 "MSR v5.0 SIG.08/SIG.14/SIG.09/SIG.12/SIG.04/SIG.11"
             ),
             "b3_citation_compliant": b3_compliant,
+            "windows_source": fetch_result.get("source", "unknown"),
         },
     }
+    if empty_reason is not None:
+        response["empty_reason"] = empty_reason
+    return response
 
 
 def seed_native_muhurta(chart_id: str) -> dict[str, Any]:
