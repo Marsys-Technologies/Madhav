@@ -102,6 +102,29 @@ function normalizeAyanamsha(id?: string): string {
  * The working 3-header pattern already existed in resources/capabilities.ts —
  * copied here per the design doc's named fix class.
  */
+/**
+ * R5.1 C2 item 3 (Denial ≠ empty): when the platform route already built a distinct
+ * `entitlement_denied` McpErrorEnvelope (denial block present), preserve that signal in the
+ * thrown error's message instead of collapsing it to a generic "failed (401): <truncated
+ * text>" — the whole point of the distinct envelope is lost if the MCP-facing error message
+ * can't be told apart from any other 401. Falls back to the generic message for every other
+ * error shape (never assumes denial when the body doesn't say so).
+ */
+export function describeProxyFailure(tool: string, status: number, bodyText: string): string {
+  try {
+    const parsed = JSON.parse(bodyText) as { error?: { class?: string; message?: string }; denial?: { chart_id?: string; permission_required?: string } }
+    if (parsed?.error?.class === 'entitlement_denied' || parsed?.denial) {
+      const chartId = parsed.denial?.chart_id ?? 'unknown'
+      const required = parsed.denial?.permission_required ?? 'view'
+      return `[registry_bridge] ENTITLEMENT_DENIED: '${tool}' — caller lacks ${required} access to chart ${chartId} ` +
+        `(distinct from an empty result — this chart exists but you are not granted). ${parsed.error?.message ?? ''}`.trim()
+    }
+  } catch {
+    // Not JSON / not the denial shape — fall through to the generic message below.
+  }
+  return `[registry_bridge] primitive call '${tool}' failed (${status}): ${bodyText.slice(0, 200)}`
+}
+
 async function callPlatformPrimitive(
   tool: string,
   params: Record<string, unknown>,
@@ -121,7 +144,7 @@ async function callPlatformPrimitive(
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`[registry_bridge] primitive call '${tool}' failed (${res.status}): ${text.slice(0, 200)}`)
+    throw new Error(describeProxyFailure(tool, res.status, text))
   }
   return res.json()
 }

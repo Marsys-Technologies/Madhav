@@ -114,7 +114,8 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
                confidence_low, confidence_high, confidence_basis,
                karmic_frame, karmic_note, malleability,
                dasha_consensus_count, ayanamsha_robustness,
-               falsifier, source_citation
+               falsifier, source_citation,
+               posterior, lift_vector_jsonb
         FROM phala_anchors
         WHERE ${conds.join(' AND ')}
         ORDER BY magnitude DESC NULLS LAST
@@ -127,10 +128,51 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
         if (row.signal_id) signalRefs.add(row.signal_id)
       }
 
+      // R5.1 C2 item 4 (posterior cardinality + base_rate_source stamping — seal §6 /
+      // lift_vector provenance). `posterior`/`lift_vector_jsonb` (migration 398, BA-P5B) are
+      // a DETERMINISTIC product model — posterior = base_rate × promise_lift ×
+      // activation_lift × trigger_lift × ayanamsha_robustness_modifier — NOT a frequentist
+      // estimate fit from N observed outcomes. Per B.10, we do not invent a fake "n" for a
+      // model that has none; instead every anchor row gets an honest `posterior_provenance`
+      // block naming (a) the real, current base_rate source (services/ph_nimitta/base_rate.py,
+      // JL-009 closed 2026-07-07: brahma_event_ontology.base_rate_by_age, row-normalized to
+      // the anchor's own predicted-date age band, uniform 0.20 fallback when the vector/dates
+      // are unavailable), and (b) the explicit, non-fabricated cardinality floor — this
+      // model has no sample-size analog; the empirically-calibrated analog with a genuine
+      // n_observations lives at L5 query_calibration's mimamsa_multipliers. Anchors written
+      // before BA-P5B (posterior/lift_vector_jsonb null) get an honest null block, never a
+      // backfilled guess.
+      const anchorsWithProvenance = (result.rows as Array<Record<string, unknown>>).map(row => {
+        const liftVector = row['lift_vector_jsonb'] as Record<string, unknown> | null
+        const posterior = row['posterior'] as number | null
+        if (posterior == null || liftVector == null) {
+          return {
+            ...row,
+            posterior_provenance: null,
+            posterior_provenance_note: 'posterior/lift_vector_jsonb not computed for this anchor (pre-BA-P5B row or backfill pending) — no cardinality/base_rate_source to report.',
+          }
+        }
+        return {
+          ...row,
+          posterior_provenance: {
+            model: 'deterministic_product_lift',
+            model_formula: 'posterior = base_rate × promise_lift × activation_lift × trigger_lift × ayanamsha_robustness_modifier',
+            cardinality: null,
+            cardinality_note: 'Not a sample-fit statistic — this posterior has no underlying N of observed outcomes to report (never fabricated). The empirically-calibrated analog with a genuine n_observations is L5 query_calibration (mimamsa_multipliers).',
+            base_rate_source: 'brahma_event_ontology.base_rate_by_age, row-normalized to sum 1.0 (JL-009 closed 2026-07-07), looked up for the age band containing this anchor’s predicted date (peak_date, else window_start) relative to the native’s birth date. Falls back to the uniform age prior (0.20, 1-of-5-bands) when the ontology vector or a usable date is unavailable for this anchor — never a fabricated non-uniform value.',
+            base_rate_value: liftVector['base_rate'] ?? null,
+            // Heuristic only (0.20 == the uniform fallback value, but a genuinely age-banded
+            // lookup could also legitimately resolve to 0.20) — labeled as such, never
+            // asserted as a confirmed fact about which path this specific row took.
+            base_rate_matches_uniform_fallback_value: typeof liftVector['base_rate'] === 'number' ? liftVector['base_rate'] === 0.2 : null,
+          },
+        }
+      })
+
       return {
         content: {
           chart_id,
-          anchors:      result.rows,
+          anchors:      anchorsWithProvenance,
           anchor_count: result.rows.length,
           signal_id_refs: Array.from(signalRefs),
           filters: { domain, event_type, direction, horizon_tier, top_k },

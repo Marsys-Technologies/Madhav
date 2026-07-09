@@ -58,6 +58,26 @@ async function callRegistryCap(uri: string, args: Record<string, unknown>): Prom
 // never-fixed instance of the exact same bug class) — this is that instance.
 // Design doc RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §20 names this
 // explicitly: "Copy the working header pattern into BOTH proxy helpers."
+/**
+ * R5.1 C2 item 3 (Denial ≠ empty) — mirrors registry_bridge.ts's describeProxyFailure.
+ * Preserves the platform's distinct entitlement_denied signal instead of collapsing it to
+ * a bare "failed (401)"; falls back to the generic message for every other error shape.
+ */
+export function describePrimFailure(tool: string, status: number, bodyText: string): string {
+  try {
+    const parsed = JSON.parse(bodyText) as { error?: { class?: string; message?: string }; denial?: { chart_id?: string; permission_required?: string } }
+    if (parsed?.error?.class === 'entitlement_denied' || parsed?.denial) {
+      const chartId = parsed.denial?.chart_id ?? 'unknown'
+      const required = parsed.denial?.permission_required ?? 'view'
+      return `[alias] ENTITLEMENT_DENIED: '${tool}' — caller lacks ${required} access to chart ${chartId} ` +
+        `(distinct from an empty result — this chart exists but you are not granted). ${parsed.error?.message ?? ''}`.trim()
+    }
+  } catch {
+    // Not JSON / not the denial shape — fall through.
+  }
+  return `[alias] primitive '${tool}' failed (${status})`
+}
+
 async function callPlatformPrim(
   tool: string,
   params: Record<string, unknown>,
@@ -75,7 +95,10 @@ async function callPlatformPrim(
     body: JSON.stringify({ params }),
     signal: AbortSignal.timeout(25_000),
   })
-  if (!res.ok) throw new Error(`[alias] primitive '${tool}' failed (${res.status})`)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(describePrimFailure(tool, res.status, text))
+  }
   return res.json()
 }
 

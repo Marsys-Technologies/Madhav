@@ -33,6 +33,7 @@ import {
   buildEnvelope,
   buildErrorEnvelope,
   buildEpistemicsBlock,
+  buildEntitlementDenialEnvelope,
 } from '@/lib/mcp/epistemics'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { logPrediction, recordOutcome } from '@/lib/mcp/ppl_writer'
@@ -158,22 +159,34 @@ export async function POST(request: Request, { params }: RouteParams) {
     const { query } = await import('@/lib/db/client')
     const role = await resolveMcpPrincipalRole(userUid)
     const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    // R5.1 C2 item 3 (Denial ≠ empty): every AUTHZ_DENIED site here now returns the
+    // distinct `entitlement_denied` envelope (never bare 'auth') — see epistemics.ts's
+    // buildEntitlementDenialEnvelope doc comment.
     if (action === 'record_outcome' && perm !== 'all') {
       return NextResponse.json(
-        buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: 'record_outcome requires write (all) permission for this chart' }),
+        buildEntitlementDenialEnvelope({
+          chart_id: chartId, permission_required: 'all',
+          remediation: 'record_outcome requires write (all) permission for this chart.',
+        }),
         { status: 401 }
       )
     }
     // lel_event_record is a Nirmāṇa (build/write) action — owner/super_admin only.
     if (action === 'lel_event_record' && perm !== 'all') {
       return NextResponse.json(
-        buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: 'lel_event_record requires write (all) permission for this chart' }),
+        buildEntitlementDenialEnvelope({
+          chart_id: chartId, permission_required: 'all',
+          remediation: 'lel_event_record requires write (all) permission for this chart.',
+        }),
         { status: 401 }
       )
     }
     if (action === 'log_prediction' && perm === 'deny') {
       return NextResponse.json(
-        buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: 'log_prediction requires view permission for this chart' }),
+        buildEntitlementDenialEnvelope({
+          chart_id: chartId, permission_required: 'view',
+          remediation: 'log_prediction requires view permission for this chart.',
+        }),
         { status: 401 }
       )
     }

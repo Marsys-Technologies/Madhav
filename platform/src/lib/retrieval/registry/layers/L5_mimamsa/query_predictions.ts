@@ -95,10 +95,34 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
       const predictionRefs = (result.rows as Array<{ prediction_id?: string }>)
         .map(r => r.prediction_id).filter(Boolean) as string[]
 
+      // R5.1 C2 item 4 (posterior cardinality + base_rate_source stamping). `base_rate` here
+      // is populated by mi_pramana.py's _load_base_rates() — a flat per-event-class prior
+      // read from `brahma_event_ontology.base_rate` (NOT the age-banded `base_rate_by_age`
+      // vector L4 ph_nimitta uses for phala_anchors.posterior — a different, coarser prior
+      // for a different purpose: the climatology-null Brier baseline). Falls back to an
+      // uninformative 0.10 when the event class has no ontology row. Stamped per row so a
+      // caller never has to guess which of the two ontology-derived base rates this is, or
+      // assume a floor when the source is genuinely unresolvable.
+      const predictionsWithProvenance = (result.rows as Array<Record<string, unknown>>).map(row => {
+        const baseRate = row['base_rate'] as number | null
+        return {
+          ...row,
+          base_rate_provenance: baseRate == null ? null : {
+            source: 'brahma_event_ontology.base_rate (flat per-event-class prior; distinct from the age-banded base_rate_by_age vector L4 phala_anchors.posterior uses)',
+            fallback_value: 0.10,
+            // Heuristic flag only — 0.10 could also be a genuine ontology value, not proof of
+            // the fallback path having fired for this row.
+            matches_fallback_value: baseRate === 0.10,
+            cardinality: null,
+            cardinality_note: 'base_rate is a prior lookup, not a sample-fit statistic — no N of observations underlies this value.',
+          },
+        }
+      })
+
       return {
         content: {
           chart_id,
-          predictions:      result.rows,
+          predictions:      predictionsWithProvenance,
           prediction_count: result.rows.length,
           prediction_id_refs: [...new Set(predictionRefs)],
           sparse_note:      'mimamsa_predictions: 50 rows — sparse early L5 population. Population grows with calibration cycles.',
