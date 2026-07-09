@@ -11,10 +11,12 @@
  * — the same Slack/email path already used by the nightly MCP audit job. No new alert
  * channel is invented here.
  *
- * Auth: same bearer-secret pattern as the sibling reap-pending-streams /
- * refresh-panchanga-daily cron routes — MARSYS_CRON_SECRET, checked before any work
- * happens. Reuses the SAME secret (mcpt-scheduler-secret in Secret Manager) rather
- * than minting a new one, per this repo's established scheduler-auth precedent.
+ * Auth: MARSYS_CRON_SECRET, checked via the x-marsys-cron-secret header before any
+ * work happens (R5.2 A4 live-verification finding: Cloud Scheduler's HTTP target
+ * does not deliver a custom Authorization header to amjis-web unmolested — see
+ * refresh-panchanga-daily/route.ts's identical header for the full finding).
+ * Reuses the SAME secret (mcpt-scheduler-secret in Secret Manager) rather than
+ * minting a new one, per this repo's established scheduler-auth precedent.
  *
  * MCP credential: MCP_CANARY_KEY env var — the read-only `probe-service-account` test
  * credential provisioned in R5 W0a (00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md P0-iii),
@@ -74,9 +76,9 @@ async function persistResults(runId: string, results: ProbeResult[]): Promise<vo
 
 export async function POST(request: Request) {
   const expected = process.env.MARSYS_CRON_SECRET
-  const auth = request.headers.get('Authorization')
+  const auth = request.headers.get('x-marsys-cron-secret')
 
-  if (!expected || auth !== `Bearer ${expected}`) {
+  if (!expected || auth !== expected) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

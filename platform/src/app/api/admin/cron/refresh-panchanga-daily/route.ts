@@ -7,10 +7,18 @@
  * current. Idempotent (upsert on (date) PK) — safe to call more often than
  * scheduled without side effects.
  *
- * Auth: same bearer-secret pattern as the sibling reap-pending-streams cron
- * route (src/app/api/admin/cron/reap-pending-streams/route.ts) —
- * MARSYS_CRON_SECRET, checked before any work happens.
+ * Auth: MARSYS_CRON_SECRET, checked via the x-marsys-cron-secret header before
+ * any work happens — NOT the Authorization header (R5.2 A4 live-verification
+ * finding: Cloud Scheduler's HTTP target does not deliver a custom Authorization
+ * header to amjis-web unmolested — a direct curl with the identical header
+ * succeeds, but the identical header sent via a live Cloud Scheduler job 401s,
+ * and the pre-existing sibling amjis-pending-stream-reaper job — same
+ * Authorization-header pattern, applied before this run — has been silently
+ * failing in prod with the same symptom, confirmed via its own status.code=2
+ * live. Mirrors the already-proven x-watchdog-auth custom-header convention
+ * (src/app/api/cockpit/watchdog/route.ts), which does not hit this collision.
  *
+
  * Intended trigger: Cloud Scheduler job `panchanga-daily-refresh` (monthly).
  * See infra/scheduler/panchanga_refresh.tf — Terraform resource authored but
  * NOT applied by this session (infra/scheduler/README.md: "Apply discipline:
@@ -22,9 +30,9 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   const expected = process.env.MARSYS_CRON_SECRET
-  const auth = request.headers.get('Authorization')
+  const auth = request.headers.get('x-marsys-cron-secret')
 
-  if (!expected || auth !== `Bearer ${expected}`) {
+  if (!expected || auth !== expected) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

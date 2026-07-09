@@ -58,13 +58,14 @@ resource "google_cloud_scheduler_job" "canary_battery_daily" {
     uri         = "${var.amjis_web_url}/api/admin/cron/run-canary-battery"
     headers = {
       "Content-Type" = "application/json"
-      // Authorization (Bearer MARSYS_CRON_SECRET) is NOT set here in plaintext —
-      // provision via `gcloud scheduler jobs update http canary-battery-daily
-      // --update-headers="Authorization=Bearer <secret>"` post-apply. Same known
-      // open gap as the sibling reap-pending-streams / panchanga-daily-refresh jobs
-      // today (see panchanga_refresh.tf's identical note) — reuses the SAME
-      // mcpt-scheduler-secret value already live in Secret Manager, so if that
-      // header is already set on a sibling job, the same value applies here.
+      // x-marsys-cron-secret (NOT set here in plaintext — provision via
+      // `gcloud scheduler jobs update http canary-battery-daily
+      // --update-headers="x-marsys-cron-secret=<secret>"` post-apply). Reuses the
+      // SAME mcpt-scheduler-secret value already live in Secret Manager. R5.2 A4
+      // live-verification finding: see panchanga_refresh.tf's identical note —
+      // a plain Authorization header does not survive Cloud Scheduler's HTTP
+      // dispatch to a *.run.app target; x-marsys-cron-secret mirrors the
+      // already-proven x-watchdog-auth convention instead.
     }
     body = base64encode("{}")
 

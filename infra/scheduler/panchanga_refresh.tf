@@ -37,11 +37,18 @@ resource "google_cloud_scheduler_job" "panchanga_daily_refresh" {
     uri         = "${var.amjis_web_url}/api/admin/cron/refresh-panchanga-daily"
     headers = {
       "Content-Type" = "application/json"
-      // Authorization (Bearer MARSYS_CRON_SECRET) is NOT set here in plaintext —
-      // provision via `gcloud scheduler jobs update http panchanga-daily-refresh
-      // --update-headers="Authorization=Bearer <secret>"` post-apply, or wire a
-      // Secret Manager-backed header once this repo's scheduler jobs adopt one
-      // (the sibling reap-pending-streams job has the same open gap today).
+      // x-marsys-cron-secret (NOT set here in plaintext — provision via
+      // `gcloud scheduler jobs update http panchanga-daily-refresh
+      // --update-headers="x-marsys-cron-secret=<secret>"` post-apply). R5.2 A4
+      // live-verification finding: a plain custom `Authorization: Bearer <secret>`
+      // header does NOT survive Cloud Scheduler's HTTP dispatch to a *.run.app
+      // target (confirmed live: identical header via direct curl succeeds, via a
+      // real Cloud Scheduler job run 401s) — same root cause as the sibling
+      // reap-pending-streams job's silent prod failures (also Authorization-based,
+      // pre-existing, not fixed here — out of this run's scope, flagged for a
+      // follow-up). x-marsys-cron-secret mirrors the already-proven
+      // x-watchdog-auth convention, which does not collide with any
+      // platform-reserved header name.
     }
     body = base64encode("{}")
 
