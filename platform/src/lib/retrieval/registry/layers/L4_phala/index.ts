@@ -27,6 +27,7 @@ import {
   queryCleasedAnchorsCapability,
   queryRectificationCapability,
 } from './query_phala_calibration'
+import { queryMuhuratCapability } from './query_muhurat'
 
 registerCapability(queryPredictiveAnchorsCapability)
 registerCapability(queryDomainResultCapability)
@@ -37,3 +38,6 @@ registerCapability(queryAnomalyFlagsCapability)
 registerCapability(queryRemedyProgramCapability)
 registerCapability(queryCleasedAnchorsCapability)
 registerCapability(queryRectificationCapability)
+// R5.1 C3 — real electional muhurta finder (replaces the query_planet_transit
+// mis-mapping in tool_name_bridge.ts). See query_muhurat.ts header comment.
+registerCapability(queryMuhuratCapability)
