@@ -36,6 +36,45 @@ DATE_RANGE_90 = {"start": "2026-06-04", "end": "2026-09-01"}
 DATE_RANGE_30 = {"start": "2026-06-04", "end": "2026-07-04"}
 
 
+def _fetch_result(windows: list[dict[str, Any]]) -> dict[str, Any]:
+    """
+    R5.1 C3: fetch_muhurta_windows now returns a dict (windows + coverage
+    diagnostics), not a bare list — see brahmagyan/phala/muhurta.py. Test
+    helper to build that shape from a plain window list.
+    """
+    return {
+        "windows": windows,
+        "checked": len(windows),
+        "skipped_no_panchanga": 0,
+        "coverage": (None, None),
+        "source": "phala_muhurta",
+    }
+
+
+def _empty_fetch_result() -> dict[str, Any]:
+    return _fetch_result([])
+
+
+def _fake_panchanga_row(
+    tithi_name: str = "Shukla Panchami",
+    vara_lord: str = "Wednesday",
+    moon_nakshatra: str = "Hasta",
+    yoga: str = "Shubha",
+) -> dict[str, str]:
+    """
+    Simulate a real panchanga_daily row (as R5.1 C3's generate_muhurta_windows
+    now requires — it never fabricates panchanga data itself; a missing DB
+    row is skipped, not defaulted). Tests that exercise generate_muhurta_windows
+    without a live DB patch _fetch_panchanga_row to return rows shaped like this.
+    """
+    return {
+        "tithi_name": tithi_name,
+        "vara_lord": vara_lord,
+        "moon_nakshatra": moon_nakshatra,
+        "yoga": yoga,
+    }
+
+
 # ── §1 — compute_muhurta_score ────────────────────────────────────────────────
 
 class TestComputeMuhurtaScore:
@@ -99,7 +138,7 @@ class TestMuhurtaFinderValidation:
             "education", "property", "general",
         ]
         for at in valid_types:
-            with patch.object(mod, "fetch_muhurta_windows", return_value=[]):
+            with patch.object(mod, "fetch_muhurta_windows", return_value=_empty_fetch_result()):
                 result = mod.muhurta_finder(
                     chart_id=NATIVE_CHART_ID,
                     action_type=at,
@@ -128,7 +167,7 @@ class TestMuhurtaFinderValidation:
 
     def test_min_score_out_of_range_raises(self):
         mod = _get_muhurta_module()
-        with patch.object(mod, "fetch_muhurta_windows", return_value=[]):
+        with patch.object(mod, "fetch_muhurta_windows", return_value=_empty_fetch_result()):
             with pytest.raises(ValueError, match="min_score"):
                 mod.muhurta_finder(
                     chart_id=NATIVE_CHART_ID,
@@ -186,7 +225,7 @@ class TestMuhurtaFinderResponseStructure:
     def test_ok_field_is_true(self):
         mod = _get_muhurta_module()
         w = self._make_window()
-        with patch.object(mod, "fetch_muhurta_windows", return_value=[w]):
+        with patch.object(mod, "fetch_muhurta_windows", return_value=_fetch_result([w])):
             result = mod.muhurta_finder(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -196,7 +235,7 @@ class TestMuhurtaFinderResponseStructure:
 
     def test_chart_id_echoed(self):
         mod = _get_muhurta_module()
-        with patch.object(mod, "fetch_muhurta_windows", return_value=[]):
+        with patch.object(mod, "fetch_muhurta_windows", return_value=_empty_fetch_result()):
             result = mod.muhurta_finder(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -206,7 +245,7 @@ class TestMuhurtaFinderResponseStructure:
 
     def test_action_type_echoed(self):
         mod = _get_muhurta_module()
-        with patch.object(mod, "fetch_muhurta_windows", return_value=[]):
+        with patch.object(mod, "fetch_muhurta_windows", return_value=_empty_fetch_result()):
             result = mod.muhurta_finder(
                 chart_id=NATIVE_CHART_ID,
                 action_type="marriage",
@@ -216,7 +255,7 @@ class TestMuhurtaFinderResponseStructure:
 
     def test_query_window_present(self):
         mod = _get_muhurta_module()
-        with patch.object(mod, "fetch_muhurta_windows", return_value=[]):
+        with patch.object(mod, "fetch_muhurta_windows", return_value=_empty_fetch_result()):
             result = mod.muhurta_finder(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -228,7 +267,7 @@ class TestMuhurtaFinderResponseStructure:
 
     def test_provenance_envelope_present(self):
         mod = _get_muhurta_module()
-        with patch.object(mod, "fetch_muhurta_windows", return_value=[]):
+        with patch.object(mod, "fetch_muhurta_windows", return_value=_empty_fetch_result()):
             result = mod.muhurta_finder(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -245,7 +284,7 @@ class TestMuhurtaFinderResponseStructure:
     def test_windows_is_list(self):
         mod = _get_muhurta_module()
         w = self._make_window()
-        with patch.object(mod, "fetch_muhurta_windows", return_value=[w]):
+        with patch.object(mod, "fetch_muhurta_windows", return_value=_fetch_result([w])):
             result = mod.muhurta_finder(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -256,7 +295,7 @@ class TestMuhurtaFinderResponseStructure:
     def test_window_count_matches_windows_length(self):
         mod = _get_muhurta_module()
         w = self._make_window()
-        with patch.object(mod, "fetch_muhurta_windows", return_value=[w, w]):
+        with patch.object(mod, "fetch_muhurta_windows", return_value=_fetch_result([w, w])):
             result = mod.muhurta_finder(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -265,60 +304,103 @@ class TestMuhurtaFinderResponseStructure:
         assert result["window_count"] == len(result["windows"])
 
 
-# ── §4 — generate_muhurta_windows (no DB) ────────────────────────────────────
+# ── §4 — generate_muhurta_windows (real-panchanga-shaped rows, DB mocked) ────
+#
+# R5.1 C3: generate_muhurta_windows() no longer fabricates panchanga data when
+# the DB is unreachable — a missing panchanga_daily row is SKIPPED, never
+# defaulted (B.10). These tests now patch _get_db_url + _fetch_panchanga_row
+# to simulate a populated panchanga_daily cache, and unwrap the dict return
+# shape ({"windows": [...], "checked", "skipped_no_panchanga", "coverage"}).
 
 class TestGenerateMuhurtaWindows:
 
+    def _patched(self, mod):
+        """
+        Context-manager triple: fake DB url + every date resolves to a real-shaped
+        row + coverage lookup short-circuited (no live network attempt in tests).
+        """
+        return (
+            patch.object(mod, "_get_db_url", return_value="postgresql://fake/test"),
+            patch.object(mod, "_fetch_panchanga_row", return_value=_fake_panchanga_row()),
+            patch.object(mod, "_panchanga_coverage", return_value=("2026-06-01", "2027-06-01")),
+        )
+
     def test_returns_at_least_one_window_for_90_day_range(self):
         mod = _get_muhurta_module()
-        windows = mod.generate_muhurta_windows(
-            chart_id=NATIVE_CHART_ID,
-            action_type="general",
-            range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
-            range_end=datetime(2026, 9, 1, 23, 59, 59, tzinfo=timezone.utc),
-            min_score=0.0,
-            limit=45,
-        )
-        assert len(windows) >= 1, "Expected at least 1 window for a 90-day range"
+        p1, p2, p3 = self._patched(mod)
+        with p1, p2, p3:
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="general",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 9, 1, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=45,
+            )
+        assert len(result["windows"]) >= 1, "Expected at least 1 window for a 90-day range"
+        assert result["skipped_no_panchanga"] == 0
+
+    def test_no_db_skips_every_window_never_fabricates(self):
+        """B.10: with no DB reachable, every window is skipped — never defaulted."""
+        mod = _get_muhurta_module()
+        with patch.object(mod, "_get_db_url", side_effect=RuntimeError("no DB")):
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="general",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 6, 10, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=45,
+            )
+        assert result["windows"] == []
+        assert result["checked"] >= 1
+        assert result["skipped_no_panchanga"] == result["checked"]
 
     def test_all_scores_in_range(self):
         mod = _get_muhurta_module()
-        windows = mod.generate_muhurta_windows(
-            chart_id=NATIVE_CHART_ID,
-            action_type="education",
-            range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
-            range_end=datetime(2026, 7, 4, 23, 59, 59, tzinfo=timezone.utc),
-            min_score=0.0,
-            limit=20,
-        )
-        for w in windows:
+        p1, p2, p3 = self._patched(mod)
+        with p1, p2, p3:
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="education",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 7, 4, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=20,
+            )
+        for w in result["windows"]:
             score = w["auspiciousness_score"]
             assert 0.0 <= score <= 1.0, f"Score {score} out of range [0.0, 1.0]"
 
     def test_source_citation_non_null_on_all_windows(self):
         """B.3 mandate: source_citation is NON-NULL on every row."""
         mod = _get_muhurta_module()
-        windows = mod.generate_muhurta_windows(
-            chart_id=NATIVE_CHART_ID,
-            action_type="general",
-            range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
-            range_end=datetime(2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc),
-            min_score=0.0,
-            limit=20,
-        )
-        for w in windows:
+        p1, p2, p3 = self._patched(mod)
+        with p1, p2, p3:
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="general",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=20,
+            )
+        for w in result["windows"]:
             assert w.get("source_citation"), "source_citation must be non-null (B.3 mandate)"
 
     def test_windows_sorted_by_score_desc(self):
         mod = _get_muhurta_module()
-        windows = mod.generate_muhurta_windows(
-            chart_id=NATIVE_CHART_ID,
-            action_type="education",
-            range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
-            range_end=datetime(2026, 8, 4, 23, 59, 59, tzinfo=timezone.utc),
-            min_score=0.0,
-            limit=20,
-        )
+        p1, p2, p3 = self._patched(mod)
+        with p1, p2, p3:
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="education",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 8, 4, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=20,
+            )
+        windows = result["windows"]
         if len(windows) >= 2:
             scores = [w["auspiciousness_score"] for w in windows]
             for i in range(len(scores) - 1):
@@ -329,30 +411,34 @@ class TestGenerateMuhurtaWindows:
     def test_min_score_filter_applied(self):
         mod = _get_muhurta_module()
         min_score = 0.60
-        windows = mod.generate_muhurta_windows(
-            chart_id=NATIVE_CHART_ID,
-            action_type="general",
-            range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
-            range_end=datetime(2026, 9, 1, 23, 59, 59, tzinfo=timezone.utc),
-            min_score=min_score,
-            limit=45,
-        )
-        for w in windows:
+        p1, p2, p3 = self._patched(mod)
+        with p1, p2, p3:
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="general",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 9, 1, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=min_score,
+                limit=45,
+            )
+        for w in result["windows"]:
             assert w["auspiciousness_score"] >= min_score, (
                 f"Window score {w['auspiciousness_score']} below min_score {min_score}"
             )
 
     def test_factors_structure_present(self):
         mod = _get_muhurta_module()
-        windows = mod.generate_muhurta_windows(
-            chart_id=NATIVE_CHART_ID,
-            action_type="education",
-            range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
-            range_end=datetime(2026, 6, 20, 23, 59, 59, tzinfo=timezone.utc),
-            min_score=0.0,
-            limit=5,
-        )
-        for w in windows:
+        p1, p2, p3 = self._patched(mod)
+        with p1, p2, p3:
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="education",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 6, 20, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=5,
+            )
+        for w in result["windows"]:
             f = w.get("factors", {})
             assert "panchanga_quality" in f
             assert "dasha_quality" in f
@@ -364,15 +450,17 @@ class TestGenerateMuhurtaWindows:
     def test_limit_respected(self):
         mod = _get_muhurta_module()
         limit = 5
-        windows = mod.generate_muhurta_windows(
-            chart_id=NATIVE_CHART_ID,
-            action_type="general",
-            range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
-            range_end=datetime(2026, 9, 1, 23, 59, 59, tzinfo=timezone.utc),
-            min_score=0.0,
-            limit=limit,
-        )
-        assert len(windows) <= limit
+        p1, p2, p3 = self._patched(mod)
+        with p1, p2, p3:
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="general",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 9, 1, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=limit,
+            )
+        assert len(result["windows"]) <= limit
 
 
 # ── §5 — _panchanga_quality_for_action ───────────────────────────────────────

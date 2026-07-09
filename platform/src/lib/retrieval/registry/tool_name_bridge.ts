@@ -95,7 +95,6 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // L0 Brahmagyan — ephemeris / transit
   query_ephemeris: 'marsys://tool/L0/query_planet_position',
   query_transit_event: 'marsys://tool/L0/query_planet_transit',
-  query_muhurat: 'marsys://tool/L0/query_planet_transit',     // nearest equivalent; sidecar path
 
   // L3 Kāla — live compute service wrappers
   call_transit_search:    'marsys://tool/L3/call_transit_search',
@@ -103,6 +102,13 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
 
   // L4 Phala
   query_remedy_program: 'marsys://tool/L4/query_remedy_program',
+  // R5.1 C3 fix: query_muhurat previously mapped to L0/query_planet_transit — the
+  // WRONG capability (it requires a `planet` param muhurta_finder never supplies,
+  // and has nothing to do with electional muhurta search). Repointed to the real
+  // PH-4-4 electional finder, which now reads real panchanga_daily rows (migration
+  // 427_panchanga_daily_reprovision.sql) instead of always falling back to
+  // hard-coded placeholder panchanga values (brahmagyan/phala/muhurta.py fix).
+  query_muhurat: 'marsys://tool/L4/query_muhurat',
 }
 
 // ── ToolBundle adapter ────────────────────────────────────────────────────────

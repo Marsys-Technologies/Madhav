@@ -714,15 +714,26 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     '[Phase-1 alias] Muhurta (auspicious timing) finder (same as muhurta_finder).',
     {
       chart_id:      z.string().uuid().describe('Chart UUID'),
-      start_date:    z.string().optional().describe('Search window start (YYYY-MM-DD)'),
-      end_date:      z.string().optional().describe('Search window end (YYYY-MM-DD)'),
-      activity_type: z.string().optional().describe('Activity to find muhurta for (marriage/travel/business/etc.)'),
+      start_date:    z.string().optional().describe('Search window start (YYYY-MM-DD). Default: today.'),
+      end_date:      z.string().optional().describe('Search window end (YYYY-MM-DD). Default: start_date + 30 days.'),
+      activity_type: z.string().optional()
+        .describe('Activity: marriage|travel|business|medical|education|property|general. Default: general.'),
     },
     async ({ chart_id, start_date, end_date, activity_type }) => {
       if (!chart_id) return errOut('kala_muhurta_get', 'chart_id is required')
+      // R5.1 C3 fix: this alias previously called a non-existent sidecar path
+      // ('/api/compute/muhurat', body shape {start_date,end_date,activity_type}) —
+      // always a 404. Repointed to the real PH-4-4 endpoint
+      // (brahmagyan/phala/muhurta.py) with its actual request contract
+      // (chart_id, action_type, date_range:{start,end}).
+      const start = start_date ?? new Date().toISOString().slice(0, 10)
+      const end = end_date ?? new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
+      const action_type = activity_type ?? 'general'
       try {
-        const data = await callSidecarPath('/api/compute/muhurat', {
-          chart_id, start_date, end_date, activity_type,
+        const data = await callSidecarPath('/api/compute/phala/muhurta_finder', {
+          chart_id,
+          action_type,
+          date_range: { start, end },
         })
         return dualOutput(data)
       } catch (err) { return errOut('kala_muhurta_get', String(err), { chart_id }) }
