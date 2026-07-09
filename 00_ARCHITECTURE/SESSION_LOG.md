@@ -31150,3 +31150,128 @@ session_close:
 ```
 
 *End of R5-RETRIEVAL-3.0-AUTONOMOUS-RUN-2026-07-08 entry — 2026-07-09.*
+
+## R5.1-MCP-CONSUME-2026-07-09 — MCP-consume hardening, C0-C5 phased autonomous run — CLOSED 2026-07-09
+
+```yaml
+session_open:
+  session_id: R5.1-MCP-CONSUME-2026-07-09
+  opened_on: 2026-07-09
+  cowork_thread_name: R5.1-MCP-CONSUME
+  governing_brief: CLAUDECODE_BRIEF_R5_1_MCP_CONSUME_v1_0.md
+  ratification: NATIVE RATIFIED BY KICKOFF — native's message dispatching the brief constitutes
+    ratification-by-kickoff of the brief's `scope_ruling` frontmatter field. Recorded as JL-000 in
+    R5_1_RUN_LEDGER_v1_0.md.
+  scope_notes: >
+    Fully autonomous run: C0 preflight → C1 flagship-instrument unblock → C2 seven answer-quality
+    punch items → C3 forward panchanga → C4 acceptance ceremony → C5 wrap. Strict phase order; C4
+    gated on C1-C3 prod deploy. Execution mode: conductor + isolated-worktree implementer +
+    independent-verifier-ring per phase, mirroring R5's own discipline.
+  may_touch:
+    - "platform/src/lib/retrieval/**"
+    - "platform/src/app/api/{retrieval,mcp}/**"
+    - "platform-mcp/src/**"
+    - "surgical migrations (full-path cited)"
+    - "panchanga writer + scheduled job (new, serving-plane)"
+    - "python-sidecar serving modules for punch items"
+    - "00_ARCHITECTURE run/seal/ledger docs"
+    - "scheduled-job config for the canary"
+  must_not_touch:
+    - "orchestrator + ALL build writers"
+    - "chart data L0-L5 (read-only; panchanga_daily is the ONE sanctioned new data surface)"
+    - "salience/priors/formula constants"
+    - "LEL rows"
+    - "everything on the deferred shelf (portal chat/UI, LEL/outcome web UI, Arunima/Kiran builds, rate limiting, branch-graveyard cleanup, frontmatter CI debt, cross-chart pool opening, JL-022 Option B, tool-estate legacy-name removal)"
+  predecessor_session: R5-RETRIEVAL-3.0-AUTONOMOUS-RUN-2026-07-08
+  current_state_version_at_open: 6.32
+  red_team_due: false
+```
+
+**Session:** R5.1 MCP-Consume — converting R5 Retrieval 3.0's SEALED implementation toward daily
+MCP usability for the native's two charts. Conductor sequenced C0 through C5, spawning
+worktree-isolated implementer agents per phase (C2 split into 3 parallel lanes) with an
+independent-verifier-ring gate before every merge — a verifier is never the same agent as the
+implementer, and every verification claim was checked against real deployed prod via genuine MCP
+`tools/call` invocations, not capability-handler claims or mocked payloads.
+
+**Executed:**
+- **C0 preflight:** GO, no HALT. Deploy-truth, migrations, canary baseline, test credential, and
+  both charts' serving states all confirmed. One unpushed local commit synced via PR #484.
+- **C1** (flagship-instrument unblock — the "86KB fix"): budget/trim discipline + hard-cap
+  fallback + v3-envelope-default on `judgment_query`/`graha_portrait`/`pact_query`. First
+  independent verification pass FAILED (found the initial trim implementation 1.8-2.7x over
+  ceiling plus a `pact_query` 404 bootstrap bug) — routed back as a self-heal, not a HALT. Fix
+  pass + second independent PASS. Deployed (PR #485, commit a6ebb75b), live gate check confirmed
+  all four ceilings met on true wire bytes, both charts.
+- **C2** (seven answer-quality punch items, 3 parallel lanes): Lane A (E-2 freshness contract +
+  E-6 digest family-aggregation), Lane B (denial≠empty envelope + posterior provenance + LEL-match
+  corroboration — surfaced a significant pre-existing finding: `/api/retrieval/capability` has no
+  entitlement check at all on the flagship-instrument path, flagged not fixed), Lane C (JL-027
+  graha-yuddha declination winner + `chart_snapshot`). All three independently verified PASS,
+  merged sequentially (PRs #487-489, commit d3fb74fa). Live gate check: 5/7 items confirmed
+  reachable over the public MCP channel; 2 correct but not yet tool-wired (honest gap, not
+  concealed).
+- **C3** (forward panchanga, the one sanctioned data-plane addition): `panchanga_daily`
+  re-provisioned from a WHERE-FALSE stub view to a real date-keyed table (migration 427, applied
+  pre-merge per standing convention), deterministic Swiss-Ephemeris writer, and the actual
+  root-cause fix for `muhurta_finder` (was silently fabricating placeholder panchanga values on a
+  column-name bug — a real B.10 violation, now fixed). A genuine conflicting-verifier-reports
+  episode occurred (a second independent verifier reported a FAIL that contradicted the fix-pass's
+  own live evidence) and was resolved by the conductor personally standing up a from-scratch live
+  triad rather than trusting either self-report — traced to a test-environment setup artifact in
+  the second verifier's own run, not a real defect. Deployed (PR #491, commit bcdfed45; three
+  services — mcp/web/sidecar — all confirmed at the merge SHA), live gate check confirmed real
+  ranked windows with panchanga citations on both charts, honest empty-with-reason for far-future
+  dates.
+- **C4** (the acceptance ceremony): confirmed the Gemini/DeepSeek rubric-grading network path —
+  genuinely unavailable in R5's own environment — was restorable here (both providers live-tested
+  with real credentials); used for real, first-ever genuine rubric grading of this battery (a
+  pre-existing harness bug silently ignoring rubric floors was found and fixed, PR #493). Full
+  38-item frozen battery, both charts, real MCP transport: **9/38 pass (23.7%), Q1/X deterministic
+  4/16 (25.0%), rubric floors 12/21 met — all below the brief's gate.** Root-caused rather than
+  accepted at face value (checked specifically for the harness false-negative pattern R5's own run
+  hit — found genuine content/computation gaps instead, not harness noise). Not a HALT (grading was
+  genuinely live; no other halt condition triggered). Reported honestly, routed to a punch-list, per
+  this run's own precedent mirroring R5's identical handling of a not-met battery gate.
+- **C5** (wrap): CURRENT_STATE v6.32→v6.33 (changelog + version bump; full §2/§3 historical
+  rewrite judged out of scope again, same precedent as R5's own v6.32 close); min-instances=1
+  confirmed retained on both services; `MCP_USAGE_GUIDE_v1_0.md` authored (native-facing); this
+  seal report `R5_1_MCP_CONSUME_ACCEPTANCE_v1_0.md` closes the run honestly (program status:
+  "hardened and deployed, C1-C3 verified live; C4 acceptance gate NOT MET — not fully ACCEPTED");
+  canary-battery scheduled job attempted (see run ledger for provisioning outcome); worktrees and
+  branches cleaned up throughout (exit gate).
+
+**Contract violations:** 0. No chart data written. No entitlement widened. No fabricated
+computation, grade, or coverage number anywhere in this run's artifact trail — including this
+close, which reports a genuine gate miss rather than an implied pass.
+
+**Known pre-existing gap, not this session's scope:** CURRENT_STATE §2/§3 full historical rewrite
+remains open (same finding R5 itself carried forward) — a dedicated governance-hygiene session
+should reconcile it.
+
+```yaml
+session_close:
+  session_id: R5.1-MCP-CONSUME-2026-07-09
+  closed_on: 2026-07-09
+  outcome: >
+    COMPLETE, honest result. C1/C2/C3 SHIPPED, DEPLOYED, INDEPENDENTLY VERIFIED LIVE on both
+    charts. C4 acceptance gate NOT MET (23.7% overall vs >=90% required; 25.0% Q1/X deterministic
+    vs 100% required) -- not a HALT, genuinely root-caused, honestly reported, routed to punch-list.
+    Program status: hardened + deployed + first-time-honestly-measured, NOT fully ACCEPTED per this
+    brief's own definition of that word. See R5_1_MCP_CONSUME_ACCEPTANCE_v1_0.md for full detail.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: "R5.1 C1-C3 deployed; C4 punch-list is the open-items surface for a dedicated remediation-and-rerun session; deferred shelf from this brief's own scope_ruling remains open"
+  current_state_updated: true
+  current_state_version: 6.33
+  session_log_appended: true
+  red_team_pass: "n/a — red_team_due: false at this session's open per brief cadence; not a macro-phase close"
+  next_session_objective: >
+    A dedicated C4-remediation-and-rerun program (query_chart_facts dignity field, byte-budget
+    discipline beyond the three C1 tools, Q3/Q6/Q8/Q9 content-depth work, the
+    /api/retrieval/capability entitlement gap -- highest priority) against the now-trustworthy
+    battery harness. R5.1's own deferred shelf (portal/UI, rate limiting, branch hygiene,
+    cross-chart pool, JL-022 Option B) remains open alongside it. Native to prioritize.
+```
+
+*End of R5.1-MCP-CONSUME-2026-07-09 entry — 2026-07-09.*

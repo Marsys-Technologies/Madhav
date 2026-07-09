@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.32
+version: 6.33
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,58 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.33 (2026-07-09, R5.1 MCP-CONSUME — C1-C4 run complete; gate NOT MET, honestly reported):
+    Successor run to R5 (SEALED, v6.32). Per `CLAUDECODE_BRIEF_R5_1_MCP_CONSUME_v1_0.md`, native scope
+    ruling: MCP interaction excellence on the two charts (482012f1 Abhisek + 1c826d5a Abhinandan) +
+    acceptance battery; portal/UI/rate-limiting/cross-chart-pool work explicitly deferred. C0 preflight GO
+    (no HALT) → **C1 SHIPPED+DEPLOYED+LIVE-VERIFIED:** the "86KB fix" — budget/trim discipline +
+    hard-cap fallback + v3-envelope-by-default on `judgment_query`/`graha_portrait`/`pact_query`
+    (12KB/12KB/8KB real wire-byte ceilings, dual-output duplication suppressed for these three tools);
+    two independent Ring-2 verification passes (first FAIL → self-heal fix → second PASS), confirmed
+    live on deployed prod, both charts. → **C2 SHIPPED+DEPLOYED+LIVE-VERIFIED:** three parallel lanes
+    (E-2 freshness contract + E-6 digest family-aggregation; entitlement-denial envelope + posterior
+    provenance + LEL-match corroboration; JL-027 graha-yuddha declination winner + `chart_snapshot`
+    compact D1/D9 grid), each independently verified, 5/7 items confirmed reachable live over the public
+    MCP channel (2 correct-but-not-yet-tool-wired, carried to punchlist). **Significant finding: 
+    `/api/retrieval/capability` — the path the flagship instruments actually use — has NO
+    `authorizeChartAccess` entitlement check at all**, a real pre-existing gap, deliberately not
+    fixed mid-run (wide blast radius), flagged for dedicated priority follow-up. → **C3
+    SHIPPED+DEPLOYED+LIVE-VERIFIED:** forward panchanga — `panchanga_daily` re-provisioned from a
+    WHERE-FALSE stub view to a real date-keyed table (migration 427, already applied to prod), a
+    deterministic Swiss-Ephemeris writer, and the actual root-cause fix for `muhurta_finder` (was
+    silently fabricating placeholder panchanga values on a column-name bug — now genuinely computes
+    real ranked windows from real data, or honestly returns empty-with-reason). A genuine
+    conflicting-verifier-reports episode occurred and was resolved by direct conductor-level live
+    testing rather than trusting either self-report (see `R5_1_RUN_LEDGER_v1_0.md` C3 section for the
+    full account) — the fix is real. → **C4 (the acceptance ceremony) GATE NOT MET, not a HALT.**
+    The Gemini/DeepSeek rubric-grading network path — genuinely unavailable in R5's environment — was
+    confirmed **restorable** in this environment (both providers live-tested with real credentials) and
+    used for real; this is the first-ever real rubric-graded battery run (prior harness code had a bug
+    silently ignoring rubric floors entirely). Result: 9/38 items pass (23.7% vs ≥90% required), Q1/X
+    deterministic classes 4/16 (25.0% vs 100% required), 12/21 rubric floors met. Root-cause
+    investigated and categorized (not accepted at face value) — genuine content/computation gaps
+    (`query_chart_facts` carries no computed dignity field at all), byte-budget overages on tools C1
+    never touched (up to 234KB), and real LLM-graded content-quality shortfalls — NOT a harness
+    false-negative pattern this time. Full scorecard + token/latency/call-count table + punch-list in
+    `R5_1_RUN_LEDGER_v1_0.md` C4 section and `evals/r5-w4-full-battery/results_bcdfed45.json`.
+    **Program status: C1-C3 hardened and shipped to prod with live verification; C4 acceptance is NOT
+    yet MET — the program remains SEALED (per R5) but is NOT fully ACCEPTED for unmoderated daily use.**
+    See `R5_1_MCP_CONSUME_ACCEPTANCE_v1_0.md` for the full honest acceptance report.
+    **NEXT-OBJECTIVE:** a dedicated C4-remediation-and-rerun program (dignity computation in
+    `query_chart_facts`; budget discipline extended beyond the three C1 tools; content-depth work on
+    several Q3/Q6/Q8/Q9 items; the `/api/retrieval/capability` entitlement gate) — the C4 harness is now
+    genuinely trustworthy and ready to re-measure against once remediation lands. R5.1's own deferred
+    shelf (portal/UI, rate limiting, branch hygiene, cross-chart pool, JL-022 Option B) remains open
+    alongside it, native to prioritize.
+    **Known pre-existing gap, partially addressed this session:** this file's §2 canonical-state block
+    remains frozen at M4/M5/M6-era content and §3's most recent narrative entry is L3-era (2026-06-21) —
+    both predate the entire L4/L5/R5/R5.1 arc. Per the identical precedent set at v6.32 (R5's own close),
+    a full §2/§3 historical rewrite is judged out of scope for this run too (this brief's own
+    `must_not_touch` excludes governance/CLAUDE.md-class files, and a 2500+-line historical block rewrite
+    carries real risk of corrupting a governance-authoritative artifact without dedicated review). This
+    changelog entry + version bump is the accurate, minimal, honest update — a dedicated governance-hygiene
+    session should still reconcile §2/§3 against true current state (L0-L5 all sealed/closed per
+    CLAUDE.md §E, R5 SEALED, R5.1 C1-C4 run as above) before the next macro-phase opens.
   - v6.32 (2026-07-09, R5 RETRIEVAL 3.0 SEALED — autonomous run complete):
     **R5 Retrieval 3.0 (the next-objective flagged at BA Phase-4 Runway close, v6.31) is SEALED.**
     Fully autonomous run per CLAUDECODE_BRIEF_R5_RETRIEVAL_3_0_AUTONOMOUS_RUN_v1_0.md v1.2, governed by
