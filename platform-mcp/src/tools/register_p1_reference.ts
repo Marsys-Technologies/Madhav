@@ -15,14 +15,20 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-async function callRegistryCapability(uri: string, args: Record<string, unknown>): Promise<unknown> {
+async function callRegistryCapability(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-mcp-internal-token': MCP_INTERNAL_TOKEN },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Key-Id': principal.key_id,
+    },
     body: JSON.stringify({ uri, args }),
     signal: AbortSignal.timeout(15_000),
   })
@@ -79,7 +85,7 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
   return { ...dualOutput({ ok: false, error: message, tool, ...extra }), isError: true as const }
 }
 
-export function registerP1ReferenceTools(server: McpServer): void {
+export function registerP1ReferenceTools(server: McpServer, principal: Principal): void {
 
   // ── 1. ref_rules_search ───────────────────────────────────────────────────
   server.tool(
@@ -101,7 +107,7 @@ export function registerP1ReferenceTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
           keyword, author, topic, tradition, limit: limit ?? 50, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ref_rules_search'))
       } catch (err) {
         return errorOutput('ref_rules_search', String(err))
@@ -127,7 +133,7 @@ export function registerP1ReferenceTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability('marsys://tool/L0/query_yoga_catalog', {
           yoga_name, tradition, domain, limit: limit ?? 100, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ref_yogas_get'))
       } catch (err) {
         return errorOutput('ref_yogas_get', String(err))
@@ -153,7 +159,7 @@ export function registerP1ReferenceTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability('marsys://tool/L0/query_dosha_catalog', {
           dosha_name, severity, limit: limit ?? 100, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ref_doshas_get'))
       } catch (err) {
         return errorOutput('ref_doshas_get', String(err))
@@ -180,7 +186,7 @@ export function registerP1ReferenceTools(server: McpServer): void {
         const kw = [keyword, planet, 'dignity'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
           keyword: kw, topic: 'dignity', limit: limit ?? 50, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ref_dignity_reference_get'))
       } catch (err) {
         return errorOutput('ref_dignity_reference_get', String(err))
@@ -207,7 +213,7 @@ export function registerP1ReferenceTools(server: McpServer): void {
         const kw = [keyword, system, 'dasha'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
           keyword: kw, topic: 'dasha', limit: limit ?? 30, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ref_dasha_systems_get'))
       } catch (err) {
         return errorOutput('ref_dasha_systems_get', String(err))
@@ -235,7 +241,7 @@ export function registerP1ReferenceTools(server: McpServer): void {
         const kw = [keyword, nakshatra, lord, 'nakshatra'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
           keyword: kw, topic: 'nakshatra', limit: limit ?? 30, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ref_nakshatra_get'))
       } catch (err) {
         return errorOutput('ref_nakshatra_get', String(err))

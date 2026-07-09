@@ -17,10 +17,15 @@ import { remoteAuthorize } from '../lib/authz.js'
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-async function callRegistryCapability(uri: string, args: Record<string, unknown>): Promise<unknown> {
+async function callRegistryCapability(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-mcp-internal-token': MCP_INTERNAL_TOKEN },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Key-Id': principal.key_id,
+    },
     body: JSON.stringify({ uri, args }),
     signal: AbortSignal.timeout(20_000),
   })
@@ -131,7 +136,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           min_rank: min_rank ?? 0,
           top_k: top_k ?? 30,
           include_negative_knowledge: include_negative_knowledge !== false,
-        })
+        }, principal)
         const wrapped = {
           calibration_status: 'prior_only',
           mode: 'STRUCTURAL',
@@ -220,7 +225,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           include_lel_events: include_lel_events !== false,
           limit: limit ?? 50,
           offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'kala_life_arc_get', 'temporal_life_arc'))
       } catch (err) {
         return errorOutput('kala_life_arc_get', String(err), { chart_id })

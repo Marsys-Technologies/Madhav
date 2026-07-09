@@ -12,6 +12,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { Principal } from '../types.js'
 // R5 W0b-codegen (design §19): imports the GENERATED envelope module — the mirror that
 // used to live at '../lib/envelope.js' was hand-written and has been deleted. See
 // scripts/generate_envelope.ts for the generator; src/generated/envelope.ts is its output.
@@ -29,10 +30,15 @@ import {
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-async function callRegistryCapability(uri: string, args: Record<string, unknown>): Promise<unknown> {
+async function callRegistryCapability(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-mcp-internal-token': MCP_INTERNAL_TOKEN },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Key-Id': principal.key_id,
+    },
     body: JSON.stringify({ uri, args }),
     signal: AbortSignal.timeout(25_000),
   })
@@ -169,7 +175,7 @@ export const ganitaTajakaGetInputSchema = {
   offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
 }
 
-export function registerP1GanitaTools(server: McpServer): void {
+export function registerP1GanitaTools(server: McpServer, principal: Principal): void {
 
   // ── 1. ganita_strength_get ────────────────────────────────────────────────
   server.tool(
@@ -184,7 +190,7 @@ export function registerP1GanitaTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability('marsys://tool/L1/get_strength', {
           chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ganita_strength_get'))
       } catch (err) {
         return errorOutput('ganita_strength_get', String(err), { chart_id })
@@ -221,7 +227,7 @@ export function registerP1GanitaTools(server: McpServer): void {
         const data = await callRegistryCapability(uri, {
           chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
           limit: limit ?? 25000, offset: offset ?? 0, facet,
-        })
+        }, principal)
         return dualOutput(envelope({ facet, ...( typeof data === 'object' && data ? data : { rows: data }) }, 'ganita_structural_get'))
       } catch (err) {
         return errorOutput('ganita_structural_get', String(err), { chart_id, facet })
@@ -254,7 +260,7 @@ export function registerP1GanitaTools(server: McpServer): void {
         const data = await callRegistryCapability(uri, {
           chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
           limit: limit ?? 25000, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope({ facet: resolvedFacet, ...( typeof data === 'object' && data ? data : { rows: data }) }, 'ganita_condition_get'))
       } catch (err) {
         return errorOutput('ganita_condition_get', String(err), { chart_id, facet: resolvedFacet })
@@ -275,7 +281,7 @@ export function registerP1GanitaTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability('marsys://tool/L1/get_sade_sati', {
           chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ganita_sade_sati_get'))
       } catch (err) {
         return errorOutput('ganita_sade_sati_get', String(err), { chart_id })
@@ -297,7 +303,7 @@ export function registerP1GanitaTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability('marsys://tool/L1/get_tajik', {
           chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ganita_tajaka_get'))
       } catch (err) {
         return errorOutput('ganita_tajaka_get', String(err), { chart_id })
@@ -324,7 +330,7 @@ export function registerP1GanitaTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability('marsys://tool/L1/get_tara_chandra_bala', {
           chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ganita_nakshatra_get'))
       } catch (err) {
         return errorOutput('ganita_nakshatra_get', String(err), { chart_id })
@@ -368,7 +374,7 @@ export function registerP1GanitaTools(server: McpServer): void {
         const format = resolveEnvelopeFormat(response_format)
         const data = await callRegistryCapability('marsys://tool/L1/get_yoga_dosha', {
           chart_id, ayanamsha_id: resolvedAyanamsha, limit, offset: resolvedOffset,
-        }) as { total?: number; rows?: Record<string, unknown>[] } | undefined
+        }, principal) as { total?: number; rows?: Record<string, unknown>[] } | undefined
         const total = typeof data?.total === 'number' ? data.total : null
 
         if (format !== 'v3') {
@@ -424,7 +430,7 @@ export function registerP1GanitaTools(server: McpServer): void {
         try {
           chart_header = await callRegistryCapability('marsys://tool/L1/get_chart_header', {
             chart_id, ayanamsha_id: resolvedAyanamsha,
-          }) as ChartHeader
+          }, principal) as ChartHeader
         } catch {
           chart_header = null // frame-safety header is best-effort; never fails the instrument
         }
@@ -473,7 +479,7 @@ export function registerP1GanitaTools(server: McpServer): void {
       try {
         const data = await callRegistryCapability('marsys://tool/L4/query_rectification', {
           chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'phala_rectification_get'))
       } catch (err) {
         return errorOutput('phala_rectification_get', String(err), { chart_id })
@@ -503,7 +509,7 @@ export function registerP1GanitaTools(server: McpServer): void {
         const data = await callRegistryCapability('marsys://tool/L1/get_transit_anchors', {
           chart_id, ayanamsha_id: ayanamsha_id ? normalizeAyanamsha(ayanamsha_id) : undefined,
           graha, limit: limit ?? 50, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(envelope(data, 'ganita_transit_anchors_get'))
       } catch (err) {
         return errorOutput('ganita_transit_anchors_get', String(err), { chart_id })

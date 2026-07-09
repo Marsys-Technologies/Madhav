@@ -32,10 +32,15 @@ const AYANAMSHA_ALIAS: Record<string, string> = {
 }
 function na(id?: string): string { return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha' }
 
-async function callRegistryCap(uri: string, args: Record<string, unknown>): Promise<unknown> {
+async function callRegistryCap(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-mcp-internal-token': MCP_INTERNAL_TOKEN },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Key-Id': principal.key_id,
+    },
     body: JSON.stringify({ uri, args }),
     signal: AbortSignal.timeout(25_000),
   })
@@ -156,7 +161,7 @@ const BirthBase = {
 
 /**
  * Map: alias_name → { uri, description_fragment }
- * All call callRegistryCap(uri, { chart_id, ayanamsha_id, limit, offset, ...extra }).
+ * All call callRegistryCap(uri, { chart_id, ayanamsha_id, limit, offset, ...extra }, principal).
  */
 
 // Helper for simple chart-scoped registry aliases
@@ -165,7 +170,8 @@ function regAlias(
   name: string,
   desc: string,
   uri: string,
-  extraSchema: Record<string, z.ZodTypeAny> = {}
+  extraSchema: Record<string, z.ZodTypeAny> = {},
+  principal: Principal,
 ) {
   server.tool(
     name, `[Phase-1 alias] ${desc}. Delegates to the same handler as the legacy tool name.`,
@@ -177,7 +183,7 @@ function regAlias(
         const data = await callRegistryCap(uri, {
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
-        })
+        }, principal)
         return dualOutput(data)
       } catch (err) { return errOut(name, String(err), { chart_id }) }
     }
@@ -190,7 +196,8 @@ function globalAlias(
   name: string,
   desc: string,
   uri: string,
-  extraSchema: Record<string, z.ZodTypeAny> = {}
+  extraSchema: Record<string, z.ZodTypeAny> = {},
+  principal: Principal,
 ) {
   server.tool(
     name, `[Phase-1 alias] ${desc}. Delegates to the same handler as the legacy tool name.`,
@@ -200,7 +207,7 @@ function globalAlias(
       try {
         const data = await callRegistryCap(uri, {
           limit: (limit as number) ?? 100, offset: (offset as number) ?? 0, ...rest,
-        })
+        }, principal)
         return dualOutput(data)
       } catch (err) { return errOut(name, String(err)) }
     }
@@ -215,13 +222,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   regAlias(server, 'bodha_chart_digest_get',
     'L2 UCD chart orientation digest (same as get_chart_orientation)',
     'marsys://tool/L2/query_ucd',
-    { mode: z.enum(['summary', 'full']).optional() })
+    { mode: z.enum(['summary', 'full']).optional() }, principal)
 
   // get_domain_reading → bodha_domain_reading_get
   regAlias(server, 'bodha_domain_reading_get',
     'L2 domain reading via Bodha synthesis (same as get_domain_reading)',
     'marsys://tool/L2/query_domain_reading',
-    { domain: z.string().describe('Life domain (career, health, relationship, wealth, etc.)') })
+    { domain: z.string().describe('Life domain (career, health, relationship, wealth, etc.)') }, principal)
 
   // get_signals → bodha_signals_get
   regAlias(server, 'bodha_signals_get',
@@ -235,7 +242,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       min_weight: z.number().min(0).max(1).optional(),
       frame:      z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
       paradigm:   z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional(),
-    })
+    }, principal)
 
   // traverse_graph → bodha_graph_traverse_get
   regAlias(server, 'bodha_graph_traverse_get',
@@ -254,7 +261,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       about_to:    z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
       direction:   z.enum(['directed', 'both']).optional(),
       min_strength: z.number().min(0).max(1).optional(),
-    })
+    }, principal)
 
   // get_positions → ganita_positions_get
   regAlias(server, 'ganita_positions_get',
@@ -265,7 +272,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'marsys://tool/L1/get_positions',
     {
       frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
-    })
+    }, principal)
 
   // get_dashas → ganita_dashas_get
   // R5 W1 (dasha_query lane, design §18/§21/§25 E-5): facets threaded through the seam so
@@ -300,7 +307,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       window_end:    z.string().optional(),
       lord_graha:    z.string().optional(),
       fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
-    })
+    }, principal)
 
   // get_temporal_windows → kala_windows_get
   regAlias(server, 'kala_windows_get',
@@ -310,7 +317,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       start_date: z.string().optional(),
       end_date:   z.string().optional(),
       domain:     z.string().optional(),
-    })
+    }, principal)
 
   // get_projections → kala_projections_get
   regAlias(server, 'kala_projections_get',
@@ -319,7 +326,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       start_date: z.string().optional(),
       end_date:   z.string().optional(),
-    })
+    }, principal)
 
   // get_classical_citation → ref_classical_citation_get
   server.tool(
@@ -330,7 +337,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const data = await callRegistryCap('marsys://tool/L0/query_classical_texts', {
           keyword, topic, author, limit: limit ?? 50, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_classical_citation_get', String(err)) }
     }
@@ -340,18 +347,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   regAlias(server, 'bodha_remedies_get',
     'L2 remedy recommendations via Bodha (PRIMARY Phase-1 name for get_remedies)',
     'marsys://tool/L2/query_remedies',
-    { domain: z.string().optional() })
+    { domain: z.string().optional() }, principal)
 
   // Also: bodha_remedies_search as secondary alias
   regAlias(server, 'bodha_remedies_search',
     'L2 remedy search via Bodha (alias of bodha_remedies_get)',
     'marsys://tool/L2/query_remedies',
-    { domain: z.string().optional(), keyword: z.string().optional() })
+    { domain: z.string().optional(), keyword: z.string().optional() }, principal)
 
   // get_chart_quality → bodha_quality_get
   regAlias(server, 'bodha_quality_get',
     'L2 chart quality scorecard (same as get_chart_quality)',
-    'marsys://tool/L2/query_quality_scorecard')
+    'marsys://tool/L2/query_quality_scorecard', {}, principal)
 
   // list_assets → catalog_assets_list
   server.tool(
@@ -362,7 +369,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const data = await callRegistryCap('marsys://resource/asset-registry/all', {
           layer, limit: limit ?? 200, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('catalog_assets_list', String(err)) }
     }
@@ -375,7 +382,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
       max_contradictions:    z.number().int().min(1).max(100).optional(),
-    })
+    }, principal)
 
   // assess_career → apex_career_assess
   regAlias(server, 'apex_career_assess',
@@ -384,7 +391,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
       max_contradictions:    z.number().int().min(1).max(100).optional(),
-    })
+    }, principal)
 
   // assess_health → apex_health_assess
   regAlias(server, 'apex_health_assess',
@@ -393,7 +400,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
       max_contradictions:    z.number().int().min(1).max(100).optional(),
-    })
+    }, principal)
 
   // assess_wealth → apex_wealth_assess
   regAlias(server, 'apex_wealth_assess',
@@ -402,7 +409,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
       max_contradictions:    z.number().int().min(1).max(100).optional(),
-    })
+    }, principal)
 
   // yoga_activation_by_dasha → kala_yoga_activation_get
   regAlias(server, 'kala_yoga_activation_get',
@@ -411,7 +418,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       start_date: z.string().optional(),
       end_date:   z.string().optional(),
-    })
+    }, principal)
 
   // get_cgm_subgraph → bodha_graph_subgraph_get
   regAlias(server, 'bodha_graph_subgraph_get',
@@ -420,7 +427,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       start_node: z.string().optional(),
       subgraph:   z.boolean().optional().default(true),
-    })
+    }, principal)
 
   // query_chart_facts → ganita_chart_facts_get
   // R5 W1 (lane: chart_query) fix: extraSchema previously declared fact_category/fact_id,
@@ -445,7 +452,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       divisional_chart: z.string().optional(),
       keyword:          z.string().optional(),
       shape:            z.enum(['pivoted', 'rows']).optional(),
-    })
+    }, principal)
 
   // vector_search → ref_vector_search
   server.tool(
@@ -474,7 +481,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       datetime_iso:    z.string().optional().describe('ISO datetime for ephemeris lookup'),
       planet:          z.string().optional(),
       ayanamsha_id:    z.string().optional(),
-    })
+    }, principal)
 
   globalAlias(server, 'ref_planet_transit_get',
     'L0 planet transit event lookup (same as query_planet_transit)',
@@ -484,7 +491,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       start_date:   z.string().optional(),
       end_date:     z.string().optional(),
       ayanamsha_id: z.string().optional(),
-    })
+    }, principal)
 
   globalAlias(server, 'ref_aspects_at_time_get',
     'L0 planetary aspects at a specific datetime (same as query_aspects_at_time)',
@@ -492,7 +499,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       datetime_iso: z.string().optional(),
       ayanamsha_id: z.string().optional(),
-    })
+    }, principal)
 
   globalAlias(server, 'ref_retrograde_periods_get',
     'L0 retrograde periods for a planet in a date range (same as query_retrograde_periods)',
@@ -501,7 +508,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       planet:      z.string().optional(),
       start_date:  z.string().optional(),
       end_date:    z.string().optional(),
-    })
+    }, principal)
 
   // ephemeris_cache_year → ref_ephemeris_year_get
   server.tool(
@@ -510,7 +517,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     { year: z.number().int().min(1900).max(2150).describe('4-digit calendar year') },
     async ({ year }) => {
       try {
-        const data = await callRegistryCap(`marsys://resource/ephemeris-cache/year/${year}`, { year })
+        const data = await callRegistryCap(`marsys://resource/ephemeris-cache/year/${year}`, { year }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('ref_ephemeris_year_get', String(err), { year }) }
     }
@@ -521,12 +528,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   globalAlias(server, 'ref_entity_resolve',
     'Resolve a Jyotish entity name to canonical form (same as resolve_entity)',
     'marsys://tool/L0/resolve_entity',
-    { name: z.string().optional().describe('Entity name to resolve') })
+    { name: z.string().optional().describe('Entity name to resolve') }, principal)
 
   globalAlias(server, 'ref_entities_list',
     'List all Jyotish canonical entities (same as list_entities)',
     'marsys://tool/L0/list_entities',
-    { entity_class: z.string().optional().describe('Filter by class (graha/nakshatra/rashi/etc.)') })
+    { entity_class: z.string().optional().describe('Filter by class (graha/nakshatra/rashi/etc.)') }, principal)
 
   server.tool(
     'catalog_assets_all',
@@ -536,7 +543,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const data = await callRegistryCap('marsys://resource/asset-registry/all', {
           limit: limit ?? 200, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('catalog_assets_all', String(err)) }
     }
@@ -550,7 +557,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const data = await callRegistryCap('marsys://resource/asset-registry/L0', {
           limit: limit ?? 100, offset: offset ?? 0,
-        })
+        }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('catalog_assets_l0', String(err)) }
     }
@@ -562,7 +569,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     { query: z.string().describe('Query text to classify') },
     async ({ query }) => {
       try {
-        const data = await callRegistryCap('marsys://prompt/intent-classify', { query })
+        const data = await callRegistryCap('marsys://prompt/intent-classify', { query }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('util_intent_classify', String(err)) }
     }

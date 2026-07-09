@@ -339,8 +339,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerRegistryBridgeTools(server, principal)
 
   // BA-P1 — New Group-1 computed-chart tools (9), Group-2 reference tools (7), Group-3 synthesis (3)
-  registerP1GanitaTools(server)
-  registerP1ReferenceTools(server)
+  // R5.2 A1: principal threaded through so the platform's per-call chart entitlement gate
+  // on /api/retrieval/capability (X-MCP-User / X-MCP-Key-Id) can identify the caller.
+  registerP1GanitaTools(server, principal)
+  registerP1ReferenceTools(server, principal)
   // R5 W0a punch-list (P6): principal threaded through so platformQuery
   // (the four /api/mcp/db/query callers) can satisfy the route's Layer-2 auth.
   registerP1SynthesisTools(server, principal)
