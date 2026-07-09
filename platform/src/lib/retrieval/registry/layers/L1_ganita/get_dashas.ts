@@ -25,6 +25,7 @@
  * worst contract violation" reasoning. See R5_RUN_LEDGER W1 dasha_query verifier finding.
  */
 import type { CapabilityDescriptor } from '../../types'
+import type { DrillPointer } from '../../../envelope'
 import { query } from '@/lib/db/client'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
@@ -375,6 +376,103 @@ export const getDashasCapability: CapabilityDescriptor = {
         )
       }
 
+      // ── R5.3 B2 (Pratinidhi-R Q6-N-2 ruling): current-dasha narration ──
+      // This tool is a flat_fact/leaf archetype that has never carried a narration field.
+      // Built ONLY from rows already fetched in this call (no new computation, no new
+      // fact_ids) + the chart's birth_date (project-level FORENSIC constant, threaded from
+      // the `charts` table the same way get_graha_yuddha.ts already does — display-string
+      // date→age arithmetic, not astrological computation). Fires only for the as_of_date/
+      // date_contains "current dasha" shape, on the canonical (non-kp_sub) vimshottari rows,
+      // to avoid narrating two self-contradicting end dates from the kp_sub/L-tagged variant
+      // pairs chart_dashas serves side by side at Antar/Pratyantar level.
+      let narration: string | null = null
+      const drill_pointers: DrillPointer[] = []
+      if (containsDate && systemApplied === 'vimshottari') {
+        try {
+          const birthRows = await query<{ birth_date: string }>(
+            `SELECT birth_date::text AS birth_date FROM charts WHERE id = $1`,
+            [chartId]
+          )
+          const birthDate = birthRows.rows[0]?.birth_date ?? null
+
+          const isCanonicalRow = (r: Record<string, unknown>) =>
+            !String(r['citation_ref'] ?? '').includes('kp_sub')
+
+          const byLevel: Record<number, Record<string, unknown>> = {}
+          for (const rawRow of enrichedRows) {
+            const row = rawRow as Record<string, unknown>
+            const lvl = row['level_n'] as number
+            if (lvl < 1 || lvl > 3) continue
+            // Prefer the canonical (non-kp_sub) row per level; first-seen otherwise.
+            if (byLevel[lvl] === undefined || isCanonicalRow(row)) {
+              byLevel[lvl] = row
+            }
+          }
+
+          const ageAtDate = (isoDate: string | null): string => {
+            if (!birthDate || !isoDate) return 'age unknown'
+            const b = new Date(birthDate)
+            const d = new Date(isoDate)
+            let years = d.getFullYear() - b.getFullYear()
+            const hasHadBirthdayThisYear =
+              d.getMonth() > b.getMonth() ||
+              (d.getMonth() === b.getMonth() && d.getDate() >= b.getDate())
+            if (!hasHadBirthdayThisYear) years -= 1
+            return `age ~${years}`
+          }
+
+          const md = byLevel[1]
+          const ad = byLevel[2]
+          const pd = byLevel[3]
+
+          if (md && ad && pd) {
+            const mdEnd = md['end_date'] as string
+            const adEnd = ad['end_date'] as string
+            const pdEnd = pd['end_date'] as string
+
+            const leadSentence =
+              `You are in ${md['lord_graha']} Mahadasha (ends ${mdEnd}, ${ageAtDate(mdEnd)}) -> ` +
+              `${ad['lord_graha']} Antardasha (ends ${adEnd}, ${ageAtDate(adEnd)}) -> ` +
+              `${pd['lord_graha']} Pratyantardasha (current, ends ${pdEnd}, ${ageAtDate(pdEnd)}).`
+
+            const natalSentences: string[] = []
+            if (ad['lord_natal_dignity_d1'] && ad['lord_natal_house_d1']) {
+              natalSentences.push(
+                `${ad['lord_graha']}, your Antardasha lord, is ${ad['lord_natal_dignity_d1']} ` +
+                `in your ${ad['lord_natal_house_d1']} house (${ad['lord_natal_nakshatra'] ?? 'nakshatra n/a'}).`
+              )
+            }
+            if (pd['lord_natal_dignity_d1'] && pd['lord_natal_house_d1']) {
+              natalSentences.push(
+                `${pd['lord_graha']}, your Pratyantardasha lord, is ${pd['lord_natal_dignity_d1']} ` +
+                `in your ${pd['lord_natal_house_d1']} house (${pd['lord_natal_nakshatra'] ?? 'nakshatra n/a'}).`
+              )
+            }
+
+            const sandhiSentence = md['sandhi_flag']
+              ? `Note: the Mahadasha is in its sandhi (junction) window — classically a transitional ` +
+                `caution period where both lords' effects blend — worth weighing against ${ad['lord_graha']}'s ` +
+                `own placement above rather than reading as blanket alarm.`
+              : null
+
+            narration = [leadSentence, ...natalSentences, sandhiSentence]
+              .filter(Boolean)
+              .join(' ')
+
+            drill_pointers.push({
+              instrument: 'get_dashas',
+              hint: `The period after the current Pratyantardasha (ends ${pdEnd}) is not returned by ` +
+                `an as_of_date call — re-call with as_of_date just after ${pdEnd} (or window_start=${pdEnd}) ` +
+                `to see the next lord and its natal condition.`,
+              pointer_type: 'dasha_of_promise',
+            })
+          }
+        } catch {
+          // Non-blocking: narration is additive; a failure here must not break the base response.
+          narration = null
+        }
+      }
+
       return {
         content: {
           chart_id: chartId,
@@ -387,6 +485,8 @@ export const getDashasCapability: CapabilityDescriptor = {
           },
           rows: projectedRows,
           total: projectedRows.length,
+          ...(narration ? { narration } : {}),
+          ...(drill_pointers.length > 0 ? { drill_pointers } : {}),
         },
         is_error: false,
         ...(judgment_flags.length > 0 ? { judgment_flags } : {}),
