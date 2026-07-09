@@ -37,6 +37,34 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
+import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
+
+// R5.2 A2 (punch #3, estate-wide budget sweep): phala_outlook's default call measured
+// 461KB on the native chart — the worst offender in the "234KB class" the brief names,
+// caused by 100 anchors + 100 mitigations + 30 auspicious_windows served at full detail
+// with no ceiling (same failure class C1 already fixed for judgment_query/graha_portrait/
+// pact_query). Reuses the SAME shared trimmer (response_budget.ts), not a bespoke cut.
+const PHALA_OUTLOOK_BUDGET_KB = 30
+
+function phalaOutlookSections(): TrimmableSection<PhalOutlookResult>[] {
+  return [
+    {
+      path: 'anchors', label: 'anchors', minKeep: 10,
+      getArray: (c) => c.anchors, setArray: (c, kept) => { c.anchors = kept as PhalOutlookResult['anchors'] },
+      recover: { instrument: 'phala_predictive_anchors_get', hint: 'full anchors list with posterior_provenance' },
+    },
+    {
+      path: 'mitigations', label: 'mitigations', minKeep: 10,
+      getArray: (c) => c.mitigations, setArray: (c, kept) => { c.mitigations = kept as PhalOutlookResult['mitigations'] },
+      recover: { instrument: 'get_remedies', hint: 'full mitigation/remedy list' },
+    },
+    {
+      path: 'auspicious_windows', label: 'auspicious_windows', minKeep: 5,
+      getArray: (c) => c.auspicious_windows, setArray: (c, kept) => { c.auspicious_windows = kept as PhalOutlookResult['auspicious_windows'] },
+      recover: { instrument: 'muhurta_finder', hint: 'full auspicious-window list for the horizon' },
+    },
+  ]
+}
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -78,6 +106,7 @@ export interface PhalOutlookResult {
   auspicious_windows: Array<Record<string, unknown>>
   summary_confidence: number  // mean(anchor.confidence), in [0.0, 1.0]
   provenance_envelope: OutlookProvenanceEnvelope
+  trim_report?: unknown
 }
 
 // ── Sidecar call ───────────────────────────────────────────────────────────────
@@ -246,11 +275,16 @@ export function registerPhalaOutlookTool(server: McpServer, principal: Principal
           { minConfidence: input.min_confidence }
         )
 
+        const budgeted = applyResponseBudget(result, PHALA_OUTLOOK_BUDGET_KB, phalaOutlookSections())
+        if (budgeted.trim_report) {
+          budgeted.content.trim_report = budgeted.trim_report
+        }
+
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(budgeted.content, null, 2),
             },
           ],
         }

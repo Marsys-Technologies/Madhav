@@ -51,7 +51,7 @@
 import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
-import { resolveAddress, grahaCodeOf, AddressResolutionError, type HouseNumber } from '@/lib/retrieval/address_resolver'
+import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME, type HouseNumber } from '@/lib/retrieval/address_resolver'
 import { extractGroundingFromFactRows } from '../../envelope'
 
 /** `about` facet resolution result for chart_facts_query — mirrors the shape the handler needs
@@ -779,6 +779,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     'Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign,',
     'nakshatra, divisional_chart (e.g. D9/D10), keyword, ayanamsha_id (default lahiri_chitrapaksha), shape, limit.',
     'emits_references: every pivoted field carries its source fact_id for Bodha back-reference.',
+    'Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state — ',
+    'exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited ',
+    'in fact_ids.dignity) so a caller does not need a second get_dignity call for basic exaltation status.',
     'Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill).',
     'Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata).',
   ].join(' '),
@@ -1002,6 +1005,36 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
             ...entry.facts,
             fact_ids: entry.fact_ids,
           }))
+
+        // R5.2 A2 (punch #2): dignity field on positional rows. graha_position rows and
+        // graha_dignity_per_varga rows never naturally pivot together — position uses the
+        // bare graha code as fact_subject (e.g. "SAT"), dignity is keyed per-varga
+        // ("D1_SAT", "D10_SAT", ...) — so a plain position query has never carried dignity
+        // without a second call. This is a join/projection over data already in chart_facts
+        // (verified: D1_SAT dignity_state="exalted" for the native chart, matching Saturn's
+        // classical exaltation in Libra/Tula, which the same row's own `sign` field confirms)
+        // — no new computation, per B.10.
+        const positionRows = pivoted.filter(
+          (p): p is typeof p & { sign: unknown } => GRAHA_CODE_TO_NAME[p.fact_subject] != null && 'sign' in p
+        )
+        if (positionRows.length > 0) {
+          const dignitySubjects = positionRows.map((p) => `D1_${p.fact_subject}`)
+          const dignityRes = await query<{ fact_subject: string; fact_value_text: string | null; fact_id: string }>(
+            `SELECT fact_subject, fact_value_text, fact_id FROM chart_facts
+             WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
+               AND fact_subject = ANY($3::text[]) AND fact_key = 'dignity_state'`,
+            [chart_id, ayanamsha_id, dignitySubjects]
+          )
+          const dignityBySubject = new Map(dignityRes.rows.map((r) => [r.fact_subject, r]))
+          for (const p of positionRows) {
+            const d = dignityBySubject.get(`D1_${p.fact_subject}`)
+            if (d && d.fact_value_text) {
+              ;(p as Record<string, unknown>)['dignity'] = d.fact_value_text
+              ;(p.fact_ids as Record<string, string>)['dignity'] = d.fact_id
+            }
+          }
+        }
+
         content = {
           chart_id,
           ayanamsha_id,
