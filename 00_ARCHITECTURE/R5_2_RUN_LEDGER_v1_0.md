@@ -150,11 +150,26 @@ ephemeral measurement, not a governing artifact).
 tool):**
 - `phala_outlook` (`platform-mcp/src/tools/phala_outlook.ts`): 30KB ceiling, 3 trimmable sections
   (anchors minKeep=10, mitigations minKeep=10, auspicious_windows minKeep=5), each with a
-  `recover_via` pointer to the corresponding surgical instrument. 461KB → pending live re-measure
-  post-deploy (see A2 gate below).
+  `recover_via` pointer to the corresponding surgical instrument. **461,456B → 28,125B live on prod,
+  verified.**
 - `holistic_bundle_chart_facts` (`platform-mcp/src/tools/retrieval/holistic_bundle.ts`): 30KB
   ceiling on `bundle_entries` (minKeep=2 of 8), `recover_via: bodha_bundle_get` (its documented
-  successor). 544KB → pending live re-measure post-deploy.
+  successor). **544,867B → 866B live on prod, verified.**
+
+**Live-verification round caught two real bugs the first deploy missed (PR #501, commit
+`b7666adf`), fixed and re-deployed within the same run:**
+1. `holistic_bundle_chart_facts`'s `bundle_entries` array is nested under `envelope.bundle_entries`,
+   not the result's top level — the first version of the trim section read the wrong path and found
+   nothing to cut (confirmed live: 544KB in, 544KB out, `trim_report` showed the hard-cap fallback
+   firing on zero actual trims — an honest signal the mechanism itself surfaced correctly, which is
+   how this was caught). Fixed to read/write the correct nested location.
+2. Both fixed tools pretty-printed their final JSON (`, null, 2`), inflating wire bytes past what
+   `applyResponseBudget` measured (compact serialization) — `phala_outlook` shipped 38,351B against
+   its declared 30KB ceiling on the first deploy. Switched both to compact serialization; second
+   live measurement (28,125B) confirms the fix.
+
+This is exactly the "live gate check catches what static review can't" discipline this program is
+built on — recorded honestly rather than smoothing over the first-pass miss.
 
 **Deferred, honestly, not silently:**
 - `query_remedies` (106KB): the oversize is ONE result row, not a repeated-array problem — the
@@ -199,5 +214,21 @@ reasoning on record — not silently dropped from "the two orphaned C2 fixes" th
 ### A2 verification (pre-merge)
 `tsc --noEmit` clean in `platform` and `platform-mcp`. `platform-mcp` vitest: 96/509 pre-existing
 failures, unchanged from the A1 baseline — zero regressions from Lane 1/2/3 changes.
+
+### A2 live gate check — `[verify-against: mcp]`, prod, both PRs deployed (commits `52c409bc` then `b7666adf`)
+
+| Lane | Check | Result |
+|---|---|---|
+| 1 — phala_outlook | wire bytes | 461,456 → 28,125 (−93.9%), under 30KB ceiling |
+| 1 — holistic_bundle_chart_facts | wire bytes | 544,867 → 866 (−99.8%), under 30KB ceiling |
+| 2 — dignity join | `ganita_chart_facts_get` category=graha_position, native chart | JUP: `dignity:"own"` (fact_ids.dignity cited); KET_MEAN: `"exalted"`; MAR/MER: `"neutral"`; LAGNA correctly has no dignity field (not a graha) |
+| 3 — phala_predictive_anchors_get | tool reachable + shape | `anchors[]` present, each with real `posterior_provenance` (model_formula, base_rate_source narrative, honest `cardinality: null`) — matches the R5.1 C2 item-4 fix exactly, now actually reachable |
+
+### A2 verdict
+**CLOSED. No HALT. Proceed to A3.** Both PRs (#500 lanes 1-3; #501 the live-verification-caught
+trim-path + serialization fix) merged and deployed. Every claim in this section is a live prod
+measurement, not a pre-deploy assertion. No chart data written (Lane 3's write-path deferral held).
+No entitlement touched. Branches `feature/r5-2-a2-budget-dignity-orphans` and
+`fix/r5-2-a2-bundle-trim-path` deleted post-merge.
 
 ---
