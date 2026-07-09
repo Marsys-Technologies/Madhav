@@ -105,6 +105,202 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
   return { ...dualOutput({ ok: false, error: message, tool, ...extra }), isError: true as const }
 }
 
+// ── synth_chart_brief_get narration helpers ──────────────────────────────
+// R5.3 B2 (Whole-chart reading lane): the mahā-brief previously returned raw
+// fact-id/statement rows with zero synthesis — no ranking language, no
+// coverage-receipt sentence, no surfaced dissent — even though the raw
+// material (rank_consequence ordering, provenance_chain.contradictions,
+// topics_covered/domains_covered counts) was already fetched. These helpers
+// assemble that already-fetched data into narration; they perform NO new
+// computation and query NO new tables.
+
+type RankedEvidenceEntry = {
+  signal_id?: string
+  signal_type_id?: string | null
+  salience?: number
+  tier?: string | null
+  fact_ids?: string[]
+  classical_sources?: string[]
+}
+
+type ContradictionEntry = {
+  signal_a_id?: string
+  signal_b_id?: string
+  tension_class?: string | null
+  combined_salience?: number
+  resolution?: unknown
+  verification_status?: string | null
+}
+
+type ProvenanceChain = {
+  event_class_name?: string
+  domain?: string
+  activation_state?: string
+  grade?: number
+  ranked_evidence?: RankedEvidenceEntry[]
+  contradictions?: ContradictionEntry[]
+  tradition_concordance?: Record<string, unknown>
+}
+
+function getProvenanceChain(row: Record<string, unknown>): ProvenanceChain | null {
+  const pc = row['provenance_chain']
+  return (pc && typeof pc === 'object') ? pc as ProvenanceChain : null
+}
+
+// Fallback parse from the templated statement string ("Name: status (grade
+// N.N/10). note") for depth=standard callers where provenance_chain wasn't
+// fetched — never invents a value, only extracts what's already in `statement`.
+function parseStatement(statement: unknown): { name: string | null; status: string | null; grade: number | null } {
+  const s = typeof statement === 'string' ? statement : ''
+  const m = /^(.*?):\s*(promised|denied|conditional)\s*\(grade\s*([\d.]+)\/10\)/i.exec(s)
+  if (!m) return { name: null, status: null, grade: null }
+  return { name: m[1] ?? null, status: (m[2] ?? '').toLowerCase(), grade: m[3] ? Number(m[3]) : null }
+}
+
+function buildCoverageReceipt(params: {
+  topicsCovered: number
+  domains: unknown[]
+  verdictCount: number
+  loadBearingCount: number
+  calibratedCount: number
+  discoveryCount: number
+}): string {
+  const { topicsCovered, domains, verdictCount, loadBearingCount, calibratedCount, discoveryCount } = params
+  const domainList = domains.filter((d): d is string => typeof d === 'string').join(', ')
+  return (
+    `${topicsCovered} topic slot(s) evaluated across ${domains.length} domain(s)` +
+    (domainList ? ` (${domainList})` : '') +
+    `: ${verdictCount} domain verdicts, ${loadBearingCount} load-bearing signals, ` +
+    `${calibratedCount} calibration strata, ${discoveryCount} cross-domain discoveries ranked.`
+  )
+}
+
+function buildDissentFlags(verdicts: Record<string, unknown>[]): { dissent_flags: string[]; dissent_note: string | null } {
+  const flags: string[] = []
+  for (const row of verdicts) {
+    const pc = getProvenanceChain(row)
+    const contras = pc?.contradictions ?? []
+    for (const c of contras) {
+      const label = pc?.event_class_name ?? parseStatement(row['statement']).name ?? String(row['insight_id'] ?? 'unknown')
+      flags.push(
+        `Tension flagged on ${label}: ${c.tension_class ?? 'unclassified'} conflict between signal ` +
+        `${(c.signal_a_id ?? '?').toString().slice(0, 8)}… and ${(c.signal_b_id ?? '?').toString().slice(0, 8)}… ` +
+        `(salience ${typeof c.combined_salience === 'number' ? c.combined_salience.toFixed(2) : 'n/a'}, ` +
+        `${c.resolution ? 'resolved' : 'unresolved'} / ${c.verification_status ?? 'unverified'}) — ` +
+        `held as an open dissent, not silently reconciled.`
+      )
+      if (flags.length >= 5) break
+    }
+    if (flags.length >= 5) break
+  }
+  if (flags.length === 0) {
+    return {
+      dissent_flags: [],
+      dissent_note: 'No cross-signal tension recorded in the fetched insight set for this depth/domain selection.',
+    }
+  }
+  return { dissent_flags: flags, dissent_note: null }
+}
+
+function hedgeForGrade(evidenceGrade: unknown): string | null {
+  const g = typeof evidenceGrade === 'string' ? evidenceGrade : ''
+  if (g === 'prior_only' || g === 'documented_approximation') {
+    return 'provisional — thin evidential base'
+  }
+  return null
+}
+
+function citeEvidence(pc: ProvenanceChain | null): string | null {
+  const evid = (pc?.ranked_evidence ?? [])
+    .slice()
+    .sort((a, b) => (b.salience ?? 0) - (a.salience ?? 0))
+    .slice(0, 2)
+  if (evid.length === 0) return null
+  return evid
+    .map(e => {
+      const fid = (e.fact_ids ?? [])[0]
+      if (fid) return `fact ${fid}, salience ${typeof e.salience === 'number' ? e.salience.toFixed(2) : 'n/a'}`
+      // no fact_id available — ground on the signal type label instead of inventing a citation.
+      return e.signal_type_id ? `${e.signal_type_id}, salience ${typeof e.salience === 'number' ? e.salience.toFixed(2) : 'n/a'}` : null
+    })
+    .filter((x): x is string => Boolean(x))
+    .join('; ')
+}
+
+function buildRankedThemes(
+  verdicts: Record<string, unknown>[],
+  audience: 'native' | 'third_party',
+): { strengths: string[]; weaknesses: string[]; open_questions: string[] } {
+  const strengths: string[] = []
+  const weaknesses: string[] = []
+  const openQuestions: string[] = []
+
+  for (const row of verdicts) {
+    const pc = getProvenanceChain(row)
+    const parsed = parseStatement(row['statement'])
+    const name = pc?.event_class_name ?? parsed.name ?? String(row['insight_id'] ?? 'signal')
+    const status = pc?.activation_state ?? parsed.status
+    const grade = typeof pc?.grade === 'number' ? pc.grade : parsed.grade
+    const domain = pc?.domain ?? row['domain'] ?? null
+    const citation = citeEvidence(pc)
+    const hedge = hedgeForGrade(row['evidence_grade'])
+    const gradeStr = grade != null ? `${grade.toFixed(1)}/10` : 'ungraded'
+
+    let sentence: string
+    if (audience === 'third_party') {
+      const domainPhrase = domain ? ` (${domain})` : ''
+      sentence = `${name}${domainPhrase}: ${status ?? 'unresolved'} (grade ${gradeStr}) — ` +
+        `a signal parents may want to watch for in this area, not itself a cause for alarm.`
+    } else {
+      sentence = `${name}: ${status ?? 'unresolved'} (grade ${gradeStr}).`
+    }
+    if (citation) sentence += ` (${citation})`
+    if (hedge) sentence += ` [${hedge}]`
+
+    if (status === 'promised' && (grade == null || grade >= 6)) {
+      strengths.push(sentence)
+    } else if (status === 'denied') {
+      weaknesses.push(sentence)
+    } else {
+      openQuestions.push(sentence)
+    }
+  }
+
+  return { strengths, weaknesses, open_questions: openQuestions }
+}
+
+// Drop redundant/empty scaffolding from a raw insight row before it goes into
+// the response: (a) per-row surface_formula_version is a constant already
+// stated once at brief.formula_version; (b) empty classical_sources[] arrays
+// inside ranked_evidence cost bytes with zero information; (c) ranked_evidence
+// is capped to its top 3 entries by salience with a recover_via pointer for
+// the full chain. Trims byte weight to stay clear of DUAL_OUTPUT_TEXT_THRESHOLD_BYTES.
+function trimInsightRow(row: Record<string, unknown>): Record<string, unknown> {
+  const { surface_formula_version: _drop, ...rest } = row
+  const pc = getProvenanceChain(rest)
+  if (!pc) return rest
+  const trimmedEvidence = (pc.ranked_evidence ?? [])
+    .slice()
+    .sort((a, b) => (b.salience ?? 0) - (a.salience ?? 0))
+    .slice(0, 3)
+    .map(e => {
+      const { classical_sources, ...evRest } = e
+      return (classical_sources && classical_sources.length > 0)
+        ? { ...evRest, classical_sources }
+        : evRest
+    })
+  return {
+    ...rest,
+    provenance_chain: {
+      ...pc,
+      ranked_evidence: trimmedEvidence,
+      ranked_evidence_note: (pc.ranked_evidence?.length ?? 0) > 3
+        ? `top 3 of ${pc.ranked_evidence?.length} — recover full chain via mimamsa_insight_get`
+        : undefined,
+    },
+  }
+}
+
 export function registerP1SynthesisTools(server: McpServer, principal: Principal): void {
 
   // ── 1. mimamsa_insight_get ────────────────────────────────────────────────
@@ -312,8 +508,12 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       depth:    z.enum(['standard', 'deep', 'complete']).optional()
         .describe('Brief depth: standard (default), deep, or complete.'),
+      audience: z.enum(['native', 'third_party']).optional()
+        .describe('Narration voice: native (default, first-person-neutral about the chart\'s own subject) ' +
+          'or third_party (reframes ranked themes as observations for someone reading on the native\'s ' +
+          'behalf — e.g. a parent — without adding any new data source; consumes the same fetched rows).'),
     },
-    async ({ chart_id, depth = 'standard' }) => {
+    async ({ chart_id, depth = 'standard', audience = 'native' }) => {
       if (!chart_id) return errorOutput('synth_chart_brief_get', 'chart_id is required')
       if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
         return errorOutput('synth_chart_brief_get', 'AUTHZ_DENIED', { chart_id })
@@ -362,24 +562,40 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         const calLimit = depth === 'standard' ? 3  : 10
         const negLimit = depth === 'standard' ? 3  : 10
 
+        const trimmedVerdicts = verdicts.map(trimInsightRow)
+        const coverage_receipt = buildCoverageReceipt({
+          topicsCovered: rows.length,
+          domains,
+          verdictCount: verdicts.length,
+          loadBearingCount: Math.min(loadBearing.length, lbLimit),
+          calibratedCount: Math.min(calibrated.length, calLimit),
+          discoveryCount: discResult.rows.length,
+        })
+        const { dissent_flags, dissent_note } = buildDissentFlags(verdicts)
+        const ranked_themes = buildRankedThemes(verdicts, audience)
+        const lel_disclosure =
+          'This reading draws only on chart-derived L5 Mīmāṃsā / L2 Bodha signals — it does not ' +
+          'reference or infer from the native\'s personal event log (no life_event_log join in this query).'
+
         const brief = {
           chart_id,
           depth,
+          audience,
           formula_version: 'mi_darshana_v1.0',
           calibration_mode: 'STRUCTURAL',
           calibration_note: 'L5 SEALED — empirical scores accrue as outcome data is recorded.',
           topics_covered: rows.length,
           domains_covered: domains,
-          verdict_summary: verdicts,
-          load_bearing_signals: loadBearing.slice(0, lbLimit),
-          calibration_strata: calibrated.slice(0, calLimit),
-          negative_knowledge: negKnowledge.slice(0, negLimit),
+          coverage_receipt,
+          dissent_flags,
+          ...(dissent_note ? { dissent_note } : {}),
+          ranked_themes,
+          lel_disclosure,
+          verdict_summary: trimmedVerdicts,
+          load_bearing_signals: loadBearing.slice(0, lbLimit).map(trimInsightRow),
+          calibration_strata: calibrated.slice(0, calLimit).map(trimInsightRow),
+          negative_knowledge: negKnowledge.slice(0, negLimit).map(trimInsightRow),
           top_discoveries: discResult.rows,
-          attention_budget: {
-            head:    '70% — top verdicts and load-bearing conclusions (this brief)',
-            dissent: '20% — contradictions and conditional signals (synth_tail_divergence_get)',
-            tail:    '10% — minority signals (synth_tail_divergence_get)',
-          },
         }
 
         return dualOutput(envelope(brief, 'synth_chart_brief_get', 'synthesis_maha_brief'))
