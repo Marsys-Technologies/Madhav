@@ -232,3 +232,83 @@ No entitlement touched. Branches `feature/r5-2-a2-budget-dignity-orphans` and
 `fix/r5-2-a2-bundle-trim-path` deleted post-merge.
 
 ---
+
+## A3 — CONTENT DEPTH
+
+### Checkpoint methodology (before further content work)
+Ran the full R5.1 W4 battery harness (`evals/r5-w4-full-battery/battery_runner.ts`) live against
+prod at commit `87feb280` (A1+A2 already deployed), with both `GOOGLE_GENERATIVE_AI_API_KEY` and
+`DEEPSEEK_API_KEY` available locally — real LLM grading is genuinely runnable in this environment,
+not assumed. Result written to `evals/r5-w4-full-battery/results_87feb280.json` (committed alongside
+the two prior baseline result files already in the repo).
+
+**Structural finding, load-bearing for the rest of A3:** every Q2–Q9 item (the rubric-graded,
+full-NL-answer class — exactly what A3's "content depth" punch item targets) returned
+`INCONCLUSIVE BY DESIGN`. `battery_runner.ts` itself documents why (line 835): it has no
+orchestrating answering-LLM to read a free-text turn-1 answer and issue a genuine follow-up tool
+call — it can only exercise individual MCP tool calls directly, not a real multi-turn NL
+conversation. This is **not a bug this run can fix** — it is a documented, honest harness
+limitation (not a "grading criteria" change to make, and not something a code fix here resolves).
+The only Q2–Q9 rubric data that exists anywhere is the earlier `results_bcdfed45.json` run,
+presumably produced by a differently-configured harness invocation (a live answering-LLM loop) not
+reproduced by this run's tooling. **Practical consequence:** A3's rubric-floor gate cannot be
+independently re-verified by this run's own tooling; the fixes below target the deterministic Q1/X
+findings this harness CAN verify, which is where genuine, provable progress was available.
+
+### Deterministic Q1/X findings — root cause then fix
+
+**X-2 (entitlement, `no_raw_401_403_text` assertion) — FIXED.** Root cause: `callRegistryCapability`
+(and its 4 sibling copies in the `register_p1_*.ts` files) used a generic error message —
+`` `capability call failed (${res.status}): ...` `` — for every non-ok response, including the clean
+`entitlement_denied` case A1 already produces server-side. The MCP-facing error text therefore
+still embedded the literal transport status code, which the battery's own leak-detector correctly
+flags. `describeProxyFailure` (already built and already used by `callPlatformPrimitive`, per an
+R5.1 C2 fix) produces the clean, denial-specific message without a raw status code — this run wires
+it into `callRegistryCapability` and all 4 sibling copies, closing the same gap uniformly across
+every capability-route caller, not just the one X-2 happens to exercise.
+
+**X-3 (budget, `response_le_ceiling` assertion) — FIXED.** `bodha_signals_get` at `top_k=200` (the
+schema max) measured 234,278 wire bytes live — the exact "234KB class" the brief names, on a tool
+C1 never touched (C1's scope was judgment_query/graha_portrait/pact_query only; A2's estate sweep
+used default args and didn't surface this specific abuse-case size). Replaced the generic `regAlias`
+registration with a bespoke one that applies the same shared `response_budget.ts` trimmer (25KB
+ceiling, `signals` section, minKeep=20) already used everywhere else in this run.
+
+**Q1-A-2 dignity check (`pisces_h12_exalted_present`) — already fixed by A2 Lane 2**, confirmed by
+this checkpoint run (`True`) without further work.
+
+**X-7 (`lagna_frame_scorpio_h8_confirmed`) — investigated, confirmed NOT a product gap.** Queried
+`chart_facts` directly for Abhinandan's Saturn: `sign="Scorpio"`, `house_d1=8` — both facts are
+genuinely correct (Scorpio is the 8th sign from an Aries lagna under whole-sign houses). The
+assertion's own regex (`/house\D?8/i`, allowing at most one non-digit character between "house"
+and "8") cannot match the real field name `"house_d1":8` (five characters between "house" and "8").
+This is a harness pattern-strictness false negative, not touched — editing the frozen battery's own
+assertion logic is out of this run's authority (harness *bug* fixes are permitted with before/after
+proof on an unaffected item; a deterministic pass/fail *pattern* is closer to grading criteria than
+this run should touch unilaterally).
+
+**Deferred, honestly, not silently:**
+- **X-6** (`time_sensitivity_grade_present` on D60 divisional-chart queries): a genuine, real gap —
+  `query_chart_facts` has no confidence/rectification caveat when serving fine vargas like D60,
+  which are classically far more birth-time-sensitive than D1. A correct fix would cite
+  `phala_rectification`'s existing confidence data, not fabricate a new note — real cross-subsystem
+  work, not completed this iteration.
+- **X-8** (stale-note residue): already flagged in R5.1 as "mostly fixed by C2's E-2 work, one
+  marker still present" — a known, small pre-existing residual, not re-investigated this run.
+- **Q1-N-3/N-4/A-1/A-3** (tight 1–2KB byte-ceiling overages on `query_chart_facts`/
+  `ganita_dashas_get`, 2.3–3.5KB observed): real but an order of magnitude smaller than the
+  234KB-class items fixed above; these ceilings are tighter than any budget-discipline precedent
+  elsewhere in this program (8–30KB). Judged lower priority given the one-iteration budget.
+- **Q3-A-2, Q6-N-1, Q8-N-1, Q8-A-1, Q9-A-1** (the actual rubric-floor items A3 was scoped to fix):
+  live-tool spot checks this run (muhurta_finder, get_remedies, judgment_query, graha_portrait) show
+  the underlying MCP tool responses are substantively rich (ranked windows with real factors/
+  citations, real posterior_provenance, real dignity data) — but per the structural finding above,
+  there is no way for this run's own tooling to re-grade the actual rubric-floor question, because
+  the rubric grades a full NL answer this harness cannot generate. Pratinidhi-R-style content
+  rulings on these 5 items are deferred to a session with the answering-LLM harness available,
+  rather than asserted fixed on unverifiable grounds.
+
+### A3 verification (pre-merge)
+`tsc --noEmit` clean. vitest: 96/509 pre-existing failures, unchanged — zero regressions.
+
+---

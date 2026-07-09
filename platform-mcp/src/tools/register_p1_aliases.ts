@@ -18,6 +18,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
+import { describeProxyFailure } from './registry_bridge.js'
+import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -44,7 +46,14 @@ async function callRegistryCap(uri: string, args: Record<string, unknown>, princ
     body: JSON.stringify({ uri, args }),
     signal: AbortSignal.timeout(25_000),
   })
-  if (!res.ok) throw new Error(`[alias] capability ${uri} failed (${res.status})`)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    // R5.2 A3 (battery X-2 finding, same class as registry_bridge.ts's identical fix):
+    // don't leak the raw HTTP status code into the MCP-facing error text — this helper
+    // backs ganita_chart_facts_get/query_chart_facts, which the entitlement battery item
+    // exercises directly.
+    throw new Error(describeProxyFailure(uri, res.status, text))
+  }
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) throw new Error(`[alias] capability error: ${data.error ?? 'unknown'}`)
   return data.content
@@ -135,6 +144,18 @@ function dualOutput(data: unknown) {
 }
 function errOut(tool: string, msg: string, extra?: Record<string, unknown>) {
   return { ...dualOutput({ ok: false, error: msg, tool, ...extra }), isError: true as const }
+}
+
+function signalsSection(): TrimmableSection<Record<string, unknown>> {
+  return {
+    path: 'signals', label: 'signals', minKeep: 20,
+    getArray: (c) => {
+      const arr = c['signals']
+      return Array.isArray(arr) ? arr : undefined
+    },
+    setArray: (c, kept) => { c['signals'] = kept },
+    recover: { instrument: 'bodha_signals_get', hint: 'call again with a smaller top_k, or paginate via offset' },
+  }
 }
 
 // ── Common Zod schemas ────────────────────────────────────────────────────────
@@ -231,18 +252,43 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     { domain: z.string().describe('Life domain (career, health, relationship, wealth, etc.)') }, principal)
 
   // get_signals → bodha_signals_get
-  regAlias(server, 'bodha_signals_get',
-    'L2 Bodha signals ranked by relevance (same as get_signals). R5 W2: frame (lagna/chandra/' +
-    'surya/arudha/karakamsha) annotates a frame_context (never recomputes frozen salience); ' +
-    'paradigm (parashari/jaimini/kp/tajika) filters to one tradition (default: all, unfiltered).',
-    'marsys://tool/L2/query_signals',
+  // R5.2 A3 (battery X-3 finding): top_k=200 (the max this schema allows) measured 234,278
+  // wire bytes live — squarely the "234KB class" the R5.2 brief names, on a tool C1 never
+  // touched (C1's scope was judgment_query/graha_portrait/pact_query only). Each signal
+  // object is legitimately rich (citations, configuration_jsonb, dispositor context), so
+  // this isn't a fabricated bloat — it's an uncapped fan-out with no budget discipline
+  // anywhere in the call path. Same shared trimmer as every other budget fix this run.
+  server.tool(
+    'bodha_signals_get',
+    '[Phase-1 alias] L2 Bodha signals ranked by relevance (same as get_signals). R5 W2: frame ' +
+    '(lagna/chandra/surya/arudha/karakamsha) annotates a frame_context (never recomputes frozen ' +
+    'salience); paradigm (parashari/jaimini/kp/tajika) filters to one tradition (default: all, ' +
+    'unfiltered). Delegates to the same handler as the legacy tool name.',
     {
+      ...ChartBase,
       domain:     z.string().optional(),
       top_k:      z.number().int().min(1).max(200).optional(),
       min_weight: z.number().min(0).max(1).optional(),
       frame:      z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
       paradigm:   z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional(),
-    }, principal)
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
+      if (!chart_id) return errOut('bodha_signals_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L2/query_signals', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
+        }, principal) as Record<string, unknown>
+        const inner = data['content'] as Record<string, unknown> | undefined
+        if (inner) {
+          const budgeted = applyResponseBudget(inner, 25, [signalsSection()])
+          if (budgeted.trim_report) inner['trim_report'] = budgeted.trim_report
+        }
+        return dualOutput(data)
+      } catch (err) { return errOut('bodha_signals_get', String(err), { chart_id }) }
+    }
+  )
 
   // traverse_graph → bodha_graph_traverse_get
   regAlias(server, 'bodha_graph_traverse_get',

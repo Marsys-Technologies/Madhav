@@ -387,7 +387,14 @@ async function callRegistryCapability(
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`[registry_bridge] capability call failed (${res.status}): ${text.slice(0, 200)}`)
+    // R5.2 A3 (battery X-2 finding): the previous generic message embedded the raw HTTP
+    // status code as literal text ("capability call failed (401): ...") — the battery's own
+    // "no_raw_401_403_text" assertion correctly flags that as a leak of transport-layer
+    // detail into the MCP-facing error text. describeProxyFailure already produces the
+    // clean, denial-specific message for the entitlement case (and a generic-but-status-
+    // code-free message otherwise) — callPlatformPrimitive already used it; this call site
+    // never did. Same fix, same file, finally applied uniformly.
+    throw new Error(describeProxyFailure(uri, res.status, text))
   }
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) {
