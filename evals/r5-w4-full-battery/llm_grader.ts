@@ -46,7 +46,7 @@ export interface RubricResult {
 
 const GEMINI_KEY = process.env['GOOGLE_GENERATIVE_AI_API_KEY'] ?? ''
 const DEEPSEEK_KEY = process.env['DEEPSEEK_API_KEY'] ?? ''
-const GEMINI_MODEL = 'gemini-2.5-flash'
+const GEMINI_MODEL = 'gemini-flash-latest' // 'gemini-2.5-flash' pinned name was retired by Google (404 NOT_FOUND observed 2026-07-10); using the rolling alias to avoid repeat breakage
 const DEEPSEEK_MODEL = 'deepseek-chat'
 
 interface GraderCallResult {
