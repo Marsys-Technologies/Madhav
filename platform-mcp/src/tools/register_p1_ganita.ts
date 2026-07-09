@@ -146,6 +146,75 @@ const STRUCTURAL_FACET_URI: Record<string, string> = {
   graha_yuddha: 'marsys://tool/L1/get_yoga_dosha',
 }
 
+// R5.3 B2 (Q9-N-3 ruling): Pancha Mahapurusha classical rule table (own-sign/exaltation +
+// kendra). Static classical astrology (not chart data) — used only to LABEL already-fetched
+// per-chart facts (yoga_label rows + graha_position sign/house_d1), never to compute a new
+// chart value (B.10).
+const KENDRA_HOUSES = new Set([1, 4, 7, 10])
+const PANCHA_MAHAPURUSHA: {
+  yoga: string; karaka: string; planet: string; ownSigns: string[]; exaltSign: string
+}[] = [
+  { yoga: 'Ruchaka', karaka: 'Mars',    planet: 'MAR', ownSigns: ['Aries', 'Scorpio'],       exaltSign: 'Capricorn' },
+  { yoga: 'Bhadra',  karaka: 'Mercury', planet: 'MER', ownSigns: ['Gemini', 'Virgo'],        exaltSign: 'Virgo' },
+  { yoga: 'Hamsa',   karaka: 'Jupiter', planet: 'JUP', ownSigns: ['Sagittarius', 'Pisces'],  exaltSign: 'Cancer' },
+  { yoga: 'Malavya', karaka: 'Venus',   planet: 'VEN', ownSigns: ['Taurus', 'Libra'],        exaltSign: 'Pisces' },
+  { yoga: 'Sasa',    karaka: 'Saturn',  planet: 'SAT', ownSigns: ['Capricorn', 'Aquarius'],  exaltSign: 'Libra' },
+]
+
+/** Builds per-yoga formed/not-formed sentences for the 5 Pancha Mahapurusha yogas from rows
+ *  and planetary positions THIS RESPONSE ALREADY FETCHED (yoga_label presence = fired, per
+ *  JL-004's ratified convention; graha_position sign/house_d1 = already-computed L1 facts,
+ *  not a new derivation). Zero new computation. */
+function buildPanchaMahapurushaVerdict(
+  yogaDoshaRows: Record<string, unknown>[],
+  posByPlanet: Record<string, { sign?: string; house?: number; factId?: string }>,
+) {
+  const firedYogaNames = new Set(
+    yogaDoshaRows
+      .filter(r => r['fact_category'] === 'yoga_label')
+      .map(r => String(r['fact_value_text'] ?? '')),
+  )
+
+  const perYoga = PANCHA_MAHAPURUSHA.map(entry => {
+    const pos = posByPlanet[entry.planet]
+    const formed = firedYogaNames.has(`${entry.yoga} Yoga`) || firedYogaNames.has(`${entry.karaka} Yoga`)
+    const sourceRow = yogaDoshaRows.find(
+      r => r['fact_category'] === 'yoga_label' && String(r['fact_value_text'] ?? '').startsWith(entry.yoga),
+    )
+    const citations = (sourceRow?.['fact_value_jsonb'] as { classical_citations?: { text_id: string; chapter?: number }[] } | undefined)
+      ?.classical_citations
+    const citationText = citations?.length
+      ? citations.map(c => c.chapter ? `${c.text_id} ch.${c.chapter}` : c.text_id).join(', ')
+      : undefined
+
+    let reason: string
+    if (formed) {
+      const dignity = pos?.sign === entry.exaltSign ? 'exalted' : entry.ownSigns.includes(pos?.sign ?? '') ? 'own sign' : 'condition satisfied'
+      reason = `${entry.karaka} is in ${pos?.sign ?? 'unknown sign'} (${dignity})${typeof pos?.house === 'number' ? `, house ${pos.house}` : ''} — the own/exaltation-in-kendra condition is satisfied.` +
+        (citationText ? ` Classical basis: ${citationText}.` : '')
+    } else if (pos?.sign && !entry.ownSigns.includes(pos.sign) && pos.sign !== entry.exaltSign) {
+      reason = `${entry.karaka} is in ${pos.sign} — neither own sign (${entry.ownSigns.join('/')}) nor exalted (${entry.exaltSign}); the condition fails on the sign leg.`
+    } else if (pos?.sign && (entry.ownSigns.includes(pos.sign) || pos.sign === entry.exaltSign) && typeof pos.house === 'number' && !KENDRA_HOUSES.has(pos.house)) {
+      reason = `${entry.karaka} is in ${pos.sign} (own/exalted sign) but house ${pos.house} is not a kendra (1st/4th/7th/10th); the condition fails on the kendra leg.`
+    } else {
+      reason = `${entry.karaka}'s position was not available in this response to state a specific failed condition; not formed per its absence from the yoga_label rows served.`
+    }
+
+    return {
+      yoga: `${entry.yoga} (${entry.karaka} Mahapurusha Yoga)`,
+      status: formed ? 'formed' : 'not formed',
+      statement: `${entry.yoga} (${entry.karaka} Mahapurusha Yoga) is ${formed ? 'formed' : 'not formed'}. ${reason}`,
+    }
+  })
+
+  const formedList = perYoga.filter(p => p.status === 'formed')
+  const summary = formedList.length > 0
+    ? `Yes, ${formedList.length} of 5 Pancha Mahapurusha yoga${formedList.length === 1 ? '' : 's'} — ${formedList.map(p => p.yoga).join(', ')} — ${formedList.length === 1 ? 'is' : 'are'} formed; the other ${5 - formedList.length} ${5 - formedList.length === 1 ? 'is' : 'are'} not formed.`
+    : 'No Pancha Mahapurusha yoga is formed in this chart.'
+
+  return { summary, per_yoga: perYoga }
+}
+
 const CONDITION_FACET_URI: Record<string, string> = {
   dignity:  'marsys://tool/L1/get_dignity',
   avasthas: 'marsys://tool/L1/get_avasthas',
@@ -210,7 +279,11 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'parivartana (exchange), yoga_fires (classical yoga patterns), dosha_fires (affliction patterns), ' +
     'conjunctions (same-sign occupancy), sambandha (relational bonds), ' +
     'functional (functional benefic/malefic roles), graha_yuddha (planetary war). ' +
-    'Specify exactly one facet per call.',
+    'Specify exactly one facet per call. ' +
+    'response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope; for ' +
+    'facet=dosha_fires it additionally states an explicit Kala Sarpa Dosha natal verdict ' +
+    '(fired/not-fired, Rahu/Ketu house axis) sourced from the genuinely computed ' +
+    'kala_sarpa_per_varga L1 fact rather than the unrelated dosha_label catalog row.',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       facet: z.enum([
@@ -221,17 +294,100 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
       offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+      response_format: z.enum(['legacy', 'v3']).optional()
+        .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/" +
+          'drill_pointers/chart_header — for facet=dosha_fires includes an explicit Kala Sarpa verdict).'),
     },
-    async ({ chart_id, facet, ayanamsha_id, limit, offset }) => {
+    async ({ chart_id, facet, ayanamsha_id, limit, offset, response_format }) => {
       if (!chart_id) return errorOutput('ganita_structural_get', 'chart_id is required')
       const uri = STRUCTURAL_FACET_URI[facet]
       if (!uri) return errorOutput('ganita_structural_get', `Unknown facet: ${facet}`)
       try {
+        const resolvedOffset = offset ?? 0
+        const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
+        const format = resolveEnvelopeFormat(response_format)
         const data = await callRegistryCapability(uri, {
-          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
-          limit: limit ?? 25000, offset: offset ?? 0, facet,
-        }, principal)
-        return dualOutput(envelope({ facet, ...( typeof data === 'object' && data ? data : { rows: data }) }, 'ganita_structural_get'))
+          chart_id, ayanamsha_id: resolvedAyanamsha,
+          limit: limit ?? 25000, offset: resolvedOffset, facet,
+        }, principal) as Record<string, unknown> | undefined
+        const merged: Record<string, unknown> = { facet, ...(typeof data === 'object' && data ? data : { rows: data }) }
+
+        if (format !== 'v3') {
+          return dualOutput(envelope(merged, 'ganita_structural_get'))
+        }
+
+        // ── v3 population (R5.3 B2, Q9-N-1: dosha_fires had NO narration of any kind — always
+        // legacy format; see the FACET_TO_TYPE + kala_sarpa_per_varga fixes in get_yoga_dosha.ts
+        // for the wiring + data-availability half of this fix) ──
+        const rows = Array.isArray(merged['rows']) ? merged['rows'] as Record<string, unknown>[] : []
+        const grounding = extractGroundingFromFactRows(rows)
+        const judgment_flags: string[] = []
+        if (rows.length === 0) judgment_flags.push('zero_rows_returned')
+
+        const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'query_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha.', pointer_type: 'opposing_yoga' },
+        ]
+
+        let verdict: unknown = {
+          facet,
+          rows_served: rows.length,
+          note: 'Row-count receipt; a facet-specific narrated verdict is added for facet=dosha_fires.',
+        }
+
+        if (facet === 'dosha_fires') {
+          const ks = merged['kala_sarpa_per_varga'] as
+            | { natal?: Record<string, unknown>[]; divisional_fired?: Record<string, unknown>[] }
+            | undefined
+          const natalRow = ks?.natal?.[0]
+          const natalDetail = natalRow?.['fact_value_jsonb'] as
+            | { fires?: boolean; rahu_house?: number; ketu_house?: number }
+            | undefined
+          const catalogRow = rows.find(r => r['fact_category'] === 'dosha_label' && r['fact_value_text'] === 'Kala Sarpa Dosha')
+
+          if (natalDetail && typeof natalDetail.fires === 'boolean') {
+            const fires = natalDetail.fires === true
+            const divisionalFiredList = (ks?.divisional_fired ?? [])
+              .map(r => (r['fact_value_jsonb'] as { varga?: string } | undefined)?.varga)
+              .filter((v): v is string => Boolean(v))
+            verdict = {
+              facet,
+              kala_sarpa_dosha: {
+                natal_verdict: fires ? 'formed' : 'not_formed',
+                statement: fires
+                  ? `Kala Sarpa Dosha IS formed in the natal (D1/Rasi) chart — Rahu occupies house ${natalDetail.rahu_house}, Ketu house ${natalDetail.ketu_house}, with all seven non-nodal grahas confined to the arc between them on one side.`
+                  : `Kala Sarpa Dosha is NOT formed in the natal (D1/Rasi) chart. The Rahu-Ketu axis is present — Rahu occupies house ${natalDetail.rahu_house}, Ketu house ${natalDetail.ketu_house} — but the classical condition requires ALL SEVEN non-nodal grahas confined within the arc between Rahu and Ketu on one side; this D1 detection returning not-fired means at least one graha falls outside that arc.`,
+                rahu_house: natalDetail.rahu_house,
+                ketu_house: natalDetail.ketu_house,
+                source_fact_id: natalRow?.['fact_id'],
+                reconciliation_note: catalogRow
+                  ? `A generic "Kala Sarpa Dosha" catalog row does appear among this chart's dosha_label rows (fact_id ${String(catalogRow['fact_id'])}), but its cited constituent fact is a generic placeholder unrelated to Rahu/Ketu placement, shared by dozens of unrelated catalog rows — it is NOT the verified per-chart computation. The kala_sarpa_per_varga fact above (fact_category=kala_sarpa_per_varga, fact_key=ks_detection, varga=D1) is the authoritative, genuinely per-chart-computed Rahu/Ketu detection.`
+                  : 'No competing "Kala Sarpa Dosha" catalog row was present in this page.',
+                divisional_charts_with_fires_true: divisionalFiredList,
+                divisional_note: divisionalFiredList.length > 0
+                  ? `Several divisional (varga) charts DO show Kala Sarpa formation (fires=true): ${divisionalFiredList.join(', ')}. These are DIVISIONAL findings, not natal — they do not contradict the D1 natal verdict above.`
+                  : 'No divisional (varga) chart in this response showed fires=true.',
+              },
+            }
+            drill_pointers.push({ instrument: 'ganita_structural_get', hint: 'facet=dispositors surfaces the full kala_sarpa_per_varga row set (all vargas) directly.', pointer_type: 'other' })
+          }
+        }
+
+        let chart_header: ChartHeader | null = null
+        try {
+          chart_header = await callRegistryCapability('marsys://tool/L1/get_chart_header', {
+            chart_id, ayanamsha_id: resolvedAyanamsha,
+          }, principal) as ChartHeader
+        } catch {
+          chart_header = null // frame-safety header is best-effort; never fails the instrument
+        }
+
+        const total = typeof merged['total'] === 'number' ? merged['total'] as number : null
+
+        return dualOutput(envelope(merged, 'ganita_structural_get', {
+          offset: resolvedOffset,
+          limit: limit ?? 25000,
+          total,
+        }, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }))
       } catch (err) {
         return errorOutput('ganita_structural_get', String(err), { chart_id, facet })
       }
@@ -400,6 +556,28 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
           const cat = String(r['fact_category'] ?? 'unknown')
           categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1
         }
+        // R5.3 B2 (Q9-N-3 ruling): the row-count receipt above is a receipt, not narration.
+        // Fetch graha positions (already-computed L1 fact_category, zero new computation) to
+        // label the 5 named Pancha Mahapurusha yogas formed/not-formed with a citable reason —
+        // best-effort: if the fetch fails, verdict still ships with the receipt fields above.
+        let panchaMahapurusha: ReturnType<typeof buildPanchaMahapurushaVerdict> | undefined
+        try {
+          const positionsData = await callRegistryCapability('marsys://tool/L1/get_positions', {
+            chart_id, ayanamsha_id: resolvedAyanamsha, categories: ['graha_position'], limit: 200,
+          }, principal) as { rows?: Record<string, unknown>[] } | undefined
+          const posByPlanet: Record<string, { sign?: string; house?: number; factId?: string }> = {}
+          for (const r of positionsData?.rows ?? []) {
+            const subj = String(r['fact_subject'] ?? '')
+            if (!subj) continue
+            const slot = (posByPlanet[subj] ??= {})
+            if (r['fact_key'] === 'sign') slot.sign = String(r['fact_value_text'] ?? '')
+            if (r['fact_key'] === 'house_d1' && r['fact_value_num'] != null) slot.house = Number(r['fact_value_num'])
+          }
+          panchaMahapurusha = buildPanchaMahapurushaVerdict(rows, posByPlanet)
+        } catch {
+          panchaMahapurusha = undefined // best-effort narration enrichment; never fails the instrument
+        }
+
         const verdict = {
           yogas_fired: categoryCounts['yoga_label'] ?? 0,
           doshas_fired: categoryCounts['dosha_label'] ?? 0,
@@ -407,6 +585,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
           panchaka_flag_rows: categoryCounts['panchaka_flag'] ?? 0,
           category_counts: categoryCounts,
           note: 'Counts are of ROWS SERVED IN THIS PAGE only — see pagination.total for the full count.',
+          ...(panchaMahapurusha ? { pancha_mahapurusha: panchaMahapurusha } : {}),
         }
 
         const grounding = extractGroundingFromFactRows(rows)
