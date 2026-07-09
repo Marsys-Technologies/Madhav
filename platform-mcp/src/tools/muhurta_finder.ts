@@ -156,6 +156,13 @@ export interface MuhurtaFinderResult {
   windows: MuhurtaWindow[]
   window_count: number
   provenance_envelope: MuhurtaProvenanceEnvelope
+  /**
+   * R5.1 C3 — present (and windows: []) when the requested date_range has no
+   * real panchanga_daily coverage (outside the rolling +12-month populated
+   * window). Never fabricated data for out-of-window dates — see
+   * brahmagyan/phala/muhurta.py muhurta_finder()'s empty_reason construction.
+   */
+  empty_reason?: string
 }
 
 // ── Tool description ───────────────────────────────────────────────────────────
@@ -195,6 +202,51 @@ export const MUHURTA_FINDER_DESCRIPTION =
  *   - If chart_id has no pre-computed rows, falls back to on-the-fly scoring.
  *   - Invalid action_type returns 422 validation error.
  */
+/**
+ * Unwrap a surgical-primitive result into the raw MuhurtaFinderResult object.
+ *
+ * `getToolByName().retrieve()` (tool_name_bridge.ts) wraps EVERY capability
+ * handler's return value into the generic legacy ToolBundle shape
+ * (`{tool_bundle_id, results: [{content: "<JSON string>"}], ...}`) via
+ * `capabilityResultToToolBundle` / `toToolBundleResults` — it never returns
+ * the capability's raw object directly. `env.result` from
+ * `callPlatformPrimitive()` is therefore that ToolBundle, not
+ * `MuhurtaFinderResult`, so a direct cast (`env.result as MuhurtaFinderResult`)
+ * always misses `.windows` and silently degrades to an empty array regardless
+ * of what real data the underlying query_muhurat capability returned.
+ *
+ * This handles both shapes defensively: the ToolBundle (`results[0].content`,
+ * either a JSON string or an already-parsed object depending on bridge
+ * version) and a hypothetical direct-object result, so it keeps working if
+ * the bridge's wrapping behavior ever changes.
+ */
+function unwrapMuhurtaFinderResult(raw: unknown): MuhurtaFinderResult | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+
+  // Already the raw shape (has `windows` directly) — no ToolBundle wrapper.
+  if ('windows' in (raw as Record<string, unknown>)) {
+    return raw as MuhurtaFinderResult
+  }
+
+  // ToolBundle shape: { results: [{ content: string | object }], ... }
+  const bundle = raw as { results?: Array<{ content?: unknown }> }
+  if (Array.isArray(bundle.results) && bundle.results.length > 0) {
+    const content = bundle.results[0]?.content
+    if (typeof content === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(content)
+        if (parsed && typeof parsed === 'object') return parsed as MuhurtaFinderResult
+      } catch {
+        // Not JSON — fall through to undefined below.
+      }
+    } else if (content && typeof content === 'object') {
+      return content as MuhurtaFinderResult
+    }
+  }
+
+  return undefined
+}
+
 export async function handleMuhurtaFinder(
   input: MuhurtaFinderInput,
   principal: Principal
@@ -221,7 +273,7 @@ export async function handleMuhurtaFinder(
   const env = result.envelope
   if (!env.ok) return env
 
-  const resultData = env.result as MuhurtaFinderResult | undefined
+  const resultData = unwrapMuhurtaFinderResult(env.result)
   const windows: MuhurtaWindow[] = resultData?.windows ?? []
 
   // Assert B.3 grounding contract: surface any citation-null windows as a warning
@@ -253,17 +305,24 @@ export async function handleMuhurtaFinder(
     b3_citation_compliant: uncited.length === 0,
   }
 
+  const finalResult: MuhurtaFinderResult = {
+    ok: true,
+    chart_id: input.chart_id,
+    action_type: input.action_type,
+    query_window: input.date_range,
+    windows,
+    window_count: resultData?.window_count ?? windows.length,
+    provenance_envelope: provenanceEnvelope,
+  }
+  // R5.1 C3: propagate the honest empty-with-reason signal for out-of-window
+  // date ranges instead of silently dropping it (never fabricate windows).
+  if (resultData?.empty_reason) {
+    finalResult.empty_reason = resultData.empty_reason
+  }
+
   return {
     ...env,
-    result: {
-      ok: true,
-      chart_id: input.chart_id,
-      action_type: input.action_type,
-      query_window: input.date_range,
-      windows,
-      window_count: resultData?.window_count ?? windows.length,
-      provenance_envelope: provenanceEnvelope,
-    } satisfies MuhurtaFinderResult,
+    result: finalResult,
   }
 }
 
