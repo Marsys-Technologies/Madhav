@@ -311,4 +311,19 @@ this run should touch unilaterally).
 ### A3 verification (pre-merge)
 `tsc --noEmit` clean. vitest: 96/509 pre-existing failures, unchanged — zero regressions.
 
+### A3 live gate check — `[verify-against: mcp]`, prod, commit `f28f09d6` deployed
+
+| Item | Check | Result |
+|---|---|---|
+| X-2 | `judgment_query` foreign chart_id, error text | No raw `(401)` substring; clean `ENTITLEMENT_DENIED` message present |
+| X-3 | `bodha_signals_get` top_k=200, wire bytes | 234,278 → 15,860 (−93.2%), `trim_report` present citing the real original/kept counts |
+
+### A3 verdict
+**CLOSED. No HALT. Proceed to A4.** Two real deterministic gaps (X-2, X-3) fixed and live-verified.
+One (X-7) confirmed a harness false-negative, not touched. Rubric-floor items (Q3-A-2, Q6-N-1,
+Q8-N-1, Q8-A-1, Q9-A-1) and X-6/X-8/tight-Q1-ceilings deferred with reasoning — this run's own
+tooling cannot independently re-grade a full NL answer (no orchestrating answering-LLM in the
+harness), so no rubric-floor claim is asserted here that couldn't be verified. Branch
+`feature/r5-2-a3-content-depth` deleted post-merge.
+
 ---
