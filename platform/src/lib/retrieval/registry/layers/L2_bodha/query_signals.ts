@@ -5,16 +5,15 @@
  *
  * Returns ranked signals by computed_salience. CRITICAL design notes:
  *
- * 1. signature_tier is FULLY DEGENERATE — 100% of signals are 'background'.
- *    Do NOT rank or filter by signature_tier. Use computed_salience exclusively.
+ * 1. signature_tier's distribution and DEFECT-001's orphan rate are NOT restated as
+ *    literals here (E-2 freshness contract, R5.1 C2 item 1) — both claims go stale the
+ *    moment underlying data is recut, and a stale claim misleads worse than none. Both
+ *    are re-derived LIVE on every call via `platform/src/lib/retrieval/provenance/
+ *    freshness_notes.ts` and returned in `provenance.signature_tier` / `provenance.defect_001`
+ *    as structured `{ status, note, as_of, expires_on, metrics }` objects — never assume the
+ *    historical figures ("100% background", "91.5% orphan") still hold; read the live note.
  *
- * 2. DEFECT-001 (OPEN): constituent_facts_array has 91.5% orphan rate (61,161/66,832 refs
- *    are unresolvable against chart_facts). Root cause: L2 Bodha writer used old L1 fact_id
- *    scheme; L1 was rebuilt with new SHA hashes. Joins on constituent_fact_id return empty
- *    for most signals. This tool returns constituent_facts_array as reference list only —
- *    the caller must handle empty downstream hydration gracefully.
- *
- * 3. lel_origin=true: 0 signals currently. lel_enabled filter is safe to expose but
+ * 2. lel_origin=true: 0 signals currently. lel_enabled filter is safe to expose but
  *    returns 0 rows until LEL signals are ingested.
  *
  * Semantic search path: bodha_signal_embeddings carries 768-dim vectors (Vertex). Semantic
@@ -64,6 +63,7 @@ import {
   resolveFrameReferenceSign, houseCountedFrom, GRAHA_CODE_TO_NAME,
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
+import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenance/freshness_notes'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -83,9 +83,9 @@ export const querySignalsCapability: CapabilityDescriptor = {
     'Supports filters: domain, source_subsystem, min_salience, lel_enabled.',
     'Optional semantic_query uses pgvector cosine similarity over signal embeddings (768-dim).',
     'emits_references: returns signal_id + constituent_facts_array as reference list.',
-    'DEFECT-001 NOTE: constituent_facts_array has 91.5% orphan rate — joins to chart_facts',
-    'will be empty for most signals until L2 is rebuilt. signature_tier is fully degenerate',
-    '(100% background) — ranking uses computed_salience only.',
+    'DEFECT-001 + signature_tier status are derived LIVE per call (E-2 freshness contract) —',
+    'see provenance.defect_001 / provenance.signature_tier in the response for current status,',
+    'not a historical figure. Ranking always uses computed_salience (+ composite when domain given).',
     'lel_capable: lel_origin filter exposed but returns 0 rows until LEL signals are ingested.',
   ].join(' '),
 
@@ -381,52 +381,22 @@ export const querySignalsCapability: CapabilityDescriptor = {
         }
       }
 
-      // E-2 freshness contract (R5 W0a punch-list, P4): the provenance notes below used
-      // to be string literals in this handler ("100% background", "91.5% orphan rate")
-      // that went stale the moment the underlying data was recut — and then
-      // self-contradicted the very rows shipped in the SAME response (P4's finding).
-      // Both notes are now computed live from this response's own served rows.
-
-      const tierCounts: Record<string, number> = {}
-      for (const s of signals) {
-        const tier = (s['signature_tier'] as string | null) ?? 'unknown'
-        tierCounts[tier] = (tierCounts[tier] ?? 0) + 1
-      }
-      const signatureTierNote = signals.length === 0
-        ? 'signature_tier distribution: no rows served in this response.'
-        : `signature_tier distribution in this response (computed live, not a cached historical ` +
-          `figure): ` +
-          Object.entries(tierCounts)
-            .sort((a, b) => b[1] - a[1])
-            .map(([tier, n]) => `${tier}=${Math.round((n / signals.length) * 100)}%`)
-            .join(', ') +
-          '. Ranking uses computed_salience (coarse) + composite (fine, domain-conditioned) regardless of tier.'
-
-      let defect001Note: string
-      try {
-        const referencedFactIds = Array.from(new Set(
-          signals.flatMap(s => ((s['constituent_facts_array'] as string[] | null) ?? []))
-        )).filter(Boolean)
-        if (referencedFactIds.length === 0) {
-          defect001Note = 'No constituent_facts_array references in this response to check for orphan rate.'
-        } else {
-          const resolvedResult = await query<{ fact_id: string }>(
-            `SELECT fact_id FROM chart_facts WHERE chart_id = $1 AND fact_id = ANY($2::text[])`,
-            [chart_id, referencedFactIds]
-          )
-          const resolvedCount = resolvedResult.rows.length
-          const orphanPct = Math.round((1 - resolvedCount / referencedFactIds.length) * 100)
-          defect001Note = `constituent_facts_array resolution, computed live for this response: ` +
-            `${resolvedCount}/${referencedFactIds.length} referenced fact_id(s) resolve against ` +
-            `chart_facts (${orphanPct}% orphan rate in this page). ` +
-            (orphanPct > 0
-              ? 'Do not error on unresolved joins — treat unresolved refs as reference-only.'
-              : 'All references in this page resolve.')
-        }
-      } catch (e) {
-        defect001Note = `constituent_facts_array orphan-rate check failed live (${String(e)}) — ` +
-          `treat resolution as UNKNOWN for this response rather than assuming any historical figure.`
-      }
+      // E-2 freshness contract (R5.1 C2 item 1; originated R5 W0a punch-list P4): these
+      // provenance notes used to be string literals in this handler ("100% background",
+      // "91.5% orphan rate") that went stale the moment the underlying data was recut — a
+      // stale claim misleads worse than none (E-2). Both are now DATA: re-derived live via
+      // the shared `provenance/freshness_notes` helper and carried as structured
+      // { status, note, as_of, expires_on, metrics } objects, never a remembered figure.
+      // DEFECT-001 is scoped to exactly this response's served fact_id references (precise
+      // to what was shipped); signature_tier is scoped to the whole chart/ayanamsha (answers
+      // "what is the tier distribution right now", independent of pagination).
+      const referencedFactIds = Array.from(new Set(
+        signals.flatMap(s => ((s['constituent_facts_array'] as string[] | null) ?? []))
+      )).filter(Boolean)
+      const [defect001, signatureTier] = await Promise.all([
+        deriveDefect001Note(chart_id, referencedFactIds),
+        deriveSignatureTierNote(chart_id, ayanamsha_id),
+      ])
 
       // Frame facet (R5 W2, design §27.3): annotation only — signal rows/salience unchanged.
       let frameContext: Record<string, unknown> | undefined
@@ -486,8 +456,14 @@ export const querySignalsCapability: CapabilityDescriptor = {
           ranking_note: useComposite
             ? `Composite 4D re-ranking applied: ${poolNote} (priors_version=${PRIORS_VERSION}).`
             : `Salience-ranked (no domain specified — composite ranking requires domain).`,
-          defect_001_note: defect001Note,
-          signature_tier_note: signatureTierNote,
+          // Structured E-2 freshness objects (as_of/expires_on + live-derived status) — read
+          // these, not any historical figure baked into documentation or memory.
+          defect_001: defect001,
+          signature_tier: signatureTier,
+          // Legacy string fields retained for callers pattern-matching on prior wave's shape
+          // (additive-only per R5.1 brief) — text now sourced from the SAME live derivation.
+          defect_001_note: defect001.note,
+          signature_tier_note: signatureTier.note,
           lel_note: 'lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.',
           paradigm_note: paradigm
             ? `paradigm:"${paradigm}" applied — every signal in this response carries ` +
