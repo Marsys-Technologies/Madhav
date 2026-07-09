@@ -36,6 +36,27 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformBundle } from '../../client.js'
 import type { Principal, McpEnvelopeError } from '../../types.js'
+import { applyResponseBudget, type TrimmableSection } from '../../lib/response_budget.js'
+
+// R5.2 A2 (punch #3, estate-wide budget sweep): this tool's default call measured 544KB
+// on the native chart (worst offender in the estate) — envelope.bundle_entries carries the
+// full un-ceilinged 8-subsystem scaffold dump. This tool is already documented elsewhere
+// (register_p1_aliases.ts DEFERRED list) as the legacy path being superseded by
+// bodha_bundle_get; applying the shared budget trimmer here rather than a deeper rewrite
+// keeps the fix minimal and reversible pending that replacement.
+const HOLISTIC_BUNDLE_BUDGET_KB = 30
+
+function bundleEntriesSection(): TrimmableSection<Record<string, unknown>> {
+  return {
+    path: 'bundle_entries', label: 'bundle_entries', minKeep: 2,
+    getArray: (c) => {
+      const arr = c['bundle_entries']
+      return Array.isArray(arr) ? arr : undefined
+    },
+    setArray: (c, kept) => { c['bundle_entries'] = kept },
+    recover: { instrument: 'bodha_bundle_get', hint: 'full multi-subsystem bundle (successor tool)' },
+  }
+}
 
 // REMEDIATION D7: NATIVE_CHART_ID removed. chart_id is now REQUIRED from caller.
 // chart_agnostic_gate RULE-1/RULE-4: no default on chart_id.
@@ -90,10 +111,16 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
           }
         }
 
+        const resultObj = envelope.result as Record<string, unknown>
+        const budgeted = applyResponseBudget(resultObj, HOLISTIC_BUNDLE_BUDGET_KB, [bundleEntriesSection()])
+        if (budgeted.trim_report) {
+          budgeted.content['trim_report'] = budgeted.trim_report
+        }
+
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify(envelope.result, null, 2),
+            text: JSON.stringify(budgeted.content, null, 2),
           }],
         }
       } catch (err) {

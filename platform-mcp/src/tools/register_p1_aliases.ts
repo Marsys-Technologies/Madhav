@@ -360,6 +360,25 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'L2 chart quality scorecard (same as get_chart_quality)',
     'marsys://tool/L2/query_quality_scorecard', {}, principal)
 
+  // R5.2 A2 (punch #5, orphaned C2 item 4): query_predictive_anchors's capability URI had
+  // no public MCP tool wired to it — phala_anchors_get is a same-named but functionally
+  // distinct sidecar-backed alias calling /api/compute/phala/event_anchors, not this
+  // registry capability, so the R5.1 C2 posterior-provenance fix (base_rate_source +
+  // honest cardinality-null blocks on phala_anchors rows) was correct but unreachable by
+  // any live MCP tool call. Named distinctly from phala_anchors_get to avoid repeating
+  // that collision.
+  regAlias(server, 'phala_predictive_anchors_get',
+    'L4 predictive anchors (phala_anchors/ph_nimitta) — magnitude, confidence band, karmic frame, ' +
+    'malleability, and posterior_provenance (base_rate_source + honest cardinality-null where unfit) per anchor',
+    'marsys://tool/L4/query_predictive_anchors',
+    {
+      domain: z.string().optional(),
+      event_type: z.string().optional(),
+      direction: z.string().optional(),
+      horizon_tier: z.string().optional(),
+      top_k: z.number().optional(),
+    }, principal)
+
   // list_assets → catalog_assets_list
   server.tool(
     'catalog_assets_list',
