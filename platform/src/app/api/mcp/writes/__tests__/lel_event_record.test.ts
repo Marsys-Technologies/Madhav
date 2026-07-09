@@ -62,21 +62,39 @@ beforeEach(() => {
 })
 
 describe('POST /api/mcp/writes/lel_event_record — authz', () => {
-  it('denies a view-only principal (perm !== all) with 401', async () => {
+  it('denies a view-only principal (perm !== all) with 401 and the DISTINCT entitlement_denied envelope (R5.1 C2 item 3 — Denial ≠ empty)', async () => {
     mockAuthorize.mockResolvedValue('view')
     const { POST } = await import('../[action]/route')
     const res = await POST(makeReq({ chart_id: CHART, event: VALID_EVENT }), PARAMS)
     expect(res.status).toBe(401)
     expect(mockRecordLelEvent).not.toHaveBeenCalled()
     expect(mockEnqueue).not.toHaveBeenCalled()
+
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    // NEW additive error class — never the bare 'auth' this used to carry, so a caller can
+    // programmatically distinguish "you are denied" from any other 401/auth failure.
+    expect(body.error.class).toBe('entitlement_denied')
+    expect(body.denial).toEqual({
+      reason: 'entitlement',
+      chart_id: CHART,
+      permission_found: 'deny',
+      permission_required: 'all',
+      distinct_from_empty: true,
+    })
   })
 
-  it('denies a deny principal with 401', async () => {
+  it('denies a deny principal with 401 and the distinct denial block', async () => {
     mockAuthorize.mockResolvedValue('deny')
     const { POST } = await import('../[action]/route')
     const res = await POST(makeReq({ chart_id: CHART, event: VALID_EVENT }), PARAMS)
     expect(res.status).toBe(401)
     expect(mockRecordLelEvent).not.toHaveBeenCalled()
+
+    const body = await res.json()
+    expect(body.error.class).toBe('entitlement_denied')
+    expect(body.denial.distinct_from_empty).toBe(true)
+    expect(body.denial.chart_id).toBe(CHART)
   })
 })
 

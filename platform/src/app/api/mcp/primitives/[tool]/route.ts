@@ -41,6 +41,7 @@ import {
   buildEnvelope,
   buildErrorEnvelope,
   buildEpistemicsBlock,
+  buildEntitlementDenialEnvelope,
 } from '@/lib/mcp/epistemics'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { traceEmitter } from '@/lib/trace/emitter'
@@ -204,8 +205,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     const role = await resolveMcpPrincipalRole(userUid)
     const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
     if (perm === 'deny') {
+      // R5.1 C2 item 3 (Denial ≠ empty): distinct entitlement_denied envelope, never the
+      // bare 'auth' class — an MCP caller must be able to tell "you have no rights here"
+      // apart from "this filter matched nothing" (Ring-3 red-team finding).
       return NextResponse.json(
-        buildErrorEnvelope({ error_class: 'auth', message: 'AUTHZ_DENIED', remediation: `Caller does not have access to chart ${chartId}` }),
+        buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
         { status: 401 }
       )
     }
