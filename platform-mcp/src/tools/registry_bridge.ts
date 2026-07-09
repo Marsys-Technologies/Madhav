@@ -1408,6 +1408,65 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
   )
 
+  // ── chart_snapshot (R5.1 C2 item 7 — compact chat-renderable D1/D9 grid) ──
+  // marsys://tool/L1/chart_snapshot — "the 'show me the chart' answer": 12-rashi text grid,
+  // occupants w/ degrees, Lagna marked, <=2KB. D9 (navamsa) only on explicit include_navamsa=true.
+  server.tool(
+    'chart_snapshot',
+    'The compact "show me the chart" answer: a 12-rashi D1 (rashi chart) text grid — every graha\'s sign + degree-in-sign, Lagna sign clearly marked — sized for direct display in a chat client (hard-capped at 2KB). Pass include_navamsa=true to ALSO get the D9 (navamsa) grid in the same response — D9 is never included by default. Renders already-computed chart_divisionals positions; no new computation. chart_id is required.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      include_navamsa: z.boolean().optional().describe('Also include the D9 (navamsa) grid. Default: false (D1 only).'),
+    },
+    async ({ chart_id, ayanamsha_id, include_navamsa }) => {
+      if (!chart_id) return errorOutput('chart_snapshot', 'chart_id is required')
+      try {
+        const data = await callRegistryCapability(
+          'marsys://tool/L1/chart_snapshot',
+          {
+            chart_id,
+            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            ...(include_navamsa != null ? { include_navamsa } : {}),
+          },
+          chart_id
+        )
+        return dualOutput(data)
+      } catch (err) {
+        return errorOutput('chart_snapshot', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── get_graha_yuddha (R5.1 C2 item 6 — JL-027 Option A serve-time overlay) ─
+  // marsys://tool/L1/get_graha_yuddha — graha yuddha (planetary war) winner by northern
+  // ecliptic latitude (BPHS Option A), overlaid at serve time on the chart_facts floor.
+  // See get_graha_yuddha.ts header for full citation + doctrine (canonical-or-floor).
+  server.tool(
+    'get_graha_yuddha',
+    'Graha yuddha (planetary war): tara-graha pairs (Mars/Mercury/Jupiter/Venus/Saturn) within 1 degree orb in the same sign, and their winner per JL-027 Option A (Parasari northern-latitude rule — Venus always wins; else the more-northern ecliptic latitude wins), computed at serve time from already-computed ephemeris data joined against the chart\'s birth date. chart_facts.graha_yuddha itself remains floored (winner=NULL) at rest; this tool overlays the ratified, cited winner without writing back to chart data. Where the pair is not tara-graha-eligible or ephemeris data is unavailable for the birth date, the floor is returned unchanged — the retired uncited longitude-proxy method is never substituted. chart_id is required.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      ayanamsha_id: z.string().optional().describe('Filter by ayanamsha. Omit for all ayanamshas present.'),
+    },
+    async ({ chart_id, ayanamsha_id }) => {
+      if (!chart_id) return errorOutput('get_graha_yuddha', 'chart_id is required')
+      try {
+        const data = await callRegistryCapability(
+          'marsys://tool/L1/get_graha_yuddha',
+          {
+            chart_id,
+            ...(ayanamsha_id ? { ayanamsha_id: normalizeAyanamsha(ayanamsha_id) } : {}),
+          },
+          chart_id
+        )
+        return dualOutput(data)
+      } catch (err) {
+        return errorOutput('get_graha_yuddha', String(err), { chart_id })
+      }
+    }
+  )
+
   // ── vector_search (semantic retrieval — chart-agnostic) ───────────────────
   // Not in the registry; calls platform primitive directly.
   server.tool(
