@@ -31274,4 +31274,164 @@ session_close:
     cross-chart pool, JL-022 Option B) remains open alongside it. Native to prioritize.
 ```
 
+### Next session objective
+
+A dedicated C4-remediation-and-rerun program: `query_chart_facts` dignity field, byte-budget
+discipline beyond the three C1 tools, Q3/Q6/Q8/Q9 content-depth work, and the
+`/api/retrieval/capability` entitlement gap (highest priority) — against the now-trustworthy
+battery harness. This became R5.2's own scope (see the following entry). R5.1's own deferred shelf
+(portal/UI, rate limiting, branch hygiene, cross-chart pool, JL-022 Option B) remains open
+alongside it.
+
 *End of R5.1-MCP-CONSUME-2026-07-09 entry — 2026-07-09.*
+
+---
+
+## R5.2-ACCEPTANCE-2026-07-09 — Acceptance iteration, A1-A6 phased autonomous run — CLOSED 2026-07-09
+
+```yaml
+session_open:
+  session_id: R5.2-ACCEPTANCE-2026-07-09
+  opened_on: 2026-07-09
+  cowork_thread_name: R5.2-ACCEPTANCE
+  governing_brief: CLAUDECODE_BRIEF_R5_2_ACCEPTANCE_v1_0.md
+  ratification: >
+    NATIVE RATIFIED BY KICKOFF — native's message dispatching the brief constitutes
+    ratification-by-kickoff of the brief's own "READY-FOR-KICKOFF, fully autonomous" status
+    frontmatter field; a same-day follow-up instruction explicitly reaffirmed full autonomy through
+    A2-A6 with one added completion condition on A1 (the latency measurement) and reaffirmed the
+    brief's own "one fix-iteration only; honest close if the gate isn't met" discipline. Recorded as
+    JL-000 in R5_2_RUN_LEDGER_v1_0.md.
+  scope_notes: >
+    Fully autonomous run closing EXACTLY the R5.1 punch-list items 1-6: A1 security-first (alone,
+    before anything else) -> A2 three parallel lanes (budget/dignity/orphan-wiring) -> A3 content
+    depth -> A4 the two Terraform applies -> A5 the acceptance re-run (immutable gate) -> A6 close.
+    Battery R5_ANSWER_BATTERY_v1_0.md remains FROZEN law.
+  may_touch:
+    - "platform/src/app/api/retrieval/capability/** (the entitlement fix)"
+    - "platform/src/lib/retrieval/** (budget extension, dignity field, content depth)"
+    - "platform-mcp/src/** (tool wiring)"
+    - "eval harness assets (bug fixes only, never grading criteria)"
+    - "terraform/scheduler config for the two pending applies"
+    - "00_ARCHITECTURE run/acceptance/ledger docs"
+  must_not_touch:
+    - "orchestrator + build writers"
+    - "chart data (read-only)"
+    - "salience/priors/constants (frozen)"
+    - "LEL rows"
+    - "battery item content/grading"
+    - "the deferred shelf"
+  predecessor_session: R5.1-MCP-CONSUME-2026-07-09
+  current_state_version_at_open: 6.33
+  red_team_due: false
+```
+
+**Session:** R5.2 Acceptance Iteration — closing the gap R5.1 measured honestly (23.7% overall /
+25.0% rubric-only). Conductor sequenced A1 through A6 in strict phase order, each phase deployed to
+prod and live-verified before the next began (per this program's own established discipline).
+
+- **A1** (security, alone, before anything else): per-call chart entitlement gate added to
+  `/api/retrieval/capability` — the highest-priority R5.1 finding (zero per-chart authz on the path
+  every flagship instrument + ~35 call sites across `registry_bridge.ts` and 4 `register_p1_*.ts`
+  files route through; `register_p1_ganita.ts` never even received the caller's principal before
+  this fix — confirming the gap was real, not theoretical). Deployed (PR #498, commit `6db1415b`;
+  one transient CI-runner queue failure, resolved via `gh run rerun`). Live gate check: clean
+  `entitlement_denied` denial on all 4 flagship tools for an unentitled chart, native's own calls
+  unaffected. Latency completion item (native's own follow-up instruction): warm p50 335ms across
+  40 samples vs the best-available 826.9ms historical comparator — no regression, no caching fix
+  needed.
+- **A2** (three parallel lanes): Lane 1 (budget estate-wide) killed the true "234KB class" —
+  `phala_outlook` 461KB→28KB, `holistic_bundle_chart_facts` 544KB→866B (a live-verification pass
+  caught a real bug in the first deploy — the trim section read the wrong nested JSON path — fixed
+  and re-verified, PR #501). Lane 2 (dignity field) joined `query_chart_facts`'s position rows to
+  their previously-never-merged dignity facts (different `fact_subject` keys), verified against the
+  DB directly. Lane 3 (orphaned C2 fixes) wired `phala_predictive_anchors_get` to reach R5.1's
+  posterior-provenance fix; deliberately did NOT wire the sibling write-path fix (R5.1 C2 item 3) —
+  verifying it live would require an actual chart-data/LEL write, forbidden by this run's own
+  must-not-touch. Deployed (PR #500 + #501), all 3 lanes live-verified on prod.
+- **A3** (content depth): a full battery checkpoint run (both Gemini and DeepSeek grading keys
+  confirmed available in this environment) surfaced and fixed two real deterministic gaps — X-2
+  (raw HTTP status leaking into the MCP-facing denial text, fixed by wiring the already-proven
+  `describeProxyFailure` helper into 5 call sites) and X-3 (`bodha_signals_get` 234KB→15.9KB, the
+  same budget-trimmer pattern). Confirmed X-7 is a battery-harness regex false-negative (verified
+  the underlying fact is correct via direct DB query), not touched. Structural finding: every Q2-Q9
+  rubric item returned INCONCLUSIVE in this checkpoint — later root-caused at A5 as a harness-
+  invocation bug in this session's own tooling (API keys not exported to the child process), not a
+  missing-answering-LLM limitation as first assumed. Deployed (PR #503), live-verified.
+- **A4** (the two Terraform applies): confirmed `roles/owner` (no permission gap, proceeded per the
+  native's own conditional instruction); `terraform plan` clean (2 to add, 0 to change, 0 to
+  destroy); applied. First live run of each new job failed 401 despite the auth header being
+  provisioned exactly as documented — root-caused (not assumed) via a direct-curl comparison: Cloud
+  Scheduler's own HTTP-target dispatch does not deliver a plain custom `Authorization` header to a
+  `*.run.app` target intact. Discovered, live, that the pre-existing sibling
+  `amjis-pending-stream-reaper` job has the identical bug and has been silently failing in prod —
+  flagged prominently, NOT fixed (a different job, out of R5.2 scope). Fixed in scope: both new
+  routes switched to a dedicated `x-marsys-cron-secret` header (mirroring the already-proven
+  `x-watchdog-auth` convention), deployed (PR #505), both scheduler jobs' headers updated, both
+  confirmed executing successfully (200) on a real Cloud Scheduler trigger.
+- **A5** (the re-run, real grading, both charts): first attempt was invalid (same API-key-export
+  bug found in A3, corrected — a harness-invocation fix with before/after proof, not a third
+  fix-iteration). The real run: **overall 23.7%→31.6% (12/38), zero regressions vs the R5.1
+  baseline** (confirmed by direct id-by-id diff — 3 clean improvements: Q1-N-2, X-2, X-3), Q1/X
+  deterministic 43.8% (gate requires 100% — NOT MET), 16 rubric-graded items still below their
+  floor even under real Gemini/DeepSeek grading. **Gate NOT MET.** Full scorecard + root-cause
+  register (every FAIL traced, not guessed) + scoped R5.3 recommendation in
+  `R5_2_RUN_LEDGER_v1_0.md` §A5.
+- **A6** (close): CURRENT_STATE v6.33→v6.34 (changelog entry; full §2/§3 historical rewrite again
+  judged out of scope, same precedent as R5 and R5.1's own closes); `MCP_USAGE_GUIDE_v1_0.md`
+  v1.0→v1.1 (tool-contract changes: dignity field, `phala_predictive_anchors_get`, budget ceilings
+  on 3 tools, entitlement gate closed); this close entry; worktrees/branches cleaned up throughout
+  (exit gate) — 8 branches created this run, all merged and deleted, none left open.
+
+**Contract violations:** 0. No chart data written. No entitlement widened (only narrowed —
+correctly). No LEL rows touched. No fabricated grade, coverage number, or verification anywhere in
+this run's artifact trail — including two live-verification passes that caught real bugs in this
+run's own first-attempt fixes (the holistic_bundle trim path; the scheduler auth header) and fixed
+them within the same run rather than asserting success on unverified grounds.
+
+**Genuine adjacent finding, correctly out of scope, not fixed:** `amjis-pending-stream-reaper`'s
+Cloud Scheduler job has been silently failing in prod (pre-existing, unrelated to R5.2) — same root
+cause as A4's fix, different job. Flagged for a dedicated follow-up, not silently left for a future
+session to independently rediscover.
+
+```yaml
+session_close:
+  session_id: R5.2-ACCEPTANCE-2026-07-09
+  closed_on: 2026-07-09
+  outcome: >
+    COMPLETE, honest result. A1-A4 SHIPPED, DEPLOYED, INDEPENDENTLY LIVE-VERIFIED on prod (two
+    live-verification passes caught and fixed real bugs within this same run: the holistic_bundle
+    trim-path miss, the scheduler auth-header collision). A5 acceptance gate NOT MET (31.6% overall
+    vs >=90% required; 43.8% Q1/X deterministic vs 100% required) -- not a HALT, genuinely
+    root-caused per-item, honestly reported, zero regressions vs the R5.1 baseline. Program status:
+    materially hardened (entitlement gap closed, two 234KB-class tools fixed, dignity field added,
+    one orphaned fix wired, both scheduler jobs live) and honestly re-measured at 31.6% -- NOT fully
+    ACCEPTED per this brief's own definition of that word. See R5_2_RUN_LEDGER_v1_0.md for full
+    per-phase detail and the A5 root-cause register.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: "R5.2 A1-A4 deployed; A5's root-cause register is the open-items
+    surface for a dedicated R5.3 content-depth program (16 rubric-floor items, D60 rectification
+    note, query_remedies shape-specific fix, amjis-pending-stream-reaper's own auth fix). R5.1's own
+    deferred shelf remains open alongside it."
+  current_state_updated: true
+  current_state_version: 6.34
+  session_log_appended: true
+  red_team_pass: "n/a — red_team_due: false at this session's open per brief cadence; not a macro-phase close"
+  next_session_objective: >
+    A scoped R5.3 content-depth program per the R5_2_RUN_LEDGER_v1_0.md §A5 recommendation:
+    dedicated Pratinidhi-R-grounded synthesis work on the 16 below-floor rubric items (the actual
+    remaining acceptance gap), the D60 time-sensitivity/rectification-confidence note, the
+    query_remedies 106KB single-row fix, and (separately) amjis-pending-stream-reaper's own
+    x-marsys-cron-secret fix. Native to prioritize.
+```
+
+### Next session objective
+
+A scoped R5.3 content-depth program per `R5_2_RUN_LEDGER_v1_0.md` §A5's recommendation: dedicated
+Pratinidhi-R-grounded synthesis work on the 16 below-floor rubric items (the actual remaining
+acceptance gap), the D60 time-sensitivity/rectification-confidence note on `query_chart_facts`, the
+`query_remedies` 106KB single-row fix, and — separately, a different job, out of R5.2's own scope —
+`amjis-pending-stream-reaper`'s own `x-marsys-cron-secret` fix. Native to prioritize.
+
+*End of R5.2-ACCEPTANCE-2026-07-09 entry — 2026-07-09.*

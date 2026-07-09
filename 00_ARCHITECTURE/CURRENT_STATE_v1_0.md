@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.33
+version: 6.34
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,37 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.34 (2026-07-09, R5.2 ACCEPTANCE ITERATION — A1-A5 run complete; gate NOT MET, honestly reported):
+    Successor run to R5.1 (v6.33), closing exactly the R5.1 punch-list items 1-6 per
+    `CLAUDECODE_BRIEF_R5_2_ACCEPTANCE_v1_0.md`. **A1 (security, alone first):** per-call chart
+    entitlement gate added to `/api/retrieval/capability` — the highest-priority R5.1 finding (zero
+    per-chart authz on the path every flagship instrument uses). Live-verified on prod; warm p50
+    335ms (vs 826.9ms best-available comparator) — no regression, no caching fix needed. **A2 (three
+    lanes):** budget discipline applied to the two true "234KB-class" outliers (phala_outlook
+    461KB→28KB, holistic_bundle_chart_facts 544KB→866B — a live-verification pass caught and fixed a
+    real bug in the first deploy, the trim section read the wrong nested path); dignity field added
+    to `query_chart_facts` pivoted position rows (join across previously-never-merged fact_subject
+    keys); `phala_predictive_anchors_get` wired to reach the R5.1 posterior-provenance fix (the
+    sibling write-path orphan, R5.1 C2 item 3, deliberately NOT wired — would require an actual
+    chart-data/LEL write to verify, forbidden by this run's own must-not-touch). **A3 (content
+    depth):** fixed X-2 (raw HTTP status leaking into MCP-facing denial text) and X-3 (bodha_signals_get
+    234KB→15.9KB); confirmed X-7 is a battery-harness regex false-negative, not a product gap;
+    discovered the battery's Q2-Q9 rubric items require real Gemini/DeepSeek API keys properly
+    exported to grade (not a "no orchestrating LLM" limitation as first assumed — a harness-invocation
+    bug in this session's own tooling, corrected). **A4 (the 2 Terraform applies):** both Cloud
+    Scheduler jobs (panchanga-daily-refresh, canary-battery-daily) applied and live-verified —
+    discovered and fixed a real auth-header collision (Cloud Scheduler's dispatch does not deliver a
+    plain custom `Authorization` header to a `*.run.app` target intact; switched to a dedicated
+    `x-marsys-cron-secret` header, matching the already-proven `x-watchdog-auth` convention).
+    Also discovered — NOT fixed, out of scope, flagged prominently — that the pre-existing sibling
+    `amjis-pending-stream-reaper` job has the identical bug and has been silently failing in prod.
+    **A5 (the re-run, real grading, both charts):** overall 23.7%→31.6% (zero regressions vs the
+    R5.1 baseline, confirmed by direct id-by-id diff), Q1/X deterministic 43.8% (gate requires
+    100% — NOT MET), every rubric floor still requires dedicated content-depth work (16 items below
+    floor even under real grading). **Gate NOT MET — honest close, no gate-lowering, one fix-
+    iteration per the brief's own discipline.** Full scorecard + root-cause register + scoped R5.3
+    recommendation: `R5_2_RUN_LEDGER_v1_0.md` §A5. `MCP_USAGE_GUIDE_v1_0.md` updated to v1.1 (tool
+    contract changes: dignity field, phala_predictive_anchors_get, budget ceilings on 3 tools).
   - v6.33 (2026-07-09, R5.1 MCP-CONSUME — C1-C4 run complete; gate NOT MET, honestly reported):
     Successor run to R5 (SEALED, v6.32). Per `CLAUDECODE_BRIEF_R5_1_MCP_CONSUME_v1_0.md`, native scope
     ruling: MCP interaction excellence on the two charts (482012f1 Abhisek + 1c826d5a Abhinandan) +

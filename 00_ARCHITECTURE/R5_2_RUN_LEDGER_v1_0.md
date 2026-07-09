@@ -379,3 +379,85 @@ read-mostly/idempotent-upsert as designed). One genuine adjacent production find
 out of scope. Branch `feature/r5-2-a4-scheduler-auth-fix` deleted post-merge.
 
 ---
+
+## A5 — THE ACCEPTANCE RE-RUN (the unchanged gate)
+
+### First attempt — invalid, not counted
+Ran the full battery with `MCP_CANARY_KEY`/`GOOGLE_GENERATIVE_AI_API_KEY`/`DEEPSEEK_API_KEY` set via
+`source platform/.env.local` in the same shell before invoking the harness. Result: all 22
+rubric-applicable items came back `INCONCLUSIVE` with `"Both graders failed... GOOGLE_GENERATIVE_AI_API_KEY
+not set. DEEPSEEK_API_KEY not set."` — **a harness-invocation bug in this session's own tooling**,
+not a grading-criteria issue and not a battery bug: `source` sets shell variables but does not
+`export` them, so the child `npx tsx` process never inherited the keys. Diagnosed via the explicit
+error message the harness itself surfaced (not guessed) — the harness was telling the honest truth
+about its own failure mode, which is exactly the discipline this program values. **Not a "third
+fix-iteration"** — this is a harness invocation correction with before/after proof (see below),
+explicitly permitted by the brief ("harness BUG fixes allowed, logged, with before/after proof on
+an unaffected item"). Re-ran with the keys explicitly extracted and passed inline.
+
+### The real run — `results_33003837.json`, commit `33003837` (A1+A2+A3+A4 all deployed)
+
+| Metric | R5.1 baseline | This run | Delta |
+|---|---|---|---|
+| Overall PASS | 23.7% (9/38) | **31.6% (12/38)** | +7.9pp |
+| Q1/X deterministic PASS | — | 43.8% (7/16) | gate requires 100% — **NOT MET** |
+| Rubric items actually graded (real Gemini/DeepSeek) | — | 21/22 (Q7-N-2 inconclusive — same class of item as the earlier documented `INCONCLUSIVE BY DESIGN` two-turn drill case, not a new gap) | |
+| Regressions vs R5.1 baseline (was PASS, now not) | — | **zero** | confirmed by direct id-by-id diff |
+| Clean improvements vs R5.1 baseline | — | Q1-N-2, X-2, X-3 | Q1-N-2 improved incidentally; X-2/X-3 are this run's own A3 fixes, now confirmed under real grading too |
+
+**Gate assessment: NOT MET.** ≥90% overall (actual 31.6%), 100% deterministic Q1/X (actual 43.8%),
+every rubric floor (several items — Q6-N-1 at 3/15, Q8-N-1 at 5/15, Q9-N-1 at 5/15, Q9-A-1 at
+8/15 — remain well below their floors even under real grading) are all unmet. **Zero regressions**
+is the one sub-criterion fully satisfied.
+
+### Root-cause register (every FAIL, traced, not guessed)
+- **Q1-N-3/N-4/A-1/A-3** — tight 1–2KB byte-ceiling overages on `query_chart_facts`/
+  `ganita_dashas_get` (2.3–3.5KB observed). Real, documented in A3, deferred (lower priority than
+  the 234KB-class items fixed).
+- **Q1-A-2, X-7** — harness regex false negatives (`house_d1:12`/`house_d1:8` don't match a
+  `\D?`-bounded pattern). Confirmed via direct `chart_facts` query the underlying facts are correct.
+  Not touched — editing frozen battery assertion patterns is out of this run's authority.
+- **Q1-N-5** — no dedicated vargottama-lookup tool exists in the estate; a pre-existing, documented
+  gap (R5.1), not newly introduced.
+- **X-6** — `query_chart_facts` has no time-sensitivity/rectification caveat on fine divisional
+  charts (D60). Real gap, documented in A3, deferred (needs cross-subsystem work citing
+  `phala_rectification`).
+- **X-8** — known stale-note residual from R5.1 C2, one marker still present.
+- **Q2-A-1, Q3-A-1, Q3-N-2, Q3-A-2, Q5-N-1, Q5-N-2, Q6-N-1, Q6-N-2, Q7-N-1, Q7-A-1, Q8-N-1, Q8-A-1,
+  Q9-N-1, Q9-A-1, Q9-N-2, Q9-N-3** — genuine content-depth/synthesis-quality gaps, now
+  measured with real LLM rubric grading for the first time this run. This is the actual A3
+  "content depth" punch item's real target — 5 items (Q3-A-2, Q6-N-1, Q8-N-1, Q8-A-1, Q9-A-1)
+  were investigated in A3 via direct tool spot-checks (found substantively rich underlying data);
+  the other 11 were not individually investigated this run. All require dedicated per-item
+  Pratinidhi-R-grounded synthesis work — real content engineering, not configuration.
+- **Q7-N-2** — `INCONCLUSIVE`, same harness limitation class as the documented two-turn drill-
+  continuity item (no orchestrating LLM to compose a genuine turn-2 call from turn-1's free text).
+
+### Per the brief's own instruction: no third fix-iteration
+The brief is explicit: "If the gate fails again: NO third fix-iteration inside this run — publish
+the scorecard, root-cause register, and a scoped R5.3 recommendation, and close honestly." That
+applies here. The gate is not met. This section IS that scorecard and root-cause register.
+
+### R5.3 recommendation (scoped)
+1. **Content-depth pass, properly resourced**: the 16 rubric-graded FAILs above are the actual
+   remaining acceptance gap. Each needs dedicated Pratinidhi-R-grounded synthesis work (evidence
+   sections, citation attachment, hedging calibration) — a multi-session effort, not a single
+   iteration's tail.
+2. **X-6 D60 rectification-confidence note** — real, scoped, cites existing `phala_rectification`
+   data; a clean single-item fix for a future session.
+3. **`amjis-pending-stream-reaper` silent failure** (found in A4, out of R5.2 scope) — needs its
+   own fix, same `x-marsys-cron-secret` pattern already proven in this run.
+4. **query_remedies (106KB, A2 lane 1 deferral)** — needs its own shape-specific investigation,
+   the array-trimmer pattern doesn't apply.
+5. Consider whether the battery's own byte ceilings (Q1-N-3/N-4/A-3: 1–2KB) and regex patterns
+   (Q1-A-2/X-7: `\D?`-bounded house-number matching) merit a dedicated harness-hygiene pass —
+   flagged for native ratification before any battery-file edit (this run's own authority does not
+   extend to editing frozen battery assertion logic unilaterally).
+
+### A5 verdict
+**GATE NOT MET. Not a HALT.** Honest, measured, real improvement (23.7%→31.6% overall, zero
+regressions, two genuine deterministic fixes now confirmed under real grading) — not smoothed into
+an implied acceptance. Per this run's own anti-goals ("no gate-lowering... one fix-iteration per
+run"), proceeding to A6 for the honest-close variant, not a second attempt at A2/A3.
+
+---

@@ -1,9 +1,9 @@
 ---
 canonical_id: MCP_USAGE_GUIDE
-version: 1.0
+version: 1.1
 status: CURRENT
 created: 2026-07-09
-author: Claude Code (executing CLAUDECODE_BRIEF_R5_1_MCP_CONSUME_v1_0.md C5)
+author: Claude Code (executing CLAUDECODE_BRIEF_R5_1_MCP_CONSUME_v1_0.md C5; updated for R5.2 A6 close)
 audience: the native (Abhisek), using an MCP-connected chat client directly
 ---
 
@@ -45,7 +45,14 @@ Every question needs a `chart_id`. Say "for Abhinandan" or give the id directly;
 - **An outcome on a specific prediction** ("that career-window prediction from March — it happened") → `mimamsa_outcome_record`. This is what lets the instrument's confidence numbers self-correct over time.
 - Recalibration doesn't happen instantly — there's a debounce so a burst of manual corrections doesn't thrash the model; expect it to show up in later prediction confidence, not the very next query.
 
-## Known honest gaps (as of 2026-07-09)
-- Some quality punch-items (entitlement-denial clarity, posterior-provenance detail) are fixed correctly but not yet reachable through a public tool name — you won't see them live yet even though the underlying fix shipped.
-- The full acceptance battery (40-item frozen eval) does **not yet clear its bar** — see `R5_1_MCP_CONSUME_ACCEPTANCE_v1_0.md` for the honest scorecard. Treat answers with the same critical eye you always would; the instrument is hardened but not yet fully self-certified.
-- `/api/retrieval/capability`'s entitlement gate is a real open item — flagged, prioritized, not yet fixed.
+## What changed in R5.2 (2026-07-09)
+- **Entitlement gate closed.** `/api/retrieval/capability` (the path every flagship instrument routes through) now checks per-chart access on every call. A chart you don't have a grant for returns a distinct denial, not an empty result — the "denial vs. empty" caveat below no longer applies.
+- **`query_chart_facts`/`ganita_chart_facts_get` now serves a `dignity` field on planet-position rows** (exalted/own/friend/neutral/enemy/debilitated) — you no longer need a separate `get_dignity` call just to know if a planet is exalted.
+- **New tool: `phala_predictive_anchors_get`** — the posterior-provenance fix from R5.1 (honest base-rate sourcing, no fabricated sample sizes) is now reachable; it wasn't wired to any public tool name before.
+- **Budget discipline extended** to `phala_outlook`, `holistic_bundle_chart_facts`, and `bodha_signals_get` — these used to serve 100KB-500KB+ responses by default; now trimmed to a sane ceiling with a `recover_via` pointer to get the full detail if you ask for it.
+
+## Known honest gaps (as of 2026-07-09, post-R5.2)
+- The full acceptance battery (38-item frozen eval, real Gemini/DeepSeek rubric grading) improved from 23.7% to 31.6% overall but **does not clear the ≥90% bar** — see `R5_2_RUN_LEDGER_v1_0.md` §A5 for the honest scorecard and root-cause register. Treat answers with the same critical eye you always would; the instrument is hardened in specific, verified spots, not broadly self-certified.
+- Content-depth/synthesis quality (remedies, timing windows, verification-style questions) is the largest remaining gap — 16 rubric-graded battery items still score below their floor even under real grading. The underlying tool data is often substantively rich (verified via direct spot-checks); the gap is in how thoroughly a client's answer draws on it.
+- `query_remedies` still serves an oversized single result (~106KB) — not yet fixed, needs its own investigation (not a simple array-trim case).
+- D60 (and other fine divisional-chart) queries via `query_chart_facts` don't yet carry a birth-time-sensitivity/rectification-confidence caveat, even though D60 readings are classically far more sensitive to precise birth time than D1.
