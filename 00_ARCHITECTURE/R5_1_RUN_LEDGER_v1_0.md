@@ -140,3 +140,72 @@ verdict + pointers intact; pact_query career/native chains all reachable stages 
 ### C1 verdict
 **CLOSED. No HALT. Proceed to C2.** Worktree `agent-a3a736cd196fbb2e2` / branch
 `worktree-agent-a3a736cd196fbb2e2` cleaned up post-merge.
+
+---
+
+## C2 — ANSWER-QUALITY PUNCH ITEMS (the MCP-visible seven) — CLOSED, deployed, live-verified
+
+Executed as three parallel lanes (conductor + worktree + independent-verifier-ring per lane, same
+discipline as C1), merged sequentially (PR #487 Lane A, #488 Lane B, #489 Lane C), deployed to prod
+at commit `d3fb74fa27beb966b8c14d69069a9b44e057804e` (confirmed: both `amjis-mcp` and `amjis-web`
+latest-ready image tags match exactly).
+
+### Lane A (items 1, 2) — PR #487
+E-2 freshness contract (`platform/src/lib/retrieval/provenance/freshness_notes.ts`): stale hardcoded
+DEFECT-001/signature_tier literals replaced with live-re-derived claims carrying `as_of`/
+`expires_on`. E-6 digest family-aggregation (`collapseSignalFamilies()` in `composite_ranker.ts`,
+wired into `query_ucd.ts`): same-family tied signals in the top band collapse to one composite row +
+`family_member_pointers`. Independent verifier PASS (live server + prod DB, both claims re-derived
+correct, no computed value altered, 505/505 tests, typecheck clean).
+
+### Lane B (items 3, 4, 5) — PR #488
+Denial ≠ empty: additive `entitlement_denied` envelope state wired into `/api/mcp/primitives`,
+`/api/mcp/writes`, `/api/mcp/bundles`. Posterior cardinality + base_rate_source
+(`query_predictive_anchors.ts`/`query_predictions.ts`): additive provenance blocks, no computed
+value changed. lel_training_matched=0 corroboration (`query_phala_calibration.ts`): serves the
+previously-unserved `lel_training_events`/`lel_training_matched` columns with an honest
+`lel_match_explanation` distinguishing full corroboration (57) from the firewalled training subset
+(36 events, 0 matches). Independent verifier PASS (all three items live-tested against genuinely
+ungranted resources / real DB cross-checks; zero entitlement widening; 5235/5235 + 398/509 with 96
+pre-existing failures confirmed byte-identical to baseline).
+
+**Significant finding, deliberately not fixed in this run:** `/api/retrieval/capability` — the
+actual live path the flagship instruments (`judgment_query`/`graha_portrait`/`pact_query`/
+`get_signals`/`query_chart_facts`) use — has no `authorizeChartAccess` check at all, only a shared
+service-to-service token. Confirmed independently and reconfirmed in this phase's own live gate
+check below (a fabricated/ungranted chart_id via `query_chart_facts` returns `ok:true, facts:[]` —
+empty, not denied). Pre-existing, not introduced by this run. Not fixed here — an entitlement-model
+change on this shared path has wide blast radius and the brief's own discipline calls for stopping
+and reporting rather than guessing on anything affecting who is denied vs granted.
+**Recommend a dedicated follow-up session to add the gate — flagged prominently, not buried.**
+
+### Lane C (items 6, 7) — PR #489
+JL-027 Option A graha-yuddha (`get_graha_yuddha`): serve-time-only read overlay joining existing
+`ephemeris_daily.latitude` against floored `chart_facts.graha_yuddha` rows; Venus-always-wins /
+higher-northern-latitude rule; BPHS + Bṛhat Saṃhitā citation; floor preserved where ineligible/
+unavailable, longitude-proxy never substituted. chart_snapshot: compact ≤2KB (rendered-text-field)
+12-rashi D1 grid from `chart_divisionals`, `include_navamsa` opt-in for D9. Independent verifier
+PASS (full MCP round-trip, ephemeris latitude values and chart placements independently re-queried
+from the DB, floor-preservation confirmed by reading chart_facts at rest).
+
+### C2 live gate check (post-merge, [verify-against: mcp], deployed prod, both charts)
+
+| Item | Tool (public MCP name) | Result |
+|---|---|---|
+| 1 — E-2 freshness | `get_chart_quality` | PASS — native chart shows `as_of`/`expires_on`, real 1.1% orphan rate (the "91.5%" string appears only as an explicit historical-baseline comparison, not the current claim) |
+| 2 — E-6 aggregation | `get_chart_orientation` (response_format:full) | PASS — `is_family_composite`/`family_member_pointers` present live |
+| 3 — Denial ≠ empty | — | **NOT externally reachable.** The fixed routes (`/api/mcp/primitives`, `/api/mcp/writes`, `/api/mcp/bundles`) have no corresponding public tool name in the live `tools/list` (confirmed: no `log_prediction`/`lel_event_record` tool exists publicly; `record_outcome` exists but doesn't require `chart_id`, so it doesn't exercise this path). Fix is correct and independently live-verified by the verifier-ring (against real ungranted resources, via direct route calls with proper internal auth) — but a real MCP chat client cannot currently trigger it. Genuine gap, not concealed. |
+| 4 — Posterior provenance | — | **NOT externally reachable.** `query_predictive_anchors`'s capability URI has no public MCP tool wired to it (`phala_anchors_get` is a same-named but functionally distinct sidecar-backed alias that calls `/api/compute/phala/event_anchors`, not this capability). Fix is correct and independently verified (exact DB match, formula check `0.2×1.75×1×1×0.92=0.322`) — but not reachable via any live MCP tool call today. Genuine gap, not concealed. |
+| 5 — LEL corroboration | `phala_rectification_get` | PASS — live response carries full `lel_match_explanation` (57 total vs 36 training-subset, 0 matches, criterion explained, leakage-firewall note) |
+| 6 — JL-027 graha-yuddha | `get_graha_yuddha` | PASS — native: 0 pairs, honest empty. Abhinandan: VEN_v_MAR resolves winner=VEN across all 5 ayanamshas, BPHS/Bṛhat Saṃhitā citation, floor at rest in `chart_facts` unchanged |
+| 7 — chart_snapshot | `chart_snapshot` | PASS — both charts' D1 grids match every documented FORENSIC/battery anchor exactly (native: Sun Cap, Moon Aqu 29°46′/Purva Bhadrapada range, Lagna Ari; Abhinandan: Lagna Ari 1° w/ Rahu 28°18′≈23°32′ range, Moon Gem, Sun+Me Aqu, Ve+Ma Pis, Ju Cap, Sa Sco) |
+
+### C2 verdict
+**CLOSED. No HALT.** 5 of 7 items fully confirmed live over the public MCP channel on both charts.
+2 items (3, 4) are correctly implemented and independently verified at the code/capability level but
+currently unreachable by any live MCP tool call — carried forward to the punch-list as "wire a
+public MCP tool to the fixed capability," not re-litigated as incomplete work (the underlying fix is
+real and correct; only the tool-registration/exposure step remains). The pre-existing
+`/api/retrieval/capability` entitlement-gate gap (found under Lane B) is the single most
+consequential finding of this phase and is flagged for dedicated prioritization, not silently
+deferred. Proceed to C3.
