@@ -36,6 +36,7 @@
 import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
+import { deriveDefect001Note } from '../../provenance/freshness_notes'
 
 // ── Shared: domain handler factory ───────────────────────────────────────────
 //
@@ -835,6 +836,16 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
         ),
       ]
 
+      // E-2 freshness contract (R5.1 C2 item 1): re-derive DEFECT-001 live over exactly
+      // the constituent_fact_ids referenced in THIS response, rather than restating the
+      // historical "91.5% orphan (OPEN)" literal, which is stale post-R4.
+      const referencedFactIds = Array.from(new Set(
+        (result.rows as Array<{ constituent_fact_ids?: string[] | null }>)
+          .flatMap((r) => r.constituent_fact_ids ?? [])
+          .filter(Boolean)
+      ))
+      const defect001 = await deriveDefect001Note(chart_id, referencedFactIds)
+
       return {
         content: {
           chart_id,
@@ -857,9 +868,11 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
             tables: ['bodha_msr_signals', 'kala_activation'],
             join_key: 'signal_id (bodha_msr_signals.signal_id = kala_activation.signal_id)',
             yoga_filter: "signal_type_class = 'yoga'",
-            defect_001_note:
-              'constituent_facts_array has 91.5% orphan rate (DEFECT-001 OPEN). ' +
-              'L1 fact joins via constituent_fact_ids will be empty for most signals until L2 rebuild.',
+            // Structured, live-derived (E-2 freshness contract) — read this, not any
+            // historical figure.
+            defect_001: defect001,
+            // Legacy string field retained (additive) — sourced from the same live derivation.
+            defect_001_note: defect001.note,
           },
         },
         is_error: false,

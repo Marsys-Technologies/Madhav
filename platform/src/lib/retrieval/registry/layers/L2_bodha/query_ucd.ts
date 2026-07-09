@@ -20,6 +20,17 @@
  * atoms" — before shipping entity_profiles as the primary orient surface. The atomic
  * `top_signals` list is retained for backward compatibility, now composite-ranked too.
  *
+ * R5.1 C2 item 2 (E-6 completion): entity_profiles aggregates on the GRAHA axis, but
+ * the atomic `top_signals` band was still un-aggregated — same-family atoms (same
+ * graha × signal_type_id, e.g. `graha_dignity_per_varga:dignity_state` repeated once
+ * per varga) could still tie/cluster and flood the top band with near-duplicate rows
+ * for one graha, crowding out other distinct findings (the "dignity-row tie-block" a
+ * closing probe observed). Fix: `collapseSignalFamilies` (composite_ranker.ts) groups
+ * the SAME composite-ranked pool by family and keeps exactly one representative row
+ * per family in the top band — the highest-scoring member, score untouched (B.10) —
+ * with the rest demoted to `family_member_pointers` (signal_ids), still reachable via
+ * query_signals, never deleted from bodha_msr_signals.
+ *
  * Used by the consumption layer (Bodha chat) as the primary chart-level
  * context loader for the L2 synthesis surface.
  */
@@ -28,7 +39,7 @@ import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { cacheKey, cacheGet, cacheSet } from '../../../cache'
-import { applyCompositeRanking, buildRankingBasis, buildHierarchicalProfiles } from '../../../ranking/composite_ranker'
+import { applyCompositeRanking, buildRankingBasis, buildHierarchicalProfiles, collapseSignalFamilies } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
 import { PRIORS_VERSION } from '../../../ranking/priors_config'
 
@@ -48,8 +59,11 @@ export const queryUcdCapability: CapabilityDescriptor = {
     'Returns a structured Bodha synthesis digest for a chart (synthesis_query, design §5 #7).',
     'Includes: entity_profiles (hierarchically-aggregated composite-ranked signal groups —',
     'design §E-6, one row per graha rather than N atomic signals), top MSR signals',
-    '(atomic, composite-ranked, backward-compat), domain convergence scores,',
-    'contradiction count, weakest graha priority class, and quality audit trap1 count.',
+    '(atomic, composite-ranked, backward-compat, ALSO family-collapsed — same graha ×',
+    'signal_type_id repeats, e.g. per-varga dignity signals, collapse to one composite row',
+    'with family_member_pointers to the rest — see provenance.family_aggregation_note),',
+    'domain convergence scores, contradiction count, weakest graha priority class,',
+    'and quality audit trap1 count.',
     'response_format governs verbosity: digest (counts + entity_profiles only, no atomic',
     'signals), summary (default; entity_profiles + capped atomic top_signals),',
     'full (entity_profiles + uncapped atomic top_signals up to top_k_signals).',
@@ -220,13 +234,23 @@ export const queryUcdCapability: CapabilityDescriptor = {
       // (both summary/full share the same top_k cap today — 'full' exists as the
       // explicit non-default choice that keeps the door open for a higher ceiling
       // without a breaking change later.)
+      //
+      // R5.1 C2 item 2 (E-6 completion): collapse same-family atomic signals
+      // (same graha × signal_type_id — e.g. graha_dignity_per_varga repeated once
+      // per varga) into ONE composite row BEFORE slicing to top_k. This is what
+      // fixes the dignity-row tie-blocks that used to flood the top band with
+      // near-duplicate atoms for a single graha — family members are demoted to
+      // `family_member_pointers` (still resolvable via query_signals), never
+      // deleted from bodha_msr_signals.
+      const familyCollapsed = collapseSignalFamilies(scoredAll)
       const atomicSignals = response_format === 'digest'
         ? []
-        : scoredAll.slice(0, top_k).map(s => {
+        : familyCollapsed.slice(0, top_k).map(s => {
             const { _subscores, ...rest } = s
             void _subscores
             return rest as Record<string, unknown>
           })
+      const familiesCollapsedCount = familyCollapsed.filter(s => s.is_family_composite).length
 
       const result = {
         content: {
@@ -256,6 +280,12 @@ export const queryUcdCapability: CapabilityDescriptor = {
               `separate stored-band or raw-salience order.`,
             aggregation_note: `Hierarchical aggregation: ${scoredAll.length} atomic candidate ` +
               `signals → ${entity_profiles.length} entity profile(s) (design §E-6).`,
+            family_aggregation_note: `E-6 completion (R5.1 C2 item 2): ${scoredAll.length} atomic ` +
+              `candidates → ${familyCollapsed.length} family-collapsed row(s) before the top_k=${top_k} ` +
+              `cut; ${familiesCollapsedCount} of those are composite rows representing >1 same-family ` +
+              `atom (same graha × signal_type_id, e.g. a per-varga dignity construct). Collapsed atoms ` +
+              `are demoted to family_member_pointers on the representative row, not deleted — drill via ` +
+              `query_signals with the same signal_type_id/graha to reach them.`,
           },
         },
         is_error: false as const,
