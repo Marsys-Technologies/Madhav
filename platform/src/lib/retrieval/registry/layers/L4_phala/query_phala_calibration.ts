@@ -550,17 +550,67 @@ export const queryRectificationCapability: CapabilityDescriptor = {
       // calibration_state (structural | sparse | calibrated), rectification_basis,
       // lel_event_count and load_bearing. A chart that has not been rectified yet
       // (no best row) surfaces judgment_flags: null.
+      //
+      // R5.1 C2 item 5 (lel_training_matched=0 corroboration honesty): this SELECT used to
+      // omit lel_training_events/lel_training_matched/win_margin/leakage_firewall_note —
+      // columns migration 336 already persists — so a caller only ever saw
+      // judgment_flags.lel_event_count (the FULL LEL corroboration count, e.g. 57 for the
+      // native) with zero visibility into the DIFFERENT, smaller number that actually did the
+      // birth-time SCORING: lel_training_matched is a classical-rule dasha-lord-in-house match
+      // count (services/ph_rectification/engine.py::_score_dasha_match) against a FIREWALLED
+      // subset of training events (pre-2020, exact/month-exact dates only — post-2020 +
+      // LEL v1.7 enrichment events are deliberately held out for out-of-sample validation, see
+      // leakage_firewall_note). A low or even 0 lel_training_matched is NOT "corroboration
+      // failed" and must never silently stand in for lel_event_count — the two numbers answer
+      // different questions and are now always surfaced together with an explicit explanation.
       const bestSql = `
-        SELECT judgment_flags, confidence_label, offset_minutes AS best_offset_minutes
+        SELECT judgment_flags, confidence_label, offset_minutes AS best_offset_minutes,
+               best_lel_fit_score, confidence_low, confidence_high, win_margin,
+               lel_training_events, lel_training_matched, leakage_firewall_note,
+               competing_candidates
         FROM phala_rectification_best
         WHERE chart_id = $1
         LIMIT 1
       `
       const bestResult = await query(bestSql, [chart_id])
       const best = (bestResult.rows[0] ?? null) as
-        | { judgment_flags: JudgmentFlags | null; confidence_label: string | null; best_offset_minutes: number | null }
+        | {
+            judgment_flags: JudgmentFlags | null
+            confidence_label: string | null
+            best_offset_minutes: number | null
+            best_lel_fit_score: number | null
+            confidence_low: number | null
+            confidence_high: number | null
+            win_margin: number | null
+            lel_training_events: number | null
+            lel_training_matched: number | null
+            leakage_firewall_note: string | null
+            competing_candidates: unknown
+          }
         | null
       const judgment_flags: JudgmentFlags | null = best?.judgment_flags ?? null
+
+      const lel_match_explanation = best == null
+        ? {
+            corroboration_available: false,
+            note: 'No phala_rectification_best row exists for this chart — no rectification has been run, so no training-match accounting applies. This is the correct resting state for a chart with lel_event_count=0 (structural calibration), not an error.',
+          }
+        : {
+            corroboration_available: true,
+            // The FULL corroboration count driving calibration_state (e.g. 57 for the native).
+            lel_event_count: judgment_flags?.lel_event_count ?? null,
+            calibration_state: judgment_flags?.calibration_state ?? null,
+            // The SEPARATE, smaller training-subset match count that actually picked the
+            // winning birth-time offset — genuinely can be low or 0 without meaning
+            // lel_event_count's corroboration failed.
+            lel_training_events: best.lel_training_events,
+            lel_training_matched: best.lel_training_matched,
+            match_criterion: 'Count of classical-rule matches (services/ph_rectification/engine.py::_score_dasha_match): +1 per training event whose maha-dasha lord sits in a domain-significator house counted from the candidate lagna, +1 more if the antar-dasha lord ALSO does (MD+AD double match). Summed across all lel_training_events, then normalized to best_lel_fit_score = lel_training_matched / (2 × lel_training_events).',
+            leakage_firewall_note: best.leakage_firewall_note,
+            explanation: judgment_flags?.lel_event_count && best.lel_training_events && judgment_flags.lel_event_count > best.lel_training_events
+              ? `This chart has ${judgment_flags.lel_event_count} total recorded LEL events (drives calibration_state=${judgment_flags.calibration_state}), but only ${best.lel_training_events} of them are in the FIREWALLED pre-2020 training subset used to score birth-time candidates (the rest are held out post-2020/enrichment events reserved for out-of-sample outcome validation, per leakage_firewall_note). Of those ${best.lel_training_events} training events, ${best.lel_training_matched ?? 0} classical-rule matches were found for the winning offset — this is the number that actually selected offset_minutes=${best.best_offset_minutes}, NOT lel_event_count.`
+              : 'lel_training_matched/lel_training_events are the training-subset accounting that selected the winning offset; lel_event_count is the full corroboration count driving calibration_state. See match_criterion for how lel_training_matched is computed.',
+          }
 
       return {
         content: {
@@ -568,6 +618,12 @@ export const queryRectificationCapability: CapabilityDescriptor = {
           candidates: result.rows, count: result.rows.length,
           judgment_flags,
           calibration_state: judgment_flags?.calibration_state ?? null,
+          lel_match_explanation,
+          best_lel_fit_score: best?.best_lel_fit_score ?? null,
+          confidence_low: best?.confidence_low ?? null,
+          confidence_high: best?.confidence_high ?? null,
+          win_margin: best?.win_margin ?? null,
+          competing_candidates: best?.competing_candidates ?? null,
           override_note: 'D43 NO-AUTO-OVERRIDE: the canonical chart birth time is never auto-mutated. phala_rectification has no staging/approval column — candidates are advisory LEL-fit scores only; native sign-off is required out-of-band before any rectification is adopted.',
           filters: { top_k },
         },

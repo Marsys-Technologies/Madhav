@@ -21,6 +21,7 @@ import type {
   SynthesisAuditBlock,
   McpCitation,
   PplEntry,
+  DenialBlock,
 } from '@/lib/mcp/types'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 
@@ -149,6 +150,8 @@ export interface BuildErrorEnvelopeParams {
   error_class: McpErrorEnvelope['error']['class']
   message: string
   remediation?: string
+  /** R5.1 C2 item 3 — present only for error_class === 'entitlement_denied'. */
+  denial?: DenialBlock
 }
 
 /**
@@ -163,8 +166,44 @@ export function buildErrorEnvelope(params: BuildErrorEnvelopeParams): McpErrorEn
       message: params.message,
       ...(params.remediation ? { remediation: params.remediation } : {}),
     },
+    ...(params.denial ? { denial: params.denial } : {}),
   }
 }
 
+/**
+ * R5.1 C2 item 3 (Denial ≠ empty). Build a distinctly-shaped entitlement-denial
+ * McpErrorEnvelope — every MCP entrypoint that runs `authorizeChartAccess` and gets
+ * `'deny'` should build its error response through this helper (instead of a bare
+ * `error_class: 'auth'`) so the wire shape is unambiguous and consistent across every
+ * instrument that can hit this path (primitives, writes, bundles).
+ *
+ * Never repurposes the empty-with-reason (U4) mechanism — this is a NEW additive state.
+ * Never fabricates: `chart_id` and `permission_required` are always the exact values the
+ * caller already checked.
+ */
+export function buildEntitlementDenialEnvelope(params: {
+  trace_id?: string
+  chart_id: string
+  permission_required: 'view' | 'all'
+  message?: string
+  remediation?: string
+}): McpErrorEnvelope {
+  return buildErrorEnvelope({
+    trace_id: params.trace_id,
+    error_class: 'entitlement_denied',
+    message: params.message ?? `AUTHZ_DENIED: caller does not have ${params.permission_required} access to chart ${params.chart_id}.`,
+    remediation: params.remediation ??
+      'This chart exists but you have no chart_grants row for it (or it is genuinely absent) — ' +
+      'distinct from a query that legitimately matched zero rows. Request access from the chart owner.',
+    denial: {
+      reason: 'entitlement',
+      chart_id: params.chart_id,
+      permission_found: 'deny',
+      permission_required: params.permission_required,
+      distinct_from_empty: true,
+    },
+  })
+}
+
 // Re-export the full McpEnvelope type for convenience at call sites.
-export type { McpEnvelope }
+export type { McpEnvelope, DenialBlock }

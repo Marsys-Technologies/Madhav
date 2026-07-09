@@ -125,19 +125,47 @@ export interface McpSuccessEnvelope {
   warnings: string[]
 }
 
+/**
+ * R5.1 C2 item 3 (Denial ≠ empty — Ring-3 red-team finding, R5_RING3_REDTEAM_v1_0.md
+ * Class 2 conclusion): a chart_grants-based entitlement denial must carry a signal an MCP
+ * caller can programmatically distinguish from "authorized, but this filter matched
+ * nothing" or "chart does not exist". `class: 'entitlement_denied'` is a NEW, additive
+ * error class (never repurposes `'auth'`, which still covers missing/invalid credentials);
+ * the `denial` block is the structured, honest reason — never populated for a genuinely
+ * empty result.
+ */
+export interface DenialBlock {
+  /** Always 'entitlement' for this block — reserved for future denial classes (additive). */
+  reason: 'entitlement'
+  /** The chart_id the caller was denied access to (never a guess; the exact id checked). */
+  chart_id: string
+  /** The permission the caller was found to hold — always 'deny' when this block is present. */
+  permission_found: 'deny'
+  /** The permission tier the call required ('view' or 'all'). */
+  permission_required: 'view' | 'all'
+  /** Fixed marker so a caller need not parse `reason`/`class` to tell this apart from an
+   *  empty-with-reason (U4) response — distinct_from_empty is always true here. */
+  distinct_from_empty: true
+}
+
 /** Error MCP response envelope (MCP_BRIEF §4.2). */
 export interface McpErrorEnvelope {
   ok: false
   /** Trace ID if a trace was started before the error; may be empty string. */
   trace_id: string
   error: {
-    /** Error class for programmatic handling. */
-    class: 'auth' | 'validation' | 'planner_error' | 'orchestrator_error' | 'rate_limit' | 'internal'
+    /** Error class for programmatic handling. R5.1 C2: 'entitlement_denied' is additive —
+     *  existing consumers keying on 'auth' are unaffected; new consumers can branch on the
+     *  more specific class. */
+    class: 'auth' | 'validation' | 'planner_error' | 'orchestrator_error' | 'rate_limit' | 'internal' | 'entitlement_denied'
     /** Human-readable error message. */
     message: string
     /** Optional remediation hint. */
     remediation?: string
   }
+  /** R5.1 C2 item 3 — additive, present only when `error.class === 'entitlement_denied'`.
+   *  Structured, honest denial detail distinct from a legitimately-empty result. */
+  denial?: DenialBlock
 }
 
 /** Union of success and error envelopes. */

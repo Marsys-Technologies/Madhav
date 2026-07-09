@@ -82,7 +82,26 @@ export async function POST(
     const role = await resolveMcpPrincipalRole(principal.user_uid)
     const perm = await authorizeChartAccess({ principal: { uid: principal.user_uid, role }, chartId, db: { query } })
     if (perm === 'deny') {
-      return NextResponse.json({ error: 'AUTHZ_DENIED', chartId }, { status: 401 })
+      // R5.1 C2 item 3 (Denial ≠ empty): this SSE-streaming route pre-dates the shared
+      // McpErrorEnvelope shape (it returns a plain JSON body, not an SSE stream, for this
+      // pre-flight check) — bring it onto the same distinct denial contract as
+      // /api/mcp/primitives and /api/mcp/writes instead of its own ad-hoc { error, chartId }
+      // shape. `error: 'AUTHZ_DENIED'` is KEPT for back-compat with any existing caller
+      // keying on it; `denial` is the new additive, unambiguous signal.
+      return NextResponse.json(
+        {
+          error: 'AUTHZ_DENIED',
+          chartId,
+          denial: {
+            reason: 'entitlement' as const,
+            chart_id: chartId,
+            permission_found: 'deny' as const,
+            permission_required: 'view' as const,
+            distinct_from_empty: true as const,
+          },
+        },
+        { status: 401 }
+      )
     }
   }
 
