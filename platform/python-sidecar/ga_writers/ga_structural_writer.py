@@ -1836,7 +1836,14 @@ def _build_yoga_rows(
                     "uncatalogued": False,
                     "fire_reason": reason,
                 },
-                verif="two_pass_verified",
+                # Y-7 fix: this is a single catalog-rule evaluation against L1 facts,
+                # not the redundant two-pass cross-check the rest of this writer's
+                # categories perform — it must not claim the top verification tier.
+                # "single_pass" is a real, already-wired distinct tier (formulas.py
+                # VERIFICATION_RESCALE = 0.85, vs 1.00 for two_pass_verified), so this
+                # correctly demotes catalog label rows in bo_laksana's salience_formula_v2
+                # rather than inventing a new fabricated status string.
+                verif="single_pass",
                 source=f"brahma_yoga_catalog.label_pass/{eng_ver}",
                 citation_human=(
                     f"Yoga {name_en} ({yoga_name}) labels chart {str(chart_id)[:8]} "
@@ -1936,7 +1943,10 @@ def _build_dosha_rows(
                     "uncatalogued": False,
                     "fire_reason": reason,
                 },
-                verif="two_pass_verified",
+                # Y-7 fix: same rationale as the yoga_label site above — single
+                # catalog-rule evaluation, not the writer's two-pass cross-check;
+                # demoted to the already-wired "single_pass" verification tier.
+                verif="single_pass",
                 source=f"brahma_dosha_catalog.label_pass/{eng_ver}",
                 citation_human=(
                     f"Dosha {name_en} ({dosha_name}) labels chart {str(chart_id)[:8]} "
@@ -4470,7 +4480,12 @@ def _evaluate_catalog_rule(
 
     # ── Handle "requires" list ─────────────────────────────────────────────────
     if "requires" in rule:
-        for req in rule["requires"]:
+        req_list = rule["requires"]
+        # Y-1 fix: "requires": [] must NOT vacuously pass — an empty requirement
+        # list is an unevaluated/malformed rule, not a satisfied one.
+        if not req_list:
+            return False, "rule_shape_unimplemented:empty_requires"
+        for req in req_list:
             if "relation" in req:
                 rel = req["relation"]
                 moon_h = graha_house("Moon")
@@ -4531,6 +4546,26 @@ def _evaluate_catalog_rule(
                     return False, f"{planet} house={h} not kendra"
                 if req_house_class == "trikona" and not is_trikona(h):
                     return False, f"{planet} house={h} not trikona"
+            elif "exclude" in req:
+                # Y-9 fix: exclusion clauses (e.g. Shakata's
+                # {"exclude": "jupiter_in_kendra_from_lagna"}) must be enforced,
+                # not silently skipped — a rule with an unsatisfied exclusion
+                # must not fire. Only the one named-in-catalog exclusion is
+                # implemented; any other exclude value hard-fails rather than
+                # being ignored (never silently pass an unenforced exclusion).
+                excl = req["exclude"]
+                if excl == "jupiter_in_kendra_from_lagna":
+                    if is_kendra(graha_house("Jupiter")):
+                        return False, f"exclude_violated:{excl}"
+                else:
+                    return False, f"rule_shape_unimplemented:exclude:{excl}"
+            else:
+                # Y-1 fix: any other/unrecognized requirement shape (e.g. the
+                # OCR-corpus {"raw_verse_clause": ...} shape, or {"determinant": ...})
+                # must NOT vacuously pass. Mirrors the relation_unimplemented branch
+                # above — unevaluable shapes fail closed, they don't fall through.
+                unknown_keys = ",".join(sorted(req.keys())) or "empty_req"
+                return False, f"rule_shape_unimplemented:{unknown_keys}"
         return True, "requires_pass"
 
     # ── Handle "all_planets_in" ─────────────────────────────────────────────────
