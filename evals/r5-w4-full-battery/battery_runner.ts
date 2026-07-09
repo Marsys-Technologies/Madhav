@@ -26,6 +26,7 @@ import { writeFileSync } from 'fs'
 import { execSync } from 'child_process'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { llmRubric as llmRubricGrade, type RubricResult as LLMGraderRubricResult } from './llm_grader.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -188,31 +189,20 @@ interface BatteryItem {
   run: () => Promise<{ calls: ToolCallResult[]; assertions: Assertion[]; rubric: RubricResult }>
 }
 
-interface RubricResult {
-  applicable: boolean
-  floor: number | null
-  structuralProxyScore: number | null // best-effort out of 15, or null
-  status: 'NOT_APPLICABLE' | 'NOT_LLM_GRADED' | 'STRUCTURAL_PROXY_MET' | 'STRUCTURAL_PROXY_BELOW_FLOOR'
-  note: string
-}
+// RubricResult now comes from llm_grader.ts (real Gemini/DeepSeek grading, C4 acceptance phase).
+// Kept as a local type alias so the rest of this file's signatures are unchanged.
+type RubricResult = LLMGraderRubricResult
 
 function noRubric(): RubricResult {
   return { applicable: false, floor: null, structuralProxyScore: null, status: 'NOT_APPLICABLE', note: 'Q1/X deterministic-only item — no rubric floor per battery.' }
 }
 
-function structuralProxyRubric(floor: number, checks: Array<{ label: string; met: boolean }>, capNote: string): RubricResult {
-  const met = checks.filter((c) => c.met).length
-  // proxy score is scaled onto /15 space for comparability with the floor, capped by how many
-  // of the item's stated "must contain" properties were structurally detected.
-  const proxyScore = Math.round((met / checks.length) * 15 * 10) / 10
-  const status: RubricResult['status'] = proxyScore >= floor ? 'STRUCTURAL_PROXY_MET' : 'STRUCTURAL_PROXY_BELOW_FLOOR'
-  return {
-    applicable: true,
-    floor,
-    structuralProxyScore: proxyScore,
-    status,
-    note: `NOT LLM-GRADED — structural proxy only, flag for Ring-3. Checks: ${checks.map((c) => `${c.label}=${c.met}`).join('; ')}. ${capNote}`,
-  }
+// C4 acceptance-phase real LLM grading (Gemini primary / DeepSeek fallback via llm_grader.ts).
+// This wraps llm_grader.ts's llmRubric(floor, checks, rawText, capNote) 1:1 — every former
+// structuralProxyRubric(floor, checks, capNote) call site was converted to
+// `await llmRubric(floor, checks, <rawText var>, capNote)`.
+async function llmRubric(floor: number, checks: Array<{ label: string; met: boolean }>, rawText: string, capNote: string): Promise<RubricResult> {
+  return llmRubricGrade(floor, checks, rawText, capNote)
 }
 
 // ── Item definitions ───────────────────────────────────────────────────────────
@@ -428,7 +418,7 @@ items.push({
         { name: 'dasha_periods_present', pass: hasDasha, detail: `dasha=${hasDasha}` },
         { name: 'functional_nature_present', pass: hasFunctionalNature, detail: `functional=${hasFunctionalNature}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Proxy checks textual presence of each named component only, not synthesis quality.'),
+      rubric: await llmRubric(11, checks, text, 'Proxy checks textual presence of each named component only, not synthesis quality.'),
     }
   },
 })
@@ -457,7 +447,7 @@ items.push({
         { name: 'neecha_named', pass: neechaNamed, detail: `neecha=${neechaNamed}` },
         { name: 'bhanga_explicitly_checked', pass: bhangaChecked, detail: `bhanga_mentioned=${bhangaChecked}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'bhanga presence-or-absence must be EXPLICIT per spec; proxy only detects the word, not explicit reasoning.'),
+      rubric: await llmRubric(11, checks, text, 'bhanga presence-or-absence must be EXPLICIT per spec; proxy only detects the word, not explicit reasoning.'),
     }
   },
 })
@@ -493,7 +483,7 @@ items.push({
         { name: 'dissent_or_contradiction_ge_1', pass: hasDissent, detail: `dissent_marker=${hasDissent}` },
         { name: 'verse_inline', pass: hasVerse, detail: `verse=${hasVerse}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Receipt-completeness fields checked textually; true "is it COMPLETE" semantics need LLM/human read.'),
+      rubric: await llmRubric(11, checks, text, 'Receipt-completeness fields checked textually; true "is it COMPLETE" semantics need LLM/human read.'),
     }
   },
 })
@@ -522,7 +512,7 @@ items.push({
         { name: 'venus_exalted_and_12th_both_present', pass: hasVenusExalted && has12th, detail: `venus_exalted=${hasVenusExalted}; twelfth=${has12th}` },
         { name: 'time_sensitivity_flag_present', pass: hasTimeSensitivity, detail: `flag=${hasTimeSensitivity}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Whether BOTH strength and placement are "weighed" (not merely mentioned) requires LLM read.'),
+      rubric: await llmRubric(11, checks, text, 'Whether BOTH strength and placement are "weighed" (not merely mentioned) requires LLM read.'),
     }
   },
 })
@@ -549,7 +539,7 @@ items.push({
         { name: 'second_eleventh_jupiter_hora_addressed', pass: has2nd && has11th && hasJupiter, detail: `2nd=${has2nd}; 11th=${has11th}; jup=${hasJupiter}; hora=${hasHora}` },
         { name: 'epistemic_grades_differentiate_fact_vs_judgment', pass: hasGrades, detail: `grades=${hasGrades}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Hora varga (D2) mention is a weak proxy for "promise register consulted".'),
+      rubric: await llmRubric(11, checks, text, 'Hora varga (D2) mention is a weak proxy for "promise register consulted".'),
     }
   },
 })
@@ -571,9 +561,9 @@ items.push({
         { name: 'frame_chandra_honored', pass: /chandra/i.test(moonText) || framesDiffer, detail: `chandra_marker=${/chandra/i.test(moonText)}; texts_differ=${framesDiffer}` },
         { name: 'call_count_le_2', pass: callsLe2, detail: `calls=${calls.length}` },
       ],
-      rubric: structuralProxyRubric(11, [
+      rubric: await llmRubric(11, [
         { label: 'from_moon_answer_verifiably_differs_from_lagna', met: framesDiffer },
-      ], 'NOTE: no single tool exposes an explicit lagna-vs-chandra house-10 judgment_query frame param; proxied via judgment_query(bhava=10) [lagna] + bodha_signals_get(frame=chandra) [moon-relative signals] — a structural approximation, not the exact product answer path.'),
+      ], `${lagnaText}\n---\n${moonText}`, 'NOTE: no single tool exposes an explicit lagna-vs-chandra house-10 judgment_query frame param; proxied via judgment_query(bhava=10) [lagna] + bodha_signals_get(frame=chandra) [moon-relative signals] — a structural approximation, not the exact product answer path.'),
     }
   },
 })
@@ -600,7 +590,7 @@ items.push({
         { name: 'amk_or_karaka_present', pass: amkNamed, detail: `amk=${amkNamed}` },
         { name: 'no_parashari_jaimini_mixing_heuristic', pass: noMixing, detail: `parashari_term_present=${!noMixing}` },
       ],
-      rubric: structuralProxyRubric(11, checks, '"No mixing" is a crude keyword heuristic (astro-verifier semantics need LLM read).'),
+      rubric: await llmRubric(11, checks, text, '"No mixing" is a crude keyword heuristic (astro-verifier semantics need LLM read).'),
     }
   },
 })
@@ -631,7 +621,7 @@ items.push({
         { name: 'structured_falsifier_present', pass: falsifier, detail: `falsifier=${falsifier}` },
         { name: 'window_dates_and_ages', pass: dates && ages, detail: `dates=${dates}; ages=${ages}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Whether posterior numerically lies in [0,1] not independently re-derived here — presence-only proxy.'),
+      rubric: await llmRubric(11, checks, text, 'Whether posterior numerically lies in [0,1] not independently re-derived here — presence-only proxy.'),
     }
   },
 })
@@ -658,7 +648,7 @@ items.push({
         { name: 'falsifier_present', pass: falsifier, detail: `falsifier=${falsifier}` },
         { name: 'no_alarmist_certainty_language', pass: noAlarmism, detail: `alarmist_language_absent=${noAlarmism}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Sensitive-domain "care" tone is an LLM-rubric judgment, not mechanically checkable; keyword-absence is a weak proxy.'),
+      rubric: await llmRubric(11, checks, text, 'Sensitive-domain "care" tone is an LLM-rubric judgment, not mechanically checkable; keyword-absence is a weak proxy.'),
     }
   },
 })
@@ -682,7 +672,7 @@ items.push({
         { name: 'calibration_state_structural_disclosed_in_judgment_flags', pass: structuralDisclosed, detail: `structural_marker=${structuralDisclosed}` },
         { name: 'posterior_epistemic_grade_present', pass: gradeOnPosterior, detail: `grade_marker=${gradeOnPosterior}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Used bhava=12 as the domain proxy for "settle abroad" since the shastra map has no direct "abroad/foreign settlement" domain name — a mapping judgment call, noted honestly.'),
+      rubric: await llmRubric(11, checks, text, 'Used bhava=12 as the domain proxy for "settle abroad" since the shastra map has no direct "abroad/foreign settlement" domain name — a mapping judgment call, noted honestly.'),
     }
   },
 })
@@ -707,7 +697,7 @@ items.push({
         { name: 'chain_halts_or_denies_if_promise_absent', pass: denialLanguage || conditionsNamed, detail: `denial=${denialLanguage}; conditions=${conditionsNamed}` },
         { name: 'call_count_le_3', pass: calls.length <= 3, detail: `calls=${calls.length}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Cannot mechanically confirm the promise IS in fact absent for this chart (requires domain expertise/LLM read of the yoga condition list) — proxy checks response SHAPE only.'),
+      rubric: await llmRubric(11, checks, text, 'Cannot mechanically confirm the promise IS in fact absent for this chart (requires domain expertise/LLM read of the yoga condition list) — proxy checks response SHAPE only.'),
     }
   },
 })
@@ -736,7 +726,7 @@ items.push({
         { name: 'ranked_windows_present_or_honest_empty', pass: hasWindows || emptyHonest, detail: `has_windows=${hasWindows}; empty_reason=${emptyHonest}` },
         { name: 'no_transport_error', pass: !anyTransportError(calls), detail: `error=${anyTransportError(calls)}` },
       ],
-      rubric: structuralProxyRubric(11, checks, '"reasons" per window and dedicated avoid-windows list are LLM-synthesis features layered atop the raw tool output — proxy checks raw-data presence only.'),
+      rubric: await llmRubric(11, checks, text, '"reasons" per window and dedicated avoid-windows list are LLM-synthesis features layered atop the raw tool output — proxy checks raw-data presence only.'),
     }
   },
 })
@@ -758,7 +748,7 @@ items.push({
       assertions: [
         { name: 'dates_and_ages_present', pass: dates && ages, detail: `dates=${dates}; ages=${ages}` },
       ],
-      rubric: structuralProxyRubric(11, checks, "Next lord's natal condition citation and rubric-graded 'balance' require a second graha_portrait call + LLM read — flagged, not run here to stay within the 1-tool-per-item budget for this item's proxy."),
+      rubric: await llmRubric(11, checks, text, "Next lord's natal condition citation and rubric-graded 'balance' require a second graha_portrait call + LLM read — flagged, not run here to stay within the 1-tool-per-item budget for this item's proxy."),
     }
   },
 })
@@ -787,7 +777,7 @@ items.push({
         { name: 'tail_check_dissent_ge_1', pass: dissent, detail: `dissent=${dissent}` },
         { name: 'ranked_themes_with_evidence', pass: ranked, detail: `ranked=${ranked}` },
       ],
-      rubric: structuralProxyRubric(12, checks, 'Exact 9/9 + 12/12 numeric receipt strings not confirmed present verbatim — checked via loose coverage-language proxy.'),
+      rubric: await llmRubric(12, checks, text, 'Exact 9/9 + 12/12 numeric receipt strings not confirmed present verbatim — checked via loose coverage-language proxy.'),
     }
   },
 })
@@ -814,7 +804,7 @@ items.push({
         { name: 'contradictions_acknowledged', pass: contradictions, detail: `contradictions=${contradictions}` },
         { name: 'no_lel_structural_disclosed', pass: noLel, detail: `no_lel_structural=${noLel}` },
       ],
-      rubric: structuralProxyRubric(12, checks, 'Age-appropriate framing (rubric-only) cannot be structurally checked at all — pure LLM-judgment property.'),
+      rubric: await llmRubric(12, checks, text, 'Age-appropriate framing (rubric-only) cannot be structurally checked at all — pure LLM-judgment property.'),
     }
   },
 })
@@ -870,7 +860,7 @@ items.push({
         { name: 'named_affliction_mapping', pass: namedAffliction, detail: `named=${namedAffliction}` },
         { name: 'cost_tiers_present', pass: costTiers, detail: `cost_tiers=${costTiers}` },
       ],
-      rubric: structuralProxyRubric(11, checks, '"No generic list" (rubric) not mechanically checkable — proxy checks presence of ranking/cost fields only.'),
+      rubric: await llmRubric(11, checks, text, '"No generic list" (rubric) not mechanically checkable — proxy checks presence of ranking/cost fields only.'),
     }
   },
 })
@@ -895,7 +885,7 @@ items.push({
         { name: 'bhanga_or_functional_check_present', pass: bhangaOrFunctionalCheck, detail: `bhanga_functional=${bhangaOrFunctionalCheck}` },
         { name: 'remedies_present', pass: remediesPresent, detail: `remedies=${remediesPresent}` },
       ],
-      rubric: structuralProxyRubric(11, checks, 'Whether "does it need fixing" is answered BEFORE remedies (ORDERING) requires an actual synthesized NL answer — not checkable from two independent raw tool calls.'),
+      rubric: await llmRubric(11, checks, text, 'Whether "does it need fixing" is answered BEFORE remedies (ORDERING) requires an actual synthesized NL answer — not checkable from two independent raw tool calls.'),
     }
   },
 })
@@ -920,7 +910,7 @@ items.push({
         { name: 'rahu_ketu_axis_or_grahas_outside_cited', pass: rahuKetuMentioned, detail: `rahu_ketu=${rahuKetuMentioned}` },
         { name: 'verdict_explicit', pass: verdictExplicit, detail: `verdict=${verdictExplicit}` },
       ],
-      rubric: structuralProxyRubric(12, checks, 'Whether the cited evidence is genuinely "CHECKED" (not absence-of-data) requires reading the actual computed dosha_fires rows — proxy checks keyword presence only.'),
+      rubric: await llmRubric(12, checks, text, 'Whether the cited evidence is genuinely "CHECKED" (not absence-of-data) requires reading the actual computed dosha_fires rows — proxy checks keyword presence only.'),
     }
   },
 })
@@ -943,7 +933,7 @@ items.push({
         { name: 'exaltation_confirmed', pass: exaltConfirmed, detail: `exalt=${exaltConfirmed}` },
         { name: 'twelfth_house_counterweight_cited', pass: twelfthCounterweight, detail: `twelfth=${twelfthCounterweight}` },
       ],
-      rubric: structuralProxyRubric(12, checks, 'Triangulation across >=2 traditions vs. honest single-tradition note requires NL-answer read.'),
+      rubric: await llmRubric(12, checks, text, 'Triangulation across >=2 traditions vs. honest single-tradition note requires NL-answer read.'),
     }
   },
 })
@@ -965,10 +955,10 @@ items.push({
         { name: 'verse_with_text_present', pass: verseWithText, detail: `verse=${verseWithText}` },
         { name: 'audience_seam_diagnostics_on_request', pass: true, detail: 'not mechanically checkable — this call explicitly requested v3/diagnostic detail, so seam behavior is unobserved either way' },
       ],
-      rubric: structuralProxyRubric(12, [
+      rubric: await llmRubric(12, [
         { label: 'derivation_chain_walkable', met: factIdChain },
         { label: 'verse_with_text', met: verseWithText },
-      ], 'Whether the chain is genuinely "walkable" fact_id→signal→claim (not just present) requires manual graph-trace — proxy checks field presence only.'),
+      ], text, 'Whether the chain is genuinely "walkable" fact_id→signal→claim (not just present) requires manual graph-trace — proxy checks field presence only.'),
     }
   },
 })
@@ -993,7 +983,7 @@ items.push({
         { name: 'ge_2_named_yogas_addressed', pass: namedCount >= 2, detail: `named_yogas_matched=${namedCount}/5 (${namedYogas.filter((y) => new RegExp(y, 'i').test(text)).join(',')})` },
         { name: 'formed_or_not_formed_language', pass: formedNotFormed, detail: `formed_language=${formedNotFormed}` },
       ],
-      rubric: structuralProxyRubric(12, checks, 'Whether FAILED CONDITIONS are explicitly enumerated per un-formed yoga (not just the word "not formed") requires a closer read of ganita_yogas_get\'s actual row-level fields.'),
+      rubric: await llmRubric(12, checks, text, 'Whether FAILED CONDITIONS are explicitly enumerated per un-formed yoga (not just the word "not formed") requires a closer read of ganita_yogas_get\'s actual row-level fields.'),
     }
   },
 })
@@ -1202,10 +1192,19 @@ async function main() {
       const anyErr = calls.some((c) => c.transportError)
       const allDetPass = assertions.every((a) => a.pass === true)
       const anyInconclusive = assertions.some((a) => a.pass === null)
+      // Battery law (R5_ANSWER_BATTERY_v1_0.md frontmatter `grading`): "An item passes only if
+      // ALL deterministic assertions hold AND rubric >= its floor." Prior harness versions
+      // (structural-proxy era) computed verdict from deterministic assertions ONLY and silently
+      // ignored the rubric outcome — a real correctness bug, fixed here now that rubric grading
+      // is a genuine LLM judgment (C4 acceptance phase) rather than an informational-only proxy.
+      const rubricBlocksPass = rubric.applicable && rubric.status !== 'LLM_GRADED_MET' && rubric.status !== 'STRUCTURAL_PROXY_MET'
+      const rubricInconclusive = rubric.applicable && rubric.status === 'NOT_LLM_GRADED'
       let verdict: ItemOutcome['verdict'] = 'PASS'
       if (anyErr) verdict = 'INCONCLUSIVE'
-      else if (anyInconclusive && !allDetPass) verdict = 'INCONCLUSIVE'
+      else if (anyInconclusive) verdict = 'INCONCLUSIVE'
+      else if (rubricInconclusive) verdict = 'INCONCLUSIVE'
       else if (!allDetPass) verdict = 'FAIL'
+      else if (rubricBlocksPass) verdict = 'FAIL'
       outcomes.push({
         id: item.id, chart: item.chart, question: item.question, regime: item.regime, rubricFloor: item.rubricFloor,
         calls: calls.map((c) => ({ tool: c.tool, args: c.args, latencyMs: c.latencyMs, bytes: c.bytes, httpStatus: c.httpStatus, toolIsError: c.toolIsError, transportError: c.transportError })),
