@@ -8,7 +8,8 @@
  * Protocol:
  *   POST /api/retrieval/capability
  *   Body: { uri: string, args: Record<string, unknown> }
- *   Response: { ok: true, content: unknown } | { ok: false, error: string }
+ *   Response: { ok: true, content: unknown } | { ok: false, error: string } |
+ *     McpErrorEnvelope (entitlement_denied / validation — see R5.2 A1 gate below)
  *
  * Bootstrap: all D-wave registrations (D5 fan-out, D6 synergy, D7 channel,
  * D8 assess-domain) are run once at module initialization. The registry is
@@ -20,6 +21,10 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { getCapability } from '@/lib/retrieval/registry'
+import { authorizeChartAccess, type Permission } from '@/lib/auth/authorizeChartAccess'
+import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
+import { buildEntitlementDenialEnvelope, buildErrorEnvelope } from '@/lib/mcp/epistemics'
+import { query } from '@/lib/db/client'
 
 // ── Service-to-service internal token gate ────────────────────────────────────
 
@@ -32,6 +37,36 @@ function validateServiceToken(request: Request): boolean {
     return false
   }
   return token === expected
+}
+
+// ── Per-call chart entitlement gate (R5.2 A1) ─────────────────────────────────
+//
+// This route previously dispatched to any registered capability handler with no
+// per-chart authorization check — the highest-priority gap named in the R5.1
+// punch-list. Every MCP caller now carries the same X-MCP-User / X-MCP-Key-Id
+// principal headers already required by /api/mcp/primitives/[tool] (Layer 2),
+// and per_chart capabilities are gated through the same authorizeChartAccess
+// brain, returning the same distinct entitlement_denied envelope (never a bare
+// 401, never an empty result masquerading as "no data").
+//
+// Short-TTL in-process cache: avoids a DB round trip on every single-chart-tool
+// call within a burst (a synthesis/judgment call can fan out to a dozen
+// capability calls in one query). TTL is intentionally short — this is a
+// latency mitigation, not a source of truth; a revoked grant is visible again
+// within one TTL window.
+const ENTITLEMENT_CACHE_TTL_MS = 30_000
+const entitlementCache = new Map<string, { permission: Permission; expiresAt: number }>()
+
+async function resolveCachedPermission(userUid: string, chartId: string): Promise<Permission> {
+  const cacheKey = `${userUid}:${chartId}`
+  const cached = entitlementCache.get(cacheKey)
+  const now = Date.now()
+  if (cached && cached.expiresAt > now) return cached.permission
+
+  const role = await resolveMcpPrincipalRole(userUid)
+  const permission = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+  entitlementCache.set(cacheKey, { permission, expiresAt: now + ENTITLEMENT_CACHE_TTL_MS })
+  return permission
 }
 import {
   registerD5FanoutCapabilities,
@@ -149,6 +184,43 @@ export async function POST(request: Request) {
   }
 
   const safeArgs = (args && typeof args === 'object') ? args : {}
+
+  // R5.2 A1 — per-call chart entitlement gate. Runs for every per_chart capability,
+  // regardless of which of the ~35 call sites across platform-mcp reached this route.
+  if (capability.scope === 'per_chart') {
+    const chartId =
+      (typeof safeArgs['chart_id'] === 'string' ? (safeArgs['chart_id'] as string) : undefined) ??
+      request.headers.get('x-mcp-chart-id') ??
+      null
+    const userUid = request.headers.get('x-mcp-user')
+
+    if (!chartId) {
+      return NextResponse.json(
+        buildErrorEnvelope({
+          error_class: 'validation',
+          message: 'CHART_REQUIRED',
+          remediation: 'Supply chart_id in args or X-MCP-Chart-Id header for per-chart capabilities.',
+        }),
+        { status: 400 }
+      )
+    }
+    if (!userUid) {
+      // Fail closed: a per-chart capability call with no resolvable principal is denied,
+      // never silently served. Distinct from a 401 leak — same denial shape as a real deny.
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
+        { status: 401 }
+      )
+    }
+
+    const permission = await resolveCachedPermission(userUid, chartId)
+    if (permission === 'deny') {
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
+        { status: 401 }
+      )
+    }
+  }
 
   try {
     const content = await capability.handler(safeArgs)
