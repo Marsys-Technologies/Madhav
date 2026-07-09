@@ -413,3 +413,74 @@ the brief's own gate language ("converts SEALED → ACCEPTED"), this run does **
 program to ACCEPTED — it converts it to "honestly measured, with a real punch-list and a trustworthy
 instrument to re-measure against." Proceed to C5 to wrap and report this state accurately; do not seal
 this as an acceptance.
+
+---
+
+## C5 — WRAP + OPERATE — CLOSED (exit gate)
+
+### CURRENT_STATE / MCP_USAGE_GUIDE / seal report / SESSION_LOG
+`CURRENT_STATE_v1_0.md` v6.32→v6.33 (changelog + version bump recording this full run; §2/§3 full
+historical rewrite judged out of scope again — identical precedent to R5's own v6.32 close, not a
+new deferral). `MCP_USAGE_GUIDE_v1_0.md` authored (native-facing, ~1 page). Seal report
+`R5_1_MCP_CONSUME_ACCEPTANCE_v1_0.md` authored — states plainly that C1-C3 shipped/deployed/
+verified but C4 gate NOT MET; program status "hardened and deployed, not fully ACCEPTED."
+`SESSION_LOG.md` session_open/close entry appended, matching the established schema. min-
+instances=1 confirmed retained on both `amjis-mcp` and `amjis-web` throughout (unchanged from
+native-ratified baseline).
+
+### Canary battery → scheduled job
+New `system_health` table (migration `platform/migrations/366_system_health_canary.sql`, real
+8-probe×2-chart canary logic ported from `evals/r5-w0a-canary/canary_runner.ts` — not shelled-out,
+since `evals/` sits outside the platform Docker build context and prod is a standalone `next build`
+image with no dev dependencies), a scheduled cron route
+(`platform/src/app/api/admin/cron/run-canary-battery/route.ts`, reusing the existing
+`MARSYS_CRON_SECRET` auth pattern and the existing `mcp_alerts_config`/`checkAndDispatch` alert
+mechanism — no new alert channel invented), and an authored-but-unapplied Terraform scheduler
+resource (`infra/scheduler/canary_battery.tf`, daily). Live-verified pre-merge: 16/16 probes
+executed against real deployed prod, 12 pass/4 fail matching known post-R4 state, correct
+regression-vs-steady-state-fail distinction confirmed across two runs.
+
+**Migration-numbering hygiene note:** `366_system_health_canary.sql` (in `platform/migrations/`)
+shares its numeric prefix with the pre-existing `platform/supabase/migrations/366_ph_muhurta_kala_
+sangam_edge.sql`. Confirmed this is NOT a database-level collision — `platform/scripts/migrate.ts`
+tracks applied migrations by full `filename TEXT UNIQUE NOT NULL`, not by numeric prefix, and both
+applied cleanly and independently. This is, however, exactly the "dual migration roots w/ colliding
+numbers" hygiene trap `R5_AUTHORITY_DOSSIER_v1_0.md §6` warns about — flagged explicitly per that
+trap's own "cite FULL paths" discipline rather than silently letting it slide. A future migration
+author checking only one of the two directories for "next free number" could produce this same
+ambiguity again; worth a dedicated numbering-reconciliation pass at some point, non-urgent since the
+DB-level safety is confirmed.
+
+### Deploy incident, root-caused and fixed within this session (recorded honestly)
+The canary-job PR's `deploy.yml` change wired a new `MCP_CANARY_KEY` Secret Manager reference into
+the amjis-web deploy step, but the underlying `mcp-canary-key` secret had not yet been created (this
+was explicitly documented as a "conductor follow-up needed" step in the PR, not yet executed at
+merge time). The subsequent deploy (commit `07383f18`) **failed at the traffic-promotion step**:
+`ERROR: ... Secret projects/.../secrets/mcp-canary-key/versions/latest was not found`. Cloud Run's
+own behavior meant this was NOT a broken-canary halt condition — traffic never moved off the
+previously-serving revision (`amjis-web-00901-6nd` stayed at 100% throughout the failed attempt) —
+but leaving `main` in this state would have blocked every subsequent deploy on this repo, R5.1-scoped
+or otherwise, so it was fixed immediately rather than left for a future session: `gcloud secrets
+create mcp-canary-key` (seeded with the same R5 W0a test-credential value already recorded in
+`R5_RUN_LEDGER_v1_0.md` P0-iii — no new secret material introduced), `gcloud secrets
+add-iam-policy-binding mcp-canary-key --member="serviceAccount:amjis-web-runtime@madhav-astrology.
+iam.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"` (confirmed this is genuinely
+the correct runtime service account via `gcloud run services describe amjis-web --format=
+'value(spec.template.spec.serviceAccountName)'` before granting), then `gh run rerun 28995854089
+--failed`. Rerun succeeded: `amjis-web-00903-4v9` now serves 100% traffic on image `07383f18…`. Live
+sanity-curled the new route post-deploy: `POST /api/admin/cron/run-canary-battery` with a bad
+Authorization header → `401`, confirming the route is live and correctly gated.
+
+**Remaining conductor follow-up (genuinely can't be done from this run's tooling):** the secret and
+IAM binding are now provisioned, so only one manual step remains — `cd infra/scheduler &&
+./apply.sh apply` to actually provision the daily Cloud Scheduler job from `canary_battery.tf` (same
+class of gap as C3's `panchanga_refresh.tf` — this run's own IaC discipline requires apply-from-main
+by a session with the appropriate posture, not a worktree agent, even though IAM permission itself
+was confirmed present).
+
+### C5 verdict
+**CLOSED. Exit gate reached.** All worktrees and branches from this entire run cleaned up
+(enumerated below). No chart data was touched at any point in this run. No entitlement was widened.
+The one deploy incident in this phase was caught, root-caused, and fixed within the same session
+rather than left broken or silently worked around — consistent with this run's verifier-ring and
+honesty discipline holding all the way through its own final phase.
