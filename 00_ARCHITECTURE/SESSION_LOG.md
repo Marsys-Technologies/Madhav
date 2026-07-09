@@ -31274,9 +31274,20 @@ session_close:
     cross-chart pool, JL-022 Option B) remains open alongside it. Native to prioritize.
 ```
 
+### Next session objective
+
+A dedicated C4-remediation-and-rerun program: `query_chart_facts` dignity field, byte-budget
+discipline beyond the three C1 tools, Q3/Q6/Q8/Q9 content-depth work, and the
+`/api/retrieval/capability` entitlement gap (highest priority) — against the now-trustworthy
+battery harness. This became R5.2's own scope (see the following entry). R5.1's own deferred shelf
+(portal/UI, rate limiting, branch hygiene, cross-chart pool, JL-022 Option B) remains open
+alongside it.
+
 *End of R5.1-MCP-CONSUME-2026-07-09 entry — 2026-07-09.*
 
 ---
+
+## R5.2-ACCEPTANCE-2026-07-09 — Acceptance iteration, A1-A6 phased autonomous run — CLOSED 2026-07-09
 
 ```yaml
 session_open:
@@ -31284,8 +31295,9 @@ session_open:
   opened_on: 2026-07-09
   cowork_thread_name: R5.2-ACCEPTANCE
   governing_brief: CLAUDECODE_BRIEF_R5_2_ACCEPTANCE_v1_0.md
-  ratification: NATIVE RATIFIED BY KICKOFF — native's message dispatching the brief constitutes
-    ratification-by-kickoff of the brief's own `status: READY-FOR-KICKOFF — fully autonomous`
+  ratification: >
+    NATIVE RATIFIED BY KICKOFF — native's message dispatching the brief constitutes
+    ratification-by-kickoff of the brief's own "READY-FOR-KICKOFF, fully autonomous" status
     frontmatter field; a same-day follow-up instruction explicitly reaffirmed full autonomy through
     A2-A6 with one added completion condition on A1 (the latency measurement) and reaffirmed the
     brief's own "one fix-iteration only; honest close if the gate isn't met" discipline. Recorded as
@@ -31413,5 +31425,13 @@ session_close:
     query_remedies 106KB single-row fix, and (separately) amjis-pending-stream-reaper's own
     x-marsys-cron-secret fix. Native to prioritize.
 ```
+
+### Next session objective
+
+A scoped R5.3 content-depth program per `R5_2_RUN_LEDGER_v1_0.md` §A5's recommendation: dedicated
+Pratinidhi-R-grounded synthesis work on the 16 below-floor rubric items (the actual remaining
+acceptance gap), the D60 time-sensitivity/rectification-confidence note on `query_chart_facts`, the
+`query_remedies` 106KB single-row fix, and — separately, a different job, out of R5.2's own scope —
+`amjis-pending-stream-reaper`'s own `x-marsys-cron-secret` fix. Native to prioritize.
 
 *End of R5.2-ACCEPTANCE-2026-07-09 entry — 2026-07-09.*
