@@ -13,6 +13,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
+import { describeProxyFailure } from './registry_bridge.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -31,7 +32,9 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`[p1_synthesis] capability call failed (${res.status}): ${text.slice(0, 200)}`)
+    // R5.2 A3 (battery X-2 finding, same class as registry_bridge.ts's identical fix):
+    // don't leak the raw HTTP status code into the MCP-facing error text.
+    throw new Error(describeProxyFailure(uri, res.status, text))
   }
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) throw new Error(`[p1_synthesis] capability error: ${data.error ?? 'unknown'}`)
