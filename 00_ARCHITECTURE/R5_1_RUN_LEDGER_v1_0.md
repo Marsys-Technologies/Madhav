@@ -209,3 +209,80 @@ real and correct; only the tool-registration/exposure step remains). The pre-exi
 `/api/retrieval/capability` entitlement-gate gap (found under Lane B) is the single most
 consequential finding of this phase and is flagged for dedicated prioritization, not silently
 deferred. Proceed to C3.
+
+---
+
+## C3 — FORWARD PANCHANGA (D-8, the one sanctioned data-plane addition) — CLOSED, deployed, live-verified
+
+### What shipped
+Migration `platform/supabase/migrations/427_panchanga_daily_reprovision.sql` re-provisions
+`panchanga_daily` from a WHERE-FALSE stub view into a real date-keyed table (relkind-guarded
+`DROP VIEW`, superset schema serving both existing consumer contracts, indexed, transactional).
+**Applied directly to prod pre-merge** (via `scripts/migrate.ts`, per this repo's standing migration
+convention — separate from the code-PR pipeline used elsewhere in this run — after a migration-guard
+review that caught and fixed a re-run idempotency bug). New deterministic writer
+`platform/python-sidecar/scripts/panchanga_daily_writer.py` (Swiss Ephemeris, no LLM) seeded 366 rows
+(2026-07-09..2027-07-09) at the native's location default (Bhubaneswar 20.27/85.84).
+
+The actual root-cause bug this phase closed: `_fetch_panchanga_row()` in
+`brahmagyan/phala/muhurta.py` queried a nonexistent column, threw, was silently swallowed, and fell
+back to hardcoded placeholder values ("Shukla Panchami"/"Hasta"/"Shubha") presented as real data — a
+canonical-or-floor (B.10) violation. Fixed; `generate_muhurta_windows()` now skips dates lacking real
+coverage and surfaces an honest `empty_reason` instead of fabricating. Also fixed: `query_muhurat`'s
+capability mapping (previously pointed at the wrong L0 capability, `query_planet_transit`, entirely
+unrelated to muhurta search) and a shape-mismatch bug in the `muhurta_finder` MCP tool
+(`tool_name_bridge.ts` wraps every capability result in a generic `ToolBundle`; `muhurta_finder.ts`
+was casting the wrapped shape directly instead of unwrapping it, so `.windows` was always
+`undefined` → silently fell back to `[]` regardless of real data underneath).
+
+**Scheduled job**: sidecar endpoint `POST /api/compute/panchanga/refresh` + Next.js cron proxy
+`/api/admin/cron/refresh-panchanga-daily` shipped and live-tested. Terraform resource
+(`infra/scheduler/panchanga_refresh.tf`, monthly) is authored and committed but **NOT applied** — no
+agent in this run has cloud infrastructure write access (`terraform apply` requires it). **Flagged
+explicitly for a follow-up session with infra access to run `terraform apply` from main** — carried
+forward, not silently dropped.
+
+### Verifier-ring discipline — including a genuine false-negative episode, traced and resolved
+- **First independent pass**: migration safety PASS (real table confirmed via `relkind`, checksum of
+  the applied migration byte-identical to the committed file, row count/date range/location matched
+  exactly, astronomical spot-check — `vara` cross-referenced against the true Gregorian weekday for 5
+  consecutive seeded dates, all correct). `kala_muhurta_get` live MCP round-trip PASS on both charts.
+  This pass also found the `muhurta_finder` shape-mismatch bug (always empty windows) — routed back
+  to the implementer as a self-heal, not a HALT.
+- **Fix pass**: implementer added a narrow `unwrapMuhurtaFinderResult()` helper; self-reported live
+  verification showing 7 real windows on both charts.
+- **Second independent pass**: reported a contradictory **FAIL** — claimed `muhurta_finder` still
+  returned empty windows and that the `query_muhurat` capability mapping was still wrong. This
+  directly conflicted with the fix-pass's own live evidence and with a direct source read.
+- **Conductor-level resolution (not delegated)**: read the committed source directly — confirmed the
+  capability mapping and the new `L4_phala/query_muhurat.ts` file were genuinely correct and
+  registered, contradicting the second verifier's specific claim. Rather than trust either
+  self-report, personally stood up a from-scratch live triad (python-sidecar + platform + platform-mcp,
+  all from the exact worktree commit, against prod DB via the existing Cloud SQL Auth Proxy) and fired
+  real MCP `tools/call` requests directly. Result: genuine, real ranked windows with panchanga
+  citations on both charts at 2026-10-09, and honest empty-with-reason at 2028. **The second
+  verifier's FAIL was a test-environment setup artifact in its own run (most likely a stale/misrouted
+  local server), not a real defect** — settled by first-party evidence, not by picking a side.
+  A stray uncommitted `CONDUCTOR_HALT_LOG.md` diff and probe script left behind by that verifier's
+  broken run were discarded before merge (not part of the C3 feature).
+
+### Deploy + live gate check (post-merge, [verify-against: mcp], PR #491, commit `bcdfed4544cac51a2dfb0d110a5ce8109c1e19ef`)
+Confirmed `amjis-mcp`, `amjis-web`, AND `amjis-sidecar` (three services this time — the sidecar image
+changed too) latest-ready image tags all match the merge commit exactly. Live gate check against
+deployed prod (`amjis-mcp-qm256lasva-el.a.run.app/mcp`), `muhurta_finder`, action_type marriage,
+2026-10-01..2026-10-15 (3 months out):
+
+| Chart | window_count | Verdict |
+|---|---|---|
+| Native (482012f1) | 7 | PASS — real ranked windows, real panchanga citations (e.g. "panchanga_daily 2026-10-07 (Krishna Dvadashi/Magha/Mercury)... BPHS ch.46 muhurta rules") |
+| Abhinandan (1c826d5a) | 7 | PASS — same |
+
+Far-future (2028-06-01..2028-06-15, native, general): `window_count: 0`, honest `empty_reason` in the
+provenance envelope, no fabrication. **Gate criterion from the brief ("a muhurta question over MCP
+returns ranked windows w/ panchanga basis for a date 3 months out, on both charts") MET, live, on
+deployed prod, on the actual flagship tool the brief names.**
+
+### C3 verdict
+**CLOSED. No HALT.** One open follow-up carried forward honestly: the monthly-refresh Cloud
+Scheduler job needs `terraform apply` by a session with cloud infra write access — the code/config is
+ready, the actual cloud resource is not yet provisioned. Proceed to C4.
