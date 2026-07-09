@@ -46,14 +46,30 @@ import { applyResponseBudget, type TrimmableSection } from '../../lib/response_b
 // keeps the fix minimal and reversible pending that replacement.
 const HOLISTIC_BUNDLE_BUDGET_KB = 30
 
+// Live-verification fix (post-first-deploy): the platform bundle endpoint nests
+// bundle_entries under `envelope`, not at the result's top level — the first version of
+// this section read the wrong path and silently found nothing to trim (confirmed live:
+// 544KB in, 544KB out, trim_report showed the hard-cap fallback firing on zero actual
+// cuts). Reads both locations defensively so this doesn't silently break again if the
+// nesting ever flips back.
 function bundleEntriesSection(): TrimmableSection<Record<string, unknown>> {
+  const locate = (c: Record<string, unknown>): { holder: Record<string, unknown>; arr: unknown[] } | null => {
+    const nested = c['envelope'] as Record<string, unknown> | undefined
+    if (nested && Array.isArray(nested['bundle_entries'])) {
+      return { holder: nested, arr: nested['bundle_entries'] as unknown[] }
+    }
+    if (Array.isArray(c['bundle_entries'])) {
+      return { holder: c, arr: c['bundle_entries'] as unknown[] }
+    }
+    return null
+  }
   return {
     path: 'bundle_entries', label: 'bundle_entries', minKeep: 2,
-    getArray: (c) => {
-      const arr = c['bundle_entries']
-      return Array.isArray(arr) ? arr : undefined
+    getArray: (c) => locate(c)?.arr,
+    setArray: (c, kept) => {
+      const loc = locate(c)
+      if (loc) loc.holder['bundle_entries'] = kept
     },
-    setArray: (c, kept) => { c['bundle_entries'] = kept },
     recover: { instrument: 'bodha_bundle_get', hint: 'full multi-subsystem bundle (successor tool)' },
   }
 }
@@ -120,7 +136,11 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
         return {
           content: [{
             type: 'text' as const,
-            text: JSON.stringify(budgeted.content, null, 2),
+            // Compact, not pretty-printed — applyResponseBudget measures compact bytes;
+            // indentation is exactly the kind of gap the C1 live-verifier already caught
+            // once for other tools (a response that "should" be under budget by the
+            // trimmer's own measurement but ships larger over the actual wire).
+            text: JSON.stringify(budgeted.content),
           }],
         }
       } catch (err) {

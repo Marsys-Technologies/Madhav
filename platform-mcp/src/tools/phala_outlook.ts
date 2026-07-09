@@ -284,7 +284,9 @@ export function registerPhalaOutlookTool(server: McpServer, principal: Principal
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(budgeted.content, null, 2),
+              // Compact, not pretty-printed — applyResponseBudget measures compact bytes;
+              // pretty-printing after trimming would ship larger than the declared ceiling.
+              text: JSON.stringify(budgeted.content),
             },
           ],
         }
