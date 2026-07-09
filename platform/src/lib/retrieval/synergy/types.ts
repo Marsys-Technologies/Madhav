@@ -103,12 +103,19 @@ export interface VantagePerspective {
 export interface SignalRankResult {
   chart_id: string
   ayanamsha_id: string
-  /** Ranked by computed_salience DESC — NOT signature_tier (100% 'background') */
+  /** Ranked by computed_salience DESC. signature_tier's degeneracy is re-derived live
+   *  (E-2 freshness contract) — do not assume any historical distribution figure. */
   signals: RankedSignal[]
   total_available: number
   filters_applied: Record<string, unknown>
-  /** DEFECT-001 warning: 91.5% of constituent_facts_array refs are orphan */
+  /**
+   * DEFECT-001 status, live-derived (E-2 freshness contract, R5.1 C2 item 1) — see
+   * `platform/src/lib/retrieval/provenance/freshness_notes.ts`. `defect_001_note` is a
+   * plain-text mirror of `defect_001.note` retained for callers of the prior wave's shape.
+   * Never hardcode a historical orphan-rate figure here again.
+   */
   defect_001_note: string
+  defect_001?: import('../provenance/freshness_notes').FreshnessNote
 }
 
 export interface RankedSignal {
@@ -116,7 +123,7 @@ export interface RankedSignal {
   signal_headline_text?: string
   signal_summary_text?: string
   computed_salience: number
-  /** WARNING: may be empty (DEFECT-001: 91.5% orphan) */
+  /** May be empty — orphan rate is re-derived live, see SignalRankResult.defect_001 */
   constituent_facts_array: string[]
   classical_sources_jsonb: unknown
   domains_affected_array: string[]
@@ -225,8 +232,9 @@ export interface QualityScorecardResult {
   chart_id: string
   scorecards: ScorecardRow[]
   /**
-   * WARNING: unresolved_constituent_facts_count=0 is a FALSE PASS due to DEFECT-001.
-   * The actual orphan rate is 91.5% — treat quality scores with caution.
+   * The stored unresolved_constituent_facts_count on the scorecard row may be stale
+   * (computed pre-L1-rebuild). Re-derive DEFECT-001 live (E-2 freshness contract) via
+   * `deriveDefect001Note` rather than restating any historical orphan-rate figure here.
    */
   defect_001_false_pass_warning: string
 }
@@ -245,8 +253,9 @@ export interface ScorecardRow {
  * De-duplicated, cited, multi-vantage Whole-Chart-Read answer.
  *
  * Every claim traces: signal_id → fact_id (via constituent_facts_array)
- * → citation_id (via classical_sources_jsonb). DEFECT-001: fact_id joins
- * are 91.5% orphan — handle gracefully (empty join = empty provenance).
+ * → citation_id (via classical_sources_jsonb). DEFECT-001's orphan rate is
+ * re-derived live per call (E-2 freshness contract) — see `signals.defect_001`.
+ * Handle gracefully regardless of current rate (empty join = empty provenance).
  */
 export interface WholeChartReadResult {
   chart_id: string

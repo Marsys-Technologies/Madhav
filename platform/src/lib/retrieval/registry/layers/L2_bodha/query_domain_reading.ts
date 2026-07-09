@@ -17,10 +17,11 @@
  *     downstream temporal-activation filtering (query_temporal_activation top_k=20).
  *   - response_format=full restores the arrays (capped at higher limits).
  *
- * DEFECT-001 note: constituent_facts_array on referenced signals has a 91.5%
- * orphan rate (L1 hash rebuild mismatch). Downstream joins to chart_facts by
- * constituent_fact_id will return empty for most signals. The drill link to
- * query_signals handles this with graceful-empty on constituent_facts lookups.
+ * E-2 freshness contract on DEFECT-001 (R5.1 C2 item 1): constituent_facts_array on
+ * referenced signals historically carried a 91.5% orphan rate (L1 hash rebuild mismatch).
+ * That figure is now stale and is re-derived LIVE per call rather than restated — see
+ * `provenance.defect_001` in the response. The drill link to query_signals handles
+ * unresolved joins with graceful-empty regardless of the current rate.
  *
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
@@ -28,6 +29,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { deriveDefect001Note } from '../../../provenance/freshness_notes'
 
 /**
  * Maps each valid life-domain to the question_types that cover it.
@@ -264,6 +266,10 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       const signalRefsTotal = allSignalRefs.size
       const signalRefsArray = Array.from(allSignalRefs).slice(0, max_signal_refs)
 
+      // E-2 freshness contract: re-derive DEFECT-001 live for this chart rather than
+      // restating the historical "91.5% orphan" literal.
+      const defect001 = await deriveDefect001Note(chart_id)
+
       return {
         content: {
           chart_id,
@@ -286,10 +292,11 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
               'Domain \'other\' or unmapped domains return all lenses (no filter).',
               'Signal references derive from CDLM cells only.',
             ].join(' '),
-            defect_001_note: [
-              'constituent_facts_array in referenced signals has 91.5% orphan rate (DEFECT-001 OPEN).',
-              'L1 fact joins via signal references will be empty for most signals until L2 rebuild.',
-            ].join(' '),
+            // Structured, live-derived (E-2 freshness contract) — read this, not any
+            // historical figure.
+            defect_001: defect001,
+            // Legacy string field retained (additive) — sourced from the same live derivation.
+            defect_001_note: defect001.note,
             bounding_note: is_full
               ? `response_format=full: shared_signal_ids_array included (capped ${MAX_IDS_PER_CELL_FULL}/cell), signal_id_refs capped at ${max_signal_refs}.`
               : `response_format=default: shared_signal_ids_array omitted from cells (use shared_signal_count); signal_id_refs capped at ${max_signal_refs} of ${signalRefsTotal} total.`,

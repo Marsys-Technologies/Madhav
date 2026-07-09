@@ -10,8 +10,9 @@
  * F1 (reference-don't-repeat): de-duplicate by signal_id across all tool results.
  * F3 (layer-resolution-DOWN): L2 signals → L1 fact_ids → L0 citation_ids.
  *
- * DEFECT-001: 91.5% of constituent_facts_array refs are orphan.
- * Handle every join gracefully — empty join = empty provenance, not an error.
+ * DEFECT-001's orphan rate is re-derived LIVE per call (E-2 freshness contract, R5.1 C2
+ * item 1) — never hardcode a historical figure here. Handle every join gracefully
+ * regardless of the current rate — empty join = empty provenance, not an error.
  *
  * Both channels (MCP and chat) call this orchestrator through the registry.
  * Single source of query logic → drift structurally impossible.
@@ -30,6 +31,7 @@ import type {
   SignalRef,
   WholeChartReadMeta,
 } from './types'
+import { deriveDefect001Note, type FreshnessNote } from '../provenance/freshness_notes'
 
 // ── Context interface (DB access) ─────────────────────────────────────────────
 
@@ -257,19 +259,26 @@ async function runSignalRankStep(
 ): Promise<SignalRankResult> {
   const cap = getCapability('marsys://tool/L2/query_signals')
 
-  const DEFECT_001_NOTE =
-    'DEFECT-001: 91.5% of constituent_facts_array refs are orphan. ' +
-    'Empty joins on fact_id are expected — not an error. ' +
-    'Handle gracefully (empty provenance = unresolved, not missing).'
+  // E-2 freshness contract (R5.1 C2 item 1): DEFECT-001's status is re-derived live per
+  // call rather than restated as a fixed literal — never hardcode a historical figure.
+  // Used only for the no-capability / error graceful-empty paths below; the happy path
+  // prefers the live `defect_001` object query_signals itself already computed (avoids a
+  // duplicate DB round-trip) and falls back to deriving it here only if that's absent.
+  async function gracefulEmptyDefect001(): Promise<{ note: string; obj: FreshnessNote }> {
+    const obj = await deriveDefect001Note(chartId)
+    return { note: obj.note, obj }
+  }
 
   if (!cap) {
+    const { note, obj } = await gracefulEmptyDefect001()
     return {
       chart_id: chartId,
       ayanamsha_id: ayanamshaId,
       signals: [],
       total_available: 0,
       filters_applied: { seed_signal_ids: seedSignalIds, lel_enabled: lelEnabled },
-      defect_001_note: DEFECT_001_NOTE,
+      defect_001_note: note,
+      defect_001: obj,
     }
   }
 
@@ -298,7 +307,7 @@ async function runSignalRankStep(
         signal_headline_text: row['signal_headline_text'] ? String(row['signal_headline_text']) : undefined,
         signal_summary_text: row['signal_summary_text'] ? String(row['signal_summary_text']) : undefined,
         computed_salience: Number(row['computed_salience'] ?? 0),
-        // DEFECT-001: constituent_facts_array may be empty — that is correct behaviour
+        // Orphan rate re-derived live (E-2) — may legitimately be empty; see defect_001 below.
         constituent_facts_array: factsArray,
         classical_sources_jsonb: row['classical_sources_jsonb'] ?? null,
         domains_affected_array: Array.isArray(row['domains_affected_array'])
@@ -309,23 +318,36 @@ async function runSignalRankStep(
       }
     })
 
+    // Prefer query_signals' own live-derived defect_001 (design §E-2) — it already ran
+    // the live query for this exact page; re-derive only if it's genuinely absent
+    // (older cached response shape, or the handler graceful-emptied before reaching it).
+    const provenance = (data['provenance'] as Record<string, unknown> | undefined) ?? undefined
+    const upstreamDefect001 = provenance?.['defect_001'] as FreshnessNote | undefined
+    const defect001Obj = upstreamDefect001 ?? await deriveDefect001Note(
+      chartId,
+      signals.flatMap((s) => s.constituent_facts_array),
+    )
+
     return {
       chart_id: chartId,
       ayanamsha_id: ayanamshaId,
       signals,
       total_available: Number(data['total_available'] ?? signals.length),
       filters_applied: { seed_signal_ids: seedSignalIds, lel_enabled: lelEnabled },
-      defect_001_note: DEFECT_001_NOTE,
+      defect_001_note: defect001Obj.note,
+      defect_001: defect001Obj,
     }
   } catch (err) {
     console.warn('[synergy:signals] handler error', String(err))
+    const { note, obj } = await gracefulEmptyDefect001()
     return {
       chart_id: chartId,
       ayanamsha_id: ayanamshaId,
       signals: [],
       total_available: 0,
       filters_applied: { seed_signal_ids: seedSignalIds, lel_enabled: lelEnabled },
-      defect_001_note: DEFECT_001_NOTE,
+      defect_001_note: note,
+      defect_001: obj,
     }
   }
 }
