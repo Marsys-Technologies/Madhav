@@ -1132,10 +1132,6 @@ const queryRemediesForChartCapability: CapabilityDescriptor = {
     const topK = Math.min(Number(args['top_k'] ?? 5), 50)
 
     try {
-      const { Pool } = await import('pg')
-      const url = process.env.DATABASE_URL
-      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
-      const pool = new Pool({ connectionString: url, max: 3 })
       const sql = `
         SELECT remedy_id, planet, domain, category, deity,
                prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
@@ -1146,8 +1142,13 @@ const queryRemediesForChartCapability: CapabilityDescriptor = {
         ORDER BY confidence DESC NULLS LAST, cost_tier ASC
         LIMIT $2
       `
-      const result = await pool.query(sql, [`%${affliction}%`, topK])
-      await pool.end()
+      // R6 0a-envauth (R-15/O-6): was a raw `pg.Pool` keyed on `process.env.DATABASE_URL`,
+      // which is never set in production (amjis-web authenticates to Cloud SQL via the
+      // connector + INSTANCE_CONNECTION_NAME/DB_USER/DB_PASSWORD/DB_NAME — see
+      // lib/db/client.ts's initPool()). Every call 500'd with "DATABASE_URL not set".
+      // Fixed to use the same shared `query()` helper the sibling
+      // marsys://tool/L0/query_remedy_corpus capability already uses successfully.
+      const result = await query(sql, [`%${affliction}%`, topK])
       const content: Record<string, unknown> = {
         affliction,
         remedies: result.rows,
@@ -1213,10 +1214,6 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
       return { content: { error: 'category is required' }, is_error: true }
     }
     try {
-      const { Pool } = await import('pg')
-      const url = process.env.DATABASE_URL
-      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
-      const pool = new Pool({ connectionString: url, max: 3 })
       const sql = `
         SELECT remedy_id, planet, domain, category, deity,
                prescription_text, mantra_text, mantra_sanskrit,
@@ -1225,8 +1222,9 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
         WHERE category = $1
         ORDER BY planet, remedy_id
       `
-      const result = await pool.query(sql, [category])
-      await pool.end()
+      // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
+      // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
+      const result = await query(sql, [category])
       return {
         content: { category, remedies: result.rows, returned_count: result.rows.length },
         is_error: false,
@@ -1282,12 +1280,9 @@ const readRemedyCapability: CapabilityDescriptor = {
       return { content: { error: 'remedy_id is required' }, is_error: true }
     }
     try {
-      const { Pool } = await import('pg')
-      const url = process.env.DATABASE_URL
-      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
-      const pool = new Pool({ connectionString: url, max: 3 })
-      const result = await pool.query('SELECT * FROM brahma_remedy_corpus WHERE remedy_id = $1', [remedy_id])
-      await pool.end()
+      // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
+      // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
+      const result = await query('SELECT * FROM brahma_remedy_corpus WHERE remedy_id = $1', [remedy_id])
       const row = result.rows[0] ?? null
       return {
         content: { remedy_id, remedy: row, found: row !== null },
@@ -1347,11 +1342,6 @@ const queryTantricRemediesCapability: CapabilityDescriptor = {
     const planet = args['planet'] as string | undefined
 
     try {
-      const { Pool } = await import('pg')
-      const url = process.env.DATABASE_URL
-      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
-      const pool = new Pool({ connectionString: url, max: 3 })
-
       const conditions: string[] = ["category = 'tantric'"]
       const values: unknown[] = []
       if (deity)  { values.push(`%${deity}%`);  conditions.push(`deity ILIKE $${values.length}`) }
@@ -1366,8 +1356,9 @@ const queryTantricRemediesCapability: CapabilityDescriptor = {
         WHERE ${conditions.join(' AND ')}
         ORDER BY planet, remedy_id
       `
-      const result = await pool.query(sql, values)
-      await pool.end()
+      // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
+      // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
+      const result = await query(sql, values)
       return {
         content: { remedies: result.rows, returned_count: result.rows.length, filters: { deity, planet } },
         is_error: false,
@@ -1423,10 +1414,6 @@ const queryRemediesByPlanetCapability: CapabilityDescriptor = {
       return { content: { error: 'planet is required' }, is_error: true }
     }
     try {
-      const { Pool } = await import('pg')
-      const url = process.env.DATABASE_URL
-      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
-      const pool = new Pool({ connectionString: url, max: 3 })
       const sql = `
         SELECT remedy_id, planet, domain, category, deity,
                prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
@@ -1435,8 +1422,9 @@ const queryRemediesByPlanetCapability: CapabilityDescriptor = {
         WHERE planet = $1
         ORDER BY category, remedy_id
       `
-      const result = await pool.query(sql, [planet])
-      await pool.end()
+      // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
+      // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
+      const result = await query(sql, [planet])
       return {
         content: { planet, remedies: result.rows, returned_count: result.rows.length },
         is_error: false,
@@ -1488,11 +1476,6 @@ const queryMantrasCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const planet = args['planet'] as string | undefined
     try {
-      const { Pool } = await import('pg')
-      const url = process.env.DATABASE_URL
-      if (!url) return { content: { error: 'DATABASE_URL not set' }, is_error: true }
-      const pool = new Pool({ connectionString: url, max: 3 })
-
       const conditions: string[] = ["category = 'mantras'"]
       const values: unknown[] = []
       if (planet) { values.push(planet); conditions.push(`planet = $${values.length}`) }
@@ -1506,8 +1489,9 @@ const queryMantrasCapability: CapabilityDescriptor = {
         WHERE ${conditions.join(' AND ')}
         ORDER BY planet, remedy_id
       `
-      const result = await pool.query(sql, values)
-      await pool.end()
+      // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
+      // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
+      const result = await query(sql, values)
       return {
         content: { planet: planet ?? 'all', mantras: result.rows, returned_count: result.rows.length },
         is_error: false,
