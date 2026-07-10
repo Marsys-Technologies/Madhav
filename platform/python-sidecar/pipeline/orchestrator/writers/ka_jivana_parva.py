@@ -7,14 +7,36 @@ running Antardasha only (~9 rows). Uses CURRENT_DATE-scoped level_n=3 query
 so total row count stays far below smallint overflow (~247 vs 32767).
 Also populates dominant_signal_class via frequency-count of signature_class
 across convergence windows in each MD span.
+T-9 clip (R6 0d-clips): chart_dashas legitimately carries a pre-birth theoretical
+start_date for the FIRST mahadasha (the "balance of dasha at birth" convention —
+the full nakshatra-lord period the native was born into, whose start predates
+birth by up to one dasha's full span). That is correct L1 astronomy. But this
+writer must not SERVE that pre-birth span as a lived biographical chapter — a
+1984 native has no lived experience of a chapter that "began" in 1950. Every
+parva (MD/AD/PD) is therefore clipped to [birth_date, ...): rows that end before
+birth are dropped outright (never experienced); rows straddling birth have their
+served start_year raised to birth_date.year (experienced portion only).
 """
 import json
 import logging
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_birth_date(birth_params) -> date | None:
+    """Native birth date from ctx.config['birth_params']['datetime_iso']."""
+    if not isinstance(birth_params, dict):
+        return None
+    iso = birth_params.get('datetime_iso')
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(str(iso)).date()
+    except ValueError:
+        return None
 
 
 @register('ka_jivana_parva')
@@ -25,6 +47,15 @@ class KaJivanaParvaWriter(WriterBase):
         # Single temporal anchor for the entire build — prevents midnight-crossing divergence
         # and ensures two builds on the same logical day produce identical PD rows.
         as_of_date = ctx.config.get('as_of_date') or date.today()
+        # T-9: birth_date drives the pre-birth clip (see module docstring).
+        birth_date = _parse_birth_date(ctx.config.get('birth_params'))
+        if birth_date is None:
+            logger.warning(
+                "ka_jivana_parva: no birth_date resolved from birth_params for chart_id=%s "
+                "— pre-birth clip DISABLED for this build (upstream bug; parvas may include "
+                "pre-birth theoretical dasha spans)",
+                chart_id,
+            )
 
         # Idempotency
         with conn.cursor() as _timeout_cur:
@@ -102,6 +133,24 @@ class KaJivanaParvaWriter(WriterBase):
             md_end_y      = md_end.year if md_end else None
             md_end_actual = md_end or date(2100, 1, 1)
 
+            # T-9 clip: an MD that ends entirely before birth was never lived —
+            # drop it outright rather than serving it as a biographical chapter.
+            if birth_date is not None and md_end_actual < birth_date:
+                logger.info(
+                    "ka_jivana_parva: T-9 clip — dropping MD idx=%d planet=%s "
+                    "(end=%s predates birth=%s; never lived)",
+                    md_idx, md_planet, md_end_actual, birth_date,
+                )
+                continue
+            # Served start_year: an MD whose true start predates birth (the
+            # "balance of dasha" convention) is presented as beginning at birth —
+            # the native did not experience the pre-birth portion of the span.
+            served_md_start_y = (
+                birth_date.year
+                if birth_date is not None and md_start and md_start < birth_date
+                else md_start_y
+            )
+
             # Convergence windows within this MD span
             md_windows = [
                 w for w in conv_windows
@@ -120,15 +169,15 @@ class KaJivanaParvaWriter(WriterBase):
                 sum(w['effective_score'] or 0 for w in md_windows) / len(md_windows)
             ) if md_windows else None
 
-            quality       = _assign_quality(md_idx, len(md_dashas), high_conv_count, avg_score, md_start_y, md_end_y, today_y=as_of_date.year)
+            quality       = _assign_quality(md_idx, len(md_dashas), high_conv_count, avg_score, served_md_start_y, md_end_y, today_y=as_of_date.year)
             theme_keywords = _derive_theme(md_planet, quality)
-            narrative      = _build_parva_narrative(md_planet, md_start_y, md_end_y, quality, high_conv_count, avg_score)
+            narrative      = _build_parva_narrative(md_planet, served_md_start_y, md_end_y, quality, high_conv_count, avg_score)
 
             parva_index += 1
             rows.append((
                 chart_id,
                 parva_index,
-                md_start_y,
+                served_md_start_y,
                 md_end_y,
                 str(md_planet),
                 dominant_class,
@@ -156,6 +205,16 @@ class KaJivanaParvaWriter(WriterBase):
                 ad_end_y      = ad_end.year if ad_end else None
                 ad_end_actual = ad_end or date(2100, 1, 1)
 
+                # T-9 clip (AD level): drop fully pre-birth sub-chapters; clip
+                # served start_year for AD spans straddling birth.
+                if birth_date is not None and ad_end_actual < birth_date:
+                    continue
+                served_ad_start_y = (
+                    birth_date.year
+                    if birth_date is not None and ad_start and ad_start < birth_date
+                    else ad_start_y
+                )
+
                 ad_windows = [
                     w for w in md_windows
                     if w['peak_date'] and ad_start and ad_start <= w['peak_date'] <= ad_end_actual
@@ -169,17 +228,17 @@ class KaJivanaParvaWriter(WriterBase):
                 ad_avg_score = (
                     sum(w['effective_score'] or 0 for w in ad_windows) / len(ad_windows)
                 ) if ad_windows else None
-                ad_quality   = _assign_quality(ad_idx, len(md_ad_rows), ad_high_cnt, ad_avg_score, ad_start_y, ad_end_y, today_y=as_of_date.year)
+                ad_quality   = _assign_quality(ad_idx, len(md_ad_rows), ad_high_cnt, ad_avg_score, served_ad_start_y, ad_end_y, today_y=as_of_date.year)
                 ad_theme     = _derive_theme(ad_planet, ad_quality)
                 ad_narrative = _build_parva_narrative(
-                    f"{md_planet}/{ad_planet}", ad_start_y, ad_end_y, ad_quality, ad_high_cnt, ad_avg_score
+                    f"{md_planet}/{ad_planet}", served_ad_start_y, ad_end_y, ad_quality, ad_high_cnt, ad_avg_score
                 )
 
                 parva_index += 1
                 rows.append((
                     chart_id,
                     parva_index,
-                    ad_start_y,
+                    served_ad_start_y,
                     ad_end_y,
                     str(ad_planet),
                     ad_dominant,
