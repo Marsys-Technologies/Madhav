@@ -54,7 +54,8 @@ def _sidereal_longitude_mean_node(jd_utc, planet):
 
 drik.sidereal_longitude = _sidereal_longitude_mean_node
 
-__all__ = ["drik", "utils", "const", "charts", "get_vimsottari"]
+__all__ = ["drik", "utils", "const", "charts", "get_vimsottari",
+           "get_ashtakavarga", "get_house"]
 
 
 def get_vimsottari():
@@ -62,3 +63,20 @@ def get_vimsottari():
     heavier transitive imports from the hot calculation path)."""
     from jhora.horoscope.dhasa.graha import vimsottari
     return vimsottari
+
+
+def get_ashtakavarga():
+    """Lazy-import jhora.horoscope.chart.ashtakavarga (pure numpy/const —
+    no PyQt6 transitive import). Exposes the real BPHS 8x8 contributor-map
+    Ashtakavarga engine: get_ashtaka_varga() + sodhaya_pindas()."""
+    from jhora.horoscope.chart import ashtakavarga
+    return ashtakavarga
+
+
+def get_house():
+    """Lazy-import jhora.horoscope.chart.house (pure const/utils — no
+    PyQt6 transitive import). Exposes the real Panchadha Maitri (5-fold
+    compound naisargika+tatkalika relationship) engine:
+    _get_compound_relationships_of_planets()."""
+    from jhora.horoscope.chart import house
+    return house
