@@ -152,10 +152,14 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     },
     include: {
       type: 'array',
-      description: 'Subset of sections to compute (default: all). One or more of: position, dignity, strength, avasthas, yogas, dashas, cgm_neighborhood.',
+      description: 'Subset of sections to compute (default: all). One or more of: position, dignity, ' +
+        'functional_nature, strength, avasthas (alias: special_states), yogas, dashas, cgm_neighborhood. ' +
+        '(R-6 fix: functional_nature and special_states were previously SERVED in the response but ' +
+        'absent from this enum — functional_nature could not be requested/excluded on its own, and ' +
+        'special_states — the classical name for the avasthas system — errored as an invalid option.)',
       items: {
         type: 'string',
-        enum: ['position', 'dignity', 'strength', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood'],
+        enum: ['position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'special_states', 'yogas', 'dashas', 'cgm_neighborhood'],
       },
     },
   },
@@ -189,10 +193,18 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
 
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const operativeVargas = (args['operative_vargas'] as string[] | undefined) ?? [...OPERATIVE_VARGAS]
-    const include = (args['include'] as string[] | undefined) ?? [
-      'position', 'dignity', 'strength', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood',
+    const includeRaw = (args['include'] as string[] | undefined) ?? [
+      'position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood',
     ]
+    // R-6 fix: 'special_states' is the classical name for the avasthas system
+    // (baladi/jagrad/deepta/lajjitadi/sayanadi are precisely a graha's "special states") —
+    // accept it as a synonym for 'avasthas' rather than erroring as an invalid option.
+    const include = includeRaw.map(s => (s === 'special_states' ? 'avasthas' : s))
     const want = (section: string) => include.includes(section)
+    // functional_nature is computed alongside dignity (same underlying getDignityCapability
+    // call) but is now independently requestable/excludable via `include`.
+    const wantDignitySection = want('dignity')
+    const wantFunctionalNature = want('functional_nature')
 
     const sections: Record<string, unknown> = {}
     const notes: string[] = []
@@ -211,28 +223,40 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     }
 
     // ── dignity (across all vargas; operative_vargas highlighted) + functional nature ──
-    if (want('dignity')) {
+    // R-6 fix: dignity and functional_nature are two independently-requestable `include`
+    // values that share one underlying getDignityCapability call — computed together when
+    // either is wanted, but each section is only ATTACHED to the response if its own
+    // `include` value was actually requested (so include=["functional_nature"] alone does
+    // not also serve the dignity section, and vice versa).
+    if (wantDignitySection || wantFunctionalNature) {
       try {
         const { content } = unwrap(await getDignityCapability.handler({ chart_id, ayanamsha_id }, ctx))
         const rows = ((content['rows'] as FactRow[]) ?? [])
           .filter(r => subjectMatchesGraha(r['fact_subject'] as string, grahaCode, grahaName))
         const dignityRows = rows.filter(r => r['fact_category'] === 'graha_dignity_per_varga')
         const functionalRows = rows.filter(r => r['fact_category'] === 'graha_functional_class_per_ascendant')
-        const operativeRows = dignityRows.filter(r => {
-          const varga = (r['fact_value_jsonb'] as FactRow | null)?.['varga']
-          return typeof varga === 'string' && operativeVargas.includes(varga)
-        })
-        sections['dignity'] = {
-          operative_vargas: operativeVargas,
-          operative_varga_rows: operativeRows,
-          all_varga_rows: dignityRows,
-          other_rows: rows.filter(r =>
-            r['fact_category'] !== 'graha_dignity_per_varga' &&
-            r['fact_category'] !== 'graha_functional_class_per_ascendant'),
-          count: rows.length,
+        if (wantDignitySection) {
+          const operativeRows = dignityRows.filter(r => {
+            const varga = (r['fact_value_jsonb'] as FactRow | null)?.['varga']
+            return typeof varga === 'string' && operativeVargas.includes(varga)
+          })
+          sections['dignity'] = {
+            operative_vargas: operativeVargas,
+            operative_varga_rows: operativeRows,
+            all_varga_rows: dignityRows,
+            other_rows: rows.filter(r =>
+              r['fact_category'] !== 'graha_dignity_per_varga' &&
+              r['fact_category'] !== 'graha_functional_class_per_ascendant'),
+            count: rows.length,
+          }
         }
-        sections['functional_nature'] = { rows: functionalRows, count: functionalRows.length }
-      } catch (e) { errors['dignity'] = String(e) }
+        if (wantFunctionalNature) {
+          sections['functional_nature'] = { rows: functionalRows, count: functionalRows.length }
+        }
+      } catch (e) {
+        if (wantDignitySection) errors['dignity'] = String(e)
+        if (wantFunctionalNature) errors['functional_nature'] = String(e)
+      }
     }
 
     // ── strength (shadbala decomposition) ───────────────────────────────────
@@ -352,8 +376,8 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     // to the graha_portrait recipe rather than judgment_query's bhava recipe) ──
     const completeness: Record<string, string> = {}
     for (const key of ['position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood']) {
-      if (!want(key === 'functional_nature' ? 'dignity' : key)) { completeness[key] = 'not_requested'; continue }
-      if (errors[key === 'functional_nature' ? 'dignity' : key]) { completeness[key] = 'error'; continue }
+      if (!want(key)) { completeness[key] = 'not_requested'; continue }
+      if (errors[key]) { completeness[key] = 'error'; continue }
       const section = sections[key]
       const count = (section as { count?: number } | undefined)?.count
         ?? (section as { node_count?: number } | undefined)?.node_count

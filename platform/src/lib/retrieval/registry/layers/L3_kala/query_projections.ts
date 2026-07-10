@@ -56,6 +56,10 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'Filter by domain (career, wealth, relationship, health, character, spirituality, other).',
     },
+    limit: {
+      type: 'number',
+      description: 'Max projection rows to return (default: 50 = all, max: 50). Applied after ORDER BY.',
+    },
   },
 
   llm_hints: {
@@ -77,6 +81,7 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
     const horizon_years   = Number(args['horizon_years'] ?? 3)
     const probability_tier = args['probability_tier'] as string | undefined
     const domain          = args['domain'] as string | undefined
+    const limit           = Math.min(Number(args['limit'] ?? 50), 50)
 
     const horizon_date = new Date()
     horizon_date.setFullYear(horizon_date.getFullYear() + horizon_years)
@@ -95,6 +100,9 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
       if (probability_tier) { conds.push(`probability_tier = $${p++}`); params.push(probability_tier) }
       if (domain)           { conds.push(`domain = $${p++}`);           params.push(domain) }
 
+      params.push(limit)
+      const limitPh = `$${p}`
+
       const sql = `
         SELECT id, projection_rank, domain, probability_tier, effective_score,
                peak_date, window_start, window_end, narrative,
@@ -103,6 +111,7 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
         FROM kala_bhavishya
         WHERE ${conds.join(' AND ')}
         ORDER BY probability_tier, projection_rank
+        LIMIT ${limitPh}
       `
 
       const result = await query(sql, params)
@@ -119,7 +128,7 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
           projections:      result.rows,
           projection_count: result.rows.length,
           signal_id_refs:   Array.from(signalRefs),
-          filters: { horizon_years, probability_tier, domain },
+          filters: { horizon_years, probability_tier, domain, limit },
           provenance: { tables: ['kala_bhavishya'] },
         },
         is_error: false,

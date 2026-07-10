@@ -53,6 +53,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
       description: 'Optional list of fact_categories to include. Defaults to all position categories.',
       items: { type: 'string', enum: ['graha_position', 'upagraha_position', 'aprakasha_position'] },
     },
+    planet: {
+      type: 'string',
+      description: 'Optional: filter to a single graha/planet by name (e.g. "Sun", "Moon", "Mars"), ' +
+        'matched case-insensitively against fact_subject. Omit to return all planets. ' +
+        '(SC-20 fix: every caller of this tool already declared `planet` in its own schema, but this ' +
+        'handler never read it — the filter was silently ignored. Now honored.)',
+    },
     frame: {
       type: 'string',
       description: 'Reference frame to re-base house counts onto (default: lagna). ' +
@@ -91,8 +98,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
         }
       }
       const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
+      const planet = (args.planet as string | undefined)?.trim() || undefined
 
-      const params: unknown[] = [chartId, categories, limit, offset]
+      const params: unknown[] = [chartId, categories]
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
@@ -104,7 +112,12 @@ export const getPositionsCapability: CapabilityDescriptor = {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
       }
-      sql += ` ORDER BY ayanamsha_id, fact_category, fact_key LIMIT $3 OFFSET $4`
+      if (planet) {
+        sql += ` AND fact_subject ILIKE $${params.length + 1}`
+        params.push(planet)
+      }
+      params.push(limit, offset)
+      sql += ` ORDER BY ayanamsha_id, fact_category, fact_key LIMIT $${params.length - 1} OFFSET $${params.length}`
 
       const result = await query<Record<string, unknown>>(sql, params)
       let rows = result.rows ?? []
@@ -142,7 +155,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories, frame, rows, total: rows.length,
+          chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
           ...(frameNote ? { frame_note: frameNote } : {}),
         },
         is_error: false,
