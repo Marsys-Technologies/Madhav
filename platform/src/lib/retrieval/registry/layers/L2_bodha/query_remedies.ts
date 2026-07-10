@@ -127,6 +127,22 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       description: "'compact' (default) narrates + drops always-null/redundant columns; 'all' returns full raw rows (recovery path for associated_*_array, estimated_cost_inr_range_jsonb, prescription_detail_jsonb, etc.).",
       enum: ['compact', 'all'],
     },
+    domain: {
+      type: 'string',
+      description: 'Filter resonances to those linked (via associated_cdlm_cells_array) to a ' +
+        'CDLM cell whose domain_row or domain_col matches this life domain (e.g. career, wealth, ' +
+        'relationship, health). Optional.',
+    },
+    keyword: {
+      type: 'string',
+      description: 'Case-insensitive substring filter on prescription remedy_label_human / ' +
+        'remedy_category / sub_tradition. Optional.',
+    },
+    limit: {
+      type: 'number',
+      description: 'Max rows to return per section (resonances, prescriptions). Default: all ' +
+        '(45 resonances / 135 prescriptions); max: 200.',
+    },
   },
 
   llm_hints: {
@@ -150,6 +166,9 @@ export const queryRemediesCapability: CapabilityDescriptor = {
     const graha          = args['graha'] as string | undefined
     const fields         = ((args['fields'] as string | undefined) ?? 'compact').toLowerCase()
     const includeAll     = fields === 'all'
+    const domain         = args['domain'] as string | undefined
+    const keyword        = args['keyword'] as string | undefined
+    const limit          = args['limit'] != null ? Math.min(Number(args['limit']), 200) : undefined
 
     try {
       // Resonances (graha-keyed; no signal_id column on this table)
@@ -157,8 +176,16 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       const resParams: unknown[] = [chart_id, ayanamsha_id]
       let rp = 3
       if (graha) { resConds.push(`graha = $${rp++}`); resParams.push(graha) }
+      if (domain) {
+        resConds.push(
+          `EXISTS (SELECT 1 FROM bodha_cdlm_cells cc WHERE cc.cell_id = ANY(bodha_rm_resonances.associated_cdlm_cells_array) ` +
+          `AND (cc.domain_row = $${rp} OR cc.domain_col = $${rp}))`
+        )
+        resParams.push(domain)
+        rp++
+      }
 
-      const resonanceSql = `
+      let resonanceSql = `
         SELECT resonance_id, graha, resonance_score, weakness_score,
                contradiction_factor, domain_burden, motif_burden,
                remedy_priority_class, is_yoga_karaka_flag, weakest_rank_in_chart,
@@ -168,6 +195,10 @@ export const queryRemediesCapability: CapabilityDescriptor = {
         WHERE ${resConds.join(' AND ')}
         ORDER BY resonance_score DESC NULLS LAST
       `
+      if (limit != null) {
+        resParams.push(limit)
+        resonanceSql += ` LIMIT $${resParams.length}`
+      }
 
       // Prescriptions
       const preConds = ['chart_id = $1', 'ayanamsha_id = $2']
@@ -175,8 +206,23 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       let pp = 3
       if (tradition)  { preConds.push(`tradition = $${pp++}`);  preParams.push(tradition) }
       if (graha)      { preConds.push(`target_graha = $${pp++}`); preParams.push(graha) }
+      if (keyword) {
+        preConds.push(
+          `(remedy_label_human ILIKE $${pp} OR remedy_category ILIKE $${pp} OR sub_tradition ILIKE $${pp})`
+        )
+        preParams.push(`%${keyword}%`)
+        pp++
+      }
+      if (domain) {
+        preConds.push(
+          `EXISTS (SELECT 1 FROM bodha_rm_resonances rr JOIN bodha_cdlm_cells cc ON cc.cell_id = ANY(rr.associated_cdlm_cells_array) ` +
+          `WHERE rr.resonance_id = bodha_rm_remedy_prescriptions.target_resonance_id AND (cc.domain_row = $${pp} OR cc.domain_col = $${pp}))`
+        )
+        preParams.push(domain)
+        pp++
+      }
 
-      const prescriptionSql = `
+      let prescriptionSql = `
         SELECT prescription_id, target_resonance_id, target_graha, tradition,
                sub_tradition, remedy_category, remedy_label_human,
                prescription_detail_jsonb, classical_strength_rating,
@@ -189,6 +235,10 @@ export const queryRemediesCapability: CapabilityDescriptor = {
         WHERE ${preConds.join(' AND ')}
         ORDER BY phase_sequence_class NULLS LAST, feasibility_score DESC NULLS LAST
       `
+      if (limit != null) {
+        preParams.push(limit)
+        prescriptionSql += ` LIMIT $${preParams.length}`
+      }
 
       const [resResult, preResult] = await Promise.all([
         query<Record<string, unknown>>(resonanceSql, resParams),
@@ -268,8 +318,12 @@ export const queryRemediesCapability: CapabilityDescriptor = {
           hint: 'Call again with tradition=gemstone|mantra|charity for a deeper single-tradition cut.',
         },
         {
+          // SC-19 fix: this entry documents a BUILD-STATE fact about the bo_upaya writer/
+          // asset — it is not a callable recovery pointer, so it must not use the `instrument`
+          // field (a tool-pointer field elsewhere in this shape). `asset_id` names the L2
+          // asset the gap belongs to without implying it's an MCP tool a client can call.
           type: 'build_state',
-          instrument: 'bo_upaya',
+          asset_id: 'bo_upaya',
           hint: 'associated_doshas_array and estimated_cost_inr_range_jsonb are unpopulated bo_upaya-wide — see build-state ledger for why (writer gap, not a serving-layer drop).',
         },
         ...(fields !== 'all'
@@ -292,7 +346,7 @@ export const queryRemediesCapability: CapabilityDescriptor = {
           resonance_count:      resRows.length,
           prescriptions:        includeAll ? preRows : prescriptionsCompact,
           prescription_count:   preRows.length,
-          filters: { tradition, graha, fields },
+          filters: { tradition, graha, fields, domain: domain ?? null, keyword: keyword ?? null, limit: limit ?? null },
           drill_pointers: drillPointers,
           provenance: {
             tables: ['bodha_rm_resonances', 'bodha_rm_remedy_prescriptions'],

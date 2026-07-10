@@ -49,8 +49,14 @@ function walkTs(dir: string, out: string[]): void {
  *   3. `globalAlias(server, 'name', ...)`        — global-scope alias helper,
  *      same file, same delegation pattern.
  *   4. `server.tool(TOOL_NAME, ...)` where `const TOOL_NAME = 'name'` is
- *      declared in the same file (the one known non-literal direct call
- *      site, kala_temporal.ts).
+ *      declared in the SAME file as the call site — resolved per-file, not
+ *      hardcoded to one filename. (R6 3b-budgets fix: the original version
+ *      only special-cased kala_temporal.ts by path; phala_event_anchors.ts
+ *      uses the identical pattern and was silently missed — a Ring-2-adjacent
+ *      finding surfaced when a new self-recovery pointer in that file first
+ *      cited its own TOOL_NAME-registered name, tripping SC-pointer's
+ *      registered-set check. Generalizing per-file avoids the next file that
+ *      adopts this pattern hitting the same silent gap.)
  */
 export function collectRegisteredTools(): Set<string> {
   const files: string[] = []
@@ -60,13 +66,10 @@ export function collectRegisteredTools(): Set<string> {
     const src = readFileSync(f, 'utf-8')
     for (const m of src.matchAll(/server\.tool\(\s*['"]([a-zA-Z0-9_]+)['"]/g)) names.add(m[1])
     for (const m of src.matchAll(/\b(?:regAlias|globalAlias)\(\s*server,\s*['"]([a-zA-Z0-9_]+)['"]/g)) names.add(m[1])
-  }
-  try {
-    const kt = readFileSync(path.join(MCP_TOOLS_ROOT, 'retrieval/kala_temporal.ts'), 'utf-8')
-    const m = kt.match(/const TOOL_NAME = ['"]([a-zA-Z0-9_]+)['"]/)
-    if (m) names.add(m[1])
-  } catch {
-    /* file may not exist in this codebase version — non-fatal */
+    if (/server\.tool\(\s*TOOL_NAME\s*,/.test(src)) {
+      const m = src.match(/const TOOL_NAME\s*=\s*['"]([a-zA-Z0-9_]+)['"]/)
+      if (m) names.add(m[1])
+    }
   }
   return names
 }

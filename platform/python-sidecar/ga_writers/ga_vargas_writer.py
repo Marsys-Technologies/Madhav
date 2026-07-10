@@ -59,6 +59,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+import psycopg.rows
+
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
@@ -172,24 +174,13 @@ PUSHKARA_BHAGA = {
 }
 PUSHKARA_BHAGA_ORBS_DEG = 1.0  # 1° orb for Pushkara bhaga
 
-# D60 Shashtiamsa deities — 60 named deities per BPHS Ch.7
-# Each deity repeats across 5 cycles × 12 = 60 (but BPHS assigns specific names)
-D60_DEITIES = [
-    "Ghora", "Rakshasa", "Deva", "Kubera", "Yaksha", "Kinnara",
-    "Bhrashta", "Kulagna", "Garala", "Vahni", "Mritu", "Sudha",
-    "Amrita", "Poorna_Chandra", "Vishahara", "Amrita_Kriya",
-    "Mritu_Kriya", "Kala", "Sarpa", "Amrita",
-    "Indra", "Yama", "Nirrti", "Varuna", "Vayu", "Kubera2",
-    "Ishana", "Brahma", "Vishnu", "Shiva",
-    "Ghora2", "Rakshasa2", "Deva2", "Kubera3", "Yaksha2", "Kinnara2",
-    "Bhrashta2", "Kulagna2", "Garala2", "Vahni2", "Mritu2", "Sudha2",
-    "Amrita2", "Poorna_Chandra2", "Vishahara2", "Amrita_Kriya2",
-    "Mritu_Kriya2", "Kala2", "Sarpa2", "Amrita3",
-    "Indra2", "Yama2", "Nirrti2", "Varuna2", "Vayu2", "Kubera4",
-    "Ishana2", "Brahma2", "Vishnu2", "Shiva2",
-]
-# 12 quality classes for D60 per BPHS
-D60_QUALITIES = ["Malefic", "Neutral", "Benefic"] * 20  # simplified
+# NOTE (M-17 fix): the former D60_DEITIES/D60_QUALITIES fabricated arrays
+# (a made-up 60-name list + a repeating [Malefic,Neutral,Benefic]*20 cycle,
+# neither grounded in a primary BPHS Ch.7 source nor sign-parity-aware) were
+# REMOVED. D60 quality now resolves via _get_d60_amsa_number + a JOIN against
+# bg_shashtiamsha_deities (migration 430, real PyJHora-derived kroora/soumya
+# split); deity_name is canonical-or-floor NULL. See _load_shashtiamsha_deities
+# and _build_deity_rows's varga_n==60 branch below.
 
 # D40 Khavedamsha devatas (40 devatas cycle per sign parity)
 D40_ODD_DEVATAS = ["Vishnu", "Chandra", "Marichi", "Tvashtha", "Dhata", "Shiva",
@@ -485,11 +476,53 @@ def _compute_d30_lord(sign_idx: int, degree_in_sign: float) -> str:
     return D30_ODD_LORDS[-1][0]  # fallback: last region
 
 
-def _get_d60_deity(sign_idx: int, degree_in_sign: float) -> str:
-    """D60 Shashtiamsa deity — each 0.5° of sign maps to one of 60 deities."""
+def _get_d60_amsa_number(sign_idx: int, degree_in_sign: float) -> int:
+    """
+    D60 Shashtiamsha amsa number (1-60), WITH the classical odd/even sign-parity
+    reversal (M-17 fix). The prior implementation (formerly `_get_d60_deity`)
+    ignored sign_idx entirely — every sign used the same forward-only amsa
+    index, and quality was derived from a fabricated
+    ["Malefic","Neutral","Benefic"]*20 cycle instead of amsa number at all.
+
+    Formula mirrors PyJHora's own jhora.utils.get_amsa_ruler_from_planet_longitude
+    (0-based sign-parity convention): for 0-based-even sign_idx the 60-amsa
+    index counts DOWN from 59; for 0-based-odd sign_idx it counts UP from 0.
+    Returns a 1-based amsa_number for lookup against bg_shashtiamsha_deities
+    (migration 430).
+    """
     amsa_size = 30.0 / 60
-    amsa_idx = int(degree_in_sign / amsa_size) % 60
-    return D60_DEITIES[amsa_idx] if amsa_idx < len(D60_DEITIES) else "Unknown"
+    base_idx = int(degree_in_sign / amsa_size) % 60  # 0-based, 0.5 deg/amsa
+    amsa_idx0 = (59 - base_idx) if sign_idx % 2 == 0 else base_idx
+    return amsa_idx0 + 1
+
+
+_SHASHTIAMSHA_CACHE: dict[int, dict] | None = None
+
+
+def _load_shashtiamsha_deities(conn: Any) -> dict[int, dict]:
+    """
+    Load bg_shashtiamsha_deities (M-17 canonical D60 reference, migration 430)
+    into {amsa_number: {"quality": "kroora"|"soumya", "deity_name": str|None}}.
+    Cached per-process since this is static L0 reference data. Returns {} (and
+    logs) if the table is unreachable — callers must floor (skip/NULL), never
+    fabricate, on a cache miss.
+    """
+    global _SHASHTIAMSHA_CACHE
+    if _SHASHTIAMSHA_CACHE is not None:
+        return _SHASHTIAMSHA_CACHE
+    try:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute(
+                "SELECT amsa_number, quality, deity_name FROM bg_shashtiamsha_deities"
+            )
+            _SHASHTIAMSHA_CACHE = {
+                row[0]: {"quality": row[1], "deity_name": row[2]}
+                for row in cur.fetchall()
+            }
+    except Exception as exc:
+        logger.warning("[ga_vargas] bg_shashtiamsha_deities unavailable: %s", exc)
+        _SHASHTIAMSHA_CACHE = {}
+    return _SHASHTIAMSHA_CACHE
 
 
 def _get_d40_devata(sign_idx: int, degree_in_sign: float) -> str:
@@ -567,44 +600,129 @@ def _compute_jaimini_karakas(varga_positions: dict[str, int], d1_longitudes: dic
     return karakas
 
 
+# PyJHora Ashtakavarga planet-id encoding for the `house_to_planet_list` ("chart_1d")
+# format consumed by jhora.horoscope.chart.ashtakavarga.get_ashtaka_varga(). Nodes are
+# deliberately excluded — classical Ashtakavarga has no Rahu/Ketu contributor row.
+_AV_BODY_TO_JHORA_ID = {
+    "Sun": "0", "Moon": "1", "Mars": "2", "Mercury": "3",
+    "Jupiter": "4", "Venus": "5", "Saturn": "6",
+}
+_AV_JHORA_ID_TO_BODY = {v: k for k, v in _AV_BODY_TO_JHORA_ID.items()}
+
+
+def _chart_1d_from_varga_positions(varga_positions: dict[str, int]) -> list[str]:
+    """
+    Build PyJHora's `house_to_planet_list` ("chart_1d") encoding from a varga's
+    {body: sign_idx (0-based)} map: a 12-cell list indexed by sign (0=Aries..
+    11=Pisces), each cell a "/"-joined string of jhora planet-id digits ("0".."6")
+    plus "L" for Lagna. Shared by both the BAV (M-4) and compound-friendship
+    (M-18) PyJHora delegations, which consume the identical encoding.
+    """
+    chart_1d = ["" for _ in range(12)]
+    for body, jid in _AV_BODY_TO_JHORA_ID.items():
+        sign = varga_positions.get(body)
+        if sign is None:
+            continue
+        chart_1d[sign % 12] += jid + "/"
+    # PyJHora's get_ashtaka_varga unconditionally evaluates p_to_h[7] (planet-id
+    # 7 = Rahu) while iterating each contributor list's 8th slot BEFORE checking
+    # whether that slot is really Lagna (op==7) and overriding — a quirk of the
+    # upstream implementation, not a classical requirement (Rahu is not an
+    # Ashtakavarga contributor and its looked-up value is always discarded for
+    # op==7). Without a Rahu entry in chart_1d, p_to_h has no key "7" and the
+    # call raises KeyError. We supply Rahu's real position (harmless — its
+    # value plays no role in any BAV/SAV output) purely to satisfy this.
+    rahu_sign = varga_positions.get("Rahu")
+    if rahu_sign is not None:
+        chart_1d[rahu_sign % 12] += "7/"
+    # Ketu (jhora id 8) is likewise required as a p_to_h key by
+    # house._get_compound_relationships_of_planets (M-18), which iterates
+    # const.SUN_TO_KETU (ids 0..8) internally.
+    ketu_sign = varga_positions.get("Ketu")
+    if ketu_sign is not None:
+        chart_1d[ketu_sign % 12] += "8/"
+    lagna_sign = varga_positions.get("Lagna")
+    if lagna_sign is not None:
+        chart_1d[lagna_sign % 12] += "L/"
+    return [c[:-1] if c.endswith("/") else c for c in chart_1d]
+
+
 def _compute_ashtakavarga_bav(varga_positions: dict[str, int]) -> dict[str, list]:
     """
-    Compute Bhinnashtakavarga (BAV) for each planet in a varga.
-    Simplified classical formula: each graha contributes bindus to 8 positions
-    (specific house offsets from its position + from Lagna).
-    Returns {graha: [sign_bindu_counts for 12 signs]}.
+    Compute Bhinnashtakavarga (BAV) + Sarvashtakavarga (SAV) for a varga by
+    DELEGATING to PyJHora's real BPHS Ashtakavarga-Prakarana 8x8 contributor-map
+    engine (jhora.horoscope.chart.ashtakavarga.get_ashtaka_varga) — never
+    reimplemented in this file (M-4 fix; the prior hand-rolled loop credited
+    every contributor's bindus to ALL 8 grahas' grids identically, making every
+    BAV grid — and therefore SAV — a degenerate 8x-duplicate of one array).
+
+    Returns {"bav": {graha: [12 sign bindu counts]}, "sarva": [12 SAV totals]}.
+    Classical invariant (verified against the real engine): sum(sarva) == 337
+    for ANY chart/varga — this is a pure combinatorial identity of the fixed
+    BENEFIC_HOUSES contributor-list lengths, independent of planetary
+    positions, and is used as the Ring-1 self-verification gate below.
     """
-    # Classical benefic positions for each planet (house offsets from its own position)
-    bav_tables = {
-        "Sun":     [1, 2, 4, 7, 8, 9, 10, 11],  # signs Sun aspects beneficially
-        "Moon":    [1, 3, 6, 7, 10, 11],
-        "Mars":    [3, 5, 6, 10, 11],
-        "Mercury": [1, 2, 4, 6, 8, 10, 11],
-        "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11],
-        "Venus":   [1, 2, 3, 4, 5, 8, 9, 11],
-        "Saturn":  [3, 5, 6, 11],
-        "Lagna":   [1, 2, 4, 7, 8, 9, 10, 11],
-    }
-    bindus = {body: [0] * 12 for body in CLASSICAL_7_GRAHAS + ["Lagna"]}
+    from pyjhora_adapter._jhora import get_ashtakavarga as _get_av_module
+    av = _get_av_module()
 
-    for planet, offsets in bav_tables.items():
-        planet_sign = varga_positions.get(planet)
-        if planet_sign is None:
-            continue
-        lagna_sign = varga_positions.get("Lagna", 0)
-        for offset in offsets:
-            from_planet = (planet_sign + offset - 1) % 12
-            from_lagna = (lagna_sign + offset - 1) % 12
-            for g in CLASSICAL_7_GRAHAS + ["Lagna"]:
-                bindus[g][from_planet] = min(bindus[g][from_planet] + 1, 8)
+    chart_1d = _chart_1d_from_varga_positions(varga_positions)
+    binna, samudhaya, _prastara = av.get_ashtaka_varga(chart_1d)
 
-    # Sarvashtakavarga
-    sarva = [0] * 12
-    for g in CLASSICAL_7_GRAHAS + ["Lagna"]:
-        for i in range(12):
-            sarva[i] += bindus[g][i]
+    bindus: dict[str, list] = {}
+    for jid, body in _AV_JHORA_ID_TO_BODY.items():
+        bindus[body] = list(binna[int(jid)])
+    # Lagna's own BAV row (index 7) — informational; classical SAV excludes it
+    # (get_ashtaka_varga's samudhaya already sums only the 7 graha rows).
+    bindus["Lagna"] = list(binna[7])
 
-    return {"bav": bindus, "sarva": sarva}
+    return {"bav": bindus, "sarva": list(samudhaya)}
+
+
+# Panchadha Maitri (5-fold compound naisargika+tatkalika relationship) virupa
+# ladder for Saptavargaja Bala, keyed by PyJHora's own compound-relation code
+# (0=Adhi Shatru .. 4=Adhi Mitra). Values cross-checked against PyJHora's own
+# Shadbala reference implementation (jhora.horoscope.chart.strength.
+# _sapthavargaja_bala_1/_2's sb_fac dict) — not invented for this fix.
+SAPTAVARGAJA_VIRUPA_BY_COMPOUND_CODE = {
+    4: 22.5,   # Adhi Mitra (great friend: natural friend + temporary friend)
+    3: 15.0,   # Mitra (friend: natural neutral + temporary friend)
+    2: 7.5,    # Sama (neutral: friend+enemy or enemy+friend cross-combination)
+    1: 3.75,   # Shatru (enemy: natural neutral + temporary enemy)
+    0: 1.875,  # Adhi Shatru (great enemy: natural enemy + temporary enemy)
+}
+SAPTAVARGAJA_LABEL_BY_COMPOUND_CODE = {
+    4: "Adhi_Mitra", 3: "Mitra", 2: "Sama", 1: "Shatru", 0: "Adhi_Shatru",
+}
+
+
+def _compute_compound_relation_matrix(varga_positions: dict[str, int]) -> dict[tuple[str, str], int]:
+    """
+    Compute the classical 5-fold Panchadha Maitri (compound naisargika +
+    tatkalika/temporary) planetary relationship for a varga by DELEGATING to
+    PyJHora (jhora.horoscope.chart.house._get_compound_relationships_of_planets)
+    — never reimplemented (M-18 fix). The prior implementation
+    (_compute_dignity's Friend/Neutral/Enemy branch) used ONLY natural
+    (naisargika) friendship, collapsing the classical 5-state ladder
+    (Adhi Mitra/Mitra/Sama/Shatru/Adhi Shatru) to a 3-state one and ignoring
+    each graha's temporary (positional, tatkalika) relationship entirely.
+
+    Returns {(body, other_body): relation_code} for the 7 classical grahas,
+    where relation_code in {0..4} is PyJHora's own compound-relation encoding
+    (0=Adhi Shatru .. 4=Adhi Mitra).
+    """
+    from pyjhora_adapter._jhora import get_house as _get_house_module
+    house_mod = _get_house_module()
+
+    chart_1d = _chart_1d_from_varga_positions(varga_positions)
+    cs = house_mod._get_compound_relationships_of_planets(chart_1d)
+
+    result: dict[tuple[str, str], int] = {}
+    for b1, jid1 in _AV_BODY_TO_JHORA_ID.items():
+        for b2, jid2 in _AV_BODY_TO_JHORA_ID.items():
+            if b1 == b2:
+                continue
+            result[(b1, b2)] = cs[int(jid1)][int(jid2)]
+    return result
 
 
 def _check_near_boundary(degree_in_sign: float, threshold_arcsec: float = 1800.0) -> dict:
@@ -982,10 +1100,15 @@ def _build_house_lord_occupant_rows(
 def _build_deity_rows(
     chart_id: str, ayanamsha_id: str, build_id: str,
     varga_n: int, vid: str, varga_data: dict,
+    conn: Any = None,
 ) -> list[dict]:
     """Build varga_deity_attribution rows where classical attribution exists."""
     rows = []
     now = datetime.now(timezone.utc).isoformat()
+
+    shashtiamsha_ref: dict[int, dict] = {}
+    if varga_n == 60 and conn is not None:
+        shashtiamsha_ref = _load_shashtiamsha_deities(conn)
 
     for body in CLASSICAL_BODIES:
         if body == "Lagna":
@@ -1000,9 +1123,22 @@ def _build_deity_rows(
         quality = None
 
         if varga_n == 60:
-            deity = _get_d60_deity(sign_idx, deg_in_sign)
-            quality_idx = int(deg_in_sign / 0.5) % 3
-            quality = ["Malefic", "Neutral", "Benefic"][quality_idx]
+            # M-17 fix: real sign-parity-reversed amsa_number JOINed against the
+            # canonical bg_shashtiamsha_deities reference table (migration 430)
+            # instead of a fabricated per-degree [Malefic,Neutral,Benefic]*20
+            # cycle. quality is real (kroora/soumya, cross-derived from PyJHora's
+            # own const.shashti_amsa_rulers_kroora/soumya); deity_name is
+            # canonical-or-floor NULL pending a primary BPHS Ch.7 citation.
+            amsa_number = _get_d60_amsa_number(sign_idx, deg_in_sign)
+            ref_row = shashtiamsha_ref.get(amsa_number)
+            if ref_row is not None:
+                quality = "Malefic" if ref_row["quality"] == "kroora" else "Benefic"
+                deity = ref_row["deity_name"]  # floored NULL until sourced
+            else:
+                # No reference row available (table unreachable) — floor
+                # honestly rather than fabricate a value.
+                quality = None
+                deity = None
         elif varga_n == 40:
             deity = _get_d40_devata(sign_idx, deg_in_sign)
         elif varga_n == 45:
@@ -1034,14 +1170,14 @@ def _build_deity_rows(
         elif varga_n in (50, 54):
             deity = ["Benefic_quality", "Malefic_quality"][sign_idx % 2]
 
-        if deity is None:
+        if deity is None and quality is None:
+            # Nothing computable for this varga/body (or, for D60 with an
+            # unreachable bg_shashtiamsha_deities table, an honest floor) —
+            # skip rather than fabricate.
             continue
 
         subject = BODY_TO_SUBJECT.get(body, body.upper())
-        rid = _fact_id(vid, body, "varga_deity_attribution", "deity",
-                       chart_id, ayanamsha_id, build_id)
-        rows.append({
-            "fact_id": rid,
+        base_row = {
             "chart_id": chart_id,
             "graha": body,
             "ayanamsha_id": ayanamsha_id,
@@ -1051,12 +1187,12 @@ def _build_deity_rows(
             "degree_in_sign": deg_in_sign,
             "house": None,
             "vargottama": None,
-            "source_citation": f"BPHS_Ch7/{ENGINE_VERSION}",
+            "source_citation": (
+                f"BPHS_Ch7_bg_shashtiamsha_deities_mig430/{ENGINE_VERSION}"
+                if varga_n == 60 else f"BPHS_Ch7/{ENGINE_VERSION}"
+            ),
             "build_id": str(build_id),
             "fact_category": "varga_deity_attribution",
-            "fact_key": "deity",
-            "fact_value_text": str(deity),
-            "fact_value_num": None,
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
             # M-22 fix (M-17 evidence): D60's quality lookup above is a
@@ -1077,11 +1213,10 @@ def _build_deity_rows(
                 "single" if varga_n == 60 else "two_pass_verified"
             ),
             "engine_version": ENGINE_VERSION,
-            "citation_ref": _citation_ref("varga_deity_attribution", vid, body, "deity",
-                                           chart_id, ayanamsha_id, ENGINE_VERSION),
-            "citation_human": _citation_human("varga_deity_attribution", vid, body, "deity",
-                                               deity, ayanamsha_id),
-            "source_calculation": f"BPHS_Ch7_table/{ENGINE_VERSION}",
+            "source_calculation": (
+                f"bg_shashtiamsha_deities_join/{ENGINE_VERSION}"
+                if varga_n == 60 else f"BPHS_Ch7_table/{ENGINE_VERSION}"
+            ),
             "computed_at": now,
             "tolerance_arcsec": None,
             "near_sign_boundary_flag": None,
@@ -1089,16 +1224,36 @@ def _build_deity_rows(
             "vargottama_flag_at_point": None,
             "formula_provenance_text": f"BPHS_Ch7_D{varga_n}",
             "cross_ayanamsha_divergence_arcsec": None,
-        })
+        }
+
+        # M-17: deity_name is canonical-or-floor NULL for D60 (no primary BPHS
+        # Ch.7 verse-level source verified for the 60-name list) — emit the
+        # deity row ONLY when a real value exists, for every varga INCLUDING
+        # D60 (never a placeholder string).
+        if deity is not None:
+            rid = _fact_id(vid, body, "varga_deity_attribution", "deity",
+                           chart_id, ayanamsha_id, build_id)
+            rows.append({
+                **base_row,
+                "fact_id": rid,
+                "fact_key": "deity",
+                "fact_value_text": str(deity),
+                "fact_value_num": None,
+                "citation_ref": _citation_ref("varga_deity_attribution", vid, body, "deity",
+                                               chart_id, ayanamsha_id, ENGINE_VERSION),
+                "citation_human": _citation_human("varga_deity_attribution", vid, body, "deity",
+                                                   deity, ayanamsha_id),
+            })
 
         if quality is not None:
             rid2 = _fact_id(vid, body, "varga_deity_attribution", "quality",
                             chart_id, ayanamsha_id, build_id)
             rows.append({
-                **rows[-1],
+                **base_row,
                 "fact_id": rid2,
                 "fact_key": "quality",
                 "fact_value_text": quality,
+                "fact_value_num": None,
                 "citation_ref": _citation_ref("varga_deity_attribution", vid, body, "quality",
                                                chart_id, ayanamsha_id, ENGINE_VERSION),
                 "citation_human": f"{body}'s {vid} amsa quality: {quality} ({ayanamsha_id}).",
@@ -1289,13 +1444,137 @@ def _build_vimsopaka_rows(
     return rows
 
 
+def _build_ashtakavarga_rows(
+    chart_id: str, ayanamsha_id: str, build_id: str,
+    varga_n: int, vid: str, varga_data: dict,
+) -> list[dict]:
+    """
+    Build varga_ashtakavarga rows (M-4 fix): per-graha Bhinnashtakavarga (BAV)
+    bindus per sign (12 rows/graha) + Sarvashtakavarga (SAV) totals per sign
+    (12 rows), delegating the real computation to PyJHora
+    (_compute_ashtakavarga_bav -> jhora ashtakavarga.get_ashtaka_varga).
+
+    Was previously dead code: _compute_ashtakavarga_bav existed but was never
+    called and no builder wired the varga_ashtakavarga category into the
+    dispatcher at all, despite the category being declared in
+    TWO_PASS_CATEGORIES. This function closes that gap.
+    """
+    varga_positions = {
+        body: varga_data[body]["sign_idx"]
+        for body in CLASSICAL_BODIES
+        if body in varga_data
+    }
+    if "Lagna" not in varga_positions or not any(
+        b in varga_positions for b in CLASSICAL_7_GRAHAS
+    ):
+        return []
+
+    av = _compute_ashtakavarga_bav(varga_positions)
+    bindus = av["bav"]
+    sarva = av["sarva"]
+    rows = []
+    now = datetime.now(timezone.utc).isoformat()
+    lagna_sign = varga_positions.get("Lagna", 0)
+
+    def _emit(graha_label: str, subject: str, sign_bindus: list[int]) -> None:
+        for sign_idx in range(12):
+            house_num = ((sign_idx - lagna_sign) % 12) + 1
+            bindu_val = sign_bindus[sign_idx]
+            rid = _fact_id(vid, f"{graha_label}.S{sign_idx + 1}",
+                           "varga_ashtakavarga", "bindus",
+                           chart_id, ayanamsha_id, build_id)
+            rows.append({
+                "fact_id": rid,
+                "chart_id": chart_id,
+                "graha": graha_label,
+                "ayanamsha_id": ayanamsha_id,
+                "varga": vid,
+                "sign": SIGN_NAMES[sign_idx],
+                "sign_number": sign_idx + 1,
+                "degree_in_sign": None,
+                "house": house_num,
+                "vargottama": None,
+                "source_citation": f"BPHS_Ashtakavarga_Prakarana/pyjhora_ashtakavarga/{ENGINE_VERSION}",
+                "build_id": str(build_id),
+                "fact_category": "varga_ashtakavarga",
+                "fact_key": "bindus",
+                "fact_value_text": None,
+                "fact_value_num": float(bindu_val),
+                "fact_subject": f"{vid}.{subject}.S{sign_idx + 1}",
+                "build_id_uuid": build_id,
+                "verification_pass_status": "two_pass_verified",
+                "engine_version": ENGINE_VERSION,
+                "citation_ref": _citation_ref("varga_ashtakavarga", vid, f"{graha_label}.S{sign_idx + 1}",
+                                               "bindus", chart_id, ayanamsha_id, ENGINE_VERSION),
+                "citation_human": (f"{graha_label} {vid} Ashtakavarga bindus in {SIGN_NAMES[sign_idx]}: "
+                                    f"{bindu_val} ({ayanamsha_id}); delegated to PyJHora "
+                                    f"ashtakavarga.get_ashtaka_varga."),
+                "source_calculation": f"pyjhora_ashtakavarga.get_ashtaka_varga/{ENGINE_VERSION}",
+                "computed_at": now,
+                "tolerance_arcsec": None,
+                "near_sign_boundary_flag": None,
+                "near_nakshatra_boundary_flag": None,
+                "vargottama_flag_at_point": None,
+                "formula_provenance_text": "BPHS_Ashtakavarga_Prakarana_8x8_contributor_map",
+                "cross_ayanamsha_divergence_arcsec": None,
+            })
+
+    for body in CLASSICAL_7_GRAHAS:
+        if body not in bindus:
+            continue
+        subject = BODY_TO_SUBJECT.get(body, body.upper())
+        _emit(body, subject, bindus[body])
+
+    # Sarvashtakavarga (SAV) — sum across all 7 grahas per sign; classical
+    # invariant total across 12 signs is 337 (verified in Ring-1 self-test).
+    _emit("SARVA", "SARVA", sarva)
+
+    return rows
+
+
 def _build_saptavargaja_rows(
     chart_id: str, ayanamsha_id: str, build_id: str,
     varga_n: int, vid: str, varga_data: dict,
 ) -> list[dict]:
-    """Build varga_saptavargaja_bala_component (7 grahas × 7 vargas in Saptavarga)."""
+    """
+    Build varga_saptavargaja_bala_component (7 grahas x 7 vargas in Saptavarga).
+
+    M-18 fix: the prior implementation graded every graha purely by
+    _compute_dignity's natural-friendship-only Friend/Neutral/Enemy state and
+    a non-classical virupa ladder (45/37.5/30/22.5/15/7.5/3.75). This
+    reimplementation:
+      (1) matches PyJHora's own Saptavargaja Bala reference structure
+          (jhora.horoscope.chart.strength._sapthavargaja_bala_1/_2): own-sign
+          = 30, Moolatrikona = 45 (D1/Rasi ONLY — Uchcha/exaltation is a
+          SEPARATE Sthana-bala sub-component in classical Shadbala, not part
+          of Saptavargaja's own ladder, and Moolatrikona itself is likewise
+          only evaluated for varga_n==1 per PyJHora's dcf==1 guard);
+      (2) for every other placement, delegates to PyJHora's real Panchadha
+          Maitri (compound naisargika+tatkalika relationship) engine via
+          _compute_compound_relation_matrix -- never reimplemented -- and
+          scores the classical 5-step virupa ladder (22.5/15/7.5/3.75/1.875)
+          instead of the naive 3-state natural-only ladder.
+    Canonical-or-floor: if the compound-relation delegation is unavailable for
+    this varga (e.g. Lagna missing from varga_data), the varga is skipped
+    entirely rather than falling back to the old naive scoring.
+    """
     if varga_n not in SAPTAVARGA_SET:
         return []
+
+    varga_positions = {
+        b: varga_data[b]["sign_idx"] for b in CLASSICAL_BODIES if b in varga_data
+    }
+    if "Lagna" not in varga_positions:
+        return []
+    try:
+        compound = _compute_compound_relation_matrix(varga_positions)
+    except Exception:
+        logger.exception(
+            "[ga_vargas] M-18 compound-relation delegation failed for %s "
+            "(varga_n=%s) -- skipping saptavargaja rows rather than "
+            "fabricating naive-friendship scores", vid, varga_n)
+        return []
+
     rows = []
     now = datetime.now(timezone.utc).isoformat()
 
@@ -1304,14 +1583,25 @@ def _build_saptavargaja_rows(
         if bdata is None:
             continue
         sign_idx = bdata["sign_idx"]
-        dignity = _compute_dignity(body, sign_idx)
-        # Saptavargaja bala scores: Swa=30, Mitra=22.5, Sama=15, Shatru=7.5,
-        # Ati-mitra=45, Ati-shatru=3.75 (simplified)
-        score_map = {
-            "Exalted": 45.0, "Moolatrikona": 37.5, "Own": 30.0,
-            "Friend": 22.5, "Neutral": 15.0, "Enemy": 7.5, "Debilitated": 3.75,
-        }
-        saptavargaja_score = score_map.get(dignity, 15.0)
+        dtab = DIGNITY_TABLE.get(body, {})
+
+        if varga_n == 1 and dtab.get("mt") is not None and sign_idx == dtab["mt"]:
+            saptavargaja_score = 45.0
+            relation_label = "Moolatrikona"
+        elif sign_idx in dtab.get("own", []):
+            saptavargaja_score = 30.0
+            relation_label = "Own"
+        else:
+            sign_lord = SIGN_LORDS[sign_idx]
+            if sign_lord == body:
+                saptavargaja_score = 30.0
+                relation_label = "Own"
+            else:
+                rel_code = compound.get((body, sign_lord))
+                if rel_code is None:
+                    continue  # floor: skip rather than fabricate
+                saptavargaja_score = SAPTAVARGAJA_VIRUPA_BY_COMPOUND_CODE[rel_code]
+                relation_label = SAPTAVARGAJA_LABEL_BY_COMPOUND_CODE[rel_code]
 
         subject = BODY_TO_SUBJECT.get(body, body.upper())
         rid = _fact_id(vid, body, "varga_saptavargaja_bala_component", "saptavargaja",
@@ -1327,11 +1617,11 @@ def _build_saptavargaja_rows(
             "degree_in_sign": bdata["degree_in_sign"],
             "house": None,
             "vargottama": None,
-            "source_citation": f"BPHS_Saptavargaja/{ENGINE_VERSION}",
+            "source_citation": f"BPHS_Saptavargaja/pyjhora_compound_relation/{ENGINE_VERSION}",
             "build_id": str(build_id),
             "fact_category": "varga_saptavargaja_bala_component",
             "fact_key": "saptavargaja",
-            "fact_value_text": None,
+            "fact_value_text": relation_label,
             "fact_value_num": saptavargaja_score,
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
@@ -1351,14 +1641,15 @@ def _build_saptavargaja_rows(
             "citation_ref": _citation_ref("varga_saptavargaja_bala_component", vid, body, "saptavargaja",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
             "citation_human": (f"{body} {vid} Saptavargaja bala: "
-                               f"{saptavargaja_score} ({dignity}, {ayanamsha_id})."),
-            "source_calculation": f"BPHS_saptavargaja_table/{ENGINE_VERSION}",
+                               f"{saptavargaja_score} ({relation_label}, compound "
+                               f"naisargika+tatkalika relation via PyJHora, {ayanamsha_id})."),
+            "source_calculation": f"pyjhora_house._get_compound_relationships_of_planets/{ENGINE_VERSION}",
             "computed_at": now,
             "tolerance_arcsec": None,
             "near_sign_boundary_flag": None,
             "near_nakshatra_boundary_flag": None,
             "vargottama_flag_at_point": None,
-            "formula_provenance_text": "BPHS_Saptavargaja",
+            "formula_provenance_text": "BPHS_Saptavargaja_Panchadha_Maitri",
             "cross_ayanamsha_divergence_arcsec": None,
         })
 
@@ -2365,7 +2656,7 @@ def build_ga_vargas(
 
                     # 5. varga_deity_attribution
                     varga_rows.extend(_build_deity_rows(
-                        chart_id, ayan_id, build_id, varga_n, vid, varga_data))
+                        chart_id, ayan_id, build_id, varga_n, vid, varga_data, conn))
 
                     # 6. varga_formula_variant_position (D2, D3 only)
                     varga_rows.extend(_build_formula_variant_rows(
@@ -2373,6 +2664,10 @@ def build_ga_vargas(
 
                     # 7. varga_vimsopaka_contribution
                     varga_rows.extend(_build_vimsopaka_rows(
+                        chart_id, ayan_id, build_id, varga_n, vid, varga_data))
+
+                    # 7b. varga_ashtakavarga (M-4 fix: was declared but never built)
+                    varga_rows.extend(_build_ashtakavarga_rows(
                         chart_id, ayan_id, build_id, varga_n, vid, varga_data))
 
                     # 8. varga_saptavargaja_bala_component

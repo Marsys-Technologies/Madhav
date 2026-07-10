@@ -27,6 +27,7 @@ import {
   type DrillPointerType,
   type CoverageStamp,
 } from '../generated/envelope.js'
+import { applyAutoBudgetToEnvelope } from '../lib/response_budget.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -110,6 +111,14 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 // S3 fix (R5 W0a perf lane): text duplicate suppressed above threshold (structuredContent already
 // carries the full payload) — see JL-003 for the 50KB threshold ruling.
 function dualOutput(data: unknown) {
+  // R6 3b-budgets (R-1/R-8): auto-detect + trim any oversized array section in `content`
+  // BEFORE serializing — the shared generic mechanism (response_budget.ts) that covers this
+  // whole file's tools (ganita_condition_get et al.) without per-tool hand-declared sections.
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const toolName = typeof obj['tool'] === 'string' ? (obj['tool'] as string) : 'unknown_tool'
+    applyAutoBudgetToEnvelope(obj, toolName)
+  }
   const structuredContent = { type: 'object' as const, object: data }
   const json = JSON.stringify(data)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
@@ -118,8 +127,45 @@ function dualOutput(data: unknown) {
   return { structuredContent, content: [{ type: 'text' as const, text: json }] }
 }
 
+// ── R-5 fix: typed error envelope, never leak raw SQL/driver detail ──────────
+//
+// Denial ≠ empty ≠ internal error (register R-5): a caught error's `String(err)` may be a
+// deliberately-authored, safe validation/denial message ("chart_id is required",
+// "ENTITLEMENT_DENIED: ...") OR a raw driver/SQL error ('column "salience_score" does not
+// exist', a stack frame, a connection string). The former is safe to echo verbatim; the
+// latter must NEVER reach the client — it leaks internal schema/implementation detail and
+// gives callers no stable, typed thing to branch on. classifyErrorMessage() distinguishes
+// the three classes; errorOutput() logs the raw detail server-side only when it collapses
+// an internal-looking message to the generic safe one.
+type McpErrorClass = 'validation' | 'permission_denied' | 'internal_error'
+
+function classifyErrorMessage(message: string): { error_class: McpErrorClass; safe_message: string } {
+  if (/ENTITLEMENT_DENIED|AUTHZ_DENIED|lacks .* access/i.test(message)) {
+    return { error_class: 'permission_denied', safe_message: message }
+  }
+  if (/ is required($|[^a-zA-Z])|^either `|^Unknown facet|^Unsupported /i.test(message)) {
+    return { error_class: 'validation', safe_message: message }
+  }
+  const looksInternal =
+    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
+  if (looksInternal) {
+    return {
+      error_class: 'internal_error',
+      safe_message: 'An internal error occurred while serving this request. The specific ' +
+        'cause has been logged server-side and is not exposed to the client (never leak raw ' +
+        'SQL/driver detail — R-5).',
+    }
+  }
+  return { error_class: 'internal_error', safe_message: message }
+}
+
 function errorOutput(tool: string, message: string, extra?: Record<string, unknown>) {
-  return { ...dualOutput({ ok: false, error: message, tool, ...extra }), isError: true as const }
+  const { error_class, safe_message } = classifyErrorMessage(message)
+  if (error_class === 'internal_error' && safe_message !== message) {
+    console.error(`[${tool}] internal_error (raw, server-only, never sent to client): ${message}`)
+  }
+  const data = { ok: false, error: { class: error_class, message: safe_message }, tool, ...extra }
+  return { ...dualOutput(data), isError: true as const }
 }
 
 // Ayanamsha alias normalization (F-006/F-011/F-031)
@@ -133,6 +179,12 @@ function normalizeAyanamsha(id?: string): string {
 }
 
 // Facet → L1 URI dispatch tables
+// R-17 fix: parivartana and graha_yuddha were both routed to get_yoga_dosha, which has no
+// backing category for either (its 6 categories are yoga_fires/yoga_label/dosha_fires/
+// dosha_label/bhadra_flag/panchaka_flag) — both facets silently returned the identical
+// unfiltered ~107-row yoga/dosha union. Their real data lives elsewhere: parivartana
+// (mutual sign exchange) is fact_category parivartana_per_varga on get_dispositors;
+// graha_yuddha (planetary war) has its own dedicated capability, get_graha_yuddha.
 const STRUCTURAL_FACET_URI: Record<string, string> = {
   aspects:      'marsys://tool/L1/get_aspects',
   conjunctions: 'marsys://tool/L1/get_aspects',
@@ -140,11 +192,45 @@ const STRUCTURAL_FACET_URI: Record<string, string> = {
   argala:       'marsys://tool/L1/get_argala',
   dispositors:  'marsys://tool/L1/get_dispositors',
   functional:   'marsys://tool/L1/get_dispositors',
-  parivartana:  'marsys://tool/L1/get_yoga_dosha',
+  parivartana:  'marsys://tool/L1/get_dispositors',
   yoga_fires:   'marsys://tool/L1/get_yoga_dosha',
   dosha_fires:  'marsys://tool/L1/get_yoga_dosha',
-  graha_yuddha: 'marsys://tool/L1/get_yoga_dosha',
+  graha_yuddha: 'marsys://tool/L1/get_graha_yuddha',
 }
+
+// R-17 fix: each facet's DECLARED fact_category set. Used two ways: (1) narrows the
+// underlying query via `categories` so facets sharing a URI (aspects/conjunctions/sambandha;
+// dispositors/parivartana; yoga_fires/dosha_fires) actually return DIFFERENT row sets instead
+// of the tool's full unfiltered union; (2) a serve-time assertion (below) verifies every
+// returned row's fact_category is actually a member of this set — fails loudly instead of
+// silently serving a mismatched category set if the map ever drifts from the underlying
+// tool's real categories again.
+//
+// `functional` (functional benefic/malefic role) has NO dedicated L1 fact_category — that
+// classification is derived logic living in graha_portrait.ts (R-6), not a stored chart_facts
+// row. Declared as an empty/unbacked facet below: rejected outright rather than silently
+// serving unrelated dispositor rows (canonical-or-floor: no backing category = no serve).
+const FACET_CATEGORIES: Record<string, string[]> = {
+  aspects: [
+    'aspect_parashari_given', 'aspect_parashari_received', 'aspect_parashari_per_varga',
+    'aspect_jaimini', 'aspect_jaimini_per_varga', 'aspect_matrix_summary', 'aspect_tajik',
+  ],
+  conjunctions: ['conjunction_within_orb', 'conjunction_per_varga'],
+  sambandha:    ['lord_aspects_lord_per_varga', 'lord_in_house_per_varga'],
+  dispositors:  [
+    'graha_dispositor_chain', 'dispositor_chain_per_varga', 'composite_dispositor_strength',
+    'parivartana_per_varga', 'kala_sarpa_per_varga',
+  ],
+  parivartana:  ['parivartana_per_varga'],
+  yoga_fires:   ['yoga_fires', 'yoga_label', 'bhadra_flag'],
+  dosha_fires:  ['dosha_fires', 'dosha_label'],
+  graha_yuddha: ['graha_yuddha'],
+  // argala intentionally omitted: get_argala is a single-purpose tool with no sibling facets
+  // sharing its URI, so there is no cross-facet contamination risk to assert against.
+}
+
+// Facets with no valid backing category at all — rejected before dispatch (see comment above).
+const NO_BACKING_FACETS = new Set(['functional'])
 
 // R5.3 B2 (Q9-N-3 ruling): Pancha Mahapurusha classical rule table (own-sign/exaltation +
 // kendra). Static classical astrology (not chart data) — used only to LABEL already-fetched
@@ -300,17 +386,55 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     },
     async ({ chart_id, facet, ayanamsha_id, limit, offset, response_format }) => {
       if (!chart_id) return errorOutput('ganita_structural_get', 'chart_id is required')
+      // R-17 fix: reject facets with no backing category outright, rather than silently
+      // serving whatever unrelated rows the routed-to tool happens to return.
+      if (NO_BACKING_FACETS.has(facet)) {
+        return errorOutput(
+          'ganita_structural_get',
+          `facet="${facet}" has no dedicated L1 fact_category — this classification is derived ` +
+          'logic (see graha_portrait.ts functional_nature), not a stored chart_facts row. ' +
+          'Use graha_portrait with include=["functional_nature"] instead.',
+          { chart_id, facet },
+        )
+      }
       const uri = STRUCTURAL_FACET_URI[facet]
       if (!uri) return errorOutput('ganita_structural_get', `Unknown facet: ${facet}`)
       try {
         const resolvedOffset = offset ?? 0
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
         const format = resolveEnvelopeFormat(response_format)
+        const declaredCategories = FACET_CATEGORIES[facet]
         const data = await callRegistryCapability(uri, {
           chart_id, ayanamsha_id: resolvedAyanamsha,
           limit: limit ?? 25000, offset: resolvedOffset, facet,
+          ...(declaredCategories ? { categories: declaredCategories } : {}),
         }, principal) as Record<string, unknown> | undefined
         const merged: Record<string, unknown> = { facet, ...(typeof data === 'object' && data ? data : { rows: data }) }
+
+        // R-17 serve-time assertion: verify every returned row's fact_category is actually a
+        // member of this facet's declared set. Fails loudly (rather than silently serving a
+        // mismatched category set) if the map ever drifts from the underlying tool's real
+        // categories again — this is the exact failure mode that caused the graha_yuddha/
+        // parivartana bug in the first place.
+        if (declaredCategories) {
+          const mergedRows = Array.isArray(merged['rows']) ? merged['rows'] as Record<string, unknown>[] : []
+          const declaredSet = new Set(declaredCategories)
+          const offendingCategories = [...new Set(
+            mergedRows
+              .map(r => r['fact_category'] as string | undefined)
+              .filter((c): c is string => Boolean(c) && !declaredSet.has(c as string))
+          )]
+          if (offendingCategories.length > 0) {
+            return errorOutput(
+              'ganita_structural_get',
+              `facet="${facet}" routing assertion failed: returned rows include ` +
+              `fact_category(s) [${offendingCategories.join(', ')}] outside the facet's declared ` +
+              `set [${declaredCategories.join(', ')}]. This is a facet→category map bug, not a ` +
+              'data problem — the map must be corrected, not the assertion widened.',
+              { chart_id, facet },
+            )
+          }
+        }
 
         if (format !== 'v3') {
           return dualOutput(envelope(merged, 'ganita_structural_get'))
@@ -325,7 +449,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         if (rows.length === 0) judgment_flags.push('zero_rows_returned')
 
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
-          { instrument: 'query_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha.', pointer_type: 'opposing_yoga' },
+          { instrument: 'get_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
         ]
 
         let verdict: unknown = {
@@ -398,7 +522,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
   server.tool(
     'ganita_condition_get',
     'Retrieve planetary condition data for a chart (L1 Gaṇita). ' +
-    'Three facets: dignity (exaltation/debilitation/own-sign/friend/enemy + neecha-bhanga/vargottama), ' +
+    'Three facets: dignity (exaltation/debilitation/own-sign/friend/enemy + vargottama; NOTE: ' +
+    'neecha-bhanga/debility-cancellation is NOT computed anywhere in this build — see ' +
+    'MARSYS_DEFECT_GAP_REGISTER Y-3 — this facet does not detect or report it despite the ' +
+    'classical name appearing in dignity theory), ' +
     'avasthas (Baladi/Jagradadi/Deeptadi state classifications), ' +
     'karakas (Chara Karakas AK→DK via Jaimini degree + Sthira Karakas). ' +
     'Default facet: dignity. Use to assess the intrinsic capability and vitality of each planet.',
@@ -501,9 +628,13 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
   server.tool(
     'ganita_yogas_get',
     'Retrieve Yoga and Dosha detections for a chart (L1 Gaṇita). ' +
-    'Covers all classical yoga types: Raja Yogas, Dhana Yogas, Pancha Mahapurusha (Ruchaka/Bhadra/' +
-    'Hamsa/Malavya/Shasha), Viparita Raja, Neecha Bhanga, and Parivartana Yogas; ' +
-    'plus doshas: Mangal Dosha, Kemadruma, Grahan Yoga, Shrapit, Shakata. ' +
+    'Covers classical yoga types actually evaluated in this build: Pancha Mahapurusha (Ruchaka/' +
+    'Bhadra/Hamsa/Malavya/Shasha) and Parivartana Yogas; plus doshas: Mangal Dosha, Kemadruma, ' +
+    'Grahan Yoga, Shrapit, Shakata. HONEST GAP (see MARSYS_DEFECT_GAP_REGISTER §1): Viparita Raja, ' +
+    'Neecha Bhanga (debility-cancellation), Dhana Yoga, and the house-lord Raja Yoga family are ' +
+    'NOT evaluated by any live path in this build (skip-listed or dead legacy code) — they will ' +
+    'never fire from this tool regardless of chart data; do not infer their absence/presence from ' +
+    'a missing/present row here. ' +
     'Returns yoga_name, constituent planets, house conditions, and activation_flag. ' +
     'Use with L2 get_signals for cross-validated signal coverage. ' +
     'response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope: ' +
@@ -604,7 +735,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
         // pre-existing {instrument, hint} shape.
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
-          { instrument: 'query_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha.', pointer_type: 'opposing_yoga' },
+          { instrument: 'get_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
           { instrument: 'mimamsa_insight_get', hint: 'calibrated_outlook / load_bearing insight units built on top of these firings.', pointer_type: 'other' },
         ]
 

@@ -53,6 +53,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
       description: 'Optional list of fact_categories to include. Defaults to all position categories.',
       items: { type: 'string', enum: ['graha_position', 'upagraha_position', 'aprakasha_position'] },
     },
+    planet: {
+      type: 'string',
+      description: 'Optional: filter to a single graha/planet by name (e.g. "Sun", "Moon", "Mars"), ' +
+        'matched case-insensitively against fact_subject. Omit to return all planets. ' +
+        '(SC-20 fix: every caller of this tool already declared `planet` in its own schema, but this ' +
+        'handler never read it — the filter was silently ignored. Now honored.)',
+    },
     frame: {
       type: 'string',
       description: 'Reference frame to re-base house counts onto (default: lagna). ' +
@@ -91,8 +98,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
         }
       }
       const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
+      const planet = (args.planet as string | undefined)?.trim() || undefined
 
-      const params: unknown[] = [chartId, categories, limit, offset]
+      const params: unknown[] = [chartId, categories]
       let sql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
@@ -104,7 +112,12 @@ export const getPositionsCapability: CapabilityDescriptor = {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
       }
-      sql += ` ORDER BY ayanamsha_id, fact_category, fact_key LIMIT $3 OFFSET $4`
+      if (planet) {
+        sql += ` AND fact_subject ILIKE $${params.length + 1}`
+        params.push(planet)
+      }
+      params.push(limit, offset)
+      sql += ` ORDER BY ayanamsha_id, fact_category, fact_key LIMIT $${params.length - 1} OFFSET $${params.length}`
 
       const result = await query<Record<string, unknown>>(sql, params)
       let rows = result.rows ?? []
@@ -114,26 +127,55 @@ export const getPositionsCapability: CapabilityDescriptor = {
         try {
           const { sign: referenceSign } = await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
 
-          // Build a (ayanamsha_id, fact_subject) -> sign lookup from the SAME result set so
-          // the re-base uses exactly the signs served in this response (no second query).
-          const signByKey = new Map<string, ZodiacSign>()
-          for (const r of rows) {
-            if (r.fact_key === 'sign' && isZodiacSign(r.fact_value_text as string | null)) {
-              signByKey.set(`${r.ayanamsha_id}::${r.fact_subject}`, r.fact_value_text as ZodiacSign)
+          const houseRows = rows.filter(r => r.fact_key === 'house_d1')
+          if (houseRows.length === 0) {
+            frameNote = `frame "${frame}" requested but this page contains no \`house_d1\` rows to ` +
+              `re-base — \`house_from_frame\` NOT added. Rows served lagna-relative (house_d1) only.`
+          } else {
+            // R-28 fix: the 'sign' fact_key row for a given (ayanamsha_id, fact_subject) pair
+            // sorts AFTER 'house_d1' alphabetically within the same ORDER BY — on a paginated
+            // page (default limit 200, no ayanamsha_id filter → up to 5x rows), the 'sign' rows
+            // could be truncated out of THIS page entirely, silently leaving signByKey empty
+            // and house_from_frame never added even though frame_note claimed delivery
+            // (previously: build the lookup from the SAME already-paginated `rows`, no
+            // guarantee the matching 'sign' rows survived truncation). Fetch the 'sign' rows
+            // for exactly the (ayanamsha_id, fact_subject) pairs present in THIS page via a
+            // dedicated, un-paginated query so house_from_frame is delivered regardless of
+            // where pagination falls.
+            const ayanamshaIds = Array.from(new Set(houseRows.map(r => r.ayanamsha_id as string)))
+            const subjects = Array.from(new Set(houseRows.map(r => r.fact_subject as string)))
+            const signResult = await query<{ ayanamsha_id: string; fact_subject: string; fact_value_text: string | null }>(
+              `SELECT ayanamsha_id, fact_subject, fact_value_text FROM chart_facts
+               WHERE chart_id = $1 AND fact_key = 'sign'
+                 AND ayanamsha_id = ANY($2::text[]) AND fact_subject = ANY($3::text[])`,
+              [chartId, ayanamshaIds, subjects],
+            )
+            const signByKey = new Map<string, ZodiacSign>()
+            for (const r of signResult.rows ?? []) {
+              if (isZodiacSign(r.fact_value_text)) {
+                signByKey.set(`${r.ayanamsha_id}::${r.fact_subject}`, r.fact_value_text)
+              }
             }
+
+            let rebased = 0
+            rows = rows.map(r => {
+              if (r.fact_key !== 'house_d1') return r
+              const sign = signByKey.get(`${r.ayanamsha_id}::${r.fact_subject}`)
+              if (!sign) return r
+              rebased++
+              return { ...r, house_from_frame: houseCountedFrom(referenceSign, sign) }
+            })
+
+            frameNote = rebased > 0
+              ? `houses re-based from ${frame} (reference sign: ${referenceSign}, ` +
+                `ayanamsha ${frameAyanamsha}) as \`house_from_frame\` alongside the stored lagna-relative ` +
+                `\`house_d1\`: ${rebased}/${houseRows.length} house_d1 rows in this page carry it. ` +
+                `Rows whose ayanamsha differs from "${frameAyanamsha}" are NOT re-based ` +
+                `(pass matching ayanamsha_id to re-base a specific ayanamsha's rows).`
+              : `frame "${frame}" requested but no matching \`sign\` rows were resolvable for the ` +
+                `${houseRows.length} house_d1 row(s) in this page (0/${houseRows.length} rebased) — ` +
+                `\`house_from_frame\` NOT added. Rows served lagna-relative (house_d1) only.`
           }
-
-          rows = rows.map(r => {
-            if (r.fact_key !== 'house_d1') return r
-            const sign = signByKey.get(`${r.ayanamsha_id}::${r.fact_subject}`)
-            if (!sign) return r
-            return { ...r, house_from_frame: houseCountedFrom(referenceSign, sign) }
-          })
-
-          frameNote = `houses re-based from ${frame} (reference sign: ${referenceSign}, ` +
-            `ayanamsha ${frameAyanamsha}) as \`house_from_frame\` alongside the stored lagna-relative ` +
-            `\`house_d1\`. Rows whose ayanamsha differs from "${frameAyanamsha}" are NOT re-based ` +
-            `(pass matching ayanamsha_id to re-base a specific ayanamsha's rows).`
         } catch (e) {
           frameNote = `frame "${frame}" requested but could not be resolved: ${String(e)}. ` +
             `Rows served lagna-relative (house_d1) only.`
@@ -142,7 +184,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories, frame, rows, total: rows.length,
+          chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
           ...(frameNote ? { frame_note: frameNote } : {}),
         },
         is_error: false,

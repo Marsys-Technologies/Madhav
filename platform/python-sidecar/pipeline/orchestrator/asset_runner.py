@@ -587,20 +587,37 @@ def run_asset(
 
     # Ensure asset_throughput row exists for this (chart_id, asset_id).
     # Global assets (chart_id IS NULL) use a separate partial unique index (migration 184).
+    #
+    # WATCHDOG HEARTBEAT FIX (R6 0h): last_built_at MUST be stamped NOW() on this initial
+    # 'building' transition, not left untouched. Every OTHER state-writing site in this
+    # module (mark_asset_error, _run_service_health_probe, _mark_probe_green,
+    # _drive_substeps' per-sub-step heartbeat, _run_data_writer's completion UPDATE) already
+    # refreshes last_built_at; this was the one gap. Without it, a single-substep
+    # (non-heartbeating) writer's 'building' row keeps whatever last_built_at value survived
+    # from that asset's PREVIOUS build attempt — which can be arbitrarily stale. The Cloud
+    # Scheduler watchdog (platform/src/app/api/cockpit/watchdog/route.ts, clause 2) reaps any
+    # 'building' row whose last_built_at is >15 min old, so a stale timestamp lets it fire
+    # almost immediately instead of after 15 real minutes of THIS build. Stamping NOW() here
+    # anchors the 15-minute grace window to the actual start of this run, matching the
+    # watchdog comment's documented intent (single-substep writers complete well under 15
+    # min "kept alive" implicitly by never going stale in the first place). This does not
+    # touch WriterBase/run(ctx)/plan_substeps/run_substep or ctx.db_conn semantics — it is the
+    # orchestrator's own pre-existing asset_throughput UPDATE, unchanged in shape, one column
+    # added to its SET clause.
     if chart_id is not None:
         cur.execute(
-            """INSERT INTO asset_throughput (asset_id, chart_id, state)
-               VALUES (%s, %s, 'building')
+            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_built_at)
+               VALUES (%s, %s, 'building', NOW())
                ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
-               DO UPDATE SET state = 'building', last_error = NULL""",
+               DO UPDATE SET state = 'building', last_error = NULL, last_built_at = NOW()""",
             (asset_id, chart_id),
         )
     else:
         cur.execute(
-            """INSERT INTO asset_throughput (asset_id, chart_id, state)
-               VALUES (%s, NULL, 'building')
+            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_built_at)
+               VALUES (%s, NULL, 'building', NOW())
                ON CONFLICT (asset_id) WHERE chart_id IS NULL
-               DO UPDATE SET state = 'building', last_error = NULL""",
+               DO UPDATE SET state = 'building', last_error = NULL, last_built_at = NOW()""",
             (asset_id,),
         )
 

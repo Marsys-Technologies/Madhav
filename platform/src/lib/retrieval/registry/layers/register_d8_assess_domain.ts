@@ -61,6 +61,36 @@ const ASSESS_MAX_SIGNALS_PER_LENS = 50
 const ASSESS_DEFAULT_MAX_CONTRADICTIONS = 15
 const ASSESS_MAX_CONTRADICTIONS = 100
 
+// R6 3b-budgets (R-1/R-8): the F-021R caps above bound question_lenses + contradiction
+// ITEMS, but left four other unbounded arrays flowing straight through into the assembled
+// bundle — karaka_analysis.cdlm_cells, contradictions.discoveries, activating_dasha.
+// activations, activating_dasha.predicates. These are exactly the residual bulk behind the
+// live-measured 1.04MB assess_career payload (register R-1/R-8). Same cap-and-count
+// discipline as the existing F-021R caps: bound the array, report total_count/truncated,
+// and name the drill instrument for the remainder — never drop the fact of truncation.
+const ASSESS_DEFAULT_MAX_CDLM_CELLS = 20
+const ASSESS_MAX_CDLM_CELLS = 100
+const ASSESS_DEFAULT_MAX_DISCOVERIES = 10
+const ASSESS_MAX_DISCOVERIES = 50
+const ASSESS_DEFAULT_MAX_ACTIVATIONS = 10
+const ASSESS_MAX_ACTIVATIONS = 50
+const ASSESS_DEFAULT_MAX_PREDICATES = 10
+const ASSESS_MAX_PREDICATES = 50
+
+/** Cap an array to `cap` entries, reporting the true total + truncation flag. Never
+ *  fabricates a count — `total_count` is always `arr.length` of the REAL array received. */
+function capArray<T>(
+  value: unknown,
+  cap: number,
+  drillUri?: string,
+): { items: T[]; total_count: number; truncated: boolean; drill_uri?: string } {
+  const arr = Array.isArray(value) ? (value as T[]) : []
+  const total_count = arr.length
+  const items = arr.slice(0, cap)
+  const truncated = total_count > cap
+  return { items, total_count, truncated, ...(truncated && drillUri ? { drill_uri: drillUri } : {}) }
+}
+
 async function runAssessDomain(
   args: Record<string, unknown>,
   opts: Pick<AssessDomainArgs, 'domain' | 'domain_label' | 'judgment_flag_note'>
@@ -200,7 +230,10 @@ async function runAssessDomain(
         : {
             status: 'ok',
             items: contraContent['contradictions'],
-            discoveries: contraContent['discoveries'],
+            discoveries: (() => {
+              const capped = capArray(contraContent['discoveries'], ASSESS_DEFAULT_MAX_DISCOVERIES, 'marsys://tool/L2/query_contradictions')
+              return { items: capped.items, total_count: capped.total_count, truncated: capped.truncated, drill_uri: capped.drill_uri }
+            })(),
           }
 
     // ── Step 4: composite-ranked signals + ranking_basis (BA-P2 envelope retrofit) ──
@@ -318,22 +351,43 @@ async function runAssessDomain(
           signals_per_lens_cap: max_signals_per_lens,
           note: 'bodha_question_lenses returned chart-wide (no domain column); reconcile via cdlm_cells. all_relevant_ranked_jsonb capped per lens — drill via get_domain_reading for full signal lists.',
         },
-        karaka_analysis: {
-          cdlm_cells: domainContent['cdlm_cells'] ?? [],
-          cdlm_cell_count: domainContent['cdlm_cell_count'] ?? 0,
-        },
+        karaka_analysis: (() => {
+          // R6 3b-budgets (R-1/R-8): cdlm_cells was fully unbounded — the largest single
+          // contributor to the live-measured 1.04MB assess_career payload. Capped + counted
+          // like every other F-021R section; full detail remains reachable via get_domain_reading.
+          const capped = capArray(domainContent['cdlm_cells'], ASSESS_DEFAULT_MAX_CDLM_CELLS, 'marsys://tool/L2/query_domain_reading')
+          return {
+            cdlm_cells: capped.items,
+            cdlm_cell_count: domainContent['cdlm_cell_count'] ?? capped.total_count,
+            cdlm_cells_returned: capped.items.length,
+            cdlm_cells_truncated: capped.truncated,
+            ...(capped.truncated ? { cdlm_cells_drill_uri: capped.drill_uri } : {}),
+          }
+        })(),
         varga_analysis: {
           note: 'Varga refinement (D9/D10/D6) available via chart_facts_query with divisional_chart filter.',
           drill_uri: 'marsys://tool/L1/chart_facts_query',
         },
-        activating_dasha: {
-          activations: temporalResult.ok ? (temporalContent['activations'] ?? []) : [],
-          activation_count: temporalResult.ok ? (temporalContent['activation_count'] ?? 0) : 0,
-          predicates: temporalResult.ok ? (temporalContent['predicates'] ?? []) : [],
-          window: { date_from: today, date_to: futureDate },
-          signal_id_refs: temporalResult.ok ? (temporalContent['signal_id_refs'] ?? []) : [],
-          ...(temporalResult.ok ? {} : { partial_failure: temporalContent['error'] }),
-        },
+        activating_dasha: (() => {
+          const cappedActivations = temporalResult.ok
+            ? capArray(temporalContent['activations'], ASSESS_DEFAULT_MAX_ACTIVATIONS, 'marsys://tool/L3/query_temporal_activation')
+            : { items: [], total_count: 0, truncated: false }
+          const cappedPredicates = temporalResult.ok
+            ? capArray(temporalContent['predicates'], ASSESS_DEFAULT_MAX_PREDICATES, 'marsys://tool/L3/query_temporal_activation')
+            : { items: [], total_count: 0, truncated: false }
+          return {
+            activations: cappedActivations.items,
+            activations_total_count: cappedActivations.total_count,
+            activations_truncated: cappedActivations.truncated,
+            activation_count: temporalResult.ok ? (temporalContent['activation_count'] ?? cappedActivations.total_count) : 0,
+            predicates: cappedPredicates.items,
+            predicates_total_count: cappedPredicates.total_count,
+            predicates_truncated: cappedPredicates.truncated,
+            window: { date_from: today, date_to: futureDate },
+            signal_id_refs: temporalResult.ok ? (temporalContent['signal_id_refs'] ?? []) : [],
+            ...(temporalResult.ok ? {} : { partial_failure: temporalContent['error'] }),
+          }
+        })(),
         contradictions: boundedContradictions,
         citations: {
           note: 'Classical citations available via classical_attribution_lookup for signal_id_refs above.',
@@ -726,6 +780,11 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Minimum salience threshold on bodha_msr_signals (0..1, default: 0).',
     },
+    domain: {
+      type: 'string',
+      description: 'Filter to yogas whose bodha_msr_signals.domains_affected_array contains this ' +
+        'domain (e.g. "career", "wealth", "relationship", "health"). Optional.',
+    },
   },
 
   archetype: 'temporal',
@@ -763,6 +822,7 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       new Date(Date.now() + 3 * 365 * 86400000).toISOString().split('T')[0]!
     const top_k = Math.min(Number(args['top_k'] ?? 30), 200)
     const min_salience = Number(args['min_salience'] ?? 0)
+    const domain = args['domain'] as string | undefined
 
     try {
       // Join bodha_msr_signals (yoga signals) with kala_activation on signal_id.
@@ -792,6 +852,11 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       if (dasha_period) {
         conds.push(`ka.active_dasha_periods_jsonb::text ILIKE $${p++}`)
         params.push(`%${dasha_period}%`)
+      }
+
+      if (domain) {
+        conds.push(`$${p++} = ANY(m.domains_affected_array)`)
+        params.push(domain)
       }
 
       params.push(top_k)
@@ -858,7 +923,7 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
           activated_yogas: result.rows,
           total_count: result.rows.length,
           signal_id_refs: signalRefs,
-          filters: { dasha_period, date_from, date_to, top_k, min_salience },
+          filters: { dasha_period, date_from, date_to, top_k, min_salience, domain: domain ?? null },
           drill_next: [
             'marsys://tool/L2/query_signals',
             'marsys://tool/L3/query_temporal_activation',

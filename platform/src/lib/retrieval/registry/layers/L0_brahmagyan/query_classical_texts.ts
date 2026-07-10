@@ -226,7 +226,16 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
       const limit  = Math.min((args.limit as number) ?? 20, 200)
       const offset = (args.offset as number) ?? 0
       const params: unknown[] = [limit, offset]
-      let sql = `SELECT * FROM classical_text_chunks WHERE 1=1`
+      // R6 3b-budgets (R-26): `SELECT *` was leaking the 768-dim `embedding` vector column
+      // (~8KB/row of served bytes for zero consumer value — no caller reads a raw embedding
+      // out of an MCP tool response) on ref_classical_citation_get's legacy keyword/topic-
+      // filter path. The hybrid free-text path above never had this bug (it already selects
+      // an explicit column list without `embedding`); this is the same fix applied here.
+      let sql = `
+        SELECT id, text_id, chunk_id, verse_ref, chapter, verse_start, content_en, content_sa,
+               content_summary, source_citation, tradition_school, topics
+        FROM classical_text_chunks WHERE 1=1
+      `
       if (args.keyword)     { sql += ` AND content_en ILIKE $${params.length + 1}`; params.push(`%${args.keyword as string}%`) }
       if (args.text_source) { sql += ` AND text_id = $${params.length + 1}`; params.push(args.text_source as string) }
       if (args.topic)       { sql += ` AND $${params.length + 1} = ANY(topics)`; params.push(args.topic as string) }

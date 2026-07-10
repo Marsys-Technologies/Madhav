@@ -57,7 +57,7 @@ import {
 // three instruments whose full-detail payload (up to ~86KB) is unusable over a real MCP
 // channel — judgment_query, graha_portrait, pact_query. See response_budget.ts's header
 // for why this is structure-aware (shrinks named arrays) rather than a byte-truncation.
-import { finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -149,6 +149,38 @@ async function callPlatformPrimitive(
   return res.json()
 }
 
+/**
+ * R-29 fix: the `/api/mcp/primitives/[tool]` route serves a `ToolBundle` whose
+ * `results[].content` field is CONTRACTUALLY a string (shared_types.ts `ToolBundleResult.
+ * content: string` — a wide, estate-used contract not changed here). For structured-content
+ * tools (vector_search's hybrid search rows), `toToolBundleResults()` (tool_name_bridge.ts)
+ * populates that string via `JSON.stringify(content)` — so the payload the MCP client
+ * receives is JSON-double-encoded: an outer JSON envelope whose `result.results[].content`
+ * is itself a JSON string that must be parsed AGAIN client-side (measured +5-6s latency,
+ * register R-29). Since this is the client-facing boundary (not the shared ToolBundle
+ * contract), parse each such string back into structured JSON here before handing the
+ * response to `dualOutput` — plain-text (non-JSON) content is left untouched.
+ */
+function unwrapDoubleEncodedToolBundleResults(data: unknown): unknown {
+  if (!data || typeof data !== 'object') return data
+  const root = data as Record<string, unknown>
+  const result = root['result'] as Record<string, unknown> | undefined
+  const results = result?.['results']
+  if (!Array.isArray(results)) return data
+  const unwrapped = results.map((r) => {
+    if (r && typeof r === 'object' && typeof (r as Record<string, unknown>)['content'] === 'string') {
+      const raw = (r as Record<string, unknown>)['content'] as string
+      try {
+        return { ...(r as Record<string, unknown>), content: JSON.parse(raw) }
+      } catch {
+        return r // not JSON — genuinely plain text, leave as-is
+      }
+    }
+    return r
+  })
+  return { ...root, result: { ...result, results: unwrapped } }
+}
+
 // ── DB proxy helper ───────────────────────────────────────────────────────────
 
 /**
@@ -232,6 +264,15 @@ const MCP_RESPONSE_BUDGET_KB = {
   judgment_query: 12,
   graha_portrait: 12,
   pact_query: 8,
+  // R6 3b-budgets (Ring-2 gap fix, R-1/R-8): assess_marriage/career/health/wealth are
+  // reconciled multi-source bundles (domain reading + temporal activation + contradictions +
+  // composite signals) — richer than the three single-purpose instruments above, so a wider
+  // ceiling than 8-12KB is appropriate, but 40KB is still a two-orders-of-magnitude cut from
+  // the register's measured 1.04MB assess_career payload.
+  assess_marriage: 40,
+  assess_career: 40,
+  assess_health: 40,
+  assess_wealth: 40,
 } as const
 
 /**
@@ -276,6 +317,76 @@ function applyMcpBudget<T extends Record<string, unknown>>(
 ): T {
   const allSections = [...sections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
   return finalizeMcpBudget(response, { maxKb, sections: allSections })
+}
+
+/**
+ * R6 3b-budgets (Ring-2 gap fix, R-1/R-8): `assess_marriage`/`assess_career`/`assess_health`/
+ * `assess_wealth` are registered HERE, directly in this file — they call this file's own
+ * plain `dualOutput` (line ~301), NOT register_p1_aliases.ts's dualOutput. The auto-budget
+ * mechanism wired into register_p1_aliases.ts / register_p1_ganita.ts / register_p1_synthesis.ts
+ * never touched these 4 primary tool names — the register's own 1.04MB assess_career
+ * measurement names THESE tool names, not their `apex_*` alias variants. This is the missing
+ * TS-level backstop: same `autoDetectTrimmableSections` mechanism those files use, combined
+ * with this file's own `orientationEntityProfilesSection` (every assess_* response carries
+ * `orientation_context` too) and run through the same self-verifying `finalizeMcpBudget`
+ * entry point `applyMcpBudget` above already uses — not a second, divergent mechanism.
+ *
+ * Double-application note: this is the ONLY place `assess_career` (etc.) is registered as an
+ * MCP tool — register_p1_aliases.ts's `apex_career_assess` is a SEPARATE tool name that
+ * independently fetches its own copy of the capability response and applies its own budget
+ * once; neither call path invokes the other's handler or dualOutput, so there is no scenario
+ * where one response passes through two budget applications. Re-running `applyResponseBudget`
+ * on an already-under-budget object is also a documented no-op (estimateBytes short-circuits
+ * before any section is touched) — so even a hypothetical future call chain that composed
+ * these two functions would be safe, just redundant.
+ */
+function applyMcpBudgetAuto<T extends Record<string, unknown>>(
+  response: T,
+  maxKb: number,
+  toolName: string,
+): T {
+  const autoSections = autoDetectTrimmableSections(response, toolName)
+  const allSections = [...autoSections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
+  return finalizeMcpBudget(response, { maxKb, sections: allSections })
+}
+
+/**
+ * R-21 fix — "receipt integrity": a served "✓" / boolean-true / string-affirmative receipt
+ * mark (judgment_query's `receipt.varga_confirmed`, graha_portrait's `verdict.completeness`)
+ * is computed from the CAPABILITY's own untrimmed output, before `applyMcpBudget` runs. If
+ * the response-budget trimmer then floors the backing array down to kept_count 0 (the R5.1
+ * C1 hard-cap PASS 2 can override every section's declared minKeep), the wire response ends
+ * up with a "✓" receipt mark next to a genuinely empty array — the exact defect the register
+ * names (varga_confirmed:"D10✓" next to varga_confirmation.rows:[]; completeness sections
+ * marked ✓ for a section trimmed to empty).
+ *
+ * This reconciles AFTER trimming: for every declared `path` in the trim report whose
+ * `kept_count` is 0 (fully trimmed away), downgrade the corresponding receipt key from an
+ * affirmative mark to an honest `trimmed_to_empty` value naming the recover instrument —
+ * never silently leave a "✓" next to zero surviving rows.
+ */
+function reconcileReceiptWithTrimReport(
+  receipt: Record<string, unknown>,
+  keyToSectionPaths: Record<string, string[]>,
+  trimReport: TrimReportEntry[] | null | undefined,
+): void {
+  if (!trimReport || trimReport.length === 0) return
+  const trimmedToZero = new Map(
+    trimReport.filter(e => e.kept_count === 0).map(e => [e.path, e]),
+  )
+  for (const [key, paths] of Object.entries(keyToSectionPaths)) {
+    const matchedEntries = paths.map(p => trimmedToZero.get(p)).filter((e): e is TrimReportEntry => Boolean(e))
+    // Only downgrade when EVERY declared backing path for this key is confirmed trimmed to
+    // zero (a partial trim of one of several backing arrays doesn't necessarily zero the
+    // parent's pre-trim count) AND at least one such path was actually in the trim report.
+    if (matchedEntries.length === 0 || matchedEntries.length !== paths.length) continue
+    const prior = receipt[key]
+    const isAffirmative = prior === '✓' || prior === true || (typeof prior === 'string' && prior.endsWith('✓'))
+    if (!isAffirmative) continue
+    const recoverInstrument = matchedEntries[0]?.recover_via.instrument ?? 'see recover_via'
+    receipt[key] = `trimmed_to_empty (was "${prior}" pre-trim; 0 rows survived response-budget ` +
+      `trimming — recover full detail via ${recoverInstrument})`
+  }
 }
 
 // ── Dual output helper ────────────────────────────────────────────────────────
@@ -350,8 +461,44 @@ function dualOutputBudgeted(data: unknown): {
 
 // ── Error output ──────────────────────────────────────────────────────────────
 
+// ── R-5 fix: typed error envelope, never leak raw SQL/driver detail ──────────
+//
+// Denial ≠ empty ≠ internal error (register R-5): a caught error's `String(err)` may be a
+// deliberately-authored, safe validation/denial message ("chart_id is required",
+// "ENTITLEMENT_DENIED: ...") OR a raw driver/SQL error ('column "salience_score" does not
+// exist', a stack frame, a connection string). The former is safe to echo verbatim; the
+// latter must NEVER reach the client — it leaks internal schema/implementation detail and
+// gives callers no stable, typed thing to branch on. classifyErrorMessage() distinguishes
+// the three classes; errorOutput() logs the raw detail server-side only when it collapses
+// an internal-looking message to the generic safe one.
+type McpErrorClass = 'validation' | 'permission_denied' | 'internal_error'
+
+function classifyErrorMessage(message: string): { error_class: McpErrorClass; safe_message: string } {
+  if (/ENTITLEMENT_DENIED|AUTHZ_DENIED|lacks .* access/i.test(message)) {
+    return { error_class: 'permission_denied', safe_message: message }
+  }
+  if (/ is required($|[^a-zA-Z])|^either `|^Unknown facet|^Unsupported /i.test(message)) {
+    return { error_class: 'validation', safe_message: message }
+  }
+  const looksInternal =
+    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
+  if (looksInternal) {
+    return {
+      error_class: 'internal_error',
+      safe_message: 'An internal error occurred while serving this request. The specific ' +
+        'cause has been logged server-side and is not exposed to the client (never leak raw ' +
+        'SQL/driver detail — R-5).',
+    }
+  }
+  return { error_class: 'internal_error', safe_message: message }
+}
+
 function errorOutput(tool: string, message: string, extra?: Record<string, unknown>) {
-  const data = { ok: false, error: message, tool, ...extra }
+  const { error_class, safe_message } = classifyErrorMessage(message)
+  if (error_class === 'internal_error' && safe_message !== message) {
+    console.error(`[${tool}] internal_error (raw, server-only, never sent to client): ${message}`)
+  }
+  const data = { ok: false, error: { class: error_class, message: safe_message }, tool, ...extra }
   return { ...dualOutput(data), isError: true as const }
 }
 
@@ -1162,7 +1309,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_marriage, 'assess_marriage'))
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
       }
@@ -1189,7 +1337,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_career, 'assess_career'))
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
       }
@@ -1216,7 +1365,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_health, 'assess_health'))
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
       }
@@ -1243,7 +1393,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_wealth, 'assess_wealth'))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
       }
@@ -1500,7 +1651,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           top_k: top_k ?? 10,
           ...(doc_type ? { doc_type } : {}),
         }, principal)
-        return dualOutput(data)
+        return dualOutput(unwrapDoubleEncodedToolBundleResults(data))
       } catch (err) {
         return errorOutput('vector_search', String(err))
       }
@@ -1591,7 +1742,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (checklist) checklist['bearing_yogas'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'query_signals', hint: 'full yoga+dosha+karaka_alignment signal set beyond the lean slice kept here — pass domain + a higher top_k.' },
+            recover: { instrument: 'get_signals', hint: 'full yoga+dosha+karaka_alignment signal set beyond the lean slice kept here — pass domain + a higher top_k. (SC-18: was "query_signals", a non-existent MCP tool name).' },
             label: 'checklist.bearing_yogas',
           },
           {
@@ -1606,7 +1757,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (vc) vc['rows'] = kept
             },
             minKeep: 4,
-            recover: { instrument: 'get_divisionals', hint: 'full operative-varga placements for every graha (this call confirmed only bhāveśa/kāraka).' },
+            recover: { instrument: 'ganita_chart_facts_get', hint: 'full operative-varga placements for every graha (this call confirmed only bhāveśa/kāraka). (SC-18: was "get_divisionals", a non-existent MCP tool name; pass divisional_chart=<varga>).' },
             label: 'checklist.varga_confirmation.rows',
           },
           {
@@ -1710,7 +1861,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
           }),
         }
-        return dualOutputBudgeted(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections))
+        const budgeted = applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections)
+        // R-21 fix: `receipt.varga_confirmed`/`receipt.timing_anchored` were stamped from the
+        // PRE-TRIM capability output (register_d9_judgment.ts) — reconcile against what
+        // actually survived applyMcpBudget so e.g. varga_confirmed:"D10✓" is never served
+        // next to a `checklist.varga_confirmation.rows` that trimmed to empty.
+        reconcileReceiptWithTrimReport(receipt, {
+          varga_confirmed: ['content.checklist.varga_confirmation.rows'],
+          timing_anchored: ['content.checklist.timing_hooks.current', 'content.checklist.timing_hooks.mahadasha_windows_by_graha'],
+        }, budgeted['trim_report'] as TrimReportEntry[] | null | undefined)
+        return dualOutputBudgeted(budgeted)
       } catch (err) {
         return errorOutput('judgment_query', String(err), { chart_id })
       }
@@ -2051,7 +2211,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       graha: z.string().describe('The graha to portray — English name, Sanskrit name, 2-letter shorthand, or fact_subject code (e.g. "Saturn", "shani", "sa", "SAT"). Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       operative_vargas: z.array(z.string()).optional().describe('Which vargas to call out as "operative" in the dignity chain (default: D1, D9, D10, D60). The full dignity row set across ALL vargas is always included regardless of this list.'),
-      include: z.array(z.enum(['position', 'dignity', 'strength', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood'])).optional().describe('Subset of sections to compute (default: all seven). Narrow this for a cheaper/leaner call.'),
+      include: z.array(z.enum(['position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'special_states', 'yogas', 'dashas', 'cgm_neighborhood'])).optional().describe('Subset of sections to compute (default: all). R-6 fix: functional_nature (served under the dignity call, now independently requestable) and special_states (alias for avasthas — the classical name for the baladi/jagrad/deepta/lajjitadi/sayanadi system) are now valid options; previously the former was unenumerated and the latter errored as invalid.'),
       response_format: z.enum(['legacy', 'v3']).optional().describe("Envelope shape: 'legacy' (default, unchanged — the raw portrait object) or 'v3' (adds populated verdict/grounding/drill_pointers/judgment_flags/chart_header per the R5 unified envelope)."),
     },
     async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format }) => {
@@ -2097,7 +2257,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (dignity) dignity['all_varga_rows'] = kept
             },
             minKeep: 0,
-            recover: { instrument: 'get_dignity', hint: 'full dignity_state rows across every varga (this response kept only operative_vargas — D1/D9/D10/D60 by default).' },
+            recover: { instrument: 'ganita_condition_get', hint: 'full dignity_state rows across every varga (this response kept only operative_vargas — D1/D9/D10/D60 by default). (SC-18: was "get_dignity", a non-existent MCP tool name; use facet="dignity").' },
             label: 'dignity.all_varga_rows',
           },
           {
@@ -2112,7 +2272,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (dignity) dignity['other_rows'] = kept
             },
             minKeep: 0,
-            recover: { instrument: 'get_dignity', hint: 'full non-dignity/non-functional_class rows for this graha.' },
+            recover: { instrument: 'ganita_condition_get', hint: 'full non-dignity/non-functional_class rows for this graha. (SC-18: was "get_dignity", a non-existent MCP tool name; use facet="dignity").' },
             label: 'dignity.other_rows',
           },
           {
@@ -2131,7 +2291,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (dignity) dignity['operative_varga_rows'] = kept
             },
             minKeep: 2,
-            recover: { instrument: 'get_dignity', hint: 'full operative-varga dignity rows (D1/D9/D10/D60) — this response kept a lean slice.' },
+            recover: { instrument: 'ganita_condition_get', hint: 'full operative-varga dignity rows (D1/D9/D10/D60) — this response kept a lean slice. (SC-18: was "get_dignity", a non-existent MCP tool name; use facet="dignity").' },
             label: 'dignity.operative_varga_rows',
           },
           {
@@ -2146,7 +2306,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (strength) strength['rows'] = kept
             },
             minKeep: 4,
-            recover: { instrument: 'get_strength', hint: 'full shadbala decomposition (this response kept a lean slice of the 6-component + vimsopaka + ishta/kashta breakdown).' },
+            recover: { instrument: 'ganita_strength_get', hint: 'full shadbala decomposition (this response kept a lean slice of the 6-component + vimsopaka + ishta/kashta breakdown). (SC-18: was "get_strength", a non-existent MCP tool name).' },
             label: 'strength.rows',
           },
           {
@@ -2161,7 +2321,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (avasthas) avasthas['rows'] = kept
             },
             minKeep: 3,
-            recover: { instrument: 'get_avasthas', hint: 'full avastha rows across all five systems (baladi/jagrad/deepta/lajjitadi/sayanadi).' },
+            recover: { instrument: 'ganita_condition_get', hint: 'full avastha rows across all five systems (baladi/jagrad/deepta/lajjitadi/sayanadi). (SC-18: was "get_avasthas", a non-existent MCP tool name; use facet="avasthas").' },
             label: 'avasthas.rows',
           },
           {
@@ -2295,7 +2455,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (fn) fn['rows'] = kept
             },
             minKeep: 1,
-            recover: { instrument: 'get_dignity', hint: 'full functional-class rows for this graha across ascendant variants.' },
+            recover: { instrument: 'ganita_condition_get', hint: 'full functional-class rows for this graha across ascendant variants. (SC-18: was "get_dignity", a non-existent MCP tool name; use facet="dignity").' },
             label: 'functional_nature.rows',
           },
           {
@@ -2385,7 +2545,21 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           orientation_context, orientation_ok,
           ...envelope(inner, 'graha_portrait', undefined, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }),
         }
-        return dualOutputBudgeted(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections))
+        const budgeted = applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections)
+        // R-21 fix: `completeness` was stamped '✓'/'zero_rows'/'error' from the PRE-TRIM
+        // capability output; reconcile against what actually survived applyMcpBudget so a
+        // section trimmed all the way to 0 rows is never served with a stale '✓'.
+        reconcileReceiptWithTrimReport(completeness, {
+          dignity: ['content.dignity.all_varga_rows', 'content.dignity.other_rows', 'content.dignity.operative_varga_rows'],
+          functional_nature: ['content.functional_nature.rows'],
+          strength: ['content.strength.rows'],
+          avasthas: ['content.avasthas.rows'],
+          yogas: ['content.yogas.catalog_yoga_matches', 'content.yogas.catalog_dosha_matches', 'content.yogas.parivartana_exchanges'],
+          dashas: ['content.dashas.rows'],
+          position: ['content.position.rows'],
+          cgm_neighborhood: ['content.cgm_neighborhood.edges', 'content.cgm_neighborhood.nodes'],
+        }, budgeted['trim_report'] as TrimReportEntry[] | null | undefined)
+        return dualOutputBudgeted(budgeted)
       } catch (err) {
         return errorOutput('graha_portrait', String(err), { chart_id, graha })
       }
@@ -2407,7 +2581,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'the varga → activation in the dasha → trigger in the transit", walked stage by stage. ' +
     'HALTS HONESTLY the moment a stage is classically denied rather than fabricating the ' +
     'stages after it (B.10) — pact_status reports denied_at_promise / denied_at_confirmation / ' +
-    'denied_at_activation / chain_pending_activation / chain_complete. Stage 1 PROMISE runs ' +
+    'denied_at_activation / chain_pending_activation / chain_incomplete_infra / chain_complete. ' +
+    '`chain_incomplete_infra` means all four stages were attempted but TRIGGER could not be ' +
+    'evaluated (ephemeris sidecar unreachable/empty) — an infrastructure gap, distinct from ' +
+    '`chain_complete` (all four stages ran AND TRIGGER data was actually fetched) and distinct ' +
+    'from any classical denial. Stage 1 PROMISE runs ' +
     'judgment_query\'s full checklist verdict (design §28.1). Stage 2 CONFIRMATION checks the ' +
     'promise-carrying bhāveśa/kāraka\'s dignity IN the operative varga (e.g. D9 for marriage). ' +
     'Stage 3 ACTIVATION locates which Vimshottari mahadasha carries that lord/kāraka: active ' +
@@ -2492,7 +2670,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         })
         const pactSections: TrimmableSection<Record<string, unknown>>[] = [
           findStageArraySection('TRIGGER', 'transiting_positions', 1, { instrument: 'query_planet_transit', hint: 'full transit series across the activation window (this call fetched only the single as_of_date snapshot).' }),
-          findStageArraySection('CONFIRMATION', 'dignities', 2, { instrument: 'get_dignity', hint: 'full dignity rows for the promise-carrying graha(s) in the operative varga.' }),
+          findStageArraySection('CONFIRMATION', 'dignities', 2, { instrument: 'ganita_condition_get', hint: 'full dignity rows for the promise-carrying graha(s) in the operative varga. (SC-18: was "get_dignity", a non-existent MCP tool name; use facet="dignity").' }),
           findStageArraySection('ACTIVATION', 'active_periods', 2, { instrument: 'get_dashas', hint: 'full dasha timeline for the promise-carrying graha(s).' }),
           {
             path: 'content.fact_id_refs',
@@ -2527,7 +2705,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           stages: stages.map(s => ({ stage: s['stage'], status: s['status'] })),
           note: 'Chain-honesty verdict (design §30 W4 acceptance): a denied stage halts the chain — ' +
             'stages_completed < 4 with pact_status starting "denied_at_" is a CORRECT honest halt, ' +
-            'not a failure. pact_status="chain_complete" means all four stages ran and cite fact_id_refs.',
+            'not a failure. pact_status="chain_complete" means all four stages ran, TRIGGER data ' +
+            'was actually fetched, and fact_id_refs are cited. R-22: "chain_incomplete_infra" means ' +
+            'all four stages were ATTEMPTED (stages_completed may read 4) but TRIGGER could not be ' +
+            'evaluated (ephemeris sidecar unreachable/empty) — do not read stages_completed alone ' +
+            'as proof of a passed chain; always check pact_status.',
         }
 
         const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
@@ -2542,10 +2724,17 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           chart_header = null
         }
 
+        // R-22 fix: echo the REQUESTED as_of_date (falling back to the resolved/defaulted
+        // value the capability actually evaluated against), not envelope()'s own
+        // new-Date()-at-response-time default — timing.as_of_date previously always showed
+        // today regardless of what as_of_date the caller passed.
+        const resolvedAsOfDate = (inner['as_of_date'] as string | undefined) ?? as_of_date
+
         const v3Response = {
           orientation_context, orientation_ok,
           ...envelope(inner, 'pact_query', undefined, 'v3', {
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
+            as_of_date: resolvedAsOfDate,
           }),
         }
         return dualOutputBudgeted(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))

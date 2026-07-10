@@ -19,7 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure } from './registry_bridge.js'
-import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { applyResponseBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -134,7 +134,23 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 
 // S3 fix (R5 W0a perf lane): no pretty-print; text duplicate suppressed above
 // threshold (structuredContent already carries the full payload).
-function dualOutput(data: unknown) {
+//
+// R6 3b-budgets (R-1/R-8): `data` here is the RAW capability/primitive/sidecar content
+// (this file's aliases return `data.content` directly, unlike register_p1_ganita.ts /
+// register_p1_synthesis.ts which wrap in an envelope) — so the generic auto-trim runs
+// directly on `data`, keyed by an optional `toolName` (passed by every call site that goes
+// through regAlias/globalAlias, and by every hand-written `server.tool` block below that
+// was touched in this pass). Falls back to a generic hint when the caller omits toolName —
+// still trims, just without a tool-specific recovery instrument name.
+function dualOutput(data: unknown, toolName = 'unknown_tool') {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const sections = autoDetectTrimmableSections(obj, toolName)
+    if (sections.length > 0) {
+      const result = applyResponseBudget(obj, 40, sections)
+      if (result.trim_report) obj['trim_report'] = result.trim_report
+    }
+  }
   const structuredContent = { type: 'object' as const, object: data }
   const json = JSON.stringify(data)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
@@ -205,7 +221,7 @@ function regAlias(
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, name)
       } catch (err) { return errOut(name, String(err), { chart_id }) }
     }
   )
@@ -229,7 +245,7 @@ function globalAlias(
         const data = await callRegistryCap(uri, {
           limit: (limit as number) ?? 100, offset: (offset as number) ?? 0, ...rest,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, name)
       } catch (err) { return errOut(name, String(err)) }
     }
   )
@@ -291,33 +307,70 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   )
 
   // traverse_graph → bodha_graph_traverse_get
-  regAlias(server, 'bodha_graph_traverse_get',
-    'L2 chart graph traversal (same as traverse_graph). R5 W2: about/about_from/about_to accept ' +
-    'address expressions (e.g. "lord_of(bhava 10)") resolved via the shared address resolver; ' +
+  // R-18 fix: this was previously registered via the generic regAlias() helper, which forwards
+  // its extraSchema keys verbatim to the primitive. The primitive (traverse_chart_graph.ts) does
+  // NOT read start_node, max_depth, relation, or limit — it reads seed_node_ids, depth, edge_types,
+  // and top_k_hubs (convergence-mode row cap). Those four params were therefore silently dropped
+  // on every call. Rewritten as a custom handler that translates: max_depth -> depth,
+  // limit -> top_k_hubs (the only row-count knob the primitive exposes; applies to convergence
+  // mode), start_node -> seed_node_ids[0] (single-seed convenience), relation -> edge_types[0].
+  server.tool(
+    'bodha_graph_traverse_get',
+    '[Phase-1 alias] L2 chart graph traversal (same as traverse_graph). R5 W2: about/about_from/about_to ' +
+    'accept address expressions (e.g. "lord_of(bhava 10)") resolved via the shared address resolver; ' +
     'direction/min_strength filter traversal. Gate: a "10th-lord to Moon" path resolves in ONE call ' +
-    'via mode="paths", about_from="lord_of(bhava 10)", about_to={type:"graha",graha:"Moon"}, direction="directed".',
-    'marsys://tool/L2/traverse_chart_graph',
+    'via mode="paths", about_from="lord_of(bhava 10)", about_to={type:"graha",graha:"Moon"}, direction="directed". ' +
+    'limit caps convergence-mode hub rows (mapped to the primitive\'s top_k_hubs); max_depth caps ' +
+    'neighbors-mode BFS depth (mapped to the primitive\'s depth, 1-3).',
     {
-      mode:        z.enum(['neighbors', 'paths', 'cluster', 'convergence', 'contradictions']).optional(),
-      start_node:  z.string().optional(),
-      max_depth:   z.number().int().min(1).max(5).optional(),
-      relation:    z.string().optional(),
-      about:       z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-      about_from:  z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-      about_to:    z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-      direction:   z.enum(['directed', 'both']).optional(),
-      min_strength: z.number().min(0).max(1).optional(),
-    }, principal)
+      ...ChartBase,
+      mode:          z.enum(['neighbors', 'paths', 'convergence', 'contradictions']).optional(),
+      start_node:    z.string().optional().describe('Single seed node UUID (neighbors mode). Mapped to seed_node_ids[0].'),
+      seed_node_ids: z.array(z.string()).optional().describe('Seed node UUIDs (neighbors/paths modes).'),
+      max_depth:     z.number().int().min(1).max(3).optional().describe('BFS depth for neighbors mode (1-3, default 1).'),
+      relation:      z.string().optional().describe('Single edge_type filter. Mapped to edge_types[0].'),
+      edge_types:    z.array(z.string()).optional(),
+      about:         z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      about_from:    z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      about_to:      z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      direction:     z.enum(['directed', 'both']).optional(),
+      min_strength:  z.number().min(0).max(1).optional(),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, limit, offset: _offset, start_node, seed_node_ids, max_depth, relation, edge_types, ...rest } =
+        params as Record<string, unknown>
+      void _offset // traversal has no offset concept — accepted but not applicable (not silently misapplied)
+      if (!chart_id) return errOut('bodha_graph_traverse_get', 'chart_id is required')
+      try {
+        const resolvedSeedIds = (seed_node_ids as string[] | undefined) ?? (start_node ? [start_node as string] : undefined)
+        const resolvedEdgeTypes = (edge_types as string[] | undefined) ?? (relation ? [relation as string] : undefined)
+        const data = await callRegistryCap('marsys://tool/L2/traverse_chart_graph', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          ...(resolvedSeedIds ? { seed_node_ids: resolvedSeedIds } : {}),
+          ...(max_depth != null ? { depth: max_depth } : {}),
+          ...(resolvedEdgeTypes ? { edge_types: resolvedEdgeTypes } : {}),
+          ...(limit != null ? { top_k_hubs: limit } : {}),
+          ...rest,
+        }, principal)
+        return dualOutput(data)
+      } catch (err) { return errOut('bodha_graph_traverse_get', String(err), { chart_id }) }
+    }
+  )
 
   // get_positions → ganita_positions_get
   regAlias(server, 'ganita_positions_get',
     'L1 graha positions (same as get_positions). R5 W2: frame (lagna/chandra/surya/arudha/' +
     'karakamsha, default lagna) re-bases house_d1 onto the requested reference sign, adding ' +
     'house_from_frame per row — e.g. frame="chandra" answers "what house is X in, from Moon" ' +
-    'in this ONE call.',
+    'in this ONE call. The response\'s own `frame_note` field states exactly how many rows in ' +
+    'THIS call actually carry house_from_frame (R-28: pass ayanamsha_id explicitly for full ' +
+    'coverage — an unfiltered call spanning all 5 ayanamshas may only re-base a subset).',
     'marsys://tool/L1/get_positions',
     {
-      frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
+      frame:  z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
+      planet: z.string().optional().describe(
+        'Filter to a single graha (e.g. "Sun", "Moon", "Mars"). SC-20 fix: this alias previously ' +
+        'had no planet param at all, so a caller had no way to narrow the payload.'),
     }, principal)
 
   // get_dashas → ganita_dashas_get
@@ -356,14 +409,36 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }, principal)
 
   // get_temporal_windows → kala_windows_get
-  regAlias(server, 'kala_windows_get',
-    'L3 temporal activation windows (same as get_temporal_windows)',
-    'marsys://tool/L3/query_temporal_activation',
+  // R-18 fix: the primitive (query_temporal_activation.ts) reads date_from/date_to/top_k, not
+  // start_date/end_date/limit — the naming mismatch meant every call silently fell back to the
+  // primitive's own defaults (today..+1y, top_k=50) regardless of what the caller passed. domain
+  // is now a real filter on the primitive (joins bodha_msr_signals.domains_affected_array).
+  server.tool(
+    'kala_windows_get',
+    '[Phase-1 alias] L3 temporal activation windows (same as get_temporal_windows).',
     {
-      start_date: z.string().optional(),
-      end_date:   z.string().optional(),
-      domain:     z.string().optional(),
-    }, principal)
+      ...ChartBase,
+      start_date: z.string().optional().describe('Start of date range (mapped to date_from).'),
+      end_date:   z.string().optional().describe('End of date range (mapped to date_to).'),
+      domain:     z.string().optional().describe('Filter to activations affecting this life domain.'),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, limit, offset: _offset, start_date, end_date, domain } =
+        params as Record<string, unknown>
+      void _offset // this primitive has no offset concept
+      if (!chart_id) return errOut('kala_windows_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L3/query_temporal_activation', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          ...(start_date ? { date_from: start_date } : {}),
+          ...(end_date ? { date_to: end_date } : {}),
+          ...(domain ? { domain } : {}),
+          ...(limit != null ? { top_k: limit } : {}),
+        }, principal)
+        return dualOutput(data)
+      } catch (err) { return errOut('kala_windows_get', String(err), { chart_id }) }
+    }
+  )
 
   // get_projections → kala_projections_get
   regAlias(server, 'kala_projections_get',
@@ -384,7 +459,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const data = await callRegistryCap('marsys://tool/L0/query_classical_texts', {
           keyword, topic, author, limit: limit ?? 50, offset: offset ?? 0,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_classical_citation_get')
       } catch (err) { return errOut('ref_classical_citation_get', String(err)) }
     }
   )
@@ -477,22 +552,82 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }, principal)
 
   // yoga_activation_by_dasha → kala_yoga_activation_get
-  regAlias(server, 'kala_yoga_activation_get',
-    'Kāla yoga-activation-by-dasha timeline (same as yoga_activation_by_dasha)',
-    'marsys://tool/L-TIMING/yoga_activation_by_dasha',
+  // R-18 fix: the primitive (register_d8_assess_domain.ts::yogaActivationByDashaCapability) reads
+  // date_from/date_to/top_k/domain, not start_date/end_date/limit — this alias only declared
+  // start_date/end_date (never mapped to the real field names) and had no domain param at all,
+  // so every call silently used the primitive's defaults regardless of caller input.
+  server.tool(
+    'kala_yoga_activation_get',
+    '[Phase-1 alias] Kāla yoga-activation-by-dasha timeline (same as yoga_activation_by_dasha).',
     {
-      start_date: z.string().optional(),
-      end_date:   z.string().optional(),
-    }, principal)
+      ...ChartBase,
+      start_date:   z.string().optional().describe('Start of date window (mapped to date_from).'),
+      end_date:     z.string().optional().describe('End of date window (mapped to date_to).'),
+      domain:       z.string().optional().describe('Filter to yogas affecting this life domain.'),
+      dasha_period: z.string().optional().describe("Dasha-antardasha label filter (e.g. 'saturn-venus')."),
+      min_salience: z.number().min(0).max(1).optional(),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, limit, offset: _offset, start_date, end_date, domain, dasha_period, min_salience } =
+        params as Record<string, unknown>
+      void _offset // this primitive has no offset concept
+      if (!chart_id) return errOut('kala_yoga_activation_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L-TIMING/yoga_activation_by_dasha', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          ...(start_date ? { date_from: start_date } : {}),
+          ...(end_date ? { date_to: end_date } : {}),
+          ...(domain ? { domain } : {}),
+          ...(dasha_period ? { dasha_period } : {}),
+          ...(min_salience != null ? { min_salience } : {}),
+          ...(limit != null ? { top_k: limit } : {}),
+        }, principal)
+        return dualOutput(data)
+      } catch (err) { return errOut('kala_yoga_activation_get', String(err), { chart_id }) }
+    }
+  )
 
   // get_cgm_subgraph → bodha_graph_subgraph_get
-  regAlias(server, 'bodha_graph_subgraph_get',
-    'L2 CGM subgraph extraction (same as get_cgm_subgraph)',
-    'marsys://tool/L2/traverse_chart_graph',
+  // SC-21 fix: this alias was capability-degraded relative to get_cgm_subgraph (registry_bridge.ts)
+  // despite its description claiming to be "the same as" — it had no mode/seed_node_ids/about/
+  // min_strength, and `limit` was silently dropped (the primitive has no `limit` field; it reads
+  // depth/top_k_hubs). Rewritten with full parameter parity: same param set as get_cgm_subgraph,
+  // translated onto the primitive's real field names (depth, top_k_hubs, seed_node_ids).
+  server.tool(
+    'bodha_graph_subgraph_get',
+    '[Phase-1 alias] L2 CGM subgraph extraction (same as get_cgm_subgraph) — full parameter parity: ' +
+    'mode (neighbors|paths|convergence|contradictions), seed_node_ids / start_node (single-seed ' +
+    'convenience), about / about_from / about_to (address-expression seeding), direction, ' +
+    'min_strength, and limit (caps convergence-mode hub rows via top_k_hubs).',
     {
-      start_node: z.string().optional(),
-      subgraph:   z.boolean().optional().default(true),
-    }, principal)
+      ...ChartBase,
+      mode:          z.enum(['neighbors', 'paths', 'convergence', 'contradictions']).optional(),
+      start_node:    z.string().optional().describe('Single seed node UUID (neighbors mode). Mapped to seed_node_ids[0].'),
+      seed_node_ids: z.array(z.string()).optional(),
+      depth:         z.number().int().min(1).max(3).optional(),
+      about:         z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      about_from:    z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      about_to:      z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+      direction:     z.enum(['directed', 'both']).optional(),
+      min_strength:  z.number().min(0).max(1).optional(),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, limit, offset: _offset, start_node, seed_node_ids, ...rest } =
+        params as Record<string, unknown>
+      void _offset
+      if (!chart_id) return errOut('bodha_graph_subgraph_get', 'chart_id is required')
+      try {
+        const resolvedSeedIds = (seed_node_ids as string[] | undefined) ?? (start_node ? [start_node as string] : undefined)
+        const data = await callRegistryCap('marsys://tool/L2/traverse_chart_graph', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          ...(resolvedSeedIds ? { seed_node_ids: resolvedSeedIds } : {}),
+          ...(limit != null ? { top_k_hubs: limit } : {}),
+          ...rest,
+        }, principal)
+        return dualOutput(data)
+      } catch (err) { return errOut('bodha_graph_subgraph_get', String(err), { chart_id }) }
+    }
+  )
 
   // query_chart_facts → ganita_chart_facts_get
   // R5 W1 (lane: chart_query) fix: extraSchema previously declared fact_category/fact_id,
@@ -583,7 +718,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ year }) => {
       try {
         const data = await callRegistryCap(`marsys://resource/ephemeris-cache/year/${year}`, { year }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_ephemeris_year_get')
       } catch (err) { return errOut('ref_ephemeris_year_get', String(err), { year }) }
     }
   )
@@ -763,7 +898,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const data = await callSidecarPath('/api/compute/phala/event_anchors', {
           chart_id, date_range, min_confidence,
         })
-        return dualOutput(data)
+        return dualOutput(data, 'phala_anchors_get')
       } catch (err) { return errOut('phala_anchors_get', String(err), { chart_id }) }
     }
   )
@@ -776,7 +911,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       if (!chart_id) return errOut('phala_mitigation_get', 'chart_id is required')
       try {
         const data = await callPlatformPrim('mitigation_map', { chart_id, domain }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'phala_mitigation_get')
       } catch (err) { return errOut('phala_mitigation_get', String(err), { chart_id }) }
     }
   )
@@ -843,7 +978,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('lel_query', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'mimamsa_lel_query')
       } catch (err) { return errOut('mimamsa_lel_query', String(err)) }
     }
   )
