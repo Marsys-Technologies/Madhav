@@ -68,6 +68,10 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Max parvas to return (default: 739 = all, max: 739).',
     },
+    offset: {
+      type: 'number',
+      description: 'Pagination offset (default: 0). Applied after ORDER BY parva_index.',
+    },
   },
 
   llm_hints: {
@@ -92,6 +96,7 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
     const date_from      = args['date_from'] as string | undefined
     const date_to        = args['date_to'] as string | undefined
     const top_k          = Math.min(Number(args['top_k'] ?? 739), 739)
+    const offset         = Math.max(Number(args['offset'] ?? 0), 0)
 
     // kala_jivana_parva models the period as integer life years (start_year/end_year),
     // not dates. Map any ISO date filters to their year component for overlap filtering.
@@ -112,7 +117,9 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
       if (year_to !== undefined)   { conds.push(`start_year <= $${p++}`);          params.push(year_to) }
 
       params.push(top_k)
-      const topKPh = `$${p}`
+      const topKPh = `$${p++}`
+      params.push(offset)
+      const offsetPh = `$${p}`
 
       const sql = `
         SELECT id, parva_index, dasha_planet, dominant_signal_class,
@@ -122,7 +129,7 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
         FROM kala_jivana_parva
         WHERE ${conds.join(' AND ')}
         ORDER BY parva_index
-        LIMIT ${topKPh}
+        LIMIT ${topKPh} OFFSET ${offsetPh}
       `
 
       const result = await query(sql, params)
@@ -132,7 +139,7 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
           chart_id,
           parvas:       result.rows,
           parva_count:  result.rows.length,
-          filters: { mahadasha_lord, quality_label, domain, date_from, date_to, top_k },
+          filters: { mahadasha_lord, quality_label, domain, date_from, date_to, top_k, offset },
           provenance: { tables: ['kala_jivana_parva'] },
         },
         is_error: false,
