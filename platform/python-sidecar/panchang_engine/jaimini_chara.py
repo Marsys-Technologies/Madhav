@@ -1,24 +1,38 @@
 """
 jaimini_chara.py — Jaimini Chara Dasha engine for MARSYS-JIS.
 
-Implements standard Jaimini Chara Dasha computation:
+Implements standard Jaimini Chara Dasha computation (K.N. Rao's standard
+restatement of the Jaimini Sutram / Upadesa Sutras rule, the same rule
+implemented as the L1 authority in ga_writers/ga_dashas_writer.py
+::_compute_dynamic_chara_params — CLAUDE.md §N.5, L1 is the authority over
+L2+ derivations; this sidecar engine must never diverge from it):
   - 12 rashis serve as dasha lords.
-  - Period for each rashi determined by its sign lord's longitude within the sign.
-  - Odd rashis (Aries=1, Gemini=3, Leo=5, Libra=7, Sagittarius=9, Aquarius=11):
-      years = 30 - floor(lord's longitude in sign)
-  - Even rashis (Taurus=2, Cancer=4, Virgo=6, Scorpio=8, Capricorn=10, Pisces=12):
-      years = floor(lord's longitude in sign) + 1
-  - Years capped at 12 per rashi.
-  - Total cycle = 120 years.
+  - Period for each rashi R = forward sign-count from R to R's lord's
+    CURRENTLY OCCUPIED rashi (1-12 years; if the lord occupies its own sign,
+    the count is 12).
+  - Cycle total = sum of the 12 per-rashi counts. This is chart-dependent
+    (NOT a fixed 120 — a prior version of this file used a degree-based
+    30-minus-longitude formula that is not the classical rule and does not
+    match ga_dashas; M-8 fix removed it).
   - Start rashi determined by Lagna (ascendant sign at birth).
-  - Sub-periods (antar dasha) subdivide each rashi's period proportionally.
+  - Sub-periods (antar dasha) subdivide each rashi's period proportionally
+    to the actual cycle total (not a hardcoded 120).
 
-References: Jaimini Sutram, Upadesa Sutras §Chara Dasha computation.
-Session: TR-P7-S2
+M-8 fix (hard-fail, no fallback): this engine REQUIRES the chart's real
+sidereal planetary longitudes and lagna longitude. There is no
+NATIVE_FALLBACK_LONGITUDES table — a prior version silently substituted
+values that were wrong even for the native (Sun 322.61 Aquarius vs. FORENSIC
+truth Capricorn; Lagna 51.28 Taurus vs. FORENSIC truth Aries) for every
+caller, native or not. Per canonical-or-floor doctrine: callers must supply
+real longitudes (from chart_facts) or the call raises — it never serves a
+substitute chart's numbers labeled as this chart's dasha.
+
+References: Jaimini Sutram, Upadesa Sutras §Chara Dasha computation;
+K.N. Rao, "Jaimini's Upadesa Sutras" (chara dasha length = sign-count rule).
+Session: TR-P7-S2. M-8 fix: MARSYS_DEFECT_GAP_REGISTER_v2_0.md.
 """
 from __future__ import annotations
 
-import math
 from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
 
@@ -62,127 +76,112 @@ SIGN_LORDS = {
     "Pisces":      "Jupiter",
 }
 
-# Canonical planet longitudes for native Abhisek Mohanty (FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)).
-# Used as fallback when ephemeris is not available.
-# All values are sidereal (Lahiri ayanamsha), degrees 0–360.
-NATIVE_FALLBACK_LONGITUDES: Dict[str, float] = {
-    "Sun":     322.61,   # Aquarius 22°37'
-    "Moon":    326.73,   # Aquarius 26°44'  (Purva Bhadrapada)
-    "Mars":    201.98,   # Scorpio 21°59'
-    "Mercury": 305.05,   # Aquarius 5°3'
-    "Jupiter": 233.28,   # Scorpio 23°17'
-    "Venus":   343.52,   # Pisces 13°31'
-    "Saturn":  199.28,   # Scorpio 19°17'
-    "Rahu":    66.47,    # Gemini 6°28'
-    "Ketu":    246.47,   # Sagittarius 6°28'
-    "Lagna":   51.28,    # Taurus 21°17'  (ascendant)
-}
-
-# Native's ascendant sign index (0-based) — Taurus = index 1.
-NATIVE_LAGNA_RASHI_INDEX = 1  # Taurus
+# Grahas whose sign-lordship the Rao formula walks (Rahu/Ketu excluded — same
+# 7-classical-graha school as ga_dashas_writer._compute_dynamic_chara_params).
+_CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 
 
 # ── Core algorithm ─────────────────────────────────────────────────────────────
-
-def _longitude_in_sign(planet_lon: float) -> float:
-    """Return the planet's longitude within its sign (0–30 degrees)."""
-    return planet_lon % 30.0
-
 
 def _rashi_index_from_longitude(longitude: float) -> int:
     """Return 0-based rashi index (0=Aries, 11=Pisces) from ecliptic longitude."""
     return int(longitude / 30.0) % 12
 
 
-def compute_chara_dasha_years(planet_longitudes: Optional[Dict[str, float]] = None) -> List[Dict[str, Any]]:
+def compute_chara_dasha_years(planet_longitudes: Optional[Dict[str, float]]) -> List[Dict[str, Any]]:
     """
-    Compute Chara Dasha period lengths for all 12 rashis.
+    Compute Chara Dasha period lengths for all 12 rashis via the classical
+    K.N. Rao sign-count rule (see module docstring). This is the SAME rule as
+    ga_writers/ga_dashas_writer.py::_compute_dynamic_chara_params — L1 is the
+    authority (CLAUDE.md §N.5); this engine must not diverge.
 
     Args:
-        planet_longitudes: dict of planet_name → sidereal longitude (0–360).
-                           If None, uses NATIVE_FALLBACK_LONGITUDES.
+        planet_longitudes: dict of planet_name → sidereal longitude (0–360),
+            REQUIRED for the 7 classical grahas (Sun, Moon, Mars, Mercury,
+            Jupiter, Venus, Saturn). No default — M-8 fix removed the
+            NATIVE_FALLBACK_LONGITUDES table, which served wrong values
+            (even for the native) to every caller.
+
+    Raises:
+        ValueError: if planet_longitudes is falsy or missing a required lord.
+            Canonical-or-floor doctrine: a missing longitude is a hard-fail,
+            never a computable substitute.
 
     Returns:
-        List of 12 dicts: [{rashi, years, sign_lord, lord_longitude_in_sign}, ...]
-        in zodiac order (Aries through Pisces). Total years must sum to 120.
+        List of 12 dicts: [{rashi, rashi_index, years, sign_lord, lord_rashi},
+        ...] in zodiac order (Aries through Pisces). Total years is
+        chart-dependent (NOT a fixed 120 — see module docstring).
     """
-    lons = planet_longitudes if planet_longitudes is not None else NATIVE_FALLBACK_LONGITUDES
+    if not planet_longitudes:
+        raise ValueError(
+            "[jaimini_chara] planet_longitudes is required — there is no "
+            "native-chart fallback (M-8 fix). Supply this chart's real "
+            f"sidereal longitudes for {_CLASSICAL_GRAHAS}."
+        )
 
     periods: List[Dict[str, Any]] = []
-    total_years = 0
 
     for idx, rashi in enumerate(RASHIS):
         lord = SIGN_LORDS[rashi]
-        lord_lon = lons.get(lord, 0.0)
-        lon_in_sign = _longitude_in_sign(lord_lon)
-        is_odd = RASHI_ODD[idx]
+        if lord not in planet_longitudes:
+            raise ValueError(
+                f"[jaimini_chara] planet_longitudes missing lord={lord!r} "
+                f"(needed to derive the period for rashi={rashi!r}). "
+                "Refusing to fabricate a period length."
+            )
+        lord_rashi_idx = _rashi_index_from_longitude(planet_longitudes[lord])
+        steps = (lord_rashi_idx - idx) % 12
+        years = 12 if steps == 0 else steps
 
-        if is_odd:
-            years = 30 - int(math.floor(lon_in_sign))
-        else:
-            years = int(math.floor(lon_in_sign)) + 1
-
-        # Cap at 12 (rashi cannot give more than 12 years in Chara Dasha).
-        years = min(years, 12)
-
-        # Enforce minimum of 1 year to avoid degenerate periods.
-        years = max(years, 1)
-
-        total_years += years
         periods.append({
             "rashi": rashi,
             "rashi_index": idx,
             "years": years,
             "sign_lord": lord,
-            "lord_longitude_in_sign": round(lon_in_sign, 4),
-            "is_odd_rashi": is_odd,
+            "lord_rashi": RASHIS[lord_rashi_idx],
+            "is_odd_rashi": RASHI_ODD[idx],
         })
-
-    # Normalise: if sum != 120, distribute residual proportionally to largest periods.
-    # (In practice, native data will sum close to 120; this handles edge cases.)
-    if total_years != 120:
-        diff = 120 - total_years
-        # Add/subtract from the rashi with the most slack.
-        if diff > 0:
-            for _ in range(diff):
-                candidates = [p for p in periods if p["years"] < 12]
-                if not candidates:
-                    break
-                candidates.sort(key=lambda p: p["years"])
-                candidates[0]["years"] += 1
-        elif diff < 0:
-            for _ in range(-diff):
-                candidates = [p for p in periods if p["years"] > 1]
-                if not candidates:
-                    break
-                candidates.sort(key=lambda p: p["years"], reverse=True)
-                candidates[0]["years"] -= 1
 
     return periods
 
 
-def compute_lagna_rashi_index(lagna_longitude: Optional[float] = None) -> int:
+def compute_lagna_rashi_index(lagna_longitude: Optional[float]) -> int:
     """
-    Return the 0-based rashi index of the native's ascendant.
-    Defaults to NATIVE_LAGNA_RASHI_INDEX if lagna_longitude is None.
+    Return the 0-based rashi index of the chart's ascendant.
+
+    Args:
+        lagna_longitude: sidereal longitude (0-360) of the ascendant,
+            REQUIRED. No default — M-8 fix removed NATIVE_LAGNA_RASHI_INDEX,
+            which was wrong even for the native (Taurus vs. FORENSIC truth
+            Aries) and was served to every caller regardless of chart.
+
+    Raises:
+        ValueError: if lagna_longitude is None.
     """
     if lagna_longitude is None:
-        return NATIVE_LAGNA_RASHI_INDEX
+        raise ValueError(
+            "[jaimini_chara] lagna_longitude is required — there is no "
+            "native-chart fallback (M-8 fix). Supply this chart's real "
+            "sidereal ascendant longitude."
+        )
     return _rashi_index_from_longitude(lagna_longitude)
 
 
 def build_full_chara_dasha(
     birth_date: date,
-    planet_longitudes: Optional[Dict[str, float]] = None,
-    lagna_longitude: Optional[float] = None,
+    planet_longitudes: Dict[str, float],
+    lagna_longitude: float,
 ) -> List[Dict[str, Any]]:
     """
     Build the complete Chara Dasha timeline anchored to birth_date.
 
     Args:
-        birth_date: The native's birth date.
-        planet_longitudes: dict of sidereal longitudes. None → native fallback.
-        lagna_longitude: sidereal longitude of ascendant. None → native fallback.
+        birth_date: The chart's birth date.
+        planet_longitudes: dict of this chart's real sidereal longitudes,
+            REQUIRED (M-8 fix — no native-chart fallback; see
+            compute_chara_dasha_years).
+        lagna_longitude: this chart's real sidereal ascendant longitude,
+            REQUIRED (M-8 fix — see compute_lagna_rashi_index).
 
     Returns:
         List of 12 dicts with rashi, years, start_date, end_date, and
@@ -190,6 +189,7 @@ def build_full_chara_dasha(
     """
     rashi_periods = compute_chara_dasha_years(planet_longitudes)
     lagna_idx = compute_lagna_rashi_index(lagna_longitude)
+    cycle_total_years = sum(p["years"] for p in rashi_periods)
 
     # Reorder: start from lagna rashi, proceed in zodiac order.
     ordered = rashi_periods[lagna_idx:] + rashi_periods[:lagna_idx]
@@ -204,7 +204,9 @@ def build_full_chara_dasha(
 
         # Build antar dasha (sub-periods): 12 rashis subdivide the main period
         # in the same forward order starting from the main dasha rashi.
-        antar_periods = _build_antar_dasha(current_start, current_end, years, period["rashi_index"], rashi_periods)
+        antar_periods = _build_antar_dasha(
+            current_start, current_end, period["rashi_index"], rashi_periods, cycle_total_years,
+        )
 
         result.append({
             "rashi": period["rashi"],
@@ -224,15 +226,17 @@ def build_full_chara_dasha(
 def _build_antar_dasha(
     md_start: date,
     md_end: date,
-    md_years: float,
     md_rashi_index: int,
     rashi_periods: List[Dict[str, Any]],
+    cycle_total_years: float,
 ) -> List[Dict[str, Any]]:
     """
     Build 12 antar dasha periods within a given maha dasha period.
 
-    Each antar dasha (AD) is proportional: AD_days = (AD_years / 120) * MD_days.
-    The 12 rashis cycle starting from the MD rashi in zodiac forward order.
+    Each antar dasha (AD) is proportional: AD_days = (AD_years / cycle_total_years)
+    * MD_days, where cycle_total_years is the ACTUAL sum of this chart's 12
+    rashi periods (chart-dependent — not a fixed 120; M-8 fix). The 12 rashis
+    cycle starting from the MD rashi in zodiac forward order.
     """
     md_total_days = (md_end - md_start).days + 1
     # Reorder rashi_periods starting from MD rashi
@@ -245,7 +249,7 @@ def _build_antar_dasha(
         ad_years = antar["years"]
         # Proportional allocation
         if i < len(ordered) - 1:
-            ad_days = int(round((ad_years / 120.0) * md_total_days))
+            ad_days = int(round((ad_years / cycle_total_years) * md_total_days))
         else:
             # Last AD absorbs any rounding residual
             ad_days = (md_end - current_start).days + 1
@@ -258,7 +262,7 @@ def _build_antar_dasha(
         result.append({
             "rashi": antar["rashi"],
             "sign_lord": antar["sign_lord"],
-            "years_proportion": round(ad_years / 120.0, 4),
+            "years_proportion": round(ad_years / cycle_total_years, 4),
             "start_date": current_start.isoformat(),
             "end_date": ad_end.isoformat(),
         })
@@ -283,7 +287,7 @@ def get_active_dasha(
 
     Returns:
         dict with keys: active_rashi_dasha, active_antar_dasha.
-        If query_date is outside the 120-year cycle, returns the last/first period.
+        If query_date is outside the (chart-dependent) full cycle, returns the last/first period.
     """
     active_md = None
     for period in full_periods:

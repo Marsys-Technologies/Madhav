@@ -1396,15 +1396,22 @@ def _compute_dynamic_chara_params(
             graha_sign_idx[g] = idx
 
     # Rao formula: CHARA_YEARS[sign] = forward count from sign to lord's sign (1-12)
+    # Hard-fail policy (M-7): no fabricated period length. If chart_facts lacks
+    # the lord's sign, the chart's chara dasha cannot be computed classically —
+    # this must surface as a build failure, not a silently invented "7 years".
     chara_years: dict[str, int] = {}
     for sign_idx, sign_name in enumerate(_SIGN_NAMES):
         lord = _SIGN_LORD_IDX[sign_idx]
         lord_sign_idx = graha_sign_idx.get(lord)
         if lord_sign_idx is None:
-            years = 7  # safe fallback if chart_facts absent for this graha
-        else:
-            steps = (lord_sign_idx - sign_idx) % 12
-            years = 12 if steps == 0 else steps
+            raise ValueError(
+                f"[ga_dashas] chara: chart_facts missing sign for lord={lord!r} "
+                f"(needed for sign={sign_name!r}) chart_id={chart_id} "
+                f"ayanamsha={ayanamsha_id}. Refusing to fabricate a period length "
+                f"— rebuild ga_structural/graha facts before chara dasha."
+            )
+        steps = (lord_sign_idx - sign_idx) % 12
+        years = 12 if steps == 0 else steps
         chara_years[sign_name] = years
 
     return ak_sign_idx, chara_years
@@ -1422,10 +1429,14 @@ def compute_chara_system(
 
     AK is the graha (7 classical) with highest degree_in_sign in this chart.
     CHARA_YEARS per sign = forward count from sign to lord's current sign (1-12;
-    lord in own sign → 12). Queries chart_facts when conn is provided.
+    lord in own sign → 12). Always derived from this chart's own chart_facts.
 
-    If conn is None (legacy CLI path) or query fails, falls back to FORENSIC
-    hardcoded values (AK=Sun/Capricorn) with a warning.
+    Hard-fail policy (M-7 fix, B1-elimination pattern): there is no
+    native-chart fallback of any kind. If conn is None (legacy CLI path) this
+    opens its own connection to fetch the REAL chart's facts (never another
+    chart's); if the dynamic derivation raises for any reason (missing facts,
+    query failure), that exception propagates — it is never swallowed into a
+    silently substituted AK/CHARA_YEARS value.
     """
     import swisseph as swe
     min_jd = swe.julday(1950, 1, 1, 0.0)
@@ -1436,32 +1447,16 @@ def compute_chara_system(
         "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
     ]
 
-    # ── Dynamic params (chart-agnostic) ──────────────────────────────────────
-    # FORENSIC static fallback — used when conn is absent or query fails
-    _FORENSIC_CHARA_YEARS = {
-        "Capricorn": 12, "Aquarius": 8, "Pisces": 6, "Aries": 4,
-        "Taurus": 10, "Gemini": 7, "Cancer": 11, "Leo": 5,
-        "Virgo": 9, "Libra": 13, "Scorpio": 3, "Sagittarius": 12,
-    }
-    _FORENSIC_AK_SIGN_IDX = 9  # Capricorn — Sun is AK for native
-
+    # ── Dynamic params (chart-agnostic; no fallback — see docstring) ────────
     if conn is not None:
-        try:
-            ak_sign_idx, CHARA_YEARS = _compute_dynamic_chara_params(
-                conn, chart_id, ayanamsha_id
-            )
-        except Exception as exc:
-            logger.warning(
-                "[ga_dashas] chara dynamic params failed for chart=%s; "
-                "falling back to FORENSIC hardcoded. cause=%s", chart_id, exc,
-            )
-            ak_sign_idx, CHARA_YEARS = _FORENSIC_AK_SIGN_IDX, _FORENSIC_CHARA_YEARS
-    else:
-        logger.debug(
-            "[ga_dashas] chara: conn=None — using FORENSIC static CHARA_YEARS (chart=%s)",
-            chart_id,
+        ak_sign_idx, CHARA_YEARS = _compute_dynamic_chara_params(
+            conn, chart_id, ayanamsha_id
         )
-        ak_sign_idx, CHARA_YEARS = _FORENSIC_AK_SIGN_IDX, _FORENSIC_CHARA_YEARS
+    else:
+        with _conn() as _nc:
+            ak_sign_idx, CHARA_YEARS = _compute_dynamic_chara_params(
+                _nc, chart_id, ayanamsha_id
+            )
 
     # Backdate
     cycle_total = sum(CHARA_YEARS.values())  # 100y per cycle

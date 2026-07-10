@@ -120,6 +120,47 @@ def _mock_get_moon_position(ayanamsha_id: str, birth: dict | None = None):
     return FORENSIC_MOON_LON, BIRTH_JD
 
 
+# ── Mock chart_facts connection for chara_karaka (M-7 fix) ───────────────────
+# compute_chara_system() now REQUIRES a real chart_facts derivation (no
+# NATIVE-hardcoded fallback — MARSYS_DEFECT_GAP_REGISTER_v2_0.md M-7). This
+# test suite stays "NO DB required" by mocking chart_facts rows directly,
+# same pattern as _mock_get_moon_position above mocks the ephemeris call.
+_MOCK_CHART_FACTS_CHARA_ROWS = [
+    ("Sun", "sign", "Capricorn", None), ("Sun", "degree_in_sign", None, 12.61),
+    ("Moon", "sign", "Aquarius", None), ("Moon", "degree_in_sign", None, 26.73),
+    ("Mars", "sign", "Scorpio", None), ("Mars", "degree_in_sign", None, 21.98),
+    ("Mercury", "sign", "Aquarius", None), ("Mercury", "degree_in_sign", None, 5.05),
+    ("Jupiter", "sign", "Scorpio", None), ("Jupiter", "degree_in_sign", None, 23.28),
+    ("Venus", "sign", "Pisces", None), ("Venus", "degree_in_sign", None, 13.52),
+    ("Saturn", "sign", "Scorpio", None), ("Saturn", "degree_in_sign", None, 19.28),
+]
+
+
+def _mock_chart_facts_conn(rows: list[tuple]) -> Any:
+    """Minimal fake DB connection satisfying ga_dashas_writer's
+    _compute_dynamic_chara_params (conn.cursor() as cur: cur.execute(...);
+    cur.fetchall())."""
+
+    class _Cur:
+        def execute(self, *_a, **_k):
+            pass
+
+        def fetchall(self):
+            return rows
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+    class _Conn:
+        def cursor(self):
+            return _Cur()
+
+    return _Conn()
+
+
 # ── Helper: compute a system with mocked Moon ────────────────────────────────
 
 def _compute_system_rows(system_id: str, limit_cycles: bool = True) -> list[dict]:
@@ -141,7 +182,10 @@ def _compute_system_rows(system_id: str, limit_cycles: bool = True) -> list[dict
     elif system_id == "ashtottari":
         rows = mod.compute_ashtottari_system(moon_sid, birth_jd, aya, chart_id, build_id)
     elif system_id == "chara_karaka":
-        rows = mod.compute_chara_system(birth_jd, aya, chart_id, build_id)
+        rows = mod.compute_chara_system(
+            birth_jd, aya, chart_id, build_id,
+            conn=_mock_chart_facts_conn(_MOCK_CHART_FACTS_CHARA_ROWS),
+        )
     elif system_id == "naisargika":
         rows = mod.compute_naisargika_system(birth_jd, aya, chart_id, build_id)
     elif system_id == "mudda":
