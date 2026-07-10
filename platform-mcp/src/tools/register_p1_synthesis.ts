@@ -419,10 +419,14 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
     async ({ chart_id, include_lel_events, limit, offset }) => {
       if (!chart_id) return errorOutput('kala_life_arc_get', 'chart_id is required')
       try {
+        // T-9 fix (R6 0d-clips): the underlying capability (query_life_arc.ts) reads
+        // `top_k`/`offset`, not `limit` — passing `limit` here was silently ignored
+        // (top_k defaulted to 739 = all rows every time, regardless of this tool's
+        // advertised `limit` param). Map limit -> top_k so the cap is actually honored.
         const data = await callRegistryCapability('marsys://tool/L3/query_life_arc', {
           chart_id,
           include_lel_events: include_lel_events !== false,
-          limit: limit ?? 50,
+          top_k: limit ?? 50,
           offset: offset ?? 0,
         }, principal)
         return dualOutput(envelope(data, 'kala_life_arc_get', 'temporal_life_arc'))
