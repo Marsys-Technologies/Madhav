@@ -1,0 +1,197 @@
+# =============================================================================
+# GOLDEN_SIGNALS_482012f1_v1_0.yaml — TAP-4 regression corpus
+# =============================================================================
+# Purpose: durable golden-signal regression battery for chart 482012f1
+#   (Abhisek Mohanty). Each entry is a natural-language question a user would
+#   ask, plus the specific atoms (grahas/houses/yogas/values) that MUST appear
+#   in the evidence of the instrument's answer for the answer to count as
+#   chart-literate. Mined from: FORENSIC v6.0 (§4 KP, §5 dashas),
+#   DEEP_ANALYSIS v1 (SIG.01-15 / CVG.01-08 / CTR.01-07), LIFE_EVENT_LOG v1.2
+#   retrodictive_match blocks, and the 5 already-earned golds from native
+#   question sessions.
+# Usage (TAP-4 protocol): re-run each question through the mapped flagship
+#   instrument (judgment_query / graha_portrait / pact_query / domain_reading /
+#   get_signals / query_chart_facts) and grade PASS (all must_surface_atoms in
+#   evidence), PARTIAL (some), FAIL (none). Compare against
+#   battery_result_2026_07_10 to detect regressions or fixes.
+# Grades below are from the 2026-07-10 run against prod MCP
+#   (mcp 2f289ab0, chart 482012f1, ayanamsha lahiri_chitrapaksha).
+# blocking_register_rows: defect-register v2.0 rows (Y-*/KP-*/S-*/G-*) or
+#   NEW-n rows proposed by this TAP-4 run (see TAP-4 final report).
+# =============================================================================
+
+- id: GS-01
+  question: "Which planets control my cash flow and gains according to KP?"
+  must_surface_atoms: [11th cusp, Mars (star lord), Mercury (sub lord), Rahu (sub-sub lord), Saturn (11L earning channel)]
+  source: "FORENSIC v6.0 KP.CUSP.11 + KP.SIG.11; earned gold (native session)"
+  battery_result_2026_07_10: FAIL
+  blocking_register_rows: [KP-1, KP-2, KP-3, KP-4, KP-5, KP-6]
+  notes: "Cusp-level KP (KP.CUSP.*) entirely unserved. Only planet-level graha_kp_lords signals exist; no instrument answers a house-cusp sub-lord question."
+
+- id: GS-02
+  question: "Trace the KP significator chain for my earnings — how do Mercury, Saturn and Rahu link the 11th and 2nd houses?"
+  must_surface_atoms: [Mercury sub-lord Rahu (2H), Mars star-lord Rahu, Saturn as 11L, 11H significators (Sun/Rahu/Moon/Saturn)]
+  source: "FORENSIC v6.0 KP.PLN.MERCURY/KP.PLN.MARS + KP.SIG.11; earned gold"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [KP-1, KP-2]
+  notes: "Planet-level lords served and correct (MER sub_lord=Rahu, MAR star_lord=Rahu match FORENSIC §4.2). House-significator chains (KP.SIG.*) unserved; all graha_kp_lords signals are domain-tagged character/relationship only, so wealth-routed retrieval never sees them."
+
+- id: GS-03
+  question: "How strong is Mercury in my chart and why does it matter?"
+  must_surface_atoms: [Mercury vargottama (D1 Capricorn = D9 Capricorn), Mahadasha lord 2010-2027, Yogi planet, 10H placement]
+  source: "DEEP_ANALYSIS SIG.09 + CVG.01; earned gold (sole-vargottama in any Mercury judgment)"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [S-1, NEW-4]
+  notes: "MD lordship and D1/D9 same-sign rows served; vargottama_per_varga + graha_special_state_rollup.MER.is_vargottama facts EXIST in chart_facts but graha_portrait narration never says 'vargottama'. Yogi-planet status unserved (S-1). Digest labels Mercury 'weakest_graha' — direct inversion of CVG.01 (NEW-4)."
+
+- id: GS-04
+  question: "Was I under Sade Sati during 2022-2025, and which phase?"
+  must_surface_atoms: [Sade Sati cycle 2 (post-birth), Saturn transit Capricorn/Aquarius/Pisces, natal Moon Aquarius, peak phase 2023-2025]
+  source: "DEEP_ANALYSIS SIG.13 + CTR.07; LEL EVT.2020/EVT.2023 signals_that_matched; earned gold"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [NEW-6]
+  notes: "Data plane rich (15 Saturn-period categories, sade_sati_cycle/phase rows exist, CYCLE_5 anumukha 2025-03-29 to 2027-06-02 Pisces matches CTR.07 window). But serving is EAV shrapnel needing pagination archaeology; cycle numbering starts pre-birth (CYCLE_1 1961-1968) and differs per category family, so 'cycle 2' is unanswerable directly; NO flagship instrument (judgment/pact/digest) surfaces Sade Sati at all."
+
+- id: GS-05
+  question: "What explains my grandfather's passing in 2009?"
+  must_surface_atoms: [Jupiter as 9L, Jupiter own-sign Sagittarius 9H but weak (shadbala deficit), Saturn-Jupiter antardasha covering 2009]
+  source: "DEEP_ANALYSIS CTR.03 + CVG.02; LEL EVT.2009 ('among the strongest retrodictive matches'); earned gold"
+  battery_result_2026_07_10: PASS
+  blocking_register_rows: []
+  notes: "get_dashas serves Saturn-Jupiter AD 2008-02-05 to 2010-08-18 with Jupiter 9L own-sign metadata; graha_portrait grades Jupiter 2.66 rupas vs 6.50 required = weak. All three atoms retrievable. (Uccha-bala rank-7 granularity not exposed, but weakness itself is.)"
+
+- id: GS-06
+  question: "What is the strongest placement in my 7th house?"
+  must_surface_atoms: [Saturn, exalted, Libra, 7H]
+  source: "DEEP_ANALYSIS SIG.01"
+  battery_result_2026_07_10: PASS
+  blocking_register_rows: []
+  notes: "graha_portrait + judgment_query(career) both serve Saturn exalted Libra 7H, D9 debilitated Aries (= SIG.03 NBRY Saturn also confirmed)."
+
+- id: GS-07
+  question: "What does my chart say about the character of my marriage?"
+  must_surface_atoms: [Mars + Saturn co-occupying 7H Libra, Saturn exalted, 7L Venus in 9H, contested/high-tension verdict]
+  source: "DEEP_ANALYSIS SIG.15 + CVG.08; LEL EVT.2013.12 wedding ('STRONGEST MATCH in the corpus')"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [Y-1]
+  notes: "judgment_query(marriage): occupants Mars+Saturn from lagna AND chandra, Venus 7L in 9, verdict contested (-1.5) — good. But Sasha Mahapurusha / Hidden-Raja-Yoga framing absent (yoga catalog is requires_pass, never confirmed-firing); bearing_yogas slot instead served Ardha Chandra."
+
+- id: GS-08
+  question: "Is my Saturn strong or weak? Reconcile the verdicts."
+  must_surface_atoms: [Saturn shadbala high in intra-chart rank, Shuddha Pinda / Ashtakavarga bindu weakness, inflection-not-compound delivery pattern]
+  source: "DEEP_ANALYSIS CTR.01 (Shadbala #2 vs Shuddha Pinda #7 paradox)"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [NEW-4, NEW-5]
+  notes: "Portrait serves Saturn 3.611 rupas but grades it 'weak (deficit)' vs 5.0 requirement with no intra-chart ranking (Saturn is the highest shadbala served among grahas probed) — the CTR.01 paradox is invisible. No Shuddha Pinda / ashtakavarga in portrait. Narration also emits degenerate parivartana 'Saturn_in_Capricorn_Saturn_in_Capricorn mutual exchange' (Saturn is in Libra) — NEW-5."
+
+- id: GS-09
+  question: "Will I earn from foreign lands? What is my foreign-income architecture?"
+  must_surface_atoms: [Moon = Atmakaraka, Moon 11H Aquarius (Chalit 12), 12H/foreign linkage, D9 Karakamsa Gemini]
+  source: "DEEP_ANALYSIS SIG.04/SIG.05 + CVG.03; LEL EVT.2019 US move"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [S-1]
+  notes: "atmakaraka_graha=Moon fact served (karakamsa_position); Moon house_d1=11 Aquarius served. Chalit-12 drift (CTR.04) not exposed by any instrument (get_dashas shows Moon house 12 vs chart_facts 11 with no house-system label — see NEW-3); no instrument composes the AK+12H foreign-income chain."
+
+- id: GS-10
+  question: "What is happening in my navamsha 12th house?"
+  must_surface_atoms: [D9 Gemini 12H stellium, Moon + Jupiter + Rahu in D9 Gemini, dispositor Mercury (vargottama)]
+  source: "DEEP_ANALYSIS SIG.06 + CVG.03"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [NEW-2]
+  notes: "query_chart_facts(divisional_chart=D9, sign=Gemini) returns 0 rows even though D9_JUP = Gemini 12H exists (served by graha_portrait) — the sign filter appears to bind only to D1 sign (NEW-2). Stellium reconstructable only planet-by-planet via portraits."
+
+- id: GS-11
+  question: "Do I have Saraswati Yoga, and is it operating?"
+  must_surface_atoms: [Saraswati Yoga, Jupiter + Venus + Mercury in kendra/trikona, confirmed firing]
+  source: "DEEP_ANALYSIS SIG.07 (CYSS 91); LEL XIMB admission/enrollment events"
+  battery_result_2026_07_10: FAIL
+  blocking_register_rows: [Y-1]
+  notes: "Yoga estate is a requires_pass catalog (yoga_fires = 0 rows). Saraswati never surfaced in judgment bearing_yogas or top wealth signals; false-positive catalog entries (e.g. Kemadruma for a chart that actually has Anapha) ARE served instead."
+
+- id: GS-12
+  question: "Do I have Lakshmi Yoga / dharma-wealth combinations?"
+  must_surface_atoms: [Lakshmi Yoga, Venus in 9L-Jupiter's sign, 9L Jupiter in trikona own-sign]
+  source: "DEEP_ANALYSIS SIG.08 + CVG.02/CVG.06; LEL EVT.2010 family windfall"
+  battery_result_2026_07_10: FAIL
+  blocking_register_rows: [Y-1]
+  notes: "Only generic 'Dhana yoga' catalog label (requires_pass, constituent fact = one Sun position row) tops the wealth signal slice. Lakshmi Yoga never surfaces as confirmed for this chart."
+
+- id: GS-13
+  question: "What does Rahu in my 2nd house mean for wealth?"
+  must_surface_atoms: [Rahu, 2H, Taurus, unconventional-wealth signification]
+  source: "DEEP_ANALYSIS SIG.10; FORENSIC KP.SIG.2 (Rahu occupant); LEL real-estate + twins events"
+  battery_result_2026_07_10: PASS
+  blocking_register_rows: []
+  notes: "judgment_query(wealth) serves Rahu as sole 2H occupant from lagna and chandra frames, with Ketu/Mars aspects. Rohini-nakshatra nuance retrievable via chart_facts."
+
+- id: GS-14
+  question: "Which is the weakest planet in my chart?"
+  must_surface_atoms: [Venus, lowest shadbala (rank 7 of 7), Ishta/relational-pathway consequence]
+  source: "DEEP_ANALYSIS SIG.12; LEL Mercury-Venus AD 2014-2016 company-crash match"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [NEW-4]
+  notes: "Venus shadbala 2.3592 served (lowest among all grahas probed this run) but no rank fact; chart digest asserts weakest_graha='Mercury' (2.5 rupas > Venus) — contradicts both its own served values and the archive."
+
+- id: GS-15
+  question: "Why is my 10th house the densest part of my chart?"
+  must_surface_atoms: [Sun 10H Capricorn, Mercury 10H, Arudha Lagna in 10H, 10L Saturn exalted, convergent-strong career verdict]
+  source: "DEEP_ANALYSIS SIG.14 + CVG.04"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [S-1]
+  notes: "Sun+Mercury occupants, Saturn 10L exalted, verdict convergent_strong (+3.4) all served. Arudha Lagna absent everywhere (arudha/upapada keyword queries return 0 rows)."
+
+- id: GS-16
+  question: "My 7th house holds an exalted planet yet is my most fragile life-area — why?"
+  must_surface_atoms: [7H Bhavabala weakest (rank 12), Saturn exalted occupant, Bhrigu Bindu in Libra, inflection-prone-point reading]
+  source: "DEEP_ANALYSIS §HSE.02.B/BVB analysis (7H Bhavabala rank 12 vs max-dignity occupant)"
+  battery_result_2026_07_10: FAIL
+  blocking_register_rows: [S-1, NEW-7]
+  notes: "judgment_query(marriage) never consults house bhava-bala; no instrument serves the strength-vs-dignity house paradox; Bhrigu Bindu unserved (S-1). NEW-7: bhava-bala integration gap in judgment_query."
+
+- id: GS-17
+  question: "Why did I have twins in January 2022?"
+  must_surface_atoms: [Mercury MD - Rahu AD at event date, Rahu multiplication signature, 5H promise, D7 confirmation]
+  source: "LEL EVT.2022.01.04 ('TWINS = Rahu signature at AD level is the textbook explanation')"
+  battery_result_2026_07_10: FAIL
+  blocking_register_rows: [NEW-1]
+  notes: "pact_query(progeny, as_of=2022-01-15): PROMISE+CONFIRMATION pass, but ACTIVATION reports 'no promise-carrying dasha running, next window 2054-08-18' — it checks mahadasha lords only and is blind to the running Mercury-Rahu AD and to node-as-agent logic. The event's actual timing lords are invisible to the flagship timing instrument."
+
+- id: GS-18
+  question: "What was activating when I lost my job and pivoted in April 2023?"
+  must_surface_atoms: [Mercury MD, Mercury-Jupiter AD (Sep 2022 - Dec 2024), Jupiter 9L weak = forced dharmic pivot, Sade Sati peak concurrent]
+  source: "LEL EVT.2023.04 ('STRONG MATCH'); DEEP_ANALYSIS CTR.03 + CVG.02 + SIG.13"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [NEW-1]
+  notes: "pact_query(career, as_of=2023-04-01) completes the chain via Mercury MD, but its ACTIVATION reason cites 'Saturn (level 2, 2024-12-04 to 2027-08-14) running as of 2023-04-01' — a future AD reported as active (as_of date filter broken at level 2). The actual Mercury-Jupiter AD is never named; Sade Sati overlay absent."
+
+- id: GS-19
+  question: "What explains my father's passing in November 2018?"
+  must_surface_atoms: [Mercury-Moon AD, Moon AK + 12th-house loss domain, Jupiter 9L weakness (long illness), Saturn transit Sagittarius 9H]
+  source: "LEL EVT.2018.11.28 ('four-fold convergence'); DEEP_ANALYSIS CTR.03 + SIG.04/05"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [NEW-3]
+  notes: "All L1 ingredients exist separately (dasha rows, AK fact, Jupiter weakness) but no instrument composes them; get_dashas natal metadata for Moon (house 12 vs chart_facts 11, unlabeled house system) and Saturn/Ketu (wrong sign/house — NEW-3) make the composition untrustworthy; transit trigger layer unreachable in pact."
+
+- id: GS-20
+  question: "Where is my Upapada Lagna and what clusters with it?"
+  must_surface_atoms: [UL in Gemini 3H, Vivaha Saham Gemini, A5 + A11 in Gemini, spouse-origin nexus]
+  source: "DEEP_ANALYSIS CVG.07; LEL R#1 relationship-origin match"
+  battery_result_2026_07_10: FAIL
+  blocking_register_rows: [S-1]
+  notes: "keyword 'upapada' returns 0 chart_facts rows; arudhas/sahams/special points not in the fact estate or unserved. Entire CVG.07 nexus is unanswerable."
+
+- id: GS-21
+  question: "Do I have Anapha Yoga, and from which planet?"
+  must_surface_atoms: [Anapha Yoga, Saturn in 12th from Moon (Capricorn from Aquarius Moon), confirmed firing]
+  source: "DEEP_ANALYSIS SIG.11; LEL EVT.1998 headaches + EVT.2020 panic-attack matches"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [Y-1]
+  notes: "yoga_label.anapha exists with BPHS/Saravali citations but fire_reason=requires_pass (catalog, not confirmed) and constituent_facts = a Sun position row, not Moon/Saturn. Kemadruma is co-served in the same catalog — mutually exclusive with Anapha — and Kemadruma even appears as a bearing_yoga inside wealth/career judgment_query."
+
+- id: GS-22
+  question: "What did my chart promise about children and their timing?"
+  must_surface_atoms: [5H Leo promise, 5L Sun, D7 confirmation, Rahu-AD multiplication / late-progeny signature]
+  source: "LEL EVT.2022.01.04 signals_that_matched (SIG.10, SIG.09, CVG.02); FORENSIC §5 dashas"
+  battery_result_2026_07_10: PARTIAL
+  blocking_register_rows: [NEW-1]
+  notes: "PROMISE (convergent_moderate, bhavesha Sun, karaka Jupiter) and D7 CONFIRMATION serve correctly. Timing side fails as in GS-17. Archive discrepancy noted: LEL says 'Ketu in 5H Leo' but L1 build has Ketu in Scorpio 8H (Jyeshtha, consistent with FORENSIC KP §4.2) — the LEL note appears to be an archive error, not an engine defect."
