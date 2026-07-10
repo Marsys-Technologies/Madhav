@@ -525,64 +525,88 @@ def _build_upagraha_rows(
     """
     Category 1: upagraha_position
     6 classical shadow grahas: DHUMA, VYATIPATA, PARIVESHA, INDRACHAPA, UPAKETU, KALA
-    Formula (BPHS Ch.3):
-      Dhuma    = Sun + 133°20' (133.333...)
-      Vyatipata = 360° - Dhuma + 360° ... = 360 - (Dhuma mod 360)... actually:
-                  Vyatipata = (Sun + 240) mod 360  [variation: 360 - Dhuma]
-      Parivesha = (Vyatipata + 180) mod 360
-      Indrachapa = (360 - Parivesha) mod 360
-      Upaketu  = (Dhuma + 180) mod 360  [= Sun + 313.333 mod 360]
-      Kala     = computed from Saturn's day-segment (for a short computation: Saturn + 30)
-    Two-pass: compare formula derivation vs PyJHora native upagraha_longitude calls.
+
+    M-11/V-6/V-7 fix (R6 1d-sensitive lane, 2026-07-10): previously this function
+    read `chart_data.get("upagrahas", {})` — a key `compute_chart()` never
+    populated (it writes `chart_data["sensitive_points"]`), so `upagrahas_native`
+    was ALWAYS an empty dict and every row silently served the hand-rolled
+    formula value with a false "two-pass verified vs PyJHora" implication.
+    KALA in particular served the invented constant `Saturn + 30°` (never
+    matching PyJHora's real time-division Kala — V-7 proved a 71.7° divergence)
+    and UPAKETU used a formula (`Dhuma + 180°`) that fails the classical
+    identity `Upaketu + 30° = Sun` (V-6).
+
+    Fixed: read the correct `chart_data["sensitive_points"]` key (now populated
+    for kaala + the 5 solar upagrahas — see pyjhora_adapter/sensitive_points.py),
+    delegate to PyJHora as PRIMARY (per Phase-1 doctrine: delegate, don't
+    reimplement), and keep the hand-rolled BPHS Ch.3 algebra only as an
+    independent two-pass cross-check/re-derivation, not the served value.
     """
     rows = []
     lagna_long = all_longs.get("LAGNA", 0.0)
     sun_long = all_longs.get("SUN", 0.0)
-    sat_long = all_longs.get("SAT", 0.0)
 
-    # BPHS Chapter 3 formulas
+    # BPHS Chapter 3 formulas — independent re-derivation (two-pass check only,
+    # NOT the served value; PyJHora native is primary. Matches drik.py:1826-1831).
     dhuma_bphs = (sun_long + 133.333333) % 360.0
     vyatipata_bphs = (360.0 - dhuma_bphs) % 360.0
     parivesha_bphs = (vyatipata_bphs + 180.0) % 360.0
     indrachapa_bphs = (360.0 - parivesha_bphs) % 360.0
-    upaketu_bphs = (dhuma_bphs + 180.0) % 360.0
-    kala_bphs = (sat_long + 30.0) % 360.0  # Simplified Kala = Saturn + 30°
+    upaketu_bphs = (sun_long - 30.0) % 360.0  # V-6 fix: matches drik._upaketu_longitude
 
-    # PyJHora native values from compute_chart result (upagrahas sub-dict if present)
-    upagrahas_native = chart_data.get("upagrahas", {})
+    # PyJHora native values, delegated via pyjhora_adapter (correct key: "sensitive_points")
+    sensitive_native = chart_data.get("sensitive_points", {})
 
+    # subj -> (formula re-derivation value, native dict key, provenance)
     formula_vals = {
-        "DHUMA": dhuma_bphs,
-        "VYATIPATA": vyatipata_bphs,
-        "PARIVESHA": parivesha_bphs,
-        "INDRACHAPA": indrachapa_bphs,
-        "UPAKETU": upaketu_bphs,
-        "KALA": kala_bphs,
+        "DHUMA":      (dhuma_bphs,      "dhuma"),
+        "VYATIPATA":  (vyatipata_bphs,  "vyatipaata"),
+        "PARIVESHA":  (parivesha_bphs,  "parivesha"),
+        "INDRACHAPA": (indrachapa_bphs, "indrachaapa"),
+        "UPAKETU":    (upaketu_bphs,    "upaketu"),
+        "KALA":       (None,            "kaala"),  # no independent algebraic formula served; PyJHora-only
     }
 
     provenance_map = {
-        "DHUMA":     "BPHS Ch.3: Dhuma = Sun + 133°20'",
-        "VYATIPATA": "BPHS Ch.3: Vyatipata = 360° - Dhuma",
-        "PARIVESHA": "BPHS Ch.3: Parivesha = Vyatipata + 180°",
-        "INDRACHAPA":"BPHS Ch.3: Indrachapa = 360° - Parivesha",
-        "UPAKETU":   "BPHS Ch.3: Upaketu = Dhuma + 180°",
-        "KALA":      "BPHS Ch.3: Kala (simplified) = Saturn + 30°",
+        "DHUMA":     "PyJHora drik.solar_upagraha_longitudes (BPHS Ch.3: Dhuma = Sun + 133°20'); cross-checked against independent re-derivation",
+        "VYATIPATA": "PyJHora drik.solar_upagraha_longitudes (BPHS Ch.3: Vyatipata = 360° - Dhuma); cross-checked against independent re-derivation",
+        "PARIVESHA": "PyJHora drik.solar_upagraha_longitudes (BPHS Ch.3: Parivesha = Vyatipata + 180°); cross-checked against independent re-derivation",
+        "INDRACHAPA":"PyJHora drik.solar_upagraha_longitudes (BPHS Ch.3: Indrachapa = 360° - Parivesha); cross-checked against independent re-derivation",
+        "UPAKETU":   "PyJHora drik.solar_upagraha_longitudes (BPHS Ch.3: Upaketu = Sun - 30°, fixed from prior fabricated Dhuma+180° formula per register V-6); cross-checked against independent re-derivation",
+        "KALA":      "PyJHora drik.upagraha_longitude(planet_index=0, upagraha_part='middle') — real Saturn/Sun day-segment time-division reckoning, replacing the invented 'Saturn + 30°' constant (register M-11/V-7)",
     }
 
-    # Cross-ayanamsha divergence placeholder (computed at caller if multi-ayanamsha runs)
-    for subj, long_val in formula_vals.items():
-        # Two-pass: try to match PyJHora native
-        native_key = subj.lower()
-        native_val = upagrahas_native.get(native_key, {}).get("longitude_deg")
-        tolerance_arcsec = 36.0  # 10 arcsec tolerance
+    for subj, (formula_val, native_key) in formula_vals.items():
+        native_entry = sensitive_native.get(native_key, {})
+        native_val = native_entry.get("longitude_deg") if isinstance(native_entry, dict) else None
+
         if native_val is not None:
-            diff_arcsec = abs(long_val - native_val) * 3600.0
-            if diff_arcsec > 36.0:  # 10 arcsec
-                # Use native value (PyJHora is primary), formula is re-derivation
-                long_val = native_val
-        elif native_val is None:
-            # Fall through with BPHS formula value
-            pass
+            long_val = float(native_val)
+            if formula_val is not None:
+                diff_arcsec = min(abs(long_val - formula_val), 360.0 - abs(long_val - formula_val)) * 3600.0
+                tolerance_arcsec = diff_arcsec
+            else:
+                tolerance_arcsec = 0.0
+            status_kwargs = {}
+        else:
+            # PyJHora native unavailable (adapter error) — floor rather than serve
+            # a fabricated/unverified constant.
+            long_val = None
+            tolerance_arcsec = 0.0
+            status_kwargs = {"verification_pass_status": "floored"}
+
+        if long_val is None:
+            rows.append(_make_row(
+                "upagraha_position", subj, "longitude_sidereal",
+                None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                formula_provenance_text=(
+                    f"[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native computation for {subj} "
+                    f"failed/unavailable this build; no fabricated substitute served. "
+                    f"See {provenance_map[subj]}"
+                ),
+                **status_kwargs,
+            ))
+            continue
 
         rows.extend(_long_rows(
             "upagraha_position", subj, long_val,
@@ -604,41 +628,110 @@ def _build_saturn_derived_rows(
     """
     Category 2: saturn_derived_point
     5 subjects: GULIKA_LAHIRI, GULIKA_HINDU, MANDI, YAMAGANDA_SPHUTA, MAANDI
-    Both Gulika reckonings emitted as separate formula_id rows.
+
+    M-11 fix (R6 1d-sensitive lane, 2026-07-10): as in `_build_upagraha_rows`,
+    the "upagrahas" chart_data key was never populated, so GULIKA_LAHIRI and
+    MANDI silently served hand-rolled `Saturn + 6°` / `Saturn + 8°` constants
+    instead of PyJHora's real Gulika/Maandi day-segment time-division values.
+    GULIKA_HINDU served a doubly-invented `Gulika + 30°` constant with no
+    citable classical source (register M-11) — this is now floored rather
+    than served, per canonical-or-floor: no verified distinct "Hindu reckoning"
+    formula for Gulika (beyond begin-vs-middle-of-segment, which the sibling
+    MANDI/MAANDI rows already cover) was located in PyJHora or BPHS.
     """
     rows = []
     lagna_long = all_longs.get("LAGNA", 0.0)
-    sat_long = all_longs.get("SAT", 0.0)
 
-    upagrahas_native = chart_data.get("upagrahas", {})
+    sensitive_native = chart_data.get("sensitive_points", {})
 
-    # Gulika (Lahiri = PyJHora native gulika middle-of-day reckoning)
-    gulika_native = upagrahas_native.get("gulika", {}).get("longitude_deg")
-    maandi_native = upagrahas_native.get("maandi", {}).get("longitude_deg")
+    gulika_entry = sensitive_native.get("gulika", {})
+    maandi_entry = sensitive_native.get("maandi", {})
+    gulika_native = gulika_entry.get("longitude_deg") if isinstance(gulika_entry, dict) else None
+    maandi_native = maandi_entry.get("longitude_deg") if isinstance(maandi_entry, dict) else None
 
-    gulika_lahiri = gulika_native if gulika_native is not None else (sat_long + 6.0) % 360.0
-    # Gulika Hindu: alternative reckoning = Gulika Lahiri + 30° (approximate)
-    gulika_hindu = (gulika_lahiri + 30.0) % 360.0
-    mandi = maandi_native if maandi_native is not None else (sat_long + 8.0) % 360.0
-    yamaganda = (sat_long + 240.0) % 360.0  # BPHS: Yamaganda Sphuta
-    maandi_long = mandi  # Maandi is alternate name for Mandi
+    rows_out: list[dict[str, Any]] = []
 
-    subjects = {
-        "GULIKA_LAHIRI": (gulika_lahiri, "lahiri_reckoning",  "BPHS: Gulika (Lahiri reckoning, middle of Saturn's day-segment)"),
-        "GULIKA_HINDU":  (gulika_hindu,  "hindu_reckoning",   "BPHS: Gulika (Hindu reckoning, begin of Saturn's day-segment + 30°)"),
-        "MANDI":         (mandi,         "mandi_formula",     "BPHS Ch.4: Mandi = begin of Saturn's day-arc"),
-        "YAMAGANDA_SPHUTA": (yamaganda,  "yamaganda_formula", "BPHS Ch.4: Yamaganda Sphuta = Saturn + 240°"),
-        "MAANDI":        (maandi_long,   "maandi_formula",    "BPHS Ch.4: Maandi = alternate name for Mandi"),
-    }
-
-    for subj, (long_val, fid, prov) in subjects.items():
-        rows.extend(_long_rows(
-            "saturn_derived_point", subj, long_val,
+    if gulika_native is not None:
+        rows_out.extend(_long_rows(
+            "saturn_derived_point", "GULIKA_LAHIRI", float(gulika_native),
             chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
-            formula_id=fid,
-            formula_provenance_text=prov,
+            formula_id="lahiri_reckoning",
+            formula_provenance_text=(
+                "PyJHora drik.gulika_longitude (BPHS: Gulika = begin of Saturn's "
+                "day-segment) — delegated, not a hand-rolled Saturn+6° proxy"
+            ),
             tolerance_arcsec=36.0,
         ))
+    else:
+        rows_out.append(_make_row(
+            "saturn_derived_point", "GULIKA_LAHIRI", "longitude_sidereal",
+            None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+            verification_pass_status="floored",
+            formula_provenance_text="[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Gulika computation unavailable this build",
+        ))
+
+    # GULIKA_HINDU: floored — the prior "+30°" constant was invented (M-11);
+    # no verified distinct classical "Hindu reckoning" formula located.
+    rows_out.append(_make_row(
+        "saturn_derived_point", "GULIKA_HINDU", "longitude_sidereal",
+        None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+        verification_pass_status="floored",
+        formula_provenance_text=(
+            "[EXTERNAL_COMPUTATION_REQUIRED] Prior value (Gulika + 30°) was an "
+            "invented constant with no classical citation (register M-11) — "
+            "removed. Floored pending a cited, distinct 'Hindu reckoning' "
+            "Gulika formula (the begin/middle-of-segment variance is already "
+            "captured by GULIKA_LAHIRI vs MANDI/MAANDI)."
+        ),
+    ))
+
+    if maandi_native is not None:
+        mandi_val = float(maandi_native)
+        rows_out.extend(_long_rows(
+            "saturn_derived_point", "MANDI", mandi_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_id="mandi_formula",
+            formula_provenance_text=(
+                "PyJHora drik.maandi_longitude (BPHS Ch.4: Mandi = middle of "
+                "Saturn's day-segment) — delegated, not a hand-rolled Saturn+8° proxy"
+            ),
+            tolerance_arcsec=36.0,
+        ))
+        rows_out.extend(_long_rows(
+            "saturn_derived_point", "MAANDI", mandi_val,
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_id="maandi_formula",
+            formula_provenance_text="BPHS Ch.4: Maandi = alternate name/spelling for Mandi (same PyJHora-native value)",
+            tolerance_arcsec=36.0,
+        ))
+    else:
+        for subj in ("MANDI", "MAANDI"):
+            rows_out.append(_make_row(
+                "saturn_derived_point", subj, "longitude_sidereal",
+                None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                verification_pass_status="floored",
+                formula_provenance_text="[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Maandi computation unavailable this build",
+            ))
+
+    # YAMAGANDA_SPHUTA: kept as a labeled computed_extension (not a fabricated
+    # classical citation) — no PyJHora-native equivalent and no verified BPHS
+    # chapter/verse citation was located during this pass; the prior "BPHS Ch.4"
+    # citation was unverified and is corrected to an honest label per B.10.
+    sat_long = all_longs.get("SAT", 0.0)
+    yamaganda = (sat_long + 240.0) % 360.0
+    rows_out.extend(_long_rows(
+        "saturn_derived_point", "YAMAGANDA_SPHUTA", yamaganda,
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+        formula_id="yamaganda_formula",
+        formula_provenance_text=(
+            "computed_extension: Yamaganda Sphuta = Saturn + 240° (deg). No PyJHora-native "
+            "equivalent and no verified classical chapter/verse citation located this pass "
+            "— retained as a labeled non-classical construction, not attributed to BPHS."
+        ),
+        tolerance_arcsec=0.0,
+    ))
+
+    rows.extend(rows_out)
     return rows
 
 
@@ -816,37 +909,82 @@ def _build_trisphuta_family_rows(
 
 
 def _build_pranapada_rows(
+    chart_data: dict[str, Any],
     all_longs: dict[str, float],
     chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
-    """Category 10: esoteric_point_pranapada_sphuta."""
+    """
+    Category 10: esoteric_point_pranapada_sphuta.
+
+    M-9 fix (CRITICAL, R6 1d-sensitive lane, 2026-07-10): the prior formula
+    `Moon + (Lagna - Sun) x 4` was fabricated and falsely cited "BPHS" — no
+    such formula appears in Brihat Parashara Hora Shastra. The REAL classical
+    Pranapada Sphuta (BPHS) is ghatikas-elapsed-since-birth-time x4 (mapped to
+    a sign), added to the Sun's longitude, plus a fixed offset of 0/120/240
+    degrees depending on whether the Sun's sign is movable/dual/fixed. This is
+    exactly what PyJHora's `drik.pranapada_lagna()` computes (drik.py:2107-2140)
+    — delegated here rather than reimplemented, per Phase-1 doctrine.
+    """
     lagna = all_longs.get("LAGNA", 0.0)
-    moon = all_longs.get("MOON", 0.0)
-    # Pranapada Sphuta: distinct from Pranapada Lagna
-    # Formula: Moon + (Lagna - Sun) × 4 (simplified classical)
-    sun = all_longs.get("SUN", 0.0)
-    pranapada = (moon + (lagna - sun) * 4.0) % 360.0
-    return _long_rows("esoteric_point_pranapada_sphuta", "PRANAPADA_SPHUTA", pranapada,
-                       chart_id, ayanamsha_id, build_id, eng_ver, lagna,
-                       formula_provenance_text="BPHS: Pranapada Sphuta = Moon + (Lagna - Sun) × 4",
-                       tolerance_arcsec=30.0)
+    special_lagnas = chart_data.get("special_lagnas", {})
+    pranapada_entry = special_lagnas.get("pranapada_lagna", {})
+    pranapada_long = pranapada_entry.get("longitude_deg") if isinstance(pranapada_entry, dict) else None
+
+    if pranapada_long is None:
+        return [_make_row(
+            "esoteric_point_pranapada_sphuta", "PRANAPADA_SPHUTA", "longitude_sidereal",
+            None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+            verification_pass_status="floored",
+            formula_provenance_text=(
+                "[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Pranapada computation "
+                "(drik.pranapada_lagna) unavailable this build. Prior served value "
+                "('Moon + (Lagna-Sun) x 4', cited as BPHS) was fabricated — no such "
+                "formula exists in BPHS; removed per register M-9."
+            ),
+        )]
+
+    return _long_rows(
+        "esoteric_point_pranapada_sphuta", "PRANAPADA_SPHUTA", float(pranapada_long),
+        chart_id, ayanamsha_id, build_id, eng_ver, lagna,
+        formula_provenance_text=(
+            "PyJHora drik.pranapada_lagna: ghatikas-since-birth x4 (Sun-sign-mapped) "
+            "+ Sun longitude + movable/dual/fixed sign offset (0/120/240 deg) — real "
+            "BPHS Pranapada, replacing the fabricated 'Moon+(Lagna-Sun)x4' formula "
+            "falsely cited to BPHS (register M-9)"
+        ),
+        tolerance_arcsec=1.0,
+    )
 
 
 def _build_trikona_dasha_rows(
     all_longs: dict[str, float],
     chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
-    """Category 11: esoteric_point_trikona_dasha_sphuta — Jaimini alternate dasha-starting point."""
+    """
+    Category 11: esoteric_point_trikona_dasha_sphuta.
+
+    M-9 fix (CRITICAL, R6 1d-sensitive lane, 2026-07-10): "Trikona Dasha
+    Sphuta" was fabricated — no such technique exists in Jaimini Sutram (the
+    prior citation was false) and no PyJHora equivalent, real classical
+    citation, or independent secondary source was located during this pass.
+    Per canonical-or-floor doctrine (B.10): DELETE the fabricated value —
+    floor to null with an explicit reason rather than serve invented degrees
+    under a fake classical citation. Deleting a fabricated value is a fix,
+    not a regression.
+    """
     lagna = all_longs.get("LAGNA", 0.0)
-    moon = all_longs.get("MOON", 0.0)
-    jup = all_longs.get("JUP", 0.0)
-    # Jaimini trikona dasha sphuta: 9th lord from lagna in D9 mapped back
-    # Simplified: midpoint(Moon, Jupiter) × trikona factor
-    trikona = (moon + jup + lagna) % 360.0  # Approximate trikona
-    return _long_rows("esoteric_point_trikona_dasha_sphuta", "TRIKONA_DASHA_SPHUTA", trikona,
-                       chart_id, ayanamsha_id, build_id, eng_ver, lagna,
-                       formula_provenance_text="Jaimini Sutram: Trikona Dasha Sphuta = (Moon + Jupiter + Lagna) mod 360°",
-                       tolerance_arcsec=30.0)
+    return [_make_row(
+        "esoteric_point_trikona_dasha_sphuta", "TRIKONA_DASHA_SPHUTA", "longitude_sidereal",
+        None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+        verification_pass_status="floored",
+        formula_provenance_text=(
+            "[EXTERNAL_COMPUTATION_REQUIRED] Prior value (Moon + Jupiter + Lagna, "
+            "cited 'Jaimini Sutram') was fabricated — no 'Trikona Dasha Sphuta' "
+            "technique exists in Jaimini Sutram; no real classical citation or "
+            "PyJHora equivalent located this pass. Removed per register M-9. "
+            "Floored pending a verified classical source."
+        ),
+    )]
 
 
 def _build_sri_yantra_rows(
@@ -856,20 +994,27 @@ def _build_sri_yantra_rows(
     """
     Category 12: esoteric_point_sri_yantra_position
     3 subjects: SRI_YANTRA_SUN, SRI_YANTRA_MOON, SRI_YANTRA_LAGNA
-    Tantric angular position = natal longitude mapped onto 360/9 = 40° segments of Sri Yantra
+
+    M-9 fix (CRITICAL, R6 1d-sensitive lane, 2026-07-10): the "×0.9" tantric
+    angular projection was invented (no classical or tantric-textual source
+    located) and unverifiable. Per canonical-or-floor doctrine: floor each
+    subject to null rather than serve an invented mapping.
     """
     rows = []
     lagna = all_longs.get("LAGNA", 0.0)
-    sun = all_longs.get("SUN", 0.0)
-    moon = all_longs.get("MOON", 0.0)
 
-    for subj, base_long in [("SRI_YANTRA_SUN", sun), ("SRI_YANTRA_MOON", moon), ("SRI_YANTRA_LAGNA", lagna)]:
-        # Sri Yantra projection: map to 9 triangles × 40° each
-        yantra_long = (base_long * 9.0 / 10.0) % 360.0
-        rows.extend(_long_rows("esoteric_point_sri_yantra_position", subj, yantra_long,
-                                chart_id, ayanamsha_id, build_id, eng_ver, lagna,
-                                formula_provenance_text="Tantric Sri Yantra mapping: angular projection onto 9-triangle yantra",
-                                tolerance_arcsec=30.0))
+    for subj in ("SRI_YANTRA_SUN", "SRI_YANTRA_MOON", "SRI_YANTRA_LAGNA"):
+        rows.append(_make_row(
+            "esoteric_point_sri_yantra_position", subj, "longitude_sidereal",
+            None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+            verification_pass_status="floored",
+            formula_provenance_text=(
+                "[EXTERNAL_COMPUTATION_REQUIRED] Prior value (natal longitude x 9/10) "
+                "was an invented tantric mapping with no citable classical/tantric-textual "
+                "source (register M-9). Removed. Floored pending a verified source for "
+                "'Sri Yantra angular position' as an astrological sensitive point."
+            ),
+        ))
     return rows
 
 
@@ -1213,6 +1358,24 @@ def _build_arudha_rows(
     Category 20: arudha_pada — A1–A12 + 7 graha arudhas = 19 rows
     Jaimini formula: Arudha = Lord of house × 2 steps from house
     Graha arudha = planet's lord of sign × 2 steps from planet's sign.
+
+    M-16 fix (R6 1d-sensitive lane, 2026-07-10): the full Parashari arudha
+    rule has TWO exceptions (BPHS ch.32 v.2-3): (1) if the arudha sign =
+    the same sign as the bhava, shift to the 10th from the arudha; (2) if
+    the arudha sign = the 7th from the bhava, shift to the 10th from the
+    arudha. This function previously implemented only exception (1) — any
+    arudha landing exactly 7 signs (180°) from its own house (i.e. whenever
+    the lord is 4 signs away from the house, per the register) was served
+    uncorrected. `_build_bhava_arudha_rows` below already carries both
+    exceptions (added in a prior amendment, BA-P3A); this brings A1-A12 +
+    graha arudhas up to the same standard.
+
+    D-10 note: `arudha_idx * 30.0` (sign-start, 0° within sign) is a
+    deliberate sign-cusp convention, not a formulaic exact degree — Arudha
+    Pada is classically a WHOLE-SIGN construct derived by counting signs,
+    with no BPHS degree-within-sign formula. `near_sign_boundary_flag` is
+    therefore always False for these rows by construction (0° is never
+    "near" a 30° boundary), which is correct, not a defect.
     """
     rows = []
     lagna = all_longs.get("LAGNA", 0.0)
@@ -1228,7 +1391,7 @@ def _build_arudha_rows(
         "Saturn": all_longs.get("SAT", 0.0),
     }
 
-    def _arudha_sign(house_sign_idx: int, lord_long: float) -> str:
+    def _arudha_sign(house_sign_idx: int, lord_long: float) -> tuple[str, float]:
         lord_sign_idx = int(lord_long / 30.0)
         # Steps from house to lord
         steps = (lord_sign_idx - house_sign_idx) % 12
@@ -1236,9 +1399,13 @@ def _build_arudha_rows(
             steps = 12
         # Arudha sign = same steps beyond lord
         arudha_idx = (lord_sign_idx + steps) % 12
-        # Exception: if arudha = same as house, move 10 houses further
+        # Exception 1: arudha = same sign as house -> 10th from arudha
         if arudha_idx == house_sign_idx:
             arudha_idx = (arudha_idx + 9) % 12  # 10th from there
+        # Exception 2 (M-16): arudha = 7th from house -> 10th from arudha
+        elif arudha_idx == (house_sign_idx + 6) % 12:
+            arudha_idx = (arudha_idx + 9) % 12
+        # D-10: sign-cusp convention (0°) — see docstring; not a formulaic degree.
         return SIGNS[arudha_idx], arudha_idx * 30.0
 
     sign_lord_map = {
@@ -1335,6 +1502,13 @@ def _build_bhava_arudha_rows(
       4. Exception 2: if arudha = 7th from bhava → use 10th from arudha
 
     Named aliases: A1=AL (Arudha Lagna), A2=UPA (Upapada Lagna / 2nd house arudha)
+
+    D-10 note (R6 1d-sensitive lane, 2026-07-10): `arudha_idx * 30.0` below is
+    a deliberate sign-cusp convention (0° within sign), not a formulaic exact
+    degree — Arudha Pada is classically a WHOLE-SIGN construct derived by
+    counting signs; BPHS gives no degree-within-sign formula for it.
+    `near_sign_boundary_flag` is therefore always False for these rows by
+    construction, which is correct given the convention, not a defect.
     """
     rows: list[dict[str, Any]] = []
     lagna = all_longs.get("LAGNA", 0.0)
@@ -1419,16 +1593,37 @@ def _build_bhava_arudha_rows(
 
 
 def _build_midpoint_rows(
+    chart_data: dict[str, Any],
     all_longs: dict[str, float],
     chart_id: str, ayanamsha_id: str, build_id: str, eng_ver: str,
 ) -> list[dict[str, Any]]:
     """
     Category 21: midpoint — 54 midpoints (36 graha-graha + 9 ASC-graha + 9 MC-graha)
+
+    D-9 fix (R6 1d-sensitive lane, 2026-07-10): MC was approximated as
+    `Lagna + 270°` — a non-canonical computable substitute (violates
+    canonical-or-floor); true MC diverges from this approximation by several
+    degrees at this birth latitude/longitude, and all 9 MC-graha midpoints
+    inherited the error. Fixed: real MC from Swiss Ephemeris via
+    `pyjhora_adapter.houses.compute_midheaven()` (delegates to the same
+    swe.houses_ex() call PyJHora's own Lagna computation uses), threaded
+    through `chart_data["midheaven"]`.
     """
     rows = []
     lagna = all_longs.get("LAGNA", 0.0)
 
-    mc = (lagna + 270.0) % 360.0  # MC approximation = Lagna + 270°
+    midheaven_entry = chart_data.get("midheaven", {})
+    mc = midheaven_entry.get("longitude_deg") if isinstance(midheaven_entry, dict) else None
+    if mc is None:
+        # Real ephemeris MC unavailable this build — floor rather than serve
+        # the banned Lagna+270° computable substitute.
+        logging.warning(
+            "[ga_sensitive] _build_midpoint_rows: chart_data['midheaven'] absent; "
+            "MC-graha midpoints floored (no Lagna+270 fallback per D-9/canonical-or-floor)"
+        )
+        mc = None
+    else:
+        mc = float(mc)
 
     graha_longs = {
         "SUN": all_longs.get("SUN", 0.0),
@@ -1468,13 +1663,27 @@ def _build_midpoint_rows(
             include_nakshatra=False,
         ))
 
-    # 9 MC-graha midpoints
+    # 9 MC-graha midpoints (real ephemeris MC — D-9 fix)
     for gk in graha_keys:
         subj = f"MC-{gk}"
+        if mc is None:
+            rows.append(_make_row(
+                "midpoint", subj, "longitude_sidereal",
+                None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                verification_pass_status="floored",
+                formula_provenance_text=(
+                    "[EXTERNAL_COMPUTATION_REQUIRED] real ephemeris MC unavailable "
+                    "this build; no Lagna+270° fallback served (D-9)"
+                ),
+            ))
+            continue
         mp = _midpoint(mc, graha_longs[gk])
         rows.extend(_long_rows(
             "midpoint", subj, mp, chart_id, ayanamsha_id, build_id, eng_ver, lagna,
-            formula_provenance_text=f"Ecliptic midpoint: (MC + {gk}) / 2 (mod 360°)",
+            formula_provenance_text=(
+                f"Ecliptic midpoint: (MC + {gk}) / 2 (mod 360°); MC from Swiss "
+                f"Ephemeris (swe.houses_ex ascmc[1]), replacing Lagna+270° approximation (D-9)"
+            ),
             tolerance_arcsec=1.0,
             include_nakshatra=False,
         ))
@@ -1969,8 +2178,11 @@ def _build_gulika_mandi_sensitive_rows(
         logging.warning("_build_gulika_mandi_sensitive_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
         vara = 0
 
-    # Try native PyJHora upagrahas first
-    upagrahas_native = chart_data.get("upagrahas", {})
+    # Try native PyJHora upagrahas first.
+    # M-11 fix: correct key is "sensitive_points" (compute_chart never wrote
+    # "upagrahas" — this lookup always missed and silently fell through to the
+    # classical day-segment fallback below on every build).
+    upagrahas_native = chart_data.get("sensitive_points", {})
     gulika_long = None
     if isinstance(upagrahas_native.get("gulika"), dict):
         gulika_long = upagrahas_native["gulika"].get("longitude_deg")
@@ -2053,58 +2265,84 @@ def _build_sun_derived_upagrahas_rows(
 
 
 def _build_special_lagnas_rows(
-    all_longs: dict, chart_id: str, ayanamsha_id: str,
+    chart_data: dict, all_longs: dict, chart_id: str, ayanamsha_id: str,
     build_id: str, eng_ver: str, panchanga: dict,
 ) -> list[dict]:
+    """
+    Category: special_lagna — Bhava/Hora/Ghati/Vighati/Indu/Sree/Varnada Lagna.
+
+    M-10 fix (CRITICAL, R6 1d-sensitive lane, 2026-07-10): these were all
+    hand-rolled proxies using the Sun's WITHIN-SIGN DEGREE as a stand-in for
+    time-elapsed-since-sunrise (HL = Lagna + (Sun%30)x2, GL = Lagna +
+    (Sun%30)x12, BL = 2xSun - Lagna + 180). The within-sign degree is not
+    proportional to time-since-sunrise (the Sun moves ~1 deg/day, so "Sun%30"
+    barely changes across a whole day and does not track ghatis elapsed at
+    all) — the served values were essentially arbitrary. Real Bhava/Hora/
+    Ghati/Vighati Lagna advance by actual TIME elapsed since sunrise (BPHS),
+    which is exactly what PyJHora's `drik.special_ascendant()` computes
+    (drik.py:1959-1988) from the birth JD + place. Delegated here via
+    `chart_data["special_lagnas"]` (see pyjhora_adapter/special_lagnas.py).
+    Indu Lagna, Sree Lagna, and Varnada Lagna were previously entirely absent
+    from this writer; added here via the same delegation.
+    """
     rows: list[dict] = []
-    sun_long_raw = all_longs.get("SUN")
     lagna_long_raw = all_longs.get("LAGNA")
-    if sun_long_raw is None or lagna_long_raw is None:
-        logging.warning("_build_special_lagnas_rows: SUN or LAGNA absent from all_longs; skipping")
+    if lagna_long_raw is None:
+        logging.warning("_build_special_lagnas_rows: LAGNA absent from all_longs; skipping")
         return []
-    sun_long = sun_long_raw
     lagna_long = lagna_long_raw
 
-    hora_advance = (sun_long % 30.0) * 2.0
-    hora_lagna = (lagna_long + hora_advance) % 360.0
+    special_lagnas = chart_data.get("special_lagnas", {})
 
-    ghati_within = sun_long % 30.0
-    ghati_lagna = (lagna_long + ghati_within * 12.0) % 360.0
+    def _floor_row(subj: str, reason: str) -> dict:
+        return _make_row(
+            "special_lagna", subj, "longitude_sidereal",
+            None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+            verification_pass_status="floored",
+            formula_provenance_text=f"[EXTERNAL_COMPUTATION_REQUIRED] {reason}",
+        )
 
-    bhava_lagna = (sun_long * 2.0 - lagna_long + 180.0) % 360.0
+    _delegated = [
+        ("bhava_lagna", "BHAVA_LAGNA",
+         "PyJHora drik.bhava_lagna (BPHS: Bhava Lagna advances by time-since-sunrise x 0.25 "
+         "sign/min-equivalent), replacing the fabricated 'Sun within-sign offset' proxy (M-10)"),
+        ("hora_lagna", "HORA_LAGNA",
+         "PyJHora drik.hora_lagna (BPHS Ch.11: Hora Lagna advances 1 sign/hora, 2 rev/day, "
+         "from real time-since-sunrise), replacing the fabricated 'Sun within-sign offset x2' proxy (M-10)"),
+        ("ghati_lagna", "GHATI_LAGNA",
+         "PyJHora drik.ghati_lagna (BPHS: Ghati Lagna advances 1 sign/ghati=24min, from real "
+         "time-since-sunrise), replacing the fabricated 'Sun within-sign offset x12' proxy (M-10)"),
+        ("vighati_lagna", "VIGHATI_LAGNA",
+         "PyJHora drik.vighati_lagna (BPHS: Vighati Lagna advances 1 sign/vighati=24sec, from "
+         "real time-since-sunrise) — now computed rather than floored, since PyJHora derives it "
+         "from the birth JD directly (no sub-second precision needed; supersedes prior floor)"),
+        ("indu_lagna", "INDU_LAGNA",
+         "PyJHora drik.indu_lagna (BV Raman method: wealth-significator lagna from 9th-lord "
+         "kalas of Lagna + Moon) — newly added via delegation (M-10)"),
+        ("sree_lagna", "SREE_LAGNA",
+         "PyJHora drik.sree_lagna (nakshatra-pada fraction of Moon projected from Lagna) — "
+         "newly added via delegation (M-10)"),
+        ("varnada_lagna", "VARNADA_LAGNA",
+         "PyJHora charts.varnada_lagna (BV Raman method, house_index=1) — newly added via "
+         "delegation (M-10)"),
+    ]
 
-    rows.extend(_long_rows(
-        "special_lagna", "HORA_LAGNA", hora_lagna,
-        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
-        formula_provenance_text=(
-            "BPHS Ch.11: Hora Lagna advances 1 sign/hora (2 rev/day); "
-            "approximated from lagna + Sun within-sign offset x 2"
-        ),
-    ))
-    rows.extend(_long_rows(
-        "special_lagna", "GHATI_LAGNA", ghati_lagna,
-        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
-        formula_provenance_text=(
-            "BPHS: Ghati Lagna advances 1 sign/ghati (24 min); "
-            "approximated from lagna + Sun within-sign offset x 12"
-        ),
-    ))
-    # Vighati Lagna — floored (too granular without sub-second birth precision)
-    rows.append(_make_row(
-        "special_lagna", "VIGHATI_LAGNA", "longitude_sidereal",
-        None, "floored_requires_birth_seconds_precision", None,
-        chart_id, ayanamsha_id, build_id, eng_ver,
-        verification_pass_status="floored",
-        formula_provenance_text=(
-            "BPHS: Vighati Lagna changes every 24 seconds; "
-            "floor without sub-second birth precision"
-        ),
-    ))
-    rows.extend(_long_rows(
-        "special_lagna", "BHAVA_LAGNA", bhava_lagna,
-        chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
-        formula_provenance_text="BPHS: Bhava Lagna = (Sun x 2 - Lagna + 180 deg) mod 360 deg",
-    ))
+    for native_key, subj, prov in _delegated:
+        entry = special_lagnas.get(native_key, {})
+        long_val = entry.get("longitude_deg") if isinstance(entry, dict) else None
+        if long_val is None:
+            rows.append(_floor_row(
+                subj,
+                f"PyJHora native {native_key} computation unavailable this build "
+                f"(no fabricated substitute served)",
+            ))
+            continue
+        rows.extend(_long_rows(
+            "special_lagna", subj, float(long_val),
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_provenance_text=prov,
+            tolerance_arcsec=1.0,
+        ))
     return rows
 
 
@@ -2339,17 +2577,19 @@ def _build_all_sensitive_rows_for_ayanamsha(
     saturn_rows = _build_saturn_derived_rows(chart_data, chart_id, cid, build_id, eng_ver, all_longs)
     rows.extend(saturn_rows)
 
-    # Extract Gulika and Mandi for Aprakasha computation later
-    # (simplified: use derived values)
+    # Extract Gulika and Mandi for Aprakasha computation later.
+    # M-11 fix: read the correct "sensitive_points" key (was "upagrahas", never
+    # populated by compute_chart — always empty, so these silently fell back
+    # to the hand-rolled Saturn+6/Saturn+8 constants every build).
     gulika_long = all_longs.get("SAT", 0.0) + 6.0
     mandi_long  = all_longs.get("SAT", 0.0) + 8.0
-    upagrahas_native = chart_data.get("upagrahas", {})
-    if isinstance(upagrahas_native.get("gulika"), dict):
-        v = upagrahas_native["gulika"].get("longitude_deg")
+    sensitive_native_top = chart_data.get("sensitive_points", {})
+    if isinstance(sensitive_native_top.get("gulika"), dict):
+        v = sensitive_native_top["gulika"].get("longitude_deg")
         if v:
             gulika_long = float(v)
-    if isinstance(upagrahas_native.get("maandi"), dict):
-        v = upagrahas_native["maandi"].get("longitude_deg")
+    if isinstance(sensitive_native_top.get("maandi"), dict):
+        v = sensitive_native_top["maandi"].get("longitude_deg")
         if v:
             mandi_long = float(v)
 
@@ -2364,7 +2604,7 @@ def _build_all_sensitive_rows_for_ayanamsha(
     rows.extend(_build_trisphuta_family_rows(all_longs, chart_id, cid, build_id, eng_ver))
 
     # ── 10. Pranapada ─────────────────────────────────────────────────────────
-    rows.extend(_build_pranapada_rows(all_longs, chart_id, cid, build_id, eng_ver))
+    rows.extend(_build_pranapada_rows(chart_data, all_longs, chart_id, cid, build_id, eng_ver))
 
     # ── 11. Trikona Dasha ─────────────────────────────────────────────────────
     rows.extend(_build_trikona_dasha_rows(all_longs, chart_id, cid, build_id, eng_ver))
@@ -2391,7 +2631,7 @@ def _build_all_sensitive_rows_for_ayanamsha(
     rows.extend(_build_arudha_rows(all_longs, chart_id, cid, build_id, eng_ver))
 
     # ── 21. Midpoints (54 subjects) ──────────────────────────────────────────
-    rows.extend(_build_midpoint_rows(all_longs, chart_id, cid, build_id, eng_ver))
+    rows.extend(_build_midpoint_rows(chart_data, all_longs, chart_id, cid, build_id, eng_ver))
 
     # ── 22. KP Ruling Planets ────────────────────────────────────────────────
     rows.extend(_build_kp_ruling_planets_rows(all_longs, chart_id, cid, build_id, eng_ver,
@@ -2437,7 +2677,7 @@ def _build_all_sensitive_rows_for_ayanamsha(
     rows.extend(_build_sun_derived_upagrahas_rows(
         all_longs, chart_id, cid, build_id, eng_ver, panchanga))
     rows.extend(_build_special_lagnas_rows(
-        all_longs, chart_id, cid, build_id, eng_ver, panchanga))
+        chart_data, all_longs, chart_id, cid, build_id, eng_ver, panchanga))
     rows.extend(_build_sphuta_completion_rows(
         all_longs, chart_id, cid, build_id, eng_ver))
     rows.extend(_build_yogi_system_completion_rows(
