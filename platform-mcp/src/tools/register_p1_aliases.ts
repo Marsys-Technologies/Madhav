@@ -346,7 +346,9 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'L1 graha positions (same as get_positions). R5 W2: frame (lagna/chandra/surya/arudha/' +
     'karakamsha, default lagna) re-bases house_d1 onto the requested reference sign, adding ' +
     'house_from_frame per row — e.g. frame="chandra" answers "what house is X in, from Moon" ' +
-    'in this ONE call.',
+    'in this ONE call. The response\'s own `frame_note` field states exactly how many rows in ' +
+    'THIS call actually carry house_from_frame (R-28: pass ayanamsha_id explicitly for full ' +
+    'coverage — an unfiltered call spanning all 5 ayanamshas may only re-base a subset).',
     'marsys://tool/L1/get_positions',
     {
       frame:  z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),

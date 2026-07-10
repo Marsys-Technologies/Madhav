@@ -520,8 +520,8 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // dissent/tail-check step (design §26 PACT/investigation discipline) that a
       // judgment_query verdict, being convergent-by-construction, does not itself surface.
       const drill_pointers: Array<{ instrument: string; hint: string; pointer_type: DrillPointerType }> = [
-        { instrument: 'get_divisionals', hint: `full ${spec.varga} placements for every graha (this call confirmed only bhāveśa/kāraka).`, pointer_type: 'confirm_in_varga' },
-        { instrument: 'query_signals', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment signal set beyond the top ${max_signals} shown here.`, pointer_type: 'opposing_yoga' },
+        { instrument: 'ganita_chart_facts_get', hint: `divisional_chart=${spec.varga}: full ${spec.varga} placements for every graha (this call confirmed only bhāveśa/kāraka). (SC-18: was 'get_divisionals', a non-existent MCP tool name.)`, pointer_type: 'confirm_in_varga' },
+        { instrument: 'get_signals', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment signal set beyond the top ${max_signals} shown here. (SC-18: was 'query_signals', a non-existent MCP tool name.)`, pointer_type: 'opposing_yoga' },
         { instrument: 'get_dashas', hint: 'full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.', pointer_type: 'dasha_of_promise' },
         { instrument: 'traverse_graph', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.`, pointer_type: 'dispositor_chain' },
         { instrument: 'query_classical_texts', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya).`, pointer_type: 'other' },
