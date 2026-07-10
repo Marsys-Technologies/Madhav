@@ -1,9 +1,10 @@
 ---
 canonical_id: R5_3_RUN_LEDGER
-version: 1.1
-status: LIVE — §B MET, B1 DONE, B2 DONE (6/11 met, 5/11 still below floor — honest, one iteration per brief discipline)
+version: 1.2
+status: CLOSED — §B/B1/B2/B3/B4 all complete; gate NOT MET (39.5%); honest close at
+  R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md; backlog transfers to R6 TOTAL ELEVATION
 created: 2026-07-10
-author: Claude Code (conductor session §B/B1/B4-prep; per-lane worktree implementers for B2)
+author: Claude Code (conductor session §B/B1/B3/B4; per-lane worktree implementers for B2)
 program: R5.3 content-depth iteration, grader-restoration-GATED (R5.2 A5 graders were
   INCONCLUSIVE). 16 rubric items with Pratinidhi-R rulings, executed as independent
   per-lane worktree PRs per CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md. Governing law:
@@ -449,3 +450,24 @@ synthesized NL answer to "does it need fixing"), not a defect in either half.
 **B3 bounded-fix #1 status: shipped and live, not yet independently re-verified against a byte-size
 assertion post-deploy** — worth a quick confirmatory check in B3/B4 rather than assumed from the
 implementer's own report alone.
+
+## B4 — ACCEPTANCE RE-RUN — DONE (2026-07-10). Gate NOT MET, honest close.
+
+Full frozen battery, both charts, real grading, against commit `90a14176`. Results:
+`evals/r5-w4-full-battery/results_90a14176.json`.
+
+| Metric | B1 baseline | B4 (this run) |
+|---|---|---|
+| Overall | 31.6% (12/38) | **39.5% (15/38)** |
+| Q1/X deterministic | 43.8% (7/16) | 43.8% (7/16) — unchanged |
+| Rubric floors met | 10/22 | 11/22 |
+
+Zero-regression check vs B1: 3 flips (X-5, Q3-N-1, Q3-A-2) — X-5 is battery staleness (the tool it
+probes was legitimately fixed by the concurrent R6 audit, register row R-10), Q3-N-1/Q3-A-2 are
+newly-surfaced content gaps on tools R5.3 never touched (judgment_query, bodha_signals_get), not
+breaks caused by any R5.3 change. Full detail, every failing item mapped to a defect-register row
+(7 new rows added: R-30–R-36, T-15, C-6), in `R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md` §4/§6.
+
+**Gate: NOT MET (39.5% vs ≥90% required). Native ruling: gate stays IMMUTABLE, not recalibrated —
+capability problem, not a measurement problem. Full remaining backlog transfers to R6 TOTAL
+ELEVATION.** Full close report: `00_ARCHITECTURE/R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md`.
