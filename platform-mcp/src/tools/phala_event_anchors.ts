@@ -34,6 +34,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
+import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,56 @@ export interface EventAnchorsResult {
   anchors: PredictionAnchor[]
   anchor_count: number
   provenance_envelope: ProvenanceEnvelope
+}
+
+// ── T-6 / R-1 fix: dedup + pagination at the TS serving boundary ───────────────
+//
+// T-6 (register): "Duplicate-anchor spam, no serve-time cap on drill-down aliases —
+// phala_anchors_get 421KB, EVERY row identical window 2026-07-08→2026-10-06 + confidence
+// 0.322". The true source-of-truth fix belongs in the Python ph_nimitta writer (out of
+// scope for this TS-estate lane — a separate parallel data-rebuild effort owns that), but
+// this is the EARLIEST point this lane can dedupe: right where the sidecar response is
+// received, before any caller ever sees a duplicate row. See anchorDedupKey below for the
+// exact dedup fingerprint (widened past the register's own theme/window/confidence
+// description per a Ring-2 flagged false-merge risk).
+// R6 3b-budgets (Ring-2 flagged risk): theme+window+confidence ALONE can false-merge two
+// genuinely distinct anchors that happen to share those 3 fields by coincidence (e.g. two
+// real predictions in the same theme/window with the same computed confidence but different
+// falsifiers/contributing evidence). Widened the key to also include falsifier text +
+// contributing_dashas + contributing_signals (sorted, so array ORDER never causes a false
+// non-match) — a genuine content fingerprint, not just the 3 fields the register's own
+// "every row identical" description happened to call out. The register's actual observed
+// bug (every field byte-identical across duplicate rows) still dedupes cleanly under this
+// wider key, since true duplicates share ALL of these fields too; it only stops merging rows
+// that differ in the fields that matter (what is actually being predicted and why).
+function anchorDedupKey(a: PredictionAnchor): string {
+  const dashas = [...(a.contributing_dashas ?? [])].sort().join('|')
+  const signals = [...(a.contributing_signals ?? [])].sort().join('|')
+  return `${a.theme}::${a.window?.start}::${a.window?.end}::${a.confidence}::${a.falsifier}::${dashas}::${signals}`
+}
+
+function dedupeAnchors(anchors: PredictionAnchor[]): { deduped: PredictionAnchor[]; duplicates_removed: number } {
+  const seen = new Set<string>()
+  const deduped: PredictionAnchor[] = []
+  for (const a of anchors) {
+    const key = anchorDedupKey(a)
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(a)
+  }
+  return { deduped, duplicates_removed: anchors.length - deduped.length }
+}
+
+// R-1: event_anchors had NO pagination params at all (register: "620KB with no pagination
+// at all"). Added here as the serve-time bound; sections trimmed via the same shared
+// response_budget mechanism every other fixed tool in this lane uses.
+function anchorsSection(): TrimmableSection<Record<string, unknown>> {
+  return {
+    path: 'anchors', label: 'anchors', minKeep: 10,
+    getArray: (c) => { const arr = c['anchors']; return Array.isArray(arr) ? arr : undefined },
+    setArray: (c, kept) => { c['anchors'] = kept },
+    recover: { instrument: 'event_anchors', hint: 'call again with a narrower date_range, or paginate via offset/limit' },
+  }
 }
 
 // ── Sidecar call ───────────────────────────────────────────────────────────────
@@ -212,6 +263,13 @@ const InputSchema = z.object({
         'open = not yet evaluated; confirmed = event occurred; ' +
         'falsified = falsifier condition triggered; expired = window passed without evaluation.'
     ),
+
+  // R6 3b-budgets (R-1): event_anchors previously had NO pagination params at all
+  // (register-measured 620KB, unbounded). limit/offset added as real pagination over the
+  // (deduped) anchor list; default limit keeps the common case well under budget while a
+  // caller who genuinely wants the full 2026-2030 sweep can raise it explicitly.
+  limit: z.number().int().min(1).max(500).optional().describe('Max anchors to return (default 50).'),
+  offset: z.number().int().min(0).optional().describe('Pagination offset into the (deduped) anchor list (default 0).'),
 })
 
 /**
@@ -265,11 +323,38 @@ export function registerPhalaEventAnchorsTool(server: McpServer, principal: Prin
           }
         )
 
+        // T-6 fix: dedupe at the earliest point this lane controls (see dedupeAnchors doc).
+        const { deduped, duplicates_removed } = dedupeAnchors(result.anchors ?? [])
+        const limit = input.limit ?? 50
+        const offset = input.offset ?? 0
+        const total = deduped.length
+        const paged = deduped.slice(offset, offset + limit)
+
+        const content: Record<string, unknown> = {
+          ...result,
+          anchors: paged,
+          anchor_count: paged.length,
+          pagination: { offset, limit, total, returned_count: paged.length },
+          dedup: {
+            duplicates_removed,
+            note: duplicates_removed > 0
+              ? `${duplicates_removed} duplicate anchor row(s) collapsed at the TS serving ` +
+                'boundary (same theme+window+confidence+falsifier+contributing dashas/signals) ' +
+                '— T-6. The true fix belongs in the Python ph_nimitta writer; out of scope for ' +
+                'this TS-estate lane.'
+              : 'No duplicates found in this response.',
+          },
+        }
+
+        // R-1: budget/trim envelope, same shared mechanism every other fixed tool uses.
+        const budgeted = applyResponseBudget(content, 40, [anchorsSection()])
+        if (budgeted.trim_report) content['trim_report'] = budgeted.trim_report
+
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(content, null, 2),
             },
           ],
         }

@@ -57,7 +57,7 @@ import {
 // three instruments whose full-detail payload (up to ~86KB) is unusable over a real MCP
 // channel — judgment_query, graha_portrait, pact_query. See response_budget.ts's header
 // for why this is structure-aware (shrinks named arrays) rather than a byte-truncation.
-import { finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -264,6 +264,15 @@ const MCP_RESPONSE_BUDGET_KB = {
   judgment_query: 12,
   graha_portrait: 12,
   pact_query: 8,
+  // R6 3b-budgets (Ring-2 gap fix, R-1/R-8): assess_marriage/career/health/wealth are
+  // reconciled multi-source bundles (domain reading + temporal activation + contradictions +
+  // composite signals) — richer than the three single-purpose instruments above, so a wider
+  // ceiling than 8-12KB is appropriate, but 40KB is still a two-orders-of-magnitude cut from
+  // the register's measured 1.04MB assess_career payload.
+  assess_marriage: 40,
+  assess_career: 40,
+  assess_health: 40,
+  assess_wealth: 40,
 } as const
 
 /**
@@ -307,6 +316,37 @@ function applyMcpBudget<T extends Record<string, unknown>>(
   sections: TrimmableSection<T>[],
 ): T {
   const allSections = [...sections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
+  return finalizeMcpBudget(response, { maxKb, sections: allSections })
+}
+
+/**
+ * R6 3b-budgets (Ring-2 gap fix, R-1/R-8): `assess_marriage`/`assess_career`/`assess_health`/
+ * `assess_wealth` are registered HERE, directly in this file — they call this file's own
+ * plain `dualOutput` (line ~301), NOT register_p1_aliases.ts's dualOutput. The auto-budget
+ * mechanism wired into register_p1_aliases.ts / register_p1_ganita.ts / register_p1_synthesis.ts
+ * never touched these 4 primary tool names — the register's own 1.04MB assess_career
+ * measurement names THESE tool names, not their `apex_*` alias variants. This is the missing
+ * TS-level backstop: same `autoDetectTrimmableSections` mechanism those files use, combined
+ * with this file's own `orientationEntityProfilesSection` (every assess_* response carries
+ * `orientation_context` too) and run through the same self-verifying `finalizeMcpBudget`
+ * entry point `applyMcpBudget` above already uses — not a second, divergent mechanism.
+ *
+ * Double-application note: this is the ONLY place `assess_career` (etc.) is registered as an
+ * MCP tool — register_p1_aliases.ts's `apex_career_assess` is a SEPARATE tool name that
+ * independently fetches its own copy of the capability response and applies its own budget
+ * once; neither call path invokes the other's handler or dualOutput, so there is no scenario
+ * where one response passes through two budget applications. Re-running `applyResponseBudget`
+ * on an already-under-budget object is also a documented no-op (estimateBytes short-circuits
+ * before any section is touched) — so even a hypothetical future call chain that composed
+ * these two functions would be safe, just redundant.
+ */
+function applyMcpBudgetAuto<T extends Record<string, unknown>>(
+  response: T,
+  maxKb: number,
+  toolName: string,
+): T {
+  const autoSections = autoDetectTrimmableSections(response, toolName)
+  const allSections = [...autoSections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
   return finalizeMcpBudget(response, { maxKb, sections: allSections })
 }
 
@@ -1269,7 +1309,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_marriage, 'assess_marriage'))
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
       }
@@ -1296,7 +1337,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_career, 'assess_career'))
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
       }
@@ -1323,7 +1365,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_health, 'assess_health'))
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
       }
@@ -1350,7 +1393,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_wealth, 'assess_wealth'))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
       }
