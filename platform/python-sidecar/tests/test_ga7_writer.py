@@ -61,10 +61,10 @@ Test coverage:
   54. Addition G: lord_to_parent_relationship in {friend,enemy,neutral,None}
   55. Addition H: varsha_year_lord populated on mudda rows
   56. Addition I: anchored_solar_return_iso populated on kalachakra L1 rows
-  57. Addition J: triggered_yogas_jsonb_atomic present (not None, is JSON string)
-  58. Addition K: lord_transit_at_period_start_jsonb is None or JSON
+  57. Addition J (R6 0e-dashameta / V-11): triggered_yogas_jsonb_atomic column dropped
+  58. Addition K (R6 0e-dashameta / V-11): lord_transit_at_period_start_jsonb column dropped
   59. Addition Q: karakas_active_during_period is list or None
-  60. JSONB: only 3 sanctioned JSONB columns non-None for non-kp rows
+  60. JSONB: only 1 sanctioned JSONB column non-None for non-kp rows (post V-11 drop)
   61. algebraic invariant: Vimshottari L1 lords match VIMSHOTTARI_SEQUENCE
   62. algebraic invariant: Yogini L1 lords follow YOGINI_SEQUENCE cycle
   63. algebraic invariant: Ashtottari L1 lords follow ASHTOTTARI_SEQUENCE
@@ -560,11 +560,34 @@ class TestKalachakraSystem(unittest.TestCase):
             assert r.get("period_deity_or_marker") is not None
 
 
+# R6 0e-dashameta (register V-1/G-7/D-1): _get_natal_context() now reads
+# chart_facts/chart_divisionals via _load_natal_context() (build_system()
+# calls that at build time). These tests call compute_* directly (no DB, no
+# build_system — "NO DB required" per this module's own docstring), so we
+# seed the module's natal-context cache with a fixture that mirrors the REAL
+# ground truth queried live from chart_facts (graha_position) + chart_divisionals
+# (varga_dignity, D1) for chart 482012f1 / lahiri_chitrapaksha — NOT the old
+# hardcoded dict this fix replaced, which was wrong for 6 of 9 grahas.
+FORENSIC_NATAL_FIXTURE: dict[str, dict[str, Any]] = {
+    "Sun":     {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Shravana",        "dignity_d1": "enemy_sign",   "shadbala_total": 3.225},
+    "Moon":    {"house_d1": 11, "sign": "Aquarius",    "nakshatra": "Purva Bhadrapada", "dignity_d1": "neutral_sign", "shadbala_total": 2.5607},
+    "Mars":    {"house_d1": 7,  "sign": "Libra",       "nakshatra": "Swati",            "dignity_d1": "neutral_sign", "shadbala_total": 3.106},
+    "Mercury": {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Uttara Ashadha",   "dignity_d1": "neutral_sign", "shadbala_total": 2.5},
+    "Jupiter": {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Mula",             "dignity_d1": "moolatrikona", "shadbala_total": 2.6598},
+    "Venus":   {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Purva Ashadha",    "dignity_d1": "neutral_sign", "shadbala_total": 2.3592},
+    "Saturn":  {"house_d1": 7,  "sign": "Libra",       "nakshatra": "Vishakha",         "dignity_d1": "exalted",      "shadbala_total": 3.611},
+    "Rahu":    {"house_d1": 2,  "sign": "Taurus",      "nakshatra": "Rohini",           "dignity_d1": "exalted",      "shadbala_total": 0.375},
+    "Ketu":    {"house_d1": 8,  "sign": "Scorpio",     "nakshatra": "Jyeshtha",         "dignity_d1": "exalted",      "shadbala_total": 0.625},
+}
+
+
 class TestAdditions(unittest.TestCase):
     """Tests 45-59: All A7 additions A-Q."""
 
     @classmethod
     def setUpClass(cls):
+        mod = _get_mod()
+        mod.set_natal_context(mod.CANONICAL_CHART_ID, "lahiri", FORENSIC_NATAL_FIXTURE)
         cls.vim_rows = _compute_system_rows("vimshottari")
         cls.yogini_rows = _compute_system_rows("yogini")
         cls.mudda_rows = _compute_system_rows("mudda")
@@ -596,7 +619,11 @@ class TestAdditions(unittest.TestCase):
     def test_48_addition_a_natal_dignity(self):
         for r in self._sample_l1(self.vim_rows):
             if r["lord_graha"] == "Jupiter":
-                assert r.get("lord_natal_dignity_d1") == "own"
+                # R6 0e-dashameta fix: Jupiter's real D1 dignity (chart_divisionals
+                # varga_dignity, chart 482012f1) is Moolatrikona, not "own" — the
+                # prior hardcoded _NATAL_CONTEXT dict this test used to check
+                # against was itself wrong (register V-1).
+                assert r.get("lord_natal_dignity_d1") == "moolatrikona"
 
     def test_49_addition_b_sandhi_lord(self):
         """Addition B: sandhi_with_next_dasha_lord on non-last L1 rows."""
@@ -651,20 +678,19 @@ class TestAdditions(unittest.TestCase):
         for r in l1[:5]:
             assert r.get("anchored_solar_return_iso") is not None
 
-    def test_57_addition_j_triggered_yogas(self):
-        """Addition J: triggered_yogas_jsonb_atomic present and JSON-parseable."""
+    def test_57_addition_j_triggered_yogas_column_dropped(self):
+        """Addition J (R6 0e-dashameta / register V-11): triggered_yogas_jsonb_atomic
+        was dropped (migration 428) — it was permanently '[]' with no yoga-trigger
+        engine in GA7 to ever populate it (fabrication risk, CLAUDE.md B.10).
+        Row dicts must not carry the key at all anymore."""
         for r in self.vim_rows[:10]:
-            val = r.get("triggered_yogas_jsonb_atomic")
-            assert val is not None, "triggered_yogas_jsonb_atomic is None"
-            parsed = json.loads(val)
-            assert isinstance(parsed, list)
+            assert "triggered_yogas_jsonb_atomic" not in r
 
-    def test_58_addition_k_transit_json_or_none(self):
-        """Addition K: lord_transit_at_period_start_jsonb is None or JSON string."""
+    def test_58_addition_k_transit_column_dropped(self):
+        """Addition K (register V-11): lord_transit_at_period_start_jsonb was
+        dropped (migration 428) — always NULL, no transit engine in GA7."""
         for r in self.vim_rows[:10]:
-            val = r.get("lord_transit_at_period_start_jsonb")
-            if val is not None:
-                json.loads(val)  # Must be valid JSON if not None
+            assert "lord_transit_at_period_start_jsonb" not in r
 
     def test_59_addition_q_karakas(self):
         """Addition Q: karakas_active_during_period is list or None."""
@@ -676,21 +702,19 @@ class TestAdditions(unittest.TestCase):
 
 
 class TestJSONBSanctions(unittest.TestCase):
-    """Test 60: Only 3 sanctioned JSONB columns."""
+    """Test 60: Only 1 sanctioned JSONB column (R6 0e-dashameta / register V-11:
+    triggered_yogas_jsonb_atomic and lord_transit_at_period_start_jsonb dropped
+    via migration 428 — both were permanently dead placeholders with no engine
+    in GA7 to populate them; see migration 428's header for the full rationale)."""
 
     def test_60_only_sanctioned_jsonb_columns(self):
         """
-        Only 3 sanctioned JSONB columns:
-          concurrent_system_lords_jsonb
-          triggered_yogas_jsonb_atomic
-          lord_transit_at_period_start_jsonb
+        Only 1 sanctioned JSONB column remains: concurrent_system_lords_jsonb.
         All other JSONB-named fields must not be present as row keys
         carrying JSONB-style data.
         """
         sanctioned = {
             "concurrent_system_lords_jsonb",
-            "triggered_yogas_jsonb_atomic",
-            "lord_transit_at_period_start_jsonb",
         }
         rows = _compute_system_rows("vimshottari")
         for r in rows[:5]:
@@ -700,6 +724,10 @@ class TestJSONBSanctions(unittest.TestCase):
             assert not non_sanctioned, (
                 f"Non-sanctioned JSONB column(s): {non_sanctioned}"
             )
+            # The two dropped columns must genuinely be gone, not just
+            # coincidentally absent from `sanctioned`.
+            assert "triggered_yogas_jsonb_atomic" not in r
+            assert "lord_transit_at_period_start_jsonb" not in r
 
 
 class TestAlgebraicInvariants(unittest.TestCase):

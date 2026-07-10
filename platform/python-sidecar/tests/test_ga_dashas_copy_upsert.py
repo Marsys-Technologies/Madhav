@@ -96,7 +96,8 @@ def _sample_rows(n=3):
             "convergence_count_at_start": None, "applies_to_this_chart_flag": True,
             "period_deity_or_marker": None, "lord_to_parent_relationship": None,
             "varsha_year_lord": None, "anchored_solar_return_iso": None,
-            "triggered_yogas_jsonb_atomic": "[]", "lord_transit_at_period_start_jsonb": None,
+            # V-11 fix (migration 428): triggered_yogas_jsonb_atomic and
+            # lord_transit_at_period_start_jsonb dropped from chart_dashas.
             "karakas_active_during_period": None, "is_truncated_at_window_start": False,
             "is_truncated_at_window_end": False, "kp_sublevel": None, "kp_sub_lord": None,
             "kp_sub_sub_lord": None,
