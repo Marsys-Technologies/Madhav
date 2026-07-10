@@ -648,7 +648,18 @@ def _verify_shadbala(shadbala: dict[str, dict[str, float]], tolerance: float = 0
         )
         _write_halt_log("VERIFY_SHADBALA", msg)
         raise TwoPassVerificationError(msg)
-    return "two_pass_verified"
+    # M-22 fix (M-1 evidence): this function's own docstring (above) already
+    # admits the sum-vs-total check "does NOT constitute an independent
+    # recomputation from a second code path" — it is self-referential
+    # (sub-balas are defined to sum to total by construction), so it always
+    # passes regardless of whether the underlying shadbala VALUES are a
+    # correct classical computation. Per M-1, the shadbala engine itself is
+    # a toy heuristic (never calls PyJHora). Returning "two_pass_verified"
+    # here claimed an independent classical cross-check that never ran.
+    # Demoted to "single_pass" (a real single structural-invariant pass did
+    # run; formulas.py VERIFICATION_RESCALE 0.85 vs 1.00). Fixing the
+    # underlying shadbala engine is M-1's scope, not this lane's.
+    return "single_pass"
 
 
 def _verify_ashtakavarga(
@@ -685,7 +696,16 @@ def _verify_ashtakavarga(
         msg = "ASHTAKAVARGA TWO-PASS DIVERGENCE:\n" + "\n".join(f"  {f}" for f in failures)
         _write_halt_log("TWO_PASS_ASHTAKAVARGA", msg)
         raise TwoPassVerificationError(msg)
-    return "two_pass_verified"
+    # M-22 fix (M-3 evidence): checks 1+2 above verify the RAW Bhinnashtaka-
+    # varga bindu arithmetic is internally consistent (SARVA=337, SARVA=sum
+    # of 7 graha arrays) — a real cross-check, but ONLY of the raw bindu
+    # sums. Per M-3, the "sodhita" (shodhana-reduced) pinda this feeds skips
+    # trikona shodhana entirely (sodhita ≡ raw, comment admits) and fakes
+    # ekadhipatya as bindus−1 — neither is checked here. "two_pass_verified"
+    # overstated what was actually verified (raw-bindu arithmetic, not
+    # shodhana correctness). Demoted to "single_pass". Fixing the shodhana
+    # step itself is M-3's scope, not this lane's.
+    return "single_pass"
 
 
 # ── Rows builders ────────────────────────────────────────────────────────────
@@ -1218,7 +1238,12 @@ def _build_ashtakavarga_per_varga_rows(
         )
         bindu_verif = "floored_sarva_mismatch"
     else:
-        bindu_verif = "two_pass_verified"
+        # M-22 fix: same class as _verify_ashtakavarga above — a single
+        # structural invariant (SARVA sum=337) is a real check, but not an
+        # independent second computation; the src_calc label two lines
+        # below already honestly says "python_heuristic_approximation".
+        # Demoted to single_pass to match.
+        bindu_verif = "single_pass"
 
     src_calc = f"python_heuristic_approximation.ashtakavarga_per_varga/{eng_ver}"
 
@@ -1597,12 +1622,23 @@ def build_ga_strength(
             try:
                 sb_verif = _verify_shadbala(shadbala)
                 av_verif = _verify_ashtakavarga(bav)
-                verif_status = "two_pass_verified"
-                summary["two_pass_verified"] = True
+                # M-22 fix: this previously hardcoded verif_status =
+                # "two_pass_verified" regardless of what sb_verif/av_verif
+                # actually returned (both variables were computed then
+                # discarded) — the literal lied about the tier even when
+                # the verifiers themselves (now correctly, post-M-1/M-3 fix)
+                # report "single_pass". The row-level stamp must reflect
+                # the WORSE (lowest-confidence) of the two verifier
+                # outputs, not an unconditional top tier.
+                _TIER_RANK = {"two_pass_verified": 2, "single_pass": 1, "documented_approximation": 0}
+                verif_status = min(
+                    (sb_verif, av_verif), key=lambda t: _TIER_RANK.get(t, 0),
+                )
+                summary["two_pass_verified"] = (_TIER_RANK.get(verif_status, 0) >= 2)
                 logger.info(
-                    "[ga_strength_writer] two_pass_verified PASS (%s): "
-                    "shadbala=%s ashtakavarga=%s",
-                    canonical_id, sb_verif, av_verif,
+                    "[ga_strength_writer] verification PASS (%s): "
+                    "shadbala=%s ashtakavarga=%s -> row_verif_status=%s",
+                    canonical_id, sb_verif, av_verif, verif_status,
                 )
             except TwoPassVerificationError as exc:
                 logger.error("[ga_strength_writer] TWO-PASS DIVERGENCE: %s", exc)

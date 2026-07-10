@@ -411,11 +411,17 @@ def _long_rows(
     include_nakshatra: bool = True,
     include_house: bool = True,
     extra_keys: dict[str, Any] | None = None,
+    verification_pass_status: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Generate standard atomic rows for a longitude-bearing sensitive point.
     Emits: longitude_sidereal, sign, sign_lord, nakshatra, nakshatra_lord, pada, house_d1
     + Section-B enrichment on every row.
+
+    verification_pass_status: M-22 fix — callers with a KNOWN non-classical
+    or fabricated derivation (M-9/M-10/M-11) pass an honest demoted tier
+    explicitly; None (default) leaves _make_row's own default in force for
+    genuinely correct BPHS-derived points.
     """
     sign, sign_idx, deg_in_sign = _long_to_sign_deg(longitude_sidereal)
     nak_name, nak_lord, pada = _long_to_nakshatra_pada(longitude_sidereal)
@@ -434,6 +440,8 @@ def _long_rows(
         formula_provenance_text=formula_provenance_text,
         cross_ayanamsha_divergence_arcsec=cross_ayanamsha_divergence_arcsec,
     )
+    if verification_pass_status is not None:
+        b_kwargs["verification_pass_status"] = verification_pass_status
 
     rows = [
         _make_row(category, subject, "longitude_sidereal",
@@ -569,26 +577,44 @@ def _build_upagraha_rows(
         "KALA":      "BPHS Ch.3: Kala (simplified) = Saturn + 30°",
     }
 
+    # M-22 fix (M-11 evidence): KALA has no real time-division derivation in
+    # this writer — "Saturn + 30°" is an invented constant offset (per M-11),
+    # not the classical time-segment computation. When PyJHora's native
+    # "kala" value is unavailable (no cross-check performed), this specific
+    # subject must not carry the default top-tier stamp _long_rows/_make_row
+    # would otherwise apply. Fixing the underlying Kala derivation is M-11's
+    # scope, not this lane's — this only demotes the stamp when no real
+    # cross-check ran.
+    _INVENTED_CONSTANT_SUBJECTS = {"KALA"}
+
     # Cross-ayanamsha divergence placeholder (computed at caller if multi-ayanamsha runs)
     for subj, long_val in formula_vals.items():
         # Two-pass: try to match PyJHora native
         native_key = subj.lower()
         native_val = upagrahas_native.get(native_key, {}).get("longitude_deg")
         tolerance_arcsec = 36.0  # 10 arcsec tolerance
+        verified_against_native = False
         if native_val is not None:
             diff_arcsec = abs(long_val - native_val) * 3600.0
             if diff_arcsec > 36.0:  # 10 arcsec
                 # Use native value (PyJHora is primary), formula is re-derivation
                 long_val = native_val
+            verified_against_native = True
         elif native_val is None:
             # Fall through with BPHS formula value
             pass
 
+        row_kwargs: dict[str, Any] = dict(
+            formula_provenance_text=provenance_map[subj],
+            tolerance_arcsec=tolerance_arcsec,
+        )
+        if subj in _INVENTED_CONSTANT_SUBJECTS and not verified_against_native:
+            row_kwargs["verification_pass_status"] = "documented_approximation"
+
         rows.extend(_long_rows(
             "upagraha_position", subj, long_val,
             chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
-            formula_provenance_text=provenance_map[subj],
-            tolerance_arcsec=tolerance_arcsec,
+            **row_kwargs,
         ))
     return rows
 
@@ -631,13 +657,27 @@ def _build_saturn_derived_rows(
         "MAANDI":        (maandi_long,   "maandi_formula",    "BPHS Ch.4: Maandi = alternate name for Mandi"),
     }
 
+    # M-22 fix (M-11 evidence): GULIKA_HINDU = Gulika Lahiri + 30° is an
+    # invented constant offset ("approximate", per this file's own comment
+    # above) — not the classical Hindu-reckoning time-division derivation.
+    # No native cross-check exists for this reckoning (PyJHora only exposes
+    # "gulika"/"maandi", not a separate hindu-reckoning key), so it never
+    # gets the real-vs-native comparison the other subjects here get.
+    # Demoted to documented_approximation; fixing the derivation is M-11's
+    # scope, not this lane's.
+    _INVENTED_CONSTANT_SUBJECTS = {"GULIKA_HINDU"}
+
     for subj, (long_val, fid, prov) in subjects.items():
+        verif_kwargs: dict[str, Any] = {}
+        if subj in _INVENTED_CONSTANT_SUBJECTS:
+            verif_kwargs["verification_pass_status"] = "documented_approximation"
         rows.extend(_long_rows(
             "saturn_derived_point", subj, long_val,
             chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
             formula_id=fid,
             formula_provenance_text=prov,
             tolerance_arcsec=36.0,
+            **verif_kwargs,
         ))
     return rows
 
@@ -826,10 +866,17 @@ def _build_pranapada_rows(
     # Formula: Moon + (Lagna - Sun) × 4 (simplified classical)
     sun = all_longs.get("SUN", 0.0)
     pranapada = (moon + (lagna - sun) * 4.0) % 360.0
+    # M-22 fix (M-9 evidence): this formula is fabricated (real BPHS Pranapada
+    # Sphuta is time-from-sunrise palas/15 on Sun with sign offsets, not
+    # Moon+(Lagna-Sun)×4) AND its citation is also fabricated (M-9's B.10
+    # finding — no such BPHS verse). Neither the derivation nor the citation
+    # is verified; demoted to documented_approximation rather than the
+    # default top-tier stamp. Fixing the derivation/citation is M-9's scope.
     return _long_rows("esoteric_point_pranapada_sphuta", "PRANAPADA_SPHUTA", pranapada,
                        chart_id, ayanamsha_id, build_id, eng_ver, lagna,
                        formula_provenance_text="BPHS: Pranapada Sphuta = Moon + (Lagna - Sun) × 4",
-                       tolerance_arcsec=30.0)
+                       tolerance_arcsec=30.0,
+                       verification_pass_status="documented_approximation")
 
 
 def _build_trikona_dasha_rows(
@@ -843,10 +890,15 @@ def _build_trikona_dasha_rows(
     # Jaimini trikona dasha sphuta: 9th lord from lagna in D9 mapped back
     # Simplified: midpoint(Moon, Jupiter) × trikona factor
     trikona = (moon + jup + lagna) % 360.0  # Approximate trikona
+    # M-22 fix (M-9 evidence): "Trikona Dasha Sphuta" is an invented sphuta —
+    # no such point exists in Jaimini Sutram (M-9's B.10 finding: fabricated
+    # citation). Demoted to documented_approximation; fixing/removing the
+    # derivation + citation is M-9's scope, not this lane's.
     return _long_rows("esoteric_point_trikona_dasha_sphuta", "TRIKONA_DASHA_SPHUTA", trikona,
                        chart_id, ayanamsha_id, build_id, eng_ver, lagna,
                        formula_provenance_text="Jaimini Sutram: Trikona Dasha Sphuta = (Moon + Jupiter + Lagna) mod 360°",
-                       tolerance_arcsec=30.0)
+                       tolerance_arcsec=30.0,
+                       verification_pass_status="documented_approximation")
 
 
 def _build_sri_yantra_rows(
@@ -863,13 +915,19 @@ def _build_sri_yantra_rows(
     sun = all_longs.get("SUN", 0.0)
     moon = all_longs.get("MOON", 0.0)
 
+    # M-22 fix (M-9 evidence): "Sri Yantra position = longitude × 0.9" is an
+    # invented mapping (M-9's B.10 finding — no classical/tantric source
+    # cited or citable for this specific formula). Demoted to
+    # documented_approximation; fixing/removing the derivation is M-9's
+    # scope, not this lane's.
     for subj, base_long in [("SRI_YANTRA_SUN", sun), ("SRI_YANTRA_MOON", moon), ("SRI_YANTRA_LAGNA", lagna)]:
         # Sri Yantra projection: map to 9 triangles × 40° each
         yantra_long = (base_long * 9.0 / 10.0) % 360.0
         rows.extend(_long_rows("esoteric_point_sri_yantra_position", subj, yantra_long,
                                 chart_id, ayanamsha_id, build_id, eng_ver, lagna,
                                 formula_provenance_text="Tantric Sri Yantra mapping: angular projection onto 9-triangle yantra",
-                                tolerance_arcsec=30.0))
+                                tolerance_arcsec=30.0,
+                                verification_pass_status="documented_approximation"))
     return rows
 
 
@@ -2073,6 +2131,14 @@ def _build_special_lagnas_rows(
 
     bhava_lagna = (sun_long * 2.0 - lagna_long + 180.0) % 360.0
 
+    # M-22 fix (M-10 evidence): HL/GL/BL below all use Sun's within-sign
+    # offset as a time-since-sunrise proxy — classically HL/GL/BL advance by
+    # elapsed time since sunrise (a real time-domain computation this writer
+    # does not have inputs for), not a Sun-longitude proxy. The comments
+    # above ("approximated from...") already admit this. Demoted to
+    # documented_approximation rather than the default top-tier stamp.
+    # Fixing the derivation (real sunrise-elapsed-time formula) is M-10's
+    # scope, not this lane's.
     rows.extend(_long_rows(
         "special_lagna", "HORA_LAGNA", hora_lagna,
         chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
@@ -2080,6 +2146,7 @@ def _build_special_lagnas_rows(
             "BPHS Ch.11: Hora Lagna advances 1 sign/hora (2 rev/day); "
             "approximated from lagna + Sun within-sign offset x 2"
         ),
+        verification_pass_status="documented_approximation",
     ))
     rows.extend(_long_rows(
         "special_lagna", "GHATI_LAGNA", ghati_lagna,
@@ -2088,6 +2155,7 @@ def _build_special_lagnas_rows(
             "BPHS: Ghati Lagna advances 1 sign/ghati (24 min); "
             "approximated from lagna + Sun within-sign offset x 12"
         ),
+        verification_pass_status="documented_approximation",
     ))
     # Vighati Lagna — floored (too granular without sub-second birth precision)
     rows.append(_make_row(
@@ -2104,6 +2172,7 @@ def _build_special_lagnas_rows(
         "special_lagna", "BHAVA_LAGNA", bhava_lagna,
         chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
         formula_provenance_text="BPHS: Bhava Lagna = (Sun x 2 - Lagna + 180 deg) mod 360 deg",
+        verification_pass_status="documented_approximation",
     ))
     return rows
 

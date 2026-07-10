@@ -739,16 +739,49 @@ def _verify_naisargika(rows: list[dict]) -> str:
 
 
 def _verify_mudda(rows: list[dict]) -> str:
-    """Mudda/Tajik: hybrid storage verified — per-varsha rows present."""
+    """Mudda/Tajik verification tier.
+
+    M-22 fix: this function performed no actual verification pass — it
+    returned the top tier ("two_pass_verified") whenever `rows` was
+    non-empty, regardless of whether anything was checked. Per M-5,
+    `compute_mudda_system`'s year-lord is a rotating Vimshottari-sequence
+    index (`VIMSHOTTARI_SEQUENCE[(varsha_num - 1) % 9]`), not the classical
+    Mudda/Tajik-varshaphal derivation (solar-return-anchored annual lord) —
+    a known non-classical simplified proxy, not a verified classical
+    reconstruction. Demoted to "single" — the chart_dashas table's own
+    verification_pass_status CHECK constraint (migration 206) allows only
+    {'two_pass_verified','classical_match','divergent_flagged','single'};
+    "documented_approximation" is a chart_facts-table-only tier (no CHECK
+    constraint there) and violates chart_dashas' constraint (caught live by
+    this lane's own Ring-1 rebuild attempt — CheckViolation on chart_dashas
+    INSERT). "single" already resolves to the same low-confidence default
+    via formulas.py's VERIFICATION_RESCALE.get(status, documented_approximation)
+    fallback (0.60), so the epistemic tier is unchanged — only the literal
+    string had to match this table's locked vocabulary. Fixing the
+    underlying Mudda derivation itself is M-5's scope, not this lane's.
+    """
     if not rows:
         return "classical_match"
-    return "two_pass_verified"
+    return "single"
 
 
 def _verify_kalachakra(rows: list[dict]) -> str:
     """
-    Kalachakra: paramayush-anchored, deha/jeeva sign-based.
-    Lords must be sign names (sign-based dasha).
+    Kalachakra verification tier.
+
+    Structural check retained (lords must be known Kalachakra sign names —
+    a real, if weak, single-pass invariant). M-22 fix: the tier this
+    function returned on passing that check was "two_pass_verified" —
+    dishonest, because per M-6 `compute_kalachakra_system` ignores the real
+    Kalachakra tables entirely (contiguous signs from Moon-navamsha index;
+    no savya/apasavya, no deha/jeeva, no gati jumps, flat 100y paramayush).
+    A structurally-valid-but-non-classical derivation is not two-pass
+    verified against the classical method — demoted to "single" (see
+    _verify_mudda's docstring immediately above for why "single", not
+    "documented_approximation": the chart_dashas table's CHECK constraint
+    only allows {'two_pass_verified','classical_match','divergent_flagged',
+    'single'}). Fixing the underlying Kalachakra derivation itself is
+    M-6's scope, not this lane's.
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
@@ -757,7 +790,7 @@ def _verify_kalachakra(rows: list[dict]) -> str:
     for row in l1_rows:
         if row["lord_graha"] not in known_signs:
             raise ValueError(f"Kalachakra: invalid sign/lord {row['lord_graha']!r}")
-    return "two_pass_verified"
+    return "single"
 
 
 # ── Core row builder ──────────────────────────────────────────────────────────
@@ -2848,7 +2881,15 @@ def build_ga_dashas(
                 "duration_days": 0.0,
                 "sandhi_flag": False,
                 "karaka_role_at_period": None,
-                "verification_pass_status": "two_pass_verified",
+                # M-22 fix: this row is a deliberate "not computed —
+                # beyond scope" marker (see citation_human below), not a
+                # real computation — stamping it "two_pass_verified"
+                # claimed a verified value where none exists. Uses the
+                # same self-descriptive string as verification_method so
+                # the row is unambiguous; falls through
+                # VERIFICATION_RESCALE.get(status, documented_approximation)
+                # to the lowest honest tier (0.60), never the top tier.
+                "verification_pass_status": "scope_cap_sentinel",
                 "verification_method": "scope_cap_sentinel",
                 "citation_ref": "L1_GANITA_SCOPE_CAP",
                 "citation_human": "Prana Dasha (5th-level sub-period) not computed — beyond L1 Ganita scope",
@@ -2903,7 +2944,15 @@ def build_ga_dashas(
                 "duration_days": 0.0,
                 "sandhi_flag": False,
                 "karaka_role_at_period": None,
-                "verification_pass_status": "two_pass_verified",
+                # M-22 fix: this row is a deliberate "not computed —
+                # beyond scope" marker (see citation_human below), not a
+                # real computation — stamping it "two_pass_verified"
+                # claimed a verified value where none exists. Uses the
+                # same self-descriptive string as verification_method so
+                # the row is unambiguous; falls through
+                # VERIFICATION_RESCALE.get(status, documented_approximation)
+                # to the lowest honest tier (0.60), never the top tier.
+                "verification_pass_status": "scope_cap_sentinel",
                 "verification_method": "scope_cap_sentinel",
                 "citation_ref": "L1_GANITA_SCOPE_CAP",
                 "citation_human": (
