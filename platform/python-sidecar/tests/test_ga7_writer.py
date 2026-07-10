@@ -120,6 +120,57 @@ def _mock_get_moon_position(ayanamsha_id: str, birth: dict | None = None):
     return FORENSIC_MOON_LON, BIRTH_JD
 
 
+# ── Mock chart_facts connection for chara_karaka (M-7 fix) ───────────────────
+# compute_chara_system() now REQUIRES a real chart_facts derivation (no
+# NATIVE-hardcoded fallback — MARSYS_DEFECT_GAP_REGISTER_v2_0.md M-7). This
+# test suite stays "NO DB required" by mocking chart_facts rows directly,
+# same pattern as _mock_get_moon_position above mocks the ephemeris call.
+#
+# fact_subject uses the REAL abbreviated uppercase codes chart_facts actually
+# stores (SUN, MOON, MAR, MER, JUP, VEN, SAT) — NOT full names. A prior
+# version of this mock used full names ("Sun", "Moon", ...), which was
+# self-consistently wrong with a matching bug in the writer's query and
+# never caught the Ring-2-found regression (writer filtered on full names
+# against a table keyed by codes, matching zero rows on every real chart).
+# Values below are the REAL chart_facts rows for chart_id=482012f1,
+# ayanamsha_id=lahiri_chitrapaksha (read-only verification query, r6/0f
+# session) — reused here only as realistic mock input, not a live fallback.
+_MOCK_CHART_FACTS_CHARA_ROWS = [
+    ("SUN", "sign", "Capricorn", None), ("SUN", "degree_in_sign", None, 21.9626172849916),
+    ("MOON", "sign", "Aquarius", None), ("MOON", "degree_in_sign", None, 27.055230133129),
+    ("MAR", "sign", "Libra", None), ("MAR", "degree_in_sign", None, 18.5191875546223),
+    ("MER", "sign", "Capricorn", None), ("MER", "degree_in_sign", None, 0.838753918698387),
+    ("JUP", "sign", "Sagittarius", None), ("JUP", "degree_in_sign", None, 9.78749702318149),
+    ("VEN", "sign", "Sagittarius", None), ("VEN", "degree_in_sign", None, 19.1726960894562),
+    ("SAT", "sign", "Libra", None), ("SAT", "degree_in_sign", None, 22.4319860591954),
+]
+
+
+def _mock_chart_facts_conn(rows: list[tuple]) -> Any:
+    """Minimal fake DB connection satisfying ga_dashas_writer's
+    _compute_dynamic_chara_params (conn.cursor() as cur: cur.execute(...);
+    cur.fetchall())."""
+
+    class _Cur:
+        def execute(self, *_a, **_k):
+            pass
+
+        def fetchall(self):
+            return rows
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+    class _Conn:
+        def cursor(self):
+            return _Cur()
+
+    return _Conn()
+
+
 # ── Helper: compute a system with mocked Moon ────────────────────────────────
 
 def _compute_system_rows(system_id: str, limit_cycles: bool = True) -> list[dict]:
@@ -141,7 +192,10 @@ def _compute_system_rows(system_id: str, limit_cycles: bool = True) -> list[dict
     elif system_id == "ashtottari":
         rows = mod.compute_ashtottari_system(moon_sid, birth_jd, aya, chart_id, build_id)
     elif system_id == "chara_karaka":
-        rows = mod.compute_chara_system(birth_jd, aya, chart_id, build_id)
+        rows = mod.compute_chara_system(
+            birth_jd, aya, chart_id, build_id,
+            conn=_mock_chart_facts_conn(_MOCK_CHART_FACTS_CHARA_ROWS),
+        )
     elif system_id == "naisargika":
         rows = mod.compute_naisargika_system(birth_jd, aya, chart_id, build_id)
     elif system_id == "mudda":
