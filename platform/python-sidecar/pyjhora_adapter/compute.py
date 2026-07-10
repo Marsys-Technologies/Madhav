@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import dignities, houses, panchanga, positions, sensitive_points, vargas
+from . import special_lagnas as special_lagnas_mod
 from . import dashas as _dashas
 from ._ayanamsha import resolve_mode
 from ._jhora import drik, utils
@@ -70,6 +71,7 @@ def compute_chart(
     grahas = dignities.refine(positions.compute_positions(jd_ut, eff_ayan, **kw))
     ascendant = houses.compute_ascendant(jd_ut, eff_ayan, **kw)
     house_list = houses.compute_houses(ascendant)
+    midheaven = houses.compute_midheaven(jd_ut, eff_ayan, **kw)
 
     # Assign whole-sign house to each graha.
     asc_sign0 = int(ascendant["sign_id"]) - 1
@@ -80,6 +82,15 @@ def compute_chart(
     dasha_map = _dashas.compute_dashas(jd_ut, eff_ayan, **kw)
     panch = panchanga.compute_panchanga(jd_ut, eff_ayan, **kw)
     sens = sensitive_points.compute_sensitive_points(jd_ut, eff_ayan, **kw)
+    # Solar upagrahas (Dhuma/Vyatipata/Parivesha/Indrachapa/Upaketu) are pure
+    # functions of Sun's sidereal longitude — delegate to PyJHora's own
+    # drik.solar_upagraha_longitudes() (M-11/V-6 fix).
+    _sun_long = next((float(g["longitude_deg"]) for g in grahas if g.get("name") == "Sun"), None)
+    if _sun_long is not None:
+        sens.update(sensitive_points.compute_solar_upagrahas(_sun_long))
+    special_lagnas = special_lagnas_mod.compute_special_lagnas(
+        jd_ut, dob, tob, eff_ayan, **kw,
+    )
     recon = reconcile(ascendant, house_list, grahas)
 
     cai = computed_at_iso or datetime.now(timezone.utc).isoformat()
@@ -108,6 +119,7 @@ def compute_chart(
         "ascendant": ascendant,
         "lagna": ascendant,        # alias for dashas_writer
         "houses": house_list,
+        "midheaven": midheaven,
         "grahas": grahas,
         # 'planets' alias: id=lowercase name, sign_num=0-based sign index.
         # Required by t1_structural_writer, sade_sati_writer.
@@ -119,6 +131,7 @@ def compute_chart(
         "dashas": dasha_map,
         "panchanga": panch,
         "sensitive_points": sens,
+        "special_lagnas": special_lagnas,
         "ayanamsha": {
             "id": eff_ayan,
             "value_deg": ayan_value_deg,

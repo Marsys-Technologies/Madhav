@@ -1059,7 +1059,23 @@ def _build_deity_rows(
             "fact_value_num": None,
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            # M-22 fix (M-17 evidence): D60's quality lookup above is a
+            # repeating [Malefic,Neutral,Benefic]×20 pattern — the real
+            # canonical 60-deity list is irregular (~half mislabeled by
+            # this proxy), and D60 carries the HIGHEST vimshopaka weight in
+            # serving. Demote D60 rows only; other vargas' deity
+            # attribution in this shared builder are unaffected. Fixing the
+            # canonical D60 table itself is M-17's scope, not this lane's.
+            # "single" (not "documented_approximation") because
+            # chart_divisionals' verification_pass_status CHECK constraint
+            # (migration 206, same as chart_dashas) only allows
+            # {'two_pass_verified','classical_match','divergent_flagged',
+            # 'single'} — caught live by this lane's own Ring-1 rebuild
+            # attempt. "single" resolves to the same low-confidence
+            # VERIFICATION_RESCALE default (0.60) via the .get() fallback.
+            "verification_pass_status": (
+                "single" if varga_n == 60 else "two_pass_verified"
+            ),
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("varga_deity_attribution", vid, body, "deity",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),
@@ -1319,7 +1335,18 @@ def _build_saptavargaja_rows(
             "fact_value_num": saptavargaja_score,
             "fact_subject": f"{vid}.{subject}",
             "build_id_uuid": build_id,
-            "verification_pass_status": "two_pass_verified",
+            # M-22 fix (M-18 evidence): score_map above is a simplified
+            # 6-rung ladder ("simplified" per the comment) that ignores
+            # compound (naisargika+tatkalika) planetary friendship — not
+            # the real classical virupa ladder. Demoted to "single" (not
+            # "documented_approximation" — chart_divisionals' CHECK
+            # constraint only allows {'two_pass_verified','classical_match',
+            # 'divergent_flagged','single'}, caught live by this lane's own
+            # Ring-1 rebuild attempt; "single" resolves to the same
+            # low-confidence VERIFICATION_RESCALE default via .get()
+            # fallback). Fixing the friendship-ladder derivation itself is
+            # M-18's scope, not this lane's.
+            "verification_pass_status": "single",
             "engine_version": ENGINE_VERSION,
             "citation_ref": _citation_ref("varga_saptavargaja_bala_component", vid, body, "saptavargaja",
                                            chart_id, ayanamsha_id, ENGINE_VERSION),

@@ -1690,19 +1690,26 @@ def _build_static_natal_facts(
 
 def _verif_for_text(value: Any) -> str:
     """
-    Rows built from a real upstream join get 'two_pass_verified' (the file's
-    existing per-row default); rows still carrying a PENDING_* fallback
-    (upstream lookup returned nothing) get 'single' instead, so the row is not
-    falsely stamped as verified when it silently used a placeholder.
+    M-22 fix: this function previously returned 'two_pass_verified'
+    unconditionally for any non-placeholder value — a literal top-tier
+    stamp with no verifier ever running a second independent pass on these
+    rows (a single upstream DB join is one pass, not two). Rows built from
+    a real upstream join now get 'single_pass' (formulas.py
+    VERIFICATION_RESCALE 0.85 vs 1.00) — honest for a single, real
+    computation with no cross-check. Rows still carrying a PENDING_*
+    fallback (upstream lookup returned nothing) keep the existing 'single'
+    tier (resolves to the documented_approximation default in
+    VERIFICATION_RESCALE.get), so a placeholder is never stamped as
+    verified.
     """
     if isinstance(value, str) and value.startswith("PENDING_"):
         return "single"
-    return "two_pass_verified"
+    return "single_pass"
 
 
 def _verif_for_maybe_none(value: Any) -> str:
     """Same as _verif_for_text but for facts that are honestly None (not text)."""
-    return "single" if value is None else "two_pass_verified"
+    return "single" if value is None else "single_pass"
 
 
 # ── INSERT chart_facts rows ───────────────────────────────────────────────────

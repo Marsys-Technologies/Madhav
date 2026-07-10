@@ -372,9 +372,14 @@ class TestAshtakavargaDerivation:
         assert 300 <= total <= 380, f"Sarva total={total} far outside 337±43"
 
     def test_two_pass_verify_passes(self, ashtakavarga):
+        # M-22/M-3 fix (R6-1f): this check verifies raw Bhinnashtakavarga
+        # bindu arithmetic is internally consistent (SARVA=337, SARVA=sum of
+        # 7 graha arrays) — a real check, but not an independent second
+        # computation, and it says nothing about the shodhana step (M-3:
+        # sodhita ≡ raw, no real trikona shodhana). Demoted to "single_pass".
         from ga_writers.ga_strength_writer import _verify_ashtakavarga
         result = _verify_ashtakavarga(ashtakavarga, tolerance=10)
-        assert result == "two_pass_verified"
+        assert result == "single_pass"
 
 
 # ── 29-31: Bhava bala ───────────────────────────────────────────────────────

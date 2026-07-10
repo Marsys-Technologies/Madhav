@@ -161,8 +161,41 @@ def _build_test_rows_for_one_ayanamsha() -> list[dict[str, Any]]:
     ayanamsha_id = "lahiri_chitrapaksha"
     all_longs = _TEST_LONGS
 
-    # Minimal chart_data for upagraha (no native values, formulas used)
-    chart_data: dict[str, Any] = {"upagrahas": {}, "positions": {}}
+    # chart_data with mock PyJHora-native "sensitive_points" (M-11 fix: this is
+    # the correct key compute_chart() populates — was "upagrahas" previously,
+    # which compute_chart() never wrote, so every native lookup silently
+    # missed). Also mocks "midheaven" (D-9) and "special_lagnas" (M-9/M-10)
+    # so the delegated-primary code paths are exercised by these unit tests
+    # rather than always hitting the floor path.
+    chart_data: dict[str, Any] = {
+        "positions": {},
+        "sensitive_points": {
+            "kaala": {"longitude_deg": 304.13, "sign": "Aquarius", "sign_id": 11, "degree_in_sign": 4.13},
+            "mrityu": {"longitude_deg": 30.0, "sign": "Taurus", "sign_id": 2, "degree_in_sign": 0.0},
+            "artha_prabhakara": {"longitude_deg": 45.0, "sign": "Taurus", "sign_id": 2, "degree_in_sign": 15.0},
+            "yama": {"longitude_deg": 60.0, "sign": "Gemini", "sign_id": 3, "degree_in_sign": 0.0},
+            "gulika": {"longitude_deg": 74.89, "sign": "Gemini", "sign_id": 3, "degree_in_sign": 14.89},
+            "maandi": {"longitude_deg": 84.26, "sign": "Gemini", "sign_id": 3, "degree_in_sign": 24.26},
+            "dhuma": {"longitude_deg": 53.33, "sign": "Taurus", "sign_id": 2, "degree_in_sign": 23.33},
+            "vyatipaata": {"longitude_deg": 306.67, "sign": "Capricorn", "sign_id": 10, "degree_in_sign": 6.67},
+            "parivesha": {"longitude_deg": 126.67, "sign": "Leo", "sign_id": 5, "degree_in_sign": 6.67},
+            "indrachaapa": {"longitude_deg": 233.33, "sign": "Scorpio", "sign_id": 8, "degree_in_sign": 23.33},
+            "upaketu": {"longitude_deg": 250.0, "sign": "Sagittarius", "sign_id": 9, "degree_in_sign": 10.0},
+        },
+        "midheaven": {"longitude_deg": 272.98, "sign": "Capricorn", "sign_id": 10, "degree_in_sign": 2.98},
+        "special_lagnas": {
+            "bhava_lagna": {"longitude_deg": 356.4, "sign": "Pisces", "sign_id": 12, "degree_in_sign": 26.4},
+            "hora_lagna": {"longitude_deg": 60.9, "sign": "Gemini", "sign_id": 3, "degree_in_sign": 0.9},
+            "ghati_lagna": {"longitude_deg": 254.2, "sign": "Sagittarius", "sign_id": 9, "degree_in_sign": 14.2},
+            "vighati_lagna": {"longitude_deg": 197.8, "sign": "Libra", "sign_id": 7, "degree_in_sign": 17.8},
+            "indu_lagna": {"longitude_deg": 237.1, "sign": "Scorpio", "sign_id": 8, "degree_in_sign": 27.1},
+            "sree_lagna": {"longitude_deg": 202.9, "sign": "Libra", "sign_id": 7, "degree_in_sign": 22.9},
+            "pranapada_lagna": {"longitude_deg": 138.4, "sign": "Leo", "sign_id": 5, "degree_in_sign": 18.4},
+            "bhrigu_bindhu_lagna": {"longitude_deg": 188.0, "sign": "Libra", "sign_id": 7, "degree_in_sign": 8.0},
+            "kunda_lagna": {"longitude_deg": 286.9, "sign": "Capricorn", "sign_id": 10, "degree_in_sign": 16.9},
+            "varnada_lagna": {"longitude_deg": 102.4, "sign": "Cancer", "sign_id": 4, "degree_in_sign": 12.4},
+        },
+    }
 
     rows: list[dict[str, Any]] = []
 
@@ -174,7 +207,7 @@ def _build_test_rows_for_one_ayanamsha() -> list[dict[str, Any]]:
     rows += w._build_mrityu_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng", True)
     rows += w._build_trisphuta_family_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng",
                                              sunrise_jd=_TEST_SUNRISE_JD, birth_jd=_TEST_BIRTH_JD)
-    rows += w._build_pranapada_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
+    rows += w._build_pranapada_rows(chart_data, all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_trikona_dasha_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_sri_yantra_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_brahma_vishnu_shiva_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
@@ -183,7 +216,7 @@ def _build_test_rows_for_one_ayanamsha() -> list[dict[str, Any]]:
     rows += w._build_karakamsa_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_swamsa_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_arudha_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
-    rows += w._build_midpoint_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
+    rows += w._build_midpoint_rows(chart_data, all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_kp_ruling_planets_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng")
     rows += w._build_kp_cuspal_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng", chart_data)
     rows += w._build_aprakasha_rows(all_longs, CANONICAL_CHART_ID, ayanamsha_id, BUILD_ID, "test-eng",
@@ -676,3 +709,55 @@ class TestSchemaValidation:
                     assert vt != "prose", (
                         f"GA5 category {cat} has prose value_type (not allowed)"
                     )
+
+
+# ── M-16: arudha 2nd-house/7th-from-bhava exception (R6 1d-sensitive) ─────────
+
+class TestArudhaExceptionM16:
+    """
+    Register M-16: `_build_arudha_rows`'s `_arudha_sign` previously implemented
+    only Exception 1 (arudha lands in its own house -> shift to 10th). Exception
+    2 (arudha lands 7th-from-its-house -> shift to 10th) was missing, producing
+    a wrong arudha whenever the house-lord sits exactly 4 signs away from its
+    own house. This test constructs that exact configuration and hand-verifies
+    the expected classical result.
+    """
+
+    def test_exception_2_fires_when_lord_four_signs_away(self):
+        w = _import_writer()
+        # Lagna in Aries (sign 0) -> house 2 = Taurus (sign 1), lord = Venus.
+        # Venus placed in Leo (sign 4): steps = (4-1)%12 = 3 (not 0, so no mod-12
+        # rewrite needed); raw arudha_idx = (4+3)%12 = 7 = Scorpio.
+        # Scorpio == (house_sign_idx(1) + 6) % 12 == 7 -> Exception 2 must fire:
+        # shift to 10th from Scorpio(7): (7+9)%12 = 4 = Leo.
+        all_longs = {
+            "LAGNA": 5.0,    # Aries
+            "SUN": 10.0, "MOON": 10.0, "MAR": 10.0, "MER": 10.0,
+            "JUP": 10.0, "SAT": 10.0,
+            "VEN": 4 * 30 + 10.0,  # Venus in Leo (sign_idx=4)
+        }
+        rows = w._build_arudha_rows(all_longs, "test-chart", "lahiri_chitrapaksha", "test-build", "test-eng")
+        a2_sign = next(r for r in rows if r["fact_subject"] == "ARUDHA_A2" and r["fact_key"] == "sign")
+        a2_long = next(r for r in rows if r["fact_subject"] == "ARUDHA_A2" and r["fact_key"] == "longitude_sidereal")
+        assert a2_sign["fact_value_text"] == "Leo", (
+            f"M-16 exception-2 did not fire: expected Leo (10th-from-Scorpio), got {a2_sign['fact_value_text']}"
+        )
+        assert a2_long["fact_value_num"] == 120.0  # Leo sign-start (D-10 sign-cusp convention)
+
+    def test_exception_1_still_fires_for_own_house_case(self):
+        """Regression guard: Exception 1 (own-house) must still work after the
+        M-16 patch — it must not have been clobbered by adding Exception 2."""
+        w = _import_writer()
+        # Lagna in Aries (sign 0) -> house 2 = Taurus (sign 1), lord = Venus.
+        # Venus placed in Taurus itself (sign 1): steps=(1-1)%12=0->12;
+        # raw arudha_idx=(1+12)%12=1=Taurus == house_sign_idx(1) -> Exception 1
+        # fires: shift to 10th from Taurus(1): (1+9)%12=10=Aquarius.
+        all_longs = {
+            "LAGNA": 5.0,
+            "SUN": 10.0, "MOON": 10.0, "MAR": 10.0, "MER": 10.0,
+            "JUP": 10.0, "SAT": 10.0,
+            "VEN": 1 * 30 + 10.0,  # Venus in Taurus (sign_idx=1) — own house
+        }
+        rows = w._build_arudha_rows(all_longs, "test-chart", "lahiri_chitrapaksha", "test-build", "test-eng")
+        a2_sign = next(r for r in rows if r["fact_subject"] == "ARUDHA_A2" and r["fact_key"] == "sign")
+        assert a2_sign["fact_value_text"] == "Aquarius"

@@ -1257,6 +1257,16 @@ def _build_aspect_rows(
                 # Separating and beyond deeptamsa: no live Tajik yoga (the
                 # union already perfected and has fully dispersed).
                 continue
+            # M-12 fix: real per-graha deeptamsa + whole-sign precondition +
+            # applying/separating motion (mean-speed with retrograde sign-
+            # flip) replace the previous fabricated <1°/<5°/<30° orb bands.
+            # M-22's prior demotion to documented_approximation (below) no
+            # longer applies now that the underlying Tajika-aspect geometry
+            # is genuinely derived — Ring-2 independently confirmed the
+            # TAJIK_DEEPTAMSA constants byte-exact against PyJHora 4.8.6's
+            # installed const.py and cross-checked the precondition gating
+            # against installed tajaka.py (R6_RUN_LEDGER "Lane 1e-structcond"
+            # Ring-2 verdict, 2026-07-10).
             salience = {"yamaya": "high", "ithasala": "high", "eesarpha": "medium",
                         "manaau": "low"}.get(taj_type, "medium")
             rows.append(_base_row(
@@ -2460,6 +2470,19 @@ def _build_composite_strength_rows(
 
             divergence = abs(bphs_score - simple_score)
 
+            # M-14 fix: "Pass 1"/"Pass 2" previously combined the SAME
+            # invented shadbala_proxy (sthana*5+1, a "rough rupa estimate")
+            # under two false pyjhora_adapter source strings — M-22 had
+            # demoted all three emitted rows here to documented_approximation
+            # pending this lane's fix. Now real graha_shadbala_total and
+            # house_bhava_bala_total (post lane-1a's real shadbala) feed both
+            # passes via constituent_facts_array, so the cross-check is a
+            # genuine classical shadbala + bhava bala comparison. Ring-2
+            # independently hand-derived shadbala_ratio=0.7222/
+            # bhava_ratio=0.7468 from real chart_facts and got an exact digit
+            # match (R6_RUN_LEDGER "Lane 1e-structcond" Ring-2 verdict,
+            # 2026-07-10) — verif/source restored to reflect the real
+            # ga_structural computation.
             rows.append(_base_row(
                 "graha_in_house_composite_strength", comp_subject, "bphs_weighted",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
@@ -2763,6 +2786,20 @@ def _build_structural_relationship_rows(
                 ))
 
     # Composite state classification (X)
+    #
+    # D-3 fix: the root cause of the "astrologically suspect" distribution
+    # (Jupiter own-sign Sagittarius wrongly "debilitation_cancelled"; Saturn
+    # Libra-exalted wrongly "neutral"; 8/9 grahas "neutral") was an
+    # off-by-one sign-index bug in pyjhora_adapter/dignities.py — `g.get(
+    # "dignity_status")` was comparing a 1-based sign_id against 0-based
+    # exaltation/debilitation/own-sign tables. Fixed at the source
+    # (dignities.py::_dignity_for) so every consumer of dignity_status,
+    # including this loop, now gets the correct dignity. This loop itself
+    # is otherwise unchanged — the neecha-bhanga (dispositor-in-kendra)
+    # check is real, but is still a single deterministic pass, not an
+    # independent classical cross-check, so the stamp is honestly demoted
+    # (M-22) alongside the D-3 data fix.
+    classification_counts: dict[str, int] = {}
     for g in grahas_data:
         g_name = g["name"]
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
@@ -2797,17 +2834,35 @@ def _build_structural_relationship_rows(
         else:
             classification = "neutral"
 
+        classification_counts[classification] = classification_counts.get(classification, 0) + 1
+
         rows.append(_base_row(
             "graha_composite_state_classification", subject, "classification",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=classification,
-            verif="two_pass_verified",
+            verif="single_pass",
             source=f"pyjhora_adapter.composite_state/{eng_ver}",
             citation_human=(
                 f"{g_name} composite state: {classification} "
                 f"(dignity: {dignity}, combust: {is_combust}, retro: {retro}) ({ayanamsha_id})."
             ),
         ))
+
+    # D-3 distribution check (non-degenerate): a single classification value
+    # covering the large majority of grahas is the exact failure signature
+    # this register row diagnosed (8/9 "neutral" pre-fix). Not a hard halt —
+    # some charts legitimately cluster — but loud enough that a regression
+    # of the same class is never silently reintroduced.
+    n_grahas = len(grahas_data)
+    if n_grahas > 0:
+        max_class, max_count = max(classification_counts.items(), key=lambda kv: kv[1])
+        if max_count / n_grahas >= 0.75:
+            logger.warning(
+                "[ga_structural] chart_id=%s ayanamsha=%s: graha_composite_state_classification "
+                "distribution is near-degenerate — %d/%d grahas classified '%s' "
+                "(D-3 regression signature). counts=%s",
+                chart_id, ayanamsha_id, max_count, n_grahas, max_class, classification_counts,
+            )
 
     return rows
 
