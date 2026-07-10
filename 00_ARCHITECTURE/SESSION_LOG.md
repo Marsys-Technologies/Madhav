@@ -31439,19 +31439,50 @@ acceptance gap), the D60 time-sensitivity/rectification-confidence note on `quer
 
 ---
 
-## R5.3-CONTENT-DEPTH-2026-07-10
+## R5.3-CONTENT-DEPTH-2026-07-10 — Content-depth iteration, §B/B1/B2/B3/B4 phased run — CLOSED 2026-07-10
+
+```yaml
+session_open:
+  session_id: R5.3-CONTENT-DEPTH-2026-07-10
+  opened_on: 2026-07-10
+  cowork_thread_name: R5.3-CONTENT-DEPTH
+  governing_brief: CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md
+  ratification: >
+    Native dispatched the brief directly ("Read and execute it") and gave explicit phase-by-phase
+    go-aheads through the session (B1 proceed; B2 via Workflow tool with explicit lane/verifier
+    rulings; B3 proceed; B4 proceed with pre-decided rulings on gate immutability, register mapping,
+    and disposition on fail). Formal SESSION_OPEN_TEMPLATE handshake (mandatory-reading fingerprints
+    etc.) was not emitted before substantive work began — flagged honestly rather than backdated;
+    this block is written retroactively at close to satisfy SESSION_LOG_SCHEMA structural
+    requirements, reflecting the scope actually honored throughout.
+  scope_notes: >
+    Executed exactly the brief's own phase sequence: §B grader restoration (gated) -> B1 true
+    baseline -> B2 content-depth implementation (5 worktree-isolated lanes via Workflow) -> B3 two
+    bounded fixes -> B4 acceptance re-run -> honest close. Battery R5_ANSWER_BATTERY_v1_0.md and
+    llm_grader.ts's rubric prompt text remained FROZEN/READ-ONLY throughout.
+  may_touch:
+    - "platform/src/lib/retrieval/** (synthesis/recipe/content surfaces)"
+    - "platform-mcp/src/** (tool wiring only)"
+    - "eval harness (grader wiring + credential plumbing; never grading criteria)"
+    - "secrets/env config for the grader key (deploy-time)"
+    - "00_ARCHITECTURE run/ledger/seal docs"
+  must_not_touch:
+    - "orchestrator + build writers"
+    - "chart data (read-only)"
+    - "salience/priors/constants (frozen)"
+    - "LEL rows"
+    - "battery item content/grading criteria"
+    - "the deferred shelf"
+    - "amjis-pending-stream-reaper (its own micro-brief §S)"
+  predecessor_session: R5.2-ACCEPTANCE-2026-07-09
+  current_state_version_at_open: 6.34
+  red_team_due: false
+```
 
 Executed `CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md` end to end: §B grader restoration → B1 true
 baseline → B2 content-depth implementation (5 worktree-isolated lanes) → B3 two bounded fixes →
 B4 acceptance re-run → honest close. Full per-phase detail in `R5_3_RUN_LEDGER_v1_0.md`; the
 acceptance verdict and failures-to-register mapping in `R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md`.
-
-**Note on session-open discipline:** this session's formal `session_open` handshake was not emitted
-at the top of the session per `SESSION_OPEN_TEMPLATE_v1_0.md` — work began directly from the
-governing brief. Flagged honestly here rather than backdating a handshake that wasn't actually run
-before substantive work started. `may_touch`/`must_not_touch` were honored throughout per the
-brief's own declared scope (`platform/src/lib/retrieval/**`, `platform-mcp/src/**` tool wiring,
-eval harness grader wiring, `00_ARCHITECTURE` run/ledger/seal docs).
 
 - **§B** (grader restoration): root-caused R5.2 A5's INCONCLUSIVE grading to a retired Gemini model
   name (`gemini-2.5-flash`→`gemini-flash-latest`, `evals/r5-w4-full-battery/llm_grader.ts:49`), not

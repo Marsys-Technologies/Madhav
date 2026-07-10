@@ -5905,7 +5905,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: BA-SYNC-FREEZE-2026-07-04  # 2026-07-04: BA Endgame Activity 1 — code-plane sync-freeze COMPLETE; M1/M2 RING2_PASS; governance docs PR #408 9/9 PASS; GO for Activity 2 (Nirmāṇa inspection). Predecessor BA-P0-SERVING-TRUTH-2026-07-03.
+  last_session_id: R5.3-CONTENT-DEPTH-2026-07-10  # 2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09. (Field was stale at BA-SYNC-FREEZE-2026-07-04 for several sessions/campaigns — corrected here per schema_validator's current_state_last_session_id_disagreement finding.)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
