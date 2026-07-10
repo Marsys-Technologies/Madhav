@@ -22,12 +22,18 @@ export const getDignityCapability: CapabilityDescriptor = {
   description:
     'Retrieve graha dignity and varga-level classification for a chart. ' +
     'Includes: dignity per varga (exalted/own/friend/neutral/enemy/debilitated across D1–D60), ' +
-    'effective dignity modified by aspects (neechabhanga, rashi dristi cancellations etc.), ' +
+    'an "effective dignity" adjustment (HONEST SCOPE: this is a 15°-longitude-proximity heuristic ' +
+    'tweak against dignity boundaries — NOT a drishti-based computation; it does NOT evaluate ' +
+    '7th-house/special aspects, rashi drishti, or neecha-bhanga/cancellation logic. See S-8/D-8 — ' +
+    'the `own`/`moolatrikona`/`friend`/`enemy` dignity states are not yet in the scoring map and ' +
+    'silently score a neutral 0.5), ' +
     'sign attributes (movable/fixed/dual, element, gender, etc.), ' +
     'vargottama amplification factor (0 / 0.20 / 0.50 based on how many vargas share same rashi), ' +
     'vargottama flag per varga, and functional class per ascendant ' +
     '(benefic/malefic/neutral/yoga-karaka for the native\'s Aries lagna). ' +
-    'Covers 6 fact_categories.',
+    'Covers 6 fact_categories. Real neecha-bhanga (debility-cancellation) evaluation is NOT ' +
+    'computed anywhere in this build (see MARSYS_DEFECT_GAP_REGISTER Y-3) — do not infer it from ' +
+    'this tool\'s output.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },

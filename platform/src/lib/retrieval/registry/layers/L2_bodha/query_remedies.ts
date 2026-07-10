@@ -268,8 +268,12 @@ export const queryRemediesCapability: CapabilityDescriptor = {
           hint: 'Call again with tradition=gemstone|mantra|charity for a deeper single-tradition cut.',
         },
         {
+          // SC-19 fix: this entry documents a BUILD-STATE fact about the bo_upaya writer/
+          // asset — it is not a callable recovery pointer, so it must not use the `instrument`
+          // field (a tool-pointer field elsewhere in this shape). `asset_id` names the L2
+          // asset the gap belongs to without implying it's an MCP tool a client can call.
           type: 'build_state',
-          instrument: 'bo_upaya',
+          asset_id: 'bo_upaya',
           hint: 'associated_doshas_array and estimated_cost_inr_range_jsonb are unpopulated bo_upaya-wide — see build-state ledger for why (writer gap, not a serving-layer drop).',
         },
         ...(fields !== 'all'

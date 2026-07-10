@@ -70,7 +70,11 @@ function bundleEntriesSection(): TrimmableSection<Record<string, unknown>> {
       const loc = locate(c)
       if (loc) loc.holder['bundle_entries'] = kept
     },
-    recover: { instrument: 'bodha_bundle_get', hint: 'full multi-subsystem bundle (successor tool)' },
+    // SC-17 fix: 'bodha_bundle_get' was never registered as an MCP tool (a planned rename
+    // that never shipped) — recovering via it 404'd exactly when data was withheld. The
+    // live, registered tool for the full multi-subsystem bundle is THIS tool itself,
+    // 'holistic_bundle_chart_facts' (registered below via registerHolisticBundleRetrievalTool).
+    recover: { instrument: 'holistic_bundle_chart_facts', hint: 'full multi-subsystem bundle — call again (this call trimmed bundle_entries to fit the MCP response budget).' },
   }
 }
 
