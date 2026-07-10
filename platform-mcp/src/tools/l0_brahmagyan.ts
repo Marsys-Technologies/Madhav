@@ -97,11 +97,24 @@ export function registerResolveEntityTool(server: McpServer): void {
 
 // ── 2. list_entities ──────────────────────────────────────────────────────────
 
-const ENTITY_CLASSES = ['graha', 'nakshatra', 'rashi', 'bhava', 'upagraha', 'yoga', 'karana'] as const
+// R-27 fix: brahma_ontology.entity_class actually stores 'planet'/'sign'/'house' (verified
+// against the l0_ontology.py seed source) — 'graha'/'rashi'/'bhava' are accepted here as
+// Sanskrit synonyms and normalized server-side (list_entities.ts's ENTITY_CLASS_ALIAS), never
+// silently matching zero rows. 'yoga'/'karana' have no dedicated top-level class; requesting
+// them now returns an explicit empty_reason instead of a silent empty array.
+const ENTITY_CLASSES = [
+  'graha', 'planet', 'nakshatra', 'rashi', 'sign', 'bhava', 'house', 'upagraha',
+  'dasha_system', 'domain', 'concept', 'karaka', 'aspect_type', 'remedy_type', 'school', 'text',
+  'yoga', 'karana',
+] as const
 
 const ListEntitiesInput = z.object({
   entity_class: z.enum(ENTITY_CLASSES).optional().describe(
-    'Optional: filter by entity class (graha, nakshatra, rashi, bhava, upagraha, yoga, karana)'
+    'Optional: filter by entity class. Accepts the stored vocabulary (planet, sign, house, ' +
+    'nakshatra, upagraha, dasha_system, domain, concept, karaka, aspect_type, remedy_type, ' +
+    'school, text) or the Sanskrit synonyms graha (→planet), rashi (→sign), bhava (→house). ' +
+    '"yoga"/"karana" are accepted but return an explicit empty_reason (no dedicated class exists ' +
+    'for them — see query_yoga_catalog for a yoga catalog instead).'
   ),
   limit: z.number().min(1).max(500).optional().default(100).describe(
     'Maximum results to return (default 100, max 500)'

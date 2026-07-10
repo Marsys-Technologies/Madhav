@@ -78,6 +78,11 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Minimum orb_strength threshold (0..1, default: 0).',
     },
+    domain: {
+      type: 'string',
+      description: 'Filter to activations whose signal (bodha_msr_signals.domains_affected_array) ' +
+        'contains this domain (e.g. "career", "wealth", "relationship", "health"). Optional.',
+    },
   },
 
   llm_hints: {
@@ -102,6 +107,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
     const signal_ids          = args['signal_ids'] as string[] | undefined
     const top_k               = Math.min(Number(args['top_k'] ?? 50), 500)
     const min_strength        = Number(args['min_activation_strength'] ?? 0)
+    const domain              = args['domain'] as string | undefined
 
     try {
       const actConds = ['chart_id = $1', 'ayanamsha_id = $2']
@@ -124,6 +130,12 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       if (min_strength > 0) {
         actConds.push(`orb_strength >= $${ap++}`)
         actParams.push(min_strength)
+      }
+      if (domain) {
+        actConds.push(
+          `EXISTS (SELECT 1 FROM bodha_msr_signals ms WHERE ms.signal_id = kala_activation.signal_id AND $${ap++} = ANY(ms.domains_affected_array))`
+        )
+        actParams.push(domain)
       }
       actParams.push(top_k)
       const topKPh = `$${ap++}`
@@ -180,7 +192,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           predicates,
           predicate_count:   predicates.length,
           signal_id_refs:    signalRefs,
-          filters: { date_from, date_to, signal_ids, top_k, min_strength },
+          filters: { date_from, date_to, signal_ids, top_k, min_strength, domain: domain ?? null },
           drill_next: [
             'marsys://tool/L3/query_convergence_windows',
             'marsys://tool/L3/query_life_arc',
