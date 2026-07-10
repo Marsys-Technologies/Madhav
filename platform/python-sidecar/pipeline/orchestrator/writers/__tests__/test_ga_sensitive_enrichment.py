@@ -94,12 +94,19 @@ def test_special_lagnas_vighati_is_floored():
         assert r.get("verification_pass_status") == "floored"
 
 
-def test_special_lagnas_others_two_pass_verified():
+def test_special_lagnas_others_documented_approximation():
+    # M-22/M-10 fix (R6-1f): HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA use Sun's
+    # within-sign offset as a time-since-sunrise proxy (this file's own
+    # "approximated from..." comments admit it) — not the classical
+    # elapsed-time derivation. These no longer claim "two_pass_verified"
+    # (no verifier ever cross-checked them); they are honestly demoted to
+    # "documented_approximation" (formulas.py VERIFICATION_RESCALE 0.60).
     rows = _build_special_lagnas_rows(
         ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
     non_vighati = [r for r in rows if r.get("fact_subject") != "VIGHATI_LAGNA"]
+    assert non_vighati, "expected HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA rows"
     for r in non_vighati:
-        assert r.get("verification_pass_status") == "two_pass_verified"
+        assert r.get("verification_pass_status") == "documented_approximation"
 
 
 def test_sphuta_completion_both_subjects():

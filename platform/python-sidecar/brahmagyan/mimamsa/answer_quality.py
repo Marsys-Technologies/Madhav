@@ -103,6 +103,23 @@ B11_HOLISTIC_TERMS = [
     "multi_school",
 ]
 
+# D-14 fix: real, detectable citation-marker patterns actually emitted in
+# served responses (per platform/src/lib/mcp/types.ts + ConsumeChatV2.tsx's
+# own citation-detection regex) — used by _compute_grounding_score below to
+# check whether a response is actually grounded in verifiable citations,
+# rather than whether generic domain-name keywords happen to appear in the
+# narrative text (the D-14 bug: two structurally identical queries against
+# different charts scored 0 vs 1 purely because chart-specific narrative
+# wording did or didn't contain the literal expected_domains substrings —
+# nothing to do with whether either response was actually grounded).
+GROUNDING_CITATION_PATTERNS = [
+    re.compile(r"SIG\.MSR\.\d{3,}"),           # MSR signal citation, e.g. SIG.MSR.234
+    re.compile(r"FORENSIC§[\w.]+"),            # FORENSIC anchor citation
+    re.compile(r"CVG\.\d+"),                   # Convergence reference
+    # chart_facts-style citation_ref: category.subject.key@chart=<uuid>
+    re.compile(r"[a-z_]+\.[A-Z0-9_]+\.[a-z_]+@chart=[0-9a-f-]{8,}"),
+]
+
 # Layer presence indicators in responses
 LAYER_INDICATORS: dict[str, list[str]] = {
     "L0": [
@@ -216,43 +233,57 @@ def _compute_grounding_score(
     expected_domains: list[str],
 ) -> float:
     """
-    Compute the fraction of expected_domains present in actual_response.
+    D-14 fix: this function previously computed the fraction of
+    `expected_domains` substrings that happened to appear in
+    `actual_response`'s free-text narrative — i.e. a second, redundant copy
+    of `_compute_layer_coverage`'s domain-keyword-matching logic, mislabeled
+    as "grounding". That is why the register found identical query shapes
+    against two different charts scoring grounding_score=0 and =1 with
+    "full citations present" on both: chart-specific narrative wording
+    (different planet/house names, different phrasing) either did or
+    didn't happen to contain the literal expected_domains strings — a
+    coincidence of prose, unrelated to whether the response was actually
+    grounded in real, checkable citations.
 
-    Domain matching is case-insensitive substring match. Each domain that
-    appears (in any part) in the actual_response counts as covered.
-    Result is clamped to [0.0, 1.0].
+    Real fix: grounding_score now measures whether the response contains
+    actual, detectable citation markers (GROUNDING_CITATION_PATTERNS above:
+    SIG.MSR.NNN signal refs, FORENSIC§ anchors, CVG.N convergence refs, or a
+    chart_facts-style citation_ref) — the platform's real, live citation
+    vocabulary (see ConsumeChatV2.tsx's SIG.MSR.NNN detection regex and
+    platform/src/lib/mcp/types.ts). A response with zero real citation
+    markers is genuinely ungrounded (0.0) regardless of whether it happens
+    to mention "MSR" or "FORENSIC" as bare English words. When citations
+    ARE present, the score reflects citation *density* relative to the
+    number of domains the response claims to cover — at least one distinct
+    citation per claimed domain is full credit; fewer is partial credit.
+    This keeps the [0.0, 1.0] contract and the same "no domains → 0.0"
+    convention (a QA pair with no expected_domains has nothing to ground
+    against) while fixing the actual measured signal.
 
     Args:
         actual_response: The response text to check.
-        expected_domains: List of domain strings to look for.
+        expected_domains: List of domain strings the response should cover
+            (used only to size the expected citation density, not for
+            keyword matching against the narrative — see above).
 
     Returns:
-        Float in [0.0, 1.0] — fraction of expected_domains found.
-        Returns 0.0 if expected_domains is empty.
+        Float in [0.0, 1.0] — citation-grounding density.
+        Returns 0.0 if expected_domains is empty, or if actual_response is
+        empty, or if actual_response contains zero real citation markers.
     """
     if not expected_domains:
         return 0.0
     if not actual_response.strip():
         return 0.0
 
-    lower_response = actual_response.lower()
-    matched = 0
-    for domain in expected_domains:
-        # Strip layer prefix for matching (e.g. "L2.bodha.signals" → check both
-        # "L2.bodha.signals" and "signals")
-        domain_lower = domain.lower()
-        # Try full domain string first
-        if domain_lower in lower_response:
-            matched += 1
-            continue
-        # Try just the final segment (e.g. "signals" from "L2.bodha.signals")
-        parts = domain.split(".")
-        if len(parts) > 1:
-            leaf = parts[-1].lower()
-            if len(leaf) >= 3 and leaf in lower_response:  # avoid false positives on short terms
-                matched += 1
+    distinct_citations: set[str] = set()
+    for pattern in GROUNDING_CITATION_PATTERNS:
+        distinct_citations.update(pattern.findall(actual_response))
 
-    score = matched / len(expected_domains)
+    if not distinct_citations:
+        return 0.0
+
+    score = len(distinct_citations) / max(1, len(expected_domains))
     return max(0.0, min(1.0, score))
 
 
