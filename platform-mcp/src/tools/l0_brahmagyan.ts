@@ -26,10 +26,23 @@ const PLATFORM_URL = process.env['PLATFORM_URL'] ?? 'http://localhost:3000'
 
 // ── Helper: platform API call ─────────────────────────────────────────────────
 
+// R6 0a-envauth (R-16/O-5): this helper sent only Content-Type — no auth headers
+// at all — while its siblings in this same file (resolve_entity, list_entities,
+// below) already carry the 3-header pattern (x-mcp-internal-token, x-mcp-user,
+// x-mcp-key-id) required by platform's service-to-service + principal auth gate.
+// asset_registry_all / asset_registry_l0 (the only two callers of platformGet)
+// were the R-16/O-5 401s on GET /api/cockpit/registry. Matched to the proven
+// working pattern below rather than inventing a new one.
 async function platformGet(path: string): Promise<unknown> {
   const url = `${PLATFORM_URL}${path}`
+  const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+      'x-mcp-user': 'mcp-internal',
+      'x-mcp-key-id': 'mcp-internal',
+    },
   })
   if (!res.ok) {
     throw new Error(`[l0_brahmagyan] platform GET ${path} → ${res.status}`)

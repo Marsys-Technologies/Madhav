@@ -73,6 +73,29 @@ WINDOW_END = datetime(2100, 12, 31, tzinfo=timezone.utc)
 CYCLE_DAYS_EXPECTED = 365.25 * 7.5  # ~2739.4 days
 CYCLE_DAYS_TOLERANCE = 600.0
 
+
+def _parse_birth_date_utc(birth_params: dict[str, Any] | None) -> datetime | None:
+    """D-2 clip (R6 0d-clips): native birth instant converted to UTC, for
+    comparison against cycle_end (also UTC). birth_params['datetime_iso'] is
+    LOCAL civil time (birth_params.py builds it via datetime.combine(birth_date,
+    birth_time) with no tz applied) — tz_offset_hours must be subtracted to get
+    the true UTC instant. Mirrors the parse pattern used by ph_nimitta.py /
+    ka_jivana_parva.py, but those only need date-granularity so they skip the
+    offset; here we compare against exact cycle_end timestamps so we apply it."""
+    if not isinstance(birth_params, dict):
+        return None
+    iso = birth_params.get("datetime_iso")
+    if not iso:
+        return None
+    try:
+        local_dt = datetime.fromisoformat(str(iso))
+    except ValueError:
+        return None
+    if local_dt.tzinfo is not None:
+        return local_dt.astimezone(timezone.utc)
+    offset_hours = birth_params.get("tz_offset_hours") or 0.0
+    return (local_dt - timedelta(hours=float(offset_hours))).replace(tzinfo=timezone.utc)
+
 # Canonical 5 ayanamshas (same as GA3 / GA4 / GA8)
 CANONICAL_AYANAMSHAS: list[str] = [
     "lahiri_chitrapaksha",
@@ -531,7 +554,31 @@ def build_sade_sati_cycles(
         })
         used_vis.add(id(vis_ev))
 
-    return cycles
+    # D-2 / V-13 dedup (R6 0d-clips): Saturn's retrograde dance at a sign boundary
+    # can produce multiple forward vishakha_entries that all resolve to the SAME
+    # downstream janma/anumukha/exit chain (a retrograde re-entry into vis_sign
+    # before Saturn finally settles forward). Each such "shadow" candidate was
+    # being emitted as its own cycle above, sharing an identical (janma_entry,
+    # anumukha_entry, cycle_end) triple with an earlier candidate — this is the
+    # true origin of the "pairwise duplicate" cycles in D-2/V-13 (same cycle_end,
+    # different cycle_start; two_pass_verify_cycles does not catch it because each
+    # shadow individually satisfies the ~7.5y duration invariant). Collapse to ONE
+    # cycle per distinct terminal chain, keeping the EARLIEST vishakha_entry — the
+    # classical Sade Sati onset is the FIRST ingress into the 12th-from-Moon sign
+    # (A9_SADE_SATI_SPEC_v1_0.md §0), even if Saturn later retrogrades and re-enters.
+    dedup_by_chain: dict[tuple, dict] = {}
+    for cy in cycles:
+        chain_key = (cy["janma_entry"], cy["anumukha_entry"], cy["cycle_end"])
+        prior = dedup_by_chain.get(chain_key)
+        if prior is None or cy["vishakha_entry"] < prior["vishakha_entry"]:
+            dedup_by_chain[chain_key] = cy
+
+    deduped_cycles = sorted(dedup_by_chain.values(), key=lambda c: c["vishakha_entry"])
+    for renumbered_idx, cy in enumerate(deduped_cycles, start=1):
+        cy["cycle_num"] = renumbered_idx
+        cy["cycle_id"] = f"CYCLE_{renumbered_idx}"
+
+    return deduped_cycles
 
 
 # ── Two-pass verification ────────────────────────────────────────────────────
@@ -1719,6 +1766,17 @@ def build_ga_sade_sati(
 
     owns_conn = conn is None
 
+    # D-2 clip (R6 0d-clips): birth_date drives the pre-birth cycle clip below.
+    # birth_params was accepted but never used prior to this fix.
+    birth_date = _parse_birth_date_utc(birth_params)
+    if birth_date is None:
+        logger.warning(
+            "[ga_sade_sati_writer] no birth_date resolved from birth_params for "
+            "chart_id=%s — pre-birth cycle clip DISABLED for this build (upstream "
+            "bug; cycles may include cycles that ended before the native's birth)",
+            chart_id,
+        )
+
     computed_at = datetime.now(timezone.utc).isoformat()
 
     summary: dict[str, Any] = {
@@ -1786,7 +1844,33 @@ def build_ga_sade_sati(
             # Build Sade Sati cycles for this Moon sign
             cycles = build_sade_sati_cycles(moon_sign, sign_changes)
             logger.info(
-                "[ga_sade_sati_writer] ayanamsha=%s: %d Sade Sati cycles detected",
+                "[ga_sade_sati_writer] ayanamsha=%s: %d Sade Sati cycles detected "
+                "(post-dedup, pre-birth-clip — build_sade_sati_cycles already "
+                "collapsed retrograde-shadow duplicates per the D-2/V-13 fix)",
+                ayanamsha_id, len(cycles),
+            )
+
+            # D-2 clip (R6 0d-clips): drop cycles that ended entirely before birth
+            # (WINDOW_START=1950 scans decades before most native births so the
+            # Saturn transit detector can see cycle context, but a cycle the native
+            # never lived through must not be served as one of their own Sade Sati
+            # periods). Renumber sequentially so CYCLE_N ids stay dense/ordered.
+            if birth_date is not None:
+                pre_clip_count = len(cycles)
+                cycles = [cy for cy in cycles if cy["cycle_end"] >= birth_date]
+                dropped = pre_clip_count - len(cycles)
+                if dropped:
+                    logger.info(
+                        "[ga_sade_sati_writer] ayanamsha=%s: T-9-class clip dropped "
+                        "%d pre-birth cycle(s) (cycle_end < birth=%s)",
+                        ayanamsha_id, dropped, birth_date,
+                    )
+                for renumbered_idx, cy in enumerate(cycles, start=1):
+                    cy["cycle_num"] = renumbered_idx
+                    cy["cycle_id"] = f"CYCLE_{renumbered_idx}"
+
+            logger.info(
+                "[ga_sade_sati_writer] ayanamsha=%s: %d Sade Sati cycles after dedup+clip",
                 ayanamsha_id, len(cycles),
             )
 

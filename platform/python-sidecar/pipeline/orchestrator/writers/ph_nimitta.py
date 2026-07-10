@@ -131,6 +131,17 @@ class PhNimittaWriter(WriterBase):
 
         logger.info("ph_nimitta: derived %d total anchors before insert", len(anchors))
 
+        # Step 4b (T-5, R6 0d-clips): reject anchors that predate birth or are stale.
+        # Root cause upstream (kala_convergence mode_c / L3 ka_sangam) computes some
+        # cycle windows off a mis-derived "birth_year" (MIN(start_date) from
+        # chart_dashas, which can be decades before actual birth per the balance-of-
+        # dasha convention — see ka_jivana_parva T-9 fix for the same root shape).
+        # This writer is the SPINE of L4 Phala and the last point before anchors
+        # become served predictions, so the gate belongs here regardless of the
+        # upstream cause: an anchor whose window_end predates birth describes an
+        # event that could not have happened to this native, full stop.
+        anchors = self._clip_and_gate_anchors(anchors, chart_id)
+
         # Step 5: SPINE-FIRST gate (D26) — verify ≥1 anchor with all axes present
         self._spine_gate(anchors)
 
@@ -644,6 +655,66 @@ class PhNimittaWriter(WriterBase):
             getattr(self, '_birth_date', None),
             at,
         )
+
+    def _clip_and_gate_anchors(self, anchors: list[AnchorRecord], chart_id: str) -> list[AnchorRecord]:
+        """
+        T-5 seal/build gate (R6 0d-clips): reject anchors whose window falls
+        outside the native's actual lived timeline.
+
+        Rules:
+          1. window_end < birth_date  → HARD REJECT for every horizon_tier. An
+             anchor entirely before birth cannot describe a lived event.
+          2. horizon_tier == 'near' AND window_end < today → HARD REJECT. A
+             "near"-tier anchor is by definition upcoming/current; one whose
+             window has already closed in the past is stale and mis-tiered
+             (should have been re-derived as 'lifetime'/historical upstream,
+             not served as a near-term prediction).
+
+        window_start is clipped up to birth_date (never dropped) when an
+        anchor legitimately straddles birth (window_start before, window_end
+        at/after birth) — the anchor is real, only its onset needs clamping.
+
+        birth_date may be None if birth_params/datetime_iso failed to resolve
+        upstream; in that case the gate is skipped entirely (logged) rather
+        than silently rejecting everything, matching the writer's existing
+        posture in _resolve_base_rate (missing birth_date → neutral fallback,
+        never a fabricated reject).
+        """
+        birth_date = getattr(self, '_birth_date', None)
+        if birth_date is None:
+            logger.warning(
+                "ph_nimitta: T-5 gate SKIPPED for chart_id=%s — no birth_date resolved "
+                "from birth_params (upstream bug); anchors served unclipped",
+                chart_id,
+            )
+            return anchors
+
+        today = date.today()
+        kept: list[AnchorRecord] = []
+        rejected_pre_birth = 0
+        rejected_stale_near = 0
+
+        for a in anchors:
+            if a.window_end is not None and a.window_end < birth_date:
+                rejected_pre_birth += 1
+                continue
+            if a.horizon_tier == 'near' and a.window_end is not None and a.window_end < today:
+                rejected_stale_near += 1
+                continue
+            # Clip a straddling window_start up to birth (never drop it).
+            if a.window_start is not None and a.window_start < birth_date:
+                a.window_start = birth_date
+            kept.append(a)
+
+        if rejected_pre_birth or rejected_stale_near:
+            logger.info(
+                "ph_nimitta: T-5 gate chart_id=%s — rejected %d pre-birth anchor(s) "
+                "(window_end < birth=%s), %d stale 'near'-tier anchor(s) "
+                "(window_end < today=%s); %d of %d anchors kept",
+                chart_id, rejected_pre_birth, birth_date, rejected_stale_near, today,
+                len(kept), len(anchors),
+            )
+        return kept
 
     def _spine_gate(self, anchors: list[AnchorRecord]) -> None:
         """
