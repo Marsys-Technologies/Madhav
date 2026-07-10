@@ -9,24 +9,33 @@ Per GA3 brief §6.2 + A3 §3:
     plus pinda_sodhita/bhinna/sarva per graha = 8×3 = 24 rows × 5 ayanamshas
   - Bhava bala: subscores + total per 12 houses
 
-TWO-PASS VERIFICATION MANDATORY for all strength categories (A3 §13).
-Pass 1: PyJHora computation.
-Pass 2: Algebraic invariants:
-  - Shadbala: sub-balas sum = total within ε=0.01 rupa
-  - Ashtakavarga: sarvashtakavarga = sum of 7 graha bindus per house
-  - Sum of all sarva bindus = 337 (classical Parashara constant)
-  - Naisargika bala is a fixed table (no computation) — classical_match
+Pass 1: real PyJHora computation (jhora.horoscope.chart.strength.shad_bala,
+jhora.horoscope.chart.charts.vimsopaka_*_of_planets, jhora.horoscope.chart.
+ashtakavarga.get_ashtaka_varga/sodhaya_pindas — see pyjhora_adapter/strength.py).
+Pass 2: sanity checks on that real output (NOT a second independent
+recomputation — PyJHora IS the computation; these are bounds/consistency
+guards, not a "verification" claim of independent provenance):
+  - Shadbala: magnitude sub-balas (sthana/dig/kala/cheshta/naisargika) >= 0;
+    drik bala MAY be signed (net malefic aspect can drive it negative per
+    BPHS Ch.26 — this is classically correct); total > 0; sum(sub-balas) ==
+    total within tolerance (catches rounding drift / key-set mismatches).
+  - Ashtakavarga: sarvashtakavarga = sum of 7 graha bindus per house; sum of
+    all sarva bindus = 337 (classical Parashara constant, verified directly
+    from PyJHora's const.ashtaka_varga_dict-driven binna computation).
 
 On divergence > tolerance: mark 'divergent_flagged', write CONDUCTOR_HALT_LOG, halt.
 
 FORENSIC gate is inherited from ga_positions (positions must pass first).
 For strength, FORENSIC is re-checked on the position subset to verify engine state.
 
-PyJHora strength availability note:
-  PyJHora's jhora.horoscope.chart.strength module provides shadbala.
-  If the module is unavailable, this writer falls back to classical formula
-  reconstruction from positions (the algebraic derivation path).
-  In all cases two_pass_verified is set by checking algebraic invariants.
+R6 1a-strength fix (M-1/M-2/M-3, see 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER):
+  Shadbala, Vimshopaka Bala, and Ashtakavarga shodhana are now delegated to
+  PyJHora's real classical implementations via pyjhora_adapter/strength.py —
+  they are NO LONGER hand-rolled heuristics. Rahu/Ketu have no classical
+  shadbala under strict Parashara tradition; their sthana (positional dignity)
+  and drik (aspects received) are computed as a labeled `computed_extension`
+  from the same PyJHora-verified D1 positions (dig/kala/cheshta/naisargika are
+  0.0/not_defined_for_nodes for nodes, per tradition).
 """
 from __future__ import annotations
 
@@ -37,6 +46,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from pyjhora_adapter.compute import compute_chart
+from pyjhora_adapter import strength as pyjhora_strength
 from pyjhora_adapter.version import ENGINE_VERSION
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -202,60 +212,74 @@ def _compute_drik_bala(target_graha: str, target_house: int, grahas: list[dict])
     return max(0.0, min(1.0, 0.5 + net))
 
 
-# ── Shadbala derivation from positions ───────────────────────────────────────
-# When PyJHora's strength module is not available, we derive from positions.
-# This is a first-principles classical reconstruction for the two-pass invariant.
+# ── Shadbala: delegated to PyJHora ────────────────────────────────────────────
+# M-1 fix (see MARSYS_DEFECT_GAP_REGISTER): this used to be a hand-rolled
+# 0-1 six-bucket heuristic. It now calls jhora.horoscope.chart.strength.
+# shad_bala directly via pyjhora_adapter.strength.compute_shadbala.
 
 def _derive_shadbala_from_positions(
     chart_output: dict[str, Any],
     ayanamsha_id: str,
-    birth_hour: float | None = None,
+    *,
+    jd_ut: float,
+    lat: float = 0.0,
+    lon: float = 0.0,
+    tz: float = 0.0,
 ) -> dict[str, dict[str, float]]:
     """
-    Derive shadbala sub-balas from positions using classical formulas.
+    Real BPHS shadbala for the 7 classical grahas, delegated to PyJHora.
     Returns {graha_name: {sthana, dig, kala, cheshta, naisargika, drik, total}}.
 
-    Classical sub-balas:
-      - Sthana bala: positional strength (uchcha/neecha/own-sign)
-      - Dig bala: directional strength (based on house position)
-      - Kala bala: temporal strength (day/night, paksha, etc.)
-      - Cheshta bala: motional strength (retrograde = strong for superior planets)
-      - Naisargika bala: natural strength (fixed table; 0 for Rahu/Ketu)
-      - Drik bala: aspectual strength (derived from aspect matrix)
-
-    Rahu/Ketu are included with naisargika=0, dig=0, kala=0, cheshta=0 per
-    Parashara strict tradition (naisargika_na=True flag set on their entries).
+    Rahu/Ketu have NO classical shadbala under strict Parashara tradition
+    (naisargika_na=True flag set on their entries, school='parashara_strict').
+    Their sthana (positional dignity) and drik (aspects received) ARE
+    computable and are derived here as a labeled `computed_extension` from the
+    already PyJHora-verified D1 positions in `chart_output` (BPHS dignity
+    table for sthana; Parasari aspect matrix for drik, via
+    _compute_drik_bala). dig/kala/cheshta/naisargika are 0.0 for nodes
+    (not_defined_for_nodes) — there is no BPHS formula for these for Rahu/Ketu.
 
     Args:
-        chart_output: PyJHora chart output dict with grahas/panchanga.
+        chart_output: PyJHora chart output dict with grahas/panchanga (used
+            only for the Rahu/Ketu computed_extension fallback below — the
+            classical 7 are computed directly from jd_ut/place by PyJHora).
         ayanamsha_id: Ayanamsha identifier string.
-        birth_hour: Local birth hour as float (e.g. 10.72 = 10h 43m IST).
-                    When provided, overrides panchanga is_daytime lookup.
+        jd_ut: Julian Day (local-wallclock convention, matching
+            pyjhora_adapter.compute.compute_chart) for the classical-7
+            PyJHora shadbala call. Required — no silent heuristic fallback.
+        lat, lon, tz: Birth place, required by PyJHora's shad_bala.
     """
     _NODAL_GRAHAS = frozenset({"Rahu", "Ketu"})
-    _KNOWN_GRAHAS = frozenset(NAISARGIKA_BALA.keys()) | _NODAL_GRAHAS
-
     grahas = chart_output.get("grahas", [])
-    panchanga = chart_output.get("panchanga", {})
 
     result: dict[str, dict[str, float]] = {}
 
+    # ── Classical 7: real PyJHora shadbala (M-1 fix) ─────────────────────
+    pj_shadbala = pyjhora_strength.compute_shadbala(jd_ut, ayanamsha_id, lat=lat, lon=lon, tz=tz)
+    for name, sb in pj_shadbala.items():
+        result[name] = {
+            "sthana": sb["sthana"],
+            "dig": sb["dig"],
+            "kala": sb["kala"],
+            "cheshta": sb["cheshta"],
+            "naisargika": sb["naisargika"],
+            "drik": sb["drik"],
+            "total": sb["total"],
+        }
+
+    # ── Nodes: no classical shadbala. sthana + drik are computed_extension. ─
     for g in grahas:
         name = g["name"]
-        if name not in _KNOWN_GRAHAS:
+        if name not in _NODAL_GRAHAS:
             continue
 
-        is_node = name in _NODAL_GRAHAS
-
-        sign_id = int(g.get("sign_id", 1)) - 1  # 0-based
         house = int(g.get("house", 1))
-        is_retro = bool(g.get("retrograde", False))
         dignity = g.get("dignity_status", "neutral")
 
-        # ── Sthana bala (positional) ──────────────────────────────────────
-        # Exaltation=1.0, Own=0.75, Mooltrikona=0.625, Friendly=0.5, Neutral=0.375,
-        # Enemy=0.25, Debilitation=0.0
-        # Nodes: sign placement still matters for some schools — keep it.
+        # computed_extension: BPHS dignity table (Exaltation=1.0, Own=0.75,
+        # Neutral=0.375, Debilitation=0.0) — not from PyJHora's shad_bala
+        # (which excludes nodes entirely), but a real classical rule, not a
+        # fabricated value.
         sthana_map = {
             "exalted": 1.0,
             "own_sign": 0.75,
@@ -264,120 +288,65 @@ def _derive_shadbala_from_positions(
         }
         sthana = sthana_map.get(dignity, 0.375)
 
-        # ── Dig bala (directional) ────────────────────────────────────────
-        # Nodes have no classical directional strength.
-        if is_node:
-            dig = 0.0
-        else:
-            # Sun/Mars strong in 10th; Moon/Venus in 4th; Jupiter/Mercury in 1st; Saturn in 7th
-            dig_strong_house = {
-                "Sun": 10, "Mars": 10,
-                "Moon": 4, "Venus": 4,
-                "Jupiter": 1, "Mercury": 1,
-                "Saturn": 7,
-            }
-            strong_h = dig_strong_house.get(name, 1)
-            # Linear interpolation from strong (1.0) to weak (0.0)
-            dist = abs(house - strong_h)
-            if dist > 6:
-                dist = 12 - dist
-            dig = 1.0 - (dist / 6.0)
-
-        # ── Kala bala (temporal) ─────────────────────────────────────────
-        # Nodes have no classical temporal strength.
-        if is_node:
-            kala = 0.0
-        else:
-            # Simplified: use vara (day of week) + paksha (lunar phase)
-            # Day-time strong: Sun, Jupiter, Saturn; Night-time strong: Moon, Mars, Venus; Mercury both
-            vara_idx = panchanga.get("vara", 0)  # 0=Sunday..6=Saturday
-            # tithi_id is the numeric index (1..30); "tithi" key is the name string
-            tithi_idx = int(panchanga.get("tithi_id", panchanga.get("tithi", 1)) or 1)
-
-            # Determine day/night from birth_hour if supplied; otherwise from panchanga.
-            if birth_hour is not None:
-                is_daytime = 6.0 <= birth_hour < 18.0
-            else:
-                panchanga_daytime = panchanga.get("is_daytime")
-                if panchanga_daytime is not None:
-                    is_daytime = bool(panchanga_daytime)
-                else:
-                    is_daytime = True  # conservative fallback: daytime (caller should pass birth_hour)
-
-            is_shukla = (1 <= tithi_idx <= 15)
-
-            kala_day_strong = {"Sun", "Jupiter", "Saturn"}
-            kala_night_strong = {"Moon", "Mars", "Venus"}
-            if name in kala_day_strong:
-                kala = 0.75 if is_daytime else 0.375
-            elif name in kala_night_strong:
-                kala = 0.75 if not is_daytime else 0.375
-            else:  # Mercury
-                kala = 0.625
-            # Paksha bonus (tithi_idx may come as int or str from panchanga)
-            if name in {"Moon", "Jupiter"} and is_shukla:
-                kala = min(kala + 0.125, 1.0)
-
-        # ── Cheshta bala (motional) ──────────────────────────────────────
-        # Nodes have no classical motional strength.
-        if is_node:
-            cheshta = 0.0
-        else:
-            # Retrograde outer planets (Mars/Jupiter/Saturn) get high cheshta bala
-            # Direct inner planets get moderate
-            outer_planets = {"Mars", "Jupiter", "Saturn"}
-            if name in outer_planets and is_retro:
-                cheshta = 1.0
-            elif name in outer_planets:
-                cheshta = 0.5
-            else:
-                cheshta = 0.5  # Sun/Moon don't retrograde; Mercury/Venus moderate
-
-        # ── Naisargika bala (fixed) ──────────────────────────────────────
-        # Nodes have no naisargika bala per Parashara strict.
-        naisargika = 0.0 if is_node else NAISARGIKA_BALA.get(name, 0.5)
-
-        # ── Drik bala (aspectual) ────────────────────────────────────────
-        # Computed from D1 Parashari aspect matrix; nodes receive aspects too.
+        # computed_extension: Parasari aspect matrix (benefic/malefic net),
+        # same formula used for the classical 7's fallback context.
         drik = _compute_drik_bala(name, house, grahas)
 
-        total = sthana + dig + kala + cheshta + naisargika + drik
+        total = sthana + drik  # dig/kala/cheshta/naisargika are 0 for nodes
 
-        entry: dict[str, Any] = {
+        result[name] = {
             "sthana": round(sthana, 4),
-            "dig": round(dig, 4),
-            "kala": round(kala, 4),
-            "cheshta": round(cheshta, 4),
-            "naisargika": round(naisargika, 4),
+            "dig": 0.0,
+            "kala": 0.0,
+            "cheshta": 0.0,
+            "naisargika": 0.0,
             "drik": round(drik, 4),
             "total": round(total, 4),
+            "naisargika_na": True,
+            "school": "parashara_strict",
         }
-        if is_node:
-            entry["naisargika_na"] = True
-            entry["school"] = "parashara_strict"
-
-        result[name] = entry
 
     return result
 
 
-def _derive_ishta_kashta(shadbala: dict[str, dict[str, float]]) -> dict[str, dict[str, float]]:
+def _derive_ishta_kashta(
+    shadbala: dict[str, dict[str, float]],
+    jd_ut: float,
+    ayanamsha_id: str,
+    *,
+    lat: float = 0.0,
+    lon: float = 0.0,
+    tz: float = 0.0,
+) -> dict[str, dict[str, float]]:
     """
-    Derive ishta phala and kashta phala from shadbala sub-balas.
-    Ishta phala = sqrt(uchcha_bala × cheshta_bala) (classical formula).
-    Kashta phala = sqrt((1 - uchcha_bala) × (1 - cheshta_bala)).
-    For simplicity using sthana_bala as proxy for uchcha_bala.
+    computed_extension: Ishta Phala = sqrt(Uchcha Bala x Cheshta Bala);
+    Kashta Phala = sqrt((60 - Uchcha Bala) x (60 - Cheshta Bala)) — real BPHS
+    formula (both operands in virupas, 0..60).
+
+    R6 1a-strength fix: previously used `sthana_bala` (the FULL 5-component
+    Sthana Bala, up to ~300 virupas) as a proxy for Uchcha Bala (one of
+    Sthana's 5 sub-components, bounded 0..60) — that scale mismatch caused a
+    `math domain error` the moment real (non-degenerate) shadbala values were
+    substituted in. Uchcha Bala is now the real per-planet value from
+    pyjhora_adapter.strength.compute_uchcha_bala (jhora's own
+    strength._uchcha_bala), and Cheshta Bala is the real value already
+    computed in `shadbala` (re-expressed in virupas via *60).
+
+    Nodes (Rahu/Ketu) have no classical Uchcha/Cheshta Bala; ishta/kashta are
+    not emitted for them (unchanged from before this fix — the writer's row
+    builder only calls this for the 7 classical grahas).
     """
-    result = {}
     import math
-    for graha, sb in shadbala.items():
-        uchcha = sb.get("sthana", 0.375)
-        cheshta = sb.get("cheshta", 0.5)
-        # Scale to 0-60 range (classical scale)
-        uchcha_60 = uchcha * 60.0
-        cheshta_60 = cheshta * 60.0
-        ishta = math.sqrt(uchcha_60 * cheshta_60)
-        kashta = math.sqrt((60.0 - uchcha_60) * (60.0 - cheshta_60))
+
+    uchcha_virupas = pyjhora_strength.compute_uchcha_bala(jd_ut, ayanamsha_id, lat=lat, lon=lon, tz=tz)
+
+    result = {}
+    for graha in pyjhora_strength.CLASSICAL_PLANETS:
+        sb = shadbala.get(graha, {})
+        uchcha_60 = uchcha_virupas.get(graha, 0.0)
+        cheshta_60 = sb.get("cheshta", 0.0) * 60.0
+        ishta = math.sqrt(max(0.0, uchcha_60) * max(0.0, cheshta_60))
+        kashta = math.sqrt(max(0.0, 60.0 - uchcha_60) * max(0.0, 60.0 - cheshta_60))
         result[graha] = {
             "ishta": round(ishta, 4),
             "kashta": round(kashta, 4),
@@ -385,154 +354,56 @@ def _derive_ishta_kashta(shadbala: dict[str, dict[str, float]]) -> dict[str, dic
     return result
 
 
-def _derive_vimsopaka(shadbala: dict[str, dict[str, float]]) -> dict[str, dict[str, float]]:
+def _derive_vimsopaka(
+    jd_ut: float,
+    ayanamsha_id: str,
+    *,
+    lat: float = 0.0,
+    lon: float = 0.0,
+    tz: float = 0.0,
+) -> dict[str, dict[str, float]]:
     """
-    Derive vimsopaka bala from sthana+dig+naisargika composite.
-    Shodasavarga = most comprehensive; others are subsets.
-    Approximation: scale total to /20 with classical weights.
+    Real BPHS Vimshopaka Bala for the 7 classical grahas (M-2 fix — see
+    MARSYS_DEFECT_GAP_REGISTER). Delegated to PyJHora
+    (jhora.horoscope.chart.charts.vimsopaka_*_of_planets via
+    pyjhora_adapter.strength.compute_vimsopaka), computed from each planet's
+    real per-varga dignity against the classical amsa-weight tables — NOT
+    `min(shadbala_total/6*20, 20)`, which consumed zero varga dignity data.
     """
-    result = {}
-    for graha, sb in shadbala.items():
-        total = sb.get("total", 2.0)
-        # Full shadbala max ≈ 6 rupa; scale to 20
-        vims_score = min(total / 6.0 * 20.0, 20.0)
-        result[graha] = {
-            "shadvarga": round(vims_score * 0.85, 4),
-            "saptavarga": round(vims_score * 0.90, 4),
-            "dasavarga": round(vims_score * 0.95, 4),
-            "shodasavarga": round(vims_score, 4),
-        }
-    return result
+    pj_vims = pyjhora_strength.compute_vimsopaka(jd_ut, ayanamsha_id, lat=lat, lon=lon, tz=tz)
+    return {
+        name: pj_vims[name]
+        for name in pyjhora_strength.CLASSICAL_PLANETS
+        if name in pj_vims
+    }
 
 
 # ── Ashtakavarga derivation from positions ───────────────────────────────────
 
 def _derive_ashtakavarga(
-    chart_output: dict[str, Any],
-) -> dict[str, list[int]]:
+    jd_ut: float,
+    ayanamsha_id: str,
+    *,
+    lat: float = 0.0,
+    lon: float = 0.0,
+    tz: float = 0.0,
+) -> dict[str, Any]:
     """
-    Derive ashtakavarga bindus from positions using classical method.
-    Returns {graha_name: [h1_bindus, h2_bindus, ..., h12_bindus]}.
-    Also computes sarvashtakavarga (SARVA key).
+    Real BPHS Ashtakavarga — raw bindus AND full shodhana (M-3 fix, see
+    MARSYS_DEFECT_GAP_REGISTER). Delegated to PyJHora
+    (jhora.horoscope.chart.ashtakavarga.get_ashtaka_varga + sodhaya_pindas via
+    pyjhora_adapter.strength.compute_ashtakavarga_shodhana) — trikona shodhana
+    and ekadhipatya shodhana are both real (previously: `sodhita ≡ raw`,
+    trikona skipped entirely per the writer's own prior comment; ekadhipatya
+    was faked as `bindus - 1`; no gunakara multiplication was applied at all).
 
-    Classical ashtakavarga: each of 7 grahas + Lagna contributes 1 bindu
-    to each of 12 houses based on their relative positions.
-
-    The classical benefic-house tables per planet are encoded below.
-    Reference: Brihat Parashara Hora Shastra, Ashtakavarga Prakarana.
+    Returns {"bindus": {graha_name: [12 raw bindus]} (+ "SARVA": [12 sums],
+    verified to sum to 337 — the classical Parashara constant), "pinda":
+    {graha_name: {"raasi": int, "graha": int, "sodhya": int}}}.
     """
-    grahas = chart_output.get("grahas", [])
-    ascendant = chart_output.get("ascendant", {})
-
-    # Map graha name → sign_id (1-based)
-    planet_signs: dict[str, int] = {}
-    for g in grahas:
-        planet_signs[g["name"]] = int(g.get("sign_id", 1))
-    planet_signs["Lagna"] = int(ascendant.get("sign_id", 1))
-
-    # Classical benefic houses (1-based, relative to each planet/Lagna's sign).
-    # Source: BPHS Ashtakavarga Prakarana classical tables.
-    # Each entry: {planet_whose_bav_we_compute: {contributor: [benefic_houses_1based]}}
-    # Simplified: using the standard 7-graha benefic house pattern.
-
-    # For Sun's BAV: Sun contributes from its position + Lagna, Moon, Mercury, Saturn positions
-    # Full implementation below using relative house arithmetic.
-
-    BENEFIC_HOUSES: dict[str, dict[str, list[int]]] = {
-        "Sun": {
-            "Sun":     [1, 2, 4, 7, 8, 9, 10, 11],
-            "Moon":    [3, 6, 10, 11],
-            "Mars":    [1, 2, 4, 7, 8, 9, 10, 11],
-            "Mercury": [3, 5, 6, 9, 10, 11, 12],
-            "Jupiter": [5, 6, 9, 11],
-            "Venus":   [6, 7, 12],
-            "Saturn":  [1, 2, 4, 7, 8, 9, 10, 11],
-            "Lagna":   [3, 4, 6, 10, 11, 12],
-        },
-        "Moon": {
-            "Sun":     [3, 6, 7, 8, 10, 11],
-            "Moon":    [1, 3, 6, 7, 10, 11],
-            "Mars":    [2, 3, 5, 6, 9, 10, 11],
-            "Mercury": [1, 3, 4, 5, 7, 8, 10, 11],
-            "Jupiter": [1, 4, 7, 8, 10, 11, 12],
-            "Venus":   [3, 4, 5, 7, 9, 10, 11],
-            "Saturn":  [3, 5, 6, 11],
-            "Lagna":   [3, 6, 10, 11],
-        },
-        "Mars": {
-            "Sun":     [3, 5, 6, 10, 11],
-            "Moon":    [3, 6, 11],
-            "Mars":    [1, 2, 4, 7, 8, 10, 11],
-            "Mercury": [3, 5, 6, 11],
-            "Jupiter": [6, 10, 11, 12],
-            "Venus":   [6, 8, 11, 12],
-            "Saturn":  [1, 4, 7, 8, 9, 10, 11],
-            "Lagna":   [1, 3, 6, 10, 11],
-        },
-        "Mercury": {
-            "Sun":     [5, 6, 9, 11, 12],
-            "Moon":    [2, 4, 6, 8, 10, 11],
-            "Mars":    [1, 2, 4, 7, 8, 9, 10, 11],
-            "Mercury": [1, 3, 5, 6, 9, 10, 11, 12],
-            "Jupiter": [6, 8, 11, 12],
-            "Venus":   [1, 2, 3, 4, 5, 8, 9, 11],
-            "Saturn":  [1, 2, 4, 7, 8, 9, 10, 11],
-            "Lagna":   [1, 2, 4, 6, 8, 10, 11],
-        },
-        "Jupiter": {
-            "Sun":     [1, 2, 3, 4, 7, 8, 10, 11],
-            "Moon":    [2, 5, 7, 9, 11],
-            "Mars":    [1, 2, 4, 7, 8, 10, 11],
-            "Mercury": [1, 2, 4, 5, 6, 9, 10, 11],
-            "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11],
-            "Venus":   [2, 5, 6, 9, 10, 11],
-            "Saturn":  [3, 5, 6, 12],
-            "Lagna":   [1, 2, 4, 5, 6, 7, 9, 10, 11],
-        },
-        "Venus": {
-            "Sun":     [8, 11, 12],
-            "Moon":    [1, 2, 3, 4, 5, 8, 9, 11, 12],
-            "Mars":    [3, 4, 6, 9, 11, 12],
-            "Mercury": [3, 5, 6, 9, 11],
-            "Jupiter": [5, 8, 9, 10, 11],
-            "Venus":   [1, 2, 3, 4, 5, 8, 9, 10, 11],
-            "Saturn":  [3, 4, 5, 8, 9, 10, 11],
-            "Lagna":   [1, 2, 3, 4, 5, 8, 9, 11],
-        },
-        "Saturn": {
-            "Sun":     [1, 2, 4, 7, 8, 10, 11],
-            "Moon":    [3, 6, 11],
-            "Mars":    [3, 5, 6, 10, 11, 12],
-            "Mercury": [6, 8, 9, 10, 11, 12],
-            "Jupiter": [5, 6, 11, 12],
-            "Venus":   [6, 11, 12],
-            "Saturn":  [3, 5, 6, 11],
-            "Lagna":   [1, 3, 4, 6, 10, 11],
-        },
-    }
-
-    result: dict[str, list[int]] = {}
-    sarva = [0] * 12
-
-    for planet_name, contributor_map in BENEFIC_HOUSES.items():
-        bindus = [0] * 12  # 0-indexed (house 1..12 → index 0..11)
-
-        for contributor, benefic_rel_houses in contributor_map.items():
-            contrib_sign = planet_signs.get(contributor)
-            if contrib_sign is None:
-                continue
-
-            # Benefic houses are RELATIVE to the contributor's position
-            for rel_h in benefic_rel_houses:
-                # Absolute house = (contributor_sign + rel_h - 2) % 12, 1-based
-                abs_sign_0based = (contrib_sign - 1 + rel_h - 1) % 12
-                bindus[abs_sign_0based] += 1
-
-        result[planet_name] = bindus
-        sarva = [sarva[i] + bindus[i] for i in range(12)]
-
-    result["SARVA"] = sarva
-    return result
+    return pyjhora_strength.compute_ashtakavarga_shodhana(
+        jd_ut, ayanamsha_id, lat=lat, lon=lon, tz=tz,
+    )
 
 
 def _derive_bhava_bala(
@@ -600,28 +471,47 @@ class TwoPassVerificationError(RuntimeError):
     pass
 
 
-def _verify_shadbala(shadbala: dict[str, dict[str, float]], tolerance: float = 0.01) -> str:
+def _verify_shadbala(shadbala: dict[str, dict[str, float]], tolerance: float = 0.02) -> str:
     """
-    Verify shadbala invariants:
-    1. Every sub-bala is non-negative (sanity: no negative strength).
-    2. total > 0.0 for any real chart (a graha with all-zero sub-balas is a data bug).
-    3. sum(sub-balas) ≈ total within tolerance — catches key-set mismatches or
+    Sanity-check PyJHora's real shadbala output (NOT a second independent
+    recomputation — PyJHora IS pass 1; this is bounds/consistency guarding,
+    per the R6 1a-strength fix — see MARSYS_DEFECT_GAP_REGISTER M-1):
+    1. Magnitude sub-balas (sthana/dig/kala/cheshta/naisargika) must be
+       non-negative — these are magnitude-only per BPHS.
+    2. drik bala MAY be negative — real, signed, per BPHS Ch.26 Parasari
+       graha drishti (net malefic aspect can dominate). Only finiteness is
+       checked for drik, not sign.
+    3. total > 0.0 for any real chart (a graha with all-zero magnitude
+       sub-balas and a hugely negative drik would be a data bug).
+    4. sum(sub-balas) ≈ total within tolerance — catches key-set mismatches or
        rounding drift between individual sub-bala rounding and stored total.
 
-    NOTE: `total` is stored as round(sum, 4) and sub-balas are each round(x, 4),
-    so the sum-vs-total check can catch rounding drift (up to ~0.0001 * 6 keys)
-    but does NOT constitute an independent recomputation from a second code path.
-    The primary guards here are the non-negativity and non-zero total checks.
+    NOTE: `total` is stored as round(sum, 4) and sub-balas are each round(x, 4)
+    after a /60 virupa->rupa conversion, so the sum-vs-total check tolerates a
+    slightly larger drift than pure 4-decimal rounding would (up to ~0.02 rupa
+    across 6 keys) but does NOT constitute an independent recomputation from a
+    second code path. The primary guards here are the non-negativity (for
+    magnitude sub-balas) and non-zero total checks.
     """
-    sub_bala_keys = ["sthana", "dig", "kala", "cheshta", "naisargika", "drik"]
+    _MAGNITUDE_KEYS = ["sthana", "dig", "kala", "cheshta", "naisargika"]
+    _SIGNED_KEYS = ["drik"]
+    sub_bala_keys = _MAGNITUDE_KEYS + _SIGNED_KEYS
     failures = []
     for graha, sb in shadbala.items():
-        # Guard 1: all sub-balas must be non-negative
-        for key in sub_bala_keys:
+        # Guard 1: magnitude sub-balas must be non-negative
+        for key in _MAGNITUDE_KEYS:
             val = sb.get(key, 0.0)
             if val < 0.0:
                 failures.append(
                     f"{graha}.{key}={val:.6f} is negative (expected >= 0.0)"
+                )
+
+        # Guard 1b: drik (signed) must at least be finite
+        for key in _SIGNED_KEYS:
+            val = sb.get(key, 0.0)
+            if val != val or abs(val) > 10.0:  # NaN check + gross-outlier bound
+                failures.append(
+                    f"{graha}.{key}={val:.6f} out of plausible drik-bala bounds"
                 )
 
         # Guard 2: total must be positive for a real chart row
@@ -738,7 +628,7 @@ def _build_shadbala_rows(
                 "unit": "rupa",
                 "citation_ref": cref,
                 "citation_human": chum,
-                "source_calculation": f"python_heuristic_approximation/ga_strength_writer/_derive_shadbala_from_positions/{eng_ver}",
+                "source_calculation": f"pyjhora_adapter.strength.compute_shadbala/{eng_ver}",
                 "verification_pass_status": verif,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -793,7 +683,7 @@ def _build_shadbala_rows(
                                                chart_id, ayanamsha_id, eng_ver),
                 "citation_human": _citation_human_strength(
                     ik_cat, subject, "score", val, ayanamsha_id),
-                "source_calculation": f"python_heuristic_approximation.ishta_kashta/{eng_ver}",
+                "source_calculation": f"computed_extension.ishta_kashta_bphs_sqrt_uchcha_cheshta/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -825,7 +715,7 @@ def _build_shadbala_rows(
                                                chart_id, ayanamsha_id, eng_ver),
                 "citation_human": _citation_human_strength(
                     cat, subject, "score", val, ayanamsha_id),
-                "source_calculation": f"python_heuristic_approximation.vimsopaka/{eng_ver}",
+                "source_calculation": f"pyjhora_adapter.strength.compute_vimsopaka/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -870,7 +760,7 @@ def _build_shadbala_rows(
                 "unit": "rupa",
                 "citation_ref": cref,
                 "citation_human": chum,
-                "source_calculation": f"python_heuristic_approximation/ga_strength_writer/_derive_shadbala_from_positions/{eng_ver}",
+                "source_calculation": f"computed_extension.nodal_dignity_and_drik_bphs/{eng_ver}",
                 "verification_pass_status": node_verif,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -881,9 +771,30 @@ def _build_shadbala_rows(
 
 def _build_ashtakavarga_rows(
     bav: dict[str, list[int]],
+    pinda: dict[str, dict[str, int]],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str, verif_status: str,
 ) -> list[dict[str, Any]]:
+    """
+    M-3 fix (see MARSYS_DEFECT_GAP_REGISTER): `pinda` now comes from PyJHora's
+    real BPHS shodhana (trikona sodhana + ekadhipatya sodhana + rasimana/
+    grahamana gunakara multiplication), NOT `sodhita ≡ raw bindus` /
+    `bhinna = bindus - 1`.
+
+    Category mapping (existing chart_facts schema, values now real):
+      - ashtakavarga_pinda_sodhita -> pinda[graha]["sodhya"] (raasi_pinda +
+        graha_pinda, the final trikona+ekadhipatya-reduced, gunakara-
+        multiplied total — the classical "Sodhya Pinda").
+      - ashtakavarga_pinda_bhinna  -> pinda[graha]["graha"] (the graha-pinda
+        sub-component, derived from the ekadhipatya-sodhita BAV via the
+        grahamana multiplier table — distinct from the raasi-pinda
+        sub-component, both real BPHS quantities).
+      - ashtakavarga_pinda_sarva   -> sum(raw bindus) per graha (unchanged;
+        this was never broken — no shodhana applies to sarva pinda).
+    SARVA (the aggregate row) has no classical sodhya/graha pinda of its own;
+    we report the sum across the 7 grahas' real values for that row so no
+    rows go null, clearly documented here (not a fabricated per-graha value).
+    """
     rows = []
 
     planet_subjects = {
@@ -891,10 +802,11 @@ def _build_ashtakavarga_rows(
         "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "SARVA": "SARVA",
     }
 
+    sarva_sodhya_sum = sum(p["sodhya"] for p in pinda.values())
+    sarva_graha_sum = sum(p["graha"] for p in pinda.values())
+
     for planet_name, subject in planet_subjects.items():
         bindus_list = bav.get(planet_name, [0]*12)
-        pinda_sodhita = 0
-        pinda_bhinna = 0
 
         for h_idx, bindus in enumerate(bindus_list):
             house_num = h_idx + 1
@@ -922,16 +834,21 @@ def _build_ashtakavarga_rows(
                 "unit": "bindu",
                 "citation_ref": cref,
                 "citation_human": chum,
-                "source_calculation": f"python_heuristic_approximation.ashtakavarga_classical/{eng_ver}",
+                "source_calculation": f"pyjhora_adapter.strength.compute_ashtakavarga_shodhana/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
             })
-            # Accumulate for pinda
-            pinda_sodhita += bindus  # sodhita = after trikona shodhana (simplified: same)
-            pinda_bhinna += max(0, bindus - 1)  # bhinna = after ekadhipathya shodhana
 
         # Pinda totals for this graha
+        if planet_name == "SARVA":
+            pinda_sodhita = sarva_sodhya_sum
+            pinda_bhinna = sarva_graha_sum
+        else:
+            p = pinda.get(planet_name, {"sodhya": 0, "graha": 0})
+            pinda_sodhita = p["sodhya"]
+            pinda_bhinna = p["graha"]
+
         for pinda_cat, pinda_key, pinda_val in [
             ("ashtakavarga_pinda_sodhita", "total", pinda_sodhita),
             ("ashtakavarga_pinda_bhinna", "total", pinda_bhinna),
@@ -956,7 +873,7 @@ def _build_ashtakavarga_rows(
                 "unit": "bindu",
                 "citation_ref": cref2,
                 "citation_human": chum2,
-                "source_calculation": f"python_heuristic_approximation.ashtakavarga_classical/{eng_ver}",
+                "source_calculation": f"pyjhora_adapter.strength.compute_ashtakavarga_shodhana/{eng_ver}",
                 "verification_pass_status": verif_status,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
@@ -1577,20 +1494,24 @@ def build_ga_strength(
                 forensic_gate(chart_output, canonical_id)
             summary["forensic_pass"] = True
 
-            # Derive birth_hour from bp so kala-bala is not hardcoded to daytime.
-            from datetime import datetime as _dt_cls
-            _raw_dt = bp.get("datetime_iso", "")
-            try:
-                _parsed = _dt_cls.fromisoformat(_raw_dt)
-                _birth_hour: float | None = _parsed.hour + _parsed.minute / 60.0 + _parsed.second / 3600.0
-            except (ValueError, TypeError):
-                _birth_hour = None
+            # jd_ut + place feed PyJHora's real shadbala/vimsopaka/ashtakavarga
+            # directly (M-1/M-2/M-3 fix) — jd_ut comes straight from this same
+            # compute_chart() call's provenance so it is bit-for-bit the jd
+            # already verified against FORENSIC for this ayanamsha/iteration.
+            _jd_ut = float(chart_output["provenance"]["jd_ut"])
+            _lat = float(bp["latitude_deg"])
+            _lon = float(bp["longitude_deg"])
+            _tz = float(bp["tz_offset_hours"])
 
             # ── Derive strength values ──────────────────────────────────
-            shadbala = _derive_shadbala_from_positions(chart_output, canonical_id, birth_hour=_birth_hour)
-            ishta_kashta = _derive_ishta_kashta(shadbala)
-            vimsopaka = _derive_vimsopaka(shadbala)
-            bav = _derive_ashtakavarga(chart_output)
+            shadbala = _derive_shadbala_from_positions(
+                chart_output, canonical_id, jd_ut=_jd_ut, lat=_lat, lon=_lon, tz=_tz,
+            )
+            ishta_kashta = _derive_ishta_kashta(shadbala, _jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz)
+            vimsopaka = _derive_vimsopaka(_jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz)
+            av_result = _derive_ashtakavarga(_jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz)
+            bav = av_result["bindus"]
+            av_pinda = av_result["pinda"]
             bhava_bala = _derive_bhava_bala(chart_output, shadbala)
 
             # ── Two-pass verification ───────────────────────────────────
@@ -1618,7 +1539,7 @@ def build_ga_strength(
                 computed_at, eng_ver, verif_status,
             ))
             all_rows.extend(_build_ashtakavarga_rows(
-                bav, chart_id, build_id, canonical_id,
+                bav, av_pinda, chart_id, build_id, canonical_id,
                 computed_at, eng_ver, verif_status,
             ))
             all_rows.extend(_build_bhava_bala_rows(
