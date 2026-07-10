@@ -100,8 +100,45 @@ function dualOutput(data: unknown) {
   return { structuredContent, content: [{ type: 'text' as const, text: json }] }
 }
 
+// ── R-5 fix: typed error envelope, never leak raw SQL/driver detail ──────────
+//
+// Denial ≠ empty ≠ internal error (register R-5): a caught error's `String(err)` may be a
+// deliberately-authored, safe validation/denial message ("chart_id is required",
+// "ENTITLEMENT_DENIED: ...") OR a raw driver/SQL error ('column "salience_score" does not
+// exist', a stack frame, a connection string). The former is safe to echo verbatim; the
+// latter must NEVER reach the client — it leaks internal schema/implementation detail and
+// gives callers no stable, typed thing to branch on. classifyErrorMessage() distinguishes
+// the three classes; errorOutput() logs the raw detail server-side only when it collapses
+// an internal-looking message to the generic safe one.
+type McpErrorClass = 'validation' | 'permission_denied' | 'internal_error'
+
+function classifyErrorMessage(message: string): { error_class: McpErrorClass; safe_message: string } {
+  if (/ENTITLEMENT_DENIED|AUTHZ_DENIED|lacks .* access/i.test(message)) {
+    return { error_class: 'permission_denied', safe_message: message }
+  }
+  if (/ is required($|[^a-zA-Z])|^either `|^Unknown facet|^Unsupported /i.test(message)) {
+    return { error_class: 'validation', safe_message: message }
+  }
+  const looksInternal =
+    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
+  if (looksInternal) {
+    return {
+      error_class: 'internal_error',
+      safe_message: 'An internal error occurred while serving this request. The specific ' +
+        'cause has been logged server-side and is not exposed to the client (never leak raw ' +
+        'SQL/driver detail — R-5).',
+    }
+  }
+  return { error_class: 'internal_error', safe_message: message }
+}
+
 function errorOutput(tool: string, message: string, extra?: Record<string, unknown>) {
-  return { ...dualOutput({ ok: false, error: message, tool, ...extra }), isError: true as const }
+  const { error_class, safe_message } = classifyErrorMessage(message)
+  if (error_class === 'internal_error' && safe_message !== message) {
+    console.error(`[${tool}] internal_error (raw, server-only, never sent to client): ${message}`)
+  }
+  const data = { ok: false, error: { class: error_class, message: safe_message }, tool, ...extra }
+  return { ...dualOutput(data), isError: true as const }
 }
 
 export function registerP1ReferenceTools(server: McpServer, principal: Principal): void {

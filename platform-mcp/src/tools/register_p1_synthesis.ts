@@ -110,8 +110,45 @@ function dualOutput(data: unknown) {
   return { structuredContent, content: [{ type: 'text' as const, text: json }] }
 }
 
+// ── R-5 fix: typed error envelope, never leak raw SQL/driver detail ──────────
+//
+// Denial ≠ empty ≠ internal error (register R-5): a caught error's `String(err)` may be a
+// deliberately-authored, safe validation/denial message ("chart_id is required",
+// "ENTITLEMENT_DENIED: ...") OR a raw driver/SQL error ('column "salience_score" does not
+// exist', a stack frame, a connection string). The former is safe to echo verbatim; the
+// latter must NEVER reach the client — it leaks internal schema/implementation detail and
+// gives callers no stable, typed thing to branch on. classifyErrorMessage() distinguishes
+// the three classes; errorOutput() logs the raw detail server-side only when it collapses
+// an internal-looking message to the generic safe one.
+type McpErrorClass = 'validation' | 'permission_denied' | 'internal_error'
+
+function classifyErrorMessage(message: string): { error_class: McpErrorClass; safe_message: string } {
+  if (/ENTITLEMENT_DENIED|AUTHZ_DENIED|lacks .* access/i.test(message)) {
+    return { error_class: 'permission_denied', safe_message: message }
+  }
+  if (/ is required($|[^a-zA-Z])|^either `|^Unknown facet|^Unsupported /i.test(message)) {
+    return { error_class: 'validation', safe_message: message }
+  }
+  const looksInternal =
+    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
+  if (looksInternal) {
+    return {
+      error_class: 'internal_error',
+      safe_message: 'An internal error occurred while serving this request. The specific ' +
+        'cause has been logged server-side and is not exposed to the client (never leak raw ' +
+        'SQL/driver detail — R-5).',
+    }
+  }
+  return { error_class: 'internal_error', safe_message: message }
+}
+
 function errorOutput(tool: string, message: string, extra?: Record<string, unknown>) {
-  return { ...dualOutput({ ok: false, error: message, tool, ...extra }), isError: true as const }
+  const { error_class, safe_message } = classifyErrorMessage(message)
+  if (error_class === 'internal_error' && safe_message !== message) {
+    console.error(`[${tool}] internal_error (raw, server-only, never sent to client): ${message}`)
+  }
+  const data = { ok: false, error: { class: error_class, message: safe_message }, tool, ...extra }
+  return { ...dualOutput(data), isError: true as const }
 }
 
 // ── synth_chart_brief_get narration helpers ──────────────────────────────
@@ -164,6 +201,28 @@ function parseStatement(statement: unknown): { name: string | null; status: stri
   const m = /^(.*?):\s*(promised|denied|conditional)\s*\(grade\s*([\d.]+)\/10\)/i.exec(s)
   if (!m) return { name: null, status: null, grade: null }
   return { name: m[1] ?? null, status: (m[2] ?? '').toLowerCase(), grade: m[3] ? Number(m[3]) : null }
+}
+
+// D-12 fix: "Verdict-vocabulary mapping + template pass before native-facing" — L5's raw
+// `statement` text can itself carry MORE THAN ONE status keyword (register example:
+// "Outcome: denied (grade 5.0/10). Conditional" — 'denied' AND 'Conditional' both present
+// in the same statement). Serving the raw text/anchor status verbatim in that case presents
+// an internally-contradictory verdict as settled. This never invents a NEW status — it only
+// detects when the raw text disagrees with itself and resolves to the more conservative
+// reading (never claim a delivered promise you cannot back): denied > conditional > promised.
+const STATUS_PRECEDENCE = ['denied', 'conditional', 'promised'] as const
+
+function detectStatusVocabularyConflict(statement: unknown): { conflicting: boolean; keywordsFound: string[] } {
+  const s = typeof statement === 'string' ? statement : ''
+  const found = new Set<string>()
+  for (const m of s.matchAll(/\b(promised|denied|conditional)\b/gi)) {
+    found.add((m[1] ?? '').toLowerCase())
+  }
+  return { conflicting: found.size > 1, keywordsFound: Array.from(found) }
+}
+
+function resolveConflictingStatus(keywordsFound: string[]): string {
+  return STATUS_PRECEDENCE.find(s => keywordsFound.includes(s)) ?? keywordsFound[0] ?? 'unresolved'
 }
 
 function buildCoverageReceipt(params: {
@@ -239,21 +298,48 @@ function citeEvidence(pc: ProvenanceChain | null): string | null {
 function buildRankedThemes(
   verdicts: Record<string, unknown>[],
   audience: 'native' | 'third_party',
-): { strengths: string[]; weaknesses: string[]; open_questions: string[] } {
+): { strengths: string[]; weaknesses: string[]; open_questions: string[]; verdict_quality_flags: string[] } {
   const strengths: string[] = []
   const weaknesses: string[] = []
   const openQuestions: string[] = []
+  const verdictQualityFlags: string[] = []
 
   for (const row of verdicts) {
     const pc = getProvenanceChain(row)
     const parsed = parseStatement(row['statement'])
     const name = pc?.event_class_name ?? parsed.name ?? String(row['insight_id'] ?? 'signal')
-    const status = pc?.activation_state ?? parsed.status
+    let status = pc?.activation_state ?? parsed.status
     const grade = typeof pc?.grade === 'number' ? pc.grade : parsed.grade
     const domain = pc?.domain ?? row['domain'] ?? null
     const citation = citeEvidence(pc)
     const hedge = hedgeForGrade(row['evidence_grade'])
     const gradeStr = grade != null ? `${grade.toFixed(1)}/10` : 'ungraded'
+
+    // D-12 fix (part 1): raw statement carrying multiple, mutually-exclusive status keywords
+    // (e.g. "denied ... Conditional") is an internally-contradictory verdict, not a settled
+    // one — resolve to the conservative reading and flag it rather than serve the raw
+    // (unresolved) mismatch as if it were a clean status.
+    const { conflicting, keywordsFound } = detectStatusVocabularyConflict(row['statement'])
+    if (conflicting) {
+      const resolved = resolveConflictingStatus(keywordsFound)
+      verdictQualityFlags.push(
+        `${name}: raw statement carries conflicting status keywords (${keywordsFound.join(', ')}) — ` +
+        `resolved to "${resolved}" (most conservative reading; D-12).`
+      )
+      status = resolved
+    }
+
+    // D-12 fix (part 2): a grade with ZERO supporting rows is not the same claim as a
+    // grade backed by evidence (R-21 principle applied here to a numeric grade rather than
+    // a ✓ mark) — never present n_support=0 grades with unqualified confidence.
+    const nSupport = typeof row['n_support'] === 'number' ? row['n_support'] as number : null
+    const zeroSupport = nSupport === 0
+    if (zeroSupport) {
+      verdictQualityFlags.push(
+        `${name}: grade ${gradeStr} carries n_support=0 (zero backing evidence rows) — ` +
+        `treat as unverified/provisional, not a confirmed grade.`
+      )
+    }
 
     let sentence: string
     if (audience === 'third_party') {
@@ -265,8 +351,10 @@ function buildRankedThemes(
     }
     if (citation) sentence += ` (${citation})`
     if (hedge) sentence += ` [${hedge}]`
+    if (conflicting) sentence += ' [CONTRADICTORY RAW STATEMENT — status resolved conservatively; see verdict_quality_flags]'
+    if (zeroSupport) sentence += ' [UNVERIFIED — n_support=0]'
 
-    if (status === 'promised' && (grade == null || grade >= 6)) {
+    if (status === 'promised' && !zeroSupport && (grade == null || grade >= 6)) {
       strengths.push(sentence)
     } else if (status === 'denied') {
       weaknesses.push(sentence)
@@ -275,7 +363,7 @@ function buildRankedThemes(
     }
   }
 
-  return { strengths, weaknesses, open_questions: openQuestions }
+  return { strengths, weaknesses, open_questions: openQuestions, verdict_quality_flags: verdictQualityFlags }
 }
 
 // Drop redundant/empty scaffolding from a raw insight row before it goes into

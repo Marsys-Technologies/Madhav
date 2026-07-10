@@ -127,8 +127,45 @@ function dualOutput(data: unknown) {
   return { structuredContent, content: [{ type: 'text' as const, text: json }] }
 }
 
+// ── R-5 fix: typed error envelope, never leak raw SQL/driver detail ──────────
+//
+// Denial ≠ empty ≠ internal error (register R-5): a caught error's `String(err)` may be a
+// deliberately-authored, safe validation/denial message ("chart_id is required",
+// "ENTITLEMENT_DENIED: ...") OR a raw driver/SQL error ('column "salience_score" does not
+// exist', a stack frame, a connection string). The former is safe to echo verbatim; the
+// latter must NEVER reach the client — it leaks internal schema/implementation detail and
+// gives callers no stable, typed thing to branch on. classifyErrorMessage() distinguishes
+// the three classes; errorOutput() logs the raw detail server-side only when it collapses
+// an internal-looking message to the generic safe one.
+type McpErrorClass = 'validation' | 'permission_denied' | 'internal_error'
+
+function classifyErrorMessage(message: string): { error_class: McpErrorClass; safe_message: string } {
+  if (/ENTITLEMENT_DENIED|AUTHZ_DENIED|lacks .* access/i.test(message)) {
+    return { error_class: 'permission_denied', safe_message: message }
+  }
+  if (/ is required($|[^a-zA-Z])|^either `|^Unknown facet|^Unsupported /i.test(message)) {
+    return { error_class: 'validation', safe_message: message }
+  }
+  const looksInternal =
+    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
+  if (looksInternal) {
+    return {
+      error_class: 'internal_error',
+      safe_message: 'An internal error occurred while serving this request. The specific ' +
+        'cause has been logged server-side and is not exposed to the client (never leak raw ' +
+        'SQL/driver detail — R-5).',
+    }
+  }
+  return { error_class: 'internal_error', safe_message: message }
+}
+
 function errorOutput(tool: string, message: string, extra?: Record<string, unknown>) {
-  return { ...dualOutput({ ok: false, error: message, tool, ...extra }), isError: true as const }
+  const { error_class, safe_message } = classifyErrorMessage(message)
+  if (error_class === 'internal_error' && safe_message !== message) {
+    console.error(`[${tool}] internal_error (raw, server-only, never sent to client): ${message}`)
+  }
+  const data = { ok: false, error: { class: error_class, message: safe_message }, tool, ...extra }
+  return { ...dualOutput(data), isError: true as const }
 }
 
 // Ayanamsha alias normalization (F-006/F-011/F-031)
@@ -334,7 +371,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         if (rows.length === 0) judgment_flags.push('zero_rows_returned')
 
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
-          { instrument: 'query_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha.', pointer_type: 'opposing_yoga' },
+          { instrument: 'get_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
         ]
 
         let verdict: unknown = {
@@ -407,7 +444,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
   server.tool(
     'ganita_condition_get',
     'Retrieve planetary condition data for a chart (L1 Gaṇita). ' +
-    'Three facets: dignity (exaltation/debilitation/own-sign/friend/enemy + neecha-bhanga/vargottama), ' +
+    'Three facets: dignity (exaltation/debilitation/own-sign/friend/enemy + vargottama; NOTE: ' +
+    'neecha-bhanga/debility-cancellation is NOT computed anywhere in this build — see ' +
+    'MARSYS_DEFECT_GAP_REGISTER Y-3 — this facet does not detect or report it despite the ' +
+    'classical name appearing in dignity theory), ' +
     'avasthas (Baladi/Jagradadi/Deeptadi state classifications), ' +
     'karakas (Chara Karakas AK→DK via Jaimini degree + Sthira Karakas). ' +
     'Default facet: dignity. Use to assess the intrinsic capability and vitality of each planet.',
@@ -510,9 +550,13 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
   server.tool(
     'ganita_yogas_get',
     'Retrieve Yoga and Dosha detections for a chart (L1 Gaṇita). ' +
-    'Covers all classical yoga types: Raja Yogas, Dhana Yogas, Pancha Mahapurusha (Ruchaka/Bhadra/' +
-    'Hamsa/Malavya/Shasha), Viparita Raja, Neecha Bhanga, and Parivartana Yogas; ' +
-    'plus doshas: Mangal Dosha, Kemadruma, Grahan Yoga, Shrapit, Shakata. ' +
+    'Covers classical yoga types actually evaluated in this build: Pancha Mahapurusha (Ruchaka/' +
+    'Bhadra/Hamsa/Malavya/Shasha) and Parivartana Yogas; plus doshas: Mangal Dosha, Kemadruma, ' +
+    'Grahan Yoga, Shrapit, Shakata. HONEST GAP (see MARSYS_DEFECT_GAP_REGISTER §1): Viparita Raja, ' +
+    'Neecha Bhanga (debility-cancellation), Dhana Yoga, and the house-lord Raja Yoga family are ' +
+    'NOT evaluated by any live path in this build (skip-listed or dead legacy code) — they will ' +
+    'never fire from this tool regardless of chart data; do not infer their absence/presence from ' +
+    'a missing/present row here. ' +
     'Returns yoga_name, constituent planets, house conditions, and activation_flag. ' +
     'Use with L2 get_signals for cross-validated signal coverage. ' +
     'response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope: ' +
@@ -613,7 +657,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
         // pre-existing {instrument, hint} shape.
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
-          { instrument: 'query_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha.', pointer_type: 'opposing_yoga' },
+          { instrument: 'get_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
           { instrument: 'mimamsa_insight_get', hint: 'calibrated_outlook / load_bearing insight units built on top of these firings.', pointer_type: 'other' },
         ]
 
