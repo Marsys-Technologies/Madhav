@@ -282,7 +282,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
 
       if (confirmationStatus === 'denied') {
         drill_pointers.push({
-          instrument: 'get_divisionals', hint: `Full ${operativeVarga} placements for every graha — this call only checked bhāveśa/kāraka dignity_state.`,
+          instrument: 'ganita_chart_facts_get', hint: `divisional_chart=${operativeVarga}: full ${operativeVarga} placements for every graha — this call only checked bhāveśa/kāraka dignity_state. (SC-18: was 'get_divisionals', a non-existent MCP tool name.)`,
           pointer_type: 'confirm_in_varga', pact_stage: 'confirmation',
         })
         return {
@@ -397,6 +397,32 @@ export const pactQueryCapability: CapabilityDescriptor = {
         instrument: 'query_planet_transit', hint: 'Full transit series across the activation window (this call fetched only the single as_of_date snapshot).',
         pointer_type: 'transit_gate', pact_stage: 'trigger',
       })
+
+      // R-22 fix: TRIGGER 'unreachable' means the ephemeris sidecar could not be reached or
+      // returned no rows for this window — an INFRASTRUCTURE failure, not a genuine four-stage
+      // confirmation. Reporting `pact_status: 'chain_complete'` here was false: it told the
+      // caller all four classical stages were checked and passed when TRIGGER was never
+      // actually evaluated. `chain_incomplete_infra` distinguishes "we tried all four stages
+      // but the last one failed for infra reasons" from the genuine `chain_complete` (all four
+      // stages ran AND the transit gate data was actually fetched).
+      if (triggerStatus === 'unreachable') {
+        drill_pointers.push({
+          instrument: 'pact_query', hint: 'Re-run once the ephemeris sidecar is reachable — TRIGGER could not be evaluated this call (infra failure, not a classical denial).',
+          pointer_type: 'transit_gate', pact_stage: 'trigger',
+        })
+        return {
+          content: {
+            chart_id, ayanamsha_id, as_of_date, about,
+            pact_status: 'chain_incomplete_infra',
+            stages,
+            judgment_flags: [...judgment_flags, 'PACT chain reached TRIGGER but the ephemeris sidecar was unreachable/empty — the chain is NOT complete despite all four stages being attempted (infra gap, not a classical denial).'],
+            drill_pointers,
+            resolution_chains: jq['resolution_chains'],
+            fact_id_refs: Array.from(fact_ids),
+          },
+          is_error: false,
+        }
+      }
 
       return {
         content: {

@@ -163,7 +163,7 @@ describe('pact_query — Stage 3 ACTIVATION: pending vs. denied vs. active', () 
 })
 
 describe('pact_query — all four stages complete', () => {
-  it('active-now dasha reaches TRIGGER and reports chain_complete, honestly noting the tropical/sidereal gap when the sidecar is unreachable', async () => {
+  it('active-now dasha reaches TRIGGER but reports chain_incomplete_infra (R-22) when the sidecar is unreachable — never chain_complete for an unreached TRIGGER', async () => {
     mockJudgmentHandler.mockResolvedValue({
       is_error: false,
       content: judgmentContent({
@@ -181,12 +181,40 @@ describe('pact_query — all four stages complete', () => {
 
     const result = await pactQueryCapability.handler({ chart_id: CHART_ID, domain: 'marriage', as_of_date: '2026-07-08' }, undefined)
     const content = result.content as Record<string, unknown>
-    expect(content['pact_status']).toBe('chain_complete')
+    // R-22: TRIGGER was attempted but the sidecar was unreachable — this is an INFRA gap,
+    // not a passed chain. pact_status must say so, not "chain_complete" (which previously
+    // fired here regardless of whether TRIGGER data was ever actually fetched).
+    expect(content['pact_status']).toBe('chain_incomplete_infra')
     const stages = content['stages'] as Array<Record<string, unknown>>
     expect(stages.map(s => s['stage'])).toEqual(['PROMISE', 'CONFIRMATION', 'ACTIVATION', 'TRIGGER'])
     expect(stages[2]!['status']).toBe('active_now')
     expect(stages[3]!['status']).toBe('unreachable')
     expect(String(stages[3]!['reason'])).toMatch(/honest gap, not fabricated/)
+  })
+
+  it('reports chain_complete only when TRIGGER data was actually fetched', async () => {
+    mockJudgmentHandler.mockResolvedValue({
+      is_error: false,
+      content: judgmentContent({
+        checklist: {
+          bhavesha_condition: { from_lagna: { graha: 'Venus' } },
+          timing_hooks: {
+            current: [{ lord_graha: 'Venus', level_n: 1, start_date: '2020-01-01', end_date: '2040-01-01' }],
+            mahadasha_windows_by_graha: { Venus: [{ start_date: '2020-01-01', end_date: '2040-01-01' }] },
+          },
+        },
+      }),
+    })
+    mockQuery.mockResolvedValue({ rows: [{ fact_id: 'df-4', fact_value_text: 'exalted' }] })
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, status: 200, json: async () => ({ rows: [{ longitude: 123.45 }] }),
+    })))
+
+    const result = await pactQueryCapability.handler({ chart_id: CHART_ID, domain: 'marriage', as_of_date: '2026-07-08' }, undefined)
+    const content = result.content as Record<string, unknown>
+    expect(content['pact_status']).toBe('chain_complete')
+    const stages = content['stages'] as Array<Record<string, unknown>>
+    expect(stages[3]!['status']).toBe('gate_data_fetched')
   })
 })
 
