@@ -1785,3 +1785,681 @@ expected untracked docs (no lane-worktree residue).
 **§4 and §5 are both COMPLETE.** Pausing here for explicit go-ahead before §6 (the actual live
 `execute_run` rebuild, canary-first on Abhinandan `1c826d5a`) — this is the first hard-to-reverse,
 production-data-mutating step in the entire session.
+
+## Pre-rebuild docs checkpoint (PR #536) — merged, main+prod resynced (2026-07-10)
+
+Native flagged a suspected concurrent-writer race on this very ledger (mistaking this session's own
+recent edits for a separate "R6 conductor" session) and separately asked to commit the 10
+uncommitted working-tree files before §6. Investigated first: confirmed no other process/worktree
+was touching the repo (`lsof` on the ledger empty, `git worktree list` showed only this session's
+main worktree, no stray locks besides the ordinary transient `.git/objects/maintenance.lock`) — the
+"5-minutes-ago" edit was this session's own, made in this same conversation. Clarified this to the
+native rather than silently deferring to the peer-style framing.
+
+**Committed 6 of the 10 files** via the standard worktree→branch→PR→CI→merge discipline (not a
+direct push to main, for consistency + Governance Gates coverage on the new canonical-artifact
+frontmatter): `R6_RUN_LEDGER_v1_0.md`, `REBUILD_SESSION_PLAN_v1_0.md`,
+`DISCOVERY_ENGINE_ACCURACY_TEST_v1_0.md`, `GOLDEN_SIGNALS_482012f1_v1_0.yaml`,
+`TOTAL_AUDIT_PROTOCOL_v1_0.md`, `briefs/CLAUDECODE_BRIEF_R6_TOTAL_ELEVATION_v1_0.md`. PR #536,
+commit `ceb2e493` → squash-merged as `f969ac12`. All CI green (drift_detector + schema_validator
+passed clean on the new docs' frontmatter). Merge-base ancestry confirmed. Worktree/branch cleaned
+up. Local `main` fast-forwarded (byte-identical `cmp` check on the 6 pre-existing local copies
+before removing them, to rule out any silent divergence, then a clean fast-forward pull).
+
+**Deliberately excluded the 4 `accuracy/*.json` root files** from this commit — they pre-date this
+session (dated 2026-07-09), are MCPT v3.3 golden-fixture accuracy runs (27/27 categories passed,
+one per git SHA: `52c409bc`/`6db1415b`/`87feb280`/`a4029231`), and violate `ROOT_FILE_POLICY §2`'s
+root allow-list (the real canonical location for this harness is `platform-mcp/test/accuracy/`).
+Committing them as-is would have baked a policy violation into history. **Awaiting the native's
+explicit decision**: delete / move to `platform-mcp/test/accuracy/` / leave alone.
+
+**Deploy verification**: post-merge CI (`f969ac12`) chain-triggered `Deploy to Cloud Run`.
+`amjis-mcp`/`amjis-sidecar` correctly skipped (path-gated on `platform-mcp/**`/`platform/**`,
+absent from this docs-only diff) — confirmed unchanged (`amjis-mcp-00420-cxp`,
+`amjis-sidecar-00845-wz7`). `amjis-web` did NOT skip (its gate is evidently broader) and produced a
+genuine new revision `amjis-web-00938-z7l` — functionally a no-op (identical source) but confirmed
+healthy, 100% traffic, and the baseline lineage pin in `REBUILD_SESSION_PLAN_v1_0.md §1.4` has been
+refreshed to reflect it honestly rather than left stale.
+
+**Main and prod are now fully clean and in sync.** Zero uncommitted governance docs remain. Ready
+to proceed to §6 pending final native go-ahead and disposition of the 4 accuracy JSON files.
+
+## Native mandate: PF-1/PF-2/PF-3 exact-match gate + guarded rebuild via Nirmāṇa UI (2026-07-10)
+
+Native issued a stricter execution mandate: bank the lesson "a `\copy` exit code is never a
+verified snapshot, only an independent row-count is" as a standing gate; close PF-1 with an
+EXACT-match manifest (zero exceptions); confirm PF-2 (restore rehearsal); state PF-3 (sequencing:
+clean-baseline vs fixes-baked); then trigger the rebuild via the Nirmāṇa UI (not scripted SQL),
+canary-first on Abhinandan, standing guardian over the full duration (no orchestrator watchdog
+substitute — I am it), with explicit HALT conditions and no further check-ins until halt / the
+Abhinandan gate stack completes / session close.
+
+### STEP 1 — PF-1 exact-match manifest: CLOSED
+
+Re-copied the 3 tables that silently truncated on first attempt (`bodha_msr_signals`,
+`bodha_signal_embeddings`, `bodha_question_lenses`) with a 15-min timeout — server-side `COPY n`
+now reports 133326/133326/120, matching live counts exactly. **Re-verified via a method immune to
+both silent truncation AND the earlier `wc -l` embedded-newline over-count artifact**: parsed every
+one of the 76 real snapshot CSVs (excluding the `rehearsal_pre.csv` PF-2 artifact, not in §4 scope)
+with Python's `csv` module (RFC4180-compliant, correctly handles quoted multi-line fields —
+`csv.field_size_limit(sys.maxsize)` raised for the widest JSON/vector columns) rather than trusting
+either the copy command's exit code or a naive line count. Full manifest (table → CSV-verified
+row count), every one matching the live count captured during the snapshot window with **zero
+exceptions**:
+
+```
+asset_throughput                        152          bodha_rm_dosha_remedy_bundles     0
+bodha_anomalies                       6,047          bodha_rm_pattern_remedies          0
+bodha_cdlm_cells                        140          bodha_rm_remedy_prescriptions    270
+bodha_cdlm_chart_summary                 10          bodha_rm_resonances               90
+bodha_cdlm_domain_rollups                 0          bodha_signal_embeddings      133,326
+bodha_cdlm_evolution_gradients             0          bodha_triangulation              190
+bodha_cdlm_pattern_clusters                0          build_runs                       251
+bodha_cgm_chart_topology_summary          0          chart_dashas               1,097,929
+bodha_cgm_edges                       1,082          chart_divisionals             41,754
+bodha_cgm_motifs                          6          chart_facts                  272,483
+bodha_cgm_nodes                         280          kala_activation               67,128
+bodha_cgm_paths                          90          kala_activation_predicates   133,326
+bodha_cgm_sub_graphs                      0          kala_avadhi                    3,394
+bodha_chart_gestalt                      10          kala_bhavishya                   100
+bodha_contradictions                      5          kala_convergence              17,819
+bodha_convergence                        60          kala_convergence_staging          0
+bodha_discoveries                     3,321          kala_darshana                    750
+bodha_msr_signals                   133,326          kala_jivana_parva                540
+bodha_pratijna                          220          kala_obstruction                 581
+bodha_question_lenses                   120          kala_taranga                159,456
+bodha_rm_chart_summary                    0          mimamsa_adjudication_log           0
+mimamsa_anchor_adjustment                800          mimamsa_qa_eval                  156
+mimamsa_attribution                   10,625          mimamsa_reliability                7
+mimamsa_calibration                      425          mimamsa_resonance_feedback         0
+mimamsa_calibration_snapshot               0          mimamsa_signal_adjustment    134,249
+mimamsa_convergence_adjustment         1,000          mimamsa_snapshot_cosign            0
+mimamsa_discoveries                       50          phala_anchors                    500
+mimamsa_event_provenance                  57          phala_mitigation               1,184
+mimamsa_export_log                         0          phala_muhurta                     40
+mimamsa_fact_adjustment              121,015          phala_phaladesa                   14
+mimamsa_insight_embeddings                 0          phala_pramana                    500
+mimamsa_insight_units                    115          phala_rectification              370
+mimamsa_journal                            0          phala_rectification_best           2
+mimamsa_load_bearing                       9          phala_sankrama                 2,220
+mimamsa_manifestation_grammar              40          phala_sodhana                    112
+mimamsa_manifestation_sets                800          phala_suddha_sodhana             500
+mimamsa_multipliers                        18
+mimamsa_pool_contributions                  0
+mimamsa_predictions                       800
+```
+76/76 tables EXACT match. **Gate: GREEN.**
+
+**Standing lesson banked as instructed**: a `\copy` exit code is never a verified snapshot —
+only an independent row-count against a method immune to both silent-truncation AND text-line
+miscounting (embedded newlines in JSON/vector columns) proves it. Applied going forward: every
+future snapshot in this campaign gets the same CSV-module verification pass before being trusted.
+
+**Important scope note discovered mid-verification**: AFTER PF-1 was captured and independently
+verified, the native performed an out-of-band L1-L5 clear for both charts (outside this session,
+via the cockpit UI), which is exactly why a subsequent live-count comparison would show
+"mismatches" against PF-1 — not because the snapshot degraded, but because the live baseline was
+deliberately superseded by an intentional wipe. PF-1 remains a valid, byte-accurate rollback
+reference to the pre-wipe state; it is not re-compared against "live now" since live-now is
+supposed to differ by design.
+
+### STEP 2 — PF-2 restore rehearsal: CONFIRMED (already done, re-cited here)
+
+Rehearsed BEFORE any real snapshot dump: synthetic 3-row scratch table (`_rehearsal_scratch`, 2
+rows scoped to fake chart-id `scratch-chart-A`, 1 untouched control row `scratch-chart-B`) taken
+through the exact `\copy TO csv` → `DELETE ... WHERE chart_id IN (...)` → `\copy FROM csv` →
+`COMMIT` sequence. Verified: after the round-trip, `scratch-chart-A`'s 2 rows were restored
+byte-identical to their pre-delete values, `scratch-chart-B`'s control row was never touched
+throughout, scratch table dropped cleanly. This proved the restore mechanism BEFORE it was ever
+needed for real data — the bodha_*/kala_*/phala_*/mimamsa_* cascade tables the L1→L5 rebuild is
+about to mutate have no other rollback path, so this rehearsal (not the PF-1 snapshot alone) is
+what makes PF-1 a trustworthy rollback, not just a data export.
+
+### STEP 3 — Sequencing: **(b) FIXES-BAKED rebuild, deployed pipeline-job image CONFIRMED CURRENT**
+
+`brahma-build-pipeline-job`'s deployed image tag: `5fe0f91cc93c3be83d4d9f484baa0baf5a15c0ac` — this
+is the exact commit SHA of PR #532 (lane 1b-vargas, M-4/M-17/M-18), the LAST commit to touch
+`platform/python-sidecar/**`. Confirmed via `git log 5fe0f91c..f969ac12 -- platform/python-sidecar/`
+(empty — nothing since has touched sidecar code; PRs #533/534/535/536/530 are TS-estate or docs
+only). **This means the deployed image already carries every merged fix through**: Phase 0 (0a-0f,
+including 0c's Y-1/Y-9/Y-7 yoga vacuous-pass kill, 0d sade-sati dedup, 0e dasha metadata, 0f Chara
+Dasha, the psycopg3 dict_row + dosha-catalog-crash fixes from PR #523), Phase 1 lanes 1a (shadbala/
+vimshopaka/ashtakavarga PyJHora), 1c (dasha systems PyJHora), 1d (sensitive points PyJHora +
+fabricated-sphuta deletion), 1e (Tajika/yuddha/combustion/drishti), 1f (verification-stamp
+integrity), 0h (watchdog fix), and 1b itself (D60 deities/ashtakavarga/compound friendship). **No
+image redeploy is needed before triggering — the rebuild about to run IS fixes-baked, not a
+clean-baseline-on-old-code rebuild.**
+
+**REFRESHED 2026-07-11, post PR #539**: the guardian-discovery `mi_bhavisya`/`bo_sangati` fix (PR
+#539, `986d38b6`) touched `platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py` —
+a real image rebuild+redeploy was correctly triggered (`Build & Deploy Pipeline Job Image`, 8m40s,
+not skipped). New deployed tag: `986d38b63f515304eef42d59d2e3b4d708d77762`. Confirmed strict
+superset: `git log 5fe0f91c..986d38b6 -- platform/python-sidecar/` shows exactly ONE commit — this
+session's own `986d38b6` — no other sidecar change landed in between, no regression. **Updated PF-3
+sequencing pin: deployed pipeline-job image is `986d38b6`, still fixes-baked, now additionally
+carrying the IRREPLACEABLE-outcome-destruction fix, current as of the moment STEP 4 begins.**
+
+### Root-cause + fix: chart_facts "duplication" alarm → real cockpit clear-mechanism bug (PR #537)
+
+Mid-verification, a live count on the native chart showed `virodha_argala_natal_matrix` rows
+appearing 5x per (fact_subject, fact_key) — investigated as a potential idempotency violation
+before touching anything further. **Root cause (agent-dispatched investigation, then independently
+confirmed)**: NOT a duplication bug — `ayanamsha_id` (5 canonical ayanamshas) is part of the
+natural key by design (`_idempotency.py`'s own documented key:
+`chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id`); grouping only by
+`(fact_subject, fact_key)` will always show 5x for any per-ayanamsha category. A corrected query
+(`GROUP BY fact_subject, fact_key, ayanamsha_id HAVING count(*) > 1`) returned zero true duplicates,
+and every affected category showed exactly ONE distinct `build_id` — `ga_structural`'s own
+delete-then-insert (`replace_prior_chart_facts`, scoped by chart_id+category+ayanamsha, correctly
+excluding build_id) is working correctly and self-heals on every real rebuild, confirmed empirically
+across today's 3 same-day rebuild attempts.
+
+**The REAL bug found along the way**: the cockpit's "clear/reset chart" mechanism
+(`deriveDeleteSqlFromCountSql`, `assetClearSpec.ts`) naively swaps a `count_sql`'s
+`SELECT count(*) ... FROM` prefix for `DELETE FROM` with no JOIN awareness. `ga_structural`'s
+`count_sql` (migration 410, joins `fact_category_ownership`) produces `DELETE FROM chart_facts cf
+JOIN fact_category_ownership fco ON ... WHERE ...` — not legal Postgres (DELETE FROM has no JOIN,
+only USING). This threw at execute time, was swallowed into `failed_tables` by
+`clear/execute/route.ts`'s per-asset try/catch — while the SAME route unconditionally reset
+`asset_throughput` to `dormant`/`rows_written=0` for every asset in scope regardless of actual
+success. **Net effect**: the native's L1-L5 clear reported success for `ga_structural` on both
+charts, every time, while its ~98K rows/chart of chart_facts (argala/aspect/dispositor/strength
+categories) silently survived untouched — explaining why `chart_facts` was NOT actually cleared
+despite the clear operation reporting done, unlike `chart_dashas`/`chart_divisionals`/`bodha_*`/
+`kala_*`/`phala_*` (all correctly cleared to 0 — their count_sqls are plain WHERE-scoped, no JOIN).
+
+**Fix (PR #537, commit `47862a90`)**:
+- `deriveDeleteSqlFromCountSql()` now detects any JOIN and returns `null` (forces an explicit
+  `EXPLICIT_CLEAR_OPS` entry) instead of silently emitting invalid SQL.
+- Added the missing `ga_structural` `EXPLICIT_CLEAR_OPS` entry — a subquery-scoped DELETE against
+  the same `fact_category_ownership` table the `count_sql` joins, so future categories added under
+  `owning_asset_id='ga_structural'` are automatically covered, no hardcoded category list.
+- `clear/execute/route.ts`: `asset_throughput` now only resets for assets NOT in `failed_tables` —
+  a failed clear no longer misreports as successful.
+- 20/20 `assetClearSpec` tests pass (14 pre-existing + 6 new), tsc clean. PR opened, auto-merge
+  armed.
+
+**Applied the corrected DELETE directly against prod** (both charts, one atomic transaction:
+DELETE + asset_throughput reset + verify + COMMIT) to finish the native's intended L1-L5 clear:
+196,987 stale `chart_facts` rows removed (98,431 native + 98,556 Abhinandan), verified 0 remaining
+post-delete, `asset_throughput` correctly shows `dormant`/`rows_written=0` for `ga_structural` on
+both charts.
+
+**Secondary finding, flagged not fixed (deliberately, to avoid scope creep)**: `ga_condition`'s
+existing `EXPLICIT_CLEAR_OPS` entry uses `LIKE 'graha_avastha_%_per_varga'`, which misses the
+non-varga `graha_avastha_lajjitadi`/`graha_avastha_sayanadi` variants it also owns. Separately, 11
+more categories (`yoga_label`, `dosha_label`, `virupa_drishti`, `karaka_web_per_varga`,
+`significator_path`, `bhava_arudha`, `conjunction_special_point`, `tara_bala`, `graha_yuddha`,
+`nakshatra_co_tenancy`, `combustion_relationship` — 9,818 rows total across both charts) aren't
+tracked in `fact_category_ownership` at all, so no clear mechanism currently covers them
+explicitly. Left in place: these will self-heal via their own writers' idempotent replace on the
+upcoming rebuild (same proven mechanism as `ga_structural`), same as every other category — not a
+blocker for STEP 4, but worth a follow-up clear-allowlist audit outside this session.
+
+### Post-wipe + post-fix live state (native chart 482012f1 + Abhinandan 1c826d5a)
+
+`chart_dashas`, `chart_divisionals`, `bodha_*`, `kala_*`, `phala_*`: **0 rows, both charts**
+(native's clear succeeded for these — plain WHERE-scoped count_sqls, no JOIN issue).
+`chart_facts`: **0 rows, both charts** (positional core `graha_position`/`graha_sign_attributes`
+confirmed already at 0 too — the native's original clear succeeded there; the FORENSIC 7 anchors do
+not currently exist in the live DB and will regenerate deterministically from the same birth data
+as the very first rebuild step). `asset_throughput`: **61/61 assets `dormant`, both charts** —
+uniform, clean reset confirmed. **This is now a genuinely clean L1→L5 slate for both charts.**
+
+**PF-1 (exact-match, GREEN) + PF-2 (rehearsed, CONFIRMED) + PF-3 (fixes-baked, deployed image
+current) all posted. Proceeding to STEP 4 (guarded rebuild via Nirmāṇa UI, canary-first on
+Abhinandan) per the native's mandate — no further check-in until a halt fires, the Abhinandan gate
+stack completes, or session close.**
+
+## STEP 4 setup: rebuild-trigger path was ALSO broken; browser access resolved (2026-07-11)
+
+Two real, load-bearing blockers surfaced attempting to satisfy "trigger through the UI, not SQL":
+
+**Blocker 1 — shared Chrome profile.** `chrome-devtools-mcp` (the "Claude-in-Chrome" tool) refused
+every call (`navigate_page`, `list_pages`, even `new_page` with a fresh `isolatedContext`) with the
+same error: its fixed `userDataDir` is locked by several OTHER concurrent Claude Code sessions on
+this machine (processes dating back days). Did not force-kill or hijack a shared resource another
+session may be actively using — instead switched to the Playwright MCP tools, which run their own
+separate browser instance with no profile conflict.
+
+**Blocker 2 — the UI's actual Rebuild button called dead code.** `BuildControlsBar.tsx` (rendered on
+`/clients/[id]/cockpit`) POSTed to `/api/build/start` (`410 GONE`, decommissioned) and
+`/api/build/rebuild-all` (a stub that only inserts an unprocessed `build_events` row, never invokes
+a build) — every button on that page had been a silent no-op for however long `/api/cockpit/runs`
+has been the real endpoint. Native chose to fix it (option A) rather than bypass via direct API call
+(option B). **Fix (PR #538, commit `05ed8ed5` → merged `58874ec1`)**: rewired to
+`POST /api/cockpit/runs` (build/rebuild) and `POST /api/cockpit/runs/[id]/stop`, corrected the real
+response shape (`{data:{run_id}}`) and the real `build_runs.state` enum
+(`planned/running/paused/completed/failed/stopped` — the old checks for `queued`/`success`/
+`partial`/`cancelling` never matched anything). 10/10 new tests, tsc clean.
+
+**Also discovered: `/clients/[id]/cockpit` is NOT the page the native meant by "Nirmāṇa build
+tracker"** — the dashboard's own navigation labels the real build page "Nirmāṇa (build)",
+pointing at `/clients/[id]/nirmana`, titled "Nirmāṇa · Build Tracker" in the live UI. Corrected
+target for STEP 4.
+
+Logged in via Playwright with the native's own (browser-autofilled) credentials — authenticated as
+super_admin (user avatar "A"). Landed on `/dashboard` ("Jātakas"), confirmed all 4 charts listed
+including both canonical charts.
+
+### Guardian catch #1 (before touching Rebuild): Nirmāṇa's own live layer counts caught 2 more
+### clear-mechanism bugs of the exact same class as ga_structural (PR #539)
+
+Navigated to Abhinandan's real Nirmāṇa page — layer summary showed **Kāla: 5/14 lit** and
+**Mīmāṃsā: 2/13 lit**, contradicting the earlier "all dormant, 0 rows" verification. Re-checked
+`asset_throughput` directly: genuinely all-dormant for every `ka_*`/`mi_*` asset — so the UI's "lit"
+figure was reading real, live, non-zero table data the clear had missed, not a stale cache. Traced
+both:
+
+- **`mi_bhavisya` (serious)**: `assetClearSpec.ts`'s clear op referenced `outcome_observed`, a
+  column that has not existed on `mimamsa_predictions` since migration 346a dropped the v1.0 table
+  and 347 recreated it with an entirely different schema — every execution threw, was swallowed,
+  and (sharing one savepoint with the `mimamsa_manifestation_sets` delete) silently rolled that back
+  too. Same failure shape as `ga_structural`, but a genuinely more serious downstream consequence:
+  `mi_bhavisya.py`'s own writer-level idempotent delete had **no status filter at all** —
+  unconditionally destroying every `mimamsa_predictions` row on every ordinary rebuild, including
+  any that had transitioned to `confirmed`/`denied`/`partial` (a real, native-verified outcome
+  written exclusively by `mi_abhilekha.py`'s journal-answer sync — IRREPLACEABLE, JL-020
+  classification). Confirmed via direct query that zero real outcomes exist system-wide right now
+  (all 800 rows were `pending`) — nothing was lost — but this rebuild session was about to invoke
+  this exact writer. Root-caused a research agent's task specifically to find the evidence-grounded
+  correct replacement condition (not guess, given IRREPLACEABLE-data stakes): migration
+  `347_mimamsa_bhavisya.sql`'s live schema + `mi_abhilekha.py:67-75` (the sole current writer of a
+  real outcome) together prove the correct scope is `lifecycle_status IN ('pending', 'due')`. Fixed
+  both the clear-spec op and the writer's own delete.
+- **`bo_sangati` (narrower)**: writes `bodha_triangulation` correctly and idempotently (writer
+  itself was never broken — same "clear button lied, writer is fine" story as `ga_structural`), but
+  the `EXPLICIT_CLEAR_OPS` entry only listed 2 of its 3 output tables. Added the missing one.
+
+**Fix (PR #539, commit `5ece5767`)**: both call sites corrected; 20/20 TS tests (1 updated, 1
+extended) + 3 new Python tests locking the `lifecycle_status` guard, tsc clean. Applied directly
+against prod for both charts: `mimamsa_predictions`+`mimamsa_manifestation_sets` (800 rows) and
+`bodha_triangulation` (190 rows) confirmed 0 post-fix.
+
+**Full re-sweep, all 74 chart-scoped tables in PF-1's scope, both charts**: only the
+already-flagged, deliberately-deferred 9,818 `chart_facts` rows (11 untracked fact_categories +
+`ga_condition`'s `LIKE` pattern gap, logged earlier, self-heal via their own writers' rebuild)
+remain non-zero. **No further surprises found.** This is now the cleanest achievable L1→L5 slate for
+both charts without a full dedicated clear-allowlist audit (out of this session's scope, flagged as
+a follow-up).
+
+**Status**: PR #537 (ga_structural) merged. PR #538 (rebuild-button fix) merged. PR #539
+(mi_bhavisya + bo_sangati) auto-merge armed, awaiting CI. Once green, proceeding to actually click
+Rebuild on Abhinandan's real Nirmāṇa page via Playwright, per the guardian mandate — watching the
+cockpit SSE/build_steps and Cloud Run job logs live for the full duration, no further check-in until
+halt / Abhinandan gate stack complete / session close.
+
+## STEP 4 — REBUILD TRIGGERED, Abhinandan (2026-07-11)
+
+PR #539 merged (`986d38b6`), pipeline-job image redeployed and confirmed strict-superset (see STEP 3
+refresh above). Navigated Playwright to Abhinandan's real Nirmāṇa page, clicked "Refresh global"
+first — the layer-summary widget (`Kāla: 5/14`, `Mīmāṃsā: 2/12`) turned out to be a **stale
+client-side rendering artifact**: pulled the actual `mode=live` API response directly
+(`/api/cockpit/stats?...&mode=live`) and confirmed every single asset was genuinely
+dormant/0-rows except `ga_condition` (105 rows, `build_state_stale:true` — the already-known,
+deliberately-deferred `LIKE`-pattern leftover). Cross-checked independently via direct SQL on all
+`ka_*`/`mi_*` count_sqls — all 0. The widget disagreement was cosmetic only; did not block
+proceeding.
+
+Clicked the top-level "Rebuild" button. This opened a **"Clear all chart data?"** destructive
+confirmation dialog rather than a plain build confirmation — initially paused and cancelled to
+verify this wasn't a misclick, since the dialog's own button is labeled "Clear instrument" and
+warns "cannot be undone." Traced the actual v2 cockpit source
+(`BuildActionButton.tsx`/`CockpitHeader.tsx`/`CockpitShell.tsx` — **note**: `/nirmana` runs an
+entirely separate v2 component tree from the legacy `/cockpit` page PR #538 fixed; both are real,
+distinct code paths) and confirmed this is the CORRECT, intended flow: `deriveAction()` shows
+"Rebuild" instead of "Build" specifically because `stats.dormant !== stats.total` (the one
+`ga_condition` leftover), and `handleAfterClear()` genuinely chains a real
+`POST /api/cockpit/runs` (`scope:'global', action:'rebuild'`) immediately after a successful clear
+— not a dead-end wipe. Re-opened the dialog, typed the required subject-name confirmation
+("Abhinandan Mohanty"), clicked "Clear instrument".
+
+**Network trace confirms the full chain fired correctly**: `POST /api/cockpit/clear/execute` → 200
+→ `POST /api/cockpit/runs` → **201 Created**.
+
+```json
+{"run_id":"774532f3-d435-4deb-a79f-9786539eb2c6",
+ "asset_count":66,
+ "plan":["ga_positions","ka_graha_sancara","mi_jivanaghatana","mi_kula","mi_vistara","ga_vargas",
+   "ga_sensitive","ga_panchanga","ga_dashas","ga_nakshatra","ga_prashna","ga_transit_anchors",
+   "ka_gochara","ka_muhurta_seva","ga_strength","ga_condition","ga_tajaka","ka_dasha_kala",
+   "ga_structural","ga_vastu","ga_medical","ga_sade_sati","ga_yoga","bo_laksana","bo_bimba",
+   "bo_samskara","bo_karanajala","bo_cgm_motifs","bo_cgm_paths","bo_sangati","bo_cdlm_summary",
+   "bo_drishti","bo_upaya","bo_pratijna","bo_anveshana","ka_yojaka","ka_avadhi","bo_chart_gestalt",
+   "bo_pramana_mapa","ka_sangam","bo_samvada","ka_kalasutra","ka_vighnakara","ka_taranga",
+   "ka_kala_darshana","ka_jivana_parva","ka_bhavishya_lekha","ka_tulana","ph_nimitta","ph_sankrama",
+   "ph_muhurta","ph_pratikara","ph_sodhana","ph_rectification","ph_suddha_sodhana","ph_pramana",
+   "ph_phaladesa","mi_bhavisya","mi_pramana","mi_abhilekha","mi_gunanaka","mi_pariksha",
+   "mi_adhilepa","mi_sambandha","mi_darshana","mi_seva"]}
+```
+
+Full 66-asset global plan (L0 correctly excluded per the native ruling), spans L1→L5 in one
+resolved topo-sorted plan (not the hand-guessed per-layer sequence in the original REBUILD_SESSION_PLAN
+§6 — the real planner's dependency resolution is authoritative). `job_image_tag: null` in the
+response is a known best-effort-fetch artifact (`getJobImageTag().catch(() => null)`) — not a
+failure; the deployed image is independently confirmed as `986d38b6` via `gcloud` moments earlier.
+
+Confirmed live in `build_runs`: `state='planned'`, `started_at=null` — expected transient state,
+per the orchestrator's own design ("stays planned until it acquires the chart advisory lock").
+Beginning guardian monitoring now: watching for the running-transition, then per-asset progress,
+with explicit manual timeout discipline on `ga_strength` (~11 min nominal, >30 min triggers live
+Cloud Run job log investigation — `watchdog-reaper` is paused, there is no automatic backstop).
+**This is the real, live production rebuild trigger — the culmination of this entire session's
+preparation.**
+
+### Guardian check-in #1 (2026-07-11, ~4 min in)
+
+`build_runs.state='running'` (transitioned at `20:18:57Z`), `current_asset_id='ga_dashas'`.
+`build_run_assets` progress: **9 complete** (`ga_positions`, `ka_graha_sancara`,
+`mi_jivanaghatana`, `mi_kula`, `mi_vistara`, `ga_sensitive`, `ga_panchanga`, `ka_gochara`,
+`ka_muhurta_seva`), **2 building** (`ga_vargas`, `ga_dashas`), 55 queued. `ga_strength` (position
+14) not yet reached — no timing discipline needed yet.
+
+**Spot-verified `ga_positions` (the FORENSIC-equivalent identity check for this canary chart) —
+PASS**: `chart_facts` shows 430 `graha_position` + 100 `graha_sign_attributes` rows (real,
+non-zero). Direct field check, `lahiri_chitrapaksha`: **Sun=Aquarius, Lagna=Aries @ 23.526°
+(≈23°32′) pada 4, Moon=Gemini/Ardra** — this is an exact match to the canary's known identity
+(Sun=Aquarius, Lagna=Aries 23°32′, pada-4). First and most positionally-critical asset in the
+whole plan confirmed correct before anything downstream builds on it.
+
+### Guardian check-in #2 (2026-07-11, ~10 min in) — ga_strength verified, first real success ever
+
+14/66 complete: `ga_positions`, `ka_graha_sancara`, `mi_jivanaghatana`, `mi_kula`, `mi_vistara`,
+`ga_vargas`, `ga_sensitive`, `ga_panchanga`, `ga_nakshatra`, `ga_prashna`, `ga_transit_anchors`,
+`ka_gochara`, `ka_muhurta_seva`, **`ga_strength`**. `ga_dashas` still building (wave-parallel
+execution, not strict position order — `ga_strength` at position 14 finished before `ga_dashas` at
+position 8, expected and fine).
+
+**`ga_strength` — the asset that failed 3 separate times earlier this session before the watchdog
+fix (PR #531) landed — completed successfully on its first real attempt with the fix in place.**
+Verified it's a genuine success, not an import-swallow (never trust "completed" alone):
+- `graha_shadbala_total` = 52 rows, `ashtakavarga_bindu` = 480 rows — both match the pre-wipe
+  baseline row-count cardinality exactly (structural, not data-dependent).
+- **Found and resolved one apparent gap**: the manifest's `vimsopaka_bala_per_graha` category (35
+  rows expected) showed 0 rows — investigated before treating as a halt condition. Root cause: NOT
+  a bug — lane 1a's PyJHora delegation fix genuinely renamed/split this into 4 real sub-scale
+  categories (`graha_vimsopaka_shadvarga/saptavarga/dasavarga/shodasavarga`), confirmed in
+  `ga_strength_writer.py`. All 4 show 35 rows each (140 total, richer than the old flat category)
+  — spot-checked actual values (14, 14.5, 17.1 out of a 20-point scale for Jupiter/Mars), real and
+  varied, not placeholders. **PASS** — an expected, deliberate schema evolution, not an
+  out-of-manifest surprise.
+
+Continuing guardian monitoring toward `ga_condition` → `ga_structural` → the L2/L3/L4/L5 cascade.
+
+### Guardian check-in #3 (2026-07-11, ~20 min in) — ga_dashas, ga_sensitive, ga_structural all verified
+
+`ga_dashas` completed clean — confirmed genuinely healthy mid-flight via direct Cloud Run job logs
+(not just DB state): real per-system, per-ayanamsha row counts logged live (vimshottari=11242,
+yogini=16315, ashtottari=6624, chara_karaka=29021, naisargika=4332, mudda=20046, kalachakra=6823),
+all `two_pass_verified` or `single`-verified, no errors.
+
+`ga_sensitive` verified (already complete from an earlier check-in, spot-checked now): the 3
+fabricated-sphuta categories lane 1d's fix targeted are **not naively zeroed nor fabricated** —
+`esoteric_point_pranapada_sphuta` (35 rows) and `esoteric_point_sphuta_fertility` (70 rows) are
+`verification_pass_status='two_pass_verified'` (real PyJHora-backed computation, correctly
+recomputed rather than deleted outright), while `esoteric_point_trikona_dasha_sphuta` dropped from
+35→5 rows, all honestly `verification_pass_status='floored'` with NULL values — exactly the
+canonical-or-floor doctrine (B.10) working as designed: real values where a real formula exists,
+an honest floor where it doesn't, never a fabricated placeholder either way.
+
+**`ga_structural` — the Y-1 regression check — PASS, exact match:**
+```
+yoga_label               = 41   (pre-wipe baseline for this chart: 41 — exact match)
+dosha_label              = 110  (hardcoded library, unaffected — exact match)
+graha_yuddha_per_varga   = 77   (pre-wipe baseline for this chart: 77 — exact match)
+```
+Zero garbage subjects found (`cnja_kesari`/`dariclra`/`kimadruma`/`each`/`another` — none present).
+Y-1's vacuous-pass kill held perfectly through a genuine fresh rebuild, no regression.
+
+**Progress: 35/66 complete, 2 building, 29 queued, 0 errors.** Current asset: `ka_sangam` (L3,
+first L2/L3-cascade asset reached — L1 Gaṇita layer is now fully built and clean). Continuing
+
+### Guardian check-in #4 (2026-07-11, ~40 min in)
+
+`bo_samskara`/`ka_sangam` confirmed genuinely healthy mid-flight (not stuck) via direct Cloud Run
+logs: `ka_sangam` actively calling the embedding API per prediction window, real incremental
+progress (41/59→55/59 within one log window) — embedding-API-bound latency, not a hang.
+
+**Progress: 43/66 complete, 1 building (`ka_tulana`), 22 queued, 0 errors.**
+
+Two more spot-checks, both PASS:
+- **`bo_sangati`**: `bodha_triangulation` = 95 real rows (this session's own PR #539 clear-fix
+  target — writer itself was always correct, this confirms a fresh build populates it properly).
+- **`bo_laksana` degeneracy check (A3 gate)**: `bodha_msr_signals` = 66,747 total rows, **66,032
+  distinct `constituent_facts_array` groundings** (99% unique) and 3 distinct `valence` values —
+  the complete opposite of the historical Y-11 degenerate-grounding bug (which had 8/10 signals
+  sharing one identical fact_id). Genuinely varied, real grounding data.
+
+Continuing guardian monitoring through the remaining L3/L4/L5 assets (`ka_tulana` → `ph_*` → `mi_*`).
+
+## ⚠ HALT — run 774532f3 FAILED at ph_nimitta, 18 downstream assets blocked (2026-07-11)
+
+**Guardian check-in #5**: `build_runs.state='failed'`. Per the halt-condition mandate, did NOT
+proceed to 482012f1. `build_run_assets` showed 48/66 in a real state (complete/error), with
+positions 48-65 — every asset from `ph_nimitta` (first L4 Phala asset) through `mi_seva` (last
+L5 asset) — in `state='error'` (18 assets total). Progress at halt: **48 complete, 0 building, 0
+queued, 18 errored.**
+
+**Root cause, found via direct Cloud Run job logs** (not guessed):
+```
+pipeline.orchestrator.writers.ph_nimitta INFO ph_nimitta: derived 400 total anchors before insert
+pipeline.orchestrator.asset_runner WARNING [orchestrator] writer ph_nimitta failed:
+  TypeError: can't compare datetime.datetime to datetime.date
+pipeline.orchestrator.runner WARNING [orchestrator] BLOCKED ph_sankrama — upstream not complete: ['ph_nimitta']
+  ... (16 more BLOCKED lines, one per downstream asset) ...
+pipeline.orchestrator.runner WARNING [orchestrator] run 774532f3... failed with 18 failed/blocked asset(s)
+```
+The orchestrator behaved **correctly** here — a real writer crash correctly propagated as a
+blocked-dependency cascade and an honest `failed` run state, not a silent partial-success. The
+bug itself is genuine and fixable: `ph_nimitta.py`'s `_enrich_discovery_row` (and all three
+`derive_anchor_from_{convergence,bhavishya,discovery}` functions in `services/ph_nimitta/
+engine.py`) only coerced a raw `str` date, silently passing a raw `datetime.datetime` through
+untouched whenever the source column is `timestamptz` (e.g. `bodha_discoveries.detected_at`).
+`window_end` (= `detected_at + timedelta(days=90)`) then stayed a `datetime`, and the writer's
+own T-5 pre-birth gate (`a.window_end < birth_date`, `birth_date` being a plain `date`) crashed
+comparing incompatible types.
+
+**Fixed live, per the guardian mandate's "catch and FIX R4-class failures" authorization** (PR
+#540, commit `2066addb`): `ph_nimitta.py` already had a correct, complete coercion helper
+(`_parse_iso_date`, handling datetime/date/str uniformly) sitting right next to the broken
+str-only inline check — routed through it instead of duplicating narrower logic. `engine.py` had
+no equivalent helper; added `_coerce_date` (same three-case handling) and replaced 3 duplicated,
+identically-broken inline blocks (one per derivation path) with calls to it, closing the whole
+bug class at once rather than patching only the path that happened to crash first.
+
+**Verified**: 9 new tests (including the exact crash reproduction — `window_end < birth_date`
+with a raw `datetime` input, confirmed no longer raises) + 7 new tests (one per derivation path,
+feeding raw `datetime` matching the real `timestamptz` shape) + all 66 pre-existing ph_nimitta
+tests unchanged (82 total, 0 regressions). Broader L4-adjacent sweep: 325 passed, 0 failed.
+PR #540 opened, auto-merge armed.
+
+**This halt-and-fix is exactly the guardian role's purpose** — a real, previously-undetected bug
+in a writer that has never before run against real live production data end-to-end (ph_nimitta
+depends on the full L1-L3 chain being genuinely fresh, which only a real rebuild like this one
+exercises) was caught, root-caused with evidence (not guessed), and fixed with regression tests —
+before it could reach the native chart. **Awaiting PR #540's merge + deploy before deciding how to
+resume Abhinandan's rebuild** (re-run the failed/blocked 18 assets via `action=build`, which only
+targets dormant/error-state assets — not a fresh full rebuild of the 48 already-correct ones).
+**Not proceeding to 482012f1 until Abhinandan's full 66/66 gate stack passes clean.**
+
+## Resume sign-off — 3-gate protocol (2026-07-11)
+
+Native gave explicit 3-point sign-off to resume: (1) deploy-truth verification (not merge-truth —
+"a known trap in this program"), (2) plan preview confirming exactly the 18 error-state assets are
+targeted and the 48 good ones preserved, (3) fire + guardian-watch the L4→L5 cascade specifically.
+
+**GATE 1 CONFIRMED — deploy-truth verified.** PR #540 merged (`3e2657857980309b719c93a77b53a634f84a2b31`),
+confirmed ancestor of `origin/main`. CI (`CI — Ganga Quality Gate`, run `29124249335`) completed
+successfully in 18m7s (Governance Gates job ran long — 18m3s vs typical ~6-8min for this job this
+session — but completed all 12 steps clean including `pytest — pyjhora_adapter + pipeline`; not
+stuck, just a slower run given the +16 new ph_nimitta tests). Chained `Deploy to Cloud Run`
+(run `29125191982`) fired via `workflow_run` and completed successfully; `Build & Deploy Pipeline Job
+Image` sub-job (7m12s) built, pushed, and re-pointed the Cloud Run job. Verified via direct:
+
+```
+gcloud run jobs describe brahma-build-pipeline-job --region=asia-south1 \
+  --format="value(spec.template.spec.template.spec.containers[0].image)"
+→ asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:3e2657857980309b719c93a77b53a634f84a2b31
+```
+
+Exact match to the merge commit SHA — the fix is genuinely live in the deployed job image, not
+just merged to main. Gate 1 passed on hard evidence, not on "PR shows merged."
+
+**GATE 2 CONFIRMED — plan preview.** UI-navigation finding: `BuildActionButton`'s `deriveAction()`
+picks its label from a `dormant`-count heuristic that treats `state='error'` rows inconsistently
+across layers — Phala's layer button correctly showed **"Build"** (all 9 assets genuinely in
+`error` state per direct DB check, but the button's own dormant-count heuristic miscounted them
+as dormant, which — happily — is the SAFE outcome: action='build' never clears). Mīmāṃsā's layer
+button showed "Rebuild" instead, which per `resolveBuildPlan` would target ALL 13 layer assets
+(action='rebuild' ignores state) — including `mi_jivanaghatana` + 3 global-scope assets
+(`mi_kula`, `mi_vistara`, `lel_events`) that are already good. **Decision: use the layer-level
+button for Phala (exact 9/9 match, zero collateral), and per-asset triggers for the 9 target
+`mi_*` assets individually once Phala completes** (AssetRow's per-asset control always scopes to
+exactly one asset regardless of label) — this keeps every trigger confined to real UI clicks and
+never touches the 48 already-good assets.
+
+Clicked Phala's "Build" button — `PlanModal` preview showed **exactly 9 assets**: `ph_nimitta,
+ph_muhurta, ph_sodhana, ph_pratikara, ph_sankrama, ph_rectification, ph_suddha_sodhana,
+ph_pramana, ph_phaladesa` — matches the expected Phala-layer set exactly, "Run plan" label (not
+the destructive "Clear & Rebuild").
+
+**GATE 3 FIRED.** Confirmed via direct DB read (not trusting the UI alone): new
+`build_runs` row `eccbacbd-5397-46c0-bcf1-23218acfd50c`, `scope='layer'`, `scope_target='phala'`,
+`action='build'`, `state='planned'`. `build_run_assets` for this run shows exactly the 9 expected
+Phala asset_ids, all `state='queued'` — confirmed the plan is precisely scoped, not a 66-asset
+sweep. Beginning guardian monitoring — watching `ph_nimitta` specifically first (the exact asset
+that crashed in run `774532f3`) to confirm the deployed fix holds against real live data.
+
+**PHALA LAYER COMPLETE — ph_nimitta fix CONFIRMED working against live production data.**
+`build_runs.eccbacbd-...` → `state='completed'`. All 9 `build_run_assets` rows → `state='complete'`,
+including `ph_nimitta` itself (the exact asset that crashed with `TypeError: can't compare
+datetime.datetime to datetime.date` in run `774532f3`). Cross-checked against `asset_throughput`
+directly (not trusting `build_run_assets` alone): all 9 → `state='lit'` with real non-zero row
+counts (`ph_nimitta`=200, `ph_muhurta`=200, `ph_pratikara`=645, `ph_sankrama`=765,
+`ph_rectification`=186, `ph_sodhana`=100, `ph_suddha_sodhana`=200, `ph_pramana`=200,
+`ph_phaladesa`=7 — low but plausible for a synthesis-tier asset). **The PR #540 datetime-coercion
+fix is genuinely closed — the exact crash class does not recur against real live data.**
+
+Proceeding to Mīmāṃsā resume — 9 target assets, per-asset triggers (not the layer "Rebuild"
+button, which would sweep in 4 already-good assets: `mi_jivanaghatana` + globals `mi_kula`/
+`mi_vistara`/`lel_events`), in dependency order: `mi_bhavisya` → `mi_pramana`/`mi_abhilekha` →
+`mi_gunanaka`/`mi_pariksha` → `mi_adhilepa` → `mi_sambandha` → `mi_seva` → `mi_darshana` (last,
+most dependencies).
+
+## ✅ RESUME COMPLETE — ALL 18 ASSETS CLOSED, FULL GATE STACK PASSES (2026-07-11)
+
+**Mīmāṃsā resume — all 9 target assets built successfully, one per-asset UI trigger at a time**,
+each confirmed via a "Confirm build" dialog listing exactly 1 asset before confirming, and each
+verified via direct `build_runs`/`asset_throughput` query (not UI display alone — the UI's own
+per-asset labels for `mi_seva`/`mi_abhilekha` are known-stale, showing "healthy/LIVE service"
+even while the real DB state was `error`; this was tolerated because clicking any per-asset
+button always scopes `resolveBuildPlan` to exactly that 1 asset regardless of displayed label,
+per `plan.ts`'s `assetsInScope('asset',...) = [scope_target]`):
+
+| Asset | Result | Rows |
+|---|---|---|
+| `mi_bhavisya` | lit | 400 |
+| `mi_pramana` | lit | 0 (calibration-type, target_floor=0 by design) |
+| `mi_abhilekha` | lit | (service-type journal) |
+| `mi_gunanaka` | lit | 9 |
+| `mi_pariksha` | lit | 6 |
+| `mi_adhilepa` | lit | 127,041 |
+| `mi_sambandha` | lit | 20 |
+| `mi_darshana` | lit | 30 |
+| `mi_seva` | lit | 0 (service-type serve-time apply) |
+
+Zero errors across all 9. One process note: at one point a build (`mi_gunanaka`) was still
+actively running when a second asset's "Confirm build" dialog was opened — caught before
+confirming (only one build run can be active per chart at a time), cancelled, re-verified the
+prior run had completed, then proceeded correctly. No incorrect run was fired.
+
+**FULL GATE-STACK VERIFICATION — ALL PASS:**
+
+1. **State/error sweep**: `asset_throughput` joined `asset_registry` for chart `1c826d5a` — all
+   **61 active chart-scoped assets show `state='lit'`, zero in `error`/`dormant`/`stale`**. The 5
+   global-scope assets (`mi_kula`, `mi_vistara`, `ka_graha_sancara`, `ka_gochara`,
+   `ka_muhurta_seva`, resolved via their `chart_id IS NULL` rows) all show `lit`. **61 + 5 = 66,
+   the complete registered set — full reconciliation, no orphans, no strays.**
+2. **Data-quality spot-check**: `phala_anchors` — 6 sampled rows show real, varied
+   `domain`/`horizon_tier`/`window_start`/`window_end`/`magnitude`/`direction` values, all windows
+   genuinely **post-birth** (2026–2030 vs. birth 1985) — confirms both the T-5 pre-birth clip (PR
+   #522/0d) and the ph_nimitta datetime fix (PR #540) are holding correctly together at production
+   scale. `mimamsa_predictions` — 6 sampled rows show real varied `outcome_claim`/`domain`/
+   `confidence_band` values, `lifecycle_status='pending'` (correct — matches the IRREPLACEABLE-
+   outcome-preserving semantics from PR #539's `mi_bhavisya` writer fix; nothing here silently
+   pre-marked as confirmed/denied).
+3. **Staleness check**: zero rows with `state='stale'` for this chart (covered by the state-sweep
+   above — `state` is the single staleness-bearing enum column, no separate flag).
+4. **`last_error` cross-check**: zero `lit`-state rows carry a non-null `last_error` for this chart
+   — no false-success masking a real prior failure.
+
+**Full arc, start to finish**: ph_nimitta's `_enrich_discovery_row` only coerced `str` dates,
+silently letting a raw `datetime.datetime` (the real shape from a `timestamptz` column) through
+untouched — `window_end` stayed a `datetime`, crashing the T-5 pre-birth gate's `<` comparison
+against a plain `date`. Root-caused via live Cloud Run logs, fixed in `ph_nimitta.py` +
+`engine.py` (3 duplicated instances of the same bug, closed as one class) with 16 new regression
+tests, merged as PR #540 (`3e2657857980309b719c93a77b53a634f84a2b31`). **Gate 1 (deploy-truth)**:
+confirmed the actual deployed `brahma-build-pipeline-job` image tag matched the merge SHA exactly
+via `gcloud run jobs describe` — not just "PR merged." **Gate 2 (plan preview)**: confirmed via
+live `PlanModal` dialogs that each trigger targeted exactly the intended asset(s), never touching
+the 48 already-good ones. **Gate 3 (fire + guardian-watch)**: Phala layer resumed via one
+layer-scoped `action='build'` (all 9 assets were genuinely in `error` state, zero collateral);
+Mīmāṃsā resumed via 9 individual per-asset triggers (the layer button would have swept in 4
+unrelated already-good assets). `ph_nimitta` — the exact asset that crashed — completed cleanly
+first, confirming the fix at production scale before the rest of the cascade ran.
+
+**Abhinandan (1c826d5a) is now a fully-built, gate-stack-verified 66/66-asset canary chart.**
+**Not proceeding to native chart `482012f1` — awaiting explicit native go-ahead per this session's
+repeated, standing instruction.**
+
+## ⚖ NATIVE RULING (2026-07-11) — HOLD on 482012f1; this run reclassified as CLEAN-BASELINE (pre-R6)
+
+**Explicit native instruction: do NOT rebuild 482012f1.** Correcting this run's scope of validity:
+
+**What this run DID validate — build MECHANICS**: the FROZEN orchestrator contract end-to-end
+(fail-closed cascade, honest `build_runs`/`asset_throughput` state, per-asset/per-layer scoping
+via `resolveBuildPlan`), the R6 Phase-0/Phase-1 code fixes (0a–0f, 7 lanes), and the ph_nimitta
+datetime-coercion fix (#540) against live cross-chart production data. All of that is real,
+durable, and does not need re-doing.
+
+**What this run did NOT validate — correctness of the yoga/cancellation surface.** The rebuild ran
+on current HEAD, and `MARSYS_DEFECT_GAP_REGISTER_v2_0.md`'s Y-2 (`ga_yoga_firings` unwired), Y-3
+(NBRY effectively absent), Y-4 (house-lord yoga family undetected), Y-5 (cancellation-as-a-class
+unimplemented), and Y-6 (D9 cross-check/salience blind to cancellation) are **all still OPEN** —
+only Y-1/Y-7/Y-9 (the vacuous-pass hard-fail + verification-stamp + exclusion-clause fixes from
+lane 0c) are FIXED so far. This means every `yoga_label`/`dosha_label`/bo_laksana-consumed signal
+this rebuild just produced for Abhinandan **re-bakes the same fabricated/absent yoga surface the
+native's current 482012f1 chart already carries** — Y-1's fix stops the *vacuous pass* (no more
+OCR-garbage rules silently firing True), but the *real* classical yoga engine (`ga_yoga_firings`),
+NBRY, house-lord family, and cancellation logic are all still unwired or unimplemented. Rebuilding
+482012f1 right now would reproduce these exact same defects on the native chart with **zero
+correctness gain** over what it already has — the only thing that would change is the build
+timestamp, not the yoga/dosha data quality.
+
+**Reclassifying this Abhinandan run**: not a "R6-complete validation," but a **CLEAN-BASELINE
+(pre-R6-Wave-A) rebuild** — it proves the pipeline is sound and the R6 Phase-0/1 fixes are live,
+on a chart whose yoga data is still pre-R6 (fabricated-surface) quality. This is the correct and
+useful thing to have confirmed before authoring further fixes on top of it.
+
+**Path forward, per native direction (not yet started — awaiting explicit go-ahead)**:
+1. Author + execute **R6 Wave A**: build-side fixes for Y-1…Y-6 (the yoga/cancellation crisis) off
+   `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` — wire `ga_yoga_firings` as the real serving path (Y-2),
+   implement NBRY per-varga (Y-3), implement the house-lord yoga family (Y-4, bundled with Y-8's
+   stub implementation), build a generic cancellation-class evaluator (Y-5), and wire bhanga/
+   cancellation signals into the D9 cross-check + bo_laksana salience computation (Y-6, consumes
+   the already-fixed D-3 classification).
+2. **Re-validate on Abhinandan**: rebuild the canary on the corrected writers; confirm real yogas
+   fire, NBRY detects and cancels correctly, and no fabricated/vacuous fires remain (distribution +
+   degeneracy gates, same discipline as this session's other spot-checks).
+3. **Then, and only then, rebuild the native chart once**, on the corrected architecture — a single
+   clean rebuild rather than rebuild-now-then-rebuild-again-post-Wave-A.
+
+**ph_nimitta bug — status confirmed FIXED, unaffected by this ruling**: PR #540
+(`3e2657857980309b719c93a77b53a634f84a2b31`), logged in `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` as
+`M-23`, `FIXED [verify-against: prod, R6 2026-07-11, PR #540 3e265785]`, with the cross-chart-
+data-path-exposure lesson already recorded (a fix can look clean on one chart's data path and
+still hide a live crash on another's). This fix is orthogonal to the yoga/cancellation crisis and
+does not need to wait for R6 Wave A — it is closed.
+
+**STATUS: session paused here. Awaiting native go-ahead to begin authoring R6 Wave A.** No further
+action on 482012f1 or on Wave A authoring until that explicit instruction arrives.
