@@ -77,6 +77,25 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     expect(predictionsOp!.sql).toMatch(/outcome_observed IS NULL/)
   })
 
+  it('ga_structural clears its owned chart_facts categories via the ownership subquery (not a broken JOIN)', () => {
+    // Root cause of a live bug: ga_structural's count_sql (migration 410) joins
+    // fact_category_ownership, and deriveDeleteSqlFromCountSql() correctly refuses to
+    // auto-transform that (see the JOIN-guard test below) — so without this explicit
+    // entry, ga_structural fell through to "no clear spec resolved" and its chart_facts
+    // rows (argala/aspect/dispositor/etc. categories) silently survived every clear
+    // while asset_throughput still reported it as cleared.
+    const ops = EXPLICIT_CLEAR_OPS['ga_structural']
+    expect(ops, 'ga_structural must have an explicit clear spec').toBeTruthy()
+    expect(ops).toHaveLength(1)
+    expect(ops![0].sql).toMatch(/DELETE FROM chart_facts/)
+    expect(ops![0].sql).toMatch(/WHERE chart_id = \$1/)
+    expect(ops![0].sql).toMatch(/fact_category_ownership/)
+    expect(ops![0].sql).toMatch(/owning_asset_id = 'ga_structural'/)
+    // Must not contain a JOIN — this is a subquery-scoped DELETE, not the invalid
+    // `DELETE FROM ... JOIN ...` shape the naive auto-derivation would have produced.
+    expect(ops![0].sql).not.toMatch(/\bJOIN\b/i)
+  })
+
   it('lel_events is an explicit null — a clear/rebuild leaves LEL rows intact (JL-010/JL-020 IRREPLACEABLE)', () => {
     // life_events + event_chart_state_index are user-authored source data (migration
     // 423, has_writer=false). A per-chart clear must NEVER delete them.
@@ -103,5 +122,25 @@ describe('deriveDeleteSqlFromCountSql', () => {
     const compound =
       'SELECT (SELECT count(*) FROM a WHERE chart_id = $1) + (SELECT count(*) FROM b WHERE chart_id = $1) AS count'
     expect(deriveDeleteSqlFromCountSql(compound)).toBeNull()
+  })
+
+  it('returns null for a JOIN-bearing count_sql instead of emitting invalid DELETE FROM ... JOIN SQL', () => {
+    // The live bug this guards: ga_structural's real count_sql (migration 410) is exactly
+    // this shape. Before the guard, the naive prefix-swap produced
+    // `DELETE FROM chart_facts cf JOIN fact_category_ownership fco ON ... WHERE ...` —
+    // not legal Postgres (DELETE FROM doesn't support JOIN, only USING) — which threw at
+    // execute time, got swallowed into failed_tables, while the caller still marked the
+    // asset as successfully cleared. Returning null here forces callers onto an explicit
+    // EXPLICIT_CLEAR_OPS entry instead of silently executing broken SQL.
+    const ownershipJoin = `SELECT count(*) AS count FROM chart_facts cf
+      JOIN fact_category_ownership fco ON fco.fact_category = cf.fact_category
+      WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`
+    expect(deriveDeleteSqlFromCountSql(ownershipJoin)).toBeNull()
+  })
+
+  it('JOIN guard is case-insensitive and matches inner/left/right join variants', () => {
+    expect(deriveDeleteSqlFromCountSql('SELECT count(*) FROM a join b ON a.id=b.id WHERE a.chart_id=$1')).toBeNull()
+    expect(deriveDeleteSqlFromCountSql('SELECT count(*) FROM a LEFT JOIN b ON a.id=b.id WHERE a.chart_id=$1')).toBeNull()
+    expect(deriveDeleteSqlFromCountSql('SELECT count(*) FROM a INNER JOIN b ON a.id=b.id WHERE a.chart_id=$1')).toBeNull()
   })
 })
