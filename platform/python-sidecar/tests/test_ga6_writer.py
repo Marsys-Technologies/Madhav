@@ -50,7 +50,8 @@ Tests cover:
  46.  _d27_quadrant: signs 0-2=East, 3-5=South, 6-8=West, 9-11=North
  47.  Vimsopaka weights: D9 weight=3.0, D60 weight=4.0
  48.  D9 lagna pushkara_lagna_flag: sign 1 (Taurus) is pushkara
- 49.  varga_saptavargaja: Exalted body gets score 45.0
+ 49.  varga_saptavargaja: own-sign=30, Moolatrikona=45 (D1-only), compound
+      naisargika+tatkalika relation ladder cross-checked vs PyJHora (M-18)
  50.  Two-pass verification: D60 position is two_pass_verified; D1 is single
 """
 from __future__ import annotations
@@ -514,20 +515,88 @@ class TestHouseLordOccupantRows:
         assert lagna_rows[0]["house"] == 1, f"Lagna should be in house 1, got {lagna_rows[0]['house']}"
 
 
+class _FakeShashtiamshaCursor:
+    """Mimics a psycopg cursor returning the bg_shashtiamsha_deities rows
+    (migration 430) with deity_name floored NULL, per canonical-or-floor
+    doctrine (M-17)."""
+    def __init__(self, rows):
+        self._rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, *a, **kw):
+        return None
+
+    def fetchall(self):
+        return self._rows
+
+
+class _FakeShashtiamshaConn:
+    """Fake DB connection for D60 deity-row tests: returns the real
+    23-kroora/37-soumya split (deity_name NULL) for every amsa_number 1-60,
+    so tests exercise the actual M-17 JOIN path rather than mocking away
+    the fix."""
+    def __init__(self):
+        # Real 23 kroora amsa_numbers (1-based), cross-derived from PyJHora's
+        # own jhora.const.shashti_amsa_rulers_kroora -- same data as migration 430.
+        kroora = {1, 2, 8, 9, 10, 11, 12, 15, 16, 30, 31, 32, 33, 34, 35,
+                  40, 42, 43, 44, 48, 51, 52, 59}
+        self._rows = [
+            (n, "kroora" if n in kroora else "soumya", None)
+            for n in range(1, 61)
+        ]
+
+    def cursor(self, row_factory=None):
+        return _FakeShashtiamshaCursor(self._rows)
+
+
 class TestDeityRows:
     def test_d60_deity_rows_built(self):
         m = _mod()
+        m._SHASHTIAMSHA_CACHE = None  # force our fake conn's data to be used
+        # M-17 fix: D60 quality now resolves via a JOIN against
+        # bg_shashtiamsha_deities (migration 430), so this needs a conn.
         rows = m._build_deity_rows(
-            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 60, "D60", MOCK_VARGA_DATA)
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 60, "D60", MOCK_VARGA_DATA,
+            conn=_FakeShashtiamshaConn())
         assert len(rows) > 0
 
-    def test_d60_deity_non_empty(self):
+    def test_d60_quality_non_empty_deity_floored_null(self):
+        """M-17: quality (kroora->Malefic/soumya->Benefic) is real and
+        non-empty for every graha; deity_name is canonical-or-floor NULL
+        (no primary BPHS Ch.7 verse-level citation available) -- so NO
+        varga_deity_attribution/deity row should be emitted for D60, only
+        varga_deity_attribution/quality rows."""
         m = _mod()
+        m._SHASHTIAMSHA_CACHE = None  # force our fake conn's data to be used
         rows = m._build_deity_rows(
-            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 60, "D60", MOCK_VARGA_DATA)
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 60, "D60", MOCK_VARGA_DATA,
+            conn=_FakeShashtiamshaConn())
+        assert rows, "Expected quality rows for D60"
         for r in rows:
-            if r["fact_key"] == "deity":
-                assert r["fact_value_text"], f"Empty deity for {r['graha']}"
+            if r["fact_key"] == "quality":
+                assert r["fact_value_text"] in ("Malefic", "Benefic"), \
+                    f"Bad quality for {r['graha']}: {r['fact_value_text']}"
+            elif r["fact_key"] == "deity":
+                pytest.fail(
+                    f"D60 deity_name must be floored NULL (no row emitted), "
+                    f"got a deity row for {r['graha']}")
+
+    def test_d60_no_conn_floors_honestly(self):
+        """Without a live conn (cache miss), D60 must floor to zero rows
+        rather than fabricate -- canonical-or-floor, not a computable
+        substitute."""
+        m = _mod()
+        m._SHASHTIAMSHA_CACHE = None  # ensure no stale cache from other tests
+        rows = m._build_deity_rows(
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 60, "D60", MOCK_VARGA_DATA,
+            conn=None)
+        assert rows == [], "No conn -> floor to zero rows, never fabricate"
+        m._SHASHTIAMSHA_CACHE = None  # reset for subsequent tests
 
     def test_d9_deity_present(self):
         m = _mod()
@@ -657,18 +726,120 @@ class TestSaptavargajaRows:
             MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 5, "D5", MOCK_VARGA_DATA)
         assert rows == [], "D5 not in Saptavarga should return empty"
 
-    def test_exalted_score_45(self):
+    def test_own_sign_score_30(self):
+        """M-18 fix: classical Saptavargaja Bala has NO separate 'Exalted'
+        bucket (that is a distinct Sthana-bala sub-component elsewhere in
+        Shadbala) -- own-sign (Swakshetra) scores 30 regardless of varga.
+        MOCK_VARGA_DATA already places Mars in its own sign (Aries,
+        sign_idx=0, dtab['own']=[0,7]) and Jupiter in its own sign
+        (Sagittarius, sign_idx=8, dtab['own']=[8,11])."""
         m = _mod()
-        # Create a varga where Sun is exalted (Aries, sign_idx=0)
-        exalted_data = {**MOCK_VARGA_DATA,
-                        "Sun": {"sign_idx": 0, "sign": "Aries", "sign_id": 1,
-                                "degree_in_sign": 10.0, "longitude": 10.0}}
         rows = m._build_saptavargaja_rows(
-            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 9, "D9", exalted_data)
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 9, "D9", MOCK_VARGA_DATA)
+        by_graha = {r["graha"]: r for r in rows}
+        assert by_graha["Mars"]["fact_value_num"] == 30.0
+        assert by_graha["Mars"]["fact_value_text"] == "Own"
+        assert by_graha["Jupiter"]["fact_value_num"] == 30.0
+        assert by_graha["Jupiter"]["fact_value_text"] == "Own"
+
+    def test_moolatrikona_only_applies_to_d1(self):
+        """Moolatrikona (45.0) is a D1/Rasi-only concept per PyJHora's own
+        dcf==1 guard in _sapthavargaja_bala_1/_2 -- must NOT fire for D9
+        even when a graha sits in its Moolatrikona sign_idx."""
+        m = _mod()
+        # Sun's Moolatrikona is sign_idx=4 (Leo) per DIGNITY_TABLE["Sun"]["mt"].
+        mt_data = {**MOCK_VARGA_DATA,
+                   "Sun": {"sign_idx": 4, "sign": "Leo", "sign_id": 5,
+                           "degree_in_sign": 10.0, "longitude": 130.0}}
+        rows = m._build_saptavargaja_rows(
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 9, "D9", mt_data)
         sun_rows = [r for r in rows if r["graha"] == "Sun"]
         assert sun_rows, "No Sun saptavargaja row"
-        assert sun_rows[0]["fact_value_num"] == 45.0, \
-            f"Exalted Sun should have saptavargaja=45.0, got {sun_rows[0]['fact_value_num']}"
+        # Sun in its own sign (Leo, dtab['own']=[4]) at D9 -> "Own"=30, not
+        # Moolatrikona=45 (that branch is gated on varga_n==1 only).
+        assert sun_rows[0]["fact_value_num"] == 30.0
+        assert sun_rows[0]["fact_value_text"] == "Own"
+
+    def test_compound_relation_matches_classical_hand_derivation(self):
+        """M-18: manual classical-rule re-derivation for Sun and Mercury in
+        D9 (MOCK_VARGA_DATA), cross-checked against PyJHora's own
+        house._get_compound_relationships_of_planets delegation.
+
+        Sun sits in Capricorn (sign_idx=9), lord Saturn (sign_idx=6):
+          - Naisargika (natural): Sun-Saturn = enemies (classical BPHS).
+          - Tatkalika (temporary): house-distance Sun->Saturn = (6-9)%12=9
+            (0-based) = 10th from Sun -> temporary FRIEND (2/3/4/10/11/12
+            rule).
+          - Compound: natural-enemy + temporary-friend = Sama (neutral) ->
+            virupa 7.5.
+
+        Mercury sits in Capricorn (sign_idx=9), same lord Saturn:
+          - Naisargika: Mercury has no natural enmity with Saturn (only
+            Moon is Mercury's natural enemy) -> neutral.
+          - Tatkalika: house-distance Mercury->Saturn = (6-9)%12=9 (0-based)
+            = 10th -> temporary FRIEND.
+          - Compound: natural-neutral + temporary-friend = Mitra (friend)
+            -> virupa 15.0.
+        """
+        m = _mod()
+        rows = m._build_saptavargaja_rows(
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 9, "D9", MOCK_VARGA_DATA)
+        by_graha = {r["graha"]: r for r in rows}
+        assert by_graha["Sun"]["fact_value_text"] == "Sama"
+        assert by_graha["Sun"]["fact_value_num"] == 7.5
+        assert by_graha["Mercury"]["fact_value_text"] == "Mitra"
+        assert by_graha["Mercury"]["fact_value_num"] == 15.0
+
+
+class TestAshtakavargaRows:
+    """M-4 fix: BAV/SAV now delegate to PyJHora's real 8x8 contributor-map
+    engine (jhora.horoscope.chart.ashtakavarga.get_ashtaka_varga) instead of
+    the removed hand-rolled loop that credited every contributor to every
+    graha's grid identically (making all 8 BAVs -- and SAV -- degenerate
+    8x-duplicates of one array)."""
+
+    def test_sav_classical_invariant_337(self):
+        """Sarvashtakavarga sum across all 12 signs is a pure combinatorial
+        identity of the fixed BENEFIC_HOUSES contributor-list lengths --
+        ALWAYS 337 regardless of chart/varga. This is the Ring-1
+        self-verification gate documented in _compute_ashtakavarga_bav's
+        docstring; independently reproduced here against MOCK_VARGA_DATA."""
+        m = _mod()
+        positions = {b: MOCK_VARGA_DATA[b]["sign_idx"] for b in MOCK_VARGA_DATA}
+        av = m._compute_ashtakavarga_bav(positions)
+        assert sum(av["sarva"]) == 337, \
+            f"SAV classical invariant violated: sum={sum(av['sarva'])}"
+
+    def test_bav_grids_are_not_all_identical(self):
+        """The core M-4 bug: every BAV grid degenerate-duplicated one array.
+        Assert at least two grahas' BAV grids differ (they must, for a
+        real chart -- this is the direct regression guard)."""
+        m = _mod()
+        positions = {b: MOCK_VARGA_DATA[b]["sign_idx"] for b in MOCK_VARGA_DATA}
+        av = m._compute_ashtakavarga_bav(positions)
+        bindus = av["bav"]
+        grids = list(bindus.values())
+        assert not all(g == grids[0] for g in grids), \
+            "All BAV grids identical -- M-4 loop bug has regressed"
+
+    def test_build_ashtakavarga_rows_emits_8_grids_of_12_plus_sav(self):
+        """7 grahas x 12 signs (BAV) + 12 signs (SAV) = 96 rows per varga."""
+        m = _mod()
+        rows = m._build_ashtakavarga_rows(
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 9, "D9", MOCK_VARGA_DATA)
+        assert len(rows) == 96, f"Expected 96 varga_ashtakavarga rows, got {len(rows)}"
+        sav_rows = [r for r in rows if r["graha"] == "SARVA"]
+        assert len(sav_rows) == 12
+        assert sum(r["fact_value_num"] for r in sav_rows) == 337.0
+
+    def test_bindus_bounded_0_to_8(self):
+        m = _mod()
+        rows = m._build_ashtakavarga_rows(
+            MOCK_CHART_ID, MOCK_AYAN, MOCK_BUILD_ID, 9, "D9", MOCK_VARGA_DATA)
+        for r in rows:
+            if r["graha"] != "SARVA":
+                assert 0 <= r["fact_value_num"] <= 8, \
+                    f"{r['graha']} bindu out of [0,8]: {r['fact_value_num']}"
 
 
 class TestKarakaRows:
