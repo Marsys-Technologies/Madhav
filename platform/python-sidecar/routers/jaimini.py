@@ -2,15 +2,26 @@
 jaimini.py — FastAPI router for Jaimini Chara Dasha endpoints.
 
 Exposes two GET endpoints:
-  GET /jaimini_drishti/chara_dasha?date=YYYY-MM-DD
+  GET /jaimini_drishti/chara_dasha?date=YYYY-MM-DD&chart_id=...
       → Returns the active Chara Dasha period (maha dasha + antar dasha) for the given date.
-  GET /jaimini_drishti/chara_dasha/full
+  GET /jaimini_drishti/chara_dasha/full?chart_id=...
       → Returns all 12 rashi periods with start/end dates and optional sub-periods.
 
-Session: TR-P7-S2
+M-8 fix (MARSYS_DEFECT_GAP_REGISTER_v2_0.md): this router used to default
+`planet_longitudes=None` / `lagna_longitude=None` into the engine, which
+silently substituted the removed hardcoded-native-longitude fallback table — a table that was wrong
+even for the native (Sun 322.61 Aquarius vs. FORENSIC truth Capricorn; Lagna
+51.28 Taurus vs. FORENSIC truth Aries) — for EVERY chart_id. Per
+canonical-or-floor doctrine, longitudes are now always resolved from
+chart_facts (the real chart) or the request hard-fails with 422
+[EXTERNAL_COMPUTATION_REQUIRED]. There is no fallback table left to serve.
+
+Session: TR-P7-S2. M-8 fix session: r6/0f-fallbackkill.
 """
 from __future__ import annotations
 
+import os
+from contextlib import contextmanager
 from datetime import date as DateType
 from typing import Optional, List, Dict, Any
 
@@ -24,8 +35,6 @@ try:
     from panchang_engine.jaimini_chara import (
         build_full_chara_dasha,
         get_active_dasha,
-        NATIVE_FALLBACK_LONGITUDES,
-        NATIVE_LAGNA_RASHI_INDEX,
     )
     _ENGINE_AVAILABLE = True
 except ImportError:
@@ -33,10 +42,132 @@ except ImportError:
 
 router = APIRouter()
 
-# ── Native birth constants ─────────────────────────────────────────────────────
-
-# Native Abhisek Mohanty: 1984-02-05
+# The canonical native chart_id (CLAUDE.md §B) — used ONLY as the default
+# VALUE OF THE `chart_id` QUERY PARAM, never as a computation fallback. Every
+# call still resolves its longitudes from chart_facts for whichever chart_id
+# is actually supplied; a non-native chart_id gets its own real data.
+_NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 _NATIVE_BIRTH_DATE = DateType(1984, 2, 5)
+
+_SIGN_NAMES = [
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+]
+
+# chart_facts stores fact_subject as the abbreviated uppercase code, NOT the
+# full name — confirmed against real chart_facts for 482012f1: SUN, MOON,
+# MAR, MER, JUP, VEN, SAT, LAGNA (same convention as ga_strength_writer.py:1439
+# and ga_dashas_writer.py's own _compute_dynamic_chara_params). A prior
+# version of this router queried on full names and matched ZERO rows for
+# every chart, turning the M-8 fix into an unconditional break (Ring-2
+# finding). Map DB code -> engine-facing name (jaimini_chara.py's SIGN_LORDS
+# uses full names, plus the special key "Lagna").
+_CODE_TO_NAME = {
+    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
+    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn", "LAGNA": "Lagna",
+}
+_REQUIRED_CODES = list(_CODE_TO_NAME.keys())
+_REQUIRED_SUBJECTS = list(_CODE_TO_NAME.values())  # for error messages only
+
+# Real stored ayanamsha_id values (ga_dashas_writer.py AYANAMSHAS; confirmed
+# live against chart_facts for 482012f1). "lahiri"/"kp"/"true_citra" (a typo
+# of true_chitra) never existed in the DB — a prior version of this default
+# 422'd on every call regardless of data completeness (Ring-2 finding).
+_VALID_AYANAMSHAS = [
+    "lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman",
+    "surya_siddhanta_classical",
+]
+_DEFAULT_AYANAMSHA = "lahiri_chitrapaksha"
+
+
+def _db_url() -> str:
+    for key in ("DATABASE_URL", "DIRECT_DATABASE_URL", "POSTGRES_URL"):
+        v = os.environ.get(key, "")
+        if v:
+            return v
+    raise RuntimeError("[jaimini_router] DATABASE_URL not set")
+
+
+@contextmanager
+def _conn():
+    import psycopg
+    with psycopg.connect(_db_url()) as conn:
+        yield conn
+
+
+def _fetch_chart_longitudes(chart_id: str, ayanamsha_id: str) -> Dict[str, float]:
+    """
+    Resolve this chart's REAL sidereal longitudes (7 classical grahas + Lagna)
+    from chart_facts. M-8 fix: replaces the removed hardcoded-native-longitude fallback table — there is
+    no substitute value for a missing fact; a gap here is a 422, not a number.
+    """
+    if ayanamsha_id not in _VALID_AYANAMSHAS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"[EXTERNAL_COMPUTATION_REQUIRED] ayanamsha_id={ayanamsha_id!r} is not "
+                f"a stored chart_facts ayanamsha_id. Valid values: {_VALID_AYANAMSHAS}."
+            ),
+        )
+
+    try:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+                      FROM chart_facts
+                     WHERE chart_id = %s
+                       AND ayanamsha_id = %s
+                       AND fact_category IN ('graha_sign_attributes', 'graha_position')
+                       AND fact_key IN ('sign', 'degree_in_sign')
+                       AND fact_subject = ANY(%s)
+                    """,
+                    (chart_id, ayanamsha_id, _REQUIRED_CODES),
+                )
+                rows = cur.fetchall()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "[EXTERNAL_COMPUTATION_REQUIRED] could not query chart_facts for "
+                f"chart_id={chart_id!r} ayanamsha_id={ayanamsha_id!r}: {exc}. "
+                "Refusing to substitute fallback longitudes (M-8 fix)."
+            ),
+        )
+
+    sign_by_subject: Dict[str, str] = {}
+    deg_by_subject: Dict[str, float] = {}
+    for code, key, val_text, val_num in rows:
+        subj = _CODE_TO_NAME.get(code)
+        if subj is None:
+            continue
+        if key == "sign" and val_text:
+            sign_by_subject[subj] = val_text
+        elif key == "degree_in_sign" and val_num is not None:
+            deg_by_subject[subj] = float(val_num)
+
+    longitudes: Dict[str, float] = {}
+    missing: List[str] = []
+    for subj in _REQUIRED_SUBJECTS:
+        sign = sign_by_subject.get(subj)
+        deg = deg_by_subject.get(subj)
+        if sign is None or deg is None or sign not in _SIGN_NAMES:
+            missing.append(subj)
+            continue
+        longitudes[subj] = _SIGN_NAMES.index(sign) * 30.0 + deg
+
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"[EXTERNAL_COMPUTATION_REQUIRED] chart_facts missing sign/degree_in_sign "
+                f"for {missing} (chart_id={chart_id!r}, ayanamsha_id={ayanamsha_id!r}). "
+                "Cannot compute Jaimini Chara Dasha without this chart's real "
+                "longitudes — refusing to serve another chart's values (M-8 fix)."
+            ),
+        )
+    return longitudes
 
 
 # ── Legacy stub endpoint (preserved for backwards compat) ─────────────────────
@@ -66,13 +197,31 @@ def get_active_chara_dasha(
         default=None,
         description="Birth date override (ISO YYYY-MM-DD). Defaults to native birth date 1984-02-05.",
     ),
+    chart_id: str = Query(
+        default=_NATIVE_CHART_ID,
+        description="Chart to compute for. Longitudes are ALWAYS resolved from "
+        "this chart's own chart_facts (M-8 fix) — never a fallback table.",
+    ),
+    ayanamsha_id: str = Query(
+        default=_DEFAULT_AYANAMSHA,
+        description=(
+            "Ayanamsha used to resolve chart_facts. Must be a stored value: "
+            "lahiri_chitrapaksha|true_chitra|krishnamurti|raman|surya_siddhanta_classical."
+        ),
+    ),
 ) -> Dict[str, Any]:
     """
     Return the active Jaimini Chara Dasha period for a given date.
 
     Query params:
-      date       — target date (default: today)
-      birth_date — birth date (default: native 1984-02-05)
+      date          — target date (default: today)
+      birth_date    — birth date (default: native 1984-02-05)
+      chart_id      — chart to resolve longitudes for (default: native chart_id)
+      ayanamsha_id  — ayanamsha for chart_facts lookup (default: lahiri_chitrapaksha)
+
+    M-8 fix: longitudes are resolved from chart_facts for `chart_id`; there is
+    no fallback table. If chart_facts is missing the needed facts, this
+    returns 422 [EXTERNAL_COMPUTATION_REQUIRED] rather than a fabricated number.
 
     Response shape:
       {
@@ -104,11 +253,14 @@ def get_active_chara_dasha(
     else:
         bd = _NATIVE_BIRTH_DATE
 
+    # M-8 fix: no fallback — resolve real longitudes or hard-fail (422/503).
+    longitudes = _fetch_chart_longitudes(chart_id, ayanamsha_id)
+
     # Build full periods and find active one
     full_periods = build_full_chara_dasha(
         birth_date=bd,
-        planet_longitudes=None,   # use native fallback
-        lagna_longitude=None,     # use native fallback
+        planet_longitudes=longitudes,
+        lagna_longitude=longitudes["Lagna"],
     )
     active = get_active_dasha(full_periods, query_date)
 
@@ -116,10 +268,12 @@ def get_active_chara_dasha(
         "ok": True,
         "query_date": query_date.isoformat(),
         "birth_date": bd.isoformat(),
+        "chart_id": chart_id,
+        "ayanamsha_id": ayanamsha_id,
         "active_rashi_dasha": active["active_rashi_dasha"],
         "active_antar_dasha": active["active_antar_dasha"],
         "algorithm": "jaimini_chara_dasha",
-        "source": "native_fallback_longitudes",
+        "source": "chart_facts",
     }
 
 
@@ -133,6 +287,18 @@ def get_full_chara_dasha(
         default=False,
         description="If true, include antar_dasha (sub-period) breakdown for each rashi period.",
     ),
+    chart_id: str = Query(
+        default=_NATIVE_CHART_ID,
+        description="Chart to compute for. Longitudes are ALWAYS resolved from "
+        "this chart's own chart_facts (M-8 fix) — never a fallback table.",
+    ),
+    ayanamsha_id: str = Query(
+        default=_DEFAULT_AYANAMSHA,
+        description=(
+            "Ayanamsha used to resolve chart_facts. Must be a stored value: "
+            "lahiri_chitrapaksha|true_chitra|krishnamurti|raman|surya_siddhanta_classical."
+        ),
+    ),
 ) -> Dict[str, Any]:
     """
     Return all 12 rashi Chara Dasha periods with start/end dates.
@@ -140,12 +306,19 @@ def get_full_chara_dasha(
     Query params:
       birth_date          — birth date (default: native 1984-02-05)
       include_sub_periods — if true, include antar dasha entries per period
+      chart_id            — chart to resolve longitudes for (default: native chart_id)
+      ayanamsha_id        — ayanamsha for chart_facts lookup (default: lahiri_chitrapaksha)
+
+    M-8 fix: longitudes are resolved from chart_facts for `chart_id`; there is
+    no fallback table. If chart_facts is missing the needed facts, this
+    returns 422 [EXTERNAL_COMPUTATION_REQUIRED] rather than a fabricated number.
+    total_years is now the ACTUAL chart-dependent cycle sum, not a hardcoded 120.
 
     Response shape:
       {
         ok: true,
         birth_date: "YYYY-MM-DD",
-        total_years: 120,
+        total_years: <int, chart-dependent>,
         periods: [
           {
             rashi: "Taurus",
@@ -172,10 +345,13 @@ def get_full_chara_dasha(
     else:
         bd = _NATIVE_BIRTH_DATE
 
+    # M-8 fix: no fallback — resolve real longitudes or hard-fail (422/503).
+    longitudes = _fetch_chart_longitudes(chart_id, ayanamsha_id)
+
     full_periods = build_full_chara_dasha(
         birth_date=bd,
-        planet_longitudes=None,
-        lagna_longitude=None,
+        planet_longitudes=longitudes,
+        lagna_longitude=longitudes["Lagna"],
     )
 
     # Optionally strip antar_dasha from response to reduce payload
@@ -198,9 +374,11 @@ def get_full_chara_dasha(
     return {
         "ok": True,
         "birth_date": bd.isoformat(),
+        "chart_id": chart_id,
+        "ayanamsha_id": ayanamsha_id,
         "total_years": total_years,
         "period_count": len(periods_out),
         "periods": periods_out,
         "algorithm": "jaimini_chara_dasha",
-        "source": "native_fallback_longitudes",
+        "source": "chart_facts",
     }
