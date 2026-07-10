@@ -651,8 +651,10 @@ def evaluate_cancellation_rules(
     """
     rules_fired: list[str] = []
 
-    # Rule 1: Saturn vargottama at cycle/phase start
-    # (Saturn in same sign in D1 and D9 — approximate: if Saturn in own sign territory)
+    # Rule 1: Saturn vargottama (D1 sign == D9/Navamsha sign at birth) —
+    # M-20: natal_facts['saturn_vargottama_natal'] is now populated from the
+    # real D9 lookup in _build_static_natal_facts (_lookup_saturn_d9_sign),
+    # not an "own sign territory" approximation.
     saturn_sign = cycle.get("vis_sign", "")
     if natal_facts.get("saturn_vargottama_natal", False):
         rules_fired.append("saturn_vargottama")
@@ -1553,6 +1555,31 @@ def _lookup_argala_for_sign(
     return out
 
 
+def _lookup_saturn_d9_sign(
+    conn: Any, chart_id: str, ayanamsha_id: str,
+) -> str | None:
+    """
+    Real GA6 lookup: Saturn's Navamsha (D9) sign from chart_divisionals
+    (varga_position/sign). Used for the true classical vargottama test
+    (D1 sign == D9 sign) — M-20: the previous implementation read
+    natal_facts['saturn_vargottama_natal'], a key never populated anywhere
+    in this module (Rule 1 was permanently dead), with a stale comment
+    describing an "own sign territory" approximation that was never wired
+    to real data either. Returns None if GA6 hasn't written D9 for Saturn
+    yet (honest gap, not a fabricated sign).
+    """
+    row = conn.execute(
+        """
+        SELECT fact_value_text
+        FROM chart_divisionals
+        WHERE chart_id = %s AND ayanamsha_id = %s AND varga = 'D9'
+          AND graha = 'Saturn' AND fact_category = 'varga_position' AND fact_key = 'sign'
+        """,
+        [chart_id, ayanamsha_id],
+    ).fetchone()
+    return row["fact_value_text"] if row else None
+
+
 def _lookup_d10_karya_activation_facts(
     conn: Any, chart_id: str, ayanamsha_id: str,
 ) -> list[dict[str, Any]]:
@@ -1624,10 +1651,20 @@ def _build_static_natal_facts(
 
     d10_karya_activation_facts = _lookup_d10_karya_activation_facts(conn, chart_id, ayanamsha_id)
 
+    # M-20: real D9 (Navamsha) vargottama test — Saturn's D1 sign == D9 sign.
+    # Replaces the previously-dead "saturn_vargottama_natal" key (never set;
+    # Rule 1 always evaluated False regardless of the chart).
+    saturn_d9_sign = _lookup_saturn_d9_sign(conn, chart_id, ayanamsha_id)
+    saturn_vargottama_natal = bool(
+        saturn_sign and saturn_d9_sign and saturn_sign == saturn_d9_sign
+    )
+
     return {
         "moon_pada": moon_pada,
         "lagna_sign": lagna_sign,
         "saturn_natal_sign": saturn_sign,
+        "saturn_d9_sign": saturn_d9_sign,
+        "saturn_vargottama_natal": saturn_vargottama_natal,
         "saturn_yoga_karaka": saturn_yoga_karaka,
         "natal_saturn_aspects_natal_moon": natal_saturn_aspects_natal_moon,
         "saturn_moon_parivartana": saturn_moon_parivartana,
@@ -1653,19 +1690,26 @@ def _build_static_natal_facts(
 
 def _verif_for_text(value: Any) -> str:
     """
-    Rows built from a real upstream join get 'two_pass_verified' (the file's
-    existing per-row default); rows still carrying a PENDING_* fallback
-    (upstream lookup returned nothing) get 'single' instead, so the row is not
-    falsely stamped as verified when it silently used a placeholder.
+    M-22 fix: this function previously returned 'two_pass_verified'
+    unconditionally for any non-placeholder value — a literal top-tier
+    stamp with no verifier ever running a second independent pass on these
+    rows (a single upstream DB join is one pass, not two). Rows built from
+    a real upstream join now get 'single_pass' (formulas.py
+    VERIFICATION_RESCALE 0.85 vs 1.00) — honest for a single, real
+    computation with no cross-check. Rows still carrying a PENDING_*
+    fallback (upstream lookup returned nothing) keep the existing 'single'
+    tier (resolves to the documented_approximation default in
+    VERIFICATION_RESCALE.get), so a placeholder is never stamped as
+    verified.
     """
     if isinstance(value, str) and value.startswith("PENDING_"):
         return "single"
-    return "two_pass_verified"
+    return "single_pass"
 
 
 def _verif_for_maybe_none(value: Any) -> str:
     """Same as _verif_for_text but for facts that are honestly None (not text)."""
-    return "single" if value is None else "two_pass_verified"
+    return "single" if value is None else "single_pass"
 
 
 # ── INSERT chart_facts rows ───────────────────────────────────────────────────

@@ -225,110 +225,162 @@ class TestBhavaBala:
         assert result["total_rows"] >= mod.VOLUME_FLOOR
 
 
+# ── R6 1a-strength (M-1 fix): _derive_shadbala_from_positions now delegates
+# classical-7 shadbala to real PyJHora (jd_ut required); nodes keep a labeled
+# computed_extension fallback via the mock chart_output below. ────────────────
+
+_NATIVE_BIRTH = dict(
+    datetime_iso="1984-02-05T10:43:00",
+    latitude_deg=20.2961, longitude_deg=85.8245, tz_offset_hours=5.5,
+)
+
+
+def _native_chart_output(ayanamsha_id="lahiri"):
+    from pyjhora_adapter.compute import compute_chart
+    return compute_chart(inputs=_NATIVE_BIRTH, ayanamsha_id=ayanamsha_id)
+
+
+def _native_jd_ut(chart_output=None):
+    chart_output = chart_output or _native_chart_output()
+    return float(chart_output["provenance"]["jd_ut"])
+
+
 # ── T1.4a: Nodal strength rows (Task 10) ─────────────────────────────────────
 
 class TestNodalStrengthRows:
-    def test_rahu_in_shadbala_output(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    @pytest.fixture(scope="class")
+    def result(self):
+        jd_ut = _native_jd_ut()
+        return sut._derive_shadbala_from_positions(
+            MOCK_CHART_OUTPUT, "lahiri", jd_ut=jd_ut,
+            lat=_NATIVE_BIRTH["latitude_deg"],
+            lon=_NATIVE_BIRTH["longitude_deg"],
+            tz=_NATIVE_BIRTH["tz_offset_hours"],
+        )
+
+    def test_rahu_in_shadbala_output(self, result):
         assert "Rahu" in result, "Rahu missing from shadbala output"
 
-    def test_ketu_in_shadbala_output(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_ketu_in_shadbala_output(self, result):
         assert "Ketu" in result, "Ketu missing from shadbala output"
 
-    def test_rahu_naisargika_is_zero(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_rahu_naisargika_is_zero(self, result):
         assert result.get("Rahu", {}).get("naisargika", -1) == 0.0
 
-    def test_ketu_naisargika_is_zero(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_ketu_naisargika_is_zero(self, result):
         assert result.get("Ketu", {}).get("naisargika", -1) == 0.0
 
-    def test_rahu_has_naisargika_na_flag(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_rahu_has_naisargika_na_flag(self, result):
         assert result.get("Rahu", {}).get("naisargika_na") is True
 
-    def test_ketu_has_naisargika_na_flag(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_ketu_has_naisargika_na_flag(self, result):
         assert result.get("Ketu", {}).get("naisargika_na") is True
 
-    def test_rahu_school_parashara_strict(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_rahu_school_parashara_strict(self, result):
         assert result.get("Rahu", {}).get("school") == "parashara_strict"
 
-    def test_rahu_dig_is_zero(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_rahu_dig_is_zero(self, result):
         assert result.get("Rahu", {}).get("dig", -1) == 0.0
 
-    def test_rahu_kala_is_zero(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_rahu_kala_is_zero(self, result):
         assert result.get("Rahu", {}).get("kala", -1) == 0.0
 
-    def test_rahu_cheshta_is_zero(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_rahu_cheshta_is_zero(self, result):
         assert result.get("Rahu", {}).get("cheshta", -1) == 0.0
 
-    def test_classical_seven_still_present(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_classical_seven_still_present(self, result):
         classical = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"}
         assert classical.issubset(result.keys()), (
             f"Missing classical planets: {classical - result.keys()}"
         )
 
-
-# ── T1.4b: Kala-bala day/night fix (Task 11) ─────────────────────────────────
-
-class TestKalaBalaDatetime:
-    def test_daytime_sun_kala_higher_than_nighttime(self):
-        result_day = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=10.72)
-        result_night = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=22.5)
-        sun_day = result_day.get("Sun", {}).get("kala", 0)
-        sun_night = result_night.get("Sun", {}).get("kala", 0)
-        assert sun_day != sun_night, "Sun kala-bala must differ between day and night"
-        assert sun_day > sun_night, (
-            f"Sun kala should be higher daytime: day={sun_day} night={sun_night}"
+    def test_classical_seven_are_non_degenerate(self, result):
+        """R6 1a-strength (M-1 fix): real PyJHora shadbala must not collapse
+        to a small quantized set like the old {0, 0.375, 0.75} heuristic."""
+        totals = [result[g]["total"] for g in
+                  ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")]
+        assert len(set(round(t, 2) for t in totals)) >= 5, (
+            f"shadbala totals look degenerate/quantized: {totals}"
         )
 
-    def test_nighttime_moon_kala_higher_than_daytime(self):
-        result_day = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=10.72)
-        result_night = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=22.5)
-        moon_day = result_day.get("Moon", {}).get("kala", 0)
-        moon_night = result_night.get("Moon", {}).get("kala", 0)
-        assert moon_night > moon_day, (
-            f"Moon kala should be higher nighttime: day={moon_day} night={moon_night}"
+
+# ── T1.4b: Kala-bala (Task 11) — now real PyJHora, not a birth_hour toggle ───
+
+class TestKalaBalaReal:
+    """R6 1a-strength (M-1 fix): kala bala is now jhora.horoscope.chart.
+    strength._kaala_bala(jd, place) — a real composite of nathonnata + paksha
+    + tribhaga + abdadhipathi + masadhipathi + vaaradhipathi + hora + ayana +
+    yuddha bala, computed from the actual jd/place (real sunrise/sunset via
+    drik), not a birth_hour >= 6/< 18 toggle. There is no `birth_hour` kwarg
+    any more — PyJHora derives day/night internally from jd_ut + place.
+    """
+
+    def test_kala_differs_between_two_real_charts(self):
+        # Same date, two different birth times -> different real kala bala.
+        chart_morning = _native_chart_output()
+        chart_evening = None
+        from pyjhora_adapter.compute import compute_chart
+        evening_birth = dict(_NATIVE_BIRTH, datetime_iso="1984-02-05T22:30:00")
+        chart_evening = compute_chart(inputs=evening_birth, ayanamsha_id="lahiri")
+
+        kw = dict(lat=_NATIVE_BIRTH["latitude_deg"], lon=_NATIVE_BIRTH["longitude_deg"],
+                  tz=_NATIVE_BIRTH["tz_offset_hours"])
+        sb_morning = sut._derive_shadbala_from_positions(
+            chart_morning, "lahiri", jd_ut=_native_jd_ut(chart_morning), **kw)
+        sb_evening = sut._derive_shadbala_from_positions(
+            chart_evening, "lahiri",
+            jd_ut=float(chart_evening["provenance"]["jd_ut"]), **kw)
+
+        assert sb_morning["Sun"]["kala"] != sb_evening["Sun"]["kala"], (
+            "Sun kala-bala must differ between two different real birth times"
         )
 
-    def test_birth_hour_boundary_dawn_is_daytime(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=6.0)
-        sun_kala = result.get("Sun", {}).get("kala", 0)
-        assert sun_kala == 0.75, f"Sun at birth_hour=6.0 should be daytime; kala={sun_kala}"
-
-    def test_birth_hour_boundary_midnight_is_nighttime(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri", birth_hour=0.0)
-        sun_kala = result.get("Sun", {}).get("kala", 0)
-        assert sun_kala == 0.375, f"Sun at midnight should be nighttime; kala={sun_kala}"
+    def test_kala_bala_non_negative_for_classical_seven(self):
+        jd_ut = _native_jd_ut()
+        kw = dict(lat=_NATIVE_BIRTH["latitude_deg"], lon=_NATIVE_BIRTH["longitude_deg"],
+                  tz=_NATIVE_BIRTH["tz_offset_hours"])
+        result = sut._derive_shadbala_from_positions(_native_chart_output(), "lahiri", jd_ut=jd_ut, **kw)
+        for g in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"):
+            assert result[g]["kala"] >= 0.0, f"{g} kala={result[g]['kala']} negative"
 
 
-# ── T1.4c: Drik-bala from aspect matrix (Task 12) ────────────────────────────
+# ── T1.4c: Drik-bala from real Parasari aspect matrix (Task 12) ─────────────
 
 class TestDrikBala:
-    def test_drik_values_differ_across_grahas(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
-        driks = [d.get("drik", 0) for g, d in result.items() if g not in ("Rahu", "Ketu")]
+    """R6 1a-strength (M-1 fix): drik bala for the classical 7 is now real
+    PyJHora Parasari graha drishti (jhora.horoscope.chart.strength._drik_bala)
+    — SIGNED (net malefic aspect can drive it negative per BPHS Ch.26), not
+    the old heuristic bounded [0, 1]. The nodal fallback path still uses the
+    original `_compute_drik_bala` helper (bounded [0, 1]) — unchanged, tested
+    separately below.
+    """
+
+    def test_drik_values_differ_across_classical_grahas(self):
+        jd_ut = _native_jd_ut()
+        kw = dict(lat=_NATIVE_BIRTH["latitude_deg"], lon=_NATIVE_BIRTH["longitude_deg"],
+                  tz=_NATIVE_BIRTH["tz_offset_hours"])
+        result = sut._derive_shadbala_from_positions(_native_chart_output(), "lahiri", jd_ut=jd_ut, **kw)
+        driks = [d["drik"] for g, d in result.items() if g not in ("Rahu", "Ketu")]
         assert len(set(driks)) > 1, (
             f"All grahas have same drik (stub not fixed): {set(driks)}"
         )
 
-    def test_drik_bounded_0_to_1(self):
-        result = sut._derive_shadbala_from_positions(MOCK_CHART_OUTPUT, "lahiri")
+    def test_drik_bala_finite_and_bounded_rupa(self):
+        jd_ut = _native_jd_ut()
+        kw = dict(lat=_NATIVE_BIRTH["latitude_deg"], lon=_NATIVE_BIRTH["longitude_deg"],
+                  tz=_NATIVE_BIRTH["tz_offset_hours"])
+        result = sut._derive_shadbala_from_positions(_native_chart_output(), "lahiri", jd_ut=jd_ut, **kw)
         for g_name, sb in result.items():
-            drik = sb.get("drik", 0.5)
-            assert 0.0 <= drik <= 1.0, f"{g_name} drik={drik} out of bounds"
+            drik = sb["drik"]
+            # Real drik bala (rupa) can be signed; classical bound is [-1, 1]
+            # rupa (i.e. [-60, 60] virupas / 60).
+            assert -1.0 <= drik <= 1.0, f"{g_name} drik={drik} out of plausible bounds"
 
     def test_compute_drik_bala_function_exists(self):
         assert callable(sut._compute_drik_bala), "_compute_drik_bala not found on sut"
 
     def test_compute_drik_bala_returns_float_in_range(self):
+        # Nodal fallback helper — unchanged, still bounded [0, 1].
         grahas = MOCK_CHART_OUTPUT["grahas"]
         for g in grahas:
             if g["name"] in ("Rahu", "Ketu"):

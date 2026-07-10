@@ -133,6 +133,25 @@ def _conn():
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+# M-22 fix: every `_emit_*` derived-anga function below (disha_shul, tithi/
+# nakshatra-shoonya, agni_vasa, inauspicious/auspicious windows, bhadra flag,
+# special-yoga combinations, panchaka classification/flag, eclipse proximity)
+# previously hardcoded the top verification tier unconditionally (`vp =`
+# the two-pass-verified literal) — stamped at the emit site with no verifier
+# ever running a second pass. These
+# are deterministic single-pass table lookups derived directly from the
+# already-computed panchang_engine anga objects (tithi/nakshatra/yoga/karana/
+# vara) — a real, single computation, but NOT independently cross-checked by
+# a second method. `_single_pass_verif()` makes that honest: the class-wide
+# tier for this file is "single_pass" (formulas.py VERIFICATION_RESCALE 0.85
+# vs 1.00 for two_pass_verified) unless/until a genuine second-pass
+# cross-check is implemented for a given anga (at which point that specific
+# emit function should compute its own real two_pass_verified tier instead
+# of calling this helper).
+def _single_pass_verif() -> str:
+    return "single_pass"
+
+
 def _fact_id(category: str, subject: str, key: str,
              chart_id: str, ayanamsha_id: str, build_id: str) -> str:
     raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
@@ -611,7 +630,7 @@ def _emit_disha_shul(pi: Any, chart_id: str, build_id: str, computed_at: str) ->
     cat = "panchanga_disha_shul"
     subj = "DISHA_SHUL_BIRTH"
     ay = "INVARIANT"
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
 
     # DISHA_SHUL_TABLE: vara_id → direction to avoid
     DISHA_SHUL_TABLE = {
@@ -634,15 +653,38 @@ def _emit_disha_shul(pi: Any, chart_id: str, build_id: str, computed_at: str) ->
 
 
 def _emit_tithi_shoonya(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list[dict]:
-    """panchanga_tithi_shoonya_rashi — subject TITHI_SHOONYA_BIRTH."""
+    """panchanga_tithi_shoonya_rashi — subject TITHI_SHOONYA_BIRTH.
+
+    D-4 fix: `panchang_engine.panchanga_instant()` always sets `pi.shoonya`
+    (via `compute_shoonya`, which itself always returns a `ShoonyaState` —
+    never `None`), and `TITHI_SHOONYA_TABLE` covers every valid tithi_id
+    (1..30) with no gaps. So `shoonya is None` and
+    `tithi_shoonya_sign_id is None` should never happen for a structurally
+    valid tithi.id — if either does, it is a genuine upstream defect (e.g.
+    a stale/mismatched panchang_engine build, or tithi.id outside 1..30),
+    not a legitimate "nothing to report" case. Previously both were silent
+    `return []` (classic silent-skip, per B.10 / CLAUDE.md discipline on
+    never silently absorbing a computation gap). Now: log loud + halt via
+    RuntimeError so a build never quietly ships 0 rows for a table that is
+    supposed to be exhaustive.
+    """
     cat = "panchanga_tithi_shoonya_rashi"
     subj = "TITHI_SHOONYA_BIRTH"
     ay = "INVARIANT"
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
 
     shoonya = pi.shoonya
     if shoonya is None:
-        return []
+        logger.error(
+            "[ga_panchanga] chart_id=%s: pi.shoonya is None — panchang_engine "
+            "should always populate ShoonyaState; refusing to silently skip "
+            "panchanga_tithi_shoonya_rashi (D-4).", chart_id,
+        )
+        raise RuntimeError(
+            f"[ga_panchanga] chart_id={chart_id}: panchanga_instant() returned "
+            f"pi.shoonya=None — TITHI_SHOONYA_TABLE lookup never ran. This is a "
+            f"halt-worthy defect (D-4), not a silent-skip case."
+        )
 
     rows = []
     if shoonya.tithi_shoonya_sign_id is not None:
@@ -657,19 +699,43 @@ def _emit_tithi_shoonya(pi: Any, chart_id: str, build_id: str, computed_at: str)
                  citation_human=f"Tithi Shoonya Rashi (void sign) at birth: {sign_name}.",
                  verification_pass_status=vp, computed_at=computed_at),
         ]
+    else:
+        logger.warning(
+            "[ga_panchanga] chart_id=%s: tithi_shoonya_sign_id is None for "
+            "tithi.id=%s — TITHI_SHOONYA_TABLE covers 1..30 with no gaps, so "
+            "this indicates tithi.id is out of range or the table has "
+            "drifted. Emitting zero rows for this category IS a real gap, "
+            "not a silent one (D-4) — surfaced via WARNING, not swallowed.",
+            chart_id, getattr(pi.tithi, "id", None),
+        )
     return rows
 
 
 def _emit_nakshatra_shoonya(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list[dict]:
-    """panchanga_nakshatra_shoonya_rashi — subject NAKSHATRA_SHOONYA_BIRTH."""
+    """panchanga_nakshatra_shoonya_rashi — subject NAKSHATRA_SHOONYA_BIRTH.
+
+    D-4 fix: see `_emit_tithi_shoonya` docstring — same class of defect,
+    same fix (halt on `shoonya is None`, loud WARNING instead of silent
+    skip when a specific sign_id resolves to None despite an exhaustive
+    NAKSHATRA_SHOONYA_TABLE covering 1..27).
+    """
     cat = "panchanga_nakshatra_shoonya_rashi"
     subj = "NAKSHATRA_SHOONYA_BIRTH"
     ay = "INVARIANT"
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
 
     shoonya = pi.shoonya
     if shoonya is None:
-        return []
+        logger.error(
+            "[ga_panchanga] chart_id=%s: pi.shoonya is None — panchang_engine "
+            "should always populate ShoonyaState; refusing to silently skip "
+            "panchanga_nakshatra_shoonya_rashi (D-4).", chart_id,
+        )
+        raise RuntimeError(
+            f"[ga_panchanga] chart_id={chart_id}: panchanga_instant() returned "
+            f"pi.shoonya=None — NAKSHATRA_SHOONYA_TABLE lookup never ran. This "
+            f"is a halt-worthy defect (D-4), not a silent-skip case."
+        )
 
     rows = []
     if shoonya.nakshatra_shoonya_sign_id is not None:
@@ -684,6 +750,15 @@ def _emit_nakshatra_shoonya(pi: Any, chart_id: str, build_id: str, computed_at: 
                  citation_human=f"Nakshatra Shoonya Rashi (void sign) at birth: {sign_name}.",
                  verification_pass_status=vp, computed_at=computed_at),
         ]
+    else:
+        logger.warning(
+            "[ga_panchanga] chart_id=%s: nakshatra_shoonya_sign_id is None for "
+            "nakshatra.id=%s — NAKSHATRA_SHOONYA_TABLE covers 1..27 with no "
+            "gaps, so this indicates nakshatra.id is out of range or the "
+            "table has drifted. Emitting zero rows for this category IS a "
+            "real gap, not a silent one (D-4) — surfaced via WARNING, not "
+            "swallowed.", chart_id, getattr(pi.nakshatra, "id", None),
+        )
     return rows
 
 
@@ -692,7 +767,7 @@ def _emit_agni_vasa(pi: Any, chart_id: str, build_id: str, computed_at: str) -> 
     cat = "panchanga_agni_vasa"
     subj = "AGNI_VASA_BIRTH"
     ay = "INVARIANT"
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
 
     vasa = pi.vasa
     if vasa is None:
@@ -766,7 +841,7 @@ def _emit_inauspicious_window(pi: Any, window_name: str, subject: str,
     """Generic inauspicious time window emitter."""
     cat = f"panchanga_{window_name}"
     ay = "INVARIANT"
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
     rows = []
 
     inauspicious_full = pi.inauspicious_full
@@ -827,7 +902,7 @@ def _emit_auspicious_window(pi: Any, window_name: str, subject: str,
     """Generic auspicious time window emitter."""
     cat = f"panchanga_{window_name}"
     ay = "INVARIANT"
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
     rows = []
 
     auspicious_full = pi.auspicious_full
@@ -884,7 +959,7 @@ def _emit_bhadra_flag(pi: Any, chart_id: str, build_id: str, computed_at: str,
     cat = "bhadra_flag"
     subj = "BHADRA_FLAG_BIRTH"
     ay = ayanamsha_id
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
 
     karana = pi.karana
     active = (karana is not None and karana.id == 7)  # Vishti/Bhadra = id 7
@@ -956,7 +1031,7 @@ def _emit_special_yoga_combinations(pi: Any, chart_id: str, build_id: str,
     """panchanga_special_yoga_combinations (ayanamsha-dependent)."""
     cat = "panchanga_special_yoga_combinations"
     ay = ayanamsha_id
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
     rows = []
 
     yogas = pi.special_yogas_instant or []
@@ -996,7 +1071,7 @@ def _emit_panchaka_classification(pi: Any, chart_id: str, build_id: str,
     """panchanga_panchaka_classification (5 panchakas + overall)."""
     cat = "panchanga_panchaka_classification"
     ay = ayanamsha_id
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
     rows = []
 
     # 5-panchaka types and their nakshatra mapping
@@ -1042,7 +1117,7 @@ def _emit_panchaka_flag(pi: Any, chart_id: str, build_id: str,
     cat = "panchaka_flag"
     subj = "PANCHAKA_FLAG_BIRTH"
     ay = ayanamsha_id
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
 
     PANCHAKA_NAKSHATRAS = {23, 24, 25, 26, 27}
     nak_id = pi.nakshatra.id if pi.nakshatra else 0
@@ -1068,7 +1143,7 @@ def _emit_eclipse_proximity(pi: Any, chart_id: str, build_id: str,
     """eclipse_proximity_natal — eclipses ±15 days from birth (ayanamsha-dependent for sign/nak)."""
     cat = "eclipse_proximity_natal"
     ay = ayanamsha_id
-    vp = "two_pass_verified"
+    vp = _single_pass_verif()
     rows = []
 
     # Eclipse proximity requires G4 eclipse table lookup — not available in panchanga_engine's
