@@ -93,14 +93,30 @@ export interface EventAnchorsResult {
 // 0.322". The true source-of-truth fix belongs in the Python ph_nimitta writer (out of
 // scope for this TS-estate lane — a separate parallel data-rebuild effort owns that), but
 // this is the EARLIEST point this lane can dedupe: right where the sidecar response is
-// received, before any caller ever sees a duplicate row. Key: (theme, window.start,
-// window.end, confidence) — the register's own description of "every row identical" names
-// exactly these fields as the duplicate signature.
+// received, before any caller ever sees a duplicate row. See anchorDedupKey below for the
+// exact dedup fingerprint (widened past the register's own theme/window/confidence
+// description per a Ring-2 flagged false-merge risk).
+// R6 3b-budgets (Ring-2 flagged risk): theme+window+confidence ALONE can false-merge two
+// genuinely distinct anchors that happen to share those 3 fields by coincidence (e.g. two
+// real predictions in the same theme/window with the same computed confidence but different
+// falsifiers/contributing evidence). Widened the key to also include falsifier text +
+// contributing_dashas + contributing_signals (sorted, so array ORDER never causes a false
+// non-match) — a genuine content fingerprint, not just the 3 fields the register's own
+// "every row identical" description happened to call out. The register's actual observed
+// bug (every field byte-identical across duplicate rows) still dedupes cleanly under this
+// wider key, since true duplicates share ALL of these fields too; it only stops merging rows
+// that differ in the fields that matter (what is actually being predicted and why).
+function anchorDedupKey(a: PredictionAnchor): string {
+  const dashas = [...(a.contributing_dashas ?? [])].sort().join('|')
+  const signals = [...(a.contributing_signals ?? [])].sort().join('|')
+  return `${a.theme}::${a.window?.start}::${a.window?.end}::${a.confidence}::${a.falsifier}::${dashas}::${signals}`
+}
+
 function dedupeAnchors(anchors: PredictionAnchor[]): { deduped: PredictionAnchor[]; duplicates_removed: number } {
   const seen = new Set<string>()
   const deduped: PredictionAnchor[] = []
   for (const a of anchors) {
-    const key = `${a.theme}::${a.window?.start}::${a.window?.end}::${a.confidence}`
+    const key = anchorDedupKey(a)
     if (seen.has(key)) continue
     seen.add(key)
     deduped.push(a)
@@ -323,8 +339,9 @@ export function registerPhalaEventAnchorsTool(server: McpServer, principal: Prin
             duplicates_removed,
             note: duplicates_removed > 0
               ? `${duplicates_removed} duplicate anchor row(s) collapsed at the TS serving ` +
-                'boundary (same theme+window+confidence) — T-6. The true fix belongs in the ' +
-                'Python ph_nimitta writer; out of scope for this TS-estate lane.'
+                'boundary (same theme+window+confidence+falsifier+contributing dashas/signals) ' +
+                '— T-6. The true fix belongs in the Python ph_nimitta writer; out of scope for ' +
+                'this TS-estate lane.'
               : 'No duplicates found in this response.',
           },
         }
