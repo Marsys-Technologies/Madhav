@@ -417,7 +417,11 @@ def _build_dispositor_edges(
             "subsystem_from":                  "parashari",
             "subsystem_to":                    "parashari",
             **_typed_edge_fields("dispositor"),
-            "verification_pass_status":        "two_pass_verified",
+            # M-22 fix: a single deterministic construction pass (sign-lord
+            # table lookup) over already-computed upstream data — real, but
+            # not independently cross-checked by a second pass. Demoted to
+            # "single_pass" (formulas.py VERIFICATION_RESCALE 0.85 vs 1.00).
+            "verification_pass_status":        "single_pass",
             "citation_ref":                    f"parashari/sign_lordship/{graha}",
             "citation_human":                  f"Dispositor: {graha} (sign {sign_num}) → lord {lord}",
             "computed_at":                     now,

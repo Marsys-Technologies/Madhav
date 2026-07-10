@@ -226,13 +226,20 @@ class TestComputeLayerCoverage:
 
 
 # ── §3 — _compute_grounding_score ─────────────────────────────────────────────
+#
+# D-14 fix: grounding_score now measures real, detectable citation markers
+# (SIG.MSR.NNN, FORENSIC§..., CVG.N, or a chart_facts-style citation_ref) —
+# not whether expected_domains keyword strings happen to appear in the
+# narrative prose. The old tests below encoded the bug (bare "MSR"/
+# "FORENSIC" keyword text = fully grounded) as expected behavior; rewritten
+# to assert the real citation-presence semantics instead.
 
 class TestComputeGroundingScore:
-    """Tests for expected_domains grounding score. Range assertions only."""
+    """Tests for citation-marker grounding score. Range assertions only."""
 
     def test_empty_domains_returns_zero(self):
         mod = _get_module()
-        score = mod._compute_grounding_score("any response", [])
+        score = mod._compute_grounding_score("any response with SIG.MSR.234", [])
         assert score == pytest.approx(0.0, abs=0.001)
 
     def test_empty_response_returns_zero(self):
@@ -240,35 +247,60 @@ class TestComputeGroundingScore:
         score = mod._compute_grounding_score("", ["career", "MSR"])
         assert score == pytest.approx(0.0, abs=0.001)
 
-    def test_all_domains_present_returns_one(self):
+    def test_bare_keyword_text_without_citation_markers_returns_zero(self):
+        """D-14 regression guard: bare domain-name English words (no real
+        citation marker) must NOT be scored as grounded — this is the exact
+        bug the register found (surface-text keyword coincidence scored as
+        grounding)."""
         mod = _get_module()
         response = "career signal MSR holistic_bundle FORENSIC positions"
         domains = ["career", "MSR", "FORENSIC", "positions"]
         score = mod._compute_grounding_score(response, domains)
+        assert score == pytest.approx(0.0, abs=0.001)
+
+    def test_real_citation_markers_present_returns_positive(self):
+        mod = _get_module()
+        response = "Per SIG.MSR.234 and SIG.MSR.501, the career pattern is confirmed."
+        domains = ["career", "MSR"]
+        score = mod._compute_grounding_score(response, domains)
+        # 2 distinct citations / 2 domains = 1.0
         assert score == pytest.approx(1.0, abs=0.001)
 
-    def test_no_domains_present_returns_zero(self):
+    def test_no_citation_markers_returns_zero(self):
         mod = _get_module()
         response = "Career looks good."
         domains = ["MSR", "FORENSIC", "UCN", "CDLM"]
         score = mod._compute_grounding_score(response, domains)
         assert score == pytest.approx(0.0, abs=0.001)
 
-    def test_partial_match_returns_fraction(self):
+    def test_partial_citation_density_returns_fraction(self):
         mod = _get_module()
-        response = "The MSR signal confirms the career pattern."
+        response = "SIG.MSR.234 confirms the career pattern."
         domains = ["MSR", "FORENSIC", "career"]
         score = mod._compute_grounding_score(response, domains)
-        # MSR and career are present, FORENSIC is not → 2/3
-        assert 0.0 < score <= 1.0
+        # 1 distinct citation / 3 domains → partial credit
+        assert 0.0 < score < 1.0
 
-    def test_layer_prefix_stripped_for_matching(self):
+    def test_forensic_anchor_citation_counts(self):
         mod = _get_module()
-        # "L2.bodha.signals" → should match "signals" in response
-        response = "The holistic synthesis signals confirm the pattern."
-        domains = ["L2.bodha.signals"]
+        response = "FORENSIC§sun.sign confirms the placement."
+        domains = ["L1.ganita.positions"]
         score = mod._compute_grounding_score(response, domains)
-        assert score > 0.0  # "signals" is in the response
+        assert score == pytest.approx(1.0, abs=0.001)
+
+    def test_two_charts_same_query_shape_score_consistently(self):
+        """D-14 direct regression guard: two structurally identical
+        responses (same citation density, different chart-specific
+        narrative wording) must score identically — the register's
+        concrete failure signature (grounding_score=0 vs 1 for the same
+        query shape) must not reproduce."""
+        mod = _get_module()
+        domains = ["career", "MSR"]
+        response_chart_a = "Jupiter in Sagittarius: per SIG.MSR.100, career theme is strong."
+        response_chart_b = "Saturn in Libra: per SIG.MSR.200, career theme is strong."
+        score_a = mod._compute_grounding_score(response_chart_a, domains)
+        score_b = mod._compute_grounding_score(response_chart_b, domains)
+        assert score_a == pytest.approx(score_b, abs=0.001)
 
     def test_result_always_in_unit_interval(self):
         mod = _get_module()

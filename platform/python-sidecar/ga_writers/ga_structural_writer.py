@@ -105,6 +105,43 @@ logger = logging.getLogger(__name__)
 CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 ALL_GRAHAS = CLASSICAL_GRAHAS + ["Rahu", "Ketu"]
 
+# M-12: Deeptamsa (orb of light/influence) per graha, degrees — Tajika
+# Nilakanthi; mirrors PyJHora's jhora.const.deeptaamsa_of_planets (Sun,Moon,
+# Mars,Mercury,Jupiter,Venus,Saturn = 15,12,8,7,9,7,9) and ga_tajaka_writer's
+# DEEPTAMSA constant (kept as a separate module-local copy — no cross-import
+# between L1 writers). Two grahas are within mutual Tajika orb when their
+# angular separation <= (deeptamsa[g1] + deeptamsa[g2]).
+TAJIK_DEEPTAMSA: dict[str, float] = {
+    "Sun": 15.0, "Moon": 12.0, "Mars": 8.0, "Mercury": 7.0,
+    "Jupiter": 9.0, "Venus": 7.0, "Saturn": 9.0,
+}
+
+# Mean daily motion (deg/day) — Tajik faster/slower ordering for applying vs
+# separating classification (M-12). A retrograde graha's *effective* motion
+# is reversed for this purpose (it is moving backward through the zodiac).
+TAJIK_MEAN_SPEED: dict[str, float] = {
+    "Sun": 0.986, "Moon": 13.176, "Mars": 0.524, "Mercury": 1.383,
+    "Jupiter": 0.083, "Venus": 1.200, "Saturn": 0.034,
+}
+
+# Tajika aspect (drishti) precondition — whole-sign house-difference
+# (1-indexed, 1 = same sign/conjunction) at which a Tajika aspect exists at
+# all. Derived from PyJHora's jhora.horoscope.transit.tajaka aspect-set
+# functions (trinal=5th/9th, sextile=3rd/11th, square=4th/10th,
+# opposition=7th, conjunction=same-sign); semi-sextile (2nd/12th) is
+# "neutral" there and excluded from benefic/malefic_aspects_of_the_planet;
+# 6th/8th never appear in any aspect-set function. M-12: the previous
+# implementation had no such gate — any pair within a raw orb band "aspected"
+# regardless of house relation.
+_TAJIK_ASPECTING_HOUSE_DIFFS = {1, 3, 4, 5, 7, 9, 10, 11}
+
+
+def _tajik_aspecting_houses(house1: int, house2: int) -> bool:
+    """True iff two whole-sign houses (1-12) are in a recognized Tajika
+    aspect relation (conjunction/sextile/square/trinal/opposition)."""
+    diff = ((house2 - house1) % 12) + 1
+    return diff in _TAJIK_ASPECTING_HOUSE_DIFFS
+
 # Lagna for canonical native: Aries
 NATIVE_LAGNA = "Aries"
 NATIVE_LAGNA_NUM = 1  # 1-based sign number
@@ -468,8 +505,14 @@ MAHAPURUSHA_STRENGTH_BONUS: dict[str, float] = {
 PARASHARI_ASPECTS: dict[str, dict[int, float]] = {
     # All grahas: 7th house full aspect
     "all": {7: 1.0},
-    # Saturn: 3rd (quarter) + 10th (full) in addition to 7th
-    "Saturn": {3: 0.25, 7: 1.0, 10: 0.75},
+    # Saturn: 3rd + 10th are FULL special aspects, same as 7th (BPHS Ch.7;
+    # V-5 fix — the special drishtis of Mars/Jupiter/Saturn are all
+    # full-strength overrides of the generic fractional drishti-bala table,
+    # not fractional themselves. The previous 0.25/0.75 values were an
+    # uncited partial-strength invention inconsistent with Mars (4th/8th=1.0
+    # below) and Jupiter (5th/9th=1.0 below), which this table already got
+    # right.
+    "Saturn": {3: 1.0, 7: 1.0, 10: 1.0},
     # Jupiter: 5th (full) + 9th (full) in addition to 7th
     "Jupiter": {5: 1.0, 7: 1.0, 9: 1.0},
     # Mars: 4th (full) + 8th (full) in addition to 7th
@@ -912,6 +955,13 @@ def _graha_longitude(chart_output: dict[str, Any], graha_name: str) -> float:
     return 0.0
 
 
+def _graha_retrograde(chart_output: dict[str, Any], graha_name: str) -> bool:
+    for g in chart_output.get("grahas", []):
+        if g["name"] == graha_name:
+            return bool(g.get("retrograde", False))
+    return False
+
+
 def _detect_kala_sarpa(varga_state: dict) -> dict:
     """Detect Kala Sarpa / Kala Amrita formation in a varga state.
 
@@ -1129,49 +1179,115 @@ def _build_aspect_rows(
             citation_human=f"House {h} receives {aspect_count} Parashari aspects ({ayanamsha_id}).",
         ))
 
-    # Tajik aspects (5 types: Ithasala, Eesarpha, Nakta, Yamaya, Manaau)
-    tajik_types = ["ithasala", "eesarpha", "nakta", "yamaya", "manaau"]
+    # Tajik aspects (M-12: real deeptamsa orb + mutual-aspect precondition +
+    # applying/separating motion, replacing the previous fabricated
+    # <1°/<5°/<30° orb bands which had no relation to classical deeptamsa and
+    # never considered motion — Eesarpha/Nakta were literally unreachable).
+    #
+    # Classical basis (Tajika Nilakanthi ch.5-6, per ga_tajaka_writer's
+    # CLASSICAL_SOURCE citation, reused here for the natal/GA8 aspect table):
+    #   - A Tajik aspect can exist ONLY between grahas in a recognized whole-
+    #     sign aspect relation (_tajik_aspecting_houses — conjunction/
+    #     sextile/square/trinal/opposition; see _TAJIK_ASPECTING_HOUSE_DIFFS).
+    #   - Within mutual deeptamsa (TAJIK_DEEPTAMSA[g1]+TAJIK_DEEPTAMSA[g2]),
+    #     with the faster graha APPROACHING the slower  → Ithasala.
+    #   - Within mutual deeptamsa, faster graha moving AWAY               → Eesarpha (separating).
+    #   - Exact same degree (orb <= 1.0°), motion indeterminate/negligible  → Yamaya.
+    #   - Beyond mutual deeptamsa but still aspecting and approaching       → Manaau (the
+    #     union is too distant to perfect before a sign change; "denial" signification).
+    #   - Nakta (translation of light via a third, faster graha) is a THREE-body
+    #     yoga, not expressible as a single pairwise fact_key here; it is
+    #     retained in tajik_types for schema stability but never fires from
+    #     this pairwise loop (ga_tajaka_writer computes real Nakta in the
+    #     annual-chart context where the third-body loop already exists).
     for g1_name in CLASSICAL_GRAHAS:
         g1_long = _graha_longitude(chart_output, g1_name)
+        g1_house = _graha_house(chart_output, g1_name)
+        g1_retro = _graha_retrograde(chart_output, g1_name)
         g1_subj = PLANET_TO_SUBJECT.get(g1_name, g1_name.upper())
         for g2_name in CLASSICAL_GRAHAS:
             if g1_name >= g2_name:
                 continue
             g2_long = _graha_longitude(chart_output, g2_name)
+            g2_house = _graha_house(chart_output, g2_name)
+            g2_retro = _graha_retrograde(chart_output, g2_name)
+            g2_subj = PLANET_TO_SUBJECT.get(g2_name, g2_name.upper())
+
+            # Precondition: no Tajik aspect exists at all unless the pair is
+            # in a recognized whole-sign aspect relation.
+            if not _tajik_aspecting_houses(g1_house, g2_house):
+                continue
+
             orb = abs(g1_long - g2_long)
             if orb > 180:
                 orb = 360 - orb
-            g2_subj = PLANET_TO_SUBJECT.get(g2_name, g2_name.upper())
-            # Determine Tajik aspect type based on orb and applying/separating
-            # Ithasala: applying (faster planet approaching slower) < 5°
-            # Eesarpha: separating < 5°
-            # Nakta: one planet stationary/retrograde
-            # Yamaya: both same degree
-            # Manaau: > 5° but < 30° applying
-            if orb < 1.0:
+            deeptamsa_sum = TAJIK_DEEPTAMSA[g1_name] + TAJIK_DEEPTAMSA[g2_name]
+
+            # Applying vs separating: effective speed reverses sign under
+            # retrogression (a retrograde graha moves backward through the
+            # zodiac). The faster (by |effective speed|) graha is the
+            # approacher; "applying" means it has not yet reached the
+            # slower graha's degree.
+            eff1 = -TAJIK_MEAN_SPEED[g1_name] if g1_retro else TAJIK_MEAN_SPEED[g1_name]
+            eff2 = -TAJIK_MEAN_SPEED[g2_name] if g2_retro else TAJIK_MEAN_SPEED[g2_name]
+            faster_name, faster_long, slower_long = (
+                (g1_name, g1_long, g2_long) if abs(eff1) >= abs(eff2)
+                else (g2_name, g2_long, g1_long)
+            )
+            # Signed shortest angular distance from faster to slower; positive
+            # means the faster graha's own motion direction still has ground
+            # to cover to reach the slower graha's degree (applying).
+            faster_speed_sign = 1.0 if (eff1 if faster_name == g1_name else eff2) >= 0 else -1.0
+            raw_gap = (slower_long - faster_long + 180.0) % 360.0 - 180.0
+            applying = (raw_gap * faster_speed_sign) > 0
+
+            if orb <= 1.0:
                 taj_type = "yamaya"
                 orb_strength = 1.0
-            elif orb < 5.0:
-                taj_type = "ithasala"  # simplified
-                orb_strength = 0.8
-            elif orb < 30.0:
+            elif orb <= deeptamsa_sum:
+                if applying:
+                    taj_type = "ithasala"
+                else:
+                    taj_type = "eesarpha"
+                orb_strength = round(max(0.0, 1.0 - orb / deeptamsa_sum), 4)
+            elif applying:
                 taj_type = "manaau"
-                orb_strength = 0.5
-            else:
-                taj_type = "wide_manaau"
                 orb_strength = 0.1
-            salience = {"yamaya": "high", "ithasala": "high", "manaau": "medium", "wide_manaau": "low"}.get(taj_type, "medium")
+            else:
+                # Separating and beyond deeptamsa: no live Tajik yoga (the
+                # union already perfected and has fully dispersed).
+                continue
+            # M-12 fix: real per-graha deeptamsa + whole-sign precondition +
+            # applying/separating motion (mean-speed with retrograde sign-
+            # flip) replace the previous fabricated <1°/<5°/<30° orb bands.
+            # M-22's prior demotion to documented_approximation (below) no
+            # longer applies now that the underlying Tajika-aspect geometry
+            # is genuinely derived — Ring-2 independently confirmed the
+            # TAJIK_DEEPTAMSA constants byte-exact against PyJHora 4.8.6's
+            # installed const.py and cross-checked the precondition gating
+            # against installed tajaka.py (R6_RUN_LEDGER "Lane 1e-structcond"
+            # Ring-2 verdict, 2026-07-10).
+            salience = {"yamaya": "high", "ithasala": "high", "eesarpha": "medium",
+                        "manaau": "low"}.get(taj_type, "medium")
             rows.append(_base_row(
                 "aspect_tajik", f"{g1_subj}_{g2_subj}", taj_type,
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=round(orb, 4),
                 unit="deg",
-                value_jsonb={"orb_deg": round(orb, 4), "orb_strength": orb_strength, "salience": salience},
+                value_jsonb={
+                    "orb_deg": round(orb, 4),
+                    "deeptamsa_sum_deg": deeptamsa_sum,
+                    "orb_strength": orb_strength,
+                    "applying": applying,
+                    "salience": salience,
+                    "house_diff": ((g2_house - g1_house) % 12) + 1,
+                },
                 verif="two_pass_verified",
-                source=f"pyjhora_adapter.tajik_aspects/{eng_ver}",
+                source=f"ga_structural.tajik_aspects/{eng_ver}",
                 citation_human=(
                     f"Tajik {taj_type} between {g1_name} and {g2_name} "
-                    f"(orb {orb:.2f}°) ({ayanamsha_id})."
+                    f"(orb {orb:.2f}°, deeptamsa {deeptamsa_sum:.1f}°, "
+                    f"{'applying' if applying else 'separating'}) ({ayanamsha_id})."
                 ),
             ))
 
@@ -2234,7 +2350,31 @@ def _load_shadbala_and_bhava_fact_ids(
     return shadbala, bhava_bala
 
 
+
+# Classical required shadbala (rupa) per graha — mirrors ga_strength_writer's
+# SHADBALA_REQUIRED (kept as a separate module-local copy; no cross-import
+# between L1 writers). Used to normalize the now-real shadbala_total (post
+# lane-1a PyJHora delegation, M-1) into a 0-1 sthana-equivalent: "how many
+# multiples of the classically-required minimum has this graha attained".
+_COMPOSITE_SHADBALA_REQUIRED: dict[str, float] = {
+    "Sun": 5.0, "Moon": 6.0, "Mars": 5.0, "Mercury": 7.0,
+    "Jupiter": 6.5, "Venus": 5.5, "Saturn": 5.0,
+}
+# NOTE: house_bhava_bala_total (GA3 ga_strength_writer._derive_bhava_bala) is
+# itself a hand-rolled, non-classically-scaled composite (adhipati_bala =
+# lord's shadbala rupa × 30, + a flat 10/15/20 digbala, + 10+5×occupant-count
+# drishti) — there is no citable classical absolute ceiling for this specific
+# GA3 quantity, only for its D1-shadbala inputs. Inventing one here (e.g. a
+# flat "10.0") would just be a second fabricated constant layered on top of
+# the first. Instead this composite formula normalizes each house's
+# bhava_bala_total RELATIVE TO the other 11 houses in the SAME chart+
+# ayanamsha (ratio to the max observed value) — an honest, chart-relative
+# "how strong is this house compared to this native's strongest house"
+# reading, not an absolute claim against an uncited threshold.
+
+
 def _build_composite_strength_rows(
+    conn: Any,
     chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
@@ -2242,17 +2382,33 @@ def _build_composite_strength_rows(
     """
     Two formula_id rows per (graha, house): bphs_weighted + simple_multiplication.
     Plus cross_formula_divergence row.
+
+    M-14 fix: previously both formulas were computed from a fabricated
+    `shadbala_proxy = sthana*5+1` (a coarse, hand-waved rupa estimate) and a
+    similarly hand-waved `bhava_bala_proxy` keyed only by house-quadrant
+    (angular/succedent/cadent), stamped with a false `pyjhora_adapter.*` source — no PyJHora
+    call and no real GA3 shadbala/bhava-bala data were ever consulted. Now
+    that lane 1a (M-1) delegates shadbala to real PyJHora and the real
+    per-graha `graha_shadbala_total` + per-house `house_bhava_bala_total`
+    chart_facts already exist (GA3), this function loads them via
+    `_load_shadbala_and_bhava_fact_ids` and references their fact_ids in
+    `constituent_facts_array` (B.3 derivation-ledger mandate; §N.5 L1-is-
+    authority — this NEVER restates the shadbala/bhava_bala value, only
+    normalizes and cites it). Where a real value is missing for a
+    graha/house, the row is FLOORED (value_num=None, reason recorded) rather
+    than falling back to any invented number (canonical-or-floor).
     """
     rows: list[dict[str, Any]] = []
     grahas_data = chart_output.get("grahas", [])
 
-    # Pre-compute simple bhava_bala proxies
-    bhava_bala_proxy = {
-        h: (1.0 if h in {1, 4, 7, 10} else 0.75 if h in {2, 5, 8, 11} else 0.5)
-        for h in range(1, 13)
-    }
+    shadbala_map, bhava_bala_map = _load_shadbala_and_bhava_fact_ids(conn, chart_id, ayanamsha_id)
+    bhava_bala_ceiling = max(
+        (v for v, _fid in bhava_bala_map.values()), default=0.0
+    )
 
-    # Dignity to sthana bala proxy
+    # Dignity to sthana bala proxy (D1 dignity is a real chart_output field —
+    # not itself fabricated — used only as the classical dignity component of
+    # the composite, distinct from the shadbala rupa total it multiplies).
     dignity_to_strength = {
         "exalted": 1.0, "own_sign": 0.75, "neutral": 0.5,
         "debilitated": 0.25, "enemy": 0.375,
@@ -2264,47 +2420,101 @@ def _build_composite_strength_rows(
         g_house = int(g.get("house", 1))
         g_dignity = g.get("dignity_status", "neutral")
         sthana = dignity_to_strength.get(g_dignity, 0.5)
-        # Shadbala proxy (simplified)
-        shadbala_proxy = sthana * 5.0 + 1.0  # rough rupa estimate
+
+        sb_entry = shadbala_map.get(subject)
+        required = _COMPOSITE_SHADBALA_REQUIRED.get(g_name, 5.0)
+        shadbala_ratio: float | None = None
+        shadbala_fact_id: str | None = None
+        if sb_entry is not None:
+            shadbala_val, shadbala_fact_id = sb_entry
+            shadbala_ratio = round(min(1.0, shadbala_val / required), 4) if required else None
 
         for h in range(1, 13):
             house_key = f"HOUSE_{h}"
             comp_subject = f"{subject}_IN_{house_key}"
-            bhava = bhava_bala_proxy[h]
+
+            bb_entry = bhava_bala_map.get(house_key)
+            bhava_ratio: float | None = None
+            bhava_fact_id: str | None = None
+            if bb_entry is not None and bhava_bala_ceiling > 0:
+                bhava_val, bhava_fact_id = bb_entry
+                bhava_ratio = round(min(1.0, bhava_val / bhava_bala_ceiling), 4)
+
+            constituent_ids = [fid for fid in (shadbala_fact_id, bhava_fact_id) if fid]
+
+            if shadbala_ratio is None or bhava_ratio is None:
+                # Canonical-or-floor: no real GA3 shadbala/bhava_bala row for
+                # this graha/house — floor rather than fabricate a proxy.
+                rows.append(_base_row(
+                    "graha_in_house_composite_strength", comp_subject, "bphs_weighted",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_num=None,
+                    value_jsonb={"floored": True, "reason": "missing_ga3_shadbala_or_bhava_bala_fact"},
+                    verif="floored",
+                    source=f"ga_structural.composite_strength_bphs/{eng_ver}",
+                    citation_human=(
+                        f"{g_name} in house {h}: composite strength floored — "
+                        f"missing real shadbala/bhava_bala GA3 fact ({ayanamsha_id})."
+                    ),
+                    constituent_facts_array=constituent_ids or None,
+                ))
+                continue
 
             # Pass 1: BPHS weighted formula
-            # Composite = (dignity × shadbala_total × bhava_bala) × aspect_modifier
+            # Composite = (dignity × real-shadbala-ratio × real-bhava-bala-ratio) × aspect_modifier
             aspect_modifier = 1.0 if h == g_house else 0.75
-            bphs_score = round(sthana * (shadbala_proxy / 10.0) * bhava * aspect_modifier, 4)
+            bphs_score = round(sthana * shadbala_ratio * bhava_ratio * aspect_modifier, 4)
 
-            # Pass 2: simple multiplication
-            simple_score = round(sthana * bhava, 4)
+            # Pass 2: simple multiplication (same real ratios, no aspect modifier)
+            simple_score = round(sthana * bhava_ratio, 4)
 
             divergence = abs(bphs_score - simple_score)
 
+            # M-14 fix: "Pass 1"/"Pass 2" previously combined the SAME
+            # invented shadbala_proxy (sthana*5+1, a "rough rupa estimate")
+            # under two false pyjhora_adapter source strings — M-22 had
+            # demoted all three emitted rows here to documented_approximation
+            # pending this lane's fix. Now real graha_shadbala_total and
+            # house_bhava_bala_total (post lane-1a's real shadbala) feed both
+            # passes via constituent_facts_array, so the cross-check is a
+            # genuine classical shadbala + bhava bala comparison. Ring-2
+            # independently hand-derived shadbala_ratio=0.7222/
+            # bhava_ratio=0.7468 from real chart_facts and got an exact digit
+            # match (R6_RUN_LEDGER "Lane 1e-structcond" Ring-2 verdict,
+            # 2026-07-10) — verif/source restored to reflect the real
+            # ga_structural computation.
             rows.append(_base_row(
                 "graha_in_house_composite_strength", comp_subject, "bphs_weighted",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=bphs_score,
                 verif="two_pass_verified",
-                source=f"pyjhora_adapter.composite_strength_bphs/{eng_ver}",
-                citation_human=f"{g_name} in house {h}: BPHS composite strength {bphs_score:.4f} ({ayanamsha_id}).",
+                source=f"ga_structural.composite_strength_bphs/{eng_ver}",
+                citation_human=(
+                    f"{g_name} in house {h}: BPHS composite strength {bphs_score:.4f} "
+                    f"(shadbala_ratio={shadbala_ratio:.4f}, bhava_ratio={bhava_ratio:.4f}) ({ayanamsha_id})."
+                ),
+                constituent_facts_array=constituent_ids or None,
             ))
             rows.append(_base_row(
                 "graha_in_house_composite_strength", comp_subject, "simple_multiplication",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=simple_score,
                 verif="two_pass_verified",
-                source=f"pyjhora_adapter.composite_strength_simple/{eng_ver}",
-                citation_human=f"{g_name} in house {h}: simple composite strength {simple_score:.4f} ({ayanamsha_id}).",
+                source=f"ga_structural.composite_strength_simple/{eng_ver}",
+                citation_human=(
+                    f"{g_name} in house {h}: simple composite strength {simple_score:.4f} "
+                    f"(shadbala_ratio={shadbala_ratio:.4f}, bhava_ratio={bhava_ratio:.4f}) ({ayanamsha_id})."
+                ),
+                constituent_facts_array=constituent_ids or None,
             ))
             rows.append(_base_row(
                 "graha_in_house_composite_strength", comp_subject, "cross_formula_divergence",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=round(divergence, 4),
                 verif="two_pass_verified",
-                source=f"pyjhora_adapter.composite_strength_div/{eng_ver}",
+                source=f"ga_structural.composite_strength_div/{eng_ver}",
                 citation_human=f"{g_name} in house {h}: formula divergence {divergence:.4f} ({ayanamsha_id}).",
+                constituent_facts_array=constituent_ids or None,
             ))
 
     return rows
@@ -2576,6 +2786,20 @@ def _build_structural_relationship_rows(
                 ))
 
     # Composite state classification (X)
+    #
+    # D-3 fix: the root cause of the "astrologically suspect" distribution
+    # (Jupiter own-sign Sagittarius wrongly "debilitation_cancelled"; Saturn
+    # Libra-exalted wrongly "neutral"; 8/9 grahas "neutral") was an
+    # off-by-one sign-index bug in pyjhora_adapter/dignities.py — `g.get(
+    # "dignity_status")` was comparing a 1-based sign_id against 0-based
+    # exaltation/debilitation/own-sign tables. Fixed at the source
+    # (dignities.py::_dignity_for) so every consumer of dignity_status,
+    # including this loop, now gets the correct dignity. This loop itself
+    # is otherwise unchanged — the neecha-bhanga (dispositor-in-kendra)
+    # check is real, but is still a single deterministic pass, not an
+    # independent classical cross-check, so the stamp is honestly demoted
+    # (M-22) alongside the D-3 data fix.
+    classification_counts: dict[str, int] = {}
     for g in grahas_data:
         g_name = g["name"]
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
@@ -2610,17 +2834,35 @@ def _build_structural_relationship_rows(
         else:
             classification = "neutral"
 
+        classification_counts[classification] = classification_counts.get(classification, 0) + 1
+
         rows.append(_base_row(
             "graha_composite_state_classification", subject, "classification",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=classification,
-            verif="two_pass_verified",
+            verif="single_pass",
             source=f"pyjhora_adapter.composite_state/{eng_ver}",
             citation_human=(
                 f"{g_name} composite state: {classification} "
                 f"(dignity: {dignity}, combust: {is_combust}, retro: {retro}) ({ayanamsha_id})."
             ),
         ))
+
+    # D-3 distribution check (non-degenerate): a single classification value
+    # covering the large majority of grahas is the exact failure signature
+    # this register row diagnosed (8/9 "neutral" pre-fix). Not a hard halt —
+    # some charts legitimately cluster — but loud enough that a regression
+    # of the same class is never silently reintroduced.
+    n_grahas = len(grahas_data)
+    if n_grahas > 0:
+        max_class, max_count = max(classification_counts.items(), key=lambda kv: kv[1])
+        if max_count / n_grahas >= 0.75:
+            logger.warning(
+                "[ga_structural] chart_id=%s ayanamsha=%s: graha_composite_state_classification "
+                "distribution is near-degenerate — %d/%d grahas classified '%s' "
+                "(D-3 regression signature). counts=%s",
+                chart_id, ayanamsha_id, max_count, n_grahas, max_class, classification_counts,
+            )
 
     return rows
 
@@ -4804,7 +5046,7 @@ def build_ga_structural(
             all_rows.extend(_build_yoga_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
             all_rows.extend(_build_dosha_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
             all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_composite_strength_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_composite_strength_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
@@ -5962,7 +6204,7 @@ def build_ga_structural_substep(
     all_rows.extend(_build_yoga_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
     all_rows.extend(_build_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
     all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_composite_strength_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    all_rows.extend(_build_composite_strength_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))

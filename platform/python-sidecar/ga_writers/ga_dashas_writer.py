@@ -738,17 +738,91 @@ def _verify_naisargika(rows: list[dict]) -> str:
     return "two_pass_verified"
 
 
-def _verify_mudda(rows: list[dict]) -> str:
-    """Mudda/Tajik: hybrid storage verified — per-varsha rows present."""
+# Two independent classical correspondence tables PyJHora's Varsha-Vimshottari
+# engine chains together (hand-transcribed here, WITH citation, as the
+# register's own "two-pass classical reconstruction" — an independent
+# re-derivation from the classical rule, not a "trust the library" oracle,
+# per CLAUDE.md B.10 / [[feedback-no-jh-parity-anywhere]]):
+#   (1) natal nakshatra (0-based, 0=Ashwini..26=Revati) -> Vimshottari MD lord
+#       (const.vimsottari_adhipati_list, planet-id convention Sun=0..Ketu=8);
+#   (2) that lord's planet-id -> the FIRST varsha's year-lord planet-id
+#       (const.varsha_vimsottari_adhipati_list) — Tajika Varshaphal's
+#       Mudda/Varsha-Vimshottari correspondence is a TRANSFORM of the natal
+#       lord, not an identity; only Jupiter (index 4) happens to be a fixed
+#       point of this table, which is why the canonical native's varsha-1
+#       lord (Jupiter, from Purva Bhadrapada) coincidentally equals its natal
+#       MD lord — a property of THIS native's nakshatra, not a general rule.
+_MUDDA_NATAL_ADHIPATI = [8, 5, 0, 1, 2, 7, 4, 6, 3]          # nak0based % 9 -> planet-id
+_MUDDA_VARSHA_ADHIPATI = [0, 1, 2, 7, 4, 6, 3, 8, 5]         # planet-id -> varsha-1 planet-id
+
+
+def _verify_mudda(rows: list[dict], moon_nak_idx0: int | None = None) -> str:
+    """
+    Mudda/Tajik: real verification (register M-5 "unstamp" — this function
+    used to blindly return 'two_pass_verified' for any non-empty row set,
+    without checking the classical anchor was actually correct).
+
+    Verifies:
+      (1) the varsha-1 (birth-year) L1 lord matches an INDEPENDENT
+          re-derivation via the classical nakshatra -> natal-lord -> varsha-
+          lord correspondence chain (`_MUDDA_NATAL_ADHIPATI` composed with
+          `_MUDDA_VARSHA_ADHIPATI`), when the native's nakshatra is known —
+          this is the actual M-5 assertion ("janma-nakshatra-anchored
+          classical derivation"); NOT "varsha-1 lord == natal MD lord" (that
+          would be wrong — see the module-level comment above);
+      (2) L1 year-lords repeat on a 9-year cycle — an algebraic invariant of
+          the classical rule, independent of the anchor.
+    Raises (halts the build) rather than silently downgrading, matching this
+    file's FORENSIC-halt convention elsewhere.
+    """
     if not rows:
         return "classical_match"
+    l1_rows = sorted(
+        (r for r in rows if r["level_n"] == 1),
+        key=lambda r: r["start_date"],
+    )
+    if not l1_rows:
+        return "classical_match"
+    if moon_nak_idx0 is not None:
+        natal_planet_id = _MUDDA_NATAL_ADHIPATI[moon_nak_idx0 % 9]
+        expected_planet_id = _MUDDA_VARSHA_ADHIPATI[natal_planet_id]
+        expected_lord = _MUDDA_IDX_TO_LORD[expected_planet_id]
+        if l1_rows[0]["lord_graha"] != expected_lord:
+            raise ValueError(
+                f"Mudda M-5 verification FAILED: varsha-1 year-lord="
+                f"{l1_rows[0]['lord_graha']!r}, expected {expected_lord!r} per "
+                f"classical nakshatra({moon_nak_idx0})->natal-lord->varsha-lord "
+                f"re-derivation"
+            )
+    for i in range(len(l1_rows) - 9):
+        if l1_rows[i]["lord_graha"] != l1_rows[i + 9]["lord_graha"]:
+            raise ValueError(
+                "Mudda M-5 verification FAILED: year-lord is not 9-year "
+                f"cyclic at varsha index {i} ({l1_rows[i]['lord_graha']!r} vs "
+                f"{l1_rows[i + 9]['lord_graha']!r})"
+            )
     return "two_pass_verified"
 
 
 def _verify_kalachakra(rows: list[dict]) -> str:
     """
-    Kalachakra: paramayush-anchored, deha/jeeva sign-based.
-    Lords must be sign names (sign-based dasha).
+    Kalachakra verification tier.
+
+    M-6 fix (see `compute_kalachakra_system`): the underlying derivation now
+    delegates to PyJHora's real `kalachakra_dhasa()` (savya/apasavya 9-sign
+    cycles, per-pada paramayush, classical pada-4 gati-jump transitions) —
+    the classical method is genuinely followed, independently re-derived and
+    hand-traced against the installed library (see the R6 run ledger).
+
+    This function itself only performs a shallow structural check (lords
+    must be known Kalachakra sign names) — it is not an independent second
+    computation of the whole progression, so it does not warrant
+    "two_pass_verified" even though the underlying derivation is now
+    classical-correct. Demoted to "single" per M-22 discipline (never stamp
+    a tier the check didn't earn); the chart_dashas table's CHECK
+    constraint only allows {'two_pass_verified','classical_match',
+    'divergent_flagged','single'} (see `_verify_mudda`'s docstring above
+    for why "single" and not "documented_approximation").
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
@@ -757,7 +831,7 @@ def _verify_kalachakra(rows: list[dict]) -> str:
     for row in l1_rows:
         if row["lord_graha"] not in known_signs:
             raise ValueError(f"Kalachakra: invalid sign/lord {row['lord_graha']!r}")
-    return "two_pass_verified"
+    return "single"
 
 
 # ── Core row builder ──────────────────────────────────────────────────────────
@@ -2024,63 +2098,214 @@ def compute_naisargika_system(
 
 
 # ── System 6: Mudda / Tajik annual (hybrid storage) ──────────────────────────
+#
+# Register M-5 + M-21 fix (r6/1c-dashas). The prior implementation had two
+# independent defects in the same function:
+#   M-5:  varsha_lord = VIMSHOTTARI_SEQUENCE[(varsha_num-1) % 9] — a rotating
+#         index starting arbitrarily at position 0, completely ignoring the
+#         native's actual janma-nakshatra dasha lord. The classical
+#         Varsha-Vimshottari (Mudda) rule anchors the year-lord sequence at
+#         the native's OWN birth-nakshatra lord and advances by 1 lord per
+#         elapsed year (mod 9) — PyJHora ships this exactly
+#         (jhora.horoscope.dhasa.annual.mudda). The per-level sub-division
+#         weights were ALSO wrong: the prior code reused natal Vimshottari's
+#         120y proportions (VIMSHOTTARI_YEARS), but classical Varsha-
+#         Vimshottari uses its OWN distinct weight table
+#         (const.varsha_vimsottari_days, a 360-unit "muddayu", NOT the natal
+#         120y table) — a second reason hand-rolling this system was wrong,
+#         not just the anchor.
+#   M-21: varsha_end_jd = current_jd + TROPICAL_YEAR_DAYS — fixed arithmetic,
+#         not the Sun's true sidereal return (drift ~14h by age 42). Fixed by
+#         a real ephemeris bisection search (_mudda_solar_return_jd) when
+#         birth_params (real lat/lon) is available.
+# Both fixes are delegated to PyJHora rather than reimplemented in-house —
+# Phase-1 doctrine: hand-rolled code survives only where PyJHora has no
+# equivalent, and PyJHora ships a complete Varsha-Vimshottari engine.
+
+# Graha index (0-8) -> canonical lord name. Verified empirically against
+# jhora.utils.PLANET_NAMES (2026-07-10, r6/1c-dashas): Sun=0, Moon=1, Mars=2,
+# Mercury=3, Jupiter=4, Venus=5, Saturn=6, Rahu=7, Ketu=8 — this is PyJHora's
+# OWN internal graha-index convention for the annual/Tajika dasha modules,
+# distinct from this file's VIMSHOTTARI_SEQUENCE list ordering.
+_MUDDA_IDX_TO_LORD = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
+
+
+def _mudda_solar_return_jd(
+    natal_sun_long: float,
+    birth_jd: float,
+    ayanamsha_id: str,
+    birth_params: dict,
+    years_elapsed: int,
+) -> float:
+    """
+    M-21 fix: real ephemeris solar-return search (Julian Day, UT) for the
+    Mudda/Varsha-pravesha anchor instant — replaces the prior
+    `birth_jd + N*365.2422` fixed-arithmetic approximation (register M-21:
+    "not the Sun's sidereal return; drift ≈14h by age 42, shifts
+    boundary-adjacent periods").
+
+    Bisection root-find on the Sun's real sidereal longitude via PyJHora's
+    own `drik.sidereal_longitude(jd, planet)` (Swiss Ephemeris underneath,
+    same primitive `_get_moon_position`'s fallback path uses elsewhere in
+    this file for the Moon) — the same conceptual approach
+    ga_tajaka_writer._solar_return uses for the sibling ga_tajaka asset,
+    reimplemented here in this module's native Julian-Day domain (rather
+    than cross-importing a datetime-domain helper) to avoid a datetime<->JD
+    convention mismatch between the two writers.
+    """
+    from pyjhora_adapter._jhora import drik as _drik
+    from pyjhora_adapter._ayanamsha import resolve_mode as _resolve_mode
+
+    _mode, _ = _resolve_mode(ayanamsha_id)
+    _drik.set_ayanamsa_mode(_mode)
+
+    def _sun_long_at(jd: float) -> float:
+        return float(_drik.sidereal_longitude(jd, 0)) % 360.0  # 0 = Sun (swisseph body id)
+
+    def _ang_diff(a: float, b: float) -> float:
+        return ((a - b + 180.0) % 360.0) - 180.0
+
+    approx_jd = birth_jd + years_elapsed * 365.2425
+    bracket = 2.0
+    lo, hi = approx_jd - bracket, approx_jd + bracket
+    f_lo, f_hi = _ang_diff(_sun_long_at(lo), natal_sun_long), _ang_diff(_sun_long_at(hi), natal_sun_long)
+    tries = 0
+    while f_lo * f_hi > 0 and bracket < 8.0 and tries < 3:
+        bracket += 2.0
+        lo, hi = approx_jd - bracket, approx_jd + bracket
+        f_lo, f_hi = _ang_diff(_sun_long_at(lo), natal_sun_long), _ang_diff(_sun_long_at(hi), natal_sun_long)
+        tries += 1
+    if f_lo * f_hi > 0:
+        # No sign change found in the bracket (should not happen for the
+        # Sun over ±8 days) — fall back to the arithmetic anchor rather
+        # than fabricate a converged instant.
+        return approx_jd
+
+    iters = 0
+    while (hi - lo) > (1.0 / 1440.0) and iters < 60:  # converge to ~1 minute
+        mid = (lo + hi) / 2.0
+        f_mid = _ang_diff(_sun_long_at(mid), natal_sun_long)
+        if f_lo * f_mid <= 0:
+            hi, f_hi = mid, f_mid
+        else:
+            lo, f_lo = mid, f_mid
+        iters += 1
+    return (lo + hi) / 2.0
+
 
 def compute_mudda_system(
     birth_jd: float,
     ayanamsha_id: str,
     chart_id: str,
     build_id: str,
+    *,
+    birth_params: dict | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Mudda (Tajik annual) dasha — HYBRID STORAGE.
-    Pre-computed: past + current + next-5y (NOT full 150y).
-    'Current' = 2026-06-10 (today). So precompute 1984-2031.
-    Per A7 §4 Q4: hybrid. Each varsha (solar year) has its own MD sequence.
-    Varsha year = solar year from birth (birthday to birthday).
-    Year lord = sign lord of chart for that year's rising sign.
+    Mudda (Tajik annual / Varsha-Vimshottari) dasha — HYBRID STORAGE.
+    Pre-computed: past + current + next-5y (NOT full 150y): 1984-2031.
 
-    Level 1: annual varsha (~365d periods)
-    Level 2-4: sub-divisions within varsha
+    M-5: year-lord + all sub-division weights delegated to PyJHora's
+    Varsha-Vimshottari engine (jhora.horoscope.dhasa.annual.mudda) —
+    `varsha_vimsottari_dasha_start_date()` for the janma-nakshatra-anchored
+    start-lord; `mudda_dhasa_bhukthi()` for the real classical weights at
+    every level.
 
-    FORENSIC chart: Mudda for native born 1984-02-05.
-    Pre-compute 1984 to 2031 (past + current + next 5y from 2026).
+    M-21: each varsha's start instant is a real ephemeris solar-return
+    search (`_mudda_solar_return_jd`) when `birth_params` (real lat/lon) is
+    supplied — the classical (M-5-correct) year skeleton from PyJHora is
+    then shifted so it begins at that true instant. When birth_params is
+    None (the NO-DB unit-test path, which structurally has no coordinates
+    to search with), falls back to PyJHora's own year-length arithmetic
+    anchor — M-5 is still correct in that path; only true-ephemeris
+    precision is unavailable offline.
+
+    Level 1: annual varsha (~365d, classical start-lord).
+    Level 2: 9 sub-lords within the varsha (real classical weights).
+    Level 3: Pratyantara (9 per L2).
+    Level 4: Sukshma (9 per L3) — STOP (CRITICAL OVERRIDE 1).
     """
     import swisseph as swe
+    from jhora.panchanga import drik as jh_drik
+    from jhora import utils as jh_utils
+    from jhora.horoscope.dhasa.annual import mudda as jh_mudda
+    from pyjhora_adapter._ayanamsha import resolve_mode
+
+    # PyJHora's own dasha-start derivation reads the CURRENT global ayanamsha
+    # mode (charts.divisional_chart), so it must be set to match ayanamsha_id
+    # exactly like _get_moon_position() does for the rest of this file.
+    _mode, _ = resolve_mode(ayanamsha_id)
+    jh_drik.set_ayanamsa_mode(_mode)
+
     min_jd = swe.julday(1950, 1, 1, 0.0)
     max_jd_mudda = swe.julday(2031, 12, 31, 0.0)  # Hybrid: only to 2031
     max_jd_global = swe.julday(2100, 12, 31, 0.0)
 
+    natal_sun_long: float | None = None
+    if birth_params:
+        lat = float(birth_params["latitude_deg"])
+        lon = float(birth_params["longitude_deg"])
+        tz = float(birth_params.get("tz_offset_hours", BIRTH_TZ_OFFSET))
+        place = jh_drik.Place("native", lat, lon, tz)
+        # Ayanamsha mode already set above (_mode); drik.sidereal_longitude
+        # reads it from PyJHora's global state (same primitive
+        # _get_moon_position's fallback path uses for the Moon).
+        natal_sun_long = float(jh_drik.sidereal_longitude(birth_jd, 0)) % 360.0  # 0 = Sun
+    else:
+        # NO-DB path (unit tests): drik.dhasa_year_duration() ignores `place`
+        # for the default duration type, so a placeholder satisfies the
+        # positional contract without fabricating coordinates (B.10).
+        place = jh_drik.Place("unset", 0.0, 0.0, 0.0)
+
+    def _t2jd(t: tuple) -> float:
+        y, m, d, fh = t
+        return jh_utils.julian_day_number(jh_drik.Date(int(y), int(m), int(d)), (fh, 0, 0))
+
     rows: list[dict] = []
-
-    # Mudda years start from birth (solar returns)
-    # Each varsha = ~365.25 days (tropical solar year)
-    TROPICAL_YEAR_DAYS = 365.2422
-
-    # Tajik lords cycle (simplified): uses Vimshottari proportion sub-division
-    # Varsha year lords rotate through Tajik scheme based on varsha-pati
-    # Simplified: use annual lord based on tithi/nakshatra of solar return
-    # For FORENSIC chart: use Vimshottari sub-division pattern within each year
-
-    current_jd = birth_jd
     varsha_num = 0
 
-    while current_jd <= max_jd_mudda:
+    while True:
         varsha_num += 1
-        varsha_end_jd = current_jd + TROPICAL_YEAR_DAYS
-        varsha_start_d = _jd_to_date(max(current_jd, min_jd))
-        varsha_end_d = _jd_to_date(min(varsha_end_jd, max_jd_global))
+        years_param = varsha_num - 1  # PyJHora convention: 0 = birth year
 
+        start_lord_idx, _arith_start_jd = jh_mudda.varsha_vimsottari_dasha_start_date(
+            birth_jd, place, years_param
+        )
+        varsha_lord = _MUDDA_IDX_TO_LORD[int(start_lord_idx)]
+
+        l2_raw = jh_mudda.mudda_dhasa_bhukthi(birth_jd, place, years_param, dhasa_level_index=1)
+        if not l2_raw:
+            break
+
+        l2_start_jd = _t2jd(l2_raw[0][1])
+        if l2_start_jd > max_jd_mudda:
+            break
+        total_days = sum(float(dur) for _, _, dur in l2_raw)
+
+        # M-21: real ephemeris solar-return anchor. Offset the whole
+        # classical (M-5-correct weights) year skeleton so it begins at the
+        # true instant the Sun returns to its natal sidereal degree, rather
+        # than at PyJHora's own fixed-year-length arithmetic instant.
+        if birth_params and natal_sun_long is not None:
+            anchor_jd = _mudda_solar_return_jd(
+                natal_sun_long, birth_jd, ayanamsha_id, birth_params, years_param
+            )
+            offset = anchor_jd - l2_start_jd
+        else:
+            offset = 0.0
+
+        varsha_start_jd = l2_start_jd + offset
+        varsha_end_jd = varsha_start_jd + total_days
+
+        varsha_start_d = _jd_to_date(max(varsha_start_jd, min_jd))
+        varsha_end_d = _jd_to_date(min(varsha_end_jd, max_jd_global))
         if varsha_start_d >= varsha_end_d:
-            current_jd = varsha_end_jd
             continue
 
-        # Varsha year lord: cycles through 9 lords (Vimshottari sequence)
-        varsha_lord = VIMSHOTTARI_SEQUENCE[(varsha_num - 1) % 9]
-
         ref = (f"chart_dashas.mudda.L1.varsha{varsha_num}.{varsha_lord}"
-               f"@chart={chart_id}:ay={ayanamsha_id}:eng=pyjhora_adapter/0.1.0")
+               f"@chart={chart_id}:ay={ayanamsha_id}:eng=pyjhora_adapter/4.8.6")
         human = (f"Mudda Varsha {varsha_num} year-lord={varsha_lord} "
-                 f"({ayanamsha_id.title()}): {varsha_start_d} → {varsha_end_d}")
+                 f"({ayanamsha_id.title()}): {varsha_start_d} -> {varsha_end_d}")
 
         md_row_id = str(uuid.uuid4())
         md_row = _build_row(
@@ -2088,114 +2313,93 @@ def compute_mudda_system(
             1, varsha_lord, varsha_start_d, varsha_end_d,
             None, None, "two_pass_verified", ref, human,
             varsha_year_lord=varsha_lord,
-            start_jd=max(current_jd, min_jd), end_jd=min(varsha_end_jd, max_jd_global),
+            start_jd=max(varsha_start_jd, min_jd), end_jd=min(varsha_end_jd, max_jd_global),
         )
         md_row["dasha_row_id"] = md_row_id
         rows.append(md_row)
 
-        # Level 2: 9 sub-lords within varsha (proportional)
-        varsha_days = float(_days_between(varsha_start_d, varsha_end_d))
-        ad_jd = current_jd
-        varsha_seq_start = VIMSHOTTARI_SEQUENCE.index(varsha_lord)
-
-        for j in range(9):
-            ad_lord = VIMSHOTTARI_SEQUENCE[(varsha_seq_start + j) % 9]
-            ad_prop = VIMSHOTTARI_YEARS[ad_lord] / VIMSHOTTARI_TOTAL_YEARS
-            ad_days = varsha_days * ad_prop
-            ad_end_jd = ad_jd + ad_days
-
-            if ad_jd >= max_jd_global:
-                break
-
-            ad_start_d = _jd_to_date(max(ad_jd, min_jd))
-            ad_end_d = _jd_to_date(min(ad_end_jd, max_jd_global))
-            if ad_start_d >= ad_end_d:
-                ad_jd = ad_end_jd
+        # Level 2: 9 real classical sub-lords (varsha_vimsottari_days weights)
+        l2_ids: dict[tuple[int, ...], str] = {(): md_row_id}
+        for lords_tuple, start_t, dur_days in l2_raw:
+            idx_tuple = tuple(int(x) for x in lords_tuple)
+            lord_name = _MUDDA_IDX_TO_LORD[idx_tuple[0]]
+            s_jd = _t2jd(start_t) + offset
+            e_jd = s_jd + float(dur_days)
+            s_d = _jd_to_date(max(s_jd, min_jd))
+            e_d = _jd_to_date(min(e_jd, max_jd_global))
+            if s_d >= e_d:
                 continue
-
-            ref2 = (f"chart_dashas.mudda.L2.v{varsha_num}.{varsha_lord}-{ad_lord}"
-                    f"@chart={chart_id}:ay={ayanamsha_id}")
-            human2 = f"Mudda V{varsha_num} {varsha_lord}-{ad_lord} sub-period ({ayanamsha_id.title()})"
-
-            ad_row_id = str(uuid.uuid4())
-            ad_row = _build_row(
+            ref2 = (f"chart_dashas.mudda.L2.v{varsha_num}.{varsha_lord}-{lord_name}"
+                    f"@chart={chart_id}:ay={ayanamsha_id}:eng=pyjhora_adapter/4.8.6")
+            human2 = f"Mudda V{varsha_num} {varsha_lord}-{lord_name} sub-period ({ayanamsha_id.title()})"
+            row_id = str(uuid.uuid4())
+            row2 = _build_row(
                 chart_id, build_id, ayanamsha_id, "mudda",
-                2, ad_lord, ad_start_d, ad_end_d,
+                2, lord_name, s_d, e_d,
                 md_row_id, varsha_lord, "two_pass_verified", ref2, human2,
                 varsha_year_lord=varsha_lord,
-                start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd_global),
+                start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
             )
-            ad_row["dasha_row_id"] = ad_row_id
-            rows.append(ad_row)
+            row2["dasha_row_id"] = row_id
+            rows.append(row2)
+            l2_ids[idx_tuple] = row_id
 
-            # Level 3
-            pd_jd = ad_jd
-            pd_seq_start = VIMSHOTTARI_SEQUENCE.index(ad_lord)
-            for k in range(9):
-                pd_lord = VIMSHOTTARI_SEQUENCE[(pd_seq_start + k) % 9]
-                pd_prop = VIMSHOTTARI_YEARS[pd_lord] / VIMSHOTTARI_TOTAL_YEARS
-                pd_days = (ad_end_jd - ad_jd) * pd_prop
-                pd_end_jd = pd_jd + pd_days
+        # Level 3: Pratyantara (9 per L2) — real weights via PyJHora depth=2
+        l3_ids: dict[tuple[int, ...], str] = {}
+        l3_raw = jh_mudda.mudda_dhasa_bhukthi(birth_jd, place, years_param, dhasa_level_index=2)
+        for lords_tuple, start_t, dur_days in l3_raw:
+            idx_tuple = tuple(int(x) for x in lords_tuple)
+            parent_id = l2_ids.get(idx_tuple[:1])
+            if parent_id is None:
+                continue
+            lord_name = _MUDDA_IDX_TO_LORD[idx_tuple[-1]]
+            parent_lord = _MUDDA_IDX_TO_LORD[idx_tuple[0]]
+            s_jd = _t2jd(start_t) + offset
+            e_jd = s_jd + float(dur_days)
+            s_d = _jd_to_date(max(s_jd, min_jd))
+            e_d = _jd_to_date(min(e_jd, max_jd_global))
+            if s_d >= e_d:
+                continue
+            chain = "-".join(_MUDDA_IDX_TO_LORD[i] for i in idx_tuple)
+            ref3 = f"chart_dashas.mudda.L3.v{varsha_num}.{chain}@chart={chart_id}:ay={ayanamsha_id}"
+            human3 = f"Mudda V{varsha_num} {chain} ({ayanamsha_id.title()})"
+            row_id = str(uuid.uuid4())
+            row3 = _build_row(
+                chart_id, build_id, ayanamsha_id, "mudda",
+                3, lord_name, s_d, e_d,
+                parent_id, parent_lord, "two_pass_verified", ref3, human3,
+                varsha_year_lord=varsha_lord,
+                start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
+            )
+            row3["dasha_row_id"] = row_id
+            rows.append(row3)
+            l3_ids[idx_tuple] = row_id
 
-                if pd_jd >= max_jd_global:
-                    break
-
-                pd_start_d = _jd_to_date(max(pd_jd, min_jd))
-                pd_end_d = _jd_to_date(min(pd_end_jd, max_jd_global))
-                if pd_start_d >= pd_end_d:
-                    pd_jd = pd_end_jd
-                    continue
-
-                ref3 = f"chart_dashas.mudda.L3.v{varsha_num}.{varsha_lord}-{ad_lord}-{pd_lord}@chart={chart_id}:ay={ayanamsha_id}"
-                human3 = f"Mudda V{varsha_num} {varsha_lord}-{ad_lord}-{pd_lord} ({ayanamsha_id.title()})"
-
-                pd_row_id = str(uuid.uuid4())
-                pd_row = _build_row(
-                    chart_id, build_id, ayanamsha_id, "mudda",
-                    3, pd_lord, pd_start_d, pd_end_d,
-                    ad_row_id, ad_lord, "two_pass_verified", ref3, human3,
-                    varsha_year_lord=varsha_lord,
-                    start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd_global),
-                )
-                pd_row["dasha_row_id"] = pd_row_id
-                rows.append(pd_row)
-
-                # Level 4 — STOP
-                sk_jd = pd_jd
-                sk_seq_start = VIMSHOTTARI_SEQUENCE.index(pd_lord)
-                for m in range(9):
-                    sk_lord = VIMSHOTTARI_SEQUENCE[(sk_seq_start + m) % 9]
-                    sk_prop = VIMSHOTTARI_YEARS[sk_lord] / VIMSHOTTARI_TOTAL_YEARS
-                    sk_days = (pd_end_jd - pd_jd) * sk_prop
-                    sk_end_jd = sk_jd + sk_days
-
-                    if sk_jd >= max_jd_global:
-                        break
-
-                    sk_start_d = _jd_to_date(max(sk_jd, min_jd))
-                    sk_end_d = _jd_to_date(min(sk_end_jd, max_jd_global))
-                    if sk_start_d >= sk_end_d:
-                        sk_jd = sk_end_jd
-                        continue
-
-                    ref4 = f"chart_dashas.mudda.L4.v{varsha_num}.{sk_lord}@chart={chart_id}:ay={ayanamsha_id}"
-                    human4 = f"Mudda V{varsha_num} Sukshma {sk_lord} ({ayanamsha_id.title()})"
-
-                    sk_row = _build_row(
-                        chart_id, build_id, ayanamsha_id, "mudda",
-                        4, sk_lord, sk_start_d, sk_end_d,
-                        pd_row_id, pd_lord, "two_pass_verified", ref4, human4,
-                        varsha_year_lord=varsha_lord,
-                        start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd_global),
-                    )
-                    rows.append(sk_row)
-                    sk_jd = sk_end_jd
-
-                pd_jd = pd_end_jd
-
-            ad_jd = ad_end_jd
-
-        current_jd = varsha_end_jd
+        # Level 4: Sukshma (9 per L3) — STOP (CRITICAL OVERRIDE 1)
+        l4_raw = jh_mudda.mudda_dhasa_bhukthi(birth_jd, place, years_param, dhasa_level_index=3)
+        for lords_tuple, start_t, dur_days in l4_raw:
+            idx_tuple = tuple(int(x) for x in lords_tuple)
+            parent_id = l3_ids.get(idx_tuple[:2])
+            if parent_id is None:
+                continue
+            lord_name = _MUDDA_IDX_TO_LORD[idx_tuple[-1]]
+            parent_lord = _MUDDA_IDX_TO_LORD[idx_tuple[-2]]
+            s_jd = _t2jd(start_t) + offset
+            e_jd = s_jd + float(dur_days)
+            s_d = _jd_to_date(max(s_jd, min_jd))
+            e_d = _jd_to_date(min(e_jd, max_jd_global))
+            if s_d >= e_d:
+                continue
+            ref4 = f"chart_dashas.mudda.L4.v{varsha_num}.{lord_name}@chart={chart_id}:ay={ayanamsha_id}"
+            human4 = f"Mudda V{varsha_num} Sukshma {lord_name} ({ayanamsha_id.title()})"
+            row4 = _build_row(
+                chart_id, build_id, ayanamsha_id, "mudda",
+                4, lord_name, s_d, e_d,
+                parent_id, parent_lord, "two_pass_verified", ref4, human4,
+                varsha_year_lord=varsha_lord,
+                start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
+            )
+            rows.append(row4)
 
     return rows
 
@@ -2210,186 +2414,107 @@ def compute_kalachakra_system(
     build_id: str,
 ) -> list[dict[str, Any]]:
     """
-    Kalachakra dasha — BPHS Ch.53, paramayush-anchored.
-    Based on Moon's navamsha. Signs as dasha lords.
-    Deha = sign of Moon's navamsha sign. Jeeva = opposite sign.
-    Paramayush = 100y (standard BPHS).
-    Solar return anchor per Addition I.
-    Window 1950-2100.
+    Kalachakra dasha — BPHS Ch.53, delegated to PyJHora's own Kalachakra
+    engine (jhora.horoscope.dhasa.raasi.kalachakra) — register M-6 fix.
+
+    Prior code walked 12 contiguous zodiac signs forward from Moon's
+    navamsha index, with a hardcoded flat total-years paramayush and no
+    savya/apasavya group selection, no deha/jeeva pada transition, no gati
+    (the classical group-jump at a pada boundary). PyJHora's
+    kalachakra_dhasa() encodes the real classical rule:
+      - savya/apasavya group selection via const.savya_stars_1/2 +
+        const.apasavya_stars_1/2 (_kc_group_for_nak);
+      - the 9-sign (not 12-sign) cycle per (group, pada), with per-pada
+        paramayush from const.kalachakra_paramayush — NOT a flat 100y;
+      - the classical group-transition rule at the pada-4 boundary
+        ({0:1, 1:0, 2:3, 3:2} in PyJHora's `_get_dhasa_progression`) — the
+        "gati jump" the register flags as missing.
+
+    One real paramayush-scoped progression is generated per depth (NOT
+    artificially repeated across multiple ~100-146y cycles as before) —
+    Kalachakra's paramayush IS the classical maximum lifespan for this
+    system, so a life window not fully covered by one progression is a
+    genuine classical boundary, not a bug to paper over with fabricated
+    repetition.
+
+    Level 1: Mahadasha (9 signs, real per-pada paramayush split).
+    Level 2: Antardasha (9 per L1).
+    Level 3: Pratyantardasha (9 per L2).
+    Level 4: Sukshma (9 per L3) — STOP (CRITICAL OVERRIDE 1).
     """
     import swisseph as swe
+    from jhora.horoscope.dhasa.raasi import kalachakra as jh_kc
+    from jhora import const as jh_const, utils as jh_utils
+    from jhora.panchanga import drik as jh_drik
+
     min_jd = swe.julday(1950, 1, 1, 0.0)
     max_jd = swe.julday(2100, 12, 31, 0.0)
-
-    # Moon's navamsha: divide 360 into 108 navamsha spans = 40/9 degrees each
-    navamsha_span = 360.0 / 108  # each navamsha = 3.333 degrees
-    nav_idx = int(moon_sid / navamsha_span) % 12  # 0-11
 
     sign_names = [
         "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
         "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
     ]
+    year_days = float(jh_const.sidereal_year)  # no `place` passed below -> module default
 
-    # Kalachakra starting sign = navamsha sign of Moon
-    # Savya (forward) for certain navamshas, apasvya (reverse) for others
-    # Savya nakshatras: odd sign navamshas; Apasvya: even
-    # Simplified: start from Moon's navamsha sign, go forward
-    ak_sign_idx = nav_idx
-
-    # Progress within navamsha (for balance)
-    nak_progress = (moon_sid % navamsha_span) / navamsha_span
-
-    # Backdate to cover 1950
-    cycle_days = _years_to_days(KALACHAKRA_TOTAL_YEARS)
-    current_jd = birth_jd
-    while current_jd > min_jd:
-        current_jd -= cycle_days
-
-    rows: list[dict] = []
+    def _t2jd(t: tuple) -> float:
+        y, m, d, fh = t
+        return jh_utils.julian_day_number(jh_drik.Date(int(y), int(m), int(d)), (fh, 0, 0))
 
     def _citation(level: int, lords: list[str]) -> tuple[str, str]:
         chain = "-".join(lords)
-        ref = f"chart_dashas.kalachakra.L{level}.{chain}@chart={chart_id}:ay={ayanamsha_id}:eng=pyjhora_adapter/0.1.0"
+        ref = f"chart_dashas.kalachakra.L{level}.{chain}@chart={chart_id}:ay={ayanamsha_id}:eng=pyjhora_adapter/4.8.6"
         human = f"Kalachakra {' > '.join(lords)} (paramayush-anchored, {ayanamsha_id.title()})"
         return ref, human
 
-    md_jd = current_jd
-    for _cycle in range(5):
-        for i in range(12):
-            sign_idx = (ak_sign_idx + i) % 12
-            sign = sign_names[sign_idx]
-            md_years = float(KALACHAKRA_SIGN_YEARS[sign_idx][1])
-            md_end_jd = md_jd + _years_to_days(md_years)
+    rows: list[dict] = []
+    row_ids: dict[tuple[int, ...], str] = {(): None}
 
-            if md_end_jd <= min_jd:
-                md_jd = md_end_jd
+    for depth in (1, 2, 3, 4):
+        depth_rows = jh_kc.kalachakra_dhasa(
+            planet_longitude=moon_sid,
+            jd=birth_jd,
+            dhasa_level_index=depth,
+            round_duration=False,
+            dhasa_method=jh_const.KALACHAKRA_TYPE_DEFAULT,
+        )
+        for lords_tuple, start_t, years_float in depth_rows:
+            idx_tuple = tuple(int(x) for x in lords_tuple)
+            prefix = idx_tuple[:-1]
+            parent_id = row_ids.get(prefix)
+            if depth > 1 and parent_id is None:
+                continue  # parent was clipped by the window — cascade the skip
+
+            s_jd = _t2jd(start_t)
+            e_jd = s_jd + float(years_float) * year_days
+            if e_jd <= min_jd or s_jd >= max_jd:
                 continue
-            if md_jd >= max_jd:
-                break
-
-            md_start_d = _jd_to_date(max(md_jd, min_jd))
-            md_end_d = _jd_to_date(min(md_end_jd, max_jd))
-            if md_start_d >= md_end_d:
-                md_jd = md_end_jd
+            s_d = _jd_to_date(max(s_jd, min_jd))
+            e_d = _jd_to_date(min(e_jd, max_jd))
+            if s_d >= e_d:
                 continue
 
-            # Solar return anchor (Addition I) — approximate: birth JD + N years
-            solar_return_jd = birth_jd + _years_to_days(
-                sum(KALACHAKRA_SIGN_YEARS[j][1] for j in range(i))
-            )
-            solar_return_iso = _jd_to_iso_utc(solar_return_jd)  # V-9: full-precision anchor
+            sign = sign_names[idx_tuple[-1]]
+            lord_chain = [sign_names[i] for i in idx_tuple]
+            ref, human = _citation(depth, lord_chain)
+            parent_lord = sign_names[idx_tuple[-2]] if depth > 1 else None
 
-            ref, human = _citation(1, [sign])
-            md_row_id = str(uuid.uuid4())
-            md_row = _build_row(
+            # Addition I: coarse elapsed-time marker (NOT a true solar-return
+            # search — that precision requirement is M-21's scope, and M-21
+            # targets Mudda's varsha-pravesha specifically, not this field).
+            solar_return_iso = _jd_to_iso_utc(s_jd) if depth == 1 else None
+
+            row_id = str(uuid.uuid4())
+            row = _build_row(
                 chart_id, build_id, ayanamsha_id, "kalachakra",
-                1, sign, md_start_d, md_end_d,
-                None, None, "two_pass_verified", ref, human,
+                depth, sign, s_d, e_d,
+                parent_id, parent_lord, "two_pass_verified", ref, human,
                 period_deity=f"Kalachakra-{sign}",
                 anchored_solar_return_iso=solar_return_iso,
-                start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
+                start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd),
             )
-            md_row["dasha_row_id"] = md_row_id
-            rows.append(md_row)
-
-            # Level 2
-            ad_jd = md_jd
-            total_kc = KALACHAKRA_TOTAL_YEARS
-            for j in range(12):
-                ad_idx = (sign_idx + j) % 12
-                ad_sign = sign_names[ad_idx]
-                ad_years = (float(KALACHAKRA_SIGN_YEARS[ad_idx][1]) / total_kc) * md_years
-                ad_end_jd = ad_jd + _years_to_days(ad_years)
-
-                if ad_end_jd <= min_jd or ad_jd >= max_jd:
-                    ad_jd = ad_end_jd
-                    continue
-
-                ad_start_d = _jd_to_date(max(ad_jd, min_jd))
-                ad_end_d = _jd_to_date(min(ad_end_jd, max_jd))
-                if ad_start_d >= ad_end_d:
-                    ad_jd = ad_end_jd
-                    continue
-
-                ref, human = _citation(2, [sign, ad_sign])
-                ad_row_id = str(uuid.uuid4())
-                ad_row = _build_row(
-                    chart_id, build_id, ayanamsha_id, "kalachakra",
-                    2, ad_sign, ad_start_d, ad_end_d,
-                    md_row_id, sign, "two_pass_verified", ref, human,
-                    period_deity=f"Kalachakra-{ad_sign}",
-                    start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
-                )
-                ad_row["dasha_row_id"] = ad_row_id
-                rows.append(ad_row)
-
-                # Level 3
-                pd_jd = ad_jd
-                for k in range(12):
-                    pd_idx = (ad_idx + k) % 12
-                    pd_sign = sign_names[pd_idx]
-                    pd_years = (float(KALACHAKRA_SIGN_YEARS[pd_idx][1]) / total_kc) * ad_years
-                    pd_end_jd = pd_jd + _years_to_days(pd_years)
-
-                    if pd_end_jd <= min_jd or pd_jd >= max_jd:
-                        pd_jd = pd_end_jd
-                        continue
-
-                    pd_start_d = _jd_to_date(max(pd_jd, min_jd))
-                    pd_end_d = _jd_to_date(min(pd_end_jd, max_jd))
-                    if pd_start_d >= pd_end_d:
-                        pd_jd = pd_end_jd
-                        continue
-
-                    ref, human = _citation(3, [sign, ad_sign, pd_sign])
-                    pd_row_id = str(uuid.uuid4())
-                    pd_row = _build_row(
-                        chart_id, build_id, ayanamsha_id, "kalachakra",
-                        3, pd_sign, pd_start_d, pd_end_d,
-                        ad_row_id, ad_sign, "two_pass_verified", ref, human,
-                        period_deity=f"Kalachakra-{pd_sign}",
-                        start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
-                    )
-                    pd_row["dasha_row_id"] = pd_row_id
-                    rows.append(pd_row)
-
-                    # Level 4 — STOP
-                    sk_jd = pd_jd
-                    for m in range(12):
-                        sk_idx = (pd_idx + m) % 12
-                        sk_sign = sign_names[sk_idx]
-                        sk_years = (float(KALACHAKRA_SIGN_YEARS[sk_idx][1]) / total_kc) * pd_years
-                        sk_end_jd = sk_jd + _years_to_days(sk_years)
-
-                        if sk_end_jd <= min_jd or sk_jd >= max_jd:
-                            sk_jd = sk_end_jd
-                            continue
-
-                        sk_start_d = _jd_to_date(max(sk_jd, min_jd))
-                        sk_end_d = _jd_to_date(min(sk_end_jd, max_jd))
-                        if sk_start_d >= sk_end_d:
-                            sk_jd = sk_end_jd
-                            continue
-
-                        ref, human = _citation(4, [sign, ad_sign, pd_sign, sk_sign])
-                        sk_row = _build_row(
-                            chart_id, build_id, ayanamsha_id, "kalachakra",
-                            4, sk_sign, sk_start_d, sk_end_d,
-                            pd_row_id, pd_sign, "two_pass_verified", ref, human,
-                            period_deity=f"Kalachakra-{sk_sign}",
-                            start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
-                        )
-                        rows.append(sk_row)
-                        sk_jd = sk_end_jd
-
-                    pd_jd = pd_end_jd
-                ad_jd = ad_end_jd
-
-            md_jd = md_end_jd
-            if md_jd >= max_jd:
-                break
-        if md_jd >= max_jd:
-            break
+            row["dasha_row_id"] = row_id
+            rows.append(row)
+            row_ids[idx_tuple] = row_id
 
     return rows
 
@@ -2695,8 +2820,8 @@ def build_system(
         verification = _verify_naisargika(rows)
 
     elif system_id == "mudda":
-        rows = compute_mudda_system(birth_jd, ayanamsha_id, chart_id, build_id)
-        verification = _verify_mudda(rows)
+        rows = compute_mudda_system(birth_jd, ayanamsha_id, chart_id, build_id, birth_params=birth_params)
+        verification = _verify_mudda(rows, nak_idx_1 - 1)  # nak_idx_1 is 1-based
 
     elif system_id == "kalachakra":
         rows = compute_kalachakra_system(moon_sid, birth_jd, ayanamsha_id, chart_id, build_id)
@@ -2848,7 +2973,15 @@ def build_ga_dashas(
                 "duration_days": 0.0,
                 "sandhi_flag": False,
                 "karaka_role_at_period": None,
-                "verification_pass_status": "two_pass_verified",
+                # M-22 fix: this row is a deliberate "not computed —
+                # beyond scope" marker (see citation_human below), not a
+                # real computation — stamping it "two_pass_verified"
+                # claimed a verified value where none exists. Uses the
+                # same self-descriptive string as verification_method so
+                # the row is unambiguous; falls through
+                # VERIFICATION_RESCALE.get(status, documented_approximation)
+                # to the lowest honest tier (0.60), never the top tier.
+                "verification_pass_status": "scope_cap_sentinel",
                 "verification_method": "scope_cap_sentinel",
                 "citation_ref": "L1_GANITA_SCOPE_CAP",
                 "citation_human": "Prana Dasha (5th-level sub-period) not computed — beyond L1 Ganita scope",
@@ -2903,7 +3036,15 @@ def build_ga_dashas(
                 "duration_days": 0.0,
                 "sandhi_flag": False,
                 "karaka_role_at_period": None,
-                "verification_pass_status": "two_pass_verified",
+                # M-22 fix: this row is a deliberate "not computed —
+                # beyond scope" marker (see citation_human below), not a
+                # real computation — stamping it "two_pass_verified"
+                # claimed a verified value where none exists. Uses the
+                # same self-descriptive string as verification_method so
+                # the row is unambiguous; falls through
+                # VERIFICATION_RESCALE.get(status, documented_approximation)
+                # to the lowest honest tier (0.60), never the top tier.
+                "verification_pass_status": "scope_cap_sentinel",
                 "verification_method": "scope_cap_sentinel",
                 "citation_ref": "L1_GANITA_SCOPE_CAP",
                 "citation_human": (

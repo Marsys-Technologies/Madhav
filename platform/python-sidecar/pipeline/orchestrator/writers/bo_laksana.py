@@ -1651,6 +1651,18 @@ class BoLaksanaWriter(WriterBase):
         conn      = ctx.db_conn
         now       = datetime.now(timezone.utc).isoformat()
 
+        # Role-default statement_timeout=30s is sized for OLTP queries; the full
+        # category-agnostic chart_facts scan below (_fetch_all_facts, ~27k rows)
+        # can exceed it under concurrent multi-asset load (observed live:
+        # QueryCanceled on this exact substep during a wave-parallel rebuild,
+        # 2026-07-10). SET LOCAL scopes to this transaction/savepoint only and
+        # reverts automatically on commit/rollback — the same pattern already
+        # used by every other heavy per-chart writer in this codebase
+        # (ka_taranga, ph_pramana, ka_yojaka, etc.); bo_laksana was simply
+        # missing it despite being the heaviest L2 Bodha root writer.
+        with conn.cursor() as _timeout_cur:
+            _timeout_cur.execute("SET LOCAL statement_timeout = 0")
+
         if ctx.dry_run:
             facts = _fetch_all_facts(conn, chart_id, ayanamsha)
             invariant = _fetch_invariant_facts(conn, chart_id)

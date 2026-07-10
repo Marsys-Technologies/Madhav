@@ -112,6 +112,16 @@ def _build_input_summary(sig: dict) -> str:
 
 
 def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
+    # Role-default statement_timeout=30s is sized for OLTP queries; a full
+    # per-(chart_id, ayanamsha_id) scan of bodha_msr_signals can exceed it
+    # under load (observed live: QueryCanceled on this exact SELECT during a
+    # concurrent multi-asset rebuild, 2026-07-10). SET LOCAL scopes to this
+    # transaction/savepoint only and reverts automatically on commit/rollback
+    # — the same pattern already used by every other heavy per-chart writer
+    # in this codebase (ka_taranga, ph_pramana, ka_yojaka, etc.) for exactly
+    # this reason; bo_samskara was simply missing it.
+    with conn.cursor() as _timeout_cur:
+        _timeout_cur.execute("SET LOCAL statement_timeout = 0")
     rows = conn.execute(
         """SELECT signal_id, ayanamsha_id, signal_type_class, signal_tradition,
                   signal_type_id, configuration_jsonb, domains_affected_array
