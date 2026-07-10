@@ -1839,17 +1839,30 @@ def _evaluate_yoga_fires(
                 return True, f"Parivartana: lord_{ha}={lord_a} in {h_b_sign}, lord_{hb}={lord_b} in {h_a_sign}"
         return False, "no mutual exchange"
 
-    # Neecha Bhanga
+    # Neecha Bhanga — R6A.1 single-source-of-truth: defers to
+    # ga_yoga_writer's 4-cited-rule NBRY evaluator (rule 5 is floored there,
+    # per B.10) instead of this legacy path's own single-rule check. This
+    # is the legacy no-DB-catalog fallback (only reached when
+    # brahma_yoga_catalog fails to load — see _build_yoga_rows docstring);
+    # it has no `conn`, so it is D1-only here (no D9 navamsha extension) —
+    # an honest, minor narrowing versus the primary catalog path in
+    # _build_structural_relationship_rows, never a fabricated match.
     if yoga_def["name"] == "NEECHA_BHANGA_RAJA_YOGA":
-        for g_name in CLASSICAL_GRAHAS:
-            g = get_graha(g_name)
-            if g and g.get("sign", "") == DEBILITATION_SIGNS.get(g_name, ""):
-                # Check for cancellation: exaltation lord in kendra, or dispositor in kendra
-                debil_sign = DEBILITATION_SIGNS[g_name]
-                exalt_lord = SIGN_LORDS.get(debil_sign, "Sun")
-                exalt_g = get_graha(exalt_lord)
-                if exalt_g and int(exalt_g.get("house", 0)) in {1, 4, 7, 10}:
-                    return True, f"{g_name} debilitation cancelled by {exalt_lord} in kendra"
+        from ga_writers.ga_yoga_writer import detect_neecha_bhanga
+
+        d1_positions: dict[str, dict[str, Any]] = {}
+        for g in grahas_data:
+            sign = g.get("sign")
+            house = g.get("house")
+            if sign and house is not None:
+                d1_positions[g["name"].lower()] = {
+                    "sign": str(sign).lower(), "house": int(house),
+                }
+        findings = detect_neecha_bhanga(d1_positions, varga="D1")
+        if findings:
+            f = findings[0]
+            rule_id = f["rules_fired"][0]["rule_id"]
+            return True, f"{f['planet']} debilitation cancelled ({rule_id}, D1)"
         return False, "no debilitation or cancellation"
 
     # Raja Yoga: lord 9 + 10 in kendra/trikona
@@ -2665,6 +2678,7 @@ def _build_structural_relationship_rows(
     chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
+    conn: Any = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     grahas_data = chart_output.get("grahas", [])
@@ -2794,11 +2808,62 @@ def _build_structural_relationship_rows(
     # "dignity_status")` was comparing a 1-based sign_id against 0-based
     # exaltation/debilitation/own-sign tables. Fixed at the source
     # (dignities.py::_dignity_for) so every consumer of dignity_status,
-    # including this loop, now gets the correct dignity. This loop itself
-    # is otherwise unchanged — the neecha-bhanga (dispositor-in-kendra)
-    # check is real, but is still a single deterministic pass, not an
-    # independent classical cross-check, so the stamp is honestly demoted
-    # (M-22) alongside the D-3 data fix.
+    # including this loop, now gets the correct dignity.
+    #
+    # R6A.1 single-source-of-truth fix: this loop previously ran its own
+    # narrow inline neecha-bhanga check (rule 2 only, kendra-from-LAGNA
+    # only, D1 only) — a second, incomplete implementation of the same
+    # classical question ga_yoga_writer.evaluate_nbry now answers with all
+    # 5 classical rules across D1+D9. Two L1 facts silently disagreeing on
+    # the same debilitation-cancellation verdict for the same graha in the
+    # same chart is exactly the failure mode this removes (the §N.5
+    # single-authority principle, applied here between two L1 facts rather
+    # than L1-vs-L2+). This classification now DEFERS to evaluate_nbry as
+    # the single source of truth — it no longer runs its own cancellation
+    # logic. Lazy-imported (function-local) to avoid a module-load-time
+    # circular import with ga_yoga_writer, which itself lazy-imports this
+    # module's _load_varga_positions.
+    nbry_d1_bhanga_planets: set[str] = set()
+    if any(g.get("dignity_status") == "debilitated" for g in grahas_data):
+        try:
+            from ga_writers.ga_yoga_writer import evaluate_nbry
+
+            d1_positions: dict[str, dict[str, Any]] = {}
+            for g in grahas_data:
+                sign = g.get("sign")
+                house = g.get("house")
+                if sign and house is not None:
+                    d1_positions[g["name"].lower()] = {
+                        "sign": str(sign).lower(), "house": int(house),
+                    }
+
+            d9_positions: dict[str, dict[str, Any]] = {}
+            if conn is not None:
+                raw_d9 = _load_varga_positions(conn, chart_id, ayanamsha_id, "D9")
+                for graha, data in raw_d9.items():
+                    if data.get("sign") and data.get("house"):
+                        d9_positions[graha.lower()] = {
+                            "sign": str(data["sign"]).lower(), "house": int(data["house"]),
+                        }
+            else:
+                logger.warning(
+                    "[ga_structural] graha_composite_state_classification: no conn "
+                    "passed — NBRY evaluated on D1 only (D9 extension unavailable) "
+                    "for chart=%s ayanamsha=%s", chart_id, ayanamsha_id,
+                )
+
+            _, _, _, _, nbry_findings = evaluate_nbry(d1_positions, d9_positions or None)
+            nbry_d1_bhanga_planets = {
+                f["planet"] for f in nbry_findings if f["varga"] == "D1"
+            }
+        except Exception as exc:
+            logger.warning(
+                "[ga_structural] evaluate_nbry deferral failed for chart=%s "
+                "ayanamsha=%s: %s — classification falls back to 'debilitated' "
+                "(no cancellation verdict fabricated)", chart_id, ayanamsha_id, exc,
+            )
+            nbry_d1_bhanga_planets = set()
+
     classification_counts: dict[str, int] = {}
     for g in grahas_data:
         g_name = g["name"]
@@ -2817,11 +2882,9 @@ def _build_structural_relationship_rows(
         if dignity == "debilitated" and is_combust:
             classification = "severely_afflicted"
         elif dignity == "debilitated":
-            # Check neecha bhanga: if dispositor in kendra
-            debil_sign = DEBILITATION_SIGNS.get(g_name, "")
-            exalt_lord = SIGN_LORDS.get(debil_sign, "Sun")
-            exalt_g = next((g2 for g2 in grahas_data if g2["name"] == exalt_lord), None)
-            if exalt_g and int(exalt_g.get("house", 0)) in {1, 4, 7, 10}:
+            # Single source of truth: ga_yoga_writer.evaluate_nbry (5 classical
+            # rules, D1+D9) — see comment block above this loop.
+            if g_name.lower() in nbry_d1_bhanga_planets:
                 classification = "debilitation_cancelled"
             else:
                 classification = "debilitated"
@@ -5049,7 +5112,7 @@ def build_ga_structural(
             all_rows.extend(_build_composite_strength_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
-            all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, conn=ay_conn))
             all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
@@ -6207,7 +6270,7 @@ def build_ga_structural_substep(
     all_rows.extend(_build_composite_strength_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
+    all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn))
     all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
     # _build_varga_aspect_rows includes argala/virodha per varga (all 30)

@@ -15,6 +15,10 @@ Hard rails:
 - bhanga_active is NULL-with-a-documented-reason (bhanga_na_reason) wherever
   this writer implements no classical cancellation rule for that yoga type
   (JL-012/J3); Kemadruma's own bhanga logic is left untouched, not duplicated.
+  R6A.1 (Y-5): a generic registry-driven bhanga evaluator (evaluate_bhanga)
+  now supplies REAL cancellation verdicts where a cited classical rule is
+  implemented — currently Neecha Bhanga Raja Yoga (5 classical rules, D1+D9;
+  rule 5 floored per B.10). All other yogas keep the honest NULL floor.
 - Classical citations required on every yoga (inherited from brahma_yoga_catalog).
 - L1-authority: constituent_fact_ids reference real chart_facts.fact_id values.
 - Idempotency: DELETE-then-INSERT scoped to (chart_id, ayanamsha_id).
@@ -1066,6 +1070,581 @@ def _check_kendra_trikona_raja(state: ChartState) -> bool:
     return False
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# R6A.1 — Generic yoga-cancellation (bhanga) evaluator + Neecha Bhanga Raja Yoga
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Defect register Y-5: bhanga was only implemented for Kemadruma; every other
+# yoga's bhanga_active was NULL-with-reason (correct floor behavior, B.10).
+# This section adds:
+#   (a) evaluate_bhanga(...) — a generic, registry-driven cancellation evaluator.
+#       Yogas without a registered real classical rule keep today's honest
+#       NULL + bhanga_na_reason floor. R6A.2 (house-lord family) plugs in later
+#       by adding entries to _BHANGA_EVALUATORS.
+#   (b) The 5 classical Neecha Bhanga Raja Yoga (NBRY) rules, each a distinct
+#       separately-testable function with its own classical citation or an
+#       explicit floor (rule 5 is floored — see NBRY_RULE_5_FLOOR_REASON).
+#   (c) Per-varga evaluation: D1 (rasi) and D9 (navamsha) debilitations are
+#       checked independently; rule 2 additionally carries the classical
+#       navamsha extension (exaltation-graha in kendra from the navamsha
+#       lagna redeems a D1 debilitation) — the golden-gate case.
+#
+# ZERO LLM — plain deterministic Python. Dignity tables mirror the L0-sealed
+# Parashari tables in ga_writers/ga_structural_writer.py (EXALTATION_SIGNS /
+# DEBILITATION_SIGNS / SIGN_LORDS), lowercased to this writer's naming
+# convention. NBRY is evaluated for the 7 classical grahas only — classical
+# neecha-bhanga doctrine is stated for Sun..Saturn; nodes are excluded
+# (LESS-scope decision, not an oversight).
+
+NBRY_CANONICAL_ID = "neecha_bhanga_raja_yoga"
+
+NBRY_CLASSICAL_GRAHAS = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn")
+
+# Sign → lord (Parashari; mirror of ga_structural_writer.SIGN_LORDS, lowercase)
+NB_SIGN_LORDS: dict[str, str] = {
+    "aries": "mars", "taurus": "venus", "gemini": "mercury",
+    "cancer": "moon", "leo": "sun", "virgo": "mercury",
+    "libra": "venus", "scorpio": "mars", "sagittarius": "jupiter",
+    "capricorn": "saturn", "aquarius": "saturn", "pisces": "jupiter",
+}
+
+# Planet → exaltation sign (Parashari; mirror of ga_structural_writer.EXALTATION_SIGNS)
+NB_EXALTATION_SIGNS: dict[str, str] = {
+    "sun": "aries", "moon": "taurus", "mars": "capricorn",
+    "mercury": "virgo", "jupiter": "cancer", "venus": "pisces", "saturn": "libra",
+}
+
+# Planet → debilitation sign (Parashari; mirror of ga_structural_writer.DEBILITATION_SIGNS)
+NB_DEBILITATION_SIGNS: dict[str, str] = {
+    "sun": "libra", "moon": "scorpio", "mars": "cancer",
+    "mercury": "pisces", "jupiter": "capricorn", "venus": "virgo", "saturn": "aries",
+}
+
+# Sign → the graha that gets EXALTED in that sign (inverse of NB_EXALTATION_SIGNS).
+# e.g. Saturn debilitated in Aries → the graha exalted in Aries is the Sun.
+NB_EXALTED_IN_SIGN: dict[str, str] = {sign: planet for planet, sign in NB_EXALTATION_SIGNS.items()}
+
+# Parashari whole-sign graha drishti (special aspects; all grahas aspect the 7th).
+# BPHS graha-drishti adhyaya — Mars 4/8, Jupiter 5/9, Saturn 3/10, all 7th.
+NB_GRAHA_DRISHTI: dict[str, frozenset[int]] = {
+    "mars": frozenset({4, 7, 8}),
+    "jupiter": frozenset({5, 7, 9}),
+    "saturn": frozenset({3, 7, 10}),
+}
+NB_DEFAULT_DRISHTI = frozenset({7})
+
+# ── NBRY citations (citation discipline — section C of R6A.1) ──────────────────
+# Grain: source text + chapter/adhyaya, no fabricated verse numbers. BPHS Ch.39
+# is this project's ratified NBRY anchor (brahma_yoga_catalog.neecha_bhanga_raja_yoga
+# cites {"text_id": "bphs"} with source_citation BPHS Ch.39 Raja Yoga adhyaya —
+# see brahmagyan/l0_yogas.py). Phaladeepika's raja-yoga treatment is Ch.7
+# (mirrors the catalog's PHALADEEPIKA_CH7 constant).
+NBRY_CITATIONS: dict[str, tuple[str, str]] = {
+    "nbry_rule_1_dispositor_kendra": (
+        "bphs:ch39_raja_yoga_adhyaya:neecha_bhanga:dispositor_kendra",
+        "BPHS Ch.39 (Raja Yoga adhyaya), neecha-bhanga verses; also Phaladeepika "
+        "Ch.7 (Raja Yoga): the lord of the sign of debilitation placed in a kendra "
+        "from the Lagna or from the Moon cancels the debility.",
+    ),
+    "nbry_rule_2_exaltation_lord_kendra": (
+        "bphs:ch39_raja_yoga_adhyaya:neecha_bhanga:exaltation_graha_kendra",
+        "BPHS Ch.39 (Raja Yoga adhyaya), neecha-bhanga verses; also Phaladeepika "
+        "Ch.7 (Raja Yoga): the graha that is exalted in the debilitated planet's "
+        "sign of debilitation, placed in a kendra from the Lagna or from the Moon, "
+        "cancels the debility.",
+    ),
+    # Navamsha extension of rule 2 — kendra reckoned from the navamsha lagna.
+    "nbry_rule_2_exaltation_lord_kendra_d9": (
+        "bphs:ch39_raja_yoga_adhyaya:neecha_bhanga:exaltation_graha_kendra_navamsha",
+        "BPHS Ch.39 (Raja Yoga adhyaya), neecha-bhanga verses — navamsha extension "
+        "(classical Parashari transmission): the graha exalted in the debilitated "
+        "planet's sign of debilitation, placed in a kendra reckoned from the "
+        "navamsha (D9) lagna, cancels the debility.",
+    ),
+    "nbry_rule_3_lord_aspect": (
+        "bphs:ch39_raja_yoga_adhyaya:neecha_bhanga:lord_aspect",
+        "BPHS Ch.39 (Raja Yoga adhyaya), neecha-bhanga verses (classical "
+        "enumeration): the debilitated planet aspected by the lord of its sign of "
+        "debilitation, or by the lord of its own sign of exaltation, has its "
+        "debility cancelled.",
+    ),
+    "nbry_rule_4_conjunct_exaltation_graha": (
+        "bphs:ch39_raja_yoga_adhyaya:neecha_bhanga:conjunct_exaltation_graha",
+        "BPHS Ch.39 (Raja Yoga adhyaya), neecha-bhanga verses (classical "
+        "enumeration): the debilitated planet conjoined with the graha that is "
+        "exalted in that same sign has its debility cancelled.",
+    ),
+}
+
+# Rule 5 (dispositor of the debilitation sign and the exaltation-graha in mutual
+# kendra from each other) is FLOORED: the condition circulates in the transmitted
+# neecha-bhanga enumeration, but this author cannot pin it to a primary classical
+# text + chapter with genuine confidence (its most familiar attributions are
+# modern compilations quoting the tradition). Per project rule B.10 / R6A.1 §C,
+# it ships as NULL + reason, never as an uncited firing rule.
+NBRY_RULE_5_FLOOR_REASON = (
+    "no confidently-verifiable classical citation for this cancellation pattern "
+    "(mutual-kendra of the debilitation-sign dispositor and the exaltation-graha "
+    "is transmitted in modern compilations; a primary classical text+chapter "
+    "could not be verified with confidence) — floored per B.10, not fired"
+)
+
+NBRY_STRENGTH_FORMULA_VERSION = "nbry_rule_count_v1"
+NBRY_TOTAL_RULES = 5  # denominator includes the floored rule 5 — honest grading
+
+
+def _nb_rel_house(from_house: int, to_house: int) -> int:
+    """1-based whole-sign house of `to_house` counted from `from_house`."""
+    return ((to_house - from_house) % 12) + 1
+
+
+def _nb_in_kendra_from_lagna_or_moon(
+    positions: dict[str, dict[str, Any]], planet: str
+) -> tuple[bool, list[str]]:
+    """True if `planet` sits in a kendra (1/4/7/10) from the lagna OR from the
+    Moon, within the given varga's positions. Returns (hit, basis-list)."""
+    p = positions.get(planet)
+    if not p:
+        return False, []
+    basis: list[str] = []
+    if p["house"] in KENDRAS:
+        basis.append("lagna")
+    moon = positions.get("moon")
+    if moon and _nb_rel_house(moon["house"], p["house"]) in KENDRAS:
+        basis.append("moon")
+    return bool(basis), basis
+
+
+def _nb_aspects_house(aspecting_planet: str, from_house: int, target_house: int) -> bool:
+    """Parashari whole-sign drishti: does `aspecting_planet` at `from_house`
+    aspect `target_house`?"""
+    drishti = NB_GRAHA_DRISHTI.get(aspecting_planet, NB_DEFAULT_DRISHTI)
+    return _nb_rel_house(from_house, target_house) in drishti
+
+
+# ── The 5 NBRY rules — each a distinct, separately-testable function ────────────
+# Each takes the debilitated planet + the varga's positions
+# ({planet: {"sign": str, "house": int}} — houses lagna-relative, lowercase)
+# and returns a finding dict if the rule fires, a floor dict if the rule is
+# floored, or None if it does not fire.
+
+def nbry_rule_1_dispositor_kendra(
+    planet: str, positions: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Rule 1: dispositor (lord) of the debilitation sign is in a kendra from
+    the lagna or from the Moon."""
+    debil_sign = NB_DEBILITATION_SIGNS[planet]
+    dispositor = NB_SIGN_LORDS[debil_sign]
+    hit, basis = _nb_in_kendra_from_lagna_or_moon(positions, dispositor)
+    if not hit:
+        return None
+    ref, human = NBRY_CITATIONS["nbry_rule_1_dispositor_kendra"]
+    return {
+        "rule_id": "nbry_rule_1_dispositor_kendra",
+        "supporting_planets": [dispositor],
+        "supporting_houses": [positions[dispositor]["house"]],
+        "kendra_basis": basis,
+        "citation_ref": ref,
+        "citation_human": human,
+    }
+
+
+def nbry_rule_2_exaltation_lord_kendra(
+    planet: str,
+    positions: dict[str, dict[str, Any]],
+    navamsa_positions: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """Rule 2 (golden gate): the graha that gets EXALTED in the debilitated
+    planet's debilitation sign is in a kendra from the lagna or from the Moon.
+    Navamsha extension: when `navamsa_positions` is supplied (D1 evaluation
+    context), the same graha in a kendra from the D9 lagna also fires
+    (distinct rule id `..._d9`)."""
+    debil_sign = NB_DEBILITATION_SIGNS[planet]
+    exalt_graha = NB_EXALTED_IN_SIGN.get(debil_sign)
+    if not exalt_graha:
+        return None
+
+    hit, basis = _nb_in_kendra_from_lagna_or_moon(positions, exalt_graha)
+    if hit:
+        ref, human = NBRY_CITATIONS["nbry_rule_2_exaltation_lord_kendra"]
+        return {
+            "rule_id": "nbry_rule_2_exaltation_lord_kendra",
+            "supporting_planets": [exalt_graha],
+            "supporting_houses": [positions[exalt_graha]["house"]],
+            "kendra_basis": basis,
+            "citation_ref": ref,
+            "citation_human": human,
+        }
+
+    # Navamsha extension — kendra reckoned from the D9 lagna.
+    if navamsa_positions:
+        d9 = navamsa_positions.get(exalt_graha)
+        if d9 and d9["house"] in KENDRAS:
+            ref, human = NBRY_CITATIONS["nbry_rule_2_exaltation_lord_kendra_d9"]
+            return {
+                "rule_id": "nbry_rule_2_exaltation_lord_kendra",
+                "varga_context": "D9",
+                "supporting_planets": [exalt_graha],
+                "supporting_houses": [d9["house"]],
+                "kendra_basis": ["d9_lagna"],
+                "citation_ref": ref,
+                "citation_human": human,
+            }
+    return None
+
+
+def nbry_rule_3_lord_aspect(
+    planet: str, positions: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Rule 3: the debilitated planet is aspected by the lord of its
+    debilitation sign OR by the lord of its own exaltation sign
+    (Parashari whole-sign drishti)."""
+    debil_sign = NB_DEBILITATION_SIGNS[planet]
+    target_house = positions[planet]["house"]
+    candidates = {
+        NB_SIGN_LORDS[debil_sign],                       # debilitation-sign lord
+        NB_SIGN_LORDS[NB_EXALTATION_SIGNS[planet]],      # exaltation-sign lord
+    }
+    candidates.discard(planet)
+    aspectors: list[str] = []
+    for cand in sorted(candidates):
+        c = positions.get(cand)
+        if c and c["house"] != target_house and _nb_aspects_house(cand, c["house"], target_house):
+            aspectors.append(cand)
+    if not aspectors:
+        return None
+    ref, human = NBRY_CITATIONS["nbry_rule_3_lord_aspect"]
+    return {
+        "rule_id": "nbry_rule_3_lord_aspect",
+        "supporting_planets": aspectors,
+        "supporting_houses": [positions[a]["house"] for a in aspectors],
+        "citation_ref": ref,
+        "citation_human": human,
+    }
+
+
+def nbry_rule_4_conjunct_exaltation_graha(
+    planet: str, positions: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Rule 4: the debilitated planet is conjunct (same whole-sign house) with
+    the graha that is exalted in that sign."""
+    debil_sign = NB_DEBILITATION_SIGNS[planet]
+    exalt_graha = NB_EXALTED_IN_SIGN.get(debil_sign)
+    if not exalt_graha or exalt_graha == planet:
+        return None
+    e = positions.get(exalt_graha)
+    if not e or e["house"] != positions[planet]["house"]:
+        return None
+    ref, human = NBRY_CITATIONS["nbry_rule_4_conjunct_exaltation_graha"]
+    return {
+        "rule_id": "nbry_rule_4_conjunct_exaltation_graha",
+        "supporting_planets": [exalt_graha],
+        "supporting_houses": [e["house"]],
+        "citation_ref": ref,
+        "citation_human": human,
+    }
+
+
+def nbry_rule_5_mutual_kendra_floored(
+    planet: str, positions: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    """Rule 5 — FLOORED (B.10). The classical pattern (dispositor of the
+    debilitation sign and the exaltation-graha in mutual kendra from each
+    other) is implemented here only as an explicit floor: it never fires,
+    because no confidently-verifiable primary classical citation could be
+    supplied. Returns the floor marker unconditionally."""
+    return {
+        "rule_id": "nbry_rule_5_mutual_kendra",
+        "floored": True,
+        "floor_reason": NBRY_RULE_5_FLOOR_REASON,
+    }
+
+
+# ── Per-varga NBRY detection ────────────────────────────────────────────────────
+
+def detect_neecha_bhanga(
+    positions: dict[str, dict[str, Any]],
+    varga: str = "D1",
+    navamsa_positions: dict[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Detect Neecha Bhanga for every debilitated classical graha in one varga.
+
+    positions: {planet_lowercase: {"sign": sign_lowercase, "house": int 1-12
+    counted from that varga's lagna}}. navamsa_positions (same shape, D9) is
+    only consulted for the rule-2 navamsha extension and should be passed only
+    when evaluating the D1 (rasi) context.
+
+    Returns a list of findings:
+      {"planet", "varga", "debilitation_sign",
+       "rules_fired": [rule finding dicts], "rules_floored": [floor dicts]}
+    A finding is emitted only when at least one CITED rule fires — a floored
+    rule alone never produces a bhanga (B.10).
+    """
+    findings: list[dict[str, Any]] = []
+    for planet in NBRY_CLASSICAL_GRAHAS:
+        p = positions.get(planet)
+        if not p or p.get("sign") != NB_DEBILITATION_SIGNS.get(planet):
+            continue  # not debilitated in this varga
+
+        rules_fired: list[dict[str, Any]] = []
+        for rule_fn, kwargs in (
+            (nbry_rule_1_dispositor_kendra, {}),
+            (nbry_rule_2_exaltation_lord_kendra, {"navamsa_positions": navamsa_positions}),
+            (nbry_rule_3_lord_aspect, {}),
+            (nbry_rule_4_conjunct_exaltation_graha, {}),
+        ):
+            hit = rule_fn(planet, positions, **kwargs)
+            if hit:
+                rules_fired.append(hit)
+        rules_floored = [nbry_rule_5_mutual_kendra_floored(planet, positions)]
+
+        if rules_fired:
+            findings.append({
+                "planet": planet,
+                "varga": varga,
+                "debilitation_sign": NB_DEBILITATION_SIGNS[planet],
+                "rules_fired": rules_fired,
+                "rules_floored": rules_floored,
+            })
+    return findings
+
+
+def evaluate_nbry(
+    d1_positions: dict[str, dict[str, Any]],
+    d9_positions: dict[str, dict[str, Any]] | None = None,
+) -> tuple[bool | None, str | None, str | None, str | None, list[dict[str, Any]]]:
+    """
+    Evaluate Neecha Bhanga Raja Yoga across D1 and D9.
+
+    Returns (bhanga_active, bhanga_rule_fired, citation_ref, citation_human,
+    findings). bhanga_active=True iff at least one cited NBRY rule fired for
+    at least one debilitated graha in either varga; None (not False) when no
+    debilitation-with-cancellation configuration exists — the yoga simply does
+    not form, and no row should be written.
+    """
+    findings = detect_neecha_bhanga(d1_positions, varga="D1", navamsa_positions=d9_positions)
+    if d9_positions:
+        findings.extend(detect_neecha_bhanga(d9_positions, varga="D9"))
+
+    if not findings:
+        return None, None, None, None, []
+
+    rule_parts: list[str] = []
+    refs: list[str] = []
+    humans: list[str] = []
+    for f in findings:
+        for r in f["rules_fired"]:
+            ctx = f["varga"]
+            if r.get("varga_context") and r["varga_context"] != ctx:
+                ctx = f"{ctx}->{r['varga_context']}"
+            rule_parts.append(f"{f['planet']}@{ctx}:{r['rule_id']}")
+            if r["citation_ref"] not in refs:
+                refs.append(r["citation_ref"])
+                humans.append(r["citation_human"])
+    return True, ";".join(rule_parts), "; ".join(refs), " | ".join(humans), findings
+
+
+# ── Generic bhanga evaluator (Y-5 scaffold) ─────────────────────────────────────
+
+def _bhanga_neecha_handler(
+    *,
+    d1_positions: dict[str, dict[str, Any]],
+    d9_positions: dict[str, dict[str, Any]] | None = None,
+    **_ignored: Any,
+) -> dict[str, Any]:
+    """Registered handler for neecha_bhanga_raja_yoga → generic-evaluator shape."""
+    active, rule_fired, ref, human, findings = evaluate_nbry(d1_positions, d9_positions)
+    return {
+        "bhanga_active": active,
+        "bhanga_rule_fired": rule_fired,
+        "bhanga_na_reason": None if active is not None else (
+            "no debilitated graha with a firing classical neecha-bhanga rule in D1/D9"
+        ),
+        "citation_ref": ref,
+        "citation_human": human,
+        "findings": findings,
+    }
+
+
+# Extension point for R6A.2: register per-yoga cancellation handlers here.
+# A handler receives keyword context (d1_positions, d9_positions,
+# constituent_planets, ...) and returns the dict shape of _bhanga_neecha_handler.
+_BHANGA_EVALUATORS: dict[str, Any] = {
+    NBRY_CANONICAL_ID: _bhanga_neecha_handler,
+}
+
+
+def evaluate_bhanga(
+    yoga_canonical_id: str,
+    *,
+    d1_positions: dict[str, dict[str, Any]] | None = None,
+    d9_positions: dict[str, dict[str, Any]] | None = None,
+    constituent_planets: list[str] | None = None,
+    has_catalog_cancellation: bool = False,
+) -> dict[str, Any]:
+    """
+    Generic yoga-cancellation evaluator (defect register Y-5).
+
+    Returns {"bhanga_active": bool|None, "bhanga_rule_fired": str|None,
+             "bhanga_na_reason": str|None, "citation_ref": str|None,
+             "citation_human": str|None, "findings": list}.
+
+    Where no real classical cancellation rule is implemented for the yoga
+    type, bhanga_active stays honestly NULL with the same documented reason
+    this writer has always emitted (B.10 floor discipline) — a yoga is never
+    forced to a bhanga verdict.
+    """
+    handler = _BHANGA_EVALUATORS.get(yoga_canonical_id)
+    if handler is not None:
+        return handler(
+            d1_positions=d1_positions or {},
+            d9_positions=d9_positions,
+            constituent_planets=constituent_planets or [],
+        )
+    # Floor — identical wording to the pre-R6A.1 behavior.
+    return {
+        "bhanga_active": None,
+        "bhanga_rule_fired": None,
+        "bhanga_na_reason": (
+            "classical bhanga (cancellation) rule exists in "
+            "brahma_yoga_catalog.cancellation_conditions for this yoga but is "
+            "not evaluated by ga_yoga_writer (no per-yoga bhanga formula "
+            "implemented here to avoid fabrication — B.10)"
+            if has_catalog_cancellation else
+            "no classical bhanga (cancellation) rule exists for this yoga type"
+        ),
+        "citation_ref": None,
+        "citation_human": None,
+        "findings": [],
+    }
+
+
+# ── Build-time wiring: positions extraction + NBRY firing row ──────────────────
+
+def _d1_positions_from_state(state: ChartState) -> dict[str, dict[str, Any]]:
+    """Project ChartState into the {planet: {sign, house}} shape the NBRY
+    rules consume (7 classical grahas; houses lagna-relative)."""
+    positions: dict[str, dict[str, Any]] = {}
+    for planet in NBRY_CLASSICAL_GRAHAS:
+        sign = state.planet_sign.get(planet)
+        house = _house_of_planet(planet, state)
+        if sign and house:
+            positions[planet] = {"sign": sign, "house": int(house)}
+    return positions
+
+
+def _load_d9_positions(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, dict[str, Any]]:
+    """Load D9 (navamsha) positions from chart_divisionals via the existing
+    ga_structural_writer._load_varga_positions helper (lazy import — that
+    module pulls in the pyjhora adapter, which this writer does not otherwise
+    need at import time). Returns {} if D9 data is unavailable — NBRY then
+    evaluates on D1 alone (honest degradation, logged)."""
+    try:
+        from ga_writers.ga_structural_writer import _load_varga_positions
+        raw = _load_varga_positions(conn, chart_id, ayanamsha_id, "D9")
+    except Exception as exc:
+        logger.warning(
+            "[ga_yoga_writer] D9 varga positions unavailable for chart=%s ayanamsha=%s: %s "
+            "— NBRY evaluated on D1 only", chart_id, ayanamsha_id, exc,
+        )
+        return {}
+    positions: dict[str, dict[str, Any]] = {}
+    for graha, data in raw.items():
+        name = graha.lower()
+        if name in NBRY_CLASSICAL_GRAHAS and data.get("sign") and data.get("house"):
+            positions[name] = {"sign": str(data["sign"]).lower(), "house": int(data["house"])}
+    return positions
+
+
+def _build_nbry_firing(
+    cur: Any,
+    chart_id: str,
+    build_uuid: str,
+    ayanamsha_id: str,
+    state: ChartState,
+    d1_positions: dict[str, dict[str, Any]],
+    d9_positions: dict[str, dict[str, Any]],
+    family_map: dict[str, list[str]],
+) -> int:
+    """Evaluate NBRY for this (chart, ayanamsha) and insert at most ONE
+    ga_yoga_firings row (table is UNIQUE on chart/ayanamsha/yoga_canonical_id
+    — multiple planet/varga findings merge into that row). Returns rows
+    inserted (0 or 1). Never commits — caller owns the transaction."""
+    bhanga_active, rule_fired, citation_ref, citation_human, findings = evaluate_nbry(
+        d1_positions, d9_positions or None,
+    )
+    if not bhanga_active:
+        return 0  # yoga does not form — no row (uncancelled debilitations stay uncancelled)
+
+    constituent_planets: list[str] = []
+    constituent_houses: list[int] = []
+    max_rules_fired = 0
+    for f in findings:
+        max_rules_fired = max(max_rules_fired, len(f["rules_fired"]))
+        for p in [f["planet"]] + [
+            sp for r in f["rules_fired"] for sp in r.get("supporting_planets", [])
+        ]:
+            if p not in constituent_planets:
+                constituent_planets.append(p)
+        if f["varga"] == "D1":
+            h = d1_positions.get(f["planet"], {}).get("house")
+            if h and h not in constituent_houses:
+                constituent_houses.append(h)
+
+    # Grade: fraction of the 5 classical rules fired for the strongest finding.
+    # Rule 5 is floored (can never fire) so the ceiling is honestly 4/5.
+    strength = round(max_rules_fired / NBRY_TOTAL_RULES, 4)
+
+    # constituent_fact_ids resolve to chart_facts (L1 authority). D9 findings
+    # anchor to the same grahas' D1 chart_facts rows — the D9 numbers live in
+    # chart_divisionals, which has no fact_id to cite (documented in
+    # citation_human via the @D9 rule tags).
+    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
+
+    try:
+        cur.execute("""
+            INSERT INTO ga_yoga_firings (
+                chart_id, build_id, ayanamsha_id, yoga_canonical_id,
+                fired, constituent_fact_ids, constituent_planets,
+                constituent_houses, strength, strength_formula_version,
+                partial_formation_pct, is_partial,
+                bhanga_active, bhanga_rule_fired, bhanga_na_reason,
+                derivation, strength_label, citation_ref, citation_human,
+                family_ids, computed_at
+            ) VALUES (
+                %s, %s::uuid, %s, %s,
+                %s, %s::jsonb, %s::jsonb,
+                %s::jsonb, %s, %s,
+                %s, %s,
+                %s, %s, %s,
+                %s, %s, %s, %s,
+                %s::jsonb, NOW()
+            )
+        """, (
+            chart_id, build_uuid, ayanamsha_id, NBRY_CANONICAL_ID,
+            True,
+            json.dumps(constituent_fact_ids),
+            json.dumps(constituent_planets),
+            json.dumps(constituent_houses),
+            strength,
+            NBRY_STRENGTH_FORMULA_VERSION,
+            None, False,
+            bhanga_active, rule_fired, None,
+            NBRY_STRENGTH_FORMULA_VERSION,
+            "computed_extension",
+            citation_ref, citation_human,
+            json.dumps(family_map.get(NBRY_CANONICAL_ID, [])),
+        ))
+        return 1
+    except Exception as exc:
+        logger.warning(
+            "[ga_yoga_writer] NBRY insert failed for chart=%s ayanamsha=%s: %s",
+            chart_id, ayanamsha_id, exc,
+        )
+        return 0
+
+
 # ── Idempotency helper for ga_yoga_firings ────────────────────────────────────
 
 def _delete_prior_yoga_firings(conn: Any, chart_id: str, ayanamsha_id: str) -> int:
@@ -1096,7 +1675,9 @@ def build_ga_yoga_substep(
     - strength = mean normalized shadbala of constituent grahas (constituent_bala_v1,
       JL-012/J3), or NULL if no constituent has resolvable shadbala (not fabricated).
     - bhanga_active = NULL + bhanga_na_reason unless the yoga is kemadruma_aristha
-      (whose bhanga is already gated into its firing condition, not duplicated here).
+      (whose bhanga is already gated into its firing condition, not duplicated
+      here) or has a registered real classical rule in _BHANGA_EVALUATORS
+      (R6A.1: neecha_bhanga_raja_yoga — evaluated per-varga D1+D9).
     - constituent_fact_ids = [] if no L1 fact_ids resolved (not fabricated).
     - Delete-then-insert idempotency.
     - No commit — caller owns the transaction.
@@ -1137,6 +1718,11 @@ def build_ga_yoga_substep(
     # 2. Parse chart state
     state = ChartState(facts)
 
+    # R6A.1: positions for the generic bhanga evaluator + NBRY (D1 from the
+    # parsed state; D9 from chart_divisionals via ga_structural's loader).
+    d1_positions = _d1_positions_from_state(state)
+    d9_positions = _load_d9_positions(conn, chart_id, ayanamsha_id)
+
     # 3. Idempotency: delete prior rows for this (chart_id, ayanamsha_id)
     deleted = _delete_prior_yoga_firings(conn, chart_id, ayanamsha_id)
     logger.info("[ga_yoga_writer] deleted %d prior rows", deleted)
@@ -1169,26 +1755,30 @@ def build_ga_yoga_substep(
             )
             strength_formula_version = derivation or result["strength_formula_version"]
 
-            # ── JL-012 / J3: bhanga_active ─────────────────────────────────────
+            # ── JL-012 / J3 + R6A.1: bhanga_active ─────────────────────────────
             # Kemadruma's cancellation is already gated into its own firing
             # condition (and, upstream, ga_structural_writer's KEMADRUMA branch)
             # — leave its bhanga_active exactly as _evaluate_yoga set it. Every
-            # other yoga type gets NULL-with-a-documented-reason: this writer
-            # implements no per-yoga bhanga evaluation, and B.10 forbids
-            # inventing one.
+            # other yoga routes through the generic bhanga evaluator (Y-5):
+            # yogas with a registered REAL classical cancellation rule get a
+            # verdict; everything else keeps the honest NULL + reason floor
+            # (B.10 — identical wording to pre-R6A.1 behavior).
+            bhanga_rule_fired = result["bhanga_rule_fired"]
             if cid == KEMADRUMA_CANONICAL_ID:
                 bhanga_active = result["bhanga_active"]
                 bhanga_na_reason = None
             else:
-                bhanga_active = None
-                bhanga_na_reason = (
-                    "classical bhanga (cancellation) rule exists in "
-                    "brahma_yoga_catalog.cancellation_conditions for this yoga but is "
-                    "not evaluated by ga_yoga_writer (no per-yoga bhanga formula "
-                    "implemented here to avoid fabrication — B.10)"
-                    if yoga.get("cancellation_conditions") else
-                    "no classical bhanga (cancellation) rule exists for this yoga type"
+                bhanga = evaluate_bhanga(
+                    cid,
+                    d1_positions=d1_positions,
+                    d9_positions=d9_positions or None,
+                    constituent_planets=result["constituent_planets"],
+                    has_catalog_cancellation=bool(yoga.get("cancellation_conditions")),
                 )
+                bhanga_active = bhanga["bhanga_active"]
+                bhanga_na_reason = bhanga["bhanga_na_reason"]
+                if bhanga["bhanga_rule_fired"]:
+                    bhanga_rule_fired = bhanga["bhanga_rule_fired"]
 
             try:
                 cur.execute("""
@@ -1223,7 +1813,7 @@ def build_ga_yoga_substep(
                     result["partial_formation_pct"],
                     result["is_partial"],
                     bhanga_active,
-                    result["bhanga_rule_fired"],
+                    bhanga_rule_fired,
                     bhanga_na_reason,
                     derivation,
                     strength_label,
@@ -1237,6 +1827,16 @@ def build_ga_yoga_substep(
                     "[ga_yoga_writer] insert failed for yoga=%s chart=%s ayanamsha=%s: %s",
                     cid, chart_id, ayanamsha_id, exc,
                 )
+
+        # ── R6A.1: Neecha Bhanga Raja Yoga firing (D1 + D9) ────────────────────
+        # NBRY's catalog formation relation
+        # ("debilitated_planet_with_cancelled_debility") is in _evaluate_yoga's
+        # conservative skip-list, so it never fires via the catalog loop above —
+        # it is evaluated here with real per-varga bhanga rules instead.
+        rows_inserted += _build_nbry_firing(
+            cur, chart_id, build_uuid, ayanamsha_id, state,
+            d1_positions, d9_positions, family_map,
+        )
 
     elapsed = time.time() - t0
     logger.info(
