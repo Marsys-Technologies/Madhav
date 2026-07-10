@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.34
+version: 6.35
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,8 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.35 (2026-07-10, R5.3 CONTENT-DEPTH ITERATION — §B/B1/B2/B3/B4 complete; gate NOT MET, honestly reported, native ruled gate stays IMMUTABLE):
+    Successor run to R5.2 (v6.34), per `CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md`. **§B (grader restoration):** root-caused R5.2 A5's INCONCLUSIVE grading to a retired Gemini model name (`gemini-2.5-flash`→`gemini-flash-latest`), not a missing secret as the brief assumed; smoke-proved bidirectionally, both providers live. **B1 (true baseline):** full 38-item battery, both charts, real grading — 31.6% overall (12/38), first trustworthy rubric measurement since R5.1; narrowed the content-depth gap from the brief's assumed 16 items to 11 confirmed below-floor items. **B2 (content depth):** 5 worktree-isolated lanes (entity/timing/reading/remedy/verification), Pratinidhi-R ruling → implement → independent live re-grade per lane; 5 PRs merged (#508–#512); honest result 6/11 items now meet floor, 5/11 residuals diagnosed not dropped. **B3 (2 bounded fixes):** `query_remedies` 106KB→12.9KB; D60 rectification-confidence note (PR #514) — both live-verified. **B4 (acceptance re-run):** 39.5% overall (15/38, +7.9pts vs B1), Q1/X deterministic unchanged at 43.8%, 11/22 rubric floors met — **gate NOT MET**. Zero-regression check: 3 flips, one battery-staleness artifact (a tool the R6 audit legitimately fixed), two newly-surfaced marginal-content gaps on tools R5.3 never touched — none traceable to an R5.3 code change. Every one of the 23 failing B4 items mapped to a defect-register row (7 new rows added to `MARSYS_DEFECT_GAP_REGISTER_v2_0.md`: R-30–R-36, T-15, C-6). **Native ruling on the §N gate-calibration question: the ≥90% gate stays IMMUTABLE, not recalibrated — this is a capability problem, not a measurement problem.** Full remaining backlog (B2's 5 residuals + B4's 23 failures + the register's ~190 other rows) transfers to campaign R6 TOTAL ELEVATION (`00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_R6_TOTAL_ELEVATION_v1_0.md`, STAGED), which re-runs this same frozen battery at its own Phase-5 acceptance ceremony with the same ≥90% exit gate. Full close report: `R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md`. Full per-phase detail: `R5_3_RUN_LEDGER_v1_0.md`. `CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md` status set to COMPLETE.
   - v6.34 (2026-07-09, R5.2 ACCEPTANCE ITERATION — A1-A5 run complete; gate NOT MET, honestly reported):
     Successor run to R5.1 (v6.33), closing exactly the R5.1 punch-list items 1-6 per
     `CLAUDECODE_BRIEF_R5_2_ACCEPTANCE_v1_0.md`. **A1 (security, alone first):** per-call chart
@@ -5903,7 +5905,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: BA-SYNC-FREEZE-2026-07-04  # 2026-07-04: BA Endgame Activity 1 — code-plane sync-freeze COMPLETE; M1/M2 RING2_PASS; governance docs PR #408 9/9 PASS; GO for Activity 2 (Nirmāṇa inspection). Predecessor BA-P0-SERVING-TRUTH-2026-07-03.
+  last_session_id: R5.3-CONTENT-DEPTH-2026-07-10  # 2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09. (Field was stale at BA-SYNC-FREEZE-2026-07-04 for several sessions/campaigns — corrected here per schema_validator's current_state_last_session_id_disagreement finding.)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===

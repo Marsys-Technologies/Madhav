@@ -31435,3 +31435,141 @@ acceptance gap), the D60 time-sensitivity/rectification-confidence note on `quer
 `amjis-pending-stream-reaper`'s own `x-marsys-cron-secret` fix. Native to prioritize.
 
 *End of R5.2-ACCEPTANCE-2026-07-09 entry — 2026-07-09.*
+
+
+---
+
+## R5.3-CONTENT-DEPTH-2026-07-10 — Content-depth iteration, §B/B1/B2/B3/B4 phased run — CLOSED 2026-07-10
+
+```yaml
+session_open:
+  session_id: R5.3-CONTENT-DEPTH-2026-07-10
+  opened_on: 2026-07-10
+  cowork_thread_name: R5.3-CONTENT-DEPTH
+  governing_brief: CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md
+  ratification: >
+    Native dispatched the brief directly ("Read and execute it") and gave explicit phase-by-phase
+    go-aheads through the session (B1 proceed; B2 via Workflow tool with explicit lane/verifier
+    rulings; B3 proceed; B4 proceed with pre-decided rulings on gate immutability, register mapping,
+    and disposition on fail). Formal SESSION_OPEN_TEMPLATE handshake (mandatory-reading fingerprints
+    etc.) was not emitted before substantive work began — flagged honestly rather than backdated;
+    this block is written retroactively at close to satisfy SESSION_LOG_SCHEMA structural
+    requirements, reflecting the scope actually honored throughout.
+  scope_notes: >
+    Executed exactly the brief's own phase sequence: §B grader restoration (gated) -> B1 true
+    baseline -> B2 content-depth implementation (5 worktree-isolated lanes via Workflow) -> B3 two
+    bounded fixes -> B4 acceptance re-run -> honest close. Battery R5_ANSWER_BATTERY_v1_0.md and
+    llm_grader.ts's rubric prompt text remained FROZEN/READ-ONLY throughout.
+  may_touch:
+    - "platform/src/lib/retrieval/** (synthesis/recipe/content surfaces)"
+    - "platform-mcp/src/** (tool wiring only)"
+    - "eval harness (grader wiring + credential plumbing; never grading criteria)"
+    - "secrets/env config for the grader key (deploy-time)"
+    - "00_ARCHITECTURE run/ledger/seal docs"
+  must_not_touch:
+    - "orchestrator + build writers"
+    - "chart data (read-only)"
+    - "salience/priors/constants (frozen)"
+    - "LEL rows"
+    - "battery item content/grading criteria"
+    - "the deferred shelf"
+    - "amjis-pending-stream-reaper (its own micro-brief §S)"
+  predecessor_session: R5.2-ACCEPTANCE-2026-07-09
+  current_state_version_at_open: 6.34
+  red_team_due: false
+```
+
+Executed `CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md` end to end: §B grader restoration → B1 true
+baseline → B2 content-depth implementation (5 worktree-isolated lanes) → B3 two bounded fixes →
+B4 acceptance re-run → honest close. Full per-phase detail in `R5_3_RUN_LEDGER_v1_0.md`; the
+acceptance verdict and failures-to-register mapping in `R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md`.
+
+- **§B** (grader restoration): root-caused R5.2 A5's INCONCLUSIVE grading to a retired Gemini model
+  name (`gemini-2.5-flash`→`gemini-flash-latest`, `evals/r5-w4-full-battery/llm_grader.ts:49`), not
+  a missing secret as the brief assumed — both `GOOGLE_GENERATIVE_AI_API_KEY`/`DEEPSEEK_API_KEY`
+  were already live in Secret Manager and `platform/.env.local`. Smoke-proved bidirectionally on
+  live Gemini calls (15/15 excellent, 2/15 thin), DeepSeek fallback independently confirmed
+  reachable pre-fix.
+- **B1** (true baseline): full 38-item battery, both charts, real grading — 31.6% overall (12/38),
+  the first trustworthy rubric measurement since R5.1. Narrowed the content-depth gap from the
+  brief's assumed 16 items to 11 confirmed below-floor items (Q3/Q5 items the brief flagged turned
+  out to already meet floor under real grading).
+- **B2** (content-depth implementation): dispatched via Workflow — 5 worktree-isolated lanes
+  (entity portrait/timing/reading/remedy/verification), each running Pratinidhi-R ruling →
+  implement (own branch, CI-gated merge, deploy-confirmed) → independent live re-grade
+  (verifier ≠ implementer). Root cause: R5.1's C1 fix built a "v3 envelope"
+  (chart_header/verdict/drill_pointers) that is a completeness receipt, not narrated prose — no
+  field anywhere carried a verdict sentence. 5 PRs merged (#508–#512). Honest, independently
+  verified result: 6/11 items now meet floor (Q9-A-1, Q6-N-2, Q7-N-1, Q7-A-1, Q8-N-1, Q9-N-3); 5/11
+  residuals diagnosed, not silently dropped (narration-truncation bug in the entity lane; a real
+  muhurta_finder 90-day validation bug the timing lane misdiagnosed as a harness artifact; a
+  cross-lane structural synthesis limit on Q8-A-1; a response_format opt-in wiring gap on Q9-N-1).
+- **B3** (two bounded fixes): `query_remedies` 106KB→12,941 bytes (8.2x reduction, shipped inside
+  B2's remedy-lane PR #510, independently re-confirmed live); D60 rectification-confidence note
+  (new PR #514) — `query_chart_facts(divisional_chart='D60')` now attaches a
+  `time_sensitive_low_confidence` judgment_flag + narrated note when the queried chart's
+  `phala_rectification_best.confidence_label` is below the §31.4 ladder's sensitive_extreme
+  threshold (native chart confirmed genuinely `unresolved`, win_margin=0, 0/36 LEL matches). Both
+  live-verified on prod.
+- **B4** (acceptance re-run): full battery re-run against commit `90a14176` — 39.5% overall (15/38,
+  +7.9pts vs B1), Q1/X deterministic unchanged at 43.8% (out of R5.3's scope), 11/22 rubric floors
+  met. **Gate NOT MET.** Zero-regression check flagged 3 flips: X-5 is battery staleness (the tool
+  it probes, `synth_tail_divergence_get`, was legitimately fixed by the concurrent R6 audit —
+  register row R-10 — and the battery's own assertion now expects the old broken behavior); Q3-N-1
+  and Q3-A-2 are newly-surfaced marginal content gaps on `judgment_query`/`bodha_signals_get`, tools
+  no R5.3 PR touched — not breaks caused by this run. Every one of the 23 failing B4 items mapped to
+  a defect-register row; 7 new rows added to `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` (v3.0): R-30–R-36,
+  T-15, C-6. R-1 and C-2 flipped/annotated with this run's live evidence and PR numbers.
+- **§N gate-calibration question: answered, not deferred.** Native ruled directly: the ≥90% gate
+  stays IMMUTABLE. The shortfall is a capability problem (already root-caused, item by item, in the
+  defect register), not a measurement problem — no recalibration.
+- **Close**: `R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md` written. `CURRENT_STATE_v1_0.md` v6.34→v6.35
+  (changelog entry). `CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md` status flipped to COMPLETE. All
+  feature branches/worktrees created this session deleted post-merge. Remaining backlog (B2's 5
+  residuals + B4's 23 failures + the register's other rows) transfers to campaign R6 TOTAL ELEVATION
+  (`00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_R6_TOTAL_ELEVATION_v1_0.md`, STAGED) per native
+  instruction — no further remediation attempted in this session.
+
+**Contract violations: 0.** No chart data written. No entitlement widened. No LEL rows touched. No
+gate-lowering, no battery/grading-criteria edits beyond the one-line §B grader-wiring model-name
+fix. No orchestrator/writer/frozen-constant touch across any PR.
+
+```yaml
+session_close:
+  session_id: R5.3-CONTENT-DEPTH-2026-07-10
+  closed_on: 2026-07-10
+  outcome: >
+    COMPLETE, honest result. Sec-B grader restored and smoke-proved (fixes a program-wide
+    measurement blocker, not just this run). B1 true baseline established (31.6%). B2 shipped,
+    deployed, independently live-verified on prod via 5 worktree-isolated lanes -- 6/11 items fixed,
+    5/11 residuals honestly diagnosed and carried forward. B3's two bounded fixes shipped and
+    live-verified. B4 acceptance re-run: 39.5% overall vs >=90% required -- gate NOT MET. Native
+    ruled the gate stays immutable; the gap is a capability problem, already root-caused per-item in
+    MARSYS_DEFECT_GAP_REGISTER_v2_0.md. Zero-regression check performed and reported honestly (3
+    flips, none traceable to an R5.3 code change). Remaining backlog transfers to R6 TOTAL
+    ELEVATION per native instruction. See R5_3_RUN_LEDGER_v1_0.md and
+    R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md for full detail.
+  contract_violations: 0
+  native_chart_touched: false
+  active_layer_campaign_after: "R5.3 CLOSED. Content-depth backlog (B2 residuals, B4 failures, the
+    defect register) transfers to R6 TOTAL ELEVATION (STAGED), which re-runs this same frozen
+    battery at its own Phase-5 acceptance ceremony with the same >=90% exit gate."
+  current_state_updated: true
+  current_state_version: 6.35
+  session_log_appended: true
+  red_team_pass: "n/a -- not a macro-phase close; red_team_due not evaluated this session (session-open
+    handshake was not formally emitted -- see note above)"
+  next_session_objective: >
+    R6 TOTAL ELEVATION campaign (00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_R6_TOTAL_ELEVATION_v1_0.md,
+    STAGED) owns all further remediation: B2's 5 residuals, B4's 23 mapped failures, and the
+    defect register's remaining ~190 rows. Native to prioritize R6 kickoff.
+```
+
+### Next session objective
+
+R6 TOTAL ELEVATION campaign owns all further remediation of the content-depth/acceptance backlog
+this session honestly measured and mapped. See `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` (v3.0) for the
+full prioritized register and `R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md` §6 for the B4 failures-to-rows
+mapping R6's Phase-5 acceptance ceremony will re-measure against.
+
+*End of R5.3-CONTENT-DEPTH-2026-07-10 entry — 2026-07-10.*
