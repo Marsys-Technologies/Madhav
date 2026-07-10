@@ -738,7 +738,6 @@ def _verify_naisargika(rows: list[dict]) -> str:
     return "two_pass_verified"
 
 
-
 # Two independent classical correspondence tables PyJHora's Varsha-Vimshottari
 # engine chains together (hand-transcribed here, WITH citation, as the
 # register's own "two-pass classical reconstruction" — an independent
@@ -807,8 +806,23 @@ def _verify_mudda(rows: list[dict], moon_nak_idx0: int | None = None) -> str:
 
 def _verify_kalachakra(rows: list[dict]) -> str:
     """
-    Kalachakra: paramayush-anchored, deha/jeeva sign-based.
-    Lords must be sign names (sign-based dasha).
+    Kalachakra verification tier.
+
+    M-6 fix (see `compute_kalachakra_system`): the underlying derivation now
+    delegates to PyJHora's real `kalachakra_dhasa()` (savya/apasavya 9-sign
+    cycles, per-pada paramayush, classical pada-4 gati-jump transitions) —
+    the classical method is genuinely followed, independently re-derived and
+    hand-traced against the installed library (see the R6 run ledger).
+
+    This function itself only performs a shallow structural check (lords
+    must be known Kalachakra sign names) — it is not an independent second
+    computation of the whole progression, so it does not warrant
+    "two_pass_verified" even though the underlying derivation is now
+    classical-correct. Demoted to "single" per M-22 discipline (never stamp
+    a tier the check didn't earn); the chart_dashas table's CHECK
+    constraint only allows {'two_pass_verified','classical_match',
+    'divergent_flagged','single'} (see `_verify_mudda`'s docstring above
+    for why "single" and not "documented_approximation").
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
@@ -817,7 +831,7 @@ def _verify_kalachakra(rows: list[dict]) -> str:
     for row in l1_rows:
         if row["lord_graha"] not in known_signs:
             raise ValueError(f"Kalachakra: invalid sign/lord {row['lord_graha']!r}")
-    return "two_pass_verified"
+    return "single"
 
 
 # ── Core row builder ──────────────────────────────────────────────────────────
@@ -2959,7 +2973,15 @@ def build_ga_dashas(
                 "duration_days": 0.0,
                 "sandhi_flag": False,
                 "karaka_role_at_period": None,
-                "verification_pass_status": "two_pass_verified",
+                # M-22 fix: this row is a deliberate "not computed —
+                # beyond scope" marker (see citation_human below), not a
+                # real computation — stamping it "two_pass_verified"
+                # claimed a verified value where none exists. Uses the
+                # same self-descriptive string as verification_method so
+                # the row is unambiguous; falls through
+                # VERIFICATION_RESCALE.get(status, documented_approximation)
+                # to the lowest honest tier (0.60), never the top tier.
+                "verification_pass_status": "scope_cap_sentinel",
                 "verification_method": "scope_cap_sentinel",
                 "citation_ref": "L1_GANITA_SCOPE_CAP",
                 "citation_human": "Prana Dasha (5th-level sub-period) not computed — beyond L1 Ganita scope",
@@ -3014,7 +3036,15 @@ def build_ga_dashas(
                 "duration_days": 0.0,
                 "sandhi_flag": False,
                 "karaka_role_at_period": None,
-                "verification_pass_status": "two_pass_verified",
+                # M-22 fix: this row is a deliberate "not computed —
+                # beyond scope" marker (see citation_human below), not a
+                # real computation — stamping it "two_pass_verified"
+                # claimed a verified value where none exists. Uses the
+                # same self-descriptive string as verification_method so
+                # the row is unambiguous; falls through
+                # VERIFICATION_RESCALE.get(status, documented_approximation)
+                # to the lowest honest tier (0.60), never the top tier.
+                "verification_pass_status": "scope_cap_sentinel",
                 "verification_method": "scope_cap_sentinel",
                 "citation_ref": "L1_GANITA_SCOPE_CAP",
                 "citation_human": (

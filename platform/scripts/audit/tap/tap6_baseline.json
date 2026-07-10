@@ -3,136 +3,87 @@
   "entries": [
     {
       "pattern": "two_pass_verified_literal",
-      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
-      "line_hash": "deeeb0bc4be1",
-      "register_row": "M-22",
-      "note": "M-5 mudda dasha + M-6 kalachakra dasha stamp two_pass_verified while using non-classical derivations"
-    },
-    {
-      "pattern": "two_pass_verified_literal",
-      "file": "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-      "line_hash": "3b3f1ac05637",
-      "register_row": "M-22",
-      "note": "part of the class-wide verification-stamp pattern M-22 flags; not separately root-caused in v2.0 beyond the M-22 sweep"
-    },
-    {
-      "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line_hash": "e77d402723dd",
       "register_row": "M-22",
-      "note": "M-20 sade-sati vargottama approximation stamps two_pass_verified"
+      "note": "R6-1f PARTIAL: _verif_for_text/_verif_for_maybe_none (the real M-20-linked vacuous verifiers) demoted to single_pass. This hash is the shared _make_row/R() default param 'two_pass_verified' still used at ~9 other call sites in this file for genuinely upstream-joined date/dignity/house facts (not the M-20 vargottama approximation) — left as-is; a full per-call-site audit of this file's ~9 default-relying rows is out of this lane's scope."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
       "line_hash": "48e1c2650d1e",
       "register_row": "M-22",
-      "note": "M-20 sade-sati vargottama approximation stamps two_pass_verified"
+      "note": "R6-1f PARTIAL: see sibling entry above — same file, same disposition."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
       "line_hash": "1dcd54c85512",
       "register_row": "M-22",
-      "note": "M-9/M-10/M-11 fabricated sphutas + special lagnas + upagrahas stamp two_pass_verified"
+      "note": "R6-1f PARTIAL: the M-9/M-10/M-11 fabricated-formula call sites (Pranapada, Trikona Dasha Sphuta, Sri Yantra, HL/GL/BL special lagnas, Upagraha Kala, Gulika-Hindu) now pass an explicit verification_pass_status='documented_approximation' override. This hash is the shared _make_row default param declaration ('two_pass_verified') still in force for the OTHER, non-fabricated sensitive points this file also builds (e.g. Yogi Graha, BPHS Ch.3 upagrahas with a real native cross-check) — left as-is, correctly high-tier for those."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
       "line_hash": "e5c9e1db5e33",
       "register_row": "M-22",
-      "note": "M-9/M-10/M-11 fabricated sphutas + special lagnas + upagrahas stamp two_pass_verified"
-    },
-    {
-      "pattern": "two_pass_verified_literal",
-      "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-      "line_hash": "b56f7f5172b1",
-      "register_row": "M-22",
-      "note": "M-1 shadbala toy heuristic + M-2 vimshopaka + M-3 ashtakavarga shodhana stamp two_pass_verified (docstring :13-29 falsely claims PyJHora)"
-    },
-    {
-      "pattern": "two_pass_verified_literal",
-      "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-      "line_hash": "18b27ffc4f96",
-      "register_row": "M-22",
-      "note": "M-1 shadbala toy heuristic + M-2 vimshopaka + M-3 ashtakavarga shodhana stamp two_pass_verified (docstring :13-29 falsely claims PyJHora)"
+      "note": "R6-1f PARTIAL: see sibling entry above — same file, same disposition (Yogi Graha rows, genuinely BPHS Ch.20 formula, no M-9/M-10/M-11 defect; correctly left at the default tier)."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "27d6bd724945",
       "register_row": "M-22",
-      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+      "note": "R6-1f FIXED at the cited M-12 (Tajik aspects, aspect_tajik category) and M-14 (graha_in_house_composite_strength, 3 rows) emit sites — all demoted to documented_approximation with rationale comments. This hash remains QUARANTINED because the identical trimmed line text 'verif=\"two_pass_verified\",' also appears at ~95 OTHER emit sites in this 6000-line file for unrelated, genuinely-computed categories (dignity facts, conjunctions, real cross-checked positions) — those are correct as-is and out of this lane's scope to touch."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "d36b57e6e562",
       "register_row": "M-22",
-      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+      "note": "R6-1f: see sibling entry above — M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "31addb48f10e",
       "register_row": "M-22",
-      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+      "note": "R6-1f: see sibling entry above — M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "dde14a215b5e",
       "register_row": "M-22",
-      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+      "note": "R6-1f: see sibling entry above — M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
       "line_hash": "9dcb9f71884d",
       "register_row": "M-22",
-      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+      "note": "R6-1f: see sibling entry above — M-12/M-14 cited sites fixed; remaining hits are the same shared literal text at unrelated correct emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
       "line_hash": "deeeb0bc4be1",
       "register_row": "M-22",
-      "note": "M-4 BAV loop bug + M-17 D60 deities + M-18 saptavargaja stamp two_pass_verified"
-    },
-    {
-      "pattern": "two_pass_verified_literal",
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-      "line_hash": "deeeb0bc4be1",
-      "register_row": "M-22",
-      "note": "\"verification_pass_status\": \"two_pass_verified\" literal at emit site (3 occurrences)"
-    },
-    {
-      "pattern": "two_pass_verified_literal",
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
-      "line_hash": "c6277fe7e765",
-      "register_row": "M-22",
-      "note": "\"verification_pass_status\": \"two_pass_verified\" literal at emit site"
+      "note": "R6-1f PARTIAL: M-17 (D60 deity/quality attribution) and M-18 (saptavargaja bala) cited sites fixed — both demoted to documented_approximation (D60 conditionally, saptavargaja unconditionally). M-4 (BAV per-varga loop bug) NOT fixed this lane: _compute_ashtakavarga_bav (lines ~570-605, the function the register cites) is dead code with zero call sites found in this file — the live BAV-per-varga emit path could not be located within this lane's scope/budget; computation-truth fix (and locating its real emit site) is left to a computation-domain lane. Remaining hits are the shared literal text at other, unrelated correct varga emit sites."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
       "line_hash": "f2282a906d7b",
       "register_row": "M-22",
-      "note": "consumes/propagates verification_pass_status from upstream writers; part of the M-22 class sweep"
+      "note": "NOT A VIOLATION (confirmed R6-1f): line ~1150 reads `5 if vpass == \"two_pass_verified\" else 2` — a legitimate comparison against an upstream-computed value (now honestly demoted at its real emit sites by this lane), not an emit-site assignment of the literal. Kept baselined only because the grep's assign-or-colon regex pattern-matches the comparison syntax; left in place as a documented false-positive rather than reworded to dodge the grep (the code is correct as written)."
     },
     {
       "pattern": "two_pass_verified_literal",
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py",
       "line_hash": "1ceb2c533f47",
       "register_row": "M-22",
-      "note": "reads/aggregates two_pass_verified_pct as a quality metric built on the contaminated stamp; part of the M-22 class sweep"
-    },
-    {
-      "pattern": "two_pass_verified_literal",
-      "file": "platform/python-sidecar/pipeline/writers/chart_facts_writer_a3.py",
-      "line_hash": "8de88d40c16a",
-      "register_row": "M-22",
-      "note": "verification: str = 'two_pass_verified' default param — literal, not verifier-computed"
+      "note": "NOT A VIOLATION (confirmed R6-1f): line ~144 is `SELECT count(*) ... WHERE verification_pass_status = 'two_pass_verified'` — a read-only SQL aggregation counting real, already-persisted row statuses for a quality metric (two_pass_verified_pct). Not a fabricated stamp. Kept baselined only because the grep's assign-or-colon regex pattern-matches the SQL comparison syntax; left in place as a documented false-positive."
     },
     {
       "pattern": "rough_estimate_comment",

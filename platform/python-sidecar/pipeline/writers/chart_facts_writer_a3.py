@@ -104,7 +104,17 @@ def _row(
     value_text: Optional[str],
     value_number: Optional[float] = None,
     citation_human: Optional[str] = None,
-    verification: str = 'two_pass_verified',
+    # M-22 fix: this default was a literal, applied at all 7 call sites in
+    # this module with zero overrides — none of them ever ran an
+    # independent astrological cross-check. The module docstring's "two-pass
+    # verification: write then read-back count" describes a DB write-
+    # completeness check (row count after insert), not an astrological
+    # derivation cross-check — a different meaning of "two-pass" than the
+    # one VERIFICATION_RESCALE (bodha_writers/formulas.py) assigns the
+    # stamp. Demoted to "single_pass": a real single deterministic
+    # computation (natal_engine Swiss-Ephemeris-derived positions), no
+    # independent second-method cross-check.
+    verification: str = 'single_pass',
 ) -> Tuple:
     """Build a single chart_facts insert tuple matching the INSERT SQL below."""
     fact_id = _make_fact_id(fact_category, fact_subject, fact_key, chart_id, ayanamsha_id, build_id)

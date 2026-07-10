@@ -307,14 +307,18 @@ def test_planet_own_signs_and_exaltation_tables_are_classical():
 # ── _verif_for_text / _verif_for_maybe_none ──────────────────────────────────
 
 def test_verif_for_text_flags_pending_fallback_as_single():
+    # M-22 fix (R6-1f): non-placeholder values previously claimed the top
+    # "two_pass_verified" tier despite this being a single upstream DB join
+    # with no independent second-pass cross-check — demoted to
+    # "single_pass" (formulas.py VERIFICATION_RESCALE 0.85 vs 1.00).
     assert _verif_for_text("PENDING_GA7_LOOKUP") == "single"
-    assert _verif_for_text("JUP") == "two_pass_verified"
+    assert _verif_for_text("JUP") == "single_pass"
 
 
 def test_verif_for_maybe_none_flags_none_as_single():
     assert _verif_for_maybe_none(None) == "single"
-    assert _verif_for_maybe_none(False) == "two_pass_verified"
-    assert _verif_for_maybe_none(True) == "two_pass_verified"
+    assert _verif_for_maybe_none(False) == "single_pass"
+    assert _verif_for_maybe_none(True) == "single_pass"
 
 
 # ── _make_row: value_jsonb must tolerate Decimal (BA-P3 rebuild regression) ──
