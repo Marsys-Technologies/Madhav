@@ -32,14 +32,24 @@ import { query } from '@/lib/db/client'
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
 // never landed; Mudda/Naisargika did) — description below now matches ground truth, not the
 // pre-R5 aspirational list.
+//
+// R6 0e-dashameta (register V-12): 'vimshottari_kp' is an 8th, DISTINCT system_id — KP
+// sub/sub-sub period rows used to be written under system_id='vimshottari' (differentiated
+// only by the kp_sublevel column), which meant the default system=vimshottari facet silently
+// served BOTH the classical Antardasha row and the KP sub-period row for the same level_n=2
+// slot with divergent end dates. KP rows now live in their own system_id namespace so the
+// default facet (and any caller who never heard of kp_sublevel) gets only classical rows;
+// pass system="vimshottari_kp" explicitly to retrieve KP sub-lord chains.
 const KNOWN_SYSTEMS = [
-  'vimshottari', 'yogini', 'ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika',
+  'vimshottari', 'vimshottari_kp', 'yogini', 'ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika',
 ] as const
 
 // Case/spelling normalization for the `system` facet — accepts the actual system_id values,
 // common uppercase spellings, and the classical/alias names a caller might reach for.
 const SYSTEM_ALIAS: Record<string, string> = {
   vimshottari: 'vimshottari', VIMSHOTTARI: 'vimshottari',
+  vimshottari_kp: 'vimshottari_kp', VIMSHOTTARI_KP: 'vimshottari_kp',
+  kp: 'vimshottari_kp', KP: 'vimshottari_kp', kp_sub: 'vimshottari_kp', KP_SUB: 'vimshottari_kp',
   yogini: 'yogini', YOGINI: 'yogini',
   ashtottari: 'ashtottari', ASHTOTTARI: 'ashtottari',
   chara_karaka: 'chara_karaka', CHARA_KARAKA: 'chara_karaka',

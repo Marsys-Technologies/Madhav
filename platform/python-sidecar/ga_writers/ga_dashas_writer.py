@@ -12,8 +12,11 @@ CAMPAIGN RAILS (BINDING — never deviate):
   - CRITICAL OVERRIDE 2: KP = kp_sublevel dimension (NOT level_n=6/7).
   - Calculation window: start_iso >= 1950-01-01, end_iso <= 2100-12-31.
   - Per-system incremental + idempotent (context-decay-safe).
-  - Only 3 sanctioned JSONB columns: concurrent_system_lords_jsonb,
-    triggered_yogas_jsonb_atomic, lord_transit_at_period_start_jsonb.
+  - Only 1 sanctioned JSONB column: concurrent_system_lords_jsonb.
+    (R6 0e-dashameta / register V-11: triggered_yogas_jsonb_atomic and
+    lord_transit_at_period_start_jsonb — formerly "sanctioned JSONB #2/#3" —
+    were dropped via migration 428: both were permanently dead placeholders,
+    no yoga-trigger or transit engine exists in GA7 to populate them.)
 
 FORENSIC anchors (hard gate):
   Sun=Capricorn, Moon nak=Purva Bhadrapada, Lagna=Aries,
@@ -36,6 +39,7 @@ from typing import Any, Generator
 
 from ga_writers._idempotency import replace_prior_chart_dashas
 from ga_writers._telemetry import update_asset_throughput
+from ga_writers.ga_condition_writer import _DIVISIONAL_DIGNITY_NORMALIZE
 from pipeline.orchestrator.birth_params import CANONICAL_CHART_ID as _BP_CANONICAL_CHART_ID, resolve_birth_params
 
 logger = logging.getLogger(__name__)
@@ -67,6 +71,18 @@ VIMSHOTTARI_SEQUENCE = [
     "Rahu", "Jupiter", "Saturn", "Mercury",
 ]
 VIMSHOTTARI_TOTAL_YEARS = 120
+
+# V-12 fix: KP sub-period rows get their OWN system_id, distinct from
+# "vimshottari" classical Antardasha/Pratyantardasha rows. Before this fix,
+# compute_kp_subperiods() wrote KP sub/sub-sub rows under system_id=
+# "vimshottari" (same as classical), differentiated only by the kp_sublevel
+# column — any consumer querying system_id='vimshottari' AND level_n=2
+# without ALSO filtering kp_sublevel IS NULL got both the classical
+# Antardasha row and the KP sub-period row for the same start date, with
+# divergent end dates (register V-12; get_dashas.ts's default facets are
+# exactly system=vimshottari + level<=3, so this collision was live in the
+# default retrieval path, not just a theoretical query shape).
+KP_SYSTEM_ID = "vimshottari_kp"
 
 # Populated from L0 before build; _load_nakshatra_lords_l0() overwrites from reference_nakshatras.
 # Fallback = correct Parashari vimshottari cycle (28-element, index 0 unused) so unit tests
@@ -221,6 +237,15 @@ def _birth_jd_utc(birth: dict) -> float:
     )
 
 
+def _datetime_to_jd(dt: datetime) -> float:
+    """UTC datetime -> Julian Day (UT). Inverse of _jd_to_iso_utc (V-9)."""
+    import swisseph as swe
+    return swe.julday(
+        dt.year, dt.month, dt.day,
+        dt.hour + dt.minute / 60.0 + dt.second / 3600.0,
+    )
+
+
 def _jd_to_date(jd: float) -> date:
     import swisseph as swe
     y, m, d, _ = swe.revjul(jd)
@@ -229,6 +254,28 @@ def _jd_to_date(jd: float) -> date:
 
 def _date_to_iso(d: date) -> str:
     return d.isoformat() + "T00:00:00+00:00"
+
+
+def _jd_to_iso_utc(jd: float) -> str:
+    """Full-precision UTC ISO-8601 timestamp from a Julian Day (UT).
+
+    V-9 fix: chart_dashas.start_iso/end_iso are TIMESTAMPTZ columns (migration
+    206), but every boundary was previously built via _jd_to_date() -> date ->
+    _date_to_iso() (hardcoded "T00:00:00"), truncating the real ephemeris
+    time-of-day and — because the engine works in JD (fractional days), not
+    midnight-aligned dates — silently shifting the true boundary by up to a
+    day. This helper preserves swe.revjul()'s fractional-hour return so the
+    stored timestamp matches what the engine actually computed.
+    """
+    import swisseph as swe
+    y, m, d, ut_hours = swe.revjul(jd)
+    # ut_hours is a float in [0, 24); build the date at midnight then add the
+    # fractional day as a timedelta so a rounding-induced day rollover (e.g.
+    # 23:59:59.6 -> 24:00:00) is handled correctly across month/year boundaries
+    # by datetime arithmetic instead of hand-rolled calendar math.
+    total_seconds = int(round(ut_hours * 3600.0))
+    dt = datetime(int(y), int(m), int(d), tzinfo=timezone.utc) + timedelta(seconds=total_seconds)
+    return dt.isoformat()
 
 
 def _years_to_days(years: float) -> float:
@@ -375,30 +422,164 @@ def _find_cycle_start_for_window(
     return effective_start_jd, sequence[idx], idx
 
 
-# ── Natal lord context (Addition A) ──────────────────────────────────────────
+# ── Natal lord context (Addition A) — register V-1 / G-7 / D-1 fix ──────────
+#
+# CLAUDE.md §N.5 (L1-is-authority): an L2+ (here: a denormalized column on an
+# L1 table itself) NEVER restates an L1 computed value as its own truth — it
+# JOINS to chart_facts and inherits the value. The prior version of this file
+# hardcoded a module-level `_NATAL_CONTEXT` dict of "FORENSIC-grounded"
+# natal values that were, on live audit against chart_facts + chart_divisionals
+# for chart 482012f1 (lahiri_chitrapaksha), wrong for 6 of 9 grahas:
+#   Mars:    dict said Capricorn/h10/exalted   ; chart_facts = Libra/h7/neutral_sign
+#   Rahu:    dict said Leo/h5                  ; chart_facts = Taurus/h2
+#   Ketu:    dict said Aquarius/PurvaBhadrapada/h11 (= a copy of MOON's values)
+#                                               ; chart_facts = Scorpio/Jyeshtha/h8
+#   Sun:     dict said dignity "exalted_friend" (not even a real dignity value)
+#                                               ; chart_facts = Enemy -> enemy_sign
+#   Venus:   dict said nakshatra "Mula" (= a copy of JUPITER's nakshatra)
+#                                               ; chart_facts = Purva Ashadha
+#   Saturn:  dict said house_d1=11 (G-7's cited contradiction)
+#                                               ; chart_facts = house_d1=7
+# Moon's own house_d1 was also wrong (dict said 12; chart_facts = 11).
+# Only Jupiter and Mercury's *sign* happened to match by coincidence.
+#
+# Fix: re-derive ALL lord_natal_* columns from chart_facts (sign/nakshatra/
+# house_d1 via fact_category='graha_position') + chart_divisionals (dignity_d1
+# via fact_category='varga_dignity', varga='D1') + chart_facts
+# (shadbala_total via fact_category='graha_shadbala_total', fact_key='rupa')
+# at BUILD time, per (chart_id, ayanamsha_id) — never hand-copied again.
 
-# Precomputed natal context for FORENSIC native (chart_id 482012f1)
-# These are FORENSIC-grounded values from the canonical chart
-_NATAL_CONTEXT: dict[str, dict[str, Any]] = {
-    "Sun":     {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Shravana",       "dignity_d1": "exalted_friend", "shadbala_total": None},
-    "Moon":    {"house_d1": 12, "sign": "Aquarius",    "nakshatra": "Purva Bhadrapada","dignity_d1": "neutral",        "shadbala_total": None},
-    "Mars":    {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Uttara Ashadha", "dignity_d1": "exalted",        "shadbala_total": None},
-    "Mercury": {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Shravana",       "dignity_d1": "neutral",        "shadbala_total": None},
-    "Jupiter": {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Mula",           "dignity_d1": "own",            "shadbala_total": None},
-    "Venus":   {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Mula",           "dignity_d1": "neutral",        "shadbala_total": None},
-    "Saturn":  {"house_d1": 11, "sign": "Libra",       "nakshatra": "Vishakha",       "dignity_d1": "exalted",        "shadbala_total": None},
-    "Rahu":    {"house_d1": 5,  "sign": "Leo",         "nakshatra": "Purva Phalguni", "dignity_d1": "neutral",        "shadbala_total": None},
-    "Ketu":    {"house_d1": 11, "sign": "Aquarius",    "nakshatra": "Purva Bhadrapada","dignity_d1": "neutral",       "shadbala_total": None},
-    # Yogini system uses deity names — map to graha lords
-    "Mangala": {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Uttara Ashadha", "dignity_d1": "exalted",        "shadbala_total": None},
-    "Pingala": {"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Shravana",       "dignity_d1": "exalted_friend", "shadbala_total": None},
-    "Dhanya":  {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Mula",           "dignity_d1": "own",            "shadbala_total": None},
-    "Bhramari":{"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Uttara Ashadha", "dignity_d1": "exalted",        "shadbala_total": None},
-    "Bhadrika":{"house_d1": 10, "sign": "Capricorn",   "nakshatra": "Shravana",       "dignity_d1": "neutral",        "shadbala_total": None},
-    "Ulka":    {"house_d1": 11, "sign": "Libra",       "nakshatra": "Vishakha",       "dignity_d1": "exalted",        "shadbala_total": None},
-    "Siddha":  {"house_d1": 9,  "sign": "Sagittarius", "nakshatra": "Mula",           "dignity_d1": "neutral",        "shadbala_total": None},
-    "Sankata": {"house_d1": 5,  "sign": "Leo",         "nakshatra": "Purva Phalguni", "dignity_d1": "neutral",        "shadbala_total": None},
+# Yogini system uses deity names, not graha names, as its `lord` — this maps
+# each deity back to the graha whose natal condition it inherits (unchanged
+# mapping from before; only the VALUES were wrong, not this alias table).
+_YOGINI_DEITY_TO_GRAHA: dict[str, str] = {
+    name: graha for name, graha, _ in YOGINI_SEQUENCE
 }
+
+# Cache: (chart_id, ayanamsha_id) -> {graha_or_deity_name: {house_d1, sign,
+# nakshatra, dignity_d1, shadbala_total}}. Populated by _load_natal_context();
+# _get_natal_context() reads the "active" entry set by build_system() for the
+# (chart_id, ayanamsha_id) currently being built.
+_NATAL_CONTEXT_CACHE: dict[tuple[str, str], dict[str, dict[str, Any]]] = {}
+_CURRENT_NATAL_CONTEXT: dict[str, dict[str, Any]] = {}
+_CURRENT_NATAL_CONTEXT_KEY: tuple[str, str] | None = None
+
+
+def _load_natal_context(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, dict[str, Any]]:
+    """Load real lord_natal_* values from chart_facts + chart_divisionals for
+    (chart_id, ayanamsha_id), cached per key. Canonical-or-floor: a graha with
+    no chart_facts row (or any query failure — e.g. a caller-injected fake conn
+    in a unit test that doesn't implement full cursor semantics) yields
+    all-None fields (never a fabricated substitute), matching this codebase's
+    established graceful-degradation pattern for non-critical enrichment reads
+    (see _load_special_points in ga_structural_writer.py).
+    """
+    key = (chart_id, ayanamsha_id)
+    cached = _NATAL_CONTEXT_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    from ga_writers.ga_positions_writer import PLANET_TO_SUBJECT
+    subject_to_graha = {v: k for k, v in PLANET_TO_SUBJECT.items() if k != "Lagna"}
+
+    ctx: dict[str, dict[str, Any]] = {}
+    try:
+        _load_natal_context_inner(conn, chart_id, ayanamsha_id, subject_to_graha, ctx)
+    except Exception as exc:
+        logger.warning(
+            "[ga_dashas] _load_natal_context query failed for chart_id=%s ayanamsha_id=%s "
+            "(lord_natal_* columns will be NULL for this build, not fabricated): %s",
+            chart_id, ayanamsha_id, exc,
+        )
+    _NATAL_CONTEXT_CACHE[key] = ctx
+    return ctx
+
+
+def _load_natal_context_inner(
+    conn: Any, chart_id: str, ayanamsha_id: str,
+    subject_to_graha: dict[str, str], ctx: dict[str, dict[str, Any]],
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'graha_position'
+              AND fact_key IN ('sign', 'nakshatra', 'house_d1')
+              AND fact_subject = ANY(%s)
+            """,
+            (chart_id, ayanamsha_id, list(subject_to_graha.keys())),
+        )
+        for subj, key_, vtxt, vnum in cur.fetchall():
+            graha = subject_to_graha.get(subj)
+            if not graha:
+                continue
+            entry = ctx.setdefault(graha, {"house_d1": None, "sign": None, "nakshatra": None,
+                                            "dignity_d1": None, "shadbala_total": None})
+            if key_ == "sign":
+                entry["sign"] = vtxt
+            elif key_ == "nakshatra":
+                entry["nakshatra"] = vtxt
+            elif key_ == "house_d1":
+                entry["house_d1"] = int(vnum) if vnum is not None else None
+
+        cur.execute(
+            """
+            SELECT graha, fact_value_text
+            FROM chart_divisionals
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND varga = 'D1' AND fact_category = 'varga_dignity' AND fact_key = 'dignity'
+            """,
+            (chart_id, ayanamsha_id),
+        )
+        for graha, dignity_text in cur.fetchall():
+            entry = ctx.setdefault(graha, {"house_d1": None, "sign": None, "nakshatra": None,
+                                            "dignity_d1": None, "shadbala_total": None})
+            entry["dignity_d1"] = _DIVISIONAL_DIGNITY_NORMALIZE.get(dignity_text, dignity_text.lower() if dignity_text else None)
+
+        cur.execute(
+            """
+            SELECT fact_subject, fact_value_num
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'
+              AND fact_subject = ANY(%s)
+            """,
+            (chart_id, ayanamsha_id, list(subject_to_graha.keys())),
+        )
+        for subj, vnum in cur.fetchall():
+            graha = subject_to_graha.get(subj)
+            if not graha:
+                continue
+            entry = ctx.setdefault(graha, {"house_d1": None, "sign": None, "nakshatra": None,
+                                            "dignity_d1": None, "shadbala_total": None})
+            entry["shadbala_total"] = float(vnum) if vnum is not None else None
+
+
+def set_natal_context(chart_id: str, ayanamsha_id: str, ctx: dict[str, dict[str, Any]]) -> None:
+    """Explicitly seed the active natal-context view. Production code should
+    never call this (build_system() loads from the DB) — it exists so unit
+    tests that compute a system directly (no DB, no build_system()) can supply
+    a deliberate, correctly-labeled fixture instead of silently getting
+    all-None natal fields."""
+    global _CURRENT_NATAL_CONTEXT, _CURRENT_NATAL_CONTEXT_KEY
+    key = (chart_id, ayanamsha_id)
+    _NATAL_CONTEXT_CACHE[key] = ctx
+    _CURRENT_NATAL_CONTEXT = ctx
+    _CURRENT_NATAL_CONTEXT_KEY = key
+
+
+def _activate_natal_context(chart_id: str, ayanamsha_id: str, conn: Any) -> None:
+    """Load (if needed) and activate the natal context for (chart_id, ayanamsha_id)
+    as the view _get_natal_context() reads from."""
+    global _CURRENT_NATAL_CONTEXT, _CURRENT_NATAL_CONTEXT_KEY
+    key = (chart_id, ayanamsha_id)
+    if _CURRENT_NATAL_CONTEXT_KEY == key:
+        return
+    _CURRENT_NATAL_CONTEXT = _load_natal_context(conn, chart_id, ayanamsha_id)
+    _CURRENT_NATAL_CONTEXT_KEY = key
+
 
 # Karakas mapping (7 Jaimini karakas based on degree-ordering — FORENSIC chart)
 # AK=Sun(highest deg), AmK=Mars, BK=Mercury, MK=Saturn, PK=Jupiter, GK=Venus, DK=Moon
@@ -414,7 +595,8 @@ _JAIMINI_KARAKAS = {
 
 
 def _get_natal_context(lord: str) -> dict[str, Any]:
-    ctx = _NATAL_CONTEXT.get(lord, {})
+    graha = _YOGINI_DEITY_TO_GRAHA.get(lord, lord)
+    ctx = _CURRENT_NATAL_CONTEXT.get(graha, {})
     return {
         "lord_natal_house_d1": ctx.get("house_d1"),
         "lord_natal_sign": ctx.get("sign"),
@@ -596,19 +778,33 @@ def _build_row(
     kp_sublevel: str | None = None,
     kp_sub_lord: str | None = None,
     kp_sub_sub_lord: str | None = None,
+    start_jd: float | None = None,
+    end_jd: float | None = None,
 ) -> dict[str, Any]:
-    """Build a single chart_dashas row dict."""
-    start_iso = _date_to_iso(start_d)
-    end_iso = _date_to_iso(end_d)
+    """Build a single chart_dashas row dict.
+
+    V-9 fix: start_iso/end_iso (TIMESTAMPTZ) are built from the full-precision
+    start_jd/end_jd Julian Day values when the caller supplies them (every
+    compute_* system does — the engine always has the fractional-day JD in
+    scope right before it truncates to a `date` for the DATE-typed
+    start_date/end_date columns). Falls back to date-only precision
+    (T00:00:00) only when a caller genuinely has no JD (none do today; kept
+    for defensiveness / future callers).
+    """
+    start_iso = _jd_to_iso_utc(start_jd) if start_jd is not None else _date_to_iso(start_d)
+    end_iso = _jd_to_iso_utc(end_jd) if end_jd is not None else _date_to_iso(end_d)
     duration_days = float(_days_between(start_d, end_d))
 
     natal = _get_natal_context(lord)
     karakas = _get_karakas_active(lord, parent_lord)
     relationship = _planet_relationship(lord, parent_lord)
 
-    # Sandhi: within 5% of period duration is sandhi zone
-    sandhi_days = duration_days * 0.05
-    sandhi_flag = duration_days < sandhi_days * 20 or sandhi_days < 1  # always compute
+    # Sandhi (V-11 fix): whether this period, by its own duration, is a
+    # naturally short "junction" period (< 20 days) — see compute_sandhi_post_pass
+    # for why this per-row value (not the post-pass) is now the source of truth.
+    # (Prior code computed `duration_days < duration_days*0.05*20`, a tautology
+    # that always evaluated False; the only live condition was `duration_days < 20`.)
+    sandhi_flag = duration_days < 20
 
     row = {
         "dasha_row_id": str(uuid.uuid4()),
@@ -625,7 +821,7 @@ def _build_row(
         "start_iso": start_iso,
         "end_iso": end_iso,
         "duration_days": duration_days,
-        "sandhi_flag": False,  # Will be updated in post-pass
+        "sandhi_flag": sandhi_flag,
         "karaka_role_at_period": _JAIMINI_KARAKAS.get(lord),
         "verification_pass_status": verification_status,
         "verification_method": "two_pass_classical_reconstruction",
@@ -644,8 +840,11 @@ def _build_row(
         "lord_to_parent_relationship": relationship,
         "varsha_year_lord": varsha_year_lord,
         "anchored_solar_return_iso": anchored_solar_return_iso,
-        "triggered_yogas_jsonb_atomic": json.dumps([]),  # sanctioned JSONB #2: empty default
-        "lord_transit_at_period_start_jsonb": None,       # sanctioned JSONB #3: computed later
+        # V-11 fix: triggered_yogas_jsonb_atomic and lord_transit_at_period_start_jsonb
+        # dropped (migration 428) — both were permanently dead (empty '[]' / NULL
+        # respectively) because GA7 has no yoga-trigger detection or transit engine;
+        # populating them would be fabricated computation (CLAUDE.md B.10). See
+        # migration 428's header for the full reverse-citation-checked rationale.
         "karakas_active_during_period": karakas if karakas else None,
         "is_truncated_at_window_start": is_trunc_start,
         "is_truncated_at_window_end": is_trunc_end,
@@ -757,6 +956,7 @@ def compute_vimshottari(
                 1, md_lord, md_start_d, md_end_d,
                 None, None, "two_pass_verified", ref, human,
                 is_trunc_start=is_trunc_s, is_trunc_end=is_trunc_e,
+                start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
             md_row["dasha_row_id"] = md_row_id
             rows.append(md_row)
@@ -789,6 +989,7 @@ def compute_vimshottari(
                     2, ad_lord, ad_start_d, ad_end_d,
                     md_row_id, md_lord, "two_pass_verified", ref, human,
                     is_trunc_start=is_trunc_s2, is_trunc_end=is_trunc_e2,
+                    start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
                 rows.append(ad_row)
@@ -818,6 +1019,7 @@ def compute_vimshottari(
                         chart_id, build_id, ayanamsha_id, "vimshottari",
                         3, pd_lord, pd_start_d, pd_end_d,
                         ad_row_id, ad_lord, "two_pass_verified", ref, human,
+                        start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
                     rows.append(pd_row)
@@ -846,6 +1048,7 @@ def compute_vimshottari(
                             chart_id, build_id, ayanamsha_id, "vimshottari",
                             4, sk_lord, sk_start_d, sk_end_d,
                             pd_row_id, pd_lord, "two_pass_verified", ref, human,
+                            start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
                         # ZERO level_n=5 — do NOT recurse further
@@ -876,13 +1079,33 @@ def compute_kp_subperiods(
     """
     Emit KP sub-period rows under Vimshottari.
     CRITICAL OVERRIDE 2: KP uses kp_sublevel='sub'/'sub_sub' dimension,
-    NOT level_n=6/7. KP sub-rows are level_n=2 rows with kp_sublevel set.
+    NOT level_n=6/7.
 
     KP nakshatra-sub-lord assignment: subdivides each period proportionally
     by the 9-lord Vimshottari proportions (same as Antar within Maha).
 
     KP sub (sub) = kp_sublevel='sub', level_n=2 (additional rows)
     KP sub-sub = kp_sublevel='sub_sub', level_n=3 (only for L1+L2 parents)
+
+    V-12 fix: KP sub-period rows are now written under system_id
+    "vimshottari_kp" (KP_SYSTEM_ID), NOT "vimshottari". Prior code reused the
+    classical system_id, so a naive `system_id='vimshottari' AND level_n=2`
+    query (exactly the query get_dashas.ts's default facets produce) returned
+    BOTH the classical Antardasha row and the KP sub-period row for the same
+    start date with divergent end dates — the two dasha_systems were
+    conflated in the same namespace. Separating the system_id means every
+    consumer's existing default filters (system defaults to 'vimshottari')
+    now correctly exclude KP rows unless KP is explicitly requested; no
+    kp_sublevel-aware filtering is required to avoid the collision anymore.
+    get_dashas.ts is updated in the same commit to recognize the new
+    system_id as a first-class facet value.
+
+    V-9 fix: sub-period boundaries are now derived from the parent MD row's
+    full-precision start_iso/end_iso (datetime, not date), so KP sub/sub-sub
+    boundaries carry real time-of-day instead of inheriting midnight-only
+    precision. Window clipping still operates at date granularity (the
+    window boundaries themselves — 1950-01-01 / 2100-12-31 — are date-precise
+    by definition), via _clip_to_window on the .date() projection.
     """
     kp_rows: list[dict] = []
 
@@ -891,90 +1114,98 @@ def compute_kp_subperiods(
 
     for md_row in l1_rows:
         md_lord = md_row["lord_graha"]
-        md_start_d = md_row["start_date"]
-        md_end_d = md_row["end_date"]
-        md_days = float(_days_between(md_start_d, md_end_d))
-        md_years = md_days / 365.25
+        md_start_dt = datetime.fromisoformat(md_row["start_iso"])
+        md_end_dt = datetime.fromisoformat(md_row["end_iso"])
+        md_days = (md_end_dt - md_start_dt).total_seconds() / 86400.0
 
         md_seq_start = VIMSHOTTARI_SEQUENCE.index(md_lord)
-        sub_jd_start = sum([0])  # need JD for date
-        # Compute via date offset from md_start_d
-        sub_start_d = md_start_d
+        sub_start_dt = md_start_dt
         md_row_id = md_row["dasha_row_id"]
 
         for j in range(9):
             sub_lord = VIMSHOTTARI_SEQUENCE[(md_seq_start + j) % 9]
             sub_prop = VIMSHOTTARI_YEARS[sub_lord] / VIMSHOTTARI_TOTAL_YEARS
             sub_days = md_days * sub_prop
-            sub_end_d = sub_start_d + timedelta(days=sub_days)
-            if sub_end_d > md_end_d:
-                sub_end_d = md_end_d
-            if sub_start_d >= sub_end_d:
-                sub_start_d = sub_end_d
+            sub_end_dt = sub_start_dt + timedelta(days=sub_days)
+            if sub_end_dt > md_end_dt:
+                sub_end_dt = md_end_dt
+            if sub_start_dt >= sub_end_dt:
+                sub_start_dt = sub_end_dt
                 continue
 
-            # Clip to window
-            clipped_s, clipped_e, trunc_s, trunc_e = _clip_to_window(sub_start_d, sub_end_d)
+            # Clip to window (date granularity — window edges are date-precise)
+            clipped_s, clipped_e, trunc_s, trunc_e = _clip_to_window(
+                sub_start_dt.date(), sub_end_dt.date()
+            )
             if clipped_s is None:
-                sub_start_d = sub_end_d
+                sub_start_dt = sub_end_dt
                 continue
+            sub_start_jd = None if trunc_s else _datetime_to_jd(sub_start_dt)
+            sub_end_jd = None if trunc_e else _datetime_to_jd(sub_end_dt)
 
-            ref = (f"chart_dashas.vimshottari.kp_sub.{md_lord}-{sub_lord}"
+            ref = (f"chart_dashas.vimshottari_kp.kp_sub.{md_lord}-{sub_lord}"
                    f"@chart={chart_id}:ay={ayanamsha_id}:eng=pyjhora_adapter/0.1.0")
             human = (f"Vimshottari {md_lord}-{sub_lord} KP sub-period "
                      f"({ayanamsha_id.title()}): {clipped_s} → {clipped_e}")
 
             kp_row_id = str(uuid.uuid4())
             kp_row = _build_row(
-                chart_id, build_id, ayanamsha_id, "vimshottari",
+                chart_id, build_id, ayanamsha_id, KP_SYSTEM_ID,
                 2, sub_lord, clipped_s, clipped_e,
                 md_row_id, md_lord, "two_pass_verified", ref, human,
                 is_trunc_start=trunc_s, is_trunc_end=trunc_e,
                 kp_sublevel="sub",
                 kp_sub_lord=sub_lord,
+                start_jd=sub_start_jd, end_jd=sub_end_jd,
             )
             kp_row["dasha_row_id"] = kp_row_id
             kp_rows.append(kp_row)
 
             # KP sub-sub: only for L1 parent × L1 sub (tractable row count)
-            sub2_start_d = clipped_s
+            sub2_start_dt = datetime.fromisoformat(kp_row["start_iso"])
+            sub2_end_bound_dt = datetime.fromisoformat(kp_row["end_iso"])
             sub2_seq_start = VIMSHOTTARI_SEQUENCE.index(sub_lord)
-            sub_duration_days = float(_days_between(clipped_s, clipped_e))
+            sub_duration_days = (sub2_end_bound_dt - sub2_start_dt).total_seconds() / 86400.0
 
             for k in range(9):
                 sub2_lord = VIMSHOTTARI_SEQUENCE[(sub2_seq_start + k) % 9]
                 sub2_prop = VIMSHOTTARI_YEARS[sub2_lord] / VIMSHOTTARI_TOTAL_YEARS
                 sub2_days = sub_duration_days * sub2_prop
-                sub2_end_d = sub2_start_d + timedelta(days=sub2_days)
-                if sub2_end_d > clipped_e:
-                    sub2_end_d = clipped_e
-                if sub2_start_d >= sub2_end_d:
-                    sub2_start_d = sub2_end_d
+                sub2_end_dt = sub2_start_dt + timedelta(days=sub2_days)
+                if sub2_end_dt > sub2_end_bound_dt:
+                    sub2_end_dt = sub2_end_bound_dt
+                if sub2_start_dt >= sub2_end_dt:
+                    sub2_start_dt = sub2_end_dt
                     continue
 
-                clipped_s2, clipped_e2, trunc_s2, trunc_e2 = _clip_to_window(sub2_start_d, sub2_end_d)
+                clipped_s2, clipped_e2, trunc_s2, trunc_e2 = _clip_to_window(
+                    sub2_start_dt.date(), sub2_end_dt.date()
+                )
                 if clipped_s2 is None:
-                    sub2_start_d = sub2_end_d
+                    sub2_start_dt = sub2_end_dt
                     continue
+                sub2_start_jd = None if trunc_s2 else _datetime_to_jd(sub2_start_dt)
+                sub2_end_jd = None if trunc_e2 else _datetime_to_jd(sub2_end_dt)
 
-                ref2 = (f"chart_dashas.vimshottari.kp_sub_sub.{md_lord}-{sub_lord}-{sub2_lord}"
+                ref2 = (f"chart_dashas.vimshottari_kp.kp_sub_sub.{md_lord}-{sub_lord}-{sub2_lord}"
                         f"@chart={chart_id}:ay={ayanamsha_id}:eng=pyjhora_adapter/0.1.0")
                 human2 = (f"Vimshottari {md_lord}-{sub_lord}-{sub2_lord} KP sub-sub-period "
                           f"({ayanamsha_id.title()})")
 
                 kp_sub_row = _build_row(
-                    chart_id, build_id, ayanamsha_id, "vimshottari",
+                    chart_id, build_id, ayanamsha_id, KP_SYSTEM_ID,
                     3, sub2_lord, clipped_s2, clipped_e2,
                     kp_row_id, sub_lord, "two_pass_verified", ref2, human2,
                     is_trunc_start=trunc_s2, is_trunc_end=trunc_e2,
                     kp_sublevel="sub_sub",
                     kp_sub_lord=sub_lord,
                     kp_sub_sub_lord=sub2_lord,
+                    start_jd=sub2_start_jd, end_jd=sub2_end_jd,
                 )
                 kp_rows.append(kp_sub_row)
-                sub2_start_d = sub2_end_d
+                sub2_start_dt = sub2_end_dt
 
-            sub_start_d = sub_end_d
+            sub_start_dt = sub_end_dt
 
     return kp_rows
 
@@ -1052,6 +1283,7 @@ def compute_yogini_system(
                 None, None, "two_pass_verified", ref, human,
                 period_deity=name,
                 is_trunc_start=(md_jd < min_jd), is_trunc_end=(md_end_jd > max_jd),
+                start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
             md_row["dasha_row_id"] = md_row_id
             rows.append(md_row)
@@ -1083,6 +1315,7 @@ def compute_yogini_system(
                     2, ad_name, ad_start_d, ad_end_d,
                     md_row_id, name, "two_pass_verified", ref, human,
                     period_deity=ad_name,
+                    start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
                 rows.append(ad_row)
@@ -1113,6 +1346,7 @@ def compute_yogini_system(
                         3, pd_name, pd_start_d, pd_end_d,
                         ad_row_id, ad_name, "two_pass_verified", ref, human,
                         period_deity=pd_name,
+                        start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
                     rows.append(pd_row)
@@ -1142,6 +1376,7 @@ def compute_yogini_system(
                             4, sk_name, sk_start_d, sk_end_d,
                             pd_row_id, pd_name, "two_pass_verified", ref, human,
                             period_deity=sk_name,
+                            start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
                         sk_jd = sk_end_jd
@@ -1225,6 +1460,7 @@ def compute_ashtottari_system(
                 1, md_lord, md_start_d, md_end_d,
                 None, None, "two_pass_verified", ref, human,
                 applies_to_chart=True,  # FORENSIC: Rahu in 5H → applicable
+                start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
             md_row["dasha_row_id"] = md_row_id
             rows.append(md_row)
@@ -1253,6 +1489,7 @@ def compute_ashtottari_system(
                     chart_id, build_id, ayanamsha_id, "ashtottari",
                     2, ad_lord, ad_start_d, ad_end_d,
                     md_row_id, md_lord, "two_pass_verified", ref, human,
+                    start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
                 rows.append(ad_row)
@@ -1281,6 +1518,7 @@ def compute_ashtottari_system(
                         chart_id, build_id, ayanamsha_id, "ashtottari",
                         3, pd_lord, pd_start_d, pd_end_d,
                         ad_row_id, ad_lord, "two_pass_verified", ref, human,
+                        start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
                     rows.append(pd_row)
@@ -1308,6 +1546,7 @@ def compute_ashtottari_system(
                             chart_id, build_id, ayanamsha_id, "ashtottari",
                             4, sk_lord, sk_start_d, sk_end_d,
                             pd_row_id, pd_lord, "two_pass_verified", ref, human,
+                            start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
                         sk_jd = sk_end_jd
@@ -1512,6 +1751,7 @@ def compute_chara_system(
                 chart_id, build_id, ayanamsha_id, "chara_karaka",
                 1, sign, md_start_d, md_end_d,
                 None, None, "two_pass_verified", ref, human,
+                start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
             md_row["dasha_row_id"] = md_row_id
             rows.append(md_row)
@@ -1540,6 +1780,7 @@ def compute_chara_system(
                     chart_id, build_id, ayanamsha_id, "chara_karaka",
                     2, ad_sign, ad_start_d, ad_end_d,
                     md_row_id, sign, "two_pass_verified", ref, human,
+                    start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
                 rows.append(ad_row)
@@ -1568,6 +1809,7 @@ def compute_chara_system(
                         chart_id, build_id, ayanamsha_id, "chara_karaka",
                         3, pd_sign, pd_start_d, pd_end_d,
                         ad_row_id, ad_sign, "two_pass_verified", ref, human,
+                        start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
                     rows.append(pd_row)
@@ -1595,6 +1837,7 @@ def compute_chara_system(
                             chart_id, build_id, ayanamsha_id, "chara_karaka",
                             4, sk_sign, sk_start_d, sk_end_d,
                             pd_row_id, pd_sign, "two_pass_verified", ref, human,
+                            start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
                         sk_jd = sk_end_jd
@@ -1659,6 +1902,7 @@ def compute_naisargika_system(
             chart_id, build_id, ayanamsha_id, "naisargika",
             1, md_lord, md_start_d, md_end_d,
             None, None, "two_pass_verified", ref, human,
+            start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
         )
         md_row["dasha_row_id"] = md_row_id
         rows.append(md_row)
@@ -1686,6 +1930,7 @@ def compute_naisargika_system(
                 chart_id, build_id, ayanamsha_id, "naisargika",
                 2, ad_lord, ad_start_d, ad_end_d,
                 md_row_id, md_lord, "two_pass_verified", ref, human,
+                start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
             )
             ad_row["dasha_row_id"] = ad_row_id
             rows.append(ad_row)
@@ -1713,6 +1958,7 @@ def compute_naisargika_system(
                     chart_id, build_id, ayanamsha_id, "naisargika",
                     3, pd_lord, pd_start_d, pd_end_d,
                     ad_row_id, ad_lord, "two_pass_verified", ref, human,
+                    start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                 )
                 pd_row["dasha_row_id"] = pd_row_id
                 rows.append(pd_row)
@@ -1739,6 +1985,7 @@ def compute_naisargika_system(
                         chart_id, build_id, ayanamsha_id, "naisargika",
                         4, sk_lord, sk_start_d, sk_end_d,
                         pd_row_id, pd_lord, "two_pass_verified", ref, human,
+                        start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                     )
                     rows.append(sk_row)
                     sk_jd = sk_end_jd
@@ -1816,6 +2063,7 @@ def compute_mudda_system(
             1, varsha_lord, varsha_start_d, varsha_end_d,
             None, None, "two_pass_verified", ref, human,
             varsha_year_lord=varsha_lord,
+            start_jd=max(current_jd, min_jd), end_jd=min(varsha_end_jd, max_jd_global),
         )
         md_row["dasha_row_id"] = md_row_id
         rows.append(md_row)
@@ -1850,6 +2098,7 @@ def compute_mudda_system(
                 2, ad_lord, ad_start_d, ad_end_d,
                 md_row_id, varsha_lord, "two_pass_verified", ref2, human2,
                 varsha_year_lord=varsha_lord,
+                start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd_global),
             )
             ad_row["dasha_row_id"] = ad_row_id
             rows.append(ad_row)
@@ -1881,6 +2130,7 @@ def compute_mudda_system(
                     3, pd_lord, pd_start_d, pd_end_d,
                     ad_row_id, ad_lord, "two_pass_verified", ref3, human3,
                     varsha_year_lord=varsha_lord,
+                    start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd_global),
                 )
                 pd_row["dasha_row_id"] = pd_row_id
                 rows.append(pd_row)
@@ -1911,6 +2161,7 @@ def compute_mudda_system(
                         4, sk_lord, sk_start_d, sk_end_d,
                         pd_row_id, pd_lord, "two_pass_verified", ref4, human4,
                         varsha_year_lord=varsha_lord,
+                        start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd_global),
                     )
                     rows.append(sk_row)
                     sk_jd = sk_end_jd
@@ -2001,7 +2252,7 @@ def compute_kalachakra_system(
             solar_return_jd = birth_jd + _years_to_days(
                 sum(KALACHAKRA_SIGN_YEARS[j][1] for j in range(i))
             )
-            solar_return_iso = _date_to_iso(_jd_to_date(solar_return_jd))
+            solar_return_iso = _jd_to_iso_utc(solar_return_jd)  # V-9: full-precision anchor
 
             ref, human = _citation(1, [sign])
             md_row_id = str(uuid.uuid4())
@@ -2011,6 +2262,7 @@ def compute_kalachakra_system(
                 None, None, "two_pass_verified", ref, human,
                 period_deity=f"Kalachakra-{sign}",
                 anchored_solar_return_iso=solar_return_iso,
+                start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
             md_row["dasha_row_id"] = md_row_id
             rows.append(md_row)
@@ -2041,6 +2293,7 @@ def compute_kalachakra_system(
                     2, ad_sign, ad_start_d, ad_end_d,
                     md_row_id, sign, "two_pass_verified", ref, human,
                     period_deity=f"Kalachakra-{ad_sign}",
+                    start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
                 rows.append(ad_row)
@@ -2070,6 +2323,7 @@ def compute_kalachakra_system(
                         3, pd_sign, pd_start_d, pd_end_d,
                         ad_row_id, ad_sign, "two_pass_verified", ref, human,
                         period_deity=f"Kalachakra-{pd_sign}",
+                        start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
                     rows.append(pd_row)
@@ -2098,6 +2352,7 @@ def compute_kalachakra_system(
                             4, sk_sign, sk_start_d, sk_end_d,
                             pd_row_id, pd_sign, "two_pass_verified", ref, human,
                             period_deity=f"Kalachakra-{sk_sign}",
+                            start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
                         sk_jd = sk_end_jd
@@ -2164,20 +2419,25 @@ def compute_concurrency_post_pass(
 def compute_sandhi_post_pass(system_rows: list[dict]) -> None:
     """
     Compute sandhi_with_next_dasha_lord and next_dasha_start_iso for L1 rows.
-    Sandhi zone = 5% of period duration at end of period.
     Modifies rows in-place.
+
+    V-11 fix: this pass no longer touches `sandhi_flag`. The old line here
+    (`row["sandhi_flag"] = True if sandhi_threshold > 0 else False`) was a
+    tautology — `sandhi_threshold = max(duration_days * 0.05, 30)` is always
+    > 0 for any positive-duration period — so every non-terminal L1 row was
+    unconditionally forced to True, which is exactly the "sandhi_flag always
+    true" defect the register flagged. `sandhi_flag` is now set once, honestly,
+    in _build_row() (duration_days < 20 -> naturally short/junction period)
+    and is left alone here.
     """
     l1_rows = [r for r in system_rows if r["level_n"] == 1 and r.get("kp_sublevel") is None]
     for idx, row in enumerate(l1_rows):
         if idx + 1 < len(l1_rows):
             next_row = l1_rows[idx + 1]
             row["sandhi_with_next_dasha_lord"] = next_row["lord_graha"]
-            row["next_dasha_start_iso"] = _date_to_iso(next_row["start_date"])
-
-            # Flag sandhi: if within 5% of duration at end
-            duration_days = row["duration_days"]
-            sandhi_threshold = max(duration_days * 0.05, 30)
-            row["sandhi_flag"] = True if sandhi_threshold > 0 else False
+            # V-9: reuse next_row's own full-precision start_iso rather than
+            # re-deriving from its (date-truncated) start_date.
+            row["next_dasha_start_iso"] = next_row["start_iso"]
         else:
             row["sandhi_with_next_dasha_lord"] = None
             row["next_dasha_start_iso"] = None
@@ -2201,8 +2461,10 @@ _COPY_COLUMNS = [
     "applies_to_this_chart_flag", "period_deity_or_marker",
     "lord_to_parent_relationship", "varsha_year_lord",
     "anchored_solar_return_iso",
-    "triggered_yogas_jsonb_atomic",
-    "lord_transit_at_period_start_jsonb",
+    # V-11 fix (migration 428): triggered_yogas_jsonb_atomic and
+    # lord_transit_at_period_start_jsonb REMOVED from chart_dashas — both were
+    # permanently dead (no yoga-trigger or transit engine in GA7 to populate
+    # them). Do not re-add without a real writer for them.
     "karakas_active_during_period",
     "is_truncated_at_window_start", "is_truncated_at_window_end",
     "kp_sublevel", "kp_sub_lord", "kp_sub_sub_lord",
@@ -2215,8 +2477,6 @@ def _copy_row_values(row: dict) -> tuple:
     normalized = {
         **row,
         "concurrent_system_lords_jsonb": row.get("concurrent_system_lords_jsonb"),
-        "triggered_yogas_jsonb_atomic": row.get("triggered_yogas_jsonb_atomic") or "[]",
-        "lord_transit_at_period_start_jsonb": row.get("lord_transit_at_period_start_jsonb"),
         "karakas_active_during_period": row.get("karakas_active_during_period"),
     }
     return tuple(normalized.get(col) for col in _COPY_COLUMNS)
@@ -2349,6 +2609,16 @@ def build_system(
     if not _NAKSHATRA_LORDS_1BASED:
         with (_conn() if conn is None else nullcontext(conn)) as _nc:
             _load_nakshatra_lords_l0(_nc)
+
+    # V-1/G-7/D-1 fix: activate the real (chart_id, ayanamsha_id) natal context
+    # from chart_facts + chart_divisionals before computing any system, so every
+    # _build_row() call's lord_natal_* columns are DB-derived, not hand-copied.
+    # Guarded by skip_db (mirrors this function's own DB-write guard) so the
+    # "NO DB required" unit-test path (test_ga7_writer.py) never opens a real
+    # connection — those tests seed the cache directly via set_natal_context().
+    if not skip_db:
+        with (_conn() if conn is None else nullcontext(conn)) as _nc:
+            _activate_natal_context(chart_id, ayanamsha_id, _nc)
 
     logger.info(
         "[ga_dashas] Building system=%s ayanamsha=%s chart_id=%s",
@@ -2573,8 +2843,6 @@ def build_ga_dashas(
                 "lord_to_parent_relationship": None,
                 "varsha_year_lord": None,
                 "anchored_solar_return_iso": None,
-                "triggered_yogas_jsonb_atomic": json.dumps([]),
-                "lord_transit_at_period_start_jsonb": None,
                 "karakas_active_during_period": None,
                 "is_truncated_at_window_start": False,
                 "is_truncated_at_window_end": False,
@@ -2633,8 +2901,6 @@ def build_ga_dashas(
                 "lord_to_parent_relationship": None,
                 "varsha_year_lord": None,
                 "anchored_solar_return_iso": None,
-                "triggered_yogas_jsonb_atomic": json.dumps([]),
-                "lord_transit_at_period_start_jsonb": None,
                 "karakas_active_during_period": None,
                 "is_truncated_at_window_start": False,
                 "is_truncated_at_window_end": False,
