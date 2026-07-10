@@ -4535,17 +4535,44 @@ def _evaluate_catalog_rule(
                 else:
                     return False, f"relation_unimplemented:{rel}"
             elif "planet" in req:
-                planet = req["planet"].title()  # "mars" → "Mars"
+                # Ring-2 finding (Y-1 gap-2): once "planet" in req is true, this
+                # branch is entered and the outer else/hard-fail is never reached —
+                # so any sub-key besides dignity/house_class (strong, house, in,
+                # or_aspect, or_kendra_from_karakamsha, same_house_or_aspect,
+                # afflicted, condition — the full vocabulary in use per l0_yogas.py)
+                # was silently ignored, vacuously passing real catalog entries
+                # (e.g. Vargottama {"planet":"any","condition":"same_sign_in_rasi_
+                # and_navamsa"}, Bheri/Dharma {"planet":X,"strong":True}). Hard-fail
+                # on any planet-req sub-key this evaluator doesn't actually check.
+                planet_raw = req.get("planet")
+                if not isinstance(planet_raw, str):
+                    return False, f"rule_shape_unimplemented:planet_value_type:{type(planet_raw).__name__}"
+                planet = planet_raw.title()  # "mars" → "Mars"
                 req_dignity = req.get("dignity", [])
                 req_house_class = req.get("house_class", "")
+                KNOWN_PLANET_SUBKEYS = {"planet", "dignity", "house_class"}
+                unimplemented_subkeys = sorted(set(req.keys()) - KNOWN_PLANET_SUBKEYS)
+                if unimplemented_subkeys:
+                    return False, f"rule_shape_unimplemented:planet_subkey:{','.join(unimplemented_subkeys)}"
                 d = dignity_of(planet)
                 if req_dignity and d not in req_dignity:
                     return False, f"{planet} dignity={d} not in {req_dignity}"
                 h = graha_house(planet)
-                if req_house_class == "kendra" and not is_kendra(h):
-                    return False, f"{planet} house={h} not kendra"
-                if req_house_class == "trikona" and not is_trikona(h):
-                    return False, f"{planet} house={h} not trikona"
+                if req_house_class:
+                    # house_class itself has an in-use vocabulary beyond kendra/
+                    # trikona (upachaya, dusthana, kendra_or_trikona, exalted_or_own,
+                    # kendra_from_ascendant, kendra_from_karakamsha,
+                    # trikona_from_karakamsha — see l0_yogas.py) — only kendra/
+                    # trikona are actually evaluated here; any other value must
+                    # hard-fail rather than silently pass (same vacuous-pass class).
+                    if req_house_class == "kendra":
+                        if not is_kendra(h):
+                            return False, f"{planet} house={h} not kendra"
+                    elif req_house_class == "trikona":
+                        if not is_trikona(h):
+                            return False, f"{planet} house={h} not trikona"
+                    else:
+                        return False, f"rule_shape_unimplemented:house_class:{req_house_class}"
             elif "exclude" in req:
                 # Y-9 fix: exclusion clauses (e.g. Shakata's
                 # {"exclude": "jupiter_in_kendra_from_lagna"}) must be enforced,
