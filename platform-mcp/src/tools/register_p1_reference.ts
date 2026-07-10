@@ -44,10 +44,26 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   return data.content
 }
 
-async function platformQuery(sql: string, params: unknown[]): Promise<{ rows: Record<string, unknown>[] }> {
+// R6 0a-envauth (R-16/O-5): only sent x-mcp-internal-token (Layer 1). The target
+// route (/api/mcp/db/query) also gates on Layer 2 principal headers —
+// `if (!userUid || !keyId) return 401 'Missing principal headers (X-MCP-User, X-MCP-Key-Id)'`
+// (platform/src/app/api/mcp/db/query/route.ts) — so every call 401'd, surfacing
+// as this function's own `platform DB query failed: 401` message (the literal
+// evidence string cited for R-16). Added the two missing headers, matching the
+// working 3-header pattern already used by callRegistryCapability() above.
+async function platformQuery(
+  sql: string,
+  params: unknown[],
+  principal: Principal,
+): Promise<{ rows: Record<string, unknown>[] }> {
   const res = await fetch(`${PLATFORM_URL}/api/mcp/db/query`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-mcp-internal-token': MCP_INTERNAL_TOKEN },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
+      'x-mcp-user': principal.user_uid,
+      'x-mcp-key-id': principal.key_id,
+    },
     body: JSON.stringify({ sql, params }),
     signal: AbortSignal.timeout(15_000),
   })
@@ -282,7 +298,7 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
           ORDER BY graha, house_from_moon
           LIMIT $${params.length - 1} OFFSET $${params.length}
         `
-        const result = await platformQuery(sql, params)
+        const result = await platformQuery(sql, params, principal)
         return dualOutput(envelope({
           transit_rules: result.rows,
           total: result.rows.length,
