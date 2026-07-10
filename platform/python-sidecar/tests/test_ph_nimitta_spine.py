@@ -15,7 +15,7 @@ Covers:
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -457,6 +457,102 @@ class TestSpineGate:
         w = self._make_writer()
         with pytest.raises(RuntimeError, match="SPINE GATE FAILED"):
             w._spine_gate([a])
+
+
+# ── R6 fix: datetime coercion (window_end < birth_date crash) ────────────────
+
+class TestDateCoercion:
+    """
+    R6 fix: kala_convergence/kala_bhavishya/bodha_discoveries date columns can be
+    `timestamptz` (psycopg returns `datetime.datetime`) rather than `date`. The three
+    derive_anchor_from_* call sites previously only coerced the `str` case, silently
+    passing a raw `datetime` through untouched — window_end then stayed a datetime and
+    crashed the writer's T-5 pre-birth gate (`window_end < birth_date`) with
+    "TypeError: can't compare datetime.datetime to datetime.date", cascading to fail
+    every downstream L4/L5 asset in a real live rebuild. This locks the fix: all three
+    derivation paths must coerce a raw datetime to date, not just strings.
+    """
+
+    def test_coerce_date_handles_datetime(self):
+        from services.ph_nimitta.engine import _coerce_date
+        assert _coerce_date(datetime(2026, 9, 15, 14, 30, 0)) == date(2026, 9, 15)
+
+    def test_coerce_date_handles_date(self):
+        from services.ph_nimitta.engine import _coerce_date
+        assert _coerce_date(date(2026, 9, 15)) == date(2026, 9, 15)
+
+    def test_coerce_date_handles_iso_string(self):
+        from services.ph_nimitta.engine import _coerce_date
+        assert _coerce_date('2026-09-15') == date(2026, 9, 15)
+
+    def test_coerce_date_handles_none_and_garbage(self):
+        from services.ph_nimitta.engine import _coerce_date
+        assert _coerce_date(None) is None
+        assert _coerce_date('not-a-date') is None
+        assert _coerce_date(12345) is None
+
+    def test_convergence_with_datetime_dates_does_not_crash(self, full_ctx):
+        """The exact real-world shape: kala_convergence.peak_date/window_start/window_end
+        as timestamptz → psycopg returns datetime.datetime, not date."""
+        from services.ph_nimitta.engine import derive_anchor_from_convergence
+        row = {
+            'convergence_id': 42,
+            'signal_id': '11111111-1111-1111-1111-111111111111',
+            'mode': 'A',
+            'peak_date': datetime(2026, 9, 15, 10, 0, 0),
+            'window_start': datetime(2026, 8, 1, 0, 0, 0),
+            'window_end': datetime(2026, 11, 30, 23, 59, 59),
+            'convergence_score': 0.72,
+            'rarity_years': 7.5,
+            'constituent_factors': {'dasha_score': 0.8, 'direction': 'elevated'},
+            'source_citation': 'kala_convergence/42',
+            'independent_current_count': 5,
+            'confidence_score': 0.72,
+            'confidence_label': 'high',
+        }
+        a = derive_anchor_from_convergence(row, full_ctx, n_independent=4)
+        assert a.window_end == date(2026, 11, 30)
+        assert isinstance(a.window_end, date) and not isinstance(a.window_end, datetime)
+
+    def test_bhavishya_with_datetime_dates_does_not_crash(self, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_bhavishya
+        row = {
+            'id': 7,
+            'signal_id': '22222222-2222-2222-2222-222222222222',
+            'convergence_id': 10,
+            'domain': 'career',
+            'peak_date': datetime(2027, 3, 1, 12, 0, 0),
+            'window_start': datetime(2026, 12, 1, 0, 0, 0),
+            'window_end': datetime(2027, 6, 30, 23, 59, 59),
+            'probability_tier': 'high_positive',
+            'effective_score': 0.68,
+            'falsifiability': 'No major career event by 2027-06-30 → REFUTED',
+            'source_chain': 'L3/ka_yojaka→ka_sangam',
+            'narrative': 'Career elevation likely in Saturn dasha',
+            'outcome_recorded': None,
+        }
+        a = derive_anchor_from_bhavishya(row, full_ctx)
+        assert a.window_end == date(2027, 6, 30)
+        assert isinstance(a.window_end, date) and not isinstance(a.window_end, datetime)
+
+    def test_discovery_with_datetime_dates_does_not_crash(self, full_ctx):
+        from services.ph_nimitta.engine import derive_anchor_from_discovery
+        row = {
+            'id': 'dd000000-0000-0000-0000-000000000001',
+            'signal_id': '33333333-3333-3333-3333-333333333333',
+            'domain': 'career',
+            'discovery_type': 'hidden_yogakaraka',
+            'surface_depth_delta': 0.45,
+            'why_an_acharya_misses_it': 'test',
+            'falsifier_jsonb': {'statement': 'No event by 2026-12-30 → REFUTED'},
+            'confidence_score': 0.61,
+            'peak_date': datetime(2026, 10, 1, 8, 0, 0),
+            'window_start': datetime(2026, 9, 1, 0, 0, 0),
+            'window_end': datetime(2026, 12, 30, 23, 59, 59),
+        }
+        a = derive_anchor_from_discovery(row, full_ctx)
+        assert a.window_end == date(2026, 12, 30)
+        assert isinstance(a.window_end, date) and not isinstance(a.window_end, datetime)
 
 
 # ── Anti-drift ───────────────────────────────────────────────────────────────

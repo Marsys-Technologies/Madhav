@@ -14,7 +14,7 @@ Do NOT treat computed posteriors as calibrated until JL-009 is closed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 __all__ = [
@@ -30,6 +30,34 @@ __all__ = [
     'derive_anchor_from_bhavishya',
     'derive_anchor_from_discovery',
 ]
+
+# ── date coercion ─────────────────────────────────────────────────────────────
+
+
+def _coerce_date(v) -> Optional[date]:
+    """Coerce a psycopg date/datetime or ISO string to a plain date; None on failure.
+
+    R6 fix: the 3 call sites below previously only coerced the `str` case, silently
+    passing through a raw `datetime.datetime` untouched whenever the source column is
+    `timestamptz` rather than `date`. A `datetime` window_end downstream compared against
+    a plain-`date` birth_date (the writer's T-5 pre-birth gate) then crashed with
+    "TypeError: can't compare datetime.datetime to datetime.date" — this cascaded to fail
+    every asset downstream of ph_nimitta. Handling `datetime` explicitly here closes that
+    gap at the one shared source instead of three separately-drifting inline blocks.
+    """
+    if v is None:
+        return None
+    if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, date):
+        return v
+    if isinstance(v, str):
+        try:
+            return date.fromisoformat(v[:10])
+        except ValueError:
+            return None
+    return None
+
 
 # ── domain validation ─────────────────────────────────────────────────────────
 
@@ -381,20 +409,9 @@ def derive_anchor_from_convergence(
         'precedent_dates': ctx.precedent_dates,
     }
 
-    peak_date = row.get('peak_date')
-    if isinstance(peak_date, str):
-        try: peak_date = date.fromisoformat(peak_date)
-        except ValueError: peak_date = None
-
-    window_start = row.get('window_start')
-    if isinstance(window_start, str):
-        try: window_start = date.fromisoformat(window_start)
-        except ValueError: window_start = None
-
-    window_end = row.get('window_end')
-    if isinstance(window_end, str):
-        try: window_end = date.fromisoformat(window_end)
-        except ValueError: window_end = None
+    peak_date = _coerce_date(row.get('peak_date'))
+    window_start = _coerce_date(row.get('window_start'))
+    window_end = _coerce_date(row.get('window_end'))
 
     sf = _build_structured_falsifier(domain, magnitude, window_end, ctx.event_class_id)
 
@@ -481,20 +498,9 @@ def derive_anchor_from_bhavishya(
     karmic_frame, karmic_note = derive_karmic_frame(ctx.root_graha)
     malleability = derive_malleability(domain, magnitude, direction)
 
-    peak_date = row.get('peak_date')
-    if isinstance(peak_date, str):
-        try: peak_date = date.fromisoformat(peak_date)
-        except ValueError: peak_date = None
-
-    window_start = row.get('window_start')
-    if isinstance(window_start, str):
-        try: window_start = date.fromisoformat(window_start)
-        except ValueError: window_start = None
-
-    window_end = row.get('window_end')
-    if isinstance(window_end, str):
-        try: window_end = date.fromisoformat(window_end)
-        except ValueError: window_end = None
+    peak_date = _coerce_date(row.get('peak_date'))
+    window_start = _coerce_date(row.get('window_start'))
+    window_end = _coerce_date(row.get('window_end'))
 
     # inherit bhavishya's existing falsifier text; wrap in structured form if absent
     inherited_text = str(row.get('falsifiability') or '')
@@ -598,20 +604,9 @@ def derive_anchor_from_discovery(
     karmic_frame, karmic_note = derive_karmic_frame(ctx.root_graha)
     malleability = derive_malleability(domain, magnitude, 'elevated')
 
-    peak_date = row.get('peak_date')
-    if isinstance(peak_date, str):
-        try: peak_date = date.fromisoformat(peak_date)
-        except ValueError: peak_date = None
-
-    window_start = row.get('window_start')
-    if isinstance(window_start, str):
-        try: window_start = date.fromisoformat(window_start)
-        except ValueError: window_start = None
-
-    window_end = row.get('window_end')
-    if isinstance(window_end, str):
-        try: window_end = date.fromisoformat(window_end)
-        except ValueError: window_end = None
+    peak_date = _coerce_date(row.get('peak_date'))
+    window_start = _coerce_date(row.get('window_start'))
+    window_end = _coerce_date(row.get('window_end'))
 
     falsifier_data = row.get('falsifier_jsonb') or {}
     existing_text = (falsifier_data.get('statement') if isinstance(falsifier_data, dict) else None)
