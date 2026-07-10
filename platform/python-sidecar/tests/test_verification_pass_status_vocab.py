@@ -46,7 +46,7 @@ def test_verify_mudda_stays_within_chart_dashas_vocab():
     from ga_writers.ga_dashas_writer import _verify_mudda
 
     assert _verify_mudda([]) in RESTRICTED_TABLE_VOCAB
-    assert _verify_mudda([{"level_n": 1, "lord_graha": "Ketu"}]) in RESTRICTED_TABLE_VOCAB
+    assert _verify_mudda([{"level_n": 1, "lord_graha": "Ketu", "start_date": "1984-02-05"}]) in RESTRICTED_TABLE_VOCAB
 
 
 def test_verify_kalachakra_stays_within_chart_dashas_vocab():
@@ -105,7 +105,7 @@ def test_ga_dashas_writer_verify_functions_never_return_chart_facts_only_tiers()
     from ga_writers import ga_dashas_writer as mod
 
     checks = [
-        (mod._verify_mudda, [[], [{"level_n": 1, "lord_graha": "Ketu"}]]),
+        (mod._verify_mudda, [[], [{"level_n": 1, "lord_graha": "Ketu", "start_date": "1984-02-05"}]]),
         (
             mod._verify_kalachakra,
             [[], [{"level_n": 1, "lord_graha": mod.KALACHAKRA_SIGN_YEARS[0][0]}]],
