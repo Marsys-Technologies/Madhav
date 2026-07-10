@@ -109,6 +109,16 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // 427_panchanga_daily_reprovision.sql) instead of always falling back to
   // hard-coded placeholder panchanga values (brahmagyan/phala/muhurta.py fix).
   query_muhurat: 'marsys://tool/L4/query_muhurat',
+
+  // L5 Mīmāṃsā
+  // R6 0b-deadtools (R-14): mimamsa_calibration_get 400'd outright — the underlying
+  // retrieval-tool name 'query_calibration' had no URI mapping here, so
+  // isAllowedSurgicalTool()/getToolByName() both failed closed. This is the correct,
+  // schema-current L5 capability (mimamsa_calibration/reliability/multipliers/qa_eval) —
+  // distinct from the legacy Python-sidecar-backed MCP tool of the same display name
+  // registered in mimamsa_outcome.ts (record_outcome/query_calibration), which is fixed
+  // separately for its own schema drift.
+  query_calibration: 'marsys://tool/L5/query_calibration',
 }
 
 // ── ToolBundle adapter ────────────────────────────────────────────────────────
@@ -355,6 +365,8 @@ export const SURGICAL_TOOLS = [
   'query_mantras',
   // F-016: L4 Phala mitigation_map primitive (query_remedy_program is the retrieval tool)
   'query_remedy_program',
+  // R6 0b-deadtools (R-14): L5 Mīmāṃsā calibration scorecard (mimamsa_calibration_get alias)
+  'query_calibration',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -419,6 +431,8 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   query_mantras: 'query_mantras',
   // F-016: mitigation_map → query_remedy_program (L4 Phala phala_mitigation retrieval tool)
   mitigation_map: 'query_remedy_program',
+  // R6 0b-deadtools (R-14): mimamsa_calibration_get alias → L5 query_calibration capability
+  query_calibration: 'query_calibration',
 }
 
 /**

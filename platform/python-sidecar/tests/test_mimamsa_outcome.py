@@ -751,3 +751,145 @@ class TestNoLeakage:
         assert "LEAKAGE" in doc or "leakage" in doc or "never" in doc.lower(), (
             "Module docstring must explicitly document the no-leakage invariant"
         )
+
+
+# ── §10 — R6 0b-deadtools (R-14): schema-drift fix + no silent error-swallowing ──
+
+class TestQueryCalibrationSchemaFix:
+    """
+    R-14: query_calibration()'s SQL used to select id/technique/ayanamsha_id/
+    brier_score/sample_size/source_citation/computed_at — none of which exist on the
+    LIVE mimamsa_calibration table (that shape was the MI-5-3 prototype's; the table was
+    superseded by the mi_pramana/mi_gunanaka/mi_pariksha writer family's per-match schema
+    without a tracked migration). Confirmed live: chart_id, match_id, prediction_id,
+    event_id, score_timing, score_magnitude, score_domain, score_falsifier,
+    score_manifestation, manifestation_channel, composite_verdict, composite_score,
+    base_rate_adjusted_skill, evidence_admissibility, n_for_stratum, leakage_status,
+    scoring_formula_version, scored_at, base_rate, brier_vs_null.
+    """
+
+    def _mock_db(self, rows: list[dict] | None = None):
+        from unittest.mock import patch as _patch
+        from contextlib import ExitStack
+
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_cur.fetchall.return_value = rows if rows is not None else []
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        class _DoubleCtx:
+            def __enter__(self_):
+                self_._stack = ExitStack()
+                self_._stack.__enter__()
+                self_._stack.enter_context(
+                    _patch("brahmagyan.mimamsa.outcome._get_db_url", return_value="postgresql://mock/db")
+                )
+                self_._stack.enter_context(_patch("psycopg.connect", return_value=mock_conn))
+                return self_, mock_cur
+            def __exit__(self_, *args):
+                return self_._stack.__exit__(*args)
+        return _DoubleCtx()
+
+    def test_sql_never_references_dropped_columns(self):
+        """The actual SQL literal (not the docstring/comments) must not select a
+        column that doesn't exist on the live table."""
+        import re
+        mod = _get_outcome_module()
+        with self._mock_db() as (_, mock_cur):
+            mod.query_calibration(chart_id=NATIVE_CHART_ID)
+        sql_used = mock_cur.execute.call_args[0][0]
+        for dead_col in ("technique", "ayanamsha_id", "brier_score", "sample_size", "source_citation", "computed_at"):
+            assert re.search(rf"\b{dead_col}\b", sql_used) is None, (
+                f"query_calibration SQL still references dropped column: {dead_col!r}\n{sql_used}"
+            )
+        # bare "id" (the old serial PK) — distinct from "chart_id"/"prediction_id"/"event_id".
+        assert re.search(r"(?<![a-z_])id\b", sql_used) is None, f"bare `id` column still referenced:\n{sql_used}"
+
+    def test_sql_references_live_schema_columns(self):
+        import inspect
+        mod = _get_outcome_module()
+        source = inspect.getsource(mod.query_calibration)
+        for live_col in ("match_id", "prediction_id", "event_id", "score_timing", "composite_score", "brier_vs_null", "scored_at"):
+            assert live_col in source, f"query_calibration should reference live column {live_col!r}"
+
+    def test_technique_ayanamsha_filters_no_longer_bind_to_dropped_columns(self):
+        """technique/ayanamsha_id must not be compiled into a WHERE clause (no such columns)."""
+        mod = _get_outcome_module()
+        with self._mock_db() as (_, mock_cur):
+            result = mod.query_calibration(chart_id=NATIVE_CHART_ID, technique="vimshottari", ayanamsha_id="lahiri")
+        sql_used = mock_cur.execute.call_args[0][0]
+        assert "technique = %s" not in sql_used
+        assert "ayanamsha_id = %s" not in sql_used
+        # Reported honestly, never silently dropped.
+        assert result["unsupported_filters"] == ["technique", "ayanamsha_id"]
+
+    def test_invalid_technique_still_raises_before_any_query(self):
+        """Enum validation is preserved even though technique no longer filters the table."""
+        mod = _get_outcome_module()
+        with pytest.raises(ValueError):
+            mod.query_calibration(chart_id=NATIVE_CHART_ID, technique="not-a-real-technique")
+
+    def test_ok_true_with_live_shaped_row(self):
+        mod = _get_outcome_module()
+        live_row = {
+            "chart_id": NATIVE_CHART_ID, "match_id": "m1", "prediction_id": "p1", "event_id": "e1",
+            "score_timing": 0.5, "score_magnitude": 0.5, "score_domain": 0.5, "score_falsifier": 0.5,
+            "score_manifestation": 0.5, "manifestation_channel": "mode_c", "composite_verdict": "CONFIRMED",
+            "composite_score": 0.62, "base_rate_adjusted_skill": None, "evidence_admissibility": "clean",
+            "n_for_stratum": 1, "leakage_status": "clean", "scoring_formula_version": "v1",
+            "base_rate": 0.3, "brier_vs_null": 0.4, "scored_at": datetime.now(tz=timezone.utc),
+        }
+        with self._mock_db(rows=[live_row]) as (_, _cur):
+            result = mod.query_calibration(chart_id=NATIVE_CHART_ID)
+        assert result["ok"] is True
+        assert result["row_count"] == 1
+        assert result["rows"][0]["match_id"] == "m1"
+
+
+class TestApiQueryCalibrationNoSilentSwallow:
+    """
+    R-14: the FastAPI route handler api_query_calibration() used to catch ANY exception
+    (including real schema-drift SQL errors) and return {"ok": true, "rows": [],
+    "structural_mode_note": ...} with the raw exception text leaked into
+    provenance_envelope.db_note — masking a genuine bug as "expected empty". DB/runtime
+    errors must now propagate loudly.
+    """
+
+    def test_unexpected_db_error_raises_http_500_not_silently_swallowed(self):
+        from fastapi import HTTPException
+        mod = _get_outcome_module()
+
+        class _FakeReq:
+            chart_id = NATIVE_CHART_ID
+            technique = None
+            ayanamsha_id = None
+            limit = 10
+
+        with patch.object(mod, "query_calibration", side_effect=RuntimeError('column "id" does not exist')):
+            with pytest.raises(HTTPException) as exc_info:
+                mod.api_query_calibration(_FakeReq())
+        assert exc_info.value.status_code == 503  # RuntimeError -> 503 (existing contract, unchanged)
+
+    def test_unhandled_exception_class_raises_http_500(self):
+        """A non-ValueError/RuntimeError exception (e.g. psycopg's real error class) must
+        raise HTTP 500 with the error visible in the response — never a masked ok:true."""
+        from fastapi import HTTPException
+        mod = _get_outcome_module()
+
+        class _FakeReq:
+            chart_id = NATIVE_CHART_ID
+            technique = None
+            ayanamsha_id = None
+            limit = 10
+
+        class _SomeOtherDbError(Exception):
+            pass
+
+        with patch.object(mod, "query_calibration", side_effect=_SomeOtherDbError('column "id" does not exist LINE 3')):
+            with pytest.raises(HTTPException) as exc_info:
+                mod.api_query_calibration(_FakeReq())
+        assert exc_info.value.status_code == 500
+        assert "column" in str(exc_info.value.detail)
