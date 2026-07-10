@@ -1026,15 +1026,24 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
-      const grounding = extractGroundingFromFactRows(rows)
+      // R6 3b-budgets (R-24): grounding MUST be computed from the rows actually SERVED in
+      // this response, not the full over-fetched `rows` window (limit*20 row cap, see the
+      // R6 0b-deadtools comment above `params.push((offset + limit) * 20)`). The register
+      // measured chart_facts(keyword=vargottama, limit=20) returning 20 served facts but
+      // ~250 fact_ids/citations in grounding (~26KB of a 30KB payload) — the exact symptom
+      // of grounding scoped to the whole fetch window instead of the served slice. Computed
+      // per-shape below, after the served subset is known.
+      let servedRowsForGrounding: Record<string, unknown>[] = []
 
       let content: Record<string, unknown>
       if (shape === 'rows') {
+        const servedRows = rows.slice(offset, offset + limit)
+        servedRowsForGrounding = servedRows
         content = {
           chart_id,
           ayanamsha_id,
           shape: 'rows',
-          rows: rows.slice(offset, offset + limit),
+          rows: servedRows,
           returned_count: Math.max(0, Math.min(rows.length - offset, limit)),
           offset,
         }
@@ -1052,8 +1061,12 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           entry.facts[key] = value
           entry.fact_ids[key] = String(row['fact_id'])
         }
-        const pivoted = Array.from(bySubject.entries())
-          .slice(offset, offset + limit)
+        const servedSubjectEntries = Array.from(bySubject.entries()).slice(offset, offset + limit)
+        const servedSubjects = new Set(servedSubjectEntries.map(([subject]) => subject))
+        // R6 3b-budgets (R-24): grounding for shape="pivoted" scopes to fact_subjects that
+        // actually made it into THIS page's pivoted rows — never the full over-fetched window.
+        servedRowsForGrounding = rows.filter((row) => servedSubjects.has(String(row['fact_subject'])))
+        const pivoted = servedSubjectEntries
           .map(([subject, entry]) => ({
             fact_subject: subject,
             fact_category: entry.fact_category,
@@ -1086,6 +1099,14 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
             if (d && d.fact_value_text) {
               ;(p as Record<string, unknown>)['dignity'] = d.fact_value_text
               ;(p.fact_ids as Record<string, string>)['dignity'] = d.fact_id
+              // R6 3b-budgets (R-24): the dignity join fetches OUTSIDE the main `rows`
+              // query — its fact_id must still ground, since it's served in this response.
+              servedRowsForGrounding.push({
+                fact_id: d.fact_id,
+                fact_subject: d.fact_subject,
+                fact_category: 'graha_dignity_per_varga',
+                verification_pass_status: null,
+              })
             }
           }
         }
@@ -1108,7 +1129,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         }
       }
 
-      content['grounding'] = grounding
+      content['grounding'] = extractGroundingFromFactRows(servedRowsForGrounding)
       content['provenance'] = {
         table: 'chart_facts',
         note: 'fact_id references resolve to the canonical L1 chart_facts table.',

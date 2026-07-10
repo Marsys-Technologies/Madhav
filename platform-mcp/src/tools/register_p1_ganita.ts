@@ -27,6 +27,7 @@ import {
   type DrillPointerType,
   type CoverageStamp,
 } from '../generated/envelope.js'
+import { applyAutoBudgetToEnvelope } from '../lib/response_budget.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -110,6 +111,14 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 // S3 fix (R5 W0a perf lane): text duplicate suppressed above threshold (structuredContent already
 // carries the full payload) — see JL-003 for the 50KB threshold ruling.
 function dualOutput(data: unknown) {
+  // R6 3b-budgets (R-1/R-8): auto-detect + trim any oversized array section in `content`
+  // BEFORE serializing — the shared generic mechanism (response_budget.ts) that covers this
+  // whole file's tools (ganita_condition_get et al.) without per-tool hand-declared sections.
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const toolName = typeof obj['tool'] === 'string' ? (obj['tool'] as string) : 'unknown_tool'
+    applyAutoBudgetToEnvelope(obj, toolName)
+  }
   const structuredContent = { type: 'object' as const, object: data }
   const json = JSON.stringify(data)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {

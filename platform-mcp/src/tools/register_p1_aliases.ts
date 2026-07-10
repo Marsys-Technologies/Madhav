@@ -19,7 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure } from './registry_bridge.js'
-import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { applyResponseBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -134,7 +134,23 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 
 // S3 fix (R5 W0a perf lane): no pretty-print; text duplicate suppressed above
 // threshold (structuredContent already carries the full payload).
-function dualOutput(data: unknown) {
+//
+// R6 3b-budgets (R-1/R-8): `data` here is the RAW capability/primitive/sidecar content
+// (this file's aliases return `data.content` directly, unlike register_p1_ganita.ts /
+// register_p1_synthesis.ts which wrap in an envelope) — so the generic auto-trim runs
+// directly on `data`, keyed by an optional `toolName` (passed by every call site that goes
+// through regAlias/globalAlias, and by every hand-written `server.tool` block below that
+// was touched in this pass). Falls back to a generic hint when the caller omits toolName —
+// still trims, just without a tool-specific recovery instrument name.
+function dualOutput(data: unknown, toolName = 'unknown_tool') {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const sections = autoDetectTrimmableSections(obj, toolName)
+    if (sections.length > 0) {
+      const result = applyResponseBudget(obj, 40, sections)
+      if (result.trim_report) obj['trim_report'] = result.trim_report
+    }
+  }
   const structuredContent = { type: 'object' as const, object: data }
   const json = JSON.stringify(data)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
@@ -205,7 +221,7 @@ function regAlias(
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, name)
       } catch (err) { return errOut(name, String(err), { chart_id }) }
     }
   )
@@ -229,7 +245,7 @@ function globalAlias(
         const data = await callRegistryCap(uri, {
           limit: (limit as number) ?? 100, offset: (offset as number) ?? 0, ...rest,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, name)
       } catch (err) { return errOut(name, String(err)) }
     }
   )
@@ -384,7 +400,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const data = await callRegistryCap('marsys://tool/L0/query_classical_texts', {
           keyword, topic, author, limit: limit ?? 50, offset: offset ?? 0,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_classical_citation_get')
       } catch (err) { return errOut('ref_classical_citation_get', String(err)) }
     }
   )
@@ -583,7 +599,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ year }) => {
       try {
         const data = await callRegistryCap(`marsys://resource/ephemeris-cache/year/${year}`, { year }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_ephemeris_year_get')
       } catch (err) { return errOut('ref_ephemeris_year_get', String(err), { year }) }
     }
   )
@@ -763,7 +779,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const data = await callSidecarPath('/api/compute/phala/event_anchors', {
           chart_id, date_range, min_confidence,
         })
-        return dualOutput(data)
+        return dualOutput(data, 'phala_anchors_get')
       } catch (err) { return errOut('phala_anchors_get', String(err), { chart_id }) }
     }
   )
@@ -776,7 +792,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       if (!chart_id) return errOut('phala_mitigation_get', 'chart_id is required')
       try {
         const data = await callPlatformPrim('mitigation_map', { chart_id, domain }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'phala_mitigation_get')
       } catch (err) { return errOut('phala_mitigation_get', String(err), { chart_id }) }
     }
   )
@@ -843,7 +859,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('lel_query', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'mimamsa_lel_query')
       } catch (err) { return errOut('mimamsa_lel_query', String(err)) }
     }
   )

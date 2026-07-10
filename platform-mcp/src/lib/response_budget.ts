@@ -385,6 +385,107 @@ function truncateLongStringsInPlace(root: unknown, maxBytes: number): void {
   }
 }
 
+// ── R6 3b-budgets (R-1/R-8) — generic auto-detected sections for proxy tools ──────
+//
+// PROBLEM: many MCP tools in this codebase are thin PROXIES (regAlias/globalAlias in
+// register_p1_aliases.ts, callSidecarPath / callPlatformPrim calls) whose response shape
+// is owned by a downstream handler (a registry capability, a Python sidecar route) this
+// lane does not always control or have time to hand-declare TrimmableSections for one at a
+// time. Rather than leave those un-budgeted (the R-1/R-8 defect class this run closes),
+// this helper walks the response object, finds every array-valued field (top-level and one
+// level of nesting — deep enough to catch the common `{content: {rows: [...]}}` /
+// `{data: {anchors: [...]}}` shapes without a full recursive walk that could mis-target
+// scalar-shaped tools), and declares each a genuinely trimmable section: dot-path label,
+// same tool name + a `response_format:'legacy'`-style recovery hint (the honest answer for
+// a proxy this lane doesn't own the pagination contract of), minKeep tuned to preserve a
+// still-useful sample (10) rather than trimming a small array to nothing.
+export function autoDetectTrimmableSections<T extends Record<string, unknown>>(
+  content: T,
+  toolName: string,
+): TrimmableSection<T>[] {
+  const sections: TrimmableSection<T>[] = []
+  const seenPaths = new Set<string>()
+
+  const declareIfArray = (path: string, getter: (c: T) => unknown[] | undefined, setter: (c: T, kept: unknown[]) => void) => {
+    const arr = getter(content)
+    if (!Array.isArray(arr) || arr.length <= 10 || seenPaths.has(path)) return
+    seenPaths.add(path)
+    sections.push({
+      path,
+      label: path,
+      minKeep: 10,
+      getArray: getter,
+      setArray: setter,
+      recover: {
+        instrument: toolName,
+        hint: `call ${toolName} again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of "${path}"`,
+      },
+    })
+  }
+
+  for (const key of Object.keys(content)) {
+    const topVal = (content as Record<string, unknown>)[key]
+    if (Array.isArray(topVal)) {
+      declareIfArray(
+        key,
+        (c) => { const v = (c as Record<string, unknown>)[key]; return Array.isArray(v) ? v : undefined },
+        (c, kept) => { (c as Record<string, unknown>)[key] = kept },
+      )
+    } else if (topVal && typeof topVal === 'object' && !Array.isArray(topVal)) {
+      for (const nestedKey of Object.keys(topVal as Record<string, unknown>)) {
+        const nestedVal = (topVal as Record<string, unknown>)[nestedKey]
+        if (Array.isArray(nestedVal)) {
+          const path = `${key}.${nestedKey}`
+          declareIfArray(
+            path,
+            (c) => {
+              const outer = (c as Record<string, unknown>)[key]
+              if (!outer || typeof outer !== 'object') return undefined
+              const inner = (outer as Record<string, unknown>)[nestedKey]
+              return Array.isArray(inner) ? inner : undefined
+            },
+            (c, kept) => {
+              const outer = (c as Record<string, unknown>)[key]
+              if (outer && typeof outer === 'object') (outer as Record<string, unknown>)[nestedKey] = kept
+            },
+          )
+        }
+      }
+    }
+  }
+
+  return sections
+}
+
+/**
+ * R6 3b-budgets (R-1/R-8) — apply the generic auto-detected budget to a RetrievalEnvelope-
+ * shaped object (`{..., content: <the actual payload>, trim_report}`), IN PLACE.
+ *
+ * This is the single wiring point used by every `dualOutput()` in register_p1_ganita.ts /
+ * register_p1_synthesis.ts / register_p1_aliases.ts — the shared envelope shape means one
+ * function here covers every tool built on top of it (ganita_condition_get, kala_life_arc_get,
+ * kala_projections_get, ganita_positions_get, mimamsa_lel_query, and the rest of the estate)
+ * without hand-declaring per-tool TrimmableSections one at a time. A tool that already
+ * declared its own explicit sections (e.g. bodha_signals_get) is unaffected — this only acts
+ * on the `content` object, and re-running it after an explicit trim is a no-op if already
+ * under budget (estimateBytes short-circuits).
+ */
+export function applyAutoBudgetToEnvelope(
+  envelopeObj: Record<string, unknown>,
+  toolName: string,
+  maxKb = 40,
+): void {
+  const content = envelopeObj['content']
+  if (!content || typeof content !== 'object' || Array.isArray(content)) return
+  const sections = autoDetectTrimmableSections(content as Record<string, unknown>, toolName)
+  if (sections.length === 0) return
+  const result = applyResponseBudget(content as Record<string, unknown>, maxKb, sections)
+  if (result.trim_report) {
+    const existing = Array.isArray(envelopeObj['trim_report']) ? (envelopeObj['trim_report'] as TrimReportEntry[]) : []
+    envelopeObj['trim_report'] = [...existing, ...result.trim_report]
+  }
+}
+
 function mergeTrimPointersIntoPointers(
   pointers: DrillPointerLike[],
   trimReport: TrimReportEntry[] | null,
