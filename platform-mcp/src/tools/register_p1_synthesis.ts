@@ -372,11 +372,19 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         return errorOutput('bodha_discoveries_get', 'AUTHZ_DENIED', { chart_id })
       }
       try {
+        // R6 0b-deadtools (R-9): bodha_discoveries has no `domain` or `salience_score`
+        // column (schema drift — these were never the real column names). The real
+        // schema carries `affected_domains_array` (text[]) for domain filtering and
+        // `composite_discovery_rank` (numeric, observed range ~0.18-1.2 in prod) as the
+        // salience-equivalent rank column. Fixed to the live bodha_discoveries schema.
         const params: unknown[] = [chart_id]
         const filters: string[] = ['chart_id = $1']
-        if (domain) { params.push(domain); filters.push(`domain = $${params.length}`) }
+        if (domain) {
+          params.push(domain)
+          filters.push(`affected_domains_array @> ARRAY[$${params.length}]::text[]`)
+        }
         if (min_salience != null && min_salience > 0) {
-          params.push(min_salience); filters.push(`salience_score >= $${params.length}`)
+          params.push(min_salience); filters.push(`composite_discovery_rank >= $${params.length}`)
         }
         params.push(limit ?? 30)
         params.push(offset ?? 0)
@@ -384,13 +392,22 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           SELECT *
           FROM bodha_discoveries
           WHERE ${filters.join(' AND ')}
-          ORDER BY salience_score DESC NULLS LAST
+          ORDER BY composite_discovery_rank DESC NULLS LAST
           LIMIT $${params.length - 1} OFFSET $${params.length}
         `
         const result = await platformQuery(sql, params, principal)
+        // filters[] + the params consumed so far (everything before the trailing
+        // limit/offset push) form a valid standalone WHERE clause for a COUNT query.
+        const whereParams = params.slice(0, params.length - 2)
+        const countResult = await platformQuery(
+          `SELECT COUNT(*)::int AS total FROM bodha_discoveries WHERE ${filters.join(' AND ')}`,
+          whereParams,
+          principal,
+        )
         return dualOutput(envelope({
           discoveries: result.rows,
-          total: result.rows.length,
+          total: (countResult.rows[0]?.['total'] as number | undefined) ?? result.rows.length,
+          returned: result.rows.length,
           filters: { domain, min_salience },
           source_table: 'bodha_discoveries',
         }, 'bodha_discoveries_get', 'synthesis_cross_domain'))
@@ -462,21 +479,23 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           ? `AND domains_affected_array && ARRAY[$${(params.push(domain), params.length)}::text]`
           : ''
         params.push(limitVal)
+        // R6 0b-deadtools (R-10): bodha_msr_signals has no `tier` column (schema drift —
+        // real column is `signature_tier`). Also serves the already-computed, stored
+        // `salience_pctl_in_class` (PERCENT_RANK over the chart's full signal set, written
+        // by bo_laksana.py per S-15) instead of re-deriving a percentile query-time from a
+        // domain-filtered subset — the domain filter would otherwise silently change the
+        // percentile's reference population out from under the "bottom 10% of the WHOLE
+        // chart" claim this tool advertises.
         const sql = `
-          WITH ranked AS (
-            SELECT signal_id, signal_type_id, computed_salience, tier,
-                   domains_affected_array, classical_sources_array,
-                   constituent_facts_array, valence,
-                   PERCENT_RANK() OVER (
-                     PARTITION BY chart_id, ayanamsha_id
-                     ORDER BY computed_salience ASC NULLS LAST
-                   ) AS salience_pctl
-            FROM bodha_msr_signals
-            WHERE chart_id = $1 AND ayanamsha_id = $2 ${domainClause}
-          )
-          SELECT * FROM ranked
-          WHERE salience_pctl <= 0.10
-          ORDER BY salience_pctl ASC
+          SELECT signal_id, signal_type_id, computed_salience, signature_tier,
+                 salience_pctl_in_class AS salience_pctl,
+                 domains_affected_array, classical_sources_array,
+                 constituent_facts_array, valence
+          FROM bodha_msr_signals
+          WHERE chart_id = $1 AND ayanamsha_id = $2 ${domainClause}
+            AND salience_pctl_in_class IS NOT NULL
+            AND salience_pctl_in_class <= 0.10
+          ORDER BY salience_pctl_in_class ASC
           LIMIT $${params.length}
         `
         const result = await platformQuery(sql, params, principal)
@@ -630,9 +649,21 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
       }
       try {
         // 1. Prashna judgment (from ga_prashna_judgment)
+        // R6 0b-deadtools (R-12): gj.verdict/gj.verdict_strength/gj.significator_positions/
+        // gj.timing_indication/gj.classical_citations do not exist on ga_prashna_judgment —
+        // schema drift (these column names were never live). The real verdict is the
+        // categorical `judgment_text` (e.g. "UNCERTAIN"); there is NO numeric strength
+        // column at all — per canonical-or-floor, verdictStrength below is floored NULL
+        // with a reason rather than computed from judgment_text (that would be a fabricated
+        // substitute, not a citable value). significator_positions/timing_indication are
+        // reshaped from the real querent/quesited + fructification columns, not invented.
         const prashnaResult = await platformQuery(`
-          SELECT gj.question_class, gj.verdict, gj.verdict_strength, gj.ayanamsha_id,
-                 gj.significator_positions, gj.timing_indication, gj.classical_citations
+          SELECT gj.question_class, gj.judgment_text AS verdict, gj.ayanamsha_id,
+                 gj.querent_significator, gj.quesited_significator,
+                 gj.querent_longitude, gj.quesited_longitude, gj.longitudinal_gap,
+                 gj.is_applying, gj.tajik_yoga,
+                 gj.fructification_value, gj.fructification_unit, gj.fructification_rule_id,
+                 gj.lagna_rashi, gj.classical_citation
           FROM ga_prashna_judgment gj
           WHERE gj.chart_id = $1
           ORDER BY gj.ayanamsha_id
@@ -678,11 +709,25 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           WHERE activity_class_id = $1
         `, [actionClass], principal)
 
-        // Composite undertaking score = mean(prashna verdict_strength, best election quality, best posterior)
-        const verdictStrength = prashnaResult.rows[0]?.['verdict_strength'] as number | null ?? 0.5
+        // Composite undertaking score = mean(prashna verdict_strength, best election quality, best posterior).
+        // R-12 fix: ga_prashna_judgment carries no numeric verdict-strength column (only the
+        // categorical judgment_text) — canonical-or-floor forbids inventing a number from that
+        // text, so verdictStrength floors to null+reason and the composite averages only over
+        // the components that actually have a value (never silently substituting a placeholder
+        // for the missing one).
+        const verdictStrength: number | null = null
+        const verdictStrengthFloorReason =
+          'ga_prashna_judgment has no verdict_strength (or equivalent numeric) column — ' +
+          'judgment_text is the only verdict field and is categorical (e.g. "UNCERTAIN"). ' +
+          'Floored NULL rather than derived from text (canonical-or-floor).'
         const bestElection = (muhurtaResult.rows[0]?.['composite_quality'] as number | null) ?? 0.5
         const bestPosterior = (anchorResult.rows[0]?.['posterior'] as number | null) ?? 0.1
-        const compositeScore = Math.round(((verdictStrength + bestElection + bestPosterior) / 3) * 1000) / 1000
+        const compositeInputs = [verdictStrength, bestElection, bestPosterior].filter(
+          (v): v is number => typeof v === 'number'
+        )
+        const compositeScore = compositeInputs.length > 0
+          ? Math.round((compositeInputs.reduce((a, b) => a + b, 0) / compositeInputs.length) * 1000) / 1000
+          : null
 
         const recipe = {
           chart_id,
@@ -690,6 +735,9 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           action_class: actionClass,
           formula_version: 'prashna_undertaking_v1.0_ba_p5b',
           composite_undertaking_score: compositeScore,
+          composite_undertaking_score_note: verdictStrength === null
+            ? `Averaged over ${compositeInputs.length}/3 components — verdict_strength omitted: ${verdictStrengthFloorReason}`
+            : null,
           prashna_verdict: prashnaResult.rows,
           election_windows: muhurtaResult.rows,
           fructification_anchors: anchorResult.rows,

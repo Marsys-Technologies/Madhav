@@ -1390,8 +1390,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       keyword: z.string().optional().describe('Free-text keyword search over fact_key/fact_value_text.'),
       shape: z.enum(['pivoted', 'rows']).optional().describe('"pivoted" (default, one wide row per subject) or "rows" (flat EAV rows).'),
       limit: z.number().int().min(1).max(1000).optional().describe('Max subjects/rows to return (default: 100, max: 1000).'),
+      offset: z.number().int().min(0).optional().describe('Pagination offset — rows (shape="rows") or subjects (shape="pivoted") to skip before the next `limit` (default: 0).'),
     },
-    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, shape, limit }) => {
+    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, shape, limit, offset }) => {
       if (!chart_id) return errorOutput('query_chart_facts', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1409,6 +1410,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             ...(keyword ? { keyword } : {}),
             ...(shape ? { shape } : {}),
             ...(limit != null ? { limit } : {}),
+            ...(offset != null ? { offset } : {}),
           },
           chart_id, principal
         )
