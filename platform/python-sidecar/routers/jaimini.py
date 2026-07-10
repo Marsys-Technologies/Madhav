@@ -9,7 +9,7 @@ Exposes two GET endpoints:
 
 M-8 fix (MARSYS_DEFECT_GAP_REGISTER_v2_0.md): this router used to default
 `planet_longitudes=None` / `lagna_longitude=None` into the engine, which
-silently substituted NATIVE_FALLBACK_LONGITUDES — a table that was wrong
+silently substituted the removed hardcoded-native-longitude fallback table — a table that was wrong
 even for the native (Sun 322.61 Aquarius vs. FORENSIC truth Capricorn; Lagna
 51.28 Taurus vs. FORENSIC truth Aries) — for EVERY chart_id. Per
 canonical-or-floor doctrine, longitudes are now always resolved from
@@ -98,7 +98,7 @@ def _conn():
 def _fetch_chart_longitudes(chart_id: str, ayanamsha_id: str) -> Dict[str, float]:
     """
     Resolve this chart's REAL sidereal longitudes (7 classical grahas + Lagna)
-    from chart_facts. M-8 fix: replaces NATIVE_FALLBACK_LONGITUDES — there is
+    from chart_facts. M-8 fix: replaces the removed hardcoded-native-longitude fallback table — there is
     no substitute value for a missing fact; a gap here is a 422, not a number.
     """
     if ayanamsha_id not in _VALID_AYANAMSHAS:

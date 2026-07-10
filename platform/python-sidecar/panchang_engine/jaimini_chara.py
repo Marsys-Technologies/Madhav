@@ -20,7 +20,7 @@ L2+ derivations; this sidecar engine must never diverge from it):
 
 M-8 fix (hard-fail, no fallback): this engine REQUIRES the chart's real
 sidereal planetary longitudes and lagna longitude. There is no
-NATIVE_FALLBACK_LONGITUDES table — a prior version silently substituted
+the removed hardcoded-native-longitude fallback table — a prior version silently substituted
 values that were wrong even for the native (Sun 322.61 Aquarius vs. FORENSIC
 truth Capricorn; Lagna 51.28 Taurus vs. FORENSIC truth Aries) for every
 caller, native or not. Per canonical-or-floor doctrine: callers must supply
@@ -99,7 +99,7 @@ def compute_chara_dasha_years(planet_longitudes: Optional[Dict[str, float]]) -> 
         planet_longitudes: dict of planet_name → sidereal longitude (0–360),
             REQUIRED for the 7 classical grahas (Sun, Moon, Mars, Mercury,
             Jupiter, Venus, Saturn). No default — M-8 fix removed the
-            NATIVE_FALLBACK_LONGITUDES table, which served wrong values
+            the removed hardcoded-native-longitude fallback table, which served wrong values
             (even for the native) to every caller.
 
     Raises:
