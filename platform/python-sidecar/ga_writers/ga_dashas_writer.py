@@ -499,7 +499,16 @@ def _load_natal_context_inner(
     conn: Any, chart_id: str, ayanamsha_id: str,
     subject_to_graha: dict[str, str], ctx: dict[str, dict[str, Any]],
 ) -> None:
-    with conn.cursor() as cur:
+    # tuple_row forced explicitly: the orchestrator's shared worker connection
+    # (pipeline.orchestrator.db.connect()) defaults to row_factory=dict_row, and every
+    # loop below unpacks fetchall() rows positionally (`for subj, key_, vtxt, vnum in
+    # ...`). Under a dict-row cursor that silently unpacks each dict's KEYS instead of
+    # its values, so every row is dropped by `subject_to_graha.get(subj)` returning
+    # None — no exception, just all-NULL lord_natal_* columns. Same bug class as
+    # _compute_dynamic_chara_params (see its comment above); fixed alongside it,
+    # 2026-07-10.
+    import psycopg.rows as _pr
+    with conn.cursor(row_factory=_pr.tuple_row) as cur:
         cur.execute(
             """
             SELECT fact_subject, fact_key, fact_value_text, fact_value_num
@@ -1601,8 +1610,24 @@ def _compute_dynamic_chara_params(
     }
     _GRAHA_CODES = list(_CODE_TO_GRAHA.keys())
 
-    # Query chart_facts for graha positions
-    with conn.cursor() as cur:
+    import psycopg.rows as _pr
+
+    # Query chart_facts for graha positions.
+    #
+    # MUST force tuple_row explicitly (mirrors _load_nakshatra_lords_l0 above,
+    # ga_dashas_writer.py:97). The orchestrator's pipeline.orchestrator.db.connect()
+    # opens every worker connection with row_factory=psycopg.rows.dict_row (Orchestrator
+    # Convergence default), so a bare conn.cursor() here silently inherits dict rows.
+    # The old code below unpacked each row positionally — `code, key, val_text, val_num
+    # = row` — which for a *dict* row unpacks the dict's KEYS ("fact_subject",
+    # "fact_key", "fact_value_text", "fact_value_num"), not its values. Every row was
+    # then discarded by `_CODE_TO_GRAHA.get(code)` (code was literally the string
+    # "fact_subject", never a real graha code), so graha_sign/graha_deg stayed empty
+    # and the function raised "chart_facts missing sign for lord=..." even though the
+    # data was present and committed. A standalone manual query (default tuple_row
+    # connection) never hit this, which is why the bug was invisible outside the real
+    # orchestrator execute_run path. Root-caused 2026-07-10 via live instrumentation.
+    with conn.cursor(row_factory=_pr.tuple_row) as cur:
         cur.execute(
             """
             SELECT fact_subject, fact_key, fact_value_text, fact_value_num
