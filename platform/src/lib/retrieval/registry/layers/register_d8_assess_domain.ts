@@ -726,6 +726,11 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Minimum salience threshold on bodha_msr_signals (0..1, default: 0).',
     },
+    domain: {
+      type: 'string',
+      description: 'Filter to yogas whose bodha_msr_signals.domains_affected_array contains this ' +
+        'domain (e.g. "career", "wealth", "relationship", "health"). Optional.',
+    },
   },
 
   archetype: 'temporal',
@@ -763,6 +768,7 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       new Date(Date.now() + 3 * 365 * 86400000).toISOString().split('T')[0]!
     const top_k = Math.min(Number(args['top_k'] ?? 30), 200)
     const min_salience = Number(args['min_salience'] ?? 0)
+    const domain = args['domain'] as string | undefined
 
     try {
       // Join bodha_msr_signals (yoga signals) with kala_activation on signal_id.
@@ -792,6 +798,11 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       if (dasha_period) {
         conds.push(`ka.active_dasha_periods_jsonb::text ILIKE $${p++}`)
         params.push(`%${dasha_period}%`)
+      }
+
+      if (domain) {
+        conds.push(`$${p++} = ANY(m.domains_affected_array)`)
+        params.push(domain)
       }
 
       params.push(top_k)
@@ -858,7 +869,7 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
           activated_yogas: result.rows,
           total_count: result.rows.length,
           signal_id_refs: signalRefs,
-          filters: { dasha_period, date_from, date_to, top_k, min_salience },
+          filters: { dasha_period, date_from, date_to, top_k, min_salience, domain: domain ?? null },
           drill_next: [
             'marsys://tool/L2/query_signals',
             'marsys://tool/L3/query_temporal_activation',

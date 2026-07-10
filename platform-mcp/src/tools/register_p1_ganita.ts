@@ -170,6 +170,12 @@ function normalizeAyanamsha(id?: string): string {
 }
 
 // Facet → L1 URI dispatch tables
+// R-17 fix: parivartana and graha_yuddha were both routed to get_yoga_dosha, which has no
+// backing category for either (its 6 categories are yoga_fires/yoga_label/dosha_fires/
+// dosha_label/bhadra_flag/panchaka_flag) — both facets silently returned the identical
+// unfiltered ~107-row yoga/dosha union. Their real data lives elsewhere: parivartana
+// (mutual sign exchange) is fact_category parivartana_per_varga on get_dispositors;
+// graha_yuddha (planetary war) has its own dedicated capability, get_graha_yuddha.
 const STRUCTURAL_FACET_URI: Record<string, string> = {
   aspects:      'marsys://tool/L1/get_aspects',
   conjunctions: 'marsys://tool/L1/get_aspects',
@@ -177,11 +183,45 @@ const STRUCTURAL_FACET_URI: Record<string, string> = {
   argala:       'marsys://tool/L1/get_argala',
   dispositors:  'marsys://tool/L1/get_dispositors',
   functional:   'marsys://tool/L1/get_dispositors',
-  parivartana:  'marsys://tool/L1/get_yoga_dosha',
+  parivartana:  'marsys://tool/L1/get_dispositors',
   yoga_fires:   'marsys://tool/L1/get_yoga_dosha',
   dosha_fires:  'marsys://tool/L1/get_yoga_dosha',
-  graha_yuddha: 'marsys://tool/L1/get_yoga_dosha',
+  graha_yuddha: 'marsys://tool/L1/get_graha_yuddha',
 }
+
+// R-17 fix: each facet's DECLARED fact_category set. Used two ways: (1) narrows the
+// underlying query via `categories` so facets sharing a URI (aspects/conjunctions/sambandha;
+// dispositors/parivartana; yoga_fires/dosha_fires) actually return DIFFERENT row sets instead
+// of the tool's full unfiltered union; (2) a serve-time assertion (below) verifies every
+// returned row's fact_category is actually a member of this set — fails loudly instead of
+// silently serving a mismatched category set if the map ever drifts from the underlying
+// tool's real categories again.
+//
+// `functional` (functional benefic/malefic role) has NO dedicated L1 fact_category — that
+// classification is derived logic living in graha_portrait.ts (R-6), not a stored chart_facts
+// row. Declared as an empty/unbacked facet below: rejected outright rather than silently
+// serving unrelated dispositor rows (canonical-or-floor: no backing category = no serve).
+const FACET_CATEGORIES: Record<string, string[]> = {
+  aspects: [
+    'aspect_parashari_given', 'aspect_parashari_received', 'aspect_parashari_per_varga',
+    'aspect_jaimini', 'aspect_jaimini_per_varga', 'aspect_matrix_summary', 'aspect_tajik',
+  ],
+  conjunctions: ['conjunction_within_orb', 'conjunction_per_varga'],
+  sambandha:    ['lord_aspects_lord_per_varga', 'lord_in_house_per_varga'],
+  dispositors:  [
+    'graha_dispositor_chain', 'dispositor_chain_per_varga', 'composite_dispositor_strength',
+    'parivartana_per_varga', 'kala_sarpa_per_varga',
+  ],
+  parivartana:  ['parivartana_per_varga'],
+  yoga_fires:   ['yoga_fires', 'yoga_label', 'bhadra_flag'],
+  dosha_fires:  ['dosha_fires', 'dosha_label'],
+  graha_yuddha: ['graha_yuddha'],
+  // argala intentionally omitted: get_argala is a single-purpose tool with no sibling facets
+  // sharing its URI, so there is no cross-facet contamination risk to assert against.
+}
+
+// Facets with no valid backing category at all — rejected before dispatch (see comment above).
+const NO_BACKING_FACETS = new Set(['functional'])
 
 // R5.3 B2 (Q9-N-3 ruling): Pancha Mahapurusha classical rule table (own-sign/exaltation +
 // kendra). Static classical astrology (not chart data) — used only to LABEL already-fetched
@@ -337,17 +377,55 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     },
     async ({ chart_id, facet, ayanamsha_id, limit, offset, response_format }) => {
       if (!chart_id) return errorOutput('ganita_structural_get', 'chart_id is required')
+      // R-17 fix: reject facets with no backing category outright, rather than silently
+      // serving whatever unrelated rows the routed-to tool happens to return.
+      if (NO_BACKING_FACETS.has(facet)) {
+        return errorOutput(
+          'ganita_structural_get',
+          `facet="${facet}" has no dedicated L1 fact_category — this classification is derived ` +
+          'logic (see graha_portrait.ts functional_nature), not a stored chart_facts row. ' +
+          'Use graha_portrait with include=["functional_nature"] instead.',
+          { chart_id, facet },
+        )
+      }
       const uri = STRUCTURAL_FACET_URI[facet]
       if (!uri) return errorOutput('ganita_structural_get', `Unknown facet: ${facet}`)
       try {
         const resolvedOffset = offset ?? 0
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
         const format = resolveEnvelopeFormat(response_format)
+        const declaredCategories = FACET_CATEGORIES[facet]
         const data = await callRegistryCapability(uri, {
           chart_id, ayanamsha_id: resolvedAyanamsha,
           limit: limit ?? 25000, offset: resolvedOffset, facet,
+          ...(declaredCategories ? { categories: declaredCategories } : {}),
         }, principal) as Record<string, unknown> | undefined
         const merged: Record<string, unknown> = { facet, ...(typeof data === 'object' && data ? data : { rows: data }) }
+
+        // R-17 serve-time assertion: verify every returned row's fact_category is actually a
+        // member of this facet's declared set. Fails loudly (rather than silently serving a
+        // mismatched category set) if the map ever drifts from the underlying tool's real
+        // categories again — this is the exact failure mode that caused the graha_yuddha/
+        // parivartana bug in the first place.
+        if (declaredCategories) {
+          const mergedRows = Array.isArray(merged['rows']) ? merged['rows'] as Record<string, unknown>[] : []
+          const declaredSet = new Set(declaredCategories)
+          const offendingCategories = [...new Set(
+            mergedRows
+              .map(r => r['fact_category'] as string | undefined)
+              .filter((c): c is string => Boolean(c) && !declaredSet.has(c as string))
+          )]
+          if (offendingCategories.length > 0) {
+            return errorOutput(
+              'ganita_structural_get',
+              `facet="${facet}" routing assertion failed: returned rows include ` +
+              `fact_category(s) [${offendingCategories.join(', ')}] outside the facet's declared ` +
+              `set [${declaredCategories.join(', ')}]. This is a facet→category map bug, not a ` +
+              'data problem — the map must be corrected, not the assertion widened.',
+              { chart_id, facet },
+            )
+          }
+        }
 
         if (format !== 'v3') {
           return dualOutput(envelope(merged, 'ganita_structural_get'))
