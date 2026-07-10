@@ -212,10 +212,17 @@ class MiBhavisyaWriter(WriterBase):
                 notes=f"dry_run: would freeze {len(pred_rows)} predictions, {len(mset_rows)} manifestation_sets",
             )
 
-        # Idempotency: delete per chart
+        # Idempotency: delete per chart. mimamsa_predictions rows whose lifecycle_status
+        # has moved past 'pending'/'due' (i.e. 'confirmed'/'denied'/'partial') carry a real,
+        # native-verified outcome written exclusively by mi_abhilekha's journal-answer sync
+        # (see mi_abhilekha.py) — IRREPLACEABLE, never destroy them on a routine rebuild.
+        # Only still-forecasting rows are this writer's own rebuildable output.
         with conn.cursor() as cur:
             cur.execute("DELETE FROM mimamsa_manifestation_sets WHERE chart_id = %s", (chart_id,))
-            cur.execute("DELETE FROM mimamsa_predictions WHERE chart_id = %s", (chart_id,))
+            cur.execute(
+                "DELETE FROM mimamsa_predictions WHERE chart_id = %s AND lifecycle_status IN ('pending', 'due')",
+                (chart_id,),
+            )
 
         if not pred_rows:
             return WriterResult(

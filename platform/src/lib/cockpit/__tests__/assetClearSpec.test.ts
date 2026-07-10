@@ -12,7 +12,7 @@ const EXPECTED_TABLES: Record<string, string[]> = {
   ph_rectification: ['phala_rectification_best', 'phala_rectification'],
   // L2 Bodha
   bo_karanajala: ['bodha_contradictions', 'bodha_cgm_edges'],
-  bo_sangati: ['bodha_convergence', 'bodha_cdlm_cells'],
+  bo_sangati: ['bodha_convergence', 'bodha_cdlm_cells', 'bodha_triangulation'],
   bo_upaya: [
     'bodha_rm_dasha_windowed_prescriptions',
     'bodha_rm_remedy_prescriptions',
@@ -71,10 +71,17 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
   })
 
   it('mi_bhavisya preserves recorded prediction outcomes (JL-020 IRREPLACEABLE)', () => {
+    // R6 fix: `outcome_observed` never existed on the live schema (mimamsa_predictions was
+    // dropped and recreated by migration 347 with a different column set) — this DELETE threw
+    // on every real execution and, sharing a savepoint with the manifestation_sets delete,
+    // silently rolled that back too. The real "recorded outcome" signal on the current schema
+    // is lifecycle_status leaving 'pending'/'due' (mi_abhilekha.py is the sole writer that
+    // transitions a row to 'confirmed'/'denied').
     const ops = EXPLICIT_CLEAR_OPS['mi_bhavisya'] ?? []
     const predictionsOp = ops.find(op => /mimamsa_predictions/.test(op.sql))
     expect(predictionsOp, 'mi_bhavisya must clear mimamsa_predictions').toBeTruthy()
-    expect(predictionsOp!.sql).toMatch(/outcome_observed IS NULL/)
+    expect(predictionsOp!.sql).not.toMatch(/outcome_observed/)
+    expect(predictionsOp!.sql).toMatch(/lifecycle_status IN \('pending', 'due'\)/)
   })
 
   it('ga_structural clears its owned chart_facts categories via the ownership subquery (not a broken JOIN)', () => {

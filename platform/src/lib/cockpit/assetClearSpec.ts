@@ -10,7 +10,7 @@
  *
  * Known IRREPLACEABLE surfaces protected below:
  *   - mimamsa_journal.native_answer/answered_at (mi_abhilekha)      — scoped DELETE
- *   - mimamsa_predictions.outcome_observed/brier_score (mi_bhavisya) — scoped DELETE
+ *   - mimamsa_predictions.lifecycle_status (mi_bhavisya) — scoped DELETE
  *   - mimamsa_preferences (mi_seva)                                 — null (full skip)
  *   - mimamsa_export_log (mi_vistara)                                — null (full skip)
  * Everything else in this map exists to fix multi-table-writer coverage gaps or
@@ -87,6 +87,10 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   bo_sangati: [
     { sql: 'DELETE FROM bodha_convergence WHERE chart_id = $1' },
     { sql: 'DELETE FROM bodha_cdlm_cells WHERE chart_id = $1' },
+    // R6 fix: bo_sangati.py also writes bodha_triangulation (its own writer correctly
+    // idempotent-deletes it scoped by chart_id+ayanamsha_id on every real rebuild — this
+    // asset was never behind stale data, only the manual "Clear" button never reached it).
+    { sql: 'DELETE FROM bodha_triangulation WHERE chart_id = $1' },
   ],
   bo_upaya: [
     // rm chain: resonances ← remedy_prescriptions ← dasha_windowed_prescriptions.
@@ -114,7 +118,19 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // not-yet-verified rows.
   mi_bhavisya: [
     { sql: 'DELETE FROM mimamsa_manifestation_sets WHERE chart_id = $1' },
-    { sql: 'DELETE FROM mimamsa_predictions WHERE chart_id = $1 AND outcome_observed IS NULL' },
+    // R6 fix: the `outcome_observed` column named in this file's own header comment (and in
+    // this op, previously) does not exist on the live schema — mimamsa_predictions was DROPPED
+    // and recreated by migration 347_mimamsa_bhavisya.sql with a different column set entirely,
+    // no RENAME COLUMN anywhere. This DELETE has been throwing "column outcome_observed does
+    // not exist" on every execution, silently swallowed by clear/execute/route.ts's per-asset
+    // try/catch — and because this op shares ONE savepoint with the manifestation_sets DELETE
+    // above, the throw rolled that (otherwise-correct) delete back too, so mi_bhavisya's clear
+    // has never actually deleted anything, for any chart. The real "has a recorded native
+    // outcome" signal on the current schema is lifecycle_status leaving 'pending'/'due' —
+    // mi_abhilekha.py is the sole writer that transitions a row to 'confirmed'/'denied' once a
+    // real answer comes in (see that writer for the exact transition). Preserve those; only
+    // still-forecasting rows are this writer's own rebuildable output.
+    { sql: "DELETE FROM mimamsa_predictions WHERE chart_id = $1 AND lifecycle_status IN ('pending', 'due')" },
   ],
   mi_pramana: [
     { sql: 'DELETE FROM mimamsa_reliability WHERE chart_id = $1' },
