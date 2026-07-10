@@ -418,6 +418,18 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       } catch (e) {
         judgment_flags.push(`yoga_signal_fetch_failed: ${String(e)}`)
       }
+      // D-13: bearing_yogas surfaces bodha_msr_signals 'yoga' signal_type_class rows —
+      // the SAME requires_pass catalog shape graha_portrait caveats under JL-004 (a
+      // single-pass rule-catalog match against L1 facts, not a cross-verified confirmed
+      // firing). Restated here at THIS point of use rather than left implicit, per D-13 —
+      // never present these as settled findings without the caveat.
+      if (yogaSignals.length > 0) {
+        judgment_flags.push(
+          'bearing_yogas_caveat: bearing_yogas are requires_pass catalog label matches ' +
+          '(single-pass evaluation against L1 facts) — not cross-verified confirmed firings. ' +
+          'Treat as candidate classifications to verify, not settled findings (JL-004).',
+        )
+      }
       judgment_flags.push(
         'bhanga_not_checked: notably-absent/cancellation (bhaṅga) near-miss checking requires ' +
         'a data-plane addition (design §12 D3) not yet built for any chart — reported honestly, not fabricated.',
