@@ -411,11 +411,17 @@ def _long_rows(
     include_nakshatra: bool = True,
     include_house: bool = True,
     extra_keys: dict[str, Any] | None = None,
+    verification_pass_status: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Generate standard atomic rows for a longitude-bearing sensitive point.
     Emits: longitude_sidereal, sign, sign_lord, nakshatra, nakshatra_lord, pada, house_d1
     + Section-B enrichment on every row.
+
+    verification_pass_status: M-22 fix — callers with a KNOWN non-classical
+    or fabricated derivation (M-9/M-10/M-11) pass an honest demoted tier
+    explicitly; None (default) leaves _make_row's own default in force for
+    genuinely correct BPHS-derived points.
     """
     sign, sign_idx, deg_in_sign = _long_to_sign_deg(longitude_sidereal)
     nak_name, nak_lord, pada = _long_to_nakshatra_pada(longitude_sidereal)
@@ -434,6 +440,8 @@ def _long_rows(
         formula_provenance_text=formula_provenance_text,
         cross_ayanamsha_divergence_arcsec=cross_ayanamsha_divergence_arcsec,
     )
+    if verification_pass_status is not None:
+        b_kwargs["verification_pass_status"] = verification_pass_status
 
     rows = [
         _make_row(category, subject, "longitude_sidereal",

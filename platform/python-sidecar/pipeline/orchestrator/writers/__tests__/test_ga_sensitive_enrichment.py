@@ -122,9 +122,21 @@ def test_special_lagnas_vighati_is_delegated_not_floored():
 
 
 def test_special_lagnas_others_two_pass_verified():
+    # M-10 fix (R6-1d) supersedes the M-22/R6-1f stamp demotion this test
+    # previously encoded: HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA no longer use
+    # the fabricated Sun-within-sign-offset proxy that justified downgrading
+    # them to "documented_approximation" — they are now delegated to
+    # PyJHora's real time-since-sunrise derivation (drik.hora_lagna /
+    # drik.ghati_lagna / drik.bhava_lagna) via chart_data["special_lagnas"],
+    # same as VIGHATI_LAGNA/INDU_LAGNA/SREE_LAGNA/VARNADA_LAGNA. With a real
+    # independent computation now backing every subject, the honest tier is
+    # "two_pass_verified", not a demoted stamp on a fabricated formula that
+    # no longer exists in this writer.
     rows = _build_special_lagnas_rows(
         CHART_DATA_SPECIAL_LAGNAS, ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
-    for r in rows:
+    non_vighati = [r for r in rows if r.get("fact_subject") != "VIGHATI_LAGNA"]
+    assert non_vighati, "expected HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA rows"
+    for r in non_vighati:
         assert r.get("verification_pass_status") == "two_pass_verified"
 
 

@@ -117,16 +117,39 @@ def positions_rows(native_chart):
     )
 
 
+_NATIVE_KW = dict(
+    lat=NATIVE_BIRTH["latitude_deg"], lon=NATIVE_BIRTH["longitude_deg"],
+    tz=NATIVE_BIRTH["tz_offset_hours"],
+)
+
+
 @pytest.fixture(scope="module")
-def shadbala(native_chart):
+def native_jd_ut(native_chart):
+    return float(native_chart["provenance"]["jd_ut"])
+
+
+@pytest.fixture(scope="module")
+def shadbala(native_chart, native_jd_ut):
     from ga_writers.ga_strength_writer import _derive_shadbala_from_positions
-    return _derive_shadbala_from_positions(native_chart, "lahiri_chitrapaksha")
+    return _derive_shadbala_from_positions(
+        native_chart, "lahiri_chitrapaksha", jd_ut=native_jd_ut, **_NATIVE_KW,
+    )
 
 
 @pytest.fixture(scope="module")
-def ashtakavarga(native_chart):
+def ashtakavarga_full(native_jd_ut):
     from ga_writers.ga_strength_writer import _derive_ashtakavarga
-    return _derive_ashtakavarga(native_chart)
+    return _derive_ashtakavarga(native_jd_ut, "lahiri_chitrapaksha", **_NATIVE_KW)
+
+
+@pytest.fixture(scope="module")
+def ashtakavarga(ashtakavarga_full):
+    return ashtakavarga_full["bindus"]
+
+
+@pytest.fixture(scope="module")
+def ashtakavarga_pinda(ashtakavarga_full):
+    return ashtakavarga_full["pinda"]
 
 
 @pytest.fixture(scope="module")
@@ -349,9 +372,14 @@ class TestAshtakavargaDerivation:
         assert 300 <= total <= 380, f"Sarva total={total} far outside 337±43"
 
     def test_two_pass_verify_passes(self, ashtakavarga):
+        # M-22/M-3 fix (R6-1f): this check verifies raw Bhinnashtakavarga
+        # bindu arithmetic is internally consistent (SARVA=337, SARVA=sum of
+        # 7 graha arrays) — a real check, but not an independent second
+        # computation, and it says nothing about the shodhana step (M-3:
+        # sodhita ≡ raw, no real trikona shodhana). Demoted to "single_pass".
         from ga_writers.ga_strength_writer import _verify_ashtakavarga
         result = _verify_ashtakavarga(ashtakavarga, tolerance=10)
-        assert result == "two_pass_verified"
+        assert result == "single_pass"
 
 
 # ── 29-31: Bhava bala ───────────────────────────────────────────────────────
@@ -376,13 +404,13 @@ class TestBhavaBala:
 
 class TestStrengthRows:
     @pytest.fixture(scope="class")
-    def shadbala_rows(self, native_chart, shadbala):
+    def shadbala_rows(self, native_chart, shadbala, native_jd_ut):
         from ga_writers.ga_strength_writer import (
             _build_shadbala_rows, _derive_ishta_kashta, _derive_vimsopaka,
         )
         from pyjhora_adapter.version import ENGINE_VERSION
-        ik = _derive_ishta_kashta(shadbala)
-        vm = _derive_vimsopaka(shadbala)
+        ik = _derive_ishta_kashta(shadbala, native_jd_ut, "lahiri_chitrapaksha", **_NATIVE_KW)
+        vm = _derive_vimsopaka(native_jd_ut, "lahiri_chitrapaksha", **_NATIVE_KW)
         return _build_shadbala_rows(
             shadbala, ik, vm,
             CANONICAL_CHART_ID, "test-bid", "lahiri_chitrapaksha",
@@ -435,11 +463,11 @@ class TestStrengthRows:
                     assert r["verification_pass_status"] == "classical_match"
 
     @pytest.fixture(scope="class")
-    def bav_rows(self, native_chart, ashtakavarga):
+    def bav_rows(self, native_chart, ashtakavarga, ashtakavarga_pinda):
         from ga_writers.ga_strength_writer import _build_ashtakavarga_rows
         from pyjhora_adapter.version import ENGINE_VERSION
         return _build_ashtakavarga_rows(
-            ashtakavarga, CANONICAL_CHART_ID, "test-bid", "lahiri_chitrapaksha",
+            ashtakavarga, ashtakavarga_pinda, CANONICAL_CHART_ID, "test-bid", "lahiri_chitrapaksha",
             "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "two_pass_verified",
         )
 
@@ -551,22 +579,24 @@ class TestHardRails:
         for r in positions_rows:
             assert r["fact_value_jsonb"] is None
 
-    def test_strength_rows_jsonb_all_none(self, native_chart, shadbala, ashtakavarga, bhava_bala):
+    def test_strength_rows_jsonb_all_none(
+        self, native_chart, shadbala, ashtakavarga, ashtakavarga_pinda, bhava_bala, native_jd_ut,
+    ):
         """Atomic grain: no JSONB in strength rows."""
         from ga_writers.ga_strength_writer import (
             _build_shadbala_rows, _build_ashtakavarga_rows, _build_bhava_bala_rows,
             _derive_ishta_kashta, _derive_vimsopaka,
         )
         from pyjhora_adapter.version import ENGINE_VERSION
-        ik = _derive_ishta_kashta(shadbala)
-        vm = _derive_vimsopaka(shadbala)
+        ik = _derive_ishta_kashta(shadbala, native_jd_ut, "lahiri_chitrapaksha", **_NATIVE_KW)
+        vm = _derive_vimsopaka(native_jd_ut, "lahiri_chitrapaksha", **_NATIVE_KW)
         all_rows = []
         all_rows.extend(_build_shadbala_rows(
             shadbala, ik, vm, CANONICAL_CHART_ID, "test", "lahiri_chitrapaksha",
             "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "two_pass_verified",
         ))
         all_rows.extend(_build_ashtakavarga_rows(
-            ashtakavarga, CANONICAL_CHART_ID, "test", "lahiri_chitrapaksha",
+            ashtakavarga, ashtakavarga_pinda, CANONICAL_CHART_ID, "test", "lahiri_chitrapaksha",
             "2026-06-10T00:00:00+00:00", ENGINE_VERSION, "two_pass_verified",
         ))
         all_rows.extend(_build_bhava_bala_rows(

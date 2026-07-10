@@ -1161,13 +1161,21 @@ def _build_aspect_rows(
                 taj_type = "wide_manaau"
                 orb_strength = 0.1
             salience = {"yamaya": "high", "ithasala": "high", "manaau": "medium", "wide_manaau": "low"}.get(taj_type, "medium")
+            # M-22 fix (M-12 evidence): this classification has no real
+            # Tajika geometry (no applying/separating motion test, no
+            # deeptamsa per-planet orb, eesarpha/nakta unreachable — the
+            # code comment above literally admits "simplified"). A flat
+            # orb-degree threshold is not a verified Tajika-aspect
+            # evaluation. Demoted to documented_approximation; fixing the
+            # Tajika-aspect derivation itself is M-12's scope, not this
+            # lane's (this lane only owns the honesty of the stamp).
             rows.append(_base_row(
                 "aspect_tajik", f"{g1_subj}_{g2_subj}", taj_type,
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=round(orb, 4),
                 unit="deg",
                 value_jsonb={"orb_deg": round(orb, 4), "orb_strength": orb_strength, "salience": salience},
-                verif="two_pass_verified",
+                verif="documented_approximation",
                 source=f"pyjhora_adapter.tajik_aspects/{eng_ver}",
                 citation_human=(
                     f"Tajik {taj_type} between {g1_name} and {g2_name} "
@@ -2282,11 +2290,20 @@ def _build_composite_strength_rows(
 
             divergence = abs(bphs_score - simple_score)
 
+            # M-22 fix (M-14 evidence): "Pass 1"/"Pass 2" here are two
+            # arbitrary combinations of the SAME invented shadbala_proxy
+            # input (sthana*5+1, a "rough rupa estimate" per the comment
+            # above) — not an independent classical shadbala + bhava bala
+            # cross-check, and the pyjhora_adapter source strings are false
+            # (this writer never calls PyJHora for this category). Demoted
+            # to documented_approximation on all three emitted rows; fixing
+            # the underlying composite-strength derivation (real shadbala +
+            # bhava bala) is M-14's scope, not this lane's.
             rows.append(_base_row(
                 "graha_in_house_composite_strength", comp_subject, "bphs_weighted",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=bphs_score,
-                verif="two_pass_verified",
+                verif="documented_approximation",
                 source=f"pyjhora_adapter.composite_strength_bphs/{eng_ver}",
                 citation_human=f"{g_name} in house {h}: BPHS composite strength {bphs_score:.4f} ({ayanamsha_id}).",
             ))
@@ -2294,7 +2311,7 @@ def _build_composite_strength_rows(
                 "graha_in_house_composite_strength", comp_subject, "simple_multiplication",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=simple_score,
-                verif="two_pass_verified",
+                verif="documented_approximation",
                 source=f"pyjhora_adapter.composite_strength_simple/{eng_ver}",
                 citation_human=f"{g_name} in house {h}: simple composite strength {simple_score:.4f} ({ayanamsha_id}).",
             ))
@@ -2302,7 +2319,7 @@ def _build_composite_strength_rows(
                 "graha_in_house_composite_strength", comp_subject, "cross_formula_divergence",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=round(divergence, 4),
-                verif="two_pass_verified",
+                verif="documented_approximation",
                 source=f"pyjhora_adapter.composite_strength_div/{eng_ver}",
                 citation_human=f"{g_name} in house {h}: formula divergence {divergence:.4f} ({ayanamsha_id}).",
             ))
@@ -2576,6 +2593,20 @@ def _build_structural_relationship_rows(
                 ))
 
     # Composite state classification (X)
+    #
+    # D-3 fix: the root cause of the "astrologically suspect" distribution
+    # (Jupiter own-sign Sagittarius wrongly "debilitation_cancelled"; Saturn
+    # Libra-exalted wrongly "neutral"; 8/9 grahas "neutral") was an
+    # off-by-one sign-index bug in pyjhora_adapter/dignities.py — `g.get(
+    # "dignity_status")` was comparing a 1-based sign_id against 0-based
+    # exaltation/debilitation/own-sign tables. Fixed at the source
+    # (dignities.py::_dignity_for) so every consumer of dignity_status,
+    # including this loop, now gets the correct dignity. This loop itself
+    # is otherwise unchanged — the neecha-bhanga (dispositor-in-kendra)
+    # check is real, but is still a single deterministic pass, not an
+    # independent classical cross-check, so the stamp is honestly demoted
+    # (M-22) alongside the D-3 data fix.
+    classification_counts: dict[str, int] = {}
     for g in grahas_data:
         g_name = g["name"]
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
@@ -2610,17 +2641,35 @@ def _build_structural_relationship_rows(
         else:
             classification = "neutral"
 
+        classification_counts[classification] = classification_counts.get(classification, 0) + 1
+
         rows.append(_base_row(
             "graha_composite_state_classification", subject, "classification",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=classification,
-            verif="two_pass_verified",
+            verif="single_pass",
             source=f"pyjhora_adapter.composite_state/{eng_ver}",
             citation_human=(
                 f"{g_name} composite state: {classification} "
                 f"(dignity: {dignity}, combust: {is_combust}, retro: {retro}) ({ayanamsha_id})."
             ),
         ))
+
+    # D-3 distribution check (non-degenerate): a single classification value
+    # covering the large majority of grahas is the exact failure signature
+    # this register row diagnosed (8/9 "neutral" pre-fix). Not a hard halt —
+    # some charts legitimately cluster — but loud enough that a regression
+    # of the same class is never silently reintroduced.
+    n_grahas = len(grahas_data)
+    if n_grahas > 0:
+        max_class, max_count = max(classification_counts.items(), key=lambda kv: kv[1])
+        if max_count / n_grahas >= 0.75:
+            logger.warning(
+                "[ga_structural] chart_id=%s ayanamsha=%s: graha_composite_state_classification "
+                "distribution is near-degenerate — %d/%d grahas classified '%s' "
+                "(D-3 regression signature). counts=%s",
+                chart_id, ayanamsha_id, max_count, n_grahas, max_class, classification_counts,
+            )
 
     return rows
 
