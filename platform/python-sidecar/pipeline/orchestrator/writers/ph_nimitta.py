@@ -547,13 +547,14 @@ class PhNimittaWriter(WriterBase):
         # was something useful, it is already in row['domain'] from the query.
 
         # 2. Timing enrichment from detected_at
-        detected_at = row.get('detected_at')
-        if detected_at is not None:
-            if isinstance(detected_at, str):
-                try:
-                    detected_at = date.fromisoformat(detected_at[:10])
-                except ValueError:
-                    detected_at = None
+        # R6 fix: this only coerced the str case, so a raw datetime.datetime from a
+        # timestamptz column (bodha_discoveries.detected_at) passed through untouched.
+        # window_end (= detected_at + 90 days) then stayed a datetime, and the T-5 gate's
+        # `a.window_end < birth_date` comparison against a plain date crashed with
+        # "TypeError: can't compare datetime.datetime to datetime.date" — cascading to
+        # every downstream L4/L5 asset. _parse_iso_date already handles datetime/date/str
+        # uniformly; use it instead of a narrower ad-hoc check.
+        detected_at = _parse_iso_date(row.get('detected_at'))
 
         if detected_at is not None:
             row['window_start'] = detected_at
