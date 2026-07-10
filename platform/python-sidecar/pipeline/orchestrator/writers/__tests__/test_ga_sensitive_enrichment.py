@@ -32,6 +32,21 @@ ALL_LONGS = {
 PANCHANGA_SUNDAY = {"vara": 0, "is_daytime": True, "tithi_id": 3}
 CHART_DATA_EMPTY = {}
 
+# M-10 fix: _build_special_lagnas_rows now delegates to chart_data["special_lagnas"]
+# (PyJHora-native), rather than computing hand-rolled Sun-offset proxies. Mock
+# a populated dict matching pyjhora_adapter.special_lagnas.compute_special_lagnas().
+CHART_DATA_SPECIAL_LAGNAS = {
+    "special_lagnas": {
+        "bhava_lagna": {"longitude_deg": 12.3, "sign": "Aries", "sign_id": 1, "degree_in_sign": 12.3},
+        "hora_lagna": {"longitude_deg": 60.8, "sign": "Gemini", "sign_id": 3, "degree_in_sign": 0.8},
+        "ghati_lagna": {"longitude_deg": 254.1, "sign": "Sagittarius", "sign_id": 9, "degree_in_sign": 14.1},
+        "vighati_lagna": {"longitude_deg": 197.8, "sign": "Libra", "sign_id": 7, "degree_in_sign": 17.8},
+        "indu_lagna": {"longitude_deg": 237.0, "sign": "Scorpio", "sign_id": 8, "degree_in_sign": 27.0},
+        "sree_lagna": {"longitude_deg": 202.9, "sign": "Libra", "sign_id": 7, "degree_in_sign": 22.9},
+        "varnada_lagna": {"longitude_deg": 102.4, "sign": "Cancer", "sign_id": 4, "degree_in_sign": 12.4},
+    }
+}
+
 
 def test_gulika_mandi_returns_both_subjects():
     rows = _build_gulika_mandi_sensitive_rows(
@@ -79,34 +94,61 @@ def test_sun_derived_two_pass_verified():
 
 def test_special_lagnas_has_hora_ghati_bhava():
     rows = _build_special_lagnas_rows(
-        ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
+        CHART_DATA_SPECIAL_LAGNAS, ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
     subjects = {r["fact_subject"] for r in rows}
     for expected in ["HORA_LAGNA", "GHATI_LAGNA", "BHAVA_LAGNA"]:
         assert expected in subjects, f"Missing {expected}"
 
 
-def test_special_lagnas_vighati_is_floored():
+def test_special_lagnas_indu_sree_varnada_added():
+    """M-10: Indu/Sree/Varnada Lagna are newly delegated (previously absent)."""
     rows = _build_special_lagnas_rows(
-        ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
+        CHART_DATA_SPECIAL_LAGNAS, ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
+    subjects = {r["fact_subject"] for r in rows}
+    for expected in ["INDU_LAGNA", "SREE_LAGNA", "VARNADA_LAGNA"]:
+        assert expected in subjects, f"Missing {expected}"
+
+
+def test_special_lagnas_vighati_is_delegated_not_floored():
+    """M-10: Vighati Lagna is now delegated to PyJHora (drik.vighati_lagna),
+    which derives it from the birth JD directly — no longer floored for lack
+    of sub-second precision."""
+    rows = _build_special_lagnas_rows(
+        CHART_DATA_SPECIAL_LAGNAS, ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
     vighati_rows = [r for r in rows if r.get("fact_subject") == "VIGHATI_LAGNA"]
     assert len(vighati_rows) >= 1
     for r in vighati_rows:
-        assert r.get("verification_pass_status") == "floored"
+        assert r.get("verification_pass_status") == "two_pass_verified"
 
 
-def test_special_lagnas_others_documented_approximation():
-    # M-22/M-10 fix (R6-1f): HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA use Sun's
-    # within-sign offset as a time-since-sunrise proxy (this file's own
-    # "approximated from..." comments admit it) — not the classical
-    # elapsed-time derivation. These no longer claim "two_pass_verified"
-    # (no verifier ever cross-checked them); they are honestly demoted to
-    # "documented_approximation" (formulas.py VERIFICATION_RESCALE 0.60).
+def test_special_lagnas_others_two_pass_verified():
+    # M-10 fix (R6-1d) supersedes the M-22/R6-1f stamp demotion this test
+    # previously encoded: HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA no longer use
+    # the fabricated Sun-within-sign-offset proxy that justified downgrading
+    # them to "documented_approximation" — they are now delegated to
+    # PyJHora's real time-since-sunrise derivation (drik.hora_lagna /
+    # drik.ghati_lagna / drik.bhava_lagna) via chart_data["special_lagnas"],
+    # same as VIGHATI_LAGNA/INDU_LAGNA/SREE_LAGNA/VARNADA_LAGNA. With a real
+    # independent computation now backing every subject, the honest tier is
+    # "two_pass_verified", not a demoted stamp on a fabricated formula that
+    # no longer exists in this writer.
     rows = _build_special_lagnas_rows(
-        ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
+        CHART_DATA_SPECIAL_LAGNAS, ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
     non_vighati = [r for r in rows if r.get("fact_subject") != "VIGHATI_LAGNA"]
     assert non_vighati, "expected HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA rows"
     for r in non_vighati:
-        assert r.get("verification_pass_status") == "documented_approximation"
+        assert r.get("verification_pass_status") == "two_pass_verified"
+
+
+def test_special_lagnas_floors_when_native_absent():
+    """M-10: with no chart_data['special_lagnas'] (PyJHora unavailable), every
+    subject floors rather than serving a fabricated Sun-offset substitute."""
+    rows = _build_special_lagnas_rows(
+        CHART_DATA_EMPTY, ALL_LONGS, CHART_ID, AYA_ID, BUILD_ID, ENG_VER, PANCHANGA_SUNDAY)
+    assert len(rows) > 0
+    for r in rows:
+        assert r.get("verification_pass_status") == "floored"
+        assert r.get("fact_value_num") is None
 
 
 def test_sphuta_completion_both_subjects():
