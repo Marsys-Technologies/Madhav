@@ -123,6 +123,29 @@ MEAN_SPEED: dict[str, float] = {
 }
 CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 
+# Deeptamsa (orb of "light"/influence) per graha, degrees — Tajika Nilakanthi /
+# mirrors PyJHora's jhora.const.deeptaamsa_of_planets (Sun,Moon,Mars,Mercury,
+# Jupiter,Venus,Saturn = 15,12,8,7,9,7,9). Two grahas are within mutual
+# deeptamsa when their angular separation <= (deeptamsa[g1] + deeptamsa[g2])
+# (M-13: the flat 7° orb previously used here ignored this per-graha spread).
+DEEPTAMSA: dict[str, float] = {
+    "Sun": 15.0, "Moon": 12.0, "Mars": 8.0, "Mercury": 7.0,
+    "Jupiter": 9.0, "Venus": 7.0, "Saturn": 9.0,
+}
+
+# Tajika aspect (drishti) precondition — the whole-sign house-difference
+# (1-indexed, B's house counted from A's house, 1 = same sign/conjunction)
+# at which a Tajika aspect exists at all. Derived directly from PyJHora's
+# jhora.horoscope.transit.tajaka aspect-set functions (trinal=5th/9th,
+# sextile=3rd/11th, square=4th/10th, opposition=7th, conjunction=same-sign);
+# semi-sextile (2nd/12th) is classified there as "neutral" and NOT included
+# in benefic/malefic_aspects_of_the_planet, and 6th/8th never appear in any
+# aspect-set function at all. M-13: the previous implementation had NO
+# house-relation gate whatsoever — it fired Tajika yogas purely from raw
+# ecliptic-longitude separation, so e.g. a 2nd/12th-house (non-aspecting)
+# pair within 30° could wrongly fire.
+_TAJIKA_ASPECTING_HOUSE_DIFFS = {1, 3, 4, 5, 7, 9, 10, 11}
+
 # Pañcavargīya: the 5 vargas (D1 Kṣetra, D2 Horā, D3 Drekkāṇa, D9 Navāṃśa,
 # D12 Dvādaśāṃśa) and per-dignity Viśva-style points.
 PANCAVARGA_FACTORS = [1, 2, 3, 9, 12]
@@ -288,24 +311,40 @@ def _panchavargiya_bala(graha: str, full_long: float) -> dict[str, Any]:
 
 # ── Tajik yoga firing (consumes GA8 aspect_tajik logic) ───────────────────────
 
+def _tajika_aspecting(house1: int, house2: int) -> bool:
+    """True iff two whole-sign houses (1-12) are in a recognized Tajika
+    aspect relation (conjunction/sextile/square/trinal/opposition) — the
+    mutual-aspect precondition. See _TAJIKA_ASPECTING_HOUSE_DIFFS."""
+    diff = ((house2 - house1) % 12) + 1
+    return diff in _TAJIKA_ASPECTING_HOUSE_DIFFS
+
+
 def _tajik_yogas(grahas_by_name: dict[str, dict], varsha_lagna_long: float
                  ) -> list[str]:
     """Which of Ithasala/Ishrafa/Nakta/Kambula/Dutthottha fire in the annual
-    chart. Reuses the GA8 Tajik-aspect rule set (orb + applying/separating via
-    mean-speed ordering); does NOT recompute the GA8 chart_facts rows."""
+    chart. Reuses the GA8 Tajik-aspect rule set — per-graha deeptamsa orb
+    (M-13, not a flat 7°) gated by a real Tajika mutual-aspect precondition
+    (M-13, not raw longitude proximity) + applying/separating via mean-speed
+    ordering; does NOT recompute the GA8 chart_facts rows."""
     fired: set[str] = set()
     longs = {g: grahas_by_name[g]["longitude"] for g in CLASSICAL_GRAHAS
              if g in grahas_by_name}
-    orb = 7.0  # deeptamsha-style working orb for the annual chart
+    houses_by_graha = {g: int(grahas_by_name[g]["house"]) for g in CLASSICAL_GRAHAS
+                       if g in grahas_by_name and grahas_by_name[g].get("house")}
 
     pairs_within: list[tuple[str, str, float, bool]] = []  # (g1, g2, sep, applying)
     for i, g1 in enumerate(CLASSICAL_GRAHAS):
         for g2 in CLASSICAL_GRAHAS[i + 1:]:
             if g1 not in longs or g2 not in longs:
                 continue
-            sep = abs(_ang_diff(longs[g1], longs[g2]))
-            if sep > 30.0:
+            # M-13 precondition #1: no Tajika aspect exists at all unless the
+            # two grahas are in a recognized whole-sign aspect relation.
+            h1, h2 = houses_by_graha.get(g1), houses_by_graha.get(g2)
+            if h1 is None or h2 is None or not _tajika_aspecting(h1, h2):
                 continue
+            sep = abs(_ang_diff(longs[g1], longs[g2]))
+            # M-13 precondition #2: combined per-graha deeptamsa, not a flat 7°.
+            orb = DEEPTAMSA[g1] + DEEPTAMSA[g2]
             # Faster planet (greater mean speed) is the approacher.
             faster, slower = (g1, g2) if MEAN_SPEED[g1] >= MEAN_SPEED[g2] else (g2, g1)
             # Applying (Ithasala) = faster planet behind the slower in longitude.
@@ -316,23 +355,41 @@ def _tajik_yogas(grahas_by_name: dict[str, dict], varsha_lagna_long: float
                 if applying:
                     fired.add("Ithasala")
                     if "Moon" in (g1, g2):
-                        fired.add("Kambula")   # Moon-borne Ithasala
+                        # Kambula (Tajika Nilakanthi ch.5-6): Moon's Ithasala
+                        # partner must be STRONGER than the Moon (Panchavargiya
+                        # Bala) — mere Moon-membership in an Ithasala pair is
+                        # not sufficient (M-13: "Kambula without Moon
+                        # conditions"). Reuses the same Bala already computed
+                        # for Varsesa candidate scoring in this module.
+                        partner = g2 if g1 == "Moon" else g1
+                        moon_bala = _panchavargiya_bala("Moon", longs["Moon"])["bala"]
+                        partner_bala = _panchavargiya_bala(partner, longs[partner])["bala"]
+                        if partner_bala > moon_bala:
+                            fired.add("Kambula")
                 else:
                     fired.add("Ishrafa")        # separating (Eesarpha)
-            elif sep <= 30.0 and applying:
-                fired.add("Dutthottha")         # approaching but beyond orb (Manaau-class)
+            elif applying:
+                fired.add("Dutthottha")         # approaching but beyond deeptamsa (Manaau-class)
 
-    # Nakta: a fast 'translator' planet within orb of two others that are not
-    # themselves within orb of each other.
+    # Nakta: a fast 'translator' planet within its combined deeptamsa of two
+    # others that are not themselves within combined deeptamsa (and each pair
+    # must independently satisfy the Tajika aspect precondition).
     for t in CLASSICAL_GRAHAS:
         if t not in longs:
             continue
-        within = [g for g in CLASSICAL_GRAHAS
-                  if g != t and g in longs and abs(_ang_diff(longs[g], longs[t])) <= orb]
+        within = [
+            g for g in CLASSICAL_GRAHAS
+            if g != t and g in longs
+            and houses_by_graha.get(t) is not None and houses_by_graha.get(g) is not None
+            and _tajika_aspecting(houses_by_graha[t], houses_by_graha[g])
+            and abs(_ang_diff(longs[g], longs[t])) <= (DEEPTAMSA[g] + DEEPTAMSA[t])
+        ]
         for i in range(len(within)):
             for j in range(i + 1, len(within)):
                 a, b = within[i], within[j]
-                if abs(_ang_diff(longs[a], longs[b])) > orb:
+                if (houses_by_graha.get(a) is not None and houses_by_graha.get(b) is not None
+                        and _tajika_aspecting(houses_by_graha[a], houses_by_graha[b])
+                        and abs(_ang_diff(longs[a], longs[b])) > (DEEPTAMSA[a] + DEEPTAMSA[b])):
                     fired.add("Nakta")
     return [y for y in TAJIK_YOGAS if y in fired]
 

@@ -341,22 +341,47 @@ def compute_combustion_arc(planet_longitude: float, sun_longitude: float) -> flo
     return raw_diff
 
 
-def check_combustion(graha: str, arc: float, orbs: dict) -> tuple[bool, bool]:
+
+# Retrograde planets get a TIGHTER combustion orb than direct motion per
+# classical authority (Saravali / Phaladeepika retrograde exception) —
+# M-19: "Mercury 12°R, Venus 8°R". These values are exactly the SAME values
+# already carried as each planet's own deep_orb_degrees in bg_combustion_orbs
+# (Mercury deep=12, Venus deep=8) — the classical retrograde exception
+# collapses the ordinary combustion threshold down to the direct-motion deep
+# (atichara) threshold. No new schema/migration needed: this is read from the
+# same bg_combustion_orbs row already loaded, just gated on is_retrograde.
+# Only Mercury and Venus carry a documented retrograde exception; all other
+# classical grahas use their direct-motion orb regardless of motion state.
+_RETROGRADE_COMBUSTION_GRAHAS = ("Mercury", "Venus")
+
+
+def check_combustion(
+    graha: str, arc: float, orbs: dict, is_retrograde: bool = False,
+) -> tuple[bool, bool]:
     """
     Determine whether a graha is combust or deeply combust.
 
     Args:
-        graha: Planet name
-        arc:   Angular arc from Sun (degrees, 0–180)
-        orbs:  Dict mapping graha → {'orb': float, 'deep': float}
-               Keys match bg_combustion_orbs columns.
+        graha:         Planet name
+        arc:           Angular arc from Sun (degrees, 0–180)
+        orbs:          Dict mapping graha → {'orb': float, 'deep': float}
+                       Keys match bg_combustion_orbs columns.
+        is_retrograde: Whether the graha is currently retrograde. Only
+                       Mercury/Venus have a documented retrograde-orb
+                       exception (M-19); see _RETROGRADE_COMBUSTION_GRAHAS.
 
     Returns:
         (is_combust, is_deeply_combust)
-        Sun itself → (False, False).
-        Rahu/Ketu: returns based on orbs table (tradition varies).
+        Sun itself → (False, False) — the Sun cannot be combust by itself.
+        Rahu/Ketu → (False, False) UNCONDITIONALLY (M-19): the nodes have no
+        physical body/disc to be "obscured by sunlight", which is the
+        astronomical basis of combustion (asta). bg_combustion_orbs still
+        carries legacy Rahu/Ketu rows for other traditions/consumers, but
+        this writer's condition-score combustion penalty never applies to
+        them — a chart_facts row claiming node combustion is a fabricated
+        computation (B.10), not a classically-grounded one.
     """
-    if graha == "Sun":
+    if graha in ("Sun", "Rahu", "Ketu"):
         return False, False
 
     graha_orbs = orbs.get(graha)
@@ -366,8 +391,10 @@ def check_combustion(graha: str, arc: float, orbs: dict) -> tuple[bool, bool]:
     orb       = float(graha_orbs.get("orb", graha_orbs.get("orb_degrees", 0)))
     deep_orb  = float(graha_orbs.get("deep", graha_orbs.get("deep_orb_degrees", 0)))
 
+    effective_orb = deep_orb if (is_retrograde and graha in _RETROGRADE_COMBUSTION_GRAHAS) else orb
+
     is_deeply = arc <= deep_orb
-    is_combust_ = arc <= orb
+    is_combust_ = arc <= effective_orb
     return is_combust_, is_deeply
 
 
@@ -907,19 +934,33 @@ def _load_dasha_periods(
         return None, None
 
 
-def _detect_graha_yuddha(position_map: dict[str, dict]) -> dict[str, tuple[str, str]]:
+def _detect_graha_yuddha(position_map: dict[str, dict]) -> dict[str, tuple[str, Optional[str]]]:
     """
     Detect graha yuddha (planetary war) pairs.
 
     Classical rule: two classical planets (excluding Rahu/Ketu and Sun/Moon)
     within 1° of each other in the same sign → graha yuddha.
-    Winner = planet with higher latitude; here approximated by higher
-    ecliptic longitude (simplified — true determination requires latitude data).
 
-    Returns dict: graha → (opponent_graha, 'winner'/'loser'/'none')
+    Winner determination is FLOORED per the JL-027 native ruling
+    (00_ARCHITECTURE/JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md, RULED
+    2026-07-08): the previously-shipped "higher longitude wins" proxy here was
+    the *mirror-image* of ga_structural_writer's now-removed "lower longitude
+    wins" proxy — JL-027 §1 documents these as "two contradictory uncited
+    rules, one silently clobbering the other". JL-027 explicitly forbids
+    shipping either longitude proxy as a winner determination (§2/§4) and
+    ratifies Option A (northern ecliptic latitude wins) as doctrine, but
+    *implementation* of Option A is deferred to R5 pending a Swiss Ephemeris
+    latitude L1 fact + derivation ledger (§5/§6). JL-027 §"governs" explicitly
+    scopes this ruling to ga_structural_writer._build_graha_yuddha_rows
+    "+ downstream graha_yuddha readers" — this function's yuddha_result
+    annotation on ga_condition_composite is such a reader, so it floors
+    identically: opponent pairing (yuddha_with) is reported, winner/loser
+    is not.
+
+    Returns dict: graha → (opponent_graha, None)   # result always None (floored)
     """
     classical = ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
-    result: dict[str, tuple[str, str]] = {}
+    result: dict[str, tuple[str, Optional[str]]] = {}
 
     for i, g1 in enumerate(classical):
         for g2 in classical[i+1:]:
@@ -939,13 +980,10 @@ def _detect_graha_yuddha(position_map: dict[str, dict]) -> dict[str, tuple[str, 
             if arc > 180:
                 arc = 360 - arc
             if arc <= 1.0:
-                # Winner = higher longitude in direct motion (simplified)
-                if l1 > l2:
-                    result[g1] = (g2, "winner")
-                    result[g2] = (g1, "loser")
-                else:
-                    result[g2] = (g1, "winner")
-                    result[g1] = (g2, "loser")
+                # JL-027 FLOOR: no ratified classical rule decides a winner from
+                # longitude alone. Report the opponent only; result is None.
+                result[g1] = (g2, None)
+                result[g2] = (g1, None)
 
     return result
 
@@ -1235,7 +1273,11 @@ def _build_d1_avastha_rows(
 
     sun_pos = position_map.get("Sun")
     sun_longitude = sun_pos.get("longitude") if sun_pos else None
-    combustion_orbs: dict = {}
+    # M-19: this was previously an empty dict that never resolved a graha's
+    # orb, silently forcing is_combust=False for every graha's lajjitadi
+    # avastha regardless of true combustion state. Load the real L0
+    # bg_combustion_orbs table (same source ga_condition_composite uses).
+    combustion_orbs: dict = _load_combustion_orbs(conn)
 
     for graha in ALL_GRAHAS:
         pos = position_map.get(graha)
@@ -1254,7 +1296,7 @@ def _build_d1_avastha_rows(
         is_combust = False
         if longitude is not None and sun_longitude is not None and graha != "Sun":
             arc = compute_combustion_arc(longitude, sun_longitude)
-            is_combust, _ = check_combustion(graha, arc, combustion_orbs)
+            is_combust, _ = check_combustion(graha, arc, combustion_orbs, is_retrograde=is_retrograde)
 
         # ── Sayanadi row ──────────────────────────────────────────────────────
         if deg_in_sign is not None:
@@ -1401,7 +1443,9 @@ def build_ga_condition_substep(
         is_deeply_combust = False
         if longitude is not None and sun_longitude is not None and graha != "Sun":
             combustion_arc = compute_combustion_arc(longitude, sun_longitude)
-            is_combust, is_deeply_combust = check_combustion(graha, combustion_arc, combustion_orbs)
+            is_combust, is_deeply_combust = check_combustion(
+                graha, combustion_arc, combustion_orbs, is_retrograde=is_retrograde
+            )
 
         # ── Avasthas ─────────────────────────────────────────────────────────
         avastha_baladi: Optional[str] = None
