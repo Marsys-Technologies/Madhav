@@ -161,6 +161,35 @@ workflow agents (which run un-isolated in the main checkout and have full Bash a
 exploration than their lane brief called for. Left untouched on disk, excluded from every R5.3 commit;
 flagged here rather than silently deleted or silently committed.
 
+## B3 — THE TWO BOUNDED FIXES — DONE, BOTH LIVE-VERIFIED
+
+**Fix #1 — `query_remedies` 106KB single-row.** Already shipped inside the remedy lane's PR #510
+(`query_remedy_corpus.ts`: default `limit` 100→20, `SELECT *` → curated column projection, honest
+filtered `COUNT(*)` as `total`). Independently re-confirmed live post-B2 (not just taken on the
+implementer's word): `query_remedies` (MCP-facing name, bridges to `query_remedy_corpus`) called
+with no args now returns **12,941 bytes** (was 105,935 — 8.2× reduction), 10 rows, well under any
+reasonable ceiling.
+
+**Fix #2 — D60 rectification-confidence note (§31.4 time-sensitivity ladder).** PR #514, merged,
+deploy-confirmed. Pratinidhi-R ruling: per `R5_AUTHORITY_DOSSIER_v1_0.md` §4, D24–D60 lagna-dependent
+claims require `sensitive_extreme` birth-time confidence (a D60 varga-lagna changes sign every ~2
+minutes). Looked up the native chart's actual rectification state
+(`phala_rectification_best`, chart `482012f1`): `confidence_label='unresolved'`, `win_margin=0.0000`,
+0/36 LEL training events matched — genuinely below threshold, not a hypothetical. Implemented in
+`platform/src/lib/retrieval/registry/layers/register_d7_channel.ts`'s `chart_facts_query` handler:
+when `divisional_chart='D60'` and the chart's confidence_label isn't high/resolved, attaches a
+`judgment_flags: ['time_sensitive_low_confidence']` array and a narrated `time_sensitivity_note`
+citing the actual win_margin/LEL-match numbers — never floors or withholds the underlying D60 facts,
+only changes the framing (per the project's "never fabricate confidence, never silently drop data"
+discipline). `npx tsc --noEmit` and `npx eslint` both clean (0 new errors/warnings). Live-verified
+post-deploy against prod: `query_chart_facts(chart_id=482012f1, divisional_chart='D60')` now returns
+both fields exactly as designed. No orchestrator/writer/chart-data/frozen-constant/battery/grader
+touch — pure lookup + framing.
+
+**Gate: both ≤ ceiling / grade-correct, live on both — MET** (fix #2 only verified against the native
+chart `482012f1`; Abhinandan `1c826d5a`'s rectification state was not separately checked but the same
+code path applies chart-agnostically).
+
 ---
 
 ## Lane: Verification/derivation (ganita_structural_get dosha_fires, ganita_yogas_get) — Q9-N-1 / Q9-N-3
