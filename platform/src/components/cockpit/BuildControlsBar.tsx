@@ -3,6 +3,15 @@
 /**
  * BuildControlsBar — top-bar build action cluster
  * [PHASE-C-06]
+ *
+ * R6 fix: this component previously called /api/build/start (410 GONE — decommissioned)
+ * and /api/build/rebuild-all (a stub that only inserts an unprocessed build_events row,
+ * never actually invokes a build) — clicking any button here silently did nothing or
+ * logged a dead event. The real, current build-orchestration endpoint is
+ * POST /api/cockpit/runs (chart_id/scope/action, invokes the Cloud Run job, returns
+ * {data:{run_id,...}}), and stopping a run is POST /api/cockpit/runs/[id]/stop. The old
+ * status checks ('queued'/'success'/'partial'/'cancelling') also never matched the real
+ * build_runs.state enum (planned/running/paused/completed/failed/stopped) — fixed below.
  */
 
 import { useState, useCallback } from 'react'
@@ -14,28 +23,25 @@ interface Props {
   onBuildStart: (buildId?: string) => void
 }
 
-type Action = 'build' | 'continue' | 'rebuild-all' | 'stop'
+type Action = 'build' | 'rebuild' | 'stop'
 
 async function postBuildAction(
   action: Action,
   chartId: string,
   buildId?: string,
-): Promise<{ ok: boolean; build_id?: string }> {
-  const endpoints: Record<Action, string> = {
-    'build':       '/api/build/start',
-    'continue':    '/api/build/continue',
-    'rebuild-all': '/api/build/rebuild-all',
-    'stop':        '/api/build/stop',
+): Promise<{ run_id?: string; error?: string }> {
+  if (action === 'stop') {
+    const res = await fetch(`/api/cockpit/runs/${buildId ?? ''}/stop`, { method: 'POST' })
+    const body = await res.json()
+    return res.ok ? { run_id: body.data?.run_id } : { error: body.error ?? 'stop failed' }
   }
-  const body: Record<string, string> = action === 'stop'
-    ? { build_id: buildId ?? '' }
-    : { chart_id: chartId }
-  const res = await fetch(endpoints[action], {
+  const res = await fetch('/api/cockpit/runs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ chart_id: chartId, scope: 'global', action }),
   })
-  return res.json()
+  const body = await res.json()
+  return res.ok ? { run_id: body.data?.run_id } : { error: body.error ?? 'build dispatch failed' }
 }
 
 export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }: Props) {
@@ -45,15 +51,15 @@ export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }
     setBusy(true)
     try {
       const result = await postBuildAction(action, chartId, buildId)
-      if (result.ok) onBuildStart(result.build_id)
+      if (result.run_id) onBuildStart(result.run_id)
     } finally {
       setBusy(false)
     }
   }, [chartId, buildId, onBuildStart])
 
-  const isRunning = buildStatus === 'queued' || buildStatus === 'running' || buildStatus === 'cancelling'
-  const isFailed  = buildStatus === 'failed' || buildStatus === 'partial'
-  const isDone    = buildStatus === 'success'
+  const isRunning = buildStatus === 'planned' || buildStatus === 'running' || buildStatus === 'paused'
+  const isFailed  = buildStatus === 'failed' || buildStatus === 'stopped'
+  const isDone    = buildStatus === 'completed'
   const hasNoBuild = !buildStatus
 
   return (
@@ -82,15 +88,18 @@ export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }
           )}
           {isFailed && (
             <>
+              {/* action='build' only targets assets still dormant/error — the real
+                  equivalent of "continue": already-lit assets from the failed run are
+                  skipped, not rebuilt. */}
               <button
-                onClick={() => execute('continue')}
+                onClick={() => execute('build')}
                 disabled={busy}
                 className="px-4 py-1.5 rounded-lg text-sm border border-[#d4a648] text-[#d4a648] hover:bg-[#d4a648]/10 transition-colors disabled:opacity-50"
               >
                 Continue Build
               </button>
               <button
-                onClick={() => execute('rebuild-all')}
+                onClick={() => execute('rebuild')}
                 disabled={busy}
                 className="px-4 py-1.5 rounded-lg text-sm text-[#8a8070] hover:text-[#c8bfb0] hover:bg-[#1a1820] transition-colors disabled:opacity-50"
               >
@@ -100,7 +109,7 @@ export function BuildControlsBar({ chartId, buildId, buildStatus, onBuildStart }
           )}
           {isDone && (
             <button
-              onClick={() => execute('rebuild-all')}
+              onClick={() => execute('rebuild')}
               disabled={busy}
               className="px-4 py-1.5 rounded-lg text-sm text-[#8a8070] hover:text-[#c8bfb0] hover:bg-[#1a1820] transition-colors disabled:opacity-50"
             >
