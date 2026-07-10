@@ -1,0 +1,116 @@
+name: TAP CI — Total Audit Protocol Suite
+
+# R6 lane 5-harness. Implements the CI/regression half of
+# 00_ARCHITECTURE/TOTAL_AUDIT_PROTOCOL_v1_0.md §3 + the Phase 5 "VERIFICATION
+# HARNESS" line of MARSYS_DEFECT_GAP_REGISTER_v2_0.md's phased implementation
+# plan: "TAP CI suite: the 7 seam-conservation checks (TAP-5 spec), TAP-6 grep
+# set, TAP-7 8 gates, S-13 live coverage matrix."
+#
+# Merged EARLY per design (TOTAL_AUDIT_PROTOCOL_v1_0.md §5 "Immediate (with
+# R6)"), then ratcheted as other R6 lanes land fixes:
+#   - TAP-6 (method-audit grep) and the SC-17/18/19 boot-time pointer check
+#     are pure static analysis — they run on every push/PR, no DB needed,
+#     and gate merges today.
+#   - TAP-5 (seam conservation), TAP-7 (distribution gates), and S-13 (live
+#     coverage matrix) need a reachable Postgres — they run against a
+#     DATABASE_URL secret when configured, and degrade to an explicit
+#     SKIPPED-WITH-REASON (never a silent pass) when it is not. See
+#     platform/scripts/audit/tap/README.md for the Cloud SQL Auth Proxy
+#     invocation the real pipeline should wire in.
+#   - The per-tool MCP smoke battery needs a deployed platform-mcp instance;
+#     it runs in PLAN mode (enumerate + classify, no live calls) here and
+#     documents expected-fail (known-dead, register-cited) vs expected-pass
+#     for every one of the 109 registered tools.
+#
+# Every job that cannot achieve a hard PASS in this environment is marked
+# QUARANTINED/SKIPPED with an explicit register-row citation — per TAP-9
+# discipline (TOTAL_AUDIT_PROTOCOL_v1_0.md §3), an absent oracle must be
+# declared, never silently passed.
+
+on:
+  push:
+    branches: [main, 'feature/**', 'r6/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  tap6-method-audit:
+    name: TAP-6 — Method audit grep set
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run TAP-6 grep set (no DB required)
+        working-directory: platform
+        run: npx tsx scripts/audit/tap/tap6_method_grep.ts
+
+  sc-pointer-validation:
+    name: Boot-time pointer validation (SC-17/18/19)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run pointer resolution check (no DB required)
+        working-directory: platform
+        run: npx tsx scripts/audit/tap/sc_pointer_validation.ts
+
+  mcp-tool-smoke-plan:
+    name: MCP per-tool smoke battery (plan mode; LIVE mode needs a deployed server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Enumerate + classify every registered tool
+        working-directory: platform
+        # Exit code 3 = SKIPPED-WITH-REASON (no live server) — expected here.
+        # continue-on-error so the job still surfaces the per-tool plan in
+        # the log without red-X'ing merges on an infra precondition this
+        # lane cannot satisfy from a hosted runner alone. Wire MCP_SERVER_URL
+        # + MCP_SMOKE_BEARER_TOKEN as repo secrets once a staging platform-mcp
+        # deployment is available, then drop continue-on-error.
+        continue-on-error: true
+        run: npx tsx scripts/audit/tap/mcp_tool_smoke.ts
+        env:
+          MCP_SERVER_URL: ${{ secrets.TAP_MCP_SERVER_URL }}
+          MCP_SMOKE_BEARER_TOKEN: ${{ secrets.TAP_MCP_SMOKE_BEARER_TOKEN }}
+
+  tap-db-gates:
+    name: TAP-5 / TAP-7 / S-13 — DB-backed conservation + distribution gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: npm ci (platform)
+        working-directory: platform
+        run: npm ci
+      - name: S-13 live coverage matrix
+        working-directory: platform
+        # See file header: exits 3 (SKIPPED-WITH-REASON) instead of a false
+        # PASS when DATABASE_URL is unset. continue-on-error until the repo
+        # wires a DATABASE_URL secret pointed at a Cloud SQL Auth Proxy
+        # sidecar (see platform/scripts/audit/tap/README.md).
+        continue-on-error: true
+        run: npx tsx --conditions=react-server scripts/audit/tap/s13_coverage_matrix_live.ts
+        env:
+          DATABASE_URL: ${{ secrets.TAP_DATABASE_URL }}
+      - name: TAP-5 seam conservation (7 laws)
+        working-directory: platform
+        continue-on-error: true
+        run: npx tsx --conditions=react-server scripts/audit/tap/tap5_seam_conservation.ts
+        env:
+          DATABASE_URL: ${{ secrets.TAP_DATABASE_URL }}
+      - name: TAP-7 distribution gates (8 gates)
+        working-directory: platform
+        continue-on-error: true
+        run: npx tsx --conditions=react-server scripts/audit/tap/tap7_distribution_gates.ts
+        env:
+          DATABASE_URL: ${{ secrets.TAP_DATABASE_URL }}
+          TAP7_API_BASE_URL: ${{ secrets.TAP7_API_BASE_URL }}

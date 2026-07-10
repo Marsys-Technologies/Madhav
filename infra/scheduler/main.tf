@@ -92,9 +92,30 @@ resource "google_cloud_scheduler_job" "pending_stream_reaper" {
 
   http_target {
     http_method = "POST"
-    uri         = "${var.amjis_web_url}/api/cron/reap_pending_streams"
+    # R6 0a-envauth (O-2): corrected from /api/cron/reap_pending_streams, which does
+    # not exist in the repo (404) — the route has always lived at
+    # /api/admin/cron/reap-pending-streams (platform/src/app/api/admin/cron/reap-pending-streams/route.ts,
+    # introduced #33). This target URI was stale from this file's original authoring
+    # and never matched the actual route path.
+    uri = "${var.amjis_web_url}/api/admin/cron/reap-pending-streams"
     headers = {
       "Content-Type" = "application/json"
+      # x-marsys-cron-secret (NOT set here in plaintext — provision via
+      # `gcloud scheduler jobs update http amjis-pending-stream-reaper
+      # --update-headers="x-marsys-cron-secret=<secret>"` post-apply, reusing the
+      # same mcpt-scheduler-secret value already live in Secret Manager). R5.2 A4
+      # finding (bbee27c3, applied here per O-2): this job's route-side
+      # Authorization-header shared-secret check collided with the oidc_token
+      # block below — Cloud Scheduler's OIDC identity token is ALSO delivered via
+      # the Authorization header, so the app-level check (`Authorization ===
+      # "Bearer <MARSYS_CRON_SECRET>"`) could never match a live OIDC JWT and
+      # 401'd on every run (this is the pre-existing sibling-job silent failure
+      # bbee27c3's commit message flagged but explicitly did not fix — fixed
+      # here). Moved the app-level shared-secret check to this dedicated header,
+      # mirroring the already-proven x-watchdog-auth / x-marsys-cron-secret
+      # convention — it does not collide with Cloud Run's own OIDC-in-Authorization
+      # mechanism, so the IAM-level oidc_token gate and the app-level secret
+      # check now coexist correctly, same as panchanga_refresh.tf / canary_battery.tf.
     }
     body = base64encode("{}")
 
