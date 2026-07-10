@@ -81,6 +81,40 @@ class _NullConn:
 NULL_CONN = _NullConn()
 
 
+class _StrengthFakeCursor:
+    """Cursor stand-in for _load_shadbala_and_bhava_fact_ids (M-14): returns
+    real-shaped graha_shadbala_total + house_bhava_bala_total rows so
+    _build_composite_strength_rows exercises its real (non-floored) path."""
+    def __init__(self):
+        self._last_query = ""
+
+    def execute(self, query, params=None):
+        self._last_query = query
+
+    def fetchall(self):
+        if "graha_shadbala_total" in self._last_query:
+            subjects = ["SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN"]
+            return [(s, 6.0, f"fid-sb-{s}") for s in subjects]
+        if "house_bhava_bala_total" in self._last_query:
+            return [(f"HOUSE_{h}", 5.0, f"fid-bb-{h}") for h in range(1, 13)]
+        return []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _StrengthFakeConn:
+    """No-op-except-strength-queries DB connection for composite-strength tests."""
+    def cursor(self, row_factory=None):
+        return _StrengthFakeCursor()
+
+
+STRENGTH_FAKE_CONN = _StrengthFakeConn()
+
+
 def _make_rows(*groups) -> list[dict[str, Any]]:
     """Helper to concatenate row groups."""
     result = []
@@ -510,7 +544,7 @@ class TestAvasthas:
 class TestCompositeStrength:
     def test_three_keys_per_graha_per_house(self):
         rows = sut._build_composite_strength_rows(
-            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+            STRENGTH_FAKE_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
         # 9 grahas × 12 houses × 3 keys = 324
         graha_count = len(MOCK_CHART_OUTPUT["grahas"])
@@ -519,7 +553,7 @@ class TestCompositeStrength:
 
     def test_strength_scores_between_0_and_2(self):
         rows = sut._build_composite_strength_rows(
-            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
+            STRENGTH_FAKE_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
         num_rows = [r for r in rows if r["fact_value_num"] is not None
                     and r["fact_key"] in ("bphs_weighted", "simple_multiplication")]
@@ -857,7 +891,7 @@ class TestGA3OverlapPrevention:
             sut._build_yoga_rows(NULL_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             sut._build_dosha_rows(NULL_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             sut._build_avastha_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
-            sut._build_composite_strength_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
+            sut._build_composite_strength_rows(STRENGTH_FAKE_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             sut._build_functional_class_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             sut._build_karakatva_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             sut._build_structural_relationship_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
@@ -983,7 +1017,7 @@ class TestNoDuplicateFactIds:
             *sut._build_yoga_rows(NULL_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             *sut._build_dosha_rows(NULL_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             *sut._build_avastha_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
-            *sut._build_composite_strength_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
+            *sut._build_composite_strength_rows(STRENGTH_FAKE_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             *sut._build_functional_class_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             *sut._build_karakatva_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
             *sut._build_structural_relationship_rows(MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER),
