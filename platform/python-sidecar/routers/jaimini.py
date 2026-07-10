@@ -53,9 +53,31 @@ _SIGN_NAMES = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 ]
-_REQUIRED_SUBJECTS = [
-    "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Lagna",
+
+# chart_facts stores fact_subject as the abbreviated uppercase code, NOT the
+# full name — confirmed against real chart_facts for 482012f1: SUN, MOON,
+# MAR, MER, JUP, VEN, SAT, LAGNA (same convention as ga_strength_writer.py:1439
+# and ga_dashas_writer.py's own _compute_dynamic_chara_params). A prior
+# version of this router queried on full names and matched ZERO rows for
+# every chart, turning the M-8 fix into an unconditional break (Ring-2
+# finding). Map DB code -> engine-facing name (jaimini_chara.py's SIGN_LORDS
+# uses full names, plus the special key "Lagna").
+_CODE_TO_NAME = {
+    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
+    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn", "LAGNA": "Lagna",
+}
+_REQUIRED_CODES = list(_CODE_TO_NAME.keys())
+_REQUIRED_SUBJECTS = list(_CODE_TO_NAME.values())  # for error messages only
+
+# Real stored ayanamsha_id values (ga_dashas_writer.py AYANAMSHAS; confirmed
+# live against chart_facts for 482012f1). "lahiri"/"kp"/"true_citra" (a typo
+# of true_chitra) never existed in the DB — a prior version of this default
+# 422'd on every call regardless of data completeness (Ring-2 finding).
+_VALID_AYANAMSHAS = [
+    "lahiri_chitrapaksha", "true_chitra", "krishnamurti", "raman",
+    "surya_siddhanta_classical",
 ]
+_DEFAULT_AYANAMSHA = "lahiri_chitrapaksha"
 
 
 def _db_url() -> str:
@@ -79,6 +101,15 @@ def _fetch_chart_longitudes(chart_id: str, ayanamsha_id: str) -> Dict[str, float
     from chart_facts. M-8 fix: replaces NATIVE_FALLBACK_LONGITUDES — there is
     no substitute value for a missing fact; a gap here is a 422, not a number.
     """
+    if ayanamsha_id not in _VALID_AYANAMSHAS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"[EXTERNAL_COMPUTATION_REQUIRED] ayanamsha_id={ayanamsha_id!r} is not "
+                f"a stored chart_facts ayanamsha_id. Valid values: {_VALID_AYANAMSHAS}."
+            ),
+        )
+
     try:
         with _conn() as conn:
             with conn.cursor() as cur:
@@ -92,7 +123,7 @@ def _fetch_chart_longitudes(chart_id: str, ayanamsha_id: str) -> Dict[str, float
                        AND fact_key IN ('sign', 'degree_in_sign')
                        AND fact_subject = ANY(%s)
                     """,
-                    (chart_id, ayanamsha_id, _REQUIRED_SUBJECTS),
+                    (chart_id, ayanamsha_id, _REQUIRED_CODES),
                 )
                 rows = cur.fetchall()
     except Exception as exc:
@@ -107,7 +138,10 @@ def _fetch_chart_longitudes(chart_id: str, ayanamsha_id: str) -> Dict[str, float
 
     sign_by_subject: Dict[str, str] = {}
     deg_by_subject: Dict[str, float] = {}
-    for subj, key, val_text, val_num in rows:
+    for code, key, val_text, val_num in rows:
+        subj = _CODE_TO_NAME.get(code)
+        if subj is None:
+            continue
         if key == "sign" and val_text:
             sign_by_subject[subj] = val_text
         elif key == "degree_in_sign" and val_num is not None:
@@ -169,8 +203,11 @@ def get_active_chara_dasha(
         "this chart's own chart_facts (M-8 fix) — never a fallback table.",
     ),
     ayanamsha_id: str = Query(
-        default="lahiri",
-        description="Ayanamsha used to resolve chart_facts (lahiri|raman|kp|true_citra).",
+        default=_DEFAULT_AYANAMSHA,
+        description=(
+            "Ayanamsha used to resolve chart_facts. Must be a stored value: "
+            "lahiri_chitrapaksha|true_chitra|krishnamurti|raman|surya_siddhanta_classical."
+        ),
     ),
 ) -> Dict[str, Any]:
     """
@@ -180,7 +217,7 @@ def get_active_chara_dasha(
       date          — target date (default: today)
       birth_date    — birth date (default: native 1984-02-05)
       chart_id      — chart to resolve longitudes for (default: native chart_id)
-      ayanamsha_id  — ayanamsha for chart_facts lookup (default: lahiri)
+      ayanamsha_id  — ayanamsha for chart_facts lookup (default: lahiri_chitrapaksha)
 
     M-8 fix: longitudes are resolved from chart_facts for `chart_id`; there is
     no fallback table. If chart_facts is missing the needed facts, this
@@ -256,8 +293,11 @@ def get_full_chara_dasha(
         "this chart's own chart_facts (M-8 fix) — never a fallback table.",
     ),
     ayanamsha_id: str = Query(
-        default="lahiri",
-        description="Ayanamsha used to resolve chart_facts (lahiri|raman|kp|true_citra).",
+        default=_DEFAULT_AYANAMSHA,
+        description=(
+            "Ayanamsha used to resolve chart_facts. Must be a stored value: "
+            "lahiri_chitrapaksha|true_chitra|krishnamurti|raman|surya_siddhanta_classical."
+        ),
     ),
 ) -> Dict[str, Any]:
     """
@@ -267,7 +307,7 @@ def get_full_chara_dasha(
       birth_date          — birth date (default: native 1984-02-05)
       include_sub_periods — if true, include antar dasha entries per period
       chart_id            — chart to resolve longitudes for (default: native chart_id)
-      ayanamsha_id        — ayanamsha for chart_facts lookup (default: lahiri)
+      ayanamsha_id        — ayanamsha for chart_facts lookup (default: lahiri_chitrapaksha)
 
     M-8 fix: longitudes are resolved from chart_facts for `chart_id`; there is
     no fallback table. If chart_facts is missing the needed facts, this

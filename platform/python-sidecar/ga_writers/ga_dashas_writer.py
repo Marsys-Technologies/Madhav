@@ -1351,6 +1351,16 @@ def _compute_dynamic_chara_params(
         6: "Venus", 7: "Mars", 8: "Jupiter", 9: "Saturn", 10: "Saturn", 11: "Jupiter",
     }
     _CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+    # chart_facts stores fact_subject as the abbreviated uppercase code, NOT
+    # the full name (confirmed against real chart_facts for 482012f1:
+    # SUN, MOON, MAR, MER, JUP, VEN, SAT, LAGNA — see ga_strength_writer.py:1439
+    # for the same convention). A prior version of this query filtered on
+    # full names and matched zero rows for every chart (Ring-2 finding).
+    _CODE_TO_GRAHA = {
+        "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
+        "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
+    }
+    _GRAHA_CODES = list(_CODE_TO_GRAHA.keys())
 
     # Query chart_facts for graha positions
     with conn.cursor() as cur:
@@ -1364,14 +1374,17 @@ def _compute_dynamic_chara_params(
                AND fact_key IN ('sign', 'degree_in_sign')
                AND fact_subject = ANY(%s)
             """,
-            (chart_id, ayanamsha_id, _CLASSICAL_GRAHAS),
+            (chart_id, ayanamsha_id, _GRAHA_CODES),
         )
         rows = cur.fetchall()
 
     graha_sign: dict[str, str] = {}
     graha_deg: dict[str, float] = {}
     for row in rows:
-        subj, key, val_text, val_num = row
+        code, key, val_text, val_num = row
+        subj = _CODE_TO_GRAHA.get(code)
+        if subj is None:
+            continue
         if key == "sign" and val_text:
             graha_sign[subj] = val_text
         elif key == "degree_in_sign" and val_num is not None:

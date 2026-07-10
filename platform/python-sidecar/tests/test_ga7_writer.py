@@ -125,14 +125,24 @@ def _mock_get_moon_position(ayanamsha_id: str, birth: dict | None = None):
 # NATIVE-hardcoded fallback — MARSYS_DEFECT_GAP_REGISTER_v2_0.md M-7). This
 # test suite stays "NO DB required" by mocking chart_facts rows directly,
 # same pattern as _mock_get_moon_position above mocks the ephemeris call.
+#
+# fact_subject uses the REAL abbreviated uppercase codes chart_facts actually
+# stores (SUN, MOON, MAR, MER, JUP, VEN, SAT) — NOT full names. A prior
+# version of this mock used full names ("Sun", "Moon", ...), which was
+# self-consistently wrong with a matching bug in the writer's query and
+# never caught the Ring-2-found regression (writer filtered on full names
+# against a table keyed by codes, matching zero rows on every real chart).
+# Values below are the REAL chart_facts rows for chart_id=482012f1,
+# ayanamsha_id=lahiri_chitrapaksha (read-only verification query, r6/0f
+# session) — reused here only as realistic mock input, not a live fallback.
 _MOCK_CHART_FACTS_CHARA_ROWS = [
-    ("Sun", "sign", "Capricorn", None), ("Sun", "degree_in_sign", None, 12.61),
-    ("Moon", "sign", "Aquarius", None), ("Moon", "degree_in_sign", None, 26.73),
-    ("Mars", "sign", "Scorpio", None), ("Mars", "degree_in_sign", None, 21.98),
-    ("Mercury", "sign", "Aquarius", None), ("Mercury", "degree_in_sign", None, 5.05),
-    ("Jupiter", "sign", "Scorpio", None), ("Jupiter", "degree_in_sign", None, 23.28),
-    ("Venus", "sign", "Pisces", None), ("Venus", "degree_in_sign", None, 13.52),
-    ("Saturn", "sign", "Scorpio", None), ("Saturn", "degree_in_sign", None, 19.28),
+    ("SUN", "sign", "Capricorn", None), ("SUN", "degree_in_sign", None, 21.9626172849916),
+    ("MOON", "sign", "Aquarius", None), ("MOON", "degree_in_sign", None, 27.055230133129),
+    ("MAR", "sign", "Libra", None), ("MAR", "degree_in_sign", None, 18.5191875546223),
+    ("MER", "sign", "Capricorn", None), ("MER", "degree_in_sign", None, 0.838753918698387),
+    ("JUP", "sign", "Sagittarius", None), ("JUP", "degree_in_sign", None, 9.78749702318149),
+    ("VEN", "sign", "Sagittarius", None), ("VEN", "degree_in_sign", None, 19.1726960894562),
+    ("SAT", "sign", "Libra", None), ("SAT", "degree_in_sign", None, 22.4319860591954),
 ]
 
 
