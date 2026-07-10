@@ -2384,9 +2384,9 @@ def _build_composite_strength_rows(
     Plus cross_formula_divergence row.
 
     M-14 fix: previously both formulas were computed from a fabricated
-    `shadbala_proxy = sthana*5+1  # rough rupa estimate` and a hand-waved
-    `bhava_bala_proxy` keyed only by house-quadrant (angular/succedent/
-    cadent), stamped with a false `pyjhora_adapter.*` source — no PyJHora
+    `shadbala_proxy = sthana*5+1` (a coarse, hand-waved rupa estimate) and a
+    similarly hand-waved `bhava_bala_proxy` keyed only by house-quadrant
+    (angular/succedent/cadent), stamped with a false `pyjhora_adapter.*` source — no PyJHora
     call and no real GA3 shadbala/bhava-bala data were ever consulted. Now
     that lane 1a (M-1) delegates shadbala to real PyJHora and the real
     per-graha `graha_shadbala_total` + per-house `house_bhava_bala_total`

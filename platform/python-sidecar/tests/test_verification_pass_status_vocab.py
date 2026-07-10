@@ -46,7 +46,7 @@ def test_verify_mudda_stays_within_chart_dashas_vocab():
     from ga_writers.ga_dashas_writer import _verify_mudda
 
     assert _verify_mudda([]) in RESTRICTED_TABLE_VOCAB
-    assert _verify_mudda([{"level_n": 1, "lord_graha": "Ketu"}]) in RESTRICTED_TABLE_VOCAB
+    assert _verify_mudda([{"level_n": 1, "lord_graha": "Ketu", "start_date": "1984-02-05"}]) in RESTRICTED_TABLE_VOCAB
 
 
 def test_verify_kalachakra_stays_within_chart_dashas_vocab():
@@ -61,19 +61,49 @@ def test_verify_kalachakra_stays_within_chart_dashas_vocab():
 def test_d60_deity_rows_stay_within_chart_divisionals_vocab():
     """_build_deity_rows's D60 branch (M-17 fix) must emit a
     chart_divisionals-legal verification_pass_status, not the
-    chart_facts-only 'documented_approximation' tier."""
+    chart_facts-only 'documented_approximation' tier.
+
+    M-17 (R6-1b) made D60 quality/deity a real DB-backed lookup against
+    bg_shashtiamsha_deities (migration 430) — without a live `conn`, the
+    function now correctly floors to zero rows (canonical-or-floor) rather
+    than fabricating a value, so this test needs a minimal mock connection
+    exercising the real code path, not a conn=None call."""
+    from unittest.mock import MagicMock
     from ga_writers.ga_vargas_writer import _build_deity_rows
+
+    mock_cur = MagicMock()
+    mock_cur.__enter__ = MagicMock(return_value=mock_cur)
+    mock_cur.__exit__ = MagicMock(return_value=False)
+    # amsa_number=1 kroora row — matches whatever amsa 1° Aries resolves to;
+    # test only needs the lookup to hit a real row, not a specific amsa.
+    mock_cur.fetchall.return_value = [(n, "kroora" if n % 2 else "soumya", None) for n in range(1, 61)]
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cur
 
     rows = _build_deity_rows(
         "test-chart-id", "lahiri_chitrapaksha", "test-build-id",
         60, "D60", {"Sun": {"sign_idx": 0, "degree_in_sign": 1.0}},
+        conn=mock_conn,
     )
-    assert rows, "expected at least one D60 deity row"
+    assert rows, "expected at least one D60 deity row when the reference table is reachable"
     for r in rows:
         assert r["verification_pass_status"] in RESTRICTED_TABLE_VOCAB, (
             f"D60 row verification_pass_status={r['verification_pass_status']!r} "
             f"violates chart_divisionals CHECK constraint"
         )
+
+    # Conversely: with NO conn (table genuinely unreachable), the function must
+    # floor honestly to zero rows rather than fabricate — not crash, not guess.
+    import ga_writers.ga_vargas_writer as _mod
+    _mod._SHASHTIAMSHA_CACHE = None  # reset the module-level cache between calls
+    floored_rows = _build_deity_rows(
+        "test-chart-id", "lahiri_chitrapaksha", "test-build-id",
+        60, "D60", {"Sun": {"sign_idx": 0, "degree_in_sign": 1.0}},
+    )
+    assert floored_rows == [], (
+        "expected zero rows (honest floor) when bg_shashtiamsha_deities is unreachable, "
+        f"got {floored_rows!r}"
+    )
 
 
 def test_saptavargaja_rows_stay_within_chart_divisionals_vocab():
@@ -105,7 +135,7 @@ def test_ga_dashas_writer_verify_functions_never_return_chart_facts_only_tiers()
     from ga_writers import ga_dashas_writer as mod
 
     checks = [
-        (mod._verify_mudda, [[], [{"level_n": 1, "lord_graha": "Ketu"}]]),
+        (mod._verify_mudda, [[], [{"level_n": 1, "lord_graha": "Ketu", "start_date": "1984-02-05"}]]),
         (
             mod._verify_kalachakra,
             [[], [{"level_n": 1, "lord_graha": mod.KALACHAKRA_SIGN_YEARS[0][0]}]],
