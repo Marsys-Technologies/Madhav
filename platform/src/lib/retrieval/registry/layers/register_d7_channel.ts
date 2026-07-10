@@ -1114,6 +1114,39 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         note: 'fact_id references resolve to the canonical L1 chart_facts table.',
       }
 
+      // R5.3 B3 bounded-fix #2: §31.4 time-sensitivity ladder (R5_AUTHORITY_DOSSIER §4).
+      // D24-D60 lagna-dependent claims require sensitive_extreme birth-time confidence
+      // (a Dn varga-lagna changes sign every ~120/n minutes — for D60 that's ~2 minutes).
+      // Pratinidhi-R ruling: below that threshold, serve the judgment_flag + an honest
+      // narrated note rather than assert D60 lagna-dependent claims at face value — never
+      // floor/withhold the underlying facts (they may still be useful for D1-anchored
+      // reads), just attach the caveat. Scoped to divisional_chart=D60 per this bounded
+      // fix's brief; the same lookup generalizes to D24/D30 if a future item needs it.
+      if (String(args['divisional_chart'] ?? '').toUpperCase() === 'D60') {
+        const rectRes = await query<{ confidence_label: string | null; win_margin: string | null; lel_training_events: number | null; lel_training_matched: number | null }>(
+          `SELECT confidence_label, win_margin, lel_training_events, lel_training_matched
+           FROM phala_rectification_best WHERE chart_id = $1`,
+          [chart_id]
+        )
+        const rect = rectRes.rows[0]
+        const label = rect?.confidence_label ?? 'no_rectification_run'
+        const belowThreshold = label !== 'high' && label !== 'resolved'
+        if (belowThreshold) {
+          const flags = Array.isArray(content['judgment_flags']) ? content['judgment_flags'] as string[] : []
+          flags.push('time_sensitive_low_confidence')
+          content['judgment_flags'] = flags
+          content['time_sensitivity_note'] = [
+            `D60 (Shashtiamsha) lagna-dependent claims require sensitive_extreme birth-time`,
+            `confidence per the §31.4 time-sensitivity ladder (a D60 varga-lagna changes sign`,
+            `every ~2 minutes). This chart's rectification confidence is currently`,
+            `"${label}"${rect ? ` (win_margin=${rect.win_margin ?? 'n/a'}, ${rect.lel_training_matched ?? 0}/${rect.lel_training_events ?? 0} LEL events matched)` : ' (no rectification row on record)'} —`,
+            `below that bar. D60 rows below are served as-computed (not withheld), but any`,
+            `lagna-dependent D60 claim (e.g. D60 lagna sign/house placements) should be read`,
+            `as indicative, not confirmed, until rectification resolves further.`,
+          ].join(' ')
+        }
+      }
+
       return { content, is_error: false }
     } catch (err) {
       return { content: { error: String(err), chart_id }, is_error: true }
