@@ -115,6 +115,38 @@ landing.
   at session start is now fully reconciled; no silent-fork risk found.
 - **Deployed Cloud Run revisions** (confirmed live, all `success` on the `Deploy to Cloud Run` workflow
   at `3c7ab8ab`): `amjis-web-00937-2m4`, `amjis-sidecar-00845-wz7`, `amjis-mcp-00420-cxp`.
+
+**REFRESHED 2026-07-10, post-checkpoint (PR #536)** — `origin/main` HEAD advanced
+`3c7ab8ab` → **`f969ac12b2918b5641d870ddbe211864e1275024`** ("docs(r6): checkpoint campaign
+artifacts — run ledger, rebuild session plan, campaign docs", #536, this session's own commit,
+6 files, `00_ARCHITECTURE/**` only, zero code/migration/orchestrator touches — confirmed via
+`git show --stat`). Local `main` fast-forwarded cleanly to `f969ac12` (the 6 pre-existing untracked
+local copies were verified byte-identical via `cmp` against the committed versions before removal,
+then a plain fast-forward pull, no conflicts). Merge-base ancestry independently confirmed
+(`git merge-base --is-ancestor f969ac12 origin/main`).
+
+Post-merge CI (`CI — Ganga Quality Gate`, run 29110904798) passed clean on `f969ac12`, which
+chain-triggered `Deploy to Cloud Run` (run 29111403165) via its `workflow_run` trigger (not
+path-filtered for this post-merge path, unlike the PR-time build-check trigger). Outcome, checked
+directly against live Cloud Run state:
+- `Build & Deploy MCP` / `Build & Deploy Sidecar` / `Build & Deploy Pipeline Job Image` — **all
+  skipped** (`Detect changed paths` correctly gated these on `platform-mcp/**`/`platform/**`, absent
+  from this docs-only diff). `amjis-sidecar` (`amjis-sidecar-00845-wz7`) and `amjis-mcp`
+  (`amjis-mcp-00420-cxp`) confirmed **unchanged** via `gcloud run services describe`.
+- `Build & Deploy Web` — **did NOT skip** (ran for real, 3m21s) despite the docs-only diff; this
+  job's path-gate is evidently broader/absent compared to MCP/Sidecar/Pipeline-Job-Image's. Produced
+  a genuine new revision, **`amjis-web-00938-z7l`**, confirmed healthy and serving 100% traffic
+  (`status.conditions[0].status = True`). Functionally a no-op (identical source, just a new
+  revision number) but the lineage pin below reflects the new revision honestly rather than the
+  stale pre-checkpoint one.
+
+**Updated pin — this is now the lineage every subsequent Ring-3/TAP comparison in this session
+compares against**: main `f969ac12`, `amjis-web-00938-z7l`, `amjis-sidecar-00845-wz7`,
+`amjis-mcp-00420-cxp`, R6 sole active campaign (unchanged from below). **main and prod are now
+fully clean and in sync** — zero uncommitted governance docs remain (only 4 stray, deliberately-
+untouched `accuracy/*.json` root files, disposition pending the native's explicit decision,
+unrelated to any campaign's writer/migration code).
+
 - **Every later Ring-3/TAP battery this session and the rebuild session compares against THIS
   lineage** — main SHA `3c7ab8ab`, these three revisions, R6 as sole active campaign. A probe result
   that looks like a regression but traces to a DIFFERENT commit/revision than these is a lineage-
