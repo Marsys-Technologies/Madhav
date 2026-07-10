@@ -29,6 +29,14 @@ export type ClearOp = { sql: string }
 export function deriveDeleteSqlFromCountSql(countSql: string): string | null {
   const sql = countSql?.trim()
   if (!sql) return null
+  // A count_sql joining a second table (e.g. an ownership/lookup table) cannot be
+  // mechanically turned into a DELETE by this prefix-swap — `DELETE FROM t JOIN ...`
+  // is not legal Postgres (JOIN requires `USING`, and even then the semantics differ
+  // from a plain WHERE-scoped delete). Bail out to null so the caller falls through
+  // to "no clear spec resolved" (an honest, surfaced failure) instead of silently
+  // executing invalid SQL that looks like an ordinary per-asset failure but is really
+  // a generation bug. A JOIN-based count_sql needs an explicit EXPLICIT_CLEAR_OPS entry.
+  if (/\bJOIN\b/i.test(sql)) return null
   const transformed = sql.replace(
     /^SELECT\s+count\(\*\)\s*(?:AS\s+\w+\s+)?FROM\b/i,
     'DELETE FROM'
@@ -42,6 +50,22 @@ export function deriveDeleteSqlFromCountSql(countSql: string): string | null {
  * null means the asset has no data rows to clear (skip cleanly, not an error).
  */
 export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
+  // ga_structural's count_sql (migration 410_ga_structural_category_ownership.sql) joins
+  // chart_facts to fact_category_ownership to scope the count to categories this writer
+  // owns — deriveDeleteSqlFromCountSql() correctly refuses to auto-transform a JOIN-bearing
+  // count_sql (see that function's own JOIN guard) rather than emit invalid
+  // `DELETE FROM ... JOIN ...` SQL, so this asset needs its own explicit op. Uses the same
+  // ownership-table subquery the count_sql itself joins against, so any future category
+  // added to fact_category_ownership for owning_asset_id='ga_structural' is automatically
+  // covered here too — no hardcoded category list to keep in sync.
+  ga_structural: [
+    {
+      sql: `DELETE FROM chart_facts WHERE chart_id = $1 AND fact_category IN (
+        SELECT fact_category FROM fact_category_ownership WHERE owning_asset_id = 'ga_structural'
+      )`,
+    },
+  ],
+
   ga_condition: [
     { sql: 'DELETE FROM ga_condition_composite WHERE chart_id = $1' },
     { sql: "DELETE FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga'" },

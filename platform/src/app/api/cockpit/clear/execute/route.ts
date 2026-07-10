@@ -188,19 +188,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Reset asset_throughput for scope assets (chart-scoped rows).
-    // Set rows_written=0 (not NULL) so the stats route's fast rows_written shortcut
-    // immediately returns 0 on the next normal poll — no COUNT(*) query needed.
-    // rows_written=NULL means "unknown / not tracked"; rows_written=0 is the accurate
-    // post-clear state and is what the build system would write after a zero-row run.
-    if (affectedAssetIds.length > 0) {
+    // Reset asset_throughput for scope assets (chart-scoped rows) — but ONLY for assets
+    // that actually cleared. An asset in failed_tables did NOT have its rows deleted (the
+    // op errored and was rolled back to its savepoint); marking it dormant/rows_written=0
+    // anyway would tell the cockpit UI the clear succeeded when it silently didn't — the
+    // exact false-success bug this fix closes (ga_structural's JOIN-derived DELETE used to
+    // fail here every time while the UI reported a clean clear).
+    const failedAssetIds = new Set(failed_tables.map(f => f.table))
+    const successfulAssetIds = affectedAssetIds.filter(id => !failedAssetIds.has(id))
+    if (successfulAssetIds.length > 0) {
       await client.query(
         `UPDATE asset_throughput
          SET state='dormant', last_built_at=NULL, rows_written=0,
              built_against_upstream_hash=NULL, built_against_writer_hash=NULL,
              last_error=NULL
          WHERE chart_id=$1 AND asset_id = ANY($2::text[])`,
-        [chart_id, affectedAssetIds]
+        [chart_id, successfulAssetIds]
       )
     }
 
@@ -208,7 +211,7 @@ export async function POST(req: NextRequest) {
     // that were cleared. Without this, the stats route's rows_written cache returns
     // the pre-clear count (e.g. mi_kula shows 15 after the underlying table is empty).
     const globalAssetIds = scopeAssets
-      .filter(a => a.scope === 'global')
+      .filter(a => a.scope === 'global' && !failedAssetIds.has(a.asset_id))
       .map(a => a.asset_id)
     if (globalAssetIds.length > 0) {
       await client.query(
