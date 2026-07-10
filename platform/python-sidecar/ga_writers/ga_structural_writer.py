@@ -4485,7 +4485,23 @@ def _evaluate_catalog_rule(
         # list is an unevaluated/malformed rule, not a satisfied one.
         if not req_list:
             return False, "rule_shape_unimplemented:empty_requires"
+        # brahma_dosha_catalog stores "requires" as a free-text NARRATIVE string
+        # (not a structured [{"planet": ..., ...}] list) for classical doshas whose
+        # formation logic is too prose-heavy to formalize here (e.g. kala_sarpa:
+        # "all 7 planets hemmed between Rahu and Ketu", kemadruma, daridra,
+        # pitru_dosha, ... — verified live against brahma_dosha_catalog 2026-07-10).
+        # Iterating a string yields individual characters, and the fallthrough
+        # branch below then calls `req.keys()` on a single char — AttributeError,
+        # not a graceful fail-closed. Those doshas ARE evaluated (dosha_fires has
+        # its own bespoke Kala Sarpa/Pancha Mahapurusha logic elsewhere — see
+        # commit 09bb7629); this generic catalog-rule evaluator simply cannot
+        # formalize a narrative "requires", so it must fail closed with a named
+        # reason instead of crashing the whole ga_structural substep.
+        if not isinstance(req_list, list):
+            return False, "rule_shape_unimplemented:unstructured_requires"
         for req in req_list:
+            if not isinstance(req, dict):
+                return False, "rule_shape_unimplemented:non_dict_requires_element"
             if "relation" in req:
                 rel = req["relation"]
                 moon_h = graha_house("Moon")
@@ -4662,8 +4678,12 @@ def _get_catalog_constituent_fact_ids(
     rule = catalog_entry.get("formation_rule_jsonb") or {}
     constituents: list[str] = []
 
-    for req in rule.get("requires", []):
-        if "planet" in req:
+    requires = rule.get("requires", [])
+    # Some catalog entries store "requires" as a free-text narrative string rather
+    # than a structured list (see _evaluate_catalog_rule's matching guard above) —
+    # skip fact-id resolution entirely for those instead of iterating characters.
+    for req in (requires if isinstance(requires, list) else []):
+        if isinstance(req, dict) and "planet" in req:
             planet = req["planet"].title()
             subj = PLANET_TO_SUBJECT.get(planet, planet.upper())
             fid = _real_fact_id_ref(conn, chart_id, ayanamsha_id, "graha_position", subj, "sign")

@@ -165,7 +165,10 @@ def _mock_chart_facts_conn(rows: list[tuple]) -> Any:
             return False
 
     class _Conn:
-        def cursor(self):
+        def cursor(self, **_kwargs):
+            # Accept (and ignore) row_factory=... — the real writer now forces
+            # tuple_row explicitly (2026-07-10 fix for the dict_row-unpack bug);
+            # this mock always returns tuples regardless, matching that contract.
             return _Cur()
 
     return _Conn()
