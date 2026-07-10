@@ -11,13 +11,20 @@
  * "non-canonical methods wearing canonical labels".
  *
  * Discipline (ratchet, not a one-off): every hit is classified against
- * tap6_baseline.json.
- *   - hit's file is in the baseline for that pattern → QUARANTINED (known,
+ * tap6_baseline.json, keyed on (pattern, file, line-hash) — NOT just
+ * (pattern, file). Ring-2 review (post-bacade1c) demonstrated that a
+ * file-level key lets a SECOND, unrelated occurrence of an already-banned
+ * pattern slip in uncaught anywhere in an already-baselined file (e.g. a new
+ * `# safe fallback` hardcode added to a different function in the same file
+ * that already has one baselined line). Keying on a hash of the matched
+ * line's trimmed content instead means:
+ *   - (pattern, file, line-hash) is in the baseline → QUARANTINED (known,
  *     tracked by an OPEN register row; the fixing lane deletes the baseline
  *     entry when it lands, which makes the grep start enforcing the fix).
- *   - hit's file is NOT in the baseline → FAIL (a NEW instance of a banned
- *     pattern was introduced — this is what protects the fixes other lanes
- *     land from regressing).
+ *   - the exact matched line is NOT in the baseline → FAIL (a NEW instance —
+ *     could be a genuinely new pattern, OR a second unrelated occurrence in
+ *     an already-baselined file; either way it must be looked at, not
+ *     silently absorbed by a coarser file-level match).
  *
  * No DB required — runs anywhere, always (never quarantined by "no DATABASE_URL").
  * Run: npx tsx platform/scripts/audit/tap/tap6_method_grep.ts
@@ -25,7 +32,7 @@
 import path from 'node:path'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import type { LawResult } from './lib/tap_db'
-import { printReport } from './lib/tap_db'
+import { printReport, lineHash } from './lib/tap_db'
 
 const REPO_ROOT = path.join(__dirname, '../../../..')
 
@@ -83,7 +90,7 @@ const PATTERNS: Pattern[] = [
   },
 ]
 
-type BaselineEntry = { pattern: string; file: string; register_row: string; note: string }
+type BaselineEntry = { pattern: string; file: string; line_hash: string; register_row: string; note: string }
 
 function loadBaseline(): BaselineEntry[] {
   const raw = readFileSync(path.join(__dirname, 'tap6_baseline.json'), 'utf-8')
@@ -109,15 +116,20 @@ function walk(dir: string, excludeDirNames: string[], out: string[]): void {
   }
 }
 
-function runSearch(p: Pattern): string[] {
+type Hit = { file: string; line: number; hash: string; text: string }
+
+function runSearch(p: Pattern): Hit[] {
   const rootAbs = path.join(REPO_ROOT, p.root)
   const files: string[] = []
   walk(rootAbs, p.excludeDirNames ?? [], files)
-  const hits: string[] = []
+  const hits: Hit[] = []
   for (const f of files) {
     const content = readFileSync(f, 'utf-8')
-    if (p.pattern.test(content)) {
-      hits.push(path.relative(REPO_ROOT, f))
+    const lines = content.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      if (p.pattern.test(lines[i])) {
+        hits.push({ file: path.relative(REPO_ROOT, f), line: i + 1, hash: lineHash(lines[i]), text: lines[i].trim() })
+      }
     }
   }
   return hits
@@ -129,25 +141,27 @@ function main() {
 
   for (const p of PATTERNS) {
     const hits = runSearch(p)
-    const baselineFiles = new Set(baseline.filter((b) => b.pattern === p.id).map((b) => b.file))
-    const newHits = hits.filter((h) => !baselineFiles.has(h))
-    const knownHits = hits.filter((h) => baselineFiles.has(h))
-    const missingBaseline = [...baselineFiles].filter((f) => !hits.includes(f))
+    const baselineForPattern = baseline.filter((b) => b.pattern === p.id)
+    const baselineKeys = new Set(baselineForPattern.map((b) => `${b.file}:${b.line_hash}`))
+    const hitKeys = new Set(hits.map((h) => `${h.file}:${h.hash}`))
+    const newHits = hits.filter((h) => !baselineKeys.has(`${h.file}:${h.hash}`))
+    const knownHits = hits.filter((h) => baselineKeys.has(`${h.file}:${h.hash}`))
+    const staleBaseline = baselineForPattern.filter((b) => !hitKeys.has(`${b.file}:${b.line_hash}`))
 
     if (newHits.length > 0) {
       results.push({
         id: `TAP6:${p.id}`,
         title: p.description,
         status: 'FAIL',
-        detail: `NEW hit(s) not in baseline: ${newHits.join(', ')}. (Known/tracked hits: ${knownHits.length})`,
+        detail: `NEW hit(s) not in baseline (new pattern instance, OR a second unrelated occurrence in an already-baselined file): ${newHits.map((h) => `${h.file}:${h.line}`).join(', ')}. (Known/tracked hits: ${knownHits.length})`,
       })
     } else if (knownHits.length > 0) {
-      const rows = [...new Set(baseline.filter((b) => b.pattern === p.id && knownHits.includes(b.file)).map((b) => b.register_row))]
+      const rows = [...new Set(baselineForPattern.filter((b) => hitKeys.has(`${b.file}:${b.line_hash}`)).map((b) => b.register_row))]
       results.push({
         id: `TAP6:${p.id}`,
         title: p.description,
         status: 'QUARANTINED',
-        detail: `${knownHits.length} known hit(s), all tracked: ${knownHits.join(', ')}.`,
+        detail: `${knownHits.length} known hit(s), all tracked: ${knownHits.map((h) => `${h.file}:${h.line}`).join(', ')}.`,
         register_rows: rows,
       })
     } else {
@@ -155,7 +169,7 @@ function main() {
         id: `TAP6:${p.id}`,
         title: p.description,
         status: 'PASS',
-        detail: missingBaseline.length > 0 ? `Zero hits — baseline entries for ${missingBaseline.join(', ')} are stale (fix landed); delete them from tap6_baseline.json.` : 'Zero hits.',
+        detail: staleBaseline.length > 0 ? `Zero hits — baseline entries for ${staleBaseline.map((b) => `${b.file}:${b.line_hash}`).join(', ')} are stale (fix landed); delete them from tap6_baseline.json.` : 'Zero hits.',
       })
     }
   }

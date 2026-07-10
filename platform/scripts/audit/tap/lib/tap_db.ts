@@ -14,8 +14,22 @@
  *     npx tsx --conditions=react-server platform/scripts/audit/tap/tap5_seam_conservation.ts
  */
 import type { QueryResult, QueryResultRow } from 'pg'
+import { createHash } from 'node:crypto'
 
 export const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+
+/**
+ * Short, stable content hash for a single matched line (trimmed, so leading
+ * indentation drift doesn't churn the baseline). Used by tap6_method_grep.ts
+ * and sc_pointer_validation.ts's ratchet baselines to key on (pattern/instrument,
+ * file, line-hash) rather than (pattern/instrument, file) alone — Ring-2
+ * review (post-bacade1c) found the coarser key let a second, unrelated
+ * occurrence of an already-baselined pattern in an already-baselined file
+ * slip through uncaught.
+ */
+export function lineHash(text: string): string {
+  return createHash('sha1').update(text.trim()).digest('hex').slice(0, 12)
+}
 
 export type TapDb = {
   available: boolean

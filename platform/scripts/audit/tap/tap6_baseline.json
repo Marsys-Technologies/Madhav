@@ -1,24 +1,201 @@
 {
-  "_comment": "TAP-6 method-audit grep baseline. Every entry is a KNOWN, register-tracked hit — i.e. a location the 2026-07-10 audit already found and filed as an OPEN register row (MARSYS_DEFECT_GAP_REGISTER_v2_0.md §11.1). tap6_method_grep.ts treats any grep hit matching file+pattern here as QUARANTINED (expected, tracked, not a new failure). Any grep hit NOT in this baseline is a NEW violation and fails CI. When a Phase-1 lane fixes an M-row, delete its baseline entries here so the grep starts enforcing the fix (ratchet). Regenerated 2026-07-10 against a live tap6_method_grep.ts run — every entry below was verified present at time of writing.",
+  "_comment": "TAP-6 method-audit grep baseline. Every entry is a KNOWN, register-tracked hit — i.e. a location the 2026-07-10 audit already found and filed as an OPEN register row (MARSYS_DEFECT_GAP_REGISTER_v2_0.md §11.1). tap6_method_grep.ts treats any grep hit matching (pattern, file, line_hash) here as QUARANTINED (expected, tracked, not a new failure). Any grep hit whose exact matched line is NOT in this baseline — whether a brand-new file or a second, unrelated occurrence in an already-baselined file — is a NEW violation and fails CI (Ring-2 fix, post-bacade1c: file-level keying was too coarse to catch a second unrelated occurrence in an already-baselined file). When a Phase-1 lane fixes an M-row, delete its baseline entries here so the grep starts enforcing the fix (ratchet). Regenerated 2026-07-10 by walking the live tree and hashing every matched line.",
   "entries": [
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/pipeline/writers/chart_facts_writer_a3.py", "register_row": "M-22", "note": "verification: str = 'two_pass_verified' default param — literal, not verifier-computed" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py", "register_row": "M-22", "note": "\"verification_pass_status\": \"two_pass_verified\" literal at emit site" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py", "register_row": "M-22", "note": "\"verification_pass_status\": \"two_pass_verified\" literal at emit site (3 occurrences)" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py", "register_row": "M-22", "note": "M-5 mudda dasha + M-6 kalachakra dasha stamp two_pass_verified while using non-classical derivations" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/ga_writers/ga_panchanga_writer.py", "register_row": "M-22", "note": "part of the class-wide verification-stamp pattern M-22 flags; not separately root-caused in v2.0 beyond the M-22 sweep" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py", "register_row": "M-22", "note": "M-20 sade-sati vargottama approximation stamps two_pass_verified" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py", "register_row": "M-22", "note": "M-9/M-10/M-11 fabricated sphutas + special lagnas + upagrahas stamp two_pass_verified" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py", "register_row": "M-22", "note": "M-1 shadbala toy heuristic + M-2 vimshopaka + M-3 ashtakavarga shodhana stamp two_pass_verified (docstring :13-29 falsely claims PyJHora)" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py", "register_row": "M-22", "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py", "register_row": "M-22", "note": "M-4 BAV loop bug + M-17 D60 deities + M-18 saptavargaja stamp two_pass_verified" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py", "register_row": "M-22", "note": "consumes/propagates verification_pass_status from upstream writers; part of the M-22 class sweep" },
-    { "pattern": "two_pass_verified_literal", "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py", "register_row": "M-22", "note": "reads/aggregates two_pass_verified_pct as a quality metric built on the contaminated stamp; part of the M-22 class sweep" },
-    { "pattern": "rough_estimate_comment", "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py", "register_row": "M-14", "note": "shadbala_proxy = sthana * 5.0 + 1.0  # rough rupa estimate" },
-    { "pattern": "safe_fallback_comment", "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py", "register_row": "M-7", "note": "years = 7  # safe fallback if chart_facts absent for this graha" },
-    { "pattern": "falling_back_to_forensic", "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py", "register_row": "M-7", "note": "\"falling back to FORENSIC hardcoded. cause=%s\" — Chara dasha native-fallback contamination" },
-    { "pattern": "native_fallback_longitudes", "file": "platform/python-sidecar/panchang_engine/jaimini_chara.py", "register_row": "M-8", "note": "NATIVE_FALLBACK_LONGITUDES table with wrong-even-for-the-native values" },
-    { "pattern": "native_fallback_longitudes", "file": "platform/python-sidecar/routers/jaimini.py", "register_row": "M-8", "note": "register evidence column cites routers/jaimini.py:108-129 explicitly alongside jaimini_chara.py — the live HTTP endpoint side of the same fallback table" },
-    { "pattern": "fabricated_citation_bphs_pranapada", "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py", "register_row": "M-9", "note": "formula_provenance_text cites 'BPHS' for a non-BPHS Pranapada formula (ga_sensitive_writer.py:826-831 in register evidence)" },
-    { "pattern": "fabricated_citation_jaimini_sutram_trikona", "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py", "register_row": "M-9", "note": "formula_provenance_text cites 'Jaimini Sutram' for an invented 'Trikona Dasha Sphuta' (ga_sensitive_writer.py:843-848 in register evidence)" }
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "deeeb0bc4be1",
+      "register_row": "M-22",
+      "note": "M-5 mudda dasha + M-6 kalachakra dasha stamp two_pass_verified while using non-classical derivations"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
+      "line_hash": "3b3f1ac05637",
+      "register_row": "M-22",
+      "note": "part of the class-wide verification-stamp pattern M-22 flags; not separately root-caused in v2.0 beyond the M-22 sweep"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+      "line_hash": "e77d402723dd",
+      "register_row": "M-22",
+      "note": "M-20 sade-sati vargottama approximation stamps two_pass_verified"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+      "line_hash": "48e1c2650d1e",
+      "register_row": "M-22",
+      "note": "M-20 sade-sati vargottama approximation stamps two_pass_verified"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
+      "line_hash": "1dcd54c85512",
+      "register_row": "M-22",
+      "note": "M-9/M-10/M-11 fabricated sphutas + special lagnas + upagrahas stamp two_pass_verified"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
+      "line_hash": "e5c9e1db5e33",
+      "register_row": "M-22",
+      "note": "M-9/M-10/M-11 fabricated sphutas + special lagnas + upagrahas stamp two_pass_verified"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+      "line_hash": "b56f7f5172b1",
+      "register_row": "M-22",
+      "note": "M-1 shadbala toy heuristic + M-2 vimshopaka + M-3 ashtakavarga shodhana stamp two_pass_verified (docstring :13-29 falsely claims PyJHora)"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+      "line_hash": "18b27ffc4f96",
+      "register_row": "M-22",
+      "note": "M-1 shadbala toy heuristic + M-2 vimshopaka + M-3 ashtakavarga shodhana stamp two_pass_verified (docstring :13-29 falsely claims PyJHora)"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+      "line_hash": "27d6bd724945",
+      "register_row": "M-22",
+      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+      "line_hash": "d36b57e6e562",
+      "register_row": "M-22",
+      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+      "line_hash": "31addb48f10e",
+      "register_row": "M-22",
+      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+      "line_hash": "dde14a215b5e",
+      "register_row": "M-22",
+      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+      "line_hash": "9dcb9f71884d",
+      "register_row": "M-22",
+      "note": "M-12 tajika aspects + M-14 composite strength stamp two_pass_verified + false pyjhora_adapter source strings"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+      "line_hash": "deeeb0bc4be1",
+      "register_row": "M-22",
+      "note": "M-4 BAV loop bug + M-17 D60 deities + M-18 saptavargaja stamp two_pass_verified"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+      "line_hash": "deeeb0bc4be1",
+      "register_row": "M-22",
+      "note": "\"verification_pass_status\": \"two_pass_verified\" literal at emit site (3 occurrences)"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+      "line_hash": "c6277fe7e765",
+      "register_row": "M-22",
+      "note": "\"verification_pass_status\": \"two_pass_verified\" literal at emit site"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
+      "line_hash": "f2282a906d7b",
+      "register_row": "M-22",
+      "note": "consumes/propagates verification_pass_status from upstream writers; part of the M-22 class sweep"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py",
+      "line_hash": "1ceb2c533f47",
+      "register_row": "M-22",
+      "note": "reads/aggregates two_pass_verified_pct as a quality metric built on the contaminated stamp; part of the M-22 class sweep"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/pipeline/writers/chart_facts_writer_a3.py",
+      "line_hash": "8de88d40c16a",
+      "register_row": "M-22",
+      "note": "verification: str = 'two_pass_verified' default param — literal, not verifier-computed"
+    },
+    {
+      "pattern": "rough_estimate_comment",
+      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+      "line_hash": "78ab35f78fbf",
+      "register_row": "M-14",
+      "note": "shadbala_proxy = sthana * 5.0 + 1.0  # rough rupa estimate"
+    },
+    {
+      "pattern": "safe_fallback_comment",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "09d101e866d5",
+      "register_row": "M-7",
+      "note": "years = 7  # safe fallback if chart_facts absent for this graha"
+    },
+    {
+      "pattern": "falling_back_to_forensic",
+      "file": "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+      "line_hash": "818541c7f236",
+      "register_row": "M-7",
+      "note": "\"falling back to FORENSIC hardcoded. cause=%s\" — Chara dasha native-fallback contamination"
+    },
+    {
+      "pattern": "native_fallback_longitudes",
+      "file": "platform/python-sidecar/panchang_engine/jaimini_chara.py",
+      "line_hash": "5bb33b29e84a",
+      "register_row": "M-8",
+      "note": "NATIVE_FALLBACK_LONGITUDES table with wrong-even-for-the-native values"
+    },
+    {
+      "pattern": "native_fallback_longitudes",
+      "file": "platform/python-sidecar/panchang_engine/jaimini_chara.py",
+      "line_hash": "e26203764005",
+      "register_row": "M-8",
+      "note": "NATIVE_FALLBACK_LONGITUDES table with wrong-even-for-the-native values"
+    },
+    {
+      "pattern": "native_fallback_longitudes",
+      "file": "platform/python-sidecar/panchang_engine/jaimini_chara.py",
+      "line_hash": "0e914d00538e",
+      "register_row": "M-8",
+      "note": "NATIVE_FALLBACK_LONGITUDES table with wrong-even-for-the-native values"
+    },
+    {
+      "pattern": "native_fallback_longitudes",
+      "file": "platform/python-sidecar/routers/jaimini.py",
+      "line_hash": "4af0d5a036b9",
+      "register_row": "M-8",
+      "note": "register evidence column cites routers/jaimini.py:108-129 explicitly alongside jaimini_chara.py — the live HTTP endpoint side of the same fallback table"
+    },
+    {
+      "pattern": "fabricated_citation_bphs_pranapada",
+      "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
+      "line_hash": "13a82e3396ce",
+      "register_row": "M-9",
+      "note": "formula_provenance_text cites 'BPHS' for a non-BPHS Pranapada formula (ga_sensitive_writer.py:826-831 in register evidence)"
+    },
+    {
+      "pattern": "fabricated_citation_jaimini_sutram_trikona",
+      "file": "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
+      "line_hash": "0422fce605d0",
+      "register_row": "M-9",
+      "note": "formula_provenance_text cites 'Jaimini Sutram' for an invented 'Trikona Dasha Sphuta' (ga_sensitive_writer.py:843-848 in register evidence)"
+    }
   ]
 }

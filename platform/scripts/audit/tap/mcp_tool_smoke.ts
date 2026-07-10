@@ -36,12 +36,9 @@
  *   MCP_SERVER_URL=https://<mcp-host>/mcp MCP_SMOKE_BEARER_TOKEN=... \
  *     npx tsx platform/scripts/audit/tap/mcp_tool_smoke.ts
  */
-import path from 'node:path'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { NATIVE_CHART_ID, printReport, type LawResult } from './lib/tap_db'
+import { collectRegisteredTools } from './lib/mcp_registered_tools'
 
-const REPO_ROOT = path.join(__dirname, '../../../..')
-const MCP_TOOLS_ROOT = path.join(REPO_ROOT, 'platform-mcp/src/tools')
 const AYANAMSHA_ID = 'lahiri_chitrapaksha'
 
 // Register §SECTION 4 "New rows (v2) — dead tools" + Phase 0 lane 0b scope.
@@ -86,40 +83,6 @@ const PARAM_OVERRIDES: Record<string, Record<string, unknown>> = {
 
 function defaultParamsFor(toolName: string): Record<string, unknown> {
   return PARAM_OVERRIDES[toolName] ?? { chart_id: NATIVE_CHART_ID, ayanamsha_id: AYANAMSHA_ID }
-}
-
-function walkTs(dir: string, out: string[]): void {
-  let entries: string[]
-  try {
-    entries = readdirSync(dir)
-  } catch {
-    return
-  }
-  for (const entry of entries) {
-    if (entry === 'node_modules' || entry === '.git') continue
-    const full = path.join(dir, entry)
-    const st = statSync(full)
-    if (st.isDirectory()) walkTs(full, out)
-    else if (entry.endsWith('.ts')) out.push(full)
-  }
-}
-
-function collectRegisteredTools(): string[] {
-  const files: string[] = []
-  walkTs(MCP_TOOLS_ROOT, files)
-  const names = new Set<string>()
-  for (const f of files) {
-    const src = readFileSync(f, 'utf-8')
-    for (const m of src.matchAll(/server\.tool\(\s*['"]([a-zA-Z0-9_]+)['"]/g)) names.add(m[1])
-  }
-  try {
-    const kt = readFileSync(path.join(MCP_TOOLS_ROOT, 'retrieval/kala_temporal.ts'), 'utf-8')
-    const m = kt.match(/const TOOL_NAME = ['"]([a-zA-Z0-9_]+)['"]/)
-    if (m) names.add(m[1])
-  } catch {
-    /* non-fatal */
-  }
-  return [...names].sort()
 }
 
 // ── LIVE mode: minimal MCP Streamable HTTP JSON-RPC client ──────────────────
@@ -168,7 +131,7 @@ async function callTool(
 }
 
 async function main() {
-  const toolNames = collectRegisteredTools()
+  const toolNames = [...collectRegisteredTools()].sort()
   const results: LawResult[] = []
   const mcpServerUrl = process.env.MCP_SERVER_URL
   const bearer = process.env.MCP_SMOKE_BEARER_TOKEN
@@ -177,7 +140,7 @@ async function main() {
     id: 'smoke:registered-tool-count',
     title: 'Total registered MCP tools discovered (static enumeration)',
     status: toolNames.length >= 50 ? 'PASS' : 'FAIL',
-    detail: `${toolNames.length} tools found via server.tool() call sites.`,
+    detail: `${toolNames.length} tools found via server.tool()/regAlias()/globalAlias() call sites (see lib/mcp_registered_tools.ts).`,
   })
 
   if (!mcpServerUrl || !bearer) {

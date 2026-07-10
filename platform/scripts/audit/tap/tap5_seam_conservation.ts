@@ -228,7 +228,18 @@ async function main() {
     } catch (e) {
       results.push({ id: 'Law-6', title: '_DOMAIN_MAP source read', status: 'SKIPPED', detail: `Could not read bo_laksana.py: ${e}` })
     }
-    if (mappedCategories.size > 0) {
+    // Ring-2 fix: the file-read succeeding but the brace-matching regex
+    // yielding zero entries (source format drift, dict renamed, etc.) must
+    // not fall through to "no row pushed at all" — that's exactly the
+    // "absent oracle, never declared" failure TAP-9 exists to prevent.
+    if (mappedCategories.size === 0 && results.every((r) => r.id !== 'Law-6')) {
+      results.push({
+        id: 'Law-6',
+        title: '_DOMAIN_MAP source parse',
+        status: 'FAIL',
+        detail: `bo_laksana.py read OK but the _DOMAIN_MAP brace-matching regex found zero entries — source format has drifted from what this parser expects. Fix the parser before trusting Law-6's result.`,
+      })
+    } else if (mappedCategories.size > 0) {
       const { rows } = await db.query<{ fact_category: string }>(
         `SELECT DISTINCT fact_category FROM chart_facts WHERE chart_id = $1`,
         [NATIVE_CHART_ID]

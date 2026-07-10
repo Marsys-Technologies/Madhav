@@ -56,12 +56,19 @@ async function main() {
       [NATIVE_CHART_ID]
     )
     const distinct = rows.length
+    const totalRows = rows.reduce((sum, r) => sum + parseInt(r.c, 10), 0)
     results.push({
       id: 'TAP7-Gate1:cheshta_bala',
       title: 'graha_shadbala_cheshta is not chart-invariant (>2 distinct values)',
-      status: distinct > 2 ? 'PASS' : 'QUARANTINED',
-      detail: `${distinct} distinct value(s) across all grahas: ${rows.map((r) => `${r.fact_value_num}×${r.c}`).join(', ')}.`,
-      register_rows: distinct <= 2 ? ['V-2', 'M-1'] : [],
+      // Ring-2 fix: zero rows (build break, category rename) must read as
+      // SKIPPED, not silently agree with the known V-2 collapse — Gate 5
+      // already had this guard, Gate 1 didn't.
+      status: totalRows === 0 ? 'SKIPPED' : distinct > 2 ? 'PASS' : 'QUARANTINED',
+      detail:
+        totalRows === 0
+          ? 'graha_shadbala_cheshta returned zero rows for this chart — cannot evaluate collapse (build break or category rename; verify before trusting this gate).'
+          : `${distinct} distinct value(s) across all grahas: ${rows.map((r) => `${r.fact_value_num}×${r.c}`).join(', ')}.`,
+      register_rows: totalRows > 0 && distinct <= 2 ? ['V-2', 'M-1'] : [],
     })
   }
 
