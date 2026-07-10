@@ -42,6 +42,29 @@ import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
 
+// ── MCP response wrapping (T-7 fix) ─────────────────────────────────────────
+//
+// R6 0b-deadtools (T-7): muhurta_finder returned nothing at all — no windows,
+// no empty_reason, no error object. Root cause: handleMuhurtaFinder's early
+// auth-denied branch aside, both the `!env.ok` branch and the success branch
+// returned the raw McpEnvelope-shaped object ({ok, trace_id, epistemics,
+// result, ...}) directly from the tool handler. The MCP SDK tool-call
+// contract requires a `{content: [...], structuredContent?, isError?}` shape
+// (see every sibling tool's `dualOutput`/`errOut` helper, e.g.
+// kala_muhurta_get in register_p1_aliases.ts) — an object with no `content`
+// key is not a valid tool result, so the client silently rendered empty.
+// This was never an unreturned promise; it was a mis-shaped resolved one.
+function dualOutput(data: unknown): { structuredContent: { type: 'object'; object: unknown }; content: [{ type: 'text'; text: string }] } {
+  return {
+    structuredContent: { type: 'object', object: data },
+    content: [{ type: 'text', text: JSON.stringify(data) }],
+  }
+}
+
+function errorOutput(message: string, extra?: Record<string, unknown>): { structuredContent: { type: 'object'; object: unknown }; content: [{ type: 'text'; text: string }]; isError: true } {
+  return { ...dualOutput({ ok: false, error: message, tool: 'muhurta_finder', ...extra }), isError: true }
+}
+
 // ── Input schema ───────────────────────────────────────────────────────────────
 
 export const MuhurtaFinderInputSchema = z.object({
@@ -271,7 +294,7 @@ export async function handleMuhurtaFinder(
 
   const result = await callPlatformPrimitive('muhurta_finder', params, principal)
   const env = result.envelope
-  if (!env.ok) return env
+  if (!env.ok) return errorOutput(env.error?.message ?? 'muhurta_finder platform call failed', { chart_id: input.chart_id, trace_id: env.trace_id })
 
   const resultData = unwrapMuhurtaFinderResult(env.result)
   const windows: MuhurtaWindow[] = resultData?.windows ?? []
@@ -320,10 +343,7 @@ export async function handleMuhurtaFinder(
     finalResult.empty_reason = resultData.empty_reason
   }
 
-  return {
-    ...env,
-    result: finalResult,
-  }
+  return dualOutput(finalResult)
 }
 
 // ── MCP server registration helper ────────────────────────────────────────────

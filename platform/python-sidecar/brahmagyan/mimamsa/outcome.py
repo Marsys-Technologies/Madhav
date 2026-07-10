@@ -378,10 +378,27 @@ def query_calibration(
     """
     Query the mimamsa_calibration table for current calibration state.
 
+    R6 0b-deadtools (R-14) schema-drift fix: the MI-5-3 prototype table
+    (id, technique, ayanamsha_id, brier_score, sample_size, source_citation,
+    computed_at — see 0001_brahma_baseline.sql) was superseded, without a
+    tracked migration, by the L5 mi_pramana/mi_gunanaka/mi_pariksha writer
+    family's per-match scoring schema (chart_id, match_id, prediction_id,
+    event_id, score_timing, score_magnitude, score_domain, score_falsifier,
+    score_manifestation, manifestation_channel, composite_verdict,
+    composite_score, base_rate_adjusted_skill, evidence_admissibility,
+    n_for_stratum, leakage_status, scoring_formula_version, scored_at,
+    base_rate, brier_vs_null — see mi_pramana.py's CAL_SQL insert). The
+    `technique`/`ayanamsha_id` columns no longer exist on this table; a
+    calibration row is now keyed per (chart_id, match_id) with no per-technique
+    slice. Filters are honored where a matching column still exists and
+    reported back (never silently dropped) when it does not.
+
     Args:
         chart_id:     Chart UUID filter (required; ValueError if None/empty).
-        technique:    Optional technique filter.
-        ayanamsha_id: Optional ayanamsha filter.
+        technique:    Accepted for API back-compat but NOT a column on the
+                      current schema; reported in `unsupported_filters`, never
+                      silently applied or silently dropped.
+        ayanamsha_id: Same as technique — no longer a column on this table.
         limit:        Max rows to return (most recent first). Default 10.
 
     Returns:
@@ -396,38 +413,40 @@ def query_calibration(
         raise ValueError("chart_id is required and must be a non-empty string")
     effective_chart_id = chart_id
 
-    # Validate before DB access (so invalid input raises ValueError, not RuntimeError)
-    conditions = ["chart_id = %s"]
-    params: list[Any] = [effective_chart_id]
+    # Validate before DB access (so invalid input raises ValueError, not RuntimeError).
+    # technique/ayanamsha_id are still validated against the legacy enum (so a typo'd
+    # caller gets a clear error) even though neither filters the query anymore.
+    unsupported_filters: list[str] = []
 
     if technique:
         if technique not in VALID_TECHNIQUES:
             raise ValueError(
                 f"Invalid technique '{technique}'. Valid: {sorted(VALID_TECHNIQUES)}"
             )
-        conditions.append("technique = %s")
-        params.append(technique)
+        unsupported_filters.append("technique")
 
     if ayanamsha_id:
         if ayanamsha_id not in VALID_AYANAMSHAS:
             raise ValueError(
                 f"Invalid ayanamsha_id '{ayanamsha_id}'. Valid: {sorted(VALID_AYANAMSHAS)}"
             )
-        conditions.append("ayanamsha_id = %s")
-        params.append(ayanamsha_id)
+        unsupported_filters.append("ayanamsha_id")
 
     db_url = _get_db_url()
 
-    where = " AND ".join(conditions)
-    params.append(limit)
+    params: list[Any] = [effective_chart_id, limit]
 
-    sql = f"""
+    sql = """
         SELECT
-            id, chart_id, technique, ayanamsha_id,
-            brier_score, sample_size, source_citation, computed_at
+            chart_id, match_id, prediction_id, event_id,
+            score_timing, score_magnitude, score_domain, score_falsifier,
+            score_manifestation, manifestation_channel, composite_verdict,
+            composite_score, base_rate_adjusted_skill, evidence_admissibility,
+            n_for_stratum, leakage_status, scoring_formula_version,
+            base_rate, brier_vs_null, scored_at
         FROM public.mimamsa_calibration
-        WHERE {where}
-        ORDER BY computed_at DESC
+        WHERE chart_id = %s
+        ORDER BY scored_at DESC
         LIMIT %s
     """
 
@@ -450,19 +469,28 @@ def query_calibration(
         "ok": True,
         "rows": rows,
         "row_count": len(rows),
+        "unsupported_filters": unsupported_filters,
         "provenance_envelope": {
             "source": "mimamsa.outcome",
             "asset": "MI-5-3",
-            "algorithm": "Brier score = (confidence - outcome_binary)²; "
-                         "calibration = mean(brier_scores) per (technique, ayanamsha_id)",
+            "algorithm": "score_manifestation/score_timing/score_domain/score_falsifier/"
+                         "score_magnitude per prediction-event match; composite_score = "
+                         "mi_pramana's weighted rollup; brier_vs_null = 1 - (model_brier / "
+                         "null_brier) per BA-P6.",
             "chart_id": effective_chart_id,
-            "technique_filter": technique,
-            "ayanamsha_filter": ayanamsha_id,
+            "technique_filter_note": (
+                "technique/ayanamsha_id are not columns on the current mimamsa_calibration "
+                "schema (superseded by the mi_pramana per-match schema) — filter ignored, "
+                "not silently applied. See unsupported_filters."
+                if unsupported_filters else None
+            ),
             "queried_at": queried_at,
             "l1_ground_truth": "FORENSIC v8.0 §5.1 DSH.V.023–028; LEL v1.7",
-            "b3_citation_compliant": all(
-                bool(r.get("source_citation")) for r in rows
-            ),
+            # B.3: the current schema carries no per-row source_citation column (that was
+            # the MI-5-3 prototype's field); citation now lives at scoring_formula_version +
+            # the mi_pramana writer provenance, not per calibration row. Never fabricate a
+            # per-row citation claim the schema can't back.
+            "b3_citation_compliant": all(bool(r.get("scoring_formula_version")) for r in rows) if rows else None,
         },
     }
 
@@ -783,34 +811,17 @@ def api_query_calibration(req: QueryCalibrationRequest) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+    # R6 0b-deadtools (R-14): the prior blanket `except Exception` here masked real
+    # SQL/schema-drift errors (e.g. "column \"id\" does not exist") as an ok:true,
+    # 0-row "STRUCTURAL mode" response — genuine bugs were indistinguishable from the
+    # legitimate empty-calibration-until-first-outcome case. DB/runtime errors now
+    # propagate loudly as a 500 with the real error text; a legitimately-empty
+    # calibration set (query succeeds, 0 rows) is still returned as
+    # {"ok": true, "rows": [], "row_count": 0} by query_calibration() itself —
+    # that path is unaffected and remains the only way to get an "empty" response.
     except Exception as exc:
-        # F-013: L5 Mīmāṃsā is sealed in STRUCTURAL mode — table may not exist yet
-        # or DB connection may fail. Return a structured empty response instead of
-        # an unhandled 500 so clients distinguish "no data yet" from hard failure.
-        logger.warning(
-            "query_calibration: DB/runtime error (STRUCTURAL mode — returning empty): %s",
-            exc,
-        )
-        from datetime import datetime, timezone as _tz
-        return {
-            "ok": True,
-            "rows": [],
-            "row_count": 0,
-            "structural_mode_note": (
-                "L5 Mīmāṃsā is sealed in STRUCTURAL mode — calibration rows accrue "
-                "as prediction outcomes are recorded. Empty is expected until the first "
-                "outcome is observed."
-            ),
-            "provenance_envelope": {
-                "source": "mimamsa.outcome",
-                "asset": "MI-5-3",
-                "algorithm": "Brier score = (confidence - outcome_binary)²",
-                "chart_id": req.chart_id,
-                "queried_at": datetime.now(tz=_tz.utc).isoformat(),
-                "db_note": str(exc),
-                "b3_citation_compliant": True,
-            },
-        }
+        logger.error("query_calibration: unhandled DB/runtime error: %s", exc)
+        raise HTTPException(status_code=500, detail=f"query_calibration DB error: {exc}")
 
 
 @router.get("/mimamsa/acceptance_gate/{chart_id}")

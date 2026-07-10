@@ -844,6 +844,14 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Maximum rows/subjects to return (default: 100, max: 1000).',
     },
+    offset: {
+      type: 'number',
+      description: [
+        'Pagination offset — number of rows (shape="rows") or subjects (shape="pivoted") to',
+        'skip before returning `limit` more (default: 0). R6 0b-deadtools V-8 fix: previously',
+        'declared on the MCP-facing alias but silently dropped here (page 2 === page 1).',
+      ].join(' '),
+    },
   },
 
   required_inputs: ['chart_id'],
@@ -872,6 +880,12 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       const ayanamsha_id = (args['ayanamsha_id'] as string) || 'lahiri_chitrapaksha'
       const shape = args['shape'] === 'rows' ? 'rows' : 'pivoted'
       const limit = Math.min(Number(args['limit'] ?? 100), 1000)
+      // R6 0b-deadtools (V-8): offset was never read here — page 2 === page 1 for every
+      // caller regardless of shape. shape="rows" pages raw EAV rows directly at the SQL
+      // level; shape="pivoted" pages by SUBJECT (one wide row per fact_subject), so the
+      // raw-row fetch below needs enough headroom to cover `offset + limit` distinct
+      // subjects before grouping — see rowCapParamIdx below.
+      const offset = Math.max(0, Math.min(Number(args['offset'] ?? 0), 100_000))
 
       // ── `about` facet resolution — delegates to the canonical address resolver
       // (@/lib/retrieval/address_resolver.ts) for anything requiring classical derivation
@@ -940,13 +954,49 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       }
 
       if (args['sign']) {
-        params.push('sign')
-        const keyParamIdx = params.length
-        params.push(args['sign'])
-        sql += ` AND fact_subject IN (
-          SELECT fact_subject FROM chart_facts
-          WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_key = $${keyParamIdx} AND fact_value_text ILIKE $${params.length}
-        )`
+        // R6 0b-deadtools (P-6): the `sign` filter used to ALWAYS resolve against
+        // chart_facts's own fact_key='sign' rows — but those only exist for D1-scoped
+        // categories (graha_position, arudha_pada, karaka_chara_position, ...); NO
+        // divisional-chart subject (e.g. "D9_JUP") ever carries a fact_key='sign' row in
+        // chart_facts (confirmed via information_schema + live data: D9_JUP has no `sign`
+        // fact_key at all — its dignity/aspect/etc. facts live under D9_JUP, but the
+        // per-varga SIGN itself is only stored in `chart_divisionals`, per S-12's
+        // "21,635 chart_divisionals rows MCP-invisible" finding). So
+        // divisional_chart=D9 + sign=Gemini silently bound to the D1 sign column and
+        // always returned 0 rows for any divisional subject.
+        // Fix: when `divisional_chart` is also supplied, resolve the sign match against
+        // chart_divisionals (the real source of divisional sign data) and translate the
+        // matched grahas into the fact_subject codes chart_facts uses for that varga
+        // (e.g. "Jupiter" -> "D9_JUP") via the canonical grahaCodeOf() mapping — no new
+        // astrology computed, just addressing the correct table for an existing fact.
+        if (args['divisional_chart']) {
+          const vargaLookup = await query<{ graha: string }>(
+            `SELECT DISTINCT graha FROM chart_divisionals
+             WHERE chart_id = $1 AND ayanamsha_id = $2 AND varga = $3 AND sign ILIKE $4`,
+            [chart_id, ayanamsha_id, String(args['divisional_chart']), String(args['sign'])]
+          )
+          const matchedSubjects = (vargaLookup.rows ?? [])
+            .map(r => {
+              try {
+                return `${args['divisional_chart']}_${grahaCodeOf(r.graha)}`
+              } catch {
+                return null // Lagna/karya/etc. — no chart_facts graha code; not a match failure
+              }
+            })
+            .filter((s): s is string => Boolean(s))
+          // Empty match list is a legitimate "no such placement" result (ANY over an
+          // empty array is always false) — never fabricated, never silently widened.
+          params.push(matchedSubjects)
+          sql += ` AND fact_subject = ANY($${params.length}::text[])`
+        } else {
+          params.push('sign')
+          const keyParamIdx = params.length
+          params.push(args['sign'])
+          sql += ` AND fact_subject IN (
+            SELECT fact_subject FROM chart_facts
+            WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_key = $${keyParamIdx} AND fact_value_text ILIKE $${params.length}
+          )`
+        }
       }
 
       if (args['nakshatra']) {
@@ -966,7 +1016,11 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 
       // Row cap: pivoting collapses ~15 EAV rows into one wide row, so the raw row fetch
       // needs headroom over `limit` (a limit on SUBJECTS, not raw rows) before the pivot step.
-      params.push(limit * 20)
+      // R6 0b-deadtools (V-8): the cap must also cover `offset` subjects/rows — previously
+      // fixed at `limit * 20` regardless of offset, so any page beyond the first drew from
+      // the SAME `limit*20`-row window as page 1 and (for shape="rows") the JS-side
+      // `.slice(0, limit)` never advanced past row 0 — page 2 === page 1 for every caller.
+      params.push((offset + limit) * 20)
       const rowCapParamIdx = params.length
       sql += ` ORDER BY fact_subject, fact_category, fact_key LIMIT $${rowCapParamIdx}::int`
 
@@ -980,8 +1034,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           chart_id,
           ayanamsha_id,
           shape: 'rows',
-          rows: rows.slice(0, limit),
-          returned_count: Math.min(rows.length, limit),
+          rows: rows.slice(offset, offset + limit),
+          returned_count: Math.max(0, Math.min(rows.length - offset, limit)),
+          offset,
         }
       } else {
         // Pivot: group by fact_subject into one wide row of {fact_key: value}
@@ -998,7 +1053,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           entry.fact_ids[key] = String(row['fact_id'])
         }
         const pivoted = Array.from(bySubject.entries())
-          .slice(0, limit)
+          .slice(offset, offset + limit)
           .map(([subject, entry]) => ({
             fact_subject: subject,
             fact_category: entry.fact_category,
@@ -1041,6 +1096,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           shape: 'pivoted',
           facts: pivoted,
           returned_count: pivoted.length,
+          offset,
         }
       }
 
