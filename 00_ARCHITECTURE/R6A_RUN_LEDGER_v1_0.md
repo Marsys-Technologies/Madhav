@@ -649,3 +649,43 @@ exact. Awaiting native direction: this needs a genuine R6A.3 fix-iteration (exte
 consult to include pure-`D9`-context firings specifically for the `broken_promise` formation case,
 Ring-2 re-verified, re-validated on Abhinandan before any second attempt at the native) before
 R6A.6 can be re-attempted.**
+
+## ⚖ R6A.3 FIX-ITERATION APPROVED (native, 2026-07-11) — THE ONE AUTHORIZED ITERATION FOR Y-13
+
+Native approved the fix-iteration with 5 precise directives (R5 one-iteration discipline — this
+is it, no second round expected):
+1. Fix the **principle** (varga-of-weakness: redemption consulted in the varga where the weakness
+   lives), not just the one case — but **behavior-gate to the `broken_promise` path only**, with
+   regression tests proving every other classification's output is unchanged.
+2. Mandatory test set before Ring-2: (a) the exact live case as a permanent unit test + a new
+   `GOLDEN_SIGNALS_482012f1_v1_0.yaml` row (standing rule: every real catch becomes a battery
+   row); (b) Abhinandan's Jupiter still correct, explicit no-double-application proof; (c) negative
+   control (unredeemed D9 debilitation stays `broken_promise`); (d) classification-value
+   legality check before any write.
+3. The 5th-ayanamsha divergence (4/5 `broken_promise`, 1/5 `concordant_strong`) gets its own
+   verdict at Ring-2 time against FRESH rebuilt data — genuinely positional (navamsha-boundary
+   sign flip near an ayanamsha offset) vs. a second defect — not to be shrugged past.
+4. Register hygiene: **Y-13 added now** (OPEN, fix-iteration in progress), to close same-day with
+   Ring-3 (prod) evidence once verified — found-fixed-same-day rows still get rows.
+5. Re-attempt sequencing, unchanged canary discipline: fix → Ring-1 → Ring-2 (**fresh verifier**,
+   explicitly attempting the double-application falsification) → rebuild the affected assets on
+   **Abhinandan first** → gates → **then** the native chart re-attempt → report all 5 ayanamshas'
+   final Saturn classifications.
+
+**Y-13 logged** in `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` §New rows (v2), full root-cause + evidence
+citation, status `OPEN — fix-iteration approved by native 2026-07-11, in progress`.
+
+**Fix-iteration dispatched** to Fable-5 (fresh isolated worktree, background) with all 5
+directives given verbatim. Grounding: `bo_laksana.py`'s `_build_nbry_redemption_map` (~1296) and
+`_build_navamsha_cross_check_signals` (~1351) read in full from current `main` (post-R6A.3-merge).
+Instructed: keep the existing D1-context-only consult exactly as-is (it already correctly handles
+D1-weak cases, e.g. Abhinandan's Jupiter — do not touch it); add a SEPARATE D9-context consult
+reachable ONLY inside the `broken_promise` formation branch (`d1_tier>=2 and d9_tier<=-1`, and only
+after the existing D1-context check already came back empty for that graha) — this makes
+double-application structurally impossible by construction (the two branches are tier-disjoint),
+not just asserted. Same target classification string (`neecha_bhanga_redeemed`, reused not
+reinvented) with D9-varga provenance in `configuration_jsonb`. Explicitly told: the 5th-ayanamsha
+divergence is NOT this task's job (no live data available post-restore to investigate it; deferred
+to Ring-2 against fresh rebuilt data per directive 3). Do not commit/push.
+
+Awaiting Fable-5 completion before Ring-2 (fresh verifier) dispatch.
