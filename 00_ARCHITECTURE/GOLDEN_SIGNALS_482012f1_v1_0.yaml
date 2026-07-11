@@ -195,3 +195,11 @@
   battery_result_2026_07_10: PARTIAL
   blocking_register_rows: [NEW-1]
   notes: "PROMISE (convergent_moderate, bhavesha Sun, karaka Jupiter) and D7 CONFIRMATION serve correctly. Timing side fails as in GS-17. Archive discrepancy noted: LEL says 'Ketu in 5H Leo' but L1 build has Ketu in Scorpio 8H (Jyeshtha, consistent with FORENSIC KP §4.2) — the LEL note appears to be an archive error, not an engine defect."
+
+- id: GS-23
+  question: "My Saturn is exalted in Libra in the rashi chart but debilitated in the navamsha — is that D9 weakness classically redeemed, and does the platform say so?"
+  must_surface_atoms: [Saturn exalted D1 Libra, Saturn debilitated D9 Aries, neecha_bhanga_raja_yoga rule 2 (nbry_rule_2_exaltation_lord_kendra) fired in D9 context, D9-context redemption (varga-of-weakness rule), classification neecha_bhanga_redeemed (NOT broken_promise)]
+  source: "R6A.3 fix-iteration (register item Y-13): pure-D9-context NBRY firing (saturn@D9:nbry_rule_2_exaltation_lord_kendra, bhanga_active=true) was discarded by the D1-only filter in bo_laksana _build_nbry_redemption_map, leaving the D9 cross-check at broken_promise. Permanent unit gate: tests/test_r6a3_d9_cross_check_redemption.py::TestY13GoldenGateLiveCase"
+  battery_result_2026_07_10: FAIL
+  blocking_register_rows: [Y-13]
+  notes: "Caught live on the guarded rebuild of 482012f1 (2026-07-10), chart since restored. Fix widens redemption consult to the varga where the weakness lives, behavior-gated to the broken_promise branch only; provenance carries redeemed_weakness_varga: D9. blocking_register_rows to be cleared by the conductor once Ring-2 confirms on fresh rebuilt data. Related open question (NOT covered by this row): 5th-ayanamsha concordant_strong divergence — conductor/Ring-2 to adjudicate ayanamsha-sensitive D9 sign flip vs second defect."

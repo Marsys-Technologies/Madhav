@@ -1292,6 +1292,13 @@ def _build_d9_dignity_map(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[s
 _NEECHABHANGA_CANCELLED_MODIFIER = 1.3
 _NEECHABHANGA_NORMAL_MODIFIER = 1.0
 
+# Y-13 fix (R6A.3 fix-iteration): single shared classification constant used by
+# BOTH the D1-context redemption path and the D9-context broken_promise
+# redemption path — mandatory-test (d) asserts the two branches emit literally
+# this same value (no typo'd near-duplicate; this is the exact string already
+# shipped by the merged D1-context path, proven in production).
+_CLASSIFICATION_NEECHA_BHANGA_REDEEMED = "neecha_bhanga_redeemed"
+
 
 def _build_nbry_redemption_map(
     conn: Any, chart_id: str, ayanamsha_id: str
@@ -1348,6 +1355,62 @@ def _build_nbry_redemption_map(
     return redemption
 
 
+def _build_nbry_d9_redemption_map(
+    conn: Any, chart_id: str, ayanamsha_id: str
+) -> dict[str, dict[str, str | None]]:
+    """graha (long name) → NBRY redemption record for grahas whose **D9-varga**
+    debilitation is classically CANCELLED per L1 (pure-`D9`-context entries in
+    `ga_yoga_firings.bhanga_rule_fired`).
+
+    Y-13 fix (R6A.3 fix-iteration) — general rule: redemption must be consulted
+    IN THE VARGA WHERE THE WEAKNESS LIVES. `broken_promise` is the D1-strong ×
+    D9-weak case; the weakness being judged is the **D9** debilitation, so its
+    classically-relevant redemption is a pure-`D9`-context NBRY firing (the D9
+    debilitation redeemed within D9 itself). Such a graha can never have a
+    D1-context firing (nothing is debilitated in D1), which is why the D1-only
+    map above structurally could never redeem a broken_promise candidate.
+
+    Kept as a SEPARATE map from `_build_nbry_redemption_map` (whose D1-context
+    role is unchanged): this map is consulted ONLY inside the broken_promise
+    formation branch of `_build_navamsha_cross_check_signals`. Entries with
+    varga_ctx `D1` or `D1->D9` are excluded here — those belong to the D1 map.
+
+    Returns {} when no NBRY row exists (unredeemed D9 debilitations stay
+    broken_promise — the negative-control contract).
+    """
+    rows = _fetch_dict(conn,
+        """SELECT bhanga_rule_fired, citation_ref, citation_human
+           FROM ga_yoga_firings
+           WHERE chart_id=%s AND ayanamsha_id=%s
+             AND yoga_canonical_id='neecha_bhanga_raja_yoga'
+             AND bhanga_active IS TRUE""",
+        [chart_id, ayanamsha_id])
+    lower_to_long = {k.lower(): k for k in _LONG_TO_SHORT}
+    redemption: dict[str, dict[str, str | None]] = {}
+    for r in rows:
+        rule_fired = str(r.get("bhanga_rule_fired") or "")
+        for entry in rule_fired.split(";"):
+            entry = entry.strip()
+            if "@" not in entry or ":" not in entry:
+                continue  # defensive: malformed entry — never guess a redemption
+            planet_part, rest = entry.split("@", 1)
+            varga_ctx, rule_id = rest.split(":", 1)
+            if varga_ctx.strip() != "D9":
+                continue  # D1 / D1->D9 findings belong to the D1-context map
+            long_name = lower_to_long.get(planet_part.strip().lower())
+            if not long_name:
+                continue
+            rec = redemption.setdefault(long_name, {
+                "bhanga_rules_fired": "",
+                "citation_ref": r.get("citation_ref"),
+                "citation_human": r.get("citation_human"),
+            })
+            rec["bhanga_rules_fired"] = (
+                f"{rec['bhanga_rules_fired']};{entry}".strip(";")
+            )
+    return redemption
+
+
 def _build_navamsha_cross_check_signals(
     conn: Any,
     chart_id: str,
@@ -1364,7 +1427,10 @@ def _build_navamsha_cross_check_signals(
     - D1 debilitated but classically CANCELLED per the L1 NBRY evaluator
       (ga_yoga_firings, R6A.1) → 'neecha_bhanga_redeemed' (checked FIRST —
       a redeemed debility is never classified from raw dignity tiers alone)
-    - D1 strong + D9 weak → 'broken_promise' (natal potential undermined by navamsha)
+    - D1 strong + D9 weak → 'broken_promise' (natal potential undermined by
+      navamsha) — UNLESS the D9 debilitation is itself classically CANCELLED
+      per a pure-D9-context NBRY firing (Y-13 fix: redemption is consulted in
+      the varga where the weakness lives) → 'neecha_bhanga_redeemed'
     - D1 weak + D9 strong → 'vargottama_resilience' (neechabhanga-grade uplift)
     - Both strong / both weak → 'concordant_strong' / 'concordant_weak'
     """
@@ -1373,6 +1439,9 @@ def _build_navamsha_cross_check_signals(
     # R6A.3: L1 neecha-bhanga verdicts, loaded ONCE per (chart, ayanamsha) —
     # same build-lookup-then-loop pattern as the two dignity maps above.
     nbry_map = _build_nbry_redemption_map(conn, chart_id, ayanamsha_id)
+    # Y-13 fix: pure-D9-context redemptions, consulted ONLY inside the
+    # broken_promise formation branch below (varga-of-weakness rule).
+    nbry_d9_map = _build_nbry_d9_redemption_map(conn, chart_id, ayanamsha_id)
 
     graha_names = set(d1_map.keys()) | set(d9_map.keys())
     signals: list[dict] = []
@@ -1391,15 +1460,34 @@ def _build_navamsha_cross_check_signals(
         # the raw dignity tiers must not classify it as a weakness pattern.
         nbry_redemption = nbry_map.get(graha)
 
+        # Y-13 fix bookkeeping: the redemption record (if any) that this
+        # graha's classification defers to, and the varga where the redeemed
+        # weakness lives. The two consults are tier-disjoint by construction:
+        # the early D1-context branch handles D1-weak grahas; the D9-context
+        # consult is reachable only when d1_tier >= 2 (D1-strong).
+        redemption_record = nbry_redemption
+        redeemed_weakness_varga: str | None = None
+
         # Classify
         if nbry_redemption is not None:
-            classification = "neecha_bhanga_redeemed"
+            classification = _CLASSIFICATION_NEECHA_BHANGA_REDEEMED
             valence = "benefic"
             salience_base = 1.6  # neechabhanga-grade uplift (parity with vargottama_resilience)
         elif d1_tier >= 2 and d9_tier <= -1:
-            classification = "broken_promise"
-            valence = "malefic"
-            salience_base = 1.8  # high — classically significant warning
+            # Y-13 fix: broken_promise judges the D9 weakness — consult the
+            # redemption IN THE VARGA WHERE THE WEAKNESS LIVES (pure-D9-context
+            # NBRY firing). Behavior-gated to this branch only.
+            d9_redemption = nbry_d9_map.get(graha)
+            if d9_redemption is not None:
+                classification = _CLASSIFICATION_NEECHA_BHANGA_REDEEMED
+                valence = "benefic"
+                salience_base = 1.6  # parity with the D1-context redeemed path
+                redemption_record = d9_redemption
+                redeemed_weakness_varga = "D9"
+            else:
+                classification = "broken_promise"
+                valence = "malefic"
+                salience_base = 1.8  # high — classically significant warning
         elif d1_tier <= -1 and d9_tier >= 1:
             classification = "vargottama_resilience"
             valence = "benefic"
@@ -1428,13 +1516,20 @@ def _build_navamsha_cross_check_signals(
             "d9_tier": d9_tier,
             "classification": classification,
         }
-        if nbry_redemption is not None:
+        if redemption_record is not None:
             # Provenance of the L1 verdict this classification defers to.
             config["neecha_bhanga"] = {
                 "source": "ga_yoga_firings/neecha_bhanga_raja_yoga",
-                "bhanga_rules_fired": nbry_redemption.get("bhanga_rules_fired"),
-                "citation_ref": nbry_redemption.get("citation_ref"),
+                "bhanga_rules_fired": redemption_record.get("bhanga_rules_fired"),
+                "citation_ref": redemption_record.get("citation_ref"),
             }
+            if redeemed_weakness_varga is not None:
+                # Y-13 fix: the redeemed weakness lives in D9 (broken_promise
+                # path). Key added ONLY on this path — the D1-context path's
+                # provenance block stays byte-identical to pre-fix output.
+                config["neecha_bhanga"]["redeemed_weakness_varga"] = (
+                    redeemed_weakness_varga
+                )
 
         headline = (
             f"D9 cross-check: {graha} D1={d1_text} × D9={d9_text} "
@@ -1504,9 +1599,12 @@ def _build_navamsha_cross_check_signals(
             # ("1.0 normal / 1.3 cancelled debility" — SalienceInputs/V2).
             # cancellation_modifier stays 1.0: it means "cancelled YOGA"
             # (0.1), and a redeemed debility is not a cancelled yoga.
+            # Y-13 fix: keyed off redemption_record so the D9-context-redeemed
+            # broken_promise path also carries the cancelled-debility value —
+            # identical to nbry_redemption for every non-flipping row.
             "neechabhanga_modifier":                    (
                 _NEECHABHANGA_CANCELLED_MODIFIER
-                if nbry_redemption is not None
+                if redemption_record is not None
                 else _NEECHABHANGA_NORMAL_MODIFIER
             ),
             "cancellation_modifier":                    1.0,
