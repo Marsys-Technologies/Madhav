@@ -920,58 +920,154 @@ def _evaluate_yoga(yoga: dict, state: ChartState) -> dict | None:
                 break
 
             elif relation == "9th_and_10th_lords_associate_conjunction_aspect_or_exchange":
-                # Dharma-Karmadhipati: 9th and 10th lords associate
-                # We evaluate by checking if 9th/10th lords are in same house or mutual aspect
-                # House lord lookup requires lagna sign — simplified here
-                if state.lagna_sign:
-                    fired = _check_house_lord_association(state, 9, 10)
-                    if fired:
-                        constituent_fact_ids = []
+                # R6A.2 (Y-10): Dharma-Karmadhipati Yoga — lords of the 9th
+                # (dharma) and 10th (karma) associate by conjunction, mutual
+                # aspect, or sign exchange. Formation citation: catalog row
+                # dharma_karmadhipati, source_citation BPHS Ch.39 (Raja Yoga
+                # adhyaya) — reused, not re-derived (R6A.1 §C discipline).
+                hit = _check_house_lord_association(state, 9, 10)
+                if hit:
+                    fired = True
+                    constituent_planets = hit["lords"]
+                    constituent_houses = hit["placement_houses"]
+                    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
                 break
 
             elif relation == "kendra_lord_and_trikona_lord_associate":
-                # Kendra-Trikona Raja Yoga
-                if state.lagna_sign:
-                    fired = _check_kendra_trikona_raja(state)
-                    if fired:
-                        constituent_fact_ids = []
+                # R6A.2 (Y-10): Kendra-Trikona Raja Yoga — any kendra lord
+                # (1/4/7/10) associated with any trikona lord (1/5/9): the
+                # foundational Parashari raja yoga. Formation citation:
+                # catalog row kendra_trikona_raja_yoga, source_citation
+                # BPHS Ch.39 (Raja Yoga adhyaya).
+                hit = _check_kendra_trikona_raja(state)
+                if hit:
+                    fired = True
+                    constituent_planets = hit["lords"]
+                    constituent_houses = hit["placement_houses"]
+                    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
                 break
 
-            elif relation in (
-                "4th_and_9th_lords_in_mutual_kendra",
-                "5th_and_6th_lords_in_mutual_kendra",
-                "lagna_lord_and_9th_lord_associate",
-                "association_of_2nd_and_11th_lords",
-                "association_of_5th_and_9th_lords",
-                "association_among_2_5_9_11_lords",
-                "association_of_lagna_and_2nd_lords",
-                "association_of_9th_and_11th_lords",
-                "9th_lord_own_or_exalted_in_kendra_trikona",
-                "mercury_venus_jupiter_in_kendra_trikona_or_2nd",
-                "benefics_in_upachayas_3_6_10_11_from_lagna_or_moon",
-                "benefics_in_6_7_8_from_lagna",
-                "lagna_lord_exalted_in_kendra_aspected_by_jupiter",
-                "venus_lagna_lord_9th_lord_strong_and_related",
-                "four_or_more_planets_in_one_house",
-                "four_plus_planets_in_one_house",
-                "6th_lord_in_6_8_or_12",
-                "8th_lord_in_6_8_or_12",
-                "12th_lord_in_6_8_or_12",
-                "debilitated_planet_with_cancelled_debility",
-                "mutual_exchange_of_signs_between_two_auspicious_house_lords",
-                "kendra_and_trikona_lords_as_benefics_in_kendras",
-                "lagna_lord_and_9th_lord_associate",
-                "benefics_in_2nd_and_12th_from_a_house_or_planet",
-                "saturn_strongest_in_a_4plus_grouping_or_aspecting_moon_with_ketu",
-                "11th_lord_in_dusthana_or_lagna_lord_in_6_8_12",
-                "moon_jupiter_in_6_8_from_each_other",
-            ):
-                # These require house-lord computation or multi-condition evaluation
-                # beyond what simple chart_facts rows provide without ga_structural
-                # columns. We mark them as requiring deeper fact lookup — fired=False,
-                # partial_formation_pct set to indicate evaluation attempted.
-                # The ga_structural writer (GA8) does yoga_fires rows that handle these.
-                # Here we conservatively skip rather than fabricate.
+            elif relation in R6A2_LORD_ASSOCIATION_RELATIONS:
+                # R6A.2 (Y-10): two-house lord-association yogas.
+                # Formation citations (reused from the catalog rows):
+                #   lagna_lord_and_9th_lord_associate → raja_yoga_lagna_9th,
+                #     BPHS Ch.40 (Raja Yoga adhyaya — supplemental);
+                #   association_of_{2,11 / 5,9 / lagna,2 / 9,11} lords →
+                #     dhana_yoga_* rows, BPHS Ch.41 (Dhana Yoga adhyaya).
+                h1, h2 = R6A2_LORD_ASSOCIATION_RELATIONS[relation]
+                hit = _check_house_lord_association(state, h1, h2)
+                if hit:
+                    fired = True
+                    constituent_planets = hit["lords"]
+                    constituent_houses = hit["placement_houses"]
+                    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
+                break
+
+            elif relation == "association_among_2_5_9_11_lords":
+                # R6A.2 (Y-10): Maha Dhana Yoga — association among the
+                # wealth-house lords (2/5/9/11); fires on any associating
+                # pair among the four lords (the catalog formation_text's
+                # plain reading). Citation: dhana_yoga_2_5_9_11, BPHS Ch.41.
+                hit = _check_any_lord_pair_association(state, (2, 5, 9, 11))
+                if hit:
+                    fired = True
+                    constituent_planets = hit["lords"]
+                    constituent_houses = hit["placement_houses"]
+                    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
+                break
+
+            elif relation in R6A2_VIPARITA_RELATIONS:
+                # R6A.2 (Y-10): Viparita Raja Yoga family — Harsha (6th lord),
+                # Sarala (8th lord), Vimala (12th lord) placed in a dusthana
+                # (6/8/12, own house included) — "poison cures poison".
+                # Citation: catalog rows vipareeta_harsha/sarala/vimala,
+                # source_citation Phaladeepika Ch.7 (Raja Yoga).
+                own_house = R6A2_VIPARITA_RELATIONS[relation]
+                hit = _check_lord_in_houses(state, own_house, DUSTHANAS)
+                if hit:
+                    fired = True
+                    constituent_planets = hit["lords"]
+                    constituent_houses = hit["placement_houses"]
+                    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
+                break
+
+            elif relation == "11th_lord_in_dusthana_or_lagna_lord_in_6_8_12":
+                # R6A.2 (Y-10): Daridra Yoga — the 11th lord (gains) in a
+                # dusthana, OR the lagna lord in 6/8/12 (catalog disjunction).
+                # Citation: catalog row daridra_yoga, source_citation Saravali
+                # (classical_citations also list BPHS).
+                hit = (_check_lord_in_houses(state, 11, DUSTHANAS)
+                       or _check_lord_in_houses(state, 1, DUSTHANAS))
+                if hit:
+                    fired = True
+                    constituent_planets = hit["lords"]
+                    constituent_houses = hit["placement_houses"]
+                    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
+                break
+
+            elif relation == "moon_jupiter_in_6_8_from_each_other":
+                # R6A.2 (Y-10): Shakata Dur-Yoga — Moon and Jupiter in 6/8
+                # (shadashtaka) from each other. The catalog's exclusion
+                # clause {"exclude": "jupiter_in_kendra_from_lagna"} is
+                # enforced HERE at formation time, exactly mirroring the
+                # Y-9 fix in ga_structural_writer._evaluate_catalog_rule —
+                # the two evaluators must not disagree on Shakata's
+                # qualifier. (Jupiter in kendra from the MOON is
+                # geometrically impossible when the two are 6/8 apart, so
+                # the catalog's bhanga clause has no residual reach beyond
+                # this exclusion.) Citation: catalog row shakata_dur_yoga,
+                # source_citation Saravali (classical_citations also BPHS).
+                moon_h = _house_of_planet("moon", state)
+                jup_h = _house_of_planet("jupiter", state)
+                if moon_h and jup_h:
+                    rel_h = ((jup_h - moon_h) % 12) + 1
+                    if rel_h in (6, 8) and jup_h not in KENDRAS:
+                        fired = True
+                        constituent_planets = ["moon", "jupiter"]
+                        constituent_houses = sorted({moon_h, jup_h})
+                        constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
+                break
+
+            elif relation == "mutual_exchange_of_signs_between_two_auspicious_house_lords":
+                # R6A.2 (Y-10): Parivartana (Maha) Raja Yoga — lords of two
+                # auspicious houses in mutual sign exchange, with the dainya
+                # guard (see _check_auspicious_parivartana). Citation:
+                # catalog row parivartana_raja_yoga, BPHS Ch.39.
+                hit = _check_auspicious_parivartana(state)
+                if hit:
+                    fired = True
+                    constituent_planets = hit["lords"]
+                    constituent_houses = hit["placement_houses"]
+                    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
+                break
+
+            elif relation == "four_or_more_planets_in_one_house":
+                # R6A.2 (Y-10): Pravrajya (Sannyasa) Yoga — four or more of
+                # the SEVEN classical grahas (nodes excluded, per the catalog
+                # formation_text) gathered in one whole-sign house. Citation:
+                # catalog row pravrajya_yoga, BPHS Ch.36 (Pravrajya adhyaya).
+                for h in sorted(state.lagna_house_planets):
+                    grouped = sorted(
+                        p for p in state.lagna_house_planets[h]
+                        if p in NBRY_CLASSICAL_GRAHAS
+                    )
+                    if len(grouped) >= 4:
+                        fired = True
+                        constituent_planets = grouped
+                        constituent_houses = [h]
+                        constituent_fact_ids = state.fact_ids_for_planets(grouped)
+                        break
+                break
+
+            elif relation in R6A2_FLOOR_REASONS:
+                # R6A.2 (Y-10) honest floor. The pre-R6A.2 comment here
+                # claimed "the ga_structural writer (GA8) does yoga_fires
+                # rows that handle these" — that claim was FALSE (defect
+                # register Y-10) and is retired. Every relation still
+                # floored has a SPECIFIC documented reason in
+                # R6A2_FLOOR_REASONS (per-relation, not generic); firing
+                # any of them without resolving that reason would be
+                # fabrication (B.10). fired stays False → no row.
                 is_partial = False
                 partial_formation_pct = None
                 break
@@ -1050,24 +1146,280 @@ def _is_exalted(planet: str, sign: str) -> bool:
     return sign == EXALTATION_SIGNS.get(planet)
 
 
-def _check_house_lord_association(state: ChartState, h1: int, h2: int) -> bool:
-    """
-    Simplified check: are the lords of h1 and h2 in the same house?
-    Full evaluation requires house-lord mapping from lagna sign (not always available
-    from chart_facts alone; ga_structural handles the full evaluation).
-    Returns False if lagna sign unavailable — conservative guard.
-    """
-    # Without a complete house-lord table this cannot be fully evaluated
-    # from chart_facts alone. Return False to avoid fabrication.
-    return False
+# ═══════════════════════════════════════════════════════════════════════════════
+# R6A.2 — House-lord yoga detection (defect register Y-10)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Before R6A.2, ~27 house-lord relations were silently skipped behind a FALSE
+# comment claiming ga_structural (GA8) handled them (it does not — Y-10), and
+# _check_house_lord_association / _check_kendra_trikona_raja were hardcoded
+# `return False` stubs. This section implements the real evaluators:
+#
+#   * Lord-of-house resolution: lagna sign + the Parashari sign-lord table
+#     (NB_SIGN_LORDS, sealed in R6A.1, mirroring ga_structural_writer's
+#     SIGN_LORDS). Rahu/Ketu never lord a sign in this table, so house lords
+#     are always among the 7 classical grahas.
+#   * "Association" (sambandha) = conjunction (same whole-sign house), MUTUAL
+#     Parashari graha-drishti (each aspects the other's house; special aspects
+#     of Mars/Jupiter/Saturn included via NB_GRAHA_DRISHTI), or parivartana
+#     (mutual sign exchange) — the classical three-fold sambandha of the BPHS
+#     Raja/Dhana yoga adhyayas.
+#   * All placements whole-sign, lagna-relative (same basis as this writer's
+#     other branches).
+#
+# LESS-scope decisions (deliberate, documented — flag for conductor review):
+#   * If one planet lords BOTH houses of a pair (e.g. Taurus lagna: Saturn
+#     lords both 9 and 10), the association does NOT fire — classical
+#     treatments of self-association diverge; we do not pick one silently.
+#   * Association requires MUTUAL aspect, never one-way drishti (the
+#     conservative classical reading of sambandha).
+#
+# ZERO LLM — plain deterministic Python.
+#
+# Formation citations are REUSED from the catalog rows these relations belong
+# to (brahma_yoga_catalog.source_citation, seeded in brahmagyan/l0_yogas.py) —
+# same discipline as R6A.1's reuse of the BPHS Ch.39 NBRY anchor: BPHS Ch.39
+# (Raja Yoga adhyaya) for Dharma-Karmadhipati / Kendra-Trikona / Parivartana
+# Raja; BPHS Ch.40 for the Lagna-9th-lord raja; BPHS Ch.41 (Dhana Yoga
+# adhyaya) for the dhana family; Phaladeepika Ch.7 for the Viparita family
+# (Harsha/Sarala/Vimala); Saravali (+BPHS) for Daridra and Shakata; BPHS
+# Ch.36 (Pravrajya adhyaya) for the 4+-graha sannyasa grouping. Firing rows'
+# citation_ref/citation_human continue to carry the JL-012 strength-derivation
+# citation (set uniformly in the main loop); the formation citation is
+# authoritative on the catalog row itself.
+#
+# Cancellation wiring (R6A.2 §B outcome): NO new _BHANGA_EVALUATORS entries —
+# none of these families has a classical cancellation rule this author can
+# confidently cite as bhanga-of-the-formed-yoga:
+#   * Shakata: the classical qualifier (Jupiter in a kendra from the lagna)
+#     is enforced as a FORMATION exclusion (catalog "exclude" clause; parity
+#     with ga_structural's Y-9 fix), and Jupiter in a kendra from the Moon is
+#     geometrically impossible when the two are 6/8 apart — nothing remains
+#     to register.
+#   * Daridra's catalog bhanga ("dhana_or_raja_yoga_present") is a cross-yoga
+#     interaction with no confidently citable classical chapter → it keeps
+#     the honest NULL + has_catalog_cancellation reason via evaluate_bhanga.
+#   * Dharma-Karmadhipati / Kendra-Trikona carry only "weakened_if" clauses
+#     (strength modulation, not cancellation) → honest NULL floor likewise.
+
+# Auspicious houses for parivartana classification (1,2,4,5,7,9,10,11 —
+# catalog formation_text of parivartana_raja_yoga / shubha_parivartana).
+R6A2_AUSPICIOUS_HOUSES: tuple[int, ...] = (1, 2, 4, 5, 7, 9, 10, 11)
+
+# relation → (h1, h2) for plain two-house lord-association yogas.
+R6A2_LORD_ASSOCIATION_RELATIONS: dict[str, tuple[int, int]] = {
+    "lagna_lord_and_9th_lord_associate": (1, 9),    # raja_yoga_lagna_9th (BPHS Ch.40)
+    "association_of_2nd_and_11th_lords": (2, 11),   # dhana_yoga_2_11 (BPHS Ch.41)
+    "association_of_5th_and_9th_lords": (5, 9),     # dhana_yoga_5_9 (BPHS Ch.41)
+    "association_of_lagna_and_2nd_lords": (1, 2),   # dhana_yoga_lagna_2 (BPHS Ch.41)
+    "association_of_9th_and_11th_lords": (9, 11),   # dhana_yoga_9_11 (BPHS Ch.41)
+}
+
+# relation → the dusthana whose lord is examined (Viparita family,
+# Phaladeepika Ch.7).
+R6A2_VIPARITA_RELATIONS: dict[str, int] = {
+    "6th_lord_in_6_8_or_12": 6,     # vipareeta_harsha
+    "8th_lord_in_6_8_or_12": 8,     # vipareeta_sarala
+    "12th_lord_in_6_8_or_12": 12,   # vipareeta_vimala
+}
+
+# Relations that remain HONESTLY floored after R6A.2, each with its specific
+# reason (replaces the false "GA8 handles these" comment — Y-10). A floored
+# relation returns no row; firing it without resolving the stated blocker
+# would be fabrication (B.10). "Scope questions default to LESS scope."
+R6A2_FLOOR_REASONS: dict[str, str] = {
+    "4th_and_9th_lords_in_mutual_kendra": (
+        "kahala: the mutual-kendra clause is computable, but the catalog "
+        "co-requirement {lagna_lord strong} has no ratified deterministic "
+        "'strong' predicate in this writer — firing on the relation alone "
+        "would over-fire"
+    ),
+    "5th_and_6th_lords_in_mutual_kendra": (
+        "sankha: same {lagna_lord strong} co-requirement blocker as kahala"
+    ),
+    "9th_lord_own_or_exalted_in_kendra_trikona": (
+        "lakshmi_yoga: same {lagna_lord strong} co-requirement blocker"
+    ),
+    "mercury_venus_jupiter_in_kendra_trikona_or_2nd": (
+        "saraswati: positional clause computable, but the {jupiter strong} "
+        "co-requirement has no ratified deterministic predicate here"
+    ),
+    "venus_lagna_lord_9th_lord_strong_and_related": (
+        "bheri: 'strong and related' compound has no ratified deterministic "
+        "definition in this writer"
+    ),
+    "lagna_lord_exalted_in_kendra_aspected_by_jupiter": (
+        "chamara: compound rule with an 'alt' disjunct "
+        "(two_benefics_in_1_7_9_or_10); deferred rather than partially "
+        "implemented — not in the R6A.2 family scope"
+    ),
+    "benefics_in_upachayas_3_6_10_11_from_lagna_or_moon": (
+        "vasumati: quantifier ambiguous in catalog rule (ALL vs ANY benefics; "
+        "lagna vs moon basis) — classical variants differ; not resolved here"
+    ),
+    "benefics_in_6_7_8_from_lagna": (
+        "lagnadhi variant: required benefic count ambiguous in catalog rule"
+    ),
+    "four_plus_planets_in_one_house": (
+        "sannyasa_strongest_planet: formation duplicates pravrajya_yoga "
+        "(implemented above); its determinant (strongest grouped graha sets "
+        "the ascetic order) requires a strength ranking not ratified in this "
+        "writer"
+    ),
+    "debilitated_planet_with_cancelled_debility": (
+        "neecha_bhanga_raja_yoga: evaluated by _build_nbry_firing (R6A.1) "
+        "with real per-varga D1/D9 bhanga rules — must not double-fire via "
+        "this catalog loop"
+    ),
+    "kendra_and_trikona_lords_as_benefics_in_kendras": (
+        "parvata: multiple classical variants of Parvata exist and the "
+        "catalog reading ('lords as benefics') is ambiguous — not implemented "
+        "to avoid picking the wrong variant"
+    ),
+    "benefics_in_2nd_and_12th_from_a_house_or_planet": (
+        "shubha_kartari: the flanking target ('a house or planet') is "
+        "unspecified in the catalog rule — no deterministic target to check"
+    ),
+    "saturn_strongest_in_a_4plus_grouping_or_aspecting_moon_with_ketu": (
+        "sannyasa_saturn: 'strongest' requires a strength ranking not "
+        "ratified in this writer"
+    ),
+    "all_seven_planets_hemmed_rahu_ketu_one_side": (
+        "kala_sarpa_yoga (relation form): legacy DUPLICATE of the dosha-form "
+        "Kala Sarpa, which is fully implemented per-varga in "
+        "ga_structural_writer._detect_kala_sarpa (kala_sarpa_per_varga rows) "
+        "— re-firing it here would create two authorities for one dosha "
+        "(R6A.2 finding; conductor may retire the catalog relation instead)"
+    ),
+}
 
 
-def _check_kendra_trikona_raja(state: ChartState) -> bool:
-    """
-    Conservative check for Kendra-Trikona Raja Yoga.
-    Requires house-lord computation — deferred to ga_structural.
-    """
-    return False
+def _sign_of_house(state: ChartState, house: int) -> str | None:
+    """Sign occupying whole-sign house `house` (1-12) counted from the lagna."""
+    if not state.lagna_sign or state.lagna_sign not in SIGN_NUMBERS:
+        return None
+    num = ((SIGN_NUMBERS[state.lagna_sign] - 1 + house - 1) % 12) + 1
+    return SIGN_NAMES[num]
+
+
+def _lord_of_house(state: ChartState, house: int) -> str | None:
+    """Parashari lord of the sign in whole-sign house `house` from the lagna
+    (NB_SIGN_LORDS — the R6A.1-sealed table)."""
+    sign = _sign_of_house(state, house)
+    return NB_SIGN_LORDS.get(sign) if sign else None
+
+
+def _planets_associated(state: ChartState, p1: str, p2: str) -> str | None:
+    """Classical sambandha between two DISTINCT planets: 'conjunction' (same
+    whole-sign house), 'exchange' (each occupies a sign the other lords), or
+    'mutual_aspect' (each casts Parashari drishti on the other's house).
+    Returns the mode string, or None if not associated."""
+    if p1 == p2:
+        return None
+    h1 = _house_of_planet(p1, state)
+    h2 = _house_of_planet(p2, state)
+    if not h1 or not h2:
+        return None
+    if h1 == h2:
+        return "conjunction"
+    s1 = state.planet_sign.get(p1)
+    s2 = state.planet_sign.get(p2)
+    if s1 and s2 and NB_SIGN_LORDS.get(s1) == p2 and NB_SIGN_LORDS.get(s2) == p1:
+        return "exchange"
+    if _nb_aspects_house(p1, h1, h2) and _nb_aspects_house(p2, h2, h1):
+        return "mutual_aspect"
+    return None
+
+
+def _check_house_lord_association(state: ChartState, h1: int, h2: int) -> dict | None:
+    """R6A.2 (Y-10): REAL generic house-lord association check (was a
+    hardcoded `return False` stub). Do the lords of houses h1 and h2 (from
+    the lagna) associate by conjunction / mutual aspect / sign exchange?
+
+    Returns a detail dict {lords, houses_ruled, placement_houses,
+    association_mode} when the association holds, else None (truthiness-
+    compatible with the old bool contract). Same-lord pairs never fire
+    (LESS scope — see section header)."""
+    l1 = _lord_of_house(state, h1)
+    l2 = _lord_of_house(state, h2)
+    if not l1 or not l2 or l1 == l2:
+        return None
+    mode = _planets_associated(state, l1, l2)
+    if not mode:
+        return None
+    placement = [h for h in (_house_of_planet(l1, state), _house_of_planet(l2, state)) if h]
+    return {
+        "lords": [l1, l2],
+        "houses_ruled": [h1, h2],
+        "placement_houses": sorted(set(placement)),
+        "association_mode": mode,
+    }
+
+
+def _check_kendra_trikona_raja(state: ChartState) -> dict | None:
+    """R6A.2 (Y-10): REAL Kendra-Trikona Raja Yoga check (was a hardcoded
+    `return False` stub) — any kendra lord (1/4/7/10) associated with any
+    trikona lord (1/5/9), per BPHS Ch.39. House 1 is both kendra and trikona;
+    the degenerate (1,1) pair is skipped, and same-lord pairs never fire
+    (LESS scope). Returns the first firing pair's detail dict, else None."""
+    for hk in sorted(KENDRAS):
+        for ht in sorted(TRIKONAS):
+            if hk == ht:
+                continue
+            hit = _check_house_lord_association(state, hk, ht)
+            if hit:
+                return hit
+    return None
+
+
+def _check_any_lord_pair_association(state: ChartState, houses: tuple[int, ...]) -> dict | None:
+    """Any associating lord pair among `houses` (Maha Dhana reading:
+    'association among the lords of 2/5/9/11'). First firing pair returned."""
+    for i, h1 in enumerate(houses):
+        for h2 in houses[i + 1:]:
+            hit = _check_house_lord_association(state, h1, h2)
+            if hit:
+                return hit
+    return None
+
+
+def _check_lord_in_houses(state: ChartState, lord_house: int, target_houses: set[int]) -> dict | None:
+    """Is the lord of `lord_house` placed (whole-sign, from lagna) in one of
+    `target_houses`? (Viparita family; Daridra.)"""
+    lord = _lord_of_house(state, lord_house)
+    if not lord:
+        return None
+    ph = _house_of_planet(lord, state)
+    if ph is None or ph not in target_houses:
+        return None
+    return {"lords": [lord], "houses_ruled": [lord_house], "placement_houses": [ph]}
+
+
+def _check_auspicious_parivartana(state: ChartState) -> dict | None:
+    """Parivartana (Maha) Raja Yoga: the lords of two AUSPICIOUS houses
+    (1/2/4/5/7/9/10/11) in mutual sign exchange — lord of h1 occupies h2 and
+    lord of h2 occupies h1. Dainya guard (the catalog row's cancellation
+    'excluded' clause, dainya_parivartana_with_6_8_12): neither participating
+    lord may ALSO lord a dusthana (6/8/12) — conservative reading so a
+    dual-lordship exchange is never mislabeled raja when its dusthana side
+    would make it dainya (LESS scope — flag for conductor review)."""
+    dusthana_lords = {_lord_of_house(state, h) for h in sorted(DUSTHANAS)}
+    for i, h1 in enumerate(R6A2_AUSPICIOUS_HOUSES):
+        for h2 in R6A2_AUSPICIOUS_HOUSES[i + 1:]:
+            l1 = _lord_of_house(state, h1)
+            l2 = _lord_of_house(state, h2)
+            if not l1 or not l2 or l1 == l2:
+                continue
+            if l1 in dusthana_lords or l2 in dusthana_lords:
+                continue
+            if _house_of_planet(l1, state) == h2 and _house_of_planet(l2, state) == h1:
+                return {
+                    "lords": [l1, l2],
+                    "houses_ruled": [h1, h2],
+                    "placement_houses": sorted((h1, h2)),
+                    "association_mode": "exchange",
+                }
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
