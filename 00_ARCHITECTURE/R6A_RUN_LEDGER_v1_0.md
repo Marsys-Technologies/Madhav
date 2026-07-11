@@ -689,3 +689,48 @@ divergence is NOT this task's job (no live data available post-restore to invest
 to Ring-2 against fresh rebuilt data per directive 3). Do not commit/push.
 
 Awaiting Fable-5 completion before Ring-2 (fresh verifier) dispatch.
+
+**Fable-5 completed** (worktree `agent-a8dcecf4e46b9fbea`). All 4 mandatory tests (a/b/c/d) written
+and passing, including a tier-disjointness sweep that imports the real `_DIGNITY_STRENGTH_TIER`
+vocabulary (not a hardcoded copy). Zero regressions: 92 passed/2 skipped combined across
+R6A.1/R6A.2/R6A.3 suites, none of the 13 pre-existing R6A.3 tests modified. GS-23 added to
+`GOLDEN_SIGNALS_482012f1_v1_0.yaml`. Flagged one judgment call for Ring-2: `neechabhanga_modifier
+=1.3` for the new D9-redeemed path (inferred from formulas.py's binary "cancelled debility"
+semantics, not explicitly specified in the directives).
+
+**RING-2 VERDICT (fresh verifier, per native's directive 5): SAFE TO MERGE.** All 10 claim groups
+independently confirmed — if/elif mutual exclusivity traced directly in the code, shared
+classification constant confirmed, provenance differentiation confirmed (D1 path never gains the
+`redeemed_weakness_varga` key), test counts reproduced exactly, `ga_yoga_writer.py`/`formulas.py`
+confirmed untouched, GS-23 parsed and validated. Constructed 2 independent adversarial cases beyond
+the implementer's suite: the `concordant_strong` nearest-miss (D1-strong+D9-also-strong with a
+D9-context firing present — confirmed the D9 consult is never even reached, since it sits inside
+the `d9_tier<=-1` half of the `broken_promise` guard) and the mixed-zone tier boundary (confirmed
+structurally unreachable by the same guard) — both held. Endorsed the `1.3` modifier judgment call
+as the only semantically-consistent value per `formulas.py`'s own documented contract. One LOW
+finding (mixed-zone boundary lacks an explicit test, though structurally moot) — non-blocking.
+
+**MERGED**: PR #548 (`r6a-3/y13-d9-context-redemption`) — needed one resync (a docs-only ledger PR
+#547 merged first), re-pushed, CI passed clean on the merge commit. **Deploy-truth confirmed**:
+`gcloud run jobs describe brahma-build-pipeline-job` → deployed image tag
+`e28762dfc7526d568da9bbaf731168292979f649`, exact match to the merge commit.
+
+**Re-attempt sequencing, step 1 — Abhinandan-first rebuild (native directive 5)**: fired a scoped
+per-asset rebuild on Abhinandan (`1c826d5a`) targeting ONLY `bo_laksana` (not global) — confirmed
+via the "Confirm build" dialog listing exactly 1 asset before confirming, and via direct
+`build_runs` read: `scope='asset'`, `scope_target='bo_laksana'`. Completed cleanly, `last_error=null`.
+
+**Gate check — Jupiter (the known D1-context redemption) CONFIRMED UNCHANGED on real data**:
+`navamsha_d9_cross_check:jupiter` → `neecha_bhanga_redeemed` across all 5 ayanamshas, `varga=null`
+on every row (confirming it's still classified via the untouched D1-context path, not accidentally
+routed through the new D9 path). **Full graha sweep is byte-identical to R6A.5's known prior
+result**: Jupiter redeemed 5/5; Mercury redeemed 1/5 + mixed 4/5; Ketu `broken_promise` ×1 + mixed
+×4 (the sole remaining `broken_promise` instance in Abhinandan's chart — Ketu is a lunar node,
+correctly outside NBRY's scope by R6A.1's own design, not a miss); Mars/Moon/Rahu/Saturn/Sun all
+`mixed` ×5; Venus `concordant_strong` ×5. **Zero regression, zero unintended side effects** — no
+graha's classification changed, and Abhinandan's real chart configuration doesn't happen to contain
+a D1-strong/D9-weak-with-D9-redemption case, so the new D9 path exists correctly but wasn't
+exercised on this chart (harmless — it wasn't asked to be, only proven not to break anything).
+
+**Step 1 of the re-attempt sequence: CONFIRMED CLEAN. Awaiting native go-ahead for step 2 — the
+native chart re-attempt (R6A.6, take 2).**
