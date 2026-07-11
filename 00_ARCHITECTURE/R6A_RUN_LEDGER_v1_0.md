@@ -402,3 +402,290 @@ gate has yet been validated against REAL rebuilt chart data — that is exactly 
 guarded Abhinandan re-zero) is for. **Proceeding to R6A.5 next — a live guarded production rebuild,
 the proving ground where both golden gates get their first real-data validation. Native briefed
 before proceeding, per the significance of this phase.**
+
+**PR #545 (R6A.4) confirmed merged** — commit `00faf881f48a1d947d5357af81d89851642780ef`.
+Worktree/branch `r6a/y1-antifabrication-test` cleaned up.
+
+## PHASE R6A.5 — RE-ZERO ON ABHINANDAN (guarded rebuild, the proving ground)
+
+**Gate 1 (deploy-truth)**: `gcloud run jobs describe brahma-build-pipeline-job` shows the deployed
+image tag = `58b27b6f5ebb80c22f15422981608e06fa137f96` (R6A.3's merge commit — contains all of
+Wave A's runtime logic: R6A.1 NBRY evaluator, R6A.2 house-lord family, R6A.3 D9 cross-check fix).
+R6A.4 added zero production code (test file only, confirmed via its PR diff) — no further deploy
+needed before this rebuild exercises the corrected behavior. Deploy-truth confirmed, not assumed.
+
+**Pre-rebuild snapshot** (exact `COUNT(*)`-based, not `wc -l` — no `\copy`/psql file-dump access
+in this environment, so this is a SQL-count baseline rather than a full file dump; relying on the
+already-verified idempotent per-writer discipline — delete-then-insert scoped to `chart_id`,
+IRREPLACEABLE-outcome rows protected by PR #539's `mi_bhavisya` fix — as the safety net for a full
+rebuild):
+- All 61 chart-scoped assets for `1c826d5a`: `state='lit'`, 0 errors. Full per-asset `rows_written`
+  baseline recorded (largest: `ga_dashas`=471,122; `ka_taranga`=79,728; `bo_laksana`/
+  `bo_samskara`/`ka_kalasutra`/`ka_yojaka`=66,747 each; `mi_adhilepa`=127,041; `ga_structural`=
+  103,491; `ga_vargas`=37,020).
+- **`mimamsa_predictions`: 200/200 rows `lifecycle_status='pending'`** — zero confirmed/denied
+  outcomes recorded yet for this chart. Zero IRREPLACEABLE-data risk from a full rebuild right now.
+- **`life_events` (LEL): 0 rows** for this chart. Zero LEL risk.
+
+Proceeding to fire the guarded global rebuild.
+
+**Fired via Nirmāṇa UI (Playwright)**: clicked global "Rebuild" — dialog confirmed exact scope
+(L1-L5, 54 assets, 1,111,415 rows to be deleted, L0 Brahma Jñāna correctly excluded), typed the
+subject-name confirmation ("Abhinandan Mohanty"), confirmed. UI showed "Clearing 67 assets across
+60 tables…" in progress, then correctly chained into a rebuild automatically (per
+`handleAfterClear()`'s real POST to `/api/cockpit/runs`, verified via source-reading earlier this
+session). **Confirmed via direct DB read**: new `build_runs` row `3e128fd5-11a3-430e-bfc0-fbf9dcb3b9f6`,
+`scope='global'`, `action='rebuild'`, `state='running'`. Beginning guardian monitoring — early
+progress confirmed real (not a false success): `ga_positions`=lit/530 rows,
+`ga_sensitive`/`ga_vargas`=building with real in-progress row counts, `mi_jivanaghatana`=lit
+(global-scope carryover, unaffected by chart-scoped clear as expected).
+
+**Progress checkpoint (~20min in)**: 27/61 lit, 2 building, 1 stale, 0 errors, currently on
+`bo_drishti` (Bodha layer). `ga_structural` completed: 103,491 rows — exact match to the
+pre-rebuild baseline (consistency check passes). `ga_yoga` completed: **56 rows, up from the
+pre-rebuild baseline of 30** — the increase is exactly what R6A.1+R6A.2 predict (previously
+skip-listed house-lord relations + NBRY now actually firing instead of being silently dropped).
+
+**First live confirmation of Wave A's new logic on REAL production data** (spot-check of
+`ga_yoga_firings`, mid-rebuild): `neecha_bhanga_raja_yoga` fired=true, **`bhanga_active=true`**,
+real citation present, 5 rows (one per ayanamsha) — R6A.1's NBRY evaluator genuinely detecting a
+redeemed debilitation in Abhinandan's real chart, not just in synthetic tests. **This is golden
+catch (a) — NBRY fires where classically applicable — already confirmed true**, ahead of full
+gate-stack verification. Also firing with real citations, zero OCR-garbage names:
+`kendra_trikona_raja_yoga`, `dhana_yoga_lagna_2`, `daridra_yoga`, `vipareeta_harsha`,
+`vipareeta_sarala` (all R6A.2 house-lord relations) alongside the pre-existing real yogas (`amala`,
+`anapha`, `budha_aditya`, `pasha`, `ubhayachari`, `vasi`, `vesi`). Continuing to monitor through
+the L2-L5 cascade — golden catch (b) (D9 cross-check reading `neecha_bhanga_redeemed`) can only be
+checked once `bo_laksana` (L2 Bodha) completes.
+
+## R6A.5 — REBUILD COMPLETE, FULL GATE-STACK RESULTS
+
+**Terminal state**: `build_runs.3e128fd5` → `state='completed'`, `last_error=null`.
+**Gate 1 — all assets lit, 0 errors**: 61/61 chart-scoped assets `state='lit'` (confirmed via
+direct `GROUP BY state` — only one state value present across the whole set: `lit`). 5 global-scope
+assets (`mi_kula`, `mi_vistara`, `ka_graha_sancara`, `ka_gochara`, `ka_muhurta_seva`) confirmed
+`lit`. **61 + 5 = 66/66, full reconciliation, zero errors, zero strays.**
+
+**Gate 2 — yoga surface REAL**: full `ga_yoga_firings` sweep for this chart (not just the
+mid-rebuild spot-check) — **zero fired rows with a missing citation**, across every
+`yoga_canonical_id` present (`amala`, `anapha`, `budha_aditya`, `daridra_yoga`,
+`dhana_yoga_lagna_2`, `kendra_trikona_raja_yoga`, `neecha_bhanga_raja_yoga`, `pasha`,
+`ubhayachari`, `vasi`, `vesi`, `vipareeta_harsha`, `vipareeta_sarala`) — all real classical yoga
+names, zero OCR-garbage entries, zero uncited fires.
+
+**Gate 3 — house-lord yogas detected where present**: 5 distinct R6A.2 house-lord relations fired
+for Abhinandan's real chart configuration (`kendra_trikona_raja_yoga`, `dhana_yoga_lagna_2`,
+`daridra_yoga`, `vipareeta_harsha`, `vipareeta_sarala`) — plausible given his real placements
+support some but not all 15 possible relations (the other 10 correctly did not fire, since his
+chart doesn't satisfy their formation conditions).
+
+**Gate 4 — cancellation evaluator ran**: `neecha_bhanga_raja_yoga` — 5/5 ayanamshas fired=true,
+`bhanga_active=true`, real `bhanga_rule_fired` + `citation_ref` populated on every row. Not a
+floor-only result — the evaluator genuinely detected and confirmed a real redemption.
+
+### THE THREE GOLDEN CATCHES — ALL CONFIRMED ON REAL PRODUCTION DATA
+
+**(a) NBRY fires where classically applicable** — CONFIRMED. `neecha_bhanga_raja_yoga`
+`bhanga_active=true` across all 5 ayanamshas for Abhinandan's real chart, with real citations —
+not a synthetic test, genuine live detection.
+
+**(b) D9 cross-check reads `neecha_bhanga_redeemed`, not `broken_promise`, for the redeemed
+graha** — CONFIRMED. Queried `bodha_msr_signals` (`navamsha_d9_cross_check:*` signals, R6A.3's
+consult-first classification): **Jupiter → `neecha_bhanga_redeemed` across all 5 ayanamshas**
+(salience 1.6, matching the fed `neechabhanga_modifier=1.3` boost path); Mercury → redeemed in 1
+of 5 ayanamshas, `mixed` in the other 4 (ayanamsha-dependent placement variance — plausible, not
+a bug). **The one `broken_promise` row in the entire dataset is for Ketu** — a lunar node, and
+R6A.1 explicitly documented (LESS-scope decision) that NBRY is evaluated for the 7 classical
+grahas only, nodes excluded, since classical neecha-bhanga doctrine doesn't extend to Rahu/Ketu.
+Ketu was never eligible for redemption in the first place — this is the evaluator working exactly
+as designed, not a gap. All 7 other grahas (Sun, Moon, Mars, Venus, Saturn, Rahu, and the
+non-redeemed portion of Mercury) correctly show `mixed`/`concordant_strong`/`concordant_weak` —
+none show a spurious `broken_promise` for a graha that should have been redeemed.
+
+**(c) Yoga surface real, no fabrication, no contradictory pairs** — CONFIRMED (restates gate 2).
+Zero uncited fires, zero garbage names, across the complete dataset.
+
+**R6A.5: PASSED. All gates including all three golden catches confirmed on real, live-rebuilt
+production data for Abhinandan (1c826d5a) — not synthetic tests, not partial spot-checks.**
+
+**Awaiting explicit native go-ahead before R6A.6 (the native chart rebuild) — reporting now per
+the standing instruction to check in at this exact checkpoint.**
+
+## ⚖ NATIVE GO RECEIVED — PHASE R6A.6 (THE NATIVE REBUILD)
+
+Native gave explicit GO for R6A.6 with the full protocol specified: exact-count snapshot before
+any build, guarded global Rebuild via Nirmāṇa + Chrome MCP (owner/super_admin, WORKER_LIMIT=2,
+guardian discipline), post-rebuild gates keyed on Saturn (the three golden catches) plus standing
+gates (FORENSIC 7/7 ×5, LEL 57 rows + calibrated + 10:43 held, bhava_arudha 12×5, JL-009 traced,
+degeneracy sweep, Abhinandan contamination-clean), HALT + restore-from-snapshot on any failure
+with NO iteration on the native chart.
+
+**Pre-rebuild snapshot** (exact-count-verified, PF-1 discipline — real `\copy` file export this
+time, direct `psql` access via `platform/.env.local`'s `DATABASE_URL` through the already-running
+`cloud-sql-proxy` on port 5433, confirmed working): 127 chart-scoped tables enumerated. Exported
+every non-empty table for `482012f1` via `\copy ... CSV header`, `statement_timeout=300000` (the
+truncation lesson — never trust a default/short timeout on a large table). Verified via Python's
+`csv` module (not `wc -l`) against a **freshly re-queried** live `COUNT(*)` per table (not the
+count captured at export time — catches any drift during the export window):
+
+**VERIFIED: 9 non-empty tables, 5,211 total rows, ZERO mismatches.** Snapshot files at
+`{scratchpad}/r6a6_snapshot/csv/*.csv`; restore path: `\copy <table> FROM '<file>.csv' CSV header`
+per table (rehearsed restore mechanics already established earlier in this campaign's PF-2 work).
+
+**Important finding, verified not assumed**: 9 tables/5,211 rows is far below the
+`L1_GANITA_CLOSURE`-era historical baseline (chart_facts alone was 27,554 at that closure). Cross-
+checked this is NOT a wrong-database artifact — confirmed via the independent `postgres` MCP tool
+(the same tool used throughout this entire session for live production verification) that
+`chart_facts` for `482012f1` shows the same **4,876** row count, and `asset_throughput` shows
+**all 61 chart-scoped assets `state='dormant'`** for the native chart right now. This traces
+directly to this campaign's own earlier work: PR #537 (the `ga_structural` clear-mechanism JOIN
+bug fix, applied to BOTH charts) removed 196,987 rows including from `482012f1`, and the native
+has not been rebuilt since — this is the genuinely current, correct, live state of the chart, and
+exactly why R6A.6 (a full one-shot rebuild) is the pending action. The snapshot is valid and
+verified against real current data, not stale/wrong data.
+
+**Consequence for the rebuild trigger**: since native is fully dormant (0/61 lit), the Nirmāṇa
+UI's top-level button will show **"Build" (not "Rebuild")** per `deriveAction()`'s
+`dormant===total` logic — meaning the non-destructive `action='build'` path fires directly,
+without the "Clear all chart data?" confirmation dialog (nothing lit to lose). This is the safest
+possible trigger shape for this rebuild.
+
+Proceeding to fire the guarded rebuild via Nirmāṇa + Playwright.
+
+**Fired**: navigated to native's Nirmāṇa page — top-level button showed "Rebuild" (not "Build")
+because the 5 global-scope carryover assets show as lit under `deriveAction()`'s counting, even
+though all 61 real chart-scoped assets were confirmed genuinely `dormant`. Clicked Rebuild — dialog
+confirmed a SMALL, low-stakes clear (only 105 rows via asset metadata: Gaṇita 90 + Mīmāṃsā 15, L0
+correctly excluded, "2 assets cleared · 65 reset to dormant · 60 tables touched") — consistent
+with the already-verified mostly-dormant state. Typed subject-name confirmation ("Abhisek
+Mohanty"), confirmed. **Confirmed via direct DB read**: new `build_runs` row
+`b06e28f8-3a44-4ddc-a444-a3dfb910aabe`, `scope='global'`, `action='rebuild'`, `state='planned'`.
+
+Beginning guardian monitoring — WORKER_LIMIT=2 discipline, SSE + Cloud Run logs, no
+completed-with-0, fix-and-redeploy + deploy-truth-reverify on any mid-build failure. **HALT +
+restore-from-snapshot on any golden-catch failure or standing-gate miss. No iteration on the
+native chart** per explicit native instruction.
+
+**Progress checkpoint (~15min in)**: 9/61 lit, 1 building (`ga_strength`, historically ~11min),
+0 errors. Real non-zero row counts across all lit assets (`ga_vargas`=37,020, `ga_strength`=11,620,
+`ga_sensitive`=8,775, `ga_nakshatra`=1,802, `ga_panchanga`=437, `ga_positions`=530,
+`ga_transit_anchors`=45, `mi_jivanaghatana`=57 — no false completed-with-0). Continuing to
+monitor.
+
+**Progress checkpoint (~30min in)**: 38/61 lit, 1 building (`ka_tulana`, Kāla L3), 0 errors.
+`ga_structural` completed: 103,313 rows. `ga_yoga` completed: 50 rows.
+
+**GOLDEN CATCH (a) CONFIRMED LIVE, EARLY** — direct spot-check of `ga_yoga_firings` mid-rebuild:
+`neecha_bhanga_raja_yoga` fired=true, `bhanga_active=true`, `bhanga_rule_fired` contains
+**`saturn@D9:nbry_rule_2_exaltation_lord_kendra`** — exactly the D9 rule-2 case the native
+described (Saturn debilitated in D1 Aries, Sun exalts in Aries, sits in a kendra from the D9
+lagna). Also confirmed: `venus@D9:nbry_rule_1_dispositor_kendra`/`nbry_rule_2_exaltation_lord_kendra`
+— Venus independently redeemed too. `constituent_planets` includes `saturn`, `venus`, `mercury`,
+`mars`, `sun`. 4 ayanamsha rows visible so far (rebuild still mid-cascade, 5th pending). Full
+citation sweep + golden catch (b)/(c) + all standing gates to be run once the rebuild reaches a
+terminal state and `bo_laksana` (L2) has completed.
+
+## ⛔ R6A.6 HALT — GOLDEN CATCH (b) FAILED, RESTORED FROM SNAPSHOT, NO ITERATION ON NATIVE CHART
+
+**Build itself completed mechanically clean**: `build_runs.b06e28f8` → `state='completed'`,
+`last_error=null`, all 61/61 chart-scoped assets `lit`. This was NOT a build failure — every
+writer ran, every asset landed real non-zero row counts, `ga_yoga`/`ga_structural` both completed
+cleanly. **The failure is a golden-catch failure, caught post-build, exactly the class of failure
+the native's protocol anticipated.**
+
+**Golden catch (b) — FAILED.** Queried `bodha_msr_signals` for
+`signal_type_id='navamsha_d9_cross_check:saturn'`, chart `482012f1`: **4 of 5 ayanamshas still
+read `broken_promise`** (krishnamurti, lahiri_chitrapaksha, surya_siddhanta_classical,
+true_chitra); the 5th (raman) reads `concordant_strong` — a different classification, still not
+`neecha_bhanga_redeemed`. **Saturn does not read its own redemption on the native chart.**
+
+**Root cause, investigated (not fixed — per explicit native instruction, no live fix on this
+chart)**:
+- Saturn's real D1 sign for chart `482012f1` is **Libra** (confirmed via direct `chart_facts`
+  query, all 5 ayanamshas) — Libra is Saturn's classical **exaltation** sign, not debilitation.
+  Saturn is D1-strong (tier ≥2), not debilitated at all in D1.
+- `ga_yoga_firings.bhanga_rule_fired` for `neecha_bhanga_raja_yoga` shows, uniformly across all 4
+  firing ayanamshas: `saturn@D9:nbry_rule_2_exaltation_lord_kendra` — the `D9` context tag (not
+  `D1` or `D1->D9`) confirms Saturn is genuinely debilitated **within the D9/Navamsha chart
+  itself** (in Aries), independently of D1, and that D9 debilitation is correctly detected as
+  redeemed by rule 2 (R6A.1's evaluator worked correctly — this is golden catch (a), still true).
+- **The gap is in R6A.3's `_build_nbry_redemption_map` filter**: per its own documented
+  LESS-scope decision, only `D1`/`D1->D9`-context firings are consulted when deciding whether to
+  flip a `broken_promise` classification to `neecha_bhanga_redeemed`. A pure-`D9`-context firing
+  is filtered out. But the native's real chart is EXACTLY the case that filter excludes: D1-strong
+  (Saturn exalted, tier≥2) + D9-weak (Saturn debilitated, tier≤-1) is precisely the formation
+  condition for `broken_promise` in the first place — the D9 weakness IS the thing being judged,
+  and its redemption (a pure-`D9`-context NBRY firing) is exactly what should be consulted to
+  determine whether that D9 weakness is real or cancelled. R6A.3's filter, as shipped, structurally
+  cannot ever redeem a `broken_promise` classification, because `broken_promise` is BY DEFINITION
+  a D9-weakness case, and the filter only trusts D1-context redemptions.
+- This was not caught by R6A.3's own tests or either Ring-2 review because all of R6A.1/R6A.2/R6A.3's
+  synthetic and Abhinandan-real-data testing happened to exercise D1-context or D1→D9-extension
+  redemption cases (Abhinandan's Jupiter redemption in R6A.5 was almost certainly a D1-context
+  firing — not re-verified against this specific gap before now). The native's real chart is the
+  first real data that exercises the pure-D9-context `broken_promise` redemption path, and it
+  fails. **This is the "cross-chart-data-path exposure" pattern this campaign has already named
+  once this session (M-23, ph_nimitta)** — a fix that looked clean on every prior data path hides
+  a gap that only a new chart's real shape exposes.
+
+**Standing gates and remaining golden catches**: NOT run to completion — per protocol, the moment
+golden catch (b) failed, the correct action was HALT + restore, not continued gate-checking on
+data about to be discarded.
+
+**RESTORE EXECUTED AND VERIFIED**: chart `482012f1` restored from the pre-rebuild snapshot
+(`\copy <table> FROM '<file>.csv'` per table, after a `DELETE ... WHERE chart_id=...` on each,
+matching this project's idempotent delete-then-insert convention). Two dependency-order
+complications handled: `phala_rectification`'s FK-dependent `phala_rectification_best` rows
+cleared first, then `phala_rectification` itself; `charts` (master row, protected by FK, correctly
+never touched) and `vw_chart_digest` (a view, not deletable, harmless) excluded from the
+delete/restore loop as expected. **Final verification: 125 tables checked, ZERO mismatches against
+the original snapshot counts. `asset_throughput`: 61/61 back to `state='dormant'`, exactly matching
+pre-rebuild state.** Abhinandan (`1c826d5a`) independently confirmed unaffected: 61/61 still `lit`,
+unchanged.
+
+**R6A.6: HALTED. The fix did not land on the native chart. No iteration attempted, per explicit
+native instruction. Native chart `482012f1` is back to its pre-rebuild (dormant) state, verified
+exact. Awaiting native direction: this needs a genuine R6A.3 fix-iteration (extend the redemption-map
+consult to include pure-`D9`-context firings specifically for the `broken_promise` formation case,
+Ring-2 re-verified, re-validated on Abhinandan before any second attempt at the native) before
+R6A.6 can be re-attempted.**
+
+## ⚖ R6A.3 FIX-ITERATION APPROVED (native, 2026-07-11) — THE ONE AUTHORIZED ITERATION FOR Y-13
+
+Native approved the fix-iteration with 5 precise directives (R5 one-iteration discipline — this
+is it, no second round expected):
+1. Fix the **principle** (varga-of-weakness: redemption consulted in the varga where the weakness
+   lives), not just the one case — but **behavior-gate to the `broken_promise` path only**, with
+   regression tests proving every other classification's output is unchanged.
+2. Mandatory test set before Ring-2: (a) the exact live case as a permanent unit test + a new
+   `GOLDEN_SIGNALS_482012f1_v1_0.yaml` row (standing rule: every real catch becomes a battery
+   row); (b) Abhinandan's Jupiter still correct, explicit no-double-application proof; (c) negative
+   control (unredeemed D9 debilitation stays `broken_promise`); (d) classification-value
+   legality check before any write.
+3. The 5th-ayanamsha divergence (4/5 `broken_promise`, 1/5 `concordant_strong`) gets its own
+   verdict at Ring-2 time against FRESH rebuilt data — genuinely positional (navamsha-boundary
+   sign flip near an ayanamsha offset) vs. a second defect — not to be shrugged past.
+4. Register hygiene: **Y-13 added now** (OPEN, fix-iteration in progress), to close same-day with
+   Ring-3 (prod) evidence once verified — found-fixed-same-day rows still get rows.
+5. Re-attempt sequencing, unchanged canary discipline: fix → Ring-1 → Ring-2 (**fresh verifier**,
+   explicitly attempting the double-application falsification) → rebuild the affected assets on
+   **Abhinandan first** → gates → **then** the native chart re-attempt → report all 5 ayanamshas'
+   final Saturn classifications.
+
+**Y-13 logged** in `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` §New rows (v2), full root-cause + evidence
+citation, status `OPEN — fix-iteration approved by native 2026-07-11, in progress`.
+
+**Fix-iteration dispatched** to Fable-5 (fresh isolated worktree, background) with all 5
+directives given verbatim. Grounding: `bo_laksana.py`'s `_build_nbry_redemption_map` (~1296) and
+`_build_navamsha_cross_check_signals` (~1351) read in full from current `main` (post-R6A.3-merge).
+Instructed: keep the existing D1-context-only consult exactly as-is (it already correctly handles
+D1-weak cases, e.g. Abhinandan's Jupiter — do not touch it); add a SEPARATE D9-context consult
+reachable ONLY inside the `broken_promise` formation branch (`d1_tier>=2 and d9_tier<=-1`, and only
+after the existing D1-context check already came back empty for that graha) — this makes
+double-application structurally impossible by construction (the two branches are tier-disjoint),
+not just asserted. Same target classification string (`neecha_bhanga_redeemed`, reused not
+reinvented) with D9-varga provenance in `configuration_jsonb`. Explicitly told: the 5th-ayanamsha
+divergence is NOT this task's job (no live data available post-restore to investigate it; deferred
+to Ring-2 against fresh rebuilt data per directive 3). Do not commit/push.
+
+Awaiting Fable-5 completion before Ring-2 (fresh verifier) dispatch.
