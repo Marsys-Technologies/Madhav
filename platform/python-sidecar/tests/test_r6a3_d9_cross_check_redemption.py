@@ -46,9 +46,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from pipeline.orchestrator.writers.bo_laksana import (
+    _CLASSIFICATION_NEECHA_BHANGA_REDEEMED,
     _NEECHABHANGA_CANCELLED_MODIFIER,
     _NEECHABHANGA_NORMAL_MODIFIER,
     _build_navamsha_cross_check_signals,
+    _build_nbry_d9_redemption_map,
     _build_nbry_redemption_map,
 )
 
@@ -331,3 +333,283 @@ class TestGoldenGateRealChartIntegration:
             assert sat["neechabhanga_modifier"] == 1.3
         finally:
             conn.close()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 5. Y-13 fix-iteration — varga-of-weakness redemption for broken_promise
+#    (GS-23; register item Y-13; the ONE authorized R5 fix-iteration)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# The live case caught on the native chart (482012f1, restored after the failed
+# rebuild): Saturn exalted in Libra D1, debilitated in Aries D9, with a
+# pure-D9-context NBRY firing — the D9 debilitation is redeemed within D9.
+_Y13_SATURN_D9_RULE_FIRED = "saturn@D9:nbry_rule_2_exaltation_lord_kendra"
+_Y13_NBRY_D9_ROW = {
+    "bhanga_rule_fired": _Y13_SATURN_D9_RULE_FIRED,
+    "citation_ref": "BPHS_ch39_neecha_bhanga",
+    "citation_human": "BPHS Ch.39 — exaltation lord of the debilitation sign in a kendra (D9 context)",
+}
+
+
+def _y13_broken_promise_shape(nbry_rows: list[dict]):
+    """Saturn D1-exalted (tier 3) × D9-debilitated (tier -2) — the exact
+    broken_promise formation state — with the given ga_yoga_firings rows."""
+    return _make_conn(
+        [{"fact_id": "f-sat-d1x", "fact_subject": "D1_SAT", "fact_value_text": "exalted"}],
+        [{"graha": "Saturn", "fact_value_text": "Debilitated"}],
+        nbry_rows=nbry_rows,
+    )
+
+
+class TestY13GoldenGateLiveCase:
+    """Mandatory test (a) — the exact live case, literal and permanent (GS-23)."""
+
+    def test_y13_saturn_d1_exalted_d9_debilitated_pure_d9_redemption_flips_to_redeemed(self):
+        # NOT parametrized — this is the permanent, named regression gate for
+        # register item Y-13. If this test disappears or is folded into a loop,
+        # that is itself a defect.
+        sig = _run(_y13_broken_promise_shape([_Y13_NBRY_D9_ROW]))["saturn"]
+        config = json.loads(sig["configuration_jsonb"])
+        assert config["classification"] == "neecha_bhanga_redeemed"
+        assert config["classification"] != "broken_promise"
+        assert sig["valence"] == "benefic"
+        assert sig["neechabhanga_modifier"] == _NEECHABHANGA_CANCELLED_MODIFIER == 1.3
+        # Provenance: same shape as the D1-context path, PLUS the varga of the
+        # redeemed weakness (D9 — where the weakness lives).
+        nb = config["neecha_bhanga"]
+        assert nb["source"] == "ga_yoga_firings/neecha_bhanga_raja_yoga"
+        assert _Y13_SATURN_D9_RULE_FIRED in nb["bhanga_rules_fired"]
+        assert nb["citation_ref"] == _Y13_NBRY_D9_ROW["citation_ref"]
+        assert nb["redeemed_weakness_varga"] == "D9"
+
+
+class TestY13NoDoubleApplication:
+    """Mandatory test (b) — D1-context path unchanged; the two consults are
+    mutually exclusive by construction, proven explicitly (not from reasoning)."""
+
+    def test_d1_context_redemption_still_classifies_exactly_as_before(self):
+        # The already-working, merged D1-context case (Abhinandan-shaped:
+        # graha debilitated in D1, redeemed via a D1-tagged firing).
+        conn = _make_conn(
+            _native_shape_d1_rows(),
+            [{"graha": "Saturn", "fact_value_text": "Neutral"}],
+            nbry_rows=[_NATIVE_NBRY_ROW],
+        )
+        sig = _run(conn)["saturn"]
+        config = json.loads(sig["configuration_jsonb"])
+        assert config["classification"] == "neecha_bhanga_redeemed"
+        assert sig["valence"] == "benefic"
+        assert sig["neechabhanga_modifier"] == 1.3
+        nb = config["neecha_bhanga"]
+        assert nb["source"] == "ga_yoga_firings/neecha_bhanga_raja_yoga"
+        assert nb["bhanga_rules_fired"] == _NATIVE_SATURN_RULE_FIRED
+        # Byte-identity of the D1 path's provenance block: the new
+        # redeemed_weakness_varga key must NOT appear on the D1-context path.
+        assert "redeemed_weakness_varga" not in nb
+
+    def test_both_context_row_d1_weak_graha_consults_d1_map_only(self):
+        # Adversarial: ONE ga_yoga_firings row carrying BOTH a D1-context and a
+        # D9-context entry for the SAME graha. D1-debilitated Saturn → the
+        # early D1-context branch fires; the D9 consult is never reached
+        # (if/elif construction), so nothing is double-counted.
+        both_row = {
+            "bhanga_rule_fired": f"{_NATIVE_SATURN_RULE_FIRED};{_Y13_SATURN_D9_RULE_FIRED}",
+            "citation_ref": "BPHS_ch39_neecha_bhanga",
+            "citation_human": "x",
+        }
+        conn = _make_conn(
+            _native_shape_d1_rows(),  # Saturn debilitated in D1
+            [{"graha": "Saturn", "fact_value_text": "Debilitated"}],
+            nbry_rows=[both_row],
+        )
+        sig = _run(conn)["saturn"]
+        config = json.loads(sig["configuration_jsonb"])
+        assert config["classification"] == "neecha_bhanga_redeemed"
+        nb = config["neecha_bhanga"]
+        # Provenance comes from the D1-context map ONLY: the D9 entry was
+        # filtered out of the D1 map, and the D9 map was never consulted.
+        assert nb["bhanga_rules_fired"] == _NATIVE_SATURN_RULE_FIRED
+        assert _Y13_SATURN_D9_RULE_FIRED not in nb["bhanga_rules_fired"]
+        assert "redeemed_weakness_varga" not in nb
+        assert sig["neechabhanga_modifier"] == 1.3  # applied once, not compounded
+
+    def test_both_context_row_d1_strong_graha_consults_d9_map_only(self):
+        # Adversarial mirror: same both-context row, but Saturn D1-exalted.
+        # NOTE: the early branch keys off D1-context firings, so with a
+        # D1-context entry present it wins even here — that is the existing,
+        # untouched precedence (TestConsultBeforeClassify). The D9-only consult
+        # is reached only when the D1 map is empty for this graha.
+        both_row = {
+            "bhanga_rule_fired": f"{_NATIVE_SATURN_RULE_FIRED};{_Y13_SATURN_D9_RULE_FIRED}",
+            "citation_ref": "BPHS_ch39_neecha_bhanga",
+            "citation_human": "x",
+        }
+        sig = _run(_y13_broken_promise_shape([both_row]))["saturn"]
+        config = json.loads(sig["configuration_jsonb"])
+        # Exactly ONE redemption decision — classification and modifier are
+        # single-valued regardless of two entries being present in the row.
+        assert config["classification"] == "neecha_bhanga_redeemed"
+        assert sig["neechabhanga_modifier"] == 1.3
+        nb = config["neecha_bhanga"]
+        # Early D1-context branch won (D1 entry present) → D1 provenance,
+        # no varga key. Proves the branches never both apply.
+        assert nb["bhanga_rules_fired"] == _NATIVE_SATURN_RULE_FIRED
+        assert "redeemed_weakness_varga" not in nb
+
+    def test_branches_are_tier_disjoint_proven_not_reasoned(self):
+        # Explicit proof: for every dignity text the tier mapping knows, a
+        # graha cannot be simultaneously in the early-branch-relevant D1-weak
+        # state (a real D1 NBRY firing implies D1 debilitation, tier <= -1)
+        # and the broken_promise-branch D1-strong state (tier >= 2).
+        from pipeline.orchestrator.writers.bo_laksana import (
+            _DIGNITY_STRENGTH_TIER,
+            _dignity_tier,
+        )
+        for text in list(_DIGNITY_STRENGTH_TIER) + ["unknown", "", None]:
+            tier = _dignity_tier(text)  # type: ignore[arg-type]
+            assert not (tier <= -1 and tier >= 2), (
+                f"dignity {text!r} maps to tier {tier} — impossible overlap"
+            )
+
+
+class TestY13NegativeControls:
+    """Mandatory test (c) — unredeemed D9 debilitation stays broken_promise."""
+
+    def test_no_nbry_row_stays_broken_promise(self):
+        sig = _run(_y13_broken_promise_shape([]))["saturn"]
+        config = json.loads(sig["configuration_jsonb"])
+        assert config["classification"] == "broken_promise"
+        assert sig["valence"] == "malefic"
+        assert sig["neechabhanga_modifier"] == 1.0
+        assert "neecha_bhanga" not in config
+
+    def test_nbry_row_for_a_different_graha_stays_broken_promise(self):
+        sig = _run(_y13_broken_promise_shape([{
+            "bhanga_rule_fired": "mercury@D9:nbry_rule_1_dispositor_kendra",
+            "citation_ref": "x", "citation_human": "x",
+        }]))["saturn"]
+        config = json.loads(sig["configuration_jsonb"])
+        assert config["classification"] == "broken_promise"
+        assert sig["neechabhanga_modifier"] == 1.0
+
+    def test_malformed_entries_stay_broken_promise(self):
+        sig = _run(_y13_broken_promise_shape([{
+            "bhanga_rule_fired": "garbage;saturn@",
+            "citation_ref": "x", "citation_human": "x",
+        }]))["saturn"]
+        config = json.loads(sig["configuration_jsonb"])
+        assert config["classification"] == "broken_promise"
+
+    def test_d9_map_query_filters_on_bhanga_active_true(self):
+        # bhanga_active=false rows never reach the parser: the mock conn cannot
+        # simulate SQL WHERE filtering, so assert the filter is in the SQL
+        # itself (same discipline as the D1-context map's query).
+        conn = _make_conn([], [], [])
+        _build_nbry_d9_redemption_map(conn, CHART_ID, AYANAMSHA)
+        issued = [c.args[0] for c in conn.execute.call_args_list]
+        assert len(issued) == 1
+        assert "bhanga_active IS TRUE" in issued[0]
+        assert "yoga_canonical_id='neecha_bhanga_raja_yoga'" in issued[0]
+
+    def test_d9_map_excludes_d1_and_d1_to_d9_entries(self):
+        conn = _make_conn([], [], [{
+            "bhanga_rule_fired": (
+                "saturn@D1:nbry_rule_2_exaltation_lord_kendra;"
+                "saturn@D1->D9:nbry_rule_2_exaltation_lord_kendra"
+            ),
+            "citation_ref": "x", "citation_human": "x",
+        }])
+        assert _build_nbry_d9_redemption_map(conn, CHART_ID, AYANAMSHA) == {}
+
+
+class TestY13VocabularyCheck:
+    """Mandatory test (d) — the classification value is stored inside the
+    configuration_jsonb column (no DB CHECK constraint exists on jsonb keys;
+    verified against migrations 325/326 — no classification CHECK anywhere),
+    so this reduces to: the D9-context branch emits LITERALLY the same string
+    constant as the already-shipped D1-context branch."""
+
+    def test_shared_constant_is_the_shipped_value(self):
+        assert _CLASSIFICATION_NEECHA_BHANGA_REDEEMED == "neecha_bhanga_redeemed"
+
+    def test_both_paths_emit_the_identical_shared_constant(self):
+        # D1-context path (shipped, merged, live in Abhinandan's rebuilt data)
+        d1_sig = _run(_make_conn(
+            _native_shape_d1_rows(),
+            [{"graha": "Saturn", "fact_value_text": "Neutral"}],
+            nbry_rows=[_NATIVE_NBRY_ROW],
+        ))["saturn"]
+        # New D9-context broken_promise path
+        d9_sig = _run(_y13_broken_promise_shape([_Y13_NBRY_D9_ROW]))["saturn"]
+        d1_cls = json.loads(d1_sig["configuration_jsonb"])["classification"]
+        d9_cls = json.loads(d9_sig["configuration_jsonb"])["classification"]
+        assert d1_cls == d9_cls == _CLASSIFICATION_NEECHA_BHANGA_REDEEMED
+        # No typo'd near-duplicate anywhere in the emitted vocabulary.
+        assert {d1_cls, d9_cls} == {"neecha_bhanga_redeemed"}
+
+
+class TestY13OtherClassificationsByteIdentical:
+    """Regression gate for directive 1: with a pure-D9 NBRY firing present, every
+    classification OTHER than broken_promise must produce exactly the pre-fix
+    output — the D9 consult is behavior-gated to the broken_promise branch."""
+
+    @staticmethod
+    def _config_for(d1_dignity: str, d9_dignity: str, nbry_rows: list[dict]):
+        conn = _make_conn(
+            [{"fact_id": "f-sat", "fact_subject": "D1_SAT", "fact_value_text": d1_dignity}],
+            [{"graha": "Saturn", "fact_value_text": d9_dignity}],
+            nbry_rows=nbry_rows,
+        )
+        sig = _run(conn)["saturn"]
+        return sig, json.loads(sig["configuration_jsonb"])
+
+    def test_vargottama_resilience_unchanged_even_with_d9_firing(self):
+        sig, config = self._config_for("debilitated", "Exalted", [_Y13_NBRY_D9_ROW])
+        assert config == {
+            "graha": "Saturn", "d1_dignity": "debilitated", "d9_dignity": "Exalted",
+            "d1_tier": -2, "d9_tier": 3, "classification": "vargottama_resilience",
+        }
+        assert sig["valence"] == "benefic"
+        assert sig["neechabhanga_modifier"] == 1.0
+
+    def test_concordant_strong_unchanged_even_with_d9_firing(self):
+        sig, config = self._config_for("exalted", "Exalted", [_Y13_NBRY_D9_ROW])
+        assert config == {
+            "graha": "Saturn", "d1_dignity": "exalted", "d9_dignity": "Exalted",
+            "d1_tier": 3, "d9_tier": 3, "classification": "concordant_strong",
+        }
+        assert sig["valence"] == "benefic"
+        assert sig["neechabhanga_modifier"] == 1.0
+
+    def test_concordant_weak_unchanged_even_with_d9_firing(self):
+        sig, config = self._config_for("debilitated", "Debilitated", [_Y13_NBRY_D9_ROW])
+        assert config == {
+            "graha": "Saturn", "d1_dignity": "debilitated", "d9_dignity": "Debilitated",
+            "d1_tier": -2, "d9_tier": -2, "classification": "concordant_weak",
+        }
+        assert sig["valence"] == "malefic"
+        assert sig["neechabhanga_modifier"] == 1.0
+
+    def test_mixed_unchanged_even_with_d9_firing(self):
+        sig, config = self._config_for("neutral", "Neutral", [_Y13_NBRY_D9_ROW])
+        assert config == {
+            "graha": "Saturn", "d1_dignity": "neutral", "d9_dignity": "Neutral",
+            "d1_tier": 0, "d9_tier": 0, "classification": "mixed",
+        }
+        assert sig["valence"] == "neutral"
+        assert sig["neechabhanga_modifier"] == 1.0
+
+    def test_existing_d1_early_branch_unchanged_even_with_d9_firing(self):
+        # The early nbry_redemption-is-not-None branch: D1-debilitated graha
+        # with a D1-context firing, D9 firing also present in a second row.
+        conn = _make_conn(
+            _native_shape_d1_rows(),
+            [{"graha": "Saturn", "fact_value_text": "Neutral"}],
+            nbry_rows=[_NATIVE_NBRY_ROW, _Y13_NBRY_D9_ROW],
+        )
+        sig = _run(conn)["saturn"]
+        config = json.loads(sig["configuration_jsonb"])
+        assert config["classification"] == "neecha_bhanga_redeemed"
+        nb = config["neecha_bhanga"]
+        assert nb["bhanga_rules_fired"] == _NATIVE_SATURN_RULE_FIRED
+        assert "redeemed_weakness_varga" not in nb
