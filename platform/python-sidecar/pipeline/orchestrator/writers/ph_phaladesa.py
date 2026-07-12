@@ -7,9 +7,12 @@ NEVER writes outside phala_phaladesa.
 B.11 WHOLE-CHART-READ: writer reads L2 Bodha synthesis (MSR, CDLM, CGM)
 before building domain declarations.
 
-MODEL POLICY: writer sets narration_status='pending', narration_model=NULL.
-Narration is a SEPARATE async step via Gemini/DeepSeek only.
-Anthropic is BANNED. validate_narration_model() enforces this.
+MODEL POLICY: writer emits a DETERMINISTIC template narration (§N.4 deterministic-
+first) — narration_status='ready', narration_jsonb populated from the computed
+record, narration_model=NULL (no LLM). Any FUTURE generative-LLM enrichment remains
+a separate step restricted to Gemini/DeepSeek; Anthropic is BANNED and
+validate_narration_model() enforces the allowlist. (WP-2.2/LCA-5: previously every
+row sat at status='pending' / narration_jsonb=NULL because that async step never ran.)
 
 Reads: phala_anchors · phala_suddha_sodhana · phala_sodhana (flag counts)
        phala_sankrama (spillovers) · phala_mitigation (domains covered)
@@ -52,6 +55,83 @@ _ANCHOR_TO_PHALADESA_DOMAIN: dict[str, str] = {
     'spiritual':    'spirituality',
     'psychological': 'character',
 }
+
+# WP-2.2 / LCA-5: deterministic narration.
+# The async LLM narration step (Gemini/DeepSeek) was never wired, so every row sat
+# at narration_status='pending' / narration_jsonb=NULL. Per §N.4 (deterministic-first)
+# we verbalize the ALREADY-COMPUTED structured phaladesa fields into a template
+# narration — NO generative LLM, no new interpretation (B.1/B.10): the text asserts
+# only what magnitude/window/confidence/malleability/mitigation/spillover/pramana
+# already state. narration_model stays NULL (its CHECK allowlist is LLM-only); the
+# deterministic method is recorded inside narration_jsonb.
+_NARRATION_METHOD = "deterministic_template_v1"
+
+_DOMAIN_LABEL: dict[str, str] = {
+    'career': 'career and profession', 'wealth': 'wealth and finances',
+    'health': 'health and vitality', 'relationship': 'relationships and marriage',
+    'spirituality': 'spirituality and dharma', 'character': 'character and psychology',
+    'general': 'general life-arc',
+}
+
+
+def _build_deterministic_narration(rec) -> dict:
+    """Template narration from the computed phaladesa record. Deterministic; no LLM."""
+    domain_label = _DOMAIN_LABEL.get(str(rec.domain), str(rec.domain))
+    mag = rec.magnitude or 'moderate'
+    mall = (rec.malleability or 'semi_influenceable').replace('_', '-')
+
+    parts: list[str] = []
+    if rec.anchor_count:
+        parts.append(
+            f"The {domain_label} domain rests on {rec.anchor_count} predictive anchor(s), "
+            f"of which {rec.clean_anchor_count} passed clean sodhana review."
+        )
+    else:
+        parts.append(f"No predictive anchors were derived for the {domain_label} domain in this build.")
+
+    if rec.magnitude:
+        parts.append(f"The assessed magnitude of effect is {mag}.")
+
+    if rec.prediction_window_start and rec.prediction_window_end:
+        win = f"{rec.prediction_window_start} to {rec.prediction_window_end}"
+        if rec.peak_date:
+            parts.append(f"The active window runs {win}, peaking around {rec.peak_date}.")
+        else:
+            parts.append(f"The active window runs {win}.")
+
+    if rec.confidence_low is not None and rec.confidence_high is not None:
+        parts.append(
+            f"Confidence band spans {rec.confidence_low}–{rec.confidence_high}; "
+            f"the outcome is classed as {mall}."
+        )
+
+    if rec.mitigation_available:
+        parts.append("Remedial mitigation is available for this domain.")
+    if rec.muhurta_available:
+        parts.append("Supportive muhurta windows have been identified.")
+
+    if getattr(rec, 'incoming_spillover_count', 0):
+        parts.append(
+            f"{rec.incoming_spillover_count} cross-domain spillover(s) feed into this domain."
+        )
+
+    if rec.pramana_window_status:
+        parts.append(f"Falsifiability status: {rec.pramana_window_status}.")
+
+    contradiction = rec.contradiction_summary_jsonb
+    if contradiction:
+        n = len(contradiction) if isinstance(contradiction, (list, dict)) else 0
+        if n:
+            parts.append(f"{n} contradiction signal(s) temper this reading and warrant caution.")
+
+    return {
+        "language": "en",
+        "text": " ".join(parts),
+        "method": _NARRATION_METHOD,
+        "model": None,
+        "prompt_hash": None,
+        "generated_at": date.today().isoformat(),
+    }
 
 
 @register('ph_phaladesa')
@@ -101,8 +181,10 @@ class PhPhaladesakWriter(WriterBase):
         rows_inserted = 0
         with conn.cursor() as cur:
             for rec in records:
-                # Model policy gate
-                validate_narration_model(rec.narration_model)  # always None here; gate for safety
+                # Model policy gate. rec.narration_model stays None (no LLM); the
+                # deterministic narration records its method inside narration_jsonb.
+                validate_narration_model(rec.narration_model)  # None → passes (no LLM used)
+                narration = _build_deterministic_narration(rec)
 
                 cur.execute(
                     """
@@ -132,10 +214,12 @@ class PhPhaladesakWriter(WriterBase):
                         %s, %s,
                         %s::jsonb, %s::jsonb,
                         %s::jsonb,
-                        %s, NULL, NULL,
+                        %s, NULL, %s::jsonb,
                         %s::jsonb, %s
                     )
                     ON CONFLICT (chart_id, domain) DO UPDATE SET
+                        narration_status            = EXCLUDED.narration_status,
+                        narration_jsonb             = EXCLUDED.narration_jsonb,
                         anchor_count                = EXCLUDED.anchor_count,
                         clean_anchor_count          = EXCLUDED.clean_anchor_count,
                         staged_revision_count       = EXCLUDED.staged_revision_count,
@@ -175,7 +259,8 @@ class PhPhaladesakWriter(WriterBase):
                         json.dumps(rec.precedent_refs_jsonb, cls=_UUIDEncoder) if rec.precedent_refs_jsonb else None,
                         json.dumps(rec.contradiction_summary_jsonb, cls=_UUIDEncoder) if rec.contradiction_summary_jsonb else None,
                         json.dumps(rec.derivation_summary_jsonb, cls=_UUIDEncoder),
-                        rec.narration_status,
+                        'ready',  # deterministic narration is ready (no async LLM step)
+                        json.dumps(narration, cls=_UUIDEncoder),
                         json.dumps(rec.derivation_ledger_jsonb, cls=_UUIDEncoder), rec.source_citation,
                     ),
                 )

@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
@@ -943,46 +944,137 @@ def _build_edges_and_contradictions(
                     })
 
     # ── Contradiction detection ────────────────────────────────────────────────
-    # Two-pass approach:
-    # Graha-keyed contradiction: same planet is simultaneously yoga-karaka and dosha-karaka
-    # in at least one overlapping domain. Requires graha to be present in both signals.
-    for graha in yoga_by_graha:
-        if graha in dosha_by_graha:
-            y_sig = yoga_by_graha[graha]
-            d_sig = dosha_by_graha[graha]
-            y_domains = set(y_sig.get("domains_affected_array") or [])
-            d_domains = set(d_sig.get("domains_affected_array") or [])
-            shared_domains = y_domains & d_domains
-            if shared_domains:
-                y_id = str(y_sig.get("signal_id"))
-                d_id = str(d_sig.get("signal_id"))
-                contradictions.append({
-                    "contradiction_id": str(uuid.uuid4()),
-                    "chart_id": chart_id,
-                    "ayanamsha_id": aya,
-                    "build_id": build_id,
-                    "signal_a_id": y_id,
-                    "signal_b_id": d_id,
-                    "tension_basis_jsonb": json.dumps({
-                        "graha": graha,
-                        "yoga_signal": str(y_sig.get("signal_type_id")),
-                        "dosha_signal": str(d_sig.get("signal_type_id")),
-                        "shared_domains": sorted(shared_domains),
-                    }),
-                    "tension_class": "yoga_vs_dosha",
-                    "domains_affected_array": sorted(shared_domains),
-                    "combined_salience": round(
-                        float(y_sig.get("computed_salience") or 0.0)
-                        + float(d_sig.get("computed_salience") or 0.0),
-                        6
-                    ),
-                    "verification_pass_status": "documented_approximation",
-                    "citation_ref": f"bo_karanajala/contradiction/{graha}",
-                    "citation_human": f"yoga_vs_dosha contradiction on {graha} in {sorted(shared_domains)}",
-                    "computed_at": now,
-                })
+    # WP-2.2 / LCA-5 / R-44e fix. The prior engine was INERT: it collapsed each
+    # graha to a SINGLE best-salience yoga signal and a SINGLE best-salience dosha
+    # signal (yoga_by_graha / dosha_by_graha above), then required THOSE two exact
+    # signals to share a domain. When the top-salience yoga's domain differed from
+    # the top-salience dosha's domain — the common case — a genuine lower-salience
+    # yoga↔dosha tension on the same graph was silently dropped and the table stayed
+    # at count(*)=0 (R-44e contradiction_count=0). We rescan ALL yoga/dosha signals
+    # (independent of the edge-loop indices, which stay untouched for WP-2.3) and
+    # emit two honest tension classes. B.10: nothing is fabricated — every row cites
+    # two real bodha_msr_signals whose classical valence genuinely opposes on a shared
+    # domain.
+    contradictions.extend(
+        _detect_contradictions(chart_id, aya, build_id, signals, now)
+    )
 
     return edges, contradictions
+
+
+def _detect_contradictions(
+    chart_id: str, aya: str, build_id: str, signals: list[dict], now: str
+) -> list[dict]:
+    """Derive contradiction rows from MSR yoga/dosha tension.
+
+    Two classes, both structurally derived (no pre-stored contradicts_signals_array,
+    which bo_laksana writes NULL):
+
+      graha_yoga_vs_dosha    — the SAME graha is a yoga-karaka in one signal and a
+                               dosha-karaka in another, on ≥1 shared domain. Considers
+                               EVERY yoga/dosha signal per graha (not just the top),
+                               emitting the highest-combined-salience overlapping pair.
+      domain_promise_vs_denial — a domain carries BOTH a yoga (promise) and a dosha
+                               (affliction) signal, regardless of graha. One row per
+                               domain, pairing that domain's strongest yoga and dosha.
+
+    Deduped on the unordered (signal_a, signal_b) pair — the table's UNIQUE key.
+    """
+    def _yd(sig: dict) -> tuple[str | None, list[str], float]:
+        graha = _graha_from_cfg(_parse_cfg(sig))
+        domains = [d for d in (sig.get("domains_affected_array") or []) if d]
+        sal = float(sig.get("computed_salience") or 0.0)
+        return graha, domains, sal
+
+    yoga_sigs  = [s for s in signals if str(s.get("signal_type_class") or "") == "yoga"]
+    dosha_sigs = [s for s in signals if str(s.get("signal_type_class") or "") == "dosha"]
+
+    rows: list[dict] = []
+    seen_pairs: set[frozenset] = set()
+
+    def _emit(y_sig: dict, d_sig: dict, shared: set[str], tension_class: str,
+              graha: str | None) -> None:
+        y_id = str(y_sig.get("signal_id"))
+        d_id = str(d_sig.get("signal_id"))
+        if not y_id or not d_id or y_id == d_id:
+            return
+        key = frozenset((y_id, d_id))
+        if key in seen_pairs:
+            return
+        seen_pairs.add(key)
+        basis = {
+            "yoga_signal": str(y_sig.get("signal_type_id")),
+            "dosha_signal": str(d_sig.get("signal_type_id")),
+            "shared_domains": sorted(shared),
+        }
+        if graha:
+            basis["graha"] = graha
+        rows.append({
+            "contradiction_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "signal_a_id": y_id,
+            "signal_b_id": d_id,
+            "tension_basis_jsonb": json.dumps(basis),
+            "tension_class": tension_class,
+            "domains_affected_array": sorted(shared),
+            "combined_salience": round(
+                float(y_sig.get("computed_salience") or 0.0)
+                + float(d_sig.get("computed_salience") or 0.0), 6),
+            "verification_pass_status": "documented_approximation",
+            "citation_ref": (
+                f"bo_karanajala/contradiction/{tension_class}/"
+                f"{graha or '_'}/{'_'.join(sorted(shared))}"
+            ),
+            "citation_human": (
+                (f"yoga_vs_dosha on {graha} in {sorted(shared)}" if graha
+                 else f"promise_vs_denial in {sorted(shared)}")
+            ),
+            "computed_at": now,
+        })
+
+    # ── Class 1: graha-keyed yoga-vs-dosha (all signals per graha) ──────────────
+    yoga_by_graha: dict[str, list[dict]] = defaultdict(list)
+    dosha_by_graha: dict[str, list[dict]] = defaultdict(list)
+    for s in yoga_sigs:
+        g, _, _ = _yd(s)
+        if g:
+            yoga_by_graha[g].append(s)
+    for s in dosha_sigs:
+        g, _, _ = _yd(s)
+        if g:
+            dosha_by_graha[g].append(s)
+
+    for graha in yoga_by_graha:
+        if graha not in dosha_by_graha:
+            continue
+        best: tuple[float, dict, dict, set] | None = None
+        for y_sig in yoga_by_graha[graha]:
+            _, y_dom, y_sal = _yd(y_sig)
+            for d_sig in dosha_by_graha[graha]:
+                _, d_dom, d_sal = _yd(d_sig)
+                shared = set(y_dom) & set(d_dom)
+                if not shared:
+                    continue
+                combined = y_sal + d_sal
+                if best is None or combined > best[0]:
+                    best = (combined, y_sig, d_sig, shared)
+        if best is not None:
+            _emit(best[1], best[2], best[3], "graha_yoga_vs_dosha", graha)
+
+    # ── Class 2: domain promise-vs-denial (graha-agnostic) ──────────────────────
+    for domain in sorted(KNOWN_DOMAINS):
+        dom_yogas = sorted(
+            (s for s in yoga_sigs if domain in (s.get("domains_affected_array") or [])),
+            key=lambda s: float(s.get("computed_salience") or 0.0), reverse=True)
+        dom_doshas = sorted(
+            (s for s in dosha_sigs if domain in (s.get("domains_affected_array") or [])),
+            key=lambda s: float(s.get("computed_salience") or 0.0), reverse=True)
+        if dom_yogas and dom_doshas:
+            _emit(dom_yogas[0], dom_doshas[0], {domain}, "domain_promise_vs_denial", None)
+
+    return rows
 
 
 def _batch_insert(conn, rows: list[dict], sql: str) -> int:

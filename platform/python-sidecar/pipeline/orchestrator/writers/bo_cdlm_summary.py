@@ -83,6 +83,45 @@ INSERT INTO bodha_cdlm_chart_summary (
 """
 
 
+_ROLLUP_INSERT = """
+INSERT INTO bodha_cdlm_domain_rollups (
+  rollup_id, chart_id, ayanamsha_id, build_id, snapshot_type,
+  dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord, tradition_view_id,
+  domain, total_inbound_linkage, total_outbound_linkage, diagonal_density,
+  signal_count_for_domain, top_3_linked_domains_jsonb, contradiction_density,
+  pattern_markers_for_domain_array,
+  verification_pass_status, citation_ref, citation_human, computed_at
+) VALUES (
+  %(rollup_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(snapshot_type)s,
+  NULL, NULL, NULL, NULL,
+  %(domain)s, %(total_inbound_linkage)s, %(total_outbound_linkage)s, %(diagonal_density)s,
+  %(signal_count_for_domain)s, %(top_3_linked_domains_jsonb)s::jsonb, %(contradiction_density)s,
+  %(pattern_markers_for_domain_array)s,
+  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
+)
+"""
+
+_CLUSTER_INSERT = """
+INSERT INTO bodha_cdlm_pattern_clusters (
+  pattern_id, chart_id, ayanamsha_id, build_id, snapshot_type,
+  dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord, tradition_view_id,
+  pattern_marker_type, involved_domains_array, cluster_strength_total,
+  involved_cells_array, involved_signals_array, contradicts_other_patterns_array,
+  remedy_theme_jsonb, cgm_subgraph_cluster_seed, classical_archetype_match,
+  predicted_outcome_class, active_dasha_windows_jsonb,
+  verification_pass_status, citation_ref, citation_human, computed_at
+) VALUES (
+  %(pattern_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(snapshot_type)s,
+  NULL, NULL, NULL, NULL,
+  %(pattern_marker_type)s, %(involved_domains_array)s, %(cluster_strength_total)s,
+  %(involved_cells_array)s, %(involved_signals_array)s, NULL,
+  NULL, NULL, NULL,
+  %(predicted_outcome_class)s, NULL,
+  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
+)
+"""
+
+
 def _fetch_dict(conn: Any, sql: str, params: list) -> list[dict]:
     with conn.cursor() as cur:
         cur.execute(sql, params)
@@ -218,6 +257,131 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     return 1
 
 
+def _build_rollups(chart_id: str, aya: str, build_id: str,
+                   cells: list[dict], now: str) -> list[dict]:
+    """Per-domain rollup aggregated from CDLM cells (WP-2.2 / LCA-5).
+
+    Cells are undirected pairs written with domain_row < domain_col (alphabetical).
+    For a domain D we treat cells where D == domain_row as OUTBOUND and
+    D == domain_col as INBOUND — a deterministic, stable convention over the
+    symmetric matrix. diagonal_density = mean linkage over D's participating cells
+    (self-cohesion proxy; no D×D diagonal cell exists at static-natal).
+    """
+    by_domain: dict[str, dict] = defaultdict(lambda: {
+        "inbound": 0.0, "outbound": 0.0, "cells": 0,
+        "partners": defaultdict(float), "signals": set(),
+        "contradiction_cells": 0, "markers": set(),
+    })
+    for c in cells:
+        d_row = str(c.get("domain_row", ""))
+        d_col = str(c.get("domain_col", ""))
+        strength = _safe_float(c.get("computed_linkage_strength"))
+        sig_ids = c.get("shared_signal_ids_array") or []
+        contradiction = bool(c.get("cross_domain_contradiction_flag"))
+        rel = c.get("domain_relationship_class")
+        for d, partner, direction in ((d_row, d_col, "outbound"), (d_col, d_row, "inbound")):
+            if not d:
+                continue
+            agg = by_domain[d]
+            agg[direction] += strength
+            agg["cells"] += 1
+            if partner:
+                agg["partners"][partner] += strength
+            for sid in sig_ids:
+                agg["signals"].add(str(sid))
+            if contradiction:
+                agg["contradiction_cells"] += 1
+            if rel:
+                agg["markers"].add(str(rel))
+
+    rows: list[dict] = []
+    for domain, agg in sorted(by_domain.items()):
+        n_cells = max(agg["cells"], 1)
+        top3 = sorted(agg["partners"].items(), key=lambda x: x[1], reverse=True)[:3]
+        rows.append({
+            "rollup_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "snapshot_type": SNAPSHOT_TYPE,
+            "domain": domain,
+            "total_inbound_linkage": round(agg["inbound"], 6),
+            "total_outbound_linkage": round(agg["outbound"], 6),
+            "diagonal_density": round((agg["inbound"] + agg["outbound"]) / n_cells, 6),
+            "signal_count_for_domain": len(agg["signals"]),
+            "top_3_linked_domains_jsonb": json.dumps(
+                [{"domain": d, "strength": round(s, 6)} for d, s in top3]),
+            "contradiction_density": round(agg["contradiction_cells"] / n_cells, 6),
+            "pattern_markers_for_domain_array": sorted(agg["markers"]) or None,
+            "verification_pass_status": "pass",
+            "citation_ref": f"bo_cdlm_summary:domain_rollup_v1:bodha_cdlm_cells:{domain}",
+            "citation_human": f"CDLM domain rollup for {domain} aggregated from bodha_cdlm_cells",
+            "computed_at": now,
+        })
+    return rows
+
+
+def _build_clusters(chart_id: str, aya: str, build_id: str,
+                    cells: list[dict], now: str) -> list[dict]:
+    """Group cells into pattern clusters by their domain_relationship_class.
+
+    Each distinct relationship class present (positive_strong, inverse, …) becomes
+    one cluster: the involved domains, member cell ids, and constituent MSR signal
+    ids that produced that structural pattern. predicted_outcome_class maps the
+    valence of the relationship class (harmonious vs tension) — deterministic, no
+    time data (active_dasha_windows stays NULL, an L3 hook).
+    """
+    by_marker: dict[str, dict] = defaultdict(lambda: {
+        "domains": set(), "cells": [], "signals": set(), "strength": 0.0,
+    })
+    for c in cells:
+        rel = str(c.get("domain_relationship_class") or "unclassified")
+        agg = by_marker[rel]
+        agg["domains"].update(d for d in (c.get("domain_row"), c.get("domain_col")) if d)
+        agg["cells"].append(str(c.get("cell_id")))
+        for sid in (c.get("shared_signal_ids_array") or []):
+            agg["signals"].add(str(sid))
+        agg["strength"] += _safe_float(c.get("computed_linkage_strength"))
+
+    rows: list[dict] = []
+    for marker, agg in sorted(by_marker.items()):
+        outcome = (
+            "reinforcing" if marker.startswith("positive") else
+            "conflicting" if marker in ("inverse", "neutral") else
+            "mixed"
+        )
+        rows.append({
+            "pattern_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "snapshot_type": SNAPSHOT_TYPE,
+            "pattern_marker_type": f"{marker}_linkage_cluster",
+            "involved_domains_array": sorted(agg["domains"]),
+            "cluster_strength_total": round(agg["strength"], 6),
+            "involved_cells_array": agg["cells"],
+            "involved_signals_array": sorted(agg["signals"]),
+            "predicted_outcome_class": outcome,
+            "verification_pass_status": "pass",
+            "citation_ref": f"bo_cdlm_summary:pattern_cluster_v1:bodha_cdlm_cells:{marker}",
+            "citation_human": f"CDLM pattern cluster '{marker}' over {len(agg['cells'])} cells",
+            "computed_at": now,
+        })
+    return rows
+
+
+def _fetch_cells_full(conn: Any, chart_id: str, aya: str) -> list[dict]:
+    return _fetch_dict(
+        conn,
+        """SELECT cell_id::text, domain_row, domain_col,
+                  computed_linkage_strength, cross_domain_contradiction_flag,
+                  domain_relationship_class, shared_signal_ids_array
+           FROM bodha_cdlm_cells
+           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s""",
+        [chart_id, aya, SNAPSHOT_TYPE],
+    )
+
+
 @register("bo_cdlm_summary")
 class BoCdlmSummaryWriter(WriterBase):
     """bo_cdlm_summary: aggregates CDLM cell data into per-chart summary."""
@@ -235,20 +399,45 @@ class BoCdlmSummaryWriter(WriterBase):
                 notes="dry_run — would aggregate bodha_cdlm_cells into 5 summary rows (1 per ayanamsha)",
             )
 
-        # Idempotency: delete prior rows for this chart
+        # Idempotency: delete prior rows for this chart (all three sibling tables).
         with conn.cursor() as cur:
             # Disable per-statement timeout for the heavy DELETE on large charts.
             # SET LOCAL scopes to the orchestrator txn (writer never commits).
             # Ref: bo_laksana native-rebuild timeout; ka_* precedent (PR 422).
             cur.execute("SET LOCAL statement_timeout = 0")
             cur.execute("DELETE FROM bodha_cdlm_chart_summary WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM bodha_cdlm_domain_rollups WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM bodha_cdlm_pattern_clusters WHERE chart_id = %s", [chart_id])
 
         total = 0
+        total_rollups = 0
+        total_clusters = 0
         for aya in CANONICAL_AYAS:
             total += _write_aya(conn, chart_id, aya, build_id, now)
 
+            # WP-2.2 / LCA-5: populate the previously-empty CDLM sibling tables.
+            # Both are deterministic aggregations of bodha_cdlm_cells (same source
+            # bo_sangati wrote). No time data is invented (B.10) — evolution_gradients
+            # is intentionally NOT populated here: its dynamic_system_id is NOT NULL
+            # and its peak/trough/predicted-next columns require L3 dasha-window data
+            # unavailable at static-natal L2 (flagged §7.3 deferred, not fabricated).
+            cells = _fetch_cells_full(conn, chart_id, aya)
+            if not cells:
+                continue
+            rollups = _build_rollups(chart_id, aya, build_id, cells, now)
+            clusters = _build_clusters(chart_id, aya, build_id, cells, now)
+            with conn.cursor() as cur:
+                for r in rollups:
+                    cur.execute(_ROLLUP_INSERT, r)
+                for c in clusters:
+                    cur.execute(_CLUSTER_INSERT, c)
+            total_rollups += len(rollups)
+            total_clusters += len(clusters)
+
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=total,
-            notes=f"cdlm_summary_rows={total} (expected {len(CANONICAL_AYAS)} if cells exist)",
+            rows_inserted=total + total_rollups + total_clusters,
+            notes=(f"cdlm_summary_rows={total} domain_rollups={total_rollups} "
+                   f"pattern_clusters={total_clusters} "
+                   f"(evolution_gradients deferred §7.3 — needs L3 temporal data)"),
         )
