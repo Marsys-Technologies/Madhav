@@ -119,6 +119,22 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // registered in mimamsa_outcome.ts (record_outcome/query_calibration), which is fixed
   // separately for its own schema drift.
   query_calibration: 'marsys://tool/L5/query_calibration',
+
+  // ── WP-1.7 (LCA-1 / LCA-13) — local-bench whitelist resolution ──────────────
+  // These 5 retrieval-tool names were whitelisted for MCP surgical dispatch but
+  // had NO TOOL_NAME_TO_URI entry → getToolByName() returned undefined → the local
+  // /api/mcp/primitives route 500'd on every call ("Retrieval tool not found in
+  // registry"). Each name below resolves to a REAL registered registry capability
+  // (verified against src/lib/retrieval/registry/layers/**). The OTHER 14
+  // formerly-whitelisted names had no backing registry capability and were REMOVED
+  // from SURGICAL_TOOLS / MCP_TO_RETRIEVAL_TOOL (see the WP-1.7 removal note below).
+  // The whitelist_resolution_invariant.test.ts guard fails CI if any
+  // MCP_TO_RETRIEVAL_TOOL value ever again lacks a resolvable capability.
+  cgm_graph_walk: 'marsys://tool/L2/traverse_chart_graph',        // CGM subgraph walk; deployed twin get_cgm_subgraph. primitives route already wires node_id/hops → graph_seed_hints/depth for this exact name.
+  contradiction_register: 'marsys://tool/L2/query_contradictions', // real L2 Bodha contradiction surface
+  temporal: 'marsys://tool/L3/query_temporal_activation',          // real L3 Kāla temporal-activation capability
+  query_tara_balam: 'marsys://tool/L1/get_tara_chandra_bala',      // real L1 Gaṇita tara/chandra bala baseline (one cap serves both balas)
+  query_chandra_balam: 'marsys://tool/L1/get_tara_chandra_bala',   // same L1 cap — chandra bala facet
 }
 
 // ── ToolBundle adapter ────────────────────────────────────────────────────────
@@ -315,6 +331,20 @@ export function resolveToolUri(toolName: string): CapabilityUri | undefined {
 //
 // MCP arch §3.7 — 14 Tier 3 primitives + 1 Tier 4 raw-asset read + TR Wave + UDA Campaign.
 
+// WP-1.7 (LCA-1 / LCA-13) — 14 vestigial names REMOVED from this whitelist because
+// they had NO backing registry capability (getToolByName undefined → local 500). Their
+// concepts are either served by a canonical deployed twin or never existed:
+//   multi_school_signal_lookup (legacy lib/tools impl, never bridged to the registry;
+//       cross_school_lookup MCP name dropped — see follow-up F-WP17-1),
+//   jaimini_chara_dasha, jaimini_chara_dasha_full (TR Wave Class B/C stubs — never built),
+//   kp_query, query_kp_ruling_planets (no KP engine registered),
+//   pattern_register, resonance_register, cluster_atlas (no registered cap),
+//   query_ucn_walk, query_cdlm_lookup, query_rm_walk (no walk/lookup cap; UCN retired→UCD),
+//   query_jaimini_drishti (no cap), timeline_query (L3 temporal is served by 'temporal'),
+//   query_signal_state (query_signals is served by 'msr_sql').
+// cgm_graph_walk / temporal / contradiction_register / query_tara_balam /
+// query_chandra_balam were RETAINED — they now resolve (see TOOL_NAME_TO_URI WP-1.7 block).
+
 /** The underlying retrieval tool names exposed as MCP primitives. */
 export const SURGICAL_TOOLS = [
   'chart_facts_query',
@@ -326,33 +356,18 @@ export const SURGICAL_TOOLS = [
   'lel_query',
   'vector_search',
   'cgm_graph_walk',
-  'multi_school_signal_lookup',
   'classical_text_search',
   // TR Wave Class A retrieval tools (engines existed pre-PR-#159)
   'query_varshaphala',
   'divisional_query',
   'remedial_codex_query',
   'query_muhurat',
-  // TR Wave Class B/C stubs (retrieval tools not yet built)
+  // Tara/Chandra bala — resolved via TOOL_NAME_TO_URI WP-1.7 block (get_tara_chandra_bala)
   'query_tara_balam',
   'query_chandra_balam',
-  'jaimini_chara_dasha',
-  'jaimini_chara_dasha_full',
-  // UDA Campaign additions — 14 portal-native tools whitelisted for MCP primitive dispatch
-  'msr_sql',
+  // UDA Campaign — retained portal-native tools that resolve to a real capability
   'temporal',
-  'kp_query',
-  'query_kp_ruling_planets',
-  'pattern_register',
-  'resonance_register',
-  'cluster_atlas',
   'contradiction_register',
-  'query_ucn_walk',
-  'query_cdlm_lookup',
-  'query_rm_walk',
-  'query_jaimini_drishti',
-  'timeline_query',
-  'query_signal_state',
   // F-015: L0 entity resolution tools (were missing from whitelist; primitives route is POST-only)
   'resolve_entity',
   'list_entities',
@@ -386,7 +401,11 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   lel_query: 'lel_query',
   vector_search: 'vector_search',
   get_cgm_subgraph: 'cgm_graph_walk',
-  cross_school_lookup: 'multi_school_signal_lookup',
+  // WP-1.7 (LCA-1/LCA-13): cross_school_lookup REMOVED — its target
+  // multi_school_signal_lookup is a legacy lib/tools implementation never bridged
+  // to a registry capability (no TOOL_NAME_TO_URI entry possible without a new cap).
+  // Follow-up F-WP17-1: re-bridge by registering a registry capability wrapping
+  // lib/tools/multi_school_signal_lookup.ts if the surgical primitive is wanted locally.
   read_classical_text: 'classical_text_search',
   // TR Wave additions (PR #159 — Class A: existing retrieval engines)
   query_varshphal: 'query_varshaphala',
@@ -398,26 +417,23 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   divisional_query: 'divisional_query',
   remedial_codex_query: 'remedial_codex_query',
   query_muhurat: 'query_muhurat',
-  // TR Wave Class B/C stubs
+  // Tara/Chandra bala — now resolve (TOOL_NAME_TO_URI → get_tara_chandra_bala)
   query_tara_balam: 'query_tara_balam',
   query_chandra_balam: 'query_chandra_balam',
-  jaimini_chara_dasha: 'jaimini_chara_dasha',
-  jaimini_chara_dasha_full: 'jaimini_chara_dasha_full',
-  // UDA Campaign additions — 14 portal-native tools exposed as MCP primitives
+  // WP-1.7 (LCA-1/LCA-13): jaimini_chara_dasha[_full] REMOVED — TR Wave Class B/C stubs,
+  // never built, no backing capability (getToolByName was undefined → 500).
+  // UDA Campaign — retained portal-native tools that resolve to a real capability:
   msr_sql: 'msr_sql',
-  temporal: 'temporal',
-  kp_query: 'kp_query',
-  query_kp_ruling_planets: 'query_kp_ruling_planets',
-  pattern_register: 'pattern_register',
-  resonance_register: 'resonance_register',
-  cluster_atlas: 'cluster_atlas',
-  contradiction_register: 'contradiction_register',
-  query_ucn_walk: 'query_ucn_walk',
-  query_cdlm_lookup: 'query_cdlm_lookup',
-  query_rm_walk: 'query_rm_walk',
-  query_jaimini_drishti: 'query_jaimini_drishti',
-  timeline_query: 'timeline_query',
-  query_signal_state: 'query_signal_state',
+  temporal: 'temporal',                                   // → L3/query_temporal_activation
+  contradiction_register: 'contradiction_register',       // → L2/query_contradictions
+  // WP-1.7 (LCA-1/LCA-13): the following 12 UDA/legacy names were REMOVED — no backing
+  // registry capability, so getToolByName() returned undefined and the primitives route
+  // 500'd. Removing them makes isAllowedSurgicalTool() reject the name with a clean 400
+  // {class:"validation"} instead of a 500, and the deployed twin remains canonical:
+  //   cross_school_lookup (multi_school_signal_lookup), kp_query, query_kp_ruling_planets,
+  //   pattern_register, resonance_register, cluster_atlas, query_ucn_walk,
+  //   query_cdlm_lookup, query_rm_walk, query_jaimini_drishti, timeline_query,
+  //   query_signal_state.
   // F-015: L0 entity resolution tools exposed as MCP primitives (called via POST now)
   resolve_entity: 'resolve_entity',
   list_entities: 'list_entities',

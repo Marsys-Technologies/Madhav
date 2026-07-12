@@ -26,16 +26,16 @@ import {
 describe('primitives_registry — isAllowedSurgicalTool', () => {
   it('returns true for all 48 whitelisted tool names', () => {
     const mcpToolNames = Object.keys(MCP_TO_RETRIEVAL_TOOL)
-    expect(mcpToolNames).toHaveLength(48)
+    expect(mcpToolNames).toHaveLength(34)  // WP-1.7: 48 − 14 dead entries removed
     for (const name of mcpToolNames) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
   })
 
   it('returns false for non-whitelisted tool names', () => {
-    // pattern_register and resonance_register are now whitelisted (UDA Campaign additions)
-    expect(isAllowedSurgicalTool('pattern_register')).toBe(true)
-    expect(isAllowedSurgicalTool('resonance_register')).toBe(true)
+    // WP-1.7: pattern_register and resonance_register REMOVED (no backing capability) → rejected
+    expect(isAllowedSurgicalTool('pattern_register')).toBe(false)
+    expect(isAllowedSurgicalTool('resonance_register')).toBe(false)
     // These remain non-whitelisted
     expect(isAllowedSurgicalTool('ask_madhav')).toBe(false)
     expect(isAllowedSurgicalTool('')).toBe(false)
@@ -60,7 +60,7 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
       'lel_query',
       'vector_search',
       'get_cgm_subgraph',
-      'cross_school_lookup',
+      // WP-1.7: cross_school_lookup removed (no backing capability)
       'read_classical_text',
       // TR Wave Class A — MCP-facing names
       'query_varshphal',
@@ -72,10 +72,10 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
       'divisional_query',
       'remedial_codex_query',
       'query_muhurat',
-      // TR Wave Class B/C stubs
+      // Tara/Chandra bala (now resolve → get_tara_chandra_bala)
       'query_tara_balam',
       'query_chandra_balam',
-      'jaimini_chara_dasha',
+      // WP-1.7: jaimini_chara_dasha[_full] removed (TR Wave stubs, never built)
     ]
     for (const name of expected) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
@@ -94,8 +94,8 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
     expect(MCP_TO_RETRIEVAL_TOOL['get_cgm_subgraph']).toBe('cgm_graph_walk')
   })
 
-  it('MCP_TO_RETRIEVAL_TOOL maps cross_school_lookup → multi_school_signal_lookup', () => {
-    expect(MCP_TO_RETRIEVAL_TOOL['cross_school_lookup']).toBe('multi_school_signal_lookup')
+  it('WP-1.7: cross_school_lookup removed (multi_school_signal_lookup never bridged to registry)', () => {
+    expect(MCP_TO_RETRIEVAL_TOOL['cross_school_lookup']).toBeUndefined()
   })
 })
 
@@ -187,7 +187,7 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
   })
 
   it('Test 2 (whitelist): non-whitelisted tool returns 400 with class: validation', async () => {
-    // pattern_register is now whitelisted (UDA Campaign); use ask_madhav which is not surgical
+    // ask_madhav is an end-to-end tool, never a surgical primitive → always rejected
     const req = buildRequest('ask_madhav')
     const res = await POST(req, buildRouteParams('ask_madhav'))
     expect(res.status).toBe(400)
