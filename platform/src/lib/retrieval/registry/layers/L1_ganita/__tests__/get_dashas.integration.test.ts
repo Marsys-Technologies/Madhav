@@ -75,3 +75,131 @@ describeIf('get_dashas (marsys://tool/L1/get_dashas) — current-dasha gate, liv
     })
   }
 })
+
+// ── WP-1.3 (b): query_dasha_periods honors system_id (F-0354) ──────────────────
+// ~437k non-vimshottari rows/chart were dark because the handler ignored the raw
+// `system_id` column name a caller most naturally passes, silently defaulting to
+// vimshottari. These pin that each requested system actually returns THAT system's rows,
+// addressed by both the `system` facet and the new `system_id` alias.
+describeIf('get_dashas — system_id honored (WP-1.3b / F-0354), live DB', () => {
+  const NON_VIMSHOTTARI = ['yogini', 'ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika'] as const
+
+  for (const system of NON_VIMSHOTTARI) {
+    it(`[native] system_id="${system}" returns ONLY ${system} rows (not silently vimshottari)`, async () => {
+      const result = await getDashasCapability.handler({
+        chart_id: NATIVE_CHART_ID,
+        system_id: system,           // raw column-name alias — the F-0354 path
+        ayanamsha_id: 'lahiri_chitrapaksha',
+        all_levels: true,
+        window_start: '1984-02-05',
+        window_end: '2084-02-05',
+        limit: 50,
+      }, undefined)
+
+      expect(result.is_error).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const facets = content['facets_applied'] as Record<string, unknown>
+      // Applied system is echoed back and equals what was requested.
+      expect(facets['system']).toBe(system)
+
+      const rows = content['rows'] as Array<Record<string, unknown>>
+      expect(rows.length).toBeGreaterThan(0)
+      // Every served row belongs to the requested system — proves it is NOT defaulting to vimshottari.
+      for (const r of rows) {
+        expect(r['system_id']).toBe(system)
+      }
+    })
+  }
+
+  it('[native] precedence: explicit `system` wins over `system_id`', async () => {
+    const result = await getDashasCapability.handler({
+      chart_id: NATIVE_CHART_ID,
+      system: 'yogini',
+      system_id: 'ashtottari',
+      ayanamsha_id: 'lahiri_chitrapaksha',
+      all_levels: true,
+      limit: 50,
+    }, undefined)
+    const content = result.content as Record<string, unknown>
+    expect((content['facets_applied'] as Record<string, unknown>)['system']).toBe('yogini')
+  })
+})
+
+// ── WP-1.3 (c): dasha tools honor requested WINDOWS + echo them (F-0471/0485) ──
+// A fixed today-centered decade made past/future timing questions unanswerable. A
+// historical window and a future window must both resolve, and the applied temporal
+// filter must be echoed (never silently dropped).
+describeIf('get_dashas — requested windows resolve + are echoed (WP-1.3c / F-0471/0485), live DB', () => {
+  it('[native] historical window (2000-2010) resolves and is echoed, no default applied', async () => {
+    const result = await getDashasCapability.handler({
+      chart_id: NATIVE_CHART_ID,
+      system: 'vimshottari',
+      level: 1,
+      ayanamsha_id: 'lahiri_chitrapaksha',
+      window_start: '2000-01-01',
+      window_end: '2010-12-31',
+      limit: 50,
+    }, undefined)
+
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    const facets = content['facets_applied'] as Record<string, unknown>
+    // Echoed window is exactly what was requested — NOT the today±5y default.
+    expect(facets['window']).toEqual({ start: '2000-01-01', end: '2010-12-31' })
+    const dateFilter = facets['date_filter'] as Record<string, unknown>
+    expect(dateFilter['default_window_applied']).toBeUndefined()
+
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    expect(rows.length).toBeGreaterThan(0)
+    // Every Maha period overlaps the requested historical window.
+    for (const r of rows) {
+      expect(String(r['start_date']) <= '2010-12-31').toBe(true)
+      expect(String(r['end_date']) >= '2000-01-01').toBe(true)
+    }
+  })
+
+  it('[native] future window (2030-2045) resolves and is echoed', async () => {
+    const result = await getDashasCapability.handler({
+      chart_id: NATIVE_CHART_ID,
+      system: 'vimshottari',
+      level: 1,
+      ayanamsha_id: 'lahiri_chitrapaksha',
+      window_start: '2030-01-01',
+      window_end: '2045-12-31',
+      limit: 50,
+    }, undefined)
+
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    const facets = content['facets_applied'] as Record<string, unknown>
+    expect(facets['window']).toEqual({ start: '2030-01-01', end: '2045-12-31' })
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    expect(rows.length).toBeGreaterThan(0)
+    for (const r of rows) {
+      expect(String(r['start_date']) <= '2045-12-31').toBe(true)
+      expect(String(r['end_date']) >= '2030-01-01').toBe(true)
+    }
+  })
+
+  it('[native] as_of_date filter is echoed in facets_applied.date_filter (no longer silent)', async () => {
+    const result = await getDashasCapability.handler({
+      chart_id: NATIVE_CHART_ID,
+      system: 'vimshottari',
+      level: 1,
+      ayanamsha_id: 'lahiri_chitrapaksha',
+      as_of_date: '2005-06-15',
+    }, undefined)
+
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    const facets = content['facets_applied'] as Record<string, unknown>
+    const dateFilter = facets['date_filter'] as Record<string, unknown>
+    expect(dateFilter['as_of_date']).toBe('2005-06-15')
+
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    // The Maha period running on 2005-06-15 contains that date.
+    expect(rows.length).toBe(1)
+    expect(String(rows[0]['start_date']) <= '2005-06-15').toBe(true)
+    expect(String(rows[0]['end_date']) >= '2005-06-15').toBe(true)
+  })
+})

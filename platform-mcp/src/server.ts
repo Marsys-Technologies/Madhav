@@ -80,7 +80,6 @@ import { registerKalaTemporalRetrievalTool } from './tools/retrieval/kala_tempor
 // Stream G — L1 Gaṇita PyJHora capabilities (BRAHMA-G-1)
 import {
   registerComputeNatalPositionsTool,
-  registerQueryDashaPeriodsTool,
   registerQuerySpecialLagnasTool,
 } from './tools/retrieval/pyhora_natal.js'
 // L0FR Stream A: L0 Brahmagyan pattern-validation capabilities
@@ -308,7 +307,9 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   // L1 Gaṇita — PyJHora natal computation tools (Stream G / BRAHMA-G-1)
   registerComputeNatalPositionsTool(server)    // graha_sthana: 9 planets + Lagna
-  registerQueryDashaPeriodsTool(server)        // Vimshottari mahadasha chain
+  // query_dasha_periods REPOINTED to the DB-backed faceted capability (get_dashas) —
+  // now registered in registerP1AliasTools so it honors system_id + windows (WP-1.3 b/c,
+  // F-0354/F-0471/0485). The old vimshottari-only PyJHora registration is retired.
   registerQuerySpecialLagnasTool(server)       // Lagna + upagrahas (Gulika, Maandi, etc.)
 
   // L2 Bodha tools
