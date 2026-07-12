@@ -361,7 +361,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // recall_session: resume session with entitlement re-check; list_my_sessions: session history.
   registerSessionTools(server, principal)
 
-  // R5 — Richness Layer: 9 MCP resources + 3 guided-reading prompts
+  // R5 — Richness Layer + WP-1.6: MCP resources (incl. consumption-protocol) +
+  // guided-reading prompts (incl. demand_side_chase)
   // M0: principal passed for chart-snapshot gate
   registerResources(server, principal)
   registerPrompts(server)

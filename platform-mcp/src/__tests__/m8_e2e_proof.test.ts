@@ -391,15 +391,15 @@ describe('G8 — Resources (9) and prompts (3) registered', () => {
     }
   }
 
-  it('registerPrompts() registers exactly 3 prompts', async () => {
+  it('registerPrompts() registers exactly 4 prompts (3 R5 + demand_side_chase WP-1.6)', async () => {
     const { registerPrompts } = await import('../prompts/index.js')
     const srv = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerPrompts(srv as any)
-    expect(srv._prompts.length).toBe(3)
+    expect(srv._prompts.length).toBe(4)
   })
 
-  it('3 prompts are: orient_chart, assess_domain, find_active_yogas', async () => {
+  it('4 prompts are: orient_chart, assess_domain, find_active_yogas, demand_side_chase', async () => {
     const { registerPrompts } = await import('../prompts/index.js')
     const srv = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -407,6 +407,7 @@ describe('G8 — Resources (9) and prompts (3) registered', () => {
     expect(srv._prompts).toContain('orient_chart')
     expect(srv._prompts).toContain('assess_domain')
     expect(srv._prompts).toContain('find_active_yogas')
+    expect(srv._prompts).toContain('demand_side_chase')
   })
 
   it('registerResources() registers exactly 9 resources (+ chart_snapshot template)', async () => {
