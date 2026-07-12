@@ -254,3 +254,83 @@ def test_malefics_set_contains_classical():
     assert 'Mars' in MALEFICS
     assert 'Rahu' in MALEFICS
     assert 'Ketu' in MALEFICS
+
+
+# ── WP-2.1 / F-L10-018: dasha-anchored obstruction reachability ───────────────
+from datetime import date as _vd
+
+
+class _VCursor:
+    def __init__(self, script, calls):
+        self._script = script
+        self._calls = calls
+        self._result = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        s = " ".join(sql.split())
+        self._calls.append(s)
+        for matcher, rows in self._script:
+            if matcher in s:
+                self._result = list(rows)
+                return
+        self._result = []
+
+    def fetchall(self):
+        return list(self._result)
+
+    def fetchone(self):
+        return self._result[0] if self._result else None
+
+
+class _VConn:
+    def __init__(self, script):
+        self._script = script
+        self.calls = []
+
+    def cursor(self, *a, **k):
+        return _VCursor(self._script, self.calls)
+
+
+def test_dasha_anchor_peaks_dedupes_and_skips_covered():
+    """Uncovered predicates resolve to distinct dasha-derived anchor peaks;
+    covered signals are skipped; each peak claimed by one representative signal."""
+    from pipeline.orchestrator.writers.ka_vighnakara import KaVighnakaraWriter
+
+    chart_id = "482012f1-710e-4a25-994a-93821f5871aa"
+    script = [
+        ("FROM chart_dashas", [
+            {"lord_graha": "Saturn", "level_n": 1, "start_date": _vd(2010, 1, 1), "end_date": _vd(2029, 1, 1)},
+            {"lord_graha": "Venus", "level_n": 1, "start_date": _vd(2029, 1, 1), "end_date": _vd(2049, 1, 1)},
+        ]),
+        ("FROM kala_activation_predicates", [
+            {"signal_id": "aaaaaaaa-0000-0000-0000-000000000001",
+             "dasha_eligibility_rule_jsonb": {"constituent_lords": ["Saturn"]}},
+            {"signal_id": "aaaaaaaa-0000-0000-0000-000000000002",
+             "dasha_eligibility_rule_jsonb": {"constituent_lords": ["Venus"]}},
+            {"signal_id": "covered-0000-0000-0000-000000000003",
+             "dasha_eligibility_rule_jsonb": {"constituent_lords": ["Saturn"]}},
+        ]),
+    ]
+    conn = _VConn(script)
+    covered = {"covered-0000-0000-0000-000000000003"}
+    anchors = KaVighnakaraWriter()._dasha_anchor_peaks(conn, chart_id, covered)
+
+    # Two distinct lords -> two distinct MD-midpoint anchors; covered one skipped.
+    peaks = [p for p, _ in anchors]
+    assert len(anchors) == 2
+    assert len(set(peaks)) == 2
+    assert all(isinstance(p, _vd) for p in peaks)
+    sig_ids = {s for _, s in anchors}
+    assert "covered-0000-0000-0000-000000000003" not in sig_ids
+
+
+def test_dasha_anchor_peaks_empty_timeline():
+    from pipeline.orchestrator.writers.ka_vighnakara import KaVighnakaraWriter
+    conn = _VConn([("FROM chart_dashas", [])])
+    assert KaVighnakaraWriter()._dasha_anchor_peaks(conn, "cid", set()) == []

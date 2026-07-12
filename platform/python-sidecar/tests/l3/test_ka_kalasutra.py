@@ -185,3 +185,130 @@ class TestWriterContractGrep:
         source = WRITER_PATH.read_text()
         l2_writes = re.findall(r'(INSERT INTO|UPDATE)\s+bodha_msr_signals', source)
         assert len(l2_writes) == 0, f"Found writes to bodha_msr_signals: {l2_writes}"
+
+
+# ── WP-2.1 / R-45: writer-level date-population regression (DB-free) ───────────
+from datetime import date as _d
+
+
+class _KalaCursor:
+    """Script-matched fake cursor. Captures executemany rows for assertions."""
+    def __init__(self, script, sink):
+        self._script = script
+        self._sink = sink
+        self._result = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        s = " ".join(sql.split())
+        for matcher, rows in self._script:
+            if matcher in s:
+                self._result = list(rows)
+                return
+        self._result = []
+
+    def executemany(self, sql, rows):
+        if "INSERT INTO kala_activation" in " ".join(sql.split()):
+            self._sink.extend(rows)
+
+    def fetchall(self):
+        return list(self._result)
+
+    def fetchone(self):
+        return self._result[0] if self._result else None
+
+
+class _KalaConn:
+    def __init__(self, script, sink):
+        self._script = script
+        self._sink = sink
+
+    def cursor(self, *a, **k):
+        return _KalaCursor(self._script, self._sink)
+
+
+class _Ctx:
+    def __init__(self, conn, chart_id):
+        self.db_conn = conn
+        self.config = {"chart_id": chart_id}
+
+
+def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():
+    """R-45 LANE0 regression: a predicate whose lord is in the dasha timeline
+    gets NON-NULL activation_start/end/peak even with NO convergence peak."""
+    from pipeline.orchestrator.writers.ka_kalasutra import KaKalasutraWriter
+
+    chart_id = "482012f1-710e-4a25-994a-93821f5871aa"
+    sink = []
+    script = [
+        ("FROM kala_activation_predicates", [{
+            "signal_id": "11111111-1111-1111-1111-111111111111",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "signature_class": "YOGA",
+            "dasha_eligibility_rule_jsonb": {"constituent_lords": ["Saturn"], "dignity_score": 0.7},
+            "transit_trigger_jsonb": {"type": "benefic_transit"},
+            "strength_affliction_hook_jsonb": {"non_affliction": 1.0},
+        }]),
+        ("FROM chart_dashas", [
+            {"lord_graha": "Saturn", "level_n": 1, "start_date": _d(2010, 1, 1), "end_date": _d(2029, 1, 1)},
+            {"lord_graha": "Saturn", "level_n": 2, "start_date": _d(2012, 6, 1), "end_date": _d(2015, 3, 1)},
+        ]),
+        ("FROM kala_convergence", []),  # NO convergence peak — the 99% case
+    ]
+    conn = _KalaConn(script, sink)
+    result = KaKalasutraWriter().run(_Ctx(conn, chart_id))
+
+    assert result.rows_inserted == 1
+    row = sink[0]
+    # tuple layout: (..., proximity, activation_start, activation_end, peak, ...)
+    activation_start, activation_end, activation_peak = row[7], row[8], row[9]
+    assert activation_start is not None, "activation_start must NOT be NULL (R-45 fix)"
+    assert activation_end is not None
+    assert activation_peak is not None
+    # dates trace to the AD Saturn period (finer level preferred)
+    assert activation_start == "2012-06-01"
+    assert activation_end == "2015-03-01"
+    # predicted-dates fallback jsonb is non-empty
+    import json as _json
+    predicted = _json.loads(row[5])
+    assert len(predicted) > 0
+    # citation records the resolution source
+    assert "src=dasha_timeline" in row[12]
+
+
+def test_writer_uses_convergence_peak_when_present():
+    """When a convergence peak exists it refines the window (legacy path)."""
+    from pipeline.orchestrator.writers.ka_kalasutra import KaKalasutraWriter
+
+    chart_id = "482012f1-710e-4a25-994a-93821f5871aa"
+    sink = []
+    script = [
+        ("FROM kala_activation_predicates", [{
+            "signal_id": "22222222-2222-2222-2222-222222222222",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "signature_class": "YOGA",
+            "dasha_eligibility_rule_jsonb": {"constituent_lords": ["Saturn"]},
+            "transit_trigger_jsonb": {"type": "benefic_transit"},
+            "strength_affliction_hook_jsonb": {},
+        }]),
+        ("FROM chart_dashas", [
+            {"lord_graha": "Saturn", "level_n": 1, "start_date": _d(2010, 1, 1), "end_date": _d(2029, 1, 1)},
+        ]),
+        ("FROM kala_convergence", [{
+            "signal_id": "22222222-2222-2222-2222-222222222222",
+            "mode": "A", "peak_date": _d(2013, 6, 15),
+            "orb_strength": 0.8, "convergence_score": 0.9,
+        }]),
+    ]
+    conn = _KalaConn(script, sink)
+    result = KaKalasutraWriter().run(_Ctx(conn, chart_id))
+    assert result.rows_inserted == 1
+    row = sink[0]
+    assert row[7] == "2013-06-08"   # peak - 7 (YOGA)
+    assert row[9] == "2013-06-15"   # peak
+    assert "src=convergence" in row[12]

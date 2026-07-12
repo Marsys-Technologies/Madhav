@@ -24,8 +24,14 @@ from typing import Optional
 import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.ka_temporal import load_dasha_timeline, resolve_activation_windows
 
 logger = logging.getLogger(__name__)
+
+# WP-2.1 / F-L10-018: cap on distinct dasha-derived anchor dates scanned for
+# obstructions (row-size + swisseph-cost guard). The dasha timeline yields at
+# most a few dozen distinct MD/AD midpoints, so this ceiling is generous.
+_MAX_DASHA_ANCHORS = 200
 
 # Adversarial signs for Saturn relative to this native:
 # Native lagna = Aries (1), Moon = Aquarius (11).
@@ -233,6 +239,43 @@ class KaVighnakaraWriter(WriterBase):
                     f"ka_vighnakara:v2.0:conv={conv_id}",
                 ))
 
+        # ── WP-2.1 / F-L10-018: dasha-anchored obstruction reachability ────────
+        # Convergence covers only a fraction of signals, so obstruction windows
+        # anchored solely on convergence peaks were unreachable (602/638). Emit
+        # obstructions ALSO at the dasha-derived activation anchors — the same L1
+        # daśā-timeline peaks ka_kalasutra now dates activations on — so
+        # obstruction and activation windows co-locate in time and join.
+        # convergence_id is NULL (nullable FK); signal_id carries the join key.
+        already_covered = {
+            str(r[1]) for r in convergence_rows if r[1] is not None  # signal_id column
+        }
+        dasha_anchors = self._dasha_anchor_peaks(conn, chart_id, already_covered)
+        for peak_date, signal_id in dasha_anchors:
+            jd = _jd_from_date(peak_date)
+            obstructions = _detect_all(
+                peak_date=peak_date,
+                jd=jd,
+                swe=_swe,
+                muhurta_service=_muhurta,
+                native_location=_NATIVE_LOC,
+                natal_lagna_lon=natal_lagna_lon,
+                combustion_orbs=combustion_orbs,
+            )
+            for obs in obstructions:
+                detail = dict(obs['detail'])
+                detail['anchor'] = 'dasha_timeline'
+                rows.append((
+                    chart_id,
+                    None,  # convergence_id — dasha-anchored, no convergence window
+                    signal_id,
+                    obs['obstruction_type'],
+                    obs['severity'],
+                    obs['severity_score'],
+                    obs['override_score'],
+                    json.dumps(detail),
+                    f"ka_vighnakara:v2.0:dasha_anchor",
+                ))
+
         if rows:
             with conn.cursor() as cur:
                 cur.executemany(
@@ -283,6 +326,58 @@ class KaVighnakaraWriter(WriterBase):
         except Exception as exc:
             logger.debug("ka_vighnakara: natal lagna fetch failed: %s", exc)
         return None
+
+    def _dasha_anchor_peaks(self, conn, chart_id: str, covered_signal_ids: set) -> list:
+        """WP-2.1: distinct dasha-derived activation peaks for signals NOT covered
+        by a convergence window, so obstruction detection reaches them.
+
+        Resolves each uncovered predicate against the L1 daśā timeline (shared
+        helper) and returns a de-duplicated, capped list of (peak_date, signal_id)
+        anchors — one representative signal per distinct peak date. Read-only;
+        SAVEPOINT-guarded so a soft failure never aborts the writer's transaction.
+        """
+        anchors: dict[DateType, str] = {}
+        with conn.cursor() as sp:
+            sp.execute("SAVEPOINT sp_dasha_anchors")
+        try:
+            timeline = load_dasha_timeline(conn, chart_id)
+            if not timeline:
+                with conn.cursor() as sp:
+                    sp.execute("RELEASE SAVEPOINT sp_dasha_anchors")
+                return []
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT signal_id, dasha_eligibility_rule_jsonb
+                    FROM kala_activation_predicates
+                    WHERE chart_id = %s
+                    """,
+                    (chart_id,),
+                )
+                predicates = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_dasha_anchors")
+        except Exception as exc:
+            with conn.cursor() as sp:
+                sp.execute("ROLLBACK TO SAVEPOINT sp_dasha_anchors")
+            logger.debug("ka_vighnakara: dasha-anchor fetch skipped: %s", exc)
+            return []
+
+        for pred in predicates:
+            sig_id = str(pred['signal_id'])
+            if sig_id in covered_signal_ids:
+                continue
+            windows = resolve_activation_windows(
+                pred['dasha_eligibility_rule_jsonb'], timeline
+            )
+            peak = windows.activation_peak
+            if peak is None:
+                continue
+            # First signal to claim a given peak date represents it (dedupe).
+            anchors.setdefault(peak, sig_id)
+            if len(anchors) >= _MAX_DASHA_ANCHORS:
+                break
+        return sorted(anchors.items())
 
 
 # ── Detection entry point ─────────────────────────────────────────────────────
