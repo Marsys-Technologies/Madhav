@@ -298,8 +298,34 @@ export const queryUcdCapability: CapabilityDescriptor = {
       // than a giant UNATTRIBUTED bucket.
       const factSubjectByFactId = await resolveConstituentFactSubjects(chart_id, signalResult.rows as Array<{ constituent_facts_array?: string[] | null }>)
 
-      const entity_profiles = buildHierarchicalProfiles(scoredAll, top_k_entities, 3, { factSubjectByFactId })
+      // WP-1.2β: exclude the residual UNATTRIBUTED bucket from the served profiles (0%
+      // UNATTRIBUTED, ND-W1.2) — the residual is disclosed below in `attribution`.
+      const entity_profiles = buildHierarchicalProfiles(scoredAll, top_k_entities, 3, { factSubjectByFactId, excludeUnattributed: true })
       const ranking_basis = buildRankingBasis(scoredAll, null)
+
+      // WP-1.2β (LCA-14): attribution honesty (E-2). Across the FULL scored candidate pool,
+      // count how many signals still land in the residual UNATTRIBUTED bucket after the
+      // graha + sade_sati + bhāva attribution chain, and confirm 0 UNATTRIBUTED entities are
+      // SERVED in the top-K entity_profiles. Disclosed, never silently dropped (B.10).
+      const servedUnattributed = entity_profiles.filter(p => p.entity_type === 'unattributed').length
+      const { deriveSignalEntity } = await import('../../../ranking/composite_ranker')
+      let poolUnattributed = 0
+      for (const s of scoredAll) {
+        if (deriveSignalEntity(s, factSubjectByFactId) === 'UNATTRIBUTED') poolUnattributed++
+      }
+      const attribution = {
+        served_unattributed_entities: servedUnattributed,
+        served_unattributed_share: entity_profiles.length > 0 ? servedUnattributed / entity_profiles.length : 0,
+        candidate_pool_size: scoredAll.length,
+        candidate_pool_unattributed: poolUnattributed,
+        note: servedUnattributed === 0
+          ? 'WP-1.2β: 0% UNATTRIBUTED on the served ranked surface — every served entity_profile ' +
+            'resolves to a graha or a bhāva (chart address). candidate_pool_unattributed genuinely ' +
+            'un-attributable signals (typically panchāṅga/muhūrta birth-moment descriptors carrying ' +
+            'neither a graha nor a bhāva) are EXCLUDED from the served profiles and disclosed here ' +
+            '(not silently dropped — B.10); drill them via query_signals if needed.'
+          : `WP-1.2β: ${servedUnattributed} UNATTRIBUTED entity(ies) surfaced — attribution gap to disclose, not hide.`,
+      }
 
       // response_format bounding (E-5 — this facet is now actually load-bearing;
       // previously declared by callers but unimplemented server-side):
@@ -373,6 +399,7 @@ export const queryUcdCapability: CapabilityDescriptor = {
           top_signals:           atomicSignals,
           convergence_domains:   convResult.rows,
           grounding,
+          attribution,
           ranking_basis,
           filters: { top_k, top_k_entities, signal_class, min_salience },
           provenance: {

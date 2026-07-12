@@ -16,6 +16,7 @@ import {
   classPrior,
   grahaAffinity,
   vargaWeight,
+  bhavaAffinity,
   DIGNITY_SCORE,
 } from './priors_config'
 
@@ -84,9 +85,44 @@ export function extractPrimaryGraha(row: MsrSignalRow): string | null {
   const candidates = [
     cfg['graha'], cfg['primary_graha'], cfg['lord_graha'],
     cfg['planet'], cfg['graha_key'], cfg['karaka_graha'],
+    // WP-1.2β: additional graha-bearing keys observed across signal families —
+    // natural_karaka (karaka_alignment), nakshatra_lord (nakshatra joins),
+    // bhava_lord (concordance), planet_a (parivartana), lord/star_lord/sub_lord (KP cusps).
+    cfg['natural_karaka'], cfg['nakshatra_lord'], cfg['bhava_lord'],
+    cfg['planet_a'], cfg['lord'], cfg['star_lord'], cfg['sub_lord'],
   ]
   for (const v of candidates) {
     if (typeof v === 'string' && v.length > 0) return v
+  }
+  return null
+}
+
+/**
+ * WP-1.2β (LCA-14 / R-44) — extract the bhāva (house 1-12) a signal bears on, for both
+ * bhāva×domain topic relevance AND bhāva-fallback attribution. Read order (first hit wins):
+ *   1. configuration_jsonb.target_house — the house being aspected/affected (most specific).
+ *   2. configuration_jsonb.house / .bhava / .bhava_num — a direct house tag.
+ *   3. configuration_jsonb.source_house — the aspecting house (fallback).
+ *   4. signal_type_id suffix `house_N` / `:house_N` (e.g. aspect_parashari_per_varga:house_5).
+ * Returns 1..12 or null. Never invents a house (B.10) — only reads a stored one.
+ */
+export function extractPrimaryBhava(row: MsrSignalRow): number | null {
+  const cfg = row.configuration_jsonb
+  const readHouse = (v: unknown): number | null => {
+    const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d+$/.test(v) ? Number(v) : NaN
+    return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null
+  }
+  if (cfg) {
+    for (const key of ['target_house', 'house', 'bhava', 'bhava_num', 'source_house']) {
+      const h = readHouse(cfg[key])
+      if (h) return h
+    }
+  }
+  const stid = row.signal_type_id ?? ''
+  const m = stid.match(/house_(\d{1,2})(?!\d)/)
+  if (m) {
+    const h = Number(m[1])
+    if (h >= 1 && h <= 12) return h
   }
   return null
 }
@@ -107,10 +143,15 @@ function extractVarga(row: MsrSignalRow): string | null {
 function topicRelevance(row: MsrSignalRow, domain?: string | null): number {
   const graha = extractPrimaryGraha(row)
   const varga = extractVarga(row)
+  const bhava = extractPrimaryBhava(row)
   const ga = grahaAffinity(graha, domain)
   const vw = vargaWeight(varga, domain)
+  // WP-1.2β: bhāva×domain congruence — the axis that discriminates the graha-less
+  // aspect/house composite_state flood across domains (BPHS Bhāvādhyāya). Neutral (1.0)
+  // when no house resolves, so graha/yoga signals are unaffected by this term.
+  const bw = bhavaAffinity(bhava, domain)
   // Normalize varga weight around 1.0 (D1 base = 1.0)
-  return ga * vw
+  return ga * vw * bw
 }
 
 /**
@@ -349,13 +390,31 @@ export function grahaFromFactSubject(subject: string | null | undefined): string
 }
 
 /**
- * WP-1.2(a) — resolve the entity a signal belongs to.
- * Attribution order (first hit wins):
+ * WP-1.2β — derive the bhāva (HOUSE_N) embedded in an L1 `fact_subject` such as
+ * `HOUSE_7`, `D1_HOUSE_10`, or `BHAVA_2`. Returns 1..12 or null.
+ */
+export function bhavaFromFactSubject(subject: string | null | undefined): number | null {
+  if (!subject) return null
+  const m = subject.toUpperCase().match(/(?:HOUSE|BHAVA)_(\d{1,2})(?!\d)/)
+  if (m) {
+    const h = Number(m[1])
+    if (h >= 1 && h <= 12) return h
+  }
+  return null
+}
+
+/**
+ * WP-1.2(a)+β — resolve the entity a signal belongs to.
+ * Attribution order (first hit wins) — designed to reach 0% UNATTRIBUTED on served surfaces:
  *   1. configuration_jsonb graha keys (extractPrimaryGraha) — the fast path.
- *   2. the graha embedded in any constituent fact's `fact_subject` — resolved via
- *      the optional `factSubjectByFactId` map the caller built from a bounded
- *      chart_facts lookup (this is what attributes the per-varga dignity flood).
- *   3. 'UNATTRIBUTED' — only when neither path yields a graha.
+ *   2. the graha embedded in any constituent fact's `fact_subject` (factSubjectByFactId map).
+ *   3. β: sade_sati / anumukha-Śani signals are inherently Saturn — attribute to SATURN.
+ *   4. β: the bhāva the signal bears on (extractPrimaryBhava) — attributes the graha-less
+ *      aspect/house composite_state flood to a `BHAVA_N` entity (a real chart address, never
+ *      the giant UNATTRIBUTED bucket).
+ *   5. β: the bhāva embedded in a constituent fact's `fact_subject` (HOUSE_N/BHAVA_N).
+ *   6. 'UNATTRIBUTED' — only when NONE of the above yields a graha or a bhāva (disclosed as a
+ *      residual on the served surface, never silently dropped — B.10).
  */
 export function deriveSignalEntity(
   row: MsrSignalRow,
@@ -366,9 +425,21 @@ export function deriveSignalEntity(
   if (direct) return direct
   if (factSubjectByFactId) {
     for (const fid of row.constituent_facts_array ?? []) {
-      const subj = factSubjectByFactId.get(fid)
-      const g = grahaFromFactSubject(subj)
+      const g = grahaFromFactSubject(factSubjectByFactId.get(fid))
       if (g) return g
+    }
+  }
+  // β: Saturn-transit families (sade_sati / anumukha shani) are inherently Saturn.
+  const cls = (row.signal_type_class ?? '').toLowerCase()
+  const stid = (row.signal_type_id ?? '').toLowerCase()
+  if (cls === 'sade_sati' || stid.includes('shani') || stid.includes('sade_sati')) return 'SATURN'
+  // β: attribute the graha-less house/aspect flood to the bhāva it bears on.
+  const bhava = extractPrimaryBhava(row)
+  if (bhava) return `BHAVA_${bhava}`
+  if (factSubjectByFactId) {
+    for (const fid of row.constituent_facts_array ?? []) {
+      const h = bhavaFromFactSubject(factSubjectByFactId.get(fid))
+      if (h) return `BHAVA_${h}`
     }
   }
   return 'UNATTRIBUTED'
@@ -383,7 +454,7 @@ export function deriveSignalEntity(
  * same composite ranking pipeline the drill surface (query_signals) uses.
  */
 export interface EntityProfile {
-  entity_type: 'graha' | 'unattributed'
+  entity_type: 'graha' | 'bhava' | 'unattributed'
   entity: string
   /** Sum of final_rank_score across all constituent signals in this entity's group. */
   aggregate_score: number
@@ -416,6 +487,13 @@ export interface BuildHierarchicalProfilesOptions {
    * entity profile's `fact_ids` is filtered to resolvable ids only.
    */
   factSubjectByFactId?: Map<string, string>
+  /**
+   * WP-1.2β — when true, the residual UNATTRIBUTED bucket is EXCLUDED from the returned
+   * profiles so the served surface is 0% UNATTRIBUTED (ND-W1.2). The caller must disclose
+   * the residual separately (never silently dropped — B.10): query_ucd surfaces the count in
+   * `content.attribution.candidate_pool_unattributed`.
+   */
+  excludeUnattributed?: boolean
 }
 
 /**
@@ -437,7 +515,7 @@ export function buildHierarchicalProfiles(
   top_signals_per_entity = 3,
   options: BuildHierarchicalProfilesOptions = {},
 ): EntityProfile[] {
-  const { factSubjectByFactId } = options
+  const { factSubjectByFactId, excludeUnattributed } = options
   const groups = new Map<string, ScoredSignal[]>()
   for (const s of scored) {
     const key = deriveSignalEntity(s, factSubjectByFactId)
@@ -472,8 +550,10 @@ export function buildHierarchicalProfiles(
     const dominant_valence = Object.entries(valenceCounts)
       .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
 
+    const entity_type: EntityProfile['entity_type'] =
+      entity === 'UNATTRIBUTED' ? 'unattributed' : entity.startsWith('BHAVA_') ? 'bhava' : 'graha'
     profiles.push({
-      entity_type: entity === 'UNATTRIBUTED' ? 'unattributed' : 'graha',
+      entity_type,
       entity,
       aggregate_score,
       peak_score,
@@ -486,16 +566,22 @@ export function buildHierarchicalProfiles(
     })
   }
 
-  // WP-1.2(a) ordering guard: a real graha ALWAYS outranks UNATTRIBUTED, regardless
-  // of the summed aggregate_score — the giant un-attributed bucket must never be the
-  // top entity. Within the same entity_type, order by aggregate_score DESC as before.
+  // WP-1.2(a)+β ordering guard: an ATTRIBUTED entity (graha OR bhāva) ALWAYS outranks the
+  // residual UNATTRIBUTED bucket, regardless of summed aggregate_score — the un-attributed
+  // bucket must never be the top entity. Graha and bhāva entities rank against each other by
+  // aggregate_score DESC (both are real chart addresses); only 'unattributed' is forced last.
   profiles.sort((a, b) => {
-    if (a.entity_type !== b.entity_type) {
-      return a.entity_type === 'unattributed' ? 1 : -1
-    }
+    const aUnattr = a.entity_type === 'unattributed'
+    const bUnattr = b.entity_type === 'unattributed'
+    if (aUnattr !== bUnattr) return aUnattr ? 1 : -1
     return b.aggregate_score - a.aggregate_score
   })
-  return profiles.slice(0, top_k_entities)
+  // WP-1.2β: optionally drop the residual UNATTRIBUTED bucket so the served surface is 0%
+  // UNATTRIBUTED (ND-W1.2). Disclosure of the residual is the caller's responsibility.
+  const finalProfiles = excludeUnattributed
+    ? profiles.filter(p => p.entity_type !== 'unattributed')
+    : profiles
+  return finalProfiles.slice(0, top_k_entities)
 }
 
 // ── R5.1 C2 item 2 — digest family-aggregation (E-6 completion) ──────────────
