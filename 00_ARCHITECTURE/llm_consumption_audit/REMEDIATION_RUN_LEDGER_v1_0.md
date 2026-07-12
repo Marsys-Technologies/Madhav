@@ -679,6 +679,13 @@ Revisit if context degradation becomes acute.
   No migration. FROZEN orchestrator preserved, no HALT. 61 new + 381 L3 (2 pre-existing TestProdDB). **Blind
   verifier DISPATCHED** (conformance + deterministic-date-trace + lord-mapping + helper quality + coverage honesty).
   Data-verify at W3. **On merge → unblocks WP-2.3-temporal (consumes the merged helper).**
+  ⚠️ **VERDICT: NOT-MET (§8.4 iter 1) — verification caught a real defect.** Conformance/lord-mapping/idempotency/
+  no-fabrication PASS, BUT the resolver selects `matched[0]` by EARLIEST start with NO birth-forward + NO
+  ayanamsha filter → windows land DECADES PRE-BIRTH (Saturn AD 1951-52 for a 1984 native); dates real but
+  life-irrelevant → R-45 unmet. Unit fixtures (2010-46 only) MASK it. Would propagate through the shared helper
+  to WP-2.3-temporal. **BOUNCED to implementer:** (1) birth-forward filter + select life-relevant period; (2)
+  honor predicate ayanamsha_id (not pool 5); (3) pre-birth-inclusive multi-ayanamsha regression fixture.
+  **NOT MERGED — WP-2.3-temporal STAYS BLOCKED until re-verify GREEN.**
 - **WP-2.5** (never-computed + ayurdaya + L0 seed) still RUNNING.
 
 ## §4 — HALT / disagreement register + follow-ups (append-only)
