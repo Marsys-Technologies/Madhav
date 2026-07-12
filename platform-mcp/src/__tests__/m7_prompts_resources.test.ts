@@ -83,18 +83,26 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
     expect(names).toContain('find_active_yogas')
   })
 
-  it('registers exactly 3 prompts', () => {
+  it('registers exactly 4 prompts (3 R5 + demand_side_chase WP-1.6)', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerPrompts(server as any)
-    expect(server._registeredPrompts).toHaveLength(3)
+    expect(server._registeredPrompts).toHaveLength(4)
   })
 
-  it('server.prompt() is called 3 times', () => {
+  it('server.prompt() is called 4 times', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerPrompts(server as any)
-    expect(server.prompt).toHaveBeenCalledTimes(3)
+    expect(server.prompt).toHaveBeenCalledTimes(4)
+  })
+
+  it('registers the WP-1.6 demand_side_chase prompt', () => {
+    const server = makeMockServer()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerPrompts(server as any)
+    const names = server._registeredPrompts.map(p => p.name)
+    expect(names).toContain('demand_side_chase')
   })
 
   it('orient_chart description mentions B.11 Whole-Chart-Read', () => {
