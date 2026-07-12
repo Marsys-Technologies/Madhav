@@ -25,8 +25,10 @@ export const MCP_CONTRACT_TOOL_NAMES: string[] = [
   'query_panchanga',
   'query_dasha_periods',
   'query_divisional_chart',
-  'query_kp_ruling_planets',
-  'kp_query',
+  // WP-1.3(h)/LCA-12 §7.3: query_kp_ruling_planets + kp_query PHANTOM DROPPED — no KP engine
+  // backs them (migration 024_kp_sublords archived; no registry capability; removed from the
+  // MCP surgical whitelist by WP-1.7). The MCP contract surface must not advertise a tool that
+  // cannot resolve. Re-add only when a real KP engine is built + registered.
   'query_ephemeris',
   // L0FR Stream C — classical text corpus (2026-06-07)
   'read_classical_text',

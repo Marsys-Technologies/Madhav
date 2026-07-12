@@ -26,6 +26,9 @@ import { queryLifeArcCapability }             from './query_life_arc'
 import { queryProjectionsCapability }         from './query_projections'
 import { queryObstructionPeriodsCapability }  from './query_obstruction_periods'
 import { queryTemporalViewCapability }        from './query_temporal_view'
+// WP-1.3(a) / F-L10-009,015 (LCA-19): computed-but-unserved L3 assets.
+import { queryDashaDossierCapability }        from './query_dasha_dossier'
+import { queryActivationWaveformCapability }  from './query_activation_waveform'
 import {
   callTransitSearchCapability,
   callEphemerisAtTCapability,
@@ -40,6 +43,8 @@ registerCapability(queryLifeArcCapability)
 registerCapability(queryProjectionsCapability)
 registerCapability(queryObstructionPeriodsCapability)
 registerCapability(queryTemporalViewCapability)
+registerCapability(queryDashaDossierCapability)
+registerCapability(queryActivationWaveformCapability)
 
 registerCapability(callTransitSearchCapability)
 registerCapability(callEphemerisAtTCapability)

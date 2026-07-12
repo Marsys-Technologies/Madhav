@@ -191,4 +191,68 @@ export function registerPrompts(server: McpServer): void {
       }
     }
   )
+
+  // ── 4. demand_side_chase ─────────────────────────────────────────────────────
+  //
+  // WP-1.6 (P-12) / REMEDIATION_PLAN_v3_0 §1 E3. The executable, chart-parametrized
+  // form of the served consumption PROTOCOL (marsys://consumption-protocol). Makes
+  // the demand-side posture operative from W1 deploy: form the extensive expected-
+  // evidence set FIRST, chase every item across ALL appropriate tools, track
+  // received-vs-needed, declare honest exhaustion per item, treat extras as bonus.
+  server.prompt(
+    'demand_side_chase',
+    'Run the E3 demand-side consumption protocol for a question about a chart. Instead of calling one tool and stopping (supply-side satisfaction), you FIRST form the most extensive set of evidence a complete answer needs (from the capability map + the question domain), THEN chase every item across all appropriate tools, tracking received-vs-needed and declaring honest exhaustion per item. Whatever arrives beyond the plan is bonus, never the frame. Use for any substantive chart question where completeness matters.',
+    {
+      chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      question: z.string().describe('The question to answer (narrow or broad). The expected-evidence set scales to its scope.'),
+      domain: z.string().optional().describe('Optional domain hint (marriage/career/health/wealth/progeny/education/spirituality) to shape the classical expected set.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')."),
+    },
+    async ({ chart_id, question, domain, ayanamsha_id }) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: {
+            type: 'text' as const,
+            text: [
+              `Answer this question about chart ${chart_id} in DEMAND-SIDE mode:`,
+              `  "${question}"${domain ? `  (domain: ${domain})` : ''}`,
+              '',
+              'First read the protocol resource marsys://consumption-protocol. Then execute its five moves:',
+              '',
+              'MOVE 1 — FORM the expected-evidence set (before calling any tool).',
+              '  Write down the extensive list of evidence a COMPLETE answer needs — the classical',
+              '  checklist, not the usual suspects. For a bhava/domain question that includes, at minimum:',
+              '  bhava condition · bhāveśa (lord) condition+placement+dignity+strength · kāraka condition ·',
+              '  reading from BOTH lagna and chandra · operative-varga confirmation · bearing yogas/doshas ·',
+              '  timing hooks (dasha windows). Anchor each item to a concept family from the capability map',
+              '  so you know which tool is supposed to serve it.',
+              '',
+              'MOVE 2 — TRACK. Maintain an acquisition tracker: one record per expected item, each',
+              '  needed / received / exhausted. Keep it current as evidence arrives.',
+              '',
+              'MOVE 3 — CHASE across ALL appropriate tools. For each needed item, call its route(s).',
+              `  Start with orientation: get_chart_orientation(chart_id="${chart_id}", ayanamsha_id="${ayanamsha_id ?? 'LAHIRI'}").`,
+              domain
+                ? `  Then the domain drill: judgment_query(chart_id="${chart_id}", domain="${domain}") and get_domain_reading(...).`
+                : '  Then judgment_query / get_domain_reading / graha_portrait / query_signals as the question requires.',
+              '  Follow drill_pointers that advance an outstanding item. Continue until each item is',
+              '  received or honestly exhausted.',
+              '',
+              'MOVE 4 — DECLARE honest exhaustion per item, never silently. State the reason',
+              '  (no_route / route_empty / route_error / not_applicable / budget_exhausted / superseded).',
+              '  Report exhausted items alongside received ones.',
+              '',
+              'MOVE 5 — Treat volunteered evidence (arriving inside a payload you did not plan for) as',
+              '  bonus: use it, mark it, but never let it replace the expected set you formed in move 1.',
+              '',
+              'DONE when no item remains needed (every item received or exhausted-with-reason). Report the',
+              'coverage (received/total) and the exhausted items. Answering before the chase completes, or',
+              'letting the tools define what you looked for, is a B.11 protocol violation.',
+            ].join('\n'),
+          },
+        },
+      ],
+    })
+  )
 }

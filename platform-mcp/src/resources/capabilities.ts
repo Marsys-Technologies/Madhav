@@ -75,7 +75,7 @@ function buildCapabilitiesMarkdown(
 | Tool | Status |
 |---|---|
 | \`holistic_bundle\` | Active — 8-tool parallel read |
-| \`multi_school_bundle\` | Active — cross-school convergence |
+| \`multi_school_bundle\` | Degraded — per-school evidence active; \`cross_school_lookup\` sub-tool PARKED (F-WP17-1) |
 
 ### Tier 3 — Surgical Primitives
 | Tool | Coverage Note |
@@ -89,7 +89,7 @@ function buildCapabilitiesMarkdown(
 | \`lel_query\` | 36 life events active |
 | \`vector_search\` | UCN + RM + CDLM active |
 | \`get_cgm_subgraph\` | Active |
-| \`cross_school_lookup\` | Active |
+| \`cross_school_lookup\` | PARKED — no backing capability (WS-0 stub); pending native review (F-WP17-1) |
 
 ### Tier 4 — Raw Asset
 | Tool | Status |
@@ -171,11 +171,12 @@ foreign residence=12th — the classical bhava signification the tradition alrea
 | education | 4th | Mercury, Jupiter | D24 |
 | spirituality | 9th | Jupiter, Ketu | D20 |
 
-**LEGACY PROTOCOL — unchanged, still fully answerable.** \`apex_marriage_assess\`,
-\`apex_career_assess\`, \`apex_health_assess\`, \`apex_wealth_assess\` (aka \`assess_marriage\` /
-\`assess_career\` / \`assess_health\` / \`assess_wealth\`) remain live with no breaking change —
-they return their own domain-reading + temporal-activation + contradiction bundle exactly as
-before. \`judgment_query\` is the richer, shastra-shaped successor (design §29: apex folds INTO
+**DOMAIN ASSESSMENT — canonical tools.** \`assess_marriage\` / \`assess_career\` /
+\`assess_health\` / \`assess_wealth\` return the domain-reading + temporal-activation +
+contradiction bundle for their domain. (The redundant \`apex_*_assess\` aliases — which
+resolved to the SAME capability — were retired per WP-1.3(i)/LCA-11; their two tuning params,
+\`max_signals_per_lens\` / \`max_contradictions\`, are now on the canonical \`assess_*\` tools, so
+no capability was lost.) \`judgment_query\` is the richer, shastra-shaped successor (design §29: apex folds INTO
 judgment_query as an alias RELATIONSHIP, not a code-identical replacement — the two are verified
 astrologically consistent, R5_JUDGMENT_LEDGER JL-015(a)/JL-017, but each keeps its own response
 shape so neither breaks an existing caller) — prefer \`judgment_query\` for new bhava-judgment
@@ -254,7 +255,7 @@ const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 | Tool | Description |
 |---|---|
 | \`holistic_bundle\` | 8-tool parallel holistic read (MSR + CGM + UCN + RM + CDLM + LEL + Panchang + Dasha) |
-| \`multi_school_bundle\` | Cross-school convergence check (Parashara + Jaimini + KP + Tajaka) |
+| \`multi_school_bundle\` | Per-school evidence (Parashara + Jaimini + KP + Tajaka); \`cross_school_lookup\` sub-tool PARKED pending native review (F-WP17-1) |
 
 ### Tier 3 — Surgical Primitives
 | Tool | Description |
@@ -268,7 +269,7 @@ const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 | \`lel_query\` | Life Event Log query (36 events + 5 period summaries) |
 | \`vector_search\` | Semantic search across UCN/RM/CDLM corpus |
 | \`get_cgm_subgraph\` | CGM graph subgraph walk |
-| \`cross_school_lookup\` | Multi-school convergence check for a specific claim |
+| \`cross_school_lookup\` | PARKED — WS-0 stub, no backing capability; pending native review (F-WP17-1) |
 
 ### Tier 4 — Raw Asset
 | Tool | Description |
@@ -312,9 +313,10 @@ neighborhood, functional nature — synthesized over the already-built L1/L2 too
 \`get_dignity\`, \`get_strength\`, \`get_avasthas\`, \`get_yoga_dosha\`, \`get_dashas\`, \`query_signals\`,
 \`traverse_graph\`, all still independently callable) so a single-graha question is one call, not eight.
 
-Legacy \`apex_marriage_assess\` / \`apex_career_assess\` / \`apex_health_assess\` / \`apex_wealth_assess\`
-remain unchanged and fully answerable — \`judgment_query\` is their richer successor (design §29),
-not a replacement that breaks existing callers.
+The canonical \`assess_marriage\` / \`assess_career\` / \`assess_health\` / \`assess_wealth\` domain
+tools remain fully answerable — \`judgment_query\` is their richer successor (design §29), not a
+replacement that breaks existing callers. (The redundant \`apex_*_assess\` aliases were retired per
+WP-1.3(i)/LCA-11; capability preserved on the canonical \`assess_*\` tools.)
 
 ---
 

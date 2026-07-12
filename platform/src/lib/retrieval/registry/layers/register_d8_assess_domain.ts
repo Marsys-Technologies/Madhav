@@ -266,9 +266,9 @@ async function runAssessDomain(
     }
 
     // ── Assemble verdict_skeleton (deterministic — no LLM inference) ──────────
-    // Groups top composite signals by reasoning-chain stage.
-    // Stages: yoga/configuration → karaka_alignment → relationship (lord/dispositor)
-    //         → magnitude/strength → varga → temporal → contradiction_pairs
+    // Groups signals by reasoning-chain stage.
+    // Stages: yoga/configuration → karaka_alignment → lord/dispositor (parivartana)
+    //         → strength (L1) → varga → temporal → contradiction_pairs
     const stc = (s: Record<string, unknown>) => String(s['signal_type_class'] ?? '')
     const sss = (s: Record<string, unknown>) => String(s['source_subsystem'] ?? '')
 
@@ -282,28 +282,120 @@ async function runAssessDomain(
         final_rank_score:   s['final_rank_score'] ?? null,
       }))
 
+    // WP-1.3(i) / R-40 — verdict_skeleton serving fix. Root-cause (prod, chart 482012f1 lahiri):
+    //   (a) the `lord` bucket filtered on signal_type_class='relationship' — a DOMAIN name,
+    //       never a class; ZERO signals carry it → the bucket was PERMANENTLY empty.
+    //   (b) the `strength` bucket filtered on class='magnitude' + source_subsystem=
+    //       'strength_ashtakavarga' — neither value exists in bodha_msr_signals (graha strength
+    //       is an L1 chart_facts concept, not an MSR signal class) → PERMANENTLY empty.
+    //   (c) all structural buckets sliced from the top-50 composite pool, which is ~82%
+    //       composite_state, starving the rare classes (configuration=29, yoga=15,
+    //       parivartana=42, varga=9 chart-wide) → those stages came back empty though the data
+    //       exists.
+    // Fix: one bounded, salience-ordered stratified query restricted to the stage-bearing
+    // classes, so each structural stage draws from its REAL population (not a composite-ranked
+    // slice). Deterministic; no LLM. Non-fatal — falls back to the composite pool on error.
+    const STAGE_CLASSES = ['configuration', 'yoga', 'karaka_alignment', 'parivartana', 'varga_pattern']
+    let stagePool: Record<string, unknown>[] = []
+    try {
+      const poolRes = await query<Record<string, unknown>>(
+        `SELECT signal_id, signal_type_class, source_subsystem, signal_summary_text, computed_salience
+         FROM bodha_msr_signals
+         WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
+           AND (signal_type_class = ANY($4) OR source_subsystem = 'varga')
+         ORDER BY computed_salience DESC NULLS LAST
+         LIMIT 200`,
+        [chart_id, ayanamsha_id, domain, STAGE_CLASSES],
+      )
+      stagePool = poolRes.rows
+    } catch {
+      // Non-fatal: structural stages fall back to the top-50 composite pool.
+      stagePool = topCompositeSignals
+    }
+
     const temporalContent = (temporalResult.data ?? {}) as Record<string, unknown>
     const contrItems = contradictions.status === 'ok'
       ? ((contradictions as Record<string, unknown>)['items'] as unknown[] ?? [])
       : []
 
-    const verdict_skeleton = {
-      top_10_composite: pickSignals(topCompositeSignals, 10),
-      by_stage: {
-        yoga:      pickSignals(topCompositeSignals.filter(s => ['configuration', 'yoga'].includes(stc(s))), 5),
-        karaka:    pickSignals(topCompositeSignals.filter(s => stc(s) === 'karaka_alignment'), 5),
-        lord:      pickSignals(topCompositeSignals.filter(s => stc(s) === 'relationship'), 5),
-        strength:  pickSignals(
-          topCompositeSignals.filter(s => stc(s) === 'magnitude' || sss(s) === 'strength_ashtakavarga'),
-          5
-        ),
-        varga:     pickSignals(topCompositeSignals.filter(s => sss(s) === 'varga'), 5),
-        temporal:  temporalResult.ok
-          ? (temporalContent['activations'] as unknown[] ?? []).slice(0, 5)
-          : [],
-        contradiction_pairs: contrItems.slice(0, 5),
+    const stageYoga     = pickSignals(stagePool.filter(s => ['configuration', 'yoga'].includes(stc(s))), 5)
+    const stageKaraka   = pickSignals(stagePool.filter(s => stc(s) === 'karaka_alignment'), 5)
+    const stageLord     = pickSignals(stagePool.filter(s => stc(s) === 'parivartana'), 5)
+    const stageVarga    = pickSignals(stagePool.filter(s => sss(s) === 'varga' || stc(s) === 'varga_pattern'), 5)
+    const stageTemporal = temporalResult.ok
+      ? (temporalContent['activations'] as unknown[] ?? []).slice(0, 5)
+      : []
+    const stageContra   = contrItems.slice(0, 5)
+
+    // Honest empty-reasons (never faked). The temporal stage empties because of a KNOWN
+    // L3 kala_activation writer defect (R-45/R-40 shared root: ~99% of rows have NULL
+    // activation_start/end; native chart 0/13,364 dated on lahiri) — a DATA-PLANE issue
+    // owned by WP-2.1, not a serving bug. Disclosed here so a consumer knows the stage is
+    // pending, not genuinely quiet. (Item-0 R-45 triage, AUDIT_STATE.md 2026-07-12.)
+    const TEMPORAL_EMPTY_REASON =
+      'kala_activation returned no dated windows in range. Known L3 writer defect (R-45/R-40 ' +
+      'shared root): ~99% of kala_activation rows have NULL activation_start/end (native chart ' +
+      '0/13,364 dated on lahiri) — PENDING WP-2.1 data-plane fix, not a serving trim. Verify via ' +
+      'kala_yoga_activation_get / query_temporal_activation.'
+
+    const stage_status: Record<string, Record<string, unknown>> = {
+      yoga:     { count: stageYoga.length,   source: 'bodha_msr_signals (signal_type_class in configuration,yoga)' },
+      karaka:   { count: stageKaraka.length, source: 'bodha_msr_signals (signal_type_class=karaka_alignment)' },
+      lord:     { count: stageLord.length,   source: 'bodha_msr_signals (signal_type_class=parivartana — lord/dispositor exchange)' },
+      // strength has NO MSR signal source — it is an L1 chart_facts (shadbala/ashtakavarga)
+      // concept. Reported honestly as always-empty with a drill, rather than a dead filter.
+      strength: { count: 0, source: 'L1 chart_facts (shadbala / ashtakavarga) — graha strength is not an MSR signal class', drill_uri: 'marsys://tool/L2/get_domain_reading' },
+      varga:    { count: stageVarga.length,  source: 'bodha_msr_signals (source_subsystem=varga)' },
+      temporal: {
+        count: stageTemporal.length,
+        source: 'kala_activation (L3)',
+        ...(stageTemporal.length === 0 ? { empty_reason: TEMPORAL_EMPTY_REASON } : {}),
       },
-      note: 'Deterministic classification by signal_type_class + source_subsystem. No LLM inference. Drill via query_signals for full composite ranking.',
+      contradiction_pairs: {
+        count: stageContra.length,
+        source: 'bodha_contradictions (L2 bo_karanajala)',
+        ...(stageContra.length === 0
+          ? { empty_reason: 'bodha_contradictions: 0 rows for this chart/ayanamsha (bo_karanajala) — no_data, not a serving trim.' }
+          : {}),
+      },
+    }
+
+    // WP-1.8 (cross-surface inconsistency): assess_*'s headline top-10 is the SAME composite
+    // ranking get_signals produces WHEN CALLED WITH THIS DOMAIN — but a consumer who calls
+    // get_signals WITHOUT a domain gets a chart-wide salience_fallback ordering that shares ~0
+    // of these signals, making the two surfaces look contradictory. We (a) prove the agreement by
+    // deriving top_10 from the identical query_signals call, and (b) name the exact reproducing
+    // call so the surfaces are explicitly reconciled, never silently divergent.
+    const top10 = pickSignals(topCompositeSignals, 10)
+    const cross_surface = {
+      agrees_with: 'get_signals',
+      reproducing_call: { tool: 'get_signals', args: { chart_id, ayanamsha_id, domain, top_k: 10 } },
+      ranking_mode: (p2RankingBasis['mode'] as string) ?? 'composite_4d',
+      note:
+        `This top-10 is byte-identical to get_signals({domain:"${domain}", top_k:10}) — the two ` +
+        `surfaces share one ranking path (query_signals composite). NOTE: get_signals called ` +
+        `WITHOUT a domain uses chart-wide salience ranking and will surface DIFFERENT signals; ` +
+        `that is not a contradiction — pass domain:"${domain}" to reproduce this ordering.`,
+    }
+
+    const verdict_skeleton = {
+      top_10_composite: top10,
+      cross_surface,
+      by_stage: {
+        yoga:      stageYoga,
+        karaka:    stageKaraka,
+        lord:      stageLord,
+        strength:  [] as unknown[],
+        varga:     stageVarga,
+        temporal:  stageTemporal,
+        contradiction_pairs: stageContra,
+      },
+      stage_status,
+      note: 'Deterministic classification by signal_type_class + source_subsystem over a ' +
+        'salience-ordered stratified pool (top_10_composite uses the domain composite ranking). ' +
+        'No LLM inference. stage_status discloses each stage\'s provenance + honest empty reasons ' +
+        '(temporal is PENDING WP-2.1 per R-45/R-40; strength is an L1 concept). Drill via ' +
+        'query_signals / get_domain_reading for the full per-class sets.',
     }
 
     // ── Assemble reconciled bundle ─────────────────────────────────────────
@@ -871,9 +963,9 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
           m.signal_summary_text       AS signal_summary,
           m.constituent_facts_array   AS constituent_fact_ids,
           ka.id                       AS activation_id,
-          ka.activation_start,
-          ka.activation_end,
-          ka.activation_peak_date,
+          to_char(ka.activation_start, 'YYYY-MM-DD')      AS activation_start,
+          to_char(ka.activation_end, 'YYYY-MM-DD')        AS activation_end,
+          to_char(ka.activation_peak_date, 'YYYY-MM-DD')  AS activation_peak_date,
           ka.dasha_activation_proximity_score AS dasha_alignment_score,
           ka.orb_strength,
           ka.convergence_score,

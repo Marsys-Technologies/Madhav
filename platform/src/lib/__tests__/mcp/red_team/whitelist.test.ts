@@ -15,18 +15,21 @@ import {
   isAllowedSurgicalTool,
   MCP_TO_RETRIEVAL_TOOL,
   SURGICAL_TOOLS,
+  resolveToolUri,
 } from '@/lib/retrieval/registry/tool_name_bridge'
 
 // ── RT-04: Whitelist enforcement ─────────────────────────────────────────────
 
 describe('RT-04 — Primitive whitelist enforcement', () => {
-  it('RT-04a: whitelisted tool pattern_register is accepted (UDA Campaign addition)', () => {
-    // pattern_register was added as a UDA surgical primitive
-    expect(isAllowedSurgicalTool('pattern_register')).toBe(true)
+  it('RT-04a: pattern_register is now REJECTED (WP-1.7 removed — no backing capability)', () => {
+    // pattern_register was a speculative UDA whitelist entry with no registry capability;
+    // isAllowedSurgicalTool admitted it but getToolByName then 500'd. WP-1.7 removed it,
+    // so it is now cleanly rejected (400 validation) at the whitelist gate.
+    expect(isAllowedSurgicalTool('pattern_register')).toBe(false)
   })
 
-  it('RT-04b: whitelisted tool resonance_register is accepted (UDA Campaign addition)', () => {
-    expect(isAllowedSurgicalTool('resonance_register')).toBe(true)
+  it('RT-04b: resonance_register is now REJECTED (WP-1.7 removed — no backing capability)', () => {
+    expect(isAllowedSurgicalTool('resonance_register')).toBe(false)
   })
 
   it('RT-04c: non-whitelisted tool ask_madhav is rejected (end-to-end tool, not surgical)', () => {
@@ -43,17 +46,19 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
 
   it('RT-04f: arbitrary string is rejected', () => {
     expect(isAllowedSurgicalTool('drop_table_msr_signals')).toBe(false)
-    // timeline_query and contradiction_register are now whitelisted UDA Campaign additions
-    expect(isAllowedSurgicalTool('timeline_query')).toBe(true)
+    // WP-1.7: timeline_query REMOVED (no backing cap → now rejected); contradiction_register
+    // RETAINED because it resolves to L2/query_contradictions.
+    expect(isAllowedSurgicalTool('timeline_query')).toBe(false)
     expect(isAllowedSurgicalTool('contradiction_register')).toBe(true)
     // These remain unwhitelisted
     expect(isAllowedSurgicalTool('nonexistent_tool')).toBe(false)
     expect(isAllowedSurgicalTool('ask_madhav')).toBe(false)
   })
 
-  it('RT-04g: all original + TR Wave + UDA whitelisted names are accepted', () => {
+  it('RT-04g: all retained whitelisted names (post WP-1.7) are accepted AND resolve', () => {
+    // WP-1.7: only names whose retrieval target resolves via getToolByName are whitelisted.
     const expected = [
-      // Original 11
+      // Original (cross_school_lookup dropped — see removed-tools test)
       'query_chart_facts',
       'query_signals',
       'query_dasha_periods',
@@ -63,7 +68,6 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
       'lel_query',
       'vector_search',
       'get_cgm_subgraph',
-      'cross_school_lookup',
       'read_classical_text',
       // TR Wave MCP-facing names
       'query_varshphal',
@@ -75,29 +79,34 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
       'divisional_query',
       'remedial_codex_query',
       'query_muhurat',
-      // UDA Campaign additions (14 portal-native tools)
+      // Tara/Chandra bala (now resolve → get_tara_chandra_bala)
+      'query_tara_balam',
+      'query_chandra_balam',
+      // UDA Campaign — retained portal-native tools that resolve
       'msr_sql',
       'temporal',
-      'kp_query',
-      'query_kp_ruling_planets',
-      'pattern_register',
-      'resonance_register',
-      'cluster_atlas',
       'contradiction_register',
-      'query_ucn_walk',
-      'query_cdlm_lookup',
-      'query_rm_walk',
-      'query_jaimini_drishti',
-      'timeline_query',
-      'query_signal_state',
     ]
     for (const name of expected) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
   })
 
-  it('RT-04h: whitelist maps 48 entries (11 original + 4 MCP TR + 4 retrieval aliases + 4 stubs + 14 UDA + 2 entity + 7 remedy + 1 mitigation + 1 query_calibration [R6 R-14])', () => {
-    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(48)
+  it('RT-04g2: the 14 WP-1.7-removed dead names are all rejected', () => {
+    const removed = [
+      'cross_school_lookup', 'kp_query', 'query_kp_ruling_planets',
+      'pattern_register', 'resonance_register', 'cluster_atlas',
+      'query_ucn_walk', 'query_cdlm_lookup', 'query_rm_walk',
+      'query_jaimini_drishti', 'timeline_query', 'query_signal_state',
+      'jaimini_chara_dasha', 'jaimini_chara_dasha_full',
+    ]
+    for (const name of removed) {
+      expect(isAllowedSurgicalTool(name)).toBe(false)
+    }
+  })
+
+  it('RT-04h: whitelist maps 52 entries (34 post-WP-1.7 + 13 WP-1.3a + 5 WP-1.3j)', () => {
+    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(52)
   })
 
   it('RT-04i: all retrieval tool targets are in SURGICAL_TOOLS', () => {
@@ -149,8 +158,14 @@ describe('Mapping correctness — MCP-facing names map to correct retrieval tool
     expect(MCP_TO_RETRIEVAL_TOOL['get_cgm_subgraph']).toBe('cgm_graph_walk')
   })
 
-  it('cross_school_lookup → multi_school_signal_lookup', () => {
-    expect(MCP_TO_RETRIEVAL_TOOL['cross_school_lookup']).toBe('multi_school_signal_lookup')
+  it('cross_school_lookup removed (WP-1.7 — multi_school_signal_lookup never bridged to registry)', () => {
+    expect(MCP_TO_RETRIEVAL_TOOL['cross_school_lookup']).toBeUndefined()
+  })
+
+  it('WP-1.7: cgm_graph_walk / temporal / contradiction_register / tara / chandra all resolve', () => {
+    for (const retrievalName of ['cgm_graph_walk', 'temporal', 'contradiction_register', 'query_tara_balam', 'query_chandra_balam']) {
+      expect(resolveToolUri(retrievalName), `${retrievalName} should have a URI`).toBeDefined()
+    }
   })
 
   it('lel_query → lel_query (direct mapping)', () => {

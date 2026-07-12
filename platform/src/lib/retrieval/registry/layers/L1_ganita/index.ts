@@ -27,6 +27,10 @@ import { getTransitAnchorsCapability }  from './get_transit_anchors'
 import { getChartHeaderCapability }      from './get_chart_header'
 import { getGrahaYuddhaCapability }      from './get_graha_yuddha'
 import { getChartSnapshotCapability }    from './get_chart_snapshot'
+// WP-1.3(a) / F-L10-001..003 (LCA-19): computed-but-unserved L1 assets.
+import { getMedicalIndicationsCapability } from './get_medical_indications'
+import { getVastuDirectionsCapability }    from './get_vastu_directions'
+import { getYogaFiringsCapability }        from './get_yoga_firings'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -51,3 +55,6 @@ registerCapability(getTransitAnchorsCapability)
 registerCapability(getChartHeaderCapability)
 registerCapability(getGrahaYuddhaCapability)
 registerCapability(getChartSnapshotCapability)
+registerCapability(getMedicalIndicationsCapability)
+registerCapability(getVastuDirectionsCapability)
+registerCapability(getYogaFiringsCapability)

@@ -26,6 +26,7 @@ import { registerMultiAyanamshaResource } from './multi_ayanamsha_resource.js'
 import { registerClassicalTextsResource } from './classical_texts_resource.js'
 import { registerSutravaliResources } from './sutravali_resource.js'
 import { registerChartCatalogResource } from './chart_catalog_resource.js'
+import { registerConsumptionProtocol } from './consumption_protocol.js'
 
 /**
  * Register all 5 MARSYS-JIS MCP resources on the given server.
@@ -87,4 +88,10 @@ export function registerResources(server: McpServer, principal: Principal): void
   //     marsys://chart/{chart_id} — list returns only the caller's entitled charts;
   //     read handler is M0-gated (remoteAuthorize). M2 chart selection (2026-07-01).
   registerChartCatalogResource(server, principal)
+
+  // 11. consumption-protocol: the E3 demand-side chase protocol (WP-1.6 / P-12).
+  //     Static teaching surface (no chart data) that makes the demand-side posture
+  //     operative from W1 deploy — pairs with the capability map + acquisition tracker.
+  //     marsys://consumption-protocol
+  registerConsumptionProtocol(server)
 }

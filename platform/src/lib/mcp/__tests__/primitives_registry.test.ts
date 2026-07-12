@@ -15,7 +15,7 @@ describe('primitives_registry', () => {
       'lel_query',
       'vector_search',
       'get_cgm_subgraph',
-      'cross_school_lookup',
+      // WP-1.7 (LCA-1/13): cross_school_lookup removed — see rejected block below
       'read_classical_text',
       // TR Wave additions
       'query_varshphal',
@@ -28,38 +28,51 @@ describe('primitives_registry', () => {
     })
   })
 
-  // FIX-1 regression: 14 UDA tools now pass whitelist
-  describe('14 UDA tools now pass whitelist (FIX-1 regression)', () => {
-    const udaMcpTools = [
+  // WP-1.7 (LCA-1/13): only the UDA/portal tools that resolve to a REAL registered
+  // capability are retained on the whitelist (msr_sql, temporal, contradiction_register).
+  describe('retained UDA tools pass whitelist AND resolve to a real capability', () => {
+    const retainedUdaTools = [
       'msr_sql',
       'temporal',
+      'contradiction_register',
+    ]
+    it.each(retainedUdaTools)('isAllowedSurgicalTool("%s") === true', (tool) => {
+      expect(isAllowedSurgicalTool(tool)).toBe(true)
+    })
+  })
+
+  // WP-1.7 (LCA-1/13): the 12 vestigial UDA/legacy names had NO backing capability
+  // (getToolByName undefined → local 500). They were REMOVED from the whitelist so the
+  // primitives route now returns a clean 400 {class:"validation"} instead of a 500.
+  describe('removed dead tools are now REJECTED (WP-1.7 — no backing capability)', () => {
+    const removedDeadTools = [
+      'cross_school_lookup',
       'kp_query',
       'query_kp_ruling_planets',
       'pattern_register',
       'resonance_register',
       'cluster_atlas',
-      'contradiction_register',
       'query_ucn_walk',
       'query_cdlm_lookup',
       'query_rm_walk',
       'query_jaimini_drishti',
       'timeline_query',
       'query_signal_state',
-    ]
-    it.each(udaMcpTools)('isAllowedSurgicalTool("%s") === true', (tool) => {
-      expect(isAllowedSurgicalTool(tool)).toBe(true)
-    })
-  })
-
-  // TR Wave Class B/C stubs also pass (so they get 500 retrieval-not-found, not 400 whitelist-block)
-  describe('TR Wave stub tools admitted through whitelist', () => {
-    const stubTools = [
-      'query_tara_balam',
-      'query_chandra_balam',
       'jaimini_chara_dasha',
       'jaimini_chara_dasha_full',
     ]
-    it.each(stubTools)('isAllowedSurgicalTool("%s") === true', (tool) => {
+    it.each(removedDeadTools)('isAllowedSurgicalTool("%s") === false', (tool) => {
+      expect(isAllowedSurgicalTool(tool)).toBe(false)
+    })
+  })
+
+  // WP-1.7 (LCA-1/13): tara/chandra bala now resolve (get_tara_chandra_bala) and stay whitelisted.
+  describe('tara/chandra bala admitted through whitelist (now resolve)', () => {
+    const balaTools = [
+      'query_tara_balam',
+      'query_chandra_balam',
+    ]
+    it.each(balaTools)('isAllowedSurgicalTool("%s") === true', (tool) => {
       expect(isAllowedSurgicalTool(tool)).toBe(true)
     })
   })

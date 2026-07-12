@@ -17,6 +17,18 @@ import { queryContradictionsCapability }   from './query_contradictions'
 import { queryRemediesCapability }         from './query_remedies'
 import { queryQualityScorecardCapability } from './query_quality_scorecard'
 import { grahaPortraitCapability }         from './graha_portrait'
+// WP-1.3(a) / F-L10-004..007 (LCA-19): computed-but-unserved L2 CDLM/CGM/gestalt assets.
+import { queryCdlmSummaryCapability }      from './query_cdlm_summary'
+import { queryCgmMotifsCapability }        from './query_cgm_motifs'
+import { queryCgmPathsCapability }         from './query_cgm_paths'
+import { queryChartGestaltCapability }     from './query_chart_gestalt'
+// WP-1.3j / F-0129..0137,0156,0161,0165,0174,0176 (W1-FOLLOWUP): populated-but-unserved
+// L2 Bodha assets with real rows + no writer needed — surgical serving surfaces added.
+import { queryDiscoveriesCapability }      from './query_discoveries'
+import { queryPratijnaCapability }         from './query_pratijna'
+import { queryQuestionLensesCapability }   from './query_question_lenses'
+import { queryRmPrescriptionsCapability }  from './query_rm_prescriptions'
+import { queryRmResonancesCapability }     from './query_rm_resonances'
 
 registerCapability(queryUcdCapability)
 registerCapability(traverseChartGraphCapability)
@@ -26,3 +38,12 @@ registerCapability(queryContradictionsCapability)
 registerCapability(queryRemediesCapability)
 registerCapability(queryQualityScorecardCapability)
 registerCapability(grahaPortraitCapability)
+registerCapability(queryCdlmSummaryCapability)
+registerCapability(queryCgmMotifsCapability)
+registerCapability(queryCgmPathsCapability)
+registerCapability(queryChartGestaltCapability)
+registerCapability(queryDiscoveriesCapability)
+registerCapability(queryPratijnaCapability)
+registerCapability(queryQuestionLensesCapability)
+registerCapability(queryRmPrescriptionsCapability)
+registerCapability(queryRmResonancesCapability)

@@ -293,10 +293,15 @@ export const callDashaEligibilityCapability: CapabilityDescriptor = {
       }
 
       const result = await query<Record<string, unknown>>(
+        // WP-1.5 F-DATE-TZ: start_date/end_date are DATE columns → to_char to 'YYYY-MM-DD'
+        // (raw return → node-postgres IST-midnight → UTC off-by-one). start_iso/end_iso are
+        // timestamptz instants and are correctly returned as ISO datetimes.
         `SELECT
            dasha_row_id, system_id, level_n,
            lord_graha, lord_sign, parent_row_id,
-           start_date, end_date, start_iso, end_iso,
+           to_char(start_date, 'YYYY-MM-DD') AS start_date,
+           to_char(end_date, 'YYYY-MM-DD')   AS end_date,
+           start_iso, end_iso,
            kp_sublevel, kp_sub_lord
          FROM chart_dashas
          WHERE chart_id = $1 AND ayanamsha_id = $2
@@ -483,7 +488,11 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
     const top_k        = Math.min(Number(args['top_k'] ?? 20), 100)
 
     try {
-      // Join activation with signals to compute combined priority
+      // Join activation with signals to compute combined priority.
+      // WP-1.5: prior SQL referenced columns that do not exist on kala_activation
+      // (activation_strength/window_start/window_end/trigger_type) → every call errored.
+      // Real columns: orb_strength (activation strength proxy), activation_start/_end (DATE),
+      // signature_class. F-DATE-TZ: activation_start/_end emitted via to_char as 'YYYY-MM-DD'.
       const sql = `
         SELECT
           m.signal_id,
@@ -491,19 +500,19 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
           m.computed_salience,
           m.domains_affected_array,
           m.signal_type_class,
-          a.activation_strength,
-          a.window_start,
-          a.window_end,
-          a.trigger_type,
-          (m.computed_salience * COALESCE(a.activation_strength, 0.5)) AS priority_score
+          a.orb_strength AS activation_strength,
+          to_char(a.activation_start, 'YYYY-MM-DD') AS window_start,
+          to_char(a.activation_end, 'YYYY-MM-DD')   AS window_end,
+          a.signature_class AS trigger_type,
+          (m.computed_salience * COALESCE(a.orb_strength, 0.5)) AS priority_score
         FROM bodha_msr_signals m
         JOIN kala_activation a ON m.signal_id = a.signal_id
           AND a.chart_id = m.chart_id
           AND a.ayanamsha_id = m.ayanamsha_id
         WHERE m.chart_id = $1
           AND m.ayanamsha_id = $2
-          AND a.window_end >= $3
-          AND a.window_start <= $4
+          AND a.activation_end >= $3::date
+          AND a.activation_start <= $4::date
         ORDER BY priority_score DESC NULLS LAST
         LIMIT $5
       `

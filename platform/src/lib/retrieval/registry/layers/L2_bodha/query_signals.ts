@@ -59,6 +59,7 @@ import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 import { applyCompositeRanking, buildRankingBasis } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
 import { PRIORS_VERSION } from '../../../ranking/priors_config'
+import { demoteSignatureTiers } from '../../../ranking/salience_demotion'
 import {
   resolveFrameReferenceSign, houseCountedFrom, GRAHA_CODE_TO_NAME,
   type ReferenceFrame, type ZodiacSign,
@@ -70,6 +71,85 @@ const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', '
 // Coarse candidate pool for composite re-ranking when domain is specified.
 // Fetch this many by computed_salience, then composite-rank in TypeScript, then slice.
 const CANDIDATE_FETCH_SIZE = 500
+
+// ── WP-1.3(g) / LCA-7: projection whitelist ──────────────────────────────────
+// msr_sql previously served a FIXED 17-of-82-column projection regardless of the
+// caller's request. The `projection` param now lets a caller pick which columns are
+// served. Injection-safety is structural: every requested name is validated against
+// this STATIC whitelist of real bodha_msr_signals columns (information_schema ground
+// truth, 82 cols) — an unknown name is rejected before any SQL runs, and the SELECT
+// is built only from names drawn from this constant, never from caller strings.
+const MSR_SIGNAL_COLUMNS: readonly string[] = [
+  'signal_id', 'chart_id', 'ayanamsha_id', 'build_id', 'signal_type_id',
+  'signal_type_class', 'signal_tradition', 'fact_kind', 'source_l1_asset',
+  'source_subsystem', 'signal_summary_text', 'signal_headline_text',
+  'classical_sources_jsonb', 'varga_id', 'varga_provenance_jsonb', 'epistemic_tier',
+  'epistemic_jsonb', 'salience_conditioned_by_jsonb', 'signature_tier', 'valence',
+  'lel_origin', 'configuration_jsonb', 'constituent_facts_array',
+  'constituent_signals_array', 'classical_sources_array',
+  'source_corroboration_count_by_text', 'source_corroboration_count_by_verse',
+  'orb_tightness', 'shadbala_norm', 'dignity_score', 'deterministic_strength',
+  'verification_certainty', 'divisional_corroboration_count',
+  'dasha_activation_proximity_score', 'house_weight_multiplier',
+  'ashtakavarga_support_multiplier', 'aspect_modifier', 'vargottama_amplification',
+  'argala_modifier', 'neechabhanga_modifier', 'cancellation_modifier',
+  'computed_salience', 'salience_formula_version', 'salience_confidence_interval_jsonb',
+  'domains_affected_array', 'domain_salience_jsonb', 'shared_factor_keys_jsonb',
+  'cross_domain_shared_factor_count', 'graph_edge_pattern_jsonb',
+  'graph_node_strength_contribution_jsonb', 'relationship_classification',
+  'graha_weakness_indicators_jsonb', 'remedy_hooks_array', 'recurring_pattern_marker',
+  'top_k_salience_rank', 'system_convergence_count', 'signature_class',
+  'contradicts_signals_array', 'active_duration_class', 'active_dasha_periods_jsonb',
+  'activation_predicted_dates_jsonb', 'predicted_outcome_class',
+  'cross_ayanamsha_consistency_score', 'strength_normalized_to_chart_max',
+  'pada_precision_flag', 'cross_system_consensus_count', 'channel_render_priority_jsonb',
+  'verification_pass_status', 'verification_method', 'citation_ref', 'citation_human',
+  'computed_at', 'engine_version', 'salience_pctl_in_class', 'salience_inputs_complete',
+  'salience_robustness', 'aggregation_member', 'bala_gate', 'functional_context_score',
+  'verification_rescale', 'present_but_enfeebled', 'class_prior',
+]
+const MSR_SIGNAL_COLUMN_SET = new Set(MSR_SIGNAL_COLUMNS)
+
+// The legacy default served projection (17 cols). Also the INTERNAL-REQUIRED superset:
+// composite ranking, salience demotion, and the E-2 freshness derivation all read from
+// these, so they are ALWAYS fetched even when the caller projects a narrower set — the
+// served rows are then projected down to what was requested.
+const DEFAULT_SERVE_COLUMNS: readonly string[] = [
+  'signal_id', 'signal_type_id', 'signal_type_class', 'signal_tradition',
+  'signal_summary_text', 'signal_headline_text', 'computed_salience', 'top_k_salience_rank',
+  'domains_affected_array', 'constituent_facts_array', 'source_subsystem', 'valence',
+  'verification_pass_status', 'citation_human', 'lel_origin', 'signature_tier',
+  'configuration_jsonb',
+]
+
+/**
+ * Resolve the `projection` param into {fetch, serve} column lists.
+ *  - undefined            → {fetch: default17, serve: default17}   (legacy, unchanged)
+ *  - ['*']                → {fetch: all82,      serve: all82}       (full set reachable)
+ *  - ['col', ...]         → validated subset; fetch = default17 ∪ subset, serve = subset
+ * Throws on a non-array, empty, or unknown-column projection (rejected before any SQL).
+ */
+function resolveProjection(raw: unknown): { fetch: string[]; serve: string[] | null } {
+  if (raw === undefined || raw === null) {
+    return { fetch: [...DEFAULT_SERVE_COLUMNS], serve: [...DEFAULT_SERVE_COLUMNS] }
+  }
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new Error('projection must be a non-empty array of column names, or ["*"] for all columns.')
+  }
+  if (raw.length === 1 && raw[0] === '*') {
+    return { fetch: [...MSR_SIGNAL_COLUMNS], serve: null } // serve all fetched
+  }
+  const requested = raw.map(String)
+  const unknown = requested.filter(c => !MSR_SIGNAL_COLUMN_SET.has(c))
+  if (unknown.length > 0) {
+    throw new Error(
+      `Unknown projection column(s): ${unknown.join(', ')} — not a projectable bodha_msr_signals column. ` +
+      `Pass ["*"] for the full set, or choose from the ${MSR_SIGNAL_COLUMNS.length} known columns.`,
+    )
+  }
+  const fetch = Array.from(new Set([...DEFAULT_SERVE_COLUMNS, ...requested]))
+  return { fetch, serve: requested }
+}
 
 export const querySignalsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_signals',
@@ -149,6 +229,16 @@ export const querySignalsCapability: CapabilityDescriptor = {
         'Falls back to salience-ranked results if embedding search fails.',
       ].join(' '),
     },
+    projection: {
+      type: 'array',
+      description: [
+        'WP-1.3(g)/LCA-7 — which bodha_msr_signals columns to serve. Omit for the default',
+        '17-column view (backward-compatible). Pass ["*"] to serve ALL 82 columns. Pass an',
+        'explicit array (e.g. ["signal_id","orb_tightness","dignity_score"]) to serve exactly',
+        'those columns. Every name is validated against the real column whitelist — an unknown',
+        'column is rejected before any SQL runs (injection-safe); arbitrary SQL is never accepted.',
+      ].join(' '),
+    },
     top_k: {
       type: 'number',
       description: 'Max signals to return (default: 50, max: 500).',
@@ -206,12 +296,22 @@ export const querySignalsCapability: CapabilityDescriptor = {
     }
     const paradigm = paradigmRaw as (typeof PARADIGM_VALUES)[number] | undefined
 
+    // WP-1.3(g)/LCA-7: resolve the projection BEFORE any SQL — an unknown column is
+    // rejected here (injection-safe), never sent to the database.
+    let projection: { fetch: string[]; serve: string[] | null }
+    try {
+      projection = resolveProjection(args['projection'])
+    } catch (e) {
+      return { content: { error: e instanceof Error ? e.message : String(e) }, is_error: true }
+    }
+
     // Cache check (H-11). priors_version in key ensures cache busts on prior updates.
     const _cacheKey = cacheKey('query_signals', { chart_id, ayanamsha_id, frame,
       domain: args['domain'], source_subsystem: args['source_subsystem'],
       signal_type_class: args['signal_type_class'], min_salience: args['min_salience'],
       lel_enabled: args['lel_enabled'], top_k: args['top_k'], offset: args['offset'],
-      semantic_query: args['semantic_query'], paradigm, priors_version: PRIORS_VERSION })
+      semantic_query: args['semantic_query'], paradigm,
+      projection: projection.serve ?? '*', priors_version: PRIORS_VERSION })
     const _cached = cacheGet(_cacheKey)
     if (_cached !== undefined) return _cached as ReturnType<typeof this.handler>
     const domain          = args['domain'] as string | undefined
@@ -270,15 +370,12 @@ export const querySignalsCapability: CapabilityDescriptor = {
       const useComposite = Boolean(domain)
 
       // Canonical SELECT — identical columns for both paths.
+      // WP-1.3(g)/LCA-7: columns are the resolved projection.fetch list. Names come ONLY
+      // from the MSR_SIGNAL_COLUMNS whitelist (validated in resolveProjection), so this
+      // interpolation is injection-safe. The fetch list always includes the internal-required
+      // (default-17) columns so composite ranking / demotion / freshness never starve.
       // semantic_query: vertex embedding not available at query time; salience fallback used.
-      const SIGNAL_COLUMNS = `
-          m.signal_id, m.signal_type_id, m.signal_type_class, m.signal_tradition,
-          m.signal_summary_text, m.signal_headline_text,
-          m.computed_salience, m.top_k_salience_rank,
-          m.domains_affected_array, m.constituent_facts_array,
-          m.source_subsystem, m.valence, m.verification_pass_status,
-          m.citation_human, m.lel_origin, m.signature_tier,
-          m.configuration_jsonb`
+      const SIGNAL_COLUMNS = projection.fetch.map(c => `m.${c}`).join(', ')
 
       // pBase: next param slot AFTER base filters (before LIMIT/OFFSET pushed).
       const pBase = p
@@ -363,6 +460,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
         ranking_basis = { mode: 'salience_fallback', priors_version: PRIORS_VERSION, domain: domain ?? null }
       }
 
+      // WP-1.2(d) (LCA-9b-2 serving cap): serve-time salience demotion — descriptive
+      // almanac fact_keys + per-varga granular data may not carry major/chart_defining
+      // tiers on the wire. Applied on BOTH the composite and salience-fallback paths.
+      signals = demoteSignatureTiers(signals)
+
       // Size guard (H-12): prevent >1.5MB responses from overwhelming the MCP transport
       // S3 fix (R5 W0a perf lane): Buffer.byteLength on the UTF-8 encoding, not
       // String.length — `.length` counts UTF-16 code units and undercounts the
@@ -397,6 +499,19 @@ export const querySignalsCapability: CapabilityDescriptor = {
         deriveDefect001Note(chart_id, referencedFactIds),
         deriveSignatureTierNote(chart_id, ayanamsha_id),
       ])
+
+      // WP-1.3(g)/LCA-7: project served rows down to the requested columns. Done AFTER the
+      // internal pipeline (ranking/demotion/freshness read the always-fetched default set)
+      // so narrowing the SERVED projection never starves the machinery. projection.serve
+      // === null means ["*"] — serve everything fetched, no narrowing.
+      if (projection.serve !== null) {
+        const serveCols = projection.serve
+        signals = signals.map(s => {
+          const picked: Record<string, unknown> = {}
+          for (const c of serveCols) if (c in s) picked[c] = s[c]
+          return picked
+        })
+      }
 
       // Frame facet (R5 W2, design §27.3): annotation only — signal rows/salience unchanged.
       let frameContext: Record<string, unknown> | undefined
@@ -449,7 +564,25 @@ export const querySignalsCapability: CapabilityDescriptor = {
         truncated,
         ...(truncated_from !== undefined ? { truncated_from } : {}),
         ranking_basis,
-        filters:  { domain, source_subsystem, signal_type_class, min_salience, lel_enabled, top_k, offset, paradigm: paradigm ?? null },
+        // WP-1.8 (cross-surface inconsistency): when NO domain is given, this surface ranks
+        // chart-wide by salience — a DIFFERENT ordering than the domain-scoped composite ranking
+        // the assess_*/judgment surfaces use. Disclosed here so a consumer isn't misled into
+        // reading a salience top-10 as "the answer" for a domain question and finding it disagrees
+        // with assess_*. Pass `domain` to reproduce the assess_* / composite ordering exactly.
+        cross_surface: domain
+          ? {
+              ranking_mode: (ranking_basis['mode'] as string) ?? 'composite_4d',
+              agrees_with: `assess_${domain === 'relationship' ? 'marriage' : domain} top_10_composite (same composite ranking path)`,
+            }
+          : {
+              ranking_mode: 'salience_fallback',
+              caveat:
+                'No domain given → chart-wide salience ranking. This will NOT match assess_*/judgment ' +
+                'domain rankings (which use domain-scoped composite ranking). Pass `domain` to reconcile ' +
+                'the surfaces; the salience top-k is not a domain-relevance answer.',
+            },
+        filters:  { domain, source_subsystem, signal_type_class, min_salience, lel_enabled, top_k, offset, paradigm: paradigm ?? null,
+          projection: projection.serve === null ? '*' : projection.serve },
         semantic_fallback: semantic_query ? 'Semantic embedding not available at query time — salience-ranked fallback used. Full vector search requires Vertex embedding of the query string.' : undefined,
         provenance: {
           tables: ['bodha_msr_signals'],
@@ -465,6 +598,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
           defect_001_note: defect001.note,
           signature_tier_note: signatureTier.note,
           lel_note: 'lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.',
+          projection_note: projection.serve === null
+            ? `projection=["*"] — all ${MSR_SIGNAL_COLUMNS.length} bodha_msr_signals columns served.`
+            : (args['projection'] === undefined
+                ? `Default projection — ${DEFAULT_SERVE_COLUMNS.length} of ${MSR_SIGNAL_COLUMNS.length} columns served (WP-1.3(g)/LCA-7). Pass projection:["*"] or an explicit column array to reach the rest.`
+                : `Projected ${projection.serve.length} of ${MSR_SIGNAL_COLUMNS.length} columns as requested (validated against the column whitelist).`),
           paradigm_note: paradigm
             ? `paradigm:"${paradigm}" applied — every signal in this response carries ` +
               `signal_tradition="${paradigm}" (design §27.4 coherent single-tradition slice).`

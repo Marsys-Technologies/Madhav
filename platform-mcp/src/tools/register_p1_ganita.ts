@@ -783,15 +783,23 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'Use when birth time accuracy is in question before committing to chart interpretation.',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
-      limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
+      ayanamsha_id: z.string().optional().describe(
+        "OPTIONAL ayanamsha filter — short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Omit for ALL ayanamshas."
+      ),
+      top_k: z.number().int().min(1).max(50).optional().describe('Max candidates (default: 50, max: 50)'),
       offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
     },
-    async ({ chart_id, ayanamsha_id, limit, offset }) => {
+    async ({ chart_id, ayanamsha_id, top_k, offset }) => {
       if (!chart_id) return errorOutput('phala_rectification_get', 'chart_id is required')
       try {
+        // WP-1.3j serving-bug fix (F-L10-025): phala_rectification stores SHORT ayanamsha codes,
+        // NOT the L1 long form. Do NOT run normalizeAyanamsha() here (it maps everything to
+        // 'lahiri_chitrapaksha', which matched ZERO rows). Pass ayanamsha_id through as-is; the
+        // capability accepts the long form as an alias and omitting it returns all ayanamshas.
         const data = await callRegistryCapability('marsys://tool/L4/query_rectification', {
-          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
+          chart_id,
+          ...(ayanamsha_id ? { ayanamsha_id } : {}),
+          top_k: top_k ?? 50, offset: offset ?? 0,
         }, principal)
         return dualOutput(envelope(data, 'phala_rectification_get'))
       } catch (err) {

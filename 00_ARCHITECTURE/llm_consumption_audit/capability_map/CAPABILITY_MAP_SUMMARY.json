@@ -1,0 +1,31 @@
+{
+  "map_version": "1.0.0",
+  "generated_at": "2026-07-12T20:35:46.064Z",
+  "seed_matrix": "00_ARCHITECTURE/llm_consumption_audit/state/CONCEPT_RETRIEVABILITY_MATRIX.jsonl",
+  "method": "live-registry + source-file table-scan; table-granular routes; sample verified against live DB",
+  "families": {
+    "total": 2589,
+    "reachable_post_w1": 2289,
+    "reachable_pre_w1": 2024,
+    "newly_reachable_delta": 316,
+    "unreachable_post_w1": 300
+  },
+  "rows_per_channel_seed": {
+    "reachable-deployed-mcp": 902,
+    "truly-unreachable": 157,
+    "reachable-surgical": 1416,
+    "served-only-by-down-pipeline": 583
+  },
+  "rows_per_channel_post_w1": {
+    "truly-unreachable": 142,
+    "reachable-deployed-mcp": 1906,
+    "served-only-by-down-pipeline": 305,
+    "reachable-surgical": 705
+  },
+  "live_registry": {
+    "total_capabilities": 112,
+    "deployed_mcp_uris": 47
+  },
+  "tables_with_routes": 123,
+  "note": "newly_reachable_delta = families reachable via a live primitive route NOW that were served-only-by-down-pipeline or truly-unreachable in the pre-W1 seed. Routes are table-granular candidates; per-concept arrival is proven by the sample integration test against the live DB."
+}

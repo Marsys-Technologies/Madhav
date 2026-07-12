@@ -187,14 +187,12 @@ describe('D5 Roster Completeness Smoke', () => {
     }
   })
 
-  it('STUBBED tools return stubbed=true, data=[], is_error=false with valid chart_id', async () => {
-    const stubbedCaps = [queryObstructionPeriodsCapability, queryTemporalViewCapability]
-    for (const cap of stubbedCaps) {
-      const result = await cap.handler({ chart_id: 'test-uuid' }, undefined)
-      expect(result.is_error, `${cap.name}: should not be error`).toBe(false)
-      const content = result.content as Record<string, unknown>
-      expect(content['stubbed'], `${cap.name}: should be stubbed`).toBe(true)
-      expect(content['data'], `${cap.name}: data should be empty`).toEqual([])
+  // WP-1.3(a) / F-L10-012,018 (LCA-19): formerly-STUBBED obstruction & temporal_view
+  // tools now serve real rows from populated tables — they no longer advertise stubbing.
+  it('formerly-stubbed tools no longer advertise STUBBED-PENDING-DATA', () => {
+    const unstubbed = [queryObstructionPeriodsCapability, queryTemporalViewCapability]
+    for (const cap of unstubbed) {
+      expect(cap.description, `${cap.name}: should no longer be stubbed`).not.toContain('STUBBED-PENDING-DATA')
     }
   })
 })

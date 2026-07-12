@@ -10,7 +10,12 @@
 
 import type { ToolCapability } from '../../types'
 
-const SIDECAR_URL = process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
+// WP-1.7 (LCA-1, LCA-12): the local sidecar bench runs on :8000 (see main.py +
+// .env.local.example PYTHON_SIDECAR_URL). The prior 8001 default silently missed the
+// bench and contributed to ephemeris "returns nothing" symptoms locally. On deployed,
+// PYTHON_SIDECAR_URL is set explicitly, so this default only affects the local bench.
+const SIDECAR_URL = process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8000'
+const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
 
 export const queryPlanetPositionCapability: ToolCapability = {
   uri: 'marsys://tool/L0/query_planet_position',
@@ -79,14 +84,50 @@ export const queryPlanetPositionCapability: ToolCapability = {
     const params = new URLSearchParams({ date })
     if (planet) params.set('planet', planet)
 
-    const res = await fetch(
-      `${SIDECAR_URL}/brahmagyan/ephemeris/planet_position?${params}`,
-      { headers: { 'Content-Type': 'application/json' } }
-    )
+    // WP-1.7: forward the sidecar API key when configured (the sidecar's verify_api_key
+    // dependency 401s on a missing/mismatched x-api-key when PYTHON_SIDECAR_API_KEY is set).
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (SIDECAR_API_KEY) headers['x-api-key'] = SIDECAR_API_KEY
+
+    let res: Response
+    try {
+      res = await fetch(`${SIDECAR_URL}/brahmagyan/ephemeris/planet_position?${params}`, { headers })
+    } catch (err) {
+      // WP-1.7 (honest confidence): the sidecar being down is NOT a high-confidence empty.
+      return {
+        ok: false,
+        error: `sidecar unreachable at ${SIDECAR_URL}: ${err instanceof Error ? err.message : String(err)}`,
+        confidence: 'none',
+        date,
+        count: 0,
+        positions: [],
+      }
+    }
     if (!res.ok) {
       const msg = await res.text().catch(() => res.statusText)
-      return { ok: false, error: `sidecar ${res.status}: ${msg}`, date, count: 0, positions: [] }
+      return { ok: false, error: `sidecar ${res.status}: ${msg}`, confidence: 'none', date, count: 0, positions: [] }
     }
-    return res.json()
+
+    const payload = (await res.json().catch(() => null)) as
+      | { ok?: boolean; positions?: unknown[]; count?: number }
+      | null
+
+    // WP-1.7 (LCA-1 honest confidence): the pre-fix handler passed the sidecar body
+    // through verbatim, so an empty result (positions:[]) was still surfaced as
+    // ok:true/high-confidence by the primitives envelope. An empty ephemeris response
+    // for a valid in-range date means the lookup FAILED (bad date, missing rows) — it is
+    // never a legitimate "nothing here". Report it honestly as ok:false / confidence none.
+    const positions = Array.isArray(payload?.positions) ? payload!.positions : []
+    if (!payload || positions.length === 0) {
+      return {
+        ok: false,
+        error: 'ephemeris returned no positions — treat as failed lookup, not a high-confidence empty',
+        confidence: 'none',
+        date,
+        count: 0,
+        positions: [],
+      }
+    }
+    return payload
   },
 }

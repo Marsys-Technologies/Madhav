@@ -18,7 +18,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
-import { describeProxyFailure } from './registry_bridge.js'
+import { describeProxyFailure, resolveChartFactsAyanamsha } from './registry_bridge.js'
 import { applyResponseBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
@@ -251,6 +251,31 @@ function globalAlias(
   )
 }
 
+// WP-1.3 (b/c): shared faceted schema for the DB-backed dasha capability
+// (marsys://tool/L1/get_dashas). Used by every LLM-facing dasha tool name so that
+// system_id (F-0354) and requested windows (F-0471/0485) are honored uniformly — instead
+// of a divergent, vimshottari-only, windowless PyJHora sidecar surface for some names.
+const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
+  // ayanamsha_id override: no server-side default (chart_dashas carries all 5) — omitting it
+  // returns one row PER ayanamsha. Pass "lahiri_chitrapaksha" for the single-row gate shape.
+  ayanamsha_id: z.string().optional().describe(
+    'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
+    '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
+    'single-row current-dasha gate shape.'),
+  as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter.'),
+  date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
+  date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
+  system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
+  system_id:     z.string().optional().describe('Alias for `system` using the raw column name (F-0354). Same vocabulary; precedence system > dasha_system > system_id.'),
+  dasha_system:  z.string().optional().describe('Deprecated alias for system.'),
+  level:         z.union([z.string(), z.number()]).optional().describe('Exact dasha level (1=Maha..5=Prana, or the name).'),
+  all_levels:    z.boolean().optional().describe('Disable the default level<=3 cap.'),
+  window_start:  z.string().optional().describe('ISO date — window facet lower bound (overlap). Echoed in facets_applied.window.'),
+  window_end:    z.string().optional().describe('ISO date — window facet upper bound (overlap). Echoed in facets_applied.window.'),
+  lord_graha:    z.string().optional(),
+  fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
+}
+
 export function registerP1AliasTools(server: McpServer, principal: Principal): void {
 
   // ── D7 + D8 Registry bridge aliases ──────────────────────────────────────
@@ -386,27 +411,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'Gate target (current dasha, <=1KB, ONE call): system=vimshottari, level=1, ' +
     'as_of_date=<today>, ayanamsha_id="lahiri_chitrapaksha" — ALWAYS pass ayanamsha_id explicitly.',
     'marsys://tool/L1/get_dashas',
-    {
-      // Override the shared ChartBase.ayanamsha_id description for this tool specifically:
-      // ChartBase's generic "(default: 'lahiri_chitrapaksha')" wording is TRUE for
-      // chart_facts_query but FALSE here — get_dashas.ts applies no ayanamsha filter unless
-      // the caller supplies one (R5 W1 verifier finding; JL-010 doc fix).
-      ayanamsha_id:  z.string().optional().describe(
-        'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
-        '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
-        'single-row current-dasha gate shape.'),
-      as_of_date:    z.string().optional(),
-      date_contains: z.string().optional(),
-      date_from:     z.string().optional(),
-      system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
-      dasha_system:  z.string().optional().describe('Deprecated alias for system.'),
-      level:         z.union([z.string(), z.number()]).optional().describe('Exact dasha level (1=Maha..5=Prana, or the name).'),
-      all_levels:    z.boolean().optional().describe('Disable the default level<=3 cap.'),
-      window_start:  z.string().optional(),
-      window_end:    z.string().optional(),
-      lord_graha:    z.string().optional(),
-      fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
-    }, principal)
+    DASHA_FACET_SCHEMA, principal)
 
   // get_temporal_windows → kala_windows_get
   // R-18 fix: the primitive (query_temporal_activation.ts) reads date_from/date_to/top_k, not
@@ -420,10 +425,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       ...ChartBase,
       start_date: z.string().optional().describe('Start of date range (mapped to date_from).'),
       end_date:   z.string().optional().describe('End of date range (mapped to date_to).'),
+      as_of:      z.string().optional().describe('Point-in-time date (mapped to as_of) — only windows active as of this date; overrides start_date/end_date.'),
       domain:     z.string().optional().describe('Filter to activations affecting this life domain.'),
     },
     async (params) => {
-      const { chart_id, ayanamsha_id, limit, offset: _offset, start_date, end_date, domain } =
+      const { chart_id, ayanamsha_id, limit, offset: _offset, start_date, end_date, as_of, domain } =
         params as Record<string, unknown>
       void _offset // this primitive has no offset concept
       if (!chart_id) return errOut('kala_windows_get', 'chart_id is required')
@@ -432,6 +438,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
           ...(start_date ? { date_from: start_date } : {}),
           ...(end_date ? { date_to: end_date } : {}),
+          ...(as_of ? { as_of } : {}),
           ...(domain ? { domain } : {}),
           ...(limit != null ? { top_k: limit } : {}),
         }, principal)
@@ -515,41 +522,21 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }
   )
 
-  // assess_marriage → apex_marriage_assess
-  regAlias(server, 'apex_marriage_assess',
-    'Apex domain assess: marriage/relationship (same as assess_marriage)',
-    'marsys://tool/L-DOMAIN/assess_marriage',
-    {
-      max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
-      max_contradictions:    z.number().int().min(1).max(100).optional(),
-    }, principal)
-
-  // assess_career → apex_career_assess
-  regAlias(server, 'apex_career_assess',
-    'Apex domain assess: career/profession (same as assess_career)',
-    'marsys://tool/L-DOMAIN/assess_career',
-    {
-      max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
-      max_contradictions:    z.number().int().min(1).max(100).optional(),
-    }, principal)
-
-  // assess_health → apex_health_assess
-  regAlias(server, 'apex_health_assess',
-    'Apex domain assess: health/longevity (same as assess_health)',
-    'marsys://tool/L-DOMAIN/assess_health',
-    {
-      max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
-      max_contradictions:    z.number().int().min(1).max(100).optional(),
-    }, principal)
-
-  // assess_wealth → apex_wealth_assess
-  regAlias(server, 'apex_wealth_assess',
-    'Apex domain assess: wealth/finance (same as assess_wealth)',
-    'marsys://tool/L-DOMAIN/assess_wealth',
-    {
-      max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
-      max_contradictions:    z.number().int().min(1).max(100).optional(),
-    }, principal)
+  // ── WP-1.3(i) / LCA-11 — apex_*_assess duplicate family RETIRED (§7.3 disposition) ──
+  // The four apex_marriage_assess / apex_career_assess / apex_health_assess /
+  // apex_wealth_assess tools were strict near-duplicates of the canonical assess_marriage /
+  // assess_career / assess_health / assess_wealth tools (registry_bridge.ts): BOTH families
+  // resolved to the SAME registry URI (marsys://tool/L-DOMAIN/assess_*), presenting the
+  // consumer two redundant tools per domain (LCA-11). The apex_* variants were also INFERIOR
+  // — they carried no orientation_context (B.11 frame) that the canonical assess_* tools
+  // pre-fetch and attach.
+  //
+  // Disposition: apex_*_assess RETIRED here; the underlying capability remains fully reachable
+  // via the canonical assess_marriage/career/health/wealth tools (same URI, richer output).
+  // NO capability is dropped — the ONLY apex_*-exclusive surface was the two tuning params
+  // (max_signals_per_lens / max_contradictions), which are MIGRATED onto the canonical
+  // assess_* tools in registry_bridge.ts so assess_* is now a strict superset of the retired
+  // apex_* surface. See REMEDIATION_RUN_LEDGER / this run's report for the §7.3 record.
 
   // yoga_activation_by_dasha → kala_yoga_activation_get
   // R-18 fix: the primitive (register_d8_assess_domain.ts::yogaActivationByDashaCapability) reads
@@ -636,10 +623,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // Reconciled to the real filter set the handler now implements (see query_chart_facts above
   // for the full facet description); NF-1's 404 is fixed at the shared handler, so this alias
   // is fixed for free once its own param names line up.
-  regAlias(server, 'ganita_chart_facts_get',
-    'L1 chart_facts EAV-crosstab query (same as query_chart_facts)',
-    'marsys://tool/L1/chart_facts_query',
+  // WP-1.3(f)/LCA-3: hand-written (not regAlias) so this alias reaches all 6 stored ayanamshas.
+  // regAlias routes ayanamsha through the shared `na()` helper, which collapses
+  // true_chitra -> lahiri_chitrapaksha and would hide true_chitra's dataset here exactly as it
+  // did on the primary query_chart_facts tool. Uses resolveChartFactsAyanamsha (the same
+  // query_chart_facts-scoped resolver as registry_bridge.ts) and forwards fact_subject +
+  // pagination so this alias is at full parity with query_chart_facts.
+  server.tool(
+    'ganita_chart_facts_get',
+    '[Phase-1 alias] L1 chart_facts EAV-crosstab query (same as query_chart_facts). Reaches all 6 stored ayanamshas (lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT); discloses pagination (total + more_available) over the 5,566 subjects.',
     {
+      chart_id:         z.string().uuid().describe('Chart UUID'),
+      ayanamsha_id:     z.string().optional().describe("Ayanamsha (default 'lahiri_chitrapaksha'); any of the 6 stored ayanamshas reachable."),
       about: z.union([
         z.string(),
         z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
@@ -651,8 +646,24 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       nakshatra:        z.string().optional(),
       divisional_chart: z.string().optional(),
       keyword:          z.string().optional(),
+      fact_subject:     z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP"). Comma-separated for multiple.'),
       shape:            z.enum(['pivoted', 'rows']).optional(),
-    }, principal)
+      limit:            z.number().int().min(1).max(1000).optional(),
+      offset:           z.number().int().min(0).optional(),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, ...rest } = params as Record<string, unknown>
+      if (!chart_id) return errOut('ganita_chart_facts_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L1/chart_facts_query', {
+          chart_id,
+          ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          ...rest,
+        }, principal)
+        return dualOutput(data, 'ganita_chart_facts_get')
+      } catch (err) { return errOut('ganita_chart_facts_get', String(err), { chart_id }) }
+    }
+  )
 
   // vector_search → ref_vector_search
   server.tool(
@@ -1030,17 +1041,29 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }
   )
 
-  server.tool(
-    'ganita_dasha_periods_get',
-    '[Phase-1 alias] Compute Vimshottari dasha chain via PyJHora sidecar (same as query_dasha_periods).',
-    BirthBase,
-    async (params) => {
-      try {
-        const data = await callSidecarPath('/api/pyhora/compute', params as Record<string, unknown>)
-        return dualOutput(data)
-      } catch (err) { return errOut('ganita_dasha_periods_get', String(err)) }
-    }
-  )
+  // WP-1.3 (b/c): ganita_dasha_periods_get + query_dasha_periods REPOINTED from the
+  // vimshottari-only PyJHora sidecar to the DB-backed faceted capability (get_dashas), so
+  // the audit-named dasha tools honor system_id (F-0354: ~437k non-vimshottari rows/chart
+  // were dark) and requested windows (F-0471/0485: a fixed today-centered decade made
+  // past/future timing unanswerable). Both now share the identical faceted schema +
+  // handler as ganita_dashas_get — one authoritative dasha surface, no divergent duplicate.
+  regAlias(server, 'ganita_dasha_periods_get',
+    'L1 dasha periods, faceted by system/level/window (same as get_dashas / ganita_dashas_get). ' +
+    'Honors system_id (all 8 systems: vimshottari, vimshottari_kp, yogini, ashtottari, ' +
+    'chara_karaka, kalachakra, mudda, naisargika) and requested date windows. ' +
+    'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id has NO default — ' +
+    'pass "lahiri_chitrapaksha" for the single-row current-dasha gate shape.',
+    'marsys://tool/L1/get_dashas',
+    DASHA_FACET_SCHEMA, principal)
+
+  regAlias(server, 'query_dasha_periods',
+    'L1 dasha periods, faceted by system/level/window (DB-backed, chart_id required). ' +
+    'Honors system_id (all 8 systems) and requested date windows (as_of_date / window_start / ' +
+    'window_end), echoing the applied filter back in facets_applied. Defaults: system=vimshottari, ' +
+    'level<=3, window=now±5y. ayanamsha_id has NO default — pass "lahiri_chitrapaksha" for the ' +
+    'single-row current-dasha gate shape.',
+    'marsys://tool/L1/get_dashas',
+    DASHA_FACET_SCHEMA, principal)
 
   server.tool(
     'ganita_special_lagnas_get',

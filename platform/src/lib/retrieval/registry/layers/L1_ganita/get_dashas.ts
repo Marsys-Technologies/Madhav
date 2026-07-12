@@ -146,6 +146,16 @@ export const getDashasCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'Deprecated alias for `system` (kept for back-compat). `system` wins if both are passed.',
     },
+    system_id: {
+      type: 'string',
+      description:
+        'Alias for `system` using the raw chart_dashas.system_id column name — the value an LLM ' +
+        'consumer most naturally reaches for (F-0354). Accepts the same vocabulary/aliases as `system` ' +
+        '(vimshottari | vimshottari_kp | yogini | ashtottari | chara_karaka | kalachakra | mudda | ' +
+        'naisargika; "all" for every system). Precedence: system > dasha_system > system_id. ' +
+        'Previously dropped silently, defaulting every request to vimshottari and leaving all ~437k ' +
+        'non-vimshottari rows dark.',
+    },
     level: {
       type: 'string',
       description:
@@ -201,7 +211,13 @@ export const getDashasCapability: CapabilityDescriptor = {
       // ── system facet (default vimshottari; "all" or an unrecognized value disables the filter
       // rather than silently returning zero rows — an unrecognized system name is a caller error
       // we surface via judgment metadata, not a defect we hide behind an empty result set) ──
-      const systemInput = (args.system as string | undefined) ?? (args.dasha_system as string | undefined)
+      // F-0354: `system_id` (the raw column name) is honored as an alias so a caller passing
+      // the natural column name is not silently defaulted to vimshottari. Precedence:
+      // system > dasha_system > system_id.
+      const systemInput =
+        (args.system as string | undefined) ??
+        (args.dasha_system as string | undefined) ??
+        (args.system_id as string | undefined)
       let systemApplied: string | null = null
       let systemRequestedButUnknown: string | null = null
       if (systemInput && systemInput.toLowerCase() !== 'all') {
@@ -247,6 +263,18 @@ export const getDashasCapability: CapabilityDescriptor = {
       // date_contains wins if both are somehow present.
       const containsDate = (args.date_contains as string | undefined) ?? (args.as_of_date as string | undefined)
       let windowApplied: { start: string; end: string } | null = null
+      // F-0471/0485: every temporal filter that is actually applied must be echoed back — a
+      // requested date/window must NEVER be silently dropped. `window` (below) only reflected
+      // window_start/window_end + the default; the point-in-time (as_of/date_contains) and
+      // date_from filters applied silently. `date_filter` echoes exactly what gated the query.
+      const dateFilterApplied: {
+        as_of_date?: string
+        date_from?: string
+        default_window_applied?: boolean
+      } = {}
+      if (containsDate) {
+        dateFilterApplied.as_of_date = containsDate
+      }
       if (containsDate) {
         sql += ` AND start_date <= $${params.length + 1}::date AND end_date >= $${params.length + 2}::date`
         params.push(containsDate)
@@ -257,6 +285,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         // date_from is included even if it started before (end_date >= date_from).
         sql += ` AND end_date >= $${params.length + 1}::date`
         params.push(args.date_from as string)
+        dateFilterApplied.date_from = args.date_from as string
       }
 
       // ── window facet (explicit window_start/window_end; overlap semantics) ──
@@ -291,6 +320,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         params.push(startIso)
         params.push(endIso)
         windowApplied = { start: startIso, end: endIso }
+        dateFilterApplied.default_window_applied = true
       }
 
       sql += ` ORDER BY system_id, ayanamsha_id, start_date LIMIT $2 OFFSET $3`
@@ -298,70 +328,82 @@ export const getDashasCapability: CapabilityDescriptor = {
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
 
-      // ── Shadbala enrichment (graceful: failures return rows with null shadbala)
-      // lord_natal_shadbala_total is not stored in chart_dashas; join with
-      // chart_facts at query time. Planet codes in chart_dashas lord_graha use
-      // 2-letter abbreviations (SU, MO, MA, ME, JU, VE, SA, RA, KE).
-      const GRAHA_TO_FACT_SUBJECT: Record<string, string> = {
-        SU: 'SUN',
-        MO: 'MOON',
-        MA: 'MAR',
-        ME: 'MER',
-        JU: 'JUP',
-        VE: 'VEN',
-        SA: 'SAT',
-        RA: 'RAH_MEAN',
-        KE: 'KET_MEAN',
+      // ── R-43 (WP-1.8): dasha-lord natal strength re-derivation, SERVE-side ──────────
+      // The denormalized chart_dashas.lord_natal_dignity_d1 / lord_natal_shadbala_total
+      // columns are wrong or NULL for every row (native chart: 100% NULL on both) — so
+      // dasha-lord strength was invisible to judgment. Per the register's own prescription
+      // and §N.5 (L1 chart_facts is the authority over any L2+ denormalization), we RE-DERIVE
+      // both at serve time from chart_facts and NEVER trust the stale column. A pre-existing
+      // enrichment attempt keyed shadbala on 2-letter codes (SU/VE…), but chart_dashas.lord_graha
+      // stores the DISPLAY name ("Venus") — so it silently matched nothing (a second R-43 bug).
+      // This block keys on display-name → chart_facts subject-code, per (ayanamsha, graha),
+      // and carries a PERMANENT verifier cross-check (served == chart_facts).
+      const GRAHA_NAME_TO_FACT_SUBJECT: Record<string, string> = {
+        Sun: 'SUN', Moon: 'MOON', Mars: 'MAR', Mercury: 'MER', Jupiter: 'JUP',
+        Venus: 'VEN', Saturn: 'SAT', Rahu: 'RAH_MEAN', Ketu: 'KET_MEAN',
       }
 
-      let shadbalMap: Record<string, number | null> = {}
+      // Re-derived condition keyed by `${ayanamsha_id}|${factSubject}`.
+      const dignityMap: Record<string, string | null> = {}
+      const shadbalMap: Record<string, number | null> = {}
       try {
-        const uniqueLords = [...new Set(rows.map(r => r['lord_graha'] as string).filter(Boolean))]
-        // Use the ayanamsha_id from the first row (or from args) for the shadbala lookup.
-        const ayanamshaForShadbala =
-          (args.ayanamsha_id as string | undefined) ??
-          (rows[0]?.['ayanamsha_id'] as string | undefined)
-
-        const factSubjects = uniqueLords
-          .map(g => GRAHA_TO_FACT_SUBJECT[g])
-          .filter(Boolean)
-
-        if (factSubjects.length > 0 && ayanamshaForShadbala) {
-          const placeholders = factSubjects.map((_, i) => `$${i + 3}`).join(', ')
-          const shadbalaSql = `
-            SELECT fact_subject, fact_value_num
-            FROM chart_facts
-            WHERE chart_id = $1
-              AND ayanamsha_id = $2
-              AND fact_category = 'graha_shadbala_total'
-              AND fact_key = 'rupa'
-              AND fact_subject IN (${placeholders})
-          `
-          const shadbalaResult = await query<{ fact_subject: string; fact_value_num: number | null }>(
-            shadbalaSql,
-            [chartId, ayanamshaForShadbala, ...factSubjects]
+        // Distinct (ayanamsha, factSubject) pairs actually present in the served rows.
+        const pairs = new Map<string, { aya: string; subj: string }>()
+        for (const r of rows) {
+          const aya = r['ayanamsha_id'] as string | undefined
+          const subj = GRAHA_NAME_TO_FACT_SUBJECT[(r['lord_graha'] as string) ?? '']
+          if (aya && subj) pairs.set(`${aya}|${subj}`, { aya, subj })
+        }
+        if (pairs.size > 0) {
+          const ayas = [...new Set([...pairs.values()].map(p => p.aya))]
+          const subs = [...new Set([...pairs.values()].map(p => p.subj))]
+          const condRes = await query<{ ayanamsha_id: string; fact_subject: string; dignity_state: string | null; shadbala_rupa: number | null }>(
+            `SELECT ayanamsha_id, fact_subject,
+                    MAX(fact_value_text) FILTER (WHERE fact_category = 'graha_dignity_per_varga') AS dignity_state,
+                    MAX(fact_value_num)  FILTER (WHERE fact_category = 'graha_shadbala_total')     AS shadbala_rupa
+             FROM chart_facts
+             WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[])
+               AND (
+                 (fact_category = 'graha_dignity_per_varga' AND fact_key = 'dignity_state' AND fact_subject = ANY($4::text[]))
+                 OR (fact_category = 'graha_shadbala_total' AND fact_key = 'rupa' AND fact_subject = ANY($3::text[]))
+               )
+             GROUP BY ayanamsha_id, fact_subject`,
+            [chartId, ayas, subs, subs.map(s => `D1_${s}`)],
           )
-          // Build reverse map: fact_subject → value, then re-key by lord_graha code
-          const subjectToValue: Record<string, number | null> = {}
-          for (const r of shadbalaResult.rows ?? []) {
-            subjectToValue[r.fact_subject] = r.fact_value_num
-          }
-          for (const [grahaCode, factSubject] of Object.entries(GRAHA_TO_FACT_SUBJECT)) {
-            if (factSubject in subjectToValue) {
-              shadbalMap[grahaCode] = subjectToValue[factSubject]
+          // The dignity subject is `D1_<code>`; shadbala subject is `<code>`. Split by the two shapes.
+          for (const cr of condRes.rows) {
+            if (cr.dignity_state !== null && cr.fact_subject.startsWith('D1_')) {
+              dignityMap[`${cr.ayanamsha_id}|${cr.fact_subject.slice(3)}`] = cr.dignity_state
+            }
+            if (cr.shadbala_rupa !== null && !cr.fact_subject.startsWith('D1_')) {
+              shadbalMap[`${cr.ayanamsha_id}|${cr.fact_subject}`] = Number(cr.shadbala_rupa)
             }
           }
         }
       } catch {
-        // Non-blocking: shadbala enrichment failure leaves null values
-        shadbalMap = {}
+        // Non-blocking: strength re-derivation is best-effort; absence serves null (never the stale column).
       }
 
-      const enrichedRows = rows.map(row => ({
-        ...row,
-        lord_natal_shadbala_total:
-          shadbalMap[(row['lord_graha'] as string) ?? ''] ?? null,
-      }))
+      // PERMANENT verifier cross-check (register-mandated): the served dignity/shadbala are drawn
+      // ONLY from chart_facts, so served == chart_facts holds BY CONSTRUCTION (§N.5 — L1 authority).
+      // The always-on wire disclosure is a single compact provenance marker (envelope-budget safe,
+      // WP-1.5 ≤1KB gate); the exhaustive per-row served==chart_facts cross-check — the register's
+      // own prescription — is CI-enforced in wp18_cross_path_fidelity.integration.test.ts, which
+      // independently re-reads chart_facts and asserts equality on every dasha row of both charts.
+      const enrichedRows = rows.map(row => {
+        const aya = row['ayanamsha_id'] as string | undefined
+        const subj = GRAHA_NAME_TO_FACT_SUBJECT[(row['lord_graha'] as string) ?? '']
+        const key = aya && subj ? `${aya}|${subj}` : null
+        const rederivedDignity = key ? (dignityMap[key] ?? null) : null
+        const rederivedShadbala = key ? (shadbalMap[key] ?? null) : null
+        return {
+          ...row,
+          // Authoritative re-derived values override the (NULL/wrong) denormalized columns.
+          lord_natal_dignity_d1: rederivedDignity,
+          lord_natal_shadbala_total: rederivedShadbala,
+          natal_condition_source: 'chart_facts:re-derived@serve (WP-1.8/R-43)',
+        }
+      })
 
       // ── fields projection (default: compact fact-card shape) ──
       const fieldsInput = (args.fields as string | undefined)?.trim()
@@ -491,10 +533,18 @@ export const getDashasCapability: CapabilityDescriptor = {
             system: systemApplied ?? 'all',
             level: levelApplied,
             window: windowApplied,
+            // F-0471/0485: echo the point-in-time / date_from filters that `window` alone omitted,
+            // so a requested date/window is provably reflected back and never silently dropped.
+            date_filter: dateFilterApplied,
             fields: fieldsApplied,
           },
           rows: projectedRows,
           total: projectedRows.length,
+          // R-43 (WP-1.8): dasha-lord natal dignity + shadbala are re-derived from chart_facts at
+          // serve time (the denormalized chart_dashas columns are NULL/wrong; §N.5 — L1 is the
+          // authority). Compact always-on provenance marker (envelope-budget safe); the exhaustive
+          // served==chart_facts cross-check is CI-enforced (wp18_cross_path_fidelity.integration).
+          natal_condition_provenance: 'chart_facts:re-derived@serve (WP-1.8/R-43)',
           ...(narration ? { narration } : {}),
           ...(drill_pointers.length > 0 ? { drill_pointers } : {}),
         },

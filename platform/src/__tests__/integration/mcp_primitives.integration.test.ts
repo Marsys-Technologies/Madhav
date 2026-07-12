@@ -55,25 +55,35 @@ async function callPrimitive(toolName: string, params: Record<string, unknown>) 
 
 // ── Test Suite 1: 14 formerly-phantom UDA tools all return HTTP 200 ───────────
 
-describeIf('14 UDA tools — HTTP 200 with non-empty data (FIX-1 integration)', () => {
-  const udaTools = [
-    'msr_sql', 'temporal', 'kp_query', 'query_kp_ruling_planets',
-    'pattern_register', 'resonance_register', 'cluster_atlas',
-    'contradiction_register', 'query_ucn_walk', 'query_cdlm_lookup',
-    'query_rm_walk', 'query_jaimini_drishti', 'timeline_query', 'query_signal_state',
-  ]
+// WP-1.7 (LCA-1/13): the retained UDA tools resolve to a real capability → non-400.
+describeIf('retained UDA tools — resolve (not 400) (WP-1.7)', () => {
+  const retainedUdaTools = ['msr_sql', 'temporal', 'contradiction_register']
 
-  it.each(udaTools)('%s returns 200 (not 400 validation error)', async (tool) => {
+  it.each(retainedUdaTools)('%s returns 200/500 (not 400 validation error)', async (tool) => {
     const { status, body } = await callPrimitive(tool, {})
-    // Before FIX-1, all of these returned 400 "Tool not in whitelist"
     expect(status).not.toBe(400)
-    // Accept 200 or 500 (500 = reached DB layer but may have minimal params)
-    // The key assertion is: NOT 400 validation error
     if (status === 400) {
-      console.error(`Tool ${tool} still blocked:`, body)
+      console.error(`Tool ${tool} unexpectedly blocked:`, body)
     }
     expect([200, 500]).toContain(status)
   }, 10000)  // 10s timeout for DB calls
+})
+
+// WP-1.7 (LCA-1/13): the 12 dead tools were REMOVED from the whitelist — they must now
+// return a clean 400 {class:"validation"}, NOT a 500 (the pre-fix local-bench crash).
+describeIf('WP-1.7-removed dead tools — clean 400 validation (no more 500)', () => {
+  const removedDeadTools = [
+    'cross_school_lookup', 'kp_query', 'query_kp_ruling_planets',
+    'pattern_register', 'resonance_register', 'cluster_atlas',
+    'query_ucn_walk', 'query_cdlm_lookup', 'query_rm_walk',
+    'query_jaimini_drishti', 'timeline_query', 'query_signal_state',
+  ]
+
+  it.each(removedDeadTools)('%s returns 400 validation (not 500)', async (tool) => {
+    const { status, body } = await callPrimitive(tool, {})
+    expect(status).toBe(400)
+    expect(body?.error?.class).toBe('validation')
+  }, 10000)
 })
 
 // ── Test Suite 2: forward_looking filter (FIX-2 integration) ─────────────────

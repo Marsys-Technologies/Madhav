@@ -30,6 +30,178 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { deriveDefect001Note } from '../../../provenance/freshness_notes'
+import { demoteSignatureTier } from '../../../ranking/salience_demotion'
+import {
+  applyCompositeRanking, extractPrimaryBhava, extractPrimaryGraha,
+} from '../../../ranking/composite_ranker'
+import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
+import { grahaAffinity, bhavaAffinity, DOMAIN_BHAVA_AFFINITY } from '../../../ranking/priors_config'
+
+/** Max signal_ids hydrated with text in one bounded lookup (payload + query safety). */
+const HYDRATION_ID_CAP = 2000
+
+/** Candidate pool fetched by raw salience before the domain-composite re-rank (mirrors query_signals). */
+const DISCRIMINATION_CANDIDATE_SIZE = 400
+/** How many domain-discriminated signals to surface on the reading. */
+const DISCRIMINATED_TOP_K = 20
+
+/**
+ * External reading-domain → the value present in bodha_msr_signals.domains_affected_array
+ * that scopes the candidate pool. `null` = no array pre-filter (the domain is not a stored
+ * tag — e.g. moksha/education); the pool is the whole chart and the composite domain overlay
+ * (graha×domain + bhāva×domain + varga) does ALL the discrimination. Disclosed in provenance.
+ */
+const DOMAIN_TO_SIGNAL_FILTER: Record<string, string | null> = {
+  career:       'career',
+  wealth:       'wealth',
+  relationship: 'relationship',
+  health:       'health',
+  character:    'character',
+  spirituality: 'spirituality',
+  education:    null,   // not a stored domain tag — rank whole-chart by the vidyā overlay (2/4/5/9 + Me/Ju/Ke)
+  moksha:       null,   // not a stored domain tag — rank whole-chart by the mokṣa-trikoṇa overlay (4-8-12 + Ketu)
+  other:        null,
+}
+
+interface DiscriminatedSignal {
+  signal_id: string
+  headline: string | null
+  summary: string | null
+  computed_salience: number | null
+  signal_type_class: string | null
+  signature_tier: string | null
+  signature_tier_demoted_from?: string
+  bhava: number | null
+  graha: string | null
+  final_rank_score: number
+  /** Inline, human-readable reason THIS signal ranks where it does for THIS domain (ND-W1.2). */
+  rationale: string
+}
+
+/**
+ * WP-1.2β (LCA-14 / R-44) — the domain-DISCRIMINATED ranked surface. The stored lens
+ * ranked_signals sort by a domain-agnostic global `computed_salience`, so wealth/relationship/
+ * career top-K were ~95% identical (Lane-6 shard-6-b0). This re-ranks a domain candidate pool
+ * through the SAME composite pipeline query_signals uses, WITH the domain overlay (graha×domain
+ * + bhāva×domain + varga), and returns the top-K with an inline classical rationale per row.
+ */
+async function computeDiscriminatedSignals(
+  chart_id: string,
+  ayanamsha_id: string,
+  domain: string,
+): Promise<{ signals: DiscriminatedSignal[]; pool_size: number; filtered_by: string | null }> {
+  const filterVal = DOMAIN_TO_SIGNAL_FILTER[domain] ?? null
+  const filters = ['chart_id = $1', 'ayanamsha_id = $2', '(lel_origin IS NULL OR lel_origin = false)']
+  const params: unknown[] = [chart_id, ayanamsha_id]
+  if (filterVal) {
+    filters.push(`$${params.length + 1} = ANY(domains_affected_array)`)
+    params.push(filterVal)
+  }
+  params.push(DISCRIMINATION_CANDIDATE_SIZE)
+  const sql = `
+    SELECT signal_id, signal_type_id, signal_type_class, signal_tradition,
+           signal_summary_text, signal_headline_text, computed_salience,
+           top_k_salience_rank, domains_affected_array, constituent_facts_array,
+           source_subsystem, valence, verification_pass_status, citation_human,
+           lel_origin, signature_tier, configuration_jsonb
+    FROM bodha_msr_signals
+    WHERE ${filters.join(' AND ')}
+    ORDER BY computed_salience DESC NULLS LAST
+    LIMIT $${params.length}`
+  const res = await query<Record<string, unknown>>(sql, params)
+  if (res.rows.length === 0) return { signals: [], pool_size: 0, filtered_by: filterVal }
+
+  const as_of_date = new Date().toISOString().split('T')[0]
+  const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date)
+  const scored = applyCompositeRanking(
+    res.rows as unknown as Parameters<typeof applyCompositeRanking>[0], ctx, domain,
+  )
+  const bhavaRow = DOMAIN_BHAVA_AFFINITY[domain]
+  const signals: DiscriminatedSignal[] = scored.slice(0, DISCRIMINATED_TOP_K).map(s => {
+    const bhava = extractPrimaryBhava(s)
+    const grahaRaw = extractPrimaryGraha(s)
+    const demoted = demoteSignatureTier(s as unknown as Record<string, unknown>)
+    // Inline rationale (ND-W1.2): why this row ranks here for THIS domain.
+    const reasons: string[] = []
+    if (bhava != null) {
+      const bw = bhavaAffinity(bhava, domain)
+      const primaries = bhavaRow
+        ? Object.entries(bhavaRow).filter(([, w]) => w >= 2.0).map(([h]) => h).join('/')
+        : ''
+      reasons.push(
+        `bhāva ${bhava} × ${domain} congruence ${bw.toFixed(2)}` +
+        (bw >= 2.0 ? ` (a primary ${domain} house)` : bw < 1.0 ? ` (outside the ${domain} house-set${primaries ? `; primaries ${primaries}` : ''})` : ''),
+      )
+    }
+    if (grahaRaw) {
+      const ga = grahaAffinity(grahaRaw, domain)
+      reasons.push(`graha ${grahaRaw} × ${domain} affinity ${ga.toFixed(2)}`)
+    }
+    if (reasons.length === 0) reasons.push(`no bhāva/graha resolved — ranked on class-prior × strength × salience only`)
+    return {
+      signal_id:         String(s.signal_id),
+      headline:          (s.signal_headline_text as string | null) ?? null,
+      summary:           (s.signal_summary_text as string | null) ?? null,
+      computed_salience: (s.computed_salience as number | null) ?? null,
+      signal_type_class: (s.signal_type_class as string | null) ?? null,
+      signature_tier:    (demoted['signature_tier'] as string | null) ?? null,
+      ...(demoted['signature_tier_demoted_from']
+        ? { signature_tier_demoted_from: demoted['signature_tier_demoted_from'] as string } : {}),
+      bhava,
+      graha:             grahaRaw,
+      final_rank_score:  s.final_rank_score,
+      rationale:         reasons.join('; '),
+    }
+  })
+  return { signals, pool_size: res.rows.length, filtered_by: filterVal }
+}
+
+interface HydratedSignalText {
+  signal_id: string
+  headline: string | null
+  summary: string | null
+  signature_tier: string | null
+  signature_tier_demoted_from?: string
+}
+
+/**
+ * WP-1.2(e) (LCA-18c): hydrate bare signal_ids with headline/summary text so
+ * get_domain_reading rows carry human-readable text, not IDs-without-text. One bounded
+ * chart-scoped `signal_id = ANY(...)` lookup over the DISTINCT ids the response will
+ * actually serve. Also demotes the hydrated signature_tier (WP-1.2d) so descriptive/
+ * per-varga rows don't surface as major/chart_defining here either.
+ */
+async function hydrateSignalText(
+  chart_id: string,
+  ayanamsha_id: string,
+  signalIds: string[],
+): Promise<Map<string, HydratedSignalText>> {
+  const map = new Map<string, HydratedSignalText>()
+  const distinct = Array.from(new Set(signalIds.filter(Boolean))).slice(0, HYDRATION_ID_CAP)
+  if (distinct.length === 0) return map
+  const res = await query<Record<string, unknown>>(
+    `SELECT signal_id, signal_headline_text, signal_summary_text, signature_tier,
+            signal_type_id, configuration_jsonb
+     FROM bodha_msr_signals
+     WHERE chart_id = $1 AND ayanamsha_id = $2 AND signal_id::text = ANY($3::text[])`,
+    [chart_id, ayanamsha_id, distinct],
+  )
+  for (const row of res.rows) {
+    const demoted = demoteSignatureTier(row)
+    const sid = String(row['signal_id'] ?? '')
+    if (!sid) continue
+    map.set(sid, {
+      signal_id: sid,
+      headline: (row['signal_headline_text'] as string | null) ?? null,
+      summary: (row['signal_summary_text'] as string | null) ?? null,
+      signature_tier: (demoted['signature_tier'] as string | null) ?? null,
+      ...(demoted['signature_tier_demoted_from']
+        ? { signature_tier_demoted_from: demoted['signature_tier_demoted_from'] as string }
+        : {}),
+    })
+  }
+  return map
+}
 
 /**
  * Maps each valid life-domain to the question_types that cover it.
@@ -41,8 +213,13 @@ const DOMAIN_TO_QUESTION_TYPES: Record<string, string[]> = {
   wealth:       ['wealth', 'property'],
   relationship: ['marriage', 'progeny'],
   health:       ['health', 'longevity'],
-  character:    ['character', 'education', 'siblings'],
-  spirituality: ['spirituality', 'education', 'foreign_travel'],
+  // WP-1.2β: un-collapse the over-mapped domains. character = self+manas (1/3), no longer
+  // borrowing 'education'; education becomes its OWN vidyā domain (4-vidyā-sthāna + 2-vāk);
+  // spirituality stays dharma-centred (9); moksha is DISTINCT (12-8-4 trikoṇa, not a 9-alias).
+  character:    ['character', 'siblings'],
+  education:    ['education', 'wealth'],
+  spirituality: ['spirituality', 'education'],
+  moksha:       ['spirituality', 'foreign_travel', 'longevity'],
   other:        [],
 }
 
@@ -86,10 +263,14 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       type: 'string',
       description: [
         'Life domain to query.',
-        'One of: career, wealth, relationship, health, character, spirituality, other.',
+        'One of: career, wealth, relationship, health, character, spirituality, education, moksha, other.',
+        'education = vidyā (bhāva 4/5/2/9 + Mercury/Jupiter/Ketu); moksha = the 4-8-12 mokṣa-trikoṇa',
+        '+ Ketu axis (NOT a 9th-house/dharma alias — that is spirituality).',
+        'Each domain re-ranks its signals by a domain-specific graha×bhāva×varga overlay, so the',
+        'ranked_signals surface genuinely differs across domains (see ranked_signals[].rationale).',
         'If omitted or unrecognized, returns the list of available domains for this chart.',
       ].join(' '),
-      enum: ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'other'],
+      enum: ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'education', 'moksha', 'other'],
     },
     ayanamsha_id: {
       type: 'string',
@@ -143,7 +324,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           2000,
         )
 
-    const VALID_DOMAINS = ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'other']
+    const VALID_DOMAINS = ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'education', 'moksha', 'other']
 
     try {
       // Domain discovery is sourced from bodha_cdlm_cells (domain_row/domain_col).
@@ -231,11 +412,15 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         LIMIT 10
       `
 
-      const [lensRes, cdlmRes] = await Promise.all([
+      const [lensRes, cdlmRes, discriminated] = await Promise.all([
         filterByQuestionType
           ? query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, relevantQuestionTypes])
           : query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id]),
         query<Record<string, unknown>>(cdlmSql, [chart_id, ayanamsha_id, domain]),
+        // WP-1.2β: domain-discriminated composite ranked surface ('other' has no overlay).
+        domain === 'other'
+          ? Promise.resolve({ signals: [], pool_size: 0, filtered_by: null })
+          : computeDiscriminatedSignals(chart_id, ayanamsha_id, domain),
       ])
 
       // Collect signal refs from CDLM cells and apply bounding.
@@ -266,6 +451,51 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       const signalRefsTotal = allSignalRefs.size
       const signalRefsArray = Array.from(allSignalRefs).slice(0, max_signal_refs)
 
+      // WP-1.2(e) (LCA-18c): gather the signal_ids this response will actually surface —
+      // the CDLM-derived refs PLUS the top ranked_signals inside each question lens — and
+      // hydrate them all with headline/summary text in one bounded lookup, so no served row
+      // is a bare ID-without-text.
+      const RANKED_HYDRATE_PER_LENS = 25
+      const lensRankedIds: string[] = []
+      for (const lens of lensRes.rows as Array<Record<string, unknown>>) {
+        const arj = lens['all_relevant_ranked_jsonb']
+        const ranked = arj && typeof arj === 'object' && !Array.isArray(arj)
+          ? (arj as Record<string, unknown>)['ranked_signals']
+          : arj
+        if (Array.isArray(ranked)) {
+          for (const rs of ranked.slice(0, RANKED_HYDRATE_PER_LENS)) {
+            const sid = (rs as Record<string, unknown>)?.['signal_id']
+            if (typeof sid === 'string' && sid) lensRankedIds.push(sid)
+          }
+        }
+      }
+      const textById = await hydrateSignalText(
+        chart_id, ayanamsha_id, [...signalRefsArray, ...lensRankedIds],
+      )
+
+      // Hydrated ref rows (replaces the bare id list; signal_id_refs kept for back-compat).
+      const signalRefs = signalRefsArray.map(sid => textById.get(sid) ?? {
+        signal_id: sid, headline: null, summary: null, signature_tier: null,
+      })
+
+      // Enrich each lens's ranked_signals objects in place with headline/summary/tier.
+      const hydratedLenses = (lensRes.rows as Array<Record<string, unknown>>).map(lens => {
+        const arj = lens['all_relevant_ranked_jsonb']
+        if (arj && typeof arj === 'object' && !Array.isArray(arj)) {
+          const arjObj = arj as Record<string, unknown>
+          const ranked = arjObj['ranked_signals']
+          if (Array.isArray(ranked)) {
+            const enriched = ranked.map(rs => {
+              const r = rs as Record<string, unknown>
+              const t = typeof r['signal_id'] === 'string' ? textById.get(r['signal_id'] as string) : undefined
+              return t ? { ...r, headline: t.headline, summary: t.summary, signature_tier: t.signature_tier } : r
+            })
+            return { ...lens, all_relevant_ranked_jsonb: { ...arjObj, ranked_signals: enriched } }
+          }
+        }
+        return lens
+      })
+
       // E-2 freshness contract: re-derive DEFECT-001 live for this chart rather than
       // restating the historical "91.5% orphan" literal.
       const defect001 = await deriveDefect001Note(chart_id)
@@ -275,8 +505,18 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           chart_id,
           ayanamsha_id,
           domain,
-          question_lenses:        lensRes.rows,
+          // WP-1.2β (LCA-14 / R-44): THE domain-discriminated ranked surface. Unlike the stored
+          // lens ranked_signals (sorted by domain-agnostic global salience → ~95% identical
+          // across domains), these are re-ranked by the domain's graha×bhāva×varga overlay, so
+          // wealth/relationship/moksha/etc. surface genuinely different signals. Each row carries
+          // an inline `rationale` (ND-W1.2). This is the surface to read for a domain-SPECIFIC view.
+          ranked_signals:         discriminated.signals,
+          ranked_signals_note:    discriminated.filtered_by
+            ? `Composite-ranked over ${discriminated.pool_size} '${discriminated.filtered_by}'-tagged candidates with the ${domain} overlay (graha×bhāva×varga). See each row's rationale.`
+            : `'${domain}' is not a stored signal domain-tag; ranked whole-chart (${discriminated.pool_size} candidates) purely by the ${domain} classical overlay (graha×bhāva×varga). See each row's rationale.`,
+          question_lenses:        hydratedLenses,
           cdlm_cells:             cdlmCells,
+          signal_refs:            signalRefs,
           signal_id_refs:         signalRefsArray,
           signal_id_refs_total:   signalRefsTotal,
           signal_id_refs_capped:  signalRefsArray.length < signalRefsTotal,
@@ -297,6 +537,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
             defect_001: defect001,
             // Legacy string field retained (additive) — sourced from the same live derivation.
             defect_001_note: defect001.note,
+            hydration_note: `WP-1.2(e): signal_refs and lens ranked_signals carry headline/summary ` +
+              `text (hydrated from bodha_msr_signals); ${textById.size} id(s) resolved to text. ` +
+              `signature_tier on hydrated rows reflects the WP-1.2(d) serving cap.`,
             bounding_note: is_full
               ? `response_format=full: shared_signal_ids_array included (capped ${MAX_IDS_PER_CELL_FULL}/cell), signal_id_refs capped at ${max_signal_refs}.`
               : `response_format=default: shared_signal_ids_array omitted from cells (use shared_signal_count); signal_id_refs capped at ${max_signal_refs} of ${signalRefsTotal} total.`,

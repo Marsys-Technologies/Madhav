@@ -391,15 +391,15 @@ describe('G8 — Resources (9) and prompts (3) registered', () => {
     }
   }
 
-  it('registerPrompts() registers exactly 3 prompts', async () => {
+  it('registerPrompts() registers exactly 4 prompts (3 R5 + demand_side_chase WP-1.6)', async () => {
     const { registerPrompts } = await import('../prompts/index.js')
     const srv = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerPrompts(srv as any)
-    expect(srv._prompts.length).toBe(3)
+    expect(srv._prompts.length).toBe(4)
   })
 
-  it('3 prompts are: orient_chart, assess_domain, find_active_yogas', async () => {
+  it('4 prompts are: orient_chart, assess_domain, find_active_yogas, demand_side_chase', async () => {
     const { registerPrompts } = await import('../prompts/index.js')
     const srv = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -407,6 +407,7 @@ describe('G8 — Resources (9) and prompts (3) registered', () => {
     expect(srv._prompts).toContain('orient_chart')
     expect(srv._prompts).toContain('assess_domain')
     expect(srv._prompts).toContain('find_active_yogas')
+    expect(srv._prompts).toContain('demand_side_chase')
   })
 
   it('registerResources() registers exactly 9 resources (+ chart_snapshot template)', async () => {
@@ -468,12 +469,12 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
    *
    * If this test fails, REGISTERED_TOOL_COUNT in server.ts is stale.
    */
-  it('counted tools match REGISTERED_TOOL_COUNT=45', async () => {
+  it('counted tools match REGISTERED_TOOL_COUNT=57', async () => {
     // Import all registration functions
     const [
       { registerL0BrahmagyanTools },
       { registerEphemerisTools },
-      { registerComputeNatalPositionsTool, registerQueryDashaPeriodsTool, registerQuerySpecialLagnasTool },
+      { registerComputeNatalPositionsTool, registerQuerySpecialLagnasTool },
       { registerHolisticBundleRetrievalTool },
       { registerKalaTemporalRetrievalTool },
       { registerRemedyTools },
@@ -516,7 +517,9 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
     registerL0BrahmagyanTools(srv)
     registerEphemerisTools(srv)
     registerComputeNatalPositionsTool(srv)
-    registerQueryDashaPeriodsTool(srv)
+    // WP-1.3(h) / F-WP13-testcleanup: registerQueryDashaPeriodsTool RETIRED (no longer
+    // exported by tools/retrieval/pyhora_natal.ts) — dangling call scrubbed. The dasha
+    // serving path is now the D7 registry bridge + ganita_dasha_periods_get alias.
     registerQuerySpecialLagnasTool(srv)
     registerHolisticBundleRetrievalTool(srv, () => principal)
     registerKalaTemporalRetrievalTool(srv)
@@ -531,8 +534,11 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
     registerChartSelectionTools(srv, principal)
     registerSessionTools(srv, principal)
 
-    // The declared constant
-    const REGISTERED_TOOL_COUNT = 45
+    // The declared constant — WP-1.3(h)/F-WP13-testcleanup reconciled to post-B2 actual
+    // (was 45, pre-B2). The subset wired here grew because registry_bridge now registers
+    // 25 tools (WP-1.3 a/f/i added computed-but-unserved assets); the retired
+    // registerQueryDashaPeriodsTool (−1) was removed. Measured = 57.
+    const REGISTERED_TOOL_COUNT = 57
     expect(toolCount).toBe(REGISTERED_TOOL_COUNT)
   })
 })
@@ -590,7 +596,10 @@ describe('V6 — Invariants: tool names snake_case, no hyphens', () => {
       expect(name).toMatch(/^[a-z][a-z0-9_]*$/)
       expect(name).not.toContain('-')
     }
-    expect(toolNames.length).toBe(12)
+    // WP-1.3(h) / F-WP13-testcleanup: post-B2 the D7 registry bridge registers 25 tools
+    // (WP-1.3 a/f/i lanes added the computed-but-unserved assets + dedup surface).
+    // Was 12 (stale pre-B2 count).
+    expect(toolNames.length).toBe(25)
   })
 
   it('all chart-selection tool names are snake_case', async () => {

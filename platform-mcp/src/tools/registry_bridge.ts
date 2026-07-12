@@ -89,6 +89,36 @@ function normalizeAyanamsha(id?: string): string {
   return AYANAMSHA_ALIAS[id] ?? id
 }
 
+// WP-1.3(f) / LCA-3 (ayanamsha reachability). chart_facts stores SIX distinct ayanamsha_id
+// values — five sidereal (lahiri_chitrapaksha, krishnamurti, raman, surya_siddhanta_classical,
+// true_chitra) plus INVARIANT (ayanamsha-independent facts). The shared `normalizeAyanamsha`
+// above COLLAPSES `true_chitra`/`true_citra` -> `lahiri_chitrapaksha` (AYANAMSHA_ALIAS), which
+// made true_chitra's own 27,112-row dataset UNREACHABLE via query_chart_facts (the tool
+// effectively served ≤5 of 6 ayanamshas, and the two Chitra-family names both bound to lahiri).
+// This resolver is SCOPED to query_chart_facts (it must not change the shared normalizer used
+// by the dasha/signals tools, which are a parallel lane): it maps convenience aliases to the
+// canonical id WITHOUT collapsing any two distinct stored ayanamshas together, so every one of
+// the 6 is reachable. Unknown ids pass through unchanged (the handler then returns an honest
+// empty result rather than silently querying lahiri).
+const CHART_FACTS_AYANAMSHA_ALIAS: Record<string, string> = {
+  lahiri:                    'lahiri_chitrapaksha',
+  lahiri_chitra:             'lahiri_chitrapaksha',
+  lahiri_chitrapaksha:       'lahiri_chitrapaksha',
+  kp:                        'krishnamurti',
+  krishnamurti:              'krishnamurti',
+  raman:                     'raman',
+  surya_siddhanta:           'surya_siddhanta_classical',
+  surya_siddhanta_classical: 'surya_siddhanta_classical',
+  true_chitra:               'true_chitra',
+  true_citra:                'true_chitra',
+  chitra:                    'true_chitra',
+  invariant:                 'INVARIANT',
+}
+export function resolveChartFactsAyanamsha(id?: string): string {
+  if (!id) return DEFAULT_AYANAMSHA
+  return CHART_FACTS_AYANAMSHA_ALIAS[id] ?? CHART_FACTS_AYANAMSHA_ALIAS[id.toLowerCase()] ?? id
+}
+
 // ── Platform primitive caller ─────────────────────────────────────────────────
 
 /**
@@ -695,7 +725,24 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ((responseData['top_signals'] as Record<string, unknown>[]) ?? [])
             .map(s => s['citation_human']).filter((v): v is string => typeof v === 'string' && v.length > 0)
         ))
-        const grounding = { fact_ids: [], citations, grounding_score: null }
+        // WP-1.2(a) (LCA-14, §N.5): populate envelope grounding.fact_ids from the
+        // resolvable L1 fact_ids the query_ucd handler already surfaced (content.grounding
+        // + entity_profiles[].fact_ids). These are the exact ids verified present in
+        // chart_facts by the handler — never fabricated (B.10). Falls back to the union of
+        // entity_profiles[].fact_ids when a handler predates the grounding block.
+        const handlerGrounding = responseData['grounding'] as Record<string, unknown> | undefined
+        const groundingFactIds = new Set<string>()
+        const handlerFactIds = handlerGrounding?.['fact_ids']
+        if (Array.isArray(handlerFactIds)) {
+          for (const fid of handlerFactIds) if (typeof fid === 'string' && fid) groundingFactIds.add(fid)
+        }
+        if (groundingFactIds.size === 0) {
+          for (const p of entityProfiles) {
+            const pf = (p as Record<string, unknown>)['fact_ids']
+            if (Array.isArray(pf)) for (const fid of pf) if (typeof fid === 'string' && fid) groundingFactIds.add(fid)
+          }
+        }
+        const grounding = { fact_ids: Array.from(groundingFactIds), citations, grounding_score: null }
 
         const judgment_flags: string[] = []
         if (entityProfiles.length === 0) judgment_flags.push('zero_entity_profiles')
@@ -1117,9 +1164,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date YYYY-MM-DD'),
       date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date YYYY-MM-DD'),
+      as_of: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe(
+        'Point-in-time date YYYY-MM-DD — returns only windows active AS OF this date; overrides date_from/date_to.'
+      ),
       include_convergence: z.boolean().optional().describe('Include convergence windows (default: true)'),
     },
-    async ({ chart_id, ayanamsha_id, date_from, date_to, include_convergence }) => {
+    async ({ chart_id, ayanamsha_id, date_from, date_to, as_of, include_convergence }) => {
       if (!chart_id) return errorOutput('get_temporal_windows', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before temporal domain query (S1: parallelized)
@@ -1127,7 +1177,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L3/query_temporal_activation',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), date_from, date_to, include_convergence: include_convergence ?? true },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), date_from, date_to, ...(as_of ? { as_of } : {}), include_convergence: include_convergence ?? true },
             chart_id, principal
           ),
         ])
@@ -1292,12 +1342,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── assess_marriage (D8 L-DOMAIN reconciled bundle) ──────────────────────
   server.tool(
     'assess_marriage',
-    'Reconciled marriage/relationship assessment for a chart. Orchestrates the 7th lord + Venus kāraka + D9 + bhāvat-bhāva analysis across the Bodha synthesis layer (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, activating dasha window, and classical citations for the relationship domain. judgment_flags marks inferences requiring acharya validation. chart_id is required — never defaulted.',
+    'Reconciled marriage/relationship assessment for a chart. Orchestrates the 7th lord + Venus kāraka + D9 + bhāvat-bhāva analysis across the Bodha synthesis layer (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, activating dasha window, and classical citations for the relationship domain. judgment_flags marks inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_marriage_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
       if (!chart_id) return errorOutput('assess_marriage', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1305,7 +1357,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_marriage',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              ...(max_signals_per_lens != null ? { max_signals_per_lens } : {}),
+              ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
         ])
@@ -1320,12 +1374,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── assess_career (D8 L-DOMAIN reconciled bundle) ────────────────────────
   server.tool(
     'assess_career',
-    'Reconciled career/vocation assessment for a chart. Orchestrates the 10th lord + Saturn kāraka + D10 + yoga detection + activating dasha window. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    'Reconciled career/vocation assessment for a chart. Orchestrates the 10th lord + Saturn kāraka + D10 + yoga detection + activating dasha window. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_career_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
       if (!chart_id) return errorOutput('assess_career', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1333,7 +1389,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_career',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              ...(max_signals_per_lens != null ? { max_signals_per_lens } : {}),
+              ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
         ])
@@ -1348,12 +1406,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── assess_health (D8 L-DOMAIN reconciled bundle) ────────────────────────
   server.tool(
     'assess_health',
-    'Reconciled health/vitality assessment for a chart. Orchestrates the 1st + 6th + 8th lords + Sun kāraka + afflictions + D1/D6 analysis. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    'Reconciled health/vitality assessment for a chart. Orchestrates the 1st + 6th + 8th lords + Sun kāraka + afflictions + D1/D6 analysis. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_health_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
       if (!chart_id) return errorOutput('assess_health', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1361,7 +1421,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_health',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              ...(max_signals_per_lens != null ? { max_signals_per_lens } : {}),
+              ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
         ])
@@ -1376,12 +1438,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── assess_wealth (D8 L-DOMAIN reconciled bundle) ────────────────────────
   server.tool(
     'assess_wealth',
-    'Reconciled wealth/prosperity assessment for a chart. Orchestrates the 2nd + 11th lords + Jupiter kāraka + dasha activation window + classical citations. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    'Reconciled wealth/prosperity assessment for a chart. Orchestrates the 2nd + 11th lords + Jupiter kāraka + dasha activation window + classical citations. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_wealth_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
       if (!chart_id) return errorOutput('assess_wealth', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1389,7 +1453,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_wealth',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              ...(max_signals_per_lens != null ? { max_signals_per_lens } : {}),
+              ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
         ])
@@ -1525,7 +1591,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'EAV-crosstab lookup over the chart_facts table (27,554 rows per chart, single ayanamsha per call). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape="pivoted" returns ONE wide row per fact_subject (e.g. lagna -> {sign, sign_lord, house_d1, pada, longitude_sidereal}) instead of raw EAV rows — shape="rows" returns the flat form. The `about` facet lets you address the chart astrologically instead of guessing categories: about="lagna", about={graha:"Saturn"}, about={bhava:10} (the house itself), about={house_lord:10} (resolves the Nth house rashi from the lagna + classical BPHS rulership and returns the resolved lord graha\'s facts — the resolution chain is served back in `about_resolution`). Returns fact_id references for downstream drill. B.11-floor-injected. chart_id is required — never defaulted.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      ayanamsha_id: z.string().optional().describe(
+        "Ayanamsha to query. Any of the 6 stored ayanamshas is reachable: 'lahiri_chitrapaksha' " +
+        "(default), 'krishnamurti' (alias 'kp'), 'raman', 'surya_siddhanta_classical', " +
+        "'true_chitra' (alias 'true_citra'), 'INVARIANT'. One ayanamsha per call."
+      ),
       about: z.union([
         z.string(),
         z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
@@ -1539,18 +1609,22 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       nakshatra: z.string().optional().describe('Nakshatra name filter.'),
       divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10").'),
       keyword: z.string().optional().describe('Free-text keyword search over fact_key/fact_value_text.'),
+      fact_subject: z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP", "HOUSE_10"). Comma-separated for multiple.'),
       shape: z.enum(['pivoted', 'rows']).optional().describe('"pivoted" (default, one wide row per subject) or "rows" (flat EAV rows).'),
       limit: z.number().int().min(1).max(1000).optional().describe('Max subjects/rows to return (default: 100, max: 1000).'),
       offset: z.number().int().min(0).optional().describe('Pagination offset — rows (shape="rows") or subjects (shape="pivoted") to skip before the next `limit` (default: 0).'),
     },
-    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, shape, limit, offset }) => {
+    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, fact_subject, shape, limit, offset }) => {
       if (!chart_id) return errorOutput('query_chart_facts', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/chart_facts_query',
           {
             chart_id,
-            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            // WP-1.3(f)/LCA-3: query_chart_facts-scoped resolver so all 6 stored ayanamshas
+            // (incl. true_chitra) are reachable — the shared normalizeAyanamsha collapses
+            // true_chitra -> lahiri, hiding a full dataset.
+            ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id),
             ...(about !== undefined ? { about } : {}),
             ...(category ? { category } : {}),
             ...(planet ? { planet } : {}),
@@ -1559,6 +1633,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             ...(nakshatra ? { nakshatra } : {}),
             ...(divisional_chart ? { divisional_chart } : {}),
             ...(keyword ? { keyword } : {}),
+            ...(fact_subject ? { fact_subject } : {}),
             ...(shape ? { shape } : {}),
             ...(limit != null ? { limit } : {}),
             ...(offset != null ? { offset } : {}),
@@ -1660,9 +1735,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
   // ── judgment_query (R5 W3, design §28.1) ──────────────────────────────────
   // marsys://tool/L-JUDGMENT/judgment_query — the bhava-adhyaya classical checklist
-  // recipe as one instrument, generalizing apex_marriage_assess/apex_career_assess/
-  // apex_health_assess/apex_wealth_assess (design §29 fold-in). Those apex_* aliases
-  // are UNCHANGED and remain fully answerable — no breaking removal (brief §W3 gate).
+  // recipe as one instrument, generalizing the assess_marriage/assess_career/
+  // assess_health/assess_wealth domain tools (design §29 fold-in). The redundant
+  // apex_*_assess aliases were retired per WP-1.3(i)/LCA-11; the canonical assess_*
+  // tools remain fully answerable (same capability, richer output).
   server.tool(
     'judgment_query',
     'THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — the acharya\'s ' +
@@ -1676,9 +1752,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'doshas · timing hooks (current + upcoming dasha windows for the lord/karaka) · a deterministic ' +
     'promise-register verdict (never an LLM judgment or a probability) · a classical-units ' +
     'completeness RECEIPT (design §28.6): {bhava, bhavesha, karaka, from_moon, varga_confirmed, ' +
-    'yogas_checked, bhanga_checked, timing_anchored}. Generalizes apex_marriage_assess/' +
-    'apex_career_assess/apex_health_assess/apex_wealth_assess — those tools remain available ' +
-    'unchanged; this is the richer, shastra-shaped successor. response_format=\'v3\' (opt-in; ' +
+    'yogas_checked, bhanga_checked, timing_anchored}. Generalizes assess_marriage/' +
+    'assess_career/assess_health/assess_wealth (the redundant apex_*_assess aliases were ' +
+    'retired per WP-1.3(i)/LCA-11); this is the richer, shastra-shaped successor. response_format=\'v3\' (opt-in; ' +
     'default \'legacy\') returns the R5 unified envelope.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
