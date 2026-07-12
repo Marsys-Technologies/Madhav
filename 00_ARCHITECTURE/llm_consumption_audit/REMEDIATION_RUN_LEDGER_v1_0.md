@@ -585,7 +585,21 @@ change (no HALT). Same pattern will apply to W2.
   "marriage universe" composes 30,754-signal universe → 50 bounded exemplars/5 families, 51 ledger signal_ids
   resolve, NO flat top-K wall; W3-deepen seams documented (native contradictions=0=LCA-6/WP-2.2 disclosed). 12/12,
   tsc 0, eslint 0, registry regression 447 pass. 1 surgical import in catalog.ts. **Blind verifier DISPATCHED**
-  (no-flat-wall + ledger-resolvability + honest-disclosure + domain-sanity + envelope conformance). **WP-1.8 still RUNNING.**
+  (no-flat-wall + ledger-resolvability + honest-disclosure + domain-sanity + envelope conformance).
+  ✅ **WP-1.4 CONFIRMED-FIXED + MERGED** (`25268719`). budget+per-family cap enforced (verifier couldn't dump);
+  marriage universe 30,754→50 disclosed; signal_ids resolve 10/10; thin stages disclosed not fabricated; family
+  sets classically sound; scope clean, tsc 0, 447-regression pass. **Follow-up (§4):** synthesis ledger fact_ids
+  empty — `query_domain_reading.ranked_signals` doesn't project `constituent_facts_array` (signal_ids resolve to
+  L1 one hop away) → small serving enhancement (candidate WP-1.6/W3).
+  - **WP-1.8 IMPL COMPLETE** → branch `worktree-agent-ac16ca57acb5e1fb4` (`6c287068`; STEP-0 on integration, R-38
+    present). ALL SERVING-SIDE (no writer/migration, no HALT). R-43: re-derive dasha-lord dignity+shadbala from
+    chart_facts (native 100% NULL + 2nd bug shadbala keyed 2-letter vs display-name); served==chart_facts 0 mismatch;
+    Abhinandan 39 stale dignities corrected incl. register's Saturn-"own"-in-Scorpio→neutral. R-46: BPHS-grounded
+    varga term → native marriage `mixed`→`contested` (Venus 7th-lord/kāraka, neutral D1/debilitated D9); exposes
+    d1_score/varga_term/varga_moved_verdict; character(op-varga D1) skips (no double-count). Multi-formula AVAYOGI
+    both served w/ formula_id. Cross-surface assess↔get_signals 0/10→10/10 (domain) + disclosure. 13/13 + regressions,
+    tsc 0, eslint 0. **Blind verifier DISPATCHED** (jyotish varga-doctrine DIRECTION + data-plane §N.5 vs chart_facts).
+    Base f7a17e06 (behind 1.3j/1.4 by disjoint files) → rebase-if-needed at merge.
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
