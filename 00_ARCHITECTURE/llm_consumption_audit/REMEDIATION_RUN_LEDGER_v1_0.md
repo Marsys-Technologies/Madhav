@@ -637,13 +637,14 @@ this ledger guarantee lossless continuation. Within-rules, non-scope-changing �
 
 ## §7 — W2 WRITER WAVE (dispatched 2026-07-13)
 
-### §7.0 — ADJ-1 SUPERSEDED for W2+ (conductor)
-Given accumulated conductor context after W0+W1 (16 lanes + close), reverting to the native's preferred
-fresh-context **wave-conductor delegation** (§6) for W2+: a fresh-context W2 wave-conductor sub-agent re-grounds
-from ledger+plan, orchestrates the W2 writer lanes per the corrected DAG (dispatch → blind writer-conformance
-verify → conductor-owned merge into `integration/w2-writers`), and reports wave-complete state. Top conductor
-(me) stays thin: W2 close (PR/deploy) + W3 dispatch + ledger. Wave-conductor writes ledger state as it goes so
-a stall resumes losslessly. §8.6 HALTs escalate to top conductor.
+### §7.0 — ADJ-1 RETAINED for W2 (conductor decision, reconsidered)
+Considered delegating W2 to a fresh-context wave-conductor (§6 context-hygiene). **Retained direct thin-dispatch
+(ADJ-1)** for W2 because: W2 is high-stakes (prod schema MIGRATIONS + writers feeding the W3 rebuild), and this
+session's observed agent fragility (multiple API-drop/stall events on long tasks) makes a nested wave-conductor
+that could drop mid-migration a WORSE failure mode than conductor context growth (which the harness summarizes +
+the ledger makes resumable). Merges + migration application stay under the top conductor's reliable control; each
+implementation lane + verifier IS a fresh re-grounded context (fresh-context intent satisfied at lane granularity).
+Revisit if context degradation becomes acute.
 
 ### §7.1 — W2 corrected DAG (native) + pre-dispatch intersection
 - **Fully parallel from start (disjoint writer families):** WP-2.1 (ka_ activation-date writer, R-45) · WP-2.4
