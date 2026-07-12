@@ -580,6 +580,12 @@ change (no HALT). Same pattern will apply to W2.
   dependency (1.4 skeleton independent of 1.8). Both base on integration (has WP-1.5 R-38). Disjoint from the
   still-verifying WP-1.3j (bodha/phala) too. **Verdict: dispatch CONCURRENTLY (separate worktrees, one message).**
 **Dispatched 2026-07-13.**
+- **WP-1.4 IMPL COMPLETE** → branch `worktree-agent-a58e2c38e1d66c9c2` (`676bef80`). New `synthesis/` module served as
+  `synthesis/compose_large_n`: intent(P-10)→pre-aggregated-plan→map-reduce+running-budget→narrative+ledger. Worked:
+  "marriage universe" composes 30,754-signal universe → 50 bounded exemplars/5 families, 51 ledger signal_ids
+  resolve, NO flat top-K wall; W3-deepen seams documented (native contradictions=0=LCA-6/WP-2.2 disclosed). 12/12,
+  tsc 0, eslint 0, registry regression 447 pass. 1 surgical import in catalog.ts. **Blind verifier DISPATCHED**
+  (no-flat-wall + ledger-resolvability + honest-disclosure + domain-sanity + envelope conformance). **WP-1.8 still RUNNING.**
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
