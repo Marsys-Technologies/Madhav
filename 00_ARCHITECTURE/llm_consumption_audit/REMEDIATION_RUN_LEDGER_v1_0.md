@@ -668,7 +668,18 @@ Revisit if context degradation becomes acute.
   NEW §N.5 CI validator `msr_referential_integrity.py` (self-test + mutation-proven + ci.yml gate). No migration
   (cols exist). FROZEN orchestrator untouched, no HALT. 24/24 + 84/84. **Blind verifier DISPATCHED** (conformance
   + §N.5 validator mutation + flood-traceability + no-false-cap + no-fabrication). Data-verify at W3.
-- **WP-2.1** (ka activation dates) + **WP-2.5** (never-computed + ayurdaya + L0 seed) still RUNNING.
+  ✅ **CONFIRMED-FIXED + MERGED** (`48834a13`) — orchestrator conformant, §N.5 validator mutation-proven +
+  hard-CI-gated (governance-gates, no continue-on-error), flood all-ids-cited, D1 uncapped, 100% resolution
+  no-fabrication; 24/24 + regression. Validator self-test confirmed on merge result. **W3 data-verify pending.**
+- **WP-2.1 IMPL COMPLETE** → branch `worktree-agent-ab1d86324e2124b7d` (`001a1289`). Root cause: writers dated
+  off single `kala_convergence.peak_date` (110/66,836); `ka_yojaka` bound `constituent_lords` YOGA-class-only.
+  Fix: resolve predicate lords vs `chart_dashas` Vimśottarī timeline (dasha period = window, peak refines; every
+  date traces to chart_dashas, no fabrication); ka_yojaka enriches lords from sign-lordship/sāḍe-sātī. Coverage
+  0.16%→~64% (tail = WP-2.4 domain). **Reusable helper `services/ka_temporal/date_resolver.py` for WP-2.3-temporal.**
+  No migration. FROZEN orchestrator preserved, no HALT. 61 new + 381 L3 (2 pre-existing TestProdDB). **Blind
+  verifier DISPATCHED** (conformance + deterministic-date-trace + lord-mapping + helper quality + coverage honesty).
+  Data-verify at W3. **On merge → unblocks WP-2.3-temporal (consumes the merged helper).**
+- **WP-2.5** (never-computed + ayurdaya + L0 seed) still RUNNING.
 
 ## §4 — HALT / disagreement register + follow-ups (append-only)
 
