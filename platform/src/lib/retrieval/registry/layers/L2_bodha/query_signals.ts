@@ -564,6 +564,23 @@ export const querySignalsCapability: CapabilityDescriptor = {
         truncated,
         ...(truncated_from !== undefined ? { truncated_from } : {}),
         ranking_basis,
+        // WP-1.8 (cross-surface inconsistency): when NO domain is given, this surface ranks
+        // chart-wide by salience — a DIFFERENT ordering than the domain-scoped composite ranking
+        // the assess_*/judgment surfaces use. Disclosed here so a consumer isn't misled into
+        // reading a salience top-10 as "the answer" for a domain question and finding it disagrees
+        // with assess_*. Pass `domain` to reproduce the assess_* / composite ordering exactly.
+        cross_surface: domain
+          ? {
+              ranking_mode: (ranking_basis['mode'] as string) ?? 'composite_4d',
+              agrees_with: `assess_${domain === 'relationship' ? 'marriage' : domain} top_10_composite (same composite ranking path)`,
+            }
+          : {
+              ranking_mode: 'salience_fallback',
+              caveat:
+                'No domain given → chart-wide salience ranking. This will NOT match assess_*/judgment ' +
+                'domain rankings (which use domain-scoped composite ranking). Pass `domain` to reconcile ' +
+                'the surfaces; the salience top-k is not a domain-relevance answer.',
+            },
         filters:  { domain, source_subsystem, signal_type_class, min_salience, lel_enabled, top_k, offset, paradigm: paradigm ?? null,
           projection: projection.serve === null ? '*' : projection.serve },
         semantic_fallback: semantic_query ? 'Semantic embedding not available at query time — salience-ranked fallback used. Full vector search requires Vertex embedding of the query string.' : undefined,
