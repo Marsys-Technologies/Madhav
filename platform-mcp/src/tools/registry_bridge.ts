@@ -1164,9 +1164,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date YYYY-MM-DD'),
       date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date YYYY-MM-DD'),
+      as_of: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe(
+        'Point-in-time date YYYY-MM-DD — returns only windows active AS OF this date; overrides date_from/date_to.'
+      ),
       include_convergence: z.boolean().optional().describe('Include convergence windows (default: true)'),
     },
-    async ({ chart_id, ayanamsha_id, date_from, date_to, include_convergence }) => {
+    async ({ chart_id, ayanamsha_id, date_from, date_to, as_of, include_convergence }) => {
       if (!chart_id) return errorOutput('get_temporal_windows', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before temporal domain query (S1: parallelized)
@@ -1174,7 +1177,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L3/query_temporal_activation',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), date_from, date_to, include_convergence: include_convergence ?? true },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), date_from, date_to, ...(as_of ? { as_of } : {}), include_convergence: include_convergence ?? true },
             chart_id, principal
           ),
         ])
