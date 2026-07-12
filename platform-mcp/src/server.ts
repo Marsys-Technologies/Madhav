@@ -469,15 +469,16 @@ app.get('/mcp', (_req: Request, res: Response) => {
 //   ref_transit_rules_get
 // P1 Group 3 — synthesis tools (registerP1SynthesisTools):        3
 //   mimamsa_insight_get, bodha_discoveries_get, kala_life_arc_get
-// P1 Phase-1 naming aliases (registerP1AliasTools):               49
-//   D7/D8 aliases (21): bodha_chart_digest_get, bodha_domain_reading_get,
+// P1 Phase-1 naming aliases (registerP1AliasTools):               45
+//   D7/D8 aliases (17): bodha_chart_digest_get, bodha_domain_reading_get,
 //     bodha_signals_get, bodha_graph_traverse_get, ganita_positions_get,
 //     ganita_dashas_get, kala_windows_get, kala_projections_get,
 //     ref_classical_citation_get, bodha_remedies_get, bodha_remedies_search,
-//     bodha_quality_get, catalog_assets_list, apex_marriage_assess,
-//     apex_career_assess, apex_health_assess, apex_wealth_assess,
+//     bodha_quality_get, catalog_assets_list,
 //     kala_yoga_activation_get, bodha_graph_subgraph_get,
 //     ganita_chart_facts_get, ref_vector_search
+//     (apex_marriage/career/health/wealth_assess RETIRED — WP-1.3(i)/LCA-11
+//      duplicate-family dedup; capability preserved on canonical assess_* tools)
 //   L0 Ephemeris aliases (5): ref_planet_position_get, ref_planet_transit_get,
 //     ref_aspects_at_time_get, ref_retrograde_periods_get, ref_ephemeris_year_get
 //   L0 Brahmagyan aliases (5): ref_entity_resolve, ref_entities_list,
@@ -494,8 +495,8 @@ app.get('/mcp', (_req: Request, res: Response) => {
 //   DEFERRED (6): recall_session→session_recall, list_my_sessions→session_list,
 //     list_my_charts→catalog_charts_list, select_chart→catalog_chart_select,
 //     holistic_bundle_chart_facts→bodha_bundle_get, kala_temporal_bundle→kala_bundle_get
-// ── TOTAL (BA-P1 recount 2026-07-03): ─────────────────────────────           121
-const REGISTERED_TOOL_COUNT = 121
+// ── TOTAL (WP-1.3(i) recount 2026-07-12: −4 apex_*_assess retired): ───        117
+const REGISTERED_TOOL_COUNT = 117
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({

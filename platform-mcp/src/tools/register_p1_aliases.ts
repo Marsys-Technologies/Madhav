@@ -520,41 +520,21 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }
   )
 
-  // assess_marriage → apex_marriage_assess
-  regAlias(server, 'apex_marriage_assess',
-    'Apex domain assess: marriage/relationship (same as assess_marriage)',
-    'marsys://tool/L-DOMAIN/assess_marriage',
-    {
-      max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
-      max_contradictions:    z.number().int().min(1).max(100).optional(),
-    }, principal)
-
-  // assess_career → apex_career_assess
-  regAlias(server, 'apex_career_assess',
-    'Apex domain assess: career/profession (same as assess_career)',
-    'marsys://tool/L-DOMAIN/assess_career',
-    {
-      max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
-      max_contradictions:    z.number().int().min(1).max(100).optional(),
-    }, principal)
-
-  // assess_health → apex_health_assess
-  regAlias(server, 'apex_health_assess',
-    'Apex domain assess: health/longevity (same as assess_health)',
-    'marsys://tool/L-DOMAIN/assess_health',
-    {
-      max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
-      max_contradictions:    z.number().int().min(1).max(100).optional(),
-    }, principal)
-
-  // assess_wealth → apex_wealth_assess
-  regAlias(server, 'apex_wealth_assess',
-    'Apex domain assess: wealth/finance (same as assess_wealth)',
-    'marsys://tool/L-DOMAIN/assess_wealth',
-    {
-      max_signals_per_lens:  z.number().int().min(1).max(50).optional(),
-      max_contradictions:    z.number().int().min(1).max(100).optional(),
-    }, principal)
+  // ── WP-1.3(i) / LCA-11 — apex_*_assess duplicate family RETIRED (§7.3 disposition) ──
+  // The four apex_marriage_assess / apex_career_assess / apex_health_assess /
+  // apex_wealth_assess tools were strict near-duplicates of the canonical assess_marriage /
+  // assess_career / assess_health / assess_wealth tools (registry_bridge.ts): BOTH families
+  // resolved to the SAME registry URI (marsys://tool/L-DOMAIN/assess_*), presenting the
+  // consumer two redundant tools per domain (LCA-11). The apex_* variants were also INFERIOR
+  // — they carried no orientation_context (B.11 frame) that the canonical assess_* tools
+  // pre-fetch and attach.
+  //
+  // Disposition: apex_*_assess RETIRED here; the underlying capability remains fully reachable
+  // via the canonical assess_marriage/career/health/wealth tools (same URI, richer output).
+  // NO capability is dropped — the ONLY apex_*-exclusive surface was the two tuning params
+  // (max_signals_per_lens / max_contradictions), which are MIGRATED onto the canonical
+  // assess_* tools in registry_bridge.ts so assess_* is now a strict superset of the retired
+  // apex_* surface. See REMEDIATION_RUN_LEDGER / this run's report for the §7.3 record.
 
   // yoga_activation_by_dasha → kala_yoga_activation_get
   // R-18 fix: the primitive (register_d8_assess_domain.ts::yogaActivationByDashaCapability) reads
