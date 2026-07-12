@@ -107,3 +107,6 @@ python-sidecar/venv/
 
 # Orphaned root-level lock file — no root package.json exists; per-package locks tracked in their own dirs
 /package-lock.json
+
+# Accuracy-harness output dumps (generated per-chart result JSON; do not commit new ones — CLASS-C ruling 2026-07-12)
+/accuracy/*.json
