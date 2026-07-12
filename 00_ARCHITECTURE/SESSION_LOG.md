@@ -31794,3 +31794,73 @@ session_close:
 ```
 
 *End of LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 entry — 2026-07-12.*
+
+---
+
+## LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 — Remediation program kickoff + W0 (WP-0.1 / LCA-17) close
+
+```yaml
+session_open:
+  session_id: LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12
+  cowork_thread_name: "Madhav — LLM Consumption Remediation (W0: LCA-17 isolation)"
+  agent_name: claude-opus-4-8[1m]
+  agent_version: claude-opus-4-8[1m]
+  step_number_or_macro_phase: REMEDIATION-W0
+  predecessor_session: LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12
+  role: >
+    Program Conductor for the LLM Consumption Remediation program (REMEDIATION_PLAN_v3_0,
+    root CLAUDECODE_BRIEF.md ACTIVE). Full session_open handshake with fingerprints is embedded
+    in llm_consumption_audit/REMEDIATION_RUN_LEDGER_v1_0.md §2 Session 1.
+  declared_scope:
+    may_touch: [platform/**, platform/migrations/**, 00_ARCHITECTURE/llm_consumption_audit/**,
+      00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md, 00_ARCHITECTURE/CURRENT_STATE_v1_0.md,
+      00_ARCHITECTURE/SESSION_LOG.md, "CLAUDECODE_BRIEF.md (status field only)"]
+    must_not_touch: [platform/python-sidecar/pipeline/orchestrator/core/** (FROZEN),
+      llm_consumption_audit/deliverables/findings.jsonl, llm_consumption_audit/state/**,
+      llm_consumption_audit/LLM_CONSUMPTION_AUDIT_v1_0.md, llm_consumption_audit/GATE_RATIFICATION_v1_0.md,
+      CLAUDE.md, 01_FACTS_LAYER/**, "eval battery grading criteria"]
+  red_team_due: false   # W4 re-audit is the program's red-team (plan §M cadence at wave closes)
+```
+
+**Body.** Conductor self-provisioned (repo sync main==origin/main clean; read-only probes: DB via
+cloud-sql-proxy→prod OK, gh/gcloud/CI/Cloud Run authed; run ledger created). **W0 = WP-0.1 (LCA-17
+wrong-chart substitution, CRITICAL entitlement-class).** Delegated (never implemented in conductor
+context): implementation agent in an isolated git worktree → blind security/entitlement verifier.
+Root cause = weak 32-bit rolling hash in `platform/src/lib/retrieval/cache.ts` collapsing distinct
+chart_ids to one shared-cache key under concurrent load. Fix = SHA-256 key-sorted cache key +
+chart_id echo-back guard in `query_ucd.ts` + permanent CI concurrency regression test. Both lanes
+CONFIRMED-FIXED (0 substitutions / 2M iterations; echo-guard fails-closed vs 8 adversarial payloads;
+zero entitlement regression). PR #553 merged squash `6ec244c0`; deployed amjis-web-00955-qt5
+(image==main HEAD, 100% traffic). Register LCA-17 → REMEDIATED-PENDING-W4. Probe obs carried to W3:
+native chart_facts=135,645 vs L1-closure 27,554 (possible rebuild accretion — verify at W3 rebuild).
+
+```yaml
+session_close:
+  session_id: LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12
+  closed_at: 2026-07-12T14:40:00+05:30
+  close_criteria_met: true
+  wave_closed: W0 (WP-0.1 / LCA-17)
+  verification: "implementer + BLIND security/entitlement verifier both CONFIRMED-FIXED"
+  deploy: "PR #553 merged 6ec244c0; amjis-web-00955-qt5 live, image==main HEAD, 100% traffic Ready"
+  prod_verify_posture: "Option-1 (native-ratified): in-process 2M-iter blind proof + deploy-SHA parity + health; live deployed-channel concurrency probe DEFERRED as disclosed residual (connector OAuth unavailable in non-interactive session)"
+  step_ledger_updated: n/a
+  current_state_updated: true
+  current_state_version: 6.38
+  session_log_appended: true
+  red_team_pass: "n/a — wave close, not macro-phase; W4 re-audit is the program red-team"
+  db_writes_made: 0
+  product_code_writes_made: "4 files (retrieval cache.ts + query_ucd.ts + 2 tests) via PR #553 — authorized under ACTIVE brief scope"
+  native_chart_touched: false
+  register_dispositions_flipped: "LCA-17 → REMEDIATED-PENDING-W4 (F-0893/0902/0905/0908)"
+  next_session_objective: "W1 serving plane — 7 parallel worktree lanes WP-1.1..1.8 (WP-1.6 last), per-intervention blind domain verification, merge wave, deploy+prod-verify. Re-ground fresh from REMEDIATION_RUN_LEDGER + plan v2 §5 Wave-1 + wp_coverage slices."
+```
+
+### Next session objective
+
+W1 serving plane — 7 parallel worktree lanes (WP-1.1..1.8; WP-1.6 last), each with per-intervention
+BLIND domain verification (jyotish-domain / serving-wire / data-plane / security-entitlement / infra),
+then merge wave → deploy → prod-verify (Option-1 posture). Re-ground fresh from
+`REMEDIATION_RUN_LEDGER_v1_0.md` + REMEDIATION_PLAN_v2_0 §5 (Wave 1) + the per-WP `wp_coverage.jsonl`
+slices. Standing HALT conditions (§8.6) armed; FROZEN orchestrator untouchable.
+
+*End of LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 entry — 2026-07-12.*

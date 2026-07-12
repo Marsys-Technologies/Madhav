@@ -25,14 +25,14 @@ changelog:
 
 | Wave | Scope | State | Deploy point | Notes |
 |---|---|---|---|---|
-| W0 | WP-0.1 (LCA-17 wrong-chart isolation) | **IN_PROGRESS** | after W0 close | isolation proven before any concurrent swarm work |
-| W1 | WP-1.1/1.2/1.3/1.4/1.5/1.6/1.7/1.8 (serving plane) | PENDING | after W1 close | 7 lanes parallel; WP-1.6 last |
+| W0 | WP-0.1 (LCA-17 wrong-chart isolation) | ✅ **DONE** (deployed `amjis-web-00955-qt5` == main `6ec244c0`; 2026-07-12) | ✅ deployed | isolation proven; PR #553 merged; prod-parity confirmed |
+| W1 | WP-1.1/1.2/1.3/1.4/1.5/1.6/1.7/1.8 (serving plane) | **IN_PROGRESS** | after W1 close | 7 lanes parallel; WP-1.6 last |
 | W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | PENDING | after W2 close | writers+JOB image live before W3 |
 | W3 | WP-3.1 Abhinandan rebuild → WP-3.2 native rebuild | PENDING | consumes W2 | snapshot + golden catches + auto-restore; FORENSIC 7/7 |
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
 | CLOSE | cleanup + main↔production sync proof | PENDING | — | §7.6 five steps in order |
 
-**Current position:** W0 self-provisioning COMPLETE; WP-0.1 execution about to begin.
+**Current position:** ✅ **W0 CLOSED** (WP-0.1 LCA-17 remediated, deployed, prod-parity proven). Entering **W1** (serving plane, 7 parallel lanes).
 
 ---
 
@@ -57,6 +57,18 @@ changelog:
 | gcloud / deploy creds | ✅ authed (`mail.abhisek.mohanty@gmail.com` + `firebase-admin` SA); project `madhav-astrology`. |
 | Cloud Run services (asia-south1) | ✅ `amjis-mcp`, `amjis-sidecar` (deployed 2026-07-12T02:21Z), `amjis-web`. Deploys are GitHub-Actions driven (`github-actions@` SA is last-deployer). |
 | Deployed MCP channel (the real consumer channel, 130 tools) | ⚠ **claude.ai MARSYS-JIS connector requires OAuth; this Claude Code session is non-interactive → connector unavailable in-session.** The audit reached the deployed MCP over HTTP; the security/entitlement verifier for WP-0.1 must use the HTTP path (endpoint `https://amjis-mcp-938361928218.asia-south1.run.app`). **ACTION: verifier lane establishes the HTTP probe harness (auth mechanism TBD from audit tooling) before WP-0.1 acceptance.** |
+
+### §1b.1 — Deployed-MCP auth model (blocks live prod re-verify) — RESOLVED-DECISION-PENDING
+- Deployed `amjis-mcp` is **IAM-gated** (`--no-allow-unauthenticated`, per `.github/workflows/deploy.yml`;
+  `platform/scripts/governance/edge_security_smoke.sh`). Client auth = Google identity token (IAM) **+**
+  app Bearer `mcp_<env>_<40char>` validated by `validateMcpKey` (PBKDF2-SHA256) → `/api/mcp/execute`
+  (service-token + principal headers).
+- **No MCP bearer key present in local env** (only model-provider keys). Minting one via `generateMcpKey`
+  writes a row to a prod product table → NOT done unilaterally (brief: no manual DML on product tables).
+- **Consequence:** a full *live-concurrency* deployed-channel probe of `get_chart_orientation` (both charts
+  interleaved) is not executable in this non-interactive session without native-provided connector auth or
+  an issued MCP key. **Standing evidence for WP-0.1 remains the in-process 2M-iteration blind-verified proof
+  on the exact code path the service runs.** Decision to surface to native at W0 deploy gate.
 
 ### §1c — Probe observations carried forward (not W0 scope)
 - **[OBS-1] chart_facts row-count divergence:** native `chart_facts` = 135,645 on prod vs L1_GANITA_CLOSURE canonical 27,554 (~4.9×). Possible rebuild accretion / idempotency drift, or stale closure number. **Relevant at W3 (rebuild must not accrete — §N.3 delete-then-insert). Verify pre/post W3 native rebuild. Do NOT act in W0.**
@@ -189,9 +201,29 @@ session_open:
     guard in `query_ucd.ts` (discard/recompute on chart_id mismatch, hard-error on invariant fail).
     New tests picked up by `npm test`→vitest in CI. Gate: tsc 0, eslint clean, 5278 pass/0 fail.
     Repro used 2 synthetic colliding real-v4-UUIDs (deployed channel unavailable in-session). No HALT.
-- **Verification verdict:** _(BLIND security/entitlement verifier DISPATCHED 2026-07-12 — independent
-  re-derivation + adversarial probes on both real charts + false-negative sampling; verdict pending.)_
-- **Merge / deploy record:** _(pending)_
+- **Verification verdict:** ✅ **CONFIRMED-FIXED** (blind security/entitlement verifier, fresh context,
+  2026-07-12). Independent re-derivation reproduced the collision (old hash: 60/120 substitutions;
+  new: 0 over **2,000,000** iterations, 0 brute-force collisions). Enumerated EVERY cache on the
+  orientation/digest/ranking path — no residual weak-keyed chart cache; `auth.ts` independently
+  confirmed to hold no chart data. Echo-back guard fails closed vs 8 adversarial payloads (no bypass).
+  Zero entitlement regression (4 files, no auth surface). Non-blocking obs: `query_signals.ts` shares
+  the now-SHA-256-keyed cache (safe) but lacks the orientation-only echo guard → optional future
+  defense-in-depth (logged, not required). Implementer+verifier AGREE → no conductor live-retest.
+- **Merge / deploy record:**
+  - Conductor merged fix branch → local main (--no-ff, `71eab3ea`); zero-regression gate GREEN on
+    merge result: WP-0.1 9/9, R6A yoga-integrity 103 pass/2 skip.
+  - Direct push to main REJECTED (branch protection: 4 required checks). Routed via PR per governance.
+  - **PR #553** (`fix/wp-0.1-lca17-cross-chart-isolation`, 3 linear commits: test `b160ca7e`, fix
+    `6ddd64c2`, ledger `1e63ef55`). CI in flight; merge → deploy pending green checks.
+  - **PR #553 MERGED** (squash `6ec244c0`, branch deleted). Deploy `29179433487` GREEN → changed-path
+    detection built **amjis-web only** (fix is in the retrieval lib served by amjis-web `/api/mcp/execute`;
+    amjis-mcp is the thin IAM-front and was unchanged — correct).
+  - ✅ **W0 prod-verify (Option-1, native-ratified 2026-07-12):** (1) in-process blind proof — 2M iters,
+    0 substitutions; (2) **deploy image-SHA parity** — `amjis-web:6ec244c0` == main HEAD; (3) health —
+    revision `amjis-web-00955-qt5` Ready=True, 100% traffic. **Deferred residual (disclosed):** full
+    LIVE deployed-channel interleaved-concurrency probe (needs native-authorized connector / issued MCP
+    key) — recorded for a connector-authorized session; NOT a blocker per native ruling.
+  - **W0 ACCEPTANCE: MET.** LCA-17 findings F-0893/0902/0905/0908 → REMEDIATED-PENDING-W4.
 
 ---
 
