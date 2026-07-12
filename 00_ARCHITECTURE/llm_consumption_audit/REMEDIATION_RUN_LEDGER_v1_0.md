@@ -493,6 +493,61 @@ change (no HALT). Same pattern will apply to W2.
 
 ---
 
+## §6 — Execution-model correction (native, 2026-07-13 — BINDING to program close)
+
+- **CONTINUOUS RUN.** No mid-run questions/checkpoint-stops. Run W1-remainder → W1 close+deploy → W2 → W3 →
+  W4 → cleanup+close continuously. The next native-facing output is the W4 close report, a §8.6 HALT report,
+  or this ledger — never a question.
+- **Unanticipated non-HALT decisions → ADJUDICATOR agent** (fresh context, grounded in plan §1 E-clauses +
+  §7/§8 + register) decides within the rules and logs a reasoned `ADJUDICATION` ledger entry (§4) for async
+  native review. Only §8.6 classes HALT (frozen contract, entitlement, out-of-scope writes, budget exhaustion).
+- **Context hygiene = thin dispatcher + ledger-keeper.** Heavy work delegated to fresh-context agents
+  re-grounded from ledger+plan; the ledger is durable memory; checkpoints are LEDGER ENTRIES, not questions.
+- **Pre-dispatch check (mandatory, mechanical, per batch):** compute file-scope intersection of candidate lanes.
+  Disjoint + no semantic dep → concurrent (all Agent calls in ONE message, separate worktrees). Shared files →
+  same lane or explicit merge-order. Semantic dep → sequence. **Record the dispatch manifest + intersection
+  result in this ledger per batch.**
+- **Swarm verification per intervention:** blind domain-matched verifier (fresh context, original failing call
+  re-executed, adversarial probes, quoted payloads, both charts). Full acceptance suite LIVE on prod after each
+  wave deploy. W3 golden catches + snapshot/auto-restore. W4 E-5 swarm (≥15% re-exec, 100% CRIT/HIGH re-verified,
+  PASS-row false-neg sampling) + E-6 depth gate. Verifier disagreement → conductor live retest. All verdicts here.
+- **Wave closes execute in full** (reconciliation → integration→main PR → checks → merge → deploy → live
+  prod-verify → governance) without waiting on a human. **W1 deploy: native runs ND-W1.4 Cowork probe async —
+  DO NOT block on it.**
+
+### §6.1 — Rulings (native, 2026-07-13)
+- **Ruling 1 — WP-1.3j:** add a follow-up serving lane in W1 (NOT folded into WP-1.4). §7.3 SERVE-default: the
+  serve-able-now subset — `bodha_discoveries`, `bodha_pratijna`, `question_lenses`, `rm_prescriptions`,
+  `resonances`, + the `ph_pratikara`/`ph_rectification` serving-bugs — served + blind-verified THIS wave; the
+  rest re-dispositioned PENDING-W2/W3 with per-ID reason. **No W1-FOLLOWUP class survives W1 close.**
+- **Ruling 2 — F-WP17-1:** PARK CONFIRMED (WS-0 stub, no backing = out-of-scope new-capability; disclosed
+  parked error satisfies E5). → **Deferred shelf at program close.**
+
+### §6.3 — Dispatch manifest: W1-remainder BATCH 1 (WP-1.5 ∥ WP-1.3j)
+**Pre-dispatch intersection check (mechanical):**
+- **WP-1.5** scope = the SHARED envelope/response builders (`lib/mcp/epistemics.ts` buildEnvelope/pagination,
+  trim/budget helpers) + program-wide receipt-honesty (true `truncated`/`total`/`more_available`, budget ceilings,
+  monotonicity/type hygiene, R-38/R-41 deployed retest) + **F-DATE-TZ** `to_char` on L3 date tools
+  (query_convergence_windows, query_dasha_dossier, query_temporal_view, query_projections, call_service_wrappers).
+- **WP-1.3j** scope = NEW serving tools for populated-but-unserved BODHA assets (bodha_discoveries/pratijna/
+  question_lenses/rm_prescriptions/resonances) + fix `ph_pratikara`(phala_mitigation)/`ph_rectification` serving-bugs.
+- **Intersection:** FILE scopes largely DISJOINT (1.5=envelope builders + L3 kala date tools; 1.3j=bodha + phala
+  serving tools). **Semantic dependency:** 1.3j's new tools EMIT envelopes → must conform to 1.5's contract →
+  **merge-order: WP-1.5 FIRST**, then WP-1.3j rebases on merged 1.5 and its verifier re-checks envelope conformance.
+- **Verdict: dispatch CONCURRENTLY (separate worktrees, one message); ordered merge (1.5→1.3j-rebased).**
+**Dispatched 2026-07-13.**
+
+### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
+Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
+than nested wave-conductor sub-agents, given this session's observed agent flakiness (several API-drop/stall
+events on long nested tasks) — nested wave-conductors spawning lanes+verifiers+merges compound that failure
+surface and risk losing whole-wave coordination. Each implementation lane and each blind verifier IS a fresh
+re-grounded context (satisfies the fresh-context intent at lane granularity); the conductor owns only merges +
+wave-closes (sequential, high-stakes) and the ledger. If conductor context degrades, harness summarization +
+this ledger guarantee lossless continuation. Within-rules, non-scope-changing — logged for visibility.
+
+---
+
 ## §4 — HALT / disagreement register + follow-ups (append-only)
 
 **HALTs / disagreements:** none yet.
