@@ -1,447 +1,263 @@
 /**
- * mimamsa_lel_intake.test.ts — BRAHMA-MI-5-1: mimamsa.lel_intake MCP tool tests
+ * mimamsa_lel_intake.test.ts — BRAHMA-MI-5-1: mimamsa.lel_intake MCP tool (`lel_query`)
  *
- * Tests the lel_query MCP tool registration and response structure.
- * No live sidecar required — fetch is mocked.
+ * Rewritten for the KEYSTONE (M6+M7) contract: the tool now delegates to
+ * callPlatformPrimitive('lel_query', ...) → /api/mcp/primitives/lel_query, which wraps
+ * the L5 capability payload in the standard MCP envelope AND the legacy ToolBundle shape:
  *
- * Contract assertions:
- *   - registerMimamsaLelIntakeTool registers tool named 'lel_query'
- *   - lel_query returns events array with provenance_envelope
- *   - provenance_envelope has source = 'mimamsa.lel_intake', asset = 'MI-5-1'
- *   - provenance_envelope has no_leakage_note and b3_compliant = true
- *   - all source_citations are non-empty (B.3 mandate)
- *   - convergence_score values in [0.0, 1.0] range when non-null
- *   - error path returns isError: true with provenance_envelope
+ *   { status, envelope: { ok, result: { results: [{ content: "<JSON payload>" }] } } }
+ *
+ * where the JSON payload (query_life_events.ts) is
+ *   { chart_id, events, count, total_matching, filters, provenance }.
+ *
+ * DEPLOYED DEFECT under test (WP-1.3d / lel_query-deployed-fix / F-L10-021):
+ *   The tool previously read envelope.result.events / .total_count — two levels too
+ *   shallow and the wrong count key (total_matching) — so it returned a dishonest
+ *   { ok:true, events:[], total_count:0 } even though the native has 57 rows, while the
+ *   twin `mimamsa_lel_query` (raw envelope pass-through) showed the data. These tests
+ *   assert the tool now serves the real 57 for the native and an HONEST empty (ok:true,
+ *   events:[], total_count:0) for a chart that genuinely has zero events.
  *
  * BRAHMA-MI-5-1
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// ── Mock fetch before importing module ────────────────────────────────────────
+// ── Mock the platform primitive client + authz BEFORE importing the module ─────
 
-const mockFetch = vi.fn()
-vi.stubGlobal('fetch', mockFetch)
+const mockCallPlatformPrimitive = vi.fn()
+const mockRemoteAuthorize = vi.fn()
+
+vi.mock('../client.js', () => ({
+  callPlatformPrimitive: (...args: unknown[]) => mockCallPlatformPrimitive(...args),
+}))
+vi.mock('../lib/authz.js', () => ({
+  remoteAuthorize: (...args: unknown[]) => mockRemoteAuthorize(...args),
+}))
 
 // ── Import after mock ─────────────────────────────────────────────────────────
 
 import {
   registerMimamsaLelIntakeTool,
   type LelEvent,
-  type LelQueryResult,
-  type LelProvenanceEnvelope,
 } from '../tools/mimamsa_lel_intake.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { Principal } from '../types.js'
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Constants / fixtures ────────────────────────────────────────────────────────
 
+const NATIVE_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
+const ABHINANDAN_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
 const SOURCE_CITATION = 'LIFE_EVENT_LOG_v1_2.md (native-disclosed)'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const PRINCIPAL: Principal = { user_uid: 'u-test', key_id: 'k-test', role: 'super_admin' }
 
-/** Build a minimal LelEvent fixture. */
-function makeEvent(overrides: Partial<LelEvent> = {}): LelEvent {
+function makeEvent(overrides: Partial<LelEvent> = {}): Partial<LelEvent> & Record<string, unknown> {
   return {
     event_id: '550e8400-e29b-41d4-a716-446655440000',
     event_date: '2023-07-15',
     event_type: 'career',
     description: 'Founded Marsys Group (July 2023).',
     domain: 'career/entrepreneurship_founded',
+    category: 'career',
+    significance: 'major',
+    source_citation: SOURCE_CITATION,
     outcome_observed: 'yes',
-    dasha_active: 'Mercury',
-    antardasha_active: 'Jupiter',
-    key_transits: ['Saturn transit Aquarius = 11H from Lagna'],
-    convergence_score: 1.0,
-    source_citation: SOURCE_CITATION,
     ...overrides,
   }
 }
 
-/** Build a minimal provenance envelope fixture. */
-function makeProvenanceEnvelope(overrides: Partial<LelProvenanceEnvelope> = {}): LelProvenanceEnvelope {
+/** The L5 capability payload shape (query_life_events.ts handler `content`). */
+function makeCapabilityPayload(chartId: string, events: unknown[], totalMatching: number) {
   return {
-    source: 'mimamsa.lel_intake',
-    asset: 'MI-5-1',
-    lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
-    total_events: 57,
-    confidence: 0.89,
-    source_citation: SOURCE_CITATION,
-    no_leakage_note: 'life_events is calibration corpus only — must not feed prediction generation',
-    b3_compliant: true,
-    queried_at: '2026-06-04T00:00:00.000Z',
-    ...overrides,
-  }
-}
-
-/** Build a full LelQueryResult fixture. */
-function makeLelQueryResult(
-  events: LelEvent[] = [makeEvent()],
-  totalCount = 57,
-): LelQueryResult {
-  return {
-    ok: true,
+    chart_id: chartId,
     events,
-    total_count: totalCount,
-    filter_applied: {
-      domain: null,
-      date_from: null,
-      date_to: null,
-      limit: 100,
+    count: events.length,
+    total_matching: totalMatching,
+    filters: { category: null, domain: null, significance: null, start_date: null, end_date: null, limit: 50 },
+    provenance: {
+      tables: ['life_events'],
+      no_leakage_note: 'life_events is a calibration corpus only — must not feed prediction generation.',
+      source: 'LIFE_EVENT_LOG (user-authored); served chart-scoped.',
     },
-    provenance_envelope: makeProvenanceEnvelope(),
   }
 }
 
-/** Mock fetch to return a successful sidecar response. */
-function mockSuccessfulFetch(result: LelQueryResult): void {
-  mockFetch.mockResolvedValueOnce({
-    ok: true,
-    json: async () => result,
-    text: async () => '',
+/** Wrap a capability payload the way /api/mcp/primitives/[tool] actually does. */
+function mockPrimitiveSuccess(chartId: string, events: unknown[], totalMatching: number): void {
+  const payload = makeCapabilityPayload(chartId, events, totalMatching)
+  mockCallPlatformPrimitive.mockResolvedValueOnce({
     status: 200,
+    envelope: {
+      ok: true,
+      result: {
+        tool_bundle_id: 'tb-1',
+        tool_name: 'query_life_events',
+        results: [{ content: JSON.stringify(payload) }],
+      },
+    },
   })
 }
 
-/** Mock fetch to return a sidecar error. */
-function mockFailedFetch(status = 500, message = 'Internal Server Error'): void {
-  mockFetch.mockResolvedValueOnce({
-    ok: false,
+function mockPrimitiveError(status = 500, message = 'boom'): void {
+  mockCallPlatformPrimitive.mockResolvedValueOnce({
     status,
-    text: async () => message,
-    json: async () => ({ error: message }),
+    envelope: { ok: false, error: { class: 'internal', message } },
   })
 }
 
-/** Capture registered tools from McpServer mock. */
 function makeMockServer(): { server: McpServer; toolRegistry: Map<string, unknown> } {
   const toolRegistry = new Map<string, unknown>()
   const server = {
-    tool: vi.fn((name: string, _description: string, _schema: unknown, handler: unknown) => {
+    tool: vi.fn((name: string, _d: string, _s: unknown, handler: unknown) => {
       toolRegistry.set(name, handler)
     }),
   } as unknown as McpServer
   return { server, toolRegistry }
 }
 
-/** Invoke a registered tool handler with given params. */
 async function invokeTool(
   toolRegistry: Map<string, unknown>,
-  toolName: string,
-  params: Record<string, unknown> = {}
+  params: Record<string, unknown>,
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
-  const handler = toolRegistry.get(toolName) as (
-    params: Record<string, unknown>
+  const handler = toolRegistry.get('lel_query') as (
+    p: Record<string, unknown>,
   ) => Promise<{ content: { type: string; text: string }[]; isError?: boolean }>
-  if (!handler) throw new Error(`Tool '${toolName}' not registered`)
+  if (!handler) throw new Error('Tool lel_query not registered')
   return handler(params)
+}
+
+function register() {
+  const { server, toolRegistry } = makeMockServer()
+  registerMimamsaLelIntakeTool(server, PRINCIPAL)
+  return toolRegistry
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe('mimamsa.lel_intake — tool registration', () => {
-  it('registers tool named lel_query', () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    expect(toolRegistry.has('lel_query')).toBe(true)
-  })
+beforeEach(() => {
+  mockCallPlatformPrimitive.mockReset()
+  mockRemoteAuthorize.mockReset()
+  mockRemoteAuthorize.mockResolvedValue(true)
+})
 
-  it('server.tool is called exactly once', () => {
-    const { server } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    expect((server.tool as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1)
-  })
-
-  it('tool name matches contract: lel_query', () => {
-    const { server } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    const call = (server.tool as ReturnType<typeof vi.fn>).mock.calls[0]
-    expect(call[0]).toBe('lel_query')
+describe('lel_query — registration', () => {
+  it('registers a tool named lel_query', () => {
+    const reg = register()
+    expect(reg.has('lel_query')).toBe(true)
   })
 })
 
-describe('mimamsa.lel_intake — lel_query success path', () => {
-  beforeEach(() => {
-    mockFetch.mockReset()
-  })
+describe('lel_query — native chart (57 rows): the deployed defect', () => {
+  it('serves the real events (NOT dishonest-empty)', async () => {
+    const reg = register()
+    // Capability caps the page at 50 but reports the full family via total_matching.
+    const page = Array.from({ length: 50 }, () => makeEvent())
+    mockPrimitiveSuccess(NATIVE_CHART, page, 57)
 
-  it('returns events array from sidecar response', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult([makeEvent(), makeEvent()]))
+    const res = await invokeTool(reg, { chart_id: NATIVE_CHART })
+    const parsed = JSON.parse(res.content[0].text)
 
-    const response = await invokeTool(toolRegistry, 'lel_query', {})
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(Array.isArray(parsed.events)).toBe(true)
-    expect(parsed.events.length).toBe(2)
-  })
-
-  it('returns provenance_envelope with correct source', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.provenance_envelope.source).toBe('mimamsa.lel_intake')
-  })
-
-  it('returns provenance_envelope with correct asset MI-5-1', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.provenance_envelope.asset).toBe('MI-5-1')
-  })
-
-  it('returns provenance_envelope with total_events = 57', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.provenance_envelope.total_events).toBe(57)
-  })
-
-  it('returns provenance_envelope with b3_compliant = true', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.provenance_envelope.b3_compliant).toBe(true)
-  })
-
-  it('returns provenance_envelope with no_leakage_note containing "calibration"', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.provenance_envelope.no_leakage_note).toContain('calibration')
-  })
-
-  it('all events have non-empty source_citation', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    const events = [
-      makeEvent({ source_citation: SOURCE_CITATION }),
-      makeEvent({ source_citation: SOURCE_CITATION, event_type: 'health' }),
-    ]
-    mockSuccessfulFetch(makeLelQueryResult(events))
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    for (const event of parsed.events as LelEvent[]) {
-      expect(event.source_citation).toBeTruthy()
-      expect(event.source_citation.length).toBeGreaterThan(0)
-    }
-  })
-
-  it('convergence_score values are in [0.0, 1.0] when non-null', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    const events = [
-      makeEvent({ convergence_score: 1.0 }),
-      makeEvent({ convergence_score: 0.5 }),
-      makeEvent({ convergence_score: 0.0 }),
-      makeEvent({ convergence_score: null }),
-    ]
-    mockSuccessfulFetch(makeLelQueryResult(events, 4))
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    for (const event of parsed.events as LelEvent[]) {
-      if (event.convergence_score !== null && event.convergence_score !== undefined) {
-        expect(event.convergence_score).toBeGreaterThanOrEqual(0.0)
-        expect(event.convergence_score).toBeLessThanOrEqual(1.0)
-      }
-    }
-  })
-
-  it('total_count is included in response', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult([makeEvent()], 57))
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(typeof parsed.total_count).toBe('number')
-    expect(parsed.total_count).toBeGreaterThan(0)
-  })
-
-  it('filter_applied is included in response', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    const response = await invokeTool(toolRegistry, 'lel_query', { domain: 'career' })
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.filter_applied).toBeDefined()
-  })
-
-  it('ok = true on success', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
+    expect(res.isError).toBeUndefined()
     expect(parsed.ok).toBe(true)
+    expect(Array.isArray(parsed.events)).toBe(true)
+    expect(parsed.events.length).toBe(50)
+    // Honest total reflects the full family, not the page length.
+    expect(parsed.total_count).toBe(57)
   })
 
-  it('calls sidecar with correct path /brahma/mimamsa/lel_query', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
+  it('envelope is honest: total_events matches the served total_count', async () => {
+    const reg = register()
+    mockPrimitiveSuccess(NATIVE_CHART, [makeEvent()], 57)
 
-    await invokeTool(toolRegistry, 'lel_query', { domain: 'career', limit: 10 })
-
-    const calledUrl: string = mockFetch.mock.calls[0][0]
-    expect(calledUrl).toContain('/brahma/mimamsa/lel_query')
-  })
-
-  it('sends domain parameter in request body', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    await invokeTool(toolRegistry, 'lel_query', { domain: 'spiritual', limit: 50 })
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string)
-    expect(body.domain).toBe('spiritual')
-    expect(body.limit).toBe(50)
-  })
-})
-
-describe('mimamsa.lel_intake — lel_query error path', () => {
-  beforeEach(() => {
-    mockFetch.mockReset()
-  })
-
-  it('returns isError: true on sidecar HTTP error', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockFailedFetch(500, 'Internal Server Error')
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-
-    expect(response.isError).toBe(true)
-  })
-
-  it('error response contains provenance_envelope', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockFailedFetch(503, 'Service Unavailable')
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.provenance_envelope).toBeDefined()
-    expect(parsed.provenance_envelope.source).toBe('mimamsa.lel_intake')
-    expect(parsed.provenance_envelope.asset).toBe('MI-5-1')
-  })
-
-  it('error response contains ok: false', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockFailedFetch()
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.ok).toBe(false)
-  })
-
-  it('error response preserves no_leakage_note', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockFailedFetch()
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.provenance_envelope.no_leakage_note).toContain('calibration')
-  })
-
-  it('error response preserves b3_compliant = true', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockFailedFetch()
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
-
-    expect(parsed.provenance_envelope.b3_compliant).toBe(true)
-  })
-
-  it('error response preserves total_events = 57', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockFailedFetch()
-
-    const response = await invokeTool(toolRegistry, 'lel_query')
-    const parsed = JSON.parse(response.content[0].text)
+    const res = await invokeTool(reg, { chart_id: NATIVE_CHART })
+    const parsed = JSON.parse(res.content[0].text)
 
     expect(parsed.provenance_envelope.total_events).toBe(57)
+    expect(parsed.provenance_envelope.source).toBe('mimamsa.lel_intake')
+    expect(parsed.provenance_envelope.asset).toBe('MI-5-1')
+    expect(parsed.provenance_envelope.b3_compliant).toBe(true)
   })
 })
 
-describe('mimamsa.lel_intake — domain filtering', () => {
-  beforeEach(() => {
-    mockFetch.mockReset()
+describe('lel_query — genuine zero (Abhinandan): honest-empty is allowed', () => {
+  it('returns ok:true with an empty events list and total_count 0', async () => {
+    const reg = register()
+    mockPrimitiveSuccess(ABHINANDAN_CHART, [], 0)
+
+    const res = await invokeTool(reg, { chart_id: ABHINANDAN_CHART })
+    const parsed = JSON.parse(res.content[0].text)
+
+    expect(res.isError).toBeUndefined()
+    expect(parsed.ok).toBe(true)
+    expect(parsed.events).toEqual([])
+    expect(parsed.total_count).toBe(0)
   })
+})
 
-  it('sends null domain when no domain filter provided', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
+describe('lel_query — param mapping', () => {
+  it('maps date_from/date_to onto the capability start_date/end_date', async () => {
+    const reg = register()
+    mockPrimitiveSuccess(NATIVE_CHART, [makeEvent()], 1)
 
-    await invokeTool(toolRegistry, 'lel_query', {})
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string)
-    expect(body.domain).toBeNull()
-  })
-
-  it('sends date_from null when not provided', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    await invokeTool(toolRegistry, 'lel_query', { domain: 'career' })
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string)
-    expect(body.date_from).toBeNull()
-    expect(body.date_to).toBeNull()
-  })
-
-  it('sends date_from and date_to when provided', async () => {
-    const { server, toolRegistry } = makeMockServer()
-    registerMimamsaLelIntakeTool(server)
-    mockSuccessfulFetch(makeLelQueryResult())
-
-    await invokeTool(toolRegistry, 'lel_query', {
+    await invokeTool(reg, {
+      chart_id: NATIVE_CHART,
       date_from: '2020-01-01',
       date_to: '2026-12-31',
+      domain: 'career',
     })
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string)
-    expect(body.date_from).toBe('2020-01-01')
-    expect(body.date_to).toBe('2026-12-31')
+    const [toolName, args] = mockCallPlatformPrimitive.mock.calls[0]
+    expect(toolName).toBe('lel_query')
+    expect(args.start_date).toBe('2020-01-01')
+    expect(args.end_date).toBe('2026-12-31')
+    expect(args.domain).toBe('career')
+    expect(args.chart_id).toBe(NATIVE_CHART)
+  })
+})
+
+describe('lel_query — honesty gate (unparseable payload is NOT laundered to empty)', () => {
+  it('surfaces an error when the envelope has no parseable LEL payload', async () => {
+    const reg = register()
+    mockCallPlatformPrimitive.mockResolvedValueOnce({
+      status: 200,
+      envelope: { ok: true, result: { tool_bundle_id: 'tb', results: [] } },
+    })
+
+    const res = await invokeTool(reg, { chart_id: NATIVE_CHART })
+    const parsed = JSON.parse(res.content[0].text)
+
+    expect(res.isError).toBe(true)
+    expect(parsed.ok).toBe(false)
+  })
+})
+
+describe('lel_query — guards + error path', () => {
+  it('rejects a missing chart_id', async () => {
+    const reg = register()
+    const res = await invokeTool(reg, {})
+    const parsed = JSON.parse(res.content[0].text)
+    expect(res.isError).toBe(true)
+    expect(parsed.error).toContain('chart_id')
+    expect(mockCallPlatformPrimitive).not.toHaveBeenCalled()
+  })
+
+  it('denies when not authorized for the chart', async () => {
+    const reg = register()
+    mockRemoteAuthorize.mockResolvedValueOnce(false)
+    const res = await invokeTool(reg, { chart_id: NATIVE_CHART })
+    expect(res.isError).toBe(true)
+    expect(mockCallPlatformPrimitive).not.toHaveBeenCalled()
+  })
+
+  it('returns isError with provenance_envelope on a primitive error', async () => {
+    const reg = register()
+    mockPrimitiveError(500, 'db down')
+    const res = await invokeTool(reg, { chart_id: NATIVE_CHART })
+    const parsed = JSON.parse(res.content[0].text)
+    expect(res.isError).toBe(true)
+    expect(parsed.ok).toBe(false)
+    expect(parsed.provenance_envelope.asset).toBe('MI-5-1')
+    expect(parsed.provenance_envelope.no_leakage_note).toContain('calibration')
   })
 })
