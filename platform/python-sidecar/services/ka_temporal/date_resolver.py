@@ -207,34 +207,82 @@ class ActivationWindows:
 
 
 # ── DB load (the only I/O in this module) ─────────────────────────────────────
+# Canonical default ayanamsha. chart_dashas pools all 5 ayanamshas (~9,200 MD/AD
+# rows each) spanning ~1949→2100. Loading without an ayanamsha filter mixes
+# systems; loading without a birth-forward bound admits pre-birth cycles (the
+# native's earliest AD of every graha is 1949–1955, 30+ years before birth).
+_DEFAULT_AYANAMSHA = "lahiri_chitrapaksha"
+
+
+def resolve_birth_date(conn, chart_id, birth_params=None) -> Optional[date]:
+    """Deterministic native birth date. Prefers ctx.config['birth_params']
+    ['datetime_iso']; falls back to charts.birth_date. No fabrication — returns
+    None if neither source yields a date (caller then skips the birth clip).
+    """
+    if isinstance(birth_params, dict):
+        iso = birth_params.get("datetime_iso") or birth_params.get("date_of_birth")
+        if iso:
+            try:
+                from datetime import datetime as _dt
+                return _dt.fromisoformat(str(iso)).date()
+            except ValueError:
+                pass
+    if conn is not None:
+        try:
+            import psycopg
+            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+                cur.execute(
+                    "SELECT birth_date FROM charts WHERE chart_id = %s",
+                    (str(chart_id),),
+                )
+                row = cur.fetchone()
+            if row and row.get("birth_date"):
+                bd = row["birth_date"]
+                return date.fromisoformat(bd) if isinstance(bd, str) else bd
+        except Exception as exc:
+            logger.debug("resolve_birth_date: charts fallback failed: %s", exc)
+    return None
+
+
 def load_dasha_timeline(
     conn,
     chart_id,
     *,
     system_id: str = "vimshottari",
+    ayanamsha_id: str = _DEFAULT_AYANAMSHA,
     max_level: int = 2,
+    birth_date: Optional[date] = None,
 ) -> list[DashaPeriod]:
-    """Load the chart's dasha timeline (MD + AD by default) from chart_dashas.
+    """Load the chart's dasha timeline (MD + AD by default) from chart_dashas,
+    scoped to ONE ayanamsha and (when birth_date is given) BIRTH-FORWARD.
 
-    Read-only. Uses an explicit dict_row cursor so it is independent of the
-    connection's default row factory. Rows with a null/blank lord or missing
-    dates are skipped (they cannot bound a window). Returns [] if the chart has
-    no timeline (caller then degrades to convergence-only, as before).
+    - `ayanamsha_id` — REQUIRED scoping. chart_dashas pools 5 ayanamshas; a
+      predicate must resolve against periods computed under its OWN ayanamsha.
+    - `birth_date` — when provided, periods that END before birth are excluded
+      (they are theoretical pre-birth cycles, not life-indexable). A period that
+      straddles birth is kept; the caller clips its start to birth.
+
+    Read-only, explicit dict_row cursor. Rows with null lord/dates are skipped.
+    Returns [] if nothing matches (caller degrades to convergence-only).
     """
     import psycopg
 
+    sql = """
+        SELECT lord_graha, level_n, start_date, end_date
+        FROM chart_dashas
+        WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s
+          AND level_n <= %s
+          AND start_date IS NOT NULL AND end_date IS NOT NULL
+    """
+    params: list = [str(chart_id), system_id, ayanamsha_id, max_level]
+    if birth_date is not None:
+        sql += " AND end_date >= %s"
+        params.append(birth_date)
+    sql += " ORDER BY level_n, start_date"
+
     periods: list[DashaPeriod] = []
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-        cur.execute(
-            """
-            SELECT lord_graha, level_n, start_date, end_date
-            FROM chart_dashas
-            WHERE chart_id = %s AND system_id = %s AND level_n <= %s
-              AND start_date IS NOT NULL AND end_date IS NOT NULL
-            ORDER BY level_n, start_date
-            """,
-            (str(chart_id), system_id, max_level),
-        )
+        cur.execute(sql, tuple(params))
         for row in cur.fetchall():
             lord = normalize_graha(row["lord_graha"])
             if lord is None:
@@ -287,9 +335,10 @@ def resolve_activation_windows(
     strength_hook: Optional[dict] = None,
     convergence_peak: Optional[date] = None,
     signature_class: Optional[str] = None,
+    birth_date: Optional[date] = None,
     max_windows: int = 8,
 ) -> ActivationWindows:
-    """Resolve one predicate into concrete activation date windows.
+    """Resolve one predicate into concrete, LIFE-INDEXED activation date windows.
 
     Parameters
     ----------
@@ -297,47 +346,63 @@ def resolve_activation_windows(
         `constituent_lords` drive the dasha-period match. May also carry an
         explicit `periods` list (preserved verbatim) and a `dignity_score`.
     dasha_timeline : output of `load_dasha_timeline` — the chart's real MD/AD
-        periods. This is the deterministic date source (L1 authority, §N.5).
+        periods for the predicate's ayanamsha, ideally already birth-forward.
+        This is the deterministic date source (L1 authority, §N.5).
     transit_rule : optional `transit_trigger_jsonb`; only its `type` is recorded
         as the `trigger` label on emitted predicted dates (no fabrication).
     strength_hook : optional `strength_affliction_hook_jsonb`; supplies
         `non_affliction` for the proximity score.
     convergence_peak : optional peak DATE from kala_convergence. When present it
-        REFINES the bounded window (peak ± signature-class half-width) exactly as
-        the legacy path did; when absent the matched dasha period IS the window.
-    signature_class : YOGA / DOSHA / DIGNITY / … — sets the convergence-refined
-        window half-width.
+        REFINES the bounded window (peak ± signature-class half-width).
+    signature_class : YOGA / DOSHA / DIGNITY / … — sets the window half-width.
+    birth_date : the native's birth date. Belt-and-suspenders life-indexing —
+        periods ending before birth are dropped and every emitted start/peak/end
+        is clipped to >= birth_date, so no window falls in a pre-birth cycle even
+        if the timeline was loaded without a birth bound.
     max_windows : cap on emitted dasha periods / date clusters (row-size guard).
 
     Returns
     -------
-    ActivationWindows — always populated when EITHER a convergence peak exists OR
-    at least one constituent lord resolves to a real dasha period. Only returns
-    all-None dates when the predicate names no resolvable lord and has no peak.
+    ActivationWindows — populated when a convergence peak exists OR a constituent
+    lord resolves to an IN-LIFE dasha period. All-None dates only when nothing
+    resolves in-life.
     """
     lords = set(_extract_constituent_lords(dasha_rule))
 
-    # Matched real dasha periods (finer level first so ADs — tighter windows —
-    # are preferred as the primary bound; then chronological).
+    # Matched real dasha periods, birth-forward (drop periods that end before
+    # birth), finest level first (ADs — tighter windows — preferred as primary
+    # bound), then chronological → matched[0] is the EARLIEST IN-LIFE period.
     matched = [p for p in dasha_timeline if p.lord in lords]
+    if birth_date is not None:
+        matched = [p for p in matched if p.end >= birth_date]
     matched.sort(key=lambda p: (-p.level_n, p.start))
     matched = matched[:max_windows]
 
+    def _clip(d: Optional[date]) -> Optional[date]:
+        if d is None:
+            return None
+        return max(d, birth_date) if birth_date is not None else d
+
     result = ActivationWindows()
 
-    # active_dasha_periods_jsonb — real, dated periods where a lord is active,
-    # plus any explicit periods the rule already carried, plus a lord-only entry
-    # for constituents with no timeline coverage (backward-compatible richness).
+    # active_dasha_periods_jsonb — real, dated, in-life periods (start clipped to
+    # birth for a straddling period — the EXPERIENCED portion, per ka_jivana_parva
+    # doctrine), plus explicit rule periods, plus lord-only entries with no
+    # timeline coverage (backward-compatible provenance).
     level_name = {1: "mahadasha", 2: "antardasha", 3: "pratyantardasha"}
     for p in matched:
-        result.active_dasha_periods.append({
+        clipped_start = _clip(p.start)
+        entry = {
             "graha": p.lord,
             "level": level_name.get(p.level_n, f"level_{p.level_n}"),
-            "start": p.start.isoformat(),
+            "start": clipped_start.isoformat(),
             "end": p.end.isoformat(),
             "match_kind": "exact_lord",
             "source": "chart_dashas",
-        })
+        }
+        if birth_date is not None and p.start < birth_date:
+            entry["clipped_to_birth"] = True
+        result.active_dasha_periods.append(entry)
     if dasha_rule:
         explicit = dasha_rule.get("periods") or []
         if isinstance(explicit, list):
@@ -353,34 +418,40 @@ def resolve_activation_windows(
 
     # Bounded window + peak.
     half = _SIG_CLASS_HALFWIDTH_DAYS.get(signature_class or "", _DEFAULT_HALFWIDTH_DAYS)
-    if convergence_peak is not None:
+    if convergence_peak is not None and (birth_date is None or convergence_peak >= birth_date):
         peak = convergence_peak
         result.activation_peak = peak
-        result.activation_start = peak - timedelta(days=half)
+        result.activation_start = _clip(peak - timedelta(days=half))
         result.activation_end = peak + timedelta(days=half)
         result.resolution_source = "convergence"
-        result.predicted_dates = _peak_cluster_dates(peak, transit_rule)
+        result.predicted_dates = _peak_cluster_dates(peak, transit_rule, birth_date)
     elif matched:
-        primary = matched[0]  # finest-level, earliest matched period
-        result.activation_start = primary.start
-        result.activation_end = primary.end
-        result.activation_peak = _midpoint(primary.start, primary.end)
+        primary = matched[0]  # finest-level, earliest IN-LIFE matched period
+        start = _clip(primary.start)
+        end = primary.end
+        result.activation_start = start
+        result.activation_end = end
+        result.activation_peak = _midpoint(start, end)
         result.resolution_source = "dasha_timeline"
-        result.predicted_dates = _dasha_period_dates(matched, transit_rule, max_windows)
+        result.predicted_dates = _dasha_period_dates(matched, transit_rule, max_windows, birth_date)
     else:
-        # Nothing resolves — leave dates None (truly no temporal anchor).
+        # Nothing resolves in-life — leave dates None (no temporal anchor).
         result.resolution_source = "none"
 
     result.proximity_score = _proximity_score(dasha_rule, strength_hook, result.activation_peak)
     return result
 
 
-def _peak_cluster_dates(peak: date, transit_rule: Optional[dict]) -> list:
-    """Convergence path: peak ± 3 days, strength decaying outward (legacy shape)."""
+def _peak_cluster_dates(peak: date, transit_rule: Optional[dict],
+                        birth_date: Optional[date] = None) -> list:
+    """Convergence path: peak ± 3 days, strength decaying outward. Any point that
+    would fall before birth is dropped (life-indexed)."""
     trigger = (transit_rule or {}).get("type", "unknown")
     out = []
     for delta in range(-3, 4):
         d = peak + timedelta(days=delta)
+        if birth_date is not None and d < birth_date:
+            continue
         out.append({
             "date": d.isoformat(),
             "strength": round(max(0.0, 1.0 - abs(delta) * 0.2), 3),
@@ -394,17 +465,22 @@ def _dasha_period_dates(
     matched: Sequence[DashaPeriod],
     transit_rule: Optional[dict],
     max_windows: int,
+    birth_date: Optional[date] = None,
 ) -> list:
     """Fallback path: representative dates (start / midpoint / end) per matched
     dasha period. This is what makes `activation_predicted_dates_jsonb` non-empty
     for the ~99% of signals that have no convergence peak. Every date is a real
-    chart_dashas boundary (deterministic, L1-sourced)."""
+    chart_dashas boundary (deterministic, L1-sourced), clipped in-life: a period
+    straddling birth contributes its EXPERIENCED portion (start := birth)."""
     trigger = (transit_rule or {}).get("type", "dasha_period")
     out = []
     for p in matched[:max_windows]:
-        mid = _midpoint(p.start, p.end)
+        start = max(p.start, birth_date) if birth_date is not None else p.start
+        if start > p.end:
+            continue
+        mid = _midpoint(start, p.end)
         for d, strength, kind in (
-            (p.start, 0.6, "period_start"),
+            (start, 0.6, "period_start"),
             (mid, 1.0, "period_peak"),
             (p.end, 0.4, "period_end"),
         ):

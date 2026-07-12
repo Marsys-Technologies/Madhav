@@ -201,3 +201,106 @@ class TestExtractLordsFromConfig:
 
     def test_json_string_input(self):
         assert extract_lords_from_config('{"planet": "Mars"}') == ["Mars"]
+
+
+# ── §8.4 iter-1 regression: birth-forward + ayanamsha-consistent resolution ────
+from services.ka_temporal.date_resolver import resolve_birth_date
+
+BIRTH = date(1984, 2, 5)  # native 482012f1
+
+
+def _multi_ayanamsha_prebirth_timeline():
+    """A PRE-BIRTH-INCLUSIVE, MULTI-AYANAMSHA raw chart_dashas span (1949→2100),
+    mirroring prod. This fixture MASKS nothing: it deliberately contains the
+    1951 Saturn AD that the pre-fix selector wrongly returned. Each DashaPeriod
+    is tagged with its ayanamsha via a parallel dict so tests can filter as
+    load_dasha_timeline's SQL does."""
+    # (ayanamsha, DashaPeriod)
+    return [
+        # lahiri — full life cycle incl. pre-birth
+        ("lahiri_chitrapaksha", DashaPeriod("Saturn", 2, date(1951, 4, 14), date(1952, 5, 23))),  # PRE-BIRTH
+        ("lahiri_chitrapaksha", DashaPeriod("Saturn", 1, date(2010, 1, 1), date(2029, 1, 1))),
+        ("lahiri_chitrapaksha", DashaPeriod("Saturn", 2, date(2012, 6, 1), date(2015, 3, 1))),
+        # raman — DIFFERENT dates for the same lord (ayanamsha divergence)
+        ("raman", DashaPeriod("Saturn", 2, date(1950, 1, 1), date(1951, 2, 1))),  # PRE-BIRTH
+        ("raman", DashaPeriod("Saturn", 2, date(2020, 9, 1), date(2023, 4, 1))),
+    ]
+
+
+def _apply_load_semantics(rows, ayanamsha_id, birth_date):
+    """Replicate load_dasha_timeline's SQL scoping (ayanamsha filter + birth
+    forward) so the fixture drives resolve_activation_windows just like prod."""
+    return [
+        p for (a, p) in rows
+        if a == ayanamsha_id and (birth_date is None or p.end >= birth_date)
+    ]
+
+
+class TestBirthForwardRegression:
+    def test_prefix_selector_would_have_returned_prebirth(self):
+        """Guard the guard: with NO birth bound the OLD behaviour resolves to the
+        1951 pre-birth AD — proving the fixture actually exercises the bug."""
+        raw = [p for (_, p) in _multi_ayanamsha_prebirth_timeline()
+               if _  == "lahiri_chitrapaksha"]
+        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, raw)  # no birth_date
+        assert w.activation_start == date(1951, 4, 14)  # the DEFECT reproduced
+
+    def test_birth_forward_window_is_in_life(self):
+        """With birth_date the resolved window falls in the native's IN-LIFE
+        Saturn AD (post-1984), never 1951."""
+        tl = _apply_load_semantics(_multi_ayanamsha_prebirth_timeline(),
+                                   "lahiri_chitrapaksha", BIRTH)
+        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, tl, birth_date=BIRTH)
+        assert w.activation_start == date(2012, 6, 1)
+        assert w.activation_start >= BIRTH
+        assert w.activation_peak >= BIRTH
+        assert w.activation_end >= BIRTH
+        assert all(p["date"] >= BIRTH.isoformat() for p in w.predicted_dates)
+        assert all(p["start"] >= BIRTH.isoformat()
+                   for p in w.active_dasha_periods if p.get("match_kind") == "exact_lord")
+
+    def test_ayanamsha_consistent_resolution(self):
+        """A raman predicate resolves against RAMAN periods (2020-09-01), not the
+        lahiri periods (2012-06-01) — no cross-ayanamsha bleed."""
+        tl = _apply_load_semantics(_multi_ayanamsha_prebirth_timeline(), "raman", BIRTH)
+        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, tl, birth_date=BIRTH)
+        assert w.activation_start == date(2020, 9, 1)     # raman, not lahiri's 2012
+        assert w.activation_start >= BIRTH
+
+    def test_straddling_period_start_clipped_to_birth(self):
+        """A period that STARTS pre-birth and ENDS post-birth is kept but its
+        start clips to birth (experienced portion, per ka_jivana_parva)."""
+        tl = [DashaPeriod("Jupiter", 1, date(1980, 1, 1), date(1996, 1, 1))]  # straddles birth
+        w = resolve_activation_windows({"constituent_lords": ["Jupiter"]}, tl, birth_date=BIRTH)
+        assert w.activation_start == BIRTH
+        assert w.active_dasha_periods[0]["start"] == BIRTH.isoformat()
+        assert w.active_dasha_periods[0].get("clipped_to_birth") is True
+
+    def test_convergence_peak_before_birth_falls_back_to_dasha(self):
+        """A pre-birth convergence peak is rejected; resolution falls to the
+        in-life dasha window."""
+        tl = _apply_load_semantics(_multi_ayanamsha_prebirth_timeline(),
+                                   "lahiri_chitrapaksha", BIRTH)
+        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, tl,
+                                       convergence_peak=date(1970, 1, 1), birth_date=BIRTH)
+        assert w.resolution_source == "dasha_timeline"
+        assert w.activation_start >= BIRTH
+
+
+class TestResolveBirthDate:
+    def test_from_birth_params_iso(self):
+        bd = resolve_birth_date(None, "cid", {"datetime_iso": "1984-02-05T10:43:00+05:30"})
+        assert bd == date(1984, 2, 5)
+
+    def test_from_charts_fallback(self):
+        class _Cur:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def execute(self, sql, params=None): pass
+            def fetchone(self): return {"birth_date": date(1984, 2, 5)}
+        class _Conn:
+            def cursor(self, *a, **k): return _Cur()
+        assert resolve_birth_date(_Conn(), "482012f1") == date(1984, 2, 5)
+
+    def test_none_when_unavailable(self):
+        assert resolve_birth_date(None, "cid", None) is None

@@ -246,6 +246,7 @@ def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():
     chart_id = "482012f1-710e-4a25-994a-93821f5871aa"
     sink = []
     script = [
+        ("FROM charts", [{"birth_date": _d(1984, 2, 5)}]),  # §8.4: life-index anchor
         ("FROM kala_activation_predicates", [{
             "signal_id": "11111111-1111-1111-1111-111111111111",
             "ayanamsha_id": "lahiri_chitrapaksha",
@@ -255,6 +256,9 @@ def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():
             "strength_affliction_hook_jsonb": {"non_affliction": 1.0},
         }]),
         ("FROM chart_dashas", [
+            # §8.4 regression: a PRE-BIRTH Saturn AD (1951) precedes the in-life one.
+            # The global-earliest selector would have picked this — the fix must not.
+            {"lord_graha": "Saturn", "level_n": 2, "start_date": _d(1951, 4, 14), "end_date": _d(1952, 5, 23)},
             {"lord_graha": "Saturn", "level_n": 1, "start_date": _d(2010, 1, 1), "end_date": _d(2029, 1, 1)},
             {"lord_graha": "Saturn", "level_n": 2, "start_date": _d(2012, 6, 1), "end_date": _d(2015, 3, 1)},
         ]),
@@ -270,13 +274,20 @@ def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():
     assert activation_start is not None, "activation_start must NOT be NULL (R-45 fix)"
     assert activation_end is not None
     assert activation_peak is not None
-    # dates trace to the AD Saturn period (finer level preferred)
+    # §8.4: birth-forward — the resolved window is the IN-LIFE Saturn AD, NOT 1951.
     assert activation_start == "2012-06-01"
     assert activation_end == "2015-03-01"
-    # predicted-dates fallback jsonb is non-empty
+    assert activation_start >= "1984-02-05"
+    assert activation_peak >= "1984-02-05"
+    # every predicted date is in-life; no pre-birth leak
     import json as _json
     predicted = _json.loads(row[5])
     assert len(predicted) > 0
+    assert all(p["date"] >= "1984-02-05" for p in predicted)
+    # active_dasha_periods carry no pre-birth window
+    periods = _json.loads(row[4])
+    dated = [p for p in periods if p.get("match_kind") == "exact_lord"]
+    assert all(p["start"] >= "1984-02-05" for p in dated)
     # citation records the resolution source
     assert "src=dasha_timeline" in row[12]
 
@@ -288,6 +299,7 @@ def test_writer_uses_convergence_peak_when_present():
     chart_id = "482012f1-710e-4a25-994a-93821f5871aa"
     sink = []
     script = [
+        ("FROM charts", [{"birth_date": _d(1984, 2, 5)}]),
         ("FROM kala_activation_predicates", [{
             "signal_id": "22222222-2222-2222-2222-222222222222",
             "ayanamsha_id": "lahiri_chitrapaksha",

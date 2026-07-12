@@ -24,7 +24,11 @@ from typing import Optional
 import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from services.ka_temporal import load_dasha_timeline, resolve_activation_windows
+from services.ka_temporal import (
+    load_dasha_timeline,
+    resolve_activation_windows,
+    resolve_birth_date,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -337,24 +341,48 @@ class KaVighnakaraWriter(WriterBase):
         SAVEPOINT-guarded so a soft failure never aborts the writer's transaction.
         """
         anchors: dict[DateType, str] = {}
+        timeline_cache: dict = {}
         with conn.cursor() as sp:
             sp.execute("SAVEPOINT sp_dasha_anchors")
         try:
-            timeline = load_dasha_timeline(conn, chart_id)
-            if not timeline:
-                with conn.cursor() as sp:
-                    sp.execute("RELEASE SAVEPOINT sp_dasha_anchors")
-                return []
+            # Life-indexing: resolve anchors only within the native's lifetime,
+            # against each predicate's OWN ayanamsha timeline (§8.4 fix).
+            birth_date = resolve_birth_date(conn, chart_id)
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT signal_id, dasha_eligibility_rule_jsonb
+                    SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
                     FROM kala_activation_predicates
                     WHERE chart_id = %s
                     """,
                     (chart_id,),
                 )
                 predicates = cur.fetchall()
+
+            def _timeline_for(ayan):
+                key = ayan or 'lahiri_chitrapaksha'
+                if key not in timeline_cache:
+                    timeline_cache[key] = load_dasha_timeline(
+                        conn, chart_id, ayanamsha_id=key, birth_date=birth_date
+                    )
+                return timeline_cache[key]
+
+            for pred in predicates:
+                sig_id = str(pred['signal_id'])
+                if sig_id in covered_signal_ids:
+                    continue
+                windows = resolve_activation_windows(
+                    pred['dasha_eligibility_rule_jsonb'],
+                    _timeline_for(pred['ayanamsha_id']),
+                    birth_date=birth_date,
+                )
+                peak = windows.activation_peak
+                if peak is None:
+                    continue
+                # First signal to claim a given peak date represents it (dedupe).
+                anchors.setdefault(peak, sig_id)
+                if len(anchors) >= _MAX_DASHA_ANCHORS:
+                    break
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_dasha_anchors")
         except Exception as exc:
@@ -363,20 +391,6 @@ class KaVighnakaraWriter(WriterBase):
             logger.debug("ka_vighnakara: dasha-anchor fetch skipped: %s", exc)
             return []
 
-        for pred in predicates:
-            sig_id = str(pred['signal_id'])
-            if sig_id in covered_signal_ids:
-                continue
-            windows = resolve_activation_windows(
-                pred['dasha_eligibility_rule_jsonb'], timeline
-            )
-            peak = windows.activation_peak
-            if peak is None:
-                continue
-            # First signal to claim a given peak date represents it (dedupe).
-            anchors.setdefault(peak, sig_id)
-            if len(anchors) >= _MAX_DASHA_ANCHORS:
-                break
         return sorted(anchors.items())
 
 

@@ -309,11 +309,11 @@ def test_dasha_anchor_peaks_dedupes_and_skips_covered():
             {"lord_graha": "Venus", "level_n": 1, "start_date": _vd(2029, 1, 1), "end_date": _vd(2049, 1, 1)},
         ]),
         ("FROM kala_activation_predicates", [
-            {"signal_id": "aaaaaaaa-0000-0000-0000-000000000001",
+            {"signal_id": "aaaaaaaa-0000-0000-0000-000000000001", "ayanamsha_id": "lahiri_chitrapaksha",
              "dasha_eligibility_rule_jsonb": {"constituent_lords": ["Saturn"]}},
-            {"signal_id": "aaaaaaaa-0000-0000-0000-000000000002",
+            {"signal_id": "aaaaaaaa-0000-0000-0000-000000000002", "ayanamsha_id": "lahiri_chitrapaksha",
              "dasha_eligibility_rule_jsonb": {"constituent_lords": ["Venus"]}},
-            {"signal_id": "covered-0000-0000-0000-000000000003",
+            {"signal_id": "covered-0000-0000-0000-000000000003", "ayanamsha_id": "lahiri_chitrapaksha",
              "dasha_eligibility_rule_jsonb": {"constituent_lords": ["Saturn"]}},
         ]),
     ]

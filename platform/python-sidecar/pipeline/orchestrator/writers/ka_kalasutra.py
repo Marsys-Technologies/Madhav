@@ -13,7 +13,11 @@ import json
 from datetime import date as _date
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from services.ka_temporal import load_dasha_timeline, resolve_activation_windows
+from services.ka_temporal import (
+    load_dasha_timeline,
+    resolve_activation_windows,
+    resolve_birth_date,
+)
 
 
 @register('ka_kalasutra')
@@ -47,9 +51,21 @@ class KaKalasutraWriter(WriterBase):
         if not predicates:
             return WriterResult(asset_id='ka_kalasutra', rows_inserted=0, notes='No predicates — run ka_yojaka first')
 
-        # WP-2.1: load the L1 dasha timeline ONCE — the deterministic date source
-        # that lets us resolve activations even when convergence has no peak.
-        dasha_timeline = load_dasha_timeline(conn, chart_id)
+        # WP-2.1: birth date (life-indexing) + per-ayanamsha dasha timelines.
+        # chart_dashas pools 5 ayanamshas over ~1949→2100; each predicate must
+        # resolve against periods in its OWN ayanamsha, birth-forward (§8.4 fix:
+        # pre-birth cycles are not life-indexable). Timelines are lazily cached
+        # per ayanamsha so a chart with all 5 loads each once.
+        birth_date = resolve_birth_date(conn, chart_id, ctx.config.get('birth_params'))
+        timeline_cache: dict = {}
+
+        def _timeline_for(ayan):
+            key = ayan or 'lahiri_chitrapaksha'
+            if key not in timeline_cache:
+                timeline_cache[key] = load_dasha_timeline(
+                    conn, chart_id, ayanamsha_id=key, birth_date=birth_date
+                )
+            return timeline_cache[key]
 
         # Read convergence windows for cross-reference (peak REFINES a window)
         with conn.cursor() as cur:
@@ -88,14 +104,16 @@ class KaKalasutraWriter(WriterBase):
             peak = _coerce_date(conv.get('peak_date'))
 
             # WP-2.1: single deterministic resolution — convergence peak when
-            # present, else the matched dasha period from the L1 timeline.
+            # present, else the birth-forward matched dasha period, resolved
+            # against the predicate's OWN ayanamsha timeline.
             windows = resolve_activation_windows(
                 dasha_rule,
-                dasha_timeline,
+                _timeline_for(ayanamsha_id),
                 transit_rule=transit_rule,
                 strength_hook=strength_hook,
                 convergence_peak=peak,
                 signature_class=sig_class,
+                birth_date=birth_date,
             )
 
             if windows.activation_start is not None:

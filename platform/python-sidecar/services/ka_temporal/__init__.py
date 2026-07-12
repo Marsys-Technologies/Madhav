@@ -20,6 +20,7 @@ from services.ka_temporal.date_resolver import (
     sign_lord,
     extract_lords_from_config,
     load_dasha_timeline,
+    resolve_birth_date,
     resolve_activation_windows,
 )
 
@@ -30,5 +31,6 @@ __all__ = [
     "sign_lord",
     "extract_lords_from_config",
     "load_dasha_timeline",
+    "resolve_birth_date",
     "resolve_activation_windows",
 ]
