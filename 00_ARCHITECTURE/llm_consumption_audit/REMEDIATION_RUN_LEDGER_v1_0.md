@@ -27,7 +27,7 @@ changelog:
 |---|---|---|---|---|
 | W0 | WP-0.1 (LCA-17 wrong-chart isolation) | ✅ **DONE** (deployed `amjis-web-00955-qt5` == main `6ec244c0`; 2026-07-12) | ✅ deployed | isolation proven; PR #553 merged; prod-parity confirmed |
 | W1 | WP-1.1/1.2/1.3(a-j)/1.4/1.5/1.6/1.7/1.8 (serving plane) | ✅ **CLOSED** (deployed web `2385fb62`+mcp `fc84cd0d`; **7/7 prod-verified**; 2026-07-13) | ✅ deployed | 16 lanes blind-verified; ND-W1.1 PASS; +316 reachable; lel_query fix-forward (ADJ-2) closed 7/7 |
-| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | **IN_PROGRESS** | after W2 close | writers+JOB image live before W3; corrected DAG (§6.8) |
+| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | **IN_PROGRESS** (integration `946aee7f`: 6/7 lanes merged+verified; WP-2.2-CGM + WP-2.3-temporal impl in flight) | after W2 close | writers+JOB image live before W3; corrected DAG (§6.8) |
 | W3 | WP-3.1 Abhinandan rebuild → WP-3.2 native rebuild | PENDING | consumes W2 | snapshot + golden catches + auto-restore; FORENSIC 7/7 |
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
 | CLOSE | cleanup + main↔production sync proof | PENDING | — | §7.6 five steps in order |
@@ -842,3 +842,30 @@ Branch `worktree-agent-a2f0770448dc49ab4` (`a30a8b0f`), verification pending. Gr
 ---
 
 *Ledger opened 2026-07-12 by the Program Conductor. Append-only below §0's status board; §0 is the one mutable status surface.*
+
+---
+
+## §7 — W2 writer wave (integration `integration/w2-writers`)
+
+**DAG (corrected §6.8):** fully-parallel start [WP-2.1 ka_, WP-2.4 bo_laksana MSR, WP-2.5 ga_+L0, WP-2.2-nonCGM, WP-2.3-graph] → sequenced [WP-2.3-temporal after WP-2.1 helper + WP-2.3 edges; WP-2.2-CGM after WP-2.3 edges].
+
+### §7.1 — Batch-1 (fully parallel) — MERGED + blind-verified
+| Lane | Fix | Merge | Verifier verdict |
+|---|---|---|---|
+| WP-2.1 (R-45) | ka dasha activation dates — birth-forward + ayanamsha-consistent `date_resolver.py` helper | `8034347a` | CONFIRMED (conductor live-retest: Saturn AD 1991-08-18→1994-08-21, pre-birth bug caught+fixed iter-1) |
+| WP-2.4 (LCA-14/9b) | bo_laksana MSR flood cap (15,660→~1 agg/varga citing all fact_ids); §N.5 CI validator mutation-proven | `48834a13` | CONFIRMED |
+| WP-2.5 (LCA-10) | ga_sensitive_degree + ga_ayurdaya never-computed; sign_num 1-based→0-based fix | `843a4492` | CONFIRMED (conductor live-retest: Sun lon 291.96°→9=Capricorn==DB 10−1) |
+
+### §7.2 — Batch-2 — MERGED + blind-verified
+| Lane | Fix | Merge | Verifier verdict |
+|---|---|---|---|
+| WP-2.3-graph (LCA-9a-1) | CGM graph structure — 60 bhava nodes + graha↔bhava edges (lordship/occupancy/bhava_aspect) + yoga/dosha first-class nodes + `yoga_member` edges; `constituent_fact_ids_array` resolves to chart_facts.fact_id | `59ffe5b6` (migration renumbered 431→**433**) | CONFIRMED-FIXED (sampled edges resolve + relationships match; seams protected for both dependents; 39 tests) |
+| WP-2.2-nonCGM (LCA-5, R-44e) | 4 dormant writers: bo_karanajala contradictions (graha_yoga_vs_dosha + domain_promise_vs_denial), bo_cdlm_summary rollups/clusters, bo_upaya RM tables, ph_phaladesa deterministic narration (no LLM) | `0293ec00` | CONFIRMED-FIXED (8/8 checklist PASS; §7.3 L3-deferrals honest+documented; 12 tests) |
+
+**Conductor integration repair (`946aee7f`):** merging WP-2.2's `test_bo_wp22_empty_shells.py` broke full-tree `pytest tests/` collection — its hand-rolled `_load_isolated()` stubbed bo_bimba with only `_SUBJECT_TO_GRAHA`, but the merged bo_karanajala now imports `yoga_node_subject` from bo_bimba (WP-2.3-graph), so the stale stub raised ImportError at collection. `register()` is already idempotent for identical re-imports → the loader hack is obsolete; replaced with direct real-module imports. Full-tree collect restored to **3247 collected, exit 0**; WP-2.2 12/12; L2 regressions 58/58. (Not a §8.6 halt — conductor-owned integration hygiene.)
+
+### §7.3 — Batch-3 (DAG-sequenced) — IN FLIGHT
+Pre-dispatch mechanical intersection check @ integration `946aee7f`:
+- **WP-2.2-CGM** (bo_cgm_motifs/paths — topology/sub_graphs/motifs + **LCA-6 native-motif-zero**) ∩ WP-2.2-nonCGM (now merged) = ∅; ∩ WP-2.3-temporal (bo_karanajala) = ∅ → **DISPATCHED concurrent** (own worktree; migration 434+ if needed).
+- **WP-2.3-temporal** (bo_karanajala `active_dasha_periods_jsonb` overlay; consumes merged WP-2.1 `date_resolver.py` + WP-2.3 edges) ∩ WP-2.2-nonCGM = `bo_karanajala.py` → **HELD until nonCGM merged (done `0293ec00`), then DISPATCHED**; ∩ WP-2.2-CGM = ∅ → concurrent-safe.
+Both branch from `946aee7f`. On both verified+merged → W2 close: apply migrations (431/432 WP-2.5, 433 WP-2.3-graph, +CGM 434 if any) → integration→main PR → CI → deploy writers + JOB image (must be live before W3).
