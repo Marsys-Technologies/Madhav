@@ -380,3 +380,26 @@ explicitly re-dispositioned WITH a reason. **WP-1.3 does not close with an unrec
 ---
 
 *Reconciliation produced 2026-07-12 for the ND-W1.1 binding gate. Read-only against `deliverables/wp_coverage.jsonl`, `deliverables/findings.jsonl`, `REMEDIATION_RUN_LEDGER_v1_0.md` (§3 sub-lane records, §4 follow-ups, §5 27-asset table), and `git log main..integration/w1-serving-plane`. Every one of the 295 WP-1.3 findings carries exactly one disposition; 0 unreconciled → PASS.*
+
+---
+
+## W1-CLOSE UPDATE (2026-07-13) — WP-1.3j resolves the W1-FOLLOWUP class (Ruling 1)
+
+Native Ruling 1: **no W1-FOLLOWUP class survives W1 close.** WP-1.3j (blind-verified CONFIRMED-FIXED, merged
+`3ee2bc1d`) served 12 of the 23 and re-dispositioned the other 11. Final dispositions supersede the `W1-FOLLOWUP`
+labels above:
+
+**→ REMEDIATED-PENDING-W4 (served by WP-1.3j, 12):** F-0129, F-0130, F-0131, F-0136, F-0137, F-0156, F-0161,
+F-0165, F-0174, F-0176 (5 new bodha serving tools: discoveries/pratijna/question_lenses/rm_prescriptions/
+rm_resonances) · **F-L10-024** (ph_pratikara `mitigation_map` ToolBundle-key fix → 602/638) · **F-L10-025**
+(ph_rectification ayanamsha short-code fix → 185/185).
+
+**→ PENDING-W3 (live-compute/temporal, needs WP-2.1 date-resolution, 6):** F-0184, F-0185, F-0830, F-0832,
+F-0834, F-L10-011 (ka_gochara live-transit — date-parameterized compute, no stored rows to serve).
+
+**→ PENDING-W2 (writer/synthesis gap, 5):** F-L10-010 (ka_dasha_kala live-compute wrapper) · F-0145
+(kala_jivana_parva narrative parva) · F-0500 (no vidya/spirituality apex assessor — WP-1.4 synthesis scope) ·
+F-0746, F-0747 (foreign/relocation domain-taxonomy extension).
+
+**Revised summary:** REMEDIATED-PENDING-W4 96→**108**; PENDING-W3 44→**50**; PENDING-W2 131→**136**; PARKED 1;
+**W1-FOLLOWUP 23→0**; UNRECONCILED **0**. Total unchanged **295**. **Ruling 1 satisfied — no W1-FOLLOWUP survives.**
