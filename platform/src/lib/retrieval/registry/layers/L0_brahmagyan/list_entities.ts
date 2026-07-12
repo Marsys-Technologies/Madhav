@@ -9,6 +9,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { buildHonestPagination } from '@/lib/retrieval/envelope'
 
 // R-27 fix: brahma_ontology.entity_class stores 'planet'/'sign'/'house' (the l0_ontology.py
 // writer's vocabulary — verified against the seed source), not the Sanskrit terms 'graha'/
@@ -110,12 +111,36 @@ export const listEntitiesCapability: CapabilityDescriptor = {
 
       sql += ` ORDER BY entity_class, canonical_name_en LIMIT $1`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      // WP-1.5 (LCA-18/LCA-8) receipt honesty: this tool previously set `total` to the SERVED
+      // row count (capped at the LIMIT) — so a 652-entity ontology served 100 while reporting
+      // `total:100`, silently hiding 552 rows (whole entity classes invisible). Run a COUNT
+      // under the SAME filter for the TRUE family size, and declare the trim honestly via
+      // buildHonestPagination (real total + more_available + a working cursor).
+      const countSql = resolvedClass
+        ? `SELECT COUNT(*)::int AS total FROM brahma_ontology WHERE entity_class = $1`
+        : `SELECT COUNT(*)::int AS total FROM brahma_ontology`
+      const countParams = resolvedClass ? [resolvedClass] : []
+
+      const [result, countRes] = await Promise.all([
+        query<Record<string, unknown>>(sql, params),
+        query<{ total: number }>(countSql, countParams),
+      ])
+
+      const served = result.rows?.length ?? 0
+      const total_entities = Number(countRes.rows[0]?.total ?? served)
+      const pagination = buildHonestPagination({ served, limit, offset: 0, total: total_entities })
 
       return {
         content: {
           entities: result.rows ?? [],
-          total: result.rows?.length ?? 0,
+          served_count: served,
+          // `total` is now the TRUE ontology-family size under this filter (not the served slice).
+          total: total_entities,
+          more_available: pagination.more_available,
+          next_cursor: pagination.next_cursor,
+          budget_note: pagination.more_available
+            ? `Showing ${served} of ${total_entities} entities — raise \`limit\` (max 500) or narrow by entity_class to see the rest. No rows are silently dropped.`
+            : undefined,
           filters: { entity_class_requested: requestedClass ?? null, entity_class_resolved: resolvedClass ?? null },
         },
         is_error: false,

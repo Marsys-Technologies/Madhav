@@ -132,8 +132,11 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
     )
 
     const eventsParams = [...params, limit]
+    // WP-1.5 F-DATE-TZ: event_date is a DATE column — to_char to 'YYYY-MM-DD' (raw return →
+    // node-postgres IST-midnight → UTC off-by-one, e.g. a 1990-05-14 event → "1990-05-13...Z").
     const eventsSql = `
-      SELECT event_id, event_date, category, domain, description, significance,
+      SELECT event_id, to_char(event_date, 'YYYY-MM-DD') AS event_date,
+             category, domain, description, significance,
              event_type, source_citation, source_section, outcome_observed
       FROM life_events
       WHERE ${where}

@@ -80,8 +80,13 @@ export const queryDashaDossierCapability: CapabilityDescriptor = {
     if (active_on)          { filters.push(`period_start <= $${p} AND period_end >= $${p}`); params.push(active_on); p++ }
     const where = filters.join(' AND ')
 
+    // WP-1.5 F-DATE-TZ: period_start/period_end are DATE columns — to_char pins the true
+    // calendar value as 'YYYY-MM-DD' text (raw return → node-postgres IST-midnight → UTC
+    // off-by-one + spurious time component, un-round-trippable).
     const sql = `
-      SELECT avadhi_id, system_id, level_n, lord_graha, period_start, period_end,
+      SELECT avadhi_id, system_id, level_n, lord_graha,
+             to_char(period_start, 'YYYY-MM-DD') AS period_start,
+             to_char(period_end, 'YYYY-MM-DD')   AS period_end,
              dossier, quality, citations, formula_version
       FROM kala_avadhi
       WHERE ${where}

@@ -74,7 +74,9 @@ export const queryDomainResultCapability: CapabilityDescriptor = {
       const sql = `
         SELECT phaladesa_id, domain, anchor_count, clean_anchor_count,
                staged_revision_count, anomaly_flag_count, top_anchor_id,
-               prediction_window_start, prediction_window_end, peak_date,
+               to_char(prediction_window_start, 'YYYY-MM-DD') AS prediction_window_start,
+               to_char(prediction_window_end, 'YYYY-MM-DD')   AS prediction_window_end,
+               to_char(peak_date, 'YYYY-MM-DD')               AS peak_date,
                magnitude, confidence_low, confidence_high, malleability,
                incoming_spillover_count, mitigation_available, muhurta_available,
                pramana_window_status, evidence_type, narration_status,

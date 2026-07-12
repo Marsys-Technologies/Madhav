@@ -109,7 +109,9 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
       const sql = `
         SELECT anchor_id, domain, event_type, direction, horizon_tier,
                anchor_source, signal_id, convergence_id, discovery_id, bhavishya_id,
-               window_start, peak_date, window_end,
+               to_char(window_start, 'YYYY-MM-DD') AS window_start,
+               to_char(peak_date, 'YYYY-MM-DD')    AS peak_date,
+               to_char(window_end, 'YYYY-MM-DD')   AS window_end,
                magnitude, magnitude_basis,
                confidence_low, confidence_high, confidence_basis,
                karmic_frame, karmic_note, malleability,

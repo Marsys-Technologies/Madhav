@@ -12,6 +12,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { buildHonestPagination } from '@/lib/retrieval/envelope'
 
 export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_convergence_windows',
@@ -99,11 +100,23 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
       if (min_convergence > 0) { conds.push(`convergence_score >= $${p++}`); params.push(min_convergence) }
       if (domain)    { conds.push(`domain = $${p++}`);             params.push(domain) }
 
+      // WP-1.5 receipt honesty: snapshot the filter params BEFORE the LIMIT param so the
+      // COUNT runs under the identical WHERE conditions (never a re-guess of the family size).
+      const countParams = [...params]
+      const countWhere = conds.join(' AND ')
       params.push(top_k)
       const topKPh = `$${p++}`
 
+      // WP-1.5 F-DATE-TZ: window_start/window_end/peak_date are DATE columns. Returned raw,
+      // node-postgres parses each to a JS Date at server-local (IST) midnight then serializes
+      // to a UTC ISO string — shifting e.g. 1990-05-14 to "1990-05-13T18:30:00.000Z"
+      // (off-by-one + spurious time, un-round-trippable). to_char pins the true calendar
+      // value as plain 'YYYY-MM-DD' text.
       const sql = `
-        SELECT convergence_id, signal_id, window_start, window_end, peak_date,
+        SELECT convergence_id, signal_id,
+               to_char(window_start, 'YYYY-MM-DD') AS window_start,
+               to_char(window_end, 'YYYY-MM-DD')   AS window_end,
+               to_char(peak_date, 'YYYY-MM-DD')    AS peak_date,
                mode, convergence_score, orb_strength, rarity_years,
                confidence_score, confidence_label, independent_current_count,
                is_off_dasha_discovery, horizon_tier, domain,
@@ -114,18 +127,39 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
         LIMIT ${topKPh}
       `
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const [result, countRes] = await Promise.all([
+        query<Record<string, unknown>>(sql, params),
+        query<{ total: string }>(
+          `SELECT COUNT(*)::text AS total FROM kala_convergence WHERE ${countWhere}`,
+          countParams,
+        ),
+      ])
 
       // Collect signal_id references (one per row)
       const signalRefs = [...new Set(
         (result.rows as Array<{ signal_id?: string }>).map(r => r.signal_id).filter(Boolean) as string[]
       )]
 
+      // WP-1.5 (LCA-18) receipt honesty: this tool previously returned only window_count
+      // with no total — a silent trim at top_k. Now every response declares the TRUE family
+      // size and whether it was trimmed. buildHonestPagination guarantees the three fields
+      // (total, more_available, next_cursor) can never contradict the served rows.
+      const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      const pagination = buildHonestPagination({
+        served: result.rows.length,
+        limit:  top_k,
+        offset: 0,
+        total:  total_matching,
+      })
+
       return {
         content: {
           chart_id,
           convergence_windows: result.rows,
           window_count:        result.rows.length,
+          total_matching,
+          more_available:      pagination.more_available,
+          next_cursor:         pagination.next_cursor,
           signal_id_refs:      signalRefs,
           filters: { date_from, date_to, min_convergence, domain, top_k },
           provenance: { tables: ['kala_convergence'] },
