@@ -79,8 +79,11 @@ export const queryTemporalViewCapability: CapabilityDescriptor = {
     const where = filters.join(' AND ')
 
     const sql = `
-      SELECT id, convergence_id, signal_id, effective_score, net_label, peak_date,
-             window_start, window_end, obstruction_summary, narrative, source_citation
+      SELECT id, convergence_id, signal_id, effective_score, net_label,
+             to_char(peak_date, 'YYYY-MM-DD')    AS peak_date,
+             to_char(window_start, 'YYYY-MM-DD') AS window_start,
+             to_char(window_end, 'YYYY-MM-DD')   AS window_end,
+             obstruction_summary, narrative, source_citation
       FROM kala_darshana
       WHERE ${where}
       ORDER BY effective_score DESC NULLS LAST, peak_date

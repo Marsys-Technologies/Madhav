@@ -381,8 +381,11 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
                afflicting_graha, obstruction_severity, intensity_tier,
                program_jsonb, tradition_options_jsonb, cross_tradition_corroboration,
                recommended_tier_jsonb, proportionality_basis,
-               initiation_muhurta_ref, window_start, window_end,
-               re_evaluation_date, classical_citation
+               initiation_muhurta_ref,
+               to_char(window_start, 'YYYY-MM-DD')      AS window_start,
+               to_char(window_end, 'YYYY-MM-DD')        AS window_end,
+               to_char(re_evaluation_date, 'YYYY-MM-DD') AS re_evaluation_date,
+               classical_citation
         FROM phala_mitigation
         WHERE ${conds.join(' AND ')}
         ORDER BY obstruction_severity DESC NULLS LAST, intensity_tier

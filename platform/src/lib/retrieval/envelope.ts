@@ -150,6 +150,67 @@ export interface PaginationBlock {
   limit: number
   total: number | null
   next_cursor: string | null
+  /**
+   * WP-1.5 (LCA-18 receipt honesty) — TRUE iff this response is a bounded slice and MORE
+   * rows exist beyond it. The single honest "was I trimmed?" bit every consumer reads
+   * instead of guessing from a null cursor. Computed, never guessed:
+   *   - total != null  → `offset + served < total`
+   *   - total == null  → `served >= limit` (a full page is presumptively not the last page)
+   * When `more_available` is true, `next_cursor` MUST be a working cursor (never null).
+   * The audit's canonical lie — `truncated:false` at 200/7014 with a null cursor, or
+   * orientation serving 10 of ~13.3k with `total:null` and no `more_available` — is
+   * structurally unrepresentable through the honest builder below.
+   */
+  more_available: boolean
+}
+
+/**
+ * WP-1.5 — the program-wide ENVELOPE-HONESTY contract helper. Every serving tool that
+ * returns a bounded slice builds its PaginationBlock through this function so the three
+ * receipt fields can never disagree with the served rows:
+ *   - `total`         : the true family size the caller COUNTed under the SAME filters
+ *                       (or null when genuinely uncomputable — B.10 forbids fabrication).
+ *   - `more_available`: computed from (served, limit, offset, total) — never passed in.
+ *   - `next_cursor`   : a WORKING opaque cursor (base64 `{offset}`) present exactly when
+ *                       `more_available` is true; null otherwise. Decode with decodeCursor.
+ *
+ * `served` is the row count actually in THIS response (rows.length) — not `limit`.
+ */
+export function buildHonestPagination(params: {
+  served: number
+  limit: number
+  offset?: number
+  total: number | null
+}): PaginationBlock {
+  const offset = params.offset ?? 0
+  const served = Math.max(0, params.served)
+  const more_available =
+    params.total != null
+      ? offset + served < params.total
+      : params.limit > 0 && served >= params.limit
+  return {
+    offset,
+    limit: params.limit,
+    total: params.total,
+    next_cursor: more_available ? encodeCursor(offset + served) : null,
+    more_available,
+  }
+}
+
+/** Encode a next-page offset into an opaque, round-trippable cursor. */
+export function encodeCursor(nextOffset: number): string {
+  return Buffer.from(JSON.stringify({ offset: nextOffset }), 'utf8').toString('base64')
+}
+
+/** Decode a cursor produced by encodeCursor back to its offset; null if malformed. */
+export function decodeCursor(cursor: string | null | undefined): number | null {
+  if (!cursor) return null
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8')) as { offset?: unknown }
+    return typeof parsed.offset === 'number' && Number.isFinite(parsed.offset) ? parsed.offset : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -301,11 +362,22 @@ export function buildRetrievalEnvelope(
   params: BuildRetrievalEnvelopeParams,
   format: EnvelopeFormat = 'legacy',
 ): RetrievalEnvelope {
+  // WP-1.5 receipt honesty: `more_available` is always emitted. If the caller supplied it
+  // (e.g. via buildHonestPagination — the authoritative path), honor it. Otherwise derive it
+  // conservatively so the field is never a silent `false`: a present next_cursor always means
+  // more remains; else a known total that exceeds the served page means more remains.
+  const pOffset = params.pagination?.offset ?? 0
+  const pLimit = params.pagination?.limit ?? 0
+  const pTotal = params.pagination?.total ?? null
+  const pCursor = params.pagination?.next_cursor ?? null
+  const derivedMore =
+    pCursor != null ? true : pTotal != null ? pOffset + pLimit < pTotal : false
   const pagination: PaginationBlock = {
-    offset: params.pagination?.offset ?? 0,
-    limit: params.pagination?.limit ?? 0,
-    total: params.pagination?.total ?? null,
-    next_cursor: params.pagination?.next_cursor ?? null,
+    offset: pOffset,
+    limit: pLimit,
+    total: pTotal,
+    next_cursor: pCursor,
+    more_available: params.pagination?.more_available ?? derivedMore,
   }
 
   const legacy: LegacyEnvelope = {

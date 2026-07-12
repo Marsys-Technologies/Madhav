@@ -224,9 +224,17 @@ export const queryUcdCapability: CapabilityDescriptor = {
     const min_salience    = Number(args.min_salience ?? 0)
 
     // ── Digest from vw_chart_digest ─────────────────────────────────────────
+    // WP-1.5 type hygiene (F-0963 class): msr_signal_count/yoga_count/dosha_count/
+    // contradiction_count are bigint — node-postgres serializes bigint as a JS STRING
+    // ("573"), so the digest shipped string counts a consumer cannot arithmetic on. Cast
+    // ::int (these are small chart-scoped tallies, never near the int ceiling) so the
+    // served counts are real JSON numbers, matching trap1_count (already integer).
     const digestSql = `
-      SELECT msr_signal_count, yoga_count, dosha_count,
-             avg_salience, max_salience, contradiction_count,
+      SELECT msr_signal_count::int AS msr_signal_count,
+             yoga_count::int AS yoga_count,
+             dosha_count::int AS dosha_count,
+             avg_salience, max_salience,
+             contradiction_count::int AS contradiction_count,
              weakest_graha, top_priority_class,
              top_convergence_domains, trap1_count, digest_at
       FROM vw_chart_digest
