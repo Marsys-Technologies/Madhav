@@ -686,7 +686,23 @@ Revisit if context degradation becomes acute.
   to WP-2.3-temporal. **BOUNCED to implementer:** (1) birth-forward filter + select life-relevant period; (2)
   honor predicate ayanamsha_id (not pool 5); (3) pre-birth-inclusive multi-ayanamsha regression fixture.
   **NOT MERGED — WP-2.3-temporal STAYS BLOCKED until re-verify GREEN.**
-- **WP-2.5** (never-computed + ayurdaya + L0 seed) still RUNNING.
+- **WP-2.5 IMPL COMPLETE** → branch `worktree-agent-aa2e0198b6f28f5a1` (`9167a61f`). New `ga_sensitive_degree` +
+  `ga_ayurdaya` writers + L0 `bg_sign_medical` Kalapurusha organ seed + dosha wiring (gandanta/mrityu-bhaga).
+  Every value DELEGATED from cited PyJHora consts (BPHS/Jataka Parijata — B.10, no hand-recall). Ayurdaya 3 methods
+  (Pindayu/Nisargayu/Amsayu) method-attributed + applicability rule served separately (no adjudication, §8.2);
+  maraka significators. Organ map cited. **Migrations 431/432 AUTHORED-UNAPPLIED** (organ seed + asset_registry
+  chart-scoped count_sql). Honest W3-deferral flags (kranti β=0, full SBC vedha, ayurdaya haranas — disclosed
+  pending_w3, not faked). Judgment aspecting-graha hook correctly left to W1 serving lane (follow-up §4). 18/18,
+  FROZEN orchestrator preserved, no HALT. **Blind verifier DISPATCHED** (classical recompute + ayurdaya §8.2 +
+  migration surgery + no-fabrication + deferral honesty). Data-verify at W3.
+
+### §7.3 — W2 batch-2 dispatch manifest (WP-2.2-nonCGM ∥ WP-2.3-graph)
+**Pre-dispatch intersection:** WP-2.2-nonCGM = CDLM rollups/gradients/clusters (bodha_cdlm) + RM tables (bodha_rm)
++ bo_samvada/contradictions + phala narration + bo_sangati. WP-2.3-graph = CGM graph EDGES (graha↔bhava) + yoga
+nodes (bo_cgm). **DISJOINT** — nonCGM explicitly EXCLUDES the bo_cgm file family that WP-2.3 owns (native's
+coordination rule). Also disjoint from batch-1 (ka/bo_laksana/ga). **Dispatch CONCURRENTLY.** SEQUENCED-LATER:
+WP-2.2-CGM (topology/sub_graphs/motifs incl LCA-6) waits on WP-2.3-EDGES landing; WP-2.3-temporal waits on WP-2.1.
+Dispatched 2026-07-13.
 
 ## §4 — HALT / disagreement register + follow-ups (append-only)
 
