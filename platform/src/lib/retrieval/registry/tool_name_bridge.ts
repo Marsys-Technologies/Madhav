@@ -157,6 +157,12 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   query_activation_waveform:  'marsys://tool/L3/query_activation_waveform',  // F-L10-015 kala_taranga (budget: summary+drill)
   query_obstruction_periods:  'marsys://tool/L3/query_obstruction_periods',  // F-L10-018 kala_obstruction (un-stubbed)
   query_spillover_cascades:   'marsys://tool/L4/query_spillover_cascades',   // F-L10-027 phala_sankrama
+  // WP-1.3j (W1-FOLLOWUP): populated-but-unserved L2 Bodha assets — real rows, no writer needed.
+  query_discoveries:          'marsys://tool/L2/query_discoveries',          // F-0129..0137 bodha_discoveries
+  query_pratijna:             'marsys://tool/L2/query_pratijna',             // F-0156,0176 bodha_pratijna
+  query_question_lenses:      'marsys://tool/L2/query_question_lenses',      // F-0156,0176 bodha_question_lenses
+  query_rm_prescriptions:     'marsys://tool/L2/query_rm_prescriptions',     // F-0161,0165,0174 bodha_rm_remedy_prescriptions
+  query_rm_resonances:        'marsys://tool/L2/query_rm_resonances',        // F-0161,0165,0174 bodha_rm_resonances
 }
 
 // ── ToolBundle adapter ────────────────────────────────────────────────────────
@@ -418,6 +424,12 @@ export const SURGICAL_TOOLS = [
   'query_activation_waveform',
   'query_obstruction_periods',
   'query_spillover_cascades',
+  // WP-1.3j (W1-FOLLOWUP): populated-but-unserved L2 Bodha assets now with serving paths.
+  'query_discoveries',
+  'query_pratijna',
+  'query_question_lenses',
+  'query_rm_prescriptions',
+  'query_rm_resonances',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -499,6 +511,12 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   kala_activation_waveform_get:'query_activation_waveform', // F-L10-015
   kala_obstruction_get:        'query_obstruction_periods', // F-L10-018
   phala_spillover_get:         'query_spillover_cascades',  // F-L10-027
+  // WP-1.3j (W1-FOLLOWUP): MCP-facing names for the now-served bodha assets.
+  bodha_discoveries_get:       'query_discoveries',         // F-0129..0137
+  bodha_pratijna_get:          'query_pratijna',            // F-0156,0176
+  bodha_question_lenses_get:   'query_question_lenses',     // F-0156,0176
+  bodha_rm_prescriptions_get:  'query_rm_prescriptions',    // F-0161,0165,0174
+  bodha_rm_resonances_get:     'query_rm_resonances',       // F-0161,0165,0174
 }
 
 /**

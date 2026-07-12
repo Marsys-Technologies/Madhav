@@ -16,7 +16,6 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { DEFAULT_AYANAMSHA } from '../../constants'
 
 /**
  * Per-chart LEL calibration judgment persisted on phala_rectification_best.judgment_flags
@@ -330,6 +329,8 @@ export const queryAnomalyFlagsCapability: CapabilityDescriptor = {
 
 // ── query_remedy_program ──────────────────────────────────────────────────────
 
+const MITIGATION_MAX_LIMIT = 50
+
 export const queryRemedyProgramCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L4/query_remedy_program',
   type:  'tool',
@@ -359,6 +360,8 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'Filter by intensity_tier (free-text tier label as stored on phala_mitigation).',
     },
+    limit:  { type: 'number', description: `Max rows (default ${MITIGATION_MAX_LIMIT}, max ${MITIGATION_MAX_LIMIT}).` },
+    offset: { type: 'number', description: 'Pagination offset (default 0).' },
   },
 
   llm_hints: { agentic: { cost_class: 'cheap', cacheable: true }, bulk_context: { pre_fetch_priority: 35 } },
@@ -368,6 +371,10 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
     const intensity_tier = args['intensity_tier'] as string | undefined
+    // WP-1.3j budget discipline (F-L10-024): phala_mitigation is NOT sparse — it holds
+    // 600+ rows/chart. The prior handler returned the FULL unbounded set; now bounded.
+    const limit  = Math.min(Math.max(Number(args['limit'] ?? MITIGATION_MAX_LIMIT), 1), MITIGATION_MAX_LIMIT)
+    const offset = Math.max(Number(args['offset'] ?? 0), 0)
 
     try {
       const conds: string[] = ['chart_id = $1']
@@ -375,6 +382,7 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
       let p = 2
 
       if (intensity_tier) { conds.push(`intensity_tier = $${p++}`); params.push(intensity_tier) }
+      const where = conds.join(' AND ')
 
       const sql = `
         SELECT mitigation_id, linked_anchor_id, obstruction_id,
@@ -382,16 +390,21 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
                program_jsonb, tradition_options_jsonb, cross_tradition_corroboration,
                recommended_tier_jsonb, proportionality_basis,
                initiation_muhurta_ref,
-               to_char(window_start, 'YYYY-MM-DD')      AS window_start,
-               to_char(window_end, 'YYYY-MM-DD')        AS window_end,
+               to_char(window_start, 'YYYY-MM-DD') AS window_start,
+               to_char(window_end, 'YYYY-MM-DD') AS window_end,
                to_char(re_evaluation_date, 'YYYY-MM-DD') AS re_evaluation_date,
                classical_citation
         FROM phala_mitigation
-        WHERE ${conds.join(' AND ')}
+        WHERE ${where}
         ORDER BY obstruction_severity DESC NULLS LAST, intensity_tier
+        LIMIT $${p} OFFSET $${p + 1}
       `
 
-      const result = await query(sql, params)
+      const [result, countRes] = await Promise.all([
+        query(sql, [...params, limit, offset]),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM phala_mitigation WHERE ${where}`, params),
+      ])
+      const total_matching = Number(countRes.rows[0]?.total ?? 0)
       const anchorRefs = [...new Set(
         (result.rows as Array<{ linked_anchor_id?: string }>)
           .map(r => r.linked_anchor_id)
@@ -400,9 +413,10 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id, remedies: result.rows, count: result.rows.length,
+          total_matching,
+          more_available: offset + result.rows.length < total_matching,
           anchor_id_refs: anchorRefs,
-          sparse_note: 'phala_mitigation count is unknown — sparse rows expected.',
-          filters: { intensity_tier },
+          filters: { intensity_tier, limit, offset },
         },
         is_error: false,
       }
@@ -503,9 +517,12 @@ export const queryRectificationCapability: CapabilityDescriptor = {
 
   description: [
     'Returns birth-time rectification candidates from phala_rectification (ph_rectification).',
-    'Expected: ~185 candidates (±90 min range, 5-min steps × 5 ayanamshas).',
+    'Expected: ~185 candidates/chart (±90 min range, 5-min steps × 5 ayanamshas).',
     'Candidates are scored by LEL fit; the canonical chart is NEVER auto-mutated.',
     'Per the D43 NO-AUTO-OVERRIDE rule: only the native can approve a rectification.',
+    "ayanamsha_id is an OPTIONAL filter — the table stores short codes",
+    "(lahiri | kp | raman | surya_siddhanta | true_chitra); OMIT it to return candidates",
+    'across ALL ayanamshas. Bounded (LIMIT ≤50) with a disclosed total + offset pagination.',
     'emits_references: false (rectification is a meta-analysis, not a signal reference).',
   ].join(' '),
 
@@ -521,8 +538,9 @@ export const queryRectificationCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id: { type: 'string', description: 'Chart UUID (<chart_uuid>). Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Ayanamsha (default: 'lahiri_chitrapaksha')." },
-    top_k: { type: 'number', description: 'Max candidates to return (default: 20, max: 185).' },
+    ayanamsha_id: { type: 'string', description: "OPTIONAL ayanamsha filter — short code (lahiri | kp | raman | surya_siddhanta | true_chitra). Omit for ALL ayanamshas." },
+    top_k: { type: 'number', description: 'Max candidates to return (default: 50, max: 50).' },
+    offset: { type: 'number', description: 'Pagination offset (default: 0).' },
   },
 
   llm_hints: { agentic: { cost_class: 'medium', cacheable: true }, bulk_context: { pre_fetch_priority: 45 } },
@@ -531,22 +549,48 @@ export const queryRectificationCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] as string
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
-    const top_k        = Math.min(Number(args['top_k'] ?? 20), 185)
+    // WP-1.3j serving-bug fix (F-L10-025): phala_rectification stores SHORT ayanamsha codes
+    // (lahiri, kp, raman, surya_siddhanta, true_chitra) — NOT the L1 long form
+    // 'lahiri_chitrapaksha'. The prior handler forced ayanamsha_id = DEFAULT_AYANAMSHA
+    // ('lahiri_chitrapaksha'), which matched ZERO rows despite 185 real candidates/chart.
+    // Fix: ayanamsha_id is now an optional filter (omit → all ayanamshas). Accept the long
+    // form as a convenience alias for its short code so an L1-shaped caller still resolves.
+    const AY_LONG_TO_SHORT: Record<string, string> = {
+      lahiri_chitrapaksha: 'lahiri', lahiri: 'lahiri',
+      krishnamurti: 'kp', kp: 'kp',
+      raman: 'raman',
+      surya_siddhanta_classical: 'surya_siddhanta', surya_siddhanta: 'surya_siddhanta',
+      true_chitra: 'true_chitra',
+    }
+    const rawAyanamsha = args['ayanamsha_id'] as string | undefined
+    const ayanamsha_id = rawAyanamsha ? (AY_LONG_TO_SHORT[rawAyanamsha] ?? rawAyanamsha) : null
+    const top_k        = Math.min(Math.max(Number(args['top_k'] ?? 50), 1), 50)
+    const offset       = Math.max(Number(args['offset'] ?? 0), 0)
 
     try {
+      const conds: string[] = ['chart_id = $1']
+      const qp: unknown[] = [chart_id]
+      let cp = 2
+      if (ayanamsha_id) { conds.push(`ayanamsha_id = $${cp++}`); qp.push(ayanamsha_id) }
+      const rectWhere = conds.join(' AND ')
+
       const sql = `
-        SELECT id, candidate_birth_utc, offset_minutes, ayanamsha_id,
+        SELECT id, to_char(candidate_birth_utc, 'YYYY-MM-DD') AS candidate_birth_date,
+               candidate_birth_utc, offset_minutes, ayanamsha_id,
                lagna_sign, lagna_longitude_deg, lagna_degree_in_sign,
                lel_fit_score, lel_events_matched, lel_events_tested,
-               lagna_stable, scored_at
+               lagna_stable, to_char(scored_at, 'YYYY-MM-DD') AS scored_date
         FROM phala_rectification
-        WHERE chart_id = $1 AND ayanamsha_id = $2
+        WHERE ${rectWhere}
         ORDER BY lel_fit_score DESC NULLS LAST
-        LIMIT $3
+        LIMIT $${cp} OFFSET $${cp + 1}
       `
 
-      const result = await query(sql, [chart_id, ayanamsha_id, top_k])
+      const [result, countRes] = await Promise.all([
+        query(sql, [...qp, top_k, offset]),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM phala_rectification WHERE ${rectWhere}`, qp),
+      ])
+      const total_matching = Number(countRes.rows[0]?.total ?? 0)
 
       // Surface the per-chart calibration judgment (BA-LEL R2.2 Step 4/5). The best
       // row is chart-scoped (UNIQUE chart_id); judgment_flags carries the
@@ -619,6 +663,8 @@ export const queryRectificationCapability: CapabilityDescriptor = {
         content: {
           chart_id, ayanamsha_id,
           candidates: result.rows, count: result.rows.length,
+          total_matching,
+          more_available: offset + result.rows.length < total_matching,
           judgment_flags,
           calibration_state: judgment_flags?.calibration_state ?? null,
           lel_match_explanation,
@@ -628,7 +674,7 @@ export const queryRectificationCapability: CapabilityDescriptor = {
           win_margin: best?.win_margin ?? null,
           competing_candidates: best?.competing_candidates ?? null,
           override_note: 'D43 NO-AUTO-OVERRIDE: the canonical chart birth time is never auto-mutated. phala_rectification has no staging/approval column — candidates are advisory LEL-fit scores only; native sign-off is required out-of-band before any rectification is adopted.',
-          filters: { top_k },
+          filters: { ayanamsha_id, top_k, offset },
         },
         is_error: false,
       }

@@ -20,6 +20,21 @@ const queryMock = vi.fn()
 
 vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...args) }))
 
+/**
+ * SQL-aware mock router. WP-1.3j added a COUNT(*) query (total disclosure) + optional
+ * ayanamsha filter to query_rectification, so the handler now issues 3 queries
+ * (candidates + COUNT via Promise.all, then the best-row lookup) instead of 2. Routing by
+ * SQL text keeps these fixtures resilient to call count/order.
+ */
+function routeRectificationQueries(bestRows: Record<string, unknown>[]) {
+  return (sql: string) => {
+    const s = String(sql)
+    if (s.includes('COUNT(*)')) return Promise.resolve({ rows: [{ total: '185' }] })
+    if (s.includes('FROM phala_rectification_best')) return Promise.resolve({ rows: bestRows })
+    return Promise.resolve({ rows: [] }) // candidates
+  }
+}
+
 import { queryRectificationCapability } from '../query_phala_calibration'
 
 const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -34,29 +49,25 @@ describe('query_rectification — lel_match_explanation (R5.1 C2 item 5)', () =>
   })
 
   it('native chart: surfaces lel_event_count=57 AND lel_training_matched=0 together with an explanation, never one silently substituting for the other', async () => {
-    queryMock
-      .mockResolvedValueOnce({ rows: [] }) // candidates query (not needed for this assertion)
-      .mockResolvedValueOnce({
-        rows: [{
-          judgment_flags: {
-            calibration: 'calibrated',
-            calibration_state: 'calibrated',
-            rectification_basis: 'lel_fit',
-            lel_event_count: 57,
-            load_bearing: true,
-          },
-          confidence_label: 'unresolved',
-          best_offset_minutes: 0,
-          best_lel_fit_score: null,
-          confidence_low: null,
-          confidence_high: null,
-          win_margin: null,
-          lel_training_events: 36,
-          lel_training_matched: 0,
-          leakage_firewall_note: '[basis=lel_fit] LEAKAGE-FIREWALL: 36 training events (all pre-2020-01-01, exact/month-exact, none from LEL v1.7 M5-A-S1 enrichment). Post-2020 + enrichment events held out for out-of-sample validation.',
-          competing_candidates: [],
-        }],
-      })
+    queryMock.mockImplementation(routeRectificationQueries([{
+      judgment_flags: {
+        calibration: 'calibrated',
+        calibration_state: 'calibrated',
+        rectification_basis: 'lel_fit',
+        lel_event_count: 57,
+        load_bearing: true,
+      },
+      confidence_label: 'unresolved',
+      best_offset_minutes: 0,
+      best_lel_fit_score: null,
+      confidence_low: null,
+      confidence_high: null,
+      win_margin: null,
+      lel_training_events: 36,
+      lel_training_matched: 0,
+      leakage_firewall_note: '[basis=lel_fit] LEAKAGE-FIREWALL: 36 training events (all pre-2020-01-01, exact/month-exact, none from LEL v1.7 M5-A-S1 enrichment). Post-2020 + enrichment events held out for out-of-sample validation.',
+      competing_candidates: [],
+    }]))
 
     const result = await queryRectificationCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
       content: { lel_match_explanation: Record<string, unknown>; calibration_state: string }
@@ -82,9 +93,7 @@ describe('query_rectification — lel_match_explanation (R5.1 C2 item 5)', () =>
   })
 
   it('Abhinandan chart (structural, no rectification run): explanation reads as "no LEL corroboration to report" — never conflated with a denial or a training-match failure', async () => {
-    queryMock
-      .mockResolvedValueOnce({ rows: [] }) // candidates query
-      .mockResolvedValueOnce({ rows: [] }) // no phala_rectification_best row at all
+    queryMock.mockImplementation(routeRectificationQueries([])) // no phala_rectification_best row at all
 
     const result = await queryRectificationCapability.handler({ chart_id: ABHINANDAN_CHART_ID }, undefined) as {
       content: { lel_match_explanation: Record<string, unknown>; calibration_state: string | null }
@@ -98,29 +107,25 @@ describe('query_rectification — lel_match_explanation (R5.1 C2 item 5)', () =>
   })
 
   it('a chart WITH a best row but genuinely zero LEL events (structural, load_bearing false) reports lel_event_count=0 honestly, distinct from the native\'s calibrated-but-zero-training-match case', async () => {
-    queryMock
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({
-        rows: [{
-          judgment_flags: {
-            calibration: 'structural',
-            calibration_state: 'structural',
-            rectification_basis: 'structural_no_lel',
-            lel_event_count: 0,
-            load_bearing: false,
-          },
-          confidence_label: 'unresolved',
-          best_offset_minutes: 0,
-          best_lel_fit_score: null,
-          confidence_low: null,
-          confidence_high: null,
-          win_margin: null,
-          lel_training_events: 0,
-          lel_training_matched: null,
-          leakage_firewall_note: '[basis=structural_no_lel] LEAKAGE-FIREWALL: 0 training events (all pre-2020-01-01, exact/month-exact, none from LEL v1.7 M5-A-S1 enrichment). Post-2020 + enrichment events held out for out-of-sample validation.',
-          competing_candidates: [],
-        }],
-      })
+    queryMock.mockImplementation(routeRectificationQueries([{
+      judgment_flags: {
+        calibration: 'structural',
+        calibration_state: 'structural',
+        rectification_basis: 'structural_no_lel',
+        lel_event_count: 0,
+        load_bearing: false,
+      },
+      confidence_label: 'unresolved',
+      best_offset_minutes: 0,
+      best_lel_fit_score: null,
+      confidence_low: null,
+      confidence_high: null,
+      win_margin: null,
+      lel_training_events: 0,
+      lel_training_matched: null,
+      leakage_firewall_note: '[basis=structural_no_lel] LEAKAGE-FIREWALL: 0 training events (all pre-2020-01-01, exact/month-exact, none from LEL v1.7 M5-A-S1 enrichment). Post-2020 + enrichment events held out for out-of-sample validation.',
+      competing_candidates: [],
+    }]))
 
     const result = await queryRectificationCapability.handler({ chart_id: ABHINANDAN_CHART_ID }, undefined) as {
       content: { lel_match_explanation: Record<string, unknown> }

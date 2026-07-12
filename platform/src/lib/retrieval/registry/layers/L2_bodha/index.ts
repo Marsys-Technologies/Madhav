@@ -22,6 +22,13 @@ import { queryCdlmSummaryCapability }      from './query_cdlm_summary'
 import { queryCgmMotifsCapability }        from './query_cgm_motifs'
 import { queryCgmPathsCapability }         from './query_cgm_paths'
 import { queryChartGestaltCapability }     from './query_chart_gestalt'
+// WP-1.3j / F-0129..0137,0156,0161,0165,0174,0176 (W1-FOLLOWUP): populated-but-unserved
+// L2 Bodha assets with real rows + no writer needed — surgical serving surfaces added.
+import { queryDiscoveriesCapability }      from './query_discoveries'
+import { queryPratijnaCapability }         from './query_pratijna'
+import { queryQuestionLensesCapability }   from './query_question_lenses'
+import { queryRmPrescriptionsCapability }  from './query_rm_prescriptions'
+import { queryRmResonancesCapability }     from './query_rm_resonances'
 
 registerCapability(queryUcdCapability)
 registerCapability(traverseChartGraphCapability)
@@ -35,3 +42,8 @@ registerCapability(queryCdlmSummaryCapability)
 registerCapability(queryCgmMotifsCapability)
 registerCapability(queryCgmPathsCapability)
 registerCapability(queryChartGestaltCapability)
+registerCapability(queryDiscoveriesCapability)
+registerCapability(queryPratijnaCapability)
+registerCapability(queryQuestionLensesCapability)
+registerCapability(queryRmPrescriptionsCapability)
+registerCapability(queryRmResonancesCapability)
