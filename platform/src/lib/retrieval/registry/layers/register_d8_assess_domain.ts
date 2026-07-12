@@ -360,8 +360,27 @@ async function runAssessDomain(
       },
     }
 
+    // WP-1.8 (cross-surface inconsistency): assess_*'s headline top-10 is the SAME composite
+    // ranking get_signals produces WHEN CALLED WITH THIS DOMAIN — but a consumer who calls
+    // get_signals WITHOUT a domain gets a chart-wide salience_fallback ordering that shares ~0
+    // of these signals, making the two surfaces look contradictory. We (a) prove the agreement by
+    // deriving top_10 from the identical query_signals call, and (b) name the exact reproducing
+    // call so the surfaces are explicitly reconciled, never silently divergent.
+    const top10 = pickSignals(topCompositeSignals, 10)
+    const cross_surface = {
+      agrees_with: 'get_signals',
+      reproducing_call: { tool: 'get_signals', args: { chart_id, ayanamsha_id, domain, top_k: 10 } },
+      ranking_mode: (p2RankingBasis['mode'] as string) ?? 'composite_4d',
+      note:
+        `This top-10 is byte-identical to get_signals({domain:"${domain}", top_k:10}) — the two ` +
+        `surfaces share one ranking path (query_signals composite). NOTE: get_signals called ` +
+        `WITHOUT a domain uses chart-wide salience ranking and will surface DIFFERENT signals; ` +
+        `that is not a contradiction — pass domain:"${domain}" to reproduce this ordering.`,
+    }
+
     const verdict_skeleton = {
-      top_10_composite: pickSignals(topCompositeSignals, 10),
+      top_10_composite: top10,
+      cross_surface,
       by_stage: {
         yoga:      stageYoga,
         karaka:    stageKaraka,

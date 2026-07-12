@@ -158,6 +158,61 @@ interface GrahaCondition {
   fact_ids: string[]
 }
 
+// ── R-46: operative-varga dignity (WP-1.8) ────────────────────────────────────
+// Classical grounding (B.3): Parashara holds the divisional (amsha) chart as the
+// *ripening* of the rasi promise — "what is shown in the rasi is confirmed (or denied)
+// in the amsha." BPHS Ch.6-7 (Shadvarga/Vargas) and the Parashari dictum that the D9
+// (navamsha) is the "fruit" (phala) of the D1 promise for marriage/dharma make the
+// operative-varga dignity of the bhāveśa and kāraka a first-class verdict term, not a
+// decoration. Before WP-1.8 the composite weighted ONLY D1 (R-46: "varga evidence
+// structurally cannot move a verdict"). This term reads the SAME frozen build-time
+// dignity facts (graha_dignity_per_varga, subject `<VARGA>_<CODE>`) the D1 leg reads —
+// it never recomputes dignity (§N.5: L1 is the authority).
+//
+// Weights are deliberately SUB-D1 (a varga refines, it does not overrule the rasi):
+// bhāveśa operative-varga dignity ×0.75, kāraka(s) averaged ×0.5. When the operative
+// varga IS D1 (character/buddhi domains) the term is SKIPPED to avoid double-counting
+// the D1 dignity already in the composite.
+const VARGA_BHAVESHA_WEIGHT = 0.75
+const VARGA_KARAKA_WEIGHT = 0.5
+
+interface VargaDignity {
+  graha: string
+  graha_code: string
+  role: 'bhavesha' | 'karaka'
+  varga: string
+  dignity_state: string | null
+  dignity_weight: number | null
+  fact_id: string | null
+}
+
+/** Operative-varga dignity for one graha, re-derived from chart_facts (never recomputed).
+ *  Returns a null-dignity record (weight 0 contribution) when the varga row is absent or
+ *  when varga==='D1' (already counted by the D1 dignity leg). */
+async function vargaDignity(
+  chartId: string, ayanamshaId: string, graha: string, grahaCode: string,
+  varga: string, role: 'bhavesha' | 'karaka',
+): Promise<VargaDignity> {
+  const base: VargaDignity = { graha, graha_code: grahaCode, role, varga, dignity_state: null, dignity_weight: null, fact_id: null }
+  if (varga === 'D1') return base
+  try {
+    const res = await query<{ fact_id: string; fact_value_text: string | null }>(
+      `SELECT fact_id, fact_value_text FROM chart_facts
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
+         AND fact_subject = $3 AND fact_key = 'dignity_state'`,
+      [chartId, ayanamshaId, `${varga}_${grahaCode}`],
+    )
+    if (res.rows[0]) {
+      base.dignity_state = res.rows[0].fact_value_text
+      base.dignity_weight = res.rows[0].fact_value_text ? DIGNITY_WEIGHT[res.rows[0].fact_value_text] ?? 0 : null
+      base.fact_id = res.rows[0].fact_id
+    }
+  } catch {
+    // non-fatal: operative-varga dignity is best-effort; absence contributes 0, disclosed in the receipt.
+  }
+  return base
+}
+
 /** D1 dignity + shadbala for one already-resolved graha entity. Never recomputes either —
  *  both are frozen build-time formula output (must_not_touch, R5 brief). */
 async function gradeGraha(chartId: string, ayanamshaId: string, g: ResolvedGraha): Promise<GrahaCondition> {
@@ -507,16 +562,40 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       }
 
       // ── Step 8: deterministic promise-register verdict (never an LLM judgment) ──
-      let compositeScore = lordCondition.dignity_weight ?? 0
-      for (const k of karakaConditions) compositeScore += k.dignity_weight ?? 0
+      // D1 (rasi) leg — dignity/shadbala/occupant/aspect.
+      let d1Score = lordCondition.dignity_weight ?? 0
+      for (const k of karakaConditions) d1Score += k.dignity_weight ?? 0
       const beneficOccupants = occupantsLagnaEntity.grahas.filter(g => NATURAL_BENEFICS.has(g)).length
       const maleficOccupants = occupantsLagnaEntity.grahas.filter(g => NATURAL_MALEFICS.has(g)).length
-      compositeScore += beneficOccupants * 0.5 - maleficOccupants * 0.5
+      d1Score += beneficOccupants * 0.5 - maleficOccupants * 0.5
       const beneficAspects = aspectsLagna.grahas.filter(g => NATURAL_BENEFICS.has(g)).length
       const maleficAspects = aspectsLagna.grahas.filter(g => NATURAL_MALEFICS.has(g)).length
-      compositeScore += beneficAspects * 0.3 - maleficAspects * 0.3
-      if (lordCondition.shadbala_rupa !== null && lordCondition.shadbala_rupa < 3) compositeScore -= 0.5
-      if (lordConditionMoon?.dignity_weight) compositeScore += lordConditionMoon.dignity_weight * 0.5
+      d1Score += beneficAspects * 0.3 - maleficAspects * 0.3
+      if (lordCondition.shadbala_rupa !== null && lordCondition.shadbala_rupa < 3) d1Score -= 0.5
+      if (lordConditionMoon?.dignity_weight) d1Score += lordConditionMoon.dignity_weight * 0.5
+
+      // ── R-46 (WP-1.8): operative-varga (amsha) term — the ripening of the rasi promise ──
+      // Re-derived operative-varga dignity of bhāveśa + kāraka(s), weighted sub-D1. Sequenced
+      // after WP-1.5's R-38 (varga rows now exist to weigh). This is what lets D9-contradicts-D1
+      // (e.g. a bhāveśa neutral in rasi but debilitated in navamsha) actually MOVE the verdict.
+      const bhaveshaVarga = await vargaDignity(chart_id, ayanamsha_id, lordCondition.graha, lordCondition.graha_code, spec.varga, 'bhavesha')
+      if (bhaveshaVarga.fact_id) fact_ids.add(bhaveshaVarga.fact_id)
+      const karakaVargaList: VargaDignity[] = []
+      for (const k of karakaConditions) {
+        const kv = await vargaDignity(chart_id, ayanamsha_id, k.graha, k.graha_code, spec.varga, 'karaka')
+        if (kv.fact_id) fact_ids.add(kv.fact_id)
+        karakaVargaList.push(kv)
+      }
+      const bhaveshaVargaContribution = (bhaveshaVarga.dignity_weight ?? 0) * VARGA_BHAVESHA_WEIGHT
+      const karakaVargaWeights = karakaVargaList.map(k => k.dignity_weight).filter((w): w is number => w !== null)
+      const karakaVargaMean = karakaVargaWeights.length > 0
+        ? karakaVargaWeights.reduce((a, b) => a + b, 0) / karakaVargaWeights.length
+        : 0
+      const karakaVargaContribution = karakaVargaMean * VARGA_KARAKA_WEIGHT
+      const vargaTerm = spec.varga === 'D1' ? 0 : bhaveshaVargaContribution + karakaVargaContribution
+      const vargaTermApplied = spec.varga !== 'D1' && (bhaveshaVarga.fact_id !== null || karakaVargaList.some(k => k.fact_id !== null))
+
+      const compositeScore = d1Score + vargaTerm
 
       let verdict_grade: string
       if (compositeScore >= 2.5) verdict_grade = 'convergent_strong'
@@ -524,17 +603,42 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       else if (compositeScore >= -1) verdict_grade = 'mixed'
       else verdict_grade = 'contested'
 
+      // D1-only grade (what the pre-WP-1.8 formula would have returned) — surfaced so the
+      // varga contribution is auditable and a reviewer can see WHEN the amsha moved the verdict.
+      let d1_only_grade: string
+      if (d1Score >= 2.5) d1_only_grade = 'convergent_strong'
+      else if (d1Score >= 1) d1_only_grade = 'convergent_moderate'
+      else if (d1Score >= -1) d1_only_grade = 'mixed'
+      else d1_only_grade = 'contested'
+
       const verdict = {
         domain: domainKey ?? null,
         domain_label: spec.label,
         bhava: spec.bhava,
         verdict_grade,
         composite_score: Math.round(compositeScore * 100) / 100,
+        d1_score: Math.round(d1Score * 100) / 100,
+        d1_only_grade,
+        operative_varga: spec.varga,
+        varga_term: Math.round(vargaTerm * 100) / 100,
+        varga_moved_verdict: vargaTermApplied && d1_only_grade !== verdict_grade,
+        varga_subscores: {
+          bhavesha: { graha: bhaveshaVarga.graha, varga: spec.varga, dignity_state: bhaveshaVarga.dignity_state, weight: bhaveshaVarga.dignity_weight, contribution: Math.round(bhaveshaVargaContribution * 100) / 100 },
+          karakas: karakaVargaList.map(k => ({ graha: k.graha, varga: spec.varga, dignity_state: k.dignity_state, weight: k.dignity_weight })),
+          note: spec.varga === 'D1'
+            ? 'Operative varga is D1 — varga term skipped to avoid double-counting the D1 dignity already in the composite.'
+            : (vargaTermApplied
+                ? `Operative-varga (${spec.varga}) dignity of bhāveśa (×${VARGA_BHAVESHA_WEIGHT}) + kāraka(s) mean (×${VARGA_KARAKA_WEIGHT}) — the amsha as the ripening of the rasi promise (BPHS Ch.6-7; Parashari D9-is-the-fruit dictum).`
+                : `No ${spec.varga} dignity rows resolved for bhāveśa/kāraka — varga term = 0 (honest absence, not fabricated).`),
+        },
         note:
           'Deterministic weighted aggregation of already-computed dignity/shadbala/occupant/aspect ' +
-          'signals — NOT an LLM judgment and NOT a calibrated probability (that is L4/L5\'s domain). ' +
-          'Weights: dignity ±2..−2, benefic/malefic occupant ±0.5, benefic/malefic aspect ±0.3, ' +
-          'weak-lord (<3 rupas) −0.5, from-Moon lord dignity ×0.5.',
+          'signals PLUS a re-derived operative-varga (amsha) term — NOT an LLM judgment and NOT a ' +
+          'calibrated probability (that is L4/L5\'s domain). D1 weights: dignity ±2..−2, ' +
+          'benefic/malefic occupant ±0.5, benefic/malefic aspect ±0.3, weak-lord (<3 rupas) −0.5, ' +
+          'from-Moon lord dignity ×0.5. Varga term (R-46/WP-1.8): bhāveśa operative-varga dignity ' +
+          `×${VARGA_BHAVESHA_WEIGHT} + kāraka(s) mean ×${VARGA_KARAKA_WEIGHT} (skipped when operative varga is D1). ` +
+          'composite_score = d1_score + varga_term; d1_only_grade shows the pre-varga verdict.',
       }
 
       // ── The receipt (design §28.6 — classical-units completeness) ──
@@ -544,6 +648,9 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         karaka: karakaConditions.length > 0,
         from_moon: bhavaSignMoon !== null && lordConditionMoon !== null,
         varga_confirmed: vargaConfirmed ? `${spec.varga}✓` : `${spec.varga}✗ (no divisional row found)`,
+        // R-46 (WP-1.8): distinct from varga_confirmed (placement rows exist) — this asserts the
+        // operative-varga dignity actually ENTERED the verdict composite as a weighted term.
+        varga_weighted_into_verdict: vargaTermApplied,
         yogas_checked: yogasChecked,
         bhanga_checked: false,
         timing_anchored: timingAnchored,

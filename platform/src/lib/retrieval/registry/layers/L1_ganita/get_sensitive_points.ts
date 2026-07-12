@@ -78,9 +78,16 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       }
 
       const params: unknown[] = [chartId, categories, limit, offset]
+      // WP-1.8 (multi-formula collapse): project formula_id + formula_provenance_text so
+      // multi-formula points (e.g. AVAYOGI computed both by BPHS Ch.20 → Virgo and by the
+      // alternate 96°40' formula → Libra, differing by ~10° / a whole sign) are distinguishable.
+      // These two rows share an IDENTICAL citation_ref, so any consumer pivoting on
+      // (category, subject, fact_key) silently collapses them to ONE arbitrarily-chosen value.
+      // We serve BOTH rows AND a `multi_formula` disclosure that names each formula_id — never collapse.
       let sql = `
-        SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+               fact_value_text, fact_value_jsonb, unit, formula_id, formula_provenance_text,
+               verification_pass_status, citation_ref
         FROM chart_facts
         WHERE chart_id = $1 AND fact_category = ANY($2::text[])
       `
@@ -88,11 +95,61 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key, formula_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
+      const rows = result.rows ?? []
+
+      // ── Multi-formula disclosure (WP-1.8) ────────────────────────────────────────
+      // Group the served rows by (category, subject, ayanamsha, fact_key); any group with >1
+      // DISTINCT formula_id is a multi-formula point whose values would collapse under a naive
+      // key→value pivot. Surface each such group with every formula's value + provenance so the
+      // consumer sees the genuine formula-level divergence instead of one silently-picked winner.
+      const groups = new Map<string, { category: string; subject: unknown; ayanamsha: unknown; fact_key: unknown; variants: Map<string, { formula_id: string; formula_provenance_text: unknown; value: unknown; fact_id: unknown }> }>()
+      for (const r of rows) {
+        const fid = r['formula_id']
+        if (fid == null) continue
+        const gk = `${r['fact_category']}|${r['fact_subject']}|${r['ayanamsha_id']}|${r['fact_key']}`
+        let g = groups.get(gk)
+        if (!g) {
+          g = { category: r['fact_category'] as string, subject: r['fact_subject'], ayanamsha: r['ayanamsha_id'], fact_key: r['fact_key'], variants: new Map() }
+          groups.set(gk, g)
+        }
+        g.variants.set(String(fid), {
+          formula_id: String(fid),
+          formula_provenance_text: r['formula_provenance_text'],
+          value: r['fact_value_text'] ?? r['fact_value_num'],
+          fact_id: r['fact_id'],
+        })
+      }
+      const multi_formula = [...groups.values()]
+        .filter(g => g.variants.size > 1)
+        .map(g => ({
+          fact_category: g.category,
+          fact_subject: g.subject,
+          ayanamsha_id: g.ayanamsha,
+          fact_key: g.fact_key,
+          formula_count: g.variants.size,
+          formulas: [...g.variants.values()],
+        }))
+
       return {
-        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: {
+          chart_id: chartId,
+          categories,
+          rows,
+          total: rows.length,
+          // WP-1.8: never collapse multi-formula points — both rows are in `rows`; this block
+          // names the divergence explicitly so a downstream key→value pivot cannot hide it.
+          multi_formula,
+          ...(multi_formula.length > 0 ? {
+            multi_formula_note:
+              `${multi_formula.length} point(s) here are computed by MORE THAN ONE classical formula ` +
+              `(e.g. AVAYOGI: BPHS Ch.20 vs the alternate 96°40' convention). Both rows are served ` +
+              `and disambiguated by formula_id — do NOT pivot on (category,subject,fact_key) alone, ` +
+              `which would silently drop one formula's value.`,
+          } : {}),
+        },
         is_error: false,
       }
     } catch (err) {
