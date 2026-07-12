@@ -536,6 +536,23 @@ change (no HALT). Same pattern will apply to W2.
   **merge-order: WP-1.5 FIRST**, then WP-1.3j rebases on merged 1.5 and its verifier re-checks envelope conformance.
 - **Verdict: dispatch CONCURRENTLY (separate worktrees, one message); ordered merge (1.5→1.3j-rebased).**
 **Dispatched 2026-07-13.**
+- **WP-1.3j IMPL COMPLETE** → branch `worktree-agent-ae30faa5978d33e1c` (`0854a5a1`). 5 new bodha serving tools
+  (discoveries 2392/1150, pratijna 110/110, question_lenses 60/60, rm_prescriptions 135/135, rm_resonances 45/45;
+  honest envelopes+budget+to_char). 2 phala serving-bugs FIXED: F-L10-025 ph_rectification (handler forced
+  lahiri long-form vs short codes → 0/185 → **185/185**); F-L10-024 ph_pratikara (mitigation_map read wrong
+  ToolBundle key → empty → **602/638** surfaced+budgeted). **All 23 W1-FOLLOWUP dispositioned: 12 served + 11
+  re-dispositioned PENDING-W2/W3 (reasons in report) → NONE survive (Ruling 1 ✓).** tsc 0 both, 732+82+66 pass,
+  platform-mcp 95-fail baseline unchanged (stash-verified). **HELD for merge AFTER WP-1.5 → rebase → blind
+  verifier re-checks serving-correctness + WP-1.5 envelope conformance.**
+- **WP-1.5 IMPL COMPLETE** → branch `worktree-agent-a3ffd6d883826a273` (`d9b33401`). Canonical `envelope.ts`:
+  `more_available` always emitted; `buildHonestPagination`+cursor make trim-lies structurally impossible.
+  **F-DATE-TZ program-wide: 10 tools `to_char`'d** (L3×6, L4×3, L5 lel + register_d8/p1); remaining paths
+  (phala_event_anchors sidecar; unused raw cols) flagged explicit follow-up. LCA-8 list_entities real 652
+  total+cursor (was masking 552). **Correctness bug FOUND+FIXED:** `call_priority_ranking` referenced absent
+  kala_activation cols → errored EVERY call → repointed. F-0963 digest `::int`. R-38/R-41 honest (registry-handler
+  retest; live deployed re-run = follow-up). 12 unit+15 integration green, tsc 0 both, 166 existing pass. **Blind
+  verifier DISPATCHED** (Lane-4: envelope-cant-lie invariant + F-DATE-TZ + list_entities + priority_ranking +
+  R-38/R-41 + no-regression). **Merges FIRST on CONFIRMED; then rebase WP-1.3j onto it + verify conformance.**
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather

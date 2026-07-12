@@ -783,7 +783,9 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         // 3. Fructification timing from phala_anchors (domain-filtered)
         const anchorResult = await platformQuery(`
           SELECT pa.anchor_id, pa.domain, pa.event_type, pa.posterior,
-                 pa.magnitude, pa.window_start, pa.window_end,
+                 pa.magnitude,
+                 to_char(pa.window_start, 'YYYY-MM-DD') AS window_start,
+                 to_char(pa.window_end, 'YYYY-MM-DD')   AS window_end,
                  pa.structured_falsifier_jsonb, pa.lift_vector_jsonb
           FROM phala_anchors pa
           WHERE pa.chart_id = $1

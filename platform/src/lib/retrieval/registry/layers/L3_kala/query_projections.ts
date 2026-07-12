@@ -103,9 +103,15 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
       params.push(limit)
       const limitPh = `$${p}`
 
+      // WP-1.5 F-DATE-TZ: peak_date/window_start/window_end are DATE columns → to_char to
+      // 'YYYY-MM-DD' (raw return → IST-midnight → UTC off-by-one). computed_at is a
+      // timestamptz and is correctly left as an ISO instant.
       const sql = `
         SELECT id, projection_rank, domain, probability_tier, effective_score,
-               peak_date, window_start, window_end, narrative,
+               to_char(peak_date, 'YYYY-MM-DD')    AS peak_date,
+               to_char(window_start, 'YYYY-MM-DD') AS window_start,
+               to_char(window_end, 'YYYY-MM-DD')   AS window_end,
+               narrative,
                falsifiability, convergence_id, signal_id, source_chain,
                outcome_recorded, outcome_notes, source_citation, computed_at
         FROM kala_bhavishya
