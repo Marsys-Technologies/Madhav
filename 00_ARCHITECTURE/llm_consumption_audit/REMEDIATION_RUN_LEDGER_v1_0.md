@@ -536,6 +536,15 @@ change (no HALT). Same pattern will apply to W2.
   **merge-order: WP-1.5 FIRST**, then WP-1.3j rebases on merged 1.5 and its verifier re-checks envelope conformance.
 - **Verdict: dispatch CONCURRENTLY (separate worktrees, one message); ordered merge (1.5→1.3j-rebased).**
 **Dispatched 2026-07-13.**
+- **WP-1.3j IMPL COMPLETE** → branch `worktree-agent-ae30faa5978d33e1c` (`0854a5a1`). 5 new bodha serving tools
+  (discoveries 2392/1150, pratijna 110/110, question_lenses 60/60, rm_prescriptions 135/135, rm_resonances 45/45;
+  honest envelopes+budget+to_char). 2 phala serving-bugs FIXED: F-L10-025 ph_rectification (handler forced
+  lahiri long-form vs short codes → 0/185 → **185/185**); F-L10-024 ph_pratikara (mitigation_map read wrong
+  ToolBundle key → empty → **602/638** surfaced+budgeted). **All 23 W1-FOLLOWUP dispositioned: 12 served + 11
+  re-dispositioned PENDING-W2/W3 (reasons in report) → NONE survive (Ruling 1 ✓).** tsc 0 both, 732+82+66 pass,
+  platform-mcp 95-fail baseline unchanged (stash-verified). **HELD for merge AFTER WP-1.5 → rebase → blind
+  verifier re-checks serving-correctness + WP-1.5 envelope conformance.**
+- **WP-1.5** still RUNNING (envelope contract + program-wide F-DATE-TZ; merges FIRST).
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
