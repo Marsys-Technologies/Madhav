@@ -544,7 +544,15 @@ change (no HALT). Same pattern will apply to W2.
   re-dispositioned PENDING-W2/W3 (reasons in report) → NONE survive (Ruling 1 ✓).** tsc 0 both, 732+82+66 pass,
   platform-mcp 95-fail baseline unchanged (stash-verified). **HELD for merge AFTER WP-1.5 → rebase → blind
   verifier re-checks serving-correctness + WP-1.5 envelope conformance.**
-- **WP-1.5** still RUNNING (envelope contract + program-wide F-DATE-TZ; merges FIRST).
+- **WP-1.5 IMPL COMPLETE** → branch `worktree-agent-a3ffd6d883826a273` (`d9b33401`). Canonical `envelope.ts`:
+  `more_available` always emitted; `buildHonestPagination`+cursor make trim-lies structurally impossible.
+  **F-DATE-TZ program-wide: 10 tools `to_char`'d** (L3×6, L4×3, L5 lel + register_d8/p1); remaining paths
+  (phala_event_anchors sidecar; unused raw cols) flagged explicit follow-up. LCA-8 list_entities real 652
+  total+cursor (was masking 552). **Correctness bug FOUND+FIXED:** `call_priority_ranking` referenced absent
+  kala_activation cols → errored EVERY call → repointed. F-0963 digest `::int`. R-38/R-41 honest (registry-handler
+  retest; live deployed re-run = follow-up). 12 unit+15 integration green, tsc 0 both, 166 existing pass. **Blind
+  verifier DISPATCHED** (Lane-4: envelope-cant-lie invariant + F-DATE-TZ + list_entities + priority_ranking +
+  R-38/R-41 + no-regression). **Merges FIRST on CONFIRMED; then rebase WP-1.3j onto it + verify conformance.**
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
