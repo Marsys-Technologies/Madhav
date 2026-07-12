@@ -1,116 +1,171 @@
 ---
-artifact: CLAUDECODE_BRIEF_FOUNDATION_SESSION_1
+artifact: CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0
 type: CLAUDECODE_BRIEF
-version: 1.0
-status: COMPLETE
-authored_by: Cowork 2026-06-18
-session_type: claude_code_autonomous (documented-defaults; native reviews at end)
-phase: pre-L2 foundation close-out + PROD verification
-chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+version: 1.1  # v1.1 (2026-07-11): swarm execution model per plan v1.3 §12.7 — foundry Phase 1/2 parallelized via sub-agents; child briefs must each carry their swarm decomposition section
+status: COMPLETE  # foundry session closed 2026-07-12: 8 ledgers + 12 briefs + AUDIT_STATE + TRACEABILITY_MATRIX (0 unmapped) + FOUNDRY_CLOSE_REPORT v2.0 all built; see 00_ARCHITECTURE/llm_consumption_audit/FOUNDRY_CLOSE_REPORT.md
+authored_by: Cowork (Fable 5) + native, 2026-07-11
+session_type: claude_code_autonomous (Opus; native subscription; open time budget)
+program: LLM Consumption Audit (governing plan: 00_ARCHITECTURE/briefs/LLM_CONSUMPTION_AUDIT_PLAN_v1_0.md, v1.2)
+phase: BRIEF FOUNDRY — builds the audit's ledgers + briefs + state + traceability. BUILDS ONLY. AUDITS NOTHING. FIXES NOTHING.
+charts_in_scope:
+  - 482012f1-710e-4a25-994a-93821f5871aa  # Abhisek
+  - 1c826d5a-41cb-4450-b4dc-59d440e5f75a  # Abhinandan
 may_touch:
-  - platform/migrations/**
-  - platform/scripts/seed/asset_registry_seed.ts
-  - platform/python-sidecar/brahmagyan/**            # l0_yogas.py, l0_doshas.py, l0 catalog content, bg_medical
-  - platform/python-sidecar/**bg_rules**             # the extractor + its rebuild
-  - platform/python-sidecar/**bg_ephemeris** , **bg_dignity_reference** , **bg_transit_rules** , **bg_medical_mappings**   # autonomy-writer verification
-  - 00_ARCHITECTURE/**                               # verification reports + CURRENT_STATE + registers
+  - 00_ARCHITECTURE/llm_consumption_audit/**        # ALL foundry output lands here (new directory)
+  - 00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.md   # own status field at close
+  - CLAUDECODE_BRIEF.md                             # this root copy: status field at close
 must_not_touch:
-  - platform/python-sidecar/ga_writers/ga_structural_writer.py          # SESSION 2 / ga_structural track ONLY
-  - platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py
-  - platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py
-  - any L2 bo_* asset
-acceptance_criteria:
-  - migrations 315–317 (+ any new) APPLIED to prod, ledger-reconciled
-  - all §6 endpoint checks pass via /api/cockpit/stats?chart_id=482012f1 (NOT db, NOT a report claim)
-  - bg_rules sampled THEN mined; floor = achieved; deterministic extractor confirmed
-  - 4 autonomy writers confirmed REGENERABLE (behavioral, not "file exists")
-  - bg_medical grid/combos verified present-or-built
-  - FOUNDATION_SESSION_1_CLOSE.md written with endpoint JSON evidence
+  - platform/**                                     # NO code changes of any kind
+  - 01_FACTS_LAYER/**, 025_HOLISTIC_SYNTHESIS/**    # no canonical-artifact edits
+  - 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md   # foundry logs NO findings; register belongs to execution sessions
+  - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md           # session-close appends only per governance, not foundry content
+  - any DB write of any kind                        # DB access is READ-ONLY (SELECT); no DDL/DML ever
+acceptance_criteria: see §6
 ---
 
-# CLAUDE CODE — Foundation Completion Session 1 (autonomous; documented defaults; review-at-end)
+# BRIEF FOUNDRY — build the LLM Consumption Audit's execution machinery
 
-Read CLAUDE.md §C (mandatory session-open reads) FIRST. Then this brief governs the session. Run the items in
-order, FULLY AUTONOMOUS using the DOCUMENTED DEFAULTS at the bottom; native reviews ONCE at the end. Source:
-`00_ARCHITECTURE/FOUNDATION_COMPLETION_HANDOFF_v1_0.md` + `FOUNDATION_COMPLETION_ARC_v1_0.md`. **ga_structural's
-re-architecture is SESSION 2 — do NOT touch it (see must_not_touch).**
+## §0 — Mandatory reading, in order (before any other action)
 
-**STANDING RAILS (non-negotiable):** computed-and-cited HARD GATE (uncited → floor NULL+reason, NEVER fabricate);
-canonical-or-floor; deterministic-first (no generative LLM for content — HALT if the bg_rules extractor is
-generative); L1-is-authority; FROZEN orchestrator contract (HALT if a change seems needed); surgical migrations
-only, numbered above main's current max (parallel thread wrote 315/316/317 — confirm next-free + continue),
-ledger-reconciled with correct SHA; seed-consistency; **VERIFY VIA THE ENDPOINT `/api/cockpit/stats?chart_id=
-482012f1` — underscore param, NOT chartId — never DB-only, never a report's claim**; floors = ACHIEVED count
-(every number in the handoff/audit is a TO-VERIFY pointer, NEVER a build target); only 482012f1; FORENSIC 7/7;
-**branch-complete ≠ prod-true — VERIFY post-apply.**
+1. `00_ARCHITECTURE/briefs/LLM_CONSUMPTION_AUDIT_PLAN_v1_0.md` (v1.2) — THE GOVERNING
+   PLAN. Read it in FULL, including §2.1, §12, Appendix A, Appendix B (60-facet floor),
+   Appendix C (76-question list). Every sentence of it is in scope for traceability (§4
+   below). This brief never overrides the plan; on any conflict, the plan wins and the
+   conflict is logged in the traceability matrix's exceptions section.
+2. `CLAUDE.md` §N (build standards), §L (do-nots) — orientation only.
+3. `00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md` — sections 1–8 headers + rows
+   R-37..R-48 (the calibration anchor set) — read-only context for writing child briefs.
+4. `00_ARCHITECTURE/CAPABILITY_MANIFEST.json` — the tool/asset catalog source.
+5. `platform/` MCP server tool-definition source (read-only) — to enumerate the actual
+   tool surface (~150 tools incl. aliases) with parameter schemas.
 
----
+## §1 — Mission
 
-## ITEM 1 — Apply + prod-verify the parallel close-out thread (migrations 315–317)
+Produce the complete, ledger-grounded execution machinery for the LLM Consumption Audit:
+enumeration ledgers (from DB + manifest, never from memory), one master charter, ten
+child lane briefs + an Item-0 brief, the AUDIT_STATE skeleton, and the two-way
+traceability matrix. The guarantee principle (plan §12.6): completeness rests on ledgers
+and traceability, not diligence.
 
-Parallel thread WROTE 315 (ga_prashna count_sql fix), 316 (bg_nakshatra_medical ADD COLUMN dosha), 317
-(ga_pyjhora error reset) but did NOT apply them. Apply all three to PROD surgically, ledger-reconcile. Verify via
-ENDPOINT: ga_prashna lit/0-valid (not red); ga_pyjhora GREEN after 317 + a probe (if still error → service is
-genuinely down, root-cause it, don't just re-clear); bg_nakshatra_medical `dosha` column exists+populated. Confirm
-CI green with the assert changes (YOGAS_CORE=144, doshas assert=79). Merge.
+Output directory (create): `00_ARCHITECTURE/llm_consumption_audit/`
+```
+  ledgers/        # machine-checkable ground truth (CSV or JSONL, one row per unit)
+  briefs/         # charter + item0 + 10 child briefs
+  AUDIT_STATE.md  # standing state file (skeleton)
+  TRACEABILITY_MATRIX.md
+  FOUNDRY_CLOSE_REPORT.md
+```
 
-## ITEM 2 — Autonomy gaps: CONFIRM the 4 writers actually regenerate (behavioral, not "file added")
+## §2 — Phase 1: build the ledgers (DB + manifest grounding; the dry run)
 
-Parallel thread added writers (bg_transit_engine → folded into bg_transit_rules; bg_nakshatra_medical → folded
-into bg_medical_mappings; bg_ephemeris → new; bg_dignity_reference → new). VERIFY each by triggering a Rebuild of
-that asset_id via the orchestrator and confirming it REGENERATES (not DEFERS). The test is "does Rebuild-All now
-cover all 39 assets," not "a file exists." Report any that still DEFER (+ fix).
+**Execute this phase as a PARALLEL SUB-AGENT SWARM (plan §12.7): spawn one ledger-builder
+sub-agent per ledger (8 concurrent), each writing ONLY its own ledger file; the conductor
+(you) merges nothing — ledgers are disjoint — and verifies row counts on collection.**
 
-## ITEM 3 — bg_rules: do the SKIPPED yield-sampling FIRST, then mine
+Each ledger: one row per auditable unit, stable row_id, status column (pending/…), and a
+`source` column citing where the row was enumerated from. Row counts go in the close
+report. DB access is READ-ONLY.
 
-Parallel thread skipped sampling, jumped to "run rebuild." bg_rules ≈ 90% of the foundation delta, currently an
-unpinned ±30k guess. ORDER:
-1. SAMPLE a few hundred un-mined `classical_text_chunks` (~7,533 unprocessed), run the EXISTING extractor, measure
-   actual rules-per-chunk yield → report a tightened projection.
-2. CONFIRM the extractor is DETERMINISTIC (rule-extraction over cited text), NOT generative. If generative → HALT
-   + flag (violates deterministic-first; do not mine).
-3. MINE all chunks (ON CONFLICT DO NOTHING), each rule cited to source chunk_id. bg_rules floor = ACHIEVED;
-   seed-patch; endpoint-verify the new count.
+| Ledger | Contents | Source |
+|---|---|---|
+| `tools.jsonl` | every MCP tool + alias, param schema hash, category | manifest + MCP server source |
+| `value_families.jsonl` | every fact_category × fact_key in chart_facts; every column/row-family of chart_dashas, chart_divisionals, bodha_*, kala_*, phala_*, mimamsa_* tables; every L0 catalog family | live DB enumeration (SELECT DISTINCT), both charts |
+| `services.jsonl` | every real-time computation service + the compute-on-demand test spec per service (7 dasha systems, transits, panchanga, muhurta, varshaphal, prashna, natal-compute, ephemeris) | manifest + tool source |
+| `questions.jsonl` | plan Appendix C verbatim: 76 types × {narrow,broad} × 2 charts = ~304 rows | plan Appendix C (FROZEN at foundry time; note native may have appended) |
+| `facets.jsonl` | plan Appendix B floor (60 groups, exploded to atomic facet rows) PLUS the discovery pass: per-graha fact families found in DB/L0 not covered by B — ADD rows, tag `discovered`; never delete B rows | Appendix B + DB/L0 discovery pass |
+| `asset_promises.jsonl` | per asset (~55: ga_*/bo_*/ka_*/ph_*/mi_* + services): verbatim promise quote(s) with file+line citation from its build brief (00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_<asset>_*.md), asset_registry row, layer closure/handoff docs, MCP tool description | repo docs + DB asset_registry |
+| `quantities.jsonl` | Lane 3 fixed quantity set: {dignity, house, sign, nakshatra+pada, shadbala, dasha-lord metadata} × 9 grahas × 2 charts × every serving path that carries it | derived from tools.jsonl × value_families.jsonl |
+| `anchors.jsonl` | R-37..R-48 with their reproduction calls | register v2.4 rows |
 
-## ITEM 4 — Catalog completeness (DEFAULT accept-as-built; EXCEPTION bg_medical grid/combos)
+Discovery-pass surprises (tables/categories that don't exist, empty tables, enumeration
+anomalies — e.g. kala_activation row count, which doubles as Item-0 pre-data) are logged
+in the close report as OBSERVATIONS, not findings — execution sessions convert them.
 
-A3: bg_yogas 81→144, bg_doshas 50→79, bg_medical 9→21 — all BELOW the audit's soft estimates (~250/~80-120/~150-200).
-- DEFAULT: accept bg_yogas + bg_doshas as-built (hard gate working; don't pad to a target). Spot-check 3-4 entries
-  each for genuine formation_rule_jsonb + citation (not stubs); if clean, accept. Report.
-- EXCEPTION — bg_medical_mappings (21 vs ~150-200, a large gap): the audit described a 27×3 nakshatra-dosha GRID +
-  planetary-combination tier. CHECK whether bg_medical_mappings now CONTAINS the grid + combos or only the
-  single-planet tier + a few additions. If the grid/combos are genuinely MISSING (deferred, not just "fewer than
-  estimated"), BUILD them (deterministic + cited: BPHS Ch.18 / Ayurvedic-Jyotish). If present and 21 is the
-  correct citable count, accept. Report which. (ga_medical reads bg_medical_mappings → rebuild ga_medical after if
-  bg_medical changed — ga_medical is in scope, ga_structural is NOT.)
+## §3 — Phase 2: write the charter + briefs
 
-## ITEM 5 — bg_remedies (DEFAULT accept; log bo_upaya dependency)
+**Master charter** (`briefs/CHARTER.md`): doctrine (plan §2 + §2.1 verbatim), the 9-class
+failure taxonomy (§4 verbatim), finding schema (§6), satisfaction criteria (§8), RESUME
+protocol, and the JUDGMENT RUBRICS written out verbatim (no executor taste), including at
+minimum: "usable form" rubric, "synthesizability-as-received" rubric, evidence-sufficiency
+grading scale for Lane 2, ranking-quality metrics for Lane 6, promise-shortfall layer
+attribution rules for Lane 10. Rubrics are DRAFT-flagged for the Cowork review gate.
 
-+66 (→283) vs "thousands in tradition." DEFAULT: accept as-built (first pass; bo_upaya is downstream). LOG in
-OPEN_ITEMS that bo_upaya remedy depth depends on a future bg_remedies expansion. No build this session.
+**Item-0 brief** (`briefs/ITEM0_R45_TRIAGE.md`): the kala_activation writer-vs-serving
+fork test (plan §5 Item 0), sequenced before all lanes.
 
-## ITEM 6 — FINAL VERIFICATION (the seal) — ENDPOINT ONLY, paste the JSON
+**Execute brief-writing as a PARALLEL SWARM: one writer sub-agent per child brief,
+spawned as soon as that brief's ledger lands; charter written first (it is every child's
+dependency); traceability matrix is the sequential tail (needs all briefs).**
 
-Hit `/api/cockpit/stats?chart_id=482012f1` and assert (paste JSON as evidence):
-- Every L0+L1 asset lit / non-null / no-error / not-stale.
-- ga_prashna lit-0-valid; ga_pyjhora GREEN.
-- bg_rules at new mined floor; bg_yogas=144; bg_doshas=79; bg_medical at confirmed floor.
-- 4 autonomy assets regenerable (Item 2).
-- ZERO regressions vs the pre-session endpoint snapshot.
-Then: update CURRENT_STATE; mark Session-1 items closed in OPEN_ITEMS_REGISTER + FOUNDATION_COMPLETION_HANDOFF;
-write `00_ARCHITECTURE/FOUNDATION_SESSION_1_CLOSE.md` (endpoint JSON + bg_rules sampling result + bg_medical
-verdict + autonomy-confirm result).
+**Ten child briefs** (`briefs/LANE1_CENSUS.md` … `LANE10_PROMISE.md`): each SELF-CONTAINED
+— charter by reference + everything its executor needs: its ledger file, its protocol from
+plan §5 (transcribed fully, not summarized — anti-softening rule), its extensions, its
+rubrics, its checkpoint/RESUME instructions, its deliverable spec, its per-lane coverage
+self-declaration template. Lane 2's brief additionally carries the conductor+fresh-
+sub-agent-per-question protocol and the P-12 manual mode (evidence plan BEFORE any call;
+acquisition tracking; class-9 improvisation logging) with the verifier-sample re-grade
+step (~15%).
 
-**Set this brief frontmatter `status: COMPLETE` when done.** Session 2 (ga_structural Option-C rebuild) opens
-against the settled, prod-verified foundation — do NOT do Session-2 work here.
+**MANDATORY per-child-brief section — "Swarm decomposition" (plan §12.7):** each child
+brief MUST specify: its conductor+worker pattern; its shard key (Lane 1a: tool batches ·
+1b: table × fact_category · 1c: per service · Lane 2: question rows in concurrency-capped
+batches of 5–10 · Lane 3: per graha · Lane 4: per tool · Lane 5: per fact family · Lane 6:
+per ranked surface · Lane 7: per heavy question · Lane 8: per dossier (20 workers) · Lane
+9a: per node sample / 9b: per fact_category · Lane 10: per asset for promise-compilation,
+grading pass deferred to consolidation); its concurrency cap + throttling rule
+(subscription limits); its merge protocol (workers write own shard traces only; conductor
+merges; no shared-file writes); its per-shard RESUME semantics. The execution DAG in plan
+§12.7 is transcribed into the charter verbatim: all lanes parallel; Item-0 broadcast to
+Lanes 2/7 mid-flight; Lane-10 grading is the single sequential edge at consolidation.
 
----
+**AUDIT_STATE skeleton** — parallelism-safe form per plan §12.7: top-level
+`AUDIT_STATE.md` is a regenerable INDEX (counts only, idempotent regeneration) over
+per-lane shard files `state/LANE<k>.md`, each owned exclusively by its lane conductor;
+atomic-update instructions; RESUME pointer format per shard.
 
-## DOCUMENTED DEFAULTS (applied autonomously, no halt)
-- Catalogs: accept-as-built EXCEPT bg_medical grid/combos (Item 4 — build if genuinely missing).
-- bg_rules extractor: proceed only if DETERMINISTIC; HALT if generative.
-- Autonomy writers: parallel thread's fold-ins stand; VERIFY they regenerate, fix if they DEFER.
-- Migrations continue from next free number above 317.
-- OUT OF SCOPE → Session 2: ga_structural, bo_laksana, the yoga_label fork, the aspect_tajik fork, nakshatra_dispositor
-  alignment, per-varga edge-weight ingest. Touch NONE of these.
-- bg_remedies: accept + log; no build.
+## §4 — Phase 3: two-way traceability
+
+`TRACEABILITY_MATRIX.md`:
+- **plan→brief**: EVERY plan element (every §, directive, lane extension, appendix row
+  group, Appendix A row) → the implementing brief section(s). Any unmapped element =
+  foundry NOT complete (hard gate). Include the plan's Appendix A so the chain
+  native-directives → plan → briefs is verifiable end-to-end.
+- **brief→plan**: every brief section → its plan authority; sections with no authority are
+  flagged INVENTED for the review gate (inventions are not necessarily wrong — they must
+  be visible).
+- **Exceptions section**: plan conflicts, infeasible directives, rubric judgment calls —
+  honestly listed for the Cowork gate. An empty exceptions section on a build this size is
+  itself suspicious; report honestly.
+
+## §5 — Phase 4: self-check + close
+
+1. Ledger sanity: row counts vs independent recount (fresh queries); zero-row ledgers are
+   a HALT (something is wrong with enumeration, not with the world).
+2. Anti-softening pass: diff each child brief's protocol section against plan §5 text —
+   every plan sentence must be present or strengthened, never paraphrased into vagueness.
+3. `FOUNDRY_CLOSE_REPORT.md`: ledger row counts, discovery-pass observations (incl.
+   kala_activation counts), exceptions summary, rubric-draft list for review, and the
+   explicit statement that NO audit was performed and NO fix was made.
+4. Set this brief's `status: COMPLETE`. Do NOT begin any lane execution — the review gate
+   (Cowork: Fable 5 + native, plan §12.5.iii) stands between foundry and execution.
+
+## §6 — Acceptance criteria (all must hold)
+
+1. All 8 ledgers exist, non-empty, DB/manifest-sourced, with per-row provenance.
+2. Charter + Item-0 brief + 10 child briefs exist; each child brief passes the
+   anti-softening diff.
+3. TRACEABILITY_MATRIX has ZERO unmapped plan elements (or an explicit exceptions entry
+   per unmapped item).
+4. AUDIT_STATE skeleton carries real rows-total counts from the ledgers.
+5. FOUNDRY_CLOSE_REPORT complete; no audit performed; no fix made; no DB write made.
+6. Session-close per governance (SESSION_CLOSE template + SESSION_LOG append).
+
+## §7 — Hard constraints (repeat of the non-negotiables)
+
+- BUILD ONLY. The temptation to "quickly verify" a defect or patch an obvious bug is the
+  known failure mode of prior campaigns (plan §1) — resist it; log an observation instead.
+- DB = SELECT only. Prod MCP may be CALLED only where a ledger row requires a schema/
+  shape confirmation, never for systematic auditing (that is the execution sessions' job).
+- Plan is authority; this brief is its executor; Cowork review gate is the exit.
+
+*End of CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.*
