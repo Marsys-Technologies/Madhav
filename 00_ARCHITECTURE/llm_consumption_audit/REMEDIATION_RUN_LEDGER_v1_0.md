@@ -615,8 +615,18 @@ change (no HALT). Same pattern will apply to W2.
 6. **Live prod-verify:** conductor smoke on deployed `get_chart_orientation` (native) CONFIRMS W1 live —
    grounding.fact_ids populated (51 ids, resolvable, 298 resolved; was []), served_unattributed_share=0 (top
    entities SATURN/JUPITER/KETU), salience demotion live (WP-1.2d reason on rows), v3 envelope (coverage
-   {served:3,total:13364}), chart_header Lagna Aries. **Full acceptance-suite prod-verify agent DISPATCHED**
-   (both charts, deployed channel: WP-1.2/1.3/1.5/1.6/1.8 + LCA-17 isolation regression). Verdict → §6.6.
+   {served:3,total:13364}), chart_header Lagna Aries. **Full acceptance-suite prod-verify: PARTIAL (6/7
+   DEPLOYED-GREEN).** GREEN: WP-1.2 attribution/discrimination (both charts, wealth 2/11/9 vs relationship
+   7/12/8; moksha 12/4+Ketu not 9th) · WP-1.3 assets (yogini dasha, chart_facts+raman, bodha_discoveries 2392,
+   phala_mitigation 602) · WP-1.5 envelope+dates honest · WP-1.8 varga verdict (marriage D9 varga_term -2.5,
+   Venus D9 debilitated == chart_facts) · **LCA-17 isolation 0 substitutions (4 interleaved, native 13364 /
+   Abhinandan 13369)** · no 500s. **1 DEPLOYED-RED:** `lel_query` serves dishonest-empty (`ok:true,count:0`)
+   for native despite 57 `life_events` rows — twin `mimamsa_lel_query` returns the 57 → E5 violation, serving-path
+   divergence (local-green≠deployed-green, exactly what the gate catches). WP-1.6 protocol resource
+   CANNOT-VERIFY (deployed channel exposes tools not resources — channel limitation, not a defect).
+   **→ ADJ-2 adjudicator DISPATCHED** (§7.4 rollback-whole-wave vs fix-forward, given 6/7 green + data-reachable +
+   isolation-holds + wave strictly-better). **→ lel_query FIX DISPATCHED** (WP-1.3d §8.4 loop iter 1, needed
+   regardless). W1 wave-close gated on ADJ-2 ruling + lel_query re-verify.
 7. **Governance close (this branch `docs/w1-close`):** ledger + CURRENT_STATE + SESSION_LOG → PR.
 8. **ND-W1.4:** native runs Cowork-side live probe async — NOT blocked on.
 
