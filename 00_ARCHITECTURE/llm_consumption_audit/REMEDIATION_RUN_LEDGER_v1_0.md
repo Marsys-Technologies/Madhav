@@ -712,6 +712,16 @@ nodes (bo_cgm). **DISJOINT** — nonCGM explicitly EXCLUDES the bo_cgm file fami
 coordination rule). Also disjoint from batch-1 (ka/bo_laksana/ga). **Dispatch CONCURRENTLY.** SEQUENCED-LATER:
 WP-2.2-CGM (topology/sub_graphs/motifs incl LCA-6) waits on WP-2.3-EDGES landing; WP-2.3-temporal waits on WP-2.1.
 Dispatched 2026-07-13.
+- **✅ WP-2.5 fix iter-1 (`6fb472ba`) + conductor live-retest CONFIRMED + MERGED (`843a4492`).** sign_num off-by-one
+  fixed (canonical 0-based from longitude, single source; 1-based DB fixture guards path). Live-retest: Sun lon
+  291.96°→9=Capricorn == DB sign_num 10−1=9 (Moon/Lagna consistent) → mrityu-bhaga 2.0°, Nisargayu 99.185y==cited.
+  Migrations 431/432 unapplied. Full collect exit 0 (register fix holds).
+- **✅ WP-2.3-graph IMPL COMPLETE** → branch `worktree-agent-a54548b0194007c96` (`912fdb5a`). 60 orphaned bhava nodes
+  wired via 3 graha↔bhava edge types (lordship/occupancy/bhava_aspect from real L1) + first-class yoga/dosha nodes
+  + yoga_member edges; every edge cites resolving chart_facts.fact_id (new `constituent_fact_ids_array TEXT[]`).
+  Seams: WP-2.2-CGM edge-types registered; WP-2.3-temporal `active_dasha_periods_jsonb` left NULL. 17+22 tests,
+  FROZEN preserved. **⚠ Migration 431 COLLIDES with WP-2.5's 431 → conductor RENUMBERS to 433 at merge.**
+  **Blind verifier DISPATCHED.** **On merge → unblocks WP-2.2-CGM + WP-2.3-temporal.**
 
 ## §4 — HALT / disagreement register + follow-ups (append-only)
 
