@@ -1,0 +1,19 @@
+# FUSED Lane 1b+5 shard - mimamsa_adjudication_log
+
+- channel (all families): served-only-by-down-pipeline
+- serving tool: mimamsa compute / full-pipeline only (no surgical tool)
+- DB-truth row counts: Abhisek=0, Abhinandan=0 (TABLE EMPTY, 0 rows total)
+- exemplar family: (empty table)
+- exemplar evidence (E-6): DB-truth: SELECT count(*) FROM mimamsa_adjudication_log = 0 (0 rows, 0 null-chart). Table structurally present but UNPOPULATED - L5 sealed in STRUCTURAL mode; adjudication log accrues as prediction->outcome data lands. No data to retrieve.
+- wire call attempted: POST /api/mcp/primitives/temporal -> {ok:false, 'Retrieval tool not found in registry: temporal'} (DEAD); get_temporal_windows -> 'Tool not in surgical whitelist' (full-pipeline only). mimamsa: no surgical tool exists.
+- heterogeneity_escalated: false (all families are columns of one table sharing one serving path; no per-member deviation)
+
+| family_key | channel | retrievability_verdict | fidelity_verdict | derivation |
+|---|---|---|---|---|
+| id | served-only-by-down-pipeline | NOT-RETRIEVABLE (no surgical tool; served only by mimamsa compute/full-pipeline) AND DB-truth EMPTY (0 rows) - nothing to retrieve | not-probed (no reachable wire channel; served-only-by-down-pipeline) - fidelity uninstrumentable until serving tool restored | path-grade(exemplar=(empty table)) + member-confirmation (DB-column existence; shared serving path) |
+| chart_id | served-only-by-down-pipeline | NOT-RETRIEVABLE (no surgical tool; served only by mimamsa compute/full-pipeline) AND DB-truth EMPTY (0 rows) - nothing to retrieve | not-probed (no reachable wire channel; served-only-by-down-pipeline) - fidelity uninstrumentable until serving tool restored | path-grade(exemplar=(empty table)) + member-confirmation (DB-column existence; shared serving path) |
+| prediction_id | served-only-by-down-pipeline | NOT-RETRIEVABLE (no surgical tool; served only by mimamsa compute/full-pipeline) AND DB-truth EMPTY (0 rows) - nothing to retrieve | not-probed (no reachable wire channel; served-only-by-down-pipeline) - fidelity uninstrumentable until serving tool restored | path-grade(exemplar=(empty table)) + member-confirmation (DB-column existence; shared serving path) |
+| outcome | served-only-by-down-pipeline | NOT-RETRIEVABLE (no surgical tool; served only by mimamsa compute/full-pipeline) AND DB-truth EMPTY (0 rows) - nothing to retrieve | not-probed (no reachable wire channel; served-only-by-down-pipeline) - fidelity uninstrumentable until serving tool restored | path-grade(exemplar=(empty table)) + member-confirmation (DB-column existence; shared serving path) |
+| verdict_mapped | served-only-by-down-pipeline | NOT-RETRIEVABLE (no surgical tool; served only by mimamsa compute/full-pipeline) AND DB-truth EMPTY (0 rows) - nothing to retrieve | not-probed (no reachable wire channel; served-only-by-down-pipeline) - fidelity uninstrumentable until serving tool restored | path-grade(exemplar=(empty table)) + member-confirmation (DB-column existence; shared serving path) |
+| adjudicator_uid | served-only-by-down-pipeline | NOT-RETRIEVABLE (no surgical tool; served only by mimamsa compute/full-pipeline) AND DB-truth EMPTY (0 rows) - nothing to retrieve | not-probed (no reachable wire channel; served-only-by-down-pipeline) - fidelity uninstrumentable until serving tool restored | path-grade(exemplar=(empty table)) + member-confirmation (DB-column existence; shared serving path) |
+| adjudicated_at | served-only-by-down-pipeline | NOT-RETRIEVABLE (no surgical tool; served only by mimamsa compute/full-pipeline) AND DB-truth EMPTY (0 rows) - nothing to retrieve | not-probed (no reachable wire channel; served-only-by-down-pipeline) - fidelity uninstrumentable until serving tool restored | path-grade(exemplar=(empty table)) + member-confirmation (DB-column existence; shared serving path) |

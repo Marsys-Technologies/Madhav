@@ -31573,3 +31573,224 @@ full prioritized register and `R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md` §6 for the
 mapping R6's Phase-5 acceptance ceremony will re-measure against.
 
 *End of R5.3-CONTENT-DEPTH-2026-07-10 entry — 2026-07-10.*
+
+## LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12 — Brief Foundry: ledgers + charter + 10 lane briefs + traceability matrix for the LLM Consumption Audit program — CLOSED 2026-07-12
+
+```yaml
+session_open:
+  session_id: LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12
+  opened_on: 2026-07-12
+  cowork_thread_name: LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY
+  governing_brief: CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.md (v1.1, swarm execution model)
+  governing_plan: LLM_CONSUMPTION_AUDIT_PLAN_v1_0.md (v1.3, §12.7 swarm execution model)
+  ratification: >
+    Native/Cowork installed CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.md at project root
+    2026-07-11 with explicit swarm-execution instructions ("Spawn 8 parallel ledger-builder
+    sub-agents... spawn parallel writer sub-agents... you are the conductor"). Session type:
+    BRIEF FOUNDRY (build-only; no audits, no fixes, no DB writes).
+  may_touch: ["00_ARCHITECTURE/llm_consumption_audit/**", "00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.md (status field)", "CLAUDECODE_BRIEF.md (status field)"]
+  must_not_touch: ["platform/**", "01_FACTS_LAYER/**", "025_HOLISTIC_SYNTHESIS/**", "00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md", "any DB write of any kind"]
+```
+
+### Body
+
+**Mission:** produce the complete, ledger-grounded execution machinery for the LLM
+Consumption Audit — 8 enumeration ledgers, a master charter, an Item-0 triage brief, 10
+lane child briefs, an AUDIT_STATE skeleton, and a two-way traceability matrix — per plan
+§12's federated-briefs / ledger-driven-execution / swarm-execution-model doctrine. **BUILD
+ONLY. No audit performed. No fix made. No DB write made** (all DB access read-only SELECT).
+
+**Phase 1 — Ledgers (parallel swarm, 7 concurrent + 1 sequential-dependent):** Built
+`tools.jsonl` (134 rows — DB registry near-empty at 2 rows, fell back to source-code
+enumeration), `value_families.jsonl` (3,058 rows — full DB enumeration across chart_facts,
+chart_dashas, chart_divisionals, 63 bodha_*/kala_*/phala_*/mimamsa_* tables, 57 L0 catalog
+tables, both charts), `services.jsonl` (30), `questions.jsonl` (329 — transcribed Appendix
+C verbatim; found the plan's own "76 types" summary undercounts its actual 82-item body),
+`facets.jsonl` (1,500 — Appendix B's 60-facet floor × 10 entities × 2 charts, plus a
+discovery-pass addition), `asset_promises.jsonl` (67 — registry has grown past the plan's
+~55 estimate; found all 13 L5 mi_*/lel_events assets lack a matching build-brief file),
+`anchors.jsonl` (12 — R-37..R-48 with repro calls), `quantities.jsonl` (234, derived from
+tools+value_families). Zero-row-ledger HALT condition: NOT HIT.
+
+**Phase 2 — Charter + briefs (parallel swarm):** CHARTER.md (doctrine, 9-class taxonomy,
+finding schema, satisfaction criteria, §12.7 execution DAG transcribed verbatim, 5 DRAFT
+judgment rubrics), ITEM0_R45_TRIAGE.md (kala_activation writer-vs-serving fork test), and
+10 lane briefs (LANE1_CENSUS .. LANE10_PROMISE), each self-contained with its ledger
+reference, plan-§5 protocol transcribed in full, extensions, rubrics-by-reference,
+RESUME/checkpoint instructions, and a mandatory "Swarm decomposition" section per §12.7.
+
+**Recovery episode (honest process record):** 2 of the 10 lane briefs
+(LANE5_WIRE_FIDELITY.md, LANE9_SUBSTRATE_INTEGRITY.md) plus AUDIT_STATE.md failed/were
+missing mid-swarm on a transient API "Connection closed mid-response" error. Caught by
+TRACEABILITY_MATRIX.md's own hard-gate mechanism (9 UNMAPPED plan elements, all traced to
+the 2 missing briefs) — the first close-report pass correctly refused to close. All three
+artifacts were rebuilt by fresh sub-agents in a follow-up pass; both recovered briefs
+independently anti-softening-checked PASS (no dropped/weakened sentences).
+
+**Phase 3 — Traceability (sequential tail):** TRACEABILITY_MATRIX.md v2.0 regenerated
+against the complete 12/12 brief set: **0 unmapped plan elements** (down from 9), 2
+self-declared invented brief sections (CHARTER §7 rubrics, self-flagged DRAFT; LANE1 §9
+minor over-scope), 11 honestly-logged exceptions (plan §11 open items, the
+questions.jsonl 76-vs-82 arithmetic note, the recovery episode itself, remaining judgment
+calls).
+
+**Phase 4 — Self-check + close:** Anti-softening sentence-by-sentence diff run against all
+10 lane briefs. Found and fixed 2 genuine violations: LANE3_CONSISTENCY.md had an
+unlicensed shadbala decimal-precision carve-out weakening the plan's literal "Any diff is
+a finding" — rewritten to remove the carve-out entirely. LANE7_SYNTHESIS_CEILING.md had
+diluted the plan's "ten deliberately heavy questions" floor into an optional "proceed with
+7" escape hatch — rewritten to make locating the remaining 3 mandatory, with a
+HALT-and-escalate (not silent-continue) path if genuinely fewer than 10 exist. All 10 lane
+briefs now PASS. FOUNDRY_CLOSE_REPORT.md v2.0 written with full ledger counts, discovery
+observations, traceability summary, and rubric-draft list.
+
+**Discovery-pass observation of note (Item-0 pre-data, not a finding):**
+`kala_activation`/`kala_activation_predicates` are **NOT empty** for either chart (66,836
+rows Abhisek, 66,747 rows Abhinandan) — the opposite of what register row R-45 assumed as
+the likely root cause. If R-45 reproduces on re-test, the defect is in the serving-path
+query (`get_temporal_windows`), not the `ka_*` writer / build-state layer. Flagged for the
+Item-0/Lane-2 executor with this row-count evidence already in hand.
+
+**Governing brief status:** `CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.md` and its root
+copy `CLAUDECODE_BRIEF.md` both set to `status: COMPLETE`.
+
+**Contract violations: 0.** No product code touched. No chart data written. No DB write of
+any kind (all access read-only SELECT). No defect-register entries added (foundry logs
+observations only, per its own scope boundary — execution sessions convert them to
+findings). No macro-phase/layer-campaign state changed — this is an independent audit
+program build, orthogonal to the L0-L5 layer-build arc.
+
+```yaml
+session_close:
+  session_id: LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12
+  closed_on: 2026-07-12
+  outcome: >
+    COMPLETE. Built 8 ledgers (tools=134, value_families=3058, services=30, questions=329,
+    facets=1500, asset_promises=67, anchors=12, quantities=234), CHARTER.md, ITEM0_R45_TRIAGE.md,
+    10 lane briefs (all pass anti-softening diff), AUDIT_STATE.md skeleton, and
+    TRACEABILITY_MATRIX.md v2.0 (0 unmapped plan elements, 2 self-declared inventions, 11
+    honest exceptions) under 00_ARCHITECTURE/llm_consumption_audit/. A transient mid-swarm API
+    error dropped 2 lane briefs + AUDIT_STATE on the first pass; caught by the traceability
+    matrix's own hard gate, recovered in a follow-up pass, independently re-verified clean.
+    Two real anti-softening violations found and fixed. No audit performed, no fix made to any
+    product code/data, no DB write made (SELECT-only throughout). Foundry acceptance criteria
+    (governing brief §6, all six): MET. Next step is the Cowork review gate (Fable 5 + native)
+    ratifying the traceability matrix and the 5 DRAFT rubrics before any audit lane executes.
+  contract_violations: 0
+  native_chart_touched: false
+  db_writes_made: 0
+  active_layer_campaign_after: "Unchanged — L2 Bodha remains the active layer campaign per CURRENT_STATE §2 / CLAUDE.md §E. This session built an independent audit program's execution machinery, orthogonal to the layer-build arc."
+  current_state_updated: true
+  current_state_version: 6.36
+  session_log_appended: true
+  red_team_pass: "n/a — not a macro-phase close; this is a scoped program-build session outside the M1-M10 macro-phase arc"
+  governing_brief_status: "CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.md + root CLAUDECODE_BRIEF.md both set to COMPLETE"
+  next_session_objective: >
+    Cowork review gate (Fable 5 + native): verify TRACEABILITY_MATRIX.md line-by-line, ratify
+    the 5 DRAFT rubrics in CHARTER.md §7, and either approve execution or return findings to a
+    follow-up foundry session. Execution (Item-0 + 10 lanes, all parallel per the §12.7 DAG)
+    does not begin until that gate clears. See FOUNDRY_CLOSE_REPORT.md for full detail.
+```
+
+### Next session objective
+
+Cowork review gate (Fable 5 + native) ratifies `00_ARCHITECTURE/llm_consumption_audit/TRACEABILITY_MATRIX.md`
+and the 5 DRAFT judgment rubrics in `CHARTER.md §7` before any audit lane begins execution.
+See `00_ARCHITECTURE/llm_consumption_audit/FOUNDRY_CLOSE_REPORT.md` for the full ledger
+row counts, discovery-pass observations (incl. kala_activation counts for both charts),
+exceptions list, and rubric-draft list.
+
+*End of LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12 entry — 2026-07-12.*
+
+---
+
+## LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 — LLM Consumption Audit, full execution campaign
+
+```yaml
+session_open:
+  session_id: LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12
+  opened_at: 2026-07-12T00:00:00+05:30
+  session_type: "LLM Consumption Audit — EXECUTION (conductor-of-conductors, parallel swarm + verification swarm per plan §12.7 DAG, gate conditions E-1..E-8)"
+  governing_brief: "00_ARCHITECTURE/llm_consumption_audit/GATE_RATIFICATION_v1_0.md (v1.1, PASSED) + CHARTER.md + the 12 lane briefs"
+  may_touch: ["00_ARCHITECTURE/llm_consumption_audit/**", "00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md"]
+  must_not_touch: ["platform/** (product code)", "the DB (SELECT-only)", "the native chart 482012f1 (read-only)", "any *_record/*_log/consult write path"]
+  red_team_due: false
+```
+
+### Body
+
+Executed the entire LLM Consumption Audit end-to-end under the ratified Cowork gate. Ran as
+conductor-of-conductors over ~7 background swarm workflows (Item-0 inline; Lanes 9b, 9a, fused
+1b/5, 8, wire 1a/4/1c/3, deployed-channel 2/6/7, Lane 10), each with an audit swarm + verifier
+swarm (E-5) and depth gate (E-6). Both charts (Abhisek 482012f1, Abhinandan 1c826d5a).
+
+**Three headline numbers.** **1.2%** — of 328 acharya-grade questions, only 4 are fully
+SUFFICIENT over the deployed channel (170 with-gaps, 154 INSUFFICIENT; class-9 improvisation on
+all 328). **42%** — of 67 built assets, 28 deliver their promise (Lane 10; dominant shortfall =
+retrieval-plane, 23 computed-but-unserved incl. kala_taranga 79,728 rows). **76%** — of 3,058
+value-families reachable via real channels after the channel re-tag (1,416 surgical + 902 deployed).
+
+**Deliverables produced:**
+
+| # | Deliverable | Path |
+|---|---|---|
+| 1 | Consolidation report | `00_ARCHITECTURE/llm_consumption_audit/LLM_CONSUMPTION_AUDIT_v1_0.md` |
+| 2 | Machine-readable findings JSON | `00_ARCHITECTURE/llm_consumption_audit/deliverables/findings.jsonl` (1,009 records) |
+| 3 | Register appends | `00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md` — LCA-1..19 + R-45 re-attribution |
+| 6 | Concept×Retrievability matrix | `.../state/CONCEPT_RETRIEVABILITY_MATRIX.jsonl` (3,058, per-channel + re-tag) |
+| 7 | L1→MSR matrix + graph report | `.../state/LANE9.md` |
+| — | Per-lane state + shard substrate | `.../state/**` (LANE*.md + shard-*.md) |
+
+**Discipline record — ZERO product writes.** No write to product code, data, or schema across
+the entire campaign. Both E-7-family authorized writes (E-7 schema-parity, E-7b reports table)
+turned out non-applicable on inspection: schema-parity found no canonical-missing object, and the
+local DB is a cloud-sql-proxy to prod (so "LOCAL only" was unsatisfiable). E-7c re-routed the
+consult lanes to the wire channel instead. All DB access SELECT-only; all consumption read-only.
+
+**Blind R-37..R-48 rediscovery test: 10/12.** Lanes never consulted anchors.jsonl; at consolidation
+10 anchors were independently re-derived (R-37/39/40/42/43/44/45/46/47/48 + KP-4). **R-38/R-41
+honestly logged as a lane-coverage hole** (deployed-channel receipt-honesty on judgment_query /
+ganita_yogas_get; tool shapes also evolved since the 2026-07-11 baseline).
+
+**Pivotal correction (E-8b).** The deployed MCP connector (130 tools) is the real consumer channel
+and is live — the local surgical route's "mass unreachability" (LCA-1/4/11/13) was re-scoped as
+bench-vs-deployed divergence. Data-plane defects (R-45, empty shells, R-42/44/45/47, LCA-17) are
+real on all channels.
+
+**Cost actuals: ~13M of the 21M token envelope** (the shaper decisions — fusing 1b/5, path
+sampling, sequencing Lane 8 on the matrix — landed the big blocks at ~⅓ of the unshaped estimate).
+
+### Next session objective
+
+**Remediation-planning session (Fable 5, Cowork) per plan §10 step 2** — consume
+`deliverables/findings.jsonl` (1,009 records, machine-readable) + `LLM_CONSUMPTION_AUDIT_v1_0.md`
+(the report) + `CONCEPT_RETRIEVABILITY_MATRIX.jsonl` to cluster/prioritize the findings by
+remediation layer (serving-plane vs data-plane vs integrity) and produce the fix plan. LCA-17
+(cross-chart data leakage, entitlement-class) flagged remediation-priority CRITICAL. No layer-
+campaign change — L2 Bodha remains active; this audit was orthogonal to the layer-build arc.
+
+```yaml
+session_close:
+  session_id: LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12
+  closed_at: 2026-07-12T06:48:00+05:30
+  close_criteria_met: true
+  schema_validator_run: {exit_code: 0, violations_found: 0}
+  drift_detector_run: {exit_code: 3, divergences_found: 219, disposition: "pre-existing baseline (ONGOING_HYGIENE §F exit-3 whitelist); 0 findings reference this session's files — not session-introduced; known_residuals booked in close checklist"}
+  step_ledger_updated: n/a
+  current_state_updated: true
+  current_state_version: 6.37
+  session_log_appended: true
+  mirror_updates_propagated: []   # ND.1 retired 2026-05-27; Gemini inactive
+  native_directive_per_step_verification: []
+  red_team_pass: "n/a — not a macro-phase close; scoped audit-program execution outside the M1-M10 arc"
+  db_writes_made: 0
+  product_code_writes_made: 0
+  native_chart_touched: false   # read-only SELECT throughout
+  blind_rediscovery: "10/12 (R-38/R-41 documented lane-hole)"
+  cost_actual_tokens: "~13M of 21M envelope"
+  active_layer_campaign_after: "Unchanged — L2 Bodha remains active per CURRENT_STATE §5 / CLAUDE.md §E"
+  governing_gate_status: "GATE_RATIFICATION conditions E-1..E-8 all discharged; AUDIT_STATE.md v1.3 COMPLETE"
+  next_session_objective: "Remediation-planning session (Fable 5, Cowork) per plan §10 step 2 consuming deliverables/findings.jsonl + LLM_CONSUMPTION_AUDIT_v1_0.md + CONCEPT_RETRIEVABILITY_MATRIX.jsonl"
+```
+
+*End of LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 entry — 2026-07-12.*

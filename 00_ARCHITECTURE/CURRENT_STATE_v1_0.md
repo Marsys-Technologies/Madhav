@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.35
+version: 6.37
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,65 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.37 (2026-07-12, LLM CONSUMPTION AUDIT — EXECUTION CAMPAIGN COMPLETE, FINDINGS-ONLY,
+    ZERO product writes): Executed the full audit under the ratified gate (GATE_RATIFICATION
+    v1.1, conditions E-1..E-8). All 12 consumption lane-units + Lane 10 + consolidation DONE
+    via parallel sub-agent swarms (Workflow tool). **Three headline numbers:** only **1.2%**
+    of 328 acharya-grade questions are fully SUFFICIENT over the real channel (Lane 2, class-9
+    improvisation on all 328); **42%** of 67 built assets deliver their promise (Lane 10 —
+    dominant shortfall = retrieval-plane 23 computed-but-unserved, incl. kala_taranga 79,728
+    rows); **76%** of 3,058 value-families reachable via real channels (post channel re-tag).
+    Three failure bands: (1) serving-plane weakest link (100% UNATTRIBUTED + DROWNED + domain-
+    invariant ranked surfaces; 7/7 synthesis-ceiling; broken local bench); (2) real data-plane
+    band no serving fix reaches (R-45 NULL activation dates survive rebuild; empty shells;
+    graha-only graph, bhavas orphaned; mrityu-bhaga/ayurdaya never computed; MSR flood/starve);
+    (3) LCA-17 get_chart_orientation cross-chart data leakage (entitlement-class, load-correlated).
+    **Deliverables:** `LLM_CONSUMPTION_AUDIT_v1_0.md` (report); `deliverables/findings.jsonl`
+    (1,009 records); `state/CONCEPT_RETRIEVABILITY_MATRIX.jsonl` (3,058, per-channel + re-tag);
+    `state/LANE9.md` (L1→MSR matrix). Register: **LCA-1..19 + R-45 re-attribution** appended to
+    MARSYS_DEFECT_GAP_REGISTER_v2_0.md. **Blind R-37..R-48 rediscovery test: 10/12** independently
+    re-derived by lanes that never saw anchors.jsonl (R-38/R-41 = documented deployed-channel
+    receipt-honesty lane-hole). **Pivotal correction (E-8b):** the deployed MCP connector (130
+    tools) is the real consumer channel and works — local "mass unreachability" (LCA-1/4/11/13)
+    re-scoped as bench-vs-deployed divergence; data-plane defects real on all channels.
+    **ZERO writes to product data/schema** all campaign (both E-7-family authorized writes
+    non-applicable on inspection — schema-parity found no canonical-missing object; the local
+    DB is a cloud-sql-proxy to prod so "LOCAL only" was unsatisfiable). ~13M of the 21M token
+    envelope. §8 satisfaction criteria all five hold. Next: **remediation-planning session
+    (Fable 5, Cowork) per plan §10 step 2**, consuming `deliverables/findings.jsonl` +
+    `LLM_CONSUMPTION_AUDIT_v1_0.md` + `CONCEPT_RETRIEVABILITY_MATRIX.jsonl`. No macro-phase/layer
+    change — L2 Bodha remains the active layer campaign (§5); this audit is orthogonal to the
+    layer-build arc. `AUDIT_STATE.md` v1.3 = COMPLETE.
+  - v6.36 (2026-07-12, LLM CONSUMPTION AUDIT — BRIEF FOUNDRY session CLOSED, BUILD-ONLY, no
+    audit/fix/DB-write performed): Per `CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.md` (v1.1,
+    swarm execution model) and its governing plan `LLM_CONSUMPTION_AUDIT_PLAN_v1_0.md` (v1.3
+    §12.7), built the full execution machinery for the upcoming LLM Consumption Audit under
+    `00_ARCHITECTURE/llm_consumption_audit/`: 8 DB/manifest-grounded ledgers (tools=134,
+    value_families=3,058, services=30, questions=329, facets=1,500, asset_promises=67,
+    anchors=12, quantities=234), a master CHARTER.md, an ITEM0_R45_TRIAGE.md fork-test brief,
+    10 self-contained lane child briefs (LANE1_CENSUS .. LANE10_PROMISE, each carrying a
+    mandatory Swarm-decomposition section per plan §12.7), an AUDIT_STATE.md skeleton
+    (regenerable index over not-yet-created per-lane state shards), and TRACEABILITY_MATRIX.md
+    (v2.0 — 0 unmapped plan elements, 2 self-declared invented sections, 11 honestly-logged
+    exceptions). Built via a parallel sub-agent swarm (Workflow tool, ~32 agents); 2 lane
+    briefs (Lane 5 wire-fidelity, Lane 9 substrate integrity) plus AUDIT_STATE.md initially
+    failed/were missing mid-swarm on a transient API connection error — caught by the
+    traceability matrix's own hard-gate mechanism, recovered in a follow-up pass, both
+    independently anti-softening-checked PASS. Two genuine anti-softening violations found
+    and fixed directly in LANE3_CONSISTENCY.md (an unlicensed shadbala decimal-precision
+    carve-out) and LANE7_SYNTHESIS_CEILING.md (a "proceed with 7 instead of 10" escape
+    hatch). Discovery-pass observation of note: `kala_activation`/`kala_activation_predicates`
+    are NOT empty for either chart (66,836 / 66,747 rows) — contradicts register row R-45's
+    "likely root cause" assumption; if R-45 reproduces on re-test the defect is in the
+    serving-path query (`get_temporal_windows`), not the `ka_*` writer. Full detail:
+    `00_ARCHITECTURE/llm_consumption_audit/FOUNDRY_CLOSE_REPORT.md` (v2.0). **No audit was
+    performed, no fix was made to any product code/data, no DB write was made** — all DB
+    access read-only SELECT throughout. `CLAUDECODE_BRIEF_AUDIT_BRIEF_FOUNDRY_v1_0.md` (and
+    its root copy `CLAUDECODE_BRIEF.md`) status set to COMPLETE. Next step: Cowork review
+    gate (Fable 5 + native) ratifies the traceability matrix and the 5 DRAFT rubrics in
+    CHARTER.md §7 before any lane begins execution — this session does not, and did not,
+    begin execution. No macro-phase/layer-campaign change (L2 Bodha remains the active
+    layer campaign per §5 below; this was an independent audit-program build).
   - v6.35 (2026-07-10, R5.3 CONTENT-DEPTH ITERATION — §B/B1/B2/B3/B4 complete; gate NOT MET, honestly reported, native ruled gate stays IMMUTABLE):
     Successor run to R5.2 (v6.34), per `CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md`. **§B (grader restoration):** root-caused R5.2 A5's INCONCLUSIVE grading to a retired Gemini model name (`gemini-2.5-flash`→`gemini-flash-latest`), not a missing secret as the brief assumed; smoke-proved bidirectionally, both providers live. **B1 (true baseline):** full 38-item battery, both charts, real grading — 31.6% overall (12/38), first trustworthy rubric measurement since R5.1; narrowed the content-depth gap from the brief's assumed 16 items to 11 confirmed below-floor items. **B2 (content depth):** 5 worktree-isolated lanes (entity/timing/reading/remedy/verification), Pratinidhi-R ruling → implement → independent live re-grade per lane; 5 PRs merged (#508–#512); honest result 6/11 items now meet floor, 5/11 residuals diagnosed not dropped. **B3 (2 bounded fixes):** `query_remedies` 106KB→12.9KB; D60 rectification-confidence note (PR #514) — both live-verified. **B4 (acceptance re-run):** 39.5% overall (15/38, +7.9pts vs B1), Q1/X deterministic unchanged at 43.8%, 11/22 rubric floors met — **gate NOT MET**. Zero-regression check: 3 flips, one battery-staleness artifact (a tool the R6 audit legitimately fixed), two newly-surfaced marginal-content gaps on tools R5.3 never touched — none traceable to an R5.3 code change. Every one of the 23 failing B4 items mapped to a defect-register row (7 new rows added to `MARSYS_DEFECT_GAP_REGISTER_v2_0.md`: R-30–R-36, T-15, C-6). **Native ruling on the §N gate-calibration question: the ≥90% gate stays IMMUTABLE, not recalibrated — this is a capability problem, not a measurement problem.** Full remaining backlog (B2's 5 residuals + B4's 23 failures + the register's ~190 other rows) transfers to campaign R6 TOTAL ELEVATION (`00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_R6_TOTAL_ELEVATION_v1_0.md`, STAGED), which re-runs this same frozen battery at its own Phase-5 acceptance ceremony with the same ≥90% exit gate. Full close report: `R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md`. Full per-phase detail: `R5_3_RUN_LEDGER_v1_0.md`. `CLAUDECODE_BRIEF_R5_3_CONTENT_DEPTH_v1_0.md` status set to COMPLETE.
   - v6.34 (2026-07-09, R5.2 ACCEPTANCE ITERATION — A1-A5 run complete; gate NOT MET, honestly reported):
@@ -5905,7 +5964,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: R5.3-CONTENT-DEPTH-2026-07-10  # 2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09. (Field was stale at BA-SYNC-FREEZE-2026-07-04 for several sessions/campaigns — corrected here per schema_validator's current_state_last_session_id_disagreement finding.)
+  last_session_id: LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===
