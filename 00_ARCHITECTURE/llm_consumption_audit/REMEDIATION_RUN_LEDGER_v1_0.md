@@ -649,6 +649,18 @@ expected set). **Dispatched 2026-07-13.**
   untouched. **Blind verifier DISPATCHED** — map accuracy + delta honesty + **3 live demand-side sessions
   (narrow/medium/broad)** + protocol/tracker coherence. Merge on CONFIRMED → then W1 CLOSE.
 
+### §6.7 — ADJUDICATION [ADJ-2] (W1 PARTIAL prod-verify disposition — 2026-07-13)
+**Ruling: FIX-FORWARD** (not §7.4 rollback). W1 stays DEPLOYED; fix `lel_query` under §8.4, re-deploy, re-verify
+item 2 → GREEN before W1 close. **Reasoning:** §7.4 auto-rollback targets a broken/worse deploy — this is 6/7
+DEPLOYED-GREEN with the 57 events reachable in prod via twin `mimamsa_lel_query`, no 500/data-loss, isolation
+verified 0-substitution; E-clauses (which outrank the mechanical PARTIAL label) are in AGGREGATE far better served
+by keeping W1 (attribution/envelope/varga/18-assets/capability-map/isolation) than by rollback which would
+reintroduce every pre-W1 deficiency to cure one E5 instance; proportionality = targeted tool fix, not sledgehammer.
+**W1 = FIX-FORWARD-IN-FLIGHT, NOT closed** until lel_query re-verify GREEN + other 6/7 non-regressed.
+**Flip→ROLLBACK if:** lel_query empty masks an isolation/entitlement fault (NOT met — returns empty, not
+wrong-chart); OR alias unreachable (NOT met — mimamsa_lel_query serves 57); OR §8.4 budget (3 iters) exhausted
+without GREEN. **Tracked residual:** lel_query dishonest-empty (F-L10-021 deployed) → carry to GREEN re-verify (7/7).
+
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
 than nested wave-conductor sub-agents, given this session's observed agent flakiness (several API-drop/stall
