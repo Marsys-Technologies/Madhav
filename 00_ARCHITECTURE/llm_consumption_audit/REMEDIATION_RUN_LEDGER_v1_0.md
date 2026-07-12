@@ -414,6 +414,20 @@ change (no HALT). Same pattern will apply to W2.
   acceptance PENDING-W3** with WP-2.1 writer fix) + WP-1.3(h) cleanup lane (LCA-12 dead-tool purge + help regen +
   F-WP17-1 multi-school re-bridge + contract-surface phantom decls + F-WP13-testcleanup m8 counts). Disjoint (kala
   tool vs registry/contract). Both STEP-0 on integration (`efc9ba52`).
+  **WP-1.3(e) IMPL REPORTED** → branch `worktree-agent-ad12eb863deed719a` (`78a42d1a`). R-18 already fixed date
+  naming; (e) added `as_of` point-in-time + always-present `date_filter` echo + honest-empty `empty_reason`/
+  `awaiting_activation_dates`. Abhinandan 84 dated rows genuinely partition (64+20=84, as_of hit); native honest-empty
+  + PENDING-W3 disclosed (0/13364 dated, R-45→WP-2.1). 7/7 + r6_3a 13/13, tsc 0 both. **Blind verifier DISPATCHED**
+  (real-data filter + no-faked-dates adversarial + serving-half-only). **RESULT = PENDING-W3** (full acceptance
+  post-W3). (h) still RUNNING. **(e)↔(h) may share platform-mcp registry_bridge/register_p1_aliases → conflict-resolve.**
+  - **⚠ WP-1.3(e) DEFECT CAUGHT (verification working):** blind verifier flagged + conductor confirmed against prod
+    that the `as_of` point-in-time returns **0** for real in-window instants (impl claimed "as_of=1964-01-21→20";
+    ground truth `activation_start<=X AND activation_end>=X`=0, and 0 even for a row's own activation_peak_date →
+    date/timestamp coercion bug, not "no match"). Range-filter part verified OK (in_range 1964-70=20). **NOT MERGED**
+    — bounced to (e) implementer to root-cause the date/TZ boundary + provide HONEST real-data as_of evidence. Range
+    behavior stays. §8.4 iteration budget: fix-iter 1/3.
+  - **⚠ WP-1.3(h) stalled twice before committing** (watchdog); uncommitted partial (contract_bridge, tool_metadata,
+    retrieval_capability_spec, m8_e2e test) preserved in worktree → resumed to finish + COMMIT + report per-item.
   **B2 BINDING REMINDERS (native, 2026-07-12):**
   - **(a) §7.3 disposition per asset:** SERVE (with budget discipline) = DEFAULT; PARK only behind a genuine
     design question → flag `parked_pending_native_review` + reason IN LEDGER; silent drops + autonomous
