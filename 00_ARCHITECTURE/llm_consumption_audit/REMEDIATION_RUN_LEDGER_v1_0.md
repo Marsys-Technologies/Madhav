@@ -615,6 +615,14 @@ reachability** (WP-1.2/1.3/1.3j/1.4/1.5/1.8 changed what's served); (2) acquisit
 demand-side posture (E3). Verifier: data-plane (sample map entries → execute route → concept arrives) +
 jyotish-domain (**3 live demand-side sessions narrow/medium/broad** following the protocol, grade chase reaches
 expected set). **Dispatched 2026-07-13.**
+- **WP-1.6 IMPL COMPLETE** → branch `worktree-agent-a3915cca8db5008f4` (`31d76d87`). Map generator (idempotent,
+  re-runnable) + artifacts `capability_map/CONCEPT_CAPABILITY_MAP.json`+summary; tracker schema
+  `demand/acquisition_tracker.ts` (needed/received/exhausted, honesty validator); served protocol MCP resource
+  **`marsys://consumption-protocol`** + prompt `demand_side_chase`. **Reachability delta: +316 newly reachable
+  (2,024→2,289 of 2,589; deployed-MCP 902→1,906; truly-unreachable 157→142)** — dominated by phala_*/mimamsa_*
+  now-served. 8 sampled routes arrive; tracker 6/6, protocol 5/5, map-route 2/2; tsc 0 both; state/deliverables
+  untouched. **Blind verifier DISPATCHED** — map accuracy + delta honesty + **3 live demand-side sessions
+  (narrow/medium/broad)** + protocol/tracker coherence. Merge on CONFIRMED → then W1 CLOSE.
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
