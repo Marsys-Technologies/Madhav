@@ -32,10 +32,10 @@ changelog:
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
 | CLOSE | cleanup + main↔production sync proof | PENDING | — | §7.6 five steps in order |
 
-**Current position:** ✅ W0 CLOSED. **W1 IN PROGRESS — CHECKPOINT (2026-07-12).** integration branch
-`integration/w1-serving-plane` (`b819eead`, pushed) carries **3 verified lanes: WP-1.1 ✅ + WP-1.2α ✅ +
-WP-1.7 ✅** (all blind-verified CONFIRMED-FIXED, tests green on each merge). Deployed-channel verification LIVE
-(§1b.2).
+**Current position:** ✅ W0 CLOSED. **W1 IN PROGRESS — CHECKPOINT after Batch B1 (2026-07-12).** integration
+branch `integration/w1-serving-plane` (`97d6fe9c`, pushed) carries **6 verified lanes, all blind-verified
+CONFIRMED-FIXED**: WP-1.1 ✅, **WP-1.2 (α+β) ✅ COMPLETE**, WP-1.7 ✅, WP-1.3(d,g) ✅, WP-1.3(b,c) ✅.
+Deployed-channel verification LIVE (§1b.2). LCA-17 live residual CLOSED.
 **REMAINING W1 lanes (next session, re-ground from here):**
   - **WP-1.2β** — domain discrimination + new domains (moksha 4-8-12+Ketu, education/vidya, character/buddhi,
     bhava→domain un-collapse). Doctrine-heavy; jyotish-domain verifier. Branch from integration.
@@ -349,7 +349,22 @@ change (no HALT). Same pattern will apply to W2.
   - **WP-1.2β** — domain discrimination (wealth≠relationship) + new domains (moksha 4-8-12+Ketu, education/vidya
     off bhava-4-mislabel F-0756, character/buddhi in judgment_query, bhava→domain un-collapse) + finish
     attribution to **0% UNATTRIBUTED** (ND-W1.2). Acceptance: 0% UNATTRIBUTED + wealth∩relationship top-20 ≤25%.
-    Verifier runs rubric-7.4 raw-metric re-run × 16 surfaces × both charts (E-2). Status: RUNNING.
+    Verifier runs rubric-7.4 raw-metric re-run × 16 surfaces × both charts (E-2). **IMPL REPORTED** → branch
+    `worktree-agent-a9994fa38bac2633b` (commit `151f94d7`; STEP-0 on integration, WP-1.2α built-upon). Claims:
+    wealth∩relationship top-20 overlap ~95%→**5% native / 10% Abhinandan** (≤25% ✅); **0 UNATTRIBUTED served**
+    both charts (residual 3 native/2 Abhinandan truly-unattributable panchanga descriptors DISCLOSED); moksha=
+    4-8-12+Ketu (not bhava-9), education/vidya=4/5/2/9+Merc/Jup/Ketu, character/buddhi=bhava-1+Moon/Merc, F-0756
+    corrected (bhava-4→home/residence); BPHS-cited. 15 unit + 10 live-DB tests, 155/155 regression, tsc 0. Files:
+    priors_config, composite_ranker, query_ucd, query_domain_reading, register_d9_judgment (+2 tests). **Blind
+    jyotish+serving-wire verifier DISPATCHED** — rubric-7.4 raw × surfaces × both charts + independent overlap
+    recompute + OVER-FIT hunt + classical-soundness grade of new domains.
+    ✅ **VERDICT: CONFIRMED-FIXED** — verifier wrote its OWN harness + computed every metric independently:
+    wealth∩relationship overlap **5% native / 10% Abhinandan** (≤25% ✅, own computation); **0 served UNATTRIBUTED**
+    both charts (residual 3/2 truly-unattributable, disclosed); **NOT over-fit** (re-rank via soft ×0.7 bhava
+    demotion, never strip — full n=20, shared factors survive); doctrine SOUND (moksha 12/8/4 not 9th; education
+    2/4/5/9; F-0756 bhava-4→residence; character/buddhi bhava-1+Moon/Merc); §N.5 honored (serve-time, 0 stored
+    mutation); WP-1.2α + cache.ts + consult untouched; tsc 0, 86 unit + 24 integration pass. **MERGED →
+    integration (`97d6fe9c`)**. **WP-1.2 COMPLETE (α+β).** Observations logged §4.
   - **WP-1.3-dasha** (sub-lanes b,c) — `query_dasha_periods` honors `system_id` (F-0354, ~437k dark rows) +
     dasha tools honor requested windows (F-0471/0485). **IMPL REPORTED** → branch `worktree-agent-a6c2d1f024908ca70`
     (commit `093c804d`; STEP-0 on integration). Root cause deeper: DB `get_dashas` ignored `system_id`; AND the
@@ -418,6 +433,8 @@ change (no HALT). Same pattern will apply to W2.
 - **Contract-surface phantom declarations** (from WP-1.7 verifier): `kp_query`, `query_kp_ruling_planets`, `timeline_query` remain declared in the untouched CONTRACT/router surface (`tool_metadata.ts`, `contract_bridge.ts`, `retrieval_capability_spec.ts`) with no engine backing. Out of WP-1.7 scope; future contract-surface reconciliation should implement or drop them (same phantom-declaration bug class). Candidate: W4 re-grade / doctrine campaign.
 - **R-45** (rediscovered by WP-1.1 verifier): `get_temporal_windows` = 0 activations (NULL activation dates) — already owned by **WP-2.1** (W2).
 - **F-WP13dasha-cleanup** (from WP-1.3-dasha verifier): `platform-mcp/src/tools/__tests__/m8_e2e_proof.test.ts:519` holds a dangling reference to the retired `registerQueryDashaPeriodsTool` export (red both ways — inside the pre-existing 97 baseline, NOT a regression). Scrub the reference. Fold into WP-1.3h (dead-registry/test cleanup) per ND-W1.3.
+- **OBS-W12b-1** (from WP-1.2β verifier, non-blocking): native `query_ucd` now serves only **3 entity_profiles (all graha, Saturn-dominated)** vs Abhinandan's 15 (graha+bhava) — a consequence of `sade_sati→SATURN` attribution concentration meeting the native's Saturn-heavy top-300 pool (297/300 → ~3 grahas). Pre-existing pool logic, NOT a WP-1.2β regression; UNATTRIBUTED=0 holds. But a 3-entity native orientation is thin for acharya-grade whole-chart read → candidate refinement for **WP-1.4** (synthesis) or a follow-up (entity-profile diversity / pool balancing). Re-check at W4.
+- **OBS-W12b-2** (non-blocking): moksha∩education top-20 overlap ~50-55% (both new whole-chart-pool domains overlay house-4). Not a gate (binding gate = wealth∩relationship only); acceptable, but the least-separated domain pair — revisit if a moksha-vs-education discrimination need arises.
 
 ---
 
