@@ -661,6 +661,15 @@ Revisit if context degradation becomes acute.
 - **Verification:** per-lane blind writer-conformance + unit tests PRE-merge; **full DATA verification deferred to
   W3 rebuild** (plan: "verification completes at W3"). Base `integration/w2-writers` off main `fc84cd0d` (W1 live).
 
+### §7.2 — W2 batch-1 (WP-2.1 ∥ WP-2.4 ∥ WP-2.5) status
+- **WP-2.4 IMPL COMPLETE** → branch `worktree-agent-aa588eebf082b774b` (`a71d1b3c`). bo_laksana: flood cap
+  (aspect_jaimini_per_varga 15,660→~1 aggregate/varga citing ALL member fact_ids), re-tier per-varga→supporting,
+  KP bhava→domain, dosha_label/yoga_label integrity, 100% constituent resolution (filter-resolving+union-own).
+  NEW §N.5 CI validator `msr_referential_integrity.py` (self-test + mutation-proven + ci.yml gate). No migration
+  (cols exist). FROZEN orchestrator untouched, no HALT. 24/24 + 84/84. **Blind verifier DISPATCHED** (conformance
+  + §N.5 validator mutation + flood-traceability + no-false-cap + no-fabrication). Data-verify at W3.
+- **WP-2.1** (ka activation dates) + **WP-2.5** (never-computed + ayurdaya + L0 seed) still RUNNING.
+
 ## §4 — HALT / disagreement register + follow-ups (append-only)
 
 **HALTs / disagreements:** none yet.
