@@ -777,7 +777,12 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     '`about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership,',
     'and returns the resolved lord graha\'s own facts — the resolution chain is served in `about_resolution`).',
     'Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign,',
-    'nakshatra, divisional_chart (e.g. D9/D10), keyword, ayanamsha_id (default lahiri_chitrapaksha), shape, limit.',
+    'nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list),',
+    'ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman,',
+    'surya_siddhanta_classical, true_chitra, INVARIANT), shape, limit, offset.',
+    'Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across',
+    'the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit),',
+    'so a caller can page the full 5,566-subject set without silent truncation.',
     'emits_references: every pivoted field carries its source fact_id for Bodha back-reference.',
     'Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state — ',
     'exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited ',
@@ -830,6 +835,15 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     keyword: {
       type: 'string',
       description: 'Free-text keyword search over fact_key/fact_value_text. Optional.',
+    },
+    fact_subject: {
+      type: 'string',
+      description: [
+        'Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP", "HOUSE_10"). Accepts a',
+        'single value or comma-separated list. Composes (intersects) with category and the',
+        'other subject-selecting filters. WP-1.3(f)/LCA-3: this narrows the payload directly',
+        'to the addressed subject(s) instead of returning every subject.',
+      ].join(' '),
     },
     ayanamsha_id: {
       type: 'string',
@@ -1014,6 +1028,29 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         sql += ` AND (fact_key ILIKE $${params.length} OR fact_value_text ILIKE $${params.length})`
       }
 
+      // WP-1.3(f) / LCA-3: direct fact_subject filter. Exact-match (comma-list) intersection
+      // over the fact_subject column — lets a caller narrow to a named subject without going
+      // through the category/planet/about facets. Empty match list (e.g. an unknown subject)
+      // is a legitimate honest-empty result via ANY over the supplied array, never a widening.
+      if (args['fact_subject']) {
+        const subjects = String(args['fact_subject']).split(',').map(s => s.trim()).filter(Boolean)
+        params.push(subjects)
+        sql += ` AND fact_subject = ANY($${params.length}::text[])`
+      }
+
+      // WP-1.3(f) / LCA-3-EXT: disclosed pagination with a REAL total. The raw fetch below is
+      // capped at (offset+limit)*20 rows and pivoted/sliced to one page, so `returned_count`
+      // alone cannot tell a caller whether rows remain (the LCA-3-EXT "silent 1000-cap drop"
+      // — 4,566 of 5,566 subjects vanished with no signal). Snapshot the WHERE clause + its
+      // bound params HERE (before the row-cap param is appended) so the count query — run
+      // right after the main fetch — reflects the whole matching set, not just this page.
+      // shape="rows" counts raw rows; shape="pivoted" counts DISTINCT fact_subject.
+      const whereOnly = sql.slice(sql.indexOf('FROM chart_facts'))
+      const countSql = (shape === 'rows'
+        ? 'SELECT COUNT(*)::int AS total '
+        : 'SELECT COUNT(DISTINCT fact_subject)::int AS total ') + whereOnly
+      const countParams = [...params]
+
       // Row cap: pivoting collapses ~15 EAV rows into one wide row, so the raw row fetch
       // needs headroom over `limit` (a limit on SUBJECTS, not raw rows) before the pivot step.
       // R6 0b-deadtools (V-8): the cap must also cover `offset` subjects/rows — previously
@@ -1026,6 +1063,11 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
+      // Disclosed-pagination total (see the WP-1.3(f)/LCA-3-EXT snapshot comment above). Run
+      // after the main fetch so the main query stays the first query() call for callers/tests
+      // that key on call order.
+      const countRes = await query<{ total: number }>(countSql, countParams)
+      const total = Number(countRes.rows?.[0]?.total ?? 0)
       // R6 3b-budgets (R-24): grounding MUST be computed from the rows actually SERVED in
       // this response, not the full over-fetched `rows` window (limit*20 row cap, see the
       // R6 0b-deadtools comment above `params.push((offset + limit) * 20)`). The register
@@ -1044,8 +1086,12 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           ayanamsha_id,
           shape: 'rows',
           rows: servedRows,
-          returned_count: Math.max(0, Math.min(rows.length - offset, limit)),
+          returned_count: servedRows.length,
           offset,
+          limit,
+          // WP-1.3(f)/LCA-3-EXT disclosed pagination — see the count-query comment above.
+          total,
+          more_available: offset + servedRows.length < total,
         }
       } else {
         // Pivot: group by fact_subject into one wide row of {fact_key: value}
@@ -1118,6 +1164,11 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           facts: pivoted,
           returned_count: pivoted.length,
           offset,
+          limit,
+          // WP-1.3(f)/LCA-3-EXT disclosed pagination — `total` is the true DISTINCT-subject
+          // count over the whole matching set (e.g. 5,566 unfiltered), NOT this page's slice.
+          total,
+          more_available: offset + pivoted.length < total,
         }
       }
 

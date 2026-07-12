@@ -89,6 +89,36 @@ function normalizeAyanamsha(id?: string): string {
   return AYANAMSHA_ALIAS[id] ?? id
 }
 
+// WP-1.3(f) / LCA-3 (ayanamsha reachability). chart_facts stores SIX distinct ayanamsha_id
+// values — five sidereal (lahiri_chitrapaksha, krishnamurti, raman, surya_siddhanta_classical,
+// true_chitra) plus INVARIANT (ayanamsha-independent facts). The shared `normalizeAyanamsha`
+// above COLLAPSES `true_chitra`/`true_citra` -> `lahiri_chitrapaksha` (AYANAMSHA_ALIAS), which
+// made true_chitra's own 27,112-row dataset UNREACHABLE via query_chart_facts (the tool
+// effectively served ≤5 of 6 ayanamshas, and the two Chitra-family names both bound to lahiri).
+// This resolver is SCOPED to query_chart_facts (it must not change the shared normalizer used
+// by the dasha/signals tools, which are a parallel lane): it maps convenience aliases to the
+// canonical id WITHOUT collapsing any two distinct stored ayanamshas together, so every one of
+// the 6 is reachable. Unknown ids pass through unchanged (the handler then returns an honest
+// empty result rather than silently querying lahiri).
+const CHART_FACTS_AYANAMSHA_ALIAS: Record<string, string> = {
+  lahiri:                    'lahiri_chitrapaksha',
+  lahiri_chitra:             'lahiri_chitrapaksha',
+  lahiri_chitrapaksha:       'lahiri_chitrapaksha',
+  kp:                        'krishnamurti',
+  krishnamurti:              'krishnamurti',
+  raman:                     'raman',
+  surya_siddhanta:           'surya_siddhanta_classical',
+  surya_siddhanta_classical: 'surya_siddhanta_classical',
+  true_chitra:               'true_chitra',
+  true_citra:                'true_chitra',
+  chitra:                    'true_chitra',
+  invariant:                 'INVARIANT',
+}
+export function resolveChartFactsAyanamsha(id?: string): string {
+  if (!id) return DEFAULT_AYANAMSHA
+  return CHART_FACTS_AYANAMSHA_ALIAS[id] ?? CHART_FACTS_AYANAMSHA_ALIAS[id.toLowerCase()] ?? id
+}
+
 // ── Platform primitive caller ─────────────────────────────────────────────────
 
 /**
@@ -1542,7 +1572,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'EAV-crosstab lookup over the chart_facts table (27,554 rows per chart, single ayanamsha per call). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape="pivoted" returns ONE wide row per fact_subject (e.g. lagna -> {sign, sign_lord, house_d1, pada, longitude_sidereal}) instead of raw EAV rows — shape="rows" returns the flat form. The `about` facet lets you address the chart astrologically instead of guessing categories: about="lagna", about={graha:"Saturn"}, about={bhava:10} (the house itself), about={house_lord:10} (resolves the Nth house rashi from the lagna + classical BPHS rulership and returns the resolved lord graha\'s facts — the resolution chain is served back in `about_resolution`). Returns fact_id references for downstream drill. B.11-floor-injected. chart_id is required — never defaulted.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
-      ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+      ayanamsha_id: z.string().optional().describe(
+        "Ayanamsha to query. Any of the 6 stored ayanamshas is reachable: 'lahiri_chitrapaksha' " +
+        "(default), 'krishnamurti' (alias 'kp'), 'raman', 'surya_siddhanta_classical', " +
+        "'true_chitra' (alias 'true_citra'), 'INVARIANT'. One ayanamsha per call."
+      ),
       about: z.union([
         z.string(),
         z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
@@ -1556,18 +1590,22 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       nakshatra: z.string().optional().describe('Nakshatra name filter.'),
       divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10").'),
       keyword: z.string().optional().describe('Free-text keyword search over fact_key/fact_value_text.'),
+      fact_subject: z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP", "HOUSE_10"). Comma-separated for multiple.'),
       shape: z.enum(['pivoted', 'rows']).optional().describe('"pivoted" (default, one wide row per subject) or "rows" (flat EAV rows).'),
       limit: z.number().int().min(1).max(1000).optional().describe('Max subjects/rows to return (default: 100, max: 1000).'),
       offset: z.number().int().min(0).optional().describe('Pagination offset — rows (shape="rows") or subjects (shape="pivoted") to skip before the next `limit` (default: 0).'),
     },
-    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, shape, limit, offset }) => {
+    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, fact_subject, shape, limit, offset }) => {
       if (!chart_id) return errorOutput('query_chart_facts', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L1/chart_facts_query',
           {
             chart_id,
-            ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+            // WP-1.3(f)/LCA-3: query_chart_facts-scoped resolver so all 6 stored ayanamshas
+            // (incl. true_chitra) are reachable — the shared normalizeAyanamsha collapses
+            // true_chitra -> lahiri, hiding a full dataset.
+            ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id),
             ...(about !== undefined ? { about } : {}),
             ...(category ? { category } : {}),
             ...(planet ? { planet } : {}),
@@ -1576,6 +1614,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             ...(nakshatra ? { nakshatra } : {}),
             ...(divisional_chart ? { divisional_chart } : {}),
             ...(keyword ? { keyword } : {}),
+            ...(fact_subject ? { fact_subject } : {}),
             ...(shape ? { shape } : {}),
             ...(limit != null ? { limit } : {}),
             ...(offset != null ? { offset } : {}),
