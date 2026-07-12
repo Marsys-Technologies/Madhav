@@ -80,29 +80,17 @@ describe('D5 L3 Kāla — D1 contract fields', () => {
   }
 })
 
-describe('D5 L3 Kāla — STUBBED tools', () => {
-  it('query_obstruction_periods: returns stubbed=true, data=[], is_error=false', async () => {
-    const result = await queryObstructionPeriodsCapability.handler(
-      { chart_id: 'test-chart-id' },
-      undefined
-    )
-    expect(result.is_error).toBe(false)
-    const content = result.content as Record<string, unknown>
-    expect(content['stubbed']).toBe(true)
-    expect(content['data']).toEqual([])
-    expect(content['pending_asset']).toBe('ka_vighnakara')
+// WP-1.3(a) / F-L10-012,018 (LCA-19): these two tools were STUBBED-PENDING-DATA but
+// their tables (kala_obstruction 602-638/chart, kala_darshana 750/chart) are now populated
+// and the tools serve the real rows. The old "returns stubbed=true" assertions were removed;
+// see wp13a_computed_but_unserved.test.ts for the DB-mocked serving-path coverage.
+describe('D5 L3 Kāla — WP-1.3(a) un-stubbed serving tools', () => {
+  it('query_obstruction_periods: no longer advertises stubbing in its description', () => {
+    expect(queryObstructionPeriodsCapability.description).not.toContain('STUBBED-PENDING-DATA')
   })
 
-  it('query_temporal_view: returns stubbed=true, data=[], is_error=false', async () => {
-    const result = await queryTemporalViewCapability.handler(
-      { chart_id: 'test-chart-id' },
-      undefined
-    )
-    expect(result.is_error).toBe(false)
-    const content = result.content as Record<string, unknown>
-    expect(content['stubbed']).toBe(true)
-    expect(content['data']).toEqual([])
-    expect(content['pending_asset']).toBe('ka_kala_darshana')
+  it('query_temporal_view: no longer advertises stubbing in its description', () => {
+    expect(queryTemporalViewCapability.description).not.toContain('STUBBED-PENDING-DATA')
   })
 
   it('query_obstruction_periods: chart_id absent → is_error=true', async () => {
