@@ -560,6 +560,13 @@ change (no HALT). Same pattern will apply to W2.
   ✅ **WP-1.3j REBASED onto merged integration** (`c8985bed`; 1 trivial whitespace conflict in query_phala_calibration
   to_char block — both lanes added identical to_char, resolved; tsc 0 both). **Blind verifier (serving + WP-1.5
   envelope-conformance re-check) DISPATCHED.** Merge on CONFIRMED.
+  ✅ **WP-1.3j CONFIRMED-FIXED + MERGED** (`3ee2bc1d`). Verifier independently reproduced both phala bug root-causes
+  + all 5 tool counts; envelope conformance holds (total=real COUNT → can't lie); all 23 W1-FOLLOWUP accounted
+  (12 served + 11 fwd-homed); §N.5 572/572; no entitlement widening; tsc 0 both, wp13j 30/30, whitelist 58/58.
+  **W1-remainder BATCH 1 COMPLETE (WP-1.5 + WP-1.3j).** Non-blocking notes → §4: (a) new WP-1.3j tools hand-roll
+  envelope (offset, no cursor) instead of WP-1.5 `buildHonestPagination` — consistency follow-up; (b) at W1 close,
+  re-stamp WP13_RECONCILIATION's 11 W1-FOLLOWUP rows → PENDING-W2/W3/PARK (Ruling 1 "no W1-FOLLOWUP survives" — met
+  in substance, table column pending).
 
 ### §6.4 — Dispatch manifest: W1-remainder BATCH 2 (WP-1.8 ∥ WP-1.4)
 **Pre-dispatch intersection check (mechanical):**
@@ -596,6 +603,9 @@ this ledger guarantee lossless continuation. Within-rules, non-scope-changing �
 - **⭐ F-DATE-TZ (from WP-1.3(e) — HIGH priority for WP-1.5):** Postgres `date` columns returned raw are parsed by node-postgres at IST-midnight → serialized to UTC → **off-by-one + spurious time component** (`1964-01-22` → `"1964-01-21T18:30:00Z"`), breaking any date round-trip. WP-1.3(e) fixed its own tool via `to_char(col,'YYYY-MM-DD')` + `::date` param binding. **Sibling L3 serving tools share the SAME trap and are NOT yet fixed — including some just merged in WP-1.3(a): `query_dasha_dossier`, `query_temporal_view`, `query_convergence_windows`, plus `query_projections`, `call_service_wrappers`.** → **WP-1.5 (envelope honesty) must apply the `to_char` treatment program-wide to every served `date` column.** Latent correctness bug in already-integrated tools until then.
 - **F-WP13-testcleanup** (WP-1.3h scope, from dasha + apex/assess verifiers): `platform-mcp/src/tools/__tests__/m8_e2e_proof.test.ts` has (a) L519 dangling ref to retired `registerQueryDashaPeriodsTool`; (b) stale count constants — G12 `REGISTERED_TOOL_COUNT=45` and V6 D7-bridge `=12` — now wrong because multiple integrated lanes added/removed registry tools (WP-1.3 a/f/i/dasha). All red-both-ways (in the pre-existing baseline, NOT regressions). **WP-1.3h** must reconcile these count constants to the post-B2 actuals + scrub the dangling ref. Per ND-W1.3.
 - **OBS-W12b-1** (from WP-1.2β verifier, non-blocking): native `query_ucd` now serves only **3 entity_profiles (all graha, Saturn-dominated)** vs Abhinandan's 15 (graha+bhava) — a consequence of `sade_sati→SATURN` attribution concentration meeting the native's Saturn-heavy top-300 pool (297/300 → ~3 grahas). Pre-existing pool logic, NOT a WP-1.2β regression; UNATTRIBUTED=0 holds. But a 3-entity native orientation is thin for acharya-grade whole-chart read → candidate refinement for **WP-1.4** (synthesis) or a follow-up (entity-profile diversity / pool balancing). Re-check at W4.
+- **F-WP15-cursor** (WP-1.5 verifier): `list_entities` emits `next_cursor` but has no cursor/offset INPUT param → disclosure-honest but not round-trip-consumable. Small serving follow-up (add the param). Also (WP-1.3j note): the 5 new bodha tools + 2 phala fixes hand-roll offset envelopes instead of WP-1.5 `buildHonestPagination` — consistency follow-up (adopt shared helper + cursor). Candidate: WP-1.6 cleanup or a W1-close sweep.
+- **F-WP15-priorityrank** (WP-1.5 verifier): native `call_priority_ranking` empty — kala_activation `activation_start/end` 100% NULL under lahiri (only 302/133,583 dated) → **R-45/WP-2.1 data-plane** (PENDING-W3, not a serving defect; tool is honest-empty).
+- **W1-CLOSE TODO:** re-stamp WP13_RECONCILIATION_v1_0.md's 11 W1-FOLLOWUP rows → PENDING-W2/W3/PARK (WP-1.3j served 12 of the 23; Ruling 1: no W1-FOLLOWUP class survives W1 close).
 - **OBS-W12b-2** (non-blocking): moksha∩education top-20 overlap ~50-55% (both new whole-chart-pool domains overlay house-4). Not a gate (binding gate = wealth∩relationship only); acceptable, but the least-separated domain pair — revisit if a moksha-vs-education discrimination need arises.
 
 ---
