@@ -51,8 +51,9 @@ describe('WP-1.3(e) — as_of point-in-time honored', () => {
       { chart_id: CHART_ID, as_of: '2020-06-15' }, undefined,
     )
     const [sql, params] = queryMock.mock.calls[0] as [string, unknown[]]
-    expect(sql).toMatch(/activation_start <= \$/)
-    expect(sql).toMatch(/activation_end\s+>= \$/)
+    // param bound ::date so boundary instants match at calendar-date granularity
+    expect(sql).toMatch(/activation_start <= \$\d+::date/)
+    expect(sql).toMatch(/activation_end >= \$\d+::date/)
     expect(params).toContain('2020-06-15')
 
     const content = (res as { content: Record<string, unknown> }).content
@@ -93,6 +94,21 @@ describe('WP-1.3(e) — range date params honored + echoed', () => {
     const content = (res as { content: Record<string, unknown> }).content
     const df = content['date_filter'] as Record<string, unknown>
     expect(df['range_defaulted']).toBe(true)
+  })
+})
+
+describe('WP-1.3(e) — date columns serialized as YYYY-MM-DD (no TZ shift)', () => {
+  it('SELECTs the three date columns through to_char(..., YYYY-MM-DD), not raw', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [DATED_ROW] })
+      .mockResolvedValueOnce({ rows: [] })
+    await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
+    const [sql] = queryMock.mock.calls[0] as [string, unknown[]]
+    expect(sql).toMatch(/to_char\(activation_start,\s*'YYYY-MM-DD'\)\s+AS activation_start/)
+    expect(sql).toMatch(/to_char\(activation_end,\s*'YYYY-MM-DD'\)\s+AS activation_end/)
+    expect(sql).toMatch(/to_char\(activation_peak_date,\s*'YYYY-MM-DD'\)\s+AS activation_peak_date/)
+    // no bare "activation_start," projection that would let node-pg parse a JS Date
+    expect(sql).not.toMatch(/SELECT[^)]*\bactivation_start,\s*activation_end,\s*activation_peak_date\b/)
   })
 })
 

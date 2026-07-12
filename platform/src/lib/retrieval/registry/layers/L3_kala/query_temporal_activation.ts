@@ -126,19 +126,21 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       let ap = 3
 
       // WP-1.3(e): as_of is a point-in-time query — the window must CONTAIN the instant.
-      // It overrides the range (and its today..+1y default) entirely.
+      // It overrides the range (and its today..+1y default) entirely. The param is bound
+      // ::date so any 'YYYY-MM-DD' (or a full ISO instant) is compared at calendar-date
+      // granularity against the date columns — boundary instants (start/end) match inclusively.
       if (as_of) {
-        actConds.push(`activation_start <= $${ap++}`)
+        actConds.push(`activation_start <= $${ap++}::date`)
         actParams.push(as_of)
-        actConds.push(`activation_end >= $${ap++}`)
+        actConds.push(`activation_end >= $${ap++}::date`)
         actParams.push(as_of)
       } else {
         if (date_from) {
-          actConds.push(`activation_end >= $${ap++}`)
+          actConds.push(`activation_end >= $${ap++}::date`)
           actParams.push(date_from)
         }
         if (date_to) {
-          actConds.push(`activation_start <= $${ap++}`)
+          actConds.push(`activation_start <= $${ap++}::date`)
           actParams.push(date_to)
         }
       }
@@ -160,9 +162,17 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       actParams.push(top_k)
       const topKPh = `$${ap++}`
 
+      // WP-1.3(e) date-serialization fix: activation_start/end/peak are DATE columns.
+      // Returning them raw makes node-postgres parse each to a JS Date at the server's
+      // LOCAL midnight, then JSON-serialize to a UTC ISO string — under IST that shifts
+      // e.g. 1964-01-22 to "1964-01-21T18:30:00.000Z" (off-by-one to the consumer, and
+      // un-round-trippable: feeding that back as as_of misses the window). to_char pins
+      // the true calendar value as a plain 'YYYY-MM-DD' text with no timezone coercion.
       const activationSql = `
         SELECT id, signal_id, ayanamsha_id, signature_class,
-               activation_start, activation_end, activation_peak_date,
+               to_char(activation_start, 'YYYY-MM-DD')     AS activation_start,
+               to_char(activation_end, 'YYYY-MM-DD')       AS activation_end,
+               to_char(activation_peak_date, 'YYYY-MM-DD') AS activation_peak_date,
                orb_strength, convergence_score, dasha_activation_proximity_score,
                active_dasha_periods_jsonb, activation_predicted_dates_jsonb,
                source_citation
