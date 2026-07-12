@@ -42,8 +42,14 @@ export default async function ConsultConversationPage({
   })
   if (!conversation || conversation.chart_id !== id) notFound()
 
+  // LCA-2 / WP-1.1: the legacy `reports` relation was RETIRED (DDL only in
+  // platform/migrations/_archive; ABSENT from deployed Cloud SQL). The prior
+  // `SELECT * FROM reports` here raised a permanent 42P01 (undefined_table) that
+  // crashed this server-component render for EVERY chart. We do NOT resurrect the
+  // table: resolve an empty result so the page always renders and ConsumeChat
+  // receives no legacy domain reports (content comes from the live retrieval path).
   const [reportsResult, conversations, messages] = await Promise.all([
-    query('SELECT * FROM reports WHERE chart_id=$1 ORDER BY domain ASC', [id]),
+    Promise.resolve({ rows: [] as unknown[] }),
     listConversations({ chartId: id, userId: user.uid, module: 'consume' }),
     loadConversationMessagesV2(conversationId),
   ])
