@@ -456,4 +456,45 @@ change (no HALT). Same pattern will apply to W2.
 
 ---
 
+---
+
+## §5 — WP-1.3(a) computed-but-unserved disposition table (native §7.3 requirement)
+
+Branch `worktree-agent-a2f0770448dc49ab4` (`a30a8b0f`), verification pending. Ground-truth = bounded prod
+`COUNT(*)` per chart (A=native `482012f1`, B=Abhinandan `1c826d5a`). **No silent drops, no autonomous retirements.**
+
+| Finding | Asset | Disposition | Surface / reason | rows A/B | Budget |
+|---|---|---|---|---|---|
+| F-L10-001 | ga_medical | SERVE | `get_medical_indications` (new L1) | 45/45 | LIMIT 50 + total |
+| F-L10-002 | ga_vastu_planet_direction_map | SERVE | `get_vastu_directions` (new L1) | 40/40 | LIMIT 50 + total |
+| F-L10-003 | ga_yoga_firings | SERVE | `get_yoga_firings` (new L1) | 50/56 | LIMIT 50 + total |
+| F-L10-004 | bodha_cdlm_chart_summary | SERVE | `query_cdlm_summary` (new L2) | 5/5 | LIMIT 50 |
+| F-L10-005 | bodha_cgm_motifs | SERVE | `query_cgm_motifs` (new L2) | 0/6 | LIMIT 50 |
+| F-L10-006 | bodha_cgm_paths | SERVE | `query_cgm_paths` (new L2) | 45/45 | LIMIT 50 |
+| F-L10-007 | bo_chart_gestalt | SERVE | `query_chart_gestalt` (new L2) | 5/5 | LIMIT 50 |
+| F-L10-009 | ka_avadhi | SERVE | `query_dasha_dossier` (new L3) | 1571/1585 | LIMIT 50 + filters |
+| F-L10-012 | ka_kala_darshana | SERVE | `query_temporal_view` (un-stubbed) | 750/750 | LIMIT 50 |
+| F-L10-014 | ka_sangam rigor | SERVE | `query_convergence_windows` (whitelist-exposed) | 6484/2959 | existing cap |
+| F-L10-015 | ka_taranga | SERVE | `query_activation_waveform` (new L3) | 79728/79728 | **aggregate default; drill errors w/o scope — never dumps 79k** |
+| F-L10-018 | ka_vighnakara | SERVE | `query_obstruction_periods` (un-stubbed) | 602/638 | LIMIT 50 |
+| F-L10-027 | ph_sankrama | SERVE | `query_spillover_cascades` (whitelist-exposed) | 635/1265 | existing cap |
+| F-L10-021 | lel_events | DONE(sibling) | WP-1.3(d) `lel_query` | 57/0 | — |
+| F-L10-017 | ka_tulana (UNATTRIB) | OUT-OF-SCOPE | ranking defect → WP-1.2 (done) | — | — |
+| F-L10-010 | ka_dasha_kala | NEXT-PASS | live-compute wrapper (dasha-adjacent) | — | — |
+| F-L10-011 | ka_gochara | NEXT-PASS | live transit search (sidecar) | — | — |
+| F-L10-013 | ka_kalasutra | NEXT-PASS | overlaps WP-1.3(e) windows | 66836/66747 | — |
+| F-L10-016 | ka_tulana compare | **PARK** `parked_pending_native_review` | two-chart compare — no single-chart table; genuine DESIGN question | — | — |
+| F-L10-020 | ka_yojaka predicates | NEXT-PASS | overlaps WP-1.3(e) windows-engine | 66836/66747 | — |
+| F-L10-024 | ph_pratikara (mitigation=0) | NEXT-PASS(serving-bug) | rows EXIST (602/638) — existing tool returns empty; needs serving fix | 602/638 | — |
+| F-L10-025 | ph_rectification (empty/185) | NEXT-PASS(serving-bug) | rows EXIST (185) — serving fix | 185/185 | — |
+| F-L10-008 | bo_sangati | **PENDING-W2** | 0 rows — writer never wrote (WP-2.2 empty shell) | 0 | — |
+| F-L10-019 | ka_yojaka date-less | **PENDING-W2** | activation_start NULL 66726/66836 — writer defect (WP-2.1 R-45) | data | — |
+| F-L10-022 | mi_abhilekha | **PENDING-W2** | mimamsa_journal empty (WP-2.2/L5) | 0/0 | — |
+| F-L10-023 | ph_phaladesa | **PENDING-W2** | narration_status=pending, prose empty (WP-2.2) | 7/7 empty | — |
+| F-L10-026 | ph_rectification non-discrim | **PENDING-W2** | scorer/algo defect (0/36 events) — writer/L5, not serving | algo | — |
+
+**Conductor reconciliation note (for ND-W1.1 at WP-1.3 close):** the implementer labeled several items "PARK" whose real reason is a W2 writer gap → reclassified above as **PENDING-W2** (they get data in W2; only ka_tulana-compare is a true `parked_pending_native_review` design question). The 4 NEXT-PASS + 2 serving-bug items are genuine WP-1.3 residuals needing a follow-up lane or explicit re-disposition at the 295-ID reconciliation gate — none dropped.
+
+---
+
 *Ledger opened 2026-07-12 by the Program Conductor. Append-only below §0's status board; §0 is the one mutable status surface.*
