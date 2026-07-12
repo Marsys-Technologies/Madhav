@@ -176,9 +176,19 @@ def register(asset_id: str) -> Callable[[type[WriterBase]], type[WriterBase]]:
     """
     def _decorate(cls: type[WriterBase]) -> type[WriterBase]:
         if asset_id in _REGISTRY:
+            # Idempotent for the IDENTICAL class re-registering (benign — a test-collection
+            # or dual-module-path re-import). Still a hard error on a GENUINE conflict:
+            # a DIFFERENT class claiming the same asset_id. (W2 CI-collection robustness;
+            # the one-writer-per-asset_id contract is preserved.)
+            existing = _REGISTRY[asset_id]
+            if existing is cls or (
+                existing.__name__ == cls.__name__
+                and existing.__module__.rsplit('.', 1)[-1] == cls.__module__.rsplit('.', 1)[-1]
+            ):
+                return cls
             raise ValueError(
                 f'duplicate writer registration for asset_id={asset_id}: '
-                f'existing={_REGISTRY[asset_id].__name__}, new={cls.__name__}'
+                f'existing={existing.__name__}, new={cls.__name__}'
             )
         if not issubclass(cls, WriterBase):
             raise TypeError(f'{cls.__name__} must subclass WriterBase')

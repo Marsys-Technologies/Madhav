@@ -686,6 +686,15 @@ Revisit if context degradation becomes acute.
   to WP-2.3-temporal. **BOUNCED to implementer:** (1) birth-forward filter + select life-relevant period; (2)
   honor predicate ayanamsha_id (not pool 5); (3) pre-birth-inclusive multi-ayanamsha regression fixture.
   **NOT MERGED — WP-2.3-temporal STAYS BLOCKED until re-verify GREEN.**
+  ✅ **FIX iter-1 (`9705e5b2`) + conductor live-retest CONFIRMED** — birth-forward + ayanamsha-consistent + regression
+  fixture (guards the guard). Live-retest: native earliest post-birth Saturn AD (lahiri) = 1991-08-18→1994-08-21
+  (was 1951 pre-birth), resolver now selects it. **MERGED → integration (`8034347a`).** **Unblocks WP-2.3-temporal.**
+- **⚠ W2 CI-collection fix (conductor):** full `pytest tests/` collection exited 2 — `bo_laksana` double-registered
+  (identical class re-imported via 2 module paths, triggered by WP-2.4's new test). W2-introduced full-suite failure.
+  **Fixed** `pipeline/orchestrator/writers/__init__.py register()`: idempotent no-op for the IDENTICAL class
+  re-registering (same name+module-basename), STILL raises on a genuine conflict (different class, same id).
+  Contract preserved (one-writer-per-asset_id). Verified: collect exit 0, 58 writer tests pass, genuine-conflict
+  still raises. NOT a FROZEN-core edit (writers/__init__.py, not orchestrator/core/**).
 - **WP-2.5 IMPL COMPLETE** → branch `worktree-agent-aa2e0198b6f28f5a1` (`9167a61f`). New `ga_sensitive_degree` +
   `ga_ayurdaya` writers + L0 `bg_sign_medical` Kalapurusha organ seed + dosha wiring (gandanta/mrityu-bhaga).
   Every value DELEGATED from cited PyJHora consts (BPHS/Jataka Parijata — B.10, no hand-recall). Ayurdaya 3 methods
