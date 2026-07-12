@@ -64,6 +64,14 @@ jobs:
       - run: npm ci
       - run: npm test -- --reporter=verbose
 
+      - name: WP-1.7 — MCP surgical whitelist resolution invariant (LCA-1/LCA-13)
+        # DURABLE GUARD. Fails CI if ANY MCP_TO_RETRIEVAL_TOOL whitelist value fails to
+        # resolve end-to-end via getToolByName (the local-bench-vs-deployed root cause:
+        # whitelisted tool names whose targets were absent from TOOL_NAME_TO_URI → 500).
+        # Runs as a dedicated, named gate (also covered by `npm test`) so a regression is
+        # unmistakable in CI logs. Mutation-proven: removing a URI makes this step fail.
+        run: npx vitest run src/lib/retrieval/registry/whitelist_resolution_invariant.test.ts
+
   planner-regression:
     name: Planner Regression Gate
     runs-on: ubuntu-latest
