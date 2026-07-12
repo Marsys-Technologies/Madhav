@@ -21,6 +21,24 @@ const SUB_TOOL_TIMEOUT_MS = 8_000
 export type SchoolName = 'parashara' | 'jaimini' | 'kp' | 'tajaka'
 const ALL_SCHOOLS: SchoolName[] = ['parashara', 'jaimini', 'kp', 'tajaka']
 
+// ── F-WP17-1 (WP-1.3(h)) — cross_school_lookup PARKED ────────────────────────────
+// The cross_school_lookup primitive was never bridged to a registry capability. Its
+// legacy backing (platform/src/lib/tools/multi_school_signal_lookup.ts) is a WS-0 STUB
+// that returns empty results — school_signal_coverage / l25_msr_signals / classical_chunks
+// were dropped in WS-0 and never repopulated (TODO(ws-2)). WP-1.7 removed cross_school_lookup
+// from the MCP surgical whitelist, so calling it now 400s. Rather than let the bundle fire a
+// doomed HTTP call that surfaces as a generic tool_error (silent degradation), we PARK it
+// explicitly: the sub-tool entry carries error_class 'parked_pending_native_review' with a
+// reason, and no network call is made. The per-school evidence queries still run normally.
+// Un-park by (1) repopulating school_signal_coverage in the Brahma depth-build and
+// (2) registering a real registry capability, then routing cross_school_lookup through it.
+const PARKED_SUB_TOOLS: Record<string, string> = {
+  cross_school_lookup:
+    'parked_pending_native_review: no backing capability — multi_school_signal_lookup is a ' +
+    'WS-0 stub (school_signal_coverage dropped, not repopulated); removed from MCP whitelist ' +
+    'by WP-1.7. See F-WP17-1.',
+}
+
 // ── Event types ────────────────────────────────────────────────────────────────
 
 export interface SubToolStartedEvent {
@@ -127,6 +145,19 @@ async function runSubTool(
 ): Promise<MultiSchoolBundleEntry> {
   const started_at = new Date().toISOString()
   onEvent?.({ type: 'bundle.sub_tool.started', sub_tool: label, started_at })
+
+  // F-WP17-1: parked sub-tools are flagged explicitly, never fired (would 400).
+  const parkReason = PARKED_SUB_TOOLS[toolName]
+  if (parkReason) {
+    onEvent?.({ type: 'bundle.sub_tool.error', sub_tool: label, ok: false, error_class: 'parked_pending_native_review' })
+    return {
+      sub_tool: label,
+      errored: true,
+      error_class: 'parked_pending_native_review',
+      attempted_params: { ...params, park_reason: parkReason },
+      latency_ms: 0,
+    }
+  }
 
   const t0 = Date.now()
   try {

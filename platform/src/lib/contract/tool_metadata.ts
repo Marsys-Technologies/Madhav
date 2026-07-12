@@ -713,27 +713,12 @@ export const TOOL_METADATA: readonly ToolReconciliationEntry[] = [
     alias_of: 'query_jaimini_chara_dasha',
   },
 
-  // ─── KP + Varshaphala ───
-  {
-    canonical_name: 'kp_query',
-    data_dependency: 'chart_facts',
-    primary_asset: 'chart_facts',
-    ayanamsha_role: 'kp',
-    intent: 'kp_query',
-    surface: 'both',
-    description: 'KP system generic query (cusps/sublords/levels). Uses KP ayanamsha.',
-    per_chart: true,
-  },
-  {
-    canonical_name: 'query_kp_ruling_planets',
-    data_dependency: 'chart_facts',
-    primary_asset: 'chart_facts',
-    ayanamsha_role: 'kp',
-    intent: 'kp_ruling',
-    surface: 'both',
-    description: 'KP ruling planets — Day-lord / Hora / Asc-sublord. Uses KP ayanamsha.',
-    per_chart: true,
-  },
+  // ─── Varshaphala ───
+  // WP-1.3(h)/LCA-12 §7.3: kp_query + query_kp_ruling_planets PHANTOM DROPPED from the
+  // contract surface — no KP engine backs them (migration 024_kp_sublords archived; no
+  // registry capability; removed from the MCP surgical whitelist by WP-1.7). Advertising
+  // them here made the contract surface disagree with what actually resolves. Re-add only
+  // when a real KP engine is built + registered.
   {
     canonical_name: 'query_varshphal',
     data_dependency: 'chart_facts',
@@ -821,17 +806,10 @@ export const TOOL_METADATA: readonly ToolReconciliationEntry[] = [
     description: 'Temporal aggregation — signal activation over time windows.',
     per_chart: true,
   },
-  {
-    canonical_name: 'timeline_query',
-    data_dependency: 'lel',
-    primary_asset: 'life_events',
-    secondary_assets: ['l25_msr_signals'],
-    ayanamsha_role: 'canonical',
-    intent: 'timeline',
-    surface: 'both',
-    description: 'Chronological timeline merge — LEL ground truth + active signals.',
-    per_chart: true,
-  },
+  // WP-1.3(h)/LCA-12 §7.3: timeline_query PHANTOM DROPPED from the contract surface — no
+  // LIFETIME_TIMELINE serving path exists (no registry capability; removed from the MCP
+  // surgical whitelist by WP-1.7). Chronological/dasha-arc needs are served by the real
+  // 'temporal' (L3/query_temporal_activation) + lel_query + get_dashas capabilities.
 
   // ─── Muhurta + Tara/Chandra Bala ───
   {

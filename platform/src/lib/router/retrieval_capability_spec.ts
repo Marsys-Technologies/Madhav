@@ -255,22 +255,13 @@ const chart_facts_query: RetrievalCapabilityEntry = {
   requires_temporal: false,
 }
 
-const kp_query: RetrievalCapabilityEntry = {
-  tool_name: 'kp_query',
-  description:
-    'KP (Krishnamurti Paddhati) cusp and planet significator lookup. Returns star-lord / sub-lord chains and cusp significators. Use ONLY for KP-system queries — do not use for traditional Vedic queries.',
-  data_surface:
-    'L1 — kp_significators table. Returns cusp/planet → star-lord, sub-lord, sub-sub-lord chain + significator houses.',
-  supported_params:
-    '{ cusp?: number (1–12); planet?: string; depth?: number (1–4, default 3) }',
-  optimal_patterns: [
-    'Cusp significators: {cusp:7}',
-    'Planet significator: {planet:"Saturn"}',
-    'Deep chain: {cusp:10, depth:4}',
-  ],
-  cost_tier: 'low',
-  requires_temporal: false,
-}
+// WP-1.3(h) / LCA-12 §7.3 disposition — kp_query PHANTOM DROPPED. It advertised an
+// L1 kp_significators table + KP significator engine that was never built: no registry
+// capability (absent from TOOL_NAME_TO_URI), no live handler (schools/kp_engine.ts is a
+// signal-scoring engine with hardcoded activation values, not a cusp/sublord query),
+// migration 024_kp_sublords is ARCHIVED. WP-1.7 already removed it from the MCP surgical
+// whitelist. Advertising it to the planner was a dead front-door. Re-instate only if a
+// real KP engine is built and registered.
 
 const saham_query: RetrievalCapabilityEntry = {
   tool_name: 'saham_query',
@@ -366,22 +357,12 @@ const remedial_codex_query: RetrievalCapabilityEntry = {
   requires_temporal: false,
 }
 
-const timeline_query: RetrievalCapabilityEntry = {
-  tool_name: 'timeline_query',
-  description:
-    'Life-arc synthesis for a named dasha period. Returns the structural narrative for a specific MD or AD (themes, expected challenges, opportunity windows). Use for long-horizon "what does my X dasha show" questions. IMPORTANT: next MD after Mercury MD is KETU MD (2027-08-21 → 2034-08-21); never suggest Saturn MD as upcoming (Saturn MD was historical 1992–2010).',
-  data_surface:
-    'L5 — LIFETIME_TIMELINE_v1_0 + per-dasha narrative arcs. Returns the dasha arc structure: themes, sub-period markers, key transits.',
-  supported_params:
-    '{ dasha_name: string (e.g. "Mercury MD","Ketu MD","Venus MD"); time_window?: {start: ISO_date, end: ISO_date}; limit?: number (default 1) }',
-  optimal_patterns: [
-    'Current MD arc: {dasha_name:"Mercury MD"}',
-    'Upcoming KETU MD: {dasha_name:"Ketu MD"}',
-    'Bounded window: {dasha_name:"Mercury MD", time_window:{start:"2026-05-01",end:"2027-08-20"}}',
-  ],
-  cost_tier: 'medium',
-  requires_temporal: true,
-}
+// WP-1.3(h) / LCA-12 §7.3 disposition — timeline_query PHANTOM DROPPED. It advertised an
+// L5 LIFETIME_TIMELINE_v1_0 document + per-dasha narrative arcs that no engine serves: no
+// registry capability (absent from TOOL_NAME_TO_URI), removed from the MCP surgical
+// whitelist by WP-1.7. Long-horizon dasha-arc queries are served by the real L3 temporal
+// capability ('temporal' → L3/query_temporal_activation) + get_dashas. Re-instate only if
+// a LIFETIME_TIMELINE serving path is built and registered.
 
 // ────────────────────────────────────────────────────────────────────────────
 // M8-G — Classical corpus tools (tools 25 + 26)
@@ -476,28 +457,14 @@ const query_signal_state: RetrievalCapabilityEntry = {
   requires_temporal: true,
 }
 
-const query_kp_ruling_planets: RetrievalCapabilityEntry = {
-  tool_name: 'query_kp_ruling_planets',
-  description:
-    'Engine-computed KP (Krishnamurti Paddhati) ruling-planet table from kp_sublords. Returns ' +
-    'star lord / sub lord / sub-sub lord chain for each of the 9 grahas. Distinct from kp_query ' +
-    '(which reads FORENSIC §4 chart_facts authoritative values); this is the pyswisseph + Lahiri ' +
-    'substrate, useful for non-FORENSIC charts and for forward-looking transit-time KP queries.',
-  data_surface:
-    'L1 — table kp_sublords (migration 024). Fields: chart_id, planet, sidereal_lon, sign, ' +
-    'nakshatra, nakshatra_lord, sub_lord, sub_sub_lord, ayanamsha (lahiri), computed_by. ' +
-    'Cross-check: 05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md.',
-  supported_params:
-    '{ chart_id?: string (defaults to native); planet?: string (case-insensitive LIKE match, e.g. "Saturn"); ' +
-    'ayanamsha?: string (defaults to "lahiri") }',
-  optimal_patterns: [
-    'Full graha ruling-planet table: {} (no params)',
-    'Single planet: {planet:"Saturn"}',
-    'Cross-ayanamsha check: {ayanamsha:"krishnamurti"}',
-  ],
-  cost_tier: 'low',
-  requires_temporal: false,
-}
+// WP-1.3(h) / LCA-12 §7.3 disposition — query_kp_ruling_planets PHANTOM DROPPED. It
+// advertised an engine-computed KP ruling-planet table from an L1 kp_sublords table
+// (migration 024). That migration is ARCHIVED (platform/migrations/_archive/024_kp_sublords.sql),
+// no registry capability backs the name (absent from TOOL_NAME_TO_URI), and WP-1.7 already
+// removed it from the MCP surgical whitelist ("no KP engine registered"). Grouped historically
+// with the F.SYNTH.1 planner-blind fix (lel_query/query_signal_state/query_varshaphala), but
+// unlike those three it never had a live serving path. Re-instate only if a KP sublord engine
+// is built + registered.
 
 const query_varshaphala: RetrievalCapabilityEntry = {
   tool_name: 'query_varshaphala',
@@ -953,16 +920,16 @@ export const RETRIEVAL_CAPABILITY_SPEC: readonly RetrievalCapabilityEntry[] = [
   cgm_graph_walk,
   manifest_query,
   vector_search,
-  kp_query,
+  // kp_query — PHANTOM DROPPED (WP-1.3(h)/LCA-12): no KP engine registered.
   saham_query,
   divisional_query,
   chart_facts_query,
   cross_varga_dignity_query,
   domain_report_query,
   remedial_codex_query,
-  timeline_query,
+  // timeline_query — PHANTOM DROPPED (WP-1.3(h)/LCA-12): no LIFETIME_TIMELINE serving path.
   query_signal_state,
-  query_kp_ruling_planets,
+  // query_kp_ruling_planets — PHANTOM DROPPED (WP-1.3(h)/LCA-12): migration 024 archived, no KP engine.
   query_varshaphala,
   lel_query,
   classical_text_search,
