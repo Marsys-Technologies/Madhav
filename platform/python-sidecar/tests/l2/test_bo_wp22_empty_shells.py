@@ -18,10 +18,8 @@ and bodha_rm_dasha_windowed_prescriptions — both need L3 dasha-window temporal
 """
 from __future__ import annotations
 
-import importlib.util
 import os
 import sys
-import types
 import unittest
 
 _HERE = os.path.dirname(__file__)
@@ -31,98 +29,23 @@ if _SIDECAR_ROOT not in sys.path:
     sys.path.insert(0, _SIDECAR_ROOT)
 
 
-class _WriterBase:  # pragma: no cover
-    pass
-
-
-def _register(asset_id):  # pragma: no cover
-    def d(c):
-        return c
-    return d
-
-
 class _Stub:  # pragma: no cover
     def __init__(self, **kw):
         for k, v in kw.items():
             setattr(self, k, v)
 
 
-# ── Isolated pure-function load with FULL sys.modules restoration ───────────────
-# These four writers are exercised at the pure-function level (no DB, no real
-# registration). Under a full-tree `pytest tests/` collection the real packages may
-# already be imported, and other tests collected AFTER us must see an unmodified
-# sys.modules. So we snapshot every key we touch, install lightweight stubs only for
-# the module-level import side-effects (real @register raises on duplicate asset_ids;
-# bo_bimba._SUBJECT_TO_GRAHA; services.ph_phaladesa.engine; psycopg), load our
-# targets, then restore sys.modules byte-for-byte. Zero global pollution.
-
-def _make_stub_module(name, **attrs):
-    m = types.ModuleType(name)
-    for k, v in attrs.items():
-        setattr(m, k, v)
-    return m
-
-
-def _load_isolated():
-    _stub_engine = _make_stub_module(
-        "services.ph_phaladesa.engine",
-        DomainAnchorSummary=_Stub, SpilloverSummary=_Stub,
-        BodhaSynthesisContext=_Stub, PhaladesakContext=_Stub,
-        validate_narration_model=lambda m: None,
-        derive_phaladesa_for_chart=lambda ctx: [],
-        _ALL_DOMAINS=["career", "wealth", "health", "relationship",
-                      "spirituality", "character", "general"],
-    )
-    stubs = {
-        "pipeline": _make_stub_module("pipeline", __path__=[]),
-        "pipeline.orchestrator": _make_stub_module("pipeline.orchestrator", __path__=[]),
-        "pipeline.orchestrator.writers": _make_stub_module(
-            "pipeline.orchestrator.writers", __path__=[_WRITERS_DIR],
-            WriterBase=_WriterBase, register=_register, ContextSpec=_Stub,
-            WriterResult=_Stub, SubStep=_Stub),
-        "pipeline.orchestrator.writers.bo_bimba": _make_stub_module(
-            "pipeline.orchestrator.writers.bo_bimba", _SUBJECT_TO_GRAHA={}),
-        "services": _make_stub_module("services", __path__=[]),
-        "services.ph_phaladesa": _make_stub_module("services.ph_phaladesa", __path__=[]),
-        "services.ph_phaladesa.engine": _stub_engine,
-        "psycopg": _make_stub_module("psycopg", rows=types.SimpleNamespace(dict_row=None)),
-    }
-    targets = ("bo_karanajala", "bo_cdlm_summary", "bo_upaya", "ph_phaladesa")
-    touched = list(stubs) + [f"pipeline.orchestrator.writers.{t}" for t in targets]
-    snapshot = {k: sys.modules.get(k) for k in touched}
-
-    loaded = {}
-    try:
-        # Force our stubs in (overriding any real module for the duration of load).
-        for k, v in stubs.items():
-            sys.modules[k] = v
-        pkg = sys.modules["pipeline.orchestrator.writers"]
-        for t in targets:
-            spec = importlib.util.spec_from_file_location(
-                f"pipeline.orchestrator.writers.{t}",
-                os.path.join(_WRITERS_DIR, f"{t}.py"),
-                submodule_search_locations=[],
-            )
-            mod = importlib.util.module_from_spec(spec)
-            mod.__package__ = "pipeline.orchestrator.writers"
-            sys.modules[f"pipeline.orchestrator.writers.{t}"] = mod
-            spec.loader.exec_module(mod)
-            loaded[t] = mod
-    finally:
-        # Restore sys.modules exactly as it was (drop keys we added, restore replaced).
-        for k, orig in snapshot.items():
-            if orig is None:
-                sys.modules.pop(k, None)
-            else:
-                sys.modules[k] = orig
-    return loaded
-
-
-_loaded = _load_isolated()
-kj = _loaded["bo_karanajala"]
-cdlm = _loaded["bo_cdlm_summary"]
-upaya = _loaded["bo_upaya"]
-phd = _loaded["ph_phaladesa"]
+# ── Direct import of the real writers ───────────────────────────────────────────
+# The four writers are exercised at the pure-function level (no DB). We import the
+# real modules directly: @register() is idempotent for identical re-imports (W2 CI
+# hardening), so a plain import is safe under a full-tree `pytest tests/` collection
+# and correctly sees the merged writer bodies (e.g. bo_karanajala's yoga_node_subject
+# import from bo_bimba). The earlier hand-rolled isolated loader stubbed bo_bimba and
+# went stale the moment the writers grew a new cross-module import — replaced here.
+from pipeline.orchestrator.writers import bo_karanajala as kj      # noqa: E402
+from pipeline.orchestrator.writers import bo_cdlm_summary as cdlm  # noqa: E402
+from pipeline.orchestrator.writers import bo_upaya as upaya        # noqa: E402
+from pipeline.orchestrator.writers import ph_phaladesa as phd      # noqa: E402
 
 _CID = "482012f1-710e-4a25-994a-93821f5871aa"
 _AYA = "lahiri_chitrapaksha"
