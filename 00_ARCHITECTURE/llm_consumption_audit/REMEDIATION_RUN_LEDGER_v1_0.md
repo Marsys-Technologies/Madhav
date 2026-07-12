@@ -26,7 +26,7 @@ changelog:
 | Wave | Scope | State | Deploy point | Notes |
 |---|---|---|---|---|
 | W0 | WP-0.1 (LCA-17 wrong-chart isolation) | ✅ **DONE** (deployed `amjis-web-00955-qt5` == main `6ec244c0`; 2026-07-12) | ✅ deployed | isolation proven; PR #553 merged; prod-parity confirmed |
-| W1 | WP-1.1/1.2/1.3/1.4/1.5/1.6/1.7/1.8 (serving plane) | **IN_PROGRESS** | after W1 close | 7 lanes parallel; WP-1.6 last |
+| W1 | WP-1.1/1.2/1.3(a-j)/1.4/1.5/1.6/1.7/1.8 (serving plane) | ✅ **DEPLOYED** (main `2385fb62`; amjis-web-00957 + amjis-mcp-00421 == HEAD; 2026-07-13) | ✅ deployed | 16 lane merges, all blind-verified; ND-W1.1 PASS; +316 reachable |
 | W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | PENDING | after W2 close | writers+JOB image live before W3 |
 | W3 | WP-3.1 Abhinandan rebuild → WP-3.2 native rebuild | PENDING | consumes W2 | snapshot + golden catches + auto-restore; FORENSIC 7/7 |
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
@@ -604,6 +604,21 @@ change (no HALT). Same pattern will apply to W2.
   Venus D9=Virgo=debilitation (astronomically + chart_facts) → marriage mixed→contested = CORRECT Parashari
   direction, no double-count; multi-formula both served; assess↔get_signals byte-identical; serving-side only;
   tsc 0 both, regressions 20/20+6/6. **W1-remainder BATCH 2 COMPLETE (WP-1.8 + WP-1.4).**
+
+### §6.6 — W1 CLOSE (native-fixed order)
+1. ✅ **Reconciliation re-stamped** (Ruling 1: W1-FOLLOWUP 23→0; 0 unreconciled).
+2. ✅ **integration→main PR #555** — 16 lane merges.
+3. ✅ **CI**: 1 fix-iteration (§8.4 iter 1/3 — stale whitelist pins 34→52, §4); then all required checks CLEAN.
+4. ✅ **MERGED** to main (squash `2385fb62`).
+5. ✅ **DEPLOYED (single deploy, web+mcp)**: `amjis-web-00957-dn2` + `amjis-mcp-00421-2pz`, both image==main HEAD
+   `2385fb62`; sidecar unchanged (W1 didn't touch it). **main↔prod deploy-parity CONFIRMED.**
+6. **Live prod-verify:** conductor smoke on deployed `get_chart_orientation` (native) CONFIRMS W1 live —
+   grounding.fact_ids populated (51 ids, resolvable, 298 resolved; was []), served_unattributed_share=0 (top
+   entities SATURN/JUPITER/KETU), salience demotion live (WP-1.2d reason on rows), v3 envelope (coverage
+   {served:3,total:13364}), chart_header Lagna Aries. **Full acceptance-suite prod-verify agent DISPATCHED**
+   (both charts, deployed channel: WP-1.2/1.3/1.5/1.6/1.8 + LCA-17 isolation regression). Verdict → §6.6.
+7. **Governance close (this branch `docs/w1-close`):** ledger + CURRENT_STATE + SESSION_LOG → PR.
+8. **ND-W1.4:** native runs Cowork-side live probe async — NOT blocked on.
 
 ### §6.5 — Dispatch: WP-1.6 (STRICTLY LAST — capability map + served consumption protocol)
 No intersection check (runs alone, last). Base = final W1 integration (`0a41e356`, all 15 lane merges: 1.1/1.2αβ/
