@@ -26,8 +26,8 @@ changelog:
 | Wave | Scope | State | Deploy point | Notes |
 |---|---|---|---|---|
 | W0 | WP-0.1 (LCA-17 wrong-chart isolation) | ✅ **DONE** (deployed `amjis-web-00955-qt5` == main `6ec244c0`; 2026-07-12) | ✅ deployed | isolation proven; PR #553 merged; prod-parity confirmed |
-| W1 | WP-1.1/1.2/1.3/1.4/1.5/1.6/1.7/1.8 (serving plane) | **IN_PROGRESS** | after W1 close | 7 lanes parallel; WP-1.6 last |
-| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | PENDING | after W2 close | writers+JOB image live before W3 |
+| W1 | WP-1.1/1.2/1.3(a-j)/1.4/1.5/1.6/1.7/1.8 (serving plane) | ✅ **CLOSED** (deployed web `2385fb62`+mcp `fc84cd0d`; **7/7 prod-verified**; 2026-07-13) | ✅ deployed | 16 lanes blind-verified; ND-W1.1 PASS; +316 reachable; lel_query fix-forward (ADJ-2) closed 7/7 |
+| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | **IN_PROGRESS** | after W2 close | writers+JOB image live before W3; corrected DAG (§6.8) |
 | W3 | WP-3.1 Abhinandan rebuild → WP-3.2 native rebuild | PENDING | consumes W2 | snapshot + golden catches + auto-restore; FORENSIC 7/7 |
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
 | CLOSE | cleanup + main↔production sync proof | PENDING | — | §7.6 five steps in order |
@@ -605,6 +605,46 @@ change (no HALT). Same pattern will apply to W2.
   direction, no double-count; multi-formula both served; assess↔get_signals byte-identical; serving-side only;
   tsc 0 both, regressions 20/20+6/6. **W1-remainder BATCH 2 COMPLETE (WP-1.8 + WP-1.4).**
 
+### §6.6 — W1 CLOSE (native-fixed order)
+1. ✅ **Reconciliation re-stamped** (Ruling 1: W1-FOLLOWUP 23→0; 0 unreconciled).
+2. ✅ **integration→main PR #555** — 16 lane merges.
+3. ✅ **CI**: 1 fix-iteration (§8.4 iter 1/3 — stale whitelist pins 34→52, §4); then all required checks CLEAN.
+4. ✅ **MERGED** to main (squash `2385fb62`).
+5. ✅ **DEPLOYED (single deploy, web+mcp)**: `amjis-web-00957-dn2` + `amjis-mcp-00421-2pz`, both image==main HEAD
+   `2385fb62`; sidecar unchanged (W1 didn't touch it). **main↔prod deploy-parity CONFIRMED.**
+6. **Live prod-verify:** conductor smoke on deployed `get_chart_orientation` (native) CONFIRMS W1 live —
+   grounding.fact_ids populated (51 ids, resolvable, 298 resolved; was []), served_unattributed_share=0 (top
+   entities SATURN/JUPITER/KETU), salience demotion live (WP-1.2d reason on rows), v3 envelope (coverage
+   {served:3,total:13364}), chart_header Lagna Aries. **Full acceptance-suite prod-verify: PARTIAL (6/7
+   DEPLOYED-GREEN).** GREEN: WP-1.2 attribution/discrimination (both charts, wealth 2/11/9 vs relationship
+   7/12/8; moksha 12/4+Ketu not 9th) · WP-1.3 assets (yogini dasha, chart_facts+raman, bodha_discoveries 2392,
+   phala_mitigation 602) · WP-1.5 envelope+dates honest · WP-1.8 varga verdict (marriage D9 varga_term -2.5,
+   Venus D9 debilitated == chart_facts) · **LCA-17 isolation 0 substitutions (4 interleaved, native 13364 /
+   Abhinandan 13369)** · no 500s. **1 DEPLOYED-RED:** `lel_query` serves dishonest-empty (`ok:true,count:0`)
+   for native despite 57 `life_events` rows — twin `mimamsa_lel_query` returns the 57 → E5 violation, serving-path
+   divergence (local-green≠deployed-green, exactly what the gate catches). WP-1.6 protocol resource
+   CANNOT-VERIFY (deployed channel exposes tools not resources — channel limitation, not a defect).
+   **→ ADJ-2 adjudicator DISPATCHED** (§7.4 rollback-whole-wave vs fix-forward, given 6/7 green + data-reachable +
+   isolation-holds + wave strictly-better). **→ lel_query FIX DISPATCHED** (WP-1.3d §8.4 loop iter 1, needed
+   regardless). W1 wave-close gated on ADJ-2 ruling + lel_query re-verify.
+   - **ADJ-2 → FIX-FORWARD** (§6.7). **lel_query FIX DONE** (`ae9aa600`, PR **#556**). Root cause: NOT routing —
+     the base `lel_query` tool unwrapped the double-wrapped ToolBundle envelope 2 levels too shallow + wrong count
+     key (`total_count` vs capability's `total_matching`) → undefined → laundered `{ok:true,count:0}`; twin
+     `mimamsa_lel_query` returns raw envelope so it worked. Fix: correct unwrap + **E5 honesty gate** (unparseable→
+     error, never laundered empty) + param alignment. In-process native 0→57, Abhinandan honest-0, unparseable→err;
+     9/9, tsc 0. Confirms ADJ-2 non-flip (pure unwrap bug, no isolation/scope). **PR #556 CI → merge → re-deploy
+     amjis-mcp → prod re-verify item 2 (DEPLOYED-GREEN) → W1 close (7/7).**
+   - ✅ **PR #556 merged (`fc84cd0d`) → amjis-mcp re-deployed (image==HEAD, parity confirmed).** **lel_query
+     PROD RE-VERIFY: DEPLOYED-GREEN** — native `482012f1` `ok:true, total_count:57` (real dated events e.g.
+     birth 1984-02-05, YYYY-MM-DD, provenance total_events:57); Abhinandan `1c826d5a` `ok:true, events:[],
+     total_count:0` honest-empty (true 0). **W1 ACCEPTANCE SUITE = 7/7 DEPLOYED-GREEN.** F-L10-021-deployed
+     residual CLOSED. ADJ-2 follow-through satisfied.
+   - **✅✅ W1 WAVE CLOSED (2026-07-13)** — deployed (web `2385fb62` + mcp `fc84cd0d`, both==HEAD), 7/7
+     prod-verified, ND-W1.1 PASS (0 unreconciled), 16 lanes blind-verified, +316 concept families reachable.
+     Governance close (this branch). ND-W1.4 native Cowork probe runs async (not blocked).
+7. **Governance close (this branch `docs/w1-close`):** ledger + CURRENT_STATE + SESSION_LOG → PR.
+8. **ND-W1.4:** native runs Cowork-side live probe async — NOT blocked on.
+
 ### §6.5 — Dispatch: WP-1.6 (STRICTLY LAST — capability map + served consumption protocol)
 No intersection check (runs alone, last). Base = final W1 integration (`0a41e356`, all 15 lane merges: 1.1/1.2αβ/
 1.3a–j/1.4/1.5/1.7/1.8). Scope (P-12, widened v3): (1) transform Concept×Retrievability matrix
@@ -623,6 +663,18 @@ expected set). **Dispatched 2026-07-13.**
   now-served. 8 sampled routes arrive; tracker 6/6, protocol 5/5, map-route 2/2; tsc 0 both; state/deliverables
   untouched. **Blind verifier DISPATCHED** — map accuracy + delta honesty + **3 live demand-side sessions
   (narrow/medium/broad)** + protocol/tracker coherence. Merge on CONFIRMED → then W1 CLOSE.
+
+### §6.7 — ADJUDICATION [ADJ-2] (W1 PARTIAL prod-verify disposition — 2026-07-13)
+**Ruling: FIX-FORWARD** (not §7.4 rollback). W1 stays DEPLOYED; fix `lel_query` under §8.4, re-deploy, re-verify
+item 2 → GREEN before W1 close. **Reasoning:** §7.4 auto-rollback targets a broken/worse deploy — this is 6/7
+DEPLOYED-GREEN with the 57 events reachable in prod via twin `mimamsa_lel_query`, no 500/data-loss, isolation
+verified 0-substitution; E-clauses (which outrank the mechanical PARTIAL label) are in AGGREGATE far better served
+by keeping W1 (attribution/envelope/varga/18-assets/capability-map/isolation) than by rollback which would
+reintroduce every pre-W1 deficiency to cure one E5 instance; proportionality = targeted tool fix, not sledgehammer.
+**W1 = FIX-FORWARD-IN-FLIGHT, NOT closed** until lel_query re-verify GREEN + other 6/7 non-regressed.
+**Flip→ROLLBACK if:** lel_query empty masks an isolation/entitlement fault (NOT met — returns empty, not
+wrong-chart); OR alias unreachable (NOT met — mimamsa_lel_query serves 57); OR §8.4 budget (3 iters) exhausted
+without GREEN. **Tracked residual:** lel_query dishonest-empty (F-L10-021 deployed) → carry to GREEN re-verify (7/7).
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather

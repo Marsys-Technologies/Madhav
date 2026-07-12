@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -162,7 +163,7 @@ def _fetch_msr_signals(conn, chart_id: str, aya: str) -> list[dict]:
     rows = conn.execute(
         """SELECT signal_id, signal_type_class, signal_tradition, configuration_jsonb,
                   domains_affected_array, deterministic_strength, computed_salience,
-                  verification_pass_status, salience_formula_version
+                  verification_pass_status, salience_formula_version, signal_type_id
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s""",
         [chart_id, aya],
@@ -170,7 +171,7 @@ def _fetch_msr_signals(conn, chart_id: str, aya: str) -> list[dict]:
     keys = [
         "signal_id", "signal_type_class", "signal_tradition", "configuration_jsonb",
         "domains_affected_array", "deterministic_strength", "computed_salience",
-        "verification_pass_status", "salience_formula_version",
+        "verification_pass_status", "salience_formula_version", "signal_type_id",
     ]
     return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
 
@@ -186,6 +187,36 @@ def _parse_graha_from_signal(cfg: dict) -> str | None:
                 if p in KNOWN_GRAHAS:
                     return p
     return None
+
+
+# ── Yoga / dosha first-class node key (WP-2.3 / LCA-9a-1) ─────────────────────
+# Shared with bo_karanajala so the edge builder can look up the yoga node that
+# bo_bimba created for the same signal. node_type carries the class ('yoga' or
+# 'dosha'); node_subject is a slug of the configuration name (stable per chart).
+
+_YOGA_NODE_CLASSES = ("yoga", "dosha")
+
+
+def _yoga_config_name(cfg: dict, signal_type_id: str) -> str:
+    """Human name of a yoga/dosha signal (the label the node is titled by)."""
+    for k in ("fact_value_text", "yoga_name", "dosha_name", "name", "label"):
+        v = cfg.get(k)
+        if v and isinstance(v, str) and v.strip():
+            return v.strip()
+    return signal_type_id
+
+
+def yoga_node_subject(sig_class: str, cfg: dict, signal_type_id: str) -> str:
+    """Stable node_subject key for a yoga/dosha configuration node.
+
+    Same derivation used by bo_bimba (node creation) and bo_karanajala
+    (membership-edge wiring) so both resolve to the same node. Namespaced by
+    class to avoid a yoga and a dosha of the same name colliding on the
+    (node_type, node_subject) uniqueness key.
+    """
+    name = _yoga_config_name(cfg, signal_type_id)
+    slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "unnamed"
+    return f"{sig_class}:{slug}"
 
 
 def _parse_house_from_signal(cfg: dict) -> int | None:
@@ -362,6 +393,71 @@ def _build_nodes_for_aya(
             "verification_pass_status": "single_pass",
             "citation_ref": f"bo_bimba/domain/{domain}",
             "citation_human": f"Domain node: {domain}",
+            "computed_at": now,
+            "engine_version": ENGINE_VERSION,
+        })
+
+    # ── Yoga / dosha first-class nodes (WP-2.3 / LCA-9a-1) ────────────────────
+    # Previously NO node_type='yoga' existed — yoga/dosha configurations were
+    # invisible in the graph. Emit one node per unique (class, name); dedup on
+    # the (node_type, node_subject) uniqueness key keeping the highest-salience
+    # signal. bo_karanajala wires membership edges (yoga ↔ constituent
+    # grahas/bhavas) using the same yoga_node_subject() key.
+    yoga_best: dict[tuple[str, str], dict] = {}
+    for sig in signals:
+        sig_class = str(sig.get("signal_type_class") or "")
+        if sig_class not in _YOGA_NODE_CLASSES:
+            continue
+        cfg = {}
+        if sig.get("configuration_jsonb"):
+            try:
+                cfg = (json.loads(sig["configuration_jsonb"])
+                       if isinstance(sig["configuration_jsonb"], str)
+                       else sig["configuration_jsonb"])
+            except Exception:
+                cfg = {}
+        type_id = str(sig.get("signal_type_id") or "")
+        subject = yoga_node_subject(sig_class, cfg, type_id)
+        key = (sig_class, subject)
+        sal = float(sig.get("computed_salience") or 0.0)
+        prev = yoga_best.get(key)
+        if prev is None or sal > float(prev.get("computed_salience") or 0.0):
+            yoga_best[key] = {**sig, "_cfg": cfg, "_subject": subject, "_class": sig_class}
+
+    for (sig_class, subject), sig in yoga_best.items():
+        cfg      = sig["_cfg"]
+        type_id  = str(sig.get("signal_type_id") or "")
+        name     = _yoga_config_name(cfg, type_id)
+        domains  = list(sig.get("domains_affected_array") or [])
+        tradition = str(sig.get("signal_tradition") or "parashari")
+        ver_pass = str(sig.get("verification_pass_status") or "single_pass")
+        nodes.append({
+            "node_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "snapshot_type": SNAPSHOT_TYPE,
+            "node_type": sig_class,          # 'yoga' or 'dosha' — first-class now
+            "node_subject": subject,
+            "node_label_human": name,
+            "position_in_chart_jsonb": None,
+            "strength_score": round(float(sig.get("computed_salience") or 0.0), 6),
+            "dignity_state": None,
+            "degree_in": 0,
+            "degree_out": 0,
+            "primary_domain": domains[0] if domains else None,
+            "domain_affiliations_jsonb": json.dumps({d: 1.0 for d in domains}) if domains else None,
+            "cluster_membership_array": domains or None,
+            "msr_signal_id": str(sig.get("signal_id")) if sig.get("signal_id") else None,
+            "configuration_constituents_array": None,
+            "configuration_lifecycle_state": "natal_permanent",
+            "hub_flag": False,
+            "present_in_traditions_array": [tradition],
+            "graph_compute_library": GRAPH_LIB,
+            "graph_compute_library_version": GRAPH_LIB_VER,
+            "verification_pass_status": ver_pass,
+            "citation_ref": f"bodha_msr_signals/{sig.get('signal_id')}",
+            "citation_human": f"{sig_class.capitalize()} node: {name}",
             "computed_at": now,
             "engine_version": ENGINE_VERSION,
         })

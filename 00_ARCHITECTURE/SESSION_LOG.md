@@ -31864,3 +31864,96 @@ then merge wave → deploy → prod-verify (Option-1 posture). Re-ground fresh f
 slices. Standing HALT conditions (§8.6) armed; FROZEN orchestrator untouchable.
 
 *End of LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 entry — 2026-07-12.*
+
+---
+
+## LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13 — W1 serving plane (16 lanes) build + close + deploy + prod-verify — CLOSED 2026-07-13
+
+```yaml
+session_open:
+  session_id: LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13
+  cowork_thread_name: "Madhav — LLM Consumption Remediation (W1: serving plane)"
+  agent_name: claude-opus-4-8[1m]
+  agent_version: claude-opus-4-8[1m]
+  step_number_or_macro_phase: REMEDIATION-W1
+  predecessor_session: LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12
+  role: >
+    Program Conductor for Wave 1 (serving plane) of the LLM Consumption Remediation program
+    (REMEDIATION_PLAN_v3_0, root CLAUDECODE_BRIEF.md ACTIVE). Thin dispatcher + ledger-keeper:
+    heavy work delegated to fresh-context implementation lanes + blind domain verifiers; the
+    conductor owns merges + wave-close. Full per-lane handshake/verification detail is in
+    llm_consumption_audit/REMEDIATION_RUN_LEDGER_v1_0.md §0/§4/§5/§6.
+  declared_scope:
+    may_touch: [platform/**, platform/migrations/**, 00_ARCHITECTURE/llm_consumption_audit/**,
+      00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md, 00_ARCHITECTURE/CURRENT_STATE_v1_0.md,
+      00_ARCHITECTURE/SESSION_LOG.md, "CLAUDECODE_BRIEF.md (status field only)"]
+    must_not_touch: [platform/python-sidecar/pipeline/orchestrator/core/** (FROZEN),
+      llm_consumption_audit/deliverables/findings.jsonl, llm_consumption_audit/state/**,
+      llm_consumption_audit/LLM_CONSUMPTION_AUDIT_v1_0.md, llm_consumption_audit/GATE_RATIFICATION_v1_0.md,
+      CLAUDE.md, 01_FACTS_LAYER/**, "eval battery grading criteria"]
+  red_team_due: false   # W4 re-audit is the program's red-team (plan §M cadence at wave closes)
+```
+
+**Body.** Wave 1 = the serving plane, 16 lanes executed in collision-safe batches (verified WPs
+merged into non-main `integration/w1-serving-plane`, single deploy at wave close). **Lanes:**
+WP-1.1 consult resurrection (off retired `reports` table → live retrieval surfaces; honest
+permanent-vs-transient error mapping); WP-1.2α attribution ledger + serving salience demotion +
+get_domain_reading text hydration (killed UNATTRIBUTED dominance); WP-1.2β domain discrimination +
+new/corrected domains (moksha 4-8-12+Ketu, education/vidya, character/buddhi, bhava→domain
+un-collapse) → **0% UNATTRIBUTED served + wealth∩relationship top-20 overlap ≤25% (ND-W1.2 met)**;
+WP-1.3(a–j) serve 18 computed-but-unserved assets + `query_dasha_periods` system_id (~437k dark
+rows) + dasha window params + lel_query 57 events + msr_sql projection + chart_facts
+filters/pagination/6-ayanamshas + dead-registry purge + apex/assess dedup + phala serving-bug fixes
+(ph_pratikara/ph_rectification) + 5 populated bodha assets served (Ruling-1 SERVE-default);
+WP-1.4 large-N synthesis skeleton (`synthesis/compose_large_n` — intent→pre-aggregated-plan→
+map-reduce+budget→narrative+ledger, no flat top-K wall); WP-1.5 program-wide honest envelope
+contract (`envelope.ts` — trim-lies structurally impossible) + F-DATE-TZ `to_char` program-wide;
+WP-1.6 concept→tool capability map (**+316 newly reachable**, 2,024→2,289) + served consumption
+protocol MCP resource; WP-1.7 local bench + permanent CI whitelist-resolution invariant; WP-1.8
+varga-aware verdicts + cross-path fidelity, all serving-side re-derivation grounded to chart_facts
+(native marriage mixed→contested = correct Parashari direction). Each lane BLIND domain-verified
+(jyotish/serving-wire/data-plane/security/infra) with the original failing call re-executed on the
+deployed `marsys-jis-direct` channel, both charts, adversarial probes. **ND-W1.1 295-finding
+reconciliation gate PASS — 0 unreconciled** (108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50
+PENDING-W3 / 1 PARKED). ADJ-1 (delegation-as-thin-dispatch) + ADJ-2 (lel_query envelope-unwrap
+fix-forward, PR #556) self-logged for async native review. F-WP17-1 multi_school PARKED (Ruling-2,
+deferred shelf). Wave close: integration→main PR (2 CI count-pin fixes, §8.4 iter 1/3) → merge →
+single CI-driven deploy rebuilding **amjis-web `2385fb62` + amjis-mcp `fc84cd0d`** (both == main
+HEAD, deploy-parity confirmed) → **7/7 prod-verified** on the deployed channel. Register: W1-addressed
+serving classes flipped to REMEDIATED-PENDING-W4; data-plane classes left OPEN → W2.
+
+```yaml
+session_close:
+  session_id: LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13
+  closed_at: 2026-07-13T20:00:00+05:30
+  close_criteria_met: true
+  wave_closed: W1 (WP-1.1/1.2αβ/1.3a-j/1.4/1.5/1.6/1.7/1.8 — 16 serving-plane lanes)
+  verification: "per-lane BLIND domain verifiers all CONFIRMED-FIXED; 7/7 full W1 acceptance suite prod-verified on deployed marsys-jis-direct channel"
+  reconciliation_gate: "ND-W1.1 PASS — 295 findings, 0 unreconciled (108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50 PENDING-W3 / 1 PARKED)"
+  deploy: "integration→main single PR; CI-driven deploy rebuilt amjis-web 2385fb62 + amjis-mcp fc84cd0d (both == main HEAD; deploy-parity confirmed)"
+  prod_verify_posture: "deployed-channel proof (native-provisioned marsys-jis-direct connector): attribution/grounding/discrimination; WP-1.3 assets; envelope+dates honest; WP-1.8 varga→chart_facts; LCA-17 0-substitution; lel_query 57 native/honest-0 Abhinandan post-ADJ-2"
+  step_ledger_updated: n/a
+  current_state_updated: true
+  current_state_version: 6.39
+  session_log_appended: true
+  red_team_pass: "n/a — wave close, not macro-phase; W4 re-audit is the program red-team"
+  db_writes_made: 0
+  product_code_writes_made: "16 serving-plane lanes merged via integration→main (PR #555) + ADJ-2 fix-forward (PR #556) — authorized under ACTIVE brief scope; FROZEN orchestrator untouched"
+  native_chart_touched: false
+  register_dispositions_flipped: "W1-addressed serving classes → REMEDIATED-PENDING-W4: LCA-2 (WP-1.1); LCA-14/KP-4/R-44 (WP-1.2); LCA-3/-3-EXT/-4-deployed/-7/-11/-12/-19 (WP-1.3); LCA-8/-18/R-38/R-41 (WP-1.5); LCA-1/-13 (WP-1.7); R-43/R-46 (WP-1.8); LCA-15/R-48 (WP-1.4); P-12 (WP-1.6). Data-plane classes (R-45, LCA-5/6/9a/9b/10/16, R-42/R-47) left OPEN → W2."
+  followups: "F-DATE-TZ sibling tools (WP-1.5 follow-up); list_entities cursor non-consumable; synthesis ledger fact_ids one-hop-away; F-WP17-1 multi_school PARKED (deferred shelf). Native runs ND-W1.4 external Cowork probe async — not a blocker."
+  next_session_objective: "W2 writer wave — WP-2.1..2.5 (writer packages + JOB image live before W3). Fixes R-45 NULL activation dates + empty-shell writers + data-plane classes W1 could not reach. Re-ground fresh from REMEDIATION_RUN_LEDGER + plan §Wave-2 + wp_coverage slices."
+```
+
+### Next session objective
+
+W2 writer wave — WP-2.1 through WP-2.5 (writer packages + JOB image, live before W3). W2 fixes the
+data-plane classes no serving change could reach: R-45 (NULL activation dates surviving rebuild),
+empty-shell writers (bo_sangati, ph_phaladesa prose, mi_abhilekha journal), graha-only graph with
+orphaned bhavas, and the remaining PENDING-W2 findings from the ND-W1.1 reconciliation. Deploy the
+writers + JOB image, then W3 (Abhinandan → native rebuild with snapshot/auto-restore + golden
+catches + FORENSIC 7/7). Re-ground fresh from `REMEDIATION_RUN_LEDGER_v1_0.md` + REMEDIATION_PLAN_v3_0
+§Wave-2 + the per-WP `wp_coverage.jsonl` slices. Standing HALT conditions (§8.6) armed; FROZEN
+orchestrator untouchable.
+
+*End of LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13 entry — 2026-07-13.*

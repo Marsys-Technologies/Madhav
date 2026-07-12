@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.37
+version: 6.39
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,32 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.39 (2026-07-13, LLM CONSUMPTION REMEDIATION — W1 SERVING PLANE CLOSED / deployed + 7/7
+    prod-verified): Wave 1 of the remediation program (16 serving-plane lanes) is DEPLOYED to
+    production and prod-verified on the deployed `marsys-jis-direct` channel. **Deploy:** amjis-web
+    `2385fb62` + amjis-mcp `fc84cd0d` (both == main HEAD; deploy-parity confirmed; single
+    integration→main PR, one CI-driven deploy rebuilding both services). **7/7 prod-verified**
+    (attribution/grounding/discrimination; WP-1.3 served assets; envelope+dates honest; WP-1.8 varga
+    grounds to chart_facts; LCA-17 isolation 0-substitution; lel_query 57 native/honest-0 Abhinandan
+    after ADJ-2 fix-forward). **16 lanes:** WP-1.1 consult resurrection (off retired `reports` table →
+    live surfaces); WP-1.2αβ attribution ledger + serving salience demotion + domain discrimination
+    (0% UNATTRIBUTED served, wealth∩relationship top-20 ≤25% — ND-W1.2 met); WP-1.3(a–j) serve 18
+    computed-but-unserved assets + dasha system_id/window params + lel_query + msr_sql projection +
+    chart_facts filters/pagination/6-ayanamshas + apex/assess dedup + registry cleanup + phala
+    serving-bug fixes; WP-1.4 large-N synthesis skeleton (`synthesis/compose_large_n`, no flat top-K
+    wall); WP-1.5 program-wide honest envelope contract + F-DATE-TZ `to_char` fix; WP-1.6 concept→tool
+    capability map (+316 newly reachable) + served consumption protocol; WP-1.7 bench + permanent CI
+    whitelist-resolution invariant; WP-1.8 varga-aware verdicts grounded to chart_facts. **ND-W1.1
+    295-finding reconciliation gate PASS — 0 unreconciled** (108 REMEDIATED-PENDING-W4 / 136
+    PENDING-W2 / 50 PENDING-W3 / 1 PARKED). Register: **W1-addressed serving classes → REMEDIATED-
+    PENDING-W4** (LCA-2/-3/-3-EXT/-4-deployed/-7/-8/-11/-12/-13/-14/-15/-18/-19, LCA-1, KP-4, R-38/
+    R-41/R-43/R-44/R-46/R-48, P-12); data-plane classes (R-45, LCA-5/6/9a/9b/10/16, R-42/R-47) stay
+    OPEN → W2. **Residuals/follow-ups:** F-DATE-TZ sibling tools (WP-1.5 follow-up), list_entities
+    cursor non-consumable, synthesis ledger fact_ids one-hop-away, F-WP17-1 multi_school PARKED
+    (Ruling-2 confirmed → deferred shelf). Native runs the ND-W1.4 external Cowork probe async (not a
+    blocker). Run ledger §6.6 W1-close / §6.7 ADJ-2 authoritative. **NEXT: W2 writer wave (WP-2.1..2.5
+    — writer packages + JOB image).** last_session_id: LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13.
+    predecessor_session: LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12.
   - v6.38 (2026-07-12, LLM CONSUMPTION REMEDIATION — W0 CLOSED / conductor program ACTIVE):
     The remediation program (`REMEDIATION_PLAN_v3_0`, root `CLAUDECODE_BRIEF.md` flipped ACTIVE
     by native) kicked off under the autonomous conductor model. Run ledger opened
@@ -5981,7 +6007,7 @@ current_state:
   # ------------------------------------------------------------------
   # Last-session pointer
   # ------------------------------------------------------------------
-  last_session_id: LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12  # 2026-07-12: LLM Consumption Remediation W0 CLOSED — WP-0.1/LCA-17 wrong-chart substitution REMEDIATED (SHA-256 cache key + echo-back guard; PR #553 6ec244c0; deployed amjis-web-00955-qt5; blind-verified 0 subs/2M iters). Program conductor ACTIVE (REMEDIATION_PLAN_v3_0). NEXT: W1 serving plane (7 lanes WP-1.1..1.8). Predecessor LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 (audit campaign COMPLETE, 1,009 findings). Predecessor LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
+  last_session_id: LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13  # 2026-07-13: LLM Consumption Remediation W1 (serving plane, 16 lanes) CLOSED — deployed amjis-web 2385fb62 + amjis-mcp fc84cd0d (both == main HEAD, deploy-parity confirmed), 7/7 prod-verified on deployed channel (attribution/grounding/discrimination; WP-1.3 assets; envelope+dates honest; WP-1.8 varga→chart_facts; LCA-17 0-substitution; lel_query 57 native/honest-0 Abhinandan post-ADJ-2). ND-W1.1 295-finding gate PASS (0 unreconciled: 108 REMEDIATED-PENDING-W4 / 136 PENDING-W2 / 50 PENDING-W3 / 1 PARKED). NEXT: W2 writer wave (WP-2.1..2.5). See v6.39 changelog + run ledger §6.6/§6.7. Predecessor LLM-CONSUMPTION-REMEDIATION-W0-2026-07-12 (2026-07-12: W0 CLOSED — WP-0.1/LCA-17 wrong-chart substitution REMEDIATED (SHA-256 cache key + echo-back guard; PR #553 6ec244c0; deployed amjis-web-00955-qt5; blind-verified 0 subs/2M iters); program conductor ACTIVE, REMEDIATION_PLAN_v3_0). Predecessor LLM-CONSUMPTION-AUDIT-EXECUTION-2026-07-12 (audit campaign COMPLETE, 1,009 findings). Predecessor LLM-CONSUMPTION-AUDIT-BRIEF-FOUNDRY-2026-07-12  # 2026-07-12: BRIEF FOUNDRY session CLOSED (BUILD-ONLY — no audit/fix/DB-write). Built 8 ledgers + CHARTER + Item-0 brief + 10 lane briefs + AUDIT_STATE skeleton + TRACEABILITY_MATRIX (0 unmapped) for the upcoming LLM Consumption Audit program under 00_ARCHITECTURE/llm_consumption_audit/. See v6.36 changelog entry above and FOUNDRY_CLOSE_REPORT.md. Independent of the L0-L5 layer-build arc (§E) — no macro-phase/layer-campaign change. Predecessor R5.3-CONTENT-DEPTH-2026-07-10 (2026-07-10: R5.3 content-depth iteration CLOSED — §B/B1/B2/B3/B4 complete, gate NOT MET (39.5%), honest close, backlog transfers to R6 TOTAL ELEVATION. Predecessor R5.2-ACCEPTANCE-2026-07-09.)
     # === Predecessor FOUNDATION-SESSION-1 (2026-06-18) ===
     # FOUNDATION-SESSION-1: Pre-L2 foundation close-out COMPLETE. All 6 ITEM close criteria met. Migrations 315-317 prod-applied. 4 autonomy writers REGENERABLE confirmed. bg_rules full mine (2,912 ceiling). Catalogs ACCEPTED. Endpoint ALL L0+L1 lit/service_ok. Sealing artifact: FOUNDATION_SESSION_1_CLOSE.md. Predecessor L1-GANITA-REBASE-AND-PR.
     # === Predecessor L1-GANITA-REBASE-AND-PR (2026-06-18) ===

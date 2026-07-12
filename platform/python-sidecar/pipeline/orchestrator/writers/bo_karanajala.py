@@ -32,7 +32,11 @@ import uuid
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from pipeline.orchestrator.writers.bo_bimba import _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP
+from pipeline.orchestrator.writers.bo_bimba import (
+    _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
+    yoga_node_subject as _yoga_node_subject,
+    _YOGA_NODE_CLASSES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +55,7 @@ INSERT INTO bodha_cgm_edges (
   edge_type, from_node_id, to_node_id, direction, computed_strength, weight_formula_version,
   edge_properties_jsonb, relationship_class, semantic_path_class,
   active_duration_class, active_dasha_periods_jsonb,
-  underlying_msr_signal_ids_array, cross_system_consensus_count,
+  underlying_msr_signal_ids_array, constituent_fact_ids_array, cross_system_consensus_count,
   cancelled_flag, cancelled_by_jsonb, cross_ayanamsha_edge_stability_score,
   present_in_traditions_array, edge_betweenness, in_shortest_path_count,
   graph_compute_library, graph_compute_library_version,
@@ -64,7 +68,7 @@ INSERT INTO bodha_cgm_edges (
   %(computed_strength)s, %(weight_formula_version)s,
   %(edge_properties_jsonb)s::jsonb, %(relationship_class)s, %(semantic_path_class)s,
   %(active_duration_class)s, %(active_dasha_periods_jsonb)s,
-  %(underlying_msr_signal_ids_array)s, %(cross_system_consensus_count)s,
+  %(underlying_msr_signal_ids_array)s, %(constituent_fact_ids_array)s, %(cross_system_consensus_count)s,
   %(cancelled_flag)s, NULL, NULL,
   %(present_in_traditions_array)s, NULL, NULL,
   %(graph_compute_library)s, %(graph_compute_library_version)s,
@@ -104,6 +108,11 @@ _EDGE_TYPE_VALENCE: dict[str, str] = {
     "dispositor":   "harmonious",
     "argala":       "harmonious",   # virodha-argala edges override below
     "sade_sati":    "antagonistic",
+    # WP-2.3 graha↔bhava + yoga membership: structural, polarity-neutral
+    "lordship":     "neutral",
+    "occupancy":    "neutral",
+    "bhava_aspect": "neutral",
+    "yoga_member":  "neutral",
 }
 
 _EDGE_TYPE_BASIS: dict[str, str] = {
@@ -114,6 +123,11 @@ _EDGE_TYPE_BASIS: dict[str, str] = {
     "dispositor":   "sign_lordship",
     "argala":       "argala_intervention",
     "sade_sati":    "sade_sati_transit",
+    # WP-2.3
+    "lordship":     "bhava_lordship",
+    "occupancy":    "graha_bhava_occupancy",
+    "bhava_aspect": "parashari_bhava_aspect",
+    "yoga_member":  "configuration_membership",
 }
 
 
@@ -430,6 +444,295 @@ def _build_dispositor_edges(
     return edges
 
 
+# ── graha ↔ bhava structural edges (WP-2.3 / LCA-9a-1) ───────────────────────
+# The 60 bhava nodes (12 houses × 5 ayanamshas) were orphaned — 0 edges. These
+# three builders wire every graha into the bhava lattice, each edge citing the
+# resolving L1 chart_facts.fact_id (B.3 / §N.5) in constituent_fact_ids_array.
+
+_BHAVA_EDGE_META = {
+    "lordship":     ("rules",     "bhava_lordship",         0.6,
+                     "parashari/bhava_lordship"),
+    "occupancy":    ("occupies",  "graha_bhava_occupancy",  0.7,
+                     "chart_facts/graha_position/house_d1"),
+    "bhava_aspect": ("aspects",   "parashari_bhava_aspect", 0.5,
+                     "chart_facts/aspect_parashari_given"),
+}
+
+
+def _graha_bhava_edge(
+    edge_type: str, chart_id: str, aya: str, build_id: str,
+    graha_node: str, bhava_node: str, graha: str, house: int,
+    fact_ids: list[str], now: str,
+) -> dict:
+    verb, sem_class, strength, cite_root = _BHAVA_EDGE_META[edge_type]
+    return {
+        "edge_id":                         str(uuid.uuid4()),
+        "chart_id":                        chart_id,
+        "ayanamsha_id":                    aya,
+        "build_id":                        build_id,
+        "snapshot_type":                   SNAPSHOT_TYPE,
+        "edge_type":                       edge_type,
+        "from_node_id":                    graha_node,   # graha → bhava
+        "to_node_id":                      bhava_node,
+        "direction":                       "directed",
+        "computed_strength":               strength,
+        "weight_formula_version":          "edge_weight_v1.0",
+        "edge_properties_jsonb":           json.dumps({
+            "graha": graha, "house": house, "relation": verb,
+        }),
+        "relationship_class":              edge_type,
+        "semantic_path_class":             "graha_bhava",
+        "active_duration_class":           "natal_permanent",
+        # Temporal seam for WP-2.3-temporal — left NULL here on purpose.
+        "active_dasha_periods_jsonb":      None,
+        "underlying_msr_signal_ids_array": [],
+        "constituent_fact_ids_array":      fact_ids,
+        "cross_system_consensus_count":    1,
+        "cancelled_flag":                  False,
+        "present_in_traditions_array":     ["parashari"],
+        "graph_compute_library":           GRAPH_LIB,
+        "graph_compute_library_version":   GRAPH_LIB_VER,
+        "is_cross_subsystem":              False,
+        "subsystem_from":                  "parashari",
+        "subsystem_to":                    "parashari",
+        **_typed_edge_fields(edge_type),
+        "verification_pass_status":        "single_pass",
+        "citation_ref":                    f"{cite_root}/{graha}/H{house}",
+        "citation_human":                  f"{graha} {verb} house {house}",
+        "computed_at":                     now,
+        "engine_version":                  ENGINE_VERSION,
+    }
+
+
+def _fetch_bhava_lordship_facts(conn, chart_id: str, aya: str) -> list[dict]:
+    """D1 house lords from L1 lord_in_house_per_varga (subject 'D1_H<n>').
+
+    fact_value_text is 'Mars_in_H7' → lord graha = 'Mars', house = subject's n.
+    Returns [{graha, house, fact_id}]. Rahu/Ketu never lord in Parashari.
+    """
+    rows = conn.execute(
+        """SELECT fact_subject, fact_value_text, fact_id
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'lord_in_house_per_varga'
+             AND fact_subject LIKE 'D1\\_H%%'""",
+        [chart_id, aya],
+    ).fetchall()
+    out: list[dict] = []
+    for r in rows:
+        if isinstance(r, dict):
+            subject, text, fid = r["fact_subject"], r["fact_value_text"], r["fact_id"]
+        else:
+            subject, text, fid = str(r[0]), r[1], r[2]
+        if not text or not subject:
+            continue
+        try:
+            house = int(subject.split("_H", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        lord = str(text).split("_in_H", 1)[0].strip().title()
+        if lord in KNOWN_GRAHAS and 1 <= house <= 12:
+            out.append({"graha": lord, "house": house, "fact_id": str(fid)})
+    return out
+
+
+def _fetch_occupancy_facts(conn, chart_id: str, aya: str) -> list[dict]:
+    """Graha → house occupancy from L1 graha_position/house_d1.
+
+    Returns [{graha, house, fact_id}].
+    """
+    rows = conn.execute(
+        """SELECT fact_subject, fact_value_num, fact_id
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'graha_position'
+             AND fact_key = 'house_d1'""",
+        [chart_id, aya],
+    ).fetchall()
+    out: list[dict] = []
+    for r in rows:
+        if isinstance(r, dict):
+            subject, val, fid = r["fact_subject"], r["fact_value_num"], r["fact_id"]
+        else:
+            subject, val, fid = str(r[0]), r[1], r[2]
+        graha = _GRAHA_SUBJECT_MAP.get(str(subject).upper())
+        if not graha or val is None:
+            continue
+        try:
+            house = int(float(val))
+        except (TypeError, ValueError):
+            continue
+        if 1 <= house <= 12:
+            out.append({"graha": graha, "house": house, "fact_id": str(fid)})
+    return out
+
+
+def _fetch_graha_bhava_aspect_facts(conn, chart_id: str, aya: str) -> list[dict]:
+    """Graha → house Parashari aspect from L1 aspect_parashari_given.
+
+    fact_subject = graha code, fact_key = 'house_<n>'. Returns [{graha, house, fact_id}].
+    """
+    rows = conn.execute(
+        """SELECT fact_subject, fact_key, fact_id
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'aspect_parashari_given'
+             AND fact_key LIKE 'house\\_%%'""",
+        [chart_id, aya],
+    ).fetchall()
+    out: list[dict] = []
+    for r in rows:
+        if isinstance(r, dict):
+            subject, key, fid = r["fact_subject"], r["fact_key"], r["fact_id"]
+        else:
+            subject, key, fid = str(r[0]), str(r[1]), r[2]
+        graha = _GRAHA_SUBJECT_MAP.get(str(subject).upper())
+        if not graha:
+            continue
+        try:
+            house = int(str(key).split("house_", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        if 1 <= house <= 12:
+            out.append({"graha": graha, "house": house, "fact_id": str(fid)})
+    return out
+
+
+def _build_bhava_edges(
+    chart_id: str, aya: str, build_id: str,
+    lordship_facts: list[dict], occupancy_facts: list[dict], aspect_facts: list[dict],
+    node_map: dict[tuple[str, str], str], now: str,
+) -> list[dict]:
+    """graha↔bhava edges: lordship, occupancy, bhava_aspect. Each cites its L1 fact_id."""
+    edges: list[dict] = []
+    plan = (
+        ("lordship",     lordship_facts),
+        ("occupancy",    occupancy_facts),
+        ("bhava_aspect", aspect_facts),
+    )
+    for edge_type, facts in plan:
+        for f in facts:
+            graha, house, fid = f["graha"], f["house"], f["fact_id"]
+            graha_node = node_map.get(("graha", graha))
+            bhava_node = node_map.get(("bhava", str(house)))
+            if not graha_node or not bhava_node:
+                continue
+            edges.append(_graha_bhava_edge(
+                edge_type, chart_id, aya, build_id,
+                graha_node, bhava_node, graha, house, [fid], now,
+            ))
+    return edges
+
+
+def _build_yoga_membership_edges(
+    chart_id: str, aya: str, build_id: str,
+    signals: list[dict], node_map: dict[tuple[str, str], str],
+    occupancy_by_graha: dict[str, str], lord_fact_by_house: dict[int, str],
+    now: str,
+) -> list[dict]:
+    """Membership edges: yoga/dosha config node ↔ its constituent grahas / bhavas.
+
+    The config node was created by bo_bimba (same yoga_node_subject key). For each
+    yoga/dosha signal we extract the constituent graha (cfg) and/or house (cfg) and
+    wire an edge to the graha / bhava node. The edge cites a RESOLVING L1 fact_id
+    (the constituent graha's occupancy fact, or the house's D1-lord fact) — NOT the
+    dosha_label constituent (that referential break is WP-2.4's lane).
+    """
+    edges: list[dict] = []
+    for sig in signals:
+        sig_class = str(sig.get("signal_type_class") or "")
+        if sig_class not in _YOGA_NODE_CLASSES:
+            continue
+        cfg = _parse_cfg(sig)
+        type_id = str(sig.get("signal_type_id") or "")
+        subject = _yoga_node_subject(sig_class, cfg, type_id)
+        yoga_node = node_map.get((sig_class, subject))
+        if not yoga_node:
+            continue
+
+        # Constituent graha (if the configuration names one)
+        graha = _graha_from_cfg(cfg)
+        if graha:
+            graha_node = node_map.get(("graha", graha))
+            fid = occupancy_by_graha.get(graha)
+            if graha_node:
+                edges.append(_membership_edge(
+                    chart_id, aya, build_id, yoga_node, graha_node,
+                    sig_class, subject, "graha", graha,
+                    [fid] if fid else [], now,
+                ))
+
+        # Constituent bhava (if the configuration names a house)
+        house = _house_from_cfg(cfg)
+        if house:
+            bhava_node = node_map.get(("bhava", str(house)))
+            fid = lord_fact_by_house.get(house)
+            if bhava_node:
+                edges.append(_membership_edge(
+                    chart_id, aya, build_id, yoga_node, bhava_node,
+                    sig_class, subject, "bhava", str(house),
+                    [fid] if fid else [], now,
+                ))
+    return edges
+
+
+def _membership_edge(
+    chart_id: str, aya: str, build_id: str,
+    yoga_node: str, member_node: str, sig_class: str, yoga_subject: str,
+    member_kind: str, member_subject: str, fact_ids: list[str], now: str,
+) -> dict:
+    return {
+        "edge_id":                         str(uuid.uuid4()),
+        "chart_id":                        chart_id,
+        "ayanamsha_id":                    aya,
+        "build_id":                        build_id,
+        "snapshot_type":                   SNAPSHOT_TYPE,
+        "edge_type":                       "yoga_member",
+        "from_node_id":                    yoga_node,       # config → constituent
+        "to_node_id":                      member_node,
+        "direction":                       "undirected",
+        "computed_strength":               0.5,
+        "weight_formula_version":          "edge_weight_v1.0",
+        "edge_properties_jsonb":           json.dumps({
+            "config_class": sig_class, "config": yoga_subject,
+            "member_kind": member_kind, "member": member_subject,
+        }),
+        "relationship_class":              "membership",
+        "semantic_path_class":             "configuration_membership",
+        "active_duration_class":           "natal_permanent",
+        "active_dasha_periods_jsonb":      None,
+        "underlying_msr_signal_ids_array": [],
+        "constituent_fact_ids_array":      fact_ids,
+        "cross_system_consensus_count":    1,
+        "cancelled_flag":                  False,
+        "present_in_traditions_array":     ["parashari"],
+        "graph_compute_library":           GRAPH_LIB,
+        "graph_compute_library_version":   GRAPH_LIB_VER,
+        "is_cross_subsystem":              False,
+        "subsystem_from":                  "parashari",
+        "subsystem_to":                    "parashari",
+        **_typed_edge_fields("yoga_member"),
+        "verification_pass_status":        "single_pass",
+        "citation_ref":                    f"bo_karanajala/yoga_member/{yoga_subject}",
+        "citation_human":                  f"{yoga_subject} ↔ {member_kind} {member_subject}",
+        "computed_at":                     now,
+        "engine_version":                  ENGINE_VERSION,
+    }
+
+
+def _house_from_cfg(cfg: dict) -> int | None:
+    for k in ("house", "house_number", "bhava", "house_d1"):
+        v = cfg.get(k)
+        if v is not None:
+            try:
+                h = int(v)
+                if 1 <= h <= 12:
+                    return h
+            except (TypeError, ValueError):
+                pass
+    return None
+
+
 def _parse_cfg(sig: dict) -> dict:
     cfg_raw = sig.get("configuration_jsonb") or {}
     if isinstance(cfg_raw, str):
@@ -686,6 +989,9 @@ def _batch_insert(conn, rows: list[dict], sql: str) -> int:
     inserted = 0
     for i in range(0, len(rows), _BATCH_SIZE):
         for row in rows[i:i + _BATCH_SIZE]:
+            # New B.3 ledger column (WP-2.3): legacy edge builders don't set it —
+            # default to empty so their %(constituent_fact_ids_array)s param binds.
+            row.setdefault("constituent_fact_ids_array", [])
             conn.execute(sql, row)
         inserted += len(rows[i:i + _BATCH_SIZE])
     return inserted
@@ -741,6 +1047,25 @@ class BoKaranajalaWriter(WriterBase):
             )
             edges.extend(dispositor_edges)
 
+            # ── graha↔bhava structural edges (WP-2.3 / LCA-9a-1) ──────────────
+            lordship_facts = _fetch_bhava_lordship_facts(conn, chart_id, aya)
+            occupancy_facts = _fetch_occupancy_facts(conn, chart_id, aya)
+            aspect_bhava_facts = _fetch_graha_bhava_aspect_facts(conn, chart_id, aya)
+            bhava_edges = _build_bhava_edges(
+                chart_id, aya, build_id,
+                lordship_facts, occupancy_facts, aspect_bhava_facts, node_map, now,
+            )
+            edges.extend(bhava_edges)
+
+            # ── yoga/dosha membership edges (config ↔ constituent graha/bhava) ─
+            occupancy_by_graha = {f["graha"]: f["fact_id"] for f in occupancy_facts}
+            lord_fact_by_house = {f["house"]: f["fact_id"] for f in lordship_facts}
+            membership_edges = _build_yoga_membership_edges(
+                chart_id, aya, build_id, signals, node_map,
+                occupancy_by_graha, lord_fact_by_house, now,
+            )
+            edges.extend(membership_edges)
+
             # ── PageRank (networkx) ───────────────────────────────────────────
             try:
                 import networkx as nx
@@ -781,8 +1106,10 @@ class BoKaranajalaWriter(WriterBase):
             replace_prior_contradictions(conn, chart_id, aya)
 
             logger.info(
-                "[bo_karanajala] %s — %d edges (%d argala, %d dispositor), %d contradictions",
-                aya, len(edges), len(argala_edges), len(dispositor_edges), len(contradictions),
+                "[bo_karanajala] %s — %d edges (%d argala, %d dispositor, "
+                "%d bhava, %d yoga_member), %d contradictions",
+                aya, len(edges), len(argala_edges), len(dispositor_edges),
+                len(bhava_edges), len(membership_edges), len(contradictions),
             )
             total_e += _batch_insert(conn, edges, _EDGE_INSERT)
             total_c += _batch_insert(conn, contradictions, _CONTRADICTION_INSERT)
