@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -113,6 +114,54 @@ ON CONFLICT DO NOTHING
 """
 
 _BATCH_SIZE = 50
+
+# ── WP-2.2 / LCA-5: RM sibling rollup tables (previously empty shells) ──────────
+_RM_SUMMARY_INSERT = """
+INSERT INTO bodha_rm_chart_summary (
+  summary_id, chart_id, ayanamsha_id, build_id, snapshot_type,
+  top_3_resonance_targets_jsonb, top_10_priority_prescriptions_jsonb,
+  recommended_intensity_class, total_active_dosha_count, primary_dosha_class,
+  cross_tradition_convergence_jsonb, remedy_chart_typology,
+  acharya_review_required_count, feasibility_assessment_jsonb,
+  verification_pass_status, citation_ref, citation_human, computed_at
+) VALUES (
+  %(summary_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(snapshot_type)s,
+  %(top_3_resonance_targets_jsonb)s::jsonb, %(top_10_priority_prescriptions_jsonb)s::jsonb,
+  %(recommended_intensity_class)s, %(total_active_dosha_count)s, %(primary_dosha_class)s,
+  %(cross_tradition_convergence_jsonb)s::jsonb, %(remedy_chart_typology)s,
+  %(acharya_review_required_count)s, %(feasibility_assessment_jsonb)s::jsonb,
+  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
+)
+"""
+
+_RM_BUNDLE_INSERT = """
+INSERT INTO bodha_rm_dosha_remedy_bundles (
+  bundle_id, chart_id, ayanamsha_id, build_id, dosha_class, active_flag,
+  intensity_score, cancellation_count, prescription_ids_in_bundle_array,
+  bundle_summary_jsonb, classical_sources_jsonb,
+  verification_pass_status, citation_ref, citation_human, computed_at
+) VALUES (
+  %(bundle_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(dosha_class)s, %(active_flag)s,
+  %(intensity_score)s, %(cancellation_count)s, %(prescription_ids_in_bundle_array)s,
+  %(bundle_summary_jsonb)s::jsonb, %(classical_sources_jsonb)s::jsonb,
+  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
+)
+ON CONFLICT (chart_id, ayanamsha_id, build_id, dosha_class) DO NOTHING
+"""
+
+_RM_PATTERN_INSERT = """
+INSERT INTO bodha_rm_pattern_remedies (
+  pattern_remedy_id, chart_id, ayanamsha_id, build_id,
+  source_kind, source_id, remedy_theme, prescription_ids_array,
+  theme_strength, cross_tradition_unanimity_score,
+  verification_pass_status, citation_ref, citation_human, computed_at
+) VALUES (
+  %(pattern_remedy_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+  %(source_kind)s, %(source_id)s, %(remedy_theme)s, %(prescription_ids_array)s,
+  %(theme_strength)s, %(cross_tradition_unanimity_score)s,
+  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
+)
+"""
 
 
 # ── L1 data fetchers ───────────────────────────────────────────────────────────
@@ -728,6 +777,138 @@ def _strip_private_keys(rows: list[dict]) -> list[dict]:
     return [{k: v for k, v in r.items() if not k.startswith("_")} for r in rows]
 
 
+# ── WP-2.2 / LCA-5 RM sibling rollups (deterministic aggregation of the
+#     resonances + prescriptions this same writer just built) ──────────────────
+
+def _build_rm_summary(chart_id: str, aya: str, build_id: str,
+                      resonances: list[dict], prescriptions: list[dict],
+                      chart_typology: str, now: str) -> dict:
+    """One rm_chart_summary row: the chart's remedy priorities distilled."""
+    ranked_res = sorted(resonances, key=lambda r: r.get("resonance_score") or 0.0, reverse=True)
+    top3 = [{"graha": r["graha"], "resonance_score": r.get("resonance_score"),
+             "priority_class": r.get("remedy_priority_class")} for r in ranked_res[:3]]
+
+    ranked_presc = sorted(prescriptions, key=lambda p: p.get("resonance_match_score") or 0.0, reverse=True)
+    top10 = [{"prescription_id": p["prescription_id"], "target_graha": p["target_graha"],
+              "remedy_category": p["remedy_category"], "match_score": p.get("resonance_match_score")}
+             for p in ranked_presc[:10]]
+
+    dosha_classes = [p["targets_dosha_class"] for p in prescriptions if p.get("targets_dosha_class")]
+    dosha_counts: dict[str, int] = defaultdict(int)
+    for dc in dosha_classes:
+        dosha_counts[dc] += 1
+    primary_dosha = max(dosha_counts, key=dosha_counts.get) if dosha_counts else None
+
+    acharya_ct = sum(1 for p in prescriptions if p.get("requires_acharya_review_flag"))
+    feasibilities = [float(p.get("feasibility_score") or 0.0) for p in prescriptions]
+    mean_feas = round(sum(feasibilities) / len(feasibilities), 4) if feasibilities else 0.0
+
+    top_class = ranked_res[0].get("remedy_priority_class") if ranked_res else "low"
+    intensity = {"critical": "intensive", "high": "sustained",
+                 "moderate": "moderate", "low": "light"}.get(str(top_class), "moderate")
+
+    trad_counts: dict[str, int] = defaultdict(int)
+    for p in prescriptions:
+        trad_counts[str(p.get("tradition") or "parashari")] += 1
+
+    return {
+        "summary_id": str(uuid.uuid4()),
+        "chart_id": chart_id,
+        "ayanamsha_id": aya,
+        "build_id": build_id,
+        "snapshot_type": SNAPSHOT_TYPE,
+        "top_3_resonance_targets_jsonb": json.dumps(top3),
+        "top_10_priority_prescriptions_jsonb": json.dumps(top10),
+        "recommended_intensity_class": intensity,
+        "total_active_dosha_count": len(set(dosha_classes)),
+        "primary_dosha_class": primary_dosha,
+        "cross_tradition_convergence_jsonb": json.dumps(dict(trad_counts)),
+        "remedy_chart_typology": chart_typology,
+        "acharya_review_required_count": acharya_ct,
+        "feasibility_assessment_jsonb": json.dumps(
+            {"mean_feasibility": mean_feas, "prescription_count": len(prescriptions)}),
+        "verification_pass_status": "pass",
+        "citation_ref": "bo_upaya:rm_chart_summary_v1:bodha_rm_resonances+prescriptions",
+        "citation_human": f"RM chart summary — {len(resonances)} resonances, {len(prescriptions)} prescriptions",
+        "computed_at": now,
+    }
+
+
+def _build_dosha_bundles(chart_id: str, aya: str, build_id: str,
+                         prescriptions: list[dict], now: str) -> list[dict]:
+    """Group prescriptions by the dosha class they remediate."""
+    by_dosha: dict[str, list[dict]] = defaultdict(list)
+    for p in prescriptions:
+        dc = p.get("targets_dosha_class")
+        if dc:
+            by_dosha[dc].append(p)
+
+    rows: list[dict] = []
+    for dosha_class, presc in sorted(by_dosha.items()):
+        pids = [p["prescription_id"] for p in presc]
+        sources = sorted({str((json.loads(p["classical_sources_jsonb"])
+                               if isinstance(p.get("classical_sources_jsonb"), str)
+                               else (p.get("classical_sources_jsonb") or {})).get("source_id", "BPHS"))
+                          for p in presc})
+        grahas = sorted({p["target_graha"] for p in presc})
+        rows.append({
+            "bundle_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "dosha_class": dosha_class,
+            "active_flag": True,
+            "intensity_score": round(min(len(presc) / 3.0, 1.0), 4),
+            "cancellation_count": 0,
+            "prescription_ids_in_bundle_array": pids,
+            "bundle_summary_jsonb": json.dumps(
+                {"prescription_count": len(presc), "target_grahas": grahas}),
+            "classical_sources_jsonb": json.dumps({"source_ids": sources}),
+            "verification_pass_status": "pass",
+            "citation_ref": f"bo_upaya:dosha_bundle_v1:{dosha_class}",
+            "citation_human": f"Dosha remedy bundle for {dosha_class} — {len(presc)} prescriptions",
+            "computed_at": now,
+        })
+    return rows
+
+
+def _build_pattern_remedies(chart_id: str, aya: str, build_id: str,
+                            resonances: list[dict], prescriptions: list[dict],
+                            now: str) -> list[dict]:
+    """Per-resonance-target remedy theme: the prescriptions grouped by target graha,
+    keyed to the resonance (pattern source) that motivated them."""
+    presc_by_res: dict[str, list[dict]] = defaultdict(list)
+    for p in prescriptions:
+        rid = p.get("target_resonance_id")
+        if rid:
+            presc_by_res[str(rid)].append(p)
+
+    rows: list[dict] = []
+    for res in resonances:
+        rid = str(res.get("resonance_id"))
+        presc = presc_by_res.get(rid, [])
+        if not presc:
+            continue
+        rows.append({
+            "pattern_remedy_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "source_kind": "resonance",
+            "source_id": rid,
+            "remedy_theme": f"strengthen_{res['graha']}",
+            "prescription_ids_array": [p["prescription_id"] for p in presc],
+            "theme_strength": round(float(res.get("resonance_score") or 0.0), 6),
+            "cross_tradition_unanimity_score": round(
+                len({str(p.get("tradition")) for p in presc}) / 4.0, 4),
+            "verification_pass_status": "pass",
+            "citation_ref": f"bo_upaya:pattern_remedy_v1:resonance/{rid}",
+            "citation_human": f"Pattern remedy theme strengthen_{res['graha']} — {len(presc)} prescriptions",
+            "computed_at": now,
+        })
+    return rows
+
+
 @register("bo_upaya")
 class BoUpayaWriter(WriterBase):
     """bo_upaya: Remediation Map — resonances + prescriptions grounded to G27 corpus."""
@@ -744,6 +925,18 @@ class BoUpayaWriter(WriterBase):
         now      = datetime.now(timezone.utc).isoformat()
         total_res = 0
         total_presc = 0
+        total_summary = 0
+        total_bundles = 0
+        total_patterns = 0
+
+        # WP-2.2 / LCA-5 idempotency for the sibling rollup tables (chart-scoped
+        # delete-then-insert per §N.3). dasha_windowed_prescriptions is intentionally
+        # NOT populated — its window_start/end_iso + dasha_lord are NOT NULL and need
+        # L3 dasha-window data unavailable at static-natal L2 (flagged §7.3 deferred).
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM bodha_rm_chart_summary WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM bodha_rm_dosha_remedy_bundles WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM bodha_rm_pattern_remedies WHERE chart_id = %s", [chart_id])
 
         for aya in CANONICAL_AYAS:
             if ctx.dry_run:
@@ -763,10 +956,34 @@ class BoUpayaWriter(WriterBase):
             total_res   += _batch_insert(conn, clean_res, _RESONANCE_INSERT)
             total_presc += _batch_insert(conn, prescriptions, _PRESCRIPTION_INSERT)
 
+            # ── RM sibling rollups (deterministic aggregation of the above) ──────
+            if prescriptions:
+                chart_typology = _fetch_chart_typology(conn, chart_id, aya)
+                summary = _build_rm_summary(chart_id, aya, build_id, clean_res,
+                                            prescriptions, chart_typology, now)
+                bundles = _build_dosha_bundles(chart_id, aya, build_id, prescriptions, now)
+                patterns = _build_pattern_remedies(chart_id, aya, build_id, clean_res,
+                                                   prescriptions, now)
+                with conn.cursor() as cur:
+                    cur.execute(_RM_SUMMARY_INSERT, summary)
+                    for b in bundles:
+                        cur.execute(_RM_BUNDLE_INSERT, b)
+                    for p in patterns:
+                        cur.execute(_RM_PATTERN_INSERT, p)
+                total_summary += 1
+                total_bundles += len(bundles)
+                total_patterns += len(patterns)
+
         if not ctx.dry_run and total_presc == 0:
             raise RuntimeError(
                 f"[bo_upaya] G3: chart_id={chart_id} — 0 remedy prescriptions written; "
                 "brahma_remedy_corpus may be empty (L0 Brahmagyan corpus must be seeded)"
             )
-        return WriterResult(asset_id=self.asset_id, rows_inserted=total_res + total_presc,
-                            notes=f"resonances={total_res} prescriptions={total_presc}")
+        return WriterResult(
+            asset_id=self.asset_id,
+            rows_inserted=total_res + total_presc + total_summary + total_bundles + total_patterns,
+            notes=(f"resonances={total_res} prescriptions={total_presc} "
+                   f"rm_chart_summary={total_summary} dosha_bundles={total_bundles} "
+                   f"pattern_remedies={total_patterns} "
+                   f"(dasha_windowed_prescriptions deferred §7.3 — needs L3 dasha windows)"),
+        )
