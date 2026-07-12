@@ -399,9 +399,27 @@ change (no HALT). Same pattern will apply to W2.
     (`git merge origin/integration/w1-serving-plane`) so each bases on the integrated WP-1.1/1.2α/1.7 and merges
     back cleanly. **Lesson:** `Agent isolation:worktree` branches from main, not current HEAD → future lanes
     needing prior-wave work must merge integration as step 0. Relaunched RUNNING.
-- **Batch B2 (pending):** WP-1.3 (a) 23 computed-but-unserved assets [may sub-split], (e) temporal windows
-  serving, (f) query_chart_facts filters+pagination+6 ayanamshas, (h) dead-registry purge + help + **F-WP17-1 +
-  contract-surface phantoms folded in** (ND-W1.3), (i) apex/assess dedup + R-40. Then WP-1.5 envelope contract.
+- **Batch B2 (IN PROGRESS):** WP-1.3 (a) 23 computed-but-unserved assets, (e) temporal windows serving,
+  (f) query_chart_facts filters+pagination+6 ayanamshas, (h) dead-registry purge + help + **F-WP17-1 +
+  contract-surface phantoms + F-WP13dasha-cleanup folded in** (ND-W1.3), (i) apex/assess dedup + R-40.
+  **B2a dispatched:** (a),(e),(f),(i) parallel disjoint; **(h) HELD until (a) merges** (needs (a)'s new registrations).
+  **B2 BINDING REMINDERS (native, 2026-07-12):**
+  - **(a) §7.3 disposition per asset:** SERVE (with budget discipline) = DEFAULT; PARK only behind a genuine
+    design question → flag `parked_pending_native_review` + reason IN LEDGER; silent drops + autonomous
+    retirement FORBIDDEN. **Full 23-asset disposition table goes in this ledger.**
+  - **(f):** all 6 ayanamshas served; filters GENUINELY filter (prove with **byte-size deltas**); disclosed
+    pagination with REAL totals over the **5,566 subjects**.
+  - **(e):** SERVING HALF ONLY — honor+echo date params; **full acceptance re-runs post-W3 with WP-2.1's writer
+    fix → mark PENDING-W3, NOT done.**
+  - **(h):** folds F-WP17-1 (multi-school re-bridge) + contract-surface phantoms (kp_query/query_kp_ruling_planets/
+    timeline_query) + F-WP13dasha-cleanup (m8_e2e_proof dangling ref).
+- **After B2:** WP-1.5 envelope contract → **WP-1.8 (ONLY after WP-1.5 lands R-38 fix — varga rows must exist to
+  weigh)** → WP-1.4 synthesis design+skeleton → **WP-1.6 LAST** (capability map + served consumption protocol
+  regenerated against POST-B2 reachability; verification = 3 live demand-side sessions narrow/medium/broad).
+- **W1 CLOSE ORDER (native-fixed):** ND-W1.1 295-ID reconciliation (mechanical diff vs wp_coverage WP-1.3 slice,
+  result in ledger) → integration→main PR → checks green → merge → **single deploy (web+mcp)** → live
+  prod-verify FULL W1 acceptance suite on deployed channel → governance close (CURRENT_STATE, SESSION_LOG,
+  ledger) → checkpoint at W1/W2 + **notify native for external Cowork probe (ND-W1.4)**.
 - **WP-1.3 CLOSE gate (ND-W1.1, binding):** union of a–i claimed finding IDs diffed vs 295-finding wp_coverage
   slice; every ID verified-fixed or re-dispositioned-with-reason; diff written here. No unreconciled remainder.
 - **Batch C:** WP-1.4 (synthesis design+skeleton) PENDING; **WP-1.7** (bench + CI whitelist invariant) —
