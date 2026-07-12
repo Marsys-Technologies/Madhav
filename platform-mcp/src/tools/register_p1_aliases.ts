@@ -18,7 +18,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
-import { describeProxyFailure } from './registry_bridge.js'
+import { describeProxyFailure, resolveChartFactsAyanamsha } from './registry_bridge.js'
 import { applyResponseBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
@@ -641,10 +641,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // Reconciled to the real filter set the handler now implements (see query_chart_facts above
   // for the full facet description); NF-1's 404 is fixed at the shared handler, so this alias
   // is fixed for free once its own param names line up.
-  regAlias(server, 'ganita_chart_facts_get',
-    'L1 chart_facts EAV-crosstab query (same as query_chart_facts)',
-    'marsys://tool/L1/chart_facts_query',
+  // WP-1.3(f)/LCA-3: hand-written (not regAlias) so this alias reaches all 6 stored ayanamshas.
+  // regAlias routes ayanamsha through the shared `na()` helper, which collapses
+  // true_chitra -> lahiri_chitrapaksha and would hide true_chitra's dataset here exactly as it
+  // did on the primary query_chart_facts tool. Uses resolveChartFactsAyanamsha (the same
+  // query_chart_facts-scoped resolver as registry_bridge.ts) and forwards fact_subject +
+  // pagination so this alias is at full parity with query_chart_facts.
+  server.tool(
+    'ganita_chart_facts_get',
+    '[Phase-1 alias] L1 chart_facts EAV-crosstab query (same as query_chart_facts). Reaches all 6 stored ayanamshas (lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT); discloses pagination (total + more_available) over the 5,566 subjects.',
     {
+      chart_id:         z.string().uuid().describe('Chart UUID'),
+      ayanamsha_id:     z.string().optional().describe("Ayanamsha (default 'lahiri_chitrapaksha'); any of the 6 stored ayanamshas reachable."),
       about: z.union([
         z.string(),
         z.object({ graha: z.string().optional(), bhava: z.number().int().min(1).max(12).optional(), house_lord: z.number().int().min(1).max(12).optional() }),
@@ -656,8 +664,24 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       nakshatra:        z.string().optional(),
       divisional_chart: z.string().optional(),
       keyword:          z.string().optional(),
+      fact_subject:     z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP"). Comma-separated for multiple.'),
       shape:            z.enum(['pivoted', 'rows']).optional(),
-    }, principal)
+      limit:            z.number().int().min(1).max(1000).optional(),
+      offset:           z.number().int().min(0).optional(),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, ...rest } = params as Record<string, unknown>
+      if (!chart_id) return errOut('ganita_chart_facts_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L1/chart_facts_query', {
+          chart_id,
+          ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          ...rest,
+        }, principal)
+        return dualOutput(data, 'ganita_chart_facts_get')
+      } catch (err) { return errOut('ganita_chart_facts_get', String(err), { chart_id }) }
+    }
+  )
 
   // vector_search → ref_vector_search
   server.tool(
