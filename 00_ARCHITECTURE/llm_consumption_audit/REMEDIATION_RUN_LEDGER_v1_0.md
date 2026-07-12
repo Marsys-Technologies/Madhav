@@ -627,6 +627,13 @@ change (no HALT). Same pattern will apply to W2.
    **→ ADJ-2 adjudicator DISPATCHED** (§7.4 rollback-whole-wave vs fix-forward, given 6/7 green + data-reachable +
    isolation-holds + wave strictly-better). **→ lel_query FIX DISPATCHED** (WP-1.3d §8.4 loop iter 1, needed
    regardless). W1 wave-close gated on ADJ-2 ruling + lel_query re-verify.
+   - **ADJ-2 → FIX-FORWARD** (§6.7). **lel_query FIX DONE** (`ae9aa600`, PR **#556**). Root cause: NOT routing —
+     the base `lel_query` tool unwrapped the double-wrapped ToolBundle envelope 2 levels too shallow + wrong count
+     key (`total_count` vs capability's `total_matching`) → undefined → laundered `{ok:true,count:0}`; twin
+     `mimamsa_lel_query` returns raw envelope so it worked. Fix: correct unwrap + **E5 honesty gate** (unparseable→
+     error, never laundered empty) + param alignment. In-process native 0→57, Abhinandan honest-0, unparseable→err;
+     9/9, tsc 0. Confirms ADJ-2 non-flip (pure unwrap bug, no isolation/scope). **PR #556 CI → merge → re-deploy
+     amjis-mcp → prod re-verify item 2 (DEPLOYED-GREEN) → W1 close (7/7).**
 7. **Governance close (this branch `docs/w1-close`):** ledger + CURRENT_STATE + SESSION_LOG → PR.
 8. **ND-W1.4:** native runs Cowork-side live probe async — NOT blocked on.
 
