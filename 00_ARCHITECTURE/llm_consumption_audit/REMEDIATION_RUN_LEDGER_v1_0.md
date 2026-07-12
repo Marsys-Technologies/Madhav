@@ -402,7 +402,11 @@ change (no HALT). Same pattern will apply to W2.
 - **Batch B2 (IN PROGRESS):** WP-1.3 (a) 23 computed-but-unserved assets, (e) temporal windows serving,
   (f) query_chart_facts filters+pagination+6 ayanamshas, (h) dead-registry purge + help + **F-WP17-1 +
   contract-surface phantoms + F-WP13dasha-cleanup folded in** (ND-W1.3), (i) apex/assess dedup + R-40.
-  **B2a dispatched:** (a),(e),(f),(i) parallel disjoint; **(h) HELD until (a) merges** (needs (a)'s new registrations).
+  **B2a status:** ✅ **WP-1.3(f) MERGED** (`15710eb6`). ✅ **WP-1.3(a) CONFIRMED-FIXED + MERGED** (`45a27834`;
+  13 assets real data table-counted, kala_taranga budgeted/drill-refuses, §N.5 resolves, disposition HONEST
+  adversarially, whitelist +13 green, entitlement enforced; native cgm_motifs=0 = known LCA-6/WP-2.2). WP-1.3(i)
+  [apex/assess dedup + verdict_skeleton serving fixes + PENDING-W3 temporal] IMPL DONE, **blind verifier RUNNING**.
+  (e),(h) queued. **(f)↔(i) share platform-mcp {register_p1_aliases,registry_bridge} → merge (i) w/ conflict-resolve.**
   **B2 BINDING REMINDERS (native, 2026-07-12):**
   - **(a) §7.3 disposition per asset:** SERVE (with budget discipline) = DEFAULT; PARK only behind a genuine
     design question → flag `parked_pending_native_review` + reason IN LEDGER; silent drops + autonomous
@@ -450,7 +454,7 @@ change (no HALT). Same pattern will apply to W2.
 - **F-WP17-1** (from WP-1.7): `multi_school_signal_lookup` / `cross_school_lookup` legacy `lib/tools` impl was never bridged to the registry → its deployed consumer `platform-mcp/src/bundles/multi_school_bundle.ts` degrades gracefully (`errored:true`). Prioritize re-bridging if multi-school convergence data is expected. Owner: W1 residual → consider WP-1.3 or a follow-up lane.
 - **Contract-surface phantom declarations** (from WP-1.7 verifier): `kp_query`, `query_kp_ruling_planets`, `timeline_query` remain declared in the untouched CONTRACT/router surface (`tool_metadata.ts`, `contract_bridge.ts`, `retrieval_capability_spec.ts`) with no engine backing. Out of WP-1.7 scope; future contract-surface reconciliation should implement or drop them (same phantom-declaration bug class). Candidate: W4 re-grade / doctrine campaign.
 - **R-45** (rediscovered by WP-1.1 verifier): `get_temporal_windows` = 0 activations (NULL activation dates) — already owned by **WP-2.1** (W2).
-- **F-WP13dasha-cleanup** (from WP-1.3-dasha verifier): `platform-mcp/src/tools/__tests__/m8_e2e_proof.test.ts:519` holds a dangling reference to the retired `registerQueryDashaPeriodsTool` export (red both ways — inside the pre-existing 97 baseline, NOT a regression). Scrub the reference. Fold into WP-1.3h (dead-registry/test cleanup) per ND-W1.3.
+- **F-WP13-testcleanup** (WP-1.3h scope, from dasha + apex/assess verifiers): `platform-mcp/src/tools/__tests__/m8_e2e_proof.test.ts` has (a) L519 dangling ref to retired `registerQueryDashaPeriodsTool`; (b) stale count constants — G12 `REGISTERED_TOOL_COUNT=45` and V6 D7-bridge `=12` — now wrong because multiple integrated lanes added/removed registry tools (WP-1.3 a/f/i/dasha). All red-both-ways (in the pre-existing baseline, NOT regressions). **WP-1.3h** must reconcile these count constants to the post-B2 actuals + scrub the dangling ref. Per ND-W1.3.
 - **OBS-W12b-1** (from WP-1.2β verifier, non-blocking): native `query_ucd` now serves only **3 entity_profiles (all graha, Saturn-dominated)** vs Abhinandan's 15 (graha+bhava) — a consequence of `sade_sati→SATURN` attribution concentration meeting the native's Saturn-heavy top-300 pool (297/300 → ~3 grahas). Pre-existing pool logic, NOT a WP-1.2β regression; UNATTRIBUTED=0 holds. But a 3-entity native orientation is thin for acharya-grade whole-chart read → candidate refinement for **WP-1.4** (synthesis) or a follow-up (entity-profile diversity / pool balancing). Re-check at W4.
 - **OBS-W12b-2** (non-blocking): moksha∩education top-20 overlap ~50-55% (both new whole-chart-pool domains overlay house-4). Not a gate (binding gate = wealth∩relationship only); acceptable, but the least-separated domain pair — revisit if a moksha-vs-education discrimination need arises.
 
