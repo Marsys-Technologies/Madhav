@@ -283,7 +283,7 @@ def detect_confidence_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRecord]
             'confidence value from this build.'
         ),
         derivation_ledger_jsonb={
-            'chart_id': ctx.chart_id,
+            'chart_id': str(ctx.chart_id),
             'anchor_count': len(values),
             'constant_value': mean,
         },

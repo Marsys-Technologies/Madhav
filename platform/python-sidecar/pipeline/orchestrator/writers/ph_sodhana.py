@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 
 import psycopg
 
@@ -24,6 +25,13 @@ from services.ph_sodhana.engine import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class _UUIDEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+        return super().default(obj)
 
 
 @register('ph_sodhana')
@@ -82,7 +90,7 @@ class PhSodhanaWriter(WriterBase):
                         rec.expected_value_text, rec.observed_value_text,
                         rec.leakage_class, rec.recommendation_text,
                         rec.auto_action,
-                        json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
+                        json.dumps(rec.derivation_ledger_jsonb, cls=_UUIDEncoder), rec.source_citation,
                     ),
                 )
                 rows_inserted += 1
