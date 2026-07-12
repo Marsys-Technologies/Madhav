@@ -36,6 +36,8 @@ changelog:
 branch `integration/w1-serving-plane` (`97d6fe9c`, pushed) carries **6 verified lanes, all blind-verified
 CONFIRMED-FIXED**: WP-1.1 ✅, **WP-1.2 (α+β) ✅ COMPLETE**, WP-1.7 ✅, WP-1.3(d,g) ✅, WP-1.3(b,c) ✅.
 Deployed-channel verification LIVE (§1b.2). LCA-17 live residual CLOSED.
+**Update (post-B2):** integration `integration/w1-serving-plane` now carries **11 verified lane merges** —
+WP-1.1, WP-1.2(α+β), WP-1.7, and **WP-1.3 COMPLETE (a–i)**. ND-W1.1 reconciliation gate in flight.
 **REMAINING W1 lanes (next session, re-ground from here):**
   - **WP-1.2β** — domain discrimination + new domains (moksha 4-8-12+Ketu, education/vidya, character/buddhi,
     bhava→domain un-collapse). Doctrine-heavy; jyotish-domain verifier. Branch from integration.
@@ -434,7 +436,15 @@ change (no HALT). Same pattern will apply to W2.
     **🅿 F-WP17-1 → PARKED `parked_pending_native_review`:** `multi_school_signal_lookup` is a WS-0 stub (no backing;
     `school_signal_coverage`/`l25_msr_signals` dropped, never repopulated — WS-2 work); `cross_school_lookup` now
     short-circuits with disclosed parked error (ends silent `errored:true`). **SURFACE TO NATIVE AT W1 CLOSE.**
-    **Blind verifier DISPATCHED** (phantom-safety + park-honesty + real m8 counts). Verdict pending; merge withheld.
+    ✅ **VERDICT: CONFIRMED (substance) — MERGED** (`bb8610ea`). Blind verifier confirmed all substance (phantoms
+    unbacked + NO live consumer, multi_school park honest+disclosed, help-text accurate, m8 counts real 25/57,
+    whitelist 50/50 green, scope clean, tsc 0). Verifier returned NOT-MET ONLY on a stale in-scope test
+    (`retrieval_capability_spec.test.ts` still asserted a removed phantom + a phantom-padded count bound) →
+    **conductor-fixed** (dropped stale assertion + `not.toContain` + relaxed count floor to ≥50; verified spec
+    source has 0 phantom `tool_name` entries, 55 entries). tsc 0 both + m8 green on merge result.
+  **✅ WP-1.3 COMPLETE — all sub-lanes a,b,c,d,e,f,g,h,i verified + integrated (11 W1 lane merges total).**
+  **ND-W1.1 295-ID reconciliation gate DISPATCHED** (mechanical diff vs wp_coverage WP-1.3 slice → per-ID
+  disposition; output to `WP13_RECONCILIATION_v1_0.md`; PASS iff 0 unreconciled).
   **B2 BINDING REMINDERS (native, 2026-07-12):**
   - **(a) §7.3 disposition per asset:** SERVE (with budget discipline) = DEFAULT; PARK only behind a genuine
     design question → flag `parked_pending_native_review` + reason IN LEDGER; silent drops + autonomous
