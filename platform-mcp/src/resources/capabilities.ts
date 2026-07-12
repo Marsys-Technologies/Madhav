@@ -75,7 +75,7 @@ function buildCapabilitiesMarkdown(
 | Tool | Status |
 |---|---|
 | \`holistic_bundle\` | Active — 8-tool parallel read |
-| \`multi_school_bundle\` | Active — cross-school convergence |
+| \`multi_school_bundle\` | Degraded — per-school evidence active; \`cross_school_lookup\` sub-tool PARKED (F-WP17-1) |
 
 ### Tier 3 — Surgical Primitives
 | Tool | Coverage Note |
@@ -89,7 +89,7 @@ function buildCapabilitiesMarkdown(
 | \`lel_query\` | 36 life events active |
 | \`vector_search\` | UCN + RM + CDLM active |
 | \`get_cgm_subgraph\` | Active |
-| \`cross_school_lookup\` | Active |
+| \`cross_school_lookup\` | PARKED — no backing capability (WS-0 stub); pending native review (F-WP17-1) |
 
 ### Tier 4 — Raw Asset
 | Tool | Status |
@@ -255,7 +255,7 @@ const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 | Tool | Description |
 |---|---|
 | \`holistic_bundle\` | 8-tool parallel holistic read (MSR + CGM + UCN + RM + CDLM + LEL + Panchang + Dasha) |
-| \`multi_school_bundle\` | Cross-school convergence check (Parashara + Jaimini + KP + Tajaka) |
+| \`multi_school_bundle\` | Per-school evidence (Parashara + Jaimini + KP + Tajaka); \`cross_school_lookup\` sub-tool PARKED pending native review (F-WP17-1) |
 
 ### Tier 3 — Surgical Primitives
 | Tool | Description |
@@ -269,7 +269,7 @@ const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 | \`lel_query\` | Life Event Log query (36 events + 5 period summaries) |
 | \`vector_search\` | Semantic search across UCN/RM/CDLM corpus |
 | \`get_cgm_subgraph\` | CGM graph subgraph walk |
-| \`cross_school_lookup\` | Multi-school convergence check for a specific claim |
+| \`cross_school_lookup\` | PARKED — WS-0 stub, no backing capability; pending native review (F-WP17-1) |
 
 ### Tier 4 — Raw Asset
 | Tool | Description |

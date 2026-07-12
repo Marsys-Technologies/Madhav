@@ -134,10 +134,10 @@ For scores < 0.50: report each school's stance explicitly; do not synthesize as 
 | Question type | Primary tool | Secondary |
 |---|---|---|
 | Natal synthesis | \`holistic_bundle\` + \`query_signals\` | \`vector_search\` (UCN) |
-| Jaimini karakas | \`query_chart_facts(category: "dasha_chara")\` | \`cross_school_lookup\` |
+| Jaimini karakas | \`query_chart_facts(category: "dasha_chara")\` | — (\`cross_school_lookup\` PARKED, F-WP17-1) |
 | KP significators | \`query_chart_facts(category: "kp_significator")\` | \`query_chart_facts(category: "kp_cusp")\` |
 | Tajaka annual | \`query_chart_facts(category: "varshphal")\` | \`query_chart_facts(category: "muntha")\` |
-| Multi-school claim | \`multi_school_bundle\` | \`cross_school_lookup\` |
+| Multi-school claim | \`multi_school_bundle\` (per-school evidence; \`cross_school_lookup\` PARKED, F-WP17-1) | — |
 
 ---
 

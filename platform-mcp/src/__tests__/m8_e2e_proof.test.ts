@@ -468,12 +468,12 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
    *
    * If this test fails, REGISTERED_TOOL_COUNT in server.ts is stale.
    */
-  it('counted tools match REGISTERED_TOOL_COUNT=45', async () => {
+  it('counted tools match REGISTERED_TOOL_COUNT=57', async () => {
     // Import all registration functions
     const [
       { registerL0BrahmagyanTools },
       { registerEphemerisTools },
-      { registerComputeNatalPositionsTool, registerQueryDashaPeriodsTool, registerQuerySpecialLagnasTool },
+      { registerComputeNatalPositionsTool, registerQuerySpecialLagnasTool },
       { registerHolisticBundleRetrievalTool },
       { registerKalaTemporalRetrievalTool },
       { registerRemedyTools },
@@ -516,7 +516,9 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
     registerL0BrahmagyanTools(srv)
     registerEphemerisTools(srv)
     registerComputeNatalPositionsTool(srv)
-    registerQueryDashaPeriodsTool(srv)
+    // WP-1.3(h) / F-WP13-testcleanup: registerQueryDashaPeriodsTool RETIRED (no longer
+    // exported by tools/retrieval/pyhora_natal.ts) — dangling call scrubbed. The dasha
+    // serving path is now the D7 registry bridge + ganita_dasha_periods_get alias.
     registerQuerySpecialLagnasTool(srv)
     registerHolisticBundleRetrievalTool(srv, () => principal)
     registerKalaTemporalRetrievalTool(srv)
@@ -531,8 +533,11 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
     registerChartSelectionTools(srv, principal)
     registerSessionTools(srv, principal)
 
-    // The declared constant
-    const REGISTERED_TOOL_COUNT = 45
+    // The declared constant — WP-1.3(h)/F-WP13-testcleanup reconciled to post-B2 actual
+    // (was 45, pre-B2). The subset wired here grew because registry_bridge now registers
+    // 25 tools (WP-1.3 a/f/i added computed-but-unserved assets); the retired
+    // registerQueryDashaPeriodsTool (−1) was removed. Measured = 57.
+    const REGISTERED_TOOL_COUNT = 57
     expect(toolCount).toBe(REGISTERED_TOOL_COUNT)
   })
 })
@@ -590,7 +595,10 @@ describe('V6 — Invariants: tool names snake_case, no hyphens', () => {
       expect(name).toMatch(/^[a-z][a-z0-9_]*$/)
       expect(name).not.toContain('-')
     }
-    expect(toolNames.length).toBe(12)
+    // WP-1.3(h) / F-WP13-testcleanup: post-B2 the D7 registry bridge registers 25 tools
+    // (WP-1.3 a/f/i lanes added the computed-but-unserved assets + dedup surface).
+    // Was 12 (stale pre-B2 count).
+    expect(toolNames.length).toBe(25)
   })
 
   it('all chart-selection tool names are snake_case', async () => {

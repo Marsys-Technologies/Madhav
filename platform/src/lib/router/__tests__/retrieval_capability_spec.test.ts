@@ -60,11 +60,13 @@ describe('RETRIEVAL_CAPABILITY_SPEC × TOOL_NAME_TO_URI coverage', () => {
     expect(RETRIEVAL_CAPABILITY_SPEC.length).toBeGreaterThanOrEqual(BRIDGE_TOOL_NAMES.length)
   })
 
-  it('the four previously planner-blind tools are now in the spec', () => {
+  it('the previously planner-blind tools are now in the spec', () => {
+    // WP-1.3(h)/LCA-12: query_kp_ruling_planets removed from this list — it was a PHANTOM
+    // (no KP engine; migration 024 archived) and has been dropped from the spec per §7.3.
+    // The remaining three had real serving paths and stay planner-visible.
     const previouslyBlind = [
       'lel_query',
       'query_signal_state',
-      'query_kp_ruling_planets',
       'query_varshaphala',
     ]
     for (const name of previouslyBlind) {
