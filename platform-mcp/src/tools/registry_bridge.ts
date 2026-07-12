@@ -695,7 +695,24 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ((responseData['top_signals'] as Record<string, unknown>[]) ?? [])
             .map(s => s['citation_human']).filter((v): v is string => typeof v === 'string' && v.length > 0)
         ))
-        const grounding = { fact_ids: [], citations, grounding_score: null }
+        // WP-1.2(a) (LCA-14, §N.5): populate envelope grounding.fact_ids from the
+        // resolvable L1 fact_ids the query_ucd handler already surfaced (content.grounding
+        // + entity_profiles[].fact_ids). These are the exact ids verified present in
+        // chart_facts by the handler — never fabricated (B.10). Falls back to the union of
+        // entity_profiles[].fact_ids when a handler predates the grounding block.
+        const handlerGrounding = responseData['grounding'] as Record<string, unknown> | undefined
+        const groundingFactIds = new Set<string>()
+        const handlerFactIds = handlerGrounding?.['fact_ids']
+        if (Array.isArray(handlerFactIds)) {
+          for (const fid of handlerFactIds) if (typeof fid === 'string' && fid) groundingFactIds.add(fid)
+        }
+        if (groundingFactIds.size === 0) {
+          for (const p of entityProfiles) {
+            const pf = (p as Record<string, unknown>)['fact_ids']
+            if (Array.isArray(pf)) for (const fid of pf) if (typeof fid === 'string' && fid) groundingFactIds.add(fid)
+          }
+        }
+        const grounding = { fact_ids: Array.from(groundingFactIds), citations, grounding_score: null }
 
         const judgment_flags: string[] = []
         if (entityProfiles.length === 0) judgment_flags.push('zero_entity_profiles')

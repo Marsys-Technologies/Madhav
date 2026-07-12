@@ -30,6 +30,57 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { deriveDefect001Note } from '../../../provenance/freshness_notes'
+import { demoteSignatureTier } from '../../../ranking/salience_demotion'
+
+/** Max signal_ids hydrated with text in one bounded lookup (payload + query safety). */
+const HYDRATION_ID_CAP = 2000
+
+interface HydratedSignalText {
+  signal_id: string
+  headline: string | null
+  summary: string | null
+  signature_tier: string | null
+  signature_tier_demoted_from?: string
+}
+
+/**
+ * WP-1.2(e) (LCA-18c): hydrate bare signal_ids with headline/summary text so
+ * get_domain_reading rows carry human-readable text, not IDs-without-text. One bounded
+ * chart-scoped `signal_id = ANY(...)` lookup over the DISTINCT ids the response will
+ * actually serve. Also demotes the hydrated signature_tier (WP-1.2d) so descriptive/
+ * per-varga rows don't surface as major/chart_defining here either.
+ */
+async function hydrateSignalText(
+  chart_id: string,
+  ayanamsha_id: string,
+  signalIds: string[],
+): Promise<Map<string, HydratedSignalText>> {
+  const map = new Map<string, HydratedSignalText>()
+  const distinct = Array.from(new Set(signalIds.filter(Boolean))).slice(0, HYDRATION_ID_CAP)
+  if (distinct.length === 0) return map
+  const res = await query<Record<string, unknown>>(
+    `SELECT signal_id, signal_headline_text, signal_summary_text, signature_tier,
+            signal_type_id, configuration_jsonb
+     FROM bodha_msr_signals
+     WHERE chart_id = $1 AND ayanamsha_id = $2 AND signal_id::text = ANY($3::text[])`,
+    [chart_id, ayanamsha_id, distinct],
+  )
+  for (const row of res.rows) {
+    const demoted = demoteSignatureTier(row)
+    const sid = String(row['signal_id'] ?? '')
+    if (!sid) continue
+    map.set(sid, {
+      signal_id: sid,
+      headline: (row['signal_headline_text'] as string | null) ?? null,
+      summary: (row['signal_summary_text'] as string | null) ?? null,
+      signature_tier: (demoted['signature_tier'] as string | null) ?? null,
+      ...(demoted['signature_tier_demoted_from']
+        ? { signature_tier_demoted_from: demoted['signature_tier_demoted_from'] as string }
+        : {}),
+    })
+  }
+  return map
+}
 
 /**
  * Maps each valid life-domain to the question_types that cover it.
@@ -266,6 +317,51 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       const signalRefsTotal = allSignalRefs.size
       const signalRefsArray = Array.from(allSignalRefs).slice(0, max_signal_refs)
 
+      // WP-1.2(e) (LCA-18c): gather the signal_ids this response will actually surface —
+      // the CDLM-derived refs PLUS the top ranked_signals inside each question lens — and
+      // hydrate them all with headline/summary text in one bounded lookup, so no served row
+      // is a bare ID-without-text.
+      const RANKED_HYDRATE_PER_LENS = 25
+      const lensRankedIds: string[] = []
+      for (const lens of lensRes.rows as Array<Record<string, unknown>>) {
+        const arj = lens['all_relevant_ranked_jsonb']
+        const ranked = arj && typeof arj === 'object' && !Array.isArray(arj)
+          ? (arj as Record<string, unknown>)['ranked_signals']
+          : arj
+        if (Array.isArray(ranked)) {
+          for (const rs of ranked.slice(0, RANKED_HYDRATE_PER_LENS)) {
+            const sid = (rs as Record<string, unknown>)?.['signal_id']
+            if (typeof sid === 'string' && sid) lensRankedIds.push(sid)
+          }
+        }
+      }
+      const textById = await hydrateSignalText(
+        chart_id, ayanamsha_id, [...signalRefsArray, ...lensRankedIds],
+      )
+
+      // Hydrated ref rows (replaces the bare id list; signal_id_refs kept for back-compat).
+      const signalRefs = signalRefsArray.map(sid => textById.get(sid) ?? {
+        signal_id: sid, headline: null, summary: null, signature_tier: null,
+      })
+
+      // Enrich each lens's ranked_signals objects in place with headline/summary/tier.
+      const hydratedLenses = (lensRes.rows as Array<Record<string, unknown>>).map(lens => {
+        const arj = lens['all_relevant_ranked_jsonb']
+        if (arj && typeof arj === 'object' && !Array.isArray(arj)) {
+          const arjObj = arj as Record<string, unknown>
+          const ranked = arjObj['ranked_signals']
+          if (Array.isArray(ranked)) {
+            const enriched = ranked.map(rs => {
+              const r = rs as Record<string, unknown>
+              const t = typeof r['signal_id'] === 'string' ? textById.get(r['signal_id'] as string) : undefined
+              return t ? { ...r, headline: t.headline, summary: t.summary, signature_tier: t.signature_tier } : r
+            })
+            return { ...lens, all_relevant_ranked_jsonb: { ...arjObj, ranked_signals: enriched } }
+          }
+        }
+        return lens
+      })
+
       // E-2 freshness contract: re-derive DEFECT-001 live for this chart rather than
       // restating the historical "91.5% orphan" literal.
       const defect001 = await deriveDefect001Note(chart_id)
@@ -275,8 +371,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           chart_id,
           ayanamsha_id,
           domain,
-          question_lenses:        lensRes.rows,
+          question_lenses:        hydratedLenses,
           cdlm_cells:             cdlmCells,
+          signal_refs:            signalRefs,
           signal_id_refs:         signalRefsArray,
           signal_id_refs_total:   signalRefsTotal,
           signal_id_refs_capped:  signalRefsArray.length < signalRefsTotal,
@@ -297,6 +394,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
             defect_001: defect001,
             // Legacy string field retained (additive) — sourced from the same live derivation.
             defect_001_note: defect001.note,
+            hydration_note: `WP-1.2(e): signal_refs and lens ranked_signals carry headline/summary ` +
+              `text (hydrated from bodha_msr_signals); ${textById.size} id(s) resolved to text. ` +
+              `signature_tier on hydrated rows reflects the WP-1.2(d) serving cap.`,
             bounding_note: is_full
               ? `response_format=full: shared_signal_ids_array included (capped ${MAX_IDS_PER_CELL_FULL}/cell), signal_id_refs capped at ${max_signal_refs}.`
               : `response_format=default: shared_signal_ids_array omitted from cells (use shared_signal_count); signal_id_refs capped at ${max_signal_refs} of ${signalRefsTotal} total.`,
