@@ -635,6 +635,31 @@ this ledger guarantee lossless continuation. Within-rules, non-scope-changing �
 
 ---
 
+## §7 — W2 WRITER WAVE (dispatched 2026-07-13)
+
+### §7.0 — ADJ-1 SUPERSEDED for W2+ (conductor)
+Given accumulated conductor context after W0+W1 (16 lanes + close), reverting to the native's preferred
+fresh-context **wave-conductor delegation** (§6) for W2+: a fresh-context W2 wave-conductor sub-agent re-grounds
+from ledger+plan, orchestrates the W2 writer lanes per the corrected DAG (dispatch → blind writer-conformance
+verify → conductor-owned merge into `integration/w2-writers`), and reports wave-complete state. Top conductor
+(me) stays thin: W2 close (PR/deploy) + W3 dispatch + ledger. Wave-conductor writes ledger state as it goes so
+a stall resumes losslessly. §8.6 HALTs escalate to top conductor.
+
+### §7.1 — W2 corrected DAG (native) + pre-dispatch intersection
+- **Fully parallel from start (disjoint writer families):** WP-2.1 (ka_ activation-date writer, R-45) · WP-2.4
+  (bo_laksana MSR ingestion redesign, LCA-9b) · WP-2.5 (new ga_ sensitive-degree + ayurdaya + L0 organ seed,
+  R-47/LCA-10/16) · WP-2.2-nonCGM (CDLM rollups/gradients/clusters, RM tables, bo_samvada/contradictions, phala
+  narration, bo_sangati; LCA-5) · WP-2.3-graph (graha↔bhava edges + yoga nodes; LCA-9a).
+- **Sequenced:** (a) WP-2.3-TEMPORAL-hooks wait on WP-2.1 date-resolution (2.1 merges first; 2.3 consumes merged
+  helper); (b) WP-2.2-CGM stages (topology/sub_graphs/motifs incl LCA-6 native-zero) wait on WP-2.3-edges landing.
+  2.2/2.3 coordinate via ledger on the bo_cgm file family; merge-order if scopes can't cleanly split.
+- **Standards:** FROZEN orchestrator §N.2 (@register WriterBase, ctx.db_conn no-commit) — HALT if change needed ·
+  §N.3 idempotency (per-chart delete-then-insert) · §N.4 surgical migrations only · B.10 no fabricated computation
+  (esp. WP-2.5 ayurdaya = 3 classical methods per §8.2, no invention) · §N.5 referential integrity (WP-2.4 CI
+  validator: every constituent_facts_array entry resolves to chart_facts.fact_id).
+- **Verification:** per-lane blind writer-conformance + unit tests PRE-merge; **full DATA verification deferred to
+  W3 rebuild** (plan: "verification completes at W3"). Base `integration/w2-writers` off main `fc84cd0d` (W1 live).
+
 ## §4 — HALT / disagreement register + follow-ups (append-only)
 
 **HALTs / disagreements:** none yet.
