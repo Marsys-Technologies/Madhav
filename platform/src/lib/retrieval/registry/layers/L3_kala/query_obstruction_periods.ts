@@ -1,19 +1,21 @@
 /**
- * query_obstruction_periods — Obstruction Periods (L3 Kāla) — STUBBED-PENDING-DATA
- * ==================================================================================
- * Asset: ka_vighnakara (kala_obstruction) — EMPTY: 0 rows.
+ * query_obstruction_periods — Obstruction Periods (L3 Kāla)
+ * ===========================================================
+ * Asset: ka_vighnakara (kala_obstruction). WP-1.3(a) / F-L10-018 (LCA-19): the
+ * obstruction (danger) windows are now POPULATED (602-638 rows/chart) — this tool was
+ * previously STUBBED-PENDING-DATA and advertised an 'obstructions' field while returning
+ * []. It now serves the real rows, bounded, with a disclosed total.
  *
- * This tool is stubbed because kala_obstruction contains 0 rows for all charts
- * (as of runtime validation V3). The writer exists but has not populated data.
+ * Each row: obstruction_type, severity (+severity_score), override_score,
+ * obstruction_detail (jsonb), linked convergence_id/signal_id.
  *
- * Returns {stubbed: true, reason: "...", data: []} — NOT an error.
- * Do NOT change this to throw. The stub keeps the topology complete so this
- * tool becomes live automatically when data is built.
- *
- * Chart-agnostic: no native chart_id defaults (principle #14).
+ * Chart-scoped (principle #14). No native chart_id defaults.
  */
 
 import type { CapabilityDescriptor } from '../../types'
+import { query } from '@/lib/db/client'
+
+const MAX_LIMIT = 50
 
 export const queryObstructionPeriodsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_obstruction_periods',
@@ -22,61 +24,85 @@ export const queryObstructionPeriodsCapability: CapabilityDescriptor = {
   name:  'query_obstruction_periods',
 
   description: [
-    'Returns obstruction periods for a chart from kala_obstruction (ka_vighnakara).',
-    'STUBBED-PENDING-DATA: kala_obstruction contains 0 rows as of the current build.',
-    'Returns a stub response with data: [] until the ka_vighnakara writer populates data.',
-    'When populated, will return periods of planetary obstruction with type, severity,',
-    'affected domains, mitigation signals, and temporal bounds.',
+    'Returns obstruction (vighna) periods for a chart from kala_obstruction (ka_vighnakara)',
+    '— 602-638 rows/chart. Each row: obstruction_type, severity, severity_score,',
+    'override_score, obstruction_detail (jsonb), and the linked convergence_id/signal_id.',
+    'Filters: obstruction_type, severity, min_severity_score. Bounded to 50 rows ordered by',
+    'severity_score, with a disclosed total.',
   ].join(' '),
 
   scope: 'per_chart',
   archetype: 'temporal',
   traversal_level: 'L-SIGNAL',
-  tool_role: 'leaf',
-  emits_references: false,
+  tool_role: 'temporal',
+  emits_references: true,
   grounds_to: { l1_fact_ids: false },
   lel_capable: false,
 
   required_inputs: ['chart_id'],
 
   input_schema: {
-    chart_id: {
-      type: 'string',
-      description: 'Chart UUID (<chart_uuid>). Required.',
-      required: true,
-    },
-    ayanamsha_id: {
-      type: 'string',
-      description: "Ayanamsha filter (default: 'LAHIRI').",
-    },
+    chart_id:           { type: 'string', description: 'Chart UUID. Required.', required: true },
+    obstruction_type:   { type: 'string', description: 'Filter by obstruction_type. Omit for all.' },
+    severity:           { type: 'string', description: 'Filter by severity label (e.g. high, moderate, low). Omit for all.' },
+    min_severity_score: { type: 'number', description: 'Only rows with severity_score >= this value.' },
+    limit:              { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },
 
   llm_hints: {
-    agentic: {
-      cost_class: 'cheap',
-      cacheable:  false,
-    },
-    bulk_context: {
-      pre_fetch_priority: 50,
-    },
+    agentic: { cost_class: 'cheap', cacheable: true },
+    bulk_context: { pre_fetch_priority: 50 },
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
-    const chart_id = args['chart_id'] as string
-    if (!chart_id) {
-      return { content: { error: 'chart_id is required' }, is_error: true }
-    }
+    void _ctx
+    const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
+    if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
-    return {
-      content: {
-        chart_id,
-        stubbed: true,
-        reason: 'kala_obstruction table contains 0 rows for this chart. The ka_vighnakara writer has not yet populated data. This tool will return live data when the obstruction writer build is complete.',
-        data: [],
-        pending_asset: 'ka_vighnakara',
-        target_table: 'kala_obstruction',
-      },
-      is_error: false,
+    const obstruction_type   = args['obstruction_type'] ? String(args['obstruction_type']) : null
+    const severity           = args['severity'] ? String(args['severity']) : null
+    const min_severity_score = args['min_severity_score'] !== undefined && args['min_severity_score'] !== null
+      ? Number(args['min_severity_score']) : null
+    const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
+
+    const filters: string[] = ['chart_id = $1']
+    const params: unknown[] = [chart_id]
+    let p = 2
+    if (obstruction_type) { filters.push(`obstruction_type = $${p++}`); params.push(obstruction_type) }
+    if (severity)         { filters.push(`severity = $${p++}`);         params.push(severity) }
+    if (min_severity_score !== null && !Number.isNaN(min_severity_score)) {
+      filters.push(`severity_score >= $${p++}`); params.push(min_severity_score)
+    }
+    const where = filters.join(' AND ')
+
+    const sql = `
+      SELECT id, convergence_id, signal_id, obstruction_type, severity, severity_score,
+             override_score, obstruction_detail, source_citation
+      FROM kala_obstruction
+      WHERE ${where}
+      ORDER BY severity_score DESC NULLS LAST
+      LIMIT $${p}`
+
+    try {
+      const [rowsRes, countRes] = await Promise.all([
+        query(sql, [...params, limit]),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM kala_obstruction WHERE ${where}`, params),
+      ])
+      const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      return {
+        content: {
+          chart_id,
+          obstructions: rowsRes.rows,
+          count: rowsRes.rows.length,
+          total_matching,
+          more_available: total_matching > rowsRes.rows.length,
+          filters: { obstruction_type, severity, min_severity_score, limit },
+          provenance: { tables: ['kala_obstruction'], source: 'L3 Kāla obstruction (vighna) windows; served chart-scoped.' },
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
     }
   },
 }

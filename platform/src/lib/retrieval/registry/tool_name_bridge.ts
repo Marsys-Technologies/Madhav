@@ -139,6 +139,24 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   temporal: 'marsys://tool/L3/query_temporal_activation',          // real L3 Kāla temporal-activation capability
   query_tara_balam: 'marsys://tool/L1/get_tara_chandra_bala',      // real L1 Gaṇita tara/chandra bala baseline (one cap serves both balas)
   query_chandra_balam: 'marsys://tool/L1/get_tara_chandra_bala',   // same L1 cap — chandra bala facet
+
+  // ── WP-1.3(a) (LCA-19) — serve the computed-but-unserved Lane-10 assets ──────
+  // Each name below resolves to a NEW (or newly un-stubbed) registry capability that
+  // reads a chart-scoped table which was computed and stored but had no deployed
+  // serving path. Bounded serving (LIMIT + disclosed total) is enforced in each handler.
+  get_medical_indications:    'marsys://tool/L1/get_medical_indications',    // F-L10-001 ga_medical
+  get_vastu_directions:       'marsys://tool/L1/get_vastu_directions',       // F-L10-002 ga_vastu_planet_direction_map
+  get_yoga_firings:           'marsys://tool/L1/get_yoga_firings',           // F-L10-003 ga_yoga_firings (bhanga + activation detail)
+  query_cdlm_summary:         'marsys://tool/L2/query_cdlm_summary',         // F-L10-004 bodha_cdlm_chart_summary
+  query_cgm_motifs:           'marsys://tool/L2/query_cgm_motifs',           // F-L10-005 bodha_cgm_motifs
+  query_cgm_paths:            'marsys://tool/L2/query_cgm_paths',            // F-L10-006 bodha_cgm_paths
+  query_chart_gestalt:        'marsys://tool/L2/query_chart_gestalt',        // F-L10-007 bodha_chart_gestalt
+  query_dasha_dossier:        'marsys://tool/L3/query_dasha_dossier',        // F-L10-009 kala_avadhi
+  query_temporal_view:        'marsys://tool/L3/query_temporal_view',        // F-L10-012 kala_darshana (un-stubbed)
+  query_convergence_windows:  'marsys://tool/L3/query_convergence_windows',  // F-L10-014 kala_convergence (rigor stratum)
+  query_activation_waveform:  'marsys://tool/L3/query_activation_waveform',  // F-L10-015 kala_taranga (budget: summary+drill)
+  query_obstruction_periods:  'marsys://tool/L3/query_obstruction_periods',  // F-L10-018 kala_obstruction (un-stubbed)
+  query_spillover_cascades:   'marsys://tool/L4/query_spillover_cascades',   // F-L10-027 phala_sankrama
 }
 
 // ── ToolBundle adapter ────────────────────────────────────────────────────────
@@ -386,6 +404,20 @@ export const SURGICAL_TOOLS = [
   'query_remedy_program',
   // R6 0b-deadtools (R-14): L5 Mīmāṃsā calibration scorecard (mimamsa_calibration_get alias)
   'query_calibration',
+  // WP-1.3(a) (LCA-19): computed-but-unserved Lane-10 assets, now with serving paths.
+  'get_medical_indications',
+  'get_vastu_directions',
+  'get_yoga_firings',
+  'query_cdlm_summary',
+  'query_cgm_motifs',
+  'query_cgm_paths',
+  'query_chart_gestalt',
+  'query_dasha_dossier',
+  'query_temporal_view',
+  'query_convergence_windows',
+  'query_activation_waveform',
+  'query_obstruction_periods',
+  'query_spillover_cascades',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -453,6 +485,20 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   mitigation_map: 'query_remedy_program',
   // R6 0b-deadtools (R-14): mimamsa_calibration_get alias → L5 query_calibration capability
   query_calibration: 'query_calibration',
+  // WP-1.3(a) (LCA-19): MCP-facing names for the now-served computed-but-unserved assets.
+  ganita_medical_get:          'get_medical_indications',   // F-L10-001
+  ganita_vastu_get:            'get_vastu_directions',      // F-L10-002
+  ganita_yoga_firings_get:     'get_yoga_firings',          // F-L10-003
+  bodha_cdlm_summary_get:      'query_cdlm_summary',        // F-L10-004
+  bodha_cgm_motifs_get:        'query_cgm_motifs',          // F-L10-005
+  bodha_cgm_paths_get:         'query_cgm_paths',           // F-L10-006
+  bodha_chart_gestalt_get:     'query_chart_gestalt',       // F-L10-007
+  kala_dasha_dossier_get:      'query_dasha_dossier',       // F-L10-009
+  kala_darshana_get:           'query_temporal_view',       // F-L10-012
+  kala_convergence_get:        'query_convergence_windows', // F-L10-014
+  kala_activation_waveform_get:'query_activation_waveform', // F-L10-015
+  kala_obstruction_get:        'query_obstruction_periods', // F-L10-018
+  phala_spillover_get:         'query_spillover_cascades',  // F-L10-027
 }
 
 /**

@@ -17,6 +17,11 @@ import { queryContradictionsCapability }   from './query_contradictions'
 import { queryRemediesCapability }         from './query_remedies'
 import { queryQualityScorecardCapability } from './query_quality_scorecard'
 import { grahaPortraitCapability }         from './graha_portrait'
+// WP-1.3(a) / F-L10-004..007 (LCA-19): computed-but-unserved L2 CDLM/CGM/gestalt assets.
+import { queryCdlmSummaryCapability }      from './query_cdlm_summary'
+import { queryCgmMotifsCapability }        from './query_cgm_motifs'
+import { queryCgmPathsCapability }         from './query_cgm_paths'
+import { queryChartGestaltCapability }     from './query_chart_gestalt'
 
 registerCapability(queryUcdCapability)
 registerCapability(traverseChartGraphCapability)
@@ -26,3 +31,7 @@ registerCapability(queryContradictionsCapability)
 registerCapability(queryRemediesCapability)
 registerCapability(queryQualityScorecardCapability)
 registerCapability(grahaPortraitCapability)
+registerCapability(queryCdlmSummaryCapability)
+registerCapability(queryCgmMotifsCapability)
+registerCapability(queryCgmPathsCapability)
+registerCapability(queryChartGestaltCapability)
