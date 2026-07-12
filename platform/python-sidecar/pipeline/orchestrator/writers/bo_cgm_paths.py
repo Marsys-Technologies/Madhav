@@ -253,13 +253,12 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
         return 0
 
     # Fetch all dispositor-class edges.
-    # NOTE (Tier 3 future work): bo_karanajala does not yet emit dispositor edges
-    # (edge_type='dispositor' or relationship_basis='dispositor'/'lord_of_sign').
-    # Until those edges are written this query returns 0 rows, edge_by_from is empty,
-    # and _build_dispositor_chains produces 0 chains.  A warning is logged so the
-    # absence is auditable.  The self-ruling (length-0) path also relies on
-    # position_in_chart_jsonb['sign'] which is now populated by bo_bimba — those
-    # will fire correctly once bo_bimba fix is in place.
+    # Post-WP-2.3 bo_karanajala emits real dispositor edges (edge_type='dispositor',
+    # relationship_basis='dispositor'/'lord_of_sign') and bo_bimba hydrates
+    # position_in_chart_jsonb['sign'], so multi-hop chains and self-ruling (length-0)
+    # paths both fire on the native's real topology. A warning is logged only if the
+    # dispositor edge set is entirely empty — post-WP-2.3 that would itself be a
+    # build fault worth auditing.
     all_edges = _fetch_dict(
         conn,
         """SELECT edge_id, from_node_id, to_node_id, edge_type, relationship_basis,
@@ -276,8 +275,9 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     if not all_edges:
         logger.warning(
             "[bo_cgm_paths] %s — 0 dispositor edges found in bodha_cgm_edges; "
-            "bo_karanajala does not yet emit dispositor edges — "
-            "multi-hop chains cannot be built; only self-ruling (length-0) paths will emit",
+            "post-WP-2.3 bo_karanajala should emit dispositor edges — an empty set here "
+            "means multi-hop chains cannot be built (only self-ruling length-0 paths); "
+            "verify the build produced dispositor edges",
             aya,
         )
 
