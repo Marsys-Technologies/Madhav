@@ -59,6 +59,7 @@ import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 import { applyCompositeRanking, buildRankingBasis } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
 import { PRIORS_VERSION } from '../../../ranking/priors_config'
+import { demoteSignatureTiers } from '../../../ranking/salience_demotion'
 import {
   resolveFrameReferenceSign, houseCountedFrom, GRAHA_CODE_TO_NAME,
   type ReferenceFrame, type ZodiacSign,
@@ -362,6 +363,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
         signals = rawRows
         ranking_basis = { mode: 'salience_fallback', priors_version: PRIORS_VERSION, domain: domain ?? null }
       }
+
+      // WP-1.2(d) (LCA-9b-2 serving cap): serve-time salience demotion — descriptive
+      // almanac fact_keys + per-varga granular data may not carry major/chart_defining
+      // tiers on the wire. Applied on BOTH the composite and salience-fallback paths.
+      signals = demoteSignatureTiers(signals)
 
       // Size guard (H-12): prevent >1.5MB responses from overwhelming the MCP transport
       // S3 fix (R5 W0a perf lane): Buffer.byteLength on the UTF-8 encoding, not

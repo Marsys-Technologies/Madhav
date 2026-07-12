@@ -305,6 +305,76 @@ export function buildRankingBasis(
 // ── R5 W1 (design §E-6) — hierarchical aggregation for orient surfaces ────────
 
 /**
+ * WP-1.2(a) (LCA-14) — graha-token → canonical graha-name normalizer used for
+ * entity attribution. Covers the 2-char L1 codes (SU/MO/SA…), the MSR-side full
+ * names (MOON/SATURN…), and the 3-char chart_facts fact_subject tokens
+ * (SAT/RAH_MEAN…). Any variant resolves to ONE canonical entity name so a graha
+ * is never split across two entity buckets.
+ */
+const GRAHA_TOKEN_TO_NAME: Record<string, string> = {
+  SU: 'SUN', SUN: 'SUN',
+  MO: 'MOON', MOON: 'MOON',
+  MA: 'MARS', MAR: 'MARS', MARS: 'MARS',
+  ME: 'MERCURY', MER: 'MERCURY', MERCURY: 'MERCURY',
+  JU: 'JUPITER', JUP: 'JUPITER', JUPITER: 'JUPITER',
+  VE: 'VENUS', VEN: 'VENUS', VENUS: 'VENUS',
+  SA: 'SATURN', SAT: 'SATURN', SATURN: 'SATURN',
+  RA: 'RAHU', RAH: 'RAHU', RAHU: 'RAHU',
+  KE: 'KETU', KET: 'KETU', KETU: 'KETU',
+}
+
+/** Canonicalize any graha token/name to its full-name entity key, or null. */
+function canonicalGrahaName(token: string | null | undefined): string | null {
+  if (!token) return null
+  return GRAHA_TOKEN_TO_NAME[token.toUpperCase()] ?? null
+}
+
+/**
+ * WP-1.2(a) — derive the graha entity from an L1 `fact_subject` string such as
+ * `D108_SAT`, `D1_SAT`, `SAT`, or `RAH_MEAN`. The graha token is embedded as a
+ * component of the subject (varga prefix + graha suffix, or a mean-node suffix);
+ * scan components right-to-left and return the first that resolves to a graha.
+ * This is what lets us attribute the flood of `graha_dignity_per_varga` signals
+ * (whose configuration_jsonb carries NO `graha` key) to their real graha instead
+ * of dumping them all into one giant UNATTRIBUTED bucket.
+ */
+export function grahaFromFactSubject(subject: string | null | undefined): string | null {
+  if (!subject) return null
+  const parts = subject.toUpperCase().split('_')
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const name = canonicalGrahaName(parts[i])
+    if (name) return name
+  }
+  return null
+}
+
+/**
+ * WP-1.2(a) — resolve the entity a signal belongs to.
+ * Attribution order (first hit wins):
+ *   1. configuration_jsonb graha keys (extractPrimaryGraha) — the fast path.
+ *   2. the graha embedded in any constituent fact's `fact_subject` — resolved via
+ *      the optional `factSubjectByFactId` map the caller built from a bounded
+ *      chart_facts lookup (this is what attributes the per-varga dignity flood).
+ *   3. 'UNATTRIBUTED' — only when neither path yields a graha.
+ */
+export function deriveSignalEntity(
+  row: MsrSignalRow,
+  factSubjectByFactId?: Map<string, string>,
+): string {
+  const raw = extractPrimaryGraha(row)
+  const direct = canonicalGrahaName(raw) ?? (raw ? raw.toUpperCase() : null)
+  if (direct) return direct
+  if (factSubjectByFactId) {
+    for (const fid of row.constituent_facts_array ?? []) {
+      const subj = factSubjectByFactId.get(fid)
+      const g = grahaFromFactSubject(subj)
+      if (g) return g
+    }
+  }
+  return 'UNATTRIBUTED'
+}
+
+/**
  * One aggregated entity profile — "one composite Saturn-AV profile row, never
  * twenty atoms" (design doc E-6). Groups composite-ranked atomic signals by
  * their primary graha (extractPrimaryGraha) into a single summary row per
@@ -325,6 +395,27 @@ export interface EntityProfile {
   signal_type_classes: string[]
   /** Top constituent signal_ids (drill handle back into query_signals). */
   top_signal_ids: string[]
+  /**
+   * WP-1.2(a) (LCA-14, §N.5) — the RESOLVABLE L1 chart_facts.fact_id set that
+   * grounds this entity's signals. When a resolvable-fact-id set is supplied to
+   * buildHierarchicalProfiles, this is filtered to fact_ids that provably exist
+   * in chart_facts (never a bare/orphan id). Capped for payload safety.
+   */
+  fact_ids: string[]
+}
+
+/** Max resolvable fact_ids surfaced per entity profile (payload safety). */
+const FACT_IDS_PER_ENTITY_CAP = 25
+
+export interface BuildHierarchicalProfilesOptions {
+  /**
+   * WP-1.2(a) — fact_id → fact_subject map from a bounded chart_facts lookup on
+   * this response's constituent fact_ids. Presence of an id in this map is BOTH
+   * (1) the attribution source (fact_subject → graha) AND (2) the §N.5 resolvability
+   * proof (an id in the map provably exists in chart_facts). When supplied, an
+   * entity profile's `fact_ids` is filtered to resolvable ids only.
+   */
+  factSubjectByFactId?: Map<string, string>
 }
 
 /**
@@ -332,16 +423,24 @@ export interface EntityProfile {
  * rows, each summarizing up to top_signals_per_entity constituent signals.
  * Never re-derives a score — aggregate_score/peak_score are pure aggregations
  * of final_rank_score already computed by applyCompositeRanking (B.10).
+ *
+ * WP-1.2(a) (LCA-14): entity attribution now falls back from configuration_jsonb
+ * graha keys to the graha embedded in a constituent fact's fact_subject (via the
+ * optional factSubjectByFactId map) — this drains the giant UNATTRIBUTED bucket
+ * the per-varga dignity flood used to create. And the final ordering GUARANTEES a
+ * real graha always outranks the residual UNATTRIBUTED bucket, so UNATTRIBUTED can
+ * never be the top entity_profile while any attributed graha exists.
  */
 export function buildHierarchicalProfiles(
   scored: ScoredSignal[],
   top_k_entities = 10,
   top_signals_per_entity = 3,
+  options: BuildHierarchicalProfilesOptions = {},
 ): EntityProfile[] {
+  const { factSubjectByFactId } = options
   const groups = new Map<string, ScoredSignal[]>()
   for (const s of scored) {
-    const graha = extractPrimaryGraha(s)
-    const key = graha ? graha.toUpperCase() : 'UNATTRIBUTED'
+    const key = deriveSignalEntity(s, factSubjectByFactId)
     const bucket = groups.get(key)
     if (bucket) bucket.push(s)
     else groups.set(key, [s])
@@ -356,10 +455,17 @@ export function buildHierarchicalProfiles(
     const domainCounts: Record<string, number> = {}
     const valenceCounts: Record<string, number> = {}
     const classSet = new Set<string>()
+    const factIdSet = new Set<string>()
     for (const r of rows) {
       for (const d of r.domains_affected_array ?? []) domainCounts[d] = (domainCounts[d] ?? 0) + 1
       if (r.valence) valenceCounts[r.valence] = (valenceCounts[r.valence] ?? 0) + 1
       if (r.signal_type_class) classSet.add(r.signal_type_class)
+      for (const fid of r.constituent_facts_array ?? []) {
+        if (!fid) continue
+        // §N.5: only surface a fact_id we can prove resolves to chart_facts.
+        // When no resolvability map is supplied (pure unit context), surface all.
+        if (!factSubjectByFactId || factSubjectByFactId.has(fid)) factIdSet.add(fid)
+      }
     }
     const dominant_domains = Object.entries(domainCounts)
       .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([d]) => d)
@@ -376,10 +482,19 @@ export function buildHierarchicalProfiles(
       dominant_valence,
       signal_type_classes: Array.from(classSet),
       top_signal_ids: sortedRows.slice(0, top_signals_per_entity).map(r => r.signal_id),
+      fact_ids: Array.from(factIdSet).slice(0, FACT_IDS_PER_ENTITY_CAP),
     })
   }
 
-  profiles.sort((a, b) => b.aggregate_score - a.aggregate_score)
+  // WP-1.2(a) ordering guard: a real graha ALWAYS outranks UNATTRIBUTED, regardless
+  // of the summed aggregate_score — the giant un-attributed bucket must never be the
+  // top entity. Within the same entity_type, order by aggregate_score DESC as before.
+  profiles.sort((a, b) => {
+    if (a.entity_type !== b.entity_type) {
+      return a.entity_type === 'unattributed' ? 1 : -1
+    }
+    return b.aggregate_score - a.aggregate_score
+  })
   return profiles.slice(0, top_k_entities)
 }
 

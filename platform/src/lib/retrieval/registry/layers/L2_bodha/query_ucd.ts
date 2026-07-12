@@ -42,6 +42,37 @@ import { cacheKey, cacheGet, cacheSet } from '../../../cache'
 import { applyCompositeRanking, buildRankingBasis, buildHierarchicalProfiles, collapseSignalFamilies } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
 import { PRIORS_VERSION } from '../../../ranking/priors_config'
+import { demoteSignatureTiers } from '../../../ranking/salience_demotion'
+
+/** Max resolvable fact_ids surfaced in the envelope-level grounding block (payload safety). */
+const GROUNDING_FACT_IDS_CAP = 200
+
+/**
+ * WP-1.2(a) (LCA-14, §N.5) — resolve which of a signal pool's constituent fact_ids
+ * actually exist in chart_facts, returning a fact_id → fact_subject map. Bounded: a
+ * single chart-scoped `fact_id = ANY(...)` lookup over the DISTINCT constituent ids of
+ * the already-fetched candidate pool (never an open scan). The map is BOTH the §N.5
+ * resolvability proof (an id is in the map iff it resolves) AND the entity-attribution
+ * source (fact_subject carries the graha token, e.g. `D108_SAT`).
+ */
+async function resolveConstituentFactSubjects(
+  chart_id: string,
+  rows: Array<{ constituent_facts_array?: string[] | null }>,
+): Promise<Map<string, string>> {
+  const distinct = Array.from(new Set(
+    rows.flatMap(r => r.constituent_facts_array ?? []).filter((v): v is string => typeof v === 'string' && v.length > 0),
+  ))
+  const map = new Map<string, string>()
+  if (distinct.length === 0) return map
+  const res = await query<{ fact_id: string; fact_subject: string | null }>(
+    `SELECT fact_id, fact_subject FROM chart_facts WHERE chart_id = $1 AND fact_id = ANY($2::text[])`,
+    [chart_id, distinct],
+  )
+  for (const r of res.rows) {
+    if (typeof r.fact_id === 'string') map.set(r.fact_id, r.fact_subject ?? '')
+  }
+  return map
+}
 
 // Candidate pool fetched by raw computed_salience before composite re-ranking —
 // mirrors query_signals.ts's CANDIDATE_FETCH_SIZE pattern (same ranking pipeline,
@@ -259,7 +290,15 @@ export const queryUcdCapability: CapabilityDescriptor = {
       // baselines) then hierarchically aggregate into entity profiles.
       const rawRows = signalResult.rows as unknown as Parameters<typeof applyCompositeRanking>[0]
       const scoredAll = applyCompositeRanking(rawRows, l1Context, null)
-      const entity_profiles = buildHierarchicalProfiles(scoredAll, top_k_entities, 3)
+
+      // WP-1.2(a) (LCA-14, §N.5): resolve the candidate pool's constituent fact_ids to
+      // chart_facts (fact_id → fact_subject). This both proves resolvability (only ids in
+      // the map are surfaced as grounding) and supplies fact_subject-based entity
+      // attribution so the per-varga dignity flood is attributed to its real graha rather
+      // than a giant UNATTRIBUTED bucket.
+      const factSubjectByFactId = await resolveConstituentFactSubjects(chart_id, signalResult.rows as Array<{ constituent_facts_array?: string[] | null }>)
+
+      const entity_profiles = buildHierarchicalProfiles(scoredAll, top_k_entities, 3, { factSubjectByFactId })
       const ranking_basis = buildRankingBasis(scoredAll, null)
 
       // response_format bounding (E-5 — this facet is now actually load-bearing;
@@ -279,14 +318,40 @@ export const queryUcdCapability: CapabilityDescriptor = {
       // `family_member_pointers` (still resolvable via query_signals), never
       // deleted from bodha_msr_signals.
       const familyCollapsed = collapseSignalFamilies(scoredAll)
+      // WP-1.2(d): serve-time salience demotion — descriptive/per-varga rows may not carry
+      // major/chart_defining tiers on the wire (LCA-9b-2 serving cap).
       const atomicSignals = response_format === 'digest'
         ? []
-        : familyCollapsed.slice(0, top_k).map(s => {
+        : demoteSignatureTiers(familyCollapsed.slice(0, top_k).map(s => {
             const { _subscores, ...rest } = s
             void _subscores
             return rest as Record<string, unknown>
-          })
+          }))
       const familiesCollapsedCount = familyCollapsed.filter(s => s.is_family_composite).length
+
+      // WP-1.2(a) (LCA-14, §N.5): envelope-level grounding — the union of RESOLVABLE
+      // constituent fact_ids across the entity profiles (each already filtered to ids that
+      // provably exist in chart_facts). Every id here resolves; UNATTRIBUTED is no longer
+      // the top entity_profile because attribution now drains it (see buildHierarchicalProfiles).
+      const groundingFactIds: string[] = []
+      const seenFactId = new Set<string>()
+      for (const p of entity_profiles) {
+        for (const fid of p.fact_ids) {
+          if (seenFactId.has(fid)) continue
+          seenFactId.add(fid)
+          groundingFactIds.push(fid)
+          if (groundingFactIds.length >= GROUNDING_FACT_IDS_CAP) break
+        }
+        if (groundingFactIds.length >= GROUNDING_FACT_IDS_CAP) break
+      }
+      const grounding = {
+        fact_ids: groundingFactIds,
+        resolvable: true as const,
+        resolved_fact_count: factSubjectByFactId.size,
+        note: 'WP-1.2(a): fact_ids are the resolvable L1 chart_facts.fact_id set backing the ' +
+          'ranked entity_profiles (each id verified present in chart_facts, §N.5). Per-entity ' +
+          'fact_ids live on entity_profiles[].fact_ids; per-signal on top_signals[].constituent_facts_array.',
+      }
 
       const result = {
         content: {
@@ -307,6 +372,7 @@ export const queryUcdCapability: CapabilityDescriptor = {
           entity_profiles,
           top_signals:           atomicSignals,
           convergence_domains:   convResult.rows,
+          grounding,
           ranking_basis,
           filters: { top_k, top_k_entities, signal_class, min_salience },
           provenance: {
