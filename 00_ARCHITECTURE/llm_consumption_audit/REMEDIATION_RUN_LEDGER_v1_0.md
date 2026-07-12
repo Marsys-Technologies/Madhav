@@ -345,7 +345,50 @@ change (no HALT). Same pattern will apply to W2.
       education/vidya, character/buddhi, bhava→domain un-collapse): doctrine-heavy → deferred to **Batch B**.
       Verifier: jyotish-domain. Status: QUEUED.
   - Live ground-truth captured pre-batch (§1b.2): UNATTRIBUTED @64.6/84.8, grounding.fact_ids=[], trivia@major.
-- **Batch B (pending):** WP-1.3 (295 findings — sub-split a–i), WP-1.5 (envelope contract), WP-1.8 (varga verdicts).
+- **Batch B1 (dispatched 2026-07-12, parallel from integration branch, disjoint scopes):**
+  - **WP-1.2β** — domain discrimination (wealth≠relationship) + new domains (moksha 4-8-12+Ketu, education/vidya
+    off bhava-4-mislabel F-0756, character/buddhi in judgment_query, bhava→domain un-collapse) + finish
+    attribution to **0% UNATTRIBUTED** (ND-W1.2). Acceptance: 0% UNATTRIBUTED + wealth∩relationship top-20 ≤25%.
+    Verifier runs rubric-7.4 raw-metric re-run × 16 surfaces × both charts (E-2). Status: RUNNING.
+  - **WP-1.3-dasha** (sub-lanes b,c) — `query_dasha_periods` honors `system_id` (F-0354, ~437k dark rows) +
+    dasha tools honor requested windows (F-0471/0485). **IMPL REPORTED** → branch `worktree-agent-a6c2d1f024908ca70`
+    (commit `093c804d`; STEP-0 on integration). Root cause deeper: DB `get_dashas` ignored `system_id`; AND the
+    audit-named MCP tools were separate PyJHora vimshottari-only sidecar surfaces → repointed both to faceted DB
+    alias (retired PyJHora reg). 8 systems in data (chara_karaka 299k/mudda 202k/yogini 165k/vimshottari 95k/
+    kalachakra 69k/ashtottari 66k/naisargika 43k/vimshottari_kp 12k); historical+future windows honored+echoed
+    (`facets_applied`). 14/14 integration tests, 68/68 platform-mcp routing, tsc clean. Discloses 97 pre-existing
+    platform-mcp baseline failures (claims identical stashed — verifier to confirm). Touches platform-mcp
+    (server/aliases/pyhora) → W1 deploy rebuilds amjis-mcp too. **Blind verifier DISPATCHED** (data-plane
+    per-system + window + MCP-repoint-no-orphan + adversarial 97-baseline reproduction).
+    ✅ **VERDICT: CONFIRMED-FIXED** — 8 systems / 437,178 dark rows confirmed; each non-vimshottari system returns
+    only its own rows (count DISTINCT system_id=1); windows era-distinct (hist Saturn→Mercury, future Ketu→Venus)
+    + honest-empty out-of-range; MCP repoint no orphaned consumer (internal callers use platform HTTP→DB path);
+    **97 platform-mcp failures INDEPENDENTLY REPRODUCED at HEAD~1 (byte-identical test-name sets — no green→red)**;
+    scope clean, tsc 0 both packages. **MERGED → integration (`1764d2b1`)**, tsc clean both packages.
+    **WP-1.3(b,c) COMPLETE.** Cleanup-debt logged §4.
+  - **WP-1.3-params** (sub-lanes d,g) — `lel_query` serves 57 life events (F-L10-021, unblocks L5 calib) +
+    `msr_sql` honors projection param (LCA-7, fixed 17/115 cols). **IMPL REPORTED** → branch
+    `worktree-agent-ac27807557af5bb37` (commits `e192c2cf` lel, `253fd7da` msr_sql; STEP-0 merge on integration
+    confirmed). (d) lel_query WAS pointed at query_signals `lel_origin=true` (0 rows) → new `L5/lel_query`
+    capability over `life_events`, serves 57 native / 0 Abhinandan, entitlement gate preserved. (g) msr_sql
+    fixed-17-col → `projection` param (omit=17, `*`=all **82 real cols**, explicit list); injection-safe via
+    static whitelist validated pre-SQL. 12 new tests, 669 regression pass, tsc 0, WP-1.7 invariant green.
+    ✅ **VERDICT: CONFIRMED-FIXED** — verifier independently confirmed lel table counts (57 native / 0 Abhinandan
+    TRUE zero, not entitlement mask), entitlement preserved (per_chart authorizeChartAccess, no widening),
+    msr_sql injection-safe (all bypass payloads rejected pre-SQL, DB untouched), 82 real cols (omit=17/*=all/
+    explicit), scope clean (WP-1.2α+1.7 intact). **MERGED → integration (`22816856`)**; regression 89 pass.
+    **WP-1.3(d,g) COMPLETE.**
+  - **⚠ Batch B1 INTERRUPTED by session restart (2026-07-12)** — all 3 lanes stopped/killed before landing;
+    isolation-worktrees had branched from `main` (d19a7fce) NOT integration, and made only tiny uncommitted
+    partials (dasha ~56 lines, params stub). Discarded all 3; **RELAUNCHED** with mandatory STEP-0
+    (`git merge origin/integration/w1-serving-plane`) so each bases on the integrated WP-1.1/1.2α/1.7 and merges
+    back cleanly. **Lesson:** `Agent isolation:worktree` branches from main, not current HEAD → future lanes
+    needing prior-wave work must merge integration as step 0. Relaunched RUNNING.
+- **Batch B2 (pending):** WP-1.3 (a) 23 computed-but-unserved assets [may sub-split], (e) temporal windows
+  serving, (f) query_chart_facts filters+pagination+6 ayanamshas, (h) dead-registry purge + help + **F-WP17-1 +
+  contract-surface phantoms folded in** (ND-W1.3), (i) apex/assess dedup + R-40. Then WP-1.5 envelope contract.
+- **WP-1.3 CLOSE gate (ND-W1.1, binding):** union of a–i claimed finding IDs diffed vs 295-finding wp_coverage
+  slice; every ID verified-fixed or re-dispositioned-with-reason; diff written here. No unreconciled remainder.
 - **Batch C:** WP-1.4 (synthesis design+skeleton) PENDING; **WP-1.7** (bench + CI whitelist invariant) —
   **IMPL REPORTED** → branch `worktree-agent-ac8af34c82e2bb7aa` (commit `75818fc0`, pushed to origin). 19 dead
   whitelist entries: **5 REGISTERED** (cgm_graph_walk→L2/traverse_chart_graph, contradiction_register,
@@ -374,6 +417,7 @@ change (no HALT). Same pattern will apply to W2.
 - **F-WP17-1** (from WP-1.7): `multi_school_signal_lookup` / `cross_school_lookup` legacy `lib/tools` impl was never bridged to the registry → its deployed consumer `platform-mcp/src/bundles/multi_school_bundle.ts` degrades gracefully (`errored:true`). Prioritize re-bridging if multi-school convergence data is expected. Owner: W1 residual → consider WP-1.3 or a follow-up lane.
 - **Contract-surface phantom declarations** (from WP-1.7 verifier): `kp_query`, `query_kp_ruling_planets`, `timeline_query` remain declared in the untouched CONTRACT/router surface (`tool_metadata.ts`, `contract_bridge.ts`, `retrieval_capability_spec.ts`) with no engine backing. Out of WP-1.7 scope; future contract-surface reconciliation should implement or drop them (same phantom-declaration bug class). Candidate: W4 re-grade / doctrine campaign.
 - **R-45** (rediscovered by WP-1.1 verifier): `get_temporal_windows` = 0 activations (NULL activation dates) — already owned by **WP-2.1** (W2).
+- **F-WP13dasha-cleanup** (from WP-1.3-dasha verifier): `platform-mcp/src/tools/__tests__/m8_e2e_proof.test.ts:519` holds a dangling reference to the retired `registerQueryDashaPeriodsTool` export (red both ways — inside the pre-existing 97 baseline, NOT a regression). Scrub the reference. Fold into WP-1.3h (dead-registry/test cleanup) per ND-W1.3.
 
 ---
 
