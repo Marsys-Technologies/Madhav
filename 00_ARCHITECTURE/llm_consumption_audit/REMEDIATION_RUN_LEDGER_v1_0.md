@@ -553,6 +553,26 @@ change (no HALT). Same pattern will apply to W2.
   retest; live deployed re-run = follow-up). 12 unit+15 integration green, tsc 0 both, 166 existing pass. **Blind
   verifier DISPATCHED** (Lane-4: envelope-cant-lie invariant + F-DATE-TZ + list_entities + priority_ranking +
   R-38/R-41 + no-regression). **Merges FIRST on CONFIRMED; then rebase WP-1.3j onto it + verify conformance.**
+  ✅ **WP-1.5 CONFIRMED-FIXED + MERGED** (`3150d0ee`). Envelope-can't-lie proven (fuzz 12/12); F-DATE-TZ 10 tools
+  date-typed-verified; list_entities real 652; call_priority_ranking every-call-error fixed (real cols, 84 rows
+  Abhinandan); R-38/R-41/F-0963 pass; tsc 0 both, prior W1 intact. Caveats (follow-up, §4): list_entities cursor
+  disclosure-honest-not-consumable; native priority_ranking empty on NULL dates (WP-2.1). tsc 0 both on merge.
+  ✅ **WP-1.3j REBASED onto merged integration** (`c8985bed`; 1 trivial whitespace conflict in query_phala_calibration
+  to_char block — both lanes added identical to_char, resolved; tsc 0 both). **Blind verifier (serving + WP-1.5
+  envelope-conformance re-check) DISPATCHED.** Merge on CONFIRMED.
+
+### §6.4 — Dispatch manifest: W1-remainder BATCH 2 (WP-1.8 ∥ WP-1.4)
+**Pre-dispatch intersection check (mechanical):**
+- **WP-1.8** scope = varga-aware verdicts + cross-path fidelity (R-43/R-46): serving-side D-1/G-7 re-derivation
+  of dasha-lord dignity/shadbala (vs chart_facts, no writer/migration — HALT if writer needed), varga terms in
+  the verdict formula (needs WP-1.5's R-38 varga rows — NOW MERGED), multi-formula disclosure, assess_*↔get_signals
+  reconciliation. Files: judgment/verdict/assess serving + dasha-lord re-derivation.
+- **WP-1.4** scope = large-N synthesis instrument DESIGN+SKELETON (P-10 intent decomp → plan vs pre-aggregated L2
+  surfaces → map-reduce over families → narrative + derivation ledger). Mostly NEW files (synthesis orchestrator).
+- **Intersection:** DISJOINT file scopes (1.8=verdict/assess/dasha serving; 1.4=new synthesis files); no semantic
+  dependency (1.4 skeleton independent of 1.8). Both base on integration (has WP-1.5 R-38). Disjoint from the
+  still-verifying WP-1.3j (bodha/phala) too. **Verdict: dispatch CONCURRENTLY (separate worktrees, one message).**
+**Dispatched 2026-07-13.**
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
