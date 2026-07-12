@@ -114,61 +114,12 @@ export function registerComputeNatalPositionsTool(server: McpServer): void {
   )
 }
 
-/**
- * Register query_dasha_periods MCP tool.
- * Returns Vimshottari mahadasha chain with lord, start/end dates.
- */
-export function registerQueryDashaPeriodsTool(server: McpServer): void {
-  server.tool(
-    'query_dasha_periods',
-    {
-      ...BirthDataSchema,
-    },
-    async (params) => {
-      try {
-        const data = await callPyHora(params)
-
-        const dashas = (data.vimshottari_dasha ?? {}) as Record<string, unknown>
-        const mahadashas = Array.isArray(dashas.mahadasha_sequence)
-          ? dashas.mahadasha_sequence
-          : Array.isArray(dashas.mahadashas)
-            ? dashas.mahadashas
-            : []
-
-        const rows = (mahadashas as Record<string, unknown>[])
-          .slice(0, 9)
-          .map((md) =>
-            `${String(md.lord ?? '').padEnd(9)} | ${String(md.start_date ?? md.start_iso ?? '').slice(0, 10)} → ` +
-            `${String(md.end_date ?? md.end_iso ?? '').slice(0, 10)} | ${Number(md.years ?? 0).toFixed(1)}y`
-          )
-          .join('\n')
-
-        const text =
-          `# Vimshottari Dasha — mahadasha chain\n` +
-          `Engine: ${data.engine ?? 'PyJHora'} | Ayanamsha: ${params.ayanamsha_id ?? 'lahiri'}\n` +
-          `Moon nakshatra: ${dashas.moon_nakshatra ?? 'N/A'} (lord: ${dashas.moon_nakshatra_lord ?? 'N/A'})\n` +
-          `Balance at birth: ${Number(dashas.balance_years ?? 0).toFixed(2)}y\n\n` +
-          `Lord      | Start      → End        | Duration\n` +
-          `----------|---------------------------|---------\n` +
-          rows
-
-        return {
-          content: [{ type: 'text', text }],
-        }
-      } catch (err) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error querying dasha periods: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        }
-      }
-    }
-  )
-}
+// RETIRED (WP-1.3 b/c, F-0354/F-0471/0485): `query_dasha_periods` used to register HERE as a
+// vimshottari-only PyJHora sidecar tool (a fixed birth→death mahadasha chain, sliced to 9,
+// with no system_id and no window params). It is now registered in registerP1AliasTools as a
+// DB-backed faceted alias of get_dashas so it honors system_id (all 8 dasha systems — ~437k
+// non-vimshottari rows/chart were dark) and requested date windows (past/future timing was
+// structurally unanswerable). See platform-mcp/src/tools/register_p1_aliases.ts.
 
 /**
  * Register query_special_lagnas MCP tool.

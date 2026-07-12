@@ -251,6 +251,31 @@ function globalAlias(
   )
 }
 
+// WP-1.3 (b/c): shared faceted schema for the DB-backed dasha capability
+// (marsys://tool/L1/get_dashas). Used by every LLM-facing dasha tool name so that
+// system_id (F-0354) and requested windows (F-0471/0485) are honored uniformly — instead
+// of a divergent, vimshottari-only, windowless PyJHora sidecar surface for some names.
+const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
+  // ayanamsha_id override: no server-side default (chart_dashas carries all 5) — omitting it
+  // returns one row PER ayanamsha. Pass "lahiri_chitrapaksha" for the single-row gate shape.
+  ayanamsha_id: z.string().optional().describe(
+    'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
+    '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
+    'single-row current-dasha gate shape.'),
+  as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter.'),
+  date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
+  date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
+  system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
+  system_id:     z.string().optional().describe('Alias for `system` using the raw column name (F-0354). Same vocabulary; precedence system > dasha_system > system_id.'),
+  dasha_system:  z.string().optional().describe('Deprecated alias for system.'),
+  level:         z.union([z.string(), z.number()]).optional().describe('Exact dasha level (1=Maha..5=Prana, or the name).'),
+  all_levels:    z.boolean().optional().describe('Disable the default level<=3 cap.'),
+  window_start:  z.string().optional().describe('ISO date — window facet lower bound (overlap). Echoed in facets_applied.window.'),
+  window_end:    z.string().optional().describe('ISO date — window facet upper bound (overlap). Echoed in facets_applied.window.'),
+  lord_graha:    z.string().optional(),
+  fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
+}
+
 export function registerP1AliasTools(server: McpServer, principal: Principal): void {
 
   // ── D7 + D8 Registry bridge aliases ──────────────────────────────────────
@@ -386,27 +411,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'Gate target (current dasha, <=1KB, ONE call): system=vimshottari, level=1, ' +
     'as_of_date=<today>, ayanamsha_id="lahiri_chitrapaksha" — ALWAYS pass ayanamsha_id explicitly.',
     'marsys://tool/L1/get_dashas',
-    {
-      // Override the shared ChartBase.ayanamsha_id description for this tool specifically:
-      // ChartBase's generic "(default: 'lahiri_chitrapaksha')" wording is TRUE for
-      // chart_facts_query but FALSE here — get_dashas.ts applies no ayanamsha filter unless
-      // the caller supplies one (R5 W1 verifier finding; JL-010 doc fix).
-      ayanamsha_id:  z.string().optional().describe(
-        'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
-        '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
-        'single-row current-dasha gate shape.'),
-      as_of_date:    z.string().optional(),
-      date_contains: z.string().optional(),
-      date_from:     z.string().optional(),
-      system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
-      dasha_system:  z.string().optional().describe('Deprecated alias for system.'),
-      level:         z.union([z.string(), z.number()]).optional().describe('Exact dasha level (1=Maha..5=Prana, or the name).'),
-      all_levels:    z.boolean().optional().describe('Disable the default level<=3 cap.'),
-      window_start:  z.string().optional(),
-      window_end:    z.string().optional(),
-      lord_graha:    z.string().optional(),
-      fields:        z.string().optional().describe('Projection facet: "compact" (default), "all", or a comma-separated column list.'),
-    }, principal)
+    DASHA_FACET_SCHEMA, principal)
 
   // get_temporal_windows → kala_windows_get
   // R-18 fix: the primitive (query_temporal_activation.ts) reads date_from/date_to/top_k, not
@@ -1030,17 +1035,29 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }
   )
 
-  server.tool(
-    'ganita_dasha_periods_get',
-    '[Phase-1 alias] Compute Vimshottari dasha chain via PyJHora sidecar (same as query_dasha_periods).',
-    BirthBase,
-    async (params) => {
-      try {
-        const data = await callSidecarPath('/api/pyhora/compute', params as Record<string, unknown>)
-        return dualOutput(data)
-      } catch (err) { return errOut('ganita_dasha_periods_get', String(err)) }
-    }
-  )
+  // WP-1.3 (b/c): ganita_dasha_periods_get + query_dasha_periods REPOINTED from the
+  // vimshottari-only PyJHora sidecar to the DB-backed faceted capability (get_dashas), so
+  // the audit-named dasha tools honor system_id (F-0354: ~437k non-vimshottari rows/chart
+  // were dark) and requested windows (F-0471/0485: a fixed today-centered decade made
+  // past/future timing unanswerable). Both now share the identical faceted schema +
+  // handler as ganita_dashas_get — one authoritative dasha surface, no divergent duplicate.
+  regAlias(server, 'ganita_dasha_periods_get',
+    'L1 dasha periods, faceted by system/level/window (same as get_dashas / ganita_dashas_get). ' +
+    'Honors system_id (all 8 systems: vimshottari, vimshottari_kp, yogini, ashtottari, ' +
+    'chara_karaka, kalachakra, mudda, naisargika) and requested date windows. ' +
+    'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id has NO default — ' +
+    'pass "lahiri_chitrapaksha" for the single-row current-dasha gate shape.',
+    'marsys://tool/L1/get_dashas',
+    DASHA_FACET_SCHEMA, principal)
+
+  regAlias(server, 'query_dasha_periods',
+    'L1 dasha periods, faceted by system/level/window (DB-backed, chart_id required). ' +
+    'Honors system_id (all 8 systems) and requested date windows (as_of_date / window_start / ' +
+    'window_end), echoing the applied filter back in facets_applied. Defaults: system=vimshottari, ' +
+    'level<=3, window=now±5y. ayanamsha_id has NO default — pass "lahiri_chitrapaksha" for the ' +
+    'single-row current-dasha gate shape.',
+    'marsys://tool/L1/get_dashas',
+    DASHA_FACET_SCHEMA, principal)
 
   server.tool(
     'ganita_special_lagnas_get',

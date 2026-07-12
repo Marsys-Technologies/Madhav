@@ -146,6 +146,16 @@ export const getDashasCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'Deprecated alias for `system` (kept for back-compat). `system` wins if both are passed.',
     },
+    system_id: {
+      type: 'string',
+      description:
+        'Alias for `system` using the raw chart_dashas.system_id column name — the value an LLM ' +
+        'consumer most naturally reaches for (F-0354). Accepts the same vocabulary/aliases as `system` ' +
+        '(vimshottari | vimshottari_kp | yogini | ashtottari | chara_karaka | kalachakra | mudda | ' +
+        'naisargika; "all" for every system). Precedence: system > dasha_system > system_id. ' +
+        'Previously dropped silently, defaulting every request to vimshottari and leaving all ~437k ' +
+        'non-vimshottari rows dark.',
+    },
     level: {
       type: 'string',
       description:
@@ -201,7 +211,13 @@ export const getDashasCapability: CapabilityDescriptor = {
       // ── system facet (default vimshottari; "all" or an unrecognized value disables the filter
       // rather than silently returning zero rows — an unrecognized system name is a caller error
       // we surface via judgment metadata, not a defect we hide behind an empty result set) ──
-      const systemInput = (args.system as string | undefined) ?? (args.dasha_system as string | undefined)
+      // F-0354: `system_id` (the raw column name) is honored as an alias so a caller passing
+      // the natural column name is not silently defaulted to vimshottari. Precedence:
+      // system > dasha_system > system_id.
+      const systemInput =
+        (args.system as string | undefined) ??
+        (args.dasha_system as string | undefined) ??
+        (args.system_id as string | undefined)
       let systemApplied: string | null = null
       let systemRequestedButUnknown: string | null = null
       if (systemInput && systemInput.toLowerCase() !== 'all') {
@@ -247,6 +263,18 @@ export const getDashasCapability: CapabilityDescriptor = {
       // date_contains wins if both are somehow present.
       const containsDate = (args.date_contains as string | undefined) ?? (args.as_of_date as string | undefined)
       let windowApplied: { start: string; end: string } | null = null
+      // F-0471/0485: every temporal filter that is actually applied must be echoed back — a
+      // requested date/window must NEVER be silently dropped. `window` (below) only reflected
+      // window_start/window_end + the default; the point-in-time (as_of/date_contains) and
+      // date_from filters applied silently. `date_filter` echoes exactly what gated the query.
+      const dateFilterApplied: {
+        as_of_date?: string
+        date_from?: string
+        default_window_applied?: boolean
+      } = {}
+      if (containsDate) {
+        dateFilterApplied.as_of_date = containsDate
+      }
       if (containsDate) {
         sql += ` AND start_date <= $${params.length + 1}::date AND end_date >= $${params.length + 2}::date`
         params.push(containsDate)
@@ -257,6 +285,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         // date_from is included even if it started before (end_date >= date_from).
         sql += ` AND end_date >= $${params.length + 1}::date`
         params.push(args.date_from as string)
+        dateFilterApplied.date_from = args.date_from as string
       }
 
       // ── window facet (explicit window_start/window_end; overlap semantics) ──
@@ -291,6 +320,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         params.push(startIso)
         params.push(endIso)
         windowApplied = { start: startIso, end: endIso }
+        dateFilterApplied.default_window_applied = true
       }
 
       sql += ` ORDER BY system_id, ayanamsha_id, start_date LIMIT $2 OFFSET $3`
@@ -491,6 +521,9 @@ export const getDashasCapability: CapabilityDescriptor = {
             system: systemApplied ?? 'all',
             level: levelApplied,
             window: windowApplied,
+            // F-0471/0485: echo the point-in-time / date_from filters that `window` alone omitted,
+            // so a requested date/window is provably reflected back and never silently dropped.
+            date_filter: dateFilterApplied,
             fields: fieldsApplied,
           },
           rows: projectedRows,
