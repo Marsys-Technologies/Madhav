@@ -65,6 +65,12 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'End of date range (ISO 8601: YYYY-MM-DD). Default: 1 year from today.',
     },
+    as_of: {
+      type: 'string',
+      description: 'Point-in-time date (ISO 8601: YYYY-MM-DD). When set, returns only the ' +
+        'activation windows CONTAINING this instant (activation_start <= as_of <= activation_end) ' +
+        'and overrides date_from/date_to. Use for "what is active on <date>?" questions.',
+    },
     signal_ids: {
       type: 'array',
       description: 'Optional filter: only return activations for these signal_ids (from bodha_msr_signals).',
@@ -102,6 +108,11 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
     }
 
     const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
+    // WP-1.3(e): track whether the caller supplied an explicit window so the echo can
+    // honestly disclose when a default (today..+1y) was silently applied.
+    const explicitFrom        = args['date_from'] !== undefined && args['date_from'] !== null
+    const explicitTo          = args['date_to'] !== undefined && args['date_to'] !== null
+    const as_of               = args['as_of'] as string | undefined
     const date_from           = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
     const date_to             = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
     const signal_ids          = args['signal_ids'] as string[] | undefined
@@ -114,13 +125,24 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       const actParams: unknown[] = [chart_id, ayanamsha_id]
       let ap = 3
 
-      if (date_from) {
-        actConds.push(`activation_end >= $${ap++}`)
-        actParams.push(date_from)
-      }
-      if (date_to) {
-        actConds.push(`activation_start <= $${ap++}`)
-        actParams.push(date_to)
+      // WP-1.3(e): as_of is a point-in-time query — the window must CONTAIN the instant.
+      // It overrides the range (and its today..+1y default) entirely. The param is bound
+      // ::date so any 'YYYY-MM-DD' (or a full ISO instant) is compared at calendar-date
+      // granularity against the date columns — boundary instants (start/end) match inclusively.
+      if (as_of) {
+        actConds.push(`activation_start <= $${ap++}::date`)
+        actParams.push(as_of)
+        actConds.push(`activation_end >= $${ap++}::date`)
+        actParams.push(as_of)
+      } else {
+        if (date_from) {
+          actConds.push(`activation_end >= $${ap++}::date`)
+          actParams.push(date_from)
+        }
+        if (date_to) {
+          actConds.push(`activation_start <= $${ap++}::date`)
+          actParams.push(date_to)
+        }
       }
       if (signal_ids && signal_ids.length > 0) {
         const phs = signal_ids.map(() => `$${ap++}`).join(', ')
@@ -140,9 +162,17 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       actParams.push(top_k)
       const topKPh = `$${ap++}`
 
+      // WP-1.3(e) date-serialization fix: activation_start/end/peak are DATE columns.
+      // Returning them raw makes node-postgres parse each to a JS Date at the server's
+      // LOCAL midnight, then JSON-serialize to a UTC ISO string — under IST that shifts
+      // e.g. 1964-01-22 to "1964-01-21T18:30:00.000Z" (off-by-one to the consumer, and
+      // un-round-trippable: feeding that back as as_of misses the window). to_char pins
+      // the true calendar value as a plain 'YYYY-MM-DD' text with no timezone coercion.
       const activationSql = `
         SELECT id, signal_id, ayanamsha_id, signature_class,
-               activation_start, activation_end, activation_peak_date,
+               to_char(activation_start, 'YYYY-MM-DD')     AS activation_start,
+               to_char(activation_end, 'YYYY-MM-DD')       AS activation_end,
+               to_char(activation_peak_date, 'YYYY-MM-DD') AS activation_peak_date,
                orb_strength, convergence_score, dasha_activation_proximity_score,
                active_dasha_periods_jsonb, activation_predicted_dates_jsonb,
                source_citation
@@ -183,6 +213,43 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         (activations.rows as Array<{ signal_id?: string }>).map(r => r.signal_id).filter(Boolean) as string[]
       )]
 
+      // WP-1.3(e): honest-empty disclosure. When the date filter yields nothing, an LLM
+      // consumer cannot tell "no windows in this range" from R-45 "the writer emits no
+      // activation dates yet" (WP-2.1 populates them at W2). Run one bounded COUNT aggregate
+      // (single row, not a dump) to classify the empty and disclose the reason.
+      let empty_reason: string | null = null
+      let awaiting_activation_dates = false
+      if (activations.rows.length === 0) {
+        const disc = await query<{ total: number; dated: number }>(
+          `SELECT COUNT(*)::int AS total, COUNT(activation_start)::int AS dated
+             FROM kala_activation
+            WHERE chart_id = $1 AND ayanamsha_id = $2`,
+          [chart_id, ayanamsha_id],
+        )
+        const total = Number(disc.rows[0]?.total ?? 0)
+        const dated = Number(disc.rows[0]?.dated ?? 0)
+        if (total === 0) {
+          empty_reason =
+            `No activation rows exist for chart ${chart_id} at ayanamsha '${ayanamsha_id}'. ` +
+            `The L3 Kāla activation asset (ka_kalasutra) may not be built for this chart, or the ` +
+            `ayanamsha_id does not match a built variant.`
+        } else if (dated === 0) {
+          awaiting_activation_dates = true
+          empty_reason =
+            `PENDING-W3 (honest empty, not an error): ${total} activation rows exist for this ` +
+            `chart/ayanamsha but none carry activation_start/activation_end dates yet (R-45). ` +
+            `Temporal windowing therefore returns empty until WP-2.1 (the ka_kalasutra writer half, ` +
+            `Wave 2) populates activation dates. The serving side honored your date filter correctly; ` +
+            `there is simply no dated data to place in a window.`
+        } else {
+          const window = as_of ? `as_of point ${as_of}` : `date range ${date_from}..${date_to}`
+          empty_reason =
+            `No activation windows overlap the requested ${window}. ${dated} dated activation rows ` +
+            `exist for this chart/ayanamsha outside that filter — widen the window (or drop the date ` +
+            `filter) to see them.`
+        }
+      }
+
       return {
         content: {
           chart_id,
@@ -192,7 +259,19 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           predicates,
           predicate_count:   predicates.length,
           signal_id_refs:    signalRefs,
-          filters: { date_from, date_to, signal_ids, top_k, min_strength, domain: domain ?? null },
+          filters: { date_from, date_to, as_of: as_of ?? null, signal_ids, top_k, min_strength, domain: domain ?? null },
+          // WP-1.3(e): explicit, always-present echo of the date filter actually applied,
+          // including whether the range fell back to its today..+1y default.
+          date_filter: {
+            mode:            as_of ? 'point_in_time' : 'range',
+            as_of:           as_of ?? null,
+            date_from:       as_of ? null : date_from,
+            date_to:         as_of ? null : date_to,
+            range_defaulted: !as_of && !explicitFrom && !explicitTo,
+            honored:         true,
+          },
+          empty_reason,
+          awaiting_activation_dates,
           drill_next: [
             'marsys://tool/L3/query_convergence_windows',
             'marsys://tool/L3/query_life_arc',

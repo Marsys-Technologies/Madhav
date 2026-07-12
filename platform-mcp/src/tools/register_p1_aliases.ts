@@ -425,10 +425,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       ...ChartBase,
       start_date: z.string().optional().describe('Start of date range (mapped to date_from).'),
       end_date:   z.string().optional().describe('End of date range (mapped to date_to).'),
+      as_of:      z.string().optional().describe('Point-in-time date (mapped to as_of) — only windows active as of this date; overrides start_date/end_date.'),
       domain:     z.string().optional().describe('Filter to activations affecting this life domain.'),
     },
     async (params) => {
-      const { chart_id, ayanamsha_id, limit, offset: _offset, start_date, end_date, domain } =
+      const { chart_id, ayanamsha_id, limit, offset: _offset, start_date, end_date, as_of, domain } =
         params as Record<string, unknown>
       void _offset // this primitive has no offset concept
       if (!chart_id) return errOut('kala_windows_get', 'chart_id is required')
@@ -437,6 +438,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
           ...(start_date ? { date_from: start_date } : {}),
           ...(end_date ? { date_to: end_date } : {}),
+          ...(as_of ? { as_of } : {}),
           ...(domain ? { domain } : {}),
           ...(limit != null ? { top_k: limit } : {}),
         }, principal)
