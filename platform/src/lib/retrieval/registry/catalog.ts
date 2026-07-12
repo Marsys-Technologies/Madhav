@@ -73,6 +73,11 @@ import './layers/register_d9_judgment'
 // honestly the moment a stage is classically denied (B.10 — never fabricates a later stage).
 import './layers/register_d10_pact'
 
+// WP-1.4 (LCA-15 / R-48): the Large-N Synthesis Instrument — staged retrieval-with-
+// aggregation (intent → pre-aggregated plan → map-reduce over families → narrative +
+// derivation ledger). The consumer the L2 pre-computation (gestalt/CDLM/CGM) never had.
+import '../synthesis/index'
+
 // ── getCatalog ────────────────────────────────────────────────────────────────
 
 let _catalogLoaded = false
