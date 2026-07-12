@@ -103,9 +103,14 @@ SESSION_LOG. **Resume point: THIS LEDGER + the pushed integration branch.**
   tier — LCA-14 + salience-drowning confirmed live.
 - **Security note (native-owned):** api_key is plaintext in `~/.claude.json` and authenticates directly to
   PRODUCTION — treat as a prod credential; rotate/env-var later.
+- **✅ LCA-17 live-channel residual CLOSED (2026-07-12, native Cowork probe):** independent deployed-channel
+  probe — `get_chart_orientation`, **6 concurrent interleaved calls** alternating `482012f1`/`1c826d5a` (the
+  original LCA-17 trigger pattern) — returned the CORRECT chart_id + distinguishing digests on all 6
+  (13364/15/Mercury vs 13369/13/Saturn), **ZERO substitutions**. This is the live-channel complement to W0's
+  in-process 2M-iteration proof. **W0 disclosed residual fully discharged on the real channel.**
 
 ### §1c — Probe observations carried forward (not W0 scope)
-- **[OBS-1] chart_facts row-count divergence:** native `chart_facts` = 135,645 on prod vs L1_GANITA_CLOSURE canonical 27,554 (~4.9×). Possible rebuild accretion / idempotency drift, or stale closure number. **Relevant at W3 (rebuild must not accrete — §N.3 delete-then-insert). Verify pre/post W3 native rebuild. Do NOT act in W0.**
+- **[OBS-1] chart_facts row-count divergence:** native `chart_facts` = 135,645 on prod vs L1_GANITA_CLOSURE canonical 27,554 (~4.9×). **HYPOTHESIS (native, 2026-07-12): 135,645 ≈ 27,554 × ~5 ayanamshas — the L1 closure count was likely PER-ayanamsha, and prod stores all 5.** Not accretion/idempotency drift if so. **Verify FIRST at W3 reconciliation with one `SELECT ayanamsha_id, COUNT(*) FROM chart_facts WHERE chart_id=... GROUP BY ayanamsha_id` query** — if ~5 roughly-equal groups → hypothesis confirmed, benign. Do NOT act before W3.
 
 ### §1d — Deploy mechanism (confirmed)
 - Deploy = merge to `main` → GitHub Actions `deploy.yml` auto-builds/deploys affected services
@@ -274,6 +279,24 @@ cadence. Resolution: verified W1 WPs merge into **`integration/w1-serving-plane`
 accumulating + resolving cross-WP conflicts there. At W1 CLOSE: single PR integration→main → CI → one deploy
 → full W1 acceptance suite prod-verify. Faithful to native's ratified per-wave deploy; not a scope/contract
 change (no HALT). Same pattern will apply to W2.
+
+**W1 NATIVE DIRECTIVES (binding, 2026-07-12 — issued at W1-resume):**
+- **[ND-W1.1] WP-1.3 coverage reconciliation (binding gate):** at WP-1.3 CLOSE, mechanically diff the UNION of
+  sub-lanes a–i's claimed finding IDs against the full WP-1.3 slice of `deliverables/wp_coverage.jsonl` (**295
+  findings**). Every ID must be verified-fixed OR explicitly re-dispositioned WITH reason. **WP-1.3 does not
+  close with an unreconciled remainder** — the diff result is written into this ledger.
+- **[ND-W1.2] WP-1.2β closes the rubric loop IN-WAVE (not deferred to W4):** β must include the Lane-6
+  **rubric-7.4 raw-metric re-run** across ALL **16 ranked surfaces**, both charts, **E-2 discipline** (raw
+  values always, no silent thresholds). **Acceptance:** 0% UNATTRIBUTED; wealth∩relationship top-20 overlap
+  **≤25%** with inline rationale.
+- **[ND-W1.3] Fold ledger follow-ups in-wave (don't carry silently):** **F-WP17-1** (multi-school bundle
+  re-bridge) + the **contract-surface phantom tool declarations** (kp_query/query_kp_ruling_planets/
+  timeline_query in tool_metadata/contract_bridge/retrieval_capability_spec) belong to W1 serving scope → fold
+  into **WP-1.3h** (dead-registry/help-honesty) or a **WP-1.7 follow-through**; verify like any intervention.
+  R-45 stays with WP-2.1 (unchanged).
+- **[ND-W1.4] Expected external check post-W1-deploy:** after the W1 deploy, the native will run an independent
+  Cowork-side live probe (attribution populated, domains diverging). Note as an expected external verification
+  complementing the verifier-agent prod-verify.
 
 - **Batch A (dispatched 2026-07-12, parallel, disjoint scopes):**
   - **WP-1.1** (LCA-2 consult resurrection, CRITICAL; cov 7) — scope `app/api/consult/**`. Re-point consult
