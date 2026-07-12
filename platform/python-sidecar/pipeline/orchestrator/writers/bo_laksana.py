@@ -19,6 +19,23 @@ Design invariants (anti-drift spine):
 - L3 hook columns (dasha_activation_proximity_score, active_dasha_periods_jsonb,
   activation_predicted_dates_jsonb) are written as NULL — L3 Kāla fills them.
 
+WP-2.4 (MSR ingestion redesign — LCA-9b-1..5) hardening:
+- FLOOD CAP (9b-1): per-varga aspect/matrix families (aspect_jaimini_per_varga et al.)
+  are no longer 1:1-emitted. Groups over RATIFIED_FLOOD_CAP collapse to ONE aggregate
+  rollup signal per (category × varga) that cites every member fact_id as a resolving
+  constituent — narrows the funnel instead of flooding it.
+- SALIENCE RE-TIERING (9b-2): divisional/granular signals (varga != D1, or category
+  ending _per_varga) are barred from major/chart_defining via a tier ceiling. This is
+  the SOURCE fix behind WP-1.2d's serving-time salience cap.
+- KP HOUSE-AWARE DOMAINS (9b-3): cusp/KP-significator facts inherit the domains of the
+  bhava their cusp number denotes (2nd/11th → wealth, 7th → relationship, …) so wealth
+  significators can surface in a wealth query.
+- CONSTITUENT REFERENTIAL INTEGRITY (9b-5, §N.5): every constituent_facts_array entry
+  is filtered against the chart's real chart_facts.fact_id set and the signal's own
+  (guaranteed-resolving) fact_id is always unioned in — NO signal cites a fact_id that
+  resolves to nothing. Enforced permanently by
+  platform/scripts/governance/msr_referential_integrity.py.
+
 HEAVY writer: plan_substeps returns one SubStep per ayanamsha.
 Each sub-step runs inside its own SAVEPOINT managed by the orchestrator.
 """
@@ -52,7 +69,27 @@ CANONICAL_AYANAMSHAS = [
     "true_chitra",
 ]
 
-ENGINE_VERSION = "bo_laksana_v2.1"
+ENGINE_VERSION = "bo_laksana_v2.2"
+
+# ── WP-2.4 (LCA-9b-1): flood-prone per-varga families ─────────────────────────
+# These categories 1:1-emit thousands of near-identical granular signals (worst:
+# aspect_jaimini_per_varga = 15,660/chart of chart-independent sign→sign rashi
+# drishti). Groups larger than RATIFIED_FLOOD_CAP collapse to ONE aggregate
+# rollup signal per (category × varga) that references every member fact_id.
+_FLOOD_PRONE_FAMILIES = frozenset({
+    "aspect_jaimini_per_varga",
+    "aspect_parashari_per_varga",
+    "net_argala_per_varga",
+    "conjunction_per_varga",
+    "lord_in_house_per_varga",
+    "lord_aspects_lord_per_varga",
+    "dispositor_chain_per_varga",
+    "parivartana_per_varga",
+    "virupa_drishti",
+})
+# Ratified cap: a (category × varga) group with more members than this is rolled
+# up into one aggregate signal (constituents preserve full L1 traceability).
+RATIFIED_FLOOD_CAP = 12
 
 # ── L1 asset inference from source_calculation prefix ────────────────────────
 
@@ -375,7 +412,76 @@ _CATEGORY_DEFAULT_DOMAINS: dict[str, list[str]] = {
 }
 
 
-def _assign_domains(fact_category: str, source_subsystem: str) -> list[str]:
+# ── WP-2.4 (LCA-9b-3): KP house-aware domain inheritance ──────────────────────
+#
+# KP cusp facts (cusp_kp_lords, kp_cuspal_significators, kp_ruling_planets_natal)
+# were mapped to a fixed character|relationship set, so a 2nd/11th-cusp wealth
+# significator could never surface in a wealth query (63% of cusp facts
+# un-consumed in the wealth channel). Fix: parse the cusp/house number and
+# inherit that bhava's canonical domains — the significator's karyatva follows
+# the house it rules.
+#
+# Bhava → domain map keyed to the 6 canonical domains
+# (career, wealth, health, relationship, spirituality, character).
+_BHAVA_DOMAINS: dict[int, list[str]] = {
+    1:  ["character", "health"],
+    2:  ["wealth", "character"],
+    3:  ["career", "character"],
+    4:  ["character", "wealth"],
+    5:  ["character", "spirituality"],
+    6:  ["health", "career"],
+    7:  ["relationship"],
+    8:  ["health", "spirituality"],
+    9:  ["spirituality", "career"],
+    10: ["career"],
+    11: ["wealth", "career"],
+    12: ["spirituality", "health"],
+}
+
+_KP_HOUSE_CATS = frozenset({
+    "cusp_kp_lords", "kp_cuspal_significators", "kp_ruling_planets_natal",
+})
+
+# Matches CUSP_01 / HOUSE_2 / BHAVA-11 etc. in fact_subject.
+_CUSP_NUM_RE = re.compile(r"(?:CUSP|HOUSE|BHAVA)[_\-]?0*(\d{1,2})", re.IGNORECASE)
+
+
+def _parse_house_number(fact_subject: str | None, fvj: dict | None) -> int | None:
+    """Extract the 1..12 bhava/cusp number from jsonb keys or fact_subject."""
+    if fvj:
+        for k in ("house", "house_number", "bhava", "cusp", "cusp_number"):
+            v = fvj.get(k)
+            if v is not None:
+                try:
+                    n = int(v)
+                except (TypeError, ValueError):
+                    continue
+                if 1 <= n <= 12:
+                    return n
+    m = _CUSP_NUM_RE.search(fact_subject or "")
+    if m:
+        n = int(m.group(1))
+        if 1 <= n <= 12:
+            return n
+    return None
+
+
+def _assign_kp_domains(fact_subject: str | None, fvj: dict | None) -> list[str] | None:
+    """Domains inherited from the KP cusp's bhava, or None if house not parseable."""
+    house = _parse_house_number(fact_subject, fvj)
+    if house is not None:
+        return list(_BHAVA_DOMAINS.get(house, ["career", "character"]))
+    return None
+
+
+def _assign_domains(fact_category: str, source_subsystem: str,
+                    fact_subject: str | None = None,
+                    fvj: dict | None = None) -> list[str]:
+    # WP-2.4 (9b-3): KP cusp facts inherit their bhava's domains house-by-house.
+    if fact_category in _KP_HOUSE_CATS:
+        kp = _assign_kp_domains(fact_subject, fvj)
+        if kp:
+            return kp
     if fact_category in _DOMAIN_MAP:
         return _DOMAIN_MAP[fact_category]
     return _CATEGORY_DEFAULT_DOMAINS.get(source_subsystem, ["career", "character"])
@@ -425,16 +531,42 @@ def _duration_class(fact_category: str) -> str:
 
 # ── Signature tier from salience ──────────────────────────────────────────────
 
-def _signature_tier(computed_salience: float) -> str:
+# Tier lattice (ascending). A ceiling clamps a signal to at most that tier.
+_TIER_ORDER = ("background", "supporting", "major", "chart_defining")
+
+
+def _signature_tier(computed_salience: float, ceiling: str | None = None) -> str:
     # V2 thresholds — conservative placeholders recut against live v2 distribution post-rebuild.
     # V2 values differ from V1 due to class_prior × verification_rescale scaling.
     if computed_salience >= 2.0:
-        return "chart_defining"
-    if computed_salience >= 0.8:
-        return "major"
-    if computed_salience >= 0.3:
+        tier = "chart_defining"
+    elif computed_salience >= 0.8:
+        tier = "major"
+    elif computed_salience >= 0.3:
+        tier = "supporting"
+    else:
+        tier = "background"
+    # WP-2.4 (9b-2): divisional/granular signals are barred from the top tiers.
+    if ceiling is not None and ceiling in _TIER_ORDER:
+        if _TIER_ORDER.index(tier) > _TIER_ORDER.index(ceiling):
+            tier = ceiling
+    return tier
+
+
+def _tier_ceiling_for(fact_category: str, varga_id: str | None) -> str | None:
+    """WP-2.4 (9b-2): the max tier a signal of this category/varga may reach.
+
+    Divisional (non-D1 varga) and granular per-varga families are structurally
+    incapable of being 'chart-defining' — they are one facet of a divisional
+    matrix, not a whole-chart signature. Cap them at 'supporting'. Whole-chart
+    D1 structures (yoga_label, dosha_label, D1 dignity/shadbala) are uncapped and
+    can still reach chart_defining on their own salience.
+    """
+    if fact_category.endswith("_per_varga") or fact_category in _FLOOD_PRONE_FAMILIES:
         return "supporting"
-    return "background"
+    if varga_id is not None and str(varga_id).upper() not in ("D1", ""):
+        return "supporting"
+    return None
 
 
 # ── Signature class derivation ────────────────────────────────────────────────
@@ -831,6 +963,85 @@ def _fetch_invariant_facts(conn: Any, chart_id: str) -> list[dict]:
     return _fetch_dict(conn, _FETCH_INVARIANT_SQL, [chart_id])
 
 
+def _fetch_valid_fact_ids(conn: Any, chart_id: str) -> set[str]:
+    """WP-2.4 (9b-5 / §N.5): the authoritative set of resolvable chart_facts.fact_id
+    for this chart. Every constituent citation is filtered against this set so no
+    signal ever cites a fact_id that resolves to nothing."""
+    rows = _fetch_dict(
+        conn,
+        "SELECT fact_id FROM chart_facts WHERE chart_id = %s",
+        [chart_id],
+    )
+    return {str(r["fact_id"]) for r in rows if r.get("fact_id") is not None}
+
+
+# ── WP-2.4 (LCA-9b-1): per-varga flood aggregation ────────────────────────────
+
+def _make_aggregate_fact_row(members: list[dict], varga: str | None) -> dict:
+    """Collapse a large (category × varga) member group into ONE synthetic fact
+    row. Fed to _build_signal_row like any real fact, it yields a single aggregate
+    rollup signal whose constituent_facts_array references every member fact_id
+    (full L1 traceability preserved — nothing is dropped, only de-flooded).
+
+    The synthetic row's own fact_id is the first member's (a real chart_facts row,
+    so it resolves); every member id is carried in constituent_facts_array.
+    """
+    first = dict(members[0])
+    member_ids = [str(m["fact_id"]) for m in members if m.get("fact_id")]
+    sample_keys = sorted({str(m.get("fact_key") or "") for m in members})[:8]
+    varga_label = varga or "all"
+    first["fact_key"] = f"aggregate_{varga_label}"
+    first["fact_value_num"] = float(len(members))
+    first["fact_value_text"] = (
+        f"{len(members)} {first.get('fact_category')} members rolled up "
+        f"(varga={varga_label})"
+    )
+    first["fact_value_jsonb"] = {
+        "aggregated": True,
+        "member_count": len(members),
+        "member_sample_keys": sample_keys,
+        "varga": varga_label,
+        "constituent_facts_array": member_ids,
+        "wp": "WP-2.4:flood_cap",
+    }
+    return first
+
+
+def _partition_flood(fact_rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Split fetched fact rows into (rows_to_emit_1to1, synthetic_aggregate_rows).
+
+    Non-flood-prone categories pass through 1:1. Flood-prone families are grouped
+    by (category × varga): groups at/under RATIFIED_FLOOD_CAP still emit 1:1
+    (small = not a flood); groups over the cap collapse to one aggregate row.
+    """
+    from collections import defaultdict
+
+    passthrough: list[dict] = []
+    flood_groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
+
+    for r in fact_rows:
+        cat = str(r.get("fact_category") or "")
+        if cat not in _FLOOD_PRONE_FAMILIES:
+            passthrough.append(r)
+            continue
+        fvj = r.get("fact_value_jsonb")
+        if isinstance(fvj, str):
+            try:
+                fvj = json.loads(fvj)
+            except Exception:
+                fvj = {}
+        varga = _extract_varga_id(str(r.get("fact_key") or ""), fvj if isinstance(fvj, dict) else None) or "NA"
+        flood_groups[(cat, varga)].append(r)
+
+    aggregates: list[dict] = []
+    for (cat, varga), members in flood_groups.items():
+        if len(members) <= RATIFIED_FLOOD_CAP:
+            passthrough.extend(members)          # small group — no flood, keep 1:1
+        else:
+            aggregates.append(_make_aggregate_fact_row(members, None if varga == "NA" else varga))
+    return passthrough, aggregates
+
+
 # ── Salience helpers ──────────────────────────────────────────────────────────
 
 def _safe_float(v: Any, default: float = 0.5) -> float:
@@ -981,6 +1192,7 @@ def _build_signal_row(
     now: str,
     ayanamsha_override: str | None = None,
     classical_catalog: tuple[set[str], set[str], dict[str, list[str]], set[str]] | None = None,
+    valid_fact_ids: set[str] | None = None,
 ) -> dict:
     fact_id  = str(fact_row.get("fact_id", ""))
     fact_cat = str(fact_row.get("fact_category", ""))
@@ -1005,12 +1217,26 @@ def _build_signal_row(
     if not isinstance(fvj, dict):
         fvj = {}
 
-    # Constituent facts: from jsonb or fallback to self
+    # Constituent facts (WP-2.4 9b-5 / §N.5 — referential integrity).
+    # Candidates come from the L1 fact's jsonb, but L1 writers (e.g. the dosha
+    # catalog) sometimes store internal reference ids that are NOT chart_facts
+    # fact_ids and resolve to NOTHING. Filter every candidate against the chart's
+    # real fact_id set (valid_fact_ids) and ALWAYS union the signal's own fact_id
+    # (a genuine chart_facts row, guaranteed to resolve). Result: no signal ever
+    # cites a constituent that fails to resolve.
     const_facts_raw = fvj.get("constituent_facts_array") or fvj.get("constituent_fact_ids")
     if const_facts_raw and isinstance(const_facts_raw, list):
-        constituent_facts = [str(f) for f in const_facts_raw if f]
+        candidates = [str(f) for f in const_facts_raw if f]
     else:
-        constituent_facts = [fact_id]
+        candidates = []
+    if valid_fact_ids is not None:
+        resolved = [f for f in candidates if f in valid_fact_ids]
+    else:
+        resolved = list(candidates)
+    # Own fact_id is authoritative (it IS a chart_facts row) — always first.
+    if fact_id and fact_id not in resolved:
+        resolved.insert(0, fact_id)
+    constituent_facts = resolved or ([fact_id] if fact_id else [])
 
     # Tags: merge fact_value_jsonb extras into config
     tags: dict = {}
@@ -1045,8 +1271,10 @@ def _build_signal_row(
     varga_id   = _extract_varga_id(fact_key, fvj)
     tradition  = _infer_tradition(fact_cat, sc)
 
-    # Domains
-    domains        = _assign_domains(fact_cat, source_subsystem)
+    # Domains (WP-2.4 9b-3: KP cusp facts inherit their bhava's domains)
+    domains        = _assign_domains(fact_cat, source_subsystem,
+                                     fact_subject=str(fact_row.get("fact_subject") or ""),
+                                     fvj=fvj)
     duration_class = _duration_class(fact_cat)
 
     # B3: Populate configuration_jsonb.graha for yoga/dosha signals (CONTRACT-1).
@@ -1138,7 +1366,10 @@ def _build_signal_row(
         "epistemic_tier":                           vpass,
         "epistemic_jsonb":                          json.dumps(epistemic_jsonb),
         "salience_conditioned_by_jsonb":            None,
-        "signature_tier":                           _signature_tier(computed_salience),
+        # WP-2.4 (9b-2): granular/divisional signals capped below major/chart_defining.
+        "signature_tier":                           _signature_tier(
+                                                        computed_salience,
+                                                        _tier_ceiling_for(fact_cat, varga_id)),
         "valence":                                  valence,
         "lel_origin":                               False,   # LEL data is L3-gated
         # ── Structured configuration ──────────────────────────────────────────
@@ -1885,6 +2116,21 @@ class BoLaksanaWriter(WriterBase):
                 "chart_facts is empty; L1 (Gaṇita) must be built before Bodha"
             )
 
+        # WP-2.4 (9b-5 / §N.5): authoritative resolvable fact_id set for this chart.
+        valid_fact_ids = _fetch_valid_fact_ids(conn, chart_id)
+
+        # WP-2.4 (9b-1): de-flood per-varga families BEFORE per-row emission.
+        # Passthrough rows emit 1:1; oversized (category × varga) groups collapse
+        # to one aggregate row each (constituents preserve full traceability).
+        pre_flood = len(fact_rows)
+        fact_rows, aggregate_rows = _partition_flood(fact_rows)
+        fact_rows = fact_rows + aggregate_rows
+        logger.info(
+            "[bo_laksana] %s — flood cap: %d fact rows → %d after de-flood "
+            "(%d aggregate rollups)",
+            ayanamsha, pre_flood, len(fact_rows), len(aggregate_rows),
+        )
+
         # Classical bridge (P3B fix): bulk-preload catalog/rule lookups + validate
         # referenced chunk_ids once per sub-step — no per-row query storm.
         yoga_ids, dosha_ids, yoga_rule_ids = _build_classical_catalog_lookup(conn)
@@ -1902,6 +2148,7 @@ class BoLaksanaWriter(WriterBase):
                     strength_lookup, dignity_lookup, av_lookup, now,
                     ayanamsha_override=ayanamsha,
                     classical_catalog=classical_catalog,
+                    valid_fact_ids=valid_fact_ids,
                 )
                 signal_rows.append(row)
             except Exception as exc:
