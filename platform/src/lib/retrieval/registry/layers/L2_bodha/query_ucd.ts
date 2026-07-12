@@ -49,6 +49,29 @@ import { PRIORS_VERSION } from '../../../ranking/priors_config'
 // down to entity profiles, not a full atomic page.
 const CANDIDATE_FETCH_SIZE = 300
 
+/**
+ * WP-0.1 / LCA-17 defense-in-depth (F-0893/0902/0905/0908).
+ *
+ * Extract the chart identity a query_ucd payload stamps into `content.chart_id`.
+ * The orientation digest ALWAYS echoes the chart_id it was computed for; a payload
+ * whose echoed chart_id does not match the requested chart_id is a cross-chart
+ * substitution and must never be served — regardless of how it arose (a cache-key
+ * collision, a future caching bug, etc.). Returns undefined when no chart identity
+ * can be read (treated as a match-failure by callers, i.e. do not trust it).
+ */
+export function orientationChartIdOf(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== 'object') return undefined
+  const content = (payload as Record<string, unknown>).content
+  if (!content || typeof content !== 'object') return undefined
+  const cid = (content as Record<string, unknown>).chart_id
+  return typeof cid === 'string' ? cid : undefined
+}
+
+/** True iff the payload's echoed chart identity matches the requested chart_id. */
+export function orientationEchoMatches(payload: unknown, chart_id: string): boolean {
+  return orientationChartIdOf(payload) === chart_id
+}
+
 export const queryUcdCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_ucd',
   type:  'tool',
@@ -150,7 +173,20 @@ export const queryUcdCapability: CapabilityDescriptor = {
       signal_class: args.signal_class, min_salience: args.min_salience,
       response_format, priors_version: PRIORS_VERSION })
     const _cached = cacheGet(_cacheKey)
-    if (_cached !== undefined) return _cached as ReturnType<typeof this.handler>
+    // WP-0.1 / LCA-17 defense-in-depth: only serve a cached payload whose echoed
+    // chart identity matches the requested chart_id. A mismatch is a cross-chart
+    // substitution — never serve it; fall through to a fresh compute. This holds
+    // even if a future key-collision reintroduces the substitution the SHA-256
+    // cache-key fix already prevents. Isolation strictly stronger, never looser.
+    if (_cached !== undefined) {
+      if (orientationEchoMatches(_cached, chart_id)) {
+        return _cached as ReturnType<typeof this.handler>
+      }
+      console.error(
+        `[query_ucd] LCA-17 GUARD: discarded cached payload for chart ${chart_id} — ` +
+        `echoed chart_id was ${String(orientationChartIdOf(_cached))}. Recomputing.`,
+      )
+    }
     const top_k           = Math.min(Number(args.top_k_signals ?? 20), 100)
     const top_k_entities  = Math.min(Number(args.top_k_entities ?? 10), 30)
     const signal_class    = args.signal_class ? String(args.signal_class) : null
@@ -289,6 +325,16 @@ export const queryUcdCapability: CapabilityDescriptor = {
           },
         },
         is_error: false as const,
+      }
+      // WP-0.1 / LCA-17 defense-in-depth: never cache or serve a freshly-computed
+      // payload whose echoed chart identity does not match the requested chart_id.
+      // (By construction it does — content.chart_id is set to chart_id above — this
+      // is a hard invariant guard, not an expected branch.)
+      if (!orientationEchoMatches(result, chart_id)) {
+        return {
+          content: { error: 'LCA-17 chart-identity invariant violated in query_ucd', chart_id, ayanamsha_id },
+          is_error: true as const,
+        }
       }
       cacheSet(_cacheKey, result)
       return result
