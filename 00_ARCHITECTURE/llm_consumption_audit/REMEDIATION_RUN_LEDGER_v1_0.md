@@ -406,7 +406,14 @@ change (no HALT). Same pattern will apply to W2.
   13 assets real data table-counted, kala_taranga budgeted/drill-refuses, §N.5 resolves, disposition HONEST
   adversarially, whitelist +13 green, entitlement enforced; native cgm_motifs=0 = known LCA-6/WP-2.2). WP-1.3(i)
   [apex/assess dedup + verdict_skeleton serving fixes + PENDING-W3 temporal] IMPL DONE, **blind verifier RUNNING**.
-  (e),(h) queued. **(f)↔(i) share platform-mcp {register_p1_aliases,registry_bridge} → merge (i) w/ conflict-resolve.**
+  ✅ **WP-1.3(i) CONFIRMED-FIXED + MERGED** (`efc9ba52`; apex/assess dedup restores params, lord bucket 0→42
+  parivartana, starvation fixed, PENDING-W3 temporal honest [kala_activation native 0/13364 dated], m8 failures
+  reproduced pre-existing; auto-merged clean with (f) on shared platform-mcp files, tsc 0 both, 9/9 cross-lane).
+  **B2a COMPLETE (a,f,i all integrated).**
+- **Batch B2b (dispatched):** WP-1.3(e) temporal-windows serving (honor+echo date params; **SERVING HALF ONLY →
+  acceptance PENDING-W3** with WP-2.1 writer fix) + WP-1.3(h) cleanup lane (LCA-12 dead-tool purge + help regen +
+  F-WP17-1 multi-school re-bridge + contract-surface phantom decls + F-WP13-testcleanup m8 counts). Disjoint (kala
+  tool vs registry/contract). Both STEP-0 on integration (`efc9ba52`).
   **B2 BINDING REMINDERS (native, 2026-07-12):**
   - **(a) §7.3 disposition per asset:** SERVE (with budget discipline) = DEFAULT; PARK only behind a genuine
     design question → flag `parked_pending_native_review` + reason IN LEDGER; silent drops + autonomous
