@@ -66,6 +66,7 @@ BPHS_CH18_COMBO   = "BPHS Ch.18 / Sarvartha Chintamani (graha yoga disease indic
 BPHS_CH18_DIGNITY = "BPHS Ch.18 / classical Ayurvedic astrology (dignity modifiers)"
 AH_BPHS           = "Ashtanga Hridayam / BPHS"
 AH_HS_BPHS_CH3    = "Ashtanga Hridayam / Hora Sara / BPHS Ch.3"
+KALAPURUSHA       = "BPHS Ch.4 Kalapurusha (Cosmic Man) sign→body-part / Ashtanga Hridayam element→dosha"
 
 # ── Tier 0: Medical graha mappings (9 classical Jyotish grahas) ───────────────
 
@@ -362,6 +363,27 @@ NAKSHATRA_MEDICAL: list[dict] = [
 ]
 
 
+# ── Tier 4: Kalapurusha sign → body-part reference (WP-2.5 / LCA-16 organ taxonomy) ──
+# The Cosmic Man (Kalapurusha) zodiacal body-map: Aries=head … Pisces=feet (BPHS Ch.4).
+# element→dosha (Ashtanga Hridayam): fire→pitta, earth→kapha/vata, air→vata, water→kapha.
+# Consumed by disease-domain questions that require a doctrinal sign→body-part map alongside
+# the graha→organ map (bg_medical_mappings) and nakshatra→body-part map (bg_nakshatra_medical).
+SIGN_MEDICAL: list[dict] = [
+    {"sign_number": 1,  "sign_name": "Aries",       "body_part": "head/brain/skull",              "organ_systems": ["brain", "skull"],                 "element": "fire",  "dosha": "pitta", "classical_citation": KALAPURUSHA},
+    {"sign_number": 2,  "sign_name": "Taurus",      "body_part": "face/neck/throat",              "organ_systems": ["face", "throat", "thyroid"],      "element": "earth", "dosha": "kapha", "classical_citation": KALAPURUSHA},
+    {"sign_number": 3,  "sign_name": "Gemini",      "body_part": "shoulders/arms/hands/lungs",    "organ_systems": ["arms", "shoulders", "lungs"],     "element": "air",   "dosha": "vata",  "classical_citation": KALAPURUSHA},
+    {"sign_number": 4,  "sign_name": "Cancer",      "body_part": "chest/breast/lungs/heart",      "organ_systems": ["chest", "breast", "lungs"],       "element": "water", "dosha": "kapha", "classical_citation": KALAPURUSHA},
+    {"sign_number": 5,  "sign_name": "Leo",         "body_part": "stomach/upper-abdomen/heart",   "organ_systems": ["heart", "stomach", "spine"],      "element": "fire",  "dosha": "pitta", "classical_citation": KALAPURUSHA},
+    {"sign_number": 6,  "sign_name": "Virgo",       "body_part": "abdomen/intestines/waist",      "organ_systems": ["intestines", "abdomen"],          "element": "earth", "dosha": "vata",  "classical_citation": KALAPURUSHA},
+    {"sign_number": 7,  "sign_name": "Libra",       "body_part": "lower-abdomen/pelvis/kidneys",  "organ_systems": ["kidneys", "pelvis", "bladder"],   "element": "air",   "dosha": "vata",  "classical_citation": KALAPURUSHA},
+    {"sign_number": 8,  "sign_name": "Scorpio",     "body_part": "genitals/excretory-organs",     "organ_systems": ["genitals", "excretory", "rectum"],"element": "water", "dosha": "kapha", "classical_citation": KALAPURUSHA},
+    {"sign_number": 9,  "sign_name": "Sagittarius", "body_part": "hips/thighs",                   "organ_systems": ["hips", "thighs", "liver"],        "element": "fire",  "dosha": "pitta", "classical_citation": KALAPURUSHA},
+    {"sign_number": 10, "sign_name": "Capricorn",   "body_part": "knees/joints",                  "organ_systems": ["knees", "joints", "bones"],       "element": "earth", "dosha": "vata",  "classical_citation": KALAPURUSHA},
+    {"sign_number": 11, "sign_name": "Aquarius",    "body_part": "calves/ankles/circulation",     "organ_systems": ["calves", "ankles", "circulation"],"element": "air",   "dosha": "vata",  "classical_citation": KALAPURUSHA},
+    {"sign_number": 12, "sign_name": "Pisces",      "body_part": "feet",                          "organ_systems": ["feet", "lymphatic"],              "element": "water", "dosha": "kapha", "classical_citation": KALAPURUSHA},
+]
+
+
 # ── Seed functions ─────────────────────────────────────────────────────────────
 
 def seed_medical_mappings(
@@ -452,6 +474,37 @@ def seed_medical_mappings(
             inserted_nakshatras += cur.rowcount or 0
     counts["bg_nakshatra_medical"] = inserted_nakshatras
     logger.info("[l0_medical] bg_nakshatra_medical: %d rows upserted", inserted_nakshatras)
+
+    # ── bg_sign_medical (Kalapurusha sign→body-part; migration 432) ─────────────
+    sign_sql = """
+        INSERT INTO bg_sign_medical
+            (sign_number, sign_name, body_part, organ_systems, element, dosha,
+             classical_citation)
+        VALUES
+            (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (sign_number) DO UPDATE SET
+            sign_name          = EXCLUDED.sign_name,
+            body_part          = EXCLUDED.body_part,
+            organ_systems      = EXCLUDED.organ_systems,
+            element            = EXCLUDED.element,
+            dosha              = EXCLUDED.dosha,
+            classical_citation = EXCLUDED.classical_citation
+    """
+    inserted_signs = 0
+    with conn.cursor() as cur:
+        for row in SIGN_MEDICAL:
+            cur.execute(sign_sql, (
+                row["sign_number"],
+                row["sign_name"],
+                row["body_part"],
+                row["organ_systems"],
+                row["element"],
+                row["dosha"],
+                row["classical_citation"],
+            ))
+            inserted_signs += cur.rowcount or 0
+    counts["bg_sign_medical"] = inserted_signs
+    logger.info("[l0_medical] bg_sign_medical: %d rows upserted", inserted_signs)
 
     if autocommit:
         conn.commit()

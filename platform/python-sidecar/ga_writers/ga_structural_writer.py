@@ -380,6 +380,15 @@ DOSHA_LIBRARY: list[dict[str, Any]] = [
     {"name": "PAPAKARTARI", "group": "affliction",
      "conditions": [("malefics_flanking_house")],
      "citation": "BPHS.Ch.6"},
+    # WP-2.5/LCA-10: sensitive-degree doshas wired from ga_sensitive_degree's cited
+    # classical rules (gandanta sandhi; mrityu-bhaga fatal degree). Fired inline from the
+    # grahas already in scope — no cross-asset dependency.
+    {"name": "GANDANTA_DOSHA", "group": "affliction",
+     "conditions": [("any_graha", "in_gandanta")],
+     "citation": "BPHS/Sarvartha_Chintamani_gandanta"},
+    {"name": "MRITYU_BHAGA_DOSHA", "group": "affliction",
+     "conditions": [("any_graha", "on_mrityu_bhaga")],
+     "citation": "BPHS/Jataka_Parijata_mrityu_bhaga"},
 ]
 
 # Karakatva significances (G19 — 30 significances)
@@ -2182,6 +2191,34 @@ def _build_dosha_rows(
             if lord and int(lord.get("house", 0)) in {6, 8, 12}:
                 fires = True
                 reason = f"Lord of {h_num}H ({lord_name}) in dusthana"
+
+        elif name in ("GANDANTA_DOSHA", "MRITYU_BHAGA_DOSHA"):
+            # WP-2.5/LCA-10: fire from ga_sensitive_degree's cited classical checks,
+            # computed inline over the grahas already loaded (no cross-asset dependency).
+            try:
+                from ga_writers.ga_sensitive_degree_writer import (
+                    check_gandanta, check_mrityu_bhaga,
+                )
+                afflicted: list[str] = []
+                for _g in grahas_data:
+                    _gn = _g.get("name")
+                    if _gn in (None, "Lagna"):
+                        continue
+                    _lon = float(_g.get("longitude", 0.0))
+                    _sn = int(_lon // 30) % 12
+                    _deg = _lon % 30.0
+                    if name == "GANDANTA_DOSHA":
+                        if check_gandanta(_sn, _deg)["fired"]:
+                            afflicted.append(_gn)
+                    else:
+                        if check_mrityu_bhaga(_gn, _sn, _deg).get("fired"):
+                            afflicted.append(_gn)
+                if afflicted:
+                    fires = True
+                    _label = "gandanta sandhi" if name == "GANDANTA_DOSHA" else "mrityu-bhaga"
+                    reason = f"{_label}: {', '.join(sorted(set(afflicted)))}"
+            except Exception:
+                fires = False  # never regress the dosha pass on a wiring error
 
         if fires:
             _primary = name.split("_")[0]
