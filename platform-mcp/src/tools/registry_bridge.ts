@@ -1339,12 +1339,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── assess_marriage (D8 L-DOMAIN reconciled bundle) ──────────────────────
   server.tool(
     'assess_marriage',
-    'Reconciled marriage/relationship assessment for a chart. Orchestrates the 7th lord + Venus kāraka + D9 + bhāvat-bhāva analysis across the Bodha synthesis layer (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, activating dasha window, and classical citations for the relationship domain. judgment_flags marks inferences requiring acharya validation. chart_id is required — never defaulted.',
+    'Reconciled marriage/relationship assessment for a chart. Orchestrates the 7th lord + Venus kāraka + D9 + bhāvat-bhāva analysis across the Bodha synthesis layer (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, activating dasha window, and classical citations for the relationship domain. judgment_flags marks inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_marriage_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
       if (!chart_id) return errorOutput('assess_marriage', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1352,7 +1354,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_marriage',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              ...(max_signals_per_lens != null ? { max_signals_per_lens } : {}),
+              ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
         ])
@@ -1367,12 +1371,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── assess_career (D8 L-DOMAIN reconciled bundle) ────────────────────────
   server.tool(
     'assess_career',
-    'Reconciled career/vocation assessment for a chart. Orchestrates the 10th lord + Saturn kāraka + D10 + yoga detection + activating dasha window. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    'Reconciled career/vocation assessment for a chart. Orchestrates the 10th lord + Saturn kāraka + D10 + yoga detection + activating dasha window. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_career_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
       if (!chart_id) return errorOutput('assess_career', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1380,7 +1386,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_career',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              ...(max_signals_per_lens != null ? { max_signals_per_lens } : {}),
+              ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
         ])
@@ -1395,12 +1403,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── assess_health (D8 L-DOMAIN reconciled bundle) ────────────────────────
   server.tool(
     'assess_health',
-    'Reconciled health/vitality assessment for a chart. Orchestrates the 1st + 6th + 8th lords + Sun kāraka + afflictions + D1/D6 analysis. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    'Reconciled health/vitality assessment for a chart. Orchestrates the 1st + 6th + 8th lords + Sun kāraka + afflictions + D1/D6 analysis. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_health_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
       if (!chart_id) return errorOutput('assess_health', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1408,7 +1418,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_health',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              ...(max_signals_per_lens != null ? { max_signals_per_lens } : {}),
+              ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
         ])
@@ -1423,12 +1435,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── assess_wealth (D8 L-DOMAIN reconciled bundle) ────────────────────────
   server.tool(
     'assess_wealth',
-    'Reconciled wealth/prosperity assessment for a chart. Orchestrates the 2nd + 11th lords + Jupiter kāraka + dasha activation window + classical citations. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted.',
+    'Reconciled wealth/prosperity assessment for a chart. Orchestrates the 2nd + 11th lords + Jupiter kāraka + dasha activation window + classical citations. Calls Bodha domain reading (L2), Kāla temporal activation (L3), and the contradiction surface. Returns convergences, tensions, and judgment_flags for inferences requiring acharya validation. chart_id is required — never defaulted. (Canonical assessment tool — the former apex_wealth_assess alias was retired per WP-1.3(i)/LCA-11; its tuning params are folded in below.)',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
       if (!chart_id) return errorOutput('assess_wealth', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1436,7 +1450,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_wealth',
-            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id) },
+            { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
+              ...(max_signals_per_lens != null ? { max_signals_per_lens } : {}),
+              ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
         ])
@@ -1716,9 +1732,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
   // ── judgment_query (R5 W3, design §28.1) ──────────────────────────────────
   // marsys://tool/L-JUDGMENT/judgment_query — the bhava-adhyaya classical checklist
-  // recipe as one instrument, generalizing apex_marriage_assess/apex_career_assess/
-  // apex_health_assess/apex_wealth_assess (design §29 fold-in). Those apex_* aliases
-  // are UNCHANGED and remain fully answerable — no breaking removal (brief §W3 gate).
+  // recipe as one instrument, generalizing the assess_marriage/assess_career/
+  // assess_health/assess_wealth domain tools (design §29 fold-in). The redundant
+  // apex_*_assess aliases were retired per WP-1.3(i)/LCA-11; the canonical assess_*
+  // tools remain fully answerable (same capability, richer output).
   server.tool(
     'judgment_query',
     'THE classical bhava-adhyaya judgment recipe as ONE instrument (design §28.1) — the acharya\'s ' +
@@ -1732,9 +1749,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'doshas · timing hooks (current + upcoming dasha windows for the lord/karaka) · a deterministic ' +
     'promise-register verdict (never an LLM judgment or a probability) · a classical-units ' +
     'completeness RECEIPT (design §28.6): {bhava, bhavesha, karaka, from_moon, varga_confirmed, ' +
-    'yogas_checked, bhanga_checked, timing_anchored}. Generalizes apex_marriage_assess/' +
-    'apex_career_assess/apex_health_assess/apex_wealth_assess — those tools remain available ' +
-    'unchanged; this is the richer, shastra-shaped successor. response_format=\'v3\' (opt-in; ' +
+    'yogas_checked, bhanga_checked, timing_anchored}. Generalizes assess_marriage/' +
+    'assess_career/assess_health/assess_wealth (the redundant apex_*_assess aliases were ' +
+    'retired per WP-1.3(i)/LCA-11); this is the richer, shastra-shaped successor. response_format=\'v3\' (opt-in; ' +
     'default \'legacy\') returns the R5 unified envelope.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),

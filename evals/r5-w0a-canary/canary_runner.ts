@@ -535,7 +535,7 @@ const LATENCY_SAMPLE: Array<{ tool: string; category: string; args: Record<strin
   { tool: 'assess_marriage', category: 'bodha', args: { chart_id: NATIVE_CHART_ID } },
   { tool: 'assess_health', category: 'bodha', args: { chart_id: NATIVE_CHART_ID } },
   { tool: 'assess_wealth', category: 'bodha', args: { chart_id: NATIVE_CHART_ID } },
-  { tool: 'apex_career_assess', category: 'bodha', args: { chart_id: NATIVE_CHART_ID } },
+  { tool: 'assess_career', category: 'bodha', args: { chart_id: NATIVE_CHART_ID } }, // was apex_career_assess (retired WP-1.3(i)/LCA-11)
   // phala
   { tool: 'phala_outlook_get', category: 'phala', args: { chart_id: NATIVE_CHART_ID } },
   { tool: 'phala_outlook', category: 'phala', args: { chart_id: NATIVE_CHART_ID } },
