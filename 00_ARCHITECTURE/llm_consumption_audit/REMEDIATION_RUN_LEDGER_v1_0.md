@@ -639,6 +639,13 @@ this ledger guarantee lossless continuation. Within-rules, non-scope-changing �
 
 **HALTs / disagreements:** none yet.
 
+**W1-close CI fix-iteration [§8.4, iter 1/3]:** PR #555 full-suite "Unit Tests" caught 2 stale whitelist-count
+pins (`primitives.test.ts`, `red_team/whitelist.test.ts` RT-04h) asserting `34` — not updated to the final
+post-W1 whitelist (34 post-1.7 +13 WP-1.3a +5 WP-1.3j = **52**). This is the value of wave-level CI: individual
+lanes ran targeted tests, only the combined full suite exercised these pins. Fixed 34→52 (no logic change;
+`whitelist_resolution_invariant` already confirms all 52 resolve; scanned — no other stale count pins). Pushed
+`ca17cca5`, CI re-running.
+
 **Follow-ups surfaced during W1 (not blockers; carry to W4 / doctrine campaign / register):**
 - **F-WP17-1** (from WP-1.7): `multi_school_signal_lookup` / `cross_school_lookup` legacy `lib/tools` impl was never bridged to the registry → its deployed consumer `platform-mcp/src/bundles/multi_school_bundle.ts` degrades gracefully (`errored:true`). Prioritize re-bridging if multi-school convergence data is expected. Owner: W1 residual → consider WP-1.3 or a follow-up lane.
 - **Contract-surface phantom declarations** (from WP-1.7 verifier): `kp_query`, `query_kp_ruling_planets`, `timeline_query` remain declared in the untouched CONTRACT/router surface (`tool_metadata.ts`, `contract_bridge.ts`, `retrieval_capability_spec.ts`) with no engine backing. Out of WP-1.7 scope; future contract-surface reconciliation should implement or drop them (same phantom-declaration bug class). Candidate: W4 re-grade / doctrine campaign.
