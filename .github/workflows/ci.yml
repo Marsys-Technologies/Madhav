@@ -264,6 +264,14 @@ jobs:
           ec=0; python platform/scripts/governance/schema_validator.py || ec=$?
           [ "$ec" = 0 ] || [ "$ec" = 3 ] || { echo "schema_validator exit=$ec (regression — all known pre-existing violations were resolved 2026-05-31)"; exit "$ec"; }
 
+      - name: msr_referential_integrity — self-test (§N.5 constituent guard)
+        # Hard gate (WP-2.4 / LCA-9b-5). Every bodha_msr_signals.constituent_facts_array
+        # entry MUST resolve to a real chart_facts.fact_id (CLAUDE.md §N.5). The
+        # DB-free --self-test proves the guard by mutation: it exits 1 unless the
+        # clean fixture is clean AND a fixture with one broken constituent is caught.
+        # Live-DB scan (--chart-id) runs at W3 rebuild verification.
+        run: python platform/scripts/governance/msr_referential_integrity.py --self-test
+
       - name: assert_no_native_literal — repo scan
         # Hard gate: no literal native birth-chart values in code outside L1.
         # G4_no_native_lit per PROJECT_ARCHITECTURE B.10.

@@ -687,6 +687,75 @@ this ledger guarantee lossless continuation. Within-rules, non-scope-changing �
 
 ---
 
+## §7 — W2 WRITER WAVE (dispatched 2026-07-13)
+
+### §7.0 — ADJ-1 RETAINED for W2 (conductor decision, reconsidered)
+Considered delegating W2 to a fresh-context wave-conductor (§6 context-hygiene). **Retained direct thin-dispatch
+(ADJ-1)** for W2 because: W2 is high-stakes (prod schema MIGRATIONS + writers feeding the W3 rebuild), and this
+session's observed agent fragility (multiple API-drop/stall events on long tasks) makes a nested wave-conductor
+that could drop mid-migration a WORSE failure mode than conductor context growth (which the harness summarizes +
+the ledger makes resumable). Merges + migration application stay under the top conductor's reliable control; each
+implementation lane + verifier IS a fresh re-grounded context (fresh-context intent satisfied at lane granularity).
+Revisit if context degradation becomes acute.
+
+### §7.1 — W2 corrected DAG (native) + pre-dispatch intersection
+- **Fully parallel from start (disjoint writer families):** WP-2.1 (ka_ activation-date writer, R-45) · WP-2.4
+  (bo_laksana MSR ingestion redesign, LCA-9b) · WP-2.5 (new ga_ sensitive-degree + ayurdaya + L0 organ seed,
+  R-47/LCA-10/16) · WP-2.2-nonCGM (CDLM rollups/gradients/clusters, RM tables, bo_samvada/contradictions, phala
+  narration, bo_sangati; LCA-5) · WP-2.3-graph (graha↔bhava edges + yoga nodes; LCA-9a).
+- **Sequenced:** (a) WP-2.3-TEMPORAL-hooks wait on WP-2.1 date-resolution (2.1 merges first; 2.3 consumes merged
+  helper); (b) WP-2.2-CGM stages (topology/sub_graphs/motifs incl LCA-6 native-zero) wait on WP-2.3-edges landing.
+  2.2/2.3 coordinate via ledger on the bo_cgm file family; merge-order if scopes can't cleanly split.
+- **Standards:** FROZEN orchestrator §N.2 (@register WriterBase, ctx.db_conn no-commit) — HALT if change needed ·
+  §N.3 idempotency (per-chart delete-then-insert) · §N.4 surgical migrations only · B.10 no fabricated computation
+  (esp. WP-2.5 ayurdaya = 3 classical methods per §8.2, no invention) · §N.5 referential integrity (WP-2.4 CI
+  validator: every constituent_facts_array entry resolves to chart_facts.fact_id).
+- **Verification:** per-lane blind writer-conformance + unit tests PRE-merge; **full DATA verification deferred to
+  W3 rebuild** (plan: "verification completes at W3"). Base `integration/w2-writers` off main `fc84cd0d` (W1 live).
+
+### §7.2 — W2 batch-1 (WP-2.1 ∥ WP-2.4 ∥ WP-2.5) status
+- **WP-2.4 IMPL COMPLETE** → branch `worktree-agent-aa588eebf082b774b` (`a71d1b3c`). bo_laksana: flood cap
+  (aspect_jaimini_per_varga 15,660→~1 aggregate/varga citing ALL member fact_ids), re-tier per-varga→supporting,
+  KP bhava→domain, dosha_label/yoga_label integrity, 100% constituent resolution (filter-resolving+union-own).
+  NEW §N.5 CI validator `msr_referential_integrity.py` (self-test + mutation-proven + ci.yml gate). No migration
+  (cols exist). FROZEN orchestrator untouched, no HALT. 24/24 + 84/84. **Blind verifier DISPATCHED** (conformance
+  + §N.5 validator mutation + flood-traceability + no-false-cap + no-fabrication). Data-verify at W3.
+  ✅ **CONFIRMED-FIXED + MERGED** (`48834a13`) — orchestrator conformant, §N.5 validator mutation-proven +
+  hard-CI-gated (governance-gates, no continue-on-error), flood all-ids-cited, D1 uncapped, 100% resolution
+  no-fabrication; 24/24 + regression. Validator self-test confirmed on merge result. **W3 data-verify pending.**
+- **WP-2.1 IMPL COMPLETE** → branch `worktree-agent-ab1d86324e2124b7d` (`001a1289`). Root cause: writers dated
+  off single `kala_convergence.peak_date` (110/66,836); `ka_yojaka` bound `constituent_lords` YOGA-class-only.
+  Fix: resolve predicate lords vs `chart_dashas` Vimśottarī timeline (dasha period = window, peak refines; every
+  date traces to chart_dashas, no fabrication); ka_yojaka enriches lords from sign-lordship/sāḍe-sātī. Coverage
+  0.16%→~64% (tail = WP-2.4 domain). **Reusable helper `services/ka_temporal/date_resolver.py` for WP-2.3-temporal.**
+  No migration. FROZEN orchestrator preserved, no HALT. 61 new + 381 L3 (2 pre-existing TestProdDB). **Blind
+  verifier DISPATCHED** (conformance + deterministic-date-trace + lord-mapping + helper quality + coverage honesty).
+  Data-verify at W3. **On merge → unblocks WP-2.3-temporal (consumes the merged helper).**
+  ⚠️ **VERDICT: NOT-MET (§8.4 iter 1) — verification caught a real defect.** Conformance/lord-mapping/idempotency/
+  no-fabrication PASS, BUT the resolver selects `matched[0]` by EARLIEST start with NO birth-forward + NO
+  ayanamsha filter → windows land DECADES PRE-BIRTH (Saturn AD 1951-52 for a 1984 native); dates real but
+  life-irrelevant → R-45 unmet. Unit fixtures (2010-46 only) MASK it. Would propagate through the shared helper
+  to WP-2.3-temporal. **BOUNCED to implementer:** (1) birth-forward filter + select life-relevant period; (2)
+  honor predicate ayanamsha_id (not pool 5); (3) pre-birth-inclusive multi-ayanamsha regression fixture.
+  **NOT MERGED — WP-2.3-temporal STAYS BLOCKED until re-verify GREEN.**
+- **WP-2.5 IMPL COMPLETE** → branch `worktree-agent-aa2e0198b6f28f5a1` (`9167a61f`). New `ga_sensitive_degree` +
+  `ga_ayurdaya` writers + L0 `bg_sign_medical` Kalapurusha organ seed + dosha wiring (gandanta/mrityu-bhaga).
+  Every value DELEGATED from cited PyJHora consts (BPHS/Jataka Parijata — B.10, no hand-recall). Ayurdaya 3 methods
+  (Pindayu/Nisargayu/Amsayu) method-attributed + applicability rule served separately (no adjudication, §8.2);
+  maraka significators. Organ map cited. **Migrations 431/432 AUTHORED-UNAPPLIED** (organ seed + asset_registry
+  chart-scoped count_sql). Honest W3-deferral flags (kranti β=0, full SBC vedha, ayurdaya haranas — disclosed
+  pending_w3, not faked). Judgment aspecting-graha hook correctly left to W1 serving lane (follow-up §4). 18/18,
+  FROZEN orchestrator preserved, no HALT. **Blind verifier DISPATCHED** (classical recompute + ayurdaya §8.2 +
+  migration surgery + no-fabrication + deferral honesty). Data-verify at W3.
+
+### §7.3 — W2 batch-2 dispatch manifest (WP-2.2-nonCGM ∥ WP-2.3-graph)
+**Pre-dispatch intersection:** WP-2.2-nonCGM = CDLM rollups/gradients/clusters (bodha_cdlm) + RM tables (bodha_rm)
++ bo_samvada/contradictions + phala narration + bo_sangati. WP-2.3-graph = CGM graph EDGES (graha↔bhava) + yoga
+nodes (bo_cgm). **DISJOINT** — nonCGM explicitly EXCLUDES the bo_cgm file family that WP-2.3 owns (native's
+coordination rule). Also disjoint from batch-1 (ka/bo_laksana/ga). **Dispatch CONCURRENTLY.** SEQUENCED-LATER:
+WP-2.2-CGM (topology/sub_graphs/motifs incl LCA-6) waits on WP-2.3-EDGES landing; WP-2.3-temporal waits on WP-2.1.
+Dispatched 2026-07-13.
+
 ## §4 — HALT / disagreement register + follow-ups (append-only)
 
 **HALTs / disagreements:** none yet.
