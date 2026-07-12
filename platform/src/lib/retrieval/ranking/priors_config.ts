@@ -24,7 +24,19 @@
 // Criteria 2 (10th-lord) + 3 (karaka-congruent) FAIL — L2 Bodha data has no Saturn graha
 // metadata in career-domain signals (deferred to P3B salience rebuild).
 // Criteria 5 (tie-block) addressed via salience blend + index tiebreak in composite_ranker.ts.
-export const PRIORS_VERSION = '1.0' as const
+//
+// '1.1' (WP-1.2β, LCA-14 / R-44 domain-discrimination): added the DOMAIN_BHAVA_AFFINITY
+// overlay (bhavaAffinity) to topic_relevance. The prior formula discriminated domains ONLY
+// via graha×domain affinity + a varga overlay — but the dominant candidate flood
+// (`aspect_parashari_per_varga:house_N` composite_state signals, salience 2.3) carries NO
+// graha and is tagged with an identical coarse domain array for wealth/relationship/career,
+// so those domains' top-20 were 95% identical (audit Lane-6 shard-6-b0). The bhava congruence
+// term reads the signal's actual bhava (target_house etc.) and scores it against the domain's
+// CLASSICAL bhava set (BPHS Bhāvādhyāya), which is the axis that genuinely differs across
+// domains (wealth = 2/11 dhana-labha; relationship = 7 kalatra; moksha = 4-8-12 moksha-trikona).
+// Also adds the `moksha` domain (4-8-12 + Ketu, NOT a 9th-house/dharma alias — F-0973/0974)
+// and completes `education` as a real vidya domain (4/5/2/9 + Mercury/Jupiter/Ketu — F-0756).
+export const PRIORS_VERSION = '1.1' as const
 
 // ── §2.1 — w(signal_type_class) ──────────────────────────────────────────────
 // Source: BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE §2.1 (11 values + absence)
@@ -146,6 +158,7 @@ export const DOMAIN_VARGA_BOOST: Record<string, string[]> = {
   family:       ['D12', 'D4'],         // dvādaśāṃśa = parents/lineage
   health:       ['D30', 'D1'],         // triṃśāṃśa = evils/affliction
   spirituality: ['D20', 'D60'],        // viṃśāṃśa = worship/upāsanā
+  moksha:       ['D20', 'D60'],        // viṃśāṃśa = upāsanā; ṣaṣṭiāṃśa (WP-1.2β: moksha domain)
   character:    ['D1', 'D9', 'D16'],   // ṣoḍaśāṃśa = comforts/temperament
 }
 // 1.2 (was 1.5): reduces to prevent composite_state/D1 signals from outranking yoga signals.
@@ -174,6 +187,7 @@ export function vargaWeight(varga: string | null | undefined, domain?: string | 
 type Domain =
   | 'career' | 'wealth' | 'relationship' | 'progeny' | 'health'
   | 'education' | 'family' | 'residence' | 'travel' | 'spirituality' | 'character'
+  | 'moksha'
 
 // Canonical graha key variants (DB uses several forms across layers)
 const GRAHA_ALIASES: Record<string, string> = {
@@ -196,38 +210,47 @@ const GRAHA_DOMAIN_AFFINITY: Record<string, Record<Domain, number>> = {
   sun: {
     career: 1.4, wealth: 1.0, relationship: 0.8, progeny: 0.9, health: 1.1,
     education: 1.0, family: 1.1, residence: 0.9, travel: 0.9, spirituality: 1.0, character: 1.1,
+    moksha: 0.9,
   },
   moon: {
     career: 1.0, wealth: 1.0, relationship: 1.1, progeny: 1.0, health: 1.1,
     education: 1.0, family: 1.3, residence: 1.0, travel: 1.0, spirituality: 1.0, character: 1.4,
+    moksha: 1.1,   // chitta/manas — mind to be liberated (BPHS: Moon = manas-kāraka)
   },
   mars: {
     career: 1.2, wealth: 1.0, relationship: 1.0, progeny: 0.9, health: 1.2,
     education: 0.9, family: 1.0, residence: 1.4, travel: 1.0, spirituality: 0.9, character: 1.1,
+    moksha: 0.8,
   },
   mercury: {
     career: 1.2, wealth: 1.2, relationship: 1.0, progeny: 1.0, health: 1.0,
     education: 1.4, family: 1.0, residence: 0.9, travel: 1.1, spirituality: 1.0, character: 1.2,
+    moksha: 0.9,
   },
   jupiter: {
     career: 1.1, wealth: 1.3, relationship: 1.1, progeny: 1.5, health: 1.0,
     education: 1.3, family: 1.1, residence: 1.0, travel: 1.0, spirituality: 1.4, character: 1.1,
+    moksha: 1.3,   // guru/jñāna — dispositor of dharma toward liberation
   },
   venus: {
     career: 1.0, wealth: 1.2, relationship: 1.5, progeny: 1.2, health: 1.0,
     education: 1.0, family: 1.0, residence: 1.2, travel: 1.0, spirituality: 0.9, character: 1.1,
+    moksha: 0.8,   // bhoga-kāraka — contrary to vairāgya
   },
   saturn: {
     career: 1.4, wealth: 1.0, relationship: 0.9, progeny: 0.8, health: 1.2,
     education: 0.9, family: 0.9, residence: 1.2, travel: 1.0, spirituality: 1.1, character: 1.0,
+    moksha: 1.3,   // vairāgya/detachment/renunciation
   },
   rahu: {
     career: 1.1, wealth: 1.1, relationship: 0.9, progeny: 0.8, health: 1.0,
     education: 1.0, family: 0.8, residence: 1.0, travel: 1.4, spirituality: 1.1, character: 1.0,
+    moksha: 1.0,
   },
   ketu: {
     career: 0.9, wealth: 0.9, relationship: 0.8, progeny: 0.8, health: 1.1,
-    education: 1.0, family: 0.9, residence: 0.9, travel: 1.1, spirituality: 1.5, character: 1.1,
+    education: 1.1, family: 0.9, residence: 0.9, travel: 1.1, spirituality: 1.5, character: 1.1,
+    moksha: 1.6,   // mokṣa-kāraka par excellence (Ketu = the graha of liberation)
   },
 }
 
@@ -238,6 +261,71 @@ export function grahaAffinity(graha: string | null | undefined, domain: string |
   const row = GRAHA_DOMAIN_AFFINITY[canonical]
   if (!row) return 1.0
   return (row[domain as Domain] ?? 1.0)
+}
+
+// ── §4b — BHĀVA × DOMAIN AFFINITY (WP-1.2β, LCA-14 / R-44) ────────────────────
+// Source: BPHS Bhāvādhyāya (house significations) + the four classical bhāva-trikoṇas
+// (dharma 1-5-9 · artha 2-6-10 · kāma 3-7-11 · mokṣa 4-8-12).
+//
+// WHY THIS EXISTS: the dominant candidate flood is graha-less `aspect_parashari_per_varga`
+// composite_state signals whose ONLY discriminating axis is the bhāva they touch
+// (configuration_jsonb.target_house). They carry an identical coarse domain array across
+// wealth/relationship/career, so graha×domain affinity alone left the domains' top-K ~95%
+// identical (Lane-6 shard-6-b0). Scoring the signal's actual bhāva against the domain's
+// classical house-set is the axis that genuinely separates the domains.
+//
+// Multiplier centered at 1.0. Primary house(s) up to ~2.2; a house NOT in a domain's set
+// is mildly contrary (UNLISTED_BHAVA_WEIGHT) so congruent-house signals decisively win the
+// top ranks. Keep wealth/relationship PRIMARIES disjoint (2/11 vs 7) — that disjointness is
+// what drives the served top-20 overlap below the ND-W1.2 ≤25% bar.
+const UNLISTED_BHAVA_WEIGHT = 0.7
+
+export const DOMAIN_BHAVA_AFFINITY: Record<string, Record<number, number>> = {
+  // 2 = dhana (accumulated wealth), 11 = lābha (gains/income); 5+9 = dhana-yoga trikoṇas
+  // (Lakṣmī-sthānas: lords of 5/9 give wealth); 1 = self-effort. BPHS Dhana-bhāvādhyāya.
+  wealth:       { 2: 2.2, 11: 2.2, 9: 1.5, 5: 1.3, 1: 1.2 },
+  // 7 = kalatra/jāyā (spouse); 12 = śayana-sukha (bed comforts); 8 = māṅgalya/saubhāgya
+  // (marital longevity); 4 = domestic happiness/sukha. The 2nd (kuṭumba) is DELIBERATELY not
+  // boosted here — it is far more a dhana house, and leaving it out of relationship's set is
+  // what keeps wealth (2/11) and relationship (7/12/8) top-K disjoint (the ND-W1.2 ≤25% lever).
+  relationship: { 7: 2.2, 12: 1.6, 8: 1.5, 4: 1.2 },
+  // 10 = karma; artha-trikoṇa 2/6/10; 7 = mārket/vyāpāra; upachaya 3/6/10/11 (rising effort).
+  career:       { 10: 2.2, 6: 1.5, 7: 1.4, 11: 1.4, 1: 1.3, 2: 1.2, 3: 1.2 },
+  // 1 = deha/śarīra; 6 = roga (disease); 8 = āyuṣ/chronic; 3 = prāṇa/vitality; 12 = hospital/loss.
+  health:       { 1: 2.2, 6: 2.0, 8: 1.6, 3: 1.2, 12: 1.1 },
+  // vidyā (F-0756): 4 = formal vidyā-sthāna, 5 = buddhi/mantra/pūrva-puṇya, 2 = vāk/knowledge,
+  // 9 = higher wisdom/guru. Bhāva-4 is PART of the set, never the sole "education" label.
+  education:    { 4: 2.0, 5: 2.0, 2: 1.5, 9: 1.5, 3: 1.1 },
+  // 5 = santāna (children); 9 = grandchildren/pūrva-puṇya; 11 = fulfilment; 2 = family.
+  progeny:      { 5: 2.2, 9: 1.5, 11: 1.3, 2: 1.1 },
+  // dharma-primary: 9 = dharma/guru/bhāgya; 12 = vyaya/upāsanā/liberation-effort; 5 = mantra;
+  // 8 = occult. Distinct from `moksha` by its 9th-house dharma centre.
+  spirituality: { 9: 2.2, 12: 1.6, 5: 1.4, 8: 1.2 },
+  // MOKṢA-TRIKOṆA 4-8-12 (F-0973/0974): 12 = mokṣa-sthāna/vyaya (liberation, letting-go),
+  // 8 = transformation/occult/randhra, 4 = antya-sukha/citta-śuddhi (final rest, inner peace).
+  // NOT the 9th house (that is dharma-trikoṇa). 6 = ripu-conquest, minor.
+  moksha:       { 12: 2.2, 8: 1.7, 4: 1.6, 6: 1.1 },
+  // 1 = prakṛti/self/temperament; 5 = buddhi/manas/dhī; 9 = values/dharma; 3 = valour/manas.
+  character:    { 1: 2.2, 5: 1.7, 9: 1.4, 3: 1.2, 4: 1.1 },
+  // 4 = immovable property/home/land/vehicles; 2 = holdings; 11 = acquisition; 12 = distant land.
+  residence:    { 4: 2.2, 2: 1.2, 11: 1.2, 12: 1.1 },
+  // 2 = kuṭumba (family unit); 4 = mother/home; 9 = father/lineage; 5 = progeny.
+  family:       { 2: 1.8, 4: 1.7, 9: 1.3, 5: 1.1 },
+  // 12 = distant lands/foreign residence; 9 = long journeys/pilgrimage; 3 = short travel; 7 = away-from-home.
+  travel:       { 12: 2.0, 9: 1.6, 3: 1.4, 7: 1.2 },
+}
+
+/**
+ * Look up bhāva×domain affinity for the signal's bhāva. Neutral (1.0) when either the bhāva
+ * or the domain is unknown, so signals with no resolvable house are unaffected by this axis
+ * and rank on graha/class/varga alone. A house NOT in the domain's classical set is mildly
+ * contrary (UNLISTED_BHAVA_WEIGHT) so domain-congruent-house signals decisively lead the top.
+ */
+export function bhavaAffinity(house: number | null | undefined, domain: string | null | undefined): number {
+  if (!house || !domain) return 1.0
+  const row = DOMAIN_BHAVA_AFFINITY[domain]
+  if (!row) return 1.0
+  return row[house] ?? UNLISTED_BHAVA_WEIGHT
 }
 
 // ── §7 — Key constants (ratified) ─────────────────────────────────────────────

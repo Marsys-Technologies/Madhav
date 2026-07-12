@@ -92,16 +92,50 @@ const SHASTRA_MAP: Record<string, DomainSpec> = {
   vitality:     { bhava: 1,  karakas: ['Sun'],                       varga: 'D6',  label: 'Health / Vitality',      signal_domain: 'health' },
   progeny:      { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'other' },
   children:     { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'other' },
-  education:    { bhava: 4,  karakas: ['Mercury', 'Jupiter'],        varga: 'D24', label: 'Education / Learning',   signal_domain: 'other' },
+  // F-0756 fix: bhāva-4 is NOT "education" — its primary significations are mother/home/
+  // property/happiness. Vidyā's operative bhāva for the recipe is the 4th vidyā-sthāna (BPHS)
+  // but it is judged as ONE leg of a 2/4/5/9 set; karakas are Mercury (learning), Jupiter
+  // (jñāna), Ketu (deep insight/research). D24 (siddhāṃśa) is the education varga.
+  education:    { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'other' },
+  vidya:        { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'other' },
+  // Spirituality = DHARMA (9th house) — Jupiter/Ketu, D20. Distinct from moksha below.
   spirituality: { bhava: 9,  karakas: ['Jupiter', 'Ketu'],           varga: 'D20', label: 'Spirituality / Dharma',  signal_domain: 'spirituality' },
+  // Moksha = the 4-8-12 mokṣa-trikoṇa + Ketu axis (F-0973/0974) — NOT a 9th-house/dharma alias.
+  // Operative bhāva 12 (mokṣa-sthāna/vyaya); karakas Ketu (mokṣa-kāraka), Saturn (vairāgya),
+  // Jupiter (guru/jñāna); D20 (vimśāṃśa, upāsanā). signal_domain uses the 'spirituality' tag
+  // (there is no stored 'moksha' domain tag) — the recipe's bhāva/karaka legs carry the mokṣa
+  // specificity.
+  moksha:       { bhava: 12, karakas: ['Ketu', 'Saturn', 'Jupiter'], varga: 'D20', label: 'Moksha / Liberation',    signal_domain: 'spirituality' },
+  liberation:   { bhava: 12, karakas: ['Ketu', 'Saturn', 'Jupiter'], varga: 'D20', label: 'Moksha / Liberation',    signal_domain: 'spirituality' },
+  // Character / buddhi — 1st (prakṛti/temperament) is primary; Moon (manas) + Mercury (buddhi)
+  // are the karakas. D1 lagna is the operative frame for temperament.
+  character:    { bhava: 1,  karakas: ['Moon', 'Mercury'],           varga: 'D1',  label: 'Character / Buddhi',     signal_domain: 'character' },
+  buddhi:       { bhava: 1,  karakas: ['Moon', 'Mercury'],           varga: 'D1',  label: 'Character / Buddhi',     signal_domain: 'character' },
+  // Home / residence / immovable property — 4th sukha-bhāva; Moon (home/mother), Mars
+  // (land/immovables); D4 (caturthāṃśa). This is bhāva-4's REAL domain (F-0756), not education.
+  residence:    { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
+  property:     { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
+  home:         { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
 }
 
-/** Reverse map — used only when the caller gives a bare bhava number with no domain, so the
- *  instrument can still assemble a domain label + karaka(s) + operative varga where the
- *  shastra map already names one for that house. */
-const BHAVA_TO_DOMAIN: Record<number, string> = {}
-for (const [key, spec] of Object.entries(SHASTRA_MAP)) {
-  if (!(spec.bhava in BHAVA_TO_DOMAIN)) BHAVA_TO_DOMAIN[spec.bhava] = key
+/** Reverse map — used only when the caller gives a bare bhava number with no domain. EXPLICIT
+ *  (WP-1.2β, F-0756): un-collapses the previous auto-built first-hit map that mis-mapped bhāva-4
+ *  to "education". Each house maps to its DOMINANT classical single-word signification so a bare
+ *  bhāva number still assembles a sensible karaka/varga leg; houses with no dedicated domain
+ *  spec (3rd) intentionally fall through to the bare bhāva/bhāveśa recipe. */
+const BHAVA_TO_DOMAIN: Record<number, string> = {
+  1:  'character',    // tanu — self / temperament / constitution
+  2:  'wealth',       // dhana — accumulated wealth (also vāk/family)
+  // 3 (parākrama/siblings): no dedicated domain — bare recipe
+  4:  'residence',    // sukha — home / mother / property (NOT education; F-0756)
+  5:  'progeny',      // santāna — children (also buddhi/pūrva-puṇya)
+  6:  'health',       // roga — disease / debts / enemies
+  7:  'relationship', // kalatra — spouse / partnership
+  8:  'moksha',       // randhra — transformation / longevity (mokṣa-trikoṇa leg)
+  9:  'spirituality', // dharma — fortune / higher wisdom
+  10: 'career',       // karma — profession
+  11: 'wealth',       // lābha — gains / income
+  12: 'moksha',       // vyaya — mokṣa-sthāna / liberation / loss
 }
 
 // Simple, deterministic, classically-uncontested dignity/benefic weighting — never an LLM
@@ -236,8 +270,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         'Life-domain name, resolved via the shastra map (design §28.5): marriage/relationship/' +
         'partnership (bhava 7, Venus, D9), career/vocation (bhava 10, Sun+Mercury+Saturn, D10), ' +
         'wealth/finance (bhava 2, Jupiter, D2), health/vitality (bhava 1, Sun, D6), ' +
-        'progeny/children (bhava 5, Jupiter, D7), education (bhava 4, Mercury+Jupiter, D24), ' +
-        'spirituality (bhava 9, Jupiter+Ketu, D20). Takes precedence over `bhava` if both given.',
+        'progeny/children (bhava 5, Jupiter, D7), education/vidya (bhava 4, Mercury+Jupiter+Ketu, D24), ' +
+        'residence/property/home (bhava 4, Moon+Mars, D4), character/buddhi (bhava 1, Moon+Mercury, D1), ' +
+        'spirituality (bhava 9 dharma, Jupiter+Ketu, D20), moksha/liberation (bhava 12 mokṣa-trikoṇa, ' +
+        'Ketu+Saturn+Jupiter, D20 — distinct from spirituality/9th). Takes precedence over `bhava` if both given.',
     },
     bhava: {
       type: 'number',
