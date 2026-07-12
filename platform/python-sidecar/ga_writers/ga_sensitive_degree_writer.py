@@ -331,7 +331,9 @@ def load_positions(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, dic
             if key == "sign":
                 rec["sign"] = vtxt
             elif key == "sign_num":
-                rec["sign_num"] = int(vnum) if vnum is not None else None
+                # chart_facts stores sign_num 1-BASED (Aries=1; ga_positions_writer.py:271).
+                # Keep the raw DB value here and derive the canonical 0-based sign_num below.
+                rec["_sign_num_db_1based"] = int(vnum) if vnum is not None else None
             elif key == "degree_in_sign":
                 rec["degree_in_sign"] = float(vnum) if vnum is not None else None
             elif key == "longitude_sidereal":
@@ -342,14 +344,23 @@ def load_positions(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, dic
                 rec["house_d1"] = int(vnum) if vnum is not None else None
             elif key == "retrograde_flag":
                 rec["retrograde_flag"] = vtxt
-    # backfill sign_num / degree_in_sign from longitude / sign when absent
+    # Derive a CANONICAL 0-based sign_num (Aries=0) — the contract every facet helper and
+    # jhora rasi index expects. Priority: longitude_sidereal (single source of truth, exactly
+    # as the ga_structural dosha wiring derives it) → sign name → DB 1-based sign_num - 1.
     for graha, rec in out.items():
-        if rec.get("sign_num") is None and rec.get("sign") in SIGNS:
+        lon = rec.get("longitude_sidereal")
+        db_1based = rec.get("_sign_num_db_1based")
+        if lon is not None:
+            rec["sign_num"] = int(lon // 30) % 12
+            if rec.get("degree_in_sign") is None:
+                rec["degree_in_sign"] = lon % 30.0
+        elif rec.get("sign") in SIGNS:
             rec["sign_num"] = SIGNS.index(rec["sign"])
-        if rec.get("sign_num") is None and rec.get("longitude_sidereal") is not None:
-            rec["sign_num"] = int(rec["longitude_sidereal"] // 30) % 12
-        if rec.get("degree_in_sign") is None and rec.get("longitude_sidereal") is not None:
-            rec["degree_in_sign"] = rec["longitude_sidereal"] % 30.0
+        elif db_1based is not None:
+            rec["sign_num"] = (db_1based - 1) % 12
+        else:
+            rec["sign_num"] = None
+        rec.pop("_sign_num_db_1based", None)
     return out
 
 

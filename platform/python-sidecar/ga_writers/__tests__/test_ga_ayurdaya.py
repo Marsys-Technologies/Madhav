@@ -77,3 +77,84 @@ def test_classification_bands():
     assert sut.classify_ayus(20) == "alpayu"
     assert sut.classify_ayus(50) == "madhyayu"
     assert sut.classify_ayus(80) == "purnayu"
+
+
+# ── DB-realistic (1-based sign_num) path: guards the 1-based→0-based conversion ──────
+class _FakeCursor:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        pass
+
+    def fetchall(self):
+        return self._rows
+
+    def fetchone(self):
+        return None
+
+
+class _FakeConn:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def cursor(self, *a, **k):
+        return _FakeCursor(self._rows)
+
+
+_SUBJ = {"Lagna": "LAGNA", "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
+         "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN"}
+
+
+def _db_rows_from_positions_0based(positions_0based):
+    """Render POSITIONS (0-based) as the DB-realistic chart_facts rows ga_positions stores:
+    sign_num 1-BASED + longitude_sidereal."""
+    rows = []
+    for g, rec in positions_0based.items():
+        s0 = rec["sign_num"]
+        deg = rec["degree_in_sign"]
+        lon = s0 * 30 + deg
+        subj = _SUBJ[g]
+        rows.append((subj, "graha_position", "longitude_sidereal", None, float(lon)))
+        rows.append((subj, "graha_sign_attributes", "sign_num", None, float(s0 + 1)))  # 1-based
+        rows.append((subj, "graha_sign_attributes", "degree_in_sign", None, float(deg)))
+        if rec.get("house_d1"):
+            rows.append((subj, "graha_position", "house_d1", None, float(rec["house_d1"])))
+    return rows
+
+
+def test_db_realistic_1based_path_equals_0based_and_matches_cited_arc():
+    # Feed the writer the DB-realistic (1-based sign_num) chart_facts rows and confirm the
+    # loaded positions are 0-based and produce the SAME ayurdaya as the direct 0-based dict.
+    db_rows = _db_rows_from_positions_0based(POSITIONS)
+    loaded = sut.load_positions(_FakeConn(db_rows), "chart-native", "lahiri_chitrapaksha")
+    assert loaded["Sun"]["sign_num"] == 9   # Capricorn 0-based, NOT 10 (1-based bug)
+
+    rows_db = sut.build_ayurdaya_rows("c", "b", "lahiri_chitrapaksha", loaded)
+    rows_direct = sut.build_ayurdaya_rows("c", "b", "lahiri_chitrapaksha", POSITIONS)
+
+    def _total(rows, subject):
+        return next(r["fact_value_num"] for r in rows
+                   if r["fact_key"] == "total_years" and r["fact_subject"] == subject)
+
+    for method in ("PINDAYU", "NISARGAYU", "AMSAYU"):
+        assert abs(_total(rows_db, method) - _total(rows_direct, method)) < 1e-6
+
+    # Independent cited-arc recompute of the Nisargayu TOTAL from 0-based longitudes.
+    exp = 0.0
+    for pid in range(7):  # Sun..Saturn
+        gname = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"][pid]
+        s0 = POSITIONS[gname]["sign_num"]
+        lon = s0 * 30 + POSITIONS[gname]["degree_in_sign"]
+        arc = (360 + lon - jconst.planet_deep_exaltation_longitudes[pid]) % 360
+        full = jconst.nisargayu_full_longevity_of_planets[pid]
+        exp += full * arc / 360.0 if arc > 180.0 else full - full * arc / 360.0
+    lagna_years = (POSITIONS["Lagna"]["sign_num"] * 30 + POSITIONS["Lagna"]["degree_in_sign"]) / 30.0
+    exp += lagna_years
+    assert abs(_total(rows_db, "NISARGAYU") - round(exp, 4)) < 1e-3

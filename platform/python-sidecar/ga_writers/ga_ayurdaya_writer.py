@@ -106,7 +106,11 @@ def classify_ayus(total_years: float) -> str:
 
 def build_planet_positions(positions: dict[str, dict]) -> Optional[list]:
     """Assemble jhora planet_positions [(id,(rasi,deg)),...] from stored L1 longitudes.
-    Index 0 = Lagna, 1..7 = Sun..Saturn, 8 = Rahu, 9 = Ketu."""
+    Index 0 = Lagna, 1..7 = Sun..Saturn, 8 = Rahu, 9 = Ketu.
+
+    `sign_num` MUST be 0-based (Aries=0) — jhora's rasi index is 0-based. The shared
+    ga_sensitive_degree_writer.load_positions guarantees this (it converts the 1-based
+    chart_facts.sign_num to 0-based, preferring longitude_sidereal)."""
     lag = positions.get("Lagna")
     if not lag or lag.get("sign_num") is None or lag.get("degree_in_sign") is None:
         return None

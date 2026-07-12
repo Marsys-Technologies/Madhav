@@ -8,6 +8,73 @@ from jhora import const as jconst
 
 from ga_writers import ga_sensitive_degree_writer as sut
 
+
+# ── DB-realistic fixtures: chart_facts.sign_num is 1-BASED (Aries=1) ──────────────
+# These guard the 1-based→0-based conversion in load_positions. The pure-builder tests
+# below use the 0-based INTERNAL contract; only load_positions touches the DB axis.
+class _FakeCursor:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        self._last = (sql, params)
+
+    def fetchall(self):
+        return self._rows
+
+    def fetchone(self):
+        return None
+
+
+class _FakeConn:
+    """Returns DB-realistic chart_facts rows (tuple_row shape) for load_positions."""
+    def __init__(self, rows):
+        self._rows = rows
+
+    def cursor(self, *a, **k):
+        return _FakeCursor(self._rows)
+
+
+def _db_rows_for(graha_subject, sign_1based, deg, house):
+    """Emit the chart_facts rows ga_positions_writer actually stores (sign_num 1-based)."""
+    lon = (sign_1based - 1) * 30 + deg
+    return [
+        (graha_subject, "graha_position", "longitude_sidereal", None, float(lon)),
+        (graha_subject, "graha_sign_attributes", "sign_num", None, float(sign_1based)),
+        (graha_subject, "graha_sign_attributes", "degree_in_sign", None, float(deg)),
+        (graha_subject, "graha_position", "house_d1", None, float(house)),
+    ]
+
+
+def test_load_positions_converts_1based_signnum_to_0based_native_sun():
+    # Native FORENSIC anchor: Sun in Capricorn. chart_facts stores sign_num=10 (1-based).
+    rows = _db_rows_for("SUN", 10, 22.0, 10)  # Capricorn 22°, house 10
+    positions = sut.load_positions(_FakeConn(rows), "chart-native", "lahiri_chitrapaksha")
+    # Canonical 0-based: Capricorn = 9, NOT 10.
+    assert positions["Sun"]["sign_num"] == 9
+    # Cited mrityu-bhaga for Sun in Capricorn must be 2.0° (base_longitudes[9][0]), not 3.0°.
+    mb = sut.check_mrityu_bhaga("Sun", positions["Sun"]["sign_num"], positions["Sun"]["degree_in_sign"])
+    assert mb["mrityu_bhaga_deg"] == 2.0
+    assert jconst.mrityu_bhaga_base_longitudes[9][0] == 2   # 0-based Capricorn
+    assert jconst.mrityu_bhaga_base_longitudes[10][0] == 3  # 1-based bug would have given 3
+
+
+def test_load_positions_fallback_without_longitude_still_0based():
+    # Only the 1-based sign_num + degree present (no longitude) → still convert to 0-based.
+    rows = [
+        ("MOON", "graha_sign_attributes", "sign_num", None, 11.0),      # Aquarius 1-based
+        ("MOON", "graha_sign_attributes", "degree_in_sign", None, 15.0),
+        ("MOON", "graha_position", "house_d1", None, 11.0),
+    ]
+    positions = sut.load_positions(_FakeConn(rows), "chart-x", "lahiri_chitrapaksha")
+    assert positions["Moon"]["sign_num"] == 10   # Aquarius 0-based = 10
+
 # rasi order: 0=Aries..11=Pisces; mrityu_bhaga cols [Sun,Moon,Mars,Merc,Jup,Ven,Sat,Rah,Ket,Mandi,Lagna]
 
 
