@@ -54,10 +54,12 @@ describe('RETRIEVAL_CAPABILITY_SPEC × TOOL_NAME_TO_URI coverage', () => {
     ).toBeGreaterThan(0)
   })
 
-  it('spec entry count is within expected bounds (bridge tools all covered by spec)', () => {
-    // All bridge-registered tools must be in the spec (enforced by the first test).
-    // The spec may have MORE entries than the bridge (stubs/sidecar tools).
-    expect(RETRIEVAL_CAPABILITY_SPEC.length).toBeGreaterThanOrEqual(BRIDGE_TOOL_NAMES.length)
+  it('spec entry count is within expected bounds', () => {
+    // WP-1.3(h)/LCA-12: 3 phantom entries (kp_query, query_kp_ruling_planets, timeline_query)
+    // were removed from the spec — they had no engine backing. The spec no longer claims to
+    // cover every bridge tool (the separate 'every bridge-registered tool has a spec entry'
+    // test tracks the pre-existing uncovered set). Assert a substantial absolute floor instead.
+    expect(RETRIEVAL_CAPABILITY_SPEC.length).toBeGreaterThanOrEqual(50)
   })
 
   it('the previously planner-blind tools are now in the spec', () => {
@@ -86,12 +88,13 @@ describe('RETRIEVAL_CAPABILITY_SPEC × TOOL_NAME_TO_URI coverage', () => {
     }
   })
 
-  it('renders the full spec without errors and includes the four restored tools', () => {
+  it('renders the full spec without errors and includes the three restored tools', () => {
+    // WP-1.3(h): query_kp_ruling_planets dropped (phantom, no KP engine); the other three stay.
     const rendered = renderRetrievalCapabilitySpec()
     expect(rendered.length).toBeGreaterThan(1000)
     expect(rendered).toContain('### lel_query')
     expect(rendered).toContain('### query_signal_state')
-    expect(rendered).toContain('### query_kp_ruling_planets')
     expect(rendered).toContain('### query_varshaphala')
+    expect(rendered).not.toContain('### query_kp_ruling_planets')
   })
 })
