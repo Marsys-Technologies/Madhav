@@ -174,40 +174,76 @@ export async function handleMitigationMap(
   const env = result.envelope
   if (!env.ok) return env
 
-  // Normalise: ensure provenance_envelope is present even if the platform
-  // didn't include it (backwards-compatibility shim)
-  const resultData = env.result as MitigationMapResult | undefined
-  const mitigations: MitigationRow[] = resultData?.mitigations ?? (Array.isArray(env.result) ? env.result as MitigationRow[] : [])
+  // WP-1.3j serving-bug fix (F-L10-024): the surgical primitives route returns a
+  // ToolBundle — env.result = { results: [{ content: "<json string>" }], ... } — whose
+  // content is the query_remedy_program capability payload keyed `remedies` (NOT
+  // `mitigations`). The prior wrapper read env.result.mitigations directly, which is
+  // undefined on a ToolBundle → it always yielded an EMPTY mitigations array despite
+  // 600+ real rows/chart. Fix: unwrap the ToolBundle, parse the content, and surface
+  // the real `remedies` (bounded + total disclosed by the capability).
+  const capContent = unwrapCapabilityContent(env.result)
+  const rawRemedies = Array.isArray(capContent?.['remedies'])
+    ? (capContent!['remedies'] as Record<string, unknown>[])
+    : []
+  const totalMatching = typeof capContent?.['total_matching'] === 'number'
+    ? (capContent!['total_matching'] as number)
+    : rawRemedies.length
+  const moreAvailable = capContent?.['more_available'] === true
 
-  // Assert grounding contract: surface any citation-null rows as a warning
-  const uncited = mitigations.filter((m) => !m.source_citation)
+  // Real phala_mitigation rows cite via `classical_citation` (NOT the fictional
+  // source_citation the old shim assumed). Report citation coverage honestly.
+  const uncited = rawRemedies.filter((m) => !m['classical_citation'] && !m['source_citation'])
   if (uncited.length > 0) {
-    console.warn(
-      `[PH-4-2] mitigation_map: ${uncited.length} rows have null source_citation — ` +
-      `contract violation; anchor_ids: ${uncited.map((m) => m.anchor_id).join(', ')}`
-    )
+    console.warn(`[PH-4-2] mitigation_map: ${uncited.length}/${rawRemedies.length} rows lack a classical_citation.`)
   }
 
-  const provenanceEnvelope: ProvenanceEnvelope = resultData?.provenance_envelope ?? {
+  const provenanceEnvelope: ProvenanceEnvelope = {
     chart_id: input.chart_id,
     anchor_id_filter: input.anchor_id ?? null,
     mitigation_type_filter: input.mitigation_type ?? null,
     asset: 'phala.mitigation',
     asset_version: '1.0',
     build_tag: 'PH-4-2',
-    source: 'phala.mitigation',
+    source: 'phala_mitigation',
     computed_at: new Date().toISOString(),
   }
 
   return {
     ...env,
     result: {
-      mitigations,
-      total_count: resultData?.total_count ?? mitigations.length,
+      // `mitigations` retained as the documented key; `remedies` mirrors the capability's
+      // native key so either consumer shape resolves to the real rows.
+      mitigations: rawRemedies as unknown as MitigationRow[],
+      remedies: rawRemedies,
+      total_count: totalMatching,
+      returned_count: rawRemedies.length,
+      more_available: moreAvailable,
       all_cited: uncited.length === 0,
       provenance_envelope: provenanceEnvelope,
-    } satisfies MitigationMapResult,
+    },
   }
+}
+
+/**
+ * Unwrap the surgical-primitives ToolBundle into the underlying capability content object.
+ * The route wraps the capability payload as { results: [{ content: "<json string>" }] };
+ * older/direct shapes (a plain content object) are passed through unchanged.
+ */
+function unwrapCapabilityContent(envResult: unknown): Record<string, unknown> | null {
+  if (envResult == null || typeof envResult !== 'object') return null
+  const r = envResult as Record<string, unknown>
+  const bundleResults = r['results']
+  if (Array.isArray(bundleResults) && bundleResults.length > 0) {
+    const first = bundleResults[0] as Record<string, unknown> | undefined
+    const content = first?.['content']
+    if (typeof content === 'string') {
+      try { return JSON.parse(content) as Record<string, unknown> } catch { return null }
+    }
+    if (content && typeof content === 'object') return content as Record<string, unknown>
+  }
+  // Direct content object fallback (already unwrapped).
+  if ('remedies' in r || 'mitigations' in r) return r
+  return null
 }
 
 // ── MCP server registration helper ────────────────────────────────────────────
