@@ -174,6 +174,26 @@ export const maxDuration = 120
 
 const ALLOWED_STYLES: ConsumeStyle[] = ['acharya', 'brief', 'client']
 
+/**
+ * LCA-2 / WP-1.1 — honest error classification.
+ *
+ * True when a Postgres error is a *permanent* schema/relation fault — a missing
+ * table/column, invalid schema name, or malformed SQL. None of these can be
+ * fixed by repeating the identical request, so they MUST NOT be mapped to the
+ * transient `SYSTEM_DB_UNAVAILABLE {retry:true}` class (that mislabelling is the
+ * exact bug this WP fixes: the retired `reports` relation raised 42P01 =
+ * undefined_table, which was dishonestly reported as retryable).
+ *
+ * SQLSTATE class 42 = syntax error / access-rule violation (undefined_table
+ * 42P01, undefined_column 42703, undefined_function 42883, …). Class 3F =
+ * invalid_schema_name. Both are structural and permanent.
+ */
+function isPermanentSchemaError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const code = (err as { code?: unknown }).code
+  return typeof code === 'string' && (code.startsWith('42') || code.startsWith('3F'))
+}
+
 interface AttachmentRef {
   token: string
   filename: string
@@ -283,11 +303,21 @@ export async function POST(request: Request) {
   // False = blind mode (LEL excluded; query logged as prospective prediction).
   const lelContextEnabled = body.lel_context_enabled !== false
 
+  // LCA-2 / WP-1.1 — the legacy `reports` relation was RETIRED; its DDL survives
+  // only in platform/migrations/_archive and it is ABSENT from deployed Cloud SQL.
+  // The prior code unconditionally SELECTed `domain, title, version FROM reports`
+  // here inside this Promise.all, so every consult request raised a permanent
+  // 42P01 (undefined_table) — for EVERY chart — which the catch below dishonestly
+  // mapped to SYSTEM_DB_UNAVAILABLE {retry:true}, killing the flagship consult
+  // surface. `reportsResult` was declared but never consumed downstream; consult
+  // content is sourced entirely from the planner + retrieval tool path
+  // (bodha_* signals, CGM graph traversal, vector search) — the same live
+  // surfaces the working MCP tools use. The `reports` lookup is removed, not
+  // re-pointed. DO NOT resurrect the `reports` table.
   let chartResult: Awaited<ReturnType<typeof query<{ id: string; name: string; birth_date: string; birth_time: string; birth_place: string; client_id: string }>>>
   let profileResult: Awaited<ReturnType<typeof query<{ role: string }>>>
-  let reportsResult: Awaited<ReturnType<typeof query<{ domain: string; title: string; version: string }>>>
   try {
-    ;[chartResult, profileResult, reportsResult] = await Promise.all([
+    ;[chartResult, profileResult] = await Promise.all([
       query<{ id: string; name: string; birth_date: string; birth_time: string; birth_place: string; client_id: string }>(
         'SELECT id, name, birth_date, birth_time, birth_place, client_id FROM charts WHERE id=$1',
         [chartId]
@@ -296,12 +326,14 @@ export async function POST(request: Request) {
         'SELECT role FROM profiles WHERE id=$1',
         [user.uid]
       ),
-      query<{ domain: string; title: string; version: string }>(
-        'SELECT domain, title, version FROM reports WHERE chart_id=$1 ORDER BY domain',
-        [chartId]
-      ),
     ])
-  } catch {
+  } catch (err) {
+    // Honest classification: a permanent missing-relation / schema fault cannot
+    // succeed on retry, so it must NOT carry the transient retry:true class.
+    if (isPermanentSchemaError(err)) {
+      console.error('[consume:v2] permanent schema error on chart/profile lookup:', err)
+      return res.internal('A required database relation is missing or malformed.')
+    }
     return res.dbError()
   }
 
