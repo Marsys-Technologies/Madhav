@@ -26,8 +26,8 @@ changelog:
 | Wave | Scope | State | Deploy point | Notes |
 |---|---|---|---|---|
 | W0 | WP-0.1 (LCA-17 wrong-chart isolation) | ✅ **DONE** (deployed `amjis-web-00955-qt5` == main `6ec244c0`; 2026-07-12) | ✅ deployed | isolation proven; PR #553 merged; prod-parity confirmed |
-| W1 | WP-1.1/1.2/1.3(a-j)/1.4/1.5/1.6/1.7/1.8 (serving plane) | ✅ **DEPLOYED** (main `2385fb62`; amjis-web-00957 + amjis-mcp-00421 == HEAD; 2026-07-13) | ✅ deployed | 16 lane merges, all blind-verified; ND-W1.1 PASS; +316 reachable |
-| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | PENDING | after W2 close | writers+JOB image live before W3 |
+| W1 | WP-1.1/1.2/1.3(a-j)/1.4/1.5/1.6/1.7/1.8 (serving plane) | ✅ **CLOSED** (deployed web `2385fb62`+mcp `fc84cd0d`; **7/7 prod-verified**; 2026-07-13) | ✅ deployed | 16 lanes blind-verified; ND-W1.1 PASS; +316 reachable; lel_query fix-forward (ADJ-2) closed 7/7 |
+| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | **IN_PROGRESS** | after W2 close | writers+JOB image live before W3; corrected DAG (§6.8) |
 | W3 | WP-3.1 Abhinandan rebuild → WP-3.2 native rebuild | PENDING | consumes W2 | snapshot + golden catches + auto-restore; FORENSIC 7/7 |
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
 | CLOSE | cleanup + main↔production sync proof | PENDING | — | §7.6 five steps in order |
@@ -634,6 +634,14 @@ change (no HALT). Same pattern will apply to W2.
      error, never laundered empty) + param alignment. In-process native 0→57, Abhinandan honest-0, unparseable→err;
      9/9, tsc 0. Confirms ADJ-2 non-flip (pure unwrap bug, no isolation/scope). **PR #556 CI → merge → re-deploy
      amjis-mcp → prod re-verify item 2 (DEPLOYED-GREEN) → W1 close (7/7).**
+   - ✅ **PR #556 merged (`fc84cd0d`) → amjis-mcp re-deployed (image==HEAD, parity confirmed).** **lel_query
+     PROD RE-VERIFY: DEPLOYED-GREEN** — native `482012f1` `ok:true, total_count:57` (real dated events e.g.
+     birth 1984-02-05, YYYY-MM-DD, provenance total_events:57); Abhinandan `1c826d5a` `ok:true, events:[],
+     total_count:0` honest-empty (true 0). **W1 ACCEPTANCE SUITE = 7/7 DEPLOYED-GREEN.** F-L10-021-deployed
+     residual CLOSED. ADJ-2 follow-through satisfied.
+   - **✅✅ W1 WAVE CLOSED (2026-07-13)** — deployed (web `2385fb62` + mcp `fc84cd0d`, both==HEAD), 7/7
+     prod-verified, ND-W1.1 PASS (0 unreconciled), 16 lanes blind-verified, +316 concept families reachable.
+     Governance close (this branch). ND-W1.4 native Cowork probe runs async (not blocked).
 7. **Governance close (this branch `docs/w1-close`):** ledger + CURRENT_STATE + SESSION_LOG → PR.
 8. **ND-W1.4:** native runs Cowork-side live probe async — NOT blocked on.
 
