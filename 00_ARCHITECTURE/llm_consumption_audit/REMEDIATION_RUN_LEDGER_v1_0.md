@@ -426,8 +426,15 @@ change (no HALT). Same pattern will apply to W2.
     date/timestamp coercion bug, not "no match"). Range-filter part verified OK (in_range 1964-70=20). **NOT MERGED**
     — bounced to (e) implementer to root-cause the date/TZ boundary + provide HONEST real-data as_of evidence. Range
     behavior stays. §8.4 iteration budget: fix-iter 1/3.
-  - **⚠ WP-1.3(h) stalled twice before committing** (watchdog); uncommitted partial (contract_bridge, tool_metadata,
-    retrieval_capability_spec, m8_e2e test) preserved in worktree → resumed to finish + COMMIT + report per-item.
+  - **WP-1.3(h) IMPL REPORTED** (after 2 stalls, resumed) → branch `worktree-agent-a5982af08b088b061` (`a35dd569`).
+    LCA-12: `capabilities.ts`/`school_conventions.ts` no longer falsely advertise cross_school/multi_school as Active
+    (→PARKED/Degraded); server-count already done by (i), whitelist purge by (1.7). Phantoms dropped: kp_query,
+    query_kp_ruling_planets, timeline_query (no engine backing). m8_e2e: G12 45→57, V6 12→25, dangling ref scrubbed
+    → green. whitelist invariant GREEN. 96 + 41pass/4skip, tsc clean. Disjoint from (e) on platform-mcp.
+    **🅿 F-WP17-1 → PARKED `parked_pending_native_review`:** `multi_school_signal_lookup` is a WS-0 stub (no backing;
+    `school_signal_coverage`/`l25_msr_signals` dropped, never repopulated — WS-2 work); `cross_school_lookup` now
+    short-circuits with disclosed parked error (ends silent `errored:true`). **SURFACE TO NATIVE AT W1 CLOSE.**
+    **Blind verifier DISPATCHED** (phantom-safety + park-honesty + real m8 counts). Verdict pending; merge withheld.
   **B2 BINDING REMINDERS (native, 2026-07-12):**
   - **(a) §7.3 disposition per asset:** SERVE (with budget discipline) = DEFAULT; PARK only behind a genuine
     design question → flag `parked_pending_native_review` + reason IN LEDGER; silent drops + autonomous
