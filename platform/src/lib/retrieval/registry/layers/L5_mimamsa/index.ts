@@ -16,9 +16,12 @@ import { queryCalibrationCapability }        from './query_calibration'
 import { queryPredictionsCapability }        from './query_predictions'
 import { querySignalFamiliesCapability }     from './query_signal_families'
 import { queryManifestationGrammarCapability } from './query_manifestation_grammar'
+// WP-1.3(d) / F-L10-021: lel_query — the LEL intake serving surface (life_events table).
+import { queryLifeEventsCapability }         from './query_life_events'
 
 registerCapability(queryInsightsCapability)
 registerCapability(queryCalibrationCapability)
 registerCapability(queryPredictionsCapability)
 registerCapability(querySignalFamiliesCapability)
 registerCapability(queryManifestationGrammarCapability)
+registerCapability(queryLifeEventsCapability)
