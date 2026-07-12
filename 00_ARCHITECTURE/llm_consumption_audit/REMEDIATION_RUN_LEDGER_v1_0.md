@@ -443,8 +443,17 @@ change (no HALT). Same pattern will apply to W2.
     **conductor-fixed** (dropped stale assertion + `not.toContain` + relaxed count floor to ≥50; verified spec
     source has 0 phantom `tool_name` entries, 55 entries). tsc 0 both + m8 green on merge result.
   **✅ WP-1.3 COMPLETE — all sub-lanes a,b,c,d,e,f,g,h,i verified + integrated (11 W1 lane merges total).**
-  **ND-W1.1 295-ID reconciliation gate DISPATCHED** (mechanical diff vs wp_coverage WP-1.3 slice → per-ID
-  disposition; output to `WP13_RECONCILIATION_v1_0.md`; PASS iff 0 unreconciled).
+  **✅ ND-W1.1 295-ID reconciliation gate: PASS — 0 unreconciled** (`WP13_RECONCILIATION_v1_0.md`, full 295-row
+  table). Dispositions: **96 REMEDIATED-PENDING-W4** (this wave — a:40, WP-1.2β sib:26, i:14, b/c:8, d:5,
+  WP-1.2α/β sib:2, f:1); **131 PENDING-W2** (writer-gap/data-plane — not serving fixes; the WP-1.3 slice is
+  data-plane-dominated); **44 PENDING-W3** (temporal, awaiting WP-2.1 R-45 writer); **23 W1-FOLLOWUP** (genuine
+  serving residuals — see below); **1 PARKED** (multi_school). **Honest posture: PASS = fully accounted, NOT
+  all-fixed** (96/295 verifier-confirmed this wave; 199 parked with per-ID reasons).
+  - **23 W1-FOLLOWUP (surface to native — SERVE-default decision):** includes ~populated-but-unserved BODHA
+    assets with REAL rows + no writer needed (bodha_discoveries/pratijna/question_lenses/rm_prescriptions/
+    resonances) → serve-able NOW; plus (a) NEXT-PASS live-compute wrappers (ka_dasha_kala, ka_gochara),
+    serving-bugs (ph_pratikara/ph_rectification), kala_jivana_parva, no-vidya-apex synthesis gap. **Candidate:
+    a small W1 follow-up serving lane (SERVE-default) OR fold into WP-1.4.** Native decision at checkpoint.
   **B2 BINDING REMINDERS (native, 2026-07-12):**
   - **(a) §7.3 disposition per asset:** SERVE (with budget discipline) = DEFAULT; PARK only behind a genuine
     design question → flag `parked_pending_native_review` + reason IN LEDGER; silent drops + autonomous
