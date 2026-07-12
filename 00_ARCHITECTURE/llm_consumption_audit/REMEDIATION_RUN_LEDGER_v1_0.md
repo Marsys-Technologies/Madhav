@@ -32,7 +32,26 @@ changelog:
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
 | CLOSE | cleanup + main↔production sync proof | PENDING | — | §7.6 five steps in order |
 
-**Current position:** ✅ **W0 CLOSED** (WP-0.1 LCA-17 remediated, deployed, prod-parity proven). Entering **W1** (serving plane, 7 parallel lanes).
+**Current position:** ✅ W0 CLOSED. **W1 IN PROGRESS — CHECKPOINT (2026-07-12).** integration branch
+`integration/w1-serving-plane` (`b819eead`, pushed) carries **3 verified lanes: WP-1.1 ✅ + WP-1.2α ✅ +
+WP-1.7 ✅** (all blind-verified CONFIRMED-FIXED, tests green on each merge). Deployed-channel verification LIVE
+(§1b.2).
+**REMAINING W1 lanes (next session, re-ground from here):**
+  - **WP-1.2β** — domain discrimination + new domains (moksha 4-8-12+Ketu, education/vidya, character/buddhi,
+    bhava→domain un-collapse). Doctrine-heavy; jyotish-domain verifier. Branch from integration.
+  - **WP-1.3** — the GIANT (295 findings, 7 CRIT). MUST be split into sub-lanes a–i (serve 23 computed-but-unserved
+    assets; query_dasha_periods system_id; dasha window params; lel_query 57 events; temporal windows serving;
+    query_chart_facts filters+pagination+6 ayanamshas; msr_sql projection; dead-tool purge; apex/assess dedup).
+    Overlaps ranking/envelope → branch from integration, sub-lanes serialized/partitioned. serving-wire + data-plane.
+  - **WP-1.5** — program-wide envelope contract (honest truncated/total/cursor; budget ceilings; R-38/R-41
+    deployed retest). Touches all tools → branch from integration, sequence carefully vs WP-1.3. serving-wire.
+  - **WP-1.8** — cross-path fidelity + varga-aware verdicts (D-1/G-7 dignity+shadbala columns; varga terms in
+    verdict formula — AFTER WP-1.5). jyotish-domain + data-plane.
+  - **WP-1.4** — large-N synthesis instrument (design + skeleton only in W1; mostly new files). jyotish-domain.
+  - **WP-1.6** — capability map (LAST; regenerate AFTER 1.2/1.3/1.4/1.5 land). data-plane.
+**W1 CLOSE (after all lanes):** PR `integration/w1-serving-plane` → main → CI → single deploy (rebuilds
+amjis-web + amjis-mcp) → live prod-verify full W1 acceptance suite → register dispositions → CURRENT_STATE +
+SESSION_LOG. **Resume point: THIS LEDGER + the pushed integration branch.**
 
 ---
 
@@ -69,6 +88,21 @@ changelog:
   interleaved) is not executable in this non-interactive session without native-provided connector auth or
   an issued MCP key. **Standing evidence for WP-0.1 remains the in-process 2M-iteration blind-verified proof
   on the exact code path the service runs.** Decision to surface to native at W0 deploy gate.
+
+### §1b.2 — Deployed-channel verification UNLOCKED (2026-07-12, post-restart) — RESOLVED
+- Native provisioned a **direct API-key MCP connector** `marsys-jis-direct` (no OAuth; api_key query param).
+  Usable after a Claude Code restart (harness wires MCP at startup). Session restarted 2026-07-12 →
+  `mcp__marsys-jis-direct__*` tools LIVE. **§1b.1 constraint RESOLVED for all remaining waves** — prod-verify
+  upgrades from Option-1 parity to real deployed-channel proof.
+- **W0 deferred live-channel residual DISCHARGED:** live `get_chart_orientation` (deployed channel) returns
+  correct per-chart data — native `482012f1` → 13364/15/22 (weakest Mercury); Abhinandan `1c826d5a` →
+  13369/13/22 (weakest Saturn). Exactly the LCA-17 discriminating pair, now correct (native no longer gets
+  Abhinandan's 13369). Combined with the in-process 2M-iter concurrency proof → LCA-17 CLOSED on the real channel.
+- **Live W1 ground-truth captured** (for WP-1.2 verification): top entity_profile = `UNATTRIBUTED` @ 64.6 (native)
+  / 84.8 (Abhinandan); `grounding.fact_ids=[]`; descriptive trivia (akshara/pakshi/presiding_deity) at `major`
+  tier — LCA-14 + salience-drowning confirmed live.
+- **Security note (native-owned):** api_key is plaintext in `~/.claude.json` and authenticates directly to
+  PRODUCTION — treat as a prod credential; rotate/env-var later.
 
 ### §1c — Probe observations carried forward (not W0 scope)
 - **[OBS-1] chart_facts row-count divergence:** native `chart_facts` = 135,645 on prod vs L1_GANITA_CLOSURE canonical 27,554 (~4.9×). Possible rebuild accretion / idempotency drift, or stale closure number. **Relevant at W3 (rebuild must not accrete — §N.3 delete-then-insert). Verify pre/post W3 native rebuild. Do NOT act in W0.**
@@ -227,9 +261,96 @@ session_open:
 
 ---
 
-## §4 — HALT / disagreement register (append-only)
+### W1 — Serving plane (7 lanes; collision-safe batches, conductor-merged between batches)
 
-_(none yet)_
+**Batch strategy (conductor):** WP-1.2/1.3/1.5/1.8 all touch the shared ranking/serving/envelope layer →
+NOT run all-at-once (merge-conflict + verify risk). Executed in collision-safe batches, rebasing each
+batch on the prior merge. WP-1.6 LAST (depends on 1.2/1.3/1.4/1.5 reachability). Live deployed-channel
+verification now available (§1b.2) — each lane verified on the real channel before merge.
+
+**Deploy-cadence mechanics (conductor decision — reconciles §7.3 "merge per WP" with §7.4 "deploy per wave"):**
+main-merge auto-deploys, so per-WP merges to main would deploy mid-wave, violating the ratified per-wave
+cadence. Resolution: verified W1 WPs merge into **`integration/w1-serving-plane`** (non-main → no deploy),
+accumulating + resolving cross-WP conflicts there. At W1 CLOSE: single PR integration→main → CI → one deploy
+→ full W1 acceptance suite prod-verify. Faithful to native's ratified per-wave deploy; not a scope/contract
+change (no HALT). Same pattern will apply to W2.
+
+- **Batch A (dispatched 2026-07-12, parallel, disjoint scopes):**
+  - **WP-1.1** (LCA-2 consult resurrection, CRITICAL; cov 7) — scope `app/api/consult/**`. Re-point consult
+    off retired `reports` table → live retrieval surfaces; stop mislabeling permanent errors as retry-class;
+    consult smoke matrix (both charts × orientation/domain/timing). Verifiers: serving-wire + jyotish-domain.
+    Status: **IMPL REPORTED** → branch `worktree-agent-abcd7900cabe6c120` (commit `2476af6f`). Root cause:
+    `app/api/chat/consult/route.ts` (real path — brief said `api/consult/`) unconditionally `SELECT ... FROM
+    reports` (relation absent, `to_regclass` NULL; DDL only in migrations/_archive); `reportsResult` declared
+    but NEVER consumed → pure dead weight killing the surface; error mapped to SYSTEM_DB_UNAVAILABLE{retry:true}
+    (permanent 42P01 mislabeled transient). Fix: removed dead query; `isPermanentSchemaError()` (SQLSTATE 42/3F)
+    → 500 non-retryable, transient → 503 retryable; smoke matrix BEFORE 8/9 fail → AFTER 9/9 pass; tsc 0, eslint
+    clean, chat suite 45/45. **Adjacent same-defect surface found + FOLDED IN (conductor decision):** consult
+    PAGE server components (`clients/[id]/consult/page.tsx` L111, `.../[conversationId]/page.tsx` L46) have the
+    identical `SELECT * FROM reports` crash → agent RESUMED to none-safe them (complete LCA-2 resurrection).
+    **Page fix DONE** (commit `5a31265a`): both pages none-safed to empty (consumed downstream), tests 47/47,
+    grep confirms ZERO live `FROM reports` across route+pages. **Blind verifier DISPATCHED** (serving-wire +
+    jyotish-domain, uses live `marsys-jis-direct` channel + chart_facts ground-truth).
+    ✅ **VERDICT: CONFIRMED-FIXED** — no residual `reports` reads (independent grep); error mapping honest
+    (verified vs `errors.ts`: 42*/3F*→500 non-retry, 57/40/08→503 retry); live content non-blank + chart-DISTINCT
+    both charts (native 13,364 sig / Saturn exalted Libra 7H; Abhinandan 13,369 / Venus D1-exalted); jyotish
+    sanity PASS (Lagna Aries, Moon Purva Bhadrapada — FORENSIC anchors); scope clean (5 files). Non-blocking:
+    `get_temporal_windows`=0 activations = **R-45** (NULL activation dates, owned by WP-2.1/W2), independently
+    rediscovered — not a consult regression. **MERGED → `integration/w1-serving-plane` (`9953d317`)**; consult
+    suite 47/47 on merge result. **WP-1.1 COMPLETE.**
+  - **WP-1.2** (LCA-14/R-44/KP-4 serving-half; cov 79, 5 CRIT) — **first attempt STALLED** (infra watchdog,
+    600s no-progress on an unbounded prod-data investigation; 0 commits). WP too broad for one lane →
+    **SPLIT**:
+    - **WP-1.2α** (parts a,d,e — attribution ledger + serving salience demotion + get_domain_reading text
+      hydration): **IMPL REPORTED** → branch `worktree-agent-a546707adf1103476` (commit `e3438658`). Killed
+      UNATTRIBUTED dominance (top entity now SATURN; UNATTRIBUTED forced last — root: graha_dignity_per_varga
+      signals lacked configuration_jsonb.graha, now attributed via fact_subject); grounding.fact_ids []→51
+      surfaced/298 resolved (§N.5 proof: sample resolves to chart_facts D1_SAT); descriptive+per-varga demoted
+      from major/chart_defining (disclosed on-row `signature_tier_demoted_from`, rows kept); get_domain_reading
+      refs carry headline+summary. Files incl. new `salience_demotion.ts` + `platform-mcp/registry_bridge.ts`
+      (envelope grounding — so W1 deploy rebuilds BOTH amjis-web + amjis-mcp). 21 unit + 8 live-DB tests (both
+      charts), tsc 0, eslint clean, 87 L2 tests. **Blind verifier DISPATCHED** (serving-wire + jyotish sanity;
+      adversarial §N.5 resolution + attribution-correctness + false-demotion hunt).
+      ✅ **VERDICT: CONFIRMED-FIXED** — verifier independently resolved surfaced fact_ids (51/51 native, 52/52
+      Abhinandan) vs chart_facts; proved orphan ids (27/325 native) CANNOT leak (genuine §N.5 gate); attribution
+      correct incl. adversarial cross-graha (`D54_SAT`→SATURN not RAHU); UNATTRIBUTED-last holds live; ZERO false
+      demotion of genuine chart_defining (native kept 18, Abhinandan 17); hydration 200/200 real text; scope clean
+      (cache.ts empty diff — WP-0.1 intact); tsc 0 both projects, ranking 21/21, L2 82pass/19skip. Broke the one
+      circularity risk with an independent predicate (LEAKS=0 holds). **MERGED → integration (`1dce804a`)**;
+      zero-regression gate 148 pass/19 skip. **WP-1.2α COMPLETE.**
+    - **WP-1.2β** (parts b,c — domain discrimination + new/corrected domains: moksha 4-8-12+Ketu,
+      education/vidya, character/buddhi, bhava→domain un-collapse): doctrine-heavy → deferred to **Batch B**.
+      Verifier: jyotish-domain. Status: QUEUED.
+  - Live ground-truth captured pre-batch (§1b.2): UNATTRIBUTED @64.6/84.8, grounding.fact_ids=[], trivia@major.
+- **Batch B (pending):** WP-1.3 (295 findings — sub-split a–i), WP-1.5 (envelope contract), WP-1.8 (varga verdicts).
+- **Batch C:** WP-1.4 (synthesis design+skeleton) PENDING; **WP-1.7** (bench + CI whitelist invariant) —
+  **IMPL REPORTED** → branch `worktree-agent-ac8af34c82e2bb7aa` (commit `75818fc0`, pushed to origin). 19 dead
+  whitelist entries: **5 REGISTERED** (cgm_graph_walk→L2/traverse_chart_graph, contradiction_register,
+  temporal→L3, query_tara_balam/query_chandra_balam→L1/get_tara_chandra_bala), **14 REMOVED** (no backing cap;
+  500→clean 400; whitelist 48→34). **Permanent CI invariant** `whitelist_resolution_invariant.test.ts` + named
+  ci.yml gate, mutation-proven (remove URI→3 fails). jhora venv-provisioned, api-key wired, ephemeris honesty
+  (empty→ok:false/conf:none), port 8001→8000. **Honest partial:** `DATABASE_URL` bench needs local Postgres
+  (documented follow-up). **Follow-up F-WP17-1:** `multi_school_signal_lookup` legacy impl never bridged. 121
+  targeted + 907+58 broad tests pass, tsc clean. **Blind infra verifier DISPATCHED** (adversarial focus: do the
+  14 removals drop any live-reachable tool? + 5-registration correctness + CI mutation + ephemeris honesty).
+  ✅ **VERDICT: CONFIRMED-FIXED** — all 14 removals independently verified SAFE (0 backing cap each; the one
+  live consumer `cross_school_lookup`/multi_school_bundle was ALREADY dead → 500→400 functionally neutral);
+  5 registrations correct-target (descriptors match semantics); CI invariant runs (37) + independently
+  mutation-proven (2 fails on bogus URI) + gated in ci.yml:67; ephemeris honest; scope clean (8 files, no
+  ranking/consult/cache/orchestrator). **MERGED → integration (`b819eead`)**; regression 103 pass.
+  **WP-1.7 COMPLETE.** Follow-ups logged (§4).
+- **W1 close:** WP-1.6 (capability map) LAST → merge wave → deploy → live prod-verify full W1 suite.
+
+---
+
+## §4 — HALT / disagreement register + follow-ups (append-only)
+
+**HALTs / disagreements:** none yet.
+
+**Follow-ups surfaced during W1 (not blockers; carry to W4 / doctrine campaign / register):**
+- **F-WP17-1** (from WP-1.7): `multi_school_signal_lookup` / `cross_school_lookup` legacy `lib/tools` impl was never bridged to the registry → its deployed consumer `platform-mcp/src/bundles/multi_school_bundle.ts` degrades gracefully (`errored:true`). Prioritize re-bridging if multi-school convergence data is expected. Owner: W1 residual → consider WP-1.3 or a follow-up lane.
+- **Contract-surface phantom declarations** (from WP-1.7 verifier): `kp_query`, `query_kp_ruling_planets`, `timeline_query` remain declared in the untouched CONTRACT/router surface (`tool_metadata.ts`, `contract_bridge.ts`, `retrieval_capability_spec.ts`) with no engine backing. Out of WP-1.7 scope; future contract-surface reconciliation should implement or drop them (same phantom-declaration bug class). Candidate: W4 re-grade / doctrine campaign.
+- **R-45** (rediscovered by WP-1.1 verifier): `get_temporal_windows` = 0 activations (NULL activation dates) — already owned by **WP-2.1** (W2).
 
 ---
 
