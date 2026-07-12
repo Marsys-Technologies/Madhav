@@ -600,6 +600,21 @@ change (no HALT). Same pattern will apply to W2.
     both served w/ formula_id. Cross-surface assess↔get_signals 0/10→10/10 (domain) + disclosure. 13/13 + regressions,
     tsc 0, eslint 0. **Blind verifier DISPATCHED** (jyotish varga-doctrine DIRECTION + data-plane §N.5 vs chart_facts).
     Base f7a17e06 (behind 1.3j/1.4 by disjoint files) → rebase-if-needed at merge.
+  ✅ **WP-1.8 CONFIRMED-FIXED + MERGED** (`0a41e356`). Verifier confirmed Saturn-Scorpio own→neutral (chart_facts),
+  Venus D9=Virgo=debilitation (astronomically + chart_facts) → marriage mixed→contested = CORRECT Parashari
+  direction, no double-count; multi-formula both served; assess↔get_signals byte-identical; serving-side only;
+  tsc 0 both, regressions 20/20+6/6. **W1-remainder BATCH 2 COMPLETE (WP-1.8 + WP-1.4).**
+
+### §6.5 — Dispatch: WP-1.6 (STRICTLY LAST — capability map + served consumption protocol)
+No intersection check (runs alone, last). Base = final W1 integration (`0a41e356`, all 15 lane merges: 1.1/1.2αβ/
+1.3a–j/1.4/1.5/1.7/1.8). Scope (P-12, widened v3): (1) transform Concept×Retrievability matrix
+(`state/CONCEPT_RETRIEVABILITY_MATRIX.jsonl`, 3,058 families, per-channel — READ-ONLY seed) → machine-readable
+concept→tool/service capability MAP keyed by concept family w/ per-channel routes, **regenerated against POST-W1
+reachability** (WP-1.2/1.3/1.3j/1.4/1.5/1.8 changed what's served); (2) acquisition-tracker record schema
+(needed/received/exhausted per evidence-plan item); (3) served consumption PROTOCOL — MCP prompt/resource teaching
+demand-side posture (E3). Verifier: data-plane (sample map entries → execute route → concept arrives) +
+jyotish-domain (**3 live demand-side sessions narrow/medium/broad** following the protocol, grade chase reaches
+expected set). **Dispatched 2026-07-13.**
 
 ### §6.2 — ADJUDICATION [ADJ-1] (conductor, self-logged for async review)
 Delegation realized as **direct thin-dispatch with per-lane fresh-context agents + ledger durability**, rather
