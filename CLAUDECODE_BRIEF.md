@@ -78,6 +78,9 @@ Per wave, per plan §4 DAG:
   charts; false-negative sampling; disagreement → conductor live retest).
 - Merge per WP close (conductor-owned; zero-regression suite on merge result: R6A
   yoga-integrity tests + WP-0.1 concurrency harness once it exists + canary battery).
+  **main is PROTECTED (direct push rejected; 4 required checks): ALL merges to main go
+  via PR — branch → push → PR → checks green → merge — the proven R5.x/R6A flow (PRs
+  #508–#551). "Push to main" anywhere in this brief/plan means "land via PR".**
 - Wave close: push → DEPLOY per plan §7.4 (W0, W1, W2, final) → live prod
   re-verification of the wave's full acceptance suite by verifiers → CURRENT_STATE +
   SESSION_LOG close → next wave.
