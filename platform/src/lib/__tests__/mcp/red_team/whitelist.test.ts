@@ -105,8 +105,8 @@ describe('RT-04 — Primitive whitelist enforcement', () => {
     }
   })
 
-  it('RT-04h: whitelist maps 34 entries (48 pre-WP-1.7 minus 14 dead removed)', () => {
-    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(34)
+  it('RT-04h: whitelist maps 52 entries (34 post-WP-1.7 + 13 WP-1.3a + 5 WP-1.3j)', () => {
+    expect(Object.keys(MCP_TO_RETRIEVAL_TOOL)).toHaveLength(52)
   })
 
   it('RT-04i: all retrieval tool targets are in SURGICAL_TOOLS', () => {

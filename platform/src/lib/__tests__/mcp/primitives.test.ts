@@ -24,9 +24,9 @@ import {
 } from '@/lib/retrieval/registry/tool_name_bridge'
 
 describe('primitives_registry — isAllowedSurgicalTool', () => {
-  it('returns true for all 48 whitelisted tool names', () => {
+  it('returns true for all whitelisted tool names', () => {
     const mcpToolNames = Object.keys(MCP_TO_RETRIEVAL_TOOL)
-    expect(mcpToolNames).toHaveLength(34)  // WP-1.7: 48 − 14 dead entries removed
+    expect(mcpToolNames).toHaveLength(52)  // 34 post-WP-1.7 + 13 WP-1.3a + 5 WP-1.3j
     for (const name of mcpToolNames) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }
