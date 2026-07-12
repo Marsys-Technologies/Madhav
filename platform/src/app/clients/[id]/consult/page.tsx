@@ -106,9 +106,18 @@ export default async function ConsultPage({
   if (!chart) redirect('/dashboard')
 
   // WS-1-S3-B: Fetch pyramid layer status to derive capability gate state.
-  // Runs in parallel with the reports + conversations queries.
+  // Runs in parallel with the conversations query.
+  //
+  // LCA-2 / WP-1.1: the legacy `reports` relation was RETIRED — its DDL survives
+  // only in platform/migrations/_archive and it is ABSENT from deployed Cloud SQL.
+  // The prior `SELECT * FROM reports` here raised a permanent 42P01
+  // (undefined_table) that crashed this server-component render for EVERY chart
+  // (unlike the sibling pyramid_layers read, it was NOT .catch-guarded). We do NOT
+  // resurrect the table: resolve an empty result so the page always renders and
+  // ConsumeChat receives no legacy domain reports. Consult content is sourced from
+  // the live retrieval path (bodha_* signals) via the chat route, not `reports`.
   const [reportsResult, conversations, pyramidResult] = await Promise.all([
-    query('SELECT * FROM reports WHERE chart_id=$1 ORDER BY domain ASC', [id]),
+    Promise.resolve({ rows: [] as unknown[] }),
     listConversations({ chartId: id, userId: access.user.uid, module: 'consume' }),
     query<{ layer_key: string; status: string }>(
       `SELECT layer_key, status FROM pyramid_layers WHERE chart_id = $1`,
