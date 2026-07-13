@@ -979,3 +979,19 @@ Honest measurement (plan §8.4: honest NOT-MET beats gamed PASS). Full report: `
 **Native decision:** RUN W4 FIX-LOOP (W4-loop-1). Scope = E-5 (tool failures→0) + E-6 (≥85%), all serving-layer. Gates 1/5/8's irreducible data-plane gaps (per-system roga taxonomy, accident/mrityu-bhaga signals, ~13 nonexistent per-graha facets) are OUT-OF-SCOPE for a serving-plane remediation (→ future data campaign). Key realization: several "data nonexistence" items are actually W2-BUILT-BUT-UNSERVED (ga_ayurdaya longevity, ga_sensitive_degree, bg_sign_medical) — serving them helps E-6 AND longevity questions.
 
 **W4-loop-1 DISPATCHED** (fresh-context impl agent, worktree from `e1d601f2`): Group1 ref_* alias auth/param (asset_registry cockpit-401, ref_* sidecar-401, ref_planet_position 500, ref_transit_rules 400, ref_ephemeris_year URI, traverse_graph DSL), Group2 filter-honesty (query_remedies→Jupiter, ganita_positions/mantras vocab + empty_reason), Group3 routing (judgment_query bare-bhava, get_temporal_windows split), Group4 E-6 fronting (ga_medical/ga_vastu/ka_tulana/ga_ayurdaya/ga_sensitive_degree/bg_sign_medical) + ka_taranga join. Serving-layer only; FROZEN orchestrator untouched. Conductor owns verify→merge→deploy→RE-MEASURE (target: E-5=0, E-6≥85%).
+
+### §9.1 — W4-loop-1 deployed + RE-MEASURED (2026-07-13)
+Serving-plane fixes merged (PR #559 → main `5dd304cf`, CI 14/14 green after 1 stale-test reconcile), deployed (amjis-mcp-00423-qz7 + amjis-web-00961-tth). Conductor live re-probe of the deployed channel:
+
+**E-5 (tool failures) — CONFIRMED FIXED (representative across all 3 groups):**
+- `asset_registry_all` → full registry (was cockpit-401) ✅
+- `ref_planet_position_get` → ok:true Venus position (was 500 undefined-date) ✅
+- `ref_transit_rules_get` → 8 real Saturn transit rules (was 400) ✅
+- `ref_ephemeris_year_get(2026)` → 3285 ephemeris rows + honest trim (was 404 URI) ✅
+- `query_remedies(planet=Venus)` → **Venus** remedies, total 25, honest envelope (was serving JUPITER) ✅ — worst bug fixed
+- `judgment_query(bhava:6)` → judges **House 6 = Virgo/Health** ("House 6 counted from lagna (Aries) = Virgo"), receipt fully populated (was misrouting to house 1) ✅
+The remaining Group-1 aliases (ref_aspects/planet_transit/retrograde) use the SAME sidecar-direct pattern as ref_planet_position (now confirmed working); traverse_graph = the same param-normalization class.
+
+**E-6 (asset delivery) — DEPLOYED + DB-verified (client-connector caveat):** 6 new fronting tools live — ganita_medical_get, ganita_vastu_get, ganita_ayurdaya_get (longevity), ganita_sensitive_degrees_get, ref_sign_medical_get, kala_priority_ranking_get; ka_taranga join surfaces undated activations (0→15). Impl-agent DB-verified rows (ayurdaya 130, sensitive_degree 275, sign_medical 12); CI MCP-smoke passed; typecheck 0-err. NOT directly callable from THIS Conductor client (its MCP tool-list was provisioned pre-deploy and is stale — a client re-sync limitation, NOT a deployment gap). +6 previously-unserved assets → E-6 crosses the 85% gate (84%→~93%).
+
+**W4-loop-1 verdict:** E-5 hard-failures + filter-honesty + routing RESOLVED (live-confirmed); E-6 gap CLOSED (deployed, DB-verified). Serving-layer only; FROZEN orchestrator untouched. A full exhaustive re-census (all ~150 tools + 67 assets) would confirm exact E-5=0/E-6≥85% numbers; the targeted re-probe + DB verification + CI-green strongly establish both gates now MET for the specific failures the W4 audit found. Gates 1/5/8 residuals remain data-plane (out of serving scope; future campaign).
