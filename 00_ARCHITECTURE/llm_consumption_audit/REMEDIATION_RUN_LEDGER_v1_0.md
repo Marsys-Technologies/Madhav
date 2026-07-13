@@ -27,7 +27,7 @@ changelog:
 |---|---|---|---|---|
 | W0 | WP-0.1 (LCA-17 wrong-chart isolation) | ✅ **DONE** (deployed `amjis-web-00955-qt5` == main `6ec244c0`; 2026-07-12) | ✅ deployed | isolation proven; PR #553 merged; prod-parity confirmed |
 | W1 | WP-1.1/1.2/1.3(a-j)/1.4/1.5/1.6/1.7/1.8 (serving plane) | ✅ **CLOSED** (deployed web `2385fb62`+mcp `fc84cd0d`; **7/7 prod-verified**; 2026-07-13) | ✅ deployed | 16 lanes blind-verified; ND-W1.1 PASS; +316 reachable; lel_query fix-forward (ADJ-2) closed 7/7 |
-| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | **IN_PROGRESS** (integration `946aee7f`: 6/7 lanes merged+verified; WP-2.2-CGM + WP-2.3-temporal impl in flight) | after W2 close | writers+JOB image live before W3; corrected DAG (§6.8) |
+| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | **IMPL COMPLETE → CLOSING** (integration `738ba56a`: **7/7 lanes merged+blind-verified**; collect 3275 green; integration→main PR in flight) | after W2 close | writers+JOB image live before W3; corrected DAG (§6.8); migrations 431/432/433 apply at close |
 | W3 | WP-3.1 Abhinandan rebuild → WP-3.2 native rebuild | PENDING | consumes W2 | snapshot + golden catches + auto-restore; FORENSIC 7/7 |
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
 | CLOSE | cleanup + main↔production sync proof | PENDING | — | §7.6 five steps in order |
@@ -864,8 +864,28 @@ Branch `worktree-agent-a2f0770448dc49ab4` (`a30a8b0f`), verification pending. Gr
 
 **Conductor integration repair (`946aee7f`):** merging WP-2.2's `test_bo_wp22_empty_shells.py` broke full-tree `pytest tests/` collection — its hand-rolled `_load_isolated()` stubbed bo_bimba with only `_SUBJECT_TO_GRAHA`, but the merged bo_karanajala now imports `yoga_node_subject` from bo_bimba (WP-2.3-graph), so the stale stub raised ImportError at collection. `register()` is already idempotent for identical re-imports → the loader hack is obsolete; replaced with direct real-module imports. Full-tree collect restored to **3247 collected, exit 0**; WP-2.2 12/12; L2 regressions 58/58. (Not a §8.6 halt — conductor-owned integration hygiene.)
 
-### §7.3 — Batch-3 (DAG-sequenced) — IN FLIGHT
+### §7.3 — Batch-3 (DAG-sequenced) — MERGED + blind-verified
 Pre-dispatch mechanical intersection check @ integration `946aee7f`:
-- **WP-2.2-CGM** (bo_cgm_motifs/paths — topology/sub_graphs/motifs + **LCA-6 native-motif-zero**) ∩ WP-2.2-nonCGM (now merged) = ∅; ∩ WP-2.3-temporal (bo_karanajala) = ∅ → **DISPATCHED concurrent** (own worktree; migration 434+ if needed).
-- **WP-2.3-temporal** (bo_karanajala `active_dasha_periods_jsonb` overlay; consumes merged WP-2.1 `date_resolver.py` + WP-2.3 edges) ∩ WP-2.2-nonCGM = `bo_karanajala.py` → **HELD until nonCGM merged (done `0293ec00`), then DISPATCHED**; ∩ WP-2.2-CGM = ∅ → concurrent-safe.
-Both branch from `946aee7f`. On both verified+merged → W2 close: apply migrations (431/432 WP-2.5, 433 WP-2.3-graph, +CGM 434 if any) → integration→main PR → CI → deploy writers + JOB image (must be live before W3).
+- **WP-2.2-CGM** (bo_cgm_motifs/paths — topology/sub_graphs/motifs + **LCA-6 native-motif-zero**) ∩ WP-2.2-nonCGM = ∅; ∩ WP-2.3-temporal (bo_karanajala) = ∅ → dispatched concurrent.
+- **WP-2.3-temporal** (bo_karanajala `active_dasha_periods_jsonb` overlay; consumes merged WP-2.1 `date_resolver.py` + WP-2.3 edges) ∩ WP-2.2-nonCGM = `bo_karanajala.py` → HELD until nonCGM merged, then dispatched; ∩ WP-2.2-CGM = ∅ → concurrent-safe.
+
+| Lane | Fix | Merge | Verifier verdict |
+|---|---|---|---|
+| WP-2.2-CGM (LCA-6) | motif/topology/sub_graph writer rewired over real WP-2.3 edges; `yoga_cluster` (≥2 real yoga_member edges to ≥2 distinct nodes) + mutual_aspect/triangle detectors; un-blocked mutual_reception/parivartana/stellium; no threshold weakened (stellium=3, triangle=3-pairwise); empty-graph→0 (anti-gaming) | `ab80def5` | CONFIRMED-FIXED — **LCA-6 motif>0 GENUINE not gamed** (decisive check); 18 tests + 91 regression. W3-note: stellium rests on node-attribute lineage (empty edge array). |
+| WP-2.3-temporal | `active_dasha_periods_jsonb` overlay on graha-resting edges from L1 chart_dashas via merged WP-2.1 resolver; birth-forward triple guard; honest-empty `[]` | `670368e9` | CONFIRMED-FIXED — birth-forward guarantee holds (no pre-birth leakage possible for native); no hand-rolled dates; §N.5 intact; 10 tests + 17 regression. |
+
+**Conductor seam reconciliation (`738ba56a`):** merging WP-2.3-temporal flipped a WP-2.3-graph seam test (`test_temporal_hook_left_null_for_temporal_lane`) that asserted `active_dasha_periods_jsonb IS NULL` until temporal fills it. Temporal now emits honest-empty `"[]"` when no periods map is passed → updated the guard to assert `"[]"` (populated case owned by `test_bo_karanajala_temporal`). Writer suites 109/109; full-tree collect **3275 exit 0**.
+
+### §7.4 — W2 IMPLEMENTATION COMPLETE — entering close
+**All 7 lanes merged + blind-verified** on `integration/w2-writers` HEAD `738ba56a`:
+WP-2.1 · WP-2.4 · WP-2.5 · WP-2.3-graph · WP-2.2-nonCGM · WP-2.2-CGM · WP-2.3-temporal.
+Full-tree pytest collection green (3275, exit 0); all writer unit suites green; register-guard + collection + seam repairs applied by conductor (all conductor-owned integration hygiene, no §8.6 halt).
+
+**Surgical migrations authored-unapplied (apply at close per §N.4):** `431_bg_sign_medical_kalapurusha.sql`, `432_ga_sensitive_degree_ga_ayurdaya_assets.sql` (WP-2.5), `433_bodha_cgm_edges_constituent_fact_ids.sql` (WP-2.3-graph). All additive (ADD COLUMN/table IF NOT EXISTS). No CGM/temporal/nonCGM migration (columns pre-existed).
+
+**W2-close follow-ups (logged, non-blocking — §4):**
+- FU-W2-1: cockpit `count_sql` for newly-populated `bodha_cgm_sub_graphs` + `bodha_cgm_chart_topology_summary` (asset_registry — separate from writer lanes).
+- FU-W2-2: migration-376 `target_floor=0` rationale for `bo_cgm_motifs` now stale (motif>0) — floors aspirational not gates (§N.4), so non-breaking; refresh at convenience.
+- W3 data-checks: (a) stellium motif edge-lineage; (b) live native motif_count>0 + FORENSIC 7/7 + OBS-1 ayanamsha GROUP BY.
+
+**Close sequence:** integration→main PR → CI (4 checks) → merge → apply migrations 431/432/433 surgically to prod → deploy writers + JOB image + serving (must be live before W3) → live smoke → CURRENT_STATE/SESSION_LOG/register → open W3.
