@@ -355,6 +355,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: true, l0_citation_ids: true },
   lel_capable: false,
+  // Lane 5 (§N.6 (iv), Doctrine Campaign D-1 Night-1): backs judgment_query; receipt-honesty
+  // fixed this pass (timing_anchored no longer claims success over an all-empty dasha fetch).
+  density_contract: {
+    paginated: false, // one judgment per call, not a row list
+    facets: ['domain', 'operative_varga', 'max_signals'],
+    empty_reason: false, // judgment_flags[] carries the honest-gap disclosures instead
+  },
   drill_children: [
     'marsys://tool/L1/get_divisionals',
     'marsys://tool/L2/query_signals',
@@ -567,7 +574,24 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           }
         }
         timing['mahadasha_windows_by_graha'] = windowsByGraha
-        timingAnchored = true
+        // Lane 5 (§N.6 / CR-1/63 handoff, serving-only — no new joins): honesty fix only.
+        // The fetches above can each succeed (is_error=false) yet still hand back an empty
+        // rows array — that is NOT the same thing as "timing anchored". Require actual
+        // content (a current-period row, or at least one non-empty mahadasha window) before
+        // claiming timing_anchored=true; an all-empty result is an honest false, one line,
+        // no new dasha joins (anti-scope respected).
+        const currentRows = (timing['current'] as unknown[] | undefined) ?? []
+        const hasWindowRows = Object.values(windowsByGraha).some(
+          w => Array.isArray(w) && w.length > 0,
+        )
+        timingAnchored = currentRows.length > 0 || hasWindowRows
+        if (!timingAnchored) {
+          judgment_flags.push(
+            'timing_anchored_false: dasha fetches succeeded but returned zero rows for both ' +
+            'the current period and every mahadasha window checked — reported honestly as ' +
+            'not-anchored rather than claiming success over an empty payload (CR-1/63 class).',
+          )
+        }
       } catch (e) {
         judgment_flags.push(`timing_hook_failed: ${String(e)}`)
       }

@@ -345,6 +345,26 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         }, principal) as Record<string, unknown>
         const inner = data['content'] as Record<string, unknown> | undefined
         if (inner) {
+          // Lane 5 (§N.6 (iii) layered envelope): a small verdict ahead of the (budgeted,
+          // potentially large) row list — tier distribution + top subjects, computed from
+          // signals ALREADY fetched in this same response (zero new query, B.10). Built
+          // BEFORE the trimmer runs so the verdict reflects the untrimmed served set.
+          const rows = Array.isArray(inner['signals']) ? inner['signals'] as Record<string, unknown>[] : []
+          const tierCounts: Record<string, number> = {}
+          const subjectCounts: Record<string, number> = {}
+          for (const r of rows) {
+            const tier = typeof r['signature_tier'] === 'string' ? r['signature_tier'] as string : 'unknown'
+            tierCounts[tier] = (tierCounts[tier] ?? 0) + 1
+            const facts = Array.isArray(r['constituent_facts_array']) ? r['constituent_facts_array'] as string[] : []
+            for (const f of facts.slice(0, 1)) { subjectCounts[f] = (subjectCounts[f] ?? 0) + 1 }
+          }
+          const topSubjects = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k)
+          inner['verdict_summary'] = {
+            served_count: rows.length,
+            tier_distribution: tierCounts,
+            top_subjects_by_frequency: topSubjects,
+            note: 'Small verdict over THIS response\'s own served rows (§N.6 (iii)) — not a re-query.',
+          }
           const budgeted = applyResponseBudget(inner, 25, [signalsSection()])
           if (budgeted.trim_report) inner['trim_report'] = budgeted.trim_report
         }
@@ -458,6 +478,54 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       subject:    z.string().optional().describe('Filter by fact_subject (graha code, e.g. SUN, VEN).'),
       check_type: z.string().optional().describe('Filter by fact_key (specific check).'),
+    }, principal)
+
+  // Doctrine Campaign D-1 Night-1, Lane 5: ga_vichara ("judged structure", Lane 2's new
+  // asset) → ganita_vichara_get (registry cap marsys://tool/L1/get_vichara). Born
+  // §N.6-conformant — the registry handler itself already ships a layered
+  // {verdict, digest, rows} response, loud facet rejection, and an honest empty_reason
+  // (including "asset not built yet" while Lane 2 is unmerged) — this alias just fronts it.
+  regAlias(server, 'ganita_vichara_get',
+    'L1 ga_vichara ("judged structure") — the judgment layer on top of ga_structural: ' +
+    'valence_pass (functional-lordship valence, e.g. 8L-Mars→H2 strong_malefic), ' +
+    'varga_ratification (ratification_factor ∈ [0.6,1.4] per domain×subject), ' +
+    'varga_ratification_divergence (a varga flipping D1\'s dignity direction — rankable ' +
+    'evidence), varga_consistency (continuous vargottama-generalized index, 0..1), ' +
+    'leverage_index (domain_load_bearing_weight ÷ capability, dasha-runway-weighted — ' +
+    'the number remedy/intervention-timing ranks on). Every row carries ' +
+    'constituent_fact_ids resolving back to chart_facts (§N.5). Response is a layered ' +
+    'envelope: verdict (family counts) + digest (per-family summary) + paginated rows. ' +
+    'If ga_vichara has not been built for this chart yet, returns an honest empty_reason ' +
+    '(not an error).',
+    'marsys://tool/L1/get_vichara',
+    {
+      family: z.enum([
+        'valence_pass', 'varga_ratification', 'varga_ratification_divergence',
+        'varga_consistency', 'leverage_index',
+      ]).optional().describe('Filter to one vichara_family. Unknown values are rejected loudly, never silently ignored.'),
+      domain: z.enum(['wealth', 'career', 'marriage', 'health', 'general']).optional()
+        .describe('Filter by domain (only meaningful for varga_ratification/varga_ratification_divergence/leverage_index).'),
+      subject: z.string().optional().describe('Filter by subject (graha/lord/karaka code, e.g. VENUS or venus — case-insensitive).'),
+    }, principal)
+
+  // ga_yoga_firings → ganita_yoga_firings_get (registry cap marsys://tool/L1/get_yoga_firings).
+  // Doctrine Campaign D-1 Night-1, Lane 5 (§N.6 CR-76 avoidance): ga_yoga_firings was a
+  // computed asset (~50-56 rows/chart, now carrying Lane 3's grounds_jsonb ledger) with NO
+  // deployed MCP tool serving it — the same dark-asset failure class this lane exists to
+  // prevent recurring. Default fired=true keeps catalog-only rows from ever rendering as a
+  // finding (CR-72/CR-43) unless the caller explicitly asks for all/non-fired rows.
+  regAlias(server, 'ganita_yoga_firings_get',
+    'L1 detailed Nābhasa/yoga firing rows for a chart (ga_yoga_firings) — per-yoga strength ' +
+    'scoring, bhaṅga/cancellation, partial-formation %, dāśā-activation windows, and (when ' +
+    'present) Lane 3\'s grounds_jsonb verdict ledger. Default fired=true (catalog-only rows ' +
+    'never served as findings — CR-72/CR-43); pass all=true or fired=false to see them.',
+    'marsys://tool/L1/get_yoga_firings',
+    {
+      fired:             z.boolean().optional().describe('Filter by fired status (default: true).'),
+      all:               z.boolean().optional().describe('If true, ignore the fired filter (serve fired + non-fired).'),
+      bhanga_active:     z.boolean().optional().describe('Filter to firings with an active bhaṅga (cancellation) rule.'),
+      is_partial:        z.boolean().optional().describe('Filter to partially-formed yogas.'),
+      yoga_canonical_id: z.string().optional().describe('Filter to a specific yoga by canonical id.'),
     }, principal)
 
   // ka_tulana → kala_priority_ranking_get (registry cap marsys://tool/L3/call_priority_ranking)

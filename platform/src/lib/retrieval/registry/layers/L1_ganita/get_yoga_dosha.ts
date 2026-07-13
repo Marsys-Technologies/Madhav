@@ -54,6 +54,13 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 88, always_include: false },
   },
+  // Lane 5 (§N.6 (iv), Doctrine Campaign D-1 Night-1): backs ganita_structural_get
+  // (facet=yoga_fires/dosha_fires) and ganita_yogas_get — both Lane-3-touched surfaces.
+  density_contract: {
+    paginated: true,
+    facets: ['type', 'categories', 'facet'],
+    empty_reason: false, // R5.3 total/pagination receipt exists; explicit empty_reason string not yet added on this tool
+  },
   async handler(args, _ctx) {
     try {
       const chartId    = args.chart_id as string

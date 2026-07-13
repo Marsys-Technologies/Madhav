@@ -139,6 +139,8 @@ async function runUcdStep(
       max_salience: digest['max_salience'] != null ? Number(digest['max_salience']) : null,
       contradiction_count: Number(digest['contradiction_count'] ?? 0),
       weakest_graha: digest['weakest_graha'] ? String(digest['weakest_graha']) : null,
+      // CR-55 (Lane 5): additive passthrough of the shadbala-vs-view provenance disclosure.
+      weakest_graha_source: digest['weakest_graha_source'] ? String(digest['weakest_graha_source']) : null,
       top_priority_class: digest['top_priority_class'] ? String(digest['top_priority_class']) : null,
       trap1_count: digest['trap1_count'] != null ? Number(digest['trap1_count']) : null,
       top_signals: topSignals,

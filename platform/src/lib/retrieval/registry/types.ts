@@ -196,6 +196,21 @@ interface CapabilityDescriptorBase {
     openai?: Record<string, unknown>
     deepseek?: Record<string, unknown>
   }
+
+  /**
+   * Lane 5 (§N.6 (iv) density contract — Doctrine Campaign D-1 Night-1). Declares this
+   * capability's serving-density discipline so a future census/CI harness (per the brief,
+   * NOT built tonight — see DEPLOYED_TOOL_CENSUS_2026-07-13.md for the census shape) can
+   * assert byte caps and facet/empty-reason coverage per tool without re-deriving it from
+   * source. Additive/optional — absent on capabilities this campaign did not touch.
+   */
+  density_contract?: {
+    max_verdict_bytes?: number
+    max_digest_bytes?: number
+    paginated: boolean
+    facets: string[]
+    empty_reason: boolean
+  }
 }
 
 // ── Discriminated union: per_chart enforces chart_id in required_inputs ──────
