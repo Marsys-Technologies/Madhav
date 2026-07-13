@@ -282,6 +282,48 @@ def _infer_valence(fact_category: str, fact_value_text: str | None) -> str:
     return "neutral"
 
 
+# ── Night-1 Lane 4 (CR-83/CR-54-as-amended): judged valence ───────────────────
+#
+# _infer_valence above is NOT deleted — it is demoted to the annotated fallback
+# (CR-42 class: no silent degradation). When a chart_vichara `valence_pass` row
+# exists for this signal's (actor, target, varga), its judged valence wins and
+# valence_source='ga_vichara_v1'; otherwise the keyword heuristic fires and
+# valence_source='keyword_heuristic_v1' — always visible, never silent.
+
+_VICHARA_TO_MSR_VALENCE: dict[str, str] = {
+    "strong_benefic": "benefic", "benefic": "benefic",
+    "strong_malefic": "malefic", "malefic": "malefic",
+    "neutral": "neutral",
+}
+
+
+def _resolve_valence(
+    vichara_lookup: dict[tuple[str, str, str], dict],
+    fact_cat: str,
+    fact_value_text: str | None,
+    tags: dict,
+) -> tuple[str, str, float | None]:
+    """Returns (valence, valence_source, judged_value_num_or_None).
+
+    LANE2 dependency (verified BLOCKED 2026-07-14): vichara_lookup is {} in
+    every build until LANE2 (ga_vichara/chart_vichara) ships — see
+    _load_vichara_valence. Until then every signal legitimately takes the
+    keyword_heuristic_v1 path; that is the honest, documented degraded state
+    the brief's own §4 anticipates, not a bug in this lane.
+    """
+    actor  = tags.get("graha") or tags.get("primary_graha") or tags.get("lord") or tags.get("body")
+    target = tags.get("target") or tags.get("aspected_house") or tags.get("house") or tags.get("house_number")
+    varga  = tags.get("varga") or tags.get("varga_id") or "D1"
+    if actor is not None and target is not None and vichara_lookup:
+        rec = vichara_lookup.get((str(actor), str(target), str(varga)))
+        if rec is not None:
+            value_text = str(rec.get("value_text") or "").lower()
+            mapped = _VICHARA_TO_MSR_VALENCE.get(value_text, "neutral")
+            value_num = rec.get("value_num")
+            return mapped, "ga_vichara_v1", (float(value_num) if value_num is not None else None)
+    return _infer_valence(fact_cat, fact_value_text), "keyword_heuristic_v1", None
+
+
 # ── Varga extraction ──────────────────────────────────────────────────────────
 
 _VARGA_PATTERN = re.compile(r"\b(D\d+)\b", re.IGNORECASE)
@@ -509,14 +551,31 @@ def _build_summary_text(fact_category: str, fact_key: str,
 
 def _build_headline_text(fact_category: str, fact_key: str,
                          fact_value_text: str | None, fact_value_num: float | None,
-                         source_l1_asset: str) -> str:
-    """Short deterministic headline for display/retrieval."""
+                         source_l1_asset: str,
+                         fact_subject: str | None = None,
+                         house: int | None = None,
+                         varga_id: str | None = None) -> str:
+    """Short deterministic headline for display/retrieval.
+
+    CR-45 (Night-1 Lane 4, Change 3): leads with SUBJECT (house, varga) when a
+    subject is resolvable — "Headline must name subject + house + varga.
+    Salience without subject is unusable evidence." Parts genuinely absent are
+    omitted. Falls back to the pre-existing anonymous form only when
+    fact_subject is None/empty — no regression for facts that HAVE a subject.
+    """
     val = fact_value_text or (f"{fact_value_num:.3g}" if fact_value_num is not None else "")
     cat_display = fact_category.replace("_", " ")
     key_display = fact_key.replace("_", " ")
-    if val:
-        return f"{cat_display}: {key_display} = {val} [{source_l1_asset}]"
-    return f"{cat_display}: {key_display} [{source_l1_asset}]"
+    body = f"{cat_display}: {key_display} = {val}" if val else f"{cat_display}: {key_display}"
+    if fact_subject:
+        loc_parts: list[str] = []
+        if house is not None:
+            loc_parts.append(f"H{house}")
+        if varga_id:
+            loc_parts.append(str(varga_id))
+        loc = f" ({', '.join(loc_parts)})" if loc_parts else ""
+        return f"{str(fact_subject).upper()}{loc}: {body} [{source_l1_asset}]"
+    return f"{body} [{source_l1_asset}]"
 
 
 # ── Duration class ────────────────────────────────────────────────────────────
@@ -554,19 +613,74 @@ def _signature_tier(computed_salience: float, ceiling: str | None = None) -> str
 
 
 def _tier_ceiling_for(fact_category: str, varga_id: str | None) -> str | None:
-    """WP-2.4 (9b-2): the max tier a signal of this category/varga may reach.
+    """CR-82→CR-65 (Night-1 Lane 4, Change 2): the flat "any non-D1/`_per_varga`
+    fact capped at supporting" rule is RETIRED — it structurally forbade the
+    varga layer from ever ranking chart_defining/major, which is the exact
+    CR-65 defect (95.7% of the corpus stuck at 'supporting'). Replaced by
+    ratification-aware weighting (_resolve_ratification_factor) + percentile
+    tier assignment (_assign_tiers_by_percentile).
 
-    Divisional (non-D1 varga) and granular per-varga families are structurally
-    incapable of being 'chart-defining' — they are one facet of a divisional
-    matrix, not a whole-chart signature. Cap them at 'supporting'. Whole-chart
-    D1 structures (yoga_label, dosha_label, D1 dignity/shadbala) are uncapped and
-    can still reach chart_defining on their own salience.
+    ONLY the flood-rollup aggregate ceiling survives: _FLOOD_PRONE_FAMILIES
+    members are genuinely one facet of a divisional matrix collapsed into a
+    single aggregate row (WP-2.4 9b-1) — un-capping THOSE would recreate
+    CR-65 in mirror image (15,660 rashi-drishti-class rollups flooding the
+    top tiers). This is the one ceiling the brief's §10 traps says to keep.
     """
-    if fact_category.endswith("_per_varga") or fact_category in _FLOOD_PRONE_FAMILIES:
-        return "supporting"
-    if varga_id is not None and str(varga_id).upper() not in ("D1", ""):
+    if fact_category in _FLOOD_PRONE_FAMILIES:
         return "supporting"
     return None
+
+
+# ── Night-1 Lane 4 (Change 2, CR-82→CR-65): percentile-based tier assignment ──
+
+# design §11: "chart_defining ≈ top 1–2%" — module constant per brief §3.3
+# (1–2% midpoint = 1.5%; "major" = the next 8.5%, i.e. top 10% cumulative).
+_TIER_CHART_DEFINING_PCTL = 0.985
+_TIER_MAJOR_PCTL = 0.90
+
+
+def _assign_tiers_by_percentile(rows: list[dict]) -> None:
+    """Assign signature_tier from the percentile rank of (ratification-adjusted)
+    computed_salience within this (chart × ayanamsha) substep's full signal set —
+    replaces the old per-row _signature_tier(computed_salience, ceiling) call.
+
+    chart_defining = top 1.5%, major = next 8.5% (top 10% cumulative);
+    below that, the pre-existing 0.3 threshold still splits supporting from
+    background (unchanged behavior for the bulk of the corpus — only the top
+    decile's ceiling logic changes). The flood-rollup ceiling from
+    _tier_ceiling_for (stashed per-row as "_tier_ceiling" by the caller) is
+    applied AFTER percentile assignment — an aggregate rollup cannot escape
+    into major/chart_defining regardless of its raw percentile rank.
+
+    §10 trap: percentiles are per-chart, per-build (here: per ayanamsha
+    substep, which is the existing per-chart-per-build granularity used by
+    _set_salience_pctl_in_class) — never global across charts.
+    """
+    if not rows:
+        return
+    n = len(rows)
+    ordered = sorted(rows, key=lambda r: r["computed_salience"])
+    rank_by_salience: dict[float, int] = {}
+    for i, row in enumerate(ordered):
+        sal = row["computed_salience"]
+        if sal not in rank_by_salience:
+            rank_by_salience[sal] = i + 1  # first occurrence — RANK() semantics (ties share min rank)
+    for row in rows:
+        rank = rank_by_salience[row["computed_salience"]]
+        pctl = (rank - 1) / (n - 1) if n > 1 else 1.0
+        if pctl >= _TIER_CHART_DEFINING_PCTL:
+            tier = "chart_defining"
+        elif pctl >= _TIER_MAJOR_PCTL:
+            tier = "major"
+        elif row["computed_salience"] >= 0.3:
+            tier = "supporting"
+        else:
+            tier = "background"
+        ceiling = row.pop("_tier_ceiling", None)
+        if ceiling is not None and ceiling in _TIER_ORDER:
+            if _TIER_ORDER.index(tier) > _TIER_ORDER.index(ceiling):
+                tier = ceiling
+        row["signature_tier"] = tier
 
 
 # ── Signature class derivation ────────────────────────────────────────────────
@@ -682,6 +796,374 @@ def _build_av_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[int, i
             continue
         lookup[house] = int(r.get("fact_value_num") or 28)
     return lookup
+
+
+# ── Night-1 Lane 4 (Change 1, CR-81): class_prior activation ──────────────────
+#
+# Mirrors the established join pattern already shipped in
+# mi_kula._load_registry_priors (BA-P6 C6): brahma_class_priors's sentinel
+# convention is prior_version='1.0', signal_tradition='*', fact_kind='*' for
+# the (signal_type_class, source_subsystem) axis pair used here. Cascading
+# '*' fallback resolves partial matches before defaulting to 1.0.
+
+def _load_class_priors(conn: Any) -> dict[tuple[str, str], float]:
+    """Load brahma_class_priors once per sub-step. Returns {} on any error
+    (missing table, etc.) — priors are optional-by-design (brief §2); every
+    caller must still default to 1.0 on a miss, never raise."""
+    try:
+        rows = _fetch_dict(
+            conn,
+            """SELECT signal_type_class, source_subsystem, class_prior
+               FROM brahma_class_priors
+               WHERE prior_version = '1.0' AND signal_tradition = '*' AND fact_kind = '*'""",
+            [],
+        )
+    except Exception as exc:
+        logger.warning("[bo_laksana] brahma_class_priors load failed (%s); class_prior=1.0 for all signals", exc)
+        return {}
+    return {
+        (str(r["signal_type_class"]), str(r["source_subsystem"])): float(r["class_prior"])
+        for r in rows
+    }
+
+
+def _resolve_class_prior(
+    priors: dict[tuple[str, str], float], signal_type_class: str, source_subsystem: str,
+) -> tuple[float, bool]:
+    """Cascading (stc, sub) → (stc, '*') → ('*', sub) resolution. Returns (prior, hit)
+    where hit=False means no row matched at all (silent-miss default, counted for the
+    CR-81 hit-rate report — brief §2: "<50% hit-rate → stop and debug, don't ship
+    inert")."""
+    for key in ((signal_type_class, source_subsystem), (signal_type_class, "*"), ("*", source_subsystem)):
+        if key in priors:
+            return priors[key], True
+    return 1.0, False
+
+
+# ── Night-1 Lane 4 (Change 2, CR-82→CR-65): varga_ratification loader ─────────
+#
+# LANE2 dependency (verified BLOCKED 2026-07-14): ga_vichara / chart_vichara do
+# not exist in this campaign yet (Lane 2 never landed — see this lane's handback
+# report). This loader is defensive by construction: it degrades to ({}, False)
+# whenever chart_vichara is absent, so every signal's ratification_factor stays
+# NULL/neutral and every fallback is honestly tagged — never a silently-guessed
+# value (CR-42 class). Once LANE2 ships the table, this same query activates the
+# real mechanism with no further code change required here.
+
+def _load_varga_ratification(conn: Any, chart_id: str) -> tuple[dict[tuple[str, str], float], bool]:
+    """(subject, domain) -> ratification_factor, from chart_vichara's
+    vichara_family='varga_ratification' rows for this chart. Returns
+    (lookup, table_available)."""
+    sp = "sp_bo_laksana_vichara_ratif"
+    try:
+        with conn.cursor() as _c:
+            _c.execute(f"SAVEPOINT {sp}")
+        rows = _fetch_dict(
+            conn,
+            """SELECT subject, domain, ratification_factor FROM chart_vichara
+               WHERE chart_id = %s AND vichara_family = 'varga_ratification'""",
+            [chart_id],
+        )
+        with conn.cursor() as _c:
+            _c.execute(f"RELEASE SAVEPOINT {sp}")
+    except Exception as exc:
+        try:
+            with conn.cursor() as _c:
+                _c.execute(f"ROLLBACK TO SAVEPOINT {sp}")
+        except Exception:
+            pass
+        logger.warning(
+            "[bo_laksana] chart_vichara varga_ratification unavailable (%s) — LANE2 "
+            "(ga_vichara) not yet built in this campaign; ratification_factor stays "
+            "NULL/neutral for every signal this build (documented degraded path, "
+            "not a silent guess — CR-82→CR-65 handoff).", exc,
+        )
+        return {}, False
+    lookup: dict[tuple[str, str], float] = {}
+    for r in rows:
+        subj = str(r.get("subject") or "")
+        dom = str(r.get("domain") or "")
+        if subj and dom:
+            lookup[(subj, dom)] = float(r.get("ratification_factor") or 1.0)
+    return lookup, True
+
+
+def _resolve_ratification_factor(
+    ratification_lookup: dict[tuple[str, str], float],
+    primary_graha: str | None,
+    domains: list[str],
+) -> tuple[float | None, str | None]:
+    """Max-magnitude-deviation-from-1.0 ratification factor across the fact's
+    affected domains (design §11, brief §3 quoted). Returns (factor, domain)
+    or (None, None) when no ratification row matches — column stays NULL,
+    never a fabricated 1.0-that-looks-computed."""
+    if not primary_graha or not ratification_lookup:
+        return None, None
+    best_factor: float | None = None
+    best_domain: str | None = None
+    for dom in domains:
+        f = ratification_lookup.get((primary_graha, dom))
+        if f is None:
+            continue
+        if best_factor is None or abs(f - 1.0) > abs(best_factor - 1.0):
+            best_factor, best_domain = f, dom
+    return best_factor, best_domain
+
+
+# ── Night-1 Lane 4 (Change 3, CR-83/CR-54-as-amended): judged-valence loader ──
+#
+# Same LANE2-dependency posture as _load_varga_ratification: returns ({}, False)
+# whenever chart_vichara is absent, so _resolve_valence's fallback path fires
+# honestly (valence_source='keyword_heuristic_v1') rather than raising.
+
+def _load_vichara_valence(conn: Any, chart_id: str) -> tuple[dict[tuple[str, str, str], dict], bool]:
+    """(actor, target, varga) -> {value_text, value_num}, from chart_vichara's
+    vichara_family='valence_pass' rows for this chart. Returns (lookup, table_available)."""
+    sp = "sp_bo_laksana_vichara_valence"
+    try:
+        with conn.cursor() as _c:
+            _c.execute(f"SAVEPOINT {sp}")
+        rows = _fetch_dict(
+            conn,
+            """SELECT actor, target, varga, value_text, value_num FROM chart_vichara
+               WHERE chart_id = %s AND vichara_family = 'valence_pass'""",
+            [chart_id],
+        )
+        with conn.cursor() as _c:
+            _c.execute(f"RELEASE SAVEPOINT {sp}")
+    except Exception as exc:
+        try:
+            with conn.cursor() as _c:
+                _c.execute(f"ROLLBACK TO SAVEPOINT {sp}")
+        except Exception:
+            pass
+        logger.warning(
+            "[bo_laksana] chart_vichara valence_pass unavailable (%s) — LANE2 "
+            "(ga_vichara) not yet built in this campaign; every signal falls back "
+            "to the keyword heuristic this build (documented, not silent — "
+            "valence_source='keyword_heuristic_v1').", exc,
+        )
+        return {}, False
+    lookup: dict[tuple[str, str, str], dict] = {}
+    for r in rows:
+        actor = str(r.get("actor") or "")
+        target = str(r.get("target") or "")
+        varga = str(r.get("varga") or "D1")
+        if actor and target:
+            lookup[(actor, target, varga)] = {
+                "value_text": r.get("value_text"),
+                "value_num": r.get("value_num"),
+            }
+    return lookup, True
+
+
+def _load_vichara_divergence_signals(
+    conn: Any, chart_id: str, ayanamsha_id: str, build_id: str, now: str,
+) -> list[dict]:
+    """CR-57: emit a first-class MSR signal per chart_vichara row with
+    vichara_family='varga_ratification_divergence'. LANE2-dependent — returns []
+    whenever chart_vichara is absent (see _load_varga_ratification's guard
+    note); forward-compatible once LANE2 ships."""
+    sp = "sp_bo_laksana_vichara_divergence"
+    try:
+        with conn.cursor() as _c:
+            _c.execute(f"SAVEPOINT {sp}")
+        rows = _fetch_dict(
+            conn,
+            """SELECT subject, domain, value_text, value_num, constituent_facts_array
+               FROM chart_vichara
+               WHERE chart_id = %s AND vichara_family = 'varga_ratification_divergence'""",
+            [chart_id],
+        )
+        with conn.cursor() as _c:
+            _c.execute(f"RELEASE SAVEPOINT {sp}")
+    except Exception as exc:
+        try:
+            with conn.cursor() as _c:
+                _c.execute(f"ROLLBACK TO SAVEPOINT {sp}")
+        except Exception:
+            pass
+        logger.info(
+            "[bo_laksana] varga_ratification_divergence signals skipped (%s) — "
+            "LANE2 (chart_vichara) not yet built in this campaign.", exc,
+        )
+        return []
+    signals: list[dict] = []
+    for r in rows:
+        subj = str(r.get("subject") or "")
+        dom = str(r.get("domain") or "")
+        value_text = str(r.get("value_text") or "")
+        value_num = r.get("value_num")
+        constituents = r.get("constituent_facts_array") or []
+        valence = "malefic" if (value_num is not None and float(value_num) < 0) else (
+            "benefic" if (value_num is not None and float(value_num) > 0) else "neutral"
+        )
+        signals.append({
+            "signal_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": ayanamsha_id,
+            "build_id": build_id,
+            "signal_type_id": f"varga_ratification_divergence:{subj}:{dom}"[:80],
+            "signal_type_class": "varga_ratification_divergence",
+            "signal_tradition": "parashari",
+            "fact_kind": "configuration",
+            "source_l1_asset": "ga_vichara",
+            "source_subsystem": "structural",
+            "signal_summary_text": (
+                f"category=varga_ratification_divergence | subject={subj} | domain={dom} | "
+                f"value_text={value_text} | value_num={value_num}"
+            ),
+            "signal_headline_text": value_text or f"{subj}: divergent varga ratification in {dom}",
+            "classical_sources_jsonb": None,
+            "varga_id": None,
+            "varga_provenance_jsonb": None,
+            "epistemic_tier": "documented_approximation",
+            "epistemic_jsonb": json.dumps({
+                "tradition_agreement_state": "single",
+                "epistemic_tier": "documented_approximation",
+                "computation_vs_interpretation": "computation",
+                "source": "chart_vichara/varga_ratification_divergence",
+            }),
+            "salience_conditioned_by_jsonb": None,
+            "signature_tier": None,   # assigned by _assign_tiers_by_percentile
+            "_tier_ceiling": None,
+            "valence": valence,
+            "lel_origin": False,
+            "configuration_jsonb": json.dumps({"subject": subj, "domain": dom, "value_text": value_text}),
+            "constituent_facts_array": [str(c) for c in constituents if c] or None,
+            "constituent_signals_array": None,
+            "classical_sources_array": None,
+            "source_corroboration_count_by_text": 2,
+            "source_corroboration_count_by_verse": None,
+            "orb_tightness": 1.0,
+            "shadbala_norm": 1.0,
+            "dignity_score": 0.5,
+            "deterministic_strength": None,
+            "verification_certainty": None,
+            "divisional_corroboration_count": None,
+            "dasha_activation_proximity_score": None,
+            "house_weight_multiplier": 1.0,
+            "ashtakavarga_support_multiplier": 1.0,
+            "aspect_modifier": None,
+            "vargottama_amplification": 0.0,
+            "argala_modifier": None,
+            "neechabhanga_modifier": 1.0,
+            "cancellation_modifier": 1.0,
+            # class_prior for this signal class: design "high salience by
+            # construction" default 1.2 (brief §3.4) when the priors table has
+            # no explicit row for signal_type_class='varga_ratification_divergence'.
+            "computed_salience": round(1.2 * 1.0, 6),
+            "salience_formula_version": "v2.0",
+            "salience_confidence_interval_jsonb": None,
+            "salience_inputs_complete": False,
+            "present_but_enfeebled": False,
+            "class_prior": 1.2,
+            "verification_rescale": None,
+            "bala_gate": None,
+            "functional_context_score": None,
+            "domains_affected_array": [dom] if dom else [],
+            "domain_salience_jsonb": json.dumps({dom: 1.2} if dom else {}),
+            "shared_factor_keys_jsonb": None,
+            "cross_domain_shared_factor_count": None,
+            "graph_edge_pattern_jsonb": None,
+            "graph_node_strength_contribution_jsonb": None,
+            "relationship_classification": None,
+            "graha_weakness_indicators_jsonb": None,
+            "remedy_hooks_array": None,
+            "recurring_pattern_marker": None,
+            "top_k_salience_rank": None,
+            "system_convergence_count": None,
+            "signature_class": "planetary",
+            "contradicts_signals_array": None,
+            "active_duration_class": "natal_permanent",
+            "active_dasha_periods_jsonb": None,
+            "activation_predicted_dates_jsonb": None,
+            "predicted_outcome_class": None,
+            "cross_ayanamsha_consistency_score": None,
+            "strength_normalized_to_chart_max": None,
+            "pada_precision_flag": None,
+            "cross_system_consensus_count": None,
+            "channel_render_priority_jsonb": None,
+            "verification_pass_status": "documented_approximation",
+            "verification_method": "chart_vichara_projection",
+            "citation_ref": f"chart_vichara/{subj}/{dom}",
+            "citation_human": f"ga_vichara varga_ratification_divergence: {subj} in {dom}",
+            "computed_at": now,
+            "engine_version": ENGINE_VERSION,
+            "ratification_factor": None,
+            "valence_source": "ga_vichara_v1",
+        })
+    return signals
+
+
+# ── Night-1 Lane 4 (Change 5, CR-76/77 AMENDED): position-class subject resolution ──
+#
+# Register §I.1 (binding): special-lagna / chara-karaka / arudha / KP / tajaka
+# facts are ingested-then-starved — they carry no graha/house resolution so the
+# salience assembly defaults to shadbala 1.0 / dignity 0.5 / bindus 4 and sinks.
+# This resolves EXISTING ingested facts only (anti-scope: no new fetch of new
+# categories). Explicit jsonb keys are tried first (covers the majority of
+# already-ingested facts); a sign→lord fallback covers facts that only carry a
+# sign/rashi name with no explicit graha key.
+
+_SIGN_LORD: dict[str, str] = {
+    "aries": "MAR", "taurus": "VEN", "gemini": "MER", "cancer": "MOON",
+    "leo": "SUN", "virgo": "MER", "libra": "VEN", "scorpio": "MAR",
+    "sagittarius": "JUP", "capricorn": "SAT", "aquarius": "SAT", "pisces": "JUP",
+}
+
+_POSITION_CLASS_EXPLICIT_KEYS = (
+    "graha", "primary_graha", "lord", "tenant_graha", "occupant",
+    "conjunct_graha", "significator", "karaka_graha", "resolved_graha",
+)
+
+
+def _resolve_position_subject(
+    fact_cat: str, fact_subject: str | None, fvj: dict, fact_value_text: str | None,
+) -> tuple[str | None, int | None, str | None]:
+    """Best-effort (graha, house, rule) resolution for position-class facts.
+    Returns (None, None, None) when genuinely unresolvable — callers keep the
+    existing defaults + inputs_complete=False (trap #17), per brief §6."""
+    house_raw = fvj.get("house") or fvj.get("house_number") or fvj.get("bhava") or fvj.get("cusp")
+    try:
+        house = int(house_raw) if house_raw is not None else None
+    except (TypeError, ValueError):
+        house = None
+    if house is not None and not (1 <= house <= 12):
+        house = None
+
+    # 1. Explicit jsonb graha-like keys (covers most already-ingested facts).
+    for key in _POSITION_CLASS_EXPLICIT_KEYS:
+        v = fvj.get(key)
+        if v:
+            return str(v), house, f"explicit_jsonb:{key}"
+
+    # 2. Chara-karaka / karakamsa / swamsa: the karaka's holder is often
+    #    carried directly as fact_value_text (e.g. AmK -> "Saturn").
+    if fact_cat in ("karaka_chara_position", "karakamsa_position", "swamsa_position"):
+        graha = _infer_graha_from_text(fact_value_text or "")
+        if graha:
+            return graha, house, "karaka_value_text"
+
+    # 3. sign/rashi name present -> classical sign lord (deterministic classical
+    #    fact, not a fabrication) for special_lagna / arudha_pada / kp_* facts.
+    sign = fvj.get("sign") or fvj.get("rashi")
+    if not sign and fact_value_text:
+        # value_text sometimes IS the sign name (e.g. special_lagna landing sign).
+        candidate = str(fact_value_text).strip().lower()
+        if candidate in _SIGN_LORD:
+            sign = candidate
+    if sign:
+        lord = _SIGN_LORD.get(str(sign).strip().lower())
+        if lord:
+            return lord, house, "sign_lord"
+
+    # 4. fall back to parsing fact_subject itself (e.g. 'D1_SUN', 'SUN-HOUSE_7').
+    graha = _graha_key_from_subject(str(fact_subject or ""))
+    if graha and (graha in _LONG_TO_SHORT.values() or graha.upper() in _LONG_TO_SHORT):
+        return graha, house, "fact_subject_parse"
+
+    return None, house, None
 
 
 # ── Classical bridge: yoga/dosha citation join (P3B CLASSICAL BRIDGE fix) ─────
@@ -1193,6 +1675,9 @@ def _build_signal_row(
     ayanamsha_override: str | None = None,
     classical_catalog: tuple[set[str], set[str], dict[str, list[str]], set[str]] | None = None,
     valid_fact_ids: set[str] | None = None,
+    class_priors: dict[tuple[str, str], float] | None = None,
+    ratification_lookup: dict[tuple[str, str], float] | None = None,
+    vichara_valence_lookup: dict[tuple[str, str, str], dict] | None = None,
 ) -> dict:
     fact_id  = str(fact_row.get("fact_id", ""))
     fact_cat = str(fact_row.get("fact_category", ""))
@@ -1267,9 +1752,38 @@ def _build_signal_row(
 
     # Fact kind, valence, varga_id, tradition
     fact_kind  = _infer_fact_kind(fact_cat)
-    valence    = _infer_valence(fact_cat, fact_value_text)
     varga_id   = _extract_varga_id(fact_key, fvj)
     tradition  = _infer_tradition(fact_cat, sc)
+
+    # Night-1 Lane 4 (Change 5, CR-76/77 AMENDED): position-class subject
+    # resolution — position-class facts otherwise carry no graha/house
+    # resolution and default to shadbala 1.0 / dignity 0.5 / bindus 4, sinking
+    # to background regardless of true significance.
+    subject_resolution: dict | None = None
+    if fact_cat.startswith(_POSITION_CATS_PREFIX) and "graha" not in tags:
+        resolved_graha, resolved_house, rule = _resolve_position_subject(
+            fact_cat, fact_row.get("fact_subject"), fvj, fact_value_text,
+        )
+        if resolved_graha:
+            tags["graha"] = resolved_graha
+            config["graha"] = resolved_graha
+            if resolved_house is not None and "house" not in tags:
+                tags["house"] = resolved_house
+                config["house"] = resolved_house
+            subject_resolution = {
+                "resolved_graha": resolved_graha,
+                "resolved_house": resolved_house,
+                "rule": rule,
+            }
+        elif resolved_house is not None:
+            subject_resolution = {"resolved_graha": None, "resolved_house": resolved_house, "rule": None}
+
+    # Night-1 Lane 4 (Change 3, CR-83/CR-54-as-amended): judged valence — prefer
+    # ga_vichara's valence_pass row over the keyword heuristic; the heuristic is
+    # demoted to an explicitly-tagged fallback (CR-42 class: never silent).
+    valence, valence_source, judged_value_num = _resolve_valence(
+        vichara_valence_lookup or {}, fact_cat, fact_value_text, tags,
+    )
 
     # Domains (WP-2.4 9b-3: KP cusp facts inherit their bhava's domains)
     domains        = _assign_domains(fact_cat, source_subsystem,
@@ -1298,15 +1812,38 @@ def _build_signal_row(
             yoga_ids, dosha_ids, yoga_rule_ids, valid_chunk_ids,
         )
 
-    # Salience computation — v2 formula (BA-P3B); class_prior defaults to 1.0 until
-    # brahma_class_priors is queried per-substep in a future optimization pass.
+    # Salience computation — v2 formula (BA-P3B).
+    # Night-1 Lane 4 (Change 1, CR-81): class_prior activated from brahma_class_priors
+    # (was a literal 1.0). Miss (no matching row) is NOT treated as inputs_complete=False
+    # (priors are optional by design) but IS counted for the hit-rate report (§2).
+    stc_for_prior = _signal_type_class(fact_cat)
+    class_prior_val, class_prior_hit = _resolve_class_prior(
+        class_priors or {}, stc_for_prior, source_subsystem,
+    )
     sal = _compute_salience(
         fact_row, tags, strength_lookup, dignity_lookup, av_lookup,
-        class_prior=1.0,
+        class_prior=class_prior_val,
         functional_context=1.0,
         varga_id=varga_id or "D1",
     )
     computed_salience = sal["computed_salience"]
+
+    # Night-1 Lane 4 (Change 2, CR-82→CR-65): ratification-aware weighting.
+    # Applies only to per-varga (non-D1) facts whose subject resolves to a
+    # graha/lord with a chart_vichara ratification row in one of the fact's
+    # domains. LANE2-dependent — ratification_lookup is {} until ga_vichara
+    # ships (see _load_varga_ratification); factor stays None/NULL then.
+    primary_graha_for_ratif = (tags.get("graha") or tags.get("primary_graha")
+                                or tags.get("lord") or tags.get("body")
+                                or _graha_key_from_subject(str(fact_row.get("fact_subject") or "")))
+    ratification_factor: float | None = None
+    ratification_domain: str | None = None
+    if varga_id is not None and str(varga_id).upper() not in ("D1", ""):
+        ratification_factor, ratification_domain = _resolve_ratification_factor(
+            ratification_lookup or {}, primary_graha_for_ratif, domains,
+        )
+        if ratification_factor is not None:
+            computed_salience = round(computed_salience * ratification_factor, 6)
 
     # Text columns
     signal_summary_text = _build_summary_text(
@@ -1314,10 +1851,19 @@ def _build_signal_row(
         float(fact_value_num) if fact_value_num is not None else None,
         config,
     )
+    headline_subject = tags.get("graha") or (subject_resolution or {}).get("resolved_graha")
+    headline_house = tags.get("house") or tags.get("house_number") or tags.get("bhava")
+    try:
+        headline_house = int(headline_house) if headline_house is not None else None
+    except (TypeError, ValueError):
+        headline_house = None
     signal_headline_text = _build_headline_text(
         fact_cat, fact_key, fact_value_text,
         float(fact_value_num) if fact_value_num is not None else None,
         source_l1_asset,
+        fact_subject=headline_subject,
+        house=headline_house,
+        varga_id=varga_id,
     )
 
     # signal_type_id = category:key[:80]
@@ -1333,6 +1879,12 @@ def _build_signal_row(
         "epistemic_tier": vpass,
         "computation_vs_interpretation": "computation",
     }
+    if judged_value_num is not None:
+        epistemic_jsonb["judged_valence"] = judged_value_num
+    if subject_resolution is not None:
+        epistemic_jsonb["subject_resolution"] = subject_resolution
+    if ratification_domain is not None:
+        epistemic_jsonb["ratification_domain_applied"] = ratification_domain
 
     # Remedy hooks for dosha categories
     remedy_hooks: list[str] | None = None
@@ -1366,10 +1918,12 @@ def _build_signal_row(
         "epistemic_tier":                           vpass,
         "epistemic_jsonb":                          json.dumps(epistemic_jsonb),
         "salience_conditioned_by_jsonb":            None,
-        # WP-2.4 (9b-2): granular/divisional signals capped below major/chart_defining.
-        "signature_tier":                           _signature_tier(
-                                                        computed_salience,
-                                                        _tier_ceiling_for(fact_cat, varga_id)),
+        # Night-1 Lane 4 (Change 2, CR-82→CR-65): signature_tier is now assigned
+        # post-hoc by _assign_tiers_by_percentile (percentile of post-ratification
+        # salience within this ayanamsha substep); only the flood-rollup ceiling
+        # survives per-row, stashed here for that second pass to apply.
+        "signature_tier":                           None,
+        "_tier_ceiling":                            _tier_ceiling_for(fact_cat, varga_id),
         "valence":                                  valence,
         "lel_origin":                               False,   # LEL data is L3-gated
         # ── Structured configuration ──────────────────────────────────────────
@@ -1405,6 +1959,13 @@ def _build_signal_row(
         "verification_rescale":                     sal.get("verification_rescale"),
         "bala_gate":                                sal.get("bala_gate") if sal.get("bala_gate") != 1.0 else None,
         "functional_context_score":                 sal.get("functional_context"),
+        # Night-1 Lane 4 (migration 367): ratification_factor NULL until a chart_vichara
+        # row matches (LANE2-dependent); valence_source always populated (CR-42 class).
+        "ratification_factor":                      ratification_factor,
+        "valence_source":                            valence_source,
+        # Internal bookkeeping consumed by run_substep's notes/hit-rate report — not a
+        # DB column; harmless as an extra dict key for psycopg's named-param binding.
+        "_class_prior_hit":                         class_prior_hit,
         # salience_pctl_in_class, salience_robustness, aggregation_member filled by
         # second-pass UPDATE after all signals for this (chart × ayanamsha) are inserted
         # ── Domain ────────────────────────────────────────────────────────────
@@ -1879,6 +2440,13 @@ def _build_navamsha_cross_check_signals(
             ),
             "computed_at":                              now,
             "engine_version":                           ENGINE_VERSION,
+            # Night-1 Lane 4 (migration 367): O3 navamsha signals are not per-varga
+            # aspect/lord facts in the CR-82 sense (no ratification applies) and are
+            # not consulted by ga_vichara's valence_pass — keyword heuristic already
+            # assigned `valence` above via classification-derived logic, so tag it
+            # the same way every other keyword-derived valence is tagged.
+            "ratification_factor":                      None,
+            "valence_source":                            "keyword_heuristic_v1",
         }
         signals.append(row)
 
@@ -1915,7 +2483,8 @@ INSERT INTO bodha_msr_signals (
   cross_ayanamsha_consistency_score, strength_normalized_to_chart_max,
   pada_precision_flag, cross_system_consensus_count, channel_render_priority_jsonb,
   verification_pass_status, verification_method,
-  citation_ref, citation_human, computed_at, engine_version
+  citation_ref, citation_human, computed_at, engine_version,
+  ratification_factor, valence_source
 ) VALUES (
   %(signal_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
   %(signal_type_id)s, %(signal_type_class)s, %(signal_tradition)s,
@@ -1943,7 +2512,8 @@ INSERT INTO bodha_msr_signals (
   %(cross_ayanamsha_consistency_score)s, %(strength_normalized_to_chart_max)s,
   %(pada_precision_flag)s, %(cross_system_consensus_count)s, %(channel_render_priority_jsonb)s::jsonb,
   %(verification_pass_status)s, %(verification_method)s,
-  %(citation_ref)s, %(citation_human)s, %(computed_at)s, %(engine_version)s
+  %(citation_ref)s, %(citation_human)s, %(computed_at)s, %(engine_version)s,
+  %(ratification_factor)s, %(valence_source)s
 )
 ON CONFLICT (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb)
 DO NOTHING
@@ -2100,6 +2670,15 @@ class BoLaksanaWriter(WriterBase):
         dignity_lookup  = _build_dignity_lookup(conn, chart_id, ayanamsha)
         av_lookup       = _build_av_lookup(conn, chart_id, ayanamsha)
 
+        # Night-1 Lane 4 — Change 1 (CR-81): activated class priors.
+        class_priors = _load_class_priors(conn)
+        # Night-1 Lane 4 — Change 2/3 (CR-82→CR-65, CR-83): LANE2-dependent lookups.
+        # Both degrade to ({}, False) whenever chart_vichara doesn't exist yet
+        # (verified BLOCKED 2026-07-14 — see this lane's handback report); every
+        # downstream consumer already handles the empty-lookup case honestly.
+        ratification_lookup, ratification_available = _load_varga_ratification(conn, chart_id)
+        vichara_valence_lookup, vichara_valence_available = _load_vichara_valence(conn, chart_id)
+
         # Fetch ALL fact rows for this ayanamsha (category-agnostic).
         # C3-fix: INVARIANT rows are fetched separately and appended so each
         # ayanamsha sub-step processes them exactly once (previously they were
@@ -2149,6 +2728,9 @@ class BoLaksanaWriter(WriterBase):
                     ayanamsha_override=ayanamsha,
                     classical_catalog=classical_catalog,
                     valid_fact_ids=valid_fact_ids,
+                    class_priors=class_priors,
+                    ratification_lookup=ratification_lookup,
+                    vichara_valence_lookup=vichara_valence_lookup,
                 )
                 signal_rows.append(row)
             except Exception as exc:
@@ -2190,12 +2772,47 @@ class BoLaksanaWriter(WriterBase):
             except Exception:
                 pass
 
+        # Night-1 Lane 4 — Change 2.4 (CR-57): varga_ratification_divergence
+        # signals. LANE2-dependent — [] whenever chart_vichara is absent.
+        divergence_signals = _load_vichara_divergence_signals(conn, chart_id, ayanamsha, build_id, now)
+        if divergence_signals:
+            signal_rows.extend(divergence_signals)
+            logger.info("[bo_laksana] %s — CR-57 divergence signals: %d",
+                        ayanamsha, len(divergence_signals))
+
         # Post-processing: rank + normalize + in-class percentile — all computed in
         # memory on the row dicts BEFORE the insert, so salience_pctl_in_class is
         # written in the single INSERT pass (no separate post-insert UPDATE).
         _set_top_k_ranks(signal_rows)
         _normalize_by_chart_max(signal_rows)
         _set_salience_pctl_in_class(signal_rows)
+
+        # Night-1 Lane 4 — Change 2 (CR-82→CR-65): percentile-based signature_tier,
+        # replacing the old per-row varga ceiling (flood-rollup ceiling still applies,
+        # stashed per-row as "_tier_ceiling" and consumed/popped here).
+        _assign_tiers_by_percentile(signal_rows)
+
+        # Night-1 Lane 4 — Change 1 (CR-81) hit-rate report: count signals whose
+        # class_prior resolved to a real brahma_class_priors row (vs. the 1.0
+        # miss-default). "_class_prior_hit" is bookkeeping only — not a DB column;
+        # popped here so it never reaches _batch_insert's named-param binding.
+        prior_hits = 0
+        distinct_nondefault_priors: set[float] = set()
+        for row in signal_rows:
+            if row.pop("_class_prior_hit", False):
+                prior_hits += 1
+            cp = row.get("class_prior")
+            if cp is not None and cp != 1.0:
+                distinct_nondefault_priors.add(round(float(cp), 4))
+        prior_hit_rate = (prior_hits / len(signal_rows)) if signal_rows else 0.0
+        if prior_hit_rate < 0.5:
+            logger.warning(
+                "[bo_laksana] %s — CR-81 class_prior hit-rate %.1f%% (<50%%) — "
+                "the (signal_type_class, source_subsystem) join likely doesn't match "
+                "brahma_class_priors' key convention; investigate before trusting "
+                "class_prior as live (see bg_class_priors seed for the real key set).",
+                ayanamsha, prior_hit_rate * 100,
+            )
 
         # Idempotency: wipe prior rows for (chart_id, ayanamsha_id)
         deleted = replace_prior_msr_for_chart(conn, chart_id, ayanamsha)
@@ -2204,8 +2821,16 @@ class BoLaksanaWriter(WriterBase):
         # Batch insert (salience_pctl_in_class now carried on each row — no second pass)
         inserted = _batch_insert(conn, signal_rows)
 
+        lane4_notes = (
+            f";class_prior_hit_rate={prior_hit_rate:.3f}"
+            f";class_prior_distinct_nondefault={len(distinct_nondefault_priors)}"
+            f";ratification_available={ratification_available}"
+            f";vichara_valence_available={vichara_valence_available}"
+            f";divergence_signals={len(divergence_signals)}"
+        )
+
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=inserted,
-            notes=f"aya={ayanamsha};facts={len(fact_rows)};skipped={skipped}",
+            notes=f"aya={ayanamsha};facts={len(fact_rows)};skipped={skipped}{lane4_notes}",
         )
