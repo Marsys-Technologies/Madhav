@@ -34,6 +34,9 @@ export interface UcdDigest {
   max_salience: number | null
   contradiction_count: number
   weakest_graha: string | null
+  /** CR-55 (Lane 5): which computation produced weakest_graha — additive, optional so
+   *  existing consumers reading only weakest_graha are unaffected. */
+  weakest_graha_source?: string | null
   top_priority_class: string | null
   trap1_count: number | null
   top_signals: SignalRef[]

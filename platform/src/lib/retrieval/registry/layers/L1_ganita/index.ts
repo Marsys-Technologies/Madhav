@@ -34,6 +34,8 @@ import { getYogaFiringsCapability }        from './get_yoga_firings'
 // W4-loop-1 (E-6): longevity (ga_ayurdaya) + sensitive-degree (ga_sensitive_degree)
 import { getAyurdayaCapability }           from './get_ayurdaya'
 import { getSensitiveDegreesCapability }   from './get_sensitive_degrees'
+// Doctrine Campaign D-1 Night-1, Lane 5: judged structure (ga_vichara, Lane 2's new asset)
+import { getVicharaCapability }            from './get_vichara'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -63,3 +65,4 @@ registerCapability(getVastuDirectionsCapability)
 registerCapability(getYogaFiringsCapability)
 registerCapability(getAyurdayaCapability)
 registerCapability(getSensitiveDegreesCapability)
+registerCapability(getVicharaCapability)
