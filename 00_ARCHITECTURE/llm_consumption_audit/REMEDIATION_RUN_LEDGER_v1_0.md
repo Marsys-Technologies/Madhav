@@ -916,4 +916,24 @@ Full py-sidecar suite green locally (3170 passed, 0 failed, gate's exact command
 - **Verify path:** deployed MCP (`mcp__marsys-jis-direct__*`, prod reads) — Conductor independently re-verifies FORENSIC 7/7 + motif>0 gates after the wave-conductor reports.
 - **Access posture:** gcloud authed on `madhav-astrology`; Secret Manager readable; NOT an entitlement HALT.
 
-**W3 execution DISPATCHED** to a fresh-context wave-conductor (re-grounded from ledger+plan) with hard safety rules: Abhinandan golden-catch gates native; FORENSIC failure = catastrophic STOP-to-Conductor; NO autonomous full-instance restore; NO self-merge/deploy (code fixes escalate to Conductor); §8.4 budget 2 re-entries; §8.6 HALT classes. Awaiting evidence + verdict.
+**W3 execution DISPATCHED** to a fresh-context wave-conductor (re-grounded from ledger+plan) with hard safety rules: Abhinandan golden-catch gates native; FORENSIC failure = catastrophic STOP-to-Conductor; NO autonomous full-instance restore; NO self-merge/deploy (code fixes escalate to Conductor); §8.4 budget 2 re-entries; §8.6 HALT classes.
+
+### §8.1 — WP-3.1 Abhinandan golden-catch: ✅ PASS (2026-07-13)
+Abhinandan (`1c826d5a`) fully rebuilt on deployed W2 image (`brahma-pipeline:e1d601f2`): **62 assets lit** across L1–L5, 0 dormant, 1 benign `stale` (`ka_tulana` — no-output service, target_table NULL). Golden-catch on prod (via pipeline DB URL):
+
+| W2 lane | Check | Result |
+|---|---|---|
+| WP-2.2-CGM (**LCA-6**) | `bodha_cgm_motifs` count | **606** (was 0) ✅ — motif-zero bug FIXED on real rebuild |
+| WP-2.3-graph+temporal | `bodha_cgm_edges` / with dasha overlay | 728 / **205** populated ✅ |
+| WP-2.2-nonCGM (R-44e) | `bodha_contradictions` | **9** (was 0/inert) ✅ |
+| WP-2.1 (R-45) | `kala_activation` pre-birth windows | **0** ✅ (birth-forward holds) |
+| WP-2.2-nonCGM | `phala_phaladesa.narration_jsonb` non-NULL | **7/7** ✅ |
+| WP-2.4 | `bodha_msr_signals` | 47,040 (under 60k floor, no flood) ✅ |
+
+**All W2 remediation fixes CONFIRMED working on real rebuilt data.** WP-3.1 golden-catch GREEN.
+
+### §8.2 — L3 performance observation (out-of-remediation-scope; native-flagged, deferred)
+During the Abhinandan rebuild the L3 `ka_sangam` convergence stage was slow (~17 min): `ka_yojaka` emits **47,040 activation predicates** (== the 47,040 MSR signal count — one predicate per signal), and `ka_sangam` runs dasha-eligibility (7-system walk via `ka_dasha_kala`, redundantly recomputed per predicate) + transit search per predicate. This is a SEALED-L3 pre-existing perf characteristic, NOT a W2 change. Diagnosed a memoization fix (cache per-chart×ayanamsha×system dasha reads). **Native decision: SKIP optimize+redeploy for now** (build completes ~17 min; not blocking). Logged as FU-L3-perf for future.
+
+### §8.3 — WP-3.2 native rebuild: IN PROGRESS (native-driven via cockpit)
+Native (`482012f1`) rebuild `a0a49694` running (native-initiated from cockpit UI, not the W3 agent — the earlier W3-agent-triggered native run `43112b82` was native-stopped, and the interrupted-partial state is being replaced by this clean full rebuild — per-chart idempotent delete-then-insert). Per native directive **"monitor + verify when done"**: Conductor monitoring `a0a49694` to terminal WITHOUT interfering, then runs WP-3.2 verification (FORENSIC 7/7 × all 5 ayanamshas, LCA-6 motif>0, OBS-1 ayanamsha GROUP BY, full per-asset counts). Snapshot `1783904647096` remains the net.
