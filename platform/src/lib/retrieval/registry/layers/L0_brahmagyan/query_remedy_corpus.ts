@@ -43,10 +43,13 @@ export const queryRemedyCorpusCapability: CapabilityDescriptor = {
     'contraindications, etc.) or use read_remedy(remedy_id) for single-record full detail. ' +
     '`total` is the true count of corpus rows matching the filter, independent of how many were returned.',
   input_schema: {
-    graha:    { type: 'string', description: 'Filter by target graha abbreviation (SU, MO, MA, ME, JU, VE, SA, RA, KE).' },
-    category: { type: 'string', description: 'Remedy category: mantra | gem | yantra | dana | color | fasting | ritual | tantric_heavy.' },
+    planet:   { type: 'string', description: 'Filter by target graha full name (case-insensitive, e.g. "Venus", "Saturn"). `graha` accepted as an alias.' },
+    graha:    { type: 'string', description: 'Alias of `planet` (graha name; case-insensitive).' },
+    domain:   { type: 'string', description: 'Filter by life domain (ILIKE, e.g. career, health, marriage).' },
+    category: { type: 'string', description: 'Remedy category (case-insensitive; plural forms accepted): mantra(s) | gemstone(s) | charity | puja | vrata | yantra(s) | homa | japa | behavioral | ayurvedic.' },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: DEFAULT_LIMIT },
+    top_k:  { type: 'number', description: 'Alias of `limit`.' },
     fields: { type: 'string', description: "'compact' (default) or 'all' for full raw rows.", enum: ['compact', 'all'] },
   },
   required_inputs: [],
@@ -62,14 +65,33 @@ export const queryRemedyCorpusCapability: CapabilityDescriptor = {
   },
   async handler(args, _ctx) {
     try {
-      const limit  = Math.min((args.limit as number) ?? DEFAULT_LIMIT, MAX_LIMIT)
+      // W4-loop-1 (E-5 group2, WORST bug): this handler only ever read `graha` and matched
+      // `planet = $` exactly, while its LLM-facing callers (query_remedies / ref_remedies_get /
+      // ref_remedies_search) send `planet` (full name e.g. "Venus"), `domain`, `category`, and
+      // `top_k`. The result: planet=Venus was silently ignored and all 266 rows were returned
+      // (JUPITER first, alphabetical) — an actively-misleading filter-lie. Now honors planet
+      // (case-insensitive; graha kept as an alias), domain (ILIKE), category (case-insensitive,
+      // matched against BOTH remedy_type[singular] and category, plural→singular normalized),
+      // and top_k (as a limit alias). Emits empty_reason on a genuine empty match.
+      const rawLimit = (args.limit as number | undefined) ?? (args.top_k as number | undefined)
+      const limit  = Math.min(rawLimit ?? DEFAULT_LIMIT, MAX_LIMIT)
       const offset = (args.offset as number) ?? 0
       const includeAll = ((args.fields as string | undefined) ?? 'compact').toLowerCase() === 'all'
 
+      const planetArg = (args.planet as string | undefined) ?? (args.graha as string | undefined)
+      const categoryArg = args.category as string | undefined
+      const domainArg = args.domain as string | undefined
+      // remedy category vocabulary: the corpus stores singular remedy_type ('gemstone',
+      // 'mantra', 'yantra', ...) — normalize common plural request forms.
+      const catNorm = categoryArg
+        ? categoryArg.trim().toLowerCase().replace(/s$/, '')
+        : undefined
+
       const whereConds: string[] = ['1=1']
       const whereParams: unknown[] = []
-      if (args.graha)    { whereParams.push(args.graha as string); whereConds.push(`planet = $${whereParams.length}`) }
-      if (args.category) { whereParams.push(args.category as string); whereConds.push(`remedy_type = $${whereParams.length}`) }
+      if (planetArg)  { whereParams.push(planetArg); whereConds.push(`LOWER(planet) = LOWER($${whereParams.length})`) }
+      if (catNorm)    { whereParams.push(catNorm); whereConds.push(`(LOWER(remedy_type) = $${whereParams.length} OR LOWER(category) = $${whereParams.length})`) }
+      if (domainArg)  { whereParams.push(`%${domainArg}%`); whereConds.push(`domain ILIKE $${whereParams.length}`) }
       const whereClause = whereConds.join(' AND ')
 
       const selectCols = includeAll ? '*' : COMPACT_COLUMNS
@@ -87,6 +109,7 @@ export const queryRemedyCorpusCapability: CapabilityDescriptor = {
       const total = countResult.rows?.[0]?.total ?? result.rows?.length ?? 0
       const returned = result.rows?.length ?? 0
 
+      const anyFilter = Boolean(planetArg || catNorm || domainArg)
       return {
         content: {
           rows: result.rows ?? [],
@@ -96,6 +119,10 @@ export const queryRemedyCorpusCapability: CapabilityDescriptor = {
           offset,
           fields: includeAll ? 'all' : 'compact',
           truncated: offset + returned < total,
+          filters_applied: { planet: planetArg ?? null, category: categoryArg ?? null, domain: domainArg ?? null },
+          ...(total === 0 && anyFilter
+            ? { empty_reason: `No remedies matched (planet=${planetArg ?? 'any'}, category=${categoryArg ?? 'any'}, domain=${domainArg ?? 'any'}). The corpus stores planet as lowercase full names and remedy_type as singular (mantra/gemstone/yantra/charity/puja/vrata/homa/japa/behavioral/ayurvedic).` }
+            : {}),
         },
         is_error: false,
       }
