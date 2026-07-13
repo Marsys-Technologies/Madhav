@@ -152,13 +152,16 @@ class TestBhavaEdges:
         assert by_type["occupancy"]["constituent_fact_ids_array"] == ["fid-occ-sat"]
         assert by_type["bhava_aspect"]["constituent_fact_ids_array"] == ["fid-asp-jup5"]
 
-    def test_temporal_hook_left_null_for_temporal_lane(self) -> None:
-        """WP-2.3-temporal owns active_dasha_periods_jsonb — must be NULL here."""
+    def test_temporal_hook_honest_empty_without_periods_map(self) -> None:
+        """WP-2.3-temporal owns active_dasha_periods_jsonb. When _build_bhava_edges is
+        called WITHOUT a dasha_periods_by_graha map (as here — the graph lane's own
+        path), the temporal overlay is the honest-empty JSON array '[]', never NULL and
+        never fabricated. The populated-array case is covered by test_bo_karanajala_temporal."""
         lordship, occupancy, aspect = self._facts()
         nm = _node_map({"Mars": "n-mars"}, {1: "n-h1"})
         edges = _build_bhava_edges(CHART_ID, AYA, BUILD_ID,
                                    lordship, [], [], nm, NOW)
-        assert edges and all(e["active_dasha_periods_jsonb"] is None for e in edges)
+        assert edges and all(e["active_dasha_periods_jsonb"] == "[]" for e in edges)
 
     def test_missing_node_skipped(self) -> None:
         lordship = [{"graha": "Mars", "house": 1, "fact_id": "fid"}]
