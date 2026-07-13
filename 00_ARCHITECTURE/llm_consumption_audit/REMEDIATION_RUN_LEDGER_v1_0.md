@@ -27,7 +27,7 @@ changelog:
 |---|---|---|---|---|
 | W0 | WP-0.1 (LCA-17 wrong-chart isolation) | ✅ **DONE** (deployed `amjis-web-00955-qt5` == main `6ec244c0`; 2026-07-12) | ✅ deployed | isolation proven; PR #553 merged; prod-parity confirmed |
 | W1 | WP-1.1/1.2/1.3(a-j)/1.4/1.5/1.6/1.7/1.8 (serving plane) | ✅ **CLOSED** (deployed web `2385fb62`+mcp `fc84cd0d`; **7/7 prod-verified**; 2026-07-13) | ✅ deployed | 16 lanes blind-verified; ND-W1.1 PASS; +316 reachable; lel_query fix-forward (ADJ-2) closed 7/7 |
-| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | **IMPL COMPLETE → CLOSING** (integration `738ba56a`: **7/7 lanes merged+blind-verified**; collect 3275 green; integration→main PR in flight) | after W2 close | writers+JOB image live before W3; corrected DAG (§6.8); migrations 431/432/433 apply at close |
+| W2 | WP-2.1/2.2/2.3/2.4/2.5 (writer packages) | ✅ **CLOSED** (merged main `e1d601f2` PR #558, CI 14/14; migrations 431/432/433 applied+MCP-verified; Web+Sidecar+Pipeline-Job-Image deployed 2026-07-13) | ✅ deployed | 7/7 lanes blind-verified; writers+JOB image LIVE; data-plane correctness → W3 rebuild |
 | W3 | WP-3.1 Abhinandan rebuild → WP-3.2 native rebuild | PENDING | consumes W2 | snapshot + golden catches + auto-restore; FORENSIC 7/7 |
 | W4 | WP-4.1 re-audit + gates | PENDING | final (loop fixes only) | gates §2 evaluated mechanically |
 | CLOSE | cleanup + main↔production sync proof | PENDING | — | §7.6 five steps in order |
@@ -897,3 +897,15 @@ Full-tree pytest collection green (3275, exit 0); all writer unit suites green; 
 Full py-sidecar suite green locally (3170 passed, 0 failed, gate's exact command). **Lesson (W3 discipline):** run the FULL `pytest tests/ -m 'not integration'` locally before every integration→main PR — targeted writer-suite runs miss cross-cutting pre-existing tests that a writer's behavior change touches.
 
 **W2-close hygiene FU-W2-3:** `00_ARCHITECTURE/CONDUCTOR/**/CONDUCTOR_HALT_LOG.md` are git-tracked but written as a side-effect by an offline FORENSIC-gate test (produces default Aries/Ashwini/Scorpio when run without live ephemeris — benign, non-failing). Conductor reverts these transient mutations pre-commit; proper fix = gitignore or redirect the log target. Non-blocking.
+
+### §7.5 — W2 CLOSED ✅ (2026-07-13)
+- **Merge:** PR #558 `integration/w2-writers` → main = merge commit `e1d601f2`; CI **14/14 green** (Governance Gates incl. full py-sidecar suite, Unit Tests, Build, TypeScript, TAP-5/6/7, Planner, ICR, MCP smoke, Coverage, Naming, Secret Scan, Boot-time).
+- **Migrations applied (deploy A-S8 `migrate.ts`, committed, deploy succeeded):** `Applied: 431_bg_sign_medical_kalapurusha.sql`, `Applied: 432_ga_sensitive_degree_ga_ayurdaya_assets.sql`, `Applied: 433_bodha_cgm_edges_constituent_fact_ids.sql`. Surgical VERIFICATION via deployed MCP (`catalog_assets_all`, prod): `bg_sign_medical` (L0, floor 12, count_sql live), `ga_sensitive_degree` (L1, fact_category='sensitive_degree_check'), `ga_ayurdaya` (L1, fact_category='ayurdaya') all registered + is_active. 433 column-add confirmed via deploy log.
+- **Deploy:** Cloud Run run `29216107655` success — Build&Deploy Web (7m48s), Sidecar (3m11s), **Pipeline Job Image (8m11s)** → writers + JOB image LIVE. MCP unchanged (serving code untouched by W2; registry query live-served). Deployed off main HEAD `e1d601f2`.
+- **W2 verification posture:** structural/conformance/§N.5/B.10 blind-verified per lane; DATA-plane correctness (row counts, FORENSIC 7/7, LCA-6 motif>0 on real chart, OBS-1 ayanamsha GROUP BY) is **W3's rebuild** by design (production is read-only in the writer wave).
+- **Migration-apply mechanism note (corrects §N.4 phrasing for this program):** the live infra applies migrations via deploy.yml A-S8 `migrate.ts` (idempotent, SHA-tracked in `_migrations_applied`, fails deploy loudly on error — NOT silent). Conductor lacks working local prod-DB creds (`.env.rag` stale); the §N.4 "surgical" duty is discharged as **post-deploy verification** (deploy-log "Applied:" + MCP object existence), which is stronger than a blind bulk-run assumption.
+
+---
+
+## §8 — W3 rebuild wave (data-plane verification)
+**Opening now.** WP-3.1 Abhinandan (`1c826d5a`) full-cascade rebuild → golden catches + auto-restore; WP-3.2 native (`482012f1`) rebuild → FORENSIC 7/7 MANDATORY + LCA-6 motif>0 + OBS-1 ayanamsha GROUP BY. Requires: prod snapshot (auto-restore safety) + rebuild trigger (Pipeline Job / orchestrator). Mechanism identification in progress.
