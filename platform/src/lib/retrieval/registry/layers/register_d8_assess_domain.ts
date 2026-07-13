@@ -922,14 +922,20 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       // signal_type_class = 'yoga' is the authoritative yoga filter on bodha_msr_signals
       // (confirmed from query_signals.ts enum: 'yoga'|'dosha'|'karaka_alignment'|...).
 
+      // W4-loop-1 (E-6 group4): the signal_id join itself is correct (74 yoga signals DO
+      // join to kala_activation for the native), but ~all yoga activation rows carry NULL
+      // activation_start/end (R-45 undated-rows defect) — so the strict
+      // `activation_end >= from AND activation_start <= to` window silently dropped every
+      // one, returning 0 "activated yogas". Surface the undated activations too (they are
+      // the reachable data), keeping the date window as an INCLUSIVE filter for dated rows:
+      // a row passes if it has no dates yet OR its window overlaps the requested range.
       const conds: string[] = [
         'm.chart_id = $1',
         'm.ayanamsha_id = $2',
         "m.signal_type_class = 'yoga'",
         'ka.chart_id = $1',
         'ka.ayanamsha_id = $2',
-        'ka.activation_end >= $3',
-        'ka.activation_start <= $4',
+        '(ka.activation_start IS NULL OR (ka.activation_end >= $3 AND ka.activation_start <= $4))',
       ]
       const params: unknown[] = [chart_id, ayanamsha_id, date_from, date_to]
       let p = 5
@@ -1014,6 +1020,14 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
           },
           activated_yogas: result.rows,
           total_count: result.rows.length,
+          // W4-loop-1: honest disclosure — how many surfaced activations lack computed
+          // windows yet (R-45). These are included (not dropped) so activated yogas surface,
+          // but their activation_start/end are null pending the ka_kalasutra dating writer.
+          undated_activation_count: (result.rows as Array<{ activation_start?: string | null }>)
+            .filter((r) => r.activation_start == null).length,
+          ...(result.rows.length === 0
+            ? { empty_reason: `No yoga signals join to kala_activation for chart ${chart_id} at ayanamsha '${ayanamsha_id}'${domain ? ` in domain '${domain}'` : ''}.` }
+            : {}),
           signal_id_refs: signalRefs,
           filters: { dasha_period, date_from, date_to, top_k, min_salience, domain: domain ?? null },
           drill_next: [

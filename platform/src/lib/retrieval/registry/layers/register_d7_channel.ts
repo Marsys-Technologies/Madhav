@@ -1375,19 +1375,31 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
       return { content: { error: 'category is required' }, is_error: true }
     }
     try {
+      // W4-loop-1 (E-5 group2): the corpus stores the category as remedy_type (singular:
+      // 'gemstone', 'mantra', 'yantra', ...) — the hard `category = $1` predicate against a
+      // plural enum value ('gemstones') matched nothing and returned a dishonest blank.
+      // Normalize plural→singular and match across BOTH remedy_type and category columns;
+      // emit empty_reason on a genuine empty match.
+      const catSingular = category.trim().toLowerCase().replace(/s$/, '')
+      const catLower = category.trim().toLowerCase()
       const sql = `
-        SELECT remedy_id, planet, domain, category, deity,
+        SELECT remedy_id, planet, domain, category, remedy_type, deity,
                prescription_text, mantra_text, mantra_sanskrit,
                cost_tier, source_canonical_id, classical_attestation_text
         FROM brahma_remedy_corpus
-        WHERE category = $1
+        WHERE LOWER(remedy_type) = $1 OR LOWER(category) = $2 OR LOWER(category) = $1
         ORDER BY planet, remedy_id
       `
       // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
       // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
-      const result = await query(sql, [category])
+      const result = await query(sql, [catSingular, catLower])
       return {
-        content: { category, remedies: result.rows, returned_count: result.rows.length },
+        content: {
+          category, remedies: result.rows, returned_count: result.rows.length,
+          ...(result.rows.length === 0
+            ? { empty_reason: `No remedies found in category="${category}". Stored remedy_type vocabulary: mantra, gemstone, yantra, charity, puja, vrata, homa, japa, behavioral, ayurvedic.` }
+            : {}),
+        },
         is_error: false,
       }
     } catch (err) {
@@ -1503,10 +1515,13 @@ const queryTantricRemediesCapability: CapabilityDescriptor = {
     const planet = args['planet'] as string | undefined
 
     try {
-      const conditions: string[] = ["category = 'tantric'"]
+      // W4-loop-1 (E-5 group2): match the tantric class across BOTH remedy_type and category
+      // columns (case-insensitive) and match planet case-insensitively; emit empty_reason on
+      // a genuine empty match rather than a dishonest blank.
+      const conditions: string[] = ["(LOWER(remedy_type) = 'tantric' OR LOWER(category) = 'tantric')"]
       const values: unknown[] = []
       if (deity)  { values.push(`%${deity}%`);  conditions.push(`deity ILIKE $${values.length}`) }
-      if (planet) { values.push(planet);         conditions.push(`planet = $${values.length}`) }
+      if (planet) { values.push(planet);         conditions.push(`LOWER(planet) = LOWER($${values.length})`) }
 
       const sql = `
         SELECT remedy_id, planet, domain, deity,
@@ -1521,7 +1536,12 @@ const queryTantricRemediesCapability: CapabilityDescriptor = {
       // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
       const result = await query(sql, values)
       return {
-        content: { remedies: result.rows, returned_count: result.rows.length, filters: { deity, planet } },
+        content: {
+          remedies: result.rows, returned_count: result.rows.length, filters: { deity, planet },
+          ...(result.rows.length === 0
+            ? { empty_reason: `No tantric-category remedies matched (deity=${deity ?? 'any'}, planet=${planet ?? 'any'}).` }
+            : {}),
+        },
         is_error: false,
       }
     } catch (err) {
@@ -1575,19 +1595,26 @@ const queryRemediesByPlanetCapability: CapabilityDescriptor = {
       return { content: { error: 'planet is required' }, is_error: true }
     }
     try {
+      // W4-loop-1 (E-5 group2): planet is stored lowercase — match case-insensitively so
+      // "Venus"/"venus"/"VENUS" all resolve. Emit empty_reason on a genuine empty match.
       const sql = `
         SELECT remedy_id, planet, domain, category, deity,
                prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
                cost_tier, contraindications, source_canonical_id, classical_attestation_text
         FROM brahma_remedy_corpus
-        WHERE planet = $1
+        WHERE LOWER(planet) = LOWER($1)
         ORDER BY category, remedy_id
       `
       // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
       // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
       const result = await query(sql, [planet])
       return {
-        content: { planet, remedies: result.rows, returned_count: result.rows.length },
+        content: {
+          planet, remedies: result.rows, returned_count: result.rows.length,
+          ...(result.rows.length === 0
+            ? { empty_reason: `No remedies found for planet="${planet}". Valid grahas: sun, moon, mars, mercury, jupiter, venus, saturn, rahu, ketu.` }
+            : {}),
+        },
         is_error: false,
       }
     } catch (err) {
@@ -1637,9 +1664,13 @@ const queryMantrasCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const planet = args['planet'] as string | undefined
     try {
-      const conditions: string[] = ["category = 'mantras'"]
+      // W4-loop-1 (E-5 group2): the mantra category is stored as remedy_type='mantra'
+      // (singular); the hard `category='mantras'` predicate + case-sensitive planet match
+      // was the "Venus"→0 / "venus"→N split. Match category across BOTH columns and match
+      // planet case-insensitively; emit empty_reason on a genuine empty.
+      const conditions: string[] = ["(LOWER(remedy_type) = 'mantra' OR LOWER(category) = 'mantras')"]
       const values: unknown[] = []
-      if (planet) { values.push(planet); conditions.push(`planet = $${values.length}`) }
+      if (planet) { values.push(planet); conditions.push(`LOWER(planet) = LOWER($${values.length})`) }
 
       const sql = `
         SELECT remedy_id, planet, deity,
@@ -1654,7 +1685,12 @@ const queryMantrasCapability: CapabilityDescriptor = {
       // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
       const result = await query(sql, values)
       return {
-        content: { planet: planet ?? 'all', mantras: result.rows, returned_count: result.rows.length },
+        content: {
+          planet: planet ?? 'all', mantras: result.rows, returned_count: result.rows.length,
+          ...(result.rows.length === 0
+            ? { empty_reason: `No mantra remedies found${planet ? ` for planet="${planet}"` : ''}. Grahas are stored lowercase (sun..ketu).` }
+            : {}),
+        },
         is_error: false,
       }
     } catch (err) {

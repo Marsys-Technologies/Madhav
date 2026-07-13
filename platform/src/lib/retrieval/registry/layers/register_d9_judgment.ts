@@ -388,7 +388,18 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       const impliedDomain = BHAVA_TO_DOMAIN[bhavaInput]
       if (impliedDomain) {
         domainKey = impliedDomain
-        spec = SHASTRA_MAP[impliedDomain]
+        // W4-loop-1 (E-5 group3): a bare `bhava:N` must be JUDGED as house N. The prior code
+        // did `spec = SHASTRA_MAP[impliedDomain]`, whose `.bhava` is the domain's CANONICAL
+        // house — silently re-mapping bhava:6→1 (health), bhava:8→12 (moksha), bhava:11→2
+        // (wealth), etc., making houses 3/6/8/11 (enemies/litigation/longevity/inheritance)
+        // unjudgeable. Keep the domain's karaka/varga/signal enrichment but pin the bhāva
+        // under judgment to the house the caller actually asked for.
+        const enrich = SHASTRA_MAP[impliedDomain]
+        spec = {
+          ...enrich,
+          bhava: bhavaInput as HouseNumber,
+          label: `Bhava ${bhavaInput} — ${enrich.label}`,
+        }
       } else {
         spec = { bhava: bhavaInput as HouseNumber, karakas: [], varga: 'D1', label: `Bhava ${bhavaInput}`, signal_domain: 'other' }
       }

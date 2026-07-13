@@ -130,6 +130,28 @@ async function callSidecarPath(path: string, body: Record<string, unknown>): Pro
   return res.json()
 }
 
+// W4-loop-1 (E-5 group1): the L0 ephemeris ref_* aliases used to proxy through
+// callRegistryCap → /api/retrieval/capability, which reached the sidecar with the
+// wrong/missing sidecar credential (401 "Invalid API key") and, for
+// ref_planet_position_get, dropped `date` entirely (sidecar 500 date "undefined").
+// Their canonical twins in l0_ephemeris.ts (query_planet_position /
+// query_planet_transit / query_aspects_at_time / query_retrograde_periods /
+// ephemeris_cache_year) call the sidecar DIRECTLY via a GET with the x-api-key
+// header and work. Mirror that exact data path here (GET + x-api-key), not the
+// registry proxy.
+async function callSidecarGet(path: string): Promise<unknown> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (SIDECAR_API_KEY) headers['x-api-key'] = SIDECAR_API_KEY
+  const res = await fetch(`${PYTHON_SIDECAR_URL}${path}`, {
+    method: 'GET', headers, signal: AbortSignal.timeout(30_000),
+  })
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '')
+    throw new Error(`[alias] sidecar GET ${path} failed (${res.status}): ${txt.slice(0, 200)}`)
+  }
+  return res.json()
+}
+
 const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 
 // S3 fix (R5 W0a perf lane): no pretty-print; text duplicate suppressed above
@@ -396,6 +418,67 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       planet: z.string().optional().describe(
         'Filter to a single graha (e.g. "Sun", "Moon", "Mars"). SC-20 fix: this alias previously ' +
         'had no planet param at all, so a caller had no way to narrow the payload.'),
+    }, principal)
+
+  // ── W4-loop-1 (E-6 group4): fronting tools for computed-but-unserved assets ──────
+  // Registry capabilities existed (or were added this pass) but had NO LLM-facing MCP tool.
+
+  // ga_medical → ganita_medical_get (registry cap marsys://tool/L1/get_medical_indications)
+  regAlias(server, 'ganita_medical_get',
+    'L1 classical medical (Vaidya-phala) indications for a chart (ga_medical). NOT a diagnosis — ' +
+    'per-graha dosha/organ watch-indications with classical citations.',
+    'marsys://tool/L1/get_medical_indications',
+    {
+      graha:           z.string().optional().describe('Filter by graha (e.g. Sun, Moon, Mars).'),
+      indication_tier: z.string().optional().describe('Filter by indication tier.'),
+    }, principal)
+
+  // ga_vastu → ganita_vastu_get (registry cap marsys://tool/L1/get_vastu_directions)
+  regAlias(server, 'ganita_vastu_get',
+    'L1 Vāstu graha→direction map for a chart (ga_vastu_planet_direction_map).',
+    'marsys://tool/L1/get_vastu_directions',
+    {
+      graha:           z.string().optional().describe('Filter by graha.'),
+      direction:       z.string().optional().describe('Filter by direction (e.g. East, North).'),
+      indication_tier: z.string().optional().describe('Filter by indication tier.'),
+    }, principal)
+
+  // ga_ayurdaya → ganita_ayurdaya_get (longevity bands — answers "how long / longevity band")
+  regAlias(server, 'ganita_ayurdaya_get',
+    'L1 classical longevity (Āyurdāya) computations for a chart (Piṇḍāyu/Aṃśāyu/Naisargikāyu — ' +
+    'total_years + band alpayu/madhyayu/purnayu). NOT a death prediction.',
+    'marsys://tool/L1/get_ayurdaya',
+    { method: z.string().optional().describe('Filter by method fact_subject (AMSAYU, PINDAYU, NISARGAYU).') },
+    principal)
+
+  // ga_sensitive_degree → ganita_sensitive_degrees_get
+  regAlias(server, 'ganita_sensitive_degrees_get',
+    'L1 sensitive-degree checks for a chart (gaṇḍānta/sandhi/mṛtyu-bhāga/pushkara etc.).',
+    'marsys://tool/L1/get_sensitive_degrees',
+    {
+      subject:    z.string().optional().describe('Filter by fact_subject (graha code, e.g. SUN, VEN).'),
+      check_type: z.string().optional().describe('Filter by fact_key (specific check).'),
+    }, principal)
+
+  // ka_tulana → kala_priority_ranking_get (registry cap marsys://tool/L3/call_priority_ranking)
+  regAlias(server, 'kala_priority_ranking_get',
+    'L3 priority-ranked signals for a chart in a period (ka_tulana service) — ranks active ' +
+    'signals by salience × activation_strength × convergence. Which signals deserve attention ' +
+    'in a time window.',
+    'marsys://tool/L3/call_priority_ranking',
+    {
+      date_from: z.string().optional().describe('Start of evaluation period (YYYY-MM-DD).'),
+      date_to:   z.string().optional().describe('End of evaluation period (YYYY-MM-DD).'),
+      top_k:     z.number().int().min(1).max(100).optional().describe('Max signals (default 20).'),
+    }, principal)
+
+  // bg_sign_medical → ref_sign_medical_get (global reference)
+  globalAlias(server, 'ref_sign_medical_get',
+    'L0 rāśi→medical reference (bg_sign_medical): sign→body_part/organ_systems/element/dosha (Kālapuruṣa).',
+    'marsys://tool/L0/query_sign_medical',
+    {
+      sign_number: z.number().int().min(1).max(12).optional().describe('Filter by sign number (1=Aries..12=Pisces).'),
+      sign_name:   z.string().optional().describe('Filter by sign name (case-insensitive).'),
     }, principal)
 
   // get_dashas → ganita_dashas_get
@@ -684,42 +767,83 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   )
 
   // ── L0 Ephemeris aliases (5 tools) ────────────────────────────────────────
+  // W4-loop-1 (E-5 group1): all five now mirror their working l0_ephemeris.ts twins
+  // (direct sidecar GET with x-api-key), not the registry proxy that 401'd/500'd.
 
-  globalAlias(server, 'ref_planet_position_get',
-    'L0 planet position at a given datetime (same as query_planet_position)',
-    'marsys://tool/L0/query_planet_position',
+  server.tool(
+    'ref_planet_position_get',
+    '[Phase-1 alias] L0 planet position at a given date (same as query_planet_position).',
     {
-      datetime_iso:    z.string().optional().describe('ISO datetime for ephemeris lookup'),
-      planet:          z.string().optional(),
-      ayanamsha_id:    z.string().optional(),
-    }, principal)
+      date:         z.string().optional().describe('Date in YYYY-MM-DD format (1900-2150).'),
+      datetime_iso: z.string().optional().describe('Alias of `date` — the date portion (YYYY-MM-DD) is used.'),
+      planet:       z.string().optional().describe('Optional graha (Sun..Ketu). Omit for all 9 bodies.'),
+    },
+    async ({ date, datetime_iso, planet }) => {
+      try {
+        const d = (date ?? datetime_iso ?? '').slice(0, 10)
+        if (!d) return errOut('ref_planet_position_get', 'date (YYYY-MM-DD) is required')
+        const qs = new URLSearchParams({ date: d })
+        if (planet) qs.set('planet', planet)
+        const data = await callSidecarGet(`/brahmagyan/ephemeris/planet_position?${qs}`)
+        return dualOutput(data, 'ref_planet_position_get')
+      } catch (err) { return errOut('ref_planet_position_get', String(err)) }
+    }
+  )
 
-  globalAlias(server, 'ref_planet_transit_get',
-    'L0 planet transit event lookup (same as query_planet_transit)',
-    'marsys://tool/L0/query_planet_transit',
+  server.tool(
+    'ref_planet_transit_get',
+    '[Phase-1 alias] L0 planet transit series across a date window (same as query_planet_transit).',
     {
-      planet:       z.string().optional(),
-      start_date:   z.string().optional(),
-      end_date:     z.string().optional(),
-      ayanamsha_id: z.string().optional(),
-    }, principal)
+      planet:      z.string().describe('Planet to query (Sun..Saturn/Rahu/Ketu).'),
+      start_date:  z.string().describe('Start date YYYY-MM-DD.'),
+      end_date:    z.string().describe('End date YYYY-MM-DD.'),
+      sign_number: z.number().int().min(1).max(12).optional().describe('Optional tropical sign filter (1=Aries..12=Pisces).'),
+    },
+    async ({ planet, start_date, end_date, sign_number }) => {
+      try {
+        const qs = new URLSearchParams({ planet, start_date, end_date })
+        if (sign_number !== undefined) qs.set('sign_number', String(sign_number))
+        const data = await callSidecarGet(`/brahmagyan/ephemeris/planet_transit?${qs}`)
+        return dualOutput(data, 'ref_planet_transit_get')
+      } catch (err) { return errOut('ref_planet_transit_get', String(err)) }
+    }
+  )
 
-  globalAlias(server, 'ref_aspects_at_time_get',
-    'L0 planetary aspects at a specific datetime (same as query_aspects_at_time)',
-    'marsys://tool/L0/query_aspects_at_time',
+  server.tool(
+    'ref_aspects_at_time_get',
+    '[Phase-1 alias] L0 planetary aspects on a specific date (same as query_aspects_at_time).',
     {
-      datetime_iso: z.string().optional(),
-      ayanamsha_id: z.string().optional(),
-    }, principal)
+      date:         z.string().optional().describe('Date YYYY-MM-DD.'),
+      datetime_iso: z.string().optional().describe('Alias of `date` — the date portion (YYYY-MM-DD) is used.'),
+      orb_degrees:  z.number().min(0.1).max(10.0).optional().describe('Orb tolerance in degrees (default 1.0).'),
+    },
+    async ({ date, datetime_iso, orb_degrees }) => {
+      try {
+        const d = (date ?? datetime_iso ?? '').slice(0, 10)
+        if (!d) return errOut('ref_aspects_at_time_get', 'date (YYYY-MM-DD) is required')
+        const qs = new URLSearchParams({ date: d, orb_degrees: String(orb_degrees ?? 1.0) })
+        const data = await callSidecarGet(`/brahmagyan/ephemeris/aspects?${qs}`)
+        return dualOutput(data, 'ref_aspects_at_time_get')
+      } catch (err) { return errOut('ref_aspects_at_time_get', String(err)) }
+    }
+  )
 
-  globalAlias(server, 'ref_retrograde_periods_get',
-    'L0 retrograde periods for a planet in a date range (same as query_retrograde_periods)',
-    'marsys://tool/L0/query_retrograde_periods',
+  server.tool(
+    'ref_retrograde_periods_get',
+    '[Phase-1 alias] L0 retrograde station events for a planet in a date range (same as query_retrograde_periods).',
     {
-      planet:      z.string().optional(),
-      start_date:  z.string().optional(),
-      end_date:    z.string().optional(),
-    }, principal)
+      planet:     z.string().describe('Planet (Mercury/Venus/Mars/Jupiter/Saturn).'),
+      start_date: z.string().describe('Start date YYYY-MM-DD.'),
+      end_date:   z.string().describe('End date YYYY-MM-DD.'),
+    },
+    async ({ planet, start_date, end_date }) => {
+      try {
+        const qs = new URLSearchParams({ planet, start_date, end_date })
+        const data = await callSidecarGet(`/brahmagyan/ephemeris/retrograde_periods?${qs}`)
+        return dualOutput(data, 'ref_retrograde_periods_get')
+      } catch (err) { return errOut('ref_retrograde_periods_get', String(err)) }
+    }
+  )
 
   // ephemeris_cache_year → ref_ephemeris_year_get
   server.tool(
@@ -728,7 +852,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     { year: z.number().int().min(1900).max(2150).describe('4-digit calendar year') },
     async ({ year }) => {
       try {
-        const data = await callRegistryCap(`marsys://resource/ephemeris-cache/year/${year}`, { year }, principal)
+        const data = await callSidecarGet(
+          `/brahmagyan/ephemeris/all_bodies_range?start_date=${year}-01-01&end_date=${year}-12-31`)
         return dualOutput(data, 'ref_ephemeris_year_get')
       } catch (err) { return errOut('ref_ephemeris_year_get', String(err), { year }) }
     }

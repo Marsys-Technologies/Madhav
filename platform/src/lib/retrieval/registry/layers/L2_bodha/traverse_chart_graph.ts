@@ -408,7 +408,17 @@ async function _neighborsMode(
 ): Promise<ToolResult> {
   const rawSeeds = (args['seed_node_ids'] as string[]) ?? []
   const semanticQuery = args['semantic_query'] as string | undefined
-  const rawAbout = args['about'] as unknown[] | undefined
+  // W4-loop-1 (E-5 group1): `about` may arrive as a single DSL string (e.g.
+  // "lord_of(bhava 10)"), a single AddressExpression object, OR an array of either.
+  // The prior blind `as unknown[]` cast meant a bare string was iterated CHARACTER by
+  // character (for-of over a string), so the resolver received "l" and threw
+  // "Could not parse address expression: \"l\"". Normalize any non-array scalar/object
+  // to a single-element array before iterating.
+  const rawAboutInput = args['about']
+  const rawAbout: unknown[] | undefined =
+    rawAboutInput == null ? undefined
+    : Array.isArray(rawAboutInput) ? rawAboutInput
+    : [rawAboutInput]
 
   let seedNodeIds: string[] = rawSeeds
   let aboutChain: string[] | undefined

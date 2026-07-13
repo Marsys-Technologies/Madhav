@@ -26,28 +26,33 @@ const PLATFORM_URL = process.env['PLATFORM_URL'] ?? 'http://localhost:3000'
 
 // ── Helper: platform API call ─────────────────────────────────────────────────
 
-// R6 0a-envauth (R-16/O-5): this helper sent only Content-Type — no auth headers
-// at all — while its siblings in this same file (resolve_entity, list_entities,
-// below) already carry the 3-header pattern (x-mcp-internal-token, x-mcp-user,
-// x-mcp-key-id) required by platform's service-to-service + principal auth gate.
-// asset_registry_all / asset_registry_l0 (the only two callers of platformGet)
-// were the R-16/O-5 401s on GET /api/cockpit/registry. Matched to the proven
-// working pattern below rather than inventing a new one.
-async function platformGet(path: string): Promise<unknown> {
-  const url = `${PLATFORM_URL}${path}`
+// W4-loop-1 (E-5 group1): asset_registry_all / asset_registry_l0 hit
+// GET /api/cockpit/registry, which is a session-authenticated cockpit route (not
+// a service-to-service MCP endpoint) and 401'd every mcp-internal call regardless
+// of headers. The working twin (catalog_assets_all in register_p1_aliases.ts)
+// reaches the SAME asset-registry data through the service-token-gated
+// /api/retrieval/capability route via the `marsys://resource/asset-registry/*`
+// URIs. Repointed both asset_registry_* tools onto that proven path.
+async function callRegistryCapability(uri: string, args: Record<string, unknown>): Promise<unknown> {
   const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
-  const res = await fetch(url, {
+  const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-mcp-internal-token': MCP_INTERNAL_TOKEN,
       'x-mcp-user': 'mcp-internal',
       'x-mcp-key-id': 'mcp-internal',
     },
+    body: JSON.stringify({ uri, args }),
   })
   if (!res.ok) {
-    throw new Error(`[l0_brahmagyan] platform GET ${path} → ${res.status}`)
+    throw new Error(`[l0_brahmagyan] capability ${uri} → ${res.status}`)
   }
-  return res.json()
+  const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
+  if (!data.ok) {
+    throw new Error(`[l0_brahmagyan] capability error: ${data.error ?? 'unknown'}`)
+  }
+  return data.content
 }
 
 // ── 1. resolve_entity ─────────────────────────────────────────────────────────
@@ -172,7 +177,7 @@ export function registerAssetRegistryAllTool(server: McpServer): void {
     AssetRegistryAllInput.shape,
     async (_params) => {
       try {
-        const result = await platformGet('/api/cockpit/registry')
+        const result = await callRegistryCapability('marsys://resource/asset-registry/all', {})
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
@@ -200,7 +205,7 @@ export function registerAssetRegistryL0Tool(server: McpServer): void {
     AssetRegistryL0Input.shape,
     async (_params) => {
       try {
-        const result = await platformGet('/api/cockpit/registry?layer=brahmagyan')
+        const result = await callRegistryCapability('marsys://resource/asset-registry/L0', {})
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }

@@ -321,26 +321,34 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     },
     async ({ graha, house, limit, offset }) => {
       try {
+        // W4-loop-1 (E-5 group1): the prior SELECT referenced columns that do not exist on
+        // bg_transit_rules (house_from_moon/quality/rule_text/av_threshold/source_text/
+        // created_at) and lowercased `graha` against a capitalized column ("Jupiter"). The
+        // real schema is id/rule_type/graha/primary_house/vedha_house/phala/
+        // classical_citation/rule_notes. Reconciled + made graha match case-insensitive.
         const params: unknown[] = []
         const filters: string[] = []
-        if (graha) { params.push(graha.toLowerCase()); filters.push(`graha = $${params.length}`) }
-        if (house) { params.push(house); filters.push(`house_from_moon = $${params.length}`) }
+        if (graha) { params.push(graha); filters.push(`LOWER(graha) = LOWER($${params.length})`) }
+        if (house) { params.push(house); filters.push(`primary_house = $${params.length}`) }
         params.push(limit ?? 100)
         params.push(offset ?? 0)
         const where = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : ''
         const sql = `
-          SELECT graha, house_from_moon, quality, rule_text, vedha_house, av_threshold, source_text, created_at
+          SELECT id, rule_type, graha, primary_house, vedha_house, phala, classical_citation, rule_notes
           FROM bg_transit_rules
           ${where}
-          ORDER BY graha, house_from_moon
+          ORDER BY graha, primary_house
           LIMIT $${params.length - 1} OFFSET $${params.length}
         `
         const result = await platformQuery(sql, params, principal)
         return dualOutput(envelope({
           transit_rules: result.rows,
           total: result.rows.length,
+          ...(result.rows.length === 0
+            ? { empty_reason: `No transit rules matched (graha=${graha ?? 'any'}, house=${house ?? 'any'}).` }
+            : {}),
           filters: { graha, house },
-          note: 'house_from_moon: classical 1-based count from natal Moon sign. quality: favorable/unfavorable/mixed.',
+          note: 'primary_house: classical 1-based transit house from natal Moon. vedha_house: obstruction point. phala: classical result text.',
         }, 'ref_transit_rules_get'))
       } catch (err) {
         return errorOutput('ref_transit_rules_get', String(err), { graha, house })
