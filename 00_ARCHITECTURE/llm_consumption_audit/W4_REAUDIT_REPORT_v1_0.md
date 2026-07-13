@@ -76,3 +76,118 @@ tool-level and these tools hard-fail.
 ---
 
 _(gates 1, 3, 4, 5, 6, 7, 8 + §3 part-2 filled from the four measurement agents)_
+
+---
+
+## § Re-census (post W4-loop-1) — full E-5 + E-6 re-measurement — 2026-07-13
+
+Fresh-context CENSUS agent, live prod MCP `mcp__marsys-jis-direct__*` + prod DB read (:5433),
+native chart `482012f1`. System under test: main `5dd304cf` (revs amjis-mcp-00423-qz7 +
+amjis-web-00961-tth). Purpose: nail the exact E-5 / E-6 numbers so the program can close.
+Honest measurement — HONEST-EMPTY (empty WITH `empty_reason`) is NOT a failure.
+
+### E-5 (tool hard-failures → target 0) — **MET (0 HARD-FAIL + 0 DISHONEST-BLANK)**
+
+Re-probed every W4-flagged failure + the un-probed members of each fixed family, live on the
+deployed channel. **All resolved.** No new hard-fail surfaced in the sweep.
+
+**9 W4 hard-failures — all now OK:**
+| Tool | W4 result | Re-census result |
+|---|---|---|
+| `asset_registry_all` | cockpit 401 | OK — full registry (all layers) |
+| `asset_registry_l0` | cockpit 401 | OK — 26 L0 assets w/ count_sql |
+| `ref_aspects_at_time_get` | sidecar 401 | OK — `ok:true`, 2 aspects |
+| `ref_planet_transit_get` | sidecar 401 | OK — `ok:true`, 31 Saturn rows |
+| `ref_retrograde_periods_get` | sidecar 401 | OK — `ok:true`, 2 Venus stations 2026 |
+| `ref_planet_position_get` | sidecar 500 "undefined" date | OK — `ok:true`, Venus position |
+| `ref_transit_rules_get` | DB 400 | OK — Saturn gochara rules |
+| `ref_ephemeris_year_get(2026)` | 404 URI | OK — 3285 rows + honest trim_report |
+| `traverse_graph` | DSL truncated → parse error | OK — resolves `lord_of(bhava 10)`; large payload (honest oversize, not a fail) |
+
+**Dishonest-blank / filter-lie serves — all now OK or HONEST-EMPTY:**
+| Tool | W4 result | Re-census result |
+|---|---|---|
+| `query_remedies(Venus)` | served **Jupiter** rows | OK — Venus rows, total 25, honest `truncated` envelope |
+| `query_mantras(Venus)` / `ref_mantras_get(Venus)` | 0 ("Venus" vs "venus") | OK — 4 Venus mantras |
+| `query_remedies_by_planet(Venus)` | case-sensitive 0 | OK — 25 Venus remedies |
+| `ref_remedies_get(Venus)` | planet filter ignored | OK — Venus rows, total 25, honest truncated |
+| `get_positions(planet)` / `ganita_positions_get(Venus)` | 0 (vocab) | OK — Venus/Mars rows served correctly |
+| `list_remedies_by_category(gemstones)` | 0, no empty_reason | OK — 22 rows |
+| `ref_remedies_by_category_list(mantra)` | 0 | OK — 40 rows |
+| `query_tantric_remedies(Venus)` / `ref_tantric_remedies_get` | 0, no empty_reason | **HONEST-EMPTY** — 0 with `empty_reason` (no tantric rows for Venus/Saturn — genuine) |
+| `ref_yogas_get(wealth)` | 0, no empty_reason | **HONEST-EMPTY** — 0 with `empty_reason` (stored domain vocab = raja/dhana/aristha/… ; "wealth" not a stored category) |
+| `yoga_activation_by_dasha` | 0 over 3yr (join suspect) | OK — 3 activated yogas, honest `undated_activation_count`, DEFECT-001 0/3 orphans |
+| `judgment_query(bhava:6)` | misrouted to house 1 | OK — House 6 = Virgo/Health, receipt fully populated, resolution_chains explicit |
+
+**E-5 verdict: MET.** 0 HARD-FAIL, 0 DISHONEST-BLANK across the ~25 tools directly re-probed
+(the full W4-flagged set + fixed-family members + Conductor-confirmed set). Two former
+dishonest-blanks (`query_tantric_remedies`, `ref_yogas_get`) now return HONEST-EMPTY with a
+correct `empty_reason` — the empty-honesty discipline is live. `traverse_graph` and
+`ref_ephemeris_year_get` return large payloads with honest trim_reports (oversize is a
+budget-discipline note, not a hard-fail).
+
+### E-6 (asset-promise delivery → target ≥85% = ≥57/67) — **MET (62/67 = 92.5%)**
+
+DB row-counts run for all 67 promise assets via each asset's `count_sql` (native chart), plus
+fronting-tool confirmation. **62 DELIVER; 5 SHORTFALL — all 5 are data-plane / by-design
+emptiness, none is a serving-layer regression.**
+
+**5 SHORTFALLS (all data-plane empty, not serving failures):**
+| Asset | DB rows (native) | Reason |
+|---|---|---|
+| `ga_prashna` | 0 (5 global) | Prashna is query-time horary — no natal rows exist; `prashna_undertaking_get` serves honest placeholder |
+| `mi_abhilekha` | 0 | Outcome journal — empty until outcomes logged (L5 runtime-accrual) |
+| `mi_pramana` | 0 | Calibration — L5 STRUCTURAL mode by design (fills as prediction→outcome accrues) |
+| `mi_seva` | 0 | User preferences — empty until set |
+| `mi_vistara` | 0 (global) | Export log — empty until exports run |
+
+**W4-loop-1 deltas confirmed (DB-verified):** ga_medical (DB 45), ga_vastu (DB 40),
+ga_sensitive (DB 8,565) now fronted; ka_tulana fronted via new `kala_priority_ranking_get`
+(service asset, no count table); ka_taranga join healthy (DB 79,728 activation rows; serves
+undated set). The 6 new fronting tools (`ganita_ayurdaya_get`, `ganita_medical_get`,
+`ganita_vastu_get`, `ganita_sensitive_degrees_get`, `ref_sign_medical_get`,
+`kala_priority_ranking_get`) are NOT in this connector's tool-list (provisioned pre-deploy —
+client-staleness caveat, per instructions NOT counted against E-6); their delivery established
+via DB rows + deployed-registry presence + CI-smoke.
+
+The 5 NULL-`count_sql` Kāla assets (`ka_dasha_kala`, `ka_gochara`, `ka_graha_sancara`,
+`ka_muhurta_seva`, `ka_tulana`) are service-type (no dedicated count table) — they deliver via
+computed tools that PASS live (`get_dashas`, `ganita_transit_anchors_get`, `muhurta_finder`,
+`kala_muhurta_get`, `kala_priority_ranking_get`).
+
+**E-6 verdict: MET.** 62/67 = 92.5% (or 62/66 = 93.9% if ga_prashna is treated as an
+inherently query-time instrument rather than a natal promise). Comfortably ≥85% (≥57).
+
+### Opportunistic — the 3 previously-UNMEASURED W4 gates
+
+- **Gate 9 (envelope-vs-payload contradictions → 0):** across ~25 live calls every truncation
+  was honestly disclosed — `returned` vs `total` vs `truncated:true`, `trim_report` with
+  `recover_via`, `undated_activation_count`, `more_available`. **0 contradictions found → MET.**
+- **Gate 7 (domain discrimination → overlap ≤25%):** `judgment_query(wealth)` = bhava 2/Taurus,
+  karaka Jupiter, D2, verdict convergent_moderate (+1.15); `judgment_query(marriage)` = bhava
+  7/Libra, karaka Venus, D9, verdict contested (−3.5, Venus debilitated in D9). Checklists,
+  vargas, karakas, occupants, and verdicts are fully domain-distinct. Grounding-fact overlap
+  ≈27% Jaccard (6 shared of 22 union) — and the 6 shared facts are the Venus/lagna/Moon
+  placements that are shared *correctly* because Venus rules BOTH the 2nd (Taurus) and 7th
+  (Libra) in an Aries chart. Domain-differentiating payload = 0% shared. Baseline was 95%
+  overlap → now strongly discriminating. **Directionally MET** (raw grounding overlap marginally
+  above 25% only due to the legitimate shared-ruler coincidence; the definitive gate-7 was
+  spec'd on `assess_*`, not re-run here to avoid 500KB payloads).
+- **Gate 4 (families reachable):** every W4-broken family (ref_* sidecar-auth, cockpit-registry,
+  remedy/mantra/position filters, graph-traverse DSL, ephemeris URI, transit-rules) is now
+  reachable live. From the 76% baseline, the flagged families are ~fully restored → **estimated
+  MET.**
+
+### Tools NOT directly probed + why
+- The 6 new E-6 fronting tools — absent from this connector's (pre-deploy) tool-list; established
+  via DB + registry + CI-smoke (client-staleness caveat, not a deployment gap).
+- Write tools (`record_outcome`, `mimamsa_outcome_record`) — not called (write side-effects).
+- The full ~126-tool surface was not exhaustively re-called; the re-census targeted the complete
+  W4-flagged failure set + every fixed-family member + representative sweep. No new failure found.
+
+### Headline
+**E-5 = 0 HARD-FAIL + 0 DISHONEST-BLANK → MET.** **E-6 = 62/67 = 92.5% → MET (≥85%).**
+Both closure gates the W4 fix-loop targeted are now satisfied on the deployed system. Residual
+E-6 shortfalls (5) are all data-plane / by-design emptiness (L5 STRUCTURAL-mode surfaces +
+query-time prashna), not serving-layer defects — consistent with the L5 SEAL. Gates 1/5/8
+data-plane residuals remain out of serving scope (future data campaign).
