@@ -67,6 +67,8 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_class_priors",
     "bg_ghatana",
     "bg_formula_constants",
+    # ── L0 Brahmagyan — migration 431 (WP-2.5 / LCA-16) ──────────────────────
+    "bg_sign_medical",
     # ── L1 Gaṇita — migration 342 ────────────────────────────────────────────
     "ga_condition",
     "ga_dashas",
@@ -84,6 +86,9 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "ga_vargas",
     "ga_vastu",
     "ga_yoga",
+    # ── L1 Gaṇita — migration 432 (WP-2.5 / LCA-10) ──────────────────────────
+    "ga_sensitive_degree",
+    "ga_ayurdaya",
     # ── L2 Bodha — migration 342 ─────────────────────────────────────────────
     "bo_anveshana",
     "bo_bimba",
