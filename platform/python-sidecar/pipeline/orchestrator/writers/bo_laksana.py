@@ -305,22 +305,42 @@ def _resolve_valence(
 ) -> tuple[str, str, float | None]:
     """Returns (valence, valence_source, judged_value_num_or_None).
 
-    LANE2 dependency (verified BLOCKED 2026-07-14): vichara_lookup is {} in
-    every build until LANE2 (ga_vichara/chart_vichara) ships — see
-    _load_vichara_valence. Until then every signal legitimately takes the
-    keyword_heuristic_v1 path; that is the honest, documented degraded state
-    the brief's own §4 anticipates, not a bug in this lane.
+    ga_vichara now ships (Lane 2, 2026-07-14) — vichara_lookup is populated
+    from chart_vichara's valence_pass rows keyed on (actor, target, varga)
+    where `actor` is the CANONICAL graha subject code (PLANET_TO_SUBJECT
+    convention: 'MAR', 'SUN', …) and `target` is the composite string
+    f'{varga}_HOUSE_{house}' (e.g. 'D1_HOUSE_2') — see
+    ga_vichara_writer.py::build_valence_pass_rows. Both dimensions are
+    normalized here to match that exact shape:
+      - actor: tags['lord'] (bhava_significance_link's own jsonb key) carries
+        the long form ('Mars') while tags['graha'] (when present) is already
+        canonical — _canonical_graha_code() normalizes either.
+      - target: built from tags['target_house'] (or the house-tag fallbacks)
+        composed with varga into ga_vichara's exact key format; a bare house
+        number alone never matches ga_vichara's rows.
+    When vichara_lookup is empty (table/rows absent) or the specific
+    (actor, target, varga) triple has no row, this legitimately falls back to
+    the keyword heuristic — always visibly tagged (CR-42 class: no silent
+    degradation).
     """
-    actor  = tags.get("graha") or tags.get("primary_graha") or tags.get("lord") or tags.get("body")
-    target = tags.get("target") or tags.get("aspected_house") or tags.get("house") or tags.get("house_number")
-    varga  = tags.get("varga") or tags.get("varga_id") or "D1"
-    if actor is not None and target is not None and vichara_lookup:
-        rec = vichara_lookup.get((str(actor), str(target), str(varga)))
-        if rec is not None:
-            value_text = str(rec.get("value_text") or "").lower()
-            mapped = _VICHARA_TO_MSR_VALENCE.get(value_text, "neutral")
-            value_num = rec.get("value_num")
-            return mapped, "ga_vichara_v1", (float(value_num) if value_num is not None else None)
+    raw_actor = tags.get("graha") or tags.get("primary_graha") or tags.get("lord") or tags.get("body")
+    actor = _canonical_graha_code(raw_actor)
+    raw_house = (tags.get("target_house") or tags.get("target") or tags.get("aspected_house")
+                 or tags.get("house") or tags.get("house_number"))
+    varga = str(tags.get("varga") or tags.get("varga_id") or "D1").upper()
+    if actor is not None and raw_house is not None and vichara_lookup:
+        try:
+            house_num = int(str(raw_house).strip())
+        except (TypeError, ValueError):
+            house_num = None
+        if house_num is not None and 1 <= house_num <= 12:
+            target_key = f"{varga}_HOUSE_{house_num}"
+            rec = vichara_lookup.get((actor, target_key, varga))
+            if rec is not None:
+                value_text = str(rec.get("value_text") or "").lower()
+                mapped = _VICHARA_TO_MSR_VALENCE.get(value_text, "neutral")
+                value_num = rec.get("value_num")
+                return mapped, "ga_vichara_v1", (float(value_num) if value_num is not None else None)
     return _infer_valence(fact_cat, fact_value_text), "keyword_heuristic_v1", None
 
 
@@ -1339,6 +1359,32 @@ _LONG_TO_SHORT: dict[str, str] = {
 }
 
 
+def _canonical_graha_code(raw: Any) -> str | None:
+    """Normalize a graha token to ga_vichara's canonical subject code
+    (PLANET_TO_SUBJECT convention: SUN/MOON/MAR/MER/JUP/VEN/SAT/RAH_MEAN/KET_MEAN).
+
+    Night-1 Lane 4 fix (2026-07-14): tags['lord'] on bhava_significance_link
+    facts (ga_vichara's own upstream L1 source) carries the LONG form
+    ('Mars', 'Saturn', …) while ga_vichara's chart_vichara.actor/subject
+    columns are already-canonical short codes. Without this normalization,
+    every lookup against vichara_lookup/ratification_lookup silently misses
+    for facts whose tag came from 'lord' rather than an already-canonical
+    'graha' tag — the ga_vichara-sourced path degrades to the fallback with
+    no signal that anything went wrong (the exact CR-42 class of bug this
+    lane's own valence-fallback discipline is supposed to prevent).
+    """
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if s in _LONG_TO_SHORT.values():
+        return s  # already canonical (e.g. 'MAR', 'RAH_MEAN')
+    if s in _LONG_TO_SHORT:
+        return _LONG_TO_SHORT[s]
+    return _GRAHA_NAME_MAP.get(s.lower(), s)
+
+
 def _infer_graha_from_text(text: str) -> str | None:
     """Extract canonical graha key from free-text (fire_reason, dosha_name, etc.).
 
@@ -1724,10 +1770,18 @@ def _build_signal_row(
     constituent_facts = resolved or ([fact_id] if fact_id else [])
 
     # Tags: merge fact_value_jsonb extras into config
+    # Night-1 Lane 4 (Change 3 fix, 2026-07-14): "target_house" added — the
+    # bhava_significance_link / aspect_parashari_per_varga facts that feed
+    # ga_vichara's valence_pass rows carry the aspected/lorded house under
+    # jsonb key "target_house" (NOT "house" — "house" on these facts, when
+    # present at all, is the ACTOR's own house). Without this key, _resolve_valence
+    # could never recover the target house and the ga_vichara-sourced path was
+    # silently dead even after ga_vichara shipped (verified 2026-07-14).
+    _TAG_KEYS = ("graha", "primary_graha", "lord", "body", "house", "house_number",
+                 "target_house", "bhava", "orb_tightness", "vargottama_amp",
+                 "neechabhanga", "cancellation", "varga", "varga_id")
     tags: dict = {}
-    for key in ("graha", "primary_graha", "lord", "body", "house", "house_number",
-                "bhava", "orb_tightness", "vargottama_amp", "neechabhanga",
-                "cancellation", "varga", "varga_id"):
+    for key in _TAG_KEYS:
         v = fvj.get(key)
         if v is not None:
             tags[key] = v
@@ -1741,9 +1795,7 @@ def _build_signal_row(
     for k, v in fvj.items():
         if k not in ("constituent_facts_array", "constituent_fact_ids") and v is not None:
             config[k] = v
-            if k in ("graha", "primary_graha", "lord", "body", "house", "house_number",
-                     "bhava", "orb_tightness", "vargottama_amp", "neechabhanga",
-                     "cancellation", "varga", "varga_id"):
+            if k in _TAG_KEYS:
                 tags[k] = v
 
     # Source L1 asset + subsystem
@@ -1831,11 +1883,17 @@ def _build_signal_row(
     # Night-1 Lane 4 (Change 2, CR-82→CR-65): ratification-aware weighting.
     # Applies only to per-varga (non-D1) facts whose subject resolves to a
     # graha/lord with a chart_vichara ratification row in one of the fact's
-    # domains. LANE2-dependent — ratification_lookup is {} until ga_vichara
-    # ships (see _load_varga_ratification); factor stays None/NULL then.
-    primary_graha_for_ratif = (tags.get("graha") or tags.get("primary_graha")
-                                or tags.get("lord") or tags.get("body")
-                                or _graha_key_from_subject(str(fact_row.get("fact_subject") or "")))
+    # domains. ratification_lookup is {} whenever chart_vichara is absent
+    # (see _load_varga_ratification); factor stays None/NULL then.
+    # 2026-07-14 fix: normalize through _canonical_graha_code — tags['lord']
+    # (bhava_significance_link's own jsonb key) carries the long form ('Mars'),
+    # but chart_vichara.subject is always the canonical short code ('MAR');
+    # without normalization this lookup silently missed for every such fact.
+    primary_graha_for_ratif = _canonical_graha_code(
+        tags.get("graha") or tags.get("primary_graha")
+        or tags.get("lord") or tags.get("body")
+        or _graha_key_from_subject(str(fact_row.get("fact_subject") or ""))
+    )
     ratification_factor: float | None = None
     ratification_domain: str | None = None
     if varga_id is not None and str(varga_id).upper() not in ("D1", ""):

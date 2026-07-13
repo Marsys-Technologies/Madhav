@@ -2,16 +2,10 @@
 test_lane4_msr_elevation.py — Night-1 Doctrine Campaign, Lane 4 (MSR elevation).
 
 Covers the six changes in 00_ARCHITECTURE/llm_consumption_audit/briefs/night1/
-LANE4_MSR_ELEVATION.md, scoped to what is buildable given LANE2's verified
-BLOCKED status (ga_vichara / chart_vichara do not exist anywhere in this
-campaign as of 2026-07-14 — see this lane's handback report):
+LANE4_MSR_ELEVATION.md:
 
   Change 1 (CR-81)      — class_prior activation + hit-rate bookkeeping
   Change 2 (CR-82→CR-65)— tier ceiling retirement + percentile tier assignment
-                           (ratification-factor multiplication itself is
-                           LANE2-dependent and tested only for its honest
-                           degraded path here — real-data assertions are
-                           LANE2's to write once chart_vichara ships)
   Change 3 (CR-83/CR-54)— judged valence with visible fallback tagging
   Change 4 (CR-45)      — subject-bearing headlines
   Change 5 (CR-76/77)   — position-class subject resolution
@@ -19,6 +13,25 @@ campaign as of 2026-07-14 — see this lane's handback report):
                            this lane's handback report (bo_upaya.py /
                            bo_samvada.py — outside this lane's file scope,
                            no test needed here)
+
+RECONCILIATION UPDATE (2026-07-14, post-Lane-2 merge): ga_vichara/chart_vichara
+now ships for real (Lane 2, migration 435). When this lane originally ran,
+LANE2 was verified BLOCKED, so ONLY the keyword-heuristic fallback path was
+ever exercised — `TestChange3JudgedValence.test_uses_vichara_row_when_present`
+below asserted against a *synthetic* lookup key format ("2" as a bare house
+number) that does NOT match what ga_vichara_writer.py actually produces
+(`f"{varga}_HOUSE_{house}"`, e.g. "D1_HOUSE_2", and the actor code is always
+ga_vichara's canonical PLANET_TO_SUBJECT form — but tags['lord'] on the
+bhava_significance_link facts that drive ga_vichara's valence_pass is the LONG
+planet name, e.g. "Mars"). Both were real, silent join-miss bugs: the
+ga_vichara-sourced path could never fire even after ga_vichara shipped. Fixed
+in bo_laksana.py (2026-07-14): _canonical_graha_code() normalizes the actor,
+tags['target_house'] is captured from fact jsonb (added to the tag whitelist),
+and _resolve_valence composes the exact ga_vichara target-key format.
+TestChange3RealShapeIntegration below exercises the corrected path end-to-end
+via _build_signal_row with fixtures shaped exactly like
+ga_vichara_writer.build_valence_pass_rows's real output; the old synthetic
+fixture test is corrected in place (not deleted) to the real key format.
 
 These tests run entirely in-process; no DB required (mirrors
 test_bo_a1_fixes.py's stub-import pattern).
@@ -129,6 +142,7 @@ _assign_tiers_by_percentile = _mod._assign_tiers_by_percentile
 _resolve_position_subject = _mod._resolve_position_subject
 _build_signal_row = _mod._build_signal_row
 _FLOOD_PRONE_FAMILIES = _mod._FLOOD_PRONE_FAMILIES
+_canonical_graha_code = _mod._canonical_graha_code
 
 
 def _make_conn(rows_by_query):
@@ -308,12 +322,44 @@ class TestChange3JudgedValence(unittest.TestCase):
         self.assertIsNone(judged)
 
     def test_uses_vichara_row_when_present(self):
-        lookup = {("MAR", "2", "D1"): {"value_text": "strong_malefic", "value_num": -0.8}}
+        # Key format corrected 2026-07-14 to match ga_vichara_writer.py's real
+        # output: target = f"{varga}_HOUSE_{house}", not a bare house number.
+        lookup = {("MAR", "D1_HOUSE_2", "D1"): {"value_text": "strong_malefic", "value_num": -0.8}}
         tags = {"graha": "MAR", "house": "2", "varga": "D1"}
         valence, source, judged = _resolve_valence(lookup, "aspect_parashari_given", "irrelevant text", tags)
         self.assertEqual(valence, "malefic")
         self.assertEqual(source, "ga_vichara_v1")
         self.assertEqual(judged, -0.8)
+
+    def test_uses_vichara_row_via_target_house_tag(self):
+        # target_house (not house) is the tag ga_vichara's upstream
+        # bhava_significance_link facts actually carry.
+        lookup = {("MAR", "D1_HOUSE_2", "D1"): {"value_text": "strong_malefic", "value_num": -0.8}}
+        tags = {"graha": "MAR", "target_house": 2, "varga": "D1"}
+        valence, source, judged = _resolve_valence(lookup, "bhava_significance_link", "irrelevant", tags)
+        self.assertEqual(valence, "malefic")
+        self.assertEqual(source, "ga_vichara_v1")
+        self.assertEqual(judged, -0.8)
+
+    def test_uses_vichara_row_when_actor_tag_is_long_form(self):
+        # tags['lord'] on bhava_significance_link facts is the LONG planet
+        # name ('Mars'), while ga_vichara's actor/subject column is always
+        # the canonical short code ('MAR') — must still match.
+        lookup = {("MAR", "D1_HOUSE_2", "D1"): {"value_text": "strong_malefic", "value_num": -0.8}}
+        tags = {"lord": "Mars", "target_house": 2, "varga": "D1"}
+        valence, source, judged = _resolve_valence(lookup, "bhava_significance_link", "irrelevant", tags)
+        self.assertEqual(valence, "malefic")
+        self.assertEqual(source, "ga_vichara_v1")
+        self.assertEqual(judged, -0.8)
+
+    def test_bare_house_number_alone_does_not_falsely_match_wrong_varga(self):
+        # A row keyed for D9 must not be matched by a D1 fact even if the
+        # house number coincides.
+        lookup = {("MAR", "D9_HOUSE_2", "D9"): {"value_text": "benefic", "value_num": 0.5}}
+        tags = {"graha": "MAR", "target_house": 2, "varga": "D1"}
+        valence, source, judged = _resolve_valence(lookup, "bhava_significance_link", "irrelevant", tags)
+        self.assertEqual(source, "keyword_heuristic_v1")
+        self.assertIsNone(judged)
 
     def test_load_vichara_valence_degrades_when_table_absent(self):
         conn = _make_raising_conn(Exception('relation "chart_vichara" does not exist'))
@@ -391,6 +437,112 @@ class TestChange5PositionResolution(unittest.TestCase):
         )
         self.assertIsNone(graha)
         self.assertIsNone(rule)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Actor-code normalization (2026-07-14 fix) — _canonical_graha_code
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestCanonicalGrahaCode(unittest.TestCase):
+    def test_long_form_normalizes_to_short(self):
+        self.assertEqual(_canonical_graha_code("Mars"), "MAR")
+        self.assertEqual(_canonical_graha_code("Saturn"), "SAT")
+        self.assertEqual(_canonical_graha_code("Rahu"), "RAH_MEAN")
+
+    def test_already_canonical_passes_through(self):
+        self.assertEqual(_canonical_graha_code("MAR"), "MAR")
+        self.assertEqual(_canonical_graha_code("RAH_MEAN"), "RAH_MEAN")
+
+    def test_lowercase_alias_normalizes(self):
+        self.assertEqual(_canonical_graha_code("mars"), "MAR")
+        self.assertEqual(_canonical_graha_code("kuja"), "MAR")
+
+    def test_none_passes_through_as_none(self):
+        self.assertIsNone(_canonical_graha_code(None))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Real-shape integration — _build_signal_row against ga_vichara's actual
+# valence_pass output shape (build_valence_pass_rows in ga_vichara_writer.py),
+# not a synthetic fixture. Exercises the ga_vichara-sourced path end-to-end,
+# not just _resolve_valence in isolation.
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestChange3RealShapeIntegration(unittest.TestCase):
+    """8th-lord-Mars-aspects-2nd-house specimen (CR-54 type case), built from
+    a bhava_significance_link fact shaped exactly like
+    ga_structural_writer.py's _build_bhava_web_per_varga_rows output."""
+
+    def _mars_aspects_h2_fact(self):
+        return {
+            "fact_id": "1ea14404",
+            "fact_category": "bhava_significance_link",
+            "fact_key": "lord_aspects",
+            "fact_subject": "D1_HOUSE_8_to_HOUSE_2",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "verification_pass_status": "two_pass_verified",
+            "fact_value_text": "dusthana_afflicts",
+            "fact_value_num": None,
+            "fact_value_jsonb": json.dumps({
+                "varga": "D1",
+                "source_house": 8,
+                "target_house": 2,
+                "lord": "Mars",
+                "link_kind": "lord_aspects",
+                "link_type": "dusthana_afflicts",
+                "constituent_facts_array": ["82cc6f52"],
+            }),
+            "source_calculation": "ga_structural.bhava_web_per_varga/v1",
+            "citation_ref": None,
+            "citation_human": None,
+        }
+
+    def _vichara_lookup(self):
+        # Shaped exactly like ga_vichara_writer.build_valence_pass_rows's
+        # emitted row for 8th-lord Mars aspecting H2 in D1 (dusthana lord
+        # afflicting the wealth axis -> strong_malefic per the valence matrix).
+        return {("MAR", "D1_HOUSE_2", "D1"): {"value_text": "strong_malefic", "value_num": -1.0}}
+
+    def test_ga_vichara_sourced_valence_wins_over_keyword_heuristic(self):
+        row = _build_signal_row(
+            self._mars_aspects_h2_fact(), "chart-1", "build-1",
+            strength_lookup={"MAR": 1.2}, dignity_lookup={"MAR": "neutral"},
+            av_lookup={i: 28 for i in range(1, 13)},
+            now="2026-07-14T00:00:00+00:00",
+            vichara_valence_lookup=self._vichara_lookup(),
+        )
+        self.assertEqual(row["valence"], "malefic")
+        self.assertEqual(row["valence_source"], "ga_vichara_v1")
+        epistemic = json.loads(row["epistemic_jsonb"])
+        self.assertEqual(epistemic.get("judged_valence"), -1.0)
+
+    def test_fallback_still_fires_when_no_vichara_row_for_this_combo(self):
+        """A genuinely different graha/varga combo with no ga_vichara row must
+        still degrade honestly to the keyword heuristic — the fallback is not
+        collateral damage of wiring in the real path."""
+        row = _build_signal_row(
+            self._mars_aspects_h2_fact(), "chart-1", "build-1",
+            strength_lookup={"MAR": 1.2}, dignity_lookup={"MAR": "neutral"},
+            av_lookup={i: 28 for i in range(1, 13)},
+            now="2026-07-14T00:00:00+00:00",
+            # lookup populated, but for an unrelated (graha, house, varga) triple
+            vichara_valence_lookup={("VEN", "D9_HOUSE_11", "D9"): {"value_text": "benefic", "value_num": 0.5}},
+        )
+        self.assertEqual(row["valence_source"], "keyword_heuristic_v1")
+        epistemic = json.loads(row["epistemic_jsonb"])
+        self.assertNotIn("judged_valence", epistemic)
+
+    def test_fallback_when_vichara_lookup_entirely_empty(self):
+        """Table absent / not yet built for this chart — still the honest,
+        visibly-tagged degraded path, never silent."""
+        row = _build_signal_row(
+            self._mars_aspects_h2_fact(), "chart-1", "build-1",
+            strength_lookup={"MAR": 1.2}, dignity_lookup={"MAR": "neutral"},
+            av_lookup={i: 28 for i in range(1, 13)},
+            now="2026-07-14T00:00:00+00:00",
+            vichara_valence_lookup={},
+        )
+        self.assertEqual(row["valence_source"], "keyword_heuristic_v1")
 
 
 if __name__ == "__main__":
