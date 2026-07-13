@@ -31,6 +31,9 @@ import { getChartSnapshotCapability }    from './get_chart_snapshot'
 import { getMedicalIndicationsCapability } from './get_medical_indications'
 import { getVastuDirectionsCapability }    from './get_vastu_directions'
 import { getYogaFiringsCapability }        from './get_yoga_firings'
+// W4-loop-1 (E-6): longevity (ga_ayurdaya) + sensitive-degree (ga_sensitive_degree)
+import { getAyurdayaCapability }           from './get_ayurdaya'
+import { getSensitiveDegreesCapability }   from './get_sensitive_degrees'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -58,3 +61,5 @@ registerCapability(getChartSnapshotCapability)
 registerCapability(getMedicalIndicationsCapability)
 registerCapability(getVastuDirectionsCapability)
 registerCapability(getYogaFiringsCapability)
+registerCapability(getAyurdayaCapability)
+registerCapability(getSensitiveDegreesCapability)

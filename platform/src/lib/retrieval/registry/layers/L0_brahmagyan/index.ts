@@ -27,6 +27,8 @@ import { queryAspectsAtTimeCapability } from './query_aspects_at_time'
 import { queryRetrogradePeriodsCapability } from './query_retrograde_periods'
 import { ephemerisCacheYearCapability } from './ephemeris_cache_year'
 import { ephemerisCacheNativeLifetimeCapability } from './ephemeris_cache_native_lifetime'
+// W4-loop-1 (E-6): rāśi→medical reference (bg_sign_medical)
+import { querySignMedicalCapability } from './query_sign_medical'
 
 export const L0_CAPABILITIES = [
   // Stream A: foundation + ontology
@@ -47,6 +49,8 @@ export const L0_CAPABILITIES = [
   queryRetrogradePeriodsCapability,
   ephemerisCacheYearCapability,
   ephemerisCacheNativeLifetimeCapability,
+  // W4-loop-1 (E-6): rāśi→medical reference
+  querySignMedicalCapability,
 ] as const
 
 export function registerL0Capabilities(): void {

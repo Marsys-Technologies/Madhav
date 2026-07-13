@@ -420,6 +420,67 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         'had no planet param at all, so a caller had no way to narrow the payload.'),
     }, principal)
 
+  // ── W4-loop-1 (E-6 group4): fronting tools for computed-but-unserved assets ──────
+  // Registry capabilities existed (or were added this pass) but had NO LLM-facing MCP tool.
+
+  // ga_medical → ganita_medical_get (registry cap marsys://tool/L1/get_medical_indications)
+  regAlias(server, 'ganita_medical_get',
+    'L1 classical medical (Vaidya-phala) indications for a chart (ga_medical). NOT a diagnosis — ' +
+    'per-graha dosha/organ watch-indications with classical citations.',
+    'marsys://tool/L1/get_medical_indications',
+    {
+      graha:           z.string().optional().describe('Filter by graha (e.g. Sun, Moon, Mars).'),
+      indication_tier: z.string().optional().describe('Filter by indication tier.'),
+    }, principal)
+
+  // ga_vastu → ganita_vastu_get (registry cap marsys://tool/L1/get_vastu_directions)
+  regAlias(server, 'ganita_vastu_get',
+    'L1 Vāstu graha→direction map for a chart (ga_vastu_planet_direction_map).',
+    'marsys://tool/L1/get_vastu_directions',
+    {
+      graha:           z.string().optional().describe('Filter by graha.'),
+      direction:       z.string().optional().describe('Filter by direction (e.g. East, North).'),
+      indication_tier: z.string().optional().describe('Filter by indication tier.'),
+    }, principal)
+
+  // ga_ayurdaya → ganita_ayurdaya_get (longevity bands — answers "how long / longevity band")
+  regAlias(server, 'ganita_ayurdaya_get',
+    'L1 classical longevity (Āyurdāya) computations for a chart (Piṇḍāyu/Aṃśāyu/Naisargikāyu — ' +
+    'total_years + band alpayu/madhyayu/purnayu). NOT a death prediction.',
+    'marsys://tool/L1/get_ayurdaya',
+    { method: z.string().optional().describe('Filter by method fact_subject (AMSAYU, PINDAYU, NISARGAYU).') },
+    principal)
+
+  // ga_sensitive_degree → ganita_sensitive_degrees_get
+  regAlias(server, 'ganita_sensitive_degrees_get',
+    'L1 sensitive-degree checks for a chart (gaṇḍānta/sandhi/mṛtyu-bhāga/pushkara etc.).',
+    'marsys://tool/L1/get_sensitive_degrees',
+    {
+      subject:    z.string().optional().describe('Filter by fact_subject (graha code, e.g. SUN, VEN).'),
+      check_type: z.string().optional().describe('Filter by fact_key (specific check).'),
+    }, principal)
+
+  // ka_tulana → kala_priority_ranking_get (registry cap marsys://tool/L3/call_priority_ranking)
+  regAlias(server, 'kala_priority_ranking_get',
+    'L3 priority-ranked signals for a chart in a period (ka_tulana service) — ranks active ' +
+    'signals by salience × activation_strength × convergence. Which signals deserve attention ' +
+    'in a time window.',
+    'marsys://tool/L3/call_priority_ranking',
+    {
+      date_from: z.string().optional().describe('Start of evaluation period (YYYY-MM-DD).'),
+      date_to:   z.string().optional().describe('End of evaluation period (YYYY-MM-DD).'),
+      top_k:     z.number().int().min(1).max(100).optional().describe('Max signals (default 20).'),
+    }, principal)
+
+  // bg_sign_medical → ref_sign_medical_get (global reference)
+  globalAlias(server, 'ref_sign_medical_get',
+    'L0 rāśi→medical reference (bg_sign_medical): sign→body_part/organ_systems/element/dosha (Kālapuruṣa).',
+    'marsys://tool/L0/query_sign_medical',
+    {
+      sign_number: z.number().int().min(1).max(12).optional().describe('Filter by sign number (1=Aries..12=Pisces).'),
+      sign_name:   z.string().optional().describe('Filter by sign name (case-insensitive).'),
+    }, principal)
+
   // get_dashas → ganita_dashas_get
   // R5 W1 (dasha_query lane, design §18/§21/§25 E-5): facets threaded through the seam so
   // they don't die at the boundary the way as_of_date originally did (P1). Kept as a hand
