@@ -42,6 +42,9 @@ class FakeCursor:
       - bodha_msr_signals          → dignity rows
       - kala_jivana_parva          → parva-boundary rows (lifetime anchors)
       - chart_dashas               → birth-date fallback (unused when parvas exist)
+      - chart_facts (fact_subject='MOON') → CR-87: janma nakshatra + Moon sign
+        (real, known values for CHART_ID=482012f1 — Purva Bhadrapada / Aquarius —
+        not fabricated; this chart's canonical facts, used here as a test fixture).
     """
     def __init__(self, store):
         self._store = store
@@ -79,6 +82,9 @@ class FakeCursor:
             ]
         elif 'kala_jivana_parva' in low:
             self._result = self._store['parvas']
+        elif "fact_subject = 'moon'" in low:
+            # CR-87: _resolve_native_chart_context's Moon nakshatra/sign query.
+            self._result = [('nakshatra', 'Purva Bhadrapada'), ('sign', 'Aquarius')]
         elif 'chart_dashas' in low:
             self._result = [{'birth_date': date(1984, 2, 5)}]
         else:
@@ -114,7 +120,18 @@ class FakeConn:
 class FakeCtx:
     def __init__(self, conn):
         self.db_conn = conn
-        self.config = {'chart_id': CHART_ID}
+        # CR-87: birth_params carries this chart's real, known location
+        # (Bhubaneswar — the canonical native's actual birth place) so
+        # _resolve_native_chart_context() can resolve location without a
+        # public.charts round-trip in this DB-free fixture.
+        self.config = {
+            'chart_id': CHART_ID,
+            'birth_params': {
+                'latitude_deg': 20.2961,
+                'longitude_deg': 85.8245,
+                'tz_offset_hours': 5.5,
+            },
+        }
         self.dry_run = False
 
 

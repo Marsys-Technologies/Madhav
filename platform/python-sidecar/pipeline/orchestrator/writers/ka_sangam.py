@@ -24,19 +24,22 @@ from services.ka_sangam.engine import (
     relative_confidence_labels,
     independent_current_count,
     _date_to_jd,
+    _NAK_NAME_TO_IDX,
     EnrichmentContext,
+    NativeChartContext,
+    derive_sade_sati_signs,
+    derive_sade_sati_severity,
 )
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 
-# Native birth location (Bhubaneswar, Odisha) — required by muhurta/panchanga service.
-# lat/lon from FORENSIC data; tz_offset_minutes = 330 (IST = UTC+5:30).
-_NATIVE_LOCATION: dict = {
-    'lat': 20.2961,
-    'lon': 85.8245,
-    'tz_offset_minutes': 330,
-}
+# CR-87 fix: the module-level _NATIVE_LOCATION constant (hardcoded to
+# Bhubaneswar, lat/lon of chart 482012f1) has been DELETED — not defaulted.
+# Every chart's location, janma nakshatra, and Moon sign are now resolved
+# per-chart in plan_substeps() via _resolve_native_chart_context() and carried
+# on self._native_ctx (a NativeChartContext). No fallback to Bhubaneswar
+# anywhere in this writer's production path.
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +185,12 @@ class KaSangamWriter(WriterBase):
         # Build U3 enrichment context (C7/C11/C12/C13 currents)
         self._enrichment_ctx = self._build_enrichment_context(conn, chart_id)
 
+        # CR-87: resolve THIS chart's janma nakshatra, Moon sign, and birth
+        # location — never another chart's hardcoded values.
+        self._native_ctx = self._resolve_native_chart_context(
+            conn, chart_id, ctx.config.get('birth_params'),
+        )
+
         # Birth year for lifetime horizon
         self._birth_year = self._derive_birth_year(conn, chart_id)
 
@@ -236,6 +245,7 @@ class KaSangamWriter(WriterBase):
             keepalive         = _keepalive,
             enrichment_context= self._enrichment_ctx,
             muhurta_service   = self._muhurta,
+            native_ctx        = self._native_ctx,
         )
         near_deduped = self._dedup(near_windows)
         logger.info("ka_sangam: NEAR tier — %d windows for chart %s", len(near_deduped), chart_id)
@@ -278,6 +288,7 @@ class KaSangamWriter(WriterBase):
             keepalive         = _keepalive,
             enrichment_context= self._enrichment_ctx,
             muhurta_service   = self._muhurta,
+            native_ctx        = self._native_ctx,
         )
         deduped = self._dedup(windows)
         logger.info("ka_sangam: LIFETIME pred %d/%d — %d windows for chart %s",
@@ -293,6 +304,7 @@ class KaSangamWriter(WriterBase):
 
     def _generate_windows(self, pred_dicts, horizon_start, horizon_end,
                           dasha_kala_service, gochara_service, chart_id,
+                          native_ctx: 'NativeChartContext',
                           keepalive=None, enrichment_context=None,
                           muhurta_service=None) -> list[dict]:
         """Run Mode A + Mode B (or Mode C for SUBSYSTEM) for every predicate.
@@ -302,6 +314,8 @@ class KaSangamWriter(WriterBase):
         keepalive: optional callable to prevent idle-in-transaction timeout.
         enrichment_context: EnrichmentContext for U3 current scoring.
         muhurta_service: KaMuhurtaSevaService for panchanga_quality + tara_bala.
+        native_ctx: CR-87 — THIS chart's resolved NativeChartContext (janma
+          nakshatra, Moon sign, location). Never another chart's values.
         B4-src: stamps primary_domain onto every window dict produced.
         """
         horizon_start_jd = _date_to_jd(horizon_start)
@@ -321,6 +335,7 @@ class KaSangamWriter(WriterBase):
                         horizon_start_jd=horizon_start_jd,
                         horizon_end_jd=horizon_end_jd,
                         gochara_service=gochara_service,
+                        moon_sign=native_ctx.moon_sign,
                         enrichment_context=enrichment_context,
                     )
                     for w in new_windows:
@@ -341,8 +356,9 @@ class KaSangamWriter(WriterBase):
                     gochara_service=gochara_service,
                     muhurta_service=muhurta_service,
                     chart_id=chart_id,
+                    janma_nakshatra_idx=native_ctx.janma_nakshatra_idx,
                     enrichment_context=enrichment_context,
-                    native_location=_NATIVE_LOCATION,
+                    native_location=native_ctx.location,
                 )
                 for w in new_windows_a:
                     w['primary_domain'] = primary_domain
@@ -358,10 +374,11 @@ class KaSangamWriter(WriterBase):
                     horizon_start_jd=horizon_start_jd,
                     horizon_end_jd=horizon_end_jd,
                     gochara_service=gochara_service,
+                    janma_nakshatra_idx=native_ctx.janma_nakshatra_idx,
                     magnitude_threshold=0.3,
                     enrichment_context=enrichment_context,
                     muhurta_service=muhurta_service,
-                    native_location=_NATIVE_LOCATION,
+                    native_location=native_ctx.location,
                 )
                 for w in new_windows_b:
                     w['primary_domain'] = primary_domain
@@ -393,6 +410,119 @@ class KaSangamWriter(WriterBase):
                 if keepalive:
                     keepalive()
         return all_windows
+
+    def _resolve_native_chart_context(self, conn, chart_id: str, birth_params) -> 'NativeChartContext':
+        """CR-87 fix: resolve THIS chart's janma nakshatra, Moon sign, and
+        birth location from chart_facts / birth_params — never from another
+        chart's hardcoded values.
+
+        Fail-loud by design (LANE0_CR87_HOTFIX.md §2.2 item 4): if any of the
+        three required inputs cannot be resolved, raise rather than silently
+        falling back to 482012f1's (Abhisek's) values. A loud build failure is
+        the correct outcome — proceeding with another chart's constants is
+        exactly the CR-87 failure mode.
+        """
+        moon_nakshatra: str | None = None
+        moon_sign: str | None = None
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fact_key, fact_value_text
+                FROM chart_facts
+                WHERE chart_id = %s AND fact_subject = 'MOON'
+                  AND fact_key IN ('nakshatra', 'sign')
+                  AND ayanamsha_id = 'lahiri_chitrapaksha'
+                """,
+                (chart_id,),
+            )
+            for fact_key, fact_value_text in cur.fetchall():
+                if fact_key == 'nakshatra':
+                    moon_nakshatra = fact_value_text
+                elif fact_key == 'sign':
+                    moon_sign = fact_value_text
+
+        if not moon_nakshatra or moon_nakshatra not in _NAK_NAME_TO_IDX:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve Moon nakshatra for chart {chart_id} "
+                f"from chart_facts (fact_subject='MOON', fact_key='nakshatra', "
+                f"ayanamsha_id='lahiri_chitrapaksha') — got {moon_nakshatra!r}. "
+                "Refusing to fall back to another chart's janma nakshatra (CR-87)."
+            )
+        if not moon_sign:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve Moon sign for chart {chart_id} "
+                f"from chart_facts (fact_subject='MOON', fact_key='sign', "
+                f"ayanamsha_id='lahiri_chitrapaksha'). "
+                "Refusing to fall back to another chart's Moon sign (CR-87)."
+            )
+
+        janma_nakshatra_idx = _NAK_NAME_TO_IDX[moon_nakshatra]
+        sade_sati_signs    = derive_sade_sati_signs(moon_sign)
+        sade_sati_severity = derive_sade_sati_severity(sade_sati_signs)
+
+        location = self._resolve_birth_location(conn, chart_id, birth_params)
+
+        return NativeChartContext(
+            janma_nakshatra_idx=janma_nakshatra_idx,
+            moon_sign=moon_sign,
+            sade_sati_signs=sade_sati_signs,
+            sade_sati_severity=sade_sati_severity,
+            location=location,
+        )
+
+    @staticmethod
+    def _resolve_birth_location(conn, chart_id: str, birth_params) -> dict:
+        """CR-87: resolve this chart's birth location. Prefers
+        ctx.config['birth_params'] (orchestrator-supplied); falls back to a
+        direct public.charts query only if birth_params lacks lat/lon. Never
+        falls back to Bhubaneswar or any other specific native's coordinates.
+        """
+        if isinstance(birth_params, dict):
+            lat = birth_params.get('latitude_deg')
+            lon = birth_params.get('longitude_deg')
+            tz_hours = birth_params.get('tz_offset_hours')
+            if lat is not None and lon is not None and tz_hours is not None:
+                return {
+                    'lat': float(lat),
+                    'lon': float(lon),
+                    'tz_offset_minutes': int(round(float(tz_hours) * 60)),
+                }
+
+        # Fallback: query public.charts directly by chart_id (B.10 — never invent).
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT birth_lat, birth_lng, timezone_id
+                FROM public.charts
+                WHERE id = %s OR chart_id = %s
+                LIMIT 1
+                """,
+                (chart_id, chart_id),
+            )
+            row = cur.fetchone()
+
+        if not row or row[0] is None or row[1] is None:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve birth location for chart {chart_id} "
+                "from ctx.config['birth_params'] or public.charts. Refusing to "
+                "fall back to Bhubaneswar or any other chart's coordinates (CR-87)."
+            )
+
+        lat, lon, tzid = row[0], row[1], row[2]
+        try:
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            offset = ZoneInfo(tzid).utcoffset(datetime.now())
+            if offset is None:
+                raise ValueError(f"no utcoffset for {tzid!r}")
+            tz_offset_minutes = int(offset.total_seconds() / 60)
+        except Exception as exc:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve UTC offset for chart {chart_id}'s "
+                f"timezone_id={tzid!r}: {exc}. Refusing to default to IST (CR-87)."
+            ) from exc
+
+        return {'lat': float(lat), 'lon': float(lon), 'tz_offset_minutes': tz_offset_minutes}
 
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
         """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""

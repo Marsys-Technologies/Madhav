@@ -23,11 +23,23 @@ if _SIDECAR not in sys.path:
 
 from services.ka_sangam.engine import (
     EnrichmentContext,
+    NativeChartContext,
     mode_d_av_bindhu,
     _date_to_jd,
     _SAV_STRONG_THRESHOLD,
     _AV_SCAN_PLANETS,
     _SIGN_NAMES,
+)
+
+# CR-87 test fixture: a fixed, arbitrary NativeChartContext used wherever
+# _generate_windows() requires one but the test under exercise (Mode D,
+# domain propagation, etc.) does not depend on its specific values.
+_TEST_NATIVE_CTX = NativeChartContext(
+    janma_nakshatra_idx=24,   # Purva Bhadrapada (test fixture value only)
+    moon_sign='Aquarius',
+    sade_sati_signs=('Capricorn', 'Aquarius', 'Pisces'),
+    sade_sati_severity={'Capricorn': 0.70, 'Aquarius': 1.00, 'Pisces': 0.70},
+    location={'lat': 20.2961, 'lon': 85.8245, 'tz_offset_minutes': 330},
 )
 
 
@@ -657,6 +669,7 @@ class TestO7AvBindhuMode:
                 dasha_kala_service=MagicMock(),
                 gochara_service=mock_gs,
                 chart_id='test-chart-id',
+                native_ctx=_TEST_NATIVE_CTX,
                 keepalive=None,
                 enrichment_context=ctx,
                 muhurta_service=None,
@@ -673,6 +686,7 @@ class TestO7AvBindhuMode:
                 dasha_kala_service=MagicMock(),
                 gochara_service=mock_gs,
                 chart_id='test-chart-id',
+                native_ctx=_TEST_NATIVE_CTX,
                 keepalive=None,
                 enrichment_context=ctx,
                 muhurta_service=None,
