@@ -908,4 +908,12 @@ Full py-sidecar suite green locally (3170 passed, 0 failed, gate's exact command
 ---
 
 ## §8 — W3 rebuild wave (data-plane verification)
-**Opening now.** WP-3.1 Abhinandan (`1c826d5a`) full-cascade rebuild → golden catches + auto-restore; WP-3.2 native (`482012f1`) rebuild → FORENSIC 7/7 MANDATORY + LCA-6 motif>0 + OBS-1 ayanamsha GROUP BY. Requires: prod snapshot (auto-restore safety) + rebuild trigger (Pipeline Job / orchestrator). Mechanism identification in progress.
+**Opening now.** WP-3.1 Abhinandan (`1c826d5a`) full-cascade rebuild → golden catches + auto-restore; WP-3.2 native (`482012f1`) rebuild → FORENSIC 7/7 MANDATORY + LCA-6 motif>0 + OBS-1 ayanamsha GROUP BY.
+
+**Mechanisms confirmed (Conductor, 2026-07-13):**
+- **Snapshot net:** Cloud SQL on-demand backup **`1783904647096`** (instance `amjis-postgres`, STATUS **SUCCESSFUL**, ~01:04Z) — taken BEFORE any W3 write. Auto-restore of choice is per-chart re-run (idempotent delete-then-insert); full-instance restore is the sledgehammer (rolls back ALL prod) reserved for catastrophic multi-chart corruption and gated on Conductor decision.
+- **Rebuild trigger:** product path `POST /api/cockpit/runs` (session-gated) → INSERT `build_runs` row + plan → invoke Cloud Run job `brahma-build-pipeline-job` (image `brahma-pipeline:e1d601f2` = main HEAD, W2 code) via `jobInvoker.ts`; orchestrator `main.py --run-id <build_runs.id>`. Non-session path: fetch live pipeline DB URL from Secret Manager (`amjis-pipeline-db-url` — ACCESS confirmed; `.env.rag` DB pw was stale) → replicate build_runs row → `gcloud run jobs execute`. cloud-sql-proxy live on :5433.
+- **Verify path:** deployed MCP (`mcp__marsys-jis-direct__*`, prod reads) — Conductor independently re-verifies FORENSIC 7/7 + motif>0 gates after the wave-conductor reports.
+- **Access posture:** gcloud authed on `madhav-astrology`; Secret Manager readable; NOT an entitlement HALT.
+
+**W3 execution DISPATCHED** to a fresh-context wave-conductor (re-grounded from ledger+plan) with hard safety rules: Abhinandan golden-catch gates native; FORENSIC failure = catastrophic STOP-to-Conductor; NO autonomous full-instance restore; NO self-merge/deploy (code fixes escalate to Conductor); §8.4 budget 2 re-entries; §8.6 HALT classes. Awaiting evidence + verdict.
