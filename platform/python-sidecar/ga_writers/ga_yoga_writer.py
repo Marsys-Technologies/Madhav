@@ -34,7 +34,8 @@ import json
 import logging
 import time
 import uuid
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Callable
 
 import psycopg.rows
 
@@ -1797,6 +1798,62 @@ def evaluate_nbry(
     return True, ";".join(rule_parts), "; ".join(refs), " | ".join(humans), findings
 
 
+# ── CR-59 / CR-23 grounds-checked-per-verdict ledger ────────────────────────────
+# Lane 3 (Night-1) Deliverable B: detect_neecha_bhanga/evaluate_nbry above only
+# surface FIRED rules (correct for the bhanga_active/bhanga_rule_fired verdict
+# columns — unchanged, additive-only here). CR-59's storage direction ("store
+# grounds-checked per verdict") additionally requires every rule this writer
+# CHECKED for a debilitated graha — fired or not — to be visible downstream,
+# so a native/serving-layer ruling (CR-23's deferred Jupiter disagreement) has
+# something concrete to inspect. This ledger changes no firing/bhanga logic;
+# it is a parallel, read-only record of what was evaluated.
+
+def _nbry_grounds_ledger(
+    positions: dict[str, dict[str, Any]],
+    varga: str,
+    navamsa_positions: dict[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """For every debilitated classical graha in `positions`, record EVERY NBRY
+    rule checked (1-4, plus the floored rule 5), each with checked=True and
+    fired=bool(hit). Unlike detect_neecha_bhanga, this runs (and records)
+    regardless of whether any rule ultimately fires — the CR-59 visibility
+    ledger. Returns one entry per debilitated graha; empty list if none."""
+    ledger: list[dict[str, Any]] = []
+    for planet in NBRY_CLASSICAL_GRAHAS:
+        p = positions.get(planet)
+        if not p or p.get("sign") != NB_DEBILITATION_SIGNS.get(planet):
+            continue  # not debilitated in this varga — nothing to check
+
+        grounds: list[dict[str, Any]] = []
+        for rule_fn, kwargs in (
+            (nbry_rule_1_dispositor_kendra, {}),
+            (nbry_rule_2_exaltation_lord_kendra, {"navamsa_positions": navamsa_positions}),
+            (nbry_rule_3_lord_aspect, {}),
+            (nbry_rule_4_conjunct_exaltation_graha, {}),
+        ):
+            hit = rule_fn(planet, positions, **kwargs)
+            grounds.append({
+                "rule_id": rule_fn.__name__,
+                "checked": True,
+                "fired": bool(hit),
+                "detail": hit,
+            })
+        floor = nbry_rule_5_mutual_kendra_floored(planet, positions)
+        grounds.append({
+            "rule_id": floor["rule_id"],
+            "checked": True,
+            "fired": False,
+            "detail": {"floored": True, "floor_reason": floor["floor_reason"]},
+        })
+        ledger.append({
+            "planet": planet,
+            "varga": varga,
+            "debilitation_sign": p["sign"],
+            "grounds": grounds,
+        })
+    return ledger
+
+
 # ── Generic bhanga evaluator (Y-5 scaffold) ─────────────────────────────────────
 
 def _bhanga_neecha_handler(
@@ -1834,6 +1891,7 @@ def evaluate_bhanga(
     d9_positions: dict[str, dict[str, Any]] | None = None,
     constituent_planets: list[str] | None = None,
     has_catalog_cancellation: bool = False,
+    special_states: dict[str, dict[str, bool]] | None = None,
 ) -> dict[str, Any]:
     """
     Generic yoga-cancellation evaluator (defect register Y-5).
@@ -1846,6 +1904,11 @@ def evaluate_bhanga(
     type, bhanga_active stays honestly NULL with the same documented reason
     this writer has always emitted (B.10 floor discipline) — a yoga is never
     forced to a bhanga verdict.
+
+    `special_states` (Lane 3 / Night-1 addition): planet(lower) ->
+    {"is_combust", "is_debilitated", "is_exalted"} from
+    graha_special_state_rollup, only consulted by handlers that declare a
+    **_ignored catch-all (existing handlers ignore it harmlessly).
     """
     handler = _BHANGA_EVALUATORS.get(yoga_canonical_id)
     if handler is not None:
@@ -1853,6 +1916,7 @@ def evaluate_bhanga(
             d1_positions=d1_positions or {},
             d9_positions=d9_positions,
             constituent_planets=constituent_planets or [],
+            special_states=special_states or {},
         )
     # Floor — identical wording to the pre-R6A.1 behavior.
     return {
@@ -1870,6 +1934,467 @@ def evaluate_bhanga(
         "citation_human": None,
         "findings": [],
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Lane 3 (Night-1) — house-lord/positional detector registry (CR-56, CR-72/73)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# DetectorSpec: a module-level, pure, unit-testable detector with a MANDATORY
+# cancellation callable (even when the verdict is an honest NULL). Mirrors the
+# R6A.1 bhanga-evaluator precedent (_BHANGA_EVALUATORS) but for FORMATION,
+# not just cancellation — six detectors ship here: dhana_yoga_house_lords,
+# raja_yoga_kendra_trikona, budha_aditya, sarasvati_yoga, lakshmi_yoga,
+# vipareeta_raja_yoga.
+#
+# Deviation from the brief's literal "detector key in formation_rule_jsonb"
+# routing (documented in migration 434's header comment): budha_aditya and
+# lakshmi_yoga already exist in brahma_yoga_catalog under those exact
+# canonical_ids with NON-detector formation rules (seeded pre-Night-1). The
+# migration is additive-only (ON CONFLICT DO NOTHING) and does not rewrite
+# those rows, so:
+#   - budha_aditya: already fires via the existing catalog "sun_mercury_
+#     conjunct" relation in _evaluate_yoga. This registry does NOT re-insert
+#     a second ga_yoga_firings row for it (would violate the table's UNIQUE
+#     (chart_id, ayanamsha_id, yoga_canonical_id)) — instead its mandatory
+#     cancellation is wired through the existing _BHANGA_EVALUATORS extension
+#     point (see _budha_aditya_bhanga_handler below), which the main catalog
+#     loop already calls for every non-kemadruma firing.
+#   - lakshmi_yoga: the existing catalog relation is FLOORED
+#     (R6A2_FLOOR_REASONS) and therefore never inserts a row — this
+#     registry's own lakshmi_yoga detector runs independently and inserts its
+#     row when it fires. No collision, because the floored path never writes.
+#   - dhana_yoga_house_lords, raja_yoga_kendra_trikona, sarasvati_yoga,
+#     vipareeta_raja_yoga are new canonical_ids (distinct from the pre-
+#     existing narrower R6A.2 rows) and insert normally through this registry.
+#
+# ZERO LLM — plain deterministic Python, same helper functions R6A.2 uses.
+
+@dataclass(frozen=True)
+class DetectorSpec:
+    yoga_id: str
+    detect: Callable[..., dict[str, Any] | None]
+    cancellation: Callable[..., dict[str, Any]]
+    citation_ref: str
+    citation_human: str
+
+
+def _load_special_states(facts: list[dict]) -> dict[str, dict[str, bool]]:
+    """planet(lower) -> {"is_combust", "is_debilitated", "is_exalted"} from
+    already-loaded chart_facts rows (fact_category='graha_special_state_
+    rollup', written by ga_structural_writer). Read-only consumption of an
+    L1 fact — never recomputed here (§N.5 L1-authority discipline)."""
+    subject_to_planet = {v: k for k, v in GRAHA_SHADBALA_SUBJECTS.items()}
+    result: dict[str, dict[str, bool]] = {}
+    for f in facts:
+        if f.get("fact_category") != "graha_special_state_rollup":
+            continue
+        subj = (f.get("fact_subject") or "").upper()
+        planet = subject_to_planet.get(subj)
+        if not planet:
+            continue
+        key = f.get("fact_key")
+        if key not in ("is_combust", "is_debilitated", "is_exalted"):
+            continue
+        result.setdefault(planet, {})[key] = (f.get("fact_value_text") or "").lower() == "true"
+    return result
+
+
+def _debilitated_without_nbry(
+    planet: str, special_states: dict[str, dict[str, bool]], nbry_findings: list[dict[str, Any]],
+) -> bool:
+    """True iff `planet` is debilitated per L1 facts AND has no firing
+    classical neecha-bhanga rule recorded in this build's NBRY findings."""
+    if not special_states.get(planet, {}).get("is_debilitated"):
+        return False
+    cancelled = {f["planet"] for f in nbry_findings if f.get("rules_fired")}
+    return planet not in cancelled
+
+
+# ── Detector 1: dhana_yoga_house_lords (CR-56) ─────────────────────────────────
+
+DHANA_HOUSE_LORD_HOUSES: tuple[int, ...] = (1, 2, 5, 9, 11)
+
+
+def _detect_dhana_yoga_house_lords(
+    state: ChartState, special_states: dict[str, dict[str, bool]],
+) -> dict[str, Any] | None:
+    for h1 in (2, 11):
+        for h2 in DHANA_HOUSE_LORD_HOUSES:
+            if h2 == h1:
+                continue
+            hit = _check_house_lord_association(state, h1, h2)
+            if not hit:
+                continue
+            if any(h in DUSTHANAS for h in hit["placement_houses"]):
+                continue  # meeting house is a dusthana — formation gate fails
+            return {
+                "constituent_planets": hit["lords"],
+                "constituent_houses": hit["placement_houses"],
+                "houses_ruled": sorted({h1, h2}),
+                "association_mode": hit["association_mode"],
+            }
+    return None
+
+
+def _cancel_dhana_yoga_house_lords(
+    finding: dict[str, Any], state: ChartState,
+    special_states: dict[str, dict[str, bool]], nbry_findings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    affected = [
+        p for p in finding["constituent_planets"]
+        if special_states.get(p, {}).get("is_combust")
+        or _debilitated_without_nbry(p, special_states, nbry_findings)
+    ]
+    ref = "bphs:ch41_dhana_yoga_adhyaya:lord_affliction"
+    if affected:
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": f"lord_combust_or_uncancelled_debility:{','.join(affected)}",
+            "bhanga_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": (
+                "BPHS Ch.41 (Dhana Yoga adhyaya): a yoga-forming house lord that is "
+                f"combust or debilitated without classical neecha-bhanga ({', '.join(affected)}) "
+                "demotes the yoga — never silently served at full strength."
+            ),
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "bhanga_na_reason": None,
+        "citation_ref": ref,
+        "citation_human": "Neither constituent lord is combust or uncancelled-debilitated.",
+    }
+
+
+# ── Detector 2: raja_yoga_kendra_trikona (CR-56) ───────────────────────────────
+
+def _detect_raja_yoga_kendra_trikona(
+    state: ChartState, special_states: dict[str, dict[str, bool]],
+) -> dict[str, Any] | None:
+    hit = _check_kendra_trikona_raja(state)
+    if not hit:
+        return None
+    if any(h in DUSTHANAS for h in hit["placement_houses"]):
+        return None
+    return {
+        "constituent_planets": hit["lords"],
+        "constituent_houses": hit["placement_houses"],
+        "association_mode": hit["association_mode"],
+    }
+
+
+def _cancel_raja_yoga_kendra_trikona(
+    finding: dict[str, Any], state: ChartState,
+    special_states: dict[str, dict[str, bool]], nbry_findings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    affected = [
+        p for p in finding["constituent_planets"]
+        if special_states.get(p, {}).get("is_combust")
+        or _debilitated_without_nbry(p, special_states, nbry_findings)
+    ]
+    ref = "bphs:ch39_raja_yoga_adhyaya:lord_affliction"
+    if affected:
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": f"lord_combust_or_uncancelled_debility:{','.join(affected)}",
+            "bhanga_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": (
+                "BPHS Ch.39 (Raja Yoga adhyaya): a kendra/trikona lord that is combust "
+                f"or debilitated without classical neecha-bhanga ({', '.join(affected)}) "
+                "demotes the yoga."
+            ),
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "bhanga_na_reason": None,
+        "citation_ref": ref,
+        "citation_human": "Neither constituent lord is combust or uncancelled-debilitated.",
+    }
+
+
+# ── Detector 3: budha_aditya (cancellation-only integration — see header) ─────
+
+def _detect_budha_aditya(
+    state: ChartState, special_states: dict[str, dict[str, bool]],
+) -> dict[str, Any] | None:
+    sun_h = _house_of_planet("sun", state)
+    mer_h = _house_of_planet("mercury", state)
+    if sun_h and mer_h and sun_h == mer_h:
+        return {"constituent_planets": ["sun", "mercury"], "constituent_houses": [sun_h]}
+    return None
+
+
+BUDHA_ADITYA_COMBUSTION_CITATION_REF = "bphs:budha_aditya:combustion_cancels"
+
+
+def _cancel_budha_aditya(
+    finding: dict[str, Any] | None, state: ChartState | None,
+    special_states: dict[str, dict[str, bool]], nbry_findings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    mercury_combust = special_states.get("mercury", {}).get("is_combust", False)
+    if mercury_combust:
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": "mercury_combust",
+            "bhanga_na_reason": None,
+            "citation_ref": BUDHA_ADITYA_COMBUSTION_CITATION_REF,
+            "citation_human": (
+                "Mercury within its classical combustion orb of the Sun cancels "
+                "Budha-Aditya — the union becomes plain combustion, not the yoga."
+            ),
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "bhanga_na_reason": None,
+        "citation_ref": BUDHA_ADITYA_COMBUSTION_CITATION_REF,
+        "citation_human": "Mercury is outside its combustion orb — Budha-Aditya stands uncancelled.",
+    }
+
+
+def _budha_aditya_bhanga_handler(
+    *, special_states: dict[str, dict[str, bool]] | None = None, **_ignored: Any,
+) -> dict[str, Any]:
+    """_BHANGA_EVALUATORS entry for budha_aditya (registered below) — real
+    combustion-based cancellation for the ALREADY-FIRING catalog relation
+    (see module header for why this doesn't go through the detector-insert
+    loop)."""
+    verdict = _cancel_budha_aditya(None, None, special_states or {}, [])
+    return {**verdict, "findings": []}
+
+
+# ── Detector 4: sarasvati_yoga (CR-56) ─────────────────────────────────────────
+
+SARASVATI_HOUSES: frozenset[int] = frozenset(KENDRAS | TRIKONAS | {2})
+
+
+def _detect_sarasvati_yoga(
+    state: ChartState, special_states: dict[str, dict[str, bool]],
+) -> dict[str, Any] | None:
+    planets = ("jupiter", "venus", "mercury")
+    houses: dict[str, int] = {}
+    for p in planets:
+        h = _house_of_planet(p, state)
+        if h is None or h not in SARASVATI_HOUSES:
+            return None
+        houses[p] = h
+    jup_sign = state.planet_sign.get("jupiter")
+    if not jup_sign or not _check_dignity("jupiter", jup_sign, ["own", "exalted"]):
+        # The classical "or friendly sign" disjunct is not evaluated — no
+        # ratified planetary-friendship table exists in this writer (honest
+        # floor, B.10 — not a fabricated approximation).
+        return None
+    return {
+        "constituent_planets": list(planets),
+        "constituent_houses": sorted(set(houses.values())),
+    }
+
+
+def _cancel_sarasvati_yoga(
+    finding: dict[str, Any], state: ChartState,
+    special_states: dict[str, dict[str, bool]], nbry_findings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    afflicted = [
+        p for p in finding["constituent_planets"]
+        if special_states.get(p, {}).get("is_debilitated") or special_states.get(p, {}).get("is_combust")
+    ]
+    ref = "bphs:sarasvati_yoga:constituent_affliction_cancels"
+    if afflicted:
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": f"constituent_debilitated_or_combust:{','.join(afflicted)}",
+            "bhanga_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": f"A constituent graha ({', '.join(afflicted)}) is debilitated or combust — Sarasvati Yoga is cancelled.",
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "bhanga_na_reason": None,
+        "citation_ref": ref,
+        "citation_human": "No constituent graha is debilitated or combust.",
+    }
+
+
+# ── Detector 5: lakshmi_yoga (CR-56; existing catalog id, floored path never fires) ──
+
+def _detect_lakshmi_yoga(
+    state: ChartState, special_states: dict[str, dict[str, bool]],
+) -> dict[str, Any] | None:
+    lord9 = _lord_of_house(state, 9)
+    if not lord9:
+        return None
+    h9lord = _house_of_planet(lord9, state)
+    if h9lord is None or h9lord not in (KENDRAS | TRIKONAS):
+        return None
+    sign9lord = state.planet_sign.get(lord9)
+    if not sign9lord or not _check_dignity(lord9, sign9lord, ["own", "exalted"]):
+        return None
+    venus_sign = state.planet_sign.get("venus")
+    if not venus_sign or not _check_dignity("venus", venus_sign, ["own", "exalted"]):
+        return None
+    if special_states.get("venus", {}).get("is_combust"):
+        return None
+    venus_h = _house_of_planet("venus", state)
+    houses = sorted({h for h in (h9lord, venus_h) if h is not None})
+    return {"constituent_planets": sorted({lord9, "venus"}), "constituent_houses": houses}
+
+
+def _cancel_lakshmi_yoga(
+    finding: dict[str, Any], state: ChartState,
+    special_states: dict[str, dict[str, bool]], nbry_findings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    ref = "bphs:lakshmi_yoga:venus_affliction_cancels"
+    if special_states.get("venus", {}).get("is_debilitated") or special_states.get("venus", {}).get("is_combust"):
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": "venus_debilitated_or_combust",
+            "bhanga_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": "Venus is debilitated or combust — Lakshmi Yoga is cancelled.",
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "bhanga_na_reason": None,
+        "citation_ref": ref,
+        "citation_human": "Venus is neither debilitated nor combust (formation already requires own/exalted, non-combust).",
+    }
+
+
+# ── Detector 6: vipareeta_raja_yoga (CR-56) ────────────────────────────────────
+
+def _detect_vipareeta_raja_yoga(
+    state: ChartState, special_states: dict[str, dict[str, bool]],
+) -> dict[str, Any] | None:
+    for h in sorted(DUSTHANAS):
+        hit = _check_lord_in_houses(state, h, DUSTHANAS)
+        if hit:
+            return {
+                "constituent_planets": hit["lords"],
+                "constituent_houses": hit["placement_houses"],
+                "source_house": h,
+            }
+    return None
+
+
+def _cancel_vipareeta_raja_yoga(
+    finding: dict[str, Any], state: ChartState,
+    special_states: dict[str, dict[str, bool]], nbry_findings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    ref = "phaladeepika:ch7:vipareeta_dilution"
+    lords = finding.get("constituent_planets") or []
+    lord = lords[0] if lords else None
+    if not lord:
+        return {
+            "bhanga_active": None, "bhanga_rule_fired": None,
+            "bhanga_na_reason": "no resolvable dusthana lord to check dilution against",
+            "citation_ref": ref, "citation_human": None,
+        }
+    lord_house = _house_of_planet(lord, state)
+    dusthana_lord_set = {_lord_of_house(state, h) for h in DUSTHANAS}
+    diluted_by: list[str] = []
+    if lord_house is not None:
+        for other in state.planets_in_house(lord_house):
+            if other != lord and other not in dusthana_lord_set and other not in diluted_by:
+                diluted_by.append(other)
+        for other, oh in state.planet_house.items():
+            if other == lord or other in dusthana_lord_set or other in diluted_by:
+                continue
+            if _nb_aspects_house(other, oh, lord_house):
+                diluted_by.append(other)
+    exalted_in_dusthana = bool(special_states.get(lord, {}).get("is_exalted"))
+    grounds: list[str] = []
+    if diluted_by:
+        grounds.append(f"conjunct_or_aspected_by_non_dusthana_lord:{','.join(sorted(diluted_by))}")
+    if exalted_in_dusthana:
+        grounds.append("exalted_in_dusthana_nuance")
+    if grounds:
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": ";".join(grounds),
+            "bhanga_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": (
+                "Phaladeepika Ch.7: the dusthana lord's Vipareeta effect is diluted "
+                f"({'; '.join(grounds)}) — recorded, not silently voided."
+            ),
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "bhanga_na_reason": None,
+        "citation_ref": ref,
+        "citation_human": "No classical dilution ground found — Vipareeta Raja Yoga stands undiluted.",
+    }
+
+
+# Detector registry — every entry has a non-None cancellation callable
+# (mandatory per the Lane 3 brief, even where the practical verdict is
+# usually False/None; see individual cancellation functions above).
+YOGA_DETECTORS: dict[str, DetectorSpec] = {
+    "dhana_yoga_house_lords": DetectorSpec(
+        yoga_id="dhana_yoga_house_lords",
+        detect=_detect_dhana_yoga_house_lords,
+        cancellation=_cancel_dhana_yoga_house_lords,
+        citation_ref="bphs:ch41_dhana_yoga_adhyaya:house_lord_family",
+        citation_human="BPHS Ch.41 (Dhana Yoga adhyaya): association among the lords of 1/2/5/9/11 including the 2nd or 11th lord.",
+    ),
+    "raja_yoga_kendra_trikona": DetectorSpec(
+        yoga_id="raja_yoga_kendra_trikona",
+        detect=_detect_raja_yoga_kendra_trikona,
+        cancellation=_cancel_raja_yoga_kendra_trikona,
+        citation_ref="bphs:ch39_raja_yoga_adhyaya:kendra_trikona",
+        citation_human="BPHS Ch.39 (Raja Yoga adhyaya): any kendra lord associated with any trikona lord.",
+    ),
+    "budha_aditya": DetectorSpec(
+        yoga_id="budha_aditya",
+        detect=_detect_budha_aditya,
+        cancellation=_cancel_budha_aditya,
+        citation_ref=BUDHA_ADITYA_COMBUSTION_CITATION_REF,
+        citation_human="Sun and Mercury conjunct in one house; cancelled if Mercury is combust.",
+    ),
+    "sarasvati_yoga": DetectorSpec(
+        yoga_id="sarasvati_yoga",
+        detect=_detect_sarasvati_yoga,
+        cancellation=_cancel_sarasvati_yoga,
+        citation_ref="bphs:sarasvati_yoga:formation",
+        citation_human="Jupiter, Venus, Mercury each in kendra/trikona/2nd; Jupiter own/exalted.",
+    ),
+    "lakshmi_yoga": DetectorSpec(
+        yoga_id="lakshmi_yoga",
+        detect=_detect_lakshmi_yoga,
+        cancellation=_cancel_lakshmi_yoga,
+        citation_ref="bphs:lakshmi_yoga:formation",
+        citation_human="9th lord own/exalted in kendra/trikona, with Venus own/exalted and non-combust.",
+    ),
+    "vipareeta_raja_yoga": DetectorSpec(
+        yoga_id="vipareeta_raja_yoga",
+        detect=_detect_vipareeta_raja_yoga,
+        cancellation=_cancel_vipareeta_raja_yoga,
+        citation_ref="phaladeepika:ch7:vipareeta_formation",
+        citation_human="Phaladeepika Ch.7: a dusthana lord (6th/8th/12th) placed in a dusthana.",
+    ),
+}
+
+# Registry hygiene: register budha_aditya's mandatory cancellation through the
+# existing R6A.1 _BHANGA_EVALUATORS extension point (see module header for
+# why — its formation already fires via the pre-existing catalog relation).
+_BHANGA_EVALUATORS["budha_aditya"] = _budha_aditya_bhanga_handler
+
+# Canonical_ids the detector loop (build_ga_yoga_substep) inserts its OWN
+# ga_yoga_firings row for. budha_aditya is deliberately excluded — see header.
+DETECTOR_INSERT_IDS: tuple[str, ...] = (
+    "dhana_yoga_house_lords",
+    "raja_yoga_kendra_trikona",
+    "sarasvati_yoga",
+    "lakshmi_yoga",
+    "vipareeta_raja_yoga",
+)
 
 
 # ── Build-time wiring: positions extraction + NBRY firing row ──────────────────
@@ -1926,7 +2451,23 @@ def _build_nbry_firing(
     bhanga_active, rule_fired, citation_ref, citation_human, findings = evaluate_nbry(
         d1_positions, d9_positions or None,
     )
+
+    # CR-59 grounds ledger — every rule checked for every debilitated graha in
+    # D1 (+ D9 when available), fired or not. Computed regardless of whether
+    # NBRY ultimately fires; only persisted (below) when a row is written,
+    # per the brief's "minimum bar: any NBRY verdict served downstream must
+    # be traceable to its checked grounds" (grounds live on the fired row).
+    grounds_ledger = _nbry_grounds_ledger(d1_positions, "D1", navamsa_positions=d9_positions or None)
+    if d9_positions:
+        grounds_ledger += _nbry_grounds_ledger(d9_positions, "D9")
+
     if not bhanga_active:
+        if grounds_ledger:
+            logger.info(
+                "[ga_yoga_writer] NBRY grounds-checked, not fired: chart=%s ayanamsha=%s "
+                "debilitated_grahas=%s (no cited rule fired for any — no row written)",
+                chart_id, ayanamsha_id, [g["planet"] + "@" + g["varga"] for g in grounds_ledger],
+            )
         return 0  # yoga does not form — no row (uncancelled debilitations stay uncancelled)
 
     constituent_planets: list[str] = []
@@ -1963,7 +2504,7 @@ def _build_nbry_firing(
                 partial_formation_pct, is_partial,
                 bhanga_active, bhanga_rule_fired, bhanga_na_reason,
                 derivation, strength_label, citation_ref, citation_human,
-                family_ids, computed_at
+                family_ids, grounds_jsonb, computed_at
             ) VALUES (
                 %s, %s::uuid, %s, %s,
                 %s, %s::jsonb, %s::jsonb,
@@ -1971,7 +2512,7 @@ def _build_nbry_firing(
                 %s, %s,
                 %s, %s, %s,
                 %s, %s, %s, %s,
-                %s::jsonb, NOW()
+                %s::jsonb, %s::jsonb, NOW()
             )
         """, (
             chart_id, build_uuid, ayanamsha_id, NBRY_CANONICAL_ID,
@@ -1987,6 +2528,7 @@ def _build_nbry_firing(
             "computed_extension",
             citation_ref, citation_human,
             json.dumps(family_map.get(NBRY_CANONICAL_ID, [])),
+            json.dumps(grounds_ledger),
         ))
         return 1
     except Exception as exc:
@@ -2075,6 +2617,10 @@ def build_ga_yoga_substep(
     d1_positions = _d1_positions_from_state(state)
     d9_positions = _load_d9_positions(conn, chart_id, ayanamsha_id)
 
+    # Lane 3 (Night-1): special-state facts (combust/debilitated/exalted) for
+    # the detector-registry cancellation checks — read-only L1 consumption.
+    special_states = _load_special_states(facts)
+
     # 3. Idempotency: delete prior rows for this (chart_id, ayanamsha_id)
     deleted = _delete_prior_yoga_firings(conn, chart_id, ayanamsha_id)
     logger.info("[ga_yoga_writer] deleted %d prior rows", deleted)
@@ -2126,6 +2672,7 @@ def build_ga_yoga_substep(
                     d9_positions=d9_positions or None,
                     constituent_planets=result["constituent_planets"],
                     has_catalog_cancellation=bool(yoga.get("cancellation_conditions")),
+                    special_states=special_states,
                 )
                 bhanga_active = bhanga["bhanga_active"]
                 bhanga_na_reason = bhanga["bhanga_na_reason"]
@@ -2189,6 +2736,83 @@ def build_ga_yoga_substep(
             cur, chart_id, build_uuid, ayanamsha_id, state,
             d1_positions, d9_positions, family_map,
         )
+
+        # ── Lane 3 (Night-1): detector-registry firings (CR-56) ────────────────
+        # Runs AFTER the catalog pass + NBRY, exactly like NBRY's own insert.
+        # Only the ids in DETECTOR_INSERT_IDS write a row here — budha_aditya
+        # is intentionally excluded (module header: it already fires via the
+        # catalog loop above; only its cancellation is new, wired through
+        # _BHANGA_EVALUATORS and already applied in that loop).
+        _, _, _, _, nbry_findings_for_detectors = evaluate_nbry(d1_positions, d9_positions or None)
+        for det_id in DETECTOR_INSERT_IDS:
+            spec = YOGA_DETECTORS[det_id]
+            catalog_row = next((y for y in yoga_catalog if y["canonical_id"] == det_id), None)
+            if catalog_row is None:
+                logger.warning(
+                    "[ga_yoga_writer] detector %s has no brahma_yoga_catalog row "
+                    "(migration not applied?) — skipping", det_id,
+                )
+                continue
+
+            finding = spec.detect(state, special_states)
+            if finding is None:
+                continue
+
+            verdict = spec.cancellation(finding, state, special_states, nbry_findings_for_detectors)
+            constituent_planets = finding["constituent_planets"]
+            constituent_houses = finding.get("constituent_houses", [])
+            constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
+
+            (
+                strength, derivation, strength_label, bala_citation_ref, bala_citation_human,
+            ) = _compute_constituent_bala_strength(
+                constituent_planets, shadbala_map, det_id, chart_id, ayanamsha_id,
+            )
+            # Prefer the constituent_bala_v1 strength citation when resolvable;
+            # otherwise fall back to the detector's own formation citation so
+            # the row is never citation-less (writer rail: "Classical citations
+            # required on every yoga").
+            citation_ref = bala_citation_ref or spec.citation_ref
+            citation_human = bala_citation_human or spec.citation_human
+
+            try:
+                cur.execute("""
+                    INSERT INTO ga_yoga_firings (
+                        chart_id, build_id, ayanamsha_id, yoga_canonical_id,
+                        fired, constituent_fact_ids, constituent_planets,
+                        constituent_houses, strength, strength_formula_version,
+                        partial_formation_pct, is_partial,
+                        bhanga_active, bhanga_rule_fired, bhanga_na_reason,
+                        derivation, strength_label, citation_ref, citation_human,
+                        family_ids, computed_at
+                    ) VALUES (
+                        %s, %s::uuid, %s, %s,
+                        %s, %s::jsonb, %s::jsonb,
+                        %s::jsonb, %s, %s,
+                        %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s,
+                        %s::jsonb, NOW()
+                    )
+                """, (
+                    chart_id, build_uuid, ayanamsha_id, det_id,
+                    True,
+                    json.dumps(constituent_fact_ids),
+                    json.dumps(constituent_planets),
+                    json.dumps(constituent_houses),
+                    strength,
+                    derivation or STRENGTH_FORMULA_VERSION,
+                    None, False,
+                    verdict["bhanga_active"], verdict["bhanga_rule_fired"], verdict["bhanga_na_reason"],
+                    derivation, strength_label, citation_ref, citation_human,
+                    json.dumps(family_map.get(det_id, [])),
+                ))
+                rows_inserted += 1
+            except Exception as exc:
+                logger.warning(
+                    "[ga_yoga_writer] detector insert failed for yoga=%s chart=%s ayanamsha=%s: %s",
+                    det_id, chart_id, ayanamsha_id, exc,
+                )
 
     elapsed = time.time() - t0
     logger.info(
