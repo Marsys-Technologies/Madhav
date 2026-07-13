@@ -953,3 +953,29 @@ Native (`482012f1`) fully rebuilt (all 63 assets lit, L1–L5). Conductor verifi
 
 ### L3 build-scoping note (durable, for the native's future cockpit builds)
 L3 must be built as part of a **full L1→L5 cascade** (or a full-L3 scope that includes `ka_dasha_kala`+`ka_sangam`), NOT a short single-asset scoped run — else `ka_dasha_kala` stays stale and the orchestrator safely BLOCKS `ka_sangam` + all downstream L3/L4/L5 (this produced the transient native L3 failure at `e4e0a9d9`, since resolved by the native's full rebuild).
+
+---
+
+## §9 — W4 final re-audit (measured 2026-07-13, deployed prod `e1d601f2`, both charts rebuilt)
+
+Honest measurement (plan §8.4: honest NOT-MET beats gamed PASS). Full report: `W4_REAUDIT_REPORT_v1_0.md`.
+
+| Gate | Baseline → Measured | Verdict | Blocker (if fail) |
+|---|---|---|---|
+| 1 Question sufficiency | 1.2% → 57% SUFF / 3.6% INSUFF (n=28) | **FAIL (narrow)** SUFF 57%<60%; INSUFF passes | bare-bhava misrouting, temporal-window routing split, uncomputed quantified artifacts |
+| 2 Class-9 improvisation | 328 → 135 doctrine-deferred | disposition HONORED | (not a threshold) |
+| 3 **Asset promise (E-6)** | 42% → **~84% (56/67)** | **FAIL (marginal, 1 short)** | 3 unserved (ga_medical/ga_vastu/ka_tulana) + ka_taranga join + L5 structural-zeros |
+| 4 Families reachable | 76% → UNMEASURED (agent API-died) | — | — |
+| 5 Heavy synthesis | 0/7 → 1/7 | **FAIL** | 5 = data-plane nonexistence (per-system roga, accident signal) OUT-OF-SCOPE; longevity = W2 ga_ayurdaya built-but-unserved |
+| 6 Ranked attribution | 0% → served_unattributed_share:0 (partial) | LIKELY-PASS (agent API-died before full) | attribution defect closed (0/9 orphaned) |
+| 7 Domain discrimination | 95% → UNMEASURED (agent API-died) | — | — |
+| 8 Dossier depth | 1/20, 73.5% → ~16-18/20, ~87% | **FAIL** depth 87%<90% | R-45 convergence unreachable + Kāla sidecar down + ~13 irreducible data-plane facets |
+| 9 Envelope contradictions | multiple → UNMEASURED (agent API-died) | — | — |
+| 10 **Tool hard-failures (E-5)** | 19+ → **≥9 hard-fail + ~6-9 dishonest-blank** | **FAIL** (gate 0) | ref_* alias auth/param family + filter-honesty + traverse_graph DSL — ALL serving-layer, Conductor-fixable |
+| §3 coverage p1 | — | **CLEAN** 1,009/1,009 mapped, 0 unmapped | — |
+
+**Cross-cutting positives found:** judgment_query v3 receipt fully populated (karaka/yogas now checked); attribution defect CLOSED (0% orphaned, 430 facts resolvable); native temporal layer backfilled (4,487 activation rows exist).
+
+**Native decision:** RUN W4 FIX-LOOP (W4-loop-1). Scope = E-5 (tool failures→0) + E-6 (≥85%), all serving-layer. Gates 1/5/8's irreducible data-plane gaps (per-system roga taxonomy, accident/mrityu-bhaga signals, ~13 nonexistent per-graha facets) are OUT-OF-SCOPE for a serving-plane remediation (→ future data campaign). Key realization: several "data nonexistence" items are actually W2-BUILT-BUT-UNSERVED (ga_ayurdaya longevity, ga_sensitive_degree, bg_sign_medical) — serving them helps E-6 AND longevity questions.
+
+**W4-loop-1 DISPATCHED** (fresh-context impl agent, worktree from `e1d601f2`): Group1 ref_* alias auth/param (asset_registry cockpit-401, ref_* sidecar-401, ref_planet_position 500, ref_transit_rules 400, ref_ephemeris_year URI, traverse_graph DSL), Group2 filter-honesty (query_remedies→Jupiter, ganita_positions/mantras vocab + empty_reason), Group3 routing (judgment_query bare-bhava, get_temporal_windows split), Group4 E-6 fronting (ga_medical/ga_vastu/ka_tulana/ga_ayurdaya/ga_sensitive_degree/bg_sign_medical) + ka_taranga join. Serving-layer only; FROZEN orchestrator untouched. Conductor owns verify→merge→deploy→RE-MEASURE (target: E-5=0, E-6≥85%).
