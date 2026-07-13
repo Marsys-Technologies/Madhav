@@ -61,7 +61,7 @@ const GROUNDING_FACT_IDS_CAP = 200
  * error this falls back to the view's original (mislabeled) value rather than breaking the
  * response.
  */
-async function deriveShadbalaWeakestGraha(
+export async function deriveShadbalaWeakestGraha(
   chart_id: string,
   ayanamsha_id: string,
 ): Promise<{ graha: string | null; shadbala_rupa: number | null } | null> {
@@ -71,6 +71,7 @@ async function deriveShadbalaWeakestGraha(
        FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_shadbala_total'
          AND fact_value_num IS NOT NULL
+         AND fact_subject NOT IN ('RAH_MEAN', 'KET_MEAN')
        ORDER BY fact_value_num ASC
        LIMIT 1`,
       [chart_id, ayanamsha_id],
