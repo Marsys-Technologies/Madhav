@@ -231,8 +231,15 @@ class TestPhaladeskAntiDrift:
         )
         with open(path) as f:
             src = f.read()
-        # The VALUES clause must pass NULL for narration_model
-        assert 'NULL, NULL' in src or 'narration_model=NULL' in src.lower() or ', NULL, NULL,' in src
+        # The VALUES clause must pass a LITERAL NULL for narration_model — never a %s
+        # param that could carry a (possibly banned) model. WP-2.2/LCA-5 made narration
+        # deterministic: column order (narration_status, narration_model, narration_jsonb)
+        # → VALUES (%s, NULL, %s::jsonb), so narration_model stays the literal NULL.
+        assert (
+            '%s, NULL, %s::jsonb' in src          # current deterministic form
+            or 'NULL, NULL' in src                # legacy double-NULL form
+            or ', NULL, NULL,' in src
+        )
 
     def test_migration_narration_model_check_excludes_anthropic(self):
         """DB CHECK values for narration_model must contain no Anthropic model IDs."""

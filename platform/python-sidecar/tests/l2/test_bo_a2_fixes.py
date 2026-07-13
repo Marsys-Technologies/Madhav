@@ -84,13 +84,12 @@ def _make_signal(
 class TestB3ContradictionDetection:
     """B3-consume: contradiction row emitted when yoga + dosha share graha + domain."""
 
-    def test_no_contradiction_when_graha_is_null(self):
-        """FAIL-BEFORE baseline: no graha in cfg → no contradiction emitted.
-
-        This documents the upstream NULL bug that A1 fixes (G1 merge).
-        Pre-fix, configuration_jsonb.graha was absent for yoga/dosha signals,
-        so _graha_from_cfg returned None and the graha indexes were never populated.
-        """
+    def test_null_graha_yields_domain_level_contradiction(self):
+        """WP-2.2 / R-44e: no graha in cfg → NO graha-keyed (Class 1) contradiction,
+        but the graha-agnostic Class 2 (domain_promise_vs_denial) STILL fires because
+        the 'career' domain carries both a yoga (promise) and a dosha (denial). The old
+        assertion of 0 encoded the pre-redesign inert engine; the domain-level tension is
+        real and graha-independent by design."""
         # Signals with NO graha field in their configuration
         yoga_sig = {
             "signal_id": "yoga-001",
@@ -118,10 +117,16 @@ class TestB3ContradictionDetection:
         edges, contradictions = _build_edges_and_contradictions(
             CHART_ID, AYA, BUILD_ID, signals, NODE_MAP, NOW
         )
-        # With NULL graha, no contradiction should be emitted
-        assert len(contradictions) == 0, (
-            "Expected 0 contradictions when graha is absent from configuration_jsonb"
+        # NULL graha → no Class-1 row, but Class-2 domain-level tension fires on "career".
+        assert len(contradictions) == 1, (
+            "Expected 1 domain-level contradiction when yoga+dosha share a domain, "
+            "even with graha absent from configuration_jsonb"
         )
+        c = contradictions[0]
+        assert c["tension_class"] == "domain_promise_vs_denial"
+        basis = json.loads(c["tension_basis_jsonb"])
+        assert "graha" not in basis  # graha-agnostic class
+        assert basis["shared_domains"] == ["career"]
 
     def test_contradiction_detected_when_same_graha_has_yoga_and_dosha(self):
         """PASS-AFTER: given yoga + dosha signals on same graha, contradiction row emitted.
@@ -141,7 +146,7 @@ class TestB3ContradictionDetection:
             "Expected >= 1 contradiction when yoga and dosha share Mars + career domain"
         )
         c = contradictions[0]
-        assert c["tension_class"] == "yoga_vs_dosha"
+        assert c["tension_class"] == "graha_yoga_vs_dosha"
         assert c["signal_a_id"] == "yoga-mars-001"
         assert c["signal_b_id"] == "dosha-mars-001"
         # Shared domain must be "career" (the intersection)
@@ -166,8 +171,11 @@ class TestB3ContradictionDetection:
             "Disjoint domains should produce no contradiction even with same graha"
         )
 
-    def test_no_contradiction_when_different_grahas(self):
-        """No contradiction when yoga on Mars and dosha on Jupiter."""
+    def test_different_grahas_yield_domain_not_graha_contradiction(self):
+        """WP-2.2 / R-44e: yoga on Mars + dosha on Jupiter share NO graha → NO Class-1
+        (graha_yoga_vs_dosha) row, but they share the 'career' domain → Class 2
+        (domain_promise_vs_denial) fires. The old assertion of 0 predated the graha-agnostic
+        domain class."""
         yoga_sig  = _make_signal("yoga-mars-003", "yoga",  "Mars",    ["career"])
         dosha_sig = _make_signal("dosha-jup-001", "dosha", "Jupiter", ["career"])
         signals = [yoga_sig, dosha_sig]
@@ -175,9 +183,14 @@ class TestB3ContradictionDetection:
         edges, contradictions = _build_edges_and_contradictions(
             CHART_ID, AYA, BUILD_ID, signals, NODE_MAP, NOW
         )
-        assert len(contradictions) == 0, (
-            "Different grahas should produce no yoga_vs_dosha contradiction"
+        assert len(contradictions) == 1, (
+            "Different grahas sharing a domain should produce exactly one "
+            "domain_promise_vs_denial contradiction"
         )
+        c = contradictions[0]
+        assert c["tension_class"] == "domain_promise_vs_denial"
+        # graha-keyed class must NOT fire across different grahas
+        assert all(x["tension_class"] != "graha_yoga_vs_dosha" for x in contradictions)
 
     def test_tension_basis_jsonb_is_meaningful(self):
         """tension_basis_jsonb must be a non-empty dict with required keys."""

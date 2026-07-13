@@ -15,6 +15,7 @@ import logging
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
+from services.ka_temporal import extract_lords_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,27 @@ class KaYojakaWriter(WriterBase):
             }
             sc = classify_signal(signal_dict)
             pred = build_predicate(signal_dict, sc)
+
+            # WP-2.1 / R-45 (LANE0 root cause): the ratified binder only set
+            # concrete `constituent_lords` for the YOGA class, so ~99% of
+            # predicates carried no lord for ka_kalasutra to resolve a daśā
+            # window against → NULL activation dates. Enrich EVERY predicate
+            # with the grahā(s) whose daśā activates the signal, extracted
+            # deterministically from the signal's configuration (graha keys,
+            # rāśi-lordship of sign keys, sāḍe-sātī→Śani). Fills only when the
+            # ratified template did not already supply concrete lords; never
+            # overwrites the frozen template semantics (same enrichment pattern
+            # as the D6 / P5A additions below).
+            existing_lords = pred['dasha_eligibility_rule'].get('constituent_lords') or []
+            if not existing_lords:
+                resolved_lords = extract_lords_from_config(
+                    signal_dict.get('configuration_jsonb'),
+                    signal_type_id=signal_dict.get('signal_type_id'),
+                    signal_type_class=signal_dict.get('signal_type_class'),
+                )
+                if resolved_lords:
+                    pred['dasha_eligibility_rule']['constituent_lords'] = resolved_lords
+                    pred['dasha_eligibility_rule']['constituent_lords_source'] = 'ka_yojaka:extract_lords_from_config'
 
             # D6: enrich dasha_eligibility_rule with CGM centrality weight.
             # Primary graha is the planet most likely to be the graph node subject.

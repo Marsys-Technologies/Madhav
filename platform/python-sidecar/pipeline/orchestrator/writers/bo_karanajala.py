@@ -29,10 +29,25 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from pipeline.orchestrator.writers.bo_bimba import _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP
+from pipeline.orchestrator.writers.bo_bimba import (
+    _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
+    yoga_node_subject as _yoga_node_subject,
+    _YOGA_NODE_CLASSES,
+)
+# WP-2.3-temporal: reuse the merged WP-2.1 deterministic dasha→date resolver to
+# populate active_dasha_periods_jsonb on graha-resting CGM edges. We CONSUME this
+# helper (birth-forward, ayanamsha-consistent); we never hand-roll date math and
+# never modify the helper (§N.5 — L1 chart_dashas is the date authority).
+from services.ka_temporal import (
+    load_dasha_timeline,
+    resolve_activation_windows,
+    resolve_birth_date,
+    normalize_graha,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +66,7 @@ INSERT INTO bodha_cgm_edges (
   edge_type, from_node_id, to_node_id, direction, computed_strength, weight_formula_version,
   edge_properties_jsonb, relationship_class, semantic_path_class,
   active_duration_class, active_dasha_periods_jsonb,
-  underlying_msr_signal_ids_array, cross_system_consensus_count,
+  underlying_msr_signal_ids_array, constituent_fact_ids_array, cross_system_consensus_count,
   cancelled_flag, cancelled_by_jsonb, cross_ayanamsha_edge_stability_score,
   present_in_traditions_array, edge_betweenness, in_shortest_path_count,
   graph_compute_library, graph_compute_library_version,
@@ -63,8 +78,8 @@ INSERT INTO bodha_cgm_edges (
   %(edge_type)s, %(from_node_id)s, %(to_node_id)s, %(direction)s,
   %(computed_strength)s, %(weight_formula_version)s,
   %(edge_properties_jsonb)s::jsonb, %(relationship_class)s, %(semantic_path_class)s,
-  %(active_duration_class)s, %(active_dasha_periods_jsonb)s,
-  %(underlying_msr_signal_ids_array)s, %(cross_system_consensus_count)s,
+  %(active_duration_class)s, %(active_dasha_periods_jsonb)s::jsonb,
+  %(underlying_msr_signal_ids_array)s, %(constituent_fact_ids_array)s, %(cross_system_consensus_count)s,
   %(cancelled_flag)s, NULL, NULL,
   %(present_in_traditions_array)s, NULL, NULL,
   %(graph_compute_library)s, %(graph_compute_library_version)s,
@@ -104,6 +119,11 @@ _EDGE_TYPE_VALENCE: dict[str, str] = {
     "dispositor":   "harmonious",
     "argala":       "harmonious",   # virodha-argala edges override below
     "sade_sati":    "antagonistic",
+    # WP-2.3 graha↔bhava + yoga membership: structural, polarity-neutral
+    "lordship":     "neutral",
+    "occupancy":    "neutral",
+    "bhava_aspect": "neutral",
+    "yoga_member":  "neutral",
 }
 
 _EDGE_TYPE_BASIS: dict[str, str] = {
@@ -114,6 +134,11 @@ _EDGE_TYPE_BASIS: dict[str, str] = {
     "dispositor":   "sign_lordship",
     "argala":       "argala_intervention",
     "sade_sati":    "sade_sati_transit",
+    # WP-2.3
+    "lordship":     "bhava_lordship",
+    "occupancy":    "graha_bhava_occupancy",
+    "bhava_aspect": "parashari_bhava_aspect",
+    "yoga_member":  "configuration_membership",
 }
 
 
@@ -430,6 +455,353 @@ def _build_dispositor_edges(
     return edges
 
 
+# ── Temporal overlay (WP-2.3-temporal) ───────────────────────────────────────
+# Each graha-resting CGM edge (lordship / occupancy / bhava_aspect / yoga_member)
+# is temporally "switched on" during the Vimśottarī daśā/antardaśā periods in
+# which its graha is the ruling daśā lord. We source those periods from L1
+# `chart_dashas` via the merged WP-2.1 resolver (birth-forward, ayanamsha-
+# consistent) — NO hand-rolled date math, NO fabricated windows (B.10 / §N.5).
+
+
+def _dasha_periods_for_graha(graha, timeline, birth_date) -> list:
+    """Vimśottarī MD/AD periods (JSON-ready dicts) during which `graha` is the
+    ruling daśā lord, birth-forward, sourced from L1 chart_dashas via the WP-2.1
+    resolver. Classical basis: every graha rules exactly one 120-yr-cycle
+    mahādaśā (and one antardaśā within each mahādaśā); this overlay marks when
+    the edge's structural relationship is temporally live.
+
+    Reuses `resolve_activation_windows` for ALL date handling (matching,
+    birth-forward clipping, ISO formatting) — identical to ka_kalasutra's
+    consumption. Keeps ONLY real chart_dashas-sourced periods and drops the
+    resolver's `lord_only_no_timeline` provenance stub, so a graha with no
+    eligible birth-forward period yields an honest [] (never fabricated).
+    """
+    canon = normalize_graha(graha)
+    if not canon:
+        return []
+    windows = resolve_activation_windows(
+        {"constituent_lords": [canon]}, timeline, birth_date=birth_date,
+    )
+    return [
+        p for p in windows.active_dasha_periods
+        if isinstance(p, dict) and p.get("source") == "chart_dashas"
+    ]
+
+
+def _build_dasha_periods_by_graha(timeline, birth_date) -> dict:
+    """Precompute {graha: active_dasha_periods_list} once per (chart × ayanamsha)
+    so each edge builder is a cheap dict lookup. Empty timeline → all []."""
+    return {
+        g: _dasha_periods_for_graha(g, timeline, birth_date)
+        for g in KNOWN_GRAHAS
+    }
+
+
+# ── graha ↔ bhava structural edges (WP-2.3 / LCA-9a-1) ───────────────────────
+# The 60 bhava nodes (12 houses × 5 ayanamshas) were orphaned — 0 edges. These
+# three builders wire every graha into the bhava lattice, each edge citing the
+# resolving L1 chart_facts.fact_id (B.3 / §N.5) in constituent_fact_ids_array.
+
+_BHAVA_EDGE_META = {
+    "lordship":     ("rules",     "bhava_lordship",         0.6,
+                     "parashari/bhava_lordship"),
+    "occupancy":    ("occupies",  "graha_bhava_occupancy",  0.7,
+                     "chart_facts/graha_position/house_d1"),
+    "bhava_aspect": ("aspects",   "parashari_bhava_aspect", 0.5,
+                     "chart_facts/aspect_parashari_given"),
+}
+
+
+def _graha_bhava_edge(
+    edge_type: str, chart_id: str, aya: str, build_id: str,
+    graha_node: str, bhava_node: str, graha: str, house: int,
+    fact_ids: list[str], now: str, dasha_periods: list | None = None,
+) -> dict:
+    verb, sem_class, strength, cite_root = _BHAVA_EDGE_META[edge_type]
+    return {
+        "edge_id":                         str(uuid.uuid4()),
+        "chart_id":                        chart_id,
+        "ayanamsha_id":                    aya,
+        "build_id":                        build_id,
+        "snapshot_type":                   SNAPSHOT_TYPE,
+        "edge_type":                       edge_type,
+        "from_node_id":                    graha_node,   # graha → bhava
+        "to_node_id":                      bhava_node,
+        "direction":                       "directed",
+        "computed_strength":               strength,
+        "weight_formula_version":          "edge_weight_v1.0",
+        "edge_properties_jsonb":           json.dumps({
+            "graha": graha, "house": house, "relation": verb,
+        }),
+        "relationship_class":              edge_type,
+        "semantic_path_class":             "graha_bhava",
+        "active_duration_class":           "natal_permanent",
+        # WP-2.3-temporal: the graha's ruling Vimśottarī daśā/antardaśā periods
+        # (birth-forward, from L1 chart_dashas via the WP-2.1 resolver). Honest
+        # [] when the graha has no eligible birth-forward period — never NULL,
+        # never fabricated.
+        "active_dasha_periods_jsonb":      json.dumps(dasha_periods or []),
+        "underlying_msr_signal_ids_array": [],
+        "constituent_fact_ids_array":      fact_ids,
+        "cross_system_consensus_count":    1,
+        "cancelled_flag":                  False,
+        "present_in_traditions_array":     ["parashari"],
+        "graph_compute_library":           GRAPH_LIB,
+        "graph_compute_library_version":   GRAPH_LIB_VER,
+        "is_cross_subsystem":              False,
+        "subsystem_from":                  "parashari",
+        "subsystem_to":                    "parashari",
+        **_typed_edge_fields(edge_type),
+        "verification_pass_status":        "single_pass",
+        "citation_ref":                    f"{cite_root}/{graha}/H{house}",
+        "citation_human":                  f"{graha} {verb} house {house}",
+        "computed_at":                     now,
+        "engine_version":                  ENGINE_VERSION,
+    }
+
+
+def _fetch_bhava_lordship_facts(conn, chart_id: str, aya: str) -> list[dict]:
+    """D1 house lords from L1 lord_in_house_per_varga (subject 'D1_H<n>').
+
+    fact_value_text is 'Mars_in_H7' → lord graha = 'Mars', house = subject's n.
+    Returns [{graha, house, fact_id}]. Rahu/Ketu never lord in Parashari.
+    """
+    rows = conn.execute(
+        """SELECT fact_subject, fact_value_text, fact_id
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'lord_in_house_per_varga'
+             AND fact_subject LIKE 'D1\\_H%%'""",
+        [chart_id, aya],
+    ).fetchall()
+    out: list[dict] = []
+    for r in rows:
+        if isinstance(r, dict):
+            subject, text, fid = r["fact_subject"], r["fact_value_text"], r["fact_id"]
+        else:
+            subject, text, fid = str(r[0]), r[1], r[2]
+        if not text or not subject:
+            continue
+        try:
+            house = int(subject.split("_H", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        lord = str(text).split("_in_H", 1)[0].strip().title()
+        if lord in KNOWN_GRAHAS and 1 <= house <= 12:
+            out.append({"graha": lord, "house": house, "fact_id": str(fid)})
+    return out
+
+
+def _fetch_occupancy_facts(conn, chart_id: str, aya: str) -> list[dict]:
+    """Graha → house occupancy from L1 graha_position/house_d1.
+
+    Returns [{graha, house, fact_id}].
+    """
+    rows = conn.execute(
+        """SELECT fact_subject, fact_value_num, fact_id
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'graha_position'
+             AND fact_key = 'house_d1'""",
+        [chart_id, aya],
+    ).fetchall()
+    out: list[dict] = []
+    for r in rows:
+        if isinstance(r, dict):
+            subject, val, fid = r["fact_subject"], r["fact_value_num"], r["fact_id"]
+        else:
+            subject, val, fid = str(r[0]), r[1], r[2]
+        graha = _GRAHA_SUBJECT_MAP.get(str(subject).upper())
+        if not graha or val is None:
+            continue
+        try:
+            house = int(float(val))
+        except (TypeError, ValueError):
+            continue
+        if 1 <= house <= 12:
+            out.append({"graha": graha, "house": house, "fact_id": str(fid)})
+    return out
+
+
+def _fetch_graha_bhava_aspect_facts(conn, chart_id: str, aya: str) -> list[dict]:
+    """Graha → house Parashari aspect from L1 aspect_parashari_given.
+
+    fact_subject = graha code, fact_key = 'house_<n>'. Returns [{graha, house, fact_id}].
+    """
+    rows = conn.execute(
+        """SELECT fact_subject, fact_key, fact_id
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'aspect_parashari_given'
+             AND fact_key LIKE 'house\\_%%'""",
+        [chart_id, aya],
+    ).fetchall()
+    out: list[dict] = []
+    for r in rows:
+        if isinstance(r, dict):
+            subject, key, fid = r["fact_subject"], r["fact_key"], r["fact_id"]
+        else:
+            subject, key, fid = str(r[0]), str(r[1]), r[2]
+        graha = _GRAHA_SUBJECT_MAP.get(str(subject).upper())
+        if not graha:
+            continue
+        try:
+            house = int(str(key).split("house_", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        if 1 <= house <= 12:
+            out.append({"graha": graha, "house": house, "fact_id": str(fid)})
+    return out
+
+
+def _build_bhava_edges(
+    chart_id: str, aya: str, build_id: str,
+    lordship_facts: list[dict], occupancy_facts: list[dict], aspect_facts: list[dict],
+    node_map: dict[tuple[str, str], str], now: str,
+    dasha_periods_by_graha: dict | None = None,
+) -> list[dict]:
+    """graha↔bhava edges: lordship, occupancy, bhava_aspect. Each cites its L1
+    fact_id (constituent_fact_ids_array) and carries the resting graha's ruling
+    daśā periods (active_dasha_periods_jsonb) via the WP-2.1 resolver."""
+    dp_by_graha = dasha_periods_by_graha or {}
+    edges: list[dict] = []
+    plan = (
+        ("lordship",     lordship_facts),
+        ("occupancy",    occupancy_facts),
+        ("bhava_aspect", aspect_facts),
+    )
+    for edge_type, facts in plan:
+        for f in facts:
+            graha, house, fid = f["graha"], f["house"], f["fact_id"]
+            graha_node = node_map.get(("graha", graha))
+            bhava_node = node_map.get(("bhava", str(house)))
+            if not graha_node or not bhava_node:
+                continue
+            edges.append(_graha_bhava_edge(
+                edge_type, chart_id, aya, build_id,
+                graha_node, bhava_node, graha, house, [fid], now,
+                dp_by_graha.get(graha, []),
+            ))
+    return edges
+
+
+def _build_yoga_membership_edges(
+    chart_id: str, aya: str, build_id: str,
+    signals: list[dict], node_map: dict[tuple[str, str], str],
+    occupancy_by_graha: dict[str, str], lord_fact_by_house: dict[int, str],
+    now: str, dasha_periods_by_graha: dict | None = None,
+) -> list[dict]:
+    """Membership edges: yoga/dosha config node ↔ its constituent grahas / bhavas.
+
+    The config node was created by bo_bimba (same yoga_node_subject key). For each
+    yoga/dosha signal we extract the constituent graha (cfg) and/or house (cfg) and
+    wire an edge to the graha / bhava node. The edge cites a RESOLVING L1 fact_id
+    (the constituent graha's occupancy fact, or the house's D1-lord fact) — NOT the
+    dosha_label constituent (that referential break is WP-2.4's lane).
+    """
+    dp_by_graha = dasha_periods_by_graha or {}
+    edges: list[dict] = []
+    for sig in signals:
+        sig_class = str(sig.get("signal_type_class") or "")
+        if sig_class not in _YOGA_NODE_CLASSES:
+            continue
+        cfg = _parse_cfg(sig)
+        type_id = str(sig.get("signal_type_id") or "")
+        subject = _yoga_node_subject(sig_class, cfg, type_id)
+        yoga_node = node_map.get((sig_class, subject))
+        if not yoga_node:
+            continue
+
+        # Constituent graha (if the configuration names one) — the edge rests on
+        # this graha, so it carries the graha's ruling daśā periods.
+        graha = _graha_from_cfg(cfg)
+        if graha:
+            graha_node = node_map.get(("graha", graha))
+            fid = occupancy_by_graha.get(graha)
+            if graha_node:
+                edges.append(_membership_edge(
+                    chart_id, aya, build_id, yoga_node, graha_node,
+                    sig_class, subject, "graha", graha,
+                    [fid] if fid else [], now,
+                    dp_by_graha.get(graha, []),
+                ))
+
+        # Constituent bhava (if the configuration names a house) — no graha rests
+        # on this edge, so the temporal overlay is an honest [] (not a graha daśā).
+        house = _house_from_cfg(cfg)
+        if house:
+            bhava_node = node_map.get(("bhava", str(house)))
+            fid = lord_fact_by_house.get(house)
+            if bhava_node:
+                edges.append(_membership_edge(
+                    chart_id, aya, build_id, yoga_node, bhava_node,
+                    sig_class, subject, "bhava", str(house),
+                    [fid] if fid else [], now, [],
+                ))
+    return edges
+
+
+def _membership_edge(
+    chart_id: str, aya: str, build_id: str,
+    yoga_node: str, member_node: str, sig_class: str, yoga_subject: str,
+    member_kind: str, member_subject: str, fact_ids: list[str], now: str,
+    dasha_periods: list | None = None,
+) -> dict:
+    return {
+        "edge_id":                         str(uuid.uuid4()),
+        "chart_id":                        chart_id,
+        "ayanamsha_id":                    aya,
+        "build_id":                        build_id,
+        "snapshot_type":                   SNAPSHOT_TYPE,
+        "edge_type":                       "yoga_member",
+        "from_node_id":                    yoga_node,       # config → constituent
+        "to_node_id":                      member_node,
+        "direction":                       "undirected",
+        "computed_strength":               0.5,
+        "weight_formula_version":          "edge_weight_v1.0",
+        "edge_properties_jsonb":           json.dumps({
+            "config_class": sig_class, "config": yoga_subject,
+            "member_kind": member_kind, "member": member_subject,
+        }),
+        "relationship_class":              "membership",
+        "semantic_path_class":             "configuration_membership",
+        "active_duration_class":           "natal_permanent",
+        # WP-2.3-temporal: for a graha member, the member graha's ruling daśā
+        # periods (birth-forward, L1-sourced). For a bhava member no graha rests
+        # on the edge → honest [] (the resolver is only for graha daśā lords).
+        "active_dasha_periods_jsonb":      json.dumps(dasha_periods or []),
+        "underlying_msr_signal_ids_array": [],
+        "constituent_fact_ids_array":      fact_ids,
+        "cross_system_consensus_count":    1,
+        "cancelled_flag":                  False,
+        "present_in_traditions_array":     ["parashari"],
+        "graph_compute_library":           GRAPH_LIB,
+        "graph_compute_library_version":   GRAPH_LIB_VER,
+        "is_cross_subsystem":              False,
+        "subsystem_from":                  "parashari",
+        "subsystem_to":                    "parashari",
+        **_typed_edge_fields("yoga_member"),
+        "verification_pass_status":        "single_pass",
+        "citation_ref":                    f"bo_karanajala/yoga_member/{yoga_subject}",
+        "citation_human":                  f"{yoga_subject} ↔ {member_kind} {member_subject}",
+        "computed_at":                     now,
+        "engine_version":                  ENGINE_VERSION,
+    }
+
+
+def _house_from_cfg(cfg: dict) -> int | None:
+    for k in ("house", "house_number", "bhava", "house_d1"):
+        v = cfg.get(k)
+        if v is not None:
+            try:
+                h = int(v)
+                if 1 <= h <= 12:
+                    return h
+            except (TypeError, ValueError):
+                pass
+    return None
+
+
 def _parse_cfg(sig: dict) -> dict:
     cfg_raw = sig.get("configuration_jsonb") or {}
     if isinstance(cfg_raw, str):
@@ -640,52 +1012,146 @@ def _build_edges_and_contradictions(
                     })
 
     # ── Contradiction detection ────────────────────────────────────────────────
-    # Two-pass approach:
-    # Graha-keyed contradiction: same planet is simultaneously yoga-karaka and dosha-karaka
-    # in at least one overlapping domain. Requires graha to be present in both signals.
-    for graha in yoga_by_graha:
-        if graha in dosha_by_graha:
-            y_sig = yoga_by_graha[graha]
-            d_sig = dosha_by_graha[graha]
-            y_domains = set(y_sig.get("domains_affected_array") or [])
-            d_domains = set(d_sig.get("domains_affected_array") or [])
-            shared_domains = y_domains & d_domains
-            if shared_domains:
-                y_id = str(y_sig.get("signal_id"))
-                d_id = str(d_sig.get("signal_id"))
-                contradictions.append({
-                    "contradiction_id": str(uuid.uuid4()),
-                    "chart_id": chart_id,
-                    "ayanamsha_id": aya,
-                    "build_id": build_id,
-                    "signal_a_id": y_id,
-                    "signal_b_id": d_id,
-                    "tension_basis_jsonb": json.dumps({
-                        "graha": graha,
-                        "yoga_signal": str(y_sig.get("signal_type_id")),
-                        "dosha_signal": str(d_sig.get("signal_type_id")),
-                        "shared_domains": sorted(shared_domains),
-                    }),
-                    "tension_class": "yoga_vs_dosha",
-                    "domains_affected_array": sorted(shared_domains),
-                    "combined_salience": round(
-                        float(y_sig.get("computed_salience") or 0.0)
-                        + float(d_sig.get("computed_salience") or 0.0),
-                        6
-                    ),
-                    "verification_pass_status": "documented_approximation",
-                    "citation_ref": f"bo_karanajala/contradiction/{graha}",
-                    "citation_human": f"yoga_vs_dosha contradiction on {graha} in {sorted(shared_domains)}",
-                    "computed_at": now,
-                })
+    # WP-2.2 / LCA-5 / R-44e fix. The prior engine was INERT: it collapsed each
+    # graha to a SINGLE best-salience yoga signal and a SINGLE best-salience dosha
+    # signal (yoga_by_graha / dosha_by_graha above), then required THOSE two exact
+    # signals to share a domain. When the top-salience yoga's domain differed from
+    # the top-salience dosha's domain — the common case — a genuine lower-salience
+    # yoga↔dosha tension on the same graph was silently dropped and the table stayed
+    # at count(*)=0 (R-44e contradiction_count=0). We rescan ALL yoga/dosha signals
+    # (independent of the edge-loop indices, which stay untouched for WP-2.3) and
+    # emit two honest tension classes. B.10: nothing is fabricated — every row cites
+    # two real bodha_msr_signals whose classical valence genuinely opposes on a shared
+    # domain.
+    contradictions.extend(
+        _detect_contradictions(chart_id, aya, build_id, signals, now)
+    )
 
     return edges, contradictions
+
+
+def _detect_contradictions(
+    chart_id: str, aya: str, build_id: str, signals: list[dict], now: str
+) -> list[dict]:
+    """Derive contradiction rows from MSR yoga/dosha tension.
+
+    Two classes, both structurally derived (no pre-stored contradicts_signals_array,
+    which bo_laksana writes NULL):
+
+      graha_yoga_vs_dosha    — the SAME graha is a yoga-karaka in one signal and a
+                               dosha-karaka in another, on ≥1 shared domain. Considers
+                               EVERY yoga/dosha signal per graha (not just the top),
+                               emitting the highest-combined-salience overlapping pair.
+      domain_promise_vs_denial — a domain carries BOTH a yoga (promise) and a dosha
+                               (affliction) signal, regardless of graha. One row per
+                               domain, pairing that domain's strongest yoga and dosha.
+
+    Deduped on the unordered (signal_a, signal_b) pair — the table's UNIQUE key.
+    """
+    def _yd(sig: dict) -> tuple[str | None, list[str], float]:
+        graha = _graha_from_cfg(_parse_cfg(sig))
+        domains = [d for d in (sig.get("domains_affected_array") or []) if d]
+        sal = float(sig.get("computed_salience") or 0.0)
+        return graha, domains, sal
+
+    yoga_sigs  = [s for s in signals if str(s.get("signal_type_class") or "") == "yoga"]
+    dosha_sigs = [s for s in signals if str(s.get("signal_type_class") or "") == "dosha"]
+
+    rows: list[dict] = []
+    seen_pairs: set[frozenset] = set()
+
+    def _emit(y_sig: dict, d_sig: dict, shared: set[str], tension_class: str,
+              graha: str | None) -> None:
+        y_id = str(y_sig.get("signal_id"))
+        d_id = str(d_sig.get("signal_id"))
+        if not y_id or not d_id or y_id == d_id:
+            return
+        key = frozenset((y_id, d_id))
+        if key in seen_pairs:
+            return
+        seen_pairs.add(key)
+        basis = {
+            "yoga_signal": str(y_sig.get("signal_type_id")),
+            "dosha_signal": str(d_sig.get("signal_type_id")),
+            "shared_domains": sorted(shared),
+        }
+        if graha:
+            basis["graha"] = graha
+        rows.append({
+            "contradiction_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "signal_a_id": y_id,
+            "signal_b_id": d_id,
+            "tension_basis_jsonb": json.dumps(basis),
+            "tension_class": tension_class,
+            "domains_affected_array": sorted(shared),
+            "combined_salience": round(
+                float(y_sig.get("computed_salience") or 0.0)
+                + float(d_sig.get("computed_salience") or 0.0), 6),
+            "verification_pass_status": "documented_approximation",
+            "citation_ref": (
+                f"bo_karanajala/contradiction/{tension_class}/"
+                f"{graha or '_'}/{'_'.join(sorted(shared))}"
+            ),
+            "citation_human": (
+                (f"yoga_vs_dosha on {graha} in {sorted(shared)}" if graha
+                 else f"promise_vs_denial in {sorted(shared)}")
+            ),
+            "computed_at": now,
+        })
+
+    # ── Class 1: graha-keyed yoga-vs-dosha (all signals per graha) ──────────────
+    yoga_by_graha: dict[str, list[dict]] = defaultdict(list)
+    dosha_by_graha: dict[str, list[dict]] = defaultdict(list)
+    for s in yoga_sigs:
+        g, _, _ = _yd(s)
+        if g:
+            yoga_by_graha[g].append(s)
+    for s in dosha_sigs:
+        g, _, _ = _yd(s)
+        if g:
+            dosha_by_graha[g].append(s)
+
+    for graha in yoga_by_graha:
+        if graha not in dosha_by_graha:
+            continue
+        best: tuple[float, dict, dict, set] | None = None
+        for y_sig in yoga_by_graha[graha]:
+            _, y_dom, y_sal = _yd(y_sig)
+            for d_sig in dosha_by_graha[graha]:
+                _, d_dom, d_sal = _yd(d_sig)
+                shared = set(y_dom) & set(d_dom)
+                if not shared:
+                    continue
+                combined = y_sal + d_sal
+                if best is None or combined > best[0]:
+                    best = (combined, y_sig, d_sig, shared)
+        if best is not None:
+            _emit(best[1], best[2], best[3], "graha_yoga_vs_dosha", graha)
+
+    # ── Class 2: domain promise-vs-denial (graha-agnostic) ──────────────────────
+    for domain in sorted(KNOWN_DOMAINS):
+        dom_yogas = sorted(
+            (s for s in yoga_sigs if domain in (s.get("domains_affected_array") or [])),
+            key=lambda s: float(s.get("computed_salience") or 0.0), reverse=True)
+        dom_doshas = sorted(
+            (s for s in dosha_sigs if domain in (s.get("domains_affected_array") or [])),
+            key=lambda s: float(s.get("computed_salience") or 0.0), reverse=True)
+        if dom_yogas and dom_doshas:
+            _emit(dom_yogas[0], dom_doshas[0], {domain}, "domain_promise_vs_denial", None)
+
+    return rows
 
 
 def _batch_insert(conn, rows: list[dict], sql: str) -> int:
     inserted = 0
     for i in range(0, len(rows), _BATCH_SIZE):
         for row in rows[i:i + _BATCH_SIZE]:
+            # New B.3 ledger column (WP-2.3): legacy edge builders don't set it —
+            # default to empty so their %(constituent_fact_ids_array)s param binds.
+            row.setdefault("constituent_fact_ids_array", [])
             conn.execute(sql, row)
         inserted += len(rows[i:i + _BATCH_SIZE])
     return inserted
@@ -707,6 +1173,12 @@ class BoKaranajalaWriter(WriterBase):
         now       = datetime.now(timezone.utc).isoformat()
         total_e   = 0
         total_c   = 0
+
+        # WP-2.3-temporal: native birth date (life-indexing) for the daśā-period
+        # overlay. Resolved once per chart; the per-ayanamsha timeline is loaded
+        # inside the loop so each edge resolves against periods in its OWN
+        # ayanamsha (chart_dashas pools 5 systems).
+        birth_date = resolve_birth_date(conn, chart_id, ctx.config.get("birth_params"))
 
         for aya in CANONICAL_AYAS:
             signals     = _fetch_signals(conn, chart_id, aya)
@@ -740,6 +1212,38 @@ class BoKaranajalaWriter(WriterBase):
                 chart_id, aya, build_id, graha_signs, node_map, now
             )
             edges.extend(dispositor_edges)
+
+            # ── WP-2.3-temporal: per-graha ruling daśā periods for THIS ayanamsha
+            # (birth-forward, from L1 chart_dashas via the WP-2.1 resolver). Loaded
+            # once per (chart × ayanamsha); precomputed per graha so each edge
+            # builder is a dict lookup. Empty timeline degrades to all-[] honestly.
+            dasha_timeline = load_dasha_timeline(
+                conn, chart_id, ayanamsha_id=aya, birth_date=birth_date
+            )
+            dasha_periods_by_graha = _build_dasha_periods_by_graha(
+                dasha_timeline, birth_date
+            )
+
+            # ── graha↔bhava structural edges (WP-2.3 / LCA-9a-1) ──────────────
+            lordship_facts = _fetch_bhava_lordship_facts(conn, chart_id, aya)
+            occupancy_facts = _fetch_occupancy_facts(conn, chart_id, aya)
+            aspect_bhava_facts = _fetch_graha_bhava_aspect_facts(conn, chart_id, aya)
+            bhava_edges = _build_bhava_edges(
+                chart_id, aya, build_id,
+                lordship_facts, occupancy_facts, aspect_bhava_facts, node_map, now,
+                dasha_periods_by_graha,
+            )
+            edges.extend(bhava_edges)
+
+            # ── yoga/dosha membership edges (config ↔ constituent graha/bhava) ─
+            occupancy_by_graha = {f["graha"]: f["fact_id"] for f in occupancy_facts}
+            lord_fact_by_house = {f["house"]: f["fact_id"] for f in lordship_facts}
+            membership_edges = _build_yoga_membership_edges(
+                chart_id, aya, build_id, signals, node_map,
+                occupancy_by_graha, lord_fact_by_house, now,
+                dasha_periods_by_graha,
+            )
+            edges.extend(membership_edges)
 
             # ── PageRank (networkx) ───────────────────────────────────────────
             try:
@@ -781,8 +1285,10 @@ class BoKaranajalaWriter(WriterBase):
             replace_prior_contradictions(conn, chart_id, aya)
 
             logger.info(
-                "[bo_karanajala] %s — %d edges (%d argala, %d dispositor), %d contradictions",
-                aya, len(edges), len(argala_edges), len(dispositor_edges), len(contradictions),
+                "[bo_karanajala] %s — %d edges (%d argala, %d dispositor, "
+                "%d bhava, %d yoga_member), %d contradictions",
+                aya, len(edges), len(argala_edges), len(dispositor_edges),
+                len(bhava_edges), len(membership_edges), len(contradictions),
             )
             total_e += _batch_insert(conn, edges, _EDGE_INSERT)
             total_c += _batch_insert(conn, contradictions, _CONTRADICTION_INSERT)
