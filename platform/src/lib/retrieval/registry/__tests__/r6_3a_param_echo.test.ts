@@ -44,11 +44,15 @@ beforeEach(() => {
 })
 
 describe('SC-20 fix — get_positions planet filter', () => {
-  it('applies an ILIKE filter on fact_subject when planet is given', async () => {
+  it('canonicalizes a graha planet to its fact_subject CODE (exact match, not ILIKE)', async () => {
+    // W4-loop-1 (E-5): chart_facts.fact_subject stores 3-letter graha CODES (Saturn->SAT).
+    // The old `fact_subject ILIKE 'Saturn'` matched nothing against the stored code and
+    // returned a dishonest empty; the fix canonicalizes the name to its code + exact-matches.
     await getPositionsCapability.handler({ chart_id: CHART_ID, planet: 'Saturn' }, undefined)
     const [sql, params] = queryMock.mock.calls[0] as [string, unknown[]]
-    expect(sql).toMatch(/fact_subject ILIKE/)
-    expect(params).toContain('Saturn')
+    expect(sql).toMatch(/fact_subject = /)
+    expect(sql).not.toMatch(/fact_subject ILIKE/)
+    expect(params).toContain('SAT')
   })
 
   it('omits the planet clause when planet is not given', async () => {

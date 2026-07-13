@@ -58,6 +58,10 @@ const ALLOWED_TABLES = new Set([
   'phala_muhurta',
   'phala_anchors',
   'brahma_activity_ontology',
+  // W4-loop-1 (E-5 group1): ref_transit_rules_get (register_p1_reference.ts) reads this
+  // L0 Brahmagyan reference table via this route; its absence from the whitelist was the
+  // "platform DB query failed: 400" the re-audit saw. Read-only global reference data.
+  'bg_transit_rules',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.

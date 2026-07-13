@@ -219,6 +219,13 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       // (single row, not a dump) to classify the empty and disclose the reason.
       let empty_reason: string | null = null
       let awaiting_activation_dates = false
+      // W4-loop-1 (E-5 group3): kala_activation's dated windows are frequently historical
+      // (e.g. the native's lahiri windows end ~2010), so a forward "what's activating now /
+      // next year?" query returns an honest-but-useless empty. The forward-looking temporal
+      // surface lives in kala_bhavishya (ka_bhavishya_lekha) — the SAME table get_projections
+      // reads. When the primary activation query is empty, surface the projection windows that
+      // overlap the SAME requested window so forward queries return reachable stored windows.
+      let forward_windows: Record<string, unknown>[] = []
       if (activations.rows.length === 0) {
         const disc = await query<{ total: number; dated: number }>(
           `SELECT COUNT(*)::int AS total, COUNT(activation_start)::int AS dated
@@ -245,8 +252,40 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           const window = as_of ? `as_of point ${as_of}` : `date range ${date_from}..${date_to}`
           empty_reason =
             `No activation windows overlap the requested ${window}. ${dated} dated activation rows ` +
-            `exist for this chart/ayanamsha outside that filter — widen the window (or drop the date ` +
-            `filter) to see them.`
+            `exist for this chart/ayanamsha outside that filter (these are historical). ` +
+            `See forward_windows for forward-looking projection windows in the requested range.`
+        }
+
+        // Fallback: mirror get_projections (kala_bhavishya) for overlapping forward windows.
+        // kala_bhavishya is per-chart (not ayanamsha-scoped, like query_projections).
+        const fwConds = ['chart_id = $1']
+        const fwParams: unknown[] = [chart_id]
+        let fp = 2
+        if (as_of) {
+          fwConds.push(`window_start <= $${fp++}::date`); fwParams.push(as_of)
+          fwConds.push(`window_end   >= $${fp++}::date`); fwParams.push(as_of)
+        } else {
+          if (date_from) { fwConds.push(`window_end   >= $${fp++}::date`); fwParams.push(date_from) }
+          if (date_to)   { fwConds.push(`window_start <= $${fp++}::date`); fwParams.push(date_to) }
+        }
+        fwParams.push(top_k)
+        const fwLimitPh = `$${fp++}`
+        try {
+          const fw = await query<Record<string, unknown>>(
+            `SELECT id, signal_id, domain, probability_tier, effective_score,
+                    to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                    to_char(window_end, 'YYYY-MM-DD')   AS window_end,
+                    to_char(peak_date, 'YYYY-MM-DD')    AS peak_date,
+                    narrative, source_citation
+               FROM kala_bhavishya
+              WHERE ${fwConds.join(' AND ')}
+              ORDER BY window_start
+              LIMIT ${fwLimitPh}`,
+            fwParams,
+          )
+          forward_windows = fw.rows
+        } catch {
+          // kala_bhavishya may be unbuilt for a chart — leave forward_windows empty (honest).
         }
       }
 
@@ -256,6 +295,10 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           ayanamsha_id,
           activations:       activations.rows,
           activation_count:  activations.rows.length,
+          // W4-loop-1: forward projection windows (kala_bhavishya) surfaced when the primary
+          // activation set is empty — makes forward "what's activating?" queries useful.
+          forward_windows,
+          forward_window_count: forward_windows.length,
           predicates,
           predicate_count:   predicates.length,
           signal_id_refs:    signalRefs,

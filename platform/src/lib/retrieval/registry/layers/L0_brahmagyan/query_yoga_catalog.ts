@@ -37,16 +37,32 @@ export const queryYogaCatalogCapability: CapabilityDescriptor = {
   },
   async handler(args, _ctx) {
     try {
+      // W4-loop-1 (E-5 group2): tradition/domain were matched case-sensitively (school is
+      // stored lowercase 'parashari'; category as raja/dhana/aristha/pancha_mahapurusha/
+      // sannyasa/other) so a capitalized tradition or an advertised-but-unstored domain word
+      // returned a dishonest blank. Match case-insensitively and emit an honest empty_reason
+      // that discloses the real stored vocabulary.
       const limit  = Math.min((args.limit as number) ?? 100, 500)
       const offset = (args.offset as number) ?? 0
       const params: unknown[] = [limit, offset]
       let sql = `SELECT * FROM brahma_yoga_catalog WHERE 1=1`
       if (args.yoga_name) { sql += ` AND name_en ILIKE $${params.length + 1}`; params.push(`%${args.yoga_name as string}%`) }
-      if (args.tradition)  { sql += ` AND school = $${params.length + 1}`; params.push(args.tradition as string) }
-      if (args.domain)     { sql += ` AND category = $${params.length + 1}`; params.push(args.domain as string) }
+      if (args.tradition)  { sql += ` AND LOWER(school) = LOWER($${params.length + 1})`; params.push(args.tradition as string) }
+      if (args.domain)     { sql += ` AND LOWER(category) = LOWER($${params.length + 1})`; params.push(args.domain as string) }
       sql += ` ORDER BY school, name_en LIMIT $1 OFFSET $2`
       const result = await query<Record<string, unknown>>(sql, params)
-      return { content: { rows: result.rows ?? [], total: result.rows?.length ?? 0 }, is_error: false }
+      const rows = result.rows ?? []
+      const filtered = Boolean(args.yoga_name || args.tradition || args.domain)
+      return {
+        content: {
+          rows,
+          total: rows.length,
+          ...(rows.length === 0 && filtered
+            ? { empty_reason: `No yogas matched (yoga_name=${(args.yoga_name as string) ?? 'any'}, tradition=${(args.tradition as string) ?? 'any'}, domain=${(args.domain as string) ?? 'any'}). Stored tradition (school): parashari. Stored domain (category): raja, dhana, aristha, pancha_mahapurusha, sannyasa, other.` }
+            : {}),
+        },
+        is_error: false,
+      }
     } catch (err) {
       return { content: String(err), is_error: true }
     }

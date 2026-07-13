@@ -14,7 +14,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import {
-  resolveFrameReferenceSign, houseCountedFrom, ZODIAC_SIGNS,
+  resolveFrameReferenceSign, houseCountedFrom, ZODIAC_SIGNS, grahaCodeOf,
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
@@ -113,8 +113,24 @@ export const getPositionsCapability: CapabilityDescriptor = {
         params.push(args.ayanamsha_id as string)
       }
       if (planet) {
-        sql += ` AND fact_subject ILIKE $${params.length + 1}`
-        params.push(planet)
+        // W4-loop-1 (E-5 group2): chart_facts.fact_subject stores 3-letter graha CODES
+        // (SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN), NOT full names — so
+        // `fact_subject ILIKE 'Venus'` matched nothing while unfiltered returned rows.
+        // Canonicalize the requested planet name to its fact_subject code; fall back to a
+        // case-insensitive ILIKE on the raw value for non-graha subjects (upagrahas, etc.).
+        let planetMatched = false
+        try {
+          const code = grahaCodeOf(planet)
+          sql += ` AND fact_subject = $${params.length + 1}`
+          params.push(code)
+          planetMatched = true
+        } catch {
+          // not a known graha name/code — fall through to the raw ILIKE below
+        }
+        if (!planetMatched) {
+          sql += ` AND fact_subject ILIKE $${params.length + 1}`
+          params.push(planet)
+        }
       }
       params.push(limit, offset)
       sql += ` ORDER BY ayanamsha_id, fact_category, fact_key LIMIT $${params.length - 1} OFFSET $${params.length}`
