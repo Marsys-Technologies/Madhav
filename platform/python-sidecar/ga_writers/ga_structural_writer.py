@@ -81,7 +81,7 @@ import math
 import os
 import pathlib
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
@@ -532,6 +532,15 @@ PARASHARI_ASPECTS: dict[str, dict[int, float]] = {
 # Rahu and Ketu: retrograde, so aspects flow "backward" in some schools;
 # here we follow the majority rule: same offsets as stated (5th/7th/9th from sign).
 NODE_PARASHARI_ASPECTS: dict[int, float] = {5: 1.0, 7: 1.0, 9: 1.0}
+
+# effective_dignity v2 (design §10c): functional-class buckets over whatever
+# string `_get_functional_class_dynamic` returns — do not invent a new
+# classifier (B.10). Natural sets below are ONLY the documented fallback for
+# grahas outside that function's domain (e.g. Rahu/Ketu on some builds).
+_BENEFIC_FUNCTIONAL_CLASSES = {"functional_benefic", "yogakaraka", "temporal_benefic"}
+_MALEFIC_FUNCTIONAL_CLASSES = {"temporal_malefic", "functional_malefic"}
+_NATURAL_BENEFICS = {"Jupiter", "Venus", "Mercury", "Moon"}
+_NATURAL_MALEFICS = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
 
 
 def _graha_aspects_house(aspector: str, source_h: int, target_h: int) -> float:
@@ -2978,6 +2987,7 @@ def _build_special_state_rows(
     grahas_data = chart_output.get("grahas", [])
     sun_g = next((g for g in grahas_data if g["name"] == "Sun"), None)
     sun_long = float(sun_g.get("longitude", 0.0)) if sun_g else 0.0
+    lagna_sign_for_dignity = _get_lagna_sign(chart_output)
 
     for g in grahas_data:
         g_name = g["name"]
@@ -3046,26 +3056,59 @@ def _build_special_state_rows(
             citation_human=f"{g_name} exalted: {'yes' if is_exalt else 'no'} ({ayanamsha_id}).",
         ))
 
-        # Effective dignity modified by aspects (Y)
-        # Net benefic/malefic aspect impact modifies nominal dignity
-        benefic_aspect_score = 0.0
-        malefic_aspect_score = 0.0
-        benefics = {"Jupiter", "Venus", "Mercury"}
-        malefics = {"Saturn", "Mars", "Sun"}
+        # Effective dignity modified by aspects (Y) — v2 (design §10c)
+        # v2 replaces the 15° longitude-orb proximity test + fixed natural
+        # benefic/malefic sets with the file's OWN Parashari aspect model
+        # (PARASHARI_ASPECTS / _graha_aspects_house, used by _build_aspect_rows)
+        # and the file's OWN dynamic functional-class calculator
+        # (_get_functional_class_dynamic, used by _build_functional_class_rows).
+        # Total replacement, not a blend — see LANE1 brief §1.2.
+        g_house = int(g.get("house", 1))
+        contributions: list[dict[str, Any]] = []
+        net_modification = 0.0
         for g2 in grahas_data:
-            if g2["name"] == g_name:
+            g2_name = g2["name"]
+            if g2_name == g_name:
                 continue
-            g2_long = float(g2.get("longitude", 0.0))
-            orb = abs(long_deg - g2_long)
-            if orb > 180:
-                orb = 360 - orb
-            if orb < 15.0:
-                if g2["name"] in benefics:
-                    benefic_aspect_score += 0.25
-                elif g2["name"] in malefics:
-                    malefic_aspect_score += 0.25
+            g2_house = int(g2.get("house", 1))
 
-        net_modification = benefic_aspect_score - malefic_aspect_score
+            if g2_house == g_house:
+                # Same-house conjunction = association at full strength
+                # (preserves the old formula's core "close proximity matters" case).
+                aspect_strength = 1.0
+            else:
+                aspect_strength = _graha_aspects_house(g2_name, g2_house, g_house)
+
+            if aspect_strength == 0.0:
+                continue  # no Parashari aspect on this house — contributes 0, regardless of longitude
+
+            functional_class = _get_functional_class_dynamic(g2_name, lagna_sign_for_dignity)
+            used_fallback = False
+            if not functional_class:
+                # g2 outside _get_functional_class_dynamic's domain (e.g. nodes on some builds)
+                functional_class = "functional_benefic" if g2_name in _NATURAL_BENEFICS else (
+                    "functional_malefic" if g2_name in _NATURAL_MALEFICS else "neutral"
+                )
+                used_fallback = True
+
+            if functional_class in _BENEFIC_FUNCTIONAL_CLASSES:
+                delta = 0.25 * aspect_strength
+            elif functional_class in _MALEFIC_FUNCTIONAL_CLASSES:
+                delta = -0.25 * aspect_strength
+            else:
+                delta = 0.0
+
+            net_modification += delta
+            contribution: dict[str, Any] = {
+                "graha": g2_name,
+                "aspect_strength": aspect_strength,
+                "functional_class": functional_class,
+                "delta": round(delta, 4),
+            }
+            if used_fallback:
+                contribution["fallback"] = "natural_class"
+            contributions.append(contribution)
+
         dignity_scores = {"exalted": 1.0, "own_sign": 0.75, "neutral": 0.5, "debilitated": 0.25}
         base_dignity_score = dignity_scores.get(dignity, 0.5)
         effective_dignity_score = round(min(max(base_dignity_score + net_modification * 0.1, 0.0), 1.0), 4)
@@ -3074,11 +3117,17 @@ def _build_special_state_rows(
             "graha_effective_dignity_modified_by_aspects", subject, "effective_dignity_score",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=effective_dignity_score,
+            value_jsonb={
+                "formula": "parashari_aspect_functional_v2",
+                "base_dignity": base_dignity_score,
+                "contributions": contributions,
+            },
             verif="two_pass_verified",
-            source=f"pyjhora_adapter.effective_dignity/{eng_ver}",
+            source=f"ga_structural.effective_dignity_v2/{eng_ver}",
             citation_human=(
                 f"{g_name} effective dignity: {effective_dignity_score:.4f} "
-                f"(base: {base_dignity_score:.2f}, net_aspect_mod: {net_modification:.2f}) ({ayanamsha_id})."
+                f"(base: {base_dignity_score:.2f}, net_aspect_mod: {net_modification:.4f}, "
+                f"formula: parashari_aspect_functional_v2) ({ayanamsha_id})."
             ),
         ))
 
@@ -6267,6 +6316,65 @@ def _build_contradiction_pair_rows(
     return rows
 
 
+# ── §10a registry: one entry per fact family, module-level + ordered ─────────
+#
+# STRUCTURAL_SUB_BUILDERS enumerates every `_build_*_rows` family function in
+# this module for completeness auditing (a future family cannot be silently
+# dropped without failing the registry-completeness test). `kind` distinguishes
+# families the driver (`build_ga_structural_substep`) invokes directly
+# ("top_level") from families invoked internally by a top_level parent
+# ("nested" — e.g. every per-varga family lives inside the `varga_aspect`
+# loop in `_build_varga_aspect_rows`, which is itself top_level). Nested
+# entries are NOT re-invoked by the driver — re-registering them at the top
+# level would double-count/duplicate rows and change behavior, which this
+# lane's mechanical-refactor discipline (§1.1.4) forbids.
+STRUCTURAL_SUB_BUILDERS: list[tuple[str, Callable[..., list[dict[str, Any]]], str, str | None]] = [
+    ("aspects", _build_aspect_rows, "top_level", None),
+    ("shadbala_extension", _build_shadbala_extension_rows, "top_level", None),
+    ("bhava_bala_extended", _build_bhava_bala_extended_rows, "top_level", None),
+    ("anubindu", _build_anubindu_rows, "top_level", None),
+    ("vimsopaka_ext", _build_vimsopaka_ext_rows, "top_level", None),
+    ("yoga", _build_yoga_rows, "top_level", None),
+    ("dosha", _build_dosha_rows, "top_level", None),
+    ("avastha", _build_avastha_rows, "top_level", None),
+    ("composite_strength", _build_composite_strength_rows, "top_level", None),
+    ("functional_class", _build_functional_class_rows, "top_level", None),
+    ("karakatva", _build_karakatva_rows, "top_level", None),
+    ("structural_relationship", _build_structural_relationship_rows, "top_level", None),
+    ("special_state", _build_special_state_rows, "top_level", None),
+    ("esoteric", _build_esoteric_rows, "top_level", None),
+    ("varga_aspect", _build_varga_aspect_rows, "top_level", None),
+    ("special_point_relationship", _build_special_point_relationship_rows, "top_level", None),
+    ("graha_yuddha", _build_graha_yuddha_rows, "top_level", None),
+    ("combustion_retrograde_relationship", _build_combustion_retrograde_relationship_rows, "top_level", None),
+    ("nakshatra_relationship", _build_nakshatra_relationship_rows, "top_level", None),
+    ("nakshatra_dispositor_chain", _build_nakshatra_dispositor_chain_rows, "top_level", None),
+    ("bhava_chalit_divergence", _build_bhava_chalit_divergence_rows, "top_level", None),
+    ("significator_path", _build_significator_path_rows, "top_level", None),
+    ("contradiction_pair", _build_contradiction_pair_rows, "top_level", None),
+    # Nested — invoked per-varga inside _build_varga_aspect_rows:
+    ("varga_relationship_per_varga", _build_varga_relationship_rows, "nested", "varga_aspect"),
+    ("karaka_web_per_varga", _build_karaka_web_rows, "nested", "varga_aspect"),
+    ("argala_per_varga", _build_argala_rows, "nested", "varga_aspect"),
+    ("sambandha_per_varga", _build_sambandha_per_varga_rows, "nested", "varga_aspect"),
+    ("bhava_web_per_varga", _build_bhava_web_per_varga_rows, "nested", "varga_aspect"),
+    ("net_argala_per_varga", _build_net_argala_per_varga_rows, "nested", "varga_aspect"),
+    ("graha_yuddha_per_varga", _build_graha_yuddha_per_varga_rows, "nested", "varga_aspect"),
+    ("combustion_per_varga", _build_combustion_per_varga_rows, "nested", "varga_aspect"),
+    ("nway_per_varga", _build_nway_per_varga_rows, "nested", "varga_aspect"),
+    ("virupa_drishti_per_varga", _build_virupa_drishti_rows, "nested", "varga_aspect"),
+    ("graph_centrality_per_varga", _build_graph_centrality_per_varga_rows, "nested", "varga_aspect"),
+    ("dispositor_tree_per_varga", _build_dispositor_tree_per_varga_rows, "nested", "varga_aspect"),
+    ("chart_cluster_per_varga", _build_chart_cluster_per_varga_rows, "nested", "varga_aspect"),
+    ("chart_cog_per_varga", _build_chart_cog_per_varga_rows, "nested", "varga_aspect"),
+    ("convergence_count_per_varga", _build_convergence_count_per_varga_rows, "nested", "varga_aspect"),
+    ("karaka_bhava_concordance_per_varga", _build_karaka_bhava_concordance_per_varga_rows, "nested", "varga_aspect"),
+    # Nested two levels deep — invoked inside _build_varga_relationship_rows,
+    # which is itself nested inside _build_varga_aspect_rows:
+    ("house_lord_matrix_per_varga", _build_house_lord_matrix_rows, "nested", "varga_relationship_per_varga"),
+]
+
+
 def build_ga_structural_substep(
     chart_id: str,
     build_id: str,
@@ -6279,6 +6387,13 @@ def build_ga_structural_substep(
     """Build GA8 for ONE ayanamsha. Called by the HEAVY orchestrator per sub-step.
     Returns rows_inserted count.
     yoga_catalog / dosha_catalog may be pre-loaded by the caller to avoid repeat DB queries.
+
+    Thin driver (design §10a): loads shared chart state once, then iterates the
+    "top_level" entries of STRUCTURAL_SUB_BUILDERS in registered order,
+    concatenating rows, before the single existing INSERT INTO chart_facts +
+    delete-then-insert idempotency (§N.3) scoped to (chart_id, ayanamsha_id).
+    "nested" entries are invoked internally by their parent top_level family
+    (see registry comment above) and are not called again here.
     """
     bp = resolve_birth_params(chart_id, birth_params)
     computed_at = datetime.now(timezone.utc).isoformat()
@@ -6295,52 +6410,71 @@ def build_ga_structural_substep(
     if dosha_catalog is None:
         dosha_catalog = _load_dosha_catalog(conn)
 
-    all_rows: list[dict[str, Any]] = []
-    all_rows.extend(_build_aspect_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_shadbala_extension_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn))
-    all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_vimsopaka_ext_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_yoga_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
-    all_rows.extend(_build_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
-    all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_composite_strength_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn))
-    all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
-    all_rows.extend(_build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_special_point_relationship_rows(
-        conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-    all_rows.extend(_build_graha_yuddha_rows(
-        chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-    all_rows.extend(_build_combustion_retrograde_relationship_rows(
-        chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-
-    # Phase-3 blind-spot builders
-    all_rows.extend(_build_nakshatra_relationship_rows(
-        conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-    all_rows.extend(_build_nakshatra_dispositor_chain_rows(
-        conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-    all_rows.extend(_build_bhava_chalit_divergence_rows(
-        conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
     d1_varga_state = _extract_chart_state(chart_output)
-    all_rows.extend(_build_significator_path_rows(
-        chart_output, d1_varga_state, "D1",
-        chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
+    all_rows: list[dict[str, Any]] = []
 
-    all_rows.extend(_build_contradiction_pair_rows(
-        all_rows, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
+    # Per-family argument builders, keyed by the registry's family_key. Each
+    # closure is called with zero args at iteration time; it captures the
+    # chart state loaded once above. `all_rows` is captured by reference so
+    # "contradiction_pair" (last in registered order) sees every row emitted
+    # by the families before it — identical to the pre-refactor call shape.
+    family_call: dict[str, Callable[[], list[dict[str, Any]]]] = {
+        "aspects": lambda: _build_aspect_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "shadbala_extension": lambda: _build_shadbala_extension_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn),
+        "bhava_bala_extended": lambda: _build_bhava_bala_extended_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "anubindu": lambda: _build_anubindu_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "vimsopaka_ext": lambda: _build_vimsopaka_ext_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "yoga": lambda: _build_yoga_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None),
+        "dosha": lambda: _build_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None),
+        "avastha": lambda: _build_avastha_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "composite_strength": lambda: _build_composite_strength_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "functional_class": lambda: _build_functional_class_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "karakatva": lambda: _build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "structural_relationship": lambda: _build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn),
+        "special_state": lambda: _build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "esoteric": lambda: _build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
+        "varga_aspect": lambda: _build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "special_point_relationship": lambda: _build_special_point_relationship_rows(
+            conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "graha_yuddha": lambda: _build_graha_yuddha_rows(
+            chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "combustion_retrograde_relationship": lambda: _build_combustion_retrograde_relationship_rows(
+            chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        # Phase-3 blind-spot builders
+        "nakshatra_relationship": lambda: _build_nakshatra_relationship_rows(
+            conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "nakshatra_dispositor_chain": lambda: _build_nakshatra_dispositor_chain_rows(
+            conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "bhava_chalit_divergence": lambda: _build_bhava_chalit_divergence_rows(
+            conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "significator_path": lambda: _build_significator_path_rows(
+            chart_output, d1_varga_state, "D1",
+            chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "contradiction_pair": lambda: _build_contradiction_pair_rows(
+            all_rows, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+    }
+
+    family_row_counts: dict[str, int] = {}
+    for family_key, _builder_fn, kind, _parent in STRUCTURAL_SUB_BUILDERS:
+        if kind != "top_level":
+            continue
+        family_rows = family_call[family_key]()
+        all_rows.extend(family_rows)
+        family_row_counts[family_key] = len(family_rows)
+
+    logger.info(
+        "[ga_structural_writer] substep ayanamsha=%s per-family row counts: %s",
+        ayanamsha_id, family_row_counts,
+    )
 
     # Two-pass verification
     try:
