@@ -31957,3 +31957,125 @@ catches + FORENSIC 7/7). Re-ground fresh from `REMEDIATION_RUN_LEDGER_v1_0.md` +
 orchestrator untouchable.
 
 *End of LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13 entry — 2026-07-13.*
+
+---
+
+## DOCTRINE-CAMPAIGN-NIGHT-1-2026-07-14 — D-1 judgment substrate + CR-87 hotfix + rebuild infra — CLOSED 2026-07-14 (RETROACTIVE ENTRY, logged 2026-07-15 by D-1.5a Lane A-0)
+
+**Retroactive-entry note.** This entry documents the "Doctrine Campaign Night-1" session whose work
+landed via commit `4bebb622` ("Doctrine Campaign Night-1: D-1 judgment substrate + CR-87 hotfix +
+rebuild infra (resumption)", PR #561, merged 2026-07-14) but for which no SESSION_LOG entry was
+written at the time — an A6 process gap flagged by BRIEF_D1_5A.md Lane A-0. Reconstructed from the
+commit message, `POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md §J/§K` (the native's post-deploy
+re-verification of this session's work), and `DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md`. No
+first-person session_open/session_close handshake exists for this session; the YAML below is a
+best-effort reconstruction, not a live-captured handshake, and is marked as such.
+
+```yaml
+session_open:
+  session_id: DOCTRINE-CAMPAIGN-NIGHT-1-2026-07-14
+  cowork_thread_name: "Madhav — Doctrine Campaign Night-1 (D-1 judgment substrate)"
+  reconstructed: true   # no live handshake captured; see retroactive-entry note above
+  predecessor_session: LLM-CONSUMPTION-REMEDIATION-W1-2026-07-13
+  role: >
+    Implementer for D-1 (judgment substrate rework) of the doctrine-remediation campaign, plus a
+    CR-87 hotfix and chart-rebuild-infrastructure resumption work. Delivered valence-engine changes
+    (ga_vichara_writer.py), an intended L3 detector-lane wiring (yoga/dosha firings → serving
+    faces), and rebuild-pipeline infra fixes.
+```
+
+**Body.** Commit `4bebb622` merged via PR #561. Native re-verification the following day
+(`POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md §J`, live build `b97b6eb0`) found the work
+**shipped-but-partially-broken**: CR-55 (weakest_graha) genuinely fixed; **CR-54 REOPENED** as
+CR-90 — `compute_valence`'s dual-lordship evaluation order contradicts its own declared
+`_PRECEDENCE`, inverting trikoṇa-purifies into dusthāna-first, so the chart's best wealth links
+(9L Jupiter aspecting H2, 3L Mercury trikoṇa-link) were served as `malefic`; CR-91 — two valence
+engines (`ga_vichara_v1` / `keyword_heuristic_v1`) run side by side and disagree, with the original
+CR-54 specimen (Mars 8L 8th-aspect-H2) still on the old engine. §K's follow-up re-verification
+(detector lane) found **CR-92**: the L3 detector family (Dhana/Rāja/NBRY) reported DELIVERED in the
+close but unreachable from the deployed MCP — `ganita_yogas_get`'s own tool description still
+declared the gap, `yoga_fires` served zero rows, `judgment_query(wealth).bearing_yogas` stayed
+`[]`, and the wealth verdict remained byte-identical (`convergent_moderate`/1.15) to pre-campaign.
+CR-93 (yoga-verdict narrator self-contradiction, Śaśa) and CR-94 (dishonest `zero_rows_returned`
+flag on a 32-row page) also reproduced. CR-96 (process lesson, this session's most consequential
+finding): acceptance criteria must be MCP-surface assertions, not writer/DB assertions — three of
+the four "delivered" items (CR-90 inversion, CR-92 unreachable, CR-95 face absent) would each have
+been caught pre-merge by a single MCP call. These findings are what D-1.5a (this campaign's next
+wave) exists to close, gated by register §K.2's 12-assertion acceptance battery.
+
+```yaml
+session_close:
+  session_id: DOCTRINE-CAMPAIGN-NIGHT-1-2026-07-14
+  reconstructed: true
+  closed_at: "2026-07-14 (exact time not captured — no live handshake)"
+  close_criteria_met: "PARTIAL — code merged (4bebb622/PR #561) but native post-deploy re-verification (§J/§K of the register) found CR-54 REOPENED as CR-90 (INVERTED, a regression) + CR-92 (detector lane unreachable) + CR-93/CR-94 unresolved. The close-report's claim of 'delivered' did not match the deployed-connector reality — this is the CR-96 lesson."
+  deploy: "merged to main via PR #561; deployed; both charts rebuilt (image b97b6eb0 per register §J/§K)"
+  product_code_writes_made: "ga_vichara_writer.py valence engine (CR-90/91 origin); intended L3 detector-lane wiring (CR-92 residue); rebuild-pipeline infra fixes (resumption)"
+  native_chart_touched: true
+  register_dispositions_flipped: "CR-54 ABSORBED→D-1 REOPENED as CR-90 (§J.2); CR-56/CR-59 NOT closed despite D-1 close-report claim (CR-92)"
+  followups: "DR-1 (native doctrine ruling, 2026-07-14): trikoṇa purifies — dual-lordship valence precedence, binding for D-1.5a Lane A-alpha's A1 fix. §K.2 D-1.5 acceptance gate authored as the supersession of §J.1."
+  next_session_objective: "D-1.5a — gate-green judgment-substrate rework (4 implementer lanes + Lane A-0 assertion harness), per BRIEF_D1_5A.md, gated by register §K.2."
+```
+
+*End of DOCTRINE-CAMPAIGN-NIGHT-1-2026-07-14 entry (RETROACTIVE) — logged 2026-07-15.*
+
+---
+
+## DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15 — Lane A-0: assertion harness + A6 process items — session in progress
+
+```yaml
+session_open:
+  session_id: DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15
+  cowork_thread_name: "Madhav — Doctrine Waves D-1.5a (Lane A-0: assertion harness)"
+  agent_name: claude-sonnet-5
+  predecessor_session: DOCTRINE-CAMPAIGN-NIGHT-1-2026-07-14
+  role: >
+    Implementer for Lane A-0 of wave D-1.5a per CONDUCTOR_PROTOCOL.md + BRIEF_D1_5A.md. Builds the
+    executable assertion harness (register §K.2's 12 assertions + A5 two-chart divergence + A7
+    aspect spot-check) at platform/scripts/audit/doctrine_harness/, plus A6 process items.
+  declared_scope:
+    may_touch: [platform/scripts/audit/doctrine_harness/**, 00_ARCHITECTURE/SESSION_LOG.md,
+      00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md, 00_ARCHITECTURE/CURRENT_STATE_v1_0.md,
+      00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md, 00_ARCHITECTURE/llm_consumption_audit/**]
+    must_not_touch: [FROZEN orchestrator contract (CLAUDE.md §N.2), D-1.5b/D-2/D-3/D-4 scope,
+      CR-23 NBRY doctrine, dosha_label computation semantics, any file outside declared may_touch]
+  red_team_due: false
+```
+
+**Body.** Built the harness at `platform/scripts/audit/doctrine_harness/` (`run.ts` + `lib/mcp_client.ts`
++ `lib/assertions.ts` + `lib/types.ts`) implementing register §K.2's 12 assertions plus A5
+(two-chart tara-bala/sade-sati/panchanga divergence) and A7 (`_graha_aspects_house` off-by-one
+spot-check), each a live MCP call against the deployed connector (CR-96 discipline — no DB reads).
+CLI contract: `npx tsx platform/scripts/audit/doctrine_harness/run.ts --assertions <ids|all>
+[--wave <w>] [--target <mcp-url>]` → exit 0 all-green / 1 any-red, JSON receipt to stdout. Validated
+against 482012f1 on the deployed connector (`amjis-mcp-938361928218.asia-south1.run.app` — the
+`marsys-jis-direct` api_key seat per protocol §8.1's ruling that both faces are the same service;
+the protocol-default Bearer key from `scripts/setup_mcp_env.sh` returned 401 in this session's
+sandbox — flagged for the wave's PARKED/native-review agenda, not fixed here as it is outside Lane
+A-0's may_touch). Found and fixed a request-volume degradation (rapid sequential calls without
+pacing produced sporadic 200-status-but-truncated responses under the deployed connector, not
+caught by naive retry) via a min-request-gap throttle + shared-fetch caching + a
+never-silently-empty guard on unparseable 2xx bodies. Full-battery run reproduces the brief's
+canonical baseline exactly: reds on #1–#5, #7–#9, #11; greens on #10, #12; #6 split (6a green /
+6b red); A5 green, A7 red (both real, not part of the required baseline). A6 items: this
+retroactive Night-1 entry + this entry; DR-2 (below); CURRENT_STATE §2 banner refresh
+(stale M6/BRAHMA banners → doctrine-waves pointer); migration-directory ruling recorded in
+ONGOING_HYGIENE_POLICIES (§O, new).
+
+```yaml
+session_close:
+  session_id: DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15
+  wave: D-1.5a
+  lane: A-0
+  close_criteria_met: true
+  verification: "harness self-validated: --assertions all against 482012f1 on the deployed connector reproduces the canonical baseline exactly (see BRIEF_D1_5A.md Lane A-0 acceptance criterion)"
+  deploy: "n/a — harness is a local/CI script, not a deployed service; no product code touched"
+  product_code_writes_made: "platform/scripts/audit/doctrine_harness/** only (new files, in-scope)"
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "none — this lane is process/tooling, not a doctrine fix; K.2 reds remain open for Lanes A-alpha/A-beta/A-gamma to close"
+  followups: "Bearer-face credential (MARSYS_MCP_KEY) appears stale/rejected in this sandbox — verify against a clean session before relying on it; harness currently defaults --target to the Bearer host but was run against the api_key seat for validation."
+  next_session_objective: "Lanes A-alpha/A-beta/A-gamma implement CR-90/91 (valence precedence), CR-92/93/94 (detector-lane wiring + honesty), and A5/A7 fixes; each lane's verifier runs this harness's assertion subset per CONDUCTOR_PROTOCOL §3.1(c)."
+```
+
+*End of DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15 entry — 2026-07-15.*
