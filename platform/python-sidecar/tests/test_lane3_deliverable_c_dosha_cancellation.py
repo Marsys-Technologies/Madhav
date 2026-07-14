@@ -369,3 +369,99 @@ class TestRegistryHygiene:
 
     def test_bespoke_detector_ids_match_expected_set(self):
         assert set(sut.BESPOKE_DOSHA_DETECTORS) == {"kemadruma", "daridra", "kala_sarpa"}
+
+
+# ── §6: Real dict_row regression guard (Night-1 post-merge production fix) ──
+#
+# Discovered during the guarded rebuild against real chart data: the
+# orchestrator's DB connection uses psycopg3's dict_row factory (pipeline/
+# orchestrator/db.py), so every cursor row is dict-like — NOT a tuple. The
+# §1-§5 tests above all mock rows as tuples (_CannedCursor.fetchone/fetchall),
+# which never exercises this path and is exactly why this bug reached a real
+# rebuild before it reached a test. These tests use dict-shaped fake rows to
+# close that gap.
+
+class _DictRowCursor:
+    """Cursor stand-in returning psycopg3 dict_row-shaped rows (plain dicts
+    keyed by column name) — the real orchestrator shape, as opposed to
+    _CannedCursor's tuple rows."""
+
+    def __init__(self, vichara_row=None, yoga_rows=None):
+        self._last_query = ""
+        self._vichara_row = vichara_row
+        self._yoga_rows = yoga_rows or []
+
+    def execute(self, query, params=None):
+        self._last_query = query
+
+    def fetchone(self):
+        if "chart_vichara" in self._last_query:
+            return self._vichara_row
+        return None
+
+    def fetchall(self):
+        if "ga_yoga_firings" in self._last_query:
+            return self._yoga_rows
+        return []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _DictRowConn:
+    def __init__(self, vichara_row=None, yoga_rows=None):
+        self._vichara_row = vichara_row
+        self._yoga_rows = yoga_rows or []
+
+    def cursor(self, row_factory=None):
+        return _DictRowCursor(vichara_row=self._vichara_row, yoga_rows=self._yoga_rows)
+
+
+class TestDictRowRegressionGuard:
+    def test_dhana_yoga_fires_for_handles_dict_rows_not_just_tuples(self):
+        conn = _DictRowConn(
+            yoga_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords", "constituent_planets": '["sun", "mercury", "venus"]'}],
+        )
+        hits = sut._dhana_yoga_fires_for(conn, CHART_ID, AY_ID, {"Venus"})
+        assert hits == ["dhana_yoga_house_lords"], (
+            "must extract yoga_canonical_id/constituent_planets by column name from a "
+            "dict_row-shaped row; a bare row[0]/row[1] raises KeyError: 0 against a dict"
+        )
+
+    def test_load_wealth_ratification_handles_dict_rows_not_just_tuples(self):
+        conn = _DictRowConn(vichara_row={"value_num": 1.4, "value_jsonb": {"d1_dignity": "exalted"}})
+        result = sut._load_wealth_ratification(conn, CHART_ID, AY_ID, "VEN")
+        assert result is not None
+        assert result["ratification_factor"] == 1.4
+        assert result["d1_dignity"] == "exalted"
+
+    def test_daridra_cancellation_end_to_end_with_dict_row_conn(self):
+        """The exact production failure mode: _cancel_daridra invoked with a
+        real dict_row connection, dhana structure fired, cancellation must
+        succeed rather than raising KeyError: 0."""
+        chart = {
+            "ascendant": {"sign": "Cancer", "sign_id": 4, "longitude": 100.0},
+            "grahas": [
+                {"name": "Venus", "sign": "Sagittarius", "sign_id": 9, "house": 8, "longitude": 250.0, "retrograde": False},
+                {"name": "Sun", "sign": "Aries", "sign_id": 1, "house": 10, "longitude": 10.0, "retrograde": False},
+                {"name": "Moon", "sign": "Cancer", "sign_id": 4, "house": 1, "longitude": 100.0, "retrograde": False},
+                {"name": "Mars", "sign": "Capricorn", "sign_id": 10, "house": 7, "longitude": 280.0, "retrograde": False},
+                {"name": "Mercury", "sign": "Pisces", "sign_id": 12, "house": 9, "longitude": 340.0, "retrograde": False},
+                {"name": "Jupiter", "sign": "Libra", "sign_id": 7, "house": 4, "longitude": 190.0, "retrograde": False},
+                {"name": "Saturn", "sign": "Aquarius", "sign_id": 11, "house": 8, "longitude": 310.0, "retrograde": False},
+                {"name": "Rahu", "sign": "Taurus", "sign_id": 2, "house": 11, "longitude": 48.0, "retrograde": True},
+                {"name": "Ketu", "sign": "Scorpio", "sign_id": 8, "house": 5, "longitude": 228.0, "retrograde": True},
+            ],
+        }
+        finding = sut._detect_daridra(chart)
+        assert finding is not None
+        conn = _DictRowConn(
+            vichara_row=None,
+            yoga_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords", "constituent_planets": '["sun", "mercury", "venus"]'}],
+        )
+        verdict = sut._cancel_daridra(finding, chart, conn, CHART_ID, AY_ID)  # must not raise
+        assert verdict["bhanga_active"] is True
+        assert "dhana_structure_fires" in verdict["bhanga_rule_fired"]

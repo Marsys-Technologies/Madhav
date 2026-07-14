@@ -2215,7 +2215,13 @@ def _load_wealth_ratification(conn: Any, chart_id: str, ayanamsha_id: str, subj:
         return None
     if not row:
         return None
-    value_num, value_jsonb = row[0], row[1]
+    # Orchestrator connections use psycopg3's dict_row factory (pipeline/
+    # orchestrator/db.py) — rows are dict-like, not tuples. See the sibling
+    # fix in _dhana_yoga_fires_for for the same bug class (KeyError: 0).
+    if isinstance(row, dict):
+        value_num, value_jsonb = row.get("value_num"), row.get("value_jsonb")
+    else:
+        value_num, value_jsonb = row[0], row[1]
     if isinstance(value_jsonb, str):
         try:
             value_jsonb = json.loads(value_jsonb)
@@ -2245,7 +2251,14 @@ def _dhana_yoga_fires_for(conn: Any, chart_id: str, ayanamsha_id: str, planets: 
     lowered = {p.lower() for p in planets}
     hits: list[str] = []
     for row in rows:
-        cid, cp = row[0], row[1]
+        # Orchestrator connections use psycopg3's dict_row factory (pipeline/
+        # orchestrator/db.py) — rows are dict-like, not tuples. Access by
+        # column name, with a defensive fallback for any caller that still
+        # passes a tuple-row connection (e.g. a legacy standalone-CLI path).
+        if isinstance(row, dict):
+            cid, cp = row.get("yoga_canonical_id"), row.get("constituent_planets")
+        else:
+            cid, cp = row[0], row[1]
         if isinstance(cp, str):
             try:
                 cp = json.loads(cp)
