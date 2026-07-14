@@ -52,6 +52,35 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   }
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) throw new Error(`[p1_ganita] capability error: ${data.error ?? 'unknown'}`)
+  // A4 (CR-93/94 root cause, live-verified 2026-07-15 against 482012f1): the platform route
+  // /api/retrieval/capability does `NextResponse.json({ ok: true, content: await
+  // capability.handler(safeArgs) })` — and every CapabilityDescriptor handler ITSELF returns
+  // `{ content, is_error }` (registry/types.ts contract). So `data.content` here is really
+  // `{ content: <realPayload>, is_error: boolean }`, one level deeper than every call site in
+  // this file assumed (`data?.rows`, `data?.total`, etc. all read past the real payload into
+  // `undefined`). Confirmed live: a `ganita_yogas_get` v3 call served
+  // `content.content.{chart_id,rows,total}` with 32 genuine rows one level down, while every
+  // read of `data.rows`/`data.total` in THIS file saw `undefined` → `rows=[]` → `coverage.served:
+  // 0` + a false `zero_rows_returned` judgment_flag on a 32-row page (CR-94), AND starved the
+  // Pancha Mahapurusha narrator's `get_positions` fetch the identical way, so `posByPlanet`
+  // stayed empty and every PMP yoga fell through to the "position not available … not formed"
+  // branch — wrongly denying a genuinely fired Śaśa Yoga even though its `yoga_label` row was
+  // present in that same (mis-read) page (CR-93). Not a category mismatch (yoga_label vs
+  // yoga_fires) and not a diacritics/name mismatch — chart_facts carries ZERO `yoga_fires`-
+  // category rows for this chart; `yoga_label` rows ARE the fired entries per JL-004, and the
+  // "Sasa Yoga" text matches the PANCHA_MAHAPURUSHA table exactly. The failure was purely this
+  // unwrap depth. Unwrap it here, ONCE, so every caller in this file gets the real payload
+  // directly rather than re-deriving the unwrap ad hoc per call site (the pattern
+  // registry_bridge.ts had to hand-roll locally at its one call site that needed it — see its
+  // `domainWrapper`/`inner` comment on the query_domain_reading call). Defensive: only unwraps
+  // when the shape actually matches the handler-result contract (has an `is_error` key) — never
+  // mis-unwraps a legitimately content-shaped payload that happens to lack that key.
+  if (
+    data.content && typeof data.content === 'object' && !Array.isArray(data.content) &&
+    'is_error' in (data.content as Record<string, unknown>)
+  ) {
+    return (data.content as { content?: unknown }).content
+  }
   return data.content
 }
 
@@ -250,7 +279,18 @@ const PANCHA_MAHAPURUSHA: {
 /** Builds per-yoga formed/not-formed sentences for the 5 Pancha Mahapurusha yogas from rows
  *  and planetary positions THIS RESPONSE ALREADY FETCHED (yoga_label presence = fired, per
  *  JL-004's ratified convention; graha_position sign/house_d1 = already-computed L1 facts,
- *  not a new derivation). Zero new computation. */
+ *  not a new derivation). Zero new computation.
+ *
+ *  A4 (CR-93 honesty hardening): `formed`/`not formed` is ALWAYS grounded in the yoga_label
+ *  firing rows (a real signal, independent of position data). Position data is used only to
+ *  ELABORATE the sign/kendra reason. Before this pass, when the position fetch came back empty
+ *  (the CR-93 root cause — see callRegistryCapability's double-unwrap comment above), the
+ *  reason text collapsed "positions unavailable" and "not formed" into one sentence ("...not
+ *  formed per its absence from the yoga_label rows served") — reading as if the ABSENCE OF
+ *  POSITION DATA were the reason for the verdict, which is never true (position data never
+ *  drives `formed`) and is confusing/dishonest phrasing regardless of which fetch actually
+ *  failed. `positionsAvailable` lets the reason text say plainly "positions unavailable —
+ *  cannot state the sign/kendra reason" without implying that absence changed the verdict. */
 function buildPanchaMahapurushaVerdict(
   yogaDoshaRows: Record<string, unknown>[],
   posByPlanet: Record<string, { sign?: string; house?: number; factId?: string }>,
@@ -260,6 +300,7 @@ function buildPanchaMahapurushaVerdict(
       .filter(r => r['fact_category'] === 'yoga_label')
       .map(r => String(r['fact_value_text'] ?? '')),
   )
+  const positionsAvailable = Object.keys(posByPlanet).length > 0
 
   const perYoga = PANCHA_MAHAPURUSHA.map(entry => {
     const pos = posByPlanet[entry.planet]
@@ -282,8 +323,20 @@ function buildPanchaMahapurushaVerdict(
       reason = `${entry.karaka} is in ${pos.sign} — neither own sign (${entry.ownSigns.join('/')}) nor exalted (${entry.exaltSign}); the condition fails on the sign leg.`
     } else if (pos?.sign && (entry.ownSigns.includes(pos.sign) || pos.sign === entry.exaltSign) && typeof pos.house === 'number' && !KENDRA_HOUSES.has(pos.house)) {
       reason = `${entry.karaka} is in ${pos.sign} (own/exalted sign) but house ${pos.house} is not a kendra (1st/4th/7th/10th); the condition fails on the kendra leg.`
+    } else if (!positionsAvailable) {
+      // A4 honesty fix: positions genuinely unavailable in this response — say so plainly,
+      // and do NOT phrase the (still yoga_label-grounded) not-formed status as if it were
+      // caused by the missing position data ("cannot rule" on the sign/kendra leg is a
+      // DIFFERENT, weaker claim than "not formed", and the two must not be conflated).
+      reason = `Positions unavailable in this response — cannot rule on ${entry.karaka}'s specific ` +
+        `sign/kendra condition. The 'not formed' status above is independently grounded in the ` +
+        `yoga_label firing rows served (JL-004: no ${entry.yoga} Yoga / ${entry.karaka} Yoga row present) ` +
+        `— it is not derived from, or caused by, the missing position data.`
     } else {
-      reason = `${entry.karaka}'s position was not available in this response to state a specific failed condition; not formed per its absence from the yoga_label rows served.`
+      reason = `${entry.karaka}'s position was fetched but this response could not resolve a ` +
+        `specific sign/house for it — cannot state the precise sign/kendra reason. The 'not formed' ` +
+        `status above is independently grounded in the yoga_label firing rows served (JL-004: no ` +
+        `${entry.yoga} Yoga / ${entry.karaka} Yoga row present).`
     }
 
     return {
@@ -294,11 +347,16 @@ function buildPanchaMahapurushaVerdict(
   })
 
   const formedList = perYoga.filter(p => p.status === 'formed')
-  const summary = formedList.length > 0
+  const positionsCaveat = positionsAvailable
+    ? ''
+    : ' (NOTE: position data was unavailable in this response — per-yoga sign/kendra detail could ' +
+      'not be confirmed for any entry; every formed/not-formed status above is still independently ' +
+      'grounded in the yoga_label firing rows, not in position data.)'
+  const summary = (formedList.length > 0
     ? `Yes, ${formedList.length} of 5 Pancha Mahapurusha yoga${formedList.length === 1 ? '' : 's'} — ${formedList.map(p => p.yoga).join(', ')} — ${formedList.length === 1 ? 'is' : 'are'} formed; the other ${5 - formedList.length} ${5 - formedList.length === 1 ? 'is' : 'are'} not formed.`
-    : 'No Pancha Mahapurusha yoga is formed in this chart.'
+    : 'No Pancha Mahapurusha yoga is formed in this chart.') + positionsCaveat
 
-  return { summary, per_yoga: perYoga }
+  return { summary, per_yoga: perYoga, positions_available: positionsAvailable }
 }
 
 const CONDITION_FACET_URI: Record<string, string> = {
@@ -627,21 +685,28 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
   // ── 7. ganita_yogas_get ───────────────────────────────────────────────────
   server.tool(
     'ganita_yogas_get',
-    'Retrieve Yoga and Dosha detections for a chart (L1 Gaṇita). ' +
-    'Covers classical yoga types actually evaluated in this build: Pancha Mahapurusha (Ruchaka/' +
-    'Bhadra/Hamsa/Malavya/Shasha) and Parivartana Yogas; plus doshas: Mangal Dosha, Kemadruma, ' +
-    'Grahan Yoga, Shrapit, Shakata. HONEST GAP (see MARSYS_DEFECT_GAP_REGISTER §1): Viparita Raja, ' +
-    'Neecha Bhanga (debility-cancellation), Dhana Yoga, and the house-lord Raja Yoga family are ' +
-    'NOT evaluated by any live path in this build (skip-listed or dead legacy code) — they will ' +
-    'never fire from this tool regardless of chart data; do not infer their absence/presence from ' +
-    'a missing/present row here. ' +
+    'Retrieve Yoga and Dosha CATALOG/LABEL detections for a chart from chart_facts (L1 Gaṇita) — ' +
+    'Pancha Mahapurusha (Ruchaka/Bhadra/Hamsa/Malavya/Shasha), Nabhasa yogas, and Parivartana; ' +
+    'plus doshas: Mangal Dosha, Kemadruma, Grahan Yoga, Shrapit, Shakata, Kala Sarpa, and others. ' +
+    'A4/CR-93/CR-94 CORRECTION (2026-07-15; supersedes the prior "will never fire from this tool" ' +
+    'claim, which was itself stale and had become misleading): Dhana Yoga, Raja Yoga (kendra-' +
+    'trikona + house-lord families), and Viparita Raja Yoga ARE now evaluated and DO fire on live ' +
+    'charts (482012f1 fires 13 yogas including dhana_yoga_2_5_9_11 at strength 1.0218) — but ' +
+    'THIS tool (chart_facts yoga_label rows, single-pass catalog matches per JL-004) is NOT their ' +
+    'authoritative source and may still under-report them here. **`ganita_yoga_firings_get` (backed ' +
+    'by the dedicated ga_yoga_firings table) is the firings-authoritative surface** for per-yoga ' +
+    'strength scoring, bhaṅga/cancellation state, partial-formation %, and dāśā-activation — use it ' +
+    'for any fired/not-fired judgment; treat this tool\'s rows as catalog labels to cross-check ' +
+    'against, never as the sole word on whether a yoga fired. Neecha Bhanga (debility-cancellation) ' +
+    'remains a genuine gap: not evaluated by either tool on any live path in this build. ' +
     'Returns yoga_name, constituent planets, house conditions, and activation_flag. ' +
-    'Use with L2 get_signals for cross-validated signal coverage. ' +
     'response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope: ' +
-    'a populated verdict (fired-yoga/dosha/flag counts), grounding (fact_ids + citations from ' +
-    'this response\'s own rows), ranking_basis (the actual serve order), drill_pointers ' +
-    '(query_signals for cross-validated salience, mimamsa_insight_get for calibrated outlooks), ' +
-    'judgment_flags (e.g. zero-row / truncated-page honesty markers), and chart_header.',
+    'a populated verdict (fired-yoga/dosha/flag counts — catalog-only/requires_pass rows are ' +
+    'flagged, not presented as confirmed findings; see judgment_flags), grounding (fact_ids + ' +
+    'citations from this response\'s own rows), ranking_basis (the actual serve order), ' +
+    'drill_pointers (ganita_yoga_firings_get for cross-validated firing detail, mimamsa_insight_get ' +
+    'for calibrated outlooks), judgment_flags (e.g. zero-row / truncated-page honesty markers), ' +
+    'and chart_header.',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
@@ -709,6 +774,13 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
           panchaMahapurusha = undefined // best-effort narration enrichment; never fails the instrument
         }
 
+        // A3 (CR-92 residue, R-3): get_yoga_dosha.ts now returns a `firings_pointer` (a genuine
+        // ga_yoga_firings fired-count) and `catalog_only_rows_in_page` (B9-preview guard) — surface
+        // both here so the v3 verdict never again reads as "yogas_fired: 0" while ga_yoga_firings
+        // shows real fired yogas underneath it (the exact CR-33/CR-56/CR-92 defect class).
+        const dataObj = data as { firings_pointer?: unknown; catalog_only_rows_in_page?: number; catalog_only_note?: string } | undefined
+        const catalogOnlyRows = dataObj?.catalog_only_rows_in_page ?? 0
+
         const verdict = {
           yogas_fired: categoryCounts['yoga_label'] ?? 0,
           doshas_fired: categoryCounts['dosha_label'] ?? 0,
@@ -716,6 +788,11 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
           panchaka_flag_rows: categoryCounts['panchaka_flag'] ?? 0,
           category_counts: categoryCounts,
           note: 'Counts are of ROWS SERVED IN THIS PAGE only — see pagination.total for the full count.',
+          // B9-preview: catalog_only/requires_pass rows are counted separately from
+          // `yogas_fired`/`doshas_fired` above and MUST NOT be read as confirmed findings — they
+          // still serve (never silently dropped), just flagged. Full gating is D-1.5b's job.
+          catalog_only_rows_in_page: catalogOnlyRows,
+          ...(dataObj?.firings_pointer ? { firings_pointer: dataObj.firings_pointer } : {}),
           ...(panchaMahapurusha ? { pancha_mahapurusha: panchaMahapurusha } : {}),
         }
 
@@ -724,6 +801,13 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         const judgment_flags: string[] = []
         if (rows.length === 0) judgment_flags.push('zero_rows_returned')
         if (total !== null && resolvedOffset + rows.length < total) judgment_flags.push('partial_page_more_available')
+        if (catalogOnlyRows > 0) {
+          judgment_flags.push(
+            `catalog_only_rows_present: ${catalogOnlyRows} row(s) in this page are catalog_only/` +
+            'requires_pass label matches (JL-004), not cross-verified confirmed firings — see ' +
+            'verdict.catalog_only_rows_in_page and ganita_yoga_firings_get for confirmed detail.',
+          )
+        }
 
         const ranking_basis = {
           mode: 'catalog_order',
@@ -735,6 +819,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
         // pre-existing {instrument, hint} shape.
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
+          { instrument: 'ganita_yoga_firings_get', hint: 'firings-authoritative source (ga_yoga_firings): per-yoga strength, bhaṅga/cancellation state, partial-formation %, dāśā-activation windows — cross-check before asserting fired/not-fired (A3/CR-92, R-3).', pointer_type: 'opposing_yoga' },
           { instrument: 'get_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
           { instrument: 'mimamsa_insight_get', hint: 'calibrated_outlook / load_bearing insight units built on top of these firings.', pointer_type: 'other' },
         ]

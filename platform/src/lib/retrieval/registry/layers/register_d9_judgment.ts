@@ -176,6 +176,27 @@ interface GrahaCondition {
 const VARGA_BHAVESHA_WEIGHT = 0.75
 const VARGA_KARAKA_WEIGHT = 0.5
 
+// ── A3 (CR-92 residue, R-3): bearing-yoga term (ga_yoga_firings-authoritative) ─────────────────
+// Before this pass, `bearing_yogas` read bodha_msr_signals via querySignalsCapability — an MSR
+// projection that, live, returned `[]` for wealth on 482012f1 even though ga_yoga_firings shows
+// 13 fired yogas (incl. dhana_yoga_2_5_9_11, Venus+Jupiter, strength 1.0218). The composite
+// verdict formula (below) never had a yoga term at all — 13 fired yogas could not move it
+// (the standing bug: composite stuck at 1.15/convergent_moderate regardless of yoga evidence).
+// Fix: bearing_yogas now reads ga_yoga_firings directly (firings-authoritative — real strength +
+// bhaṅga/cancellation state, not a single-pass catalog label); MSR yoga signals are demoted to a
+// `bearing_yogas_corroboration` annotation (still surfaced, never discarded — B.10). The yoga
+// term below is SUB-D1 like the varga term (a bearing yoga corroborates, it does not overrule the
+// rasi dignity): each DOMAIN-BEARING fired yoga (constituent_planets ⊆ {this domain's bhāveśa,
+// kāraka(s)} — the SAME actors the D1 leg already grades, so a fired classical yoga naming them is
+// genuine corroboration, not a new independent claim) contributes its strength × this weight,
+// discounted to a quarter when bhaṅga (cancellation) is active on that firing — consuming
+// bhaṅga state, not just strength, per R-3. Capped so no single conjunction detected under many
+// overlapping classical names (Dhana + Raja Yoga family firing from the same Venus-Jupiter
+// placement, e.g.) can run away the composite.
+const YOGA_MATCH_WEIGHT = 0.4
+const YOGA_BHANGA_DISCOUNT = 0.25
+const YOGA_TERM_CAP = 2.0
+
 interface VargaDignity {
   graha: string
   graha_code: string
@@ -503,8 +524,74 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       }
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
+      // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
+      // bhaṅga/cancellation state), not the MSR yoga signal projection — see the YOGA_* constants'
+      // comment above for the full rationale. `domainActors` is the SAME actor set (bhāveśa +
+      // kāraka(s)) the D1 dignity leg already grades — a fired yoga whose constituent_planets are
+      // a subset of this set is genuine corroboration of an already-graded actor, not a new,
+      // independent claim (kept SUB-D1 accordingly, see YOGA_MATCH_WEIGHT).
       let yogasChecked = 0
-      let yogaSignals: Record<string, unknown>[] = []
+      let bearingYogaFirings: Record<string, unknown>[] = []
+      let yogaTerm = 0
+      const domainActors = new Set(
+        [lordCondition.graha, ...karakaConditions.map(k => k.graha)]
+          .filter((g): g is string => Boolean(g))
+          .map(g => g.toLowerCase()),
+      )
+      try {
+        const { getYogaFiringsCapability } = await import('./L1_ganita/get_yoga_firings')
+        const res = await getYogaFiringsCapability.handler(
+          { chart_id, ayanamsha_id, fired: true, limit: 50 },
+          undefined,
+        )
+        if (!res.is_error) {
+          const c = res.content as Record<string, unknown>
+          const firedRows = (c['rows'] as Record<string, unknown>[]) ?? []
+          yogasChecked = firedRows.length
+          let yogaTermRaw = 0
+          bearingYogaFirings = firedRows.map(r => {
+            const constituentPlanets = ((r['constituent_planets'] as string[] | null) ?? []).map(p => p.toLowerCase())
+            const domainMatch = constituentPlanets.length > 0 && constituentPlanets.every(p => domainActors.has(p))
+            const bhangaActive = r['bhanga_active'] === true
+            const strength = typeof r['strength'] === 'number' ? r['strength'] : Number(r['strength'] ?? 0)
+            if (domainMatch && Number.isFinite(strength)) {
+              yogaTermRaw += strength * (bhangaActive ? YOGA_BHANGA_DISCOUNT : 1) * YOGA_MATCH_WEIGHT
+              for (const fid of (r['constituent_fact_ids'] as string[] | null) ?? []) fact_ids.add(fid)
+            }
+            return {
+              yoga_canonical_id: r['yoga_canonical_id'],
+              strength: r['strength'],
+              strength_label: r['strength_label'],
+              bhanga_active: r['bhanga_active'],
+              bhanga_rule_fired: r['bhanga_rule_fired'],
+              constituent_planets: r['constituent_planets'],
+              constituent_houses: r['constituent_houses'],
+              source: 'ga_yoga_firings',
+              domain_match: domainMatch,
+            }
+          })
+          yogaTerm = Math.min(yogaTermRaw, YOGA_TERM_CAP)
+        }
+      } catch (e) {
+        judgment_flags.push(`yoga_firings_fetch_failed: ${String(e)}`)
+      }
+      if (bearingYogaFirings.length === 0) {
+        judgment_flags.push(
+          'bearing_yogas_empty: no fired rows returned from ga_yoga_firings (firings-authoritative) ' +
+          'for this chart/ayanamsha — honest absence, not fabricated.',
+        )
+      } else if (!bearingYogaFirings.some(y => y['domain_match'] === true)) {
+        judgment_flags.push(
+          `bearing_yogas_no_domain_match: ${bearingYogaFirings.length} yoga(s) fired on this chart ` +
+          `but none name only this domain's bhāveśa/kāraka(s) (${[...domainActors].join(', ') || 'none resolved'}) ` +
+          '— shown for context; none contributed to the verdict composite (verdict.yoga_term = 0).',
+        )
+      }
+
+      // D-13 demotion (A3): MSR yoga signals are no longer the primary bearing_yogas source —
+      // kept as a secondary corroboration annotation (never discarded, B.10), still carrying the
+      // JL-004 single-pass-catalog-match caveat that motivated the demotion in the first place.
+      let yogaSignalsCorroboration: Record<string, unknown>[] = []
       try {
         const { querySignalsCapability } = await import('./L2_bodha/query_signals')
         const res = await querySignalsCapability.handler(
@@ -516,32 +603,33 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         )
         if (!res.is_error) {
           const c = res.content as Record<string, unknown>
-          yogaSignals = ((c['signals'] as Record<string, unknown>[]) ?? []).map(s => ({
+          yogaSignalsCorroboration = ((c['signals'] as Record<string, unknown>[]) ?? []).map(s => ({
             signal_id: s['signal_id'],
             signal_summary: s['signal_summary_text'],
             computed_salience: s['computed_salience'],
             signal_tradition: s['signal_tradition'],
           }))
-          yogasChecked = yogaSignals.length
         }
       } catch (e) {
-        judgment_flags.push(`yoga_signal_fetch_failed: ${String(e)}`)
+        judgment_flags.push(`yoga_signal_corroboration_fetch_failed: ${String(e)}`)
       }
-      // D-13: bearing_yogas surfaces bodha_msr_signals 'yoga' signal_type_class rows —
-      // the SAME requires_pass catalog shape graha_portrait caveats under JL-004 (a
-      // single-pass rule-catalog match against L1 facts, not a cross-verified confirmed
-      // firing). Restated here at THIS point of use rather than left implicit, per D-13 —
-      // never present these as settled findings without the caveat.
-      if (yogaSignals.length > 0) {
+      if (yogaSignalsCorroboration.length > 0) {
         judgment_flags.push(
-          'bearing_yogas_caveat: bearing_yogas are requires_pass catalog label matches ' +
-          '(single-pass evaluation against L1 facts) — not cross-verified confirmed firings. ' +
-          'Treat as candidate classifications to verify, not settled findings (JL-004).',
+          'bearing_yogas_corroboration_caveat: bearing_yogas_corroboration (MSR yoga signals) are ' +
+          'requires_pass catalog label matches (single-pass evaluation against L1 facts) — not ' +
+          'cross-verified confirmed firings. bearing_yogas above (ga_yoga_firings) is the primary, ' +
+          'firings-authoritative source (A3/R-3); this corroboration is secondary context only (JL-004).',
         )
       }
+      // A3/R-3: bhaṅga (cancellation) state on a FIRED, formed yoga is now consulted directly
+      // (see the ga_yoga_firings mapping above — bhanga_active discounts a firing's contribution
+      // to yogaTerm). What remains unbuilt is "notably-absent" near-miss detection — a yoga that
+      // did NOT fire but came close — a distinct, still-absent data-plane addition (design §12 D3).
       judgment_flags.push(
-        'bhanga_not_checked: notably-absent/cancellation (bhaṅga) near-miss checking requires ' +
-        'a data-plane addition (design §12 D3) not yet built for any chart — reported honestly, not fabricated.',
+        'notably_absent_not_checked: near-miss ("almost formed but for one leg") yoga detection ' +
+        'requires a data-plane addition (design §12 D3) not yet built for any chart — reported ' +
+        'honestly, not fabricated. Bhaṅga (cancellation) state on FIRED yogas IS consulted above ' +
+        '(ga_yoga_firings.bhanga_active discounts a firing\'s verdict contribution, A3/R-3).',
       )
 
       // ── Step 9: timing hooks (reuses get_dashas — no parallel dasha query) ──
@@ -630,21 +718,33 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       const vargaTerm = spec.varga === 'D1' ? 0 : bhaveshaVargaContribution + karakaVargaContribution
       const vargaTermApplied = spec.varga !== 'D1' && (bhaveshaVarga.fact_id !== null || karakaVargaList.some(k => k.fact_id !== null))
 
-      const compositeScore = d1Score + vargaTerm
+      // A3/R-3: the composite now ALSO consumes bearing-yoga detector strength (yogaTerm, built in
+      // Step 7 above from ga_yoga_firings — bhaṅga-discounted, domain-actor-scoped, capped). Before
+      // this pass the composite had NO yoga term at all, so a fired Dhana Yoga (or any other
+      // classical yoga) structurally could not move a verdict regardless of how many fired —
+      // the standing bug this wave closes.
+      const compositeScore = d1Score + vargaTerm + yogaTerm
 
-      let verdict_grade: string
-      if (compositeScore >= 2.5) verdict_grade = 'convergent_strong'
-      else if (compositeScore >= 1) verdict_grade = 'convergent_moderate'
-      else if (compositeScore >= -1) verdict_grade = 'mixed'
-      else verdict_grade = 'contested'
+      /** Design §28.1 grading bands, shared by every partial/full verdict grade below so the
+       *  composite, D1-only, and D1+varga (pre-yoga) grades can never silently drift apart. */
+      const gradeFor = (score: number): string =>
+        score >= 2.5 ? 'convergent_strong'
+        : score >= 1 ? 'convergent_moderate'
+        : score >= -1 ? 'mixed'
+        : 'contested'
+
+      const verdict_grade = gradeFor(compositeScore)
 
       // D1-only grade (what the pre-WP-1.8 formula would have returned) — surfaced so the
       // varga contribution is auditable and a reviewer can see WHEN the amsha moved the verdict.
-      let d1_only_grade: string
-      if (d1Score >= 2.5) d1_only_grade = 'convergent_strong'
-      else if (d1Score >= 1) d1_only_grade = 'convergent_moderate'
-      else if (d1Score >= -1) d1_only_grade = 'mixed'
-      else d1_only_grade = 'contested'
+      const d1_only_grade = gradeFor(d1Score)
+
+      // Pre-yoga grade (what the pre-A3 formula — D1 + varga, no bearing-yoga term — would have
+      // returned) — surfaced so the yoga contribution is auditable the same way the varga
+      // contribution already is above.
+      const preYogaScore = d1Score + vargaTerm
+      const d1_plus_varga_grade = gradeFor(preYogaScore)
+      const yogaTermApplied = yogaTerm > 0
 
       const verdict = {
         domain: domainKey ?? null,
@@ -656,7 +756,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         d1_only_grade,
         operative_varga: spec.varga,
         varga_term: Math.round(vargaTerm * 100) / 100,
-        varga_moved_verdict: vargaTermApplied && d1_only_grade !== verdict_grade,
+        varga_moved_verdict: vargaTermApplied && d1_only_grade !== d1_plus_varga_grade,
         varga_subscores: {
           bhavesha: { graha: bhaveshaVarga.graha, varga: spec.varga, dignity_state: bhaveshaVarga.dignity_state, weight: bhaveshaVarga.dignity_weight, contribution: Math.round(bhaveshaVargaContribution * 100) / 100 },
           karakas: karakaVargaList.map(k => ({ graha: k.graha, varga: spec.varga, dignity_state: k.dignity_state, weight: k.dignity_weight })),
@@ -666,14 +766,30 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
                 ? `Operative-varga (${spec.varga}) dignity of bhāveśa (×${VARGA_BHAVESHA_WEIGHT}) + kāraka(s) mean (×${VARGA_KARAKA_WEIGHT}) — the amsha as the ripening of the rasi promise (BPHS Ch.6-7; Parashari D9-is-the-fruit dictum).`
                 : `No ${spec.varga} dignity rows resolved for bhāveśa/kāraka — varga term = 0 (honest absence, not fabricated).`),
         },
+        // A3/R-3: bearing-yoga contribution — auditable the same way varga is above.
+        yoga_term: Math.round(yogaTerm * 100) / 100,
+        yoga_moved_verdict: yogaTermApplied && d1_plus_varga_grade !== verdict_grade,
+        yoga_subscore: {
+          domain_bearing_firings: bearingYogaFirings.filter(y => y['domain_match'] === true).length,
+          total_fired_on_chart: bearingYogaFirings.length,
+          note: yogaTermApplied
+            ? `${bearingYogaFirings.filter(y => y['domain_match'] === true).length} fired ga_yoga_firings ` +
+              `row(s) name only this domain's bhāveśa/kāraka(s) — strength summed (×${YOGA_MATCH_WEIGHT}, ` +
+              `bhaṅga-active firings discounted to ×${YOGA_BHANGA_DISCOUNT}), capped at ${YOGA_TERM_CAP}.`
+            : 'No fired ga_yoga_firings row names only this domain\'s bhāveśa/kāraka(s) — yoga term = 0 (honest absence, not fabricated).',
+        },
         note:
           'Deterministic weighted aggregation of already-computed dignity/shadbala/occupant/aspect ' +
-          'signals PLUS a re-derived operative-varga (amsha) term — NOT an LLM judgment and NOT a ' +
-          'calibrated probability (that is L4/L5\'s domain). D1 weights: dignity ±2..−2, ' +
-          'benefic/malefic occupant ±0.5, benefic/malefic aspect ±0.3, weak-lord (<3 rupas) −0.5, ' +
-          'from-Moon lord dignity ×0.5. Varga term (R-46/WP-1.8): bhāveśa operative-varga dignity ' +
-          `×${VARGA_BHAVESHA_WEIGHT} + kāraka(s) mean ×${VARGA_KARAKA_WEIGHT} (skipped when operative varga is D1). ` +
-          'composite_score = d1_score + varga_term; d1_only_grade shows the pre-varga verdict.',
+          'signals PLUS a re-derived operative-varga (amsha) term PLUS a bearing-yoga (ga_yoga_firings) ' +
+          'term — NOT an LLM judgment and NOT a calibrated probability (that is L4/L5\'s domain). ' +
+          'D1 weights: dignity ±2..−2, benefic/malefic occupant ±0.5, benefic/malefic aspect ±0.3, ' +
+          'weak-lord (<3 rupas) −0.5, from-Moon lord dignity ×0.5. Varga term (R-46/WP-1.8): bhāveśa ' +
+          `operative-varga dignity ×${VARGA_BHAVESHA_WEIGHT} + kāraka(s) mean ×${VARGA_KARAKA_WEIGHT} ` +
+          '(skipped when operative varga is D1). Yoga term (A3/R-3): domain-bearing fired-yoga ' +
+          `strength ×${YOGA_MATCH_WEIGHT} (bhaṅga-active ×${YOGA_BHANGA_DISCOUNT}), capped at ${YOGA_TERM_CAP}. ` +
+          'composite_score = d1_score + varga_term + yoga_term; d1_only_grade shows the pre-varga-and-yoga ' +
+          'verdict; d1_plus_varga_grade shows the pre-yoga verdict.',
+        d1_plus_varga_grade,
       }
 
       // ── The receipt (design §28.6 — classical-units completeness) ──
@@ -687,7 +803,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         // operative-varga dignity actually ENTERED the verdict composite as a weighted term.
         varga_weighted_into_verdict: vargaTermApplied,
         yogas_checked: yogasChecked,
-        bhanga_checked: false,
+        // A3/R-3: bhaṅga (cancellation) state on FIRED yogas is now consulted (ga_yoga_firings.
+        // bhanga_active discounts a firing's contribution to verdict.yoga_term — see Step 7 above).
+        // Distinct from "notably-absent" near-miss detection, which remains unbuilt (see the
+        // notably_absent_not_checked judgment_flag) — bhanga_checked is honestly true, not blanket
+        // false, now that it genuinely feeds the composite.
+        bhanga_checked: true,
         timing_anchored: timingAnchored,
       }
 
@@ -699,7 +820,11 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // judgment_query verdict, being convergent-by-construction, does not itself surface.
       const drill_pointers: Array<{ instrument: string; hint: string; pointer_type: DrillPointerType }> = [
         { instrument: 'ganita_chart_facts_get', hint: `divisional_chart=${spec.varga}: full ${spec.varga} placements for every graha (this call confirmed only bhāveśa/kāraka). (SC-18: was 'get_divisionals', a non-existent MCP tool name.)`, pointer_type: 'confirm_in_varga' },
-        { instrument: 'get_signals', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment signal set beyond the top ${max_signals} shown here. (SC-18: was 'query_signals', a non-existent MCP tool name.)`, pointer_type: 'opposing_yoga' },
+        // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative); the primary
+        // drill pointer follows suit. get_signals remains for the demoted bearing_yogas_corroboration
+        // (MSR) leg, distinct from this.
+        { instrument: 'ganita_yoga_firings_get', hint: 'full fired-yoga detail (strength, bhaṅga/cancellation, partial-formation %, dāśā-activation) beyond the domain-bearing subset shown in bearing_yogas here.', pointer_type: 'opposing_yoga' },
+        { instrument: 'get_signals', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment MSR signal set beyond bearing_yogas_corroboration's top ${max_signals} shown here — secondary/corroboration only (A3/R-3). (SC-18: was 'query_signals', a non-existent MCP tool name.)`, pointer_type: 'opposing_yoga' },
         { instrument: 'get_dashas', hint: 'full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.', pointer_type: 'dasha_of_promise' },
         { instrument: 'traverse_graph', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.`, pointer_type: 'dispositor_chain' },
         { instrument: 'query_classical_texts', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya).`, pointer_type: 'other' },
@@ -724,7 +849,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             },
             aspecting_grahas: aspectsLagna.grahas,
             varga_confirmation: { varga: spec.varga, rows: vargaConfirmation },
-            bearing_yogas: yogaSignals,
+            // A3/R-3: bearing_yogas is now ga_yoga_firings-sourced (firings-authoritative — real
+            // strength + bhaṅga state) and stays a flat array (registry_bridge.ts's response-budget
+            // trimmer + the existing integration test both expect `Array.isArray(bearing_yogas)`).
+            // The prior primary source (MSR yoga signals via query_signals) is demoted to a
+            // sibling array, never discarded (B.10) — see judgment_flags for both caveats.
+            bearing_yogas: bearingYogaFirings,
+            bearing_yogas_corroboration: yogaSignalsCorroboration,
             timing_hooks: timing,
           },
           verdict,
