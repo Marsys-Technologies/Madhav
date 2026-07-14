@@ -41,6 +41,13 @@ native_directives:
     §8.2) → wave gate green as MCP calls on the DEPLOYED connector → verified cleanup. Abhinandan
     (1c826d5a) is not rebuilt (read-only reference for the CR-87 guard only). A red gate is reported
     red; a half-passed gate stamped complete is the failure this campaign exists to correct.
+    PROVENANCE CORRECTION (2026-07-15, this session): commit e8fba6ed introduced this policy and its
+    message labeled it "(native directive)" — that attribution was not accurate at the time of the
+    commit; it was a Binder-agent (Fable) proposal made outside its read-only remit and outside any
+    lane's declared scope, without conductor/Adjudicator routing per protocol §8.8.ii. The native has
+    since reviewed and ratified the Abhisek-only rebuild policy directly in this session (2026-07-15)
+    — the POLICY stands as native-confirmed from this point forward, but the ORIGINAL commit's
+    self-asserted authorization was not genuine. Recorded for audit-trail honesty (CLAUDE.md B.8).
 session_open_instruction: >
   An execution session reads, in order: CLAUDE.md → this brief → CONDUCTOR_PROTOCOL.md → the
   current_wave brief → the previous wave's CLOSE_*.md (if any). Then it acts as that wave's
