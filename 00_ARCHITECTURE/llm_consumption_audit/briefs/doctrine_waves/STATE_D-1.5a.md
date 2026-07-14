@@ -36,7 +36,7 @@ deploy: {done: true, sha: "a3b623aef36b0e02c85f76be643e628ef621ff32", run_id: 29
 rebuild:
   "482012f1-710e-4a25-994a-93821f5871aa": blocked_hotfix_in_flight   # cascade rebuild (46 assets) hit a real bug: ga_vichara TypeError (Decimal not JSON serializable) in the NEW aspect ingestion code (A2). Root-caused + fixed (commit 0731806b on wave/D-1.5a/hotfix-decimal-json), regression test added, verifier spawned. Stale rebuild process (pre-fix code) killed. Will re-run full cascade once hotfix merges+deploys.
   "1c826d5a-41cb-4450-b4dc-59d440e5f75a": not_rebuilt_by_policy   # Abhinandan is read-only reference for CR-87 guard; native-ratified this session (see CLAUDECODE_BRIEF.md provenance correction)
-hotfix_decimal_json: {branch: wave/D-1.5a/hotfix-decimal-json, commit: 0731806b, verifier_agent_id: a57f0abd0b9d2d612, status: RECEIPTED_ACCEPT, pr: 563, next: "CI -> merge -> deploy -> re-run cascade rebuild (46 assets)"}
+hotfix_decimal_json: {branch: wave/D-1.5a/hotfix-decimal-json, commit: 0731806b, verifier_agent_id: a57f0abd0b9d2d612, status: MERGED, pr: 563, merge_sha: 9b8a0341d9389de67bb2d909e74e98c3730ccd40, next: "watching CI-on-main -> deploy.yml -> re-run cascade rebuild (46 assets)"}
 gate: {run: false, green: [], red: []}
 updated_at: "2026-07-15 (session open, post-Binder)"
 ```
