@@ -24,8 +24,8 @@ canonical_baseline_reproduced: true   # B-2: reds #1-5,#7-9,#11; greens #10,#12;
 lanes:
   - {lane: A-0, branch: wave/D-1.5a/A-0, status: implementing, receipt_ref: null, agent_id: a1d4e2a584592cf56}
   - {lane: A-alpha, branch: wave/D-1.5a/A-alpha, status: implementing, receipt_ref: null, agent_id: aa3b218b1e1a235db}
-  - {lane: A-beta, branch: wave/D-1.5a/A-beta, status: implementing, receipt_ref: null, agent_id: a8c232edeee142ef7}
-  - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: implementing, receipt_ref: null, agent_id: ac262d840c1f3aaa1}
+  - {lane: A-beta, branch: wave/D-1.5a/A-beta, status: implementing, receipt_ref: null, agent_id: ac262d840c1f3aaa1}
+  - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: awaiting_final_report, receipt_ref: null, agent_id: a8c232edeee142ef7}
 notes: "A-beta merges last (A-gamma -> A-alpha -> A-beta); no verifier runs until A-0's harness lands."
 deploy: {done: false, sha: null}
 rebuild:
