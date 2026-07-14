@@ -145,8 +145,16 @@ class TestReTiering(unittest.TestCase):
         tier = bo._signature_tier(2.5, bo._tier_ceiling_for("aspect_parashari_per_varga", "D1"))
         self.assertEqual(tier, "supporting")
 
-    def test_non_d1_varga_capped(self):
-        self.assertEqual(bo._tier_ceiling_for("graha_dignity", "D9"), "supporting")
+    def test_non_d1_varga_no_longer_capped(self):
+        # Night-1 Doctrine Campaign, Lane 4 (CR-82→CR-65): the blanket
+        # "any non-D1 varga fact capped at supporting" rule is RETIRED — it
+        # structurally forbade the varga layer from ever reaching
+        # major/chart_defining (CR-65's defect: 95.7% of the corpus stuck at
+        # 'supporting'). Replaced by ratification-aware weighting +
+        # percentile-based tier assignment (_assign_tiers_by_percentile).
+        # Only the flood-rollup ceiling (test_flood_family_capped_* below)
+        # survives. A non-flood-prone, non-D1 category is now uncapped.
+        self.assertIsNone(bo._tier_ceiling_for("graha_dignity", "D9"))
 
     def test_whole_chart_d1_uncapped(self):
         self.assertIsNone(bo._tier_ceiling_for("yoga_label", "D1"))

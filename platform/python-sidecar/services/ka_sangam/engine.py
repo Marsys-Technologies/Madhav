@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import math
+from dataclasses import dataclass
 from datetime import date
 from typing import Any, Optional
 
@@ -249,8 +250,55 @@ _NAKSHATRAS_ORDERED = (
 )
 _NAK_NAME_TO_IDX: dict[str, int] = {n: i for i, n in enumerate(_NAKSHATRAS_ORDERED)}
 
-# Native's janma nakshatra: Purva Bhadrapada = index 24 (0-based)
-_NATIVE_JANMA_NAK_IDX: int = 24
+# CR-87 fix: the module-level native janma-nakshatra constant (formerly
+# _NATIVE_JANMA_NAK_IDX = 24, hardcoding Purva Bhadrapada for chart 482012f1)
+# has been DELETED — not defaulted. Every function below now REQUIRES the
+# caller to supply janma_nakshatra_idx (0-based index into _NAKSHATRAS_ORDERED)
+# resolved per-chart from chart_facts (fact_subject='MOON', fact_key='nakshatra').
+# A default here would silently reintroduce the CR-87 cross-chart contamination
+# bug (every chart's tara-bala scored against Abhisek's janma nakshatra).
+
+# 12 zodiac signs in zodiacal order (used to derive sade-sati signs per-chart).
+_ZODIAC_SIGNS_ORDERED = (
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+)
+_SIGN_NAME_TO_IDX: dict[str, int] = {s: i for i, s in enumerate(_ZODIAC_SIGNS_ORDERED)}
+
+
+@dataclass(frozen=True)
+class NativeChartContext:
+    """Per-chart natal context required by tara-bala, sade-sati, and panchanga
+    currents (CR-87). Resolved once per writer run from chart_facts /
+    birth_params — never hardcoded, never defaulted to another chart's values.
+    """
+    janma_nakshatra_idx: int   # 0-based index into _NAKSHATRAS_ORDERED
+    moon_sign: str             # e.g. "Aquarius"
+    sade_sati_signs: tuple     # (12th-from-Moon, Moon sign, 2nd-from-Moon)
+    sade_sati_severity: dict   # {sign: severity} keyed by the derived signs above
+    location: dict             # {'lat': float, 'lon': float, 'tz_offset_minutes': int}
+
+
+def derive_sade_sati_signs(moon_sign: str) -> tuple:
+    """Derive the 3 sade-sati trigger signs from the natal Moon sign by fixed
+    classical rule: the sign before the Moon sign (12th-from-Moon), the Moon
+    sign itself, and the sign after (2nd-from-Moon) — zodiacal order.
+    CR-87: moon_sign is REQUIRED — no default, no fallback to Aquarius.
+    """
+    idx = _SIGN_NAME_TO_IDX.get(moon_sign)
+    if idx is None:
+        raise ValueError(f"derive_sade_sati_signs: unknown moon_sign {moon_sign!r}")
+    twelfth = _ZODIAC_SIGNS_ORDERED[(idx - 1) % 12]
+    second  = _ZODIAC_SIGNS_ORDERED[(idx + 1) % 12]
+    return (twelfth, moon_sign, second)
+
+
+def derive_sade_sati_severity(sade_sati_signs: tuple) -> dict:
+    """Classical doctrine severity weights (0.70 / 1.00 / 0.70) keyed by the
+    derived sade-sati signs. The weights are doctrine constants (not natal
+    constants) and stay fixed — only the sign keys are per-chart."""
+    twelfth, moon_sign, second = sade_sati_signs
+    return {twelfth: 0.70, moon_sign: 1.00, second: 0.70}
 
 # Classical Tara Bala scores (1=Janma, 2=Sampat, … 9=Param-Mitra)
 # Auspicious: 2, 4, 6, 8, 9.  Malefic: 3, 5, 7.  Mixed: 1.
@@ -267,28 +315,31 @@ _TARA_SCORES: dict[int, float] = {
 }
 
 
-def _tara_score_for_nakshatra(nakshatra_name: str) -> float:
-    """Return Tara Bala score (0–1) for a nakshatra relative to native's janma nakshatra."""
+def _tara_score_for_nakshatra(nakshatra_name: str, janma_nakshatra_idx: int) -> float:
+    """Return Tara Bala score (0–1) for a nakshatra relative to the chart's
+    own janma nakshatra (CR-87: janma_nakshatra_idx is a REQUIRED per-chart
+    value — 0-based index into _NAKSHATRAS_ORDERED — never a native default)."""
     idx = _NAK_NAME_TO_IDX.get(nakshatra_name, -1)
     if idx < 0:
         return 0.0
-    tara_pos = ((idx - _NATIVE_JANMA_NAK_IDX) % 9) + 1  # 1–9
+    tara_pos = ((idx - janma_nakshatra_idx) % 9) + 1  # 1–9
     return _TARA_SCORES.get(tara_pos, 0.0)
 
 
-def _c_nakshatra_subsystem(transit_nakshatra: str) -> float:
+def _c_nakshatra_subsystem(transit_nakshatra: str, janma_nakshatra_idx: int) -> float:
     """
     C5: nakshatra_subsystem — tara bala of the transit planet's nakshatra
-    against the native's janma nakshatra (Purva Bhadrapada).
+    against THIS CHART's janma nakshatra (CR-87: per-chart, required param).
     Classical source: Parāśara Tara-Bala adhyāya.
     """
-    return _tara_score_for_nakshatra(transit_nakshatra)
+    return _tara_score_for_nakshatra(transit_nakshatra, janma_nakshatra_idx)
 
 
-def _c_tara_bala_for_jd(peak_jd: float) -> float:
+def _c_tara_bala_for_jd(peak_jd: float, janma_nakshatra_idx: int) -> float:
     """
     C_tara_bala: tara bala of the Moon's nakshatra at peak_jd relative to
-    native's janma nakshatra (Purva Bhadrapada).  Requires pyswisseph.
+    THIS CHART's janma nakshatra (CR-87: per-chart, required param).
+    Requires pyswisseph.
     """
     try:
         import swisseph as swe
@@ -296,7 +347,7 @@ def _c_tara_bala_for_jd(peak_jd: float) -> float:
         moon_pos, _ = swe.calc_ut(peak_jd, swe.MOON, swe.FLG_SIDEREAL)
         lon = moon_pos[0] % 360.0
         nak_idx = int(lon / (360.0 / 27.0)) % 27
-        return _tara_score_for_nakshatra(_NAKSHATRAS_ORDERED[nak_idx])
+        return _tara_score_for_nakshatra(_NAKSHATRAS_ORDERED[nak_idx], janma_nakshatra_idx)
     except Exception as exc:
         logger.debug("_c_tara_bala_for_jd failed at jd=%.1f: %s", peak_jd, exc)
         return 0.0
@@ -783,11 +834,17 @@ def mode_a_search(
     gochara_service: Any,
     muhurta_service: Any,
     chart_id: str,
+    janma_nakshatra_idx: int,
     enrichment_context: Optional[EnrichmentContext] = None,
     native_location: Optional[dict] = None,
 ) -> list[dict]:
     """
     Mode A: daśā-eligibility soft prior → transit search INSIDE eligible survivors.
+
+    CR-87: janma_nakshatra_idx is REQUIRED (0-based index into
+    _NAKSHATRAS_ORDERED) — this chart's own Moon nakshatra, resolved by the
+    caller from chart_facts. No native default; never falls back to another
+    chart's value.
 
     1. Ask dasha_kala_service (or predicate) for eligible dasha windows.
     2. For each eligible window, use find_aspect_events from transit_search to
@@ -922,8 +979,8 @@ def mode_a_search(
         c_cross   = _c_cross_dasha_agreement(peak_dt, eligible_windows)
         c_dristi  = _c_benefic_dristi(target_lon, w_jd_start, w_jd_end, gochara_service)
         c_pancha  = _c_panchanga_quality(peak_dt, muhurta_service, native_location)
-        c_tara    = _c_tara_bala_for_jd(ev.event_jd)
-        c_nak     = _c_nakshatra_subsystem(ev.nakshatra)
+        c_tara    = _c_tara_bala_for_jd(ev.event_jd, janma_nakshatra_idx)
+        c_nak     = _c_nakshatra_subsystem(ev.nakshatra, janma_nakshatra_idx)
 
         # Necessary conditions: dignity × orb × vedha_factor (1.0 = no vedha)
         necessary = [dignity_score, orb_s, vedha_factor]
@@ -996,6 +1053,7 @@ def mode_b_sweep(
     horizon_start_jd: float,
     horizon_end_jd: float,
     gochara_service: Any,
+    janma_nakshatra_idx: int,
     magnitude_threshold: float = 0.6,
     enrichment_context: Optional[EnrichmentContext] = None,
     muhurta_service: Any = None,
@@ -1008,6 +1066,11 @@ def mode_b_sweep(
     transit_trigger, WITHOUT filtering by dasha eligibility. Any window whose
     orb_strength × dignity_score >= magnitude_threshold is returned as an
     off-daśā discovery.
+
+    CR-87: janma_nakshatra_idx is REQUIRED (0-based index into
+    _NAKSHATRAS_ORDERED) — this chart's own Moon nakshatra, resolved by the
+    caller from chart_facts. No native default; never falls back to another
+    chart's value.
 
     Returns windows with is_off_dasha_discovery=True and mode='B'.
     """
@@ -1080,8 +1143,8 @@ def mode_b_sweep(
         # Newly wired currents (mode B: cross_dasha = 0.0 — no dasha prior in un-gated sweep)
         c_dristi = _c_benefic_dristi(target_lon, w_jd_start, w_jd_end, gochara_service)
         c_pancha = _c_panchanga_quality(peak_dt, muhurta_service, native_location)
-        c_tara   = _c_tara_bala_for_jd(ev.event_jd)
-        c_nak    = _c_nakshatra_subsystem(ev.nakshatra)
+        c_tara   = _c_tara_bala_for_jd(ev.event_jd, janma_nakshatra_idx)
+        c_nak    = _c_nakshatra_subsystem(ev.nakshatra, janma_nakshatra_idx)
 
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
@@ -1143,12 +1206,18 @@ def mode_b_sweep(
 
 # ── Mode C: SUBSYSTEM period-based activation ─────────────────────────────────
 
-# Native Moon sign: Aquarius = sign 11 (1-indexed). Sade Sati runs over the
-# 12th sign before (Capricorn=10), Moon sign (Aquarius=11), and 2nd after (Pisces=12).
-_SADE_SATI_SIGNS = ('Capricorn', 'Aquarius', 'Pisces')
-_SADE_SATI_SEVERITY = {'Capricorn': 0.70, 'Aquarius': 1.00, 'Pisces': 0.70}
+# CR-87 fix: _SADE_SATI_SIGNS / _SADE_SATI_SEVERITY (formerly hardcoded to
+# Capricorn/Aquarius/Pisces for chart 482012f1's Aquarius Moon) DELETED — not
+# defaulted. mode_c_subsystem_period() now REQUIRES moon_sign and derives the
+# trigger signs + severity map per-chart via derive_sade_sati_signs() /
+# derive_sade_sati_severity() above.
 
 # Medical/āyur: malefic (Saturn or Mars) transiting the 6th/8th from Aries lagna
+# NOTE (CR-87 scope note): _AYUR_SIGNS_* and _VASTU_SIGNS below are ALSO
+# hardcoded lagna-relative constants (Aries lagna) and share the same bug
+# class, but deriving them per-chart is explicitly OUT OF SCOPE for this hotfix
+# (LANE0_CR87_HOTFIX.md §2.1: "Janma-nakshatra, sade-sati, and location are the
+# mandatory three"). Filed as a residual — not fixed in this lane.
 _AYUR_SIGNS_SATURN = ('Virgo', 'Scorpio')          # 6th and 8th from Aries
 _AYUR_SIGNS_MARS   = ('Virgo', 'Scorpio', 'Libra') # 6th, 8th, 7th for Mars
 
@@ -1161,6 +1230,7 @@ def mode_c_subsystem_period(
     horizon_start_jd: float,
     horizon_end_jd: float,
     gochara_service: Any,
+    moon_sign: str,
     enrichment_context: Optional[EnrichmentContext] = None,
 ) -> list[dict]:
     """
@@ -1173,6 +1243,10 @@ def mode_c_subsystem_period(
     SUBSYSTEM predicates have no point-based transit_trigger — they activate on
     sign-level transit periods rather than longitude-to-longitude aspects.
     is_off_dasha_discovery = False (subsystem periods are dasha-independent by design).
+
+    CR-87: moon_sign is REQUIRED — this chart's own natal Moon sign, resolved
+    by the caller from chart_facts. Sade-sati trigger signs + severity are
+    derived from it per-chart; no default, no fallback to Aquarius.
     """
     ctx = enrichment_context or EnrichmentContext.empty()
     transit_trig = predicate.get('transit_trigger_jsonb', {}) or {}
@@ -1184,11 +1258,14 @@ def mode_c_subsystem_period(
     if gochara_service is None:
         return []
 
+    sade_sati_signs    = derive_sade_sati_signs(moon_sign)
+    sade_sati_severity = derive_sade_sati_severity(sade_sati_signs)
+
     # Determine trigger planet + target signs + per-sign severity
     if any(kw in subsystem for kw in ('sade', 'sati', 'saturn', 'dosha', 'yoga')):
         trigger_planet = 'Saturn'
-        trigger_signs  = _SADE_SATI_SIGNS
-        severity_map   = _SADE_SATI_SEVERITY
+        trigger_signs  = sade_sati_signs
+        severity_map   = sade_sati_severity
     elif any(kw in subsystem for kw in ('medical', 'ayur', 'health', 'mars')):
         trigger_planet = 'Mars'
         trigger_signs  = _AYUR_SIGNS_MARS
@@ -1196,8 +1273,8 @@ def mode_c_subsystem_period(
     else:
         # Generic subsystem: Saturn in major dusthāna signs
         trigger_planet = 'Saturn'
-        trigger_signs  = _SADE_SATI_SIGNS
-        severity_map   = _SADE_SATI_SEVERITY
+        trigger_signs  = sade_sati_signs
+        severity_map   = sade_sati_severity
 
     # Approx sign-transit duration (sidereal period / 12 signs)
     period_days = _PLANET_PERIOD_YR.get(trigger_planet, 1.0) * 365.25 / 12.0

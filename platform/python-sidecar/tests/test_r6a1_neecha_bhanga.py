@@ -395,11 +395,24 @@ class TestGenericEvaluatorFloor:
         assert "B.10" in out["bhanga_na_reason"]
 
     def test_unregistered_yoga_without_catalog_cancellation(self):
-        out = evaluate_bhanga("budha_aditya", d1_positions={})
+        # budha_aditya is no longer a valid "unregistered" example — Lane 3
+        # (Night-1) registered a real combustion-based cancellation for it
+        # (see test_lane3_detector_registry.py). Use a yoga with no
+        # registered handler and no catalog cancellation instead.
+        out = evaluate_bhanga("kendra_trikona_raja_yoga", d1_positions={})
         assert out["bhanga_active"] is None
         assert out["bhanga_na_reason"] == (
             "no classical bhanga (cancellation) rule exists for this yoga type"
         )
+
+    def test_budha_aditya_now_has_a_real_registered_cancellation(self):
+        # Lane 3 (Night-1): budha_aditya moved from the honest-NULL floor to
+        # a real combustion-based verdict via _BHANGA_EVALUATORS.
+        out = evaluate_bhanga("budha_aditya", d1_positions={}, special_states={"mercury": {"is_combust": False}})
+        assert out["bhanga_active"] is False
+        out2 = evaluate_bhanga("budha_aditya", d1_positions={}, special_states={"mercury": {"is_combust": True}})
+        assert out2["bhanga_active"] is True
+        assert out2["bhanga_rule_fired"] == "mercury_combust"
 
     def test_every_shipped_nbry_rule_has_a_citation(self):
         from ga_writers.ga_yoga_writer import NBRY_CITATIONS

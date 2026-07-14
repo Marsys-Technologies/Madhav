@@ -21,7 +21,7 @@ def connect() -> psycopg.Connection:
     # idle_in_transaction_session_timeout=0 disables the server-side idle-in-txn
     # killer for this connection — correct for build workers that legitimately hold
     # open transactions for up to several minutes per ayanamsha substep.
-    return psycopg.connect(
+    conn = psycopg.connect(
         db_url(),
         row_factory=psycopg.rows.dict_row,
         keepalives=1,
@@ -30,3 +30,19 @@ def connect() -> psycopg.Connection:
         keepalives_count=5,
         options="-c idle_in_transaction_session_timeout=0",
     )
+    # Defense-in-depth: the `options` startup parameter above is NOT guaranteed to
+    # reach the server unmodified through every connection path (a local Cloud SQL
+    # Auth Proxy — or any intermediate pooler — may not forward arbitrary libpq
+    # startup options). The amjis_app role carries its own
+    # `ALTER ROLE ... SET idle_in_transaction_session_timeout=600s` default
+    # (10 minutes) — if the startup option above is dropped in transit, that
+    # role-level 600s killer silently wins and any writer whose transaction sits
+    # idle-in-transaction for >10 minutes of pure CPU work (no SQL activity) gets
+    # its connection terminated by the server, independent of TCP keepalive health.
+    # An explicit SET, issued as a real statement, cannot be stripped by a proxy —
+    # it is indistinguishable from any other query on the wire.
+    with conn.cursor() as cur:
+        cur.execute("SET idle_in_transaction_session_timeout = 0")
+        cur.execute("SET statement_timeout = 0")
+    conn.commit()
+    return conn

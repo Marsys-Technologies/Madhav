@@ -899,6 +899,28 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
   },
 
   {
+    // Doctrine Campaign Night-1, Lane 2 (migration 435). Mirrors that migration's
+    // asset_registry INSERT exactly — a clean reseed must not silently drop this
+    // asset (the gap this entry closes was flagged by Night-1 verification).
+    asset_id: 'ga_vichara',
+    layer: 'ganita', sort_order: 29,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Vichāra',
+    english_name: 'Gaṇita — Vichāra (judged structure)',
+    english_description: 'Judgment layer over ga_structural: functional-lordship valence pass, varga-ratification matrix + divergence signals, continuous varga-consistency index, and leverage_index (remedy/intervention-timing rank).',
+    storage_type: 'postgres_table',
+    target_table: 'chart_vichara',
+    count_sql: 'SELECT COUNT(*) FROM chart_vichara WHERE chart_id = $1',
+    size_sql: "SELECT pg_total_relation_size('chart_vichara')",
+    target_floor: 0, // aspirational per §N.4 — set after first prod build measurement
+    expected_volume_formula: 'GRAHAS x DOMAINS x AYANAMSHAS_COUNT (approx; families vary)',
+    expected_volume_inputs: null,
+    volume_explanation: 'Sum of valence_pass + varga_ratification (+ divergence) + varga_consistency + leverage_index rows across 5 ayanamshas.',
+    depends_on: ['ga_structural', 'ga_strength', 'ga_dashas', 'ga_yoga'],
+    scope: 'per_chart', is_active: true, estimated_seconds: null,
+  },
+
+  {
     asset_id: 'ga_nakshatra',
     layer: 'ganita', sort_order: 20,
     catalog_status: 'CURRENT',
@@ -1062,7 +1084,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Signal count driven by ga_structural exhaustive enumeration; sealed count 66,738 per L2 build (chart 482012f1).',
-    depends_on: ['ga_structural', 'bg_rules'],
+    depends_on: ['ga_structural', 'ga_vichara', 'bg_rules'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

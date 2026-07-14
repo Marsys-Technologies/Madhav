@@ -205,7 +205,11 @@ class KaVighnakaraWriter(WriterBase):
             logger.warning("ka_vighnakara: KaMuhurtaSevaService unavailable: %s", exc)
             _muhurta = None
 
-        _NATIVE_LOC = {'lat': 20.2961, 'lon': 85.8245, 'tz_offset_minutes': 330}
+        # CR-87 fix: native_location_ctx (formerly a hardcoded module constant
+        # tied to chart 482012f1's
+        # Bhubaneswar coordinates) resolved per-chart below — no fallback to
+        # any specific native's location.
+        native_location_ctx = self._resolve_native_location(conn, chart_id, ctx.config.get('birth_params'))
 
         # C12 fix: fetch per-graha combustion orbs from bg_combustion_orbs (L1 single truth)
         combustion_orbs = self._fetch_combustion_orbs(conn)
@@ -225,7 +229,7 @@ class KaVighnakaraWriter(WriterBase):
                 jd=jd,
                 swe=_swe,
                 muhurta_service=_muhurta,
-                native_location=_NATIVE_LOC,
+                native_location=native_location_ctx,
                 natal_lagna_lon=natal_lagna_lon,
                 combustion_orbs=combustion_orbs,
             )
@@ -261,7 +265,7 @@ class KaVighnakaraWriter(WriterBase):
                 jd=jd,
                 swe=_swe,
                 muhurta_service=_muhurta,
-                native_location=_NATIVE_LOC,
+                native_location=native_location_ctx,
                 natal_lagna_lon=natal_lagna_lon,
                 combustion_orbs=combustion_orbs,
             )
@@ -310,6 +314,61 @@ class KaVighnakaraWriter(WriterBase):
                 sp.execute("ROLLBACK TO SAVEPOINT sp_comb_orbs")
             logger.debug("ka_vighnakara: bg_combustion_orbs fetch skipped: %s", exc)
             return dict(_COMBUSTION_ORBS_CLASSICAL)
+
+    @staticmethod
+    def _resolve_native_location(conn, chart_id: str, birth_params) -> dict:
+        """CR-87 fix: resolve THIS chart's birth location for the panchanga /
+        muhurta detectors. Prefers ctx.config['birth_params'] (orchestrator-
+        supplied); falls back to a direct public.charts query only if
+        birth_params lacks lat/lon. Never falls back to Bhubaneswar or any
+        other specific native's coordinates — a resolution failure raises
+        loudly (B.10 — never invent, never borrow another chart's constants).
+        """
+        if isinstance(birth_params, dict):
+            lat = birth_params.get('latitude_deg')
+            lon = birth_params.get('longitude_deg')
+            tz_hours = birth_params.get('tz_offset_hours')
+            if lat is not None and lon is not None and tz_hours is not None:
+                return {
+                    'lat': float(lat),
+                    'lon': float(lon),
+                    'tz_offset_minutes': int(round(float(tz_hours) * 60)),
+                }
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT birth_lat, birth_lng, timezone_id
+                FROM public.charts
+                WHERE id = %s OR chart_id = %s
+                LIMIT 1
+                """,
+                (chart_id, chart_id),
+            )
+            row = cur.fetchone()
+
+        if not row or row[0] is None or row[1] is None:
+            raise RuntimeError(
+                f"ka_vighnakara: could not resolve birth location for chart {chart_id} "
+                "from ctx.config['birth_params'] or public.charts. Refusing to fall "
+                "back to Bhubaneswar or any other chart's coordinates (CR-87)."
+            )
+
+        lat, lon, tzid = row[0], row[1], row[2]
+        try:
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            offset = ZoneInfo(tzid).utcoffset(datetime.now())
+            if offset is None:
+                raise ValueError(f"no utcoffset for {tzid!r}")
+            tz_offset_minutes = int(offset.total_seconds() / 60)
+        except Exception as exc:
+            raise RuntimeError(
+                f"ka_vighnakara: could not resolve UTC offset for chart {chart_id}'s "
+                f"timezone_id={tzid!r}: {exc}. Refusing to default to IST (CR-87)."
+            ) from exc
+
+        return {'lat': float(lat), 'lon': float(lon), 'tz_offset_minutes': tz_offset_minutes}
 
     def _fetch_natal_lagna_lon(self, conn, chart_id: str) -> Optional[float]:
         """Fetch natal lagna degree from chart_facts (fact_subject='LAGNA', fact_key='longitude')."""

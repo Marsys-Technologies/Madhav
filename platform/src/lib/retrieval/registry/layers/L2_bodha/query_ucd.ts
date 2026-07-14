@@ -43,9 +43,50 @@ import { applyCompositeRanking, buildRankingBasis, buildHierarchicalProfiles, co
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
 import { PRIORS_VERSION } from '../../../ranking/priors_config'
 import { demoteSignatureTiers } from '../../../ranking/salience_demotion'
+import { GRAHA_CODE_TO_NAME } from '../../../address_resolver'
 
 /** Max resolvable fact_ids surfaced in the envelope-level grounding block (payload safety). */
 const GROUNDING_FACT_IDS_CAP = 200
+
+/**
+ * CR-55 fix (Lane 5, §N.6 density retrofit — serving-side): `vw_chart_digest.weakest_graha`
+ * is populated by `bo_upaya.py`'s `resonance_score_v1` (an RM/relationship-mechanism ranking,
+ * NOT a strength measure) — genuinely the wrong site for "which graha is weakest", and outside
+ * this lane's file scope to fix at the writer (bo_upaya.py/bo_samvada.py are Lane-4's/RM's
+ * files, not this lane's). Rather than keep serving that mislabeled value under a name that
+ * promises strength, this re-derives the honest answer LIVE from the already-computed L1
+ * Shadbala total (fact_category='graha_shadbala_total', the classical six-fold strength
+ * measure BPHS Ch.27 actually names for exactly this question) — zero new computation, a
+ * straight MIN() over an existing per-chart fact set (B.10). Never fails the caller: on any
+ * error this falls back to the view's original (mislabeled) value rather than breaking the
+ * response.
+ */
+export async function deriveShadbalaWeakestGraha(
+  chart_id: string,
+  ayanamsha_id: string,
+): Promise<{ graha: string | null; shadbala_rupa: number | null } | null> {
+  try {
+    const res = await query<{ fact_subject: string; fact_value_num: string | number | null }>(
+      `SELECT fact_subject, fact_value_num
+       FROM chart_facts
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_shadbala_total'
+         AND fact_value_num IS NOT NULL
+         AND fact_subject NOT IN ('RAH_MEAN', 'KET_MEAN')
+       ORDER BY fact_value_num ASC
+       LIMIT 1`,
+      [chart_id, ayanamsha_id],
+    )
+    const row = res.rows[0]
+    if (!row) return null
+    const code = String(row.fact_subject ?? '')
+    return {
+      graha: GRAHA_CODE_TO_NAME[code] ?? code,
+      shadbala_rupa: row.fact_value_num != null ? Number(row.fact_value_num) : null,
+    }
+  } catch {
+    return null // honest null — never fabricated; caller keeps the view's original value
+  }
+}
 
 /**
  * WP-1.2(a) (LCA-14, §N.5) — resolve which of a signal pool's constituent fact_ids
@@ -284,14 +325,24 @@ export const queryUcdCapability: CapabilityDescriptor = {
       if (min_salience > 0) signalParams.push(min_salience)
 
       const as_of_date = new Date().toISOString().split('T')[0]
-      const [digestResult, signalResult, convResult, l1Context] = await Promise.all([
+      const [digestResult, signalResult, convResult, l1Context, shadbalaWeakest] = await Promise.all([
         query(digestSql, [chart_id, ayanamsha_id]),
         query(signalSql, signalParams),
         query(convSql,   [chart_id, ayanamsha_id]),
         fetchL1Context(chart_id, ayanamsha_id, as_of_date),
+        deriveShadbalaWeakestGraha(chart_id, ayanamsha_id),
       ])
 
       const digest = (digestResult.rows[0] ?? {}) as Record<string, unknown>
+      // CR-55 (Lane 5): prefer the live Shadbala-derived weakest graha over the view's
+      // resonance_score_v1-sourced value. `weakest_graha_source` discloses which computation
+      // won so a caller comparing against the RM/resonance framing isn't misled (never a
+      // silent swap — B.10/CR-42 discipline).
+      const viewWeakestGraha = digest.weakest_graha as string | null | undefined
+      const weakest_graha = shadbalaWeakest?.graha ?? viewWeakestGraha ?? null
+      const weakest_graha_source = shadbalaWeakest?.graha
+        ? 'shadbala_total_min (BPHS Ch.27 six-fold strength; CR-55 fix)'
+        : (viewWeakestGraha ? 'vw_chart_digest.weakest_graha (resonance_score_v1 — RM ranking, not a strength measure; shadbala derivation unavailable for this call)' : null)
 
       // E-6: composite-rank the candidate pool (domain=null — orientation is
       // domain-agnostic; topicRelevance/vargaWeight fall back to their D1/neutral
@@ -399,7 +450,8 @@ export const queryUcdCapability: CapabilityDescriptor = {
             avg_salience:         digest.avg_salience,
             max_salience:         digest.max_salience,
             contradiction_count:  digest.contradiction_count,
-            weakest_graha:        digest.weakest_graha,
+            weakest_graha,
+            weakest_graha_source,
             top_priority_class:   digest.top_priority_class,
             trap1_count:          digest.trap1_count,
           },

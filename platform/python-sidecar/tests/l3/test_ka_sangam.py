@@ -286,6 +286,7 @@ class TestModeA:
         """mode_a_search always returns a list."""
         s, e = self._horizon_jd()
         result = mode_a_search(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             predicate=self._make_predicate(),
             horizon_start_jd=s,
             horizon_end_jd=e,
@@ -300,6 +301,7 @@ class TestModeA:
         """Mode A with dasha_score=0 still returns windows (dasha is soft prior, not gate)."""
         s, e = self._horizon_jd()
         result = mode_a_search(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             predicate=self._make_predicate(dasha_score=0.0),
             horizon_start_jd=s,
             horizon_end_jd=e,
@@ -316,6 +318,7 @@ class TestModeA:
         """All Mode A windows must have the required fields."""
         s, e = self._horizon_jd()
         result = mode_a_search(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             predicate=self._make_predicate(),
             horizon_start_jd=s,
             horizon_end_jd=e,
@@ -335,6 +338,7 @@ class TestModeA:
         """All Mode A windows have is_off_dasha_discovery=False."""
         s, e = self._horizon_jd()
         result = mode_a_search(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             predicate=self._make_predicate(),
             horizon_start_jd=s,
             horizon_end_jd=e,
@@ -377,6 +381,7 @@ class TestModeB:
         """All Mode B windows have is_off_dasha_discovery=True."""
         s, e = self._horizon_5yr()
         result = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             signal_id='aaaaaaaa-bbbb-cccc-dddd-ffffffffffff',
             predicate=self._make_predicate(),
             horizon_start_jd=s,
@@ -391,6 +396,7 @@ class TestModeB:
         """Higher threshold → fewer or equal windows than lower threshold."""
         s, e = self._horizon_5yr()
         low_threshold_result = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             signal_id='aaaaaaaa-bbbb-cccc-dddd-ffffffffffff',
             predicate=self._make_predicate(dignity_score=0.9),
             horizon_start_jd=s,
@@ -399,6 +405,7 @@ class TestModeB:
             magnitude_threshold=0.1,
         )
         high_threshold_result = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             signal_id='aaaaaaaa-bbbb-cccc-dddd-ffffffffffff',
             predicate=self._make_predicate(dignity_score=0.9),
             horizon_start_jd=s,
@@ -412,6 +419,7 @@ class TestModeB:
         """All Mode B windows must have required fields."""
         s, e = self._horizon_5yr()
         result = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             signal_id='aaaaaaaa-bbbb-cccc-dddd-ffffffffffff',
             predicate=self._make_predicate(),
             horizon_start_jd=s,
@@ -430,6 +438,7 @@ class TestModeB:
         """All Mode B windows have mode='B'."""
         s, e = self._horizon_5yr()
         result = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             signal_id='aaaaaaaa-bbbb-cccc-dddd-ffffffffffff',
             predicate=self._make_predicate(),
             horizon_start_jd=s,
@@ -476,6 +485,7 @@ class TestSpineE2E:
         end_jd   = _date_to_jd(date(2029, 1, 1))  # 5-year horizon
 
         windows = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             signal_id='deadbeef-1234-5678-abcd-ef0123456789',
             predicate=predicate,
             horizon_start_jd=start_jd,
@@ -660,6 +670,7 @@ class TestPerSignaturePlanet:
         start_jd = _date_to_jd(date(2024, 1, 1))
         end_jd   = _date_to_jd(date(2026, 1, 1))
         result = mode_a_search(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             predicate=pred,
             horizon_start_jd=start_jd,
             horizon_end_jd=end_jd,
@@ -684,6 +695,7 @@ class TestPerSignaturePlanet:
         start_jd = _date_to_jd(date(2024, 1, 1))
         end_jd   = _date_to_jd(date(2026, 1, 1))
         result = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             signal_id='bbbbbbbb-0000-0000-0000-000000000001',
             predicate=pred,
             horizon_start_jd=start_jd,
@@ -714,6 +726,7 @@ class TestPerSignaturePlanet:
         start_jd = _date_to_jd(date(2024, 1, 1))
         end_jd   = _date_to_jd(date(2029, 1, 1))
         windows = mode_b_sweep(
+            janma_nakshatra_idx=24,  # CR-87 test fixture value only — arbitrary
             signal_id='cccccccc-0000-0000-0000-000000000000',
             predicate=pred,
             horizon_start_jd=start_jd,

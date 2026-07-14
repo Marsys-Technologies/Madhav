@@ -29,7 +29,9 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     'constituent_planets/houses/fact_ids, family_ids, activation_dasha_periods, derivation.',
     'Filters: fired (default true), ayanamsha_id, bhanga_active, is_partial,',
     'yoga_canonical_id. Weak-tail and cancelled firings are included (strength is a column,',
-    'not a gate). Bounded to 50 rows with a disclosed total.',
+    'not a gate). Includes grounds_jsonb (Lane 3 CR-59 grounds-checked-per-verdict ledger) when',
+    'present. Default fired=true — a catalog-only (not-fired) row is NEVER served as a finding',
+    'unless all=true or fired=false is explicit (CR-72/CR-43). Bounded to 50 rows with a disclosed total.',
   ].join(' '),
 
   input_schema: {
@@ -55,6 +57,12 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 60, always_include: false },
   },
+  // Lane 5 (§N.6 (iv), Doctrine Campaign D-1 Night-1): newly fronted as ganita_yoga_firings_get.
+  density_contract: {
+    paginated: true,
+    facets: ['fired', 'all', 'bhanga_active', 'is_partial', 'yoga_canonical_id'],
+    empty_reason: true,
+  },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
@@ -79,21 +87,44 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     if (yoga_canonical_id)          { filters.push(`yoga_canonical_id = $${p++}`); params.push(yoga_canonical_id) }
     const where = filters.join(' AND ')
 
-    const sql = `
-      SELECT id, yoga_canonical_id, ayanamsha_id, fired, strength, strength_label,
+    // Lane 5 (§N.6): grounds_jsonb (Lane 3's CR-59 grounds-checked-per-verdict ledger —
+    // fired-and-not-fired reasoning) is included whenever present. Selected defensively:
+    // if the column hasn't been migrated in yet in a given environment, fall back to the
+    // pre-Lane-3 column set rather than hard-failing the whole tool.
+    const baseCols = `id, yoga_canonical_id, ayanamsha_id, fired, strength, strength_label,
              partial_formation_pct, is_partial, bhanga_active, bhanga_rule_fired, bhanga_na_reason,
              constituent_planets, constituent_houses, constituent_fact_ids, family_ids,
-             activation_dasha_periods, derivation, citation_ref, citation_human
-      FROM ga_yoga_firings
-      WHERE ${where}
-      ORDER BY strength DESC NULLS LAST, yoga_canonical_id
-      LIMIT $${p}`
+             activation_dasha_periods, derivation, citation_ref, citation_human`
 
-    try {
-      const [rowsRes, countRes] = await Promise.all([
+    async function runQueries(cols: string) {
+      const sql = `
+        SELECT ${cols}
+        FROM ga_yoga_firings
+        WHERE ${where}
+        ORDER BY strength DESC NULLS LAST, yoga_canonical_id
+        LIMIT $${p}`
+      return Promise.all([
         query(sql, [...params, limit]),
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM ga_yoga_firings WHERE ${where}`, params),
       ])
+    }
+
+    try {
+      let groundsIncluded = true
+      let rowsRes: Awaited<ReturnType<typeof query>>
+      let countRes: Awaited<ReturnType<typeof query<{ total: string }>>>
+      try {
+        [rowsRes, countRes] = await runQueries(`${baseCols}, grounds_jsonb`)
+      } catch (e) {
+        // grounds_jsonb not migrated yet in this environment — fall back, never hard-fail
+        // the whole tool over one additive column (Lane 3's migration may be unmerged here).
+        if (/column .*grounds_jsonb.* does not exist/i.test(e instanceof Error ? e.message : String(e))) {
+          groundsIncluded = false
+          ;[rowsRes, countRes] = await runQueries(baseCols)
+        } else {
+          throw e
+        }
+      }
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
       return {
         content: {
@@ -103,10 +134,15 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
           filters: { fired: all ? null : fired, all, ayanamsha_id, bhanga_active, is_partial, yoga_canonical_id, limit },
+          ...(total_matching === 0
+            ? { empty_reason: `No ga_yoga_firings rows for chart ${chart_id} matching fired=${all ? 'any' : fired}${yoga_canonical_id ? ` yoga_canonical_id='${yoga_canonical_id}'` : ''}. Pass all=true to see catalog rows that have not fired.` }
+            : {}),
           provenance: {
             tables: ['ga_yoga_firings'],
-            note: 'constituent_fact_ids resolve back to chart_facts.fact_id (§N.5).',
+            note: 'constituent_fact_ids resolve back to chart_facts.fact_id (§N.5). Default fired=true — ' +
+              'a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43).',
             source: 'L1 Gaṇita yoga-firing detail; served chart-scoped.',
+            grounds_jsonb_available: groundsIncluded,
           },
         },
         is_error: false,

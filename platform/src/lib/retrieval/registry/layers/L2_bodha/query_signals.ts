@@ -107,6 +107,15 @@ const MSR_SIGNAL_COLUMNS: readonly string[] = [
   'computed_at', 'engine_version', 'salience_pctl_in_class', 'salience_inputs_complete',
   'salience_robustness', 'aggregation_member', 'bala_gate', 'functional_context_score',
   'verification_rescale', 'present_but_enfeebled', 'class_prior',
+  // Lane 4 (MSR elevation, Doctrine Campaign D-1 Night-1) / Lane 5 serving retrofit:
+  // ratification_factor (varga-ratification multiplier ∈ [0.6,1.4] applied to salience,
+  // design §11) and valence_source (which computation produced `valence` — 'ga_vichara_v1'
+  // when Lane 2's judged valence is available, else the pre-existing keyword-heuristic
+  // fallback — never silently unlabeled). Additive columns on bodha_msr_signals; if the
+  // migration adding them hasn't landed yet in a given environment, the whitelist entry
+  // is harmless (SELECT of an absent column fails loudly at query time, same as any other
+  // not-yet-migrated column — never silently substituted).
+  'ratification_factor', 'valence_source',
 ]
 const MSR_SIGNAL_COLUMN_SET = new Set(MSR_SIGNAL_COLUMNS)
 
@@ -122,22 +131,50 @@ const DEFAULT_SERVE_COLUMNS: readonly string[] = [
   'configuration_jsonb',
 ]
 
+// Lane 5 (§N.6 density retrofit): columns Lane 4 (MSR elevation) adds to bodha_msr_signals.
+// Serving must expose them by default (brief: "expose ratification_factor + valence_source
+// in rows") WITHOUT hard-failing in an environment where Lane 4's migration hasn't landed
+// yet (this worktree's own dev environment, at the time of writing, is exactly that case —
+// see the Lane 4 handback report). Resolved once per process via information_schema and
+// cached — cheap, and self-heals to "present" the moment the migration lands with no
+// redeploy-triggering code change.
+const OPTIONAL_ELEVATION_COLUMNS = ['ratification_factor', 'valence_source'] as const
+let _optionalColumnsCache: Promise<string[]> | null = null
+function resolveOptionalElevationColumns(): Promise<string[]> {
+  if (_optionalColumnsCache) return _optionalColumnsCache
+  _optionalColumnsCache = query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_name = 'bodha_msr_signals' AND column_name = ANY($1::text[])`,
+    [[...OPTIONAL_ELEVATION_COLUMNS]],
+  ).then(r => r.rows.map(x => x.column_name)).catch(() => [])
+  return _optionalColumnsCache
+}
+
 /**
  * Resolve the `projection` param into {fetch, serve} column lists.
- *  - undefined            → {fetch: default17, serve: default17}   (legacy, unchanged)
+ *  - undefined            → {fetch: default17(+elevation if present), serve: same}
  *  - ['*']                → {fetch: all82,      serve: all82}       (full set reachable)
  *  - ['col', ...]         → validated subset; fetch = default17 ∪ subset, serve = subset
  * Throws on a non-array, empty, or unknown-column projection (rejected before any SQL).
  */
-function resolveProjection(raw: unknown): { fetch: string[]; serve: string[] | null } {
+function resolveProjection(
+  raw: unknown,
+  presentOptionalColumns: readonly string[] = [],
+): { fetch: string[]; serve: string[] | null } {
   if (raw === undefined || raw === null) {
-    return { fetch: [...DEFAULT_SERVE_COLUMNS], serve: [...DEFAULT_SERVE_COLUMNS] }
+    const withElevation = [...DEFAULT_SERVE_COLUMNS, ...presentOptionalColumns]
+    return { fetch: withElevation, serve: withElevation }
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new Error('projection must be a non-empty array of column names, or ["*"] for all columns.')
   }
   if (raw.length === 1 && raw[0] === '*') {
-    return { fetch: [...MSR_SIGNAL_COLUMNS], serve: null } // serve all fetched
+    // Exclude not-yet-migrated optional columns from '*' (avoids a full-schema break in an
+    // environment where Lane 4's migration hasn't landed) — same self-healing discipline as
+    // the default path above.
+    const absentOptional: readonly string[] = OPTIONAL_ELEVATION_COLUMNS.filter(c => !presentOptionalColumns.includes(c))
+    const all = MSR_SIGNAL_COLUMNS.filter(c => !absentOptional.includes(c))
+    return { fetch: [...all], serve: null } // serve all fetched
   }
   const requested = raw.map(String)
   const unknown = requested.filter(c => !MSR_SIGNAL_COLUMN_SET.has(c))
@@ -145,6 +182,15 @@ function resolveProjection(raw: unknown): { fetch: string[]; serve: string[] | n
     throw new Error(
       `Unknown projection column(s): ${unknown.join(', ')} — not a projectable bodha_msr_signals column. ` +
       `Pass ["*"] for the full set, or choose from the ${MSR_SIGNAL_COLUMNS.length} known columns.`,
+    )
+  }
+  const requestedAbsentOptional = requested.filter(
+    c => (OPTIONAL_ELEVATION_COLUMNS as readonly string[]).includes(c) && !presentOptionalColumns.includes(c),
+  )
+  if (requestedAbsentOptional.length > 0) {
+    throw new Error(
+      `Column(s) not yet available on bodha_msr_signals in this environment: ${requestedAbsentOptional.join(', ')} ` +
+      '(Lane 4 MSR-elevation migration not applied here). Omit them, or retry once the migration lands.',
     )
   }
   const fetch = Array.from(new Set([...DEFAULT_SERVE_COLUMNS, ...requested]))
@@ -176,6 +222,13 @@ export const querySignalsCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: true, l0_citation_ids: true },
   lel_capable: true,
+  // Lane 5 (§N.6 (iv), Doctrine Campaign D-1 Night-1): backs bodha_signals_get/get_signals.
+  density_contract: {
+    max_digest_bytes: 1_500_000, // existing H-12 size guard on this tool (see estimatedBytes check below)
+    paginated: true,
+    facets: ['domain', 'source_subsystem', 'paradigm', 'signal_type_class', 'min_salience', 'lel_enabled', 'projection', 'frame'],
+    empty_reason: false, // returns total_matching_filters/returned_count receipts; explicit empty_reason string not yet added
+  },
 
   required_inputs: ['chart_id'],
 
@@ -296,11 +349,15 @@ export const querySignalsCapability: CapabilityDescriptor = {
     }
     const paradigm = paradigmRaw as (typeof PARADIGM_VALUES)[number] | undefined
 
+    // Lane 5 (§N.6): which of ratification_factor/valence_source actually exist on
+    // bodha_msr_signals in this environment (cached per-process — see resolveOptionalElevationColumns).
+    const presentOptionalColumns = await resolveOptionalElevationColumns()
+
     // WP-1.3(g)/LCA-7: resolve the projection BEFORE any SQL — an unknown column is
     // rejected here (injection-safe), never sent to the database.
     let projection: { fetch: string[]; serve: string[] | null }
     try {
-      projection = resolveProjection(args['projection'])
+      projection = resolveProjection(args['projection'], presentOptionalColumns)
     } catch (e) {
       return { content: { error: e instanceof Error ? e.message : String(e) }, is_error: true }
     }
@@ -610,6 +667,13 @@ export const querySignalsCapability: CapabilityDescriptor = {
               'each individually tagged via its own signal_tradition field. Do not treat this as ' +
               'one coherent method\'s output; a caller building a single-paradigm answer should ' +
               'pass paradigm to get one tradition\'s clean slice (design §27.4).',
+          // Lane 5 (§N.6): disclose whether Lane 4's ratification_factor/valence_source
+          // columns are actually live in this environment — never a silent absence.
+          elevation_columns_note: presentOptionalColumns.length === OPTIONAL_ELEVATION_COLUMNS.length
+            ? 'ratification_factor + valence_source (Lane 4 MSR elevation) are present and served by default.'
+            : `Lane 4 MSR-elevation columns not yet available in this environment: ` +
+              `${OPTIONAL_ELEVATION_COLUMNS.filter(c => !presentOptionalColumns.includes(c)).join(', ')}. ` +
+              'Served rows omit them until that migration lands (self-healing — no code change needed).',
         },
       }
       const response = { content: responseContent, is_error: false as const }

@@ -81,7 +81,7 @@ import math
 import os
 import pathlib
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
@@ -532,6 +532,15 @@ PARASHARI_ASPECTS: dict[str, dict[int, float]] = {
 # Rahu and Ketu: retrograde, so aspects flow "backward" in some schools;
 # here we follow the majority rule: same offsets as stated (5th/7th/9th from sign).
 NODE_PARASHARI_ASPECTS: dict[int, float] = {5: 1.0, 7: 1.0, 9: 1.0}
+
+# effective_dignity v2 (design §10c): functional-class buckets over whatever
+# string `_get_functional_class_dynamic` returns — do not invent a new
+# classifier (B.10). Natural sets below are ONLY the documented fallback for
+# grahas outside that function's domain (e.g. Rahu/Ketu on some builds).
+_BENEFIC_FUNCTIONAL_CLASSES = {"functional_benefic", "yogakaraka", "temporal_benefic"}
+_MALEFIC_FUNCTIONAL_CLASSES = {"temporal_malefic", "functional_malefic"}
+_NATURAL_BENEFICS = {"Jupiter", "Venus", "Mercury", "Moon"}
+_NATURAL_MALEFICS = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
 
 
 def _graha_aspects_house(aspector: str, source_h: int, target_h: int) -> float:
@@ -2040,6 +2049,342 @@ def _build_yoga_rows(
 
 # ── Group G: Dosha firings ────────────────────────────────────────────────────
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Lane 3 (Night-1) Deliverable C — dosha cancellation-checks (CR-72/73/74)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Doctrine (register CR-73): no dosha may fire without its negative/cancelling
+# condition being evaluated. `_evaluate_catalog_rule`'s generic "requires"
+# handling only recognizes STRUCTURED requirement lists — every dosha catalog
+# entry that stores "requires" as a free-text narrative string (kemadruma,
+# daridra, kala_sarpa, pitru_dosha, ...; verified live against
+# brahma_dosha_catalog 2026-07-14) already fails closed there
+# (rule_shape_unimplemented:unstructured_requires) rather than the old
+# decorative "requires_pass" the register found. That fix alone leaves these
+# three doshas honestly DARK (no row at all) — this section gives the three
+# the register names by ID (kemadruma, daridra, kala_sarpa) bespoke, genuinely
+# -computed detectors instead, each with a MANDATORY cancellation callable
+# (even where the classical answer is an honest non-cancellation), per
+# LANE3_DETECTOR_REGISTRY.md §1.3. Every other catalog dosha keeps the
+# honest-NULL `cancellation_na_reason` pattern (no fabricated doctrine, B.10).
+
+def _moon_flanking_planets(chart_output: dict[str, Any]) -> dict[str, list[str]]:
+    """Non-Sun/non-node planets in the 2nd-from-Moon and 12th-from-Moon
+    houses (plus conjunct-with-Moon). This IS Kemadruma's own classical
+    negative-space definition (BPHS: no graha with/flanking the Moon) and,
+    by construction, exactly what Anapha (12th-from-Moon)/Sunapha
+    (2nd-from-Moon)/Durudhara (both) require to exist — the two dosha/yoga
+    families are mutually exclusive by shared arithmetic, not by a second
+    ad hoc cross-check (CR-73)."""
+    grahas = chart_output.get("grahas", [])
+    moon = next((g for g in grahas if g.get("name") == "Moon"), None)
+    if moon is None:
+        return {"house_2nd": [], "house_12th": [], "conjunct": []}
+    moon_h = int(moon.get("house", 0))
+    h2 = ((moon_h - 1 + 1) % 12) + 1
+    h12 = ((moon_h - 1 - 1) % 12) + 1
+    exempt = {"Moon", "Sun", "Rahu", "Ketu"}
+    in_2nd = [g["name"] for g in grahas if g.get("name") not in exempt and int(g.get("house", 0)) == h2]
+    in_12th = [g["name"] for g in grahas if g.get("name") not in exempt and int(g.get("house", 0)) == h12]
+    conjunct = [g["name"] for g in grahas if g.get("name") not in exempt and int(g.get("house", 0)) == moon_h]
+    return {"house_2nd": in_2nd, "house_12th": in_12th, "conjunct": conjunct}
+
+
+def _detect_kemadruma(chart_output: dict[str, Any]) -> dict[str, Any] | None:
+    """Kemadruma formation: Moon with no planet (other than Sun/nodes)
+    conjunct, in the 2nd, or in the 12th from it, AND Moon not in kendra
+    from lagna. Returns None (does not form) the moment any flanking/
+    conjunct planet is found — the SAME arithmetic Anapha/Durudhara run, so
+    a chart where either of those genuinely fires can never also form
+    Kemadruma (CR-73's mutual-exclusivity requirement, satisfied by
+    construction)."""
+    flank = _moon_flanking_planets(chart_output)
+    if flank["house_2nd"] or flank["house_12th"] or flank["conjunct"]:
+        return None
+    moon = next((g for g in chart_output.get("grahas", []) if g.get("name") == "Moon"), None)
+    if moon is None:
+        return None
+    moon_h = int(moon.get("house", 0))
+    if moon_h in (1, 4, 7, 10):
+        return None  # Moon in kendra from lagna — classical bhanga folded into the formation shape
+    return {"constituent_planets": ["Moon"], "constituent_houses": [moon_h], "moon_house": moon_h}
+
+
+def _cancel_kemadruma(finding: dict[str, Any], chart_output: dict[str, Any]) -> dict[str, Any]:
+    """Mandatory cancellation callable (registry hygiene) kept as
+    defense-in-depth, not a duplicate evaluator: by the time a finding
+    reaches here, `_detect_kemadruma` has already verified no flanking/
+    conjunct planet and Moon outside kendra, so a non-None finding always
+    yields an honest 'not cancelled' verdict. The function exists so
+    Kemadruma carries the same mandatory-callable shape as every other
+    dosha (CR-73's doctrine), not a second silent gate — mirrors the yoga
+    writer's own precedent that kemadruma_aristha's bhanga is "left
+    untouched, not duplicated"."""
+    ref = "bphs:kemadruma:anapha_durudhara_or_kendra_cancels"
+    flank = _moon_flanking_planets(chart_output)
+    if flank["house_2nd"] or flank["house_12th"] or flank["conjunct"]:
+        # Unreachable given _detect_kemadruma's own gate — defensive only.
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": "anapha_or_durudhara_or_conjunction",
+            "cancellation_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": "A planet flanks/conjoins the Moon — Anapha/Sunapha/Durudhara forms instead of Kemadruma.",
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "cancellation_na_reason": None,
+        "citation_ref": ref,
+        "citation_human": (
+            "No planet flanks or conjoins the Moon, and Moon is outside kendra from lagna — "
+            "Kemadruma stands uncancelled (benefic-aspect ground not evaluated, honest floor B.10)."
+        ),
+    }
+
+
+def _lord_afflicted(chart_output: dict[str, Any], planet: str) -> tuple[bool, list[str]]:
+    """True + grounds iff `planet` is debilitated or combust — read from the
+    same D1 graha positions/longitudes every other function in this writer
+    already consumes (EXALTATION_SIGNS/DEBILITATION_SIGNS/COMBUSTION_ORBS);
+    no new computation, no new data source."""
+    sign = _graha_in_sign(chart_output, planet)
+    grounds: list[str] = []
+    if DEBILITATION_SIGNS.get(planet) == sign:
+        grounds.append("debilitated")
+    if planet != "Sun":
+        orb = COMBUSTION_ORBS.get(planet)
+        if orb:
+            sun_long = _graha_longitude(chart_output, "Sun")
+            p_long = _graha_longitude(chart_output, planet)
+            d = abs(sun_long - p_long)
+            if d > 180:
+                d = 360 - d
+            if d <= orb:
+                grounds.append("combust")
+    return bool(grounds), grounds
+
+
+def _detect_daridra(chart_output: dict[str, Any]) -> dict[str, Any] | None:
+    """Daridra formation, per brahma_dosha_catalog's own stored narrative
+    ('11th lord in dusthana (6/8/12) or 2nd/11th lords afflicted'): the 11th
+    lord is in a dusthana, OR the 2nd or 11th lord is debilitated/combust."""
+    lord11 = _get_house_lord(chart_output, 11)
+    lord2 = _get_house_lord(chart_output, 2)
+    lord11_house = _graha_house(chart_output, lord11)
+    grounds: list[str] = []
+    if lord11_house in (6, 8, 12):
+        grounds.append(f"11L_{lord11}_in_dusthana_H{lord11_house}")
+    afflicted11, g11 = _lord_afflicted(chart_output, lord11)
+    if afflicted11:
+        grounds.append(f"11L_{lord11}_afflicted:{','.join(g11)}")
+    afflicted2, g2 = _lord_afflicted(chart_output, lord2)
+    if afflicted2:
+        grounds.append(f"2L_{lord2}_afflicted:{','.join(g2)}")
+    if not grounds:
+        return None
+    return {
+        "constituent_planets": sorted({lord11, lord2}),
+        "constituent_houses": [lord11_house],
+        "grounds": grounds,
+        "lord11": lord11, "lord2": lord2,
+    }
+
+
+def _load_wealth_ratification(conn: Any, chart_id: str, ayanamsha_id: str, subj: str) -> dict[str, Any] | None:
+    """Read ga_vichara's `varga_ratification` row (domain='wealth') for
+    `subj` (a PLANET_TO_SUBJECT code) — this IS the '11L/2L strength' signal
+    the brief calls for (cross-varga dignity agreement over the wealth-house
+    lords + Jupiter karaka), computed once by ga_vichara and never
+    re-derived here (§N.5 L1/L1.5-authority discipline). Returns None on any
+    DB error/absence — an honest gap, not a fabricated strength."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT value_num, value_jsonb FROM chart_vichara
+                WHERE chart_id = %s AND ayanamsha_id = %s
+                  AND vichara_family = 'varga_ratification' AND domain = 'wealth' AND subject = %s
+                LIMIT 1
+            """, (chart_id, ayanamsha_id, subj))
+            row = cur.fetchone()
+    except Exception as exc:
+        logger.warning(
+            "[ga_structural_writer] chart_vichara unavailable for daridra cancellation (chart=%s ayanamsha=%s): %s",
+            chart_id, ayanamsha_id, exc,
+        )
+        return None
+    if not row:
+        return None
+    # Orchestrator connections use psycopg3's dict_row factory (pipeline/
+    # orchestrator/db.py) — rows are dict-like, not tuples. See the sibling
+    # fix in _dhana_yoga_fires_for for the same bug class (KeyError: 0).
+    if isinstance(row, dict):
+        value_num, value_jsonb = row.get("value_num"), row.get("value_jsonb")
+    else:
+        value_num, value_jsonb = row[0], row[1]
+    if isinstance(value_jsonb, str):
+        try:
+            value_jsonb = json.loads(value_jsonb)
+        except Exception:
+            value_jsonb = {}
+    return {"ratification_factor": value_num, **(value_jsonb or {})}
+
+
+def _dhana_yoga_fires_for(conn: Any, chart_id: str, ayanamsha_id: str, planets: set[str]) -> list[str]:
+    """Fired `ga_yoga_firings` rows whose canonical_id names a dhana-family
+    yoga AND whose constituent_planets intersect `planets` — read-only L1
+    consumption (§N.5), never a second dhana detector."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT yoga_canonical_id, constituent_planets FROM ga_yoga_firings
+                WHERE chart_id = %s AND ayanamsha_id = %s AND fired = TRUE
+                  AND yoga_canonical_id ILIKE %s
+            """, (chart_id, ayanamsha_id, "%dhana%"))
+            rows = cur.fetchall()
+    except Exception as exc:
+        logger.warning(
+            "[ga_structural_writer] ga_yoga_firings unavailable for daridra cancellation (chart=%s ayanamsha=%s): %s",
+            chart_id, ayanamsha_id, exc,
+        )
+        return []
+    lowered = {p.lower() for p in planets}
+    hits: list[str] = []
+    for row in rows:
+        # Orchestrator connections use psycopg3's dict_row factory (pipeline/
+        # orchestrator/db.py) — rows are dict-like, not tuples. Access by
+        # column name, with a defensive fallback for any caller that still
+        # passes a tuple-row connection (e.g. a legacy standalone-CLI path).
+        if isinstance(row, dict):
+            cid, cp = row.get("yoga_canonical_id"), row.get("constituent_planets")
+        else:
+            cid, cp = row[0], row[1]
+        if isinstance(cp, str):
+            try:
+                cp = json.loads(cp)
+            except Exception:
+                cp = []
+        if any(str(p).lower() in lowered for p in (cp or [])):
+            hits.append(cid)
+    return hits
+
+
+def _cancel_daridra(
+    finding: dict[str, Any], chart_output: dict[str, Any],
+    conn: Any, chart_id: str, ayanamsha_id: str,
+) -> dict[str, Any]:
+    """Mandatory cancellation — brahma_dosha_catalog's own stored
+    cancellation_conditions for daridra ('dhana/raja yoga present' /
+    '11th lord retrograde-strong'); this implementation encodes the brief's
+    literal ground set (11L exalted / 2L-9L dhana structure fires), citing
+    ga_vichara for the 11L-strength ground (design §11 varga_ratification IS
+    the '11L/2L strength' signal) and ga_yoga_firings for the dhana-structure
+    ground — never re-deriving either."""
+    ref = "bphs:daridra:dhana_yoga_or_strong_wealth_lord_cancels"
+    lord11 = finding["lord11"]
+    lord9 = _get_house_lord(chart_output, 9)
+    subj11 = PLANET_TO_SUBJECT.get(lord11, lord11.upper())
+
+    grounds: list[str] = []
+
+    # Ground A: 11L exalted — ga_vichara varga_ratification (domain=wealth)
+    # is the cross-varga corroboration; fall back to the direct D1 sign
+    # check (same source _detect_daridra already reads) if vichara is dark.
+    vichara = _load_wealth_ratification(conn, chart_id, ayanamsha_id, subj11)
+    d1_dignity = (vichara or {}).get("d1_dignity")
+    if d1_dignity == "exalted":
+        grounds.append(f"11L_{lord11}_exalted_per_ga_vichara_varga_ratification")
+    elif EXALTATION_SIGNS.get(lord11) == _graha_in_sign(chart_output, lord11):
+        grounds.append(f"11L_{lord11}_exalted_d1")
+
+    # Ground B: 2L-9L (or 11L-anchored) dhana structure genuinely fires.
+    dhana_hits = _dhana_yoga_fires_for(conn, chart_id, ayanamsha_id, {finding["lord2"], lord9, lord11})
+    if dhana_hits:
+        grounds.append(f"dhana_structure_fires:{','.join(sorted(set(dhana_hits)))}")
+
+    if grounds:
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": ";".join(grounds),
+            "cancellation_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": (
+                "brahma_dosha_catalog daridra cancellation_conditions ('dhana/raja yoga present'): "
+                f"{'; '.join(grounds)} — Daridra does not serve as a finding."
+            ),
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "cancellation_na_reason": None,
+        "citation_ref": ref,
+        "citation_human": "Neither the 11th lord exaltation ground nor a fired dhana structure was found — Daridra stands uncancelled.",
+    }
+
+
+def _detect_kala_sarpa_dosha(chart_output: dict[str, Any]) -> dict[str, Any] | None:
+    """Wires the `kala_sarpa` dosha_label row directly to the SAME
+    genuinely-computed `_detect_kala_sarpa` function this writer already
+    runs per-varga (the `kala_sarpa_per_varga` fact) — no second detector
+    (CR-74's explicit instruction: 'do not build a second KS detector; wire
+    the label to the existing computed fact'). Only the malefic
+    'kala_sarpa' variant on D1 corresponds to this catalog canonical_id;
+    'kala_amrita' is a distinct catalog entry (kala_amrita_dosha) untouched
+    here."""
+    d1_state = _extract_chart_state(chart_output)
+    ks_result = _detect_kala_sarpa(d1_state)
+    if not ks_result["fires"] or ks_result["variant"] != "kala_sarpa":
+        return None
+    return {
+        "constituent_planets": ["Rahu", "Ketu"],
+        "constituent_houses": [ks_result["rahu_house"], ks_result["ketu_house"]],
+        "variant_name": ks_result["variant_name"],
+    }
+
+
+def _cancel_kala_sarpa(finding: dict[str, Any], chart_output: dict[str, Any]) -> dict[str, Any]:
+    """No separate cancellation layer — the verdict IS the genuinely-computed
+    kala_sarpa_per_varga fact (all 7 classical grahas hemmed with none
+    breaking the arc); a chart that reaches this function already passed
+    that whole-chart test, so there is no additional classical bhanga to
+    apply on top (mirrors kemadruma_aristha's own 'gated into formation, not
+    duplicated' precedent in the yoga writer). Present for
+    DOSHA_CANCELLATIONS registry hygiene (every entry has a non-None
+    callable, per the brief) — not a silent no-op."""
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "cancellation_na_reason": (
+            "verdict wired directly to the genuinely-computed kala_sarpa_per_varga fact — "
+            "no separate cancellation is layered on top of the whole-chart hemming test"
+        ),
+        "citation_ref": "ga_structural.kala_sarpa_per_varga:direct_wiring",
+        "citation_human": "Kala Sarpa label mirrors the computed per-varga verdict; no independent bhanga check applies.",
+    }
+
+
+# Bespoke, genuinely-computed detectors for the three doshas the register
+# names by ID (CR-72/73/74) — bypass `_evaluate_catalog_rule`'s generic
+# (narrative-string, always-fails-closed) evaluation entirely.
+BESPOKE_DOSHA_DETECTORS: dict[str, Callable[[dict[str, Any]], dict[str, Any] | None]] = {
+    "kemadruma": _detect_kemadruma,
+    "daridra": _detect_daridra,
+    "kala_sarpa": _detect_kala_sarpa_dosha,
+}
+
+# Mandatory cancellation callables — every entry here (and every dosha in
+# BESPOKE_DOSHA_DETECTORS) has one, even where the honest verdict is "no
+# additional classical bhanga applies" (kala_sarpa) or "already gated into
+# formation" (kemadruma). Signature: (finding, chart_output, conn, chart_id,
+# ayanamsha_id) -> {"bhanga_active", "bhanga_rule_fired",
+# "cancellation_na_reason", "citation_ref", "citation_human"}.
+DOSHA_CANCELLATIONS: dict[str, Callable[..., dict[str, Any]]] = {
+    "kemadruma": lambda finding, chart_output, conn, chart_id, ayanamsha_id: _cancel_kemadruma(finding, chart_output),
+    "daridra": _cancel_daridra,
+    "kala_sarpa": lambda finding, chart_output, conn, chart_id, ayanamsha_id: _cancel_kala_sarpa(finding, chart_output),
+}
+
+
 def _build_dosha_rows(
     conn: Any,
     chart_output: dict[str, Any],
@@ -2058,17 +2403,72 @@ def _build_dosha_rows(
     if dosha_catalog is not None:
         # ── DB catalog path ───────────────────────────────────────────────────
         for entry in dosha_catalog:
-            rule = entry.get("formation_rule_jsonb") or {}
-            fires, reason = _evaluate_catalog_rule(rule, chart_output)
-            if not fires:
-                continue
             dosha_name = entry["canonical_id"]
+            rule = entry.get("formation_rule_jsonb") or {}
+
+            # Lane 3 (Night-1) Deliverable C: kemadruma/daridra/kala_sarpa
+            # bypass the generic (narrative-string, always-fails-closed)
+            # evaluator entirely — bespoke, genuinely-computed detection.
+            catalog_only = False
+            bespoke_finding: dict[str, Any] | None = None
+            if dosha_name in BESPOKE_DOSHA_DETECTORS:
+                bespoke_finding = BESPOKE_DOSHA_DETECTORS[dosha_name](chart_output)
+                if bespoke_finding is None:
+                    continue  # genuinely does not form — honest absence, not a dark stub
+                fires, reason = True, f"bespoke_detector:{dosha_name}"
+            else:
+                fires, reason = _evaluate_catalog_rule(rule, chart_output)
+                if not fires:
+                    continue
+                # CR-72's decorative-stub pattern: "requires_pass" means the
+                # rule shape trivially passed without a real per-chart check
+                # (every sub-condition vacuously satisfied) — never served as
+                # a genuine firing; gated behind an explicit marker instead
+                # (Option 2 of the brief's §1.3(1)).
+                catalog_only = (reason == "requires_pass")
+
             name_en = entry.get("name_en", dosha_name)
             citations = entry.get("classical_citations") or {}
             source_chunks = entry.get("source_chunk_ids") or []
             constituents = _get_catalog_constituent_fact_ids(
                 conn, entry, chart_output, chart_id, ayanamsha_id
             )
+
+            # ── Mandatory cancellation check (CR-73 doctrine) ───────────────────
+            bhanga_active: bool | None = None
+            bhanga_rule_fired: str | None = None
+            cancellation_na_reason: str | None = None
+            cancellation_citation_ref: str | None = None
+            cancellation_citation_human: str | None = None
+            if not catalog_only:
+                if dosha_name in DOSHA_CANCELLATIONS:
+                    verdict = DOSHA_CANCELLATIONS[dosha_name](
+                        bespoke_finding, chart_output, conn, chart_id, ayanamsha_id,
+                    )
+                    bhanga_active = verdict.get("bhanga_active")
+                    bhanga_rule_fired = verdict.get("bhanga_rule_fired")
+                    cancellation_na_reason = verdict.get("cancellation_na_reason")
+                    cancellation_citation_ref = verdict.get("citation_ref")
+                    cancellation_citation_human = verdict.get("citation_human")
+                else:
+                    cancellation_na_reason = "no classical cancellation rule implemented"
+
+            if catalog_only:
+                fires_final: bool | None = None
+            elif bhanga_active:
+                fires_final = False  # cancelled — evaluated, not served as a finding
+            else:
+                fires_final = True
+
+            citation_human = (
+                f"Dosha {name_en} ({dosha_name}) labels chart {str(chart_id)[:8]} "
+                f"({ayanamsha_id}): {reason}."
+            )
+            if catalog_only:
+                citation_human += " [CATALOG-ONLY: formation shape not evaluated against this chart — not a finding.]"
+            elif bhanga_active and cancellation_citation_human:
+                citation_human += f" CANCELLED: {cancellation_citation_human}"
+
             rows.append(_base_row(
                 "dosha_label", dosha_name, "dosha_name",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
@@ -2080,16 +2480,20 @@ def _build_dosha_rows(
                     "source_chunk_ids": source_chunks,
                     "uncatalogued": False,
                     "fire_reason": reason,
+                    # Deliverable C additions (CR-72/73/74) ──────────────────
+                    "catalog_only": catalog_only,
+                    "fires": fires_final,
+                    "bhanga_active": bhanga_active,
+                    "bhanga_rule_fired": bhanga_rule_fired,
+                    "cancellation_na_reason": cancellation_na_reason,
+                    "cancellation_citation_ref": cancellation_citation_ref,
                 },
                 # Y-7 fix: same rationale as the yoga_label site above — single
                 # catalog-rule evaluation, not the writer's two-pass cross-check;
                 # demoted to the already-wired "single_pass" verification tier.
                 verif="single_pass",
                 source=f"brahma_dosha_catalog.label_pass/{eng_ver}",
-                citation_human=(
-                    f"Dosha {name_en} ({dosha_name}) labels chart {str(chart_id)[:8]} "
-                    f"({ayanamsha_id}): {reason}."
-                ),
+                citation_human=citation_human,
             ))
         return rows
 
@@ -2978,6 +3382,7 @@ def _build_special_state_rows(
     grahas_data = chart_output.get("grahas", [])
     sun_g = next((g for g in grahas_data if g["name"] == "Sun"), None)
     sun_long = float(sun_g.get("longitude", 0.0)) if sun_g else 0.0
+    lagna_sign_for_dignity = _get_lagna_sign(chart_output)
 
     for g in grahas_data:
         g_name = g["name"]
@@ -3046,26 +3451,59 @@ def _build_special_state_rows(
             citation_human=f"{g_name} exalted: {'yes' if is_exalt else 'no'} ({ayanamsha_id}).",
         ))
 
-        # Effective dignity modified by aspects (Y)
-        # Net benefic/malefic aspect impact modifies nominal dignity
-        benefic_aspect_score = 0.0
-        malefic_aspect_score = 0.0
-        benefics = {"Jupiter", "Venus", "Mercury"}
-        malefics = {"Saturn", "Mars", "Sun"}
+        # Effective dignity modified by aspects (Y) — v2 (design §10c)
+        # v2 replaces the 15° longitude-orb proximity test + fixed natural
+        # benefic/malefic sets with the file's OWN Parashari aspect model
+        # (PARASHARI_ASPECTS / _graha_aspects_house, used by _build_aspect_rows)
+        # and the file's OWN dynamic functional-class calculator
+        # (_get_functional_class_dynamic, used by _build_functional_class_rows).
+        # Total replacement, not a blend — see LANE1 brief §1.2.
+        g_house = int(g.get("house", 1))
+        contributions: list[dict[str, Any]] = []
+        net_modification = 0.0
         for g2 in grahas_data:
-            if g2["name"] == g_name:
+            g2_name = g2["name"]
+            if g2_name == g_name:
                 continue
-            g2_long = float(g2.get("longitude", 0.0))
-            orb = abs(long_deg - g2_long)
-            if orb > 180:
-                orb = 360 - orb
-            if orb < 15.0:
-                if g2["name"] in benefics:
-                    benefic_aspect_score += 0.25
-                elif g2["name"] in malefics:
-                    malefic_aspect_score += 0.25
+            g2_house = int(g2.get("house", 1))
 
-        net_modification = benefic_aspect_score - malefic_aspect_score
+            if g2_house == g_house:
+                # Same-house conjunction = association at full strength
+                # (preserves the old formula's core "close proximity matters" case).
+                aspect_strength = 1.0
+            else:
+                aspect_strength = _graha_aspects_house(g2_name, g2_house, g_house)
+
+            if aspect_strength == 0.0:
+                continue  # no Parashari aspect on this house — contributes 0, regardless of longitude
+
+            functional_class = _get_functional_class_dynamic(g2_name, lagna_sign_for_dignity)
+            used_fallback = False
+            if not functional_class:
+                # g2 outside _get_functional_class_dynamic's domain (e.g. nodes on some builds)
+                functional_class = "functional_benefic" if g2_name in _NATURAL_BENEFICS else (
+                    "functional_malefic" if g2_name in _NATURAL_MALEFICS else "neutral"
+                )
+                used_fallback = True
+
+            if functional_class in _BENEFIC_FUNCTIONAL_CLASSES:
+                delta = 0.25 * aspect_strength
+            elif functional_class in _MALEFIC_FUNCTIONAL_CLASSES:
+                delta = -0.25 * aspect_strength
+            else:
+                delta = 0.0
+
+            net_modification += delta
+            contribution: dict[str, Any] = {
+                "graha": g2_name,
+                "aspect_strength": aspect_strength,
+                "functional_class": functional_class,
+                "delta": round(delta, 4),
+            }
+            if used_fallback:
+                contribution["fallback"] = "natural_class"
+            contributions.append(contribution)
+
         dignity_scores = {"exalted": 1.0, "own_sign": 0.75, "neutral": 0.5, "debilitated": 0.25}
         base_dignity_score = dignity_scores.get(dignity, 0.5)
         effective_dignity_score = round(min(max(base_dignity_score + net_modification * 0.1, 0.0), 1.0), 4)
@@ -3074,11 +3512,17 @@ def _build_special_state_rows(
             "graha_effective_dignity_modified_by_aspects", subject, "effective_dignity_score",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=effective_dignity_score,
+            value_jsonb={
+                "formula": "parashari_aspect_functional_v2",
+                "base_dignity": base_dignity_score,
+                "contributions": contributions,
+            },
             verif="two_pass_verified",
-            source=f"pyjhora_adapter.effective_dignity/{eng_ver}",
+            source=f"ga_structural.effective_dignity_v2/{eng_ver}",
             citation_human=(
                 f"{g_name} effective dignity: {effective_dignity_score:.4f} "
-                f"(base: {base_dignity_score:.2f}, net_aspect_mod: {net_modification:.2f}) ({ayanamsha_id})."
+                f"(base: {base_dignity_score:.2f}, net_aspect_mod: {net_modification:.4f}, "
+                f"formula: parashari_aspect_functional_v2) ({ayanamsha_id})."
             ),
         ))
 
@@ -6267,6 +6711,65 @@ def _build_contradiction_pair_rows(
     return rows
 
 
+# ── §10a registry: one entry per fact family, module-level + ordered ─────────
+#
+# STRUCTURAL_SUB_BUILDERS enumerates every `_build_*_rows` family function in
+# this module for completeness auditing (a future family cannot be silently
+# dropped without failing the registry-completeness test). `kind` distinguishes
+# families the driver (`build_ga_structural_substep`) invokes directly
+# ("top_level") from families invoked internally by a top_level parent
+# ("nested" — e.g. every per-varga family lives inside the `varga_aspect`
+# loop in `_build_varga_aspect_rows`, which is itself top_level). Nested
+# entries are NOT re-invoked by the driver — re-registering them at the top
+# level would double-count/duplicate rows and change behavior, which this
+# lane's mechanical-refactor discipline (§1.1.4) forbids.
+STRUCTURAL_SUB_BUILDERS: list[tuple[str, Callable[..., list[dict[str, Any]]], str, str | None]] = [
+    ("aspects", _build_aspect_rows, "top_level", None),
+    ("shadbala_extension", _build_shadbala_extension_rows, "top_level", None),
+    ("bhava_bala_extended", _build_bhava_bala_extended_rows, "top_level", None),
+    ("anubindu", _build_anubindu_rows, "top_level", None),
+    ("vimsopaka_ext", _build_vimsopaka_ext_rows, "top_level", None),
+    ("yoga", _build_yoga_rows, "top_level", None),
+    ("dosha", _build_dosha_rows, "top_level", None),
+    ("avastha", _build_avastha_rows, "top_level", None),
+    ("composite_strength", _build_composite_strength_rows, "top_level", None),
+    ("functional_class", _build_functional_class_rows, "top_level", None),
+    ("karakatva", _build_karakatva_rows, "top_level", None),
+    ("structural_relationship", _build_structural_relationship_rows, "top_level", None),
+    ("special_state", _build_special_state_rows, "top_level", None),
+    ("esoteric", _build_esoteric_rows, "top_level", None),
+    ("varga_aspect", _build_varga_aspect_rows, "top_level", None),
+    ("special_point_relationship", _build_special_point_relationship_rows, "top_level", None),
+    ("graha_yuddha", _build_graha_yuddha_rows, "top_level", None),
+    ("combustion_retrograde_relationship", _build_combustion_retrograde_relationship_rows, "top_level", None),
+    ("nakshatra_relationship", _build_nakshatra_relationship_rows, "top_level", None),
+    ("nakshatra_dispositor_chain", _build_nakshatra_dispositor_chain_rows, "top_level", None),
+    ("bhava_chalit_divergence", _build_bhava_chalit_divergence_rows, "top_level", None),
+    ("significator_path", _build_significator_path_rows, "top_level", None),
+    ("contradiction_pair", _build_contradiction_pair_rows, "top_level", None),
+    # Nested — invoked per-varga inside _build_varga_aspect_rows:
+    ("varga_relationship_per_varga", _build_varga_relationship_rows, "nested", "varga_aspect"),
+    ("karaka_web_per_varga", _build_karaka_web_rows, "nested", "varga_aspect"),
+    ("argala_per_varga", _build_argala_rows, "nested", "varga_aspect"),
+    ("sambandha_per_varga", _build_sambandha_per_varga_rows, "nested", "varga_aspect"),
+    ("bhava_web_per_varga", _build_bhava_web_per_varga_rows, "nested", "varga_aspect"),
+    ("net_argala_per_varga", _build_net_argala_per_varga_rows, "nested", "varga_aspect"),
+    ("graha_yuddha_per_varga", _build_graha_yuddha_per_varga_rows, "nested", "varga_aspect"),
+    ("combustion_per_varga", _build_combustion_per_varga_rows, "nested", "varga_aspect"),
+    ("nway_per_varga", _build_nway_per_varga_rows, "nested", "varga_aspect"),
+    ("virupa_drishti_per_varga", _build_virupa_drishti_rows, "nested", "varga_aspect"),
+    ("graph_centrality_per_varga", _build_graph_centrality_per_varga_rows, "nested", "varga_aspect"),
+    ("dispositor_tree_per_varga", _build_dispositor_tree_per_varga_rows, "nested", "varga_aspect"),
+    ("chart_cluster_per_varga", _build_chart_cluster_per_varga_rows, "nested", "varga_aspect"),
+    ("chart_cog_per_varga", _build_chart_cog_per_varga_rows, "nested", "varga_aspect"),
+    ("convergence_count_per_varga", _build_convergence_count_per_varga_rows, "nested", "varga_aspect"),
+    ("karaka_bhava_concordance_per_varga", _build_karaka_bhava_concordance_per_varga_rows, "nested", "varga_aspect"),
+    # Nested two levels deep — invoked inside _build_varga_relationship_rows,
+    # which is itself nested inside _build_varga_aspect_rows:
+    ("house_lord_matrix_per_varga", _build_house_lord_matrix_rows, "nested", "varga_relationship_per_varga"),
+]
+
+
 def build_ga_structural_substep(
     chart_id: str,
     build_id: str,
@@ -6279,6 +6782,13 @@ def build_ga_structural_substep(
     """Build GA8 for ONE ayanamsha. Called by the HEAVY orchestrator per sub-step.
     Returns rows_inserted count.
     yoga_catalog / dosha_catalog may be pre-loaded by the caller to avoid repeat DB queries.
+
+    Thin driver (design §10a): loads shared chart state once, then iterates the
+    "top_level" entries of STRUCTURAL_SUB_BUILDERS in registered order,
+    concatenating rows, before the single existing INSERT INTO chart_facts +
+    delete-then-insert idempotency (§N.3) scoped to (chart_id, ayanamsha_id).
+    "nested" entries are invoked internally by their parent top_level family
+    (see registry comment above) and are not called again here.
     """
     bp = resolve_birth_params(chart_id, birth_params)
     computed_at = datetime.now(timezone.utc).isoformat()
@@ -6295,52 +6805,71 @@ def build_ga_structural_substep(
     if dosha_catalog is None:
         dosha_catalog = _load_dosha_catalog(conn)
 
-    all_rows: list[dict[str, Any]] = []
-    all_rows.extend(_build_aspect_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_shadbala_extension_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn))
-    all_rows.extend(_build_bhava_bala_extended_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_anubindu_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_vimsopaka_ext_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_yoga_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
-    all_rows.extend(_build_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
-    all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_composite_strength_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn))
-    all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
-    all_rows.extend(_build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver))
-    all_rows.extend(_build_special_point_relationship_rows(
-        conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-    all_rows.extend(_build_graha_yuddha_rows(
-        chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-    all_rows.extend(_build_combustion_retrograde_relationship_rows(
-        chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-
-    # Phase-3 blind-spot builders
-    all_rows.extend(_build_nakshatra_relationship_rows(
-        conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-    all_rows.extend(_build_nakshatra_dispositor_chain_rows(
-        conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
-    all_rows.extend(_build_bhava_chalit_divergence_rows(
-        conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
     d1_varga_state = _extract_chart_state(chart_output)
-    all_rows.extend(_build_significator_path_rows(
-        chart_output, d1_varga_state, "D1",
-        chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
+    all_rows: list[dict[str, Any]] = []
 
-    all_rows.extend(_build_contradiction_pair_rows(
-        all_rows, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
-    ))
+    # Per-family argument builders, keyed by the registry's family_key. Each
+    # closure is called with zero args at iteration time; it captures the
+    # chart state loaded once above. `all_rows` is captured by reference so
+    # "contradiction_pair" (last in registered order) sees every row emitted
+    # by the families before it — identical to the pre-refactor call shape.
+    family_call: dict[str, Callable[[], list[dict[str, Any]]]] = {
+        "aspects": lambda: _build_aspect_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "shadbala_extension": lambda: _build_shadbala_extension_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn),
+        "bhava_bala_extended": lambda: _build_bhava_bala_extended_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "anubindu": lambda: _build_anubindu_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "vimsopaka_ext": lambda: _build_vimsopaka_ext_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "yoga": lambda: _build_yoga_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None),
+        "dosha": lambda: _build_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None),
+        "avastha": lambda: _build_avastha_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "composite_strength": lambda: _build_composite_strength_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "functional_class": lambda: _build_functional_class_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "karakatva": lambda: _build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "structural_relationship": lambda: _build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn),
+        "special_state": lambda: _build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "esoteric": lambda: _build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
+        "varga_aspect": lambda: _build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "special_point_relationship": lambda: _build_special_point_relationship_rows(
+            conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "graha_yuddha": lambda: _build_graha_yuddha_rows(
+            chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "combustion_retrograde_relationship": lambda: _build_combustion_retrograde_relationship_rows(
+            chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        # Phase-3 blind-spot builders
+        "nakshatra_relationship": lambda: _build_nakshatra_relationship_rows(
+            conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "nakshatra_dispositor_chain": lambda: _build_nakshatra_dispositor_chain_rows(
+            conn, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "bhava_chalit_divergence": lambda: _build_bhava_chalit_divergence_rows(
+            conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "significator_path": lambda: _build_significator_path_rows(
+            chart_output, d1_varga_state, "D1",
+            chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+        "contradiction_pair": lambda: _build_contradiction_pair_rows(
+            all_rows, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
+    }
+
+    family_row_counts: dict[str, int] = {}
+    for family_key, _builder_fn, kind, _parent in STRUCTURAL_SUB_BUILDERS:
+        if kind != "top_level":
+            continue
+        family_rows = family_call[family_key]()
+        all_rows.extend(family_rows)
+        family_row_counts[family_key] = len(family_rows)
+
+    logger.info(
+        "[ga_structural_writer] substep ayanamsha=%s per-family row counts: %s",
+        ayanamsha_id, family_row_counts,
+    )
 
     # Two-pass verification
     try:

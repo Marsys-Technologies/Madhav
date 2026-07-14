@@ -7,6 +7,7 @@ NEVER writes to any bodha_* table.
 Reads kala_activation_predicates (written by ka_yojaka), runs Mode A + Mode B
 convergence search, inserts ranked windows into kala_convergence.
 """
+import hashlib
 import json
 import logging
 from datetime import date
@@ -24,19 +25,22 @@ from services.ka_sangam.engine import (
     relative_confidence_labels,
     independent_current_count,
     _date_to_jd,
+    _NAK_NAME_TO_IDX,
     EnrichmentContext,
+    NativeChartContext,
+    derive_sade_sati_signs,
+    derive_sade_sati_severity,
 )
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 
-# Native birth location (Bhubaneswar, Odisha) — required by muhurta/panchanga service.
-# lat/lon from FORENSIC data; tz_offset_minutes = 330 (IST = UTC+5:30).
-_NATIVE_LOCATION: dict = {
-    'lat': 20.2961,
-    'lon': 85.8245,
-    'tz_offset_minutes': 330,
-}
+# CR-87 fix: the module-level _NATIVE_LOCATION constant (hardcoded to
+# Bhubaneswar, lat/lon of chart 482012f1) has been DELETED — not defaulted.
+# Every chart's location, janma nakshatra, and Moon sign are now resolved
+# per-chart in plan_substeps() via _resolve_native_chart_context() and carried
+# on self._native_ctx (a NativeChartContext). No fallback to Bhubaneswar
+# anywhere in this writer's production path.
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +65,11 @@ _MAX_PREDICATES = 200  # raised from 60: covers ~0.3% of 66,738 signals at full 
 # U2 lifetime tier: dāśā-boundary-anchored convergence over the native's full life.
 _LIFETIME_HORIZON_YEARS = 100   # birth_date → birth_date + 100y
 _LIFETIME_MAX_PREDICATES = 60   # raised from 24: broader lifetime evidence
+
+# Bump when substep SEMANTICS change (what a given substep_key computes/writes),
+# so any in-flight resume ledger from an older writer is treated as a different
+# build and replanned-all rather than resumed against stale semantics.
+_KA_SANGAM_RESUME_VERSION = 1
 _LIFETIME_MAX_ROWS = 40_000     # raised from 13k to match expanded predicate budget
 
 
@@ -100,7 +109,12 @@ class KaSangamWriter(WriterBase):
                 FROM kala_activation_predicates p
                 LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
                 WHERE p.chart_id = %s
-                ORDER BY s.dignity_score DESC NULLS LAST
+                -- p.id is a STABLE tiebreaker: without it, ties in dignity_score
+                -- give arbitrary DB order, so 'lifetime:i' could refer to a
+                -- different predicate across resume attempts (silent skip/orphan).
+                -- With it, the substep→predicate mapping is deterministic for a
+                -- fixed predicate set — a hard prerequisite for correct resumption.
+                ORDER BY s.dignity_score DESC NULLS LAST, p.id ASC
                 LIMIT %s
                 """,
                 (chart_id, _MAX_PREDICATES),
@@ -182,6 +196,12 @@ class KaSangamWriter(WriterBase):
         # Build U3 enrichment context (C7/C11/C12/C13 currents)
         self._enrichment_ctx = self._build_enrichment_context(conn, chart_id)
 
+        # CR-87: resolve THIS chart's janma nakshatra, Moon sign, and birth
+        # location — never another chart's hardcoded values.
+        self._native_ctx = self._resolve_native_chart_context(
+            conn, chart_id, ctx.config.get('birth_params'),
+        )
+
         # Birth year for lifetime horizon
         self._birth_year = self._derive_birth_year(conn, chart_id)
 
@@ -190,7 +210,46 @@ class KaSangamWriter(WriterBase):
         for i, p in enumerate(self._lt_preds):
             sc = p.get('signature_class', '')
             steps.append(SubStep(key=f'lifetime:{i}', label=f'Lifetime pred {i} ({sc})'))
-        return steps
+
+        # ── Cross-attempt substep resumption (migration 436 build_substep_progress) ──
+        # This writer's ~61 substeps (each lifetime substep is a 100-year convergence
+        # scan) can outlast a single DB connection through the Cloud SQL Auth Proxy.
+        # Without resumption, every retry re-ran ALL substeps from scratch and could
+        # never finish. Here plan_substeps() decides — per §N.3 (delete-then-insert
+        # REPLACES, never accretes) — whether to RESUME (skip already-committed
+        # substeps of the SAME build) or REPLAN-ALL (a changed/first build). All of
+        # this lives in the writer; the FROZEN orchestrator/WriterBase contract is
+        # untouched (the orchestrator still owns the per-substep transaction/savepoint;
+        # this method only returns a (possibly shorter) substep list).
+        self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
+        self._resume_skipped = 0
+        if getattr(ctx, 'dry_run', False):
+            return steps  # dry runs never delete data or touch the ledger
+
+        completed = self._load_completed_substeps(conn, chart_id, self._resume_fingerprint)
+        if completed is None:
+            # First run, or a prior/changed build (fingerprint mismatch). Delete-and-
+            # replan-all: clear EVERY kala_convergence row for this chart + the stale
+            # ledger, then run all substeps fresh — no stale accretion possible. (These
+            # deletes ride the orchestrator's ambient transaction and commit atomically
+            # with the first substep; if the connection dies before that commit they
+            # roll back, leaving the prior data intact for the next attempt.)
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s", (chart_id,))
+                cur.execute(
+                    "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
+                    (chart_id,),
+                )
+            logger.info("ka_sangam: fresh/replan build for chart %s — %d substeps", chart_id, len(steps))
+            return steps
+
+        remaining = [s for s in steps if s.key not in completed]
+        self._resume_skipped = len(steps) - len(remaining)
+        logger.info(
+            "ka_sangam: RESUMING build for chart %s — %d/%d substeps already committed, %d remaining",
+            chart_id, self._resume_skipped, len(steps), len(remaining),
+        )
+        return remaining
 
     # ── dispatch ─────────────────────────────────────────────────────────────
 
@@ -205,6 +264,64 @@ class KaSangamWriter(WriterBase):
         idx = int(step.key.split(':', 1)[1])
         return self._substep_lifetime(conn, chart_id, idx, dry_run)
 
+    # ── resumption helpers (migration 436) ────────────────────────────────────
+
+    def _compute_build_fingerprint(self, chart_id: str) -> str:
+        """Stable identity of THIS build's inputs — deliberately NOT the per-attempt
+        run_id/build_id (which changes on every retry, so keying resume on it would
+        treat each retry as a new build and never actually resume). Two attempts
+        with the same upstream predicate set, writer version, birth year, and
+        near-tier reference date belong to the SAME build and may resume across a
+        dropped connection; any change to those inputs replans-all (§N.3). `today`
+        is included because the near tier is date-relative — a build that legitimately
+        crosses midnight should replan its near tier rather than resume it stale."""
+        sig_ids = sorted(str(p.get('signal_id')) for p in self._pred_dicts if p.get('signal_id'))
+        parts = [
+            f"v={_KA_SANGAM_RESUME_VERSION}",
+            f"chart={chart_id}",
+            f"birth_year={self._birth_year}",
+            f"today={date.today().isoformat()}",
+            f"npreds={len(sig_ids)}",
+            "sigs=" + ",".join(sig_ids),
+        ]
+        return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+
+    def _load_completed_substeps(self, conn, chart_id: str, fingerprint: str) -> "set[str] | None":
+        """Substep keys already committed for the CURRENT build (fingerprint match)
+        → caller skips them (resume). Returns None when the ledger is empty (first
+        run) OR holds any row from a different fingerprint (a prior/changed build)
+        → caller deletes-all and replans fresh."""
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT substep_key, build_fingerprint FROM build_substep_progress "
+                "WHERE chart_id = %s AND asset_id = 'ka_sangam'",
+                (chart_id,),
+            )
+            rows = cur.fetchall()
+        if not rows:
+            return None
+        if {r['build_fingerprint'] for r in rows} != {fingerprint}:
+            return None
+        return {r['substep_key'] for r in rows}
+
+    def _record_substep(self, conn, chart_id: str, substep_key: str, rows: int) -> None:
+        """Record this substep's completion in the resumption ledger, INSIDE the
+        orchestrator-owned per-substep transaction — so the ledger row commits
+        atomically with the substep's data rows (durable iff the data is durable,
+        rolled back with it on failure). The writer never commits/rolls back/closes;
+        the FROZEN orchestrator contract is untouched."""
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO build_substep_progress
+                       (chart_id, asset_id, substep_key, build_fingerprint, rows_written, completed_at)
+                   VALUES (%s, 'ka_sangam', %s, %s, %s, now())
+                   ON CONFLICT (chart_id, asset_id, substep_key)
+                   DO UPDATE SET build_fingerprint = EXCLUDED.build_fingerprint,
+                                 rows_written      = EXCLUDED.rows_written,
+                                 completed_at      = EXCLUDED.completed_at""",
+                (chart_id, substep_key, self._resume_fingerprint, rows),
+            )
+
     # ── substep implementations ───────────────────────────────────────────────
 
     def _substep_near(self, conn, chart_id: str, dry_run: bool) -> WriterResult:
@@ -213,12 +330,17 @@ class KaSangamWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'near'",
                         (chart_id,))
-            # Clear lifetime rows here so stale rows are removed even when
-            # _lt_preds is empty and _substep_lifetime is never called.
-            cur.execute(
-                "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
-                (chart_id,),
-            )
+            # Self-scoped delete: only bulk-clear lifetime rows when there are NO
+            # lifetime substeps to clear their own (each _substep_lifetime clears
+            # its own signal's rows). Making every substep touch only its own rows
+            # is what lets a resumed attempt skip already-committed substeps without
+            # wiping another substep's committed data — and is what makes a
+            # resumed run byte-identical to an uninterrupted one.
+            if not self._lt_preds:
+                cur.execute(
+                    "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
+                    (chart_id,),
+                )
 
         today        = date.today()
         horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
@@ -236,6 +358,7 @@ class KaSangamWriter(WriterBase):
             keepalive         = _keepalive,
             enrichment_context= self._enrichment_ctx,
             muhurta_service   = self._muhurta,
+            native_ctx        = self._native_ctx,
         )
         near_deduped = self._dedup(near_windows)
         logger.info("ka_sangam: NEAR tier — %d windows for chart %s", len(near_deduped), chart_id)
@@ -244,6 +367,7 @@ class KaSangamWriter(WriterBase):
         if not dry_run:
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
+            self._record_substep(conn, chart_id, 'near', rows)
         return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
 
     def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
@@ -278,6 +402,7 @@ class KaSangamWriter(WriterBase):
             keepalive         = _keepalive,
             enrichment_context= self._enrichment_ctx,
             muhurta_service   = self._muhurta,
+            native_ctx        = self._native_ctx,
         )
         deduped = self._dedup(windows)
         logger.info("ka_sangam: LIFETIME pred %d/%d — %d windows for chart %s",
@@ -287,12 +412,14 @@ class KaSangamWriter(WriterBase):
         if not dry_run:
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
+            self._record_substep(conn, chart_id, f'lifetime:{idx}', rows)
         return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
     def _generate_windows(self, pred_dicts, horizon_start, horizon_end,
                           dasha_kala_service, gochara_service, chart_id,
+                          native_ctx: 'NativeChartContext',
                           keepalive=None, enrichment_context=None,
                           muhurta_service=None) -> list[dict]:
         """Run Mode A + Mode B (or Mode C for SUBSYSTEM) for every predicate.
@@ -302,6 +429,8 @@ class KaSangamWriter(WriterBase):
         keepalive: optional callable to prevent idle-in-transaction timeout.
         enrichment_context: EnrichmentContext for U3 current scoring.
         muhurta_service: KaMuhurtaSevaService for panchanga_quality + tara_bala.
+        native_ctx: CR-87 — THIS chart's resolved NativeChartContext (janma
+          nakshatra, Moon sign, location). Never another chart's values.
         B4-src: stamps primary_domain onto every window dict produced.
         """
         horizon_start_jd = _date_to_jd(horizon_start)
@@ -321,6 +450,7 @@ class KaSangamWriter(WriterBase):
                         horizon_start_jd=horizon_start_jd,
                         horizon_end_jd=horizon_end_jd,
                         gochara_service=gochara_service,
+                        moon_sign=native_ctx.moon_sign,
                         enrichment_context=enrichment_context,
                     )
                     for w in new_windows:
@@ -341,8 +471,9 @@ class KaSangamWriter(WriterBase):
                     gochara_service=gochara_service,
                     muhurta_service=muhurta_service,
                     chart_id=chart_id,
+                    janma_nakshatra_idx=native_ctx.janma_nakshatra_idx,
                     enrichment_context=enrichment_context,
-                    native_location=_NATIVE_LOCATION,
+                    native_location=native_ctx.location,
                 )
                 for w in new_windows_a:
                     w['primary_domain'] = primary_domain
@@ -358,10 +489,11 @@ class KaSangamWriter(WriterBase):
                     horizon_start_jd=horizon_start_jd,
                     horizon_end_jd=horizon_end_jd,
                     gochara_service=gochara_service,
+                    janma_nakshatra_idx=native_ctx.janma_nakshatra_idx,
                     magnitude_threshold=0.3,
                     enrichment_context=enrichment_context,
                     muhurta_service=muhurta_service,
-                    native_location=_NATIVE_LOCATION,
+                    native_location=native_ctx.location,
                 )
                 for w in new_windows_b:
                     w['primary_domain'] = primary_domain
@@ -393,6 +525,128 @@ class KaSangamWriter(WriterBase):
                 if keepalive:
                     keepalive()
         return all_windows
+
+    def _resolve_native_chart_context(self, conn, chart_id: str, birth_params) -> 'NativeChartContext':
+        """CR-87 fix: resolve THIS chart's janma nakshatra, Moon sign, and
+        birth location from chart_facts / birth_params — never from another
+        chart's hardcoded values.
+
+        Fail-loud by design (LANE0_CR87_HOTFIX.md §2.2 item 4): if any of the
+        three required inputs cannot be resolved, raise rather than silently
+        falling back to 482012f1's (Abhisek's) values. A loud build failure is
+        the correct outcome — proceeding with another chart's constants is
+        exactly the CR-87 failure mode.
+        """
+        moon_nakshatra: str | None = None
+        moon_sign: str | None = None
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fact_key, fact_value_text
+                FROM chart_facts
+                WHERE chart_id = %s AND fact_subject = 'MOON'
+                  AND fact_key IN ('nakshatra', 'sign')
+                  AND ayanamsha_id = 'lahiri_chitrapaksha'
+                """,
+                (chart_id,),
+            )
+            # BUGFIX (Night-1 guardian rebuild): this connection uses psycopg3's
+            # dict_row factory (pipeline/orchestrator/db.py), so each fetched row is
+            # a dict, not a tuple. Positional unpacking ("for fact_key, fact_value_text
+            # in cur.fetchall()") iterates each dict's KEYS ("fact_key", "fact_value_text"
+            # — the literal column-name strings), never the actual values — so
+            # moon_nakshatra/moon_sign silently stayed None for every real chart,
+            # tripping CR-87's fail-loud guard. Same bug class as the ga_structural_writer
+            # dict-row fix (commit 8c96d000) — here in ka_sangam.py's own lookup.
+            for row in cur.fetchall():
+                fact_key, fact_value_text = row['fact_key'], row['fact_value_text']
+                if fact_key == 'nakshatra':
+                    moon_nakshatra = fact_value_text
+                elif fact_key == 'sign':
+                    moon_sign = fact_value_text
+
+        if not moon_nakshatra or moon_nakshatra not in _NAK_NAME_TO_IDX:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve Moon nakshatra for chart {chart_id} "
+                f"from chart_facts (fact_subject='MOON', fact_key='nakshatra', "
+                f"ayanamsha_id='lahiri_chitrapaksha') — got {moon_nakshatra!r}. "
+                "Refusing to fall back to another chart's janma nakshatra (CR-87)."
+            )
+        if not moon_sign:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve Moon sign for chart {chart_id} "
+                f"from chart_facts (fact_subject='MOON', fact_key='sign', "
+                f"ayanamsha_id='lahiri_chitrapaksha'). "
+                "Refusing to fall back to another chart's Moon sign (CR-87)."
+            )
+
+        janma_nakshatra_idx = _NAK_NAME_TO_IDX[moon_nakshatra]
+        sade_sati_signs    = derive_sade_sati_signs(moon_sign)
+        sade_sati_severity = derive_sade_sati_severity(sade_sati_signs)
+
+        location = self._resolve_birth_location(conn, chart_id, birth_params)
+
+        return NativeChartContext(
+            janma_nakshatra_idx=janma_nakshatra_idx,
+            moon_sign=moon_sign,
+            sade_sati_signs=sade_sati_signs,
+            sade_sati_severity=sade_sati_severity,
+            location=location,
+        )
+
+    @staticmethod
+    def _resolve_birth_location(conn, chart_id: str, birth_params) -> dict:
+        """CR-87: resolve this chart's birth location. Prefers
+        ctx.config['birth_params'] (orchestrator-supplied); falls back to a
+        direct public.charts query only if birth_params lacks lat/lon. Never
+        falls back to Bhubaneswar or any other specific native's coordinates.
+        """
+        if isinstance(birth_params, dict):
+            lat = birth_params.get('latitude_deg')
+            lon = birth_params.get('longitude_deg')
+            tz_hours = birth_params.get('tz_offset_hours')
+            if lat is not None and lon is not None and tz_hours is not None:
+                return {
+                    'lat': float(lat),
+                    'lon': float(lon),
+                    'tz_offset_minutes': int(round(float(tz_hours) * 60)),
+                }
+
+        # Fallback: query public.charts directly by chart_id (B.10 — never invent).
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT birth_lat, birth_lng, timezone_id
+                FROM public.charts
+                WHERE id = %s OR chart_id = %s
+                LIMIT 1
+                """,
+                (chart_id, chart_id),
+            )
+            row = cur.fetchone()
+
+        if not row or row[0] is None or row[1] is None:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve birth location for chart {chart_id} "
+                "from ctx.config['birth_params'] or public.charts. Refusing to "
+                "fall back to Bhubaneswar or any other chart's coordinates (CR-87)."
+            )
+
+        lat, lon, tzid = row[0], row[1], row[2]
+        try:
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            offset = ZoneInfo(tzid).utcoffset(datetime.now())
+            if offset is None:
+                raise ValueError(f"no utcoffset for {tzid!r}")
+            tz_offset_minutes = int(offset.total_seconds() / 60)
+        except Exception as exc:
+            raise RuntimeError(
+                f"ka_sangam: could not resolve UTC offset for chart {chart_id}'s "
+                f"timezone_id={tzid!r}: {exc}. Refusing to default to IST (CR-87)."
+            ) from exc
+
+        return {'lat': float(lat), 'lon': float(lon), 'tz_offset_minutes': tz_offset_minutes}
 
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
         """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""

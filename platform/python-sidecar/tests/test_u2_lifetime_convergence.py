@@ -42,6 +42,9 @@ class FakeCursor:
       - bodha_msr_signals          → dignity rows
       - kala_jivana_parva          → parva-boundary rows (lifetime anchors)
       - chart_dashas               → birth-date fallback (unused when parvas exist)
+      - chart_facts (fact_subject='MOON') → CR-87: janma nakshatra + Moon sign
+        (real, known values for CHART_ID=482012f1 — Purva Bhadrapada / Aquarius —
+        not fabricated; this chart's canonical facts, used here as a test fixture).
     """
     def __init__(self, store):
         self._store = store
@@ -79,6 +82,17 @@ class FakeCursor:
             ]
         elif 'kala_jivana_parva' in low:
             self._result = self._store['parvas']
+        elif "fact_subject = 'moon'" in low:
+            # CR-87: _resolve_native_chart_context's Moon nakshatra/sign query.
+            # Rows MUST be dict-shaped: the orchestrator connection uses psycopg3's
+            # dict_row factory (pipeline/orchestrator/db.py), and the writer now
+            # (correctly) reads row['fact_key']/row['fact_value_text'] by column name
+            # rather than positional unpacking. Returning tuples here would falsely
+            # fail against the fixed code — mirror the real dict_row shape.
+            self._result = [
+                {'fact_key': 'nakshatra', 'fact_value_text': 'Purva Bhadrapada'},
+                {'fact_key': 'sign', 'fact_value_text': 'Aquarius'},
+            ]
         elif 'chart_dashas' in low:
             self._result = [{'birth_date': date(1984, 2, 5)}]
         else:
@@ -114,7 +128,18 @@ class FakeConn:
 class FakeCtx:
     def __init__(self, conn):
         self.db_conn = conn
-        self.config = {'chart_id': CHART_ID}
+        # CR-87: birth_params carries this chart's real, known location
+        # (Bhubaneswar — the canonical native's actual birth place) so
+        # _resolve_native_chart_context() can resolve location without a
+        # public.charts round-trip in this DB-free fixture.
+        self.config = {
+            'chart_id': CHART_ID,
+            'birth_params': {
+                'latitude_deg': 20.2961,
+                'longitude_deg': 85.8245,
+                'tz_offset_hours': 5.5,
+            },
+        }
         self.dry_run = False
 
 
@@ -283,8 +308,13 @@ class TestAntiDrift:
             src = f.read()
         inserts = re.findall(r'INSERT INTO (\w+)', src)
         assert inserts, 'expected at least one INSERT'
+        # kala_convergence = the asset's data table; build_substep_progress = the
+        # cross-attempt resumption ledger (migration 436), written atomically inside
+        # the orchestrator's per-substep transaction. Both are legitimate; anything
+        # else (esp. a phala_* or another asset's table) would be real drift.
+        allowed = {'kala_convergence', 'build_substep_progress'}
         for tbl in inserts:
-            assert tbl == 'kala_convergence', f'unexpected INSERT target: {tbl}'
+            assert tbl in allowed, f'unexpected INSERT target: {tbl}'
 
     def test_writer_writes_no_phala_table(self):
         path = os.path.join(
