@@ -200,6 +200,32 @@ class TestAspectValenceIngestion(unittest.TestCase):
         self.assertEqual(entry["strength"], 1.0)
         self.assertEqual(entry["fact_id"], "f1")
 
+    def test_aspect_strength_decimal_from_db_is_json_serializable(self):
+        """Regression: psycopg returns NUMERIC columns as decimal.Decimal, not
+        float. fact_value_num from a real DB row is a Decimal — if
+        VicharaFactIndex stores it verbatim, build_aspect_valence_rows'
+        value_jsonb['aspect_strength'] carries a Decimal straight into
+        _insert_rows' json.dumps(), which raises
+        TypeError: Object of type Decimal is not JSON serializable.
+        Caught live during the D-1.5a wave rebuild (ga_vichara errored on
+        every chart) — fixtures elsewhere in this file use plain floats and
+        never exercised this path."""
+        from decimal import Decimal
+        facts = [
+            _link_fact("l1", "D1", "lord_placed", "Mars", src_h=8, tgt_h=8, link_type="dusthana"),
+            _aspect_fact("a1", "D1", "MAR", source_house=8, target_house=2, offset=7, strength=Decimal("1.0218")),
+        ]
+        idx = VicharaFactIndex(facts)
+        entry = idx.aspects_by_varga["D1"][0]
+        self.assertNotIsInstance(entry["strength"], Decimal)
+        self.assertIsInstance(entry["strength"], float)
+
+        rows = build_aspect_valence_rows(idx, "D1", VALENCE_MATRIX)
+        self.assertEqual(len(rows), 1)
+        # Must not raise — this is the actual failure mode from the live rebuild.
+        json.dumps(rows[0]["value_jsonb"])
+        self.assertNotIsInstance(rows[0]["value_jsonb"]["aspect_strength"], Decimal)
+
     def test_dusthana_lord_aspect_on_wealth_house_is_strong_malefic(self):
         """The headline case per A2's brief: a dusthāna-lord graha's raw
         Parashari aspect landing on a wealth house (2/11) must read
