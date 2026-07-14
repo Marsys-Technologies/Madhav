@@ -55,6 +55,17 @@ export interface TrimmableSection<T> {
   recover: { instrument: string; hint: string }
   /** Human label used in the trim_report reason string. */
   label: string
+  /** D-1.5a wave gate finding (live rebuild verification, 2026-07-15): PASS 2's hard-cap
+   *  fallback floors EVERY declared section to 0, overriding minKeep, ranked biggest-
+   *  current-size-first. A section that used to be reliably empty/tiny (e.g.
+   *  judgment_query's bearing_yogas before its firings-authoritative fix landed) and is
+   *  now genuinely populated becomes, simply by virtue of no longer being empty, the
+   *  biggest remaining candidate — and gets silently zeroed by PASS 2, defeating the very
+   *  fix that populated it. `hardFloor: true` exempts a section from PASS 2's override:
+   *  its declared `minKeep` is respected even under the hard-cap fallback. Default
+   *  (undefined/false) preserves existing behavior for every other caller/section —
+   *  this is opt-in, not a change to PASS 2's general semantics. */
+  hardFloor?: boolean
 }
 
 export interface BudgetResult<T> {
@@ -173,7 +184,7 @@ export function applyResponseBudget<T>(
 
     for (const { section, arr } of ranked) {
       if (estimateBytes(content) <= maxBytes) break
-      const floor = floorOverride === 'zero' ? 0 : section.minKeep
+      const floor = floorOverride === 'zero' && !section.hardFloor ? 0 : section.minKeep
       if (arr.length <= floor) continue // nothing left to cut at this tier for this section
       const kept = shrinkSectionTo(content, section, arr, floor, maxBytes)
       if (kept < arr.length) {
