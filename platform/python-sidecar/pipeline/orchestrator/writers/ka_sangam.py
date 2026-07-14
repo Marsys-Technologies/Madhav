@@ -7,6 +7,7 @@ NEVER writes to any bodha_* table.
 Reads kala_activation_predicates (written by ka_yojaka), runs Mode A + Mode B
 convergence search, inserts ranked windows into kala_convergence.
 """
+import hashlib
 import json
 import logging
 from datetime import date
@@ -64,6 +65,11 @@ _MAX_PREDICATES = 200  # raised from 60: covers ~0.3% of 66,738 signals at full 
 # U2 lifetime tier: dāśā-boundary-anchored convergence over the native's full life.
 _LIFETIME_HORIZON_YEARS = 100   # birth_date → birth_date + 100y
 _LIFETIME_MAX_PREDICATES = 60   # raised from 24: broader lifetime evidence
+
+# Bump when substep SEMANTICS change (what a given substep_key computes/writes),
+# so any in-flight resume ledger from an older writer is treated as a different
+# build and replanned-all rather than resumed against stale semantics.
+_KA_SANGAM_RESUME_VERSION = 1
 _LIFETIME_MAX_ROWS = 40_000     # raised from 13k to match expanded predicate budget
 
 
@@ -103,7 +109,12 @@ class KaSangamWriter(WriterBase):
                 FROM kala_activation_predicates p
                 LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
                 WHERE p.chart_id = %s
-                ORDER BY s.dignity_score DESC NULLS LAST
+                -- p.id is a STABLE tiebreaker: without it, ties in dignity_score
+                -- give arbitrary DB order, so 'lifetime:i' could refer to a
+                -- different predicate across resume attempts (silent skip/orphan).
+                -- With it, the substep→predicate mapping is deterministic for a
+                -- fixed predicate set — a hard prerequisite for correct resumption.
+                ORDER BY s.dignity_score DESC NULLS LAST, p.id ASC
                 LIMIT %s
                 """,
                 (chart_id, _MAX_PREDICATES),
@@ -199,7 +210,46 @@ class KaSangamWriter(WriterBase):
         for i, p in enumerate(self._lt_preds):
             sc = p.get('signature_class', '')
             steps.append(SubStep(key=f'lifetime:{i}', label=f'Lifetime pred {i} ({sc})'))
-        return steps
+
+        # ── Cross-attempt substep resumption (migration 436 build_substep_progress) ──
+        # This writer's ~61 substeps (each lifetime substep is a 100-year convergence
+        # scan) can outlast a single DB connection through the Cloud SQL Auth Proxy.
+        # Without resumption, every retry re-ran ALL substeps from scratch and could
+        # never finish. Here plan_substeps() decides — per §N.3 (delete-then-insert
+        # REPLACES, never accretes) — whether to RESUME (skip already-committed
+        # substeps of the SAME build) or REPLAN-ALL (a changed/first build). All of
+        # this lives in the writer; the FROZEN orchestrator/WriterBase contract is
+        # untouched (the orchestrator still owns the per-substep transaction/savepoint;
+        # this method only returns a (possibly shorter) substep list).
+        self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
+        self._resume_skipped = 0
+        if getattr(ctx, 'dry_run', False):
+            return steps  # dry runs never delete data or touch the ledger
+
+        completed = self._load_completed_substeps(conn, chart_id, self._resume_fingerprint)
+        if completed is None:
+            # First run, or a prior/changed build (fingerprint mismatch). Delete-and-
+            # replan-all: clear EVERY kala_convergence row for this chart + the stale
+            # ledger, then run all substeps fresh — no stale accretion possible. (These
+            # deletes ride the orchestrator's ambient transaction and commit atomically
+            # with the first substep; if the connection dies before that commit they
+            # roll back, leaving the prior data intact for the next attempt.)
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s", (chart_id,))
+                cur.execute(
+                    "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
+                    (chart_id,),
+                )
+            logger.info("ka_sangam: fresh/replan build for chart %s — %d substeps", chart_id, len(steps))
+            return steps
+
+        remaining = [s for s in steps if s.key not in completed]
+        self._resume_skipped = len(steps) - len(remaining)
+        logger.info(
+            "ka_sangam: RESUMING build for chart %s — %d/%d substeps already committed, %d remaining",
+            chart_id, self._resume_skipped, len(steps), len(remaining),
+        )
+        return remaining
 
     # ── dispatch ─────────────────────────────────────────────────────────────
 
@@ -214,6 +264,64 @@ class KaSangamWriter(WriterBase):
         idx = int(step.key.split(':', 1)[1])
         return self._substep_lifetime(conn, chart_id, idx, dry_run)
 
+    # ── resumption helpers (migration 436) ────────────────────────────────────
+
+    def _compute_build_fingerprint(self, chart_id: str) -> str:
+        """Stable identity of THIS build's inputs — deliberately NOT the per-attempt
+        run_id/build_id (which changes on every retry, so keying resume on it would
+        treat each retry as a new build and never actually resume). Two attempts
+        with the same upstream predicate set, writer version, birth year, and
+        near-tier reference date belong to the SAME build and may resume across a
+        dropped connection; any change to those inputs replans-all (§N.3). `today`
+        is included because the near tier is date-relative — a build that legitimately
+        crosses midnight should replan its near tier rather than resume it stale."""
+        sig_ids = sorted(str(p.get('signal_id')) for p in self._pred_dicts if p.get('signal_id'))
+        parts = [
+            f"v={_KA_SANGAM_RESUME_VERSION}",
+            f"chart={chart_id}",
+            f"birth_year={self._birth_year}",
+            f"today={date.today().isoformat()}",
+            f"npreds={len(sig_ids)}",
+            "sigs=" + ",".join(sig_ids),
+        ]
+        return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+
+    def _load_completed_substeps(self, conn, chart_id: str, fingerprint: str) -> "set[str] | None":
+        """Substep keys already committed for the CURRENT build (fingerprint match)
+        → caller skips them (resume). Returns None when the ledger is empty (first
+        run) OR holds any row from a different fingerprint (a prior/changed build)
+        → caller deletes-all and replans fresh."""
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT substep_key, build_fingerprint FROM build_substep_progress "
+                "WHERE chart_id = %s AND asset_id = 'ka_sangam'",
+                (chart_id,),
+            )
+            rows = cur.fetchall()
+        if not rows:
+            return None
+        if {r['build_fingerprint'] for r in rows} != {fingerprint}:
+            return None
+        return {r['substep_key'] for r in rows}
+
+    def _record_substep(self, conn, chart_id: str, substep_key: str, rows: int) -> None:
+        """Record this substep's completion in the resumption ledger, INSIDE the
+        orchestrator-owned per-substep transaction — so the ledger row commits
+        atomically with the substep's data rows (durable iff the data is durable,
+        rolled back with it on failure). The writer never commits/rolls back/closes;
+        the FROZEN orchestrator contract is untouched."""
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO build_substep_progress
+                       (chart_id, asset_id, substep_key, build_fingerprint, rows_written, completed_at)
+                   VALUES (%s, 'ka_sangam', %s, %s, %s, now())
+                   ON CONFLICT (chart_id, asset_id, substep_key)
+                   DO UPDATE SET build_fingerprint = EXCLUDED.build_fingerprint,
+                                 rows_written      = EXCLUDED.rows_written,
+                                 completed_at      = EXCLUDED.completed_at""",
+                (chart_id, substep_key, self._resume_fingerprint, rows),
+            )
+
     # ── substep implementations ───────────────────────────────────────────────
 
     def _substep_near(self, conn, chart_id: str, dry_run: bool) -> WriterResult:
@@ -222,12 +330,17 @@ class KaSangamWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'near'",
                         (chart_id,))
-            # Clear lifetime rows here so stale rows are removed even when
-            # _lt_preds is empty and _substep_lifetime is never called.
-            cur.execute(
-                "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
-                (chart_id,),
-            )
+            # Self-scoped delete: only bulk-clear lifetime rows when there are NO
+            # lifetime substeps to clear their own (each _substep_lifetime clears
+            # its own signal's rows). Making every substep touch only its own rows
+            # is what lets a resumed attempt skip already-committed substeps without
+            # wiping another substep's committed data — and is what makes a
+            # resumed run byte-identical to an uninterrupted one.
+            if not self._lt_preds:
+                cur.execute(
+                    "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
+                    (chart_id,),
+                )
 
         today        = date.today()
         horizon_end  = date(today.year + _HORIZON_YEARS, today.month, today.day)
@@ -254,6 +367,7 @@ class KaSangamWriter(WriterBase):
         if not dry_run:
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
+            self._record_substep(conn, chart_id, 'near', rows)
         return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
 
     def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
@@ -298,6 +412,7 @@ class KaSangamWriter(WriterBase):
         if not dry_run:
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
+            self._record_substep(conn, chart_id, f'lifetime:{idx}', rows)
         return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
 
     # ── helpers ──────────────────────────────────────────────────────────────
