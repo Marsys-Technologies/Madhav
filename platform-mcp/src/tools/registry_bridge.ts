@@ -1820,6 +1820,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 3,
             recover: { instrument: 'get_signals', hint: 'full yoga+dosha+karaka_alignment signal set beyond the lean slice kept here — pass domain + a higher top_k. (SC-18: was "query_signals", a non-existent MCP tool name).' },
             label: 'checklist.bearing_yogas',
+            // D-1.5a wave gate finding: this is the firings-authoritative verdict-moving
+            // signal (A3/R-3) — a fired Dhana/Raja/NBRY yoga must actually be visible in the
+            // served response, not just move the (invisible) composite score internally.
+            // hardFloor protects its minKeep=3 from PASS 2's hard-cap override, which was
+            // silently zeroing it precisely because the fix made it non-empty for the first
+            // time (see response_budget.ts's TrimmableSection.hardFloor doc).
+            hardFloor: true,
           },
           {
             path: 'content.checklist.varga_confirmation.rows',
