@@ -31,7 +31,7 @@ verifiers:
   - {lane: A-0, model: opus, agent_id: afbeca6133e46621e, status: running}
   - {lane: A-alpha, model: opus, agent_id: a9b35558d8a18d91b, status: running}
   - {lane: A-gamma, model: opus, agent_id: aaac709386bfc4cbf, status: running}
-  - {lane: A-beta, model: opus, agent_id: null, status: not_spawned_yet_awaiting_implementer}
+  - {lane: A-beta, model: opus, agent_id: afa4ab53cd20e012f, status: running}
 deploy: {done: false, sha: null}
 rebuild:
   "482012f1-710e-4a25-994a-93821f5871aa": pending
