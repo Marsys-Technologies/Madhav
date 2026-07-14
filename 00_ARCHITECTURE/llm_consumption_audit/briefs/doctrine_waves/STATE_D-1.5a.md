@@ -25,7 +25,7 @@ lanes:
   - {lane: A-0, branch: wave/D-1.5a/A-0, status: implementing, receipt_ref: null, agent_id: a1d4e2a584592cf56}
   - {lane: A-alpha, branch: wave/D-1.5a/A-alpha, status: implementing, receipt_ref: null, agent_id: aa3b218b1e1a235db}
   - {lane: A-beta, branch: wave/D-1.5a/A-beta, status: implementing, receipt_ref: null, agent_id: ac262d840c1f3aaa1}
-  - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: awaiting_final_report, receipt_ref: null, agent_id: a8c232edeee142ef7}
+  - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: claimed, receipt_ref: null, agent_id: a8c232edeee142ef7, commit: 08af39bf, claim: "A7 offset fix (opposition/special aspects now 1.0, was 0.0); A5 9-case two-chart parametrized divergence test; 36 new tests pass; full suite 3352 passed/0 failed (net +36, zero regressions); diff scope-clean (3 files, all in may_touch)"}
 notes: "A-beta merges last (A-gamma -> A-alpha -> A-beta); no verifier runs until A-0's harness lands."
 deploy: {done: false, sha: null}
 rebuild:
