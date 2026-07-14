@@ -34,7 +34,7 @@ verifiers:
   - {lane: A-beta, model: opus, agent_id: afa4ab53cd20e012f, status: running}
 deploy: {done: true, sha: "a3b623aef36b0e02c85f76be643e628ef621ff32", run_id: 29368691168, verified_live: true}
 rebuild:
-  "482012f1-710e-4a25-994a-93821f5871aa": pending   # scope-limited to L1+L2 (this wave's touched layers) per corrected R-5 policy
+  "482012f1-710e-4a25-994a-93821f5871aa": running   # scope-limited: ga_structural, ga_vichara, bo_laksana only (the 3 writers this wave touched), via platform/scripts/rebuild_d1_5a_wave.py against live prod DB, local code = a3b623ae (post-merge, post-deploy)
   "1c826d5a-41cb-4450-b4dc-59d440e5f75a": not_rebuilt_by_policy   # Abhinandan is read-only reference for CR-87 guard; native-ratified this session (see CLAUDECODE_BRIEF.md provenance correction)
 gate: {run: false, green: [], red: []}
 updated_at: "2026-07-15 (session open, post-Binder)"
