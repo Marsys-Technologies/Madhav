@@ -30,6 +30,7 @@ from datetime import datetime, timedelta, timezone
 from ga_writers.ga_vichara_writer import (
     PLANET_TO_SUBJECT,
     VicharaFactIndex,
+    build_aspect_valence_rows,
     build_ga_vichara_substep,
     build_leverage_index_rows,
     build_valence_pass_rows,
@@ -75,6 +76,17 @@ def _dignity_fact(fid, varga, subj, sign, house, dignity):
     )
 
 
+def _aspect_fact(fid, varga, subj, source_house, target_house, offset, strength):
+    """Mirrors ga_structural_writer.py:4228-4250's aspect_parashari_per_varga
+    row shape exactly (CR-91/A2)."""
+    return _fact(
+        fid, "aspect_parashari_per_varga", f"{varga}_{subj}", f"house_{target_house}",
+        value_num=strength,
+        value_jsonb={"varga": varga, "source_sign": "Sagittarius", "source_house": source_house,
+                     "target_house": target_house, "offset": offset, "ayanamsha_id": "lahiri_chitrapaksha"},
+    )
+
+
 class TestClassifyActor(unittest.TestCase):
     def test_dusthana_lord(self):
         classes, primary = classify_actor({8})
@@ -92,50 +104,147 @@ class TestValenceMatrix(unittest.TestCase):
     def test_8l_mars_to_h2_strong_malefic(self):
         """CR-54 AMENDED type specimen: 8th lord (dusthana_lord) placed/aspecting
         the 2nd house (wealth axis) must read strong_malefic, not neutral."""
-        classes, _primary = classify_actor({8})
-        value_text, value_num, citation, key = compute_valence(classes, 2, False, VALENCE_MATRIX)
+        classes, primary = classify_actor({8})
+        value_text, value_num, citation, key = compute_valence(classes, primary, 2, False, VALENCE_MATRIX)
         self.assertEqual(value_text, "strong_malefic")
         self.assertEqual(value_num, -1.0)
         self.assertEqual(key, "dusthana_lord_wealth_or_lagna")
         self.assertTrue(citation)
 
     def test_8l_to_lagna_also_strong_malefic(self):
-        classes, _ = classify_actor({8})
-        value_text, value_num, _c, _k = compute_valence(classes, 1, False, VALENCE_MATRIX)
+        classes, primary = classify_actor({8})
+        value_text, value_num, _c, _k = compute_valence(classes, primary, 1, False, VALENCE_MATRIX)
         self.assertEqual(value_text, "strong_malefic")
 
     def test_trikona_lord_kendra_benefic(self):
-        classes, _ = classify_actor({9})
-        value_text, value_num, _c, _k = compute_valence(classes, 4, False, VALENCE_MATRIX)
+        classes, primary = classify_actor({9})
+        value_text, value_num, _c, _k = compute_valence(classes, primary, 4, False, VALENCE_MATRIX)
         self.assertEqual(value_text, "benefic")
         self.assertEqual(value_num, 0.5)
 
     def test_trikona_lord_yogakaraka_strong_benefic(self):
-        classes, _ = classify_actor({5})
-        value_text, value_num, _c, _k = compute_valence(classes, 9, True, VALENCE_MATRIX)
+        classes, primary = classify_actor({5})
+        value_text, value_num, _c, _k = compute_valence(classes, primary, 9, True, VALENCE_MATRIX)
         self.assertEqual(value_text, "strong_benefic")
         self.assertEqual(value_num, 1.0)
 
     def test_maraka_to_2_or_7(self):
-        classes, _ = classify_actor({2})
-        value_text, _n, _c, key = compute_valence(classes, 7, False, VALENCE_MATRIX)
+        classes, primary = classify_actor({2})
+        value_text, _n, _c, key = compute_valence(classes, primary, 7, False, VALENCE_MATRIX)
         self.assertEqual(value_text, "malefic")
         self.assertEqual(key, "maraka")
 
     def test_upachaya_lord_mildly_benefic(self):
-        classes, _ = classify_actor({11})
-        value_text, value_num, _c, key = compute_valence(classes, 3, False, VALENCE_MATRIX)
+        classes, primary = classify_actor({11})
+        value_text, value_num, _c, key = compute_valence(classes, primary, 3, False, VALENCE_MATRIX)
         self.assertEqual(value_text, "benefic")
         self.assertEqual(value_num, 0.5)
         self.assertEqual(key, "upachaya_lord")
 
+    def test_trikona_and_dusthana_dual_lordship_to_wealth_house_is_benefic(self):
+        """CR-90/DR-1 regression: an actor lording BOTH a trikona house and a
+        dusthana house (e.g. Jupiter as 9L/12L, the live wealth-domain
+        specimen) must classify benefic when targeting a wealth house (2/11),
+        not strong_malefic. Before the fix, compute_valence checked
+        "dusthana_lord in classes" before "trikona_lord in classes", so this
+        exact dual-lordship actor was misjudged malefic despite trikoṇa
+        outranking dusthāna in `_PRECEDENCE`."""
+        classes, primary = classify_actor({9, 12})  # 9L (trikona) + 12L (dusthana)
+        self.assertIn("trikona_lord", classes)
+        self.assertIn("dusthana_lord", classes)
+        self.assertEqual(primary, "trikona_lord")
+
+        value_text, value_num, _c, key = compute_valence(classes, primary, 2, False, VALENCE_MATRIX)
+        self.assertEqual(value_text, "benefic")
+        self.assertEqual(value_num, 0.5)
+        self.assertEqual(key, "trikona_lord_benefic_target")
+
+        # Same actor targeting the 11th (also WEALTH_HOUSES) is likewise benefic.
+        value_text_11, _n, _c, key_11 = compute_valence(classes, primary, 11, False, VALENCE_MATRIX)
+        self.assertEqual(value_text_11, "benefic")
+        self.assertEqual(key_11, "trikona_lord_benefic_target")
+
+    def test_pure_dusthana_lord_still_strong_malefic_to_wealth(self):
+        """Guard: the CR-90 fix must not blunt the original CR-54 anchor for
+        an actor with NO trikona ownership at all (e.g. lord of 6 and 8)."""
+        classes, primary = classify_actor({6, 8})
+        self.assertNotIn("trikona_lord", classes)
+        self.assertEqual(primary, "dusthana_lord")
+        value_text, value_num, _c, key = compute_valence(classes, primary, 2, False, VALENCE_MATRIX)
+        self.assertEqual(value_text, "strong_malefic")
+        self.assertEqual(value_num, -1.0)
+        self.assertEqual(key, "dusthana_lord_wealth_or_lagna")
+
     def test_all_value_nums_in_closed_set(self):
         allowed = {-1.0, -0.5, 0.0, 0.5, 1.0}
         for houses in ({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {6, 8, 12}):
-            classes, _p = classify_actor(houses)
+            classes, primary = classify_actor(houses)
             for target in range(1, 13):
-                _t, num, _c, _k = compute_valence(classes, target, False, VALENCE_MATRIX)
+                _t, num, _c, _k = compute_valence(classes, primary, target, False, VALENCE_MATRIX)
                 self.assertIn(num, allowed)
+
+
+class TestAspectValenceIngestion(unittest.TestCase):
+    """CR-91/A2: aspect_parashari_per_varga facts ingested into
+    VicharaFactIndex and judged via functional-lordship valence
+    (build_aspect_valence_rows), independent of bhava_significance_link."""
+
+    def test_index_parses_aspect_parashari_per_varga(self):
+        facts = [_aspect_fact("f1", "D1", "JUP", source_house=9, target_house=2, offset=5, strength=1.0)]
+        idx = VicharaFactIndex(facts)
+        self.assertIn("D1", idx.aspects_by_varga)
+        entry = idx.aspects_by_varga["D1"][0]
+        self.assertEqual(entry["graha_subject"], "JUP")
+        self.assertEqual(entry["graha"], "Jupiter")
+        self.assertEqual(entry["target_house"], 2)
+        self.assertEqual(entry["strength"], 1.0)
+        self.assertEqual(entry["fact_id"], "f1")
+
+    def test_dusthana_lord_aspect_on_wealth_house_is_strong_malefic(self):
+        """The headline case per A2's brief: a dusthāna-lord graha's raw
+        Parashari aspect landing on a wealth house (2/11) must read
+        strong_malefic — the same CR-54 anchor, now reachable purely via an
+        aspect fact with NO bhava_significance_link row at all."""
+        facts = [
+            _link_fact("l1", "D1", "lord_placed", "Mars", src_h=8, tgt_h=8, link_type="dusthana"),
+            _aspect_fact("a1", "D1", "MAR", source_house=8, target_house=2, offset=7, strength=1.0),
+        ]
+        idx = VicharaFactIndex(facts)
+        rows = build_aspect_valence_rows(idx, "D1", VALENCE_MATRIX)
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["actor"], "MAR")
+        self.assertEqual(row["target"], "D1_HOUSE_2")
+        self.assertEqual(row["value_text"], "strong_malefic")
+        self.assertEqual(row["value_num"], -1.0)
+        self.assertEqual(row["value_jsonb"]["matrix_key"], "dusthana_lord_wealth_or_lagna")
+        self.assertEqual(row["value_jsonb"]["signal_source"], "aspect_parashari_per_varga")
+        self.assertIn("a1", row["constituent_fact_ids"])
+        self.assertIn("l1", row["constituent_fact_ids"])
+
+    def test_trikona_and_dusthana_dual_lordship_aspect_is_benefic(self):
+        """CR-90/DR-1 exercised through the aspect path: Jupiter as 9L/12L
+        aspecting a wealth house must classify benefic, not malefic —
+        confirms build_aspect_valence_rows also benefits from the A1 fix."""
+        facts = [
+            _link_fact("l1", "D1", "lord_placed", "Jupiter", src_h=9, tgt_h=9, link_type="trikona"),
+            _link_fact("l2", "D1", "lord_placed", "Jupiter", src_h=12, tgt_h=12, link_type="dusthana"),
+            _aspect_fact("a1", "D1", "JUP", source_house=9, target_house=11, offset=3, strength=1.0),
+        ]
+        idx = VicharaFactIndex(facts)
+        rows = build_aspect_valence_rows(idx, "D1", VALENCE_MATRIX)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["value_text"], "benefic")
+        self.assertEqual(rows[0]["value_jsonb"]["matrix_key"], "trikona_lord_benefic_target")
+
+    def test_no_lordship_yields_no_row(self):
+        """A graha with no sign-lordship in this varga (e.g. a node) must not
+        get a fabricated valence row (B.10) — vichara stays silent, and
+        bo_laksana's keyword_heuristic_v1 fallback is the honest path."""
+        facts = [_aspect_fact("a1", "D1", "RAH_MEAN", source_house=5, target_house=11, offset=7, strength=1.0)]
+        idx = VicharaFactIndex(facts)
+        rows = build_aspect_valence_rows(idx, "D1", VALENCE_MATRIX)
+        self.assertEqual(rows, [])
 
 
 class TestRatificationFactor(unittest.TestCase):
