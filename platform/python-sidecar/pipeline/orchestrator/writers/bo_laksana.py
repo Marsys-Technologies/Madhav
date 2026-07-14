@@ -1058,8 +1058,23 @@ def _load_vichara_divergence_signals(
             "orb_tightness": 1.0,
             "shadbala_norm": 1.0,
             "dignity_score": 0.5,
-            "deterministic_strength": None,
-            "verification_certainty": None,
+            # NOT NULL column; this signal type is derived from chart_vichara
+            # ratification data, not the condition-terms salience pipeline that
+            # populates deterministic_strength for ordinary chart_facts-sourced
+            # signals (see the "sal.get('condition_terms')" path below). No
+            # equivalent per-signal deterministic-strength computation exists for
+            # this signal class, so — mirroring the orb_tightness/shadbala_norm
+            # neutral-placeholder convention two lines up — use a fixed neutral
+            # value rather than leave it NULL (schema violation) or fabricate a
+            # bespoke formula (B.10).
+            "deterministic_strength": 1.0,
+            # NOT NULL column. This signal is epistemic_tier="documented_approximation"
+            # (set above). The now-deleted v1 verification_certainty formula (see the
+            # historical note on _compute_salience_v2_inputs, ~line 1644) assigned
+            # documented_approximation-tier signals a 0.778 ceiling; reusing that exact,
+            # already-documented precedent here (rather than 1.0 — which would overstate
+            # certainty for an approximation-tier signal — or a newly-invented number).
+            "verification_certainty": 0.778,
             "divisional_corroboration_count": None,
             "dasha_activation_proximity_score": None,
             "house_weight_multiplier": 1.0,
@@ -2586,20 +2601,43 @@ def _batch_insert(conn: Any, rows: list[dict]) -> int:
     with conn.cursor() as cur:
         for i in range(0, len(rows), _BATCH_SIZE):
             batch = rows[i : i + _BATCH_SIZE]
+            # BUGFIX (Night-1 guardian rebuild): the batch executemany() itself must run
+            # inside its own SAVEPOINT. Without this, a constraint violation (e.g. a
+            # NOT NULL violation on one bad row) aborts the ambient orchestrator-owned
+            # transaction BEFORE the per-row fallback below ever runs — so the fallback's
+            # "SAVEPOINT row_sp" call fails too (no savepoint predates the abort to roll
+            # back to), surfacing a confusing "savepoint does not exist" error that masks
+            # the real one. Wrapping the batch attempt in "batch_sp" first means a failure
+            # cleanly rolls back to a real, already-established savepoint, leaving the
+            # transaction usable for the per-row retry loop.
             try:
+                cur.execute("SAVEPOINT batch_sp")
                 cur.executemany(_INSERT_SQL, batch)
-                inserted += max(0, cur.rowcount)
-            except Exception:
+                # BUGFIX: capture rowcount BEFORE issuing RELEASE SAVEPOINT — rowcount
+                # reflects only the LAST statement executed on the cursor, so reading it
+                # after a subsequent RELEASE SAVEPOINT (a transaction-control statement,
+                # not a DML statement) clobbers it to 0/-1, silently under-reporting every
+                # successful batch. This under-reporting is what caused rows_written=0
+                # ('dormant' asset state) despite the INSERTs themselves succeeding.
+                batch_rowcount = cur.rowcount
+                cur.execute("RELEASE SAVEPOINT batch_sp")
+                inserted += max(0, batch_rowcount)
+            except Exception as batch_exc:
+                cur.execute("ROLLBACK TO SAVEPOINT batch_sp")
+                cur.execute("RELEASE SAVEPOINT batch_sp")
                 # Fallback: per-row insert to skip any single bad row
-                logger.warning("[bo_laksana] batch at %d failed, falling back to per-row insert", i)
+                logger.warning("[bo_laksana] batch at %d failed (%s), falling back to per-row insert",
+                                i, batch_exc)
                 for row in batch:
                     try:
                         cur.execute("SAVEPOINT row_sp")
                         cur.execute(_INSERT_SQL, row)
+                        row_rowcount = cur.rowcount  # capture before RELEASE (same bugfix as above)
                         cur.execute("RELEASE SAVEPOINT row_sp")
-                        inserted += max(0, cur.rowcount)
+                        inserted += max(0, row_rowcount)
                     except Exception as row_exc:
                         cur.execute("ROLLBACK TO SAVEPOINT row_sp")
+                        cur.execute("RELEASE SAVEPOINT row_sp")
                         logger.warning("[bo_laksana] skipping row signal_type_id=%s: %s",
                                        row.get("signal_type_id"), row_exc)
             if inserted % 2000 == 0 or i + _BATCH_SIZE >= len(rows):

@@ -435,7 +435,16 @@ class KaSangamWriter(WriterBase):
                 """,
                 (chart_id,),
             )
-            for fact_key, fact_value_text in cur.fetchall():
+            # BUGFIX (Night-1 guardian rebuild): this connection uses psycopg3's
+            # dict_row factory (pipeline/orchestrator/db.py), so each fetched row is
+            # a dict, not a tuple. Positional unpacking ("for fact_key, fact_value_text
+            # in cur.fetchall()") iterates each dict's KEYS ("fact_key", "fact_value_text"
+            # — the literal column-name strings), never the actual values — so
+            # moon_nakshatra/moon_sign silently stayed None for every real chart,
+            # tripping CR-87's fail-loud guard. Same bug class as the ga_structural_writer
+            # dict-row fix (commit 8c96d000) — here in ka_sangam.py's own lookup.
+            for row in cur.fetchall():
+                fact_key, fact_value_text = row['fact_key'], row['fact_value_text']
                 if fact_key == 'nakshatra':
                     moon_nakshatra = fact_value_text
                 elif fact_key == 'sign':
