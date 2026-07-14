@@ -26,7 +26,7 @@ lanes:
   - {lane: A-alpha, branch: wave/D-1.5a/A-alpha, status: receipted, receipt_ref: "verifier a9b35558d8a18d91b ACCEPT, diff f83475df, hand-traced Jupiter 9L/12L->H2 benefic + CR-54 anchor preserved, tests 3322/0 confirmed, scope_warden pass", agent_id: aa3b218b1e1a235db, commit: f83475df}
   - {lane: A-beta, branch: wave/D-1.5a/A-beta, status: receipted, receipt_ref: "verifier afa4ab53cd20e012f ACCEPT (resumed after transient API disconnect, not a rejection), diff f10a7b70, hand-verified composite arithmetic 1.15+1.635=2.785 convergent_strong with dhana_yoga_2_5_9_11 venus+jupiter in bearing_yogas, root-cause double-wrap independently traced, 75-failure claim confirmed byte-identical via direct commit diff, scope_warden pass", agent_id: ac262d840c1f3aaa1, commit: f10a7b70}
   - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: receipted, receipt_ref: "verifier aaac709386bfc4cbf ACCEPT, diff 08af39bf, offset formula hand-verified against PARASHARI_ASPECTS keys incl wraparound case, baseline delta +36 independently rebuilt and confirmed, scope_warden pass", agent_id: a8c232edeee142ef7, commit: 08af39bf}
-notes: "A-beta merges last (A-gamma -> A-alpha -> A-beta); A-0 harness landed, Phase-1 verifiers spawned for A-0/A-alpha/A-gamma."
+notes: "All 4 lanes RECEIPTED. Merged to wave/D-1.5a/integration in order A-gamma(65b2ff7b)->A-alpha(25bdb1f4)->A-beta(2b217db8)->A-0(218ecf86), no conflicts. Running full test suite on integration branch for cross-lane interference check (step 4) before deploy."
 verifiers:
   - {lane: A-0, model: opus, agent_id: afbeca6133e46621e, status: running}
   - {lane: A-alpha, model: opus, agent_id: a9b35558d8a18d91b, status: running}
