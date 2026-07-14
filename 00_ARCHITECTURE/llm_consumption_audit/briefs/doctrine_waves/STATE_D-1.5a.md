@@ -5,7 +5,7 @@ type: WAVE STATE LEDGER (CONDUCTOR_PROTOCOL §6.1)
 
 ```yaml
 wave: D-1.5a
-lifecycle_step: 3   # 1=OPEN done, 2=SPAWN done, now IMPLEMENT ∥ VERIFY
+lifecycle_step: 4   # 1=OPEN, 2=SPAWN, 3=IMPLEMENT∥VERIFY all done (4/4 lanes RECEIPTED), now INTEGRATE
 brief_bound: true
 binder_annotations:
   - "A2 narrows: bo_laksana vichara-lookup wiring pre-landed (2026-07-14); A2 = aspect_parashari ingestion + heuristic retirement + stale-comment reconciliation only"
@@ -24,8 +24,8 @@ canonical_baseline_reproduced: true   # B-2: reds #1-5,#7-9,#11; greens #10,#12;
 lanes:
   - {lane: A-0, branch: wave/D-1.5a/A-0, status: receipted, receipt_ref: "verifier afbeca6133e46621e ACCEPT, diff_base 4bebb622, canonical_baseline_match EXACT, scope_warden pass", agent_id: a1d4e2a584592cf56, commit: b1b086bb}
   - {lane: A-alpha, branch: wave/D-1.5a/A-alpha, status: receipted, receipt_ref: "verifier a9b35558d8a18d91b ACCEPT, diff f83475df, hand-traced Jupiter 9L/12L->H2 benefic + CR-54 anchor preserved, tests 3322/0 confirmed, scope_warden pass", agent_id: aa3b218b1e1a235db, commit: f83475df}
-  - {lane: A-beta, branch: wave/D-1.5a/A-beta, status: claimed, receipt_ref: null, agent_id: ac262d840c1f3aaa1, commit: f10a7b70, claim: "root cause: capability route double-wraps handler response, callRegistryCapability read past real payload -> starved both CR-93 (PMP false not-formed) and CR-94 (coverage.served:0) identically; fixed unwrap once in-scope. bearing_yogas now reads ga_yoga_firings (MSR demoted to corroboration); composite formula adds yogaTerm; on 482012f1/wealth composite 1.15->~2.79 (convergent_moderate->convergent_strong). Stale description fixed. B9-preview guard added. platform: tsc clean, npm test 5522/0 failed. platform-mcp: tsc clean, vitest 423 passed/75 failed byte-identical to baseline (zero regressions)."}
-  - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: claimed, receipt_ref: null, agent_id: a8c232edeee142ef7, commit: 08af39bf, claim: "A7 offset fix (opposition/special aspects now 1.0, was 0.0); A5 9-case two-chart parametrized divergence test; 36 new tests pass; full suite 3352 passed/0 failed (net +36, zero regressions); diff scope-clean (3 files, all in may_touch)"}
+  - {lane: A-beta, branch: wave/D-1.5a/A-beta, status: receipted, receipt_ref: "verifier afa4ab53cd20e012f ACCEPT (resumed after transient API disconnect, not a rejection), diff f10a7b70, hand-verified composite arithmetic 1.15+1.635=2.785 convergent_strong with dhana_yoga_2_5_9_11 venus+jupiter in bearing_yogas, root-cause double-wrap independently traced, 75-failure claim confirmed byte-identical via direct commit diff, scope_warden pass", agent_id: ac262d840c1f3aaa1, commit: f10a7b70}
+  - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: receipted, receipt_ref: "verifier aaac709386bfc4cbf ACCEPT, diff 08af39bf, offset formula hand-verified against PARASHARI_ASPECTS keys incl wraparound case, baseline delta +36 independently rebuilt and confirmed, scope_warden pass", agent_id: a8c232edeee142ef7, commit: 08af39bf}
 notes: "A-beta merges last (A-gamma -> A-alpha -> A-beta); A-0 harness landed, Phase-1 verifiers spawned for A-0/A-alpha/A-gamma."
 verifiers:
   - {lane: A-0, model: opus, agent_id: afbeca6133e46621e, status: running}
