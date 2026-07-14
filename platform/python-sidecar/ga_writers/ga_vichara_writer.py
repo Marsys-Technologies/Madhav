@@ -261,7 +261,7 @@ class VicharaFactIndex:
                     "graha_subject": bare_subj,
                     "graha": SUBJECT_TO_PLANET.get(bare_subj, bare_subj),
                     "target_house": int(tgt_h),
-                    "strength": f.get("fact_value_num"),
+                    "strength": float(f["fact_value_num"]) if f.get("fact_value_num") is not None else None,
                     "fact_id": f.get("fact_id"),
                 })
 
