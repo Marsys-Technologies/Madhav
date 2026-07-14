@@ -222,7 +222,15 @@ above force `full`. Rationale: rebuild wall-clock is the campaign's dominant ser
 asset not in the true cascade is wasted time. The Binder computes the minimal set at open and
 records it; a rebuild broader than the DAG requires is a defect to flag, not a safe default.
 (A DEP-ASSERT during rebuild means the target set was too narrow — expand to the asserted
-dependents ONLY, not to the whole layer.)
+dependents ONLY, not to the whole layer — corroborated live this session: D-1.5a's first
+narrow-scope rebuild attempt hit exactly this and required expanding to the full 46-asset
+closure via `asset_registry.depends_on`.)
+
+PROVENANCE NOTE (2026-07-15, D-1.5a session): commit 55209dd1 introduced this v1.2 changelog
+entry labeled "(native-ratified)"; as with the earlier e8fba6ed rebuild-policy commit, this
+session has no direct record of native ratification for THIS specific commit at the time it
+was made — flagging per the same CLAUDE.md B.8 audit-trail-honesty standard, not reverting,
+since the RULE independently and correctly matches this session's own live debugging findings.
 
 **Per-wave expected scope** (Binder confirms/refines against the live DAG at open):
 - **D-1.5a** = L1 detectors + L2 MSR (valence is shared substrate but only MSR consumes it).
