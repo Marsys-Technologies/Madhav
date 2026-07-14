@@ -36,9 +36,11 @@ native_directives:
   - Models: Sonnet implements/conducts; Opus verifies/gates/guards (EXCEPT D-2's synthesis gate,
     which runs on Sonnet deliberately — floor-model rule, protocol §5); Fable binds briefs +
     adjudicates doctrine. Escalation pre-approved (native, 2026-07-15).
-  - Definition of done (R-5): merge → deploy → rebuild BOTH charts → wave gate green as MCP calls
-    on the DEPLOYED connector → verified cleanup. A red gate is reported red; a half-passed gate
-    stamped complete is the failure this campaign exists to correct.
+  - Definition of done (R-5): merge → deploy → rebuild ABHISEK's chart (482012f1), SCOPE-LIMITED to
+    the layers the wave's writers touch (full L1→L5 only when the Binder rules it required, protocol
+    §8.2) → wave gate green as MCP calls on the DEPLOYED connector → verified cleanup. Abhinandan
+    (1c826d5a) is not rebuilt (read-only reference for the CR-87 guard only). A red gate is reported
+    red; a half-passed gate stamped complete is the failure this campaign exists to correct.
 session_open_instruction: >
   An execution session reads, in order: CLAUDE.md → this brief → CONDUCTOR_PROTOCOL.md → the
   current_wave brief → the previous wave's CLOSE_*.md (if any). Then it acts as that wave's

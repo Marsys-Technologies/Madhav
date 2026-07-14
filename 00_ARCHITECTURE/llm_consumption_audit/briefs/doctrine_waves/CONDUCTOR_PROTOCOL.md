@@ -13,6 +13,11 @@ native_directives:
   - Every wave: isolated environments → implement → verify → merge → deploy → rebuild →
     MCP-verify through the MARSYS-JIS connector → cleanup → next wave. A wave is DONE only when
     its MCP gate battery is green on the deployed connector (R-5).
+  - REBUILD POLICY (native directive 2026-07-15): rebuilds target ABHISEK'S CHART
+    (482012f1) ONLY, and are SCOPE-LIMITED to the layers the wave's writers touch — never
+    full-by-default. A full L1→L5 rebuild happens only when the Binder rules it required (§8.2).
+    Abhinandan (1c826d5a) is NOT rebuilt by the campaign; its existing prod build is read-only
+    reference for the CR-87 divergence check only.
 ---
 
 # Doctrine-Waves Conductor Protocol
@@ -56,8 +61,9 @@ is structural, not a norm.
    toward its 3 attempts).
 5. **DEPLOY** — integration branch → main → deploy. **Only one wave deploys at a time, ever**
    (parallel tracks 2/3 never touch the deployed estate). Migrations apply only with guard receipts.
-6. **REBUILD** — both charts (482012f1 Abhisek, 1c826d5a Abhinandan) rebuilt via the orchestrator;
-   build-health check (assets lit, FORENSIC 7/7, 0 orphan refs, row-count census sane).
+6. **REBUILD** — Abhisek's chart (482012f1) rebuilt via the orchestrator, SCOPE-LIMITED per the
+   Binder's ruling (§8.2); build-health check (touched assets lit, FORENSIC 7/7, 0 orphan refs,
+   row-count census sane). Abhinandan is not rebuilt.
 7. **GATE** — gate runner executes the wave's full MCP battery against the deployed connector,
    plus the wave's final proof. Red list → conductor triages: lane re-open (→ step 3) or PARK +
    report. **The wave closes only on all-green** (parked items must be explicitly excluded by the
@@ -128,7 +134,7 @@ must be resumable by a brand-new session at any lifecycle point with zero inform
 `briefs/doctrine_waves/STATE_<wave>.md` (committed at every transition), a small YAML block:
 `{wave, lifecycle_step: 1-8, brief_bound: bool, rollback_pin: {image_sha, build_ids},
 lanes: [{lane, branch, status: pending|implementing|verifying|receipted|rejected(n)|parked|merged,
-receipt_ref}], deploy: {done, sha}, rebuild: {chart_id: build_id|pending}, gate: {run, green: [...],
+receipt_ref}], deploy: {done, sha}, rebuild: {scope, abhisek_build_id|pending}, gate: {run, green: [...],
 red: [...]}, updated_at}`. **Every lifecycle transition = update ledger + commit.** The commit IS
 the checkpoint; an uncommitted transition did not happen.
 
@@ -197,9 +203,20 @@ active run exists (wait, don't force). Dispatches `brahma-build-pipeline-job` wi
 pipeline.orchestrator.main --run-id <id>` (exit 0 clean / 2 not-found / 3 chart-locked / 1 fatal).
 **Completion/status:** `GET /api/cockpit/status` (running|idle) + `GET /api/cockpit/stats`
 (per-asset lit|building|error — authority is `asset_registry.count_sql`, NEVER `asset_throughput` —
-the L1 trap). Rebuild scope per wave = the layers the wave's merged writers touch (D-1.5a: L1+L2;
-default when unsure: full L1→L5 for both charts). Long builds resume via the migration-436
-substep ledger — re-dispatching a dead run is safe.
+the L1 trap). **Rebuild TARGET = Abhisek (482012f1) ONLY** (native directive 2026-07-15) — pass
+`chart_id=482012f1-710e-4a25-994a-93821f5871aa`, `scope=layer`/`asset_set` with `scope_target` set
+to the touched layers. **SCOPE = the minimal layer set the wave's merged writers touch + any layer
+that ingests their outputs — NOT full-by-default.** A FULL L1→L5 rebuild is required ONLY when the
+Binder finds one of: (a) a new L1 fact category a downstream layer ingests (e.g. D-1.5b chalit
+facts → MSR; SAV re-key → L3); (b) a change to shared substrate every layer reads (valence pass,
+Mechanism object, convergence kernel); (c) a migration altering an existing column's semantics
+(not additive). The Binder records `{scope, layers, full: bool, rationale}` in the ledger at open;
+absent a trigger, rebuild only the touched layers. Per-wave defaults: D-1.5a = L1+L2 (valence is
+shared substrate → but only L2 MSR consumes it, so L1 detectors + L2 MSR); D-1.5b = **full**
+(new chalit/AV fact categories feed MSR + L3 — trigger (a)); D-2 = L2+ (Mechanism/CGM/vidhi);
+D-3 = L3 + service (+ L2 read-only); D-4 = L5. Long builds resume via the migration-436 substep
+ledger — re-dispatching a dead run is safe. **Abhinandan (1c826d5a) is never rebuilt by the
+campaign.**
 
 **§8.3 Deploy.** Merge mechanism: PR to `main` via `gh pr create` + merge (repo convention is
 PR-based; direct push only if PR flow is unavailable). Deploy is NOT push-triggered: CI **"CI —
@@ -213,7 +230,7 @@ sidecar/mcp/pipeline-job only when their paths changed — note: a wave changing
 only for rollback-class fixes with Adjudicator-engineering sign-off).
 
 **§8.4 Rollback pin + rollback.** Pin at wave open (ledger §6.1): the three images' SHAs (per
-§8.3 describe commands) + current `build_id` per chart (from any tool's `chart_header`/provenance).
+§8.3 describe commands) + Abhisek's current `build_id` (from any tool's `chart_header`/provenance).
 Rollback: `gcloud run services update-traffic <service> --region=asia-south1
 --to-revisions <prev-revision>=100` (list revisions via `gcloud run revisions list`), plus job
 image re-point back to the pinned tag; then re-run the previous wave's gate battery to confirm
@@ -239,8 +256,8 @@ safe (idempotent, IF NOT EXISTS discipline verified pre-merge).
   `schema_validator.py` (exit 0). Full local gate = the `run-checks` skill.
 - "Full test suite" at integration (lifecycle step 4) = all of the above.
 
-**§8.7 Build-health check (lifecycle step 6, concrete).** After rebuild: (a) `/api/cockpit/stats`
-— every asset the wave touches `lit`, zero `error`; (b) FORENSIC 7/7 via
+**§8.7 Build-health check (lifecycle step 6, concrete; Abhisek only).** After rebuild: (a)
+`/api/cockpit/stats` — every asset the wave touches `lit`, zero `error`; (b) FORENSIC 7/7 via
 `ganita_natal_positions_compute` (Sun Capricorn · Moon Purva Bhadrapada · Lagna Aries 12.4311° ·
 Shukla Tritiya · Ravivara · Shiva · Garaja on 482012f1); (c) DEFECT-001 orphan check = 0 via
 `bodha_signals_get` provenance; (d) L1 canonical row counts within ±1% of L1_GANITA_CLOSURE values

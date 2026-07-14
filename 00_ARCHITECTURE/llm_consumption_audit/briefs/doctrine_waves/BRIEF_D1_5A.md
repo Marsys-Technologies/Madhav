@@ -76,9 +76,13 @@ blocks: D-1.5b (does not start until this gate is green)
   `register_d9_judgment.ts`, `register_p1_ganita.ts`, `platform-mcp/src/tools/*` (descriptions), tests.
 
 ### Lane A-γ — Correctness guards (Python; disjoint from A-α files)
-- **A5 (CR-87 verification):** parametrized two-chart regression test — Abhinandan (1c826d5a)
-  tara-bala/sade-sati/panchanga currents MUST differ from Abhisek (482012f1) given their different
-  janma-nakshatra/Moon-sign/location; plus one live MCP comparison in the harness.
+- **A5 (CR-87 verification):** the guard is PRIMARILY a parametrized UNIT TEST (Phase-1, no rebuild
+  needed) — it constructs Abhisek's and Abhinandan's natal contexts IN-PROCESS and asserts their
+  tara-bala/sade-sati/panchanga currents differ given their different janma-nakshatra/Moon-sign/
+  location. This in-process two-context assertion IS the anti-hardcoding guarantee and needs no
+  Abhinandan rebuild. Secondary: a read-only live MCP comparison of Abhisek (freshly rebuilt) vs
+  Abhinandan (whatever prod build exists — read-only, never rebuilt) asserting the currents diverge.
+  If Abhinandan is absent from prod, the unit test stands alone as the guard.
 - **A7 (`_graha_aspects_house` off-by-one):** opposition/7th-house aspects return 0.0 instead of
   1.0 (`ga_writers/ga_structural_writer.py`) — Lane-1-flagged, pre-existing; consumed by
   `effective_dignity` v2 and A2's aspect valence. Fix + regression test + one live spot-check.
@@ -100,13 +104,14 @@ any time. Rebuild required after merge (A-α/A-γ change writers).
 - B-2: probe `judgment_query(wealth)` + `bodha_signals_get(wealth)` + both yoga faces on 482012f1 —
   confirm the Lane A-0 canonical baseline (reds #1–#5, #7–#9, #11; greens #10, #12; #6 split) still
   reproduces; any already-green assertion moves that item to verification-only.
-- B-3: record rollback pin (deployed image SHAs per protocol §8.4 + build_ids both charts).
-- B-4: confirm BOTH charts exist and are fully built on the deployed estate (Abhinandan
-  `1c826d5a-41cb-4450-b4dc-59d440e5f75a` included — L1 closure recorded its operator E2E as gated;
-  if not built, trigger the rebuild per §8.2 BEFORE spawning lanes, since the gate needs both).
+- B-3: record rollback pin (deployed image SHAs per protocol §8.4 + Abhisek's build_id).
+- B-4: confirm Abhisek (482012f1) is built on the deployed estate; confirm Abhinandan
+  (`1c826d5a-41cb-4450-b4dc-59d440e5f75a`) EXISTS as read-only reference for A5's live comparison
+  (no rebuild — if absent, A5 falls back to its in-process unit test, which is the real guard).
+  Rebuild scope for this wave = L1 (detectors) + L2 (MSR consuming valence) on Abhisek only.
 
 ## §G — Gate (runs per CONDUCTOR_PROTOCOL §2 step 7)
 Register §K.2 assertions 1–12 + A5's two-chart divergence + A7's aspect spot-check, all green on
-the deployed connector after rebuild of both charts. **Final proof:** 482012f1
+the deployed connector after the scope-limited rebuild of Abhisek's chart. **Final proof:** 482012f1
 `judgment_query(wealth)` verdict ≠ `convergent_moderate`/composite ≠ 1.15, `bearing_yogas` contains
 Dhana Yoga naming Venus (2L) + Jupiter (9L). If the number does not move, the wave did not happen.

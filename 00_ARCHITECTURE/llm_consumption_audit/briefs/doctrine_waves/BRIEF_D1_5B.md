@@ -108,4 +108,6 @@ extends it under Adjudicator-doctrine).
 - Global: rollback pin; re-run Gate-A battery green before spawning (regression baseline).
 
 ## §G — Gate: execution plan §4 Gate B, verbatim, as harness scripts (extended from Lane A-0's
-harness), on the deployed connector post-rebuild of both charts.
+harness), on the deployed connector post-rebuild of Abhisek's chart (FULL L1→L5 — this wave adds
+new chalit/AV fact categories that feed MSR + L3, so §8.2 trigger (a) applies; Binder records
+`full: true`). Abhinandan not rebuilt.
