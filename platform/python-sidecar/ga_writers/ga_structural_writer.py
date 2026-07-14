@@ -547,8 +547,20 @@ def _graha_aspects_house(aspector: str, source_h: int, target_h: int) -> float:
     """Return Parashari aspect strength from aspector in source_h onto target_h.
     Returns 0.0 if no aspect. Uses canonical PARASHARI_ASPECTS (1-indexed offsets).
     This is the ONE aspect-offset source in this file — all builders must call this.
+
+    PARASHARI_ASPECTS keys are INCLUSIVE house counts per classical convention
+    (the source house counts as "1"; the opposition/7th-house aspect is the
+    house you reach by counting 7 houses inclusively — i.e. 6 houses away by
+    raw difference). A7 fix (CR-87 follow-up, Lane A-gamma / D-1.5a): the
+    offset must be the inclusive count (raw_diff + 1), not the raw difference.
+    The prior `% 12 or 12` formula returned the raw difference (e.g. house 1
+    -> house 7 gave offset=6), which doesn't match any PARASHARI_ASPECTS key
+    (all opposition entries are keyed "7"), so every 7th-house/opposition
+    aspect silently returned 0.0 instead of 1.0. Example: Sun in H1 aspecting
+    H7 (opposition) — before: offset=6 -> PARASHARI_ASPECTS["all"].get(6) ->
+    0.0 (bug). After: offset=7 -> PARASHARI_ASPECTS["all"].get(7) -> 1.0.
     """
-    offset = ((target_h - source_h) % 12) or 12  # 1..12
+    offset = ((target_h - source_h) % 12) + 1  # inclusive count, 1..12
     if aspector in ("Rahu", "Ketu"):
         return NODE_PARASHARI_ASPECTS.get(offset, 0.0)
     table = PARASHARI_ASPECTS.get(aspector, {})
