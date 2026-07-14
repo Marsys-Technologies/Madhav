@@ -34,8 +34,9 @@ verifiers:
   - {lane: A-beta, model: opus, agent_id: afa4ab53cd20e012f, status: running}
 deploy: {done: true, sha: "a3b623aef36b0e02c85f76be643e628ef621ff32", run_id: 29368691168, verified_live: true}
 rebuild:
-  "482012f1-710e-4a25-994a-93821f5871aa": running   # ga_structural's A7 fix is a shared-substrate change -> cascaded 'stale' to 46/91 writer assets (ga_yoga, ga_sade_sati, ga_vichara, bo_laksana + all their downstream L2/L3/L4/L5). This is the Binder-detected "shared-substrate change" trigger the ratified R-5 policy calls out -- rebuilding the full cascade (topo-sorted via asset_registry.depends_on), not just the 3 directly-touched writers.
+  "482012f1-710e-4a25-994a-93821f5871aa": blocked_hotfix_in_flight   # cascade rebuild (46 assets) hit a real bug: ga_vichara TypeError (Decimal not JSON serializable) in the NEW aspect ingestion code (A2). Root-caused + fixed (commit 0731806b on wave/D-1.5a/hotfix-decimal-json), regression test added, verifier spawned. Stale rebuild process (pre-fix code) killed. Will re-run full cascade once hotfix merges+deploys.
   "1c826d5a-41cb-4450-b4dc-59d440e5f75a": not_rebuilt_by_policy   # Abhinandan is read-only reference for CR-87 guard; native-ratified this session (see CLAUDECODE_BRIEF.md provenance correction)
+hotfix_decimal_json: {branch: wave/D-1.5a/hotfix-decimal-json, commit: 0731806b, verifier_agent_id: a57f0abd0b9d2d612, status: verifying}
 gate: {run: false, green: [], red: []}
 updated_at: "2026-07-15 (session open, post-Binder)"
 ```
