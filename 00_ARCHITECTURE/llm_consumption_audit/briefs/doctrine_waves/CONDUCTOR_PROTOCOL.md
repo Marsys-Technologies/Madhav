@@ -211,12 +211,30 @@ Binder finds one of: (a) a new L1 fact category a downstream layer ingests (e.g.
 facts → MSR; SAV re-key → L3); (b) a change to shared substrate every layer reads (valence pass,
 Mechanism object, convergence kernel); (c) a migration altering an existing column's semantics
 (not additive). The Binder records `{scope, layers, full: bool, rationale}` in the ledger at open;
-absent a trigger, rebuild only the touched layers. Per-wave defaults: D-1.5a = L1+L2 (valence is
-shared substrate → but only L2 MSR consumes it, so L1 detectors + L2 MSR); D-1.5b = **full**
-(new chalit/AV fact categories feed MSR + L3 — trigger (a)); D-2 = L2+ (Mechanism/CGM/vidhi);
-D-3 = L3 + service (+ L2 read-only); D-4 = L5. Long builds resume via the migration-436 substep
-ledger — re-dispatching a dead run is safe. **Abhinandan (1c826d5a) is never rebuilt by the
-campaign.**
+absent a trigger, rebuild only the touched layers.
+
+**MINIMAL-CASCADE RULE (native-ratified 2026-07-15 — rebuild scope is the primary time lever).**
+Prefer the NARROWEST rebuild the DAG permits: rebuild the *changed assets* + only their *actual
+downstream dependents* (computed from `asset_registry` depends-on edges), NOT a whole-layer sweep,
+and NOT full-by-default. `scope=asset_set` with an explicit `scope_target` asset list is preferred
+over `scope=layer` whenever the changed set is a strict subset of a layer. Only the three triggers
+above force `full`. Rationale: rebuild wall-clock is the campaign's dominant serial cost; every
+asset not in the true cascade is wasted time. The Binder computes the minimal set at open and
+records it; a rebuild broader than the DAG requires is a defect to flag, not a safe default.
+(A DEP-ASSERT during rebuild means the target set was too narrow — expand to the asserted
+dependents ONLY, not to the whole layer.)
+
+**Per-wave expected scope** (Binder confirms/refines against the live DAG at open):
+- **D-1.5a** = L1 detectors + L2 MSR (valence is shared substrate but only MSR consumes it).
+- **D-1.5b** = **full L1→L5** — the ONE genuinely-full wave (new chalit/AV/bhava-bala fact
+  categories feed MSR + L3 — trigger (a)); no narrowing available.
+- **D-2** = the Mechanism/CGM/vidhi asset_set + MSR re-rank consumers — L2/serving, NOT a full L3+.
+- **D-3** = L3 convergence assets + the Taraṅga service; L2 read-only (no L2 rebuild).
+- **D-4** = L5 calibration assets ONLY — expected to be the fastest rebuild (minutes), never a
+  cascade beyond L5.
+
+Long builds resume via the migration-436 substep ledger — re-dispatching a dead run is safe.
+**Abhinandan (1c826d5a) is never rebuilt by the campaign.**
 
 **§8.3 Deploy.** Merge mechanism: PR to `main` via `gh pr create` + merge (repo convention is
 PR-based; direct push only if PR flow is unavailable). Deploy is NOT push-triggered: CI **"CI —
@@ -278,8 +296,12 @@ copy** of the gate (register/plan text is provenance; the executable is authorit
 skew between them is a defect to fix in the harness).
 
 ---
-*Changelog: v1.1 (2026-07-15) — resilience §6 (state ledger, re-entry, idempotency,
-transient-failure handling), OPERATIONS appendix §8 (repo-verified deploy/rebuild/migration/test/
-MCP-access/rollback/health mechanics), §8.8 standing rules from the adversarial gap review.
+*Changelog: v1.2 (2026-07-15) — §8.2 MINIMAL-CASCADE RULE (native-ratified): rebuild the narrowest
+DAG cascade — changed assets + actual dependents via asset_set, never full-by-default; only the
+three triggers force full; per-wave expected scopes tightened (D-1.5b is the sole full wave; D-4 =
+L5-only minutes). Rebuild scope is the primary time lever. v1.1 (2026-07-15) — resilience §6 (state
+ledger, re-entry, idempotency, transient-failure handling), OPERATIONS appendix §8 (repo-verified
+deploy/rebuild/migration/test/MCP-access/rollback/health mechanics), §8.8 standing rules from the
+adversarial gap review.
 v1.0 (2026-07-15) — initial protocol per native directives (autonomous, swarm-verified,
 Sonnet-primary with pre-approved escalation).*
