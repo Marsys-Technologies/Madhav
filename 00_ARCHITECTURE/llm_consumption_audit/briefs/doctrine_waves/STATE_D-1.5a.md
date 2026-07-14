@@ -5,7 +5,7 @@ type: WAVE STATE LEDGER (CONDUCTOR_PROTOCOL §6.1)
 
 ```yaml
 wave: D-1.5a
-lifecycle_step: 4   # 1=OPEN, 2=SPAWN, 3=IMPLEMENT∥VERIFY all done (4/4 lanes RECEIPTED), now INTEGRATE
+lifecycle_step: 5   # 1-4 done (INTEGRATE clean: platform 5522/0, platform-mcp 423/75-baseline, sidecar 3360/0), now DEPLOY
 brief_bound: true
 binder_annotations:
   - "A2 narrows: bo_laksana vichara-lookup wiring pre-landed (2026-07-14); A2 = aspect_parashari ingestion + heuristic retirement + stale-comment reconciliation only"
@@ -26,7 +26,7 @@ lanes:
   - {lane: A-alpha, branch: wave/D-1.5a/A-alpha, status: receipted, receipt_ref: "verifier a9b35558d8a18d91b ACCEPT, diff f83475df, hand-traced Jupiter 9L/12L->H2 benefic + CR-54 anchor preserved, tests 3322/0 confirmed, scope_warden pass", agent_id: aa3b218b1e1a235db, commit: f83475df}
   - {lane: A-beta, branch: wave/D-1.5a/A-beta, status: receipted, receipt_ref: "verifier afa4ab53cd20e012f ACCEPT (resumed after transient API disconnect, not a rejection), diff f10a7b70, hand-verified composite arithmetic 1.15+1.635=2.785 convergent_strong with dhana_yoga_2_5_9_11 venus+jupiter in bearing_yogas, root-cause double-wrap independently traced, 75-failure claim confirmed byte-identical via direct commit diff, scope_warden pass", agent_id: ac262d840c1f3aaa1, commit: f10a7b70}
   - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: receipted, receipt_ref: "verifier aaac709386bfc4cbf ACCEPT, diff 08af39bf, offset formula hand-verified against PARASHARI_ASPECTS keys incl wraparound case, baseline delta +36 independently rebuilt and confirmed, scope_warden pass", agent_id: a8c232edeee142ef7, commit: 08af39bf}
-notes: "All 4 lanes RECEIPTED. Merged to wave/D-1.5a/integration in order A-gamma(65b2ff7b)->A-alpha(25bdb1f4)->A-beta(2b217db8)->A-0(218ecf86), no conflicts. INTEGRATE test sweep: platform tsc clean + 5522/0 failed; platform-mcp tsc clean + 75 failed/423 passed/15 skipped (byte-identical to pre-existing baseline, no cross-lane regression). Awaiting sidecar pytest full-suite result."
+notes: "All 4 lanes RECEIPTED. Merged to wave/D-1.5a/integration in order A-gamma(65b2ff7b)->A-alpha(25bdb1f4)->A-beta(2b217db8)->A-0(218ecf86), no conflicts. INTEGRATE test sweep ALL GREEN: platform tsc clean + 5522/0 failed; platform-mcp tsc clean + 75 failed/423 passed/15 skipped (byte-identical baseline, no cross-lane regression); sidecar 3360 passed/0 failed/4 skipped. Proceeding to DEPLOY: merge integration->main, PR, CI, deploy.yml."
 verifiers:
   - {lane: A-0, model: opus, agent_id: afbeca6133e46621e, status: running}
   - {lane: A-alpha, model: opus, agent_id: a9b35558d8a18d91b, status: running}
