@@ -40,6 +40,10 @@ Whole-sign stays primary (DR-2); chalit is a FULL SECOND DATA LAYER consumed in 
    with real salience. Type specimen must fire: Moon 29°46′ Aquarius → chalit 12th vs whole-sign 11th.
 Verifier 1 (compute): cusps match independent Swiss-ephemeris check for 482012f1; Moon specimen
 reproduces. Verifier 2 (serving): all four surfaces + MSR rows live.
+**Identity facts for independent recomputation (Verifier 1):** birth 1984-02-05 10:43 IST (+05:30),
+Bhubaneswar, Odisha (~20.2961°N, 85.8245°E); ayanamsha `lahiri_chitrapaksha`; expected D1 lagna
+12.4311° Aries; Moon 29°46′ Aquarius (the sandhi specimen — whole-sign H11, expected Sripati H12).
+FORENSIC anchors for sanity: Sun Capricorn · Moon Purva Bhadrapada · Shukla Tritiya · Ravivara.
 
 ### Lane B-2 — Bhāva Bala (CR-103) + Aṣṭakavarga completion (CR-99a)
 - Bhāva Bala: six-source house strength via PyJHora; new L1 facts per bhāva. Do NOT hand-roll —

@@ -100,6 +100,12 @@ L5 calibration (D-4) · KP sub-lord engine (deferred; consumes B-1's real cusps 
    + the compiled vidhi (no priors, no register, no hand-derivation), produces the 482012f1 wealth
    reading; harness asserts each of the 6 §G.0 conclusions is traceable to a served top-15
    signal/verdict. 6/6 required. (Floor-model rule: if Sonnet passes, the instrument does the work.)
+   **Isolation spawn recipe (mandatory):** the reading agent runs OUTSIDE the repo (empty cwd, no
+   repo file access — it must not read CLAUDE.md/the register/close reports), tool allowlist = the
+   deployed MCP connector ONLY, model=Sonnet, and receives a verbatim prompt stored in this brief's
+   BOUND appendix at wave open (shape: "You are reading chart <uuid> for a full financial
+   assessment. Use the vidhi plan the server provides. Produce the reading with citations to served
+   signal/fact ids."). The harness — not the agent — judges conclusion coverage afterward.
 2. Census battery ≥ baseline (no regressions); alias count = canonical list; completeness receipt
    present on the reading; Gate-A + Gate-B batteries still green (regression).
 3. A second synthesis probe on a NON-wealth domain (career) to prove the vidhi generalizes: floor

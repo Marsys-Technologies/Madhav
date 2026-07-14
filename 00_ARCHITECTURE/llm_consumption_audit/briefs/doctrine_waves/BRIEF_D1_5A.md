@@ -28,6 +28,18 @@ blocks: D-1.5b (does not start until this gate is green)
   DISAGREEMENT_REGISTER with delegation+ratification provenance; CURRENT_STATE §2 refresh (stale
   M6 banner → doctrine-waves campaign pointer); migration-directory ruling: **all future migrations
   in `platform/migrations/` only**, recorded in ONGOING_HYGIENE; lane-brief template note (CR-96/R-5).
+- **Harness home + CLI contract:** lives at `platform/scripts/audit/doctrine_harness/`; interface
+  `npx tsx platform/scripts/audit/doctrine_harness/run.ts --assertions <ids|all> [--wave <w>]
+  [--target <mcp-url>]` → exit 0 all-green / 1 any-red, JSON receipt to stdout (per-assertion
+  id/green|red/evidence). Uses the §8.1 access pattern (Bearer, POST /mcp). After A-0 merges, the
+  harness's assertion definitions are the CANONICAL copy of the gate (protocol §8.8.v).
+- **Sequencing rule: A-0's harness delivery is a prerequisite for every other lane's Phase-1
+  verification.** Conductor spawns A-0 harness-first; A6 process items may lag. Implementer lanes
+  may start in parallel, but no verifier runs before the harness exists.
+- may_touch: `platform/scripts/audit/doctrine_harness/**`, `00_ARCHITECTURE/SESSION_LOG.md`,
+  `00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md`, `00_ARCHITECTURE/CURRENT_STATE_v1_0.md`,
+  `00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md`,
+  `00_ARCHITECTURE/llm_consumption_audit/**` (state ledger, reports, register status updates).
 
 ### Lane A-α — Valence engine (Python; A1 then A2 sequentially inside this lane)
 - **A1 (CR-90/DR-1):** reorder `compute_valence` (`ga_writers/ga_vichara_writer.py:269-322`) to
@@ -88,7 +100,10 @@ any time. Rebuild required after merge (A-α/A-γ change writers).
 - B-2: probe `judgment_query(wealth)` + `bodha_signals_get(wealth)` + both yoga faces on 482012f1 —
   confirm the Lane A-0 canonical baseline (reds #1–#5, #7–#9, #11; greens #10, #12; #6 split) still
   reproduces; any already-green assertion moves that item to verification-only.
-- B-3: record rollback pin (deployed image SHA + build_ids both charts).
+- B-3: record rollback pin (deployed image SHAs per protocol §8.4 + build_ids both charts).
+- B-4: confirm BOTH charts exist and are fully built on the deployed estate (Abhinandan
+  `1c826d5a-41cb-4450-b4dc-59d440e5f75a` included — L1 closure recorded its operator E2E as gated;
+  if not built, trigger the rebuild per §8.2 BEFORE spawning lanes, since the gate needs both).
 
 ## §G — Gate (runs per CONDUCTOR_PROTOCOL §2 step 7)
 Register §K.2 assertions 1–12 + A5's two-chart divergence + A7's aspect spot-check, all green on

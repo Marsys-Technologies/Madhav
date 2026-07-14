@@ -17,10 +17,18 @@ governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 F
 current_wave: D-1.5a   # advance this pointer at each wave close (conductor cleanup step)
 wave_sequence: [D-1.5a, D-1.5b, D-2, D-3, D-4]
 parallel_tracks:
-  - Track 2 (infra, may run any time): CR-40/CR-8 ephemeris/transit sidecar auth restore —
-    hard prereq for D-3 lanes T-2/T-5. Never touches the deployed serving estate.
-  - Track 3 (authoring, during D-1.5b): vidhi floors + primitives + canonical-face list as
-    data/docs for D-2 Lane V-1/V-3. No code.
+  - Track 2 (infra): CR-40/CR-8 ephemeris/transit sidecar auth restore — hard prereq for D-3
+    T-2/T-5. TRIGGER: the D-1.5a conductor launches it at wave close if not already green (a
+    close-report checklist item; D-1.5b's conductor re-checks). SCOPE: sidecar deployment/auth/key
+    wiring only (ref_* 401s, kala_temporal_bundle sidecar_available=false); never touches the
+    serving estate or wave code. DONE-ASSERTION (MCP): ref_planet_transit_get answers without 401
+    AND kala_temporal_bundle reports sidecar_available=true. Model: Sonnet + Opus verifier.
+  - Track 3 (authoring): vidhi floors + primitives + canonical-face list as data/docs for D-2
+    V-1/V-3. TRIGGER: launched by the D-1.5b conductor at wave open (runs alongside). SCOPE:
+    documents/registry-data drafts under 00_ARCHITECTURE/llm_consumption_audit/briefs/
+    doctrine_waves/track3/ only — no code, no deploy. DONE-CHECK: every intent class has a drafted
+    floor; every primitive names its live tool + known_gap; CR-27's improvisation corpus mapped to
+    floor items. Consumed (and bound against reality) by D-2's Binder.
 native_directives:
   - Fully autonomous, bypass permissions, no human gates. Adjudicator agent answers human-class
     questions (Fable=doctrine → DR-n recorded; Opus=engineering). PARK classes in

@@ -64,8 +64,9 @@ is structural, not a norm.
    brief's gate as non-blocking, else the wave stays open).
 8. **CLOSE + CLEANUP** (verified like any lane) — worktrees/branches removed; brief stamped
    `COMPLETE` (or left `ACTIVE` with the red list — never falsely stamped); close report written
-   (template §6); SESSION_LOG entry; register status updates; CURRENT_STATE pointer; rollback pin
-   advanced. A wave without a close report did not close (the D-1 lesson).
+   (template §7); SESSION_LOG entry; register status updates; CURRENT_STATE pointer; rollback pin
+   advanced; state ledger (§6.1) marked complete. A wave without a close report did not close (the
+   D-1 lesson).
 
 ## §3 — Two-phase verification (the fix for D-1's failure)
 
@@ -118,13 +119,150 @@ on a corrupted estate. Time/budget ceilings per the brief's frontmatter. The one
 **a red gate is reported red. A half-passed gate stamped complete is the exact failure this
 protocol exists to prevent.**
 
-## §6 — Close report template
+## §6 — Resilience & resumption (API-glitch / crash recovery)
+
+**Design rule: all campaign state lives in FILES AND GIT, never in conversation memory.** A wave
+must be resumable by a brand-new session at any lifecycle point with zero information loss.
+
+**§6.1 The wave state ledger.** The conductor maintains
+`briefs/doctrine_waves/STATE_<wave>.md` (committed at every transition), a small YAML block:
+`{wave, lifecycle_step: 1-8, brief_bound: bool, rollback_pin: {image_sha, build_ids},
+lanes: [{lane, branch, status: pending|implementing|verifying|receipted|rejected(n)|parked|merged,
+receipt_ref}], deploy: {done, sha}, rebuild: {chart_id: build_id|pending}, gate: {run, green: [...],
+red: [...]}, updated_at}`. **Every lifecycle transition = update ledger + commit.** The commit IS
+the checkpoint; an uncommitted transition did not happen.
+
+**§6.2 Re-entry procedure (run at EVERY conductor session open, first thing):**
+1. Read `CLAUDECODE_BRIEF.current_wave` → read `STATE_<wave>.md` (if absent → fresh OPEN, §2.1).
+2. Reconcile ledger vs reality — never trust the ledger blindly: `git branch --list 'wave/*'`
+   (which lane branches exist, their last commit), receipts present?, deployed image SHA vs pin,
+   build status per chart, and if `gate.run` — re-run the battery (cheap, idempotent) rather than
+   trusting recorded results.
+3. Resume at the FIRST step whose completion cannot be verified. In-flight lane work: a lane branch
+   with commits but no receipt → respawn the VERIFIER first (the work may be done); a lane branch
+   with no commits → respawn the implementer fresh in the same worktree/branch.
+4. Log the resumption (ledger `resumed_at` append) and continue the lifecycle.
+
+**§6.3 Idempotency requirements per step** (what makes §6.2 safe):
+- Every lifecycle step must be re-runnable: binding (re-probe is harmless), spawn (worktree/branch
+  create is check-first), merge (already-merged lane detected via git), deploy (re-deploying the
+  same SHA is a no-op), rebuild (delete-then-insert per §N.3 — re-running heals partial builds;
+  the ka_sangam substep-resumption ledger, migration 436, resumes long builds), gate (pure reads).
+- Migrations: idempotent by project convention; the migration guard verifies IF NOT EXISTS /
+  ON CONFLICT discipline before apply, so a re-applied migration is safe.
+- The assertion harness is pure-read MCP and always safe to re-run.
+
+**§6.4 Transient-failure handling (API glitches, network, 5xx):**
+- All agents (implementers, verifiers, gate runner): on a transient tool/API failure, retry with
+  backoff (3 attempts: ~10s/60s/300s). A transient failure NEVER counts as a verification attempt
+  (§5's 3-attempt counter is for substantive rejections only).
+- MCP-call failures in the harness: distinguish TOOL-ERROR (counts as red) from TRANSPORT-ERROR
+  (retry; if the connector stays unreachable >15 min, record `gate: blocked_infra` in the ledger,
+  commit, and end the session cleanly — the next session re-enters via §6.2 and re-runs the gate
+  when the connector is back; "connection restored" is detected by the re-entry probe itself).
+- A subagent that dies mid-task: its worktree/branch survive; the conductor respawns per §6.2.3.
+- The conductor session itself dying is the DESIGNED-FOR case: §6.1's committed ledger makes any
+  new session (including a scheduled/cron re-launch) a full-fidelity resume. Recommended: launch
+  waves under a supervisor loop that restarts the conductor session on exit until the ledger shows
+  `lifecycle_step: 8` complete or a PARK/blocked state that needs the next wave or native review.
+
+## §7 — Close report template
 
 `{wave, brief_version_bound, lanes: [{lane, verdict, receipt_ref}], parked: [{lane, diagnosis}],
 gate: {assertions_green, assertions_red, final_proof}, deploy: {image_sha, build_ids}, adjudications:
 [DR-n / eng], register_updates, rollback_pin, next_wave_bind_notes}` — written to this directory as
 `CLOSE_<wave>.md`, appended to SESSION_LOG.
 
+## §8 — OPERATIONS APPENDIX (repo-verified mechanics; the plumbing every agent needs)
+
+GCP project `madhav-astrology`, region `asia-south1`. Cloud Run services: `amjis-web`,
+`amjis-sidecar`, `amjis-mcp`; Cloud Run Job: `brahma-build-pipeline-job`. Canonical chart UUIDs
+(FULL — never truncate in scripts): Abhisek `482012f1-710e-4a25-994a-93821f5871aa`, Abhinandan
+`1c826d5a-41cb-4450-b4dc-59d440e5f75a`. Ayanamsha: `lahiri_chitrapaksha`.
+
+**§8.1 Deployed-MCP access (the gate channel).** Config: repo `.mcp.json` → `marsys-jis` at
+`https://amjis-mcp-qm256lasva-el.a.run.app`, `Authorization: Bearer ${MARSYS_MCP_KEY}`; the key is
+exported by `source scripts/setup_mcp_env.sh`. Transport: stateless JSON-RPC, **POST /mcp** only.
+Scripted precedent: `platform/scripts/audit/tap/mcp_tool_smoke.ts` LIVE mode
+(`MCP_SERVER_URL=https://<host>/mcp MCP_SMOKE_BEARER_TOKEN=... npx tsx <script>`) — the harness
+follows this pattern. **RULING: `marsys-jis-direct` (the `?api_key=` seat in `~/.claude.json`) IS
+the same deployed Cloud Run service** — either face satisfies R-5's "deployed connector"; the
+harness uses the Bearer face for reproducibility. (Hygiene: both prod keys are committed in
+plaintext — rotation is a campaign-close checklist item, NOT a lane task.)
+
+**§8.2 Chart rebuild.** `POST /api/cockpit/runs` with `{chart_id, scope, scope_target?, action,
+clear_before?}` (`scope ∈ global|layer|asset|asset_set`; `/api/build/start` is 410-gone). 409 =
+active run exists (wait, don't force). Dispatches `brahma-build-pipeline-job` with
+`--run-id <build_runs.id>`. Manual/local equivalent: `cd platform/python-sidecar && python -m
+pipeline.orchestrator.main --run-id <id>` (exit 0 clean / 2 not-found / 3 chart-locked / 1 fatal).
+**Completion/status:** `GET /api/cockpit/status` (running|idle) + `GET /api/cockpit/stats`
+(per-asset lit|building|error — authority is `asset_registry.count_sql`, NEVER `asset_throughput` —
+the L1 trap). Rebuild scope per wave = the layers the wave's merged writers touch (D-1.5a: L1+L2;
+default when unsure: full L1→L5 for both charts). Long builds resume via the migration-436
+substep ledger — re-dispatching a dead run is safe.
+
+**§8.3 Deploy.** Merge mechanism: PR to `main` via `gh pr create` + merge (repo convention is
+PR-based; direct push only if PR flow is unavailable). Deploy is NOT push-triggered: CI **"CI —
+Ganga Quality Gate"** must pass on `main`, then `deploy.yml` fires via `workflow_run` (web always;
+sidecar/mcp/pipeline-job only when their paths changed — note: a wave changing only
+`python-sidecar` still re-points the pipeline job image). Watch: `gh run list --workflow=deploy.yml`
++ `gh run watch <id>`. Smoke + traffic promotion are inside the workflow. **Live-SHA verification**
+(no runtime version endpoint exists): `gcloud run services describe amjis-web --region=asia-south1
+--format='value(spec.template.spec.containers[0].image)'` — image tag = git SHA; same for
+`amjis-mcp`; job image via its describe. Emergency path: `workflow_dispatch` (bypasses CI — use
+only for rollback-class fixes with Adjudicator-engineering sign-off).
+
+**§8.4 Rollback pin + rollback.** Pin at wave open (ledger §6.1): the three images' SHAs (per
+§8.3 describe commands) + current `build_id` per chart (from any tool's `chart_header`/provenance).
+Rollback: `gcloud run services update-traffic <service> --region=asia-south1
+--to-revisions <prev-revision>=100` (list revisions via `gcloud run revisions list`), plus job
+image re-point back to the pinned tag; then re-run the previous wave's gate battery to confirm
+estate restoration. DB state needs no rollback (idempotent rebuilds heal; migrations are additive
+by convention — a migration needing destructive rollback is a PARK-class event).
+
+**§8.5 Migrations (surgical, per CLAUDE.md §N.4).** Never bulk-replay. Procedure: start the Cloud
+SQL Auth Proxy (`platform/scripts/start_db_proxy.sh`), then `cd platform && DATABASE_URL=... npx
+tsx scripts/migrate.ts --dry-run` (confirm EXACTLY the expected pending files) → `npx tsx
+scripts/migrate.ts --target <NNN_name.sql>` one file at a time, each with a migration-guard
+receipt. New migrations: `platform/migrations/` ONLY, scaffolded via the `create-migration` skill.
+Note the deploy workflow also auto-runs migrate.ts — therefore migrations must be merged only
+in the same integration branch as their consumers, and the guard receipt is what makes the auto-run
+safe (idempotent, IF NOT EXISTS discipline verified pre-merge).
+
+**§8.6 Test commands (what "verifier runs the tests itself" means).**
+- Python sidecar: `cd platform/python-sidecar && pytest tests/ --ignore=tests/test_pyjhora_adapter
+  --ignore=tests/test_dasha_chain.py --ignore=tests/extractors/test_cgm_extractor.py
+  --ignore=tests/test_l0_remedy_corpus.py -m "not integration" -q --tb=short` (no DB needed).
+- Platform TS: `cd platform && npm test` (vitest) + `npx tsc --noEmit --skipLibCheck` + `npm run lint`.
+- MCP TS: `cd platform-mcp && npm test` + `npx tsc --noEmit`.
+- Governance: `python platform/scripts/governance/drift_detector.py` (exit 0 or 3 = pass) +
+  `schema_validator.py` (exit 0). Full local gate = the `run-checks` skill.
+- "Full test suite" at integration (lifecycle step 4) = all of the above.
+
+**§8.7 Build-health check (lifecycle step 6, concrete).** After rebuild: (a) `/api/cockpit/stats`
+— every asset the wave touches `lit`, zero `error`; (b) FORENSIC 7/7 via
+`ganita_natal_positions_compute` (Sun Capricorn · Moon Purva Bhadrapada · Lagna Aries 12.4311° ·
+Shukla Tritiya · Ravivara · Shiva · Garaja on 482012f1); (c) DEFECT-001 orphan check = 0 via
+`bodha_signals_get` provenance; (d) L1 canonical row counts within ±1% of L1_GANITA_CLOSURE values
+(chart_facts 27,554 · chart_dashas 536,471 · chart_divisionals 21,635 for 482012f1) unless the
+wave's brief declares expected deltas (new fact categories change these — Binder records the new
+expected counts at open). The harness implements this as `health` assertions.
+
+**§8.8 Standing conductor rules (gap-review adoptions).** (i) **Prior-battery-red at open:** if a
+previous wave's battery has gone red at wave open (estate drift), file a regression incident,
+route to Adjudicator-engineering, do NOT spawn lanes until dispositioned. (ii) **DR-n allocation
+and register edits are conductor-only** — lanes request, conductor writes (prevents numbering
+collisions and keeps the register single-writer). (iii) **Wave exit report is written at EVERY
+exit** — `REPORT_<wave>.md` with `status: closed|blocked|parked` (a blocked wave with no report is
+invisible to the next session); the §7 template applies to all exits. (iv) **Default ceilings**
+(unless a brief overrides): wave wall-clock 24h, single lane 6h — ceiling hit = PARK + report, not
+silent continuation. (v) After A-0 merges, **the harness's assertion definitions are the canonical
+copy** of the gate (register/plan text is provenance; the executable is authoritative — version
+skew between them is a defect to fix in the harness).
+
 ---
-*Changelog: v1.0 (2026-07-15) — initial protocol per native directives (autonomous, swarm-verified,
+*Changelog: v1.1 (2026-07-15) — resilience §6 (state ledger, re-entry, idempotency,
+transient-failure handling), OPERATIONS appendix §8 (repo-verified deploy/rebuild/migration/test/
+MCP-access/rollback/health mechanics), §8.8 standing rules from the adversarial gap review.
+v1.0 (2026-07-15) — initial protocol per native directives (autonomous, swarm-verified,
 Sonnet-primary with pre-approved escalation).*
