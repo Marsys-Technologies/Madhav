@@ -26,7 +26,12 @@ lanes:
   - {lane: A-alpha, branch: wave/D-1.5a/A-alpha, status: claimed, receipt_ref: null, agent_id: aa3b218b1e1a235db, commit: f83475df, claim: "A1: compute_valence gated on classify_actor's primary (trikona before dusthana); Jupiter 9L/12L->H2 now benefic not strong_malefic. A2: aspect_parashari + aspect_parashari_per_varga wired into VicharaFactIndex (were dead-on-arrival, fact_subject never read into tags); heuristic retired for lord-link+aspect populations, kept honestly for Rahu/Ketu (no lordship = no fabricated row per B.10). 6 stale comments reconciled (brief cited 3). 23 vichara tests pass (was 19); full suite 3322 passed/0 failed"}
   - {lane: A-beta, branch: wave/D-1.5a/A-beta, status: implementing, receipt_ref: null, agent_id: ac262d840c1f3aaa1}
   - {lane: A-gamma, branch: wave/D-1.5a/A-gamma, status: claimed, receipt_ref: null, agent_id: a8c232edeee142ef7, commit: 08af39bf, claim: "A7 offset fix (opposition/special aspects now 1.0, was 0.0); A5 9-case two-chart parametrized divergence test; 36 new tests pass; full suite 3352 passed/0 failed (net +36, zero regressions); diff scope-clean (3 files, all in may_touch)"}
-notes: "A-beta merges last (A-gamma -> A-alpha -> A-beta); no verifier runs until A-0's harness lands."
+notes: "A-beta merges last (A-gamma -> A-alpha -> A-beta); A-0 harness landed, Phase-1 verifiers spawned for A-0/A-alpha/A-gamma."
+verifiers:
+  - {lane: A-0, model: opus, agent_id: afbeca6133e46621e, status: running}
+  - {lane: A-alpha, model: opus, agent_id: a9b35558d8a18d91b, status: running}
+  - {lane: A-gamma, model: opus, agent_id: aaac709386bfc4cbf, status: running}
+  - {lane: A-beta, model: opus, agent_id: null, status: not_spawned_yet_awaiting_implementer}
 deploy: {done: false, sha: null}
 rebuild:
   "482012f1-710e-4a25-994a-93821f5871aa": pending
