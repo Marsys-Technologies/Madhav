@@ -84,7 +84,15 @@ class FakeCursor:
             self._result = self._store['parvas']
         elif "fact_subject = 'moon'" in low:
             # CR-87: _resolve_native_chart_context's Moon nakshatra/sign query.
-            self._result = [('nakshatra', 'Purva Bhadrapada'), ('sign', 'Aquarius')]
+            # Rows MUST be dict-shaped: the orchestrator connection uses psycopg3's
+            # dict_row factory (pipeline/orchestrator/db.py), and the writer now
+            # (correctly) reads row['fact_key']/row['fact_value_text'] by column name
+            # rather than positional unpacking. Returning tuples here would falsely
+            # fail against the fixed code — mirror the real dict_row shape.
+            self._result = [
+                {'fact_key': 'nakshatra', 'fact_value_text': 'Purva Bhadrapada'},
+                {'fact_key': 'sign', 'fact_value_text': 'Aquarius'},
+            ]
         elif 'chart_dashas' in low:
             self._result = [{'birth_date': date(1984, 2, 5)}]
         else:
@@ -300,8 +308,13 @@ class TestAntiDrift:
             src = f.read()
         inserts = re.findall(r'INSERT INTO (\w+)', src)
         assert inserts, 'expected at least one INSERT'
+        # kala_convergence = the asset's data table; build_substep_progress = the
+        # cross-attempt resumption ledger (migration 436), written atomically inside
+        # the orchestrator's per-substep transaction. Both are legitimate; anything
+        # else (esp. a phala_* or another asset's table) would be real drift.
+        allowed = {'kala_convergence', 'build_substep_progress'}
         for tbl in inserts:
-            assert tbl == 'kala_convergence', f'unexpected INSERT target: {tbl}'
+            assert tbl in allowed, f'unexpected INSERT target: {tbl}'
 
     def test_writer_writes_no_phala_table(self):
         path = os.path.join(
