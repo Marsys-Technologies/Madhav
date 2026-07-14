@@ -31,7 +31,11 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
     'bhadra_flag, and panchaka_flag. ' +
     'Every yoga/dosha firing carries its constituent grahas and fact_id for Bodha back-reference. ' +
     'Weak-tail signals (low-salience yogas) are included — strength is a column, not a gate. ' +
-    'Covers 6 fact_categories.',
+    'Covers 6 fact_categories. A3/CR-92/R-3: also returns firings_pointer (a genuine ' +
+    'ga_yoga_firings fired-count for this chart/ayanamsha — that table, served via ' +
+    'get_yoga_firings/ganita_yoga_firings_get, is firings-authoritative; this tool\'s rows are ' +
+    'single-pass catalog matches, JL-004) and catalog_only_rows_in_page (count of rows whose ' +
+    'fire_reason is requires_pass — not yet cross-verified confirmed firings).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
@@ -85,7 +89,21 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
         whereClause += ` AND ayanamsha_id = $${baseParams.length}`
       }
 
-      const [countResult, result] = await Promise.all([
+      // A3 (CR-92 residue, R-3): ga_yoga_firings is the firings-authoritative table (per-yoga
+      // strength, bhaṅga/cancellation state, partial-formation %, dāśā-activation) — this tool's
+      // own chart_facts yoga_label/dosha_label rows are single-pass catalog matches (JL-004),
+      // NOT a substitute. Rather than silently under-report families like Dhana/Raja Yoga that
+      // fire in ga_yoga_firings but were never a strong chart_facts yoga_label presence, serve a
+      // first-class pointer + a genuine COUNT(*) of what's actually fired there — zero new
+      // computation (B.10), same bounded-query discipline as the total/count query above.
+      const firingsParams: unknown[] = [chartId]
+      let firingsWhere = `chart_id = $1 AND fired = true`
+      if (args.ayanamsha_id) {
+        firingsParams.push(args.ayanamsha_id as string)
+        firingsWhere += ` AND ayanamsha_id = $${firingsParams.length}`
+      }
+
+      const [countResult, result, firingsCountResult] = await Promise.all([
         query<{ total: string }>(
           `SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${whereClause}`,
           baseParams,
@@ -99,9 +117,33 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
            LIMIT $${baseParams.length + 1} OFFSET $${baseParams.length + 2}`,
           [...baseParams, limit, offset],
         ),
+        query<{ total: string }>(
+          `SELECT COUNT(*)::text AS total FROM ga_yoga_firings WHERE ${firingsWhere}`,
+          firingsParams,
+        ),
       ])
 
       const total = Number(countResult.rows[0]?.total ?? 0)
+      const firingsFiredTotal = Number(firingsCountResult.rows[0]?.total ?? 0)
+      const firingsPointer = {
+        tool: 'ganita_yoga_firings_get',
+        table: 'ga_yoga_firings',
+        fired_count: firingsFiredTotal,
+        note:
+          'ga_yoga_firings is the firings-authoritative source for this chart/ayanamsha — per-yoga ' +
+          'strength scoring, bhaṅga (cancellation) state, partial-formation %, and dāśā-activation. ' +
+          "This tool's yoga_label/dosha_label rows are single-pass catalog matches (JL-004); cross-" +
+          'check against ganita_yoga_firings_get before asserting a yoga did or did not fire.',
+      }
+
+      // B9-preview (1-line presentation guard; full gating is D-1.5b's job): rows whose
+      // fire_reason is 'requires_pass' are catalog/label matches awaiting cross-verification, not
+      // confirmed findings — they still serve (never silently dropped), but are counted separately
+      // so a caller doesn't read the raw row count as "N confirmed yogas/doshas".
+      const catalogOnlyCount = (result.rows ?? []).filter(r => {
+        const v = r['fact_value_jsonb'] as { fire_reason?: string } | null
+        return v?.fire_reason === 'requires_pass'
+      }).length
 
       // R5.3 B2 (Q9-N-1 ruling item C): the dosha_label catalog row for "Kala Sarpa Dosha" is
       // NOT the genuine per-chart Rahu/Ketu computation — its constituent_facts_array cites an
@@ -137,6 +179,15 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId, categories, rows: result.rows ?? [], total,
+          firings_pointer: firingsPointer,
+          catalog_only_rows_in_page: catalogOnlyCount,
+          ...(catalogOnlyCount > 0 ? {
+            catalog_only_note:
+              `${catalogOnlyCount} of ${(result.rows ?? []).length} row(s) in this page are ` +
+              "catalog_only/requires_pass — single-pass label matches (JL-004), not yet " +
+              'cross-verified confirmed firings. Do not present them as settled findings; see ' +
+              'ganita_yoga_firings_get for cross-verified detection detail.',
+          } : {}),
           ...(kalaSarpaPerVarga ? { kala_sarpa_per_varga: kalaSarpaPerVarga } : {}),
         },
         is_error: false,

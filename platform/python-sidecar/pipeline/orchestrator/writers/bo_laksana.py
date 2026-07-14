@@ -862,13 +862,17 @@ def _resolve_class_prior(
 
 # ── Night-1 Lane 4 (Change 2, CR-82→CR-65): varga_ratification loader ─────────
 #
-# LANE2 dependency (verified BLOCKED 2026-07-14): ga_vichara / chart_vichara do
-# not exist in this campaign yet (Lane 2 never landed — see this lane's handback
-# report). This loader is defensive by construction: it degrades to ({}, False)
-# whenever chart_vichara is absent, so every signal's ratification_factor stays
-# NULL/neutral and every fallback is honestly tagged — never a silently-guessed
-# value (CR-42 class). Once LANE2 ships the table, this same query activates the
-# real mechanism with no further code change required here.
+# STATUS (reconciled 2026-07-15, D-1.5a A2/CR-91): LANE2 (ga_vichara /
+# chart_vichara) SHIPPED 2026-07-14 and is live — this is no longer a
+# blocked/pending dependency. The comment below previously read "Lane 2 never
+# landed"; that was true only through the 2026-07-14 handback and is stale.
+# The try/except degradation is KEPT (not removed) as a genuine defensive
+# posture for a chart whose ga_vichara build is missing/partial/mid-rebuild —
+# it degrades to ({}, False) whenever chart_vichara is unavailable FOR THIS
+# CHART, so every signal's ratification_factor stays NULL/neutral and every
+# fallback is honestly tagged (CR-42 class: no silent guess), exactly as
+# before — only the framing ("permanently blocked" vs "per-chart degraded
+# path") has changed.
 
 def _load_varga_ratification(conn: Any, chart_id: str) -> tuple[dict[tuple[str, str], float], bool]:
     """(subject, domain) -> ratification_factor, from chart_vichara's
@@ -893,8 +897,8 @@ def _load_varga_ratification(conn: Any, chart_id: str) -> tuple[dict[tuple[str, 
         except Exception:
             pass
         logger.warning(
-            "[bo_laksana] chart_vichara varga_ratification unavailable (%s) — LANE2 "
-            "(ga_vichara) not yet built in this campaign; ratification_factor stays "
+            "[bo_laksana] chart_vichara varga_ratification unavailable (%s) — ga_vichara "
+            "build is missing/partial for this chart; ratification_factor stays "
             "NULL/neutral for every signal this build (documented degraded path, "
             "not a silent guess — CR-82→CR-65 handoff).", exc,
         )
@@ -932,9 +936,14 @@ def _resolve_ratification_factor(
 
 # ── Night-1 Lane 4 (Change 3, CR-83/CR-54-as-amended): judged-valence loader ──
 #
-# Same LANE2-dependency posture as _load_varga_ratification: returns ({}, False)
-# whenever chart_vichara is absent, so _resolve_valence's fallback path fires
-# honestly (valence_source='keyword_heuristic_v1') rather than raising.
+# STATUS (reconciled 2026-07-15, D-1.5a A2/CR-91): ga_vichara/chart_vichara
+# shipped 2026-07-14 — "Lane 2 never landed" (this comment's prior wording)
+# is stale and no longer describes reality. Same posture as
+# _load_varga_ratification above: returns ({}, False) whenever chart_vichara
+# is unavailable FOR THIS CHART (missing/partial/mid-rebuild), so
+# _resolve_valence's fallback path fires honestly
+# (valence_source='keyword_heuristic_v1') rather than raising — a genuine
+# per-chart defensive degradation, not a permanently-dead path.
 
 def _load_vichara_valence(conn: Any, chart_id: str) -> tuple[dict[tuple[str, str, str], dict], bool]:
     """(actor, target, varga) -> {value_text, value_num}, from chart_vichara's
@@ -958,8 +967,8 @@ def _load_vichara_valence(conn: Any, chart_id: str) -> tuple[dict[tuple[str, str
         except Exception:
             pass
         logger.warning(
-            "[bo_laksana] chart_vichara valence_pass unavailable (%s) — LANE2 "
-            "(ga_vichara) not yet built in this campaign; every signal falls back "
+            "[bo_laksana] chart_vichara valence_pass unavailable (%s) — ga_vichara "
+            "build is missing/partial for this chart; every signal falls back "
             "to the keyword heuristic this build (documented, not silent — "
             "valence_source='keyword_heuristic_v1').", exc,
         )
@@ -981,9 +990,11 @@ def _load_vichara_divergence_signals(
     conn: Any, chart_id: str, ayanamsha_id: str, build_id: str, now: str,
 ) -> list[dict]:
     """CR-57: emit a first-class MSR signal per chart_vichara row with
-    vichara_family='varga_ratification_divergence'. LANE2-dependent — returns []
-    whenever chart_vichara is absent (see _load_varga_ratification's guard
-    note); forward-compatible once LANE2 ships."""
+    vichara_family='varga_ratification_divergence'. ga_vichara/LANE2 shipped
+    2026-07-14 (reconciled 2026-07-15, D-1.5a A2/CR-91) — this returns []
+    only as a per-chart defensive degradation whenever chart_vichara is
+    unavailable for THIS chart (see _load_varga_ratification's guard note),
+    not because the table is permanently absent."""
     sp = "sp_bo_laksana_vichara_divergence"
     try:
         with conn.cursor() as _c:
@@ -1005,7 +1016,8 @@ def _load_vichara_divergence_signals(
             pass
         logger.info(
             "[bo_laksana] varga_ratification_divergence signals skipped (%s) — "
-            "LANE2 (chart_vichara) not yet built in this campaign.", exc,
+            "chart_vichara unavailable for this chart (ga_vichara build "
+            "missing/partial, not permanently absent).", exc,
         )
         return []
     signals: list[dict] = []
@@ -1844,6 +1856,36 @@ def _build_signal_row(
             }
         elif resolved_house is not None:
             subject_resolution = {"resolved_graha": None, "resolved_house": resolved_house, "rule": None}
+
+    # CR-91 (A2): aspect_parashari_given / aspect_parashari_per_varga carry the
+    # ASPECTING graha in fact_subject (canonical short code — bare for the D1
+    # -only `_given` category, varga-prefixed e.g. "D9_MAR" for `_per_varga`),
+    # never in fact_value_jsonb, and aspect_parashari_given carries no jsonb at
+    # all (target house lives only in fact_key="house_{n}"). Without this
+    # block, `tags` never got a 'graha' entry for this population, so
+    # _resolve_valence's actor lookup was always empty and it silently fell
+    # back to keyword_heuristic_v1 for every aspect fact even after ga_vichara
+    # shipped (ga_vichara_writer.py's build_aspect_valence_rows() now emits
+    # the corresponding valence_pass rows keyed on this exact (actor, target,
+    # varga) shape). aspect_parashari_per_varga's target_house is already
+    # populated into `tags` from fvj by the Change-3 fix above (jsonb key
+    # "target_house") — only the graha and the D1-only `_given` category's
+    # house need resolving here.
+    if fact_cat in ("aspect_parashari_given", "aspect_parashari_per_varga") and "graha" not in tags:
+        raw_subj = str(fact_row.get("fact_subject") or "")
+        subj = raw_subj
+        if varga_id and raw_subj.upper().startswith(f"{varga_id}_"):
+            subj = raw_subj[len(varga_id) + 1:]
+        if subj:
+            tags["graha"] = subj
+            config["graha"] = subj
+        if "target_house" not in tags and "house" not in tags:
+            m = re.match(r"house_(\d{1,2})$", fact_key or "", re.IGNORECASE)
+            if m:
+                h = int(m.group(1))
+                if 1 <= h <= 12:
+                    tags["target_house"] = h
+                    config["target_house"] = h
 
     # Night-1 Lane 4 (Change 3, CR-83/CR-54-as-amended): judged valence — prefer
     # ga_vichara's valence_pass row over the keyword heuristic; the heuristic is
@@ -2768,10 +2810,12 @@ class BoLaksanaWriter(WriterBase):
 
         # Night-1 Lane 4 — Change 1 (CR-81): activated class priors.
         class_priors = _load_class_priors(conn)
-        # Night-1 Lane 4 — Change 2/3 (CR-82→CR-65, CR-83): LANE2-dependent lookups.
-        # Both degrade to ({}, False) whenever chart_vichara doesn't exist yet
-        # (verified BLOCKED 2026-07-14 — see this lane's handback report); every
-        # downstream consumer already handles the empty-lookup case honestly.
+        # Night-1 Lane 4 — Change 2/3 (CR-82→CR-65, CR-83): ga_vichara-backed
+        # lookups (ga_vichara/chart_vichara shipped 2026-07-14; reconciled
+        # 2026-07-15, D-1.5a A2/CR-91). Both degrade to ({}, False) whenever
+        # chart_vichara is unavailable for THIS chart (per-chart defensive
+        # degradation, not a permanent block); every downstream consumer
+        # already handles the empty-lookup case honestly.
         ratification_lookup, ratification_available = _load_varga_ratification(conn, chart_id)
         vichara_valence_lookup, vichara_valence_available = _load_vichara_valence(conn, chart_id)
 
@@ -2869,7 +2913,9 @@ class BoLaksanaWriter(WriterBase):
                 pass
 
         # Night-1 Lane 4 — Change 2.4 (CR-57): varga_ratification_divergence
-        # signals. LANE2-dependent — [] whenever chart_vichara is absent.
+        # signals. ga_vichara-backed — [] only when chart_vichara is
+        # unavailable for this chart (per-chart degradation, table itself
+        # is live since 2026-07-14).
         divergence_signals = _load_vichara_divergence_signals(conn, chart_id, ayanamsha, build_id, now)
         if divergence_signals:
             signal_rows.extend(divergence_signals)

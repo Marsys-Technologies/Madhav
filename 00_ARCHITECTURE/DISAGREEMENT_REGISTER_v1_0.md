@@ -928,3 +928,106 @@ disagreement_register_entry:
     - path: 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
       linkage: evidence
 ```
+
+## DIS.015 (doctrine-waves campaign ref: DR-2) — House-system computational primary + chalit synthesis-layer doctrine
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.015
+  campaign_ref: DR-2   # DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md frontmatter numbering (DR-1, DR-2, ...)
+                        # — a separate sequence used across the doctrine-waves campaign artifacts
+                        # (CONDUCTOR_PROTOCOL.md, BRIEF_D1_5A.md, POST_REMEDIATION_CONSUMPTION_REGISTER
+                        # §K.1/§K.2). dr_id stays sequential in THIS register per §2 schema; campaign_ref
+                        # is the cross-reference key those documents actually cite.
+  class: scope_disagreement
+  opened_on: 2026-07-14
+  opened_by_session: "Claude Code Fable 5 (doctrine-campaign audit session, 2026-07-14)"
+
+  parties: [fable-5-delegated-recommendation, native-ratification]
+  description: >
+    CR-98 (register §L.1) established that the deployed instrument's "KP cusps" are fake
+    (equal 30°-interval house divisions masquerading as Placidus-derived cusps) and that
+    bhāva-chalit (true cusps) is entirely absent — a correctness defect, not a gap, since house
+    placements the instrument asserts may not hold under a proper cusp system (type specimen:
+    Moon 29°46' Aquarius falls in the 12th bhāva under Sripati, not the 11th as the whole-sign
+    reading claims). This opened a doctrine question with no prior ruling: once chalit is built,
+    what is its RELATIONSHIP to whole-sign — a validation/divergence-flag layer only, or a full
+    second data layer consumed in synthesis? The native explicitly delegated this and two other
+    engineering-adjacent doctrine questions (R-3 bearing_yogas authority, R-4, R-5 post-deploy
+    MCP definition-of-done) to Fable 5 ("recommend the answers on my behalf", 2026-07-14) rather
+    than ruling directly, because they sit at the design/engineering boundary. Cannot be silently
+    resolved because it determines the D-1.5 B1 work item's shape (house_chalit fact category +
+    MSR ingestion + serving contract) and every downstream house-based judgment surface.
+
+  authoritative_side: n/a
+  evidence_side_a:
+    source: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (frontmatter, native_rulings_adopted)
+    excerpt: >
+      "DR-2 (native-RATIFIED 2026-07-14, refining the Fable 5 delegated ruling) — house-system
+      doctrine: whole-sign is the computational primary for lordship/yoga/valence; bhāva-chalit
+      (Sripati) is computed as a FULL SECOND DATA LAYER — first-class per-graha house_chalit
+      facts, MSR-consumable, served alongside whole-sign on every relevant surface — and BOTH
+      frames are consumed in astrological interpretation and synthesis (chalit is synthesis
+      data, not merely a divergence flag)."
+    sha256: null
+  evidence_side_b:
+    source: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §2 ("Rulings adopted")
+    excerpt: >
+      "DR-2 was subsequently RATIFIED by the native directly (2026-07-14), with one refinement:
+      chalit is not merely a divergence witness — it is a full second data layer, computed and
+      served for synthesis, with both frames consumed in astrological interpretation."
+    sha256: null
+
+  arbitration_steps_taken:
+    - step: reconciler_resolution
+      result: >
+        Fable 5 recommended (initial delegated ruling, 2026-07-14): whole-sign stays the
+        computational primary for lordship/yoga/valence (no change to the D-1/D-1.5 valence and
+        detector work already in flight); chalit is computed as house_chalit facts with a
+        divergence + sandhi_flag (≤3° proximity) annotation, initially framed as a
+        validation/witness layer rather than an equal-weight synthesis input.
+      timestamp: 2026-07-14
+      session_id: "Claude Code Fable 5 (doctrine-campaign audit session)"
+    - step: native_arbitration
+      result: >
+        Native RATIFIED the delegated ruling directly (2026-07-14) with one refinement: chalit is
+        upgraded from a divergence-witness layer to a FULL SECOND DATA LAYER — served alongside
+        whole-sign for every graha on positions/condition/judgment surfaces, ingested into MSR as
+        synthesis data (not just validation metadata), with both frames consumed in
+        interpretation. Divergence and sandhi proximity must still flag through to receipts and
+        judgment verdicts leaning on a divergent placement. Placidus is computed only as the
+        quarantined replacement for the fake KP cusps (not promoted to a third primary frame).
+        Past readings that relied on whole-sign house placements are flagged, not retracted.
+      timestamp: 2026-07-14
+      session_id: "native (via DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md v1.1 FINAL authoring pass)"
+
+  status: resolved
+  resolution: >
+    Whole-sign remains the computational primary for lordship/yoga/valence assignment
+    (no change to D-1/D-1.5a's valence-engine or detector-lane work). Bhāva-chalit (Sripati) is
+    ratified as a full second data layer: `house_chalit` + `sandhi_flag` fact categories (D-1.5
+    work item B1, CR-98), served alongside whole-sign on positions/condition/judgment surfaces,
+    ingested into MSR as genuine synthesis data (both frames consumed in interpretation, not one
+    silently picked), with divergence/sandhi disclosure on any judgment leaning on a divergent
+    placement. Placidus is the quarantined fake-KP-cusp replacement only. This ruling binds B1's
+    implementation in whichever wave delivers it (per DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md
+    §4/§8, B1 is a D-1.5 injection item) and is logged here per BRIEF_D1_5A.md Lane A-0's A6
+    process item ("DR-2 logged in DISAGREEMENT_REGISTER with delegation provenance for native
+    ratification").
+  resolved_on: 2026-07-14
+  resolved_by_session: "native (via DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md v1.1 FINAL, logged retroactively 2026-07-15 by D-1.5a Lane A-0 per this wave's A6 process item)"
+
+  state_hashes:
+    side_a_before: null
+    side_a_after: null
+    side_b_before: null
+    side_b_after: null
+
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md
+      linkage: evidence
+    - path: 00_ARCHITECTURE/llm_consumption_audit/POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md
+      linkage: cause   # §L.1 CR-98 opened the underlying house-system question
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md
+      linkage: registry_updated   # §4.1 codifies the Fable-doctrine/Opus-engineering delegation split this ruling exemplifies
+```

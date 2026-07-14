@@ -637,4 +637,56 @@ The 2026-05-15 3-day silent demote (root cause per `PHASE_3C_AIOPS_OBSERVABILITY
 
 ---
 
-*End of ONGOING_HYGIENE_POLICIES_v1_0.md — amended at Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 (2026-04-26): §O extended (shards_emitted, cowork_ledger_referenced fields); §P Cowork ledger discipline added. Amended 2026-05-18 Phase 3C: §Q AIOps Routing Override Policy added.*
+## §R — Migration-directory ruling: single directory only (doctrine-waves D-1.5a, 2026-07-15)
+
+### Policy
+
+**All SQL migrations live in `platform/migrations/` and ONLY that directory, from this point
+forward.** `platform/supabase/migrations/` is a known failure mode, not a second valid location.
+
+### Rationale
+
+`DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md` §1 (Fable 5's D-1 spec-by-spec audit, 2026-07-14) found
+migrations split across two directories on `main`: `platform/migrations/` (367, 435, 436) and
+`platform/supabase/migrations/` (434) — "the collision class Lane 2 itself flagged," logged there
+as governance close-out item #20, **NOT DONE**. A split migration surface risks numbering
+collisions, silent no-ops (a migration applied against the wrong tracked directory never runs),
+and an auditor who checks only one directory missing state entirely — exactly the class of drift
+`CLAUDE.md §N.4` ("surgical migrations only") exists to prevent. `CONDUCTOR_PROTOCOL.md` §1 (the
+Migration guard role) and §8.5 (the surgical-migration procedure) both already codify
+`platform/migrations/` as the single directory for the doctrine-waves campaign; this entry is the
+project-wide governance record of that ruling, per BRIEF_D1_5A.md Lane A-0's A6 process item
+("migration-directory ruling (all future migrations in `platform/migrations/` only), recorded in
+ONGOING_HYGIENE").
+
+### Ruling
+
+1. Every new migration is scaffolded via the `create-migration` skill, which targets
+   `platform/migrations/` — never hand-created, never targeted at `platform/supabase/migrations/`.
+2. `platform/supabase/migrations/` is not deleted or backfilled by this ruling (that is a
+   separate, deliberate consolidation task, out of scope for a D-1.5a A6 process item) — it is
+   simply closed to new writes. A session that finds a new file appearing there treats it as a
+   defect (misdirected migration), not a valid alternate location.
+3. Every migration requires a migration-guard receipt before apply (`CONDUCTOR_PROTOCOL.md` §1 +
+   §8.5): destructive-ops review, idempotency (`IF NOT EXISTS` / `ON CONFLICT` discipline per
+   `CLAUDE.md` §N.3), and numbering-collision check against `platform/migrations/` as the sole
+   source of truth for "what number is next."
+4. Apply procedure unchanged from `CONDUCTOR_PROTOCOL.md` §8.5: Cloud SQL Auth Proxy →
+   `--dry-run` confirms exactly the expected pending files → apply one file at a time. The deploy
+   workflow's auto-run of `migrate.ts` is safe only because the guard receipt already verified
+   idempotency pre-merge.
+
+### Enforcement mechanism
+
+- `create-migration` skill hardcodes the target directory — the scaffolding path itself makes
+  the wrong directory the harder option, not merely the discouraged one.
+- Migration-guard review (`CONDUCTOR_PROTOCOL.md` §1, §3.1 Phase-1 verification) is a required
+  receipt before any migration merges in the doctrine-waves campaign; a project-wide CI check
+  (`platform/scripts/governance/drift_detector.py` or an equivalent migration-directory linter)
+  is a natural follow-up but is NOT introduced by this entry — recorded here as a residual for a
+  future hygiene pass, not fabricated as already-built per `CLAUDE.md` §N.4 ("never fabricate").
+- Cross-reference: `CONDUCTOR_PROTOCOL.md` §1 (Migration guard role), §8.5 (apply procedure).
+
+---
+
+*End of ONGOING_HYGIENE_POLICIES_v1_0.md — amended at Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 (2026-04-26): §O extended (shards_emitted, cowork_ledger_referenced fields); §P Cowork ledger discipline added. Amended 2026-05-18 Phase 3C: §Q AIOps Routing Override Policy added. Amended 2026-07-15 (doctrine-waves D-1.5a Lane A-0, A6 process item): §R migration-directory ruling added (single directory `platform/migrations/`, per DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §1 finding + CONDUCTOR_PROTOCOL.md §1/§8.5).*

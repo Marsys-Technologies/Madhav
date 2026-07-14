@@ -180,6 +180,17 @@ class VicharaFactIndex:
         self.functional_class: dict[str, dict] = {}
         # subject -> {rupa, fact_id}
         self.shadbala: dict[str, dict] = {}
+        # CR-91 (A2): aspect_parashari_per_varga rows, grouped by varga.
+        # aspect := {graha (subject code), target_house, strength, fact_id}
+        # — a raw graha->house Parashari aspect, independent of which house(s)
+        # that graha happens to LORD. Ingested so a graha's own functional
+        # lordship (dusthana_lord/trikona_lord/etc., from `lordships()` below)
+        # can be applied to houses it ASPECTS, not only houses linked via
+        # bhava_significance_link's lordship-mediated `lord_aspects` kind.
+        # ALL_30_VARGAS includes D1, so this also covers D1 aspects (shared
+        # key-space with the legacy D1-only `aspect_parashari_given` category
+        # at bo_laksana's consuming end — see build_aspect_valence_rows()).
+        self.aspects_by_varga: dict[str, list[dict]] = {}
 
         for f in facts:
             cat = f.get("fact_category")
@@ -226,6 +237,33 @@ class VicharaFactIndex:
                     "rupa": f.get("fact_value_num"),
                     "fact_id": f.get("fact_id"),
                 }
+            elif cat == "aspect_parashari_per_varga":
+                # CR-91 (A2): ga_structural_writer._build_varga_relationship_rows
+                # emits fact_subject=f"{varga}_{SUBJ}" (e.g. "D9_MAR"),
+                # fact_key=f"house_{target_house}", value_num=strength, and
+                # value_jsonb={varga, source_sign, source_house, target_house,
+                # offset, ayanamsha_id} — see ga_structural_writer.py:4228-4250.
+                vj = f.get("fact_value_jsonb") or {}
+                if isinstance(vj, str):
+                    vj = json.loads(vj)
+                varga = vj.get("varga")
+                tgt_h = vj.get("target_house")
+                if not varga or tgt_h is None:
+                    continue
+                subj = f.get("fact_subject", "")
+                if subj.startswith(f"{varga}_"):
+                    bare_subj = subj[len(varga) + 1:]
+                else:
+                    bare_subj = subj
+                if not bare_subj:
+                    continue
+                self.aspects_by_varga.setdefault(varga, []).append({
+                    "graha_subject": bare_subj,
+                    "graha": SUBJECT_TO_PLANET.get(bare_subj, bare_subj),
+                    "target_house": int(tgt_h),
+                    "strength": f.get("fact_value_num"),
+                    "fact_id": f.get("fact_id"),
+                })
 
     def lordships(self, varga: str) -> dict[str, set[int]]:
         """{lord_name -> set of houses it lords in this varga} from lord_placed rows
@@ -268,6 +306,7 @@ def classify_actor(houses: set[int]) -> tuple[list[str], str]:
 
 def compute_valence(
     actor_classes: list[str],
+    primary: str,
     target_house: int,
     is_yogakaraka: bool,
     matrix: dict[str, Any],
@@ -275,20 +314,32 @@ def compute_valence(
     """Matrix over (actor_class x target_class). Returns
     (value_text, value_num, citation, matrix_key). Every cell must carry a
     citation (brief §3.1) — matrix rows are seeded in brahma_vichara_constants,
-    never Python literals (this function only decides WHICH cell applies)."""
+    never Python literals (this function only decides WHICH cell applies).
+
+    CR-90/DR-1: rule order now honors `_PRECEDENCE` (:83) — trikoṇa is
+    evaluated BEFORE dusthāna. The two dusthāna-gated rules below branch on
+    `primary` (classify_actor's already precedence-correct verdict, :263-266)
+    rather than raw `"dusthana_lord" in classes` membership: since trikoṇa
+    outranks dusthāna in `_PRECEDENCE`, `primary == "dusthana_lord"` is true
+    only for actors with NO trikoṇa ownership — exactly the CR-90
+    requirement ("strong_malefic reserved for actors with no trikoṇa
+    ownership"). A dual-lordship actor (e.g. Jupiter as 9L/12L) whose
+    primary is `trikona_lord` therefore never reaches the dusthāna cells,
+    even though `dusthana_lord` still appears in its `actor_classes` (kept
+    for provenance in `vjsonb["actor_classes"]`). Maraka/upachaya/kendra
+    rules are unaffected — their relative order already matched
+    `_PRECEDENCE`."""
     classes = set(actor_classes)
 
     def cell(key: str) -> tuple[str, float, str]:
         c = matrix.get(key) or matrix.get("ambiguous_default", {})
         return c.get("value_text", "neutral"), float(c.get("value_num", 0.0)), c.get("citation", "")
 
-    # 1. dusthana_lord -> wealth axis (2/11) or lagna (1): strong_malefic
-    #    (CR-54 type specimen: 8L Mars -> H2).
-    if "dusthana_lord" in classes and (target_house in WEALTH_HOUSES or target_house == 1):
-        vt, vn, cit = cell("dusthana_lord_wealth_or_lagna")
-        return vt, vn, cit, "dusthana_lord_wealth_or_lagna"
-
-    # 2. trikona_lord -> kendra/trikona/2/11: benefic (strong_benefic if yogakaraka).
+    # 1. trikona_lord -> kendra/trikona/2/11: benefic (strong_benefic if yogakaraka).
+    #    Evaluated FIRST per _PRECEDENCE (trikona > dusthana > kendra > maraka >
+    #    upachaya) — a trikona_lord that also happens to be dusthana_lord
+    #    (e.g. Jupiter 9L/12L) must classify benefic on its trikona merit,
+    #    never fall into the dusthana cells below (CR-90/DR-1).
     if "trikona_lord" in classes and (
         target_house in KENDRA_HOUSES or target_house in TRIKONA_HOUSES or target_house in WEALTH_HOUSES
     ):
@@ -297,6 +348,14 @@ def compute_valence(
             return vt, vn, cit, "trikona_lord_yogakaraka"
         vt, vn, cit = cell("trikona_lord_benefic_target")
         return vt, vn, cit, "trikona_lord_benefic_target"
+
+    # 2. dusthana_lord -> wealth axis (2/11) or lagna (1): strong_malefic
+    #    (CR-54 type specimen: 8L Mars -> H2). Gated on `primary`, not raw
+    #    class membership — see docstring: fires only for actors with NO
+    #    trikona ownership (CR-90/DR-1).
+    if primary == "dusthana_lord" and (target_house in WEALTH_HOUSES or target_house == 1):
+        vt, vn, cit = cell("dusthana_lord_wealth_or_lagna")
+        return vt, vn, cit, "dusthana_lord_wealth_or_lagna"
 
     # 3. maraka -> 2/7: malefic.
     if "maraka" in classes and target_house in MARAKA_HOUSES:
@@ -308,8 +367,9 @@ def compute_valence(
         vt, vn, cit = cell("upachaya_lord")
         return vt, vn, cit, "upachaya_lord"
 
-    # 5. dusthana_lord elsewhere: malefic (non-anchor extension of the CR-54 cell).
-    if "dusthana_lord" in classes:
+    # 5. dusthana_lord elsewhere: malefic (non-anchor extension of the CR-54
+    #    cell). Also `primary`-gated for the same reason as rule 2.
+    if primary == "dusthana_lord":
         vt, vn, cit = cell("dusthana_lord_other")
         return vt, vn, cit, "dusthana_lord_other"
 
@@ -340,7 +400,7 @@ def build_valence_pass_rows(
         is_yogakaraka = bool(fc and fc["value_text"] and "yogakaraka" in str(fc["value_text"]).lower())
 
         value_text, value_num, citation, matrix_key = compute_valence(
-            actor_classes, int(tgt_h), is_yogakaraka, matrix,
+            actor_classes, primary, int(tgt_h), is_yogakaraka, matrix,
         )
 
         constituent_ids = list({link["fact_id"], *idx.lordship_fact_ids(varga, lord)} - {None})
@@ -368,6 +428,85 @@ def build_valence_pass_rows(
             if (derived_negative and "benefic" in stored and "malefic" not in stored) or \
                (derived_positive and "malefic" in stored):
                 vjsonb["functional_class_divergence"] = True
+
+        rows.append({
+            "vichara_family": "valence_pass",
+            "subject": actor_subj,
+            "actor": actor_subj,
+            "target": f"{varga}_HOUSE_{tgt_h}",
+            "domain": None,
+            "varga_id": varga,
+            "varga": varga,
+            "value_num": value_num,
+            "value_text": value_text,
+            "value_jsonb": vjsonb,
+            "ratification_factor": None,
+            "constituent_fact_ids": constituent_ids,
+            "formula_version": VALENCE_FORMULA_VERSION,
+            "source_citation": citation,
+        })
+    return rows
+
+
+# ── Family 1b: aspect-sourced valence_pass rows (CR-91/A2) ──────────────────
+#
+# build_valence_pass_rows (above) judges a graha's OWN functional lordship
+# only via bhava_significance_link's lord_placed/lord_aspects kinds — the
+# latter is derived from `_graha_aspects_house()` in ga_structural_writer.py,
+# which A7 (CR-87 follow-up) flags as off-by-one for opposition/7th-house
+# aspects (returns 0.0 instead of 1.0). aspect_parashari_per_varga is an
+# INDEPENDENT computation (PARASHARI_ASPECTS offset table, not
+# `_graha_aspects_house`) — so ingesting it here backstops that exact gap
+# today, regardless of when A-γ's structural fix lands, AND extends
+# functional-lordship valence to nodes (Rahu/Ketu) and any graha whose
+# aspect reach a lord_aspects link happened not to enumerate.
+#
+# Same (actor, target, varga) key shape as build_valence_pass_rows — for a
+# graha that already has an equivalent bhava_significance_link row, this
+# produces a same-valued sibling row (harmless; the codebase already
+# tolerates multiple valence_pass rows per key from per-src-house lord_aspects
+# duplication). vjsonb["signal_source"] tags provenance so the two paths stay
+# distinguishable in an audit.
+def build_aspect_valence_rows(
+    idx: VicharaFactIndex, varga: str, matrix: dict[str, Any],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    lordships = idx.lordships(varga)
+
+    for asp in idx.aspects_by_varga.get(varga, []):
+        graha = asp["graha"]
+        tgt_h = asp["target_house"]
+        houses = lordships.get(graha, set())
+        if not houses:
+            # No functional lordship to judge from (e.g. Rahu/Ketu own no
+            # sign classically) — B.10: never fabricate a judgment; leave
+            # this population on the honestly-tagged keyword_heuristic_v1
+            # fallback at the bo_laksana consuming end.
+            continue
+        actor_classes, primary = classify_actor(houses)
+
+        actor_subj = asp["graha_subject"]
+        fc = idx.functional_class.get(actor_subj)
+        is_yogakaraka = bool(fc and fc["value_text"] and "yogakaraka" in str(fc["value_text"]).lower())
+
+        value_text, value_num, citation, matrix_key = compute_valence(
+            actor_classes, primary, tgt_h, is_yogakaraka, matrix,
+        )
+
+        constituent_ids = list({asp["fact_id"], *idx.lordship_fact_ids(varga, graha)} - {None})
+
+        vjsonb: dict[str, Any] = {
+            "varga": varga,
+            "actor_houses_lorded": sorted(houses),
+            "actor_classes": actor_classes,
+            "actor_primary_class": primary,
+            "target_house": tgt_h,
+            "link_kind": "graha_aspect_parashari",
+            "aspect_strength": asp.get("strength"),
+            "is_yogakaraka": is_yogakaraka,
+            "matrix_key": matrix_key,
+            "signal_source": "aspect_parashari_per_varga",
+        }
 
         rows.append({
             "vichara_family": "valence_pass",
@@ -837,6 +976,13 @@ def build_ga_vichara_substep(
     # 1. valence_pass — one pass per varga that has link rows this build.
     for varga in sorted(idx.links_by_varga.keys()):
         all_rows.extend(build_valence_pass_rows(idx, varga, valence_matrix))
+
+    # 1b. aspect-sourced valence_pass rows (CR-91/A2) — one pass per varga
+    # that has aspect_parashari_per_varga rows this build (independent of
+    # links_by_varga's key set; a varga could in principle have aspects
+    # without bhava_significance_link rows, or vice versa).
+    for varga in sorted(idx.aspects_by_varga.keys()):
+        all_rows.extend(build_aspect_valence_rows(idx, varga, valence_matrix))
 
     # 2. varga_ratification (+ divergence)
     ratification_rows, ratification_lookup = build_varga_ratification_rows(idx, domains_config, step, lo, hi)

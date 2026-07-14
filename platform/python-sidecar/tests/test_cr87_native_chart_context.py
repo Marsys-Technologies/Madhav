@@ -44,6 +44,7 @@ import pytest
 from services.ka_sangam.engine import (
     _NAKSHATRAS_ORDERED,
     _NAK_NAME_TO_IDX,
+    _c_panchanga_quality,
     _date_to_jd,
     _tara_score_for_nakshatra,
     NativeChartContext,
@@ -437,4 +438,145 @@ class TestChartsScoreDifferently:
             "CR-87 regression: the two charts' sade-sati trigger signs must not "
             "overlap here (Cap/Aqu/Pis vs Tau/Gem/Can) — any overlap would mean "
             "one chart is leaking into the other's Mode C computation."
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 6. A5 (D-1.5a Lane A-gamma, CR-87 verification) — parametrized two-chart
+#    regression across ALL THREE currents named in the wave brief: tara-bala,
+#    sade-sati, AND panchanga. Sections 1-5 above (Night-1 CR-87 hotfix) prove
+#    tara-bala + sade-sati differ between the two charts via separate
+#    hand-written classes; this section adds (a) an actual
+#    `@pytest.mark.parametrize` sweep so the two-chart comparison is data-
+#    driven rather than duplicated per-current, and (b) panchanga coverage,
+#    which sections 1-5 do not touch.
+# ═══════════════════════════════════════════════════════════════════════════
+
+_CHART_NATAL_PARAMS = [
+    pytest.param(
+        _ABHISEK_CHART_ID, _ABHISEK_JANMA_NAK_IDX, _ABHISEK_MOON_SIGN,
+        id="482012f1-abhisek",
+    ),
+    pytest.param(
+        _ABHINANDAN_CHART_ID, _ABHINANDAN_JANMA_NAK_IDX, _ABHINANDAN_MOON_SIGN,
+        id="1c826d5a-abhinandan",
+    ),
+]
+
+
+class TestA5ParametrizedTwoChartCurrents:
+    """Parametrized regression: run the SAME current computation across both
+    charts' real natal contexts and assert the two charts' results diverge on
+    every current the brief names (tara-bala, sade-sati, panchanga). This is
+    the guard against CR-87's exact failure mode — module-level constants that
+    silently return the same value regardless of which chart is asking."""
+
+    @pytest.mark.parametrize("chart_id,janma_nakshatra_idx,moon_sign", _CHART_NATAL_PARAMS)
+    def test_tara_bala_resolves_from_this_charts_own_janma_idx(
+        self, chart_id, janma_nakshatra_idx, moon_sign,
+    ):
+        # Transit fixed at "Ashwini" (idx 0) for every chart in the sweep —
+        # only janma_nakshatra_idx should vary the outcome.
+        score = _tara_score_for_nakshatra("Ashwini", janma_nakshatra_idx)
+        assert score == _tara_score_for_nakshatra(_NAKSHATRAS_ORDERED[0], janma_nakshatra_idx)
+
+    def test_tara_bala_differs_across_the_parametrized_sweep(self):
+        """Collect the parametrized fixture's own scores (transit=Ashwini) for
+        both charts and assert they are NOT the same value — the actual A5
+        cross-chart divergence assertion, run over the parametrize table."""
+        scores = {
+            chart_id: _tara_score_for_nakshatra("Ashwini", janma_idx)
+            for chart_id, janma_idx, _ in [
+                (p.values[0], p.values[1], p.values[2]) for p in _CHART_NATAL_PARAMS
+            ]
+        }
+        assert scores[_ABHISEK_CHART_ID] == pytest.approx(0.9), (
+            "Abhisek (Purva Bhadrapada, idx 24): Ashwini is tara position 4 "
+            "(Kshema, score 0.9) — ((0-24) % 9) + 1 = 4."
+        )
+        assert scores[_ABHINANDAN_CHART_ID] == pytest.approx(0.1), (
+            "Abhinandan (Ardra, idx 5): Ashwini is tara position 5 "
+            "(Pratyak, score 0.1) — ((0-5) % 9) + 1 = 5."
+        )
+        assert scores[_ABHISEK_CHART_ID] != scores[_ABHINANDAN_CHART_ID], (
+            "CR-87 regression: identical transit nakshatra must not score "
+            "identically for two charts with different janma nakshatras."
+        )
+
+    @pytest.mark.parametrize("chart_id,janma_nakshatra_idx,moon_sign", _CHART_NATAL_PARAMS)
+    def test_sade_sati_signs_derive_from_this_charts_own_moon_sign(
+        self, chart_id, janma_nakshatra_idx, moon_sign,
+    ):
+        signs = derive_sade_sati_signs(moon_sign)
+        # The Moon sign itself must always be the middle element of the triad,
+        # regardless of which chart supplied it (no hardcoded Aquarius leak).
+        assert signs[1] == moon_sign
+
+    def test_sade_sati_signs_differ_across_the_parametrized_sweep(self):
+        by_chart = {
+            chart_id: derive_sade_sati_signs(moon_sign)
+            for chart_id, _, moon_sign in [
+                (p.values[0], p.values[1], p.values[2]) for p in _CHART_NATAL_PARAMS
+            ]
+        }
+        assert by_chart[_ABHISEK_CHART_ID] == ("Capricorn", "Aquarius", "Pisces")
+        assert by_chart[_ABHINANDAN_CHART_ID] == ("Taurus", "Gemini", "Cancer")
+        assert by_chart[_ABHISEK_CHART_ID] != by_chart[_ABHINANDAN_CHART_ID], (
+            "CR-87 regression: sade-sati trigger signs must not collapse to "
+            "the same triad for two charts with different Moon signs."
+        )
+
+    @pytest.mark.parametrize("chart_id,janma_nakshatra_idx,moon_sign", _CHART_NATAL_PARAMS)
+    def test_panchanga_quality_uses_the_supplied_per_chart_location(
+        self, chart_id, janma_nakshatra_idx, moon_sign,
+    ):
+        """`_c_panchanga_quality` must score off whatever `native_location` the
+        caller passes — never a hardcoded native location (the CR-87 failure
+        mode documented for `_NATIVE_LOCATION`/`_NATIVE_LOC`, see §3 above).
+        A stub muhurta_service whose score is a pure function of the supplied
+        lat/lon proves the location argument is actually consumed, not
+        ignored in favor of a baked-in constant."""
+        stub_service = MagicMock()
+        stub_service.score.side_effect = (
+            lambda peak_date, location, event: (location["lat"] + location["lon"]) % 100
+        )
+        location = {"lat": 20.2961, "lon": 85.8245, "tz_offset_minutes": 330}
+        result = _c_panchanga_quality(date(2027, 3, 1), stub_service, location)
+        # Score must be derived from the exact location object passed in.
+        expected_raw = (location["lat"] + location["lon"]) % 100
+        assert result == pytest.approx(min(1.0, max(0.0, expected_raw / 100.0)))
+        stub_service.score.assert_called_once()
+        called_location = stub_service.score.call_args.args[1] if stub_service.score.call_args.args else stub_service.score.call_args.kwargs.get("location")
+        assert called_location == location, (
+            "CR-87 regression: panchanga quality must be scored against the "
+            "caller-supplied native_location for THIS chart — never a "
+            "module-level default."
+        )
+
+    def test_panchanga_quality_diverges_when_locations_differ(self):
+        """Two DIFFERENT locations (synthetic — proves the location argument
+        drives the outcome, independent of whether these two specific real
+        charts happen to share a birth city) must yield different scores from
+        the same stub service, and identical locations must yield identical
+        scores. This is the location leg of the A5 'tara-bala/sade-sati/
+        panchanga currents MUST differ ... given their different ...
+        location' guard."""
+        stub_service = MagicMock()
+        stub_service.score.side_effect = (
+            lambda peak_date, location, event: (location["lat"] * 3 + location["lon"]) % 100
+        )
+        bhubaneswar = {"lat": 20.2961, "lon": 85.8245, "tz_offset_minutes": 330}
+        elsewhere = {"lat": 28.6139, "lon": 77.2090, "tz_offset_minutes": 330}  # Delhi
+
+        score_bhubaneswar = _c_panchanga_quality(date(2027, 3, 1), stub_service, bhubaneswar)
+        score_elsewhere = _c_panchanga_quality(date(2027, 3, 1), stub_service, elsewhere)
+        score_bhubaneswar_again = _c_panchanga_quality(date(2027, 3, 1), stub_service, bhubaneswar)
+
+        assert score_bhubaneswar != score_elsewhere, (
+            "CR-87 regression: panchanga quality must vary with native_location "
+            "— a location-blind hardcoded constant would return the same score "
+            "for every location."
+        )
+        assert score_bhubaneswar == score_bhubaneswar_again, (
+            "Same location must reproduce the same score (determinism sanity check)."
         )

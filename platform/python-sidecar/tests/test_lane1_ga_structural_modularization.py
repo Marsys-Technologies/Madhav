@@ -203,15 +203,28 @@ def _eff_for(chart_output, planet_name):
 class TestEffectiveDignityV2:
     def test_functional_malefic_full_aspect_lowers_score_by_0_025(self):
         # Aries lagna (MOCK_CHART_OUTPUT). Saturn = temporal_malefic (FUNCTIONAL_CLASS_BPHS).
-        # House pair (Saturn house 1 -> Mars house 8) is asserted, via the shared
+        # House pair (Saturn house 1 -> Mars house 10) is asserted, via the shared
         # `_graha_aspects_house` helper this fix is required to use (design §10c —
         # "the file's OWN Parashari model"), to be a full-strength (1.0) aspect;
         # this lane does not alter that helper (mechanical-refactor discipline).
-        assert sut._graha_aspects_house("Saturn", 1, 8) == 1.0
+        #
+        # A7/CR-87 fix note (D-1.5a Lane A-gamma): this fixture previously used
+        # house 8 as the target, asserting `_graha_aspects_house("Saturn", 1, 8)
+        # == 1.0`. That was itself an artifact of the `_graha_aspects_house`
+        # off-by-one bug (raw house-difference used instead of the inclusive
+        # count PARASHARI_ASPECTS is keyed on) — house 8 from house 1 is NOT one
+        # of Saturn's true special aspects (3rd/7th/10th inclusive); it only
+        # "worked" because the old buggy offset (raw diff=7) collided with
+        # Saturn's redundant generic-7th-aspect key. Now that the offset bug is
+        # fixed, house 8 correctly returns 0.0. Retargeted to house 10 — Saturn's
+        # genuine 10th-house special aspect (inclusive count 10, raw diff=9) —
+        # to keep testing a real full-strength special aspect.
+        assert sut._graha_aspects_house("Saturn", 1, 10) == 1.0
+        assert sut._graha_aspects_house("Saturn", 1, 8) == 0.0  # no longer a false-positive aspect
         chart = {
             "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
             "grahas": [
-                {"name": "Mars", "sign": "Aries", "sign_id": 1, "house": 8, "longitude": 15.0,
+                {"name": "Mars", "sign": "Scorpio", "sign_id": 8, "house": 10, "longitude": 225.0,
                  "retrograde": False, "dignity_status": "own_sign"},
                 {"name": "Saturn", "sign": "Libra", "sign_id": 7, "house": 1, "longitude": 195.0,
                  "retrograde": False, "dignity_status": "neutral"},
@@ -286,3 +299,67 @@ class TestEffectiveDignityV2:
         assert jup_contrib["aspect_strength"] == 1.0
         assert jup_contrib["functional_class"] == "temporal_benefic"
         assert jup_contrib["delta"] == 0.25
+
+
+# ── §4: A7 — `_graha_aspects_house` off-by-one fix (D-1.5a Lane A-gamma) ────
+#
+# CR-87-adjacent, Lane-1-flagged pre-existing bug: the offset formula used the
+# RAW house difference (target_h - source_h) instead of the INCLUSIVE house
+# count PARASHARI_ASPECTS is keyed on (the source house itself counts as "1").
+# Every 7th-house/opposition aspect (raw diff = 6) looked up key 6 in a table
+# that only has key 7 for the universal aspect — silently returning 0.0
+# instead of 1.0. The same off-by-one also broke every special aspect
+# (Saturn 3rd/10th, Jupiter 5th/9th, Mars 4th/8th).
+#
+# Concrete example (planet in house 1 aspecting house 7 — opposition):
+#   BEFORE fix: offset = ((7-1) % 12) or 12          = 6  -> PARASHARI_ASPECTS["all"].get(6) = None -> 0.0 (BUG)
+#   AFTER  fix: offset = ((7-1) % 12) + 1             = 7  -> PARASHARI_ASPECTS["all"].get(7) = 1.0  -> 1.0 (CORRECT)
+
+class TestA7GrahaAspectsHouseOffByOne:
+
+    @pytest.mark.parametrize("source_h", list(range(1, 13)))
+    def test_planet_in_house_n_aspects_house_n_plus_6_opposition(self, source_h):
+        """Every planet (via the universal 7th-house aspect) must register a
+        full-strength (1.0) aspect on the house 6 away (i.e. the classical
+        7th-house count) — opposition. Swept across all 12 possible source
+        houses (wraparound included, e.g. source house 8 -> target house 2)."""
+        target_h = ((source_h - 1 + 6) % 12) + 1  # house N+6, wrapping 1..12
+        for aspector in ("Sun", "Moon", "Mercury", "Venus"):  # no special aspects
+            assert sut._graha_aspects_house(aspector, source_h, target_h) == 1.0, (
+                f"{aspector} in house {source_h} must fully aspect house {target_h} "
+                f"(opposition) — got 0.0, the CR-87-adjacent off-by-one regression."
+            )
+
+    def test_concrete_house_1_aspects_house_7(self):
+        """The exact worked example from the A7 fix note: planet in house 1
+        aspecting house 7."""
+        assert sut._graha_aspects_house("Sun", 1, 7) == 1.0
+        # Sanity: the OLD buggy formula would have produced offset=6 here.
+        old_buggy_offset = ((7 - 1) % 12) or 12
+        assert old_buggy_offset == 6  # confirms what the bug computed
+        new_correct_offset = ((7 - 1) % 12) + 1
+        assert new_correct_offset == 7  # confirms the fix's inclusive count
+
+    @pytest.mark.parametrize("aspector,source_h,target_h", [
+        ("Saturn", 1, 3),    # Saturn special: 3rd house (inclusive count 3)
+        ("Saturn", 1, 7),    # Saturn special: 7th house (universal, inclusive count 7)
+        ("Saturn", 1, 10),   # Saturn special: 10th house (inclusive count 10)
+        ("Jupiter", 1, 5),   # Jupiter special: 5th house (inclusive count 5)
+        ("Jupiter", 1, 9),   # Jupiter special: 9th house (inclusive count 9)
+        ("Mars", 1, 4),      # Mars special: 4th house (inclusive count 4)
+        ("Mars", 1, 8),      # Mars special: 8th house (inclusive count 8)
+        ("Rahu", 1, 5),      # Node special: 5th house
+        ("Rahu", 1, 9),      # Node special: 9th house
+        ("Ketu", 1, 5),      # Node special: 5th house
+    ])
+    def test_all_special_aspects_register_at_full_strength(self, aspector, source_h, target_h):
+        assert sut._graha_aspects_house(aspector, source_h, target_h) == 1.0
+
+    @pytest.mark.parametrize("aspector,source_h,target_h", [
+        ("Saturn", 1, 8),    # NOT a Saturn special aspect (was a false positive pre-fix)
+        ("Jupiter", 1, 4),   # NOT a Jupiter special aspect (raw diff=3 collided with Mars's key pre-fix logic)
+        ("Mars", 1, 5),      # NOT a Mars special aspect
+        ("Mercury", 1, 3),   # Mercury has no special aspects at all outside the 7th
+    ])
+    def test_non_special_house_pairs_correctly_return_zero(self, aspector, source_h, target_h):
+        assert sut._graha_aspects_house(aspector, source_h, target_h) == 0.0
