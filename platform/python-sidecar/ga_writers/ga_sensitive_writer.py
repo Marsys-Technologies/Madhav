@@ -1777,21 +1777,65 @@ def _build_kp_cuspal_rows(
     Each cusp has: sign_lord, star_lord, sub_lord, significators_json (irreducible composite)
     """
     rows = []
-    lagna = all_longs.get("LAGNA", 0.0)
 
-    # House cusps: whole-sign approximation (each cusp = lagna + (house-1)*30)
+    # REAL Placidus house cusps (KP == Krishnamurti Paddhati == Placidus). The prior
+    # `lagna + (cusp_num-1)*30` whole-sign approximation was FAKE equal-house precision
+    # (B.10) and is removed. Real cusp boundaries come from compute_bhava_chalit
+    # (drik.bhaava_madhya_swe house_code='P'); cusp[h] = KP cusp of house h+1.
+    from ga_writers.ga_nakshatra_compute import compute_kp_lords
+
+    placidus_bounds = (
+        ((chart_data.get("bhava_chalit") or {}).get("placidus") or {}).get("cusp_boundaries")
+    )
+    if not placidus_bounds or len(placidus_bounds) < 12:
+        # No fabricated fallback (B.10): emit honest EXTERNAL_COMPUTATION_REQUIRED
+        # skip-rows so the drop is visible and no fake cusps ever land.
+        import uuid as _uuid_ext
+        for cusp_num in range(1, 13):
+            subj = f"CUSP_{cusp_num}"
+            rows.append({
+                "fact_id": _uuid_ext.uuid4().hex,
+                "chart_id": chart_id,
+                "build_id": build_id,
+                "ayanamsha_id": ayanamsha_id,
+                "engine_version": eng_ver,
+                "fact_category": "kp_cuspal_significators",
+                "fact_subject": subj,
+                "fact_key": "cusp_longitude_sidereal",
+                "fact_value_num": None,
+                "fact_value_text": "[EXTERNAL_COMPUTATION_REQUIRED] real Placidus cusp "
+                                   "unavailable (chart_data['bhava_chalit'] absent)",
+                "fact_value_jsonb": None,
+                "formula_id": None,
+                "source_calculation": f"pyjhora_adapter.sensitive/{eng_ver}",
+                "computed_at": datetime.now(timezone.utc).isoformat(),
+                "citation_ref": f"kp_cuspal:{subj}:external_required",
+                "citation_human": f"KP cusp {cusp_num}: real Placidus cusp not available; "
+                                  "no fabricated cusp emitted (B.10).",
+                "verification_pass_status": "external_computation_required",
+                "tolerance_arcsec": 0.0,
+                "near_sign_boundary_flag": False,
+                "near_nakshatra_boundary_flag": False,
+                "vargottama_flag_at_point": False,
+                "formula_provenance_text": f"KP cusp {cusp_num}: EXTERNAL_COMPUTATION_REQUIRED",
+                "cross_ayanamsha_divergence_arcsec": 0.0,
+            })
+        return rows
+
     for cusp_num in range(1, 13):
         subj = f"CUSP_{cusp_num}"
         try:
-            cusp_long = (lagna + (cusp_num - 1) * 30.0) % 360.0
+            cusp_long = float(placidus_bounds[cusp_num - 1]) % 360.0
             cusp_sign, _, _ = _long_to_sign_deg(cusp_long)
             cusp_nak, cusp_nak_lord, _ = _long_to_nakshatra_pada(cusp_long)
-            # Sub-lord: use further sub-division (simplified: same as star_lord)
-            cusp_sub_lord = cusp_nak_lord  # Approximation: sub-lord = nakshatra lord
+            # REAL KP sub-lord via 249-division Vimshottari subdivision (no longer the
+            # nakshatra-lord approximation). compute_kp_lords is the deterministic
+            # proportional-subdivision engine used across the KP surfaces.
+            cusp_sub_lord = compute_kp_lords(cusp_long)["sub_lord"]
 
-            # Significators: planets in house + ruling planets (simplified)
-            # For atomic compliance: significators stored as JSONB (irreducible composite — variable-length array)
-            significators = [cusp_nak_lord, _SIGN_LORDS[cusp_sign]]
+            # Significators: KP cuspal lord chain (sign lord, star/nakshatra lord,
+            # real sub-lord). Stored as JSONB (irreducible composite — variable length).
+            significators = [_SIGN_LORDS[cusp_sign], cusp_nak_lord, cusp_sub_lord]
 
             near_sign = _is_near_sign_boundary(cusp_long)
             near_nak = _is_near_nakshatra_boundary(cusp_long)

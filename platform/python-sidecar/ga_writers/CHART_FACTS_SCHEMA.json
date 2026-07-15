@@ -560,6 +560,16 @@
           ],
           "precision": 4,
           "verification_min": "two_pass_verified"
+        },
+        "ratio": {
+          "value_type": "num",
+          "unit": null,
+          "range": [
+            0.0,
+            10.0
+          ],
+          "precision": 4,
+          "verification_min": "single"
         }
       },
       "since_engine_version": "pyjhora/1.0.0",
@@ -812,6 +822,42 @@
       },
       "render_template": "{graha} ashtakavarga house {house}: {bindus} bindu ({ayanamsha})."
     },
+    "ashtakavarga_bindu_sign": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "SARVA"
+      ],
+      "allowed_keys": {
+        "bindus": {
+          "value_type": "num",
+          "unit": "bindu",
+          "range": [
+            0,
+            8
+          ],
+          "precision": 0,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "subject_compound_note": "D-1.5b CR-99a: SIGN-keyed BAV/SAV re-key of ashtakavarga_bindu (house-keying is the wrong key for gochara/transit reading, which moves through signs). Subject encodes graha+sign as 'SUN-SIGN_1' (SIGN_1=Aries .. SIGN_12=Pisces, absolute rasi). Same bindu VALUES as ashtakavarga_bindu (re-key only, no recompute); the house-keyed rows are retained for continuity.",
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "graha_summary",
+          "transit_sign_summary"
+        ],
+        "mv_preferred": "mv_chart_ashtakavarga_summary"
+      },
+      "render_template": "{graha} ashtakavarga sign {sign}: {bindus} bindu ({ayanamsha})."
+    },
     "ashtakavarga_pinda_sodhita": {
       "ayanamsha_dependent": true,
       "target_table": "chart_facts",
@@ -914,6 +960,41 @@
       },
       "render_template": "{graha} sarva pinda: {total} ({ayanamsha})."
     },
+    "ashtakavarga_pinda_raasi": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "SARVA"
+      ],
+      "allowed_keys": {
+        "total": {
+          "value_type": "num",
+          "unit": "bindu",
+          "range": [
+            0,
+            2000
+          ],
+          "precision": 0,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "cr99a_note": "D-1.5b CR-99a: rāśi-piṇḍa — the rasimana-gunakara-weighted sum over the ekadhipatya-sodhita BAV (PyJHora sodhaya_pindas). It was computed by the engine but previously dropped; sodhya_pinda = raasi_pinda + graha_pinda. Wide range: rasimana multipliers make the weighted sum exceed the 337 SAV constant.",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "graha_summary"
+        ],
+        "mv_preferred": "mv_chart_ashtakavarga_summary"
+      },
+      "render_template": "{graha} raasi pinda: {total} ({ayanamsha})."
+    },
     "ashtakavarga_trikona_shodhana": {
       "ayanamsha_dependent": true,
       "target_table": "chart_facts",
@@ -948,14 +1029,14 @@
           "verification_min": "two_pass_verified"
         }
       },
-      "subject_compound_note": "Subject encodes graha+house as 'SUN-HOUSE_1' etc.",
+      "subject_compound_note": "D-1.5b CR-99a: SIGN-keyed. Subject encodes graha+sign as 'SUN-SIGN_1' (SIGN_1=Aries..SIGN_12=Pisces). reduced_bindus = the trikoṇa-śodhita BAV grid (PyJHora ashtakavarga._trikona_sodhana), derived from the same raw bindus (no recompute).",
       "since_engine_version": "pyjhora/1.0.0",
       "retrieval_hints": {
         "common_query_patterns": [
           "graha_summary"
         ]
       },
-      "render_template": "{graha} trikona shodhana house {house}: {reduced_bindus} bindu ({ayanamsha})."
+      "render_template": "{graha} trikona shodhana sign {sign}: {reduced_bindus} bindu ({ayanamsha})."
     },
     "ashtakavarga_ekadhipathya_shodhana": {
       "ayanamsha_dependent": true,
@@ -991,14 +1072,14 @@
           "verification_min": "two_pass_verified"
         }
       },
-      "subject_compound_note": "Subject encodes graha+house as 'SUN-HOUSE_1' etc.",
+      "subject_compound_note": "D-1.5b CR-99a: SIGN-keyed. Subject encodes graha+sign as 'SUN-SIGN_1' (SIGN_1=Aries..SIGN_12=Pisces). reduced_bindus = the ekādhipatya-śodhita (Sodhita) BAV grid (PyJHora ashtakavarga._ekadhipatya_sodhana), derived from the same raw bindus (no recompute).",
       "since_engine_version": "pyjhora/1.0.0",
       "retrieval_hints": {
         "common_query_patterns": [
           "graha_summary"
         ]
       },
-      "render_template": "{graha} ekadhipathya shodhana house {house}: {reduced_bindus} bindu ({ayanamsha})."
+      "render_template": "{graha} ekadhipathya shodhana sign {sign}: {reduced_bindus} bindu ({ayanamsha})."
     },
     "ashtakavarga_kakshya": {
       "ayanamsha_dependent": true,
@@ -1046,6 +1127,64 @@
       },
       "render_template": "{graha} kakshya in house {house}: lord {kakshya_lord} ({ayanamsha})."
     },
+    "ashtakavarga_kakshya_boundary": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "KAKSHYA_1",
+        "KAKSHYA_2",
+        "KAKSHYA_3",
+        "KAKSHYA_4",
+        "KAKSHYA_5",
+        "KAKSHYA_6",
+        "KAKSHYA_7",
+        "KAKSHYA_8"
+      ],
+      "allowed_keys": {
+        "lord": {
+          "value_type": "text_enum",
+          "enum": [
+            "Saturn",
+            "Jupiter",
+            "Mars",
+            "Sun",
+            "Venus",
+            "Mercury",
+            "Moon",
+            "Lagna"
+          ],
+          "verification_min": "two_pass_verified"
+        },
+        "start_deg": {
+          "value_type": "num",
+          "unit": "degree",
+          "range": [
+            0.0,
+            30.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        },
+        "end_deg": {
+          "value_type": "num",
+          "unit": "degree",
+          "range": [
+            0.0,
+            30.0
+          ],
+          "precision": 4,
+          "verification_min": "two_pass_verified"
+        }
+      },
+      "subject_compound_note": "D-1.5b CR-99a: the 8 kakṣyā (sub-arc) boundaries WITHIN each rāśi — fixed classical constants (chart-independent, ayanamsha-invariant in value; stored per chart×ayanamsha for a uniform L1 contract). Each rāśi (30°) splits into 8 kakṣyās of 3°45' (3.75°), ruled in ascending order Saturn, Jupiter, Mars, Sun, Venus, Mercury, Moon, Lagna. Subject KAKSHYA_1..KAKSHYA_8; keys: lord, start_deg, end_deg. Enables kakṣyā (sub-lord) gochara Aṣṭakavarga transit reading.",
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "kakshya_boundary_table"
+        ]
+      },
+      "render_template": "Kakshya {kakshya}: {start_deg}-{end_deg} deg, lord {lord}."
+    },
     "house_bhava_bala_subscore": {
       "ayanamsha_dependent": true,
       "target_table": "chart_facts",
@@ -1072,7 +1211,7 @@
             100.0
           ],
           "precision": 4,
-          "verification_min": "two_pass_verified"
+          "verification_min": "documented_approximation"
         },
         "bhava_digbala": {
           "value_type": "num",
@@ -1082,20 +1221,21 @@
             100.0
           ],
           "precision": 4,
-          "verification_min": "two_pass_verified"
+          "verification_min": "documented_approximation"
         },
         "bhava_drishti_bala": {
           "value_type": "num",
           "unit": "rupa",
           "range": [
-            0.0,
+            -100.0,
             100.0
           ],
           "precision": 4,
-          "verification_min": "two_pass_verified"
+          "verification_min": "documented_approximation"
         }
       },
       "since_engine_version": "pyjhora/1.0.0",
+      "cr103_note": "D-1.5b CR-103: bhava bala is now PyJHora-delegated (no hand-roll). PyJHora exposes a 3-source composition (adhipathi + dig + drik) — NOT six-source — with a documented 'not matching BV Raman book values' caveat; rows carry verification_pass_status='documented_approximation'. Key names UNCHANGED (bhava_adhipati_bala/bhava_digbala/bhava_drishti_bala) so mv_chart_bhava_bala_summary keeps resolving; bhava_drishti_bala == the PyJHora drik source and is SIGNED (can be negative) under the real BPHS graha-drishti matrix, hence range widened to [-100,100].",
       "retrieval_hints": {
         "common_query_patterns": [
           "house_summary"
@@ -1130,10 +1270,11 @@
             300.0
           ],
           "precision": 4,
-          "verification_min": "two_pass_verified"
+          "verification_min": "documented_approximation"
         }
       },
       "since_engine_version": "pyjhora/1.0.0",
+      "cr103_note": "D-1.5b CR-103: total = PyJHora bhava_bala rupas (adhipathi+dig+drik composed). documented_approximation (3-source, not six-source).",
       "retrieval_hints": {
         "common_query_patterns": [
           "house_summary"
@@ -1141,6 +1282,45 @@
         "mv_preferred": "mv_chart_bhava_bala_summary"
       },
       "render_template": "House {house} total bhava bala: {total:.4f} rupa ({ayanamsha})."
+    },
+    "house_bhava_bala_ratio": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "HOUSE_1",
+        "HOUSE_2",
+        "HOUSE_3",
+        "HOUSE_4",
+        "HOUSE_5",
+        "HOUSE_6",
+        "HOUSE_7",
+        "HOUSE_8",
+        "HOUSE_9",
+        "HOUSE_10",
+        "HOUSE_11",
+        "HOUSE_12"
+      ],
+      "allowed_keys": {
+        "strength_ratio": {
+          "value_type": "num",
+          "unit": "ratio",
+          "range": [
+            0.0,
+            50.0
+          ],
+          "precision": 4,
+          "verification_min": "documented_approximation"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "cr103_note": "D-1.5b CR-103: PyJHora bhava_bala strength ratio = total_rupa / 7.0 (const.minimum_bhava_bala_rupa). ratio >= 1.0 => bhava meets the classical minimum. documented_approximation (3-source).",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "house_summary"
+        ],
+        "mv_preferred": "mv_chart_bhava_bala_summary"
+      },
+      "render_template": "House {house} bhava bala strength ratio: {strength_ratio:.4f} ({ayanamsha})."
     },
     "panchanga_tithi": {
       "ayanamsha_dependent": false,
@@ -8639,6 +8819,189 @@
         ]
       },
       "render_template": "Nishita Kala on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "bhava_cusps": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "BHAVA_01",
+        "BHAVA_02",
+        "BHAVA_03",
+        "BHAVA_04",
+        "BHAVA_05",
+        "BHAVA_06",
+        "BHAVA_07",
+        "BHAVA_08",
+        "BHAVA_09",
+        "BHAVA_10",
+        "BHAVA_11",
+        "BHAVA_12"
+      ],
+      "allowed_keys": {
+        "sripati_start": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "sripati_madhya": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "sripati_end": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "placidus_start": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "placidus_madhya": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "placidus_end": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "note": "Real bhava-chalit cusps (ADDITIVE; DR-2 whole-sign house_d1 stays primary). Sripati (Indian bhava-chalita) + Placidus (KP) cusps per bhava, (start, madhya, end). Lane B-1 / D-1.5b.",
+      "render_template": "Bhava {bhava} Sripati cusp: {sripati_start:.2f}-{sripati_madhya:.2f}-{sripati_end:.2f} deg; Placidus: {placidus_start:.2f}-{placidus_madhya:.2f}-{placidus_end:.2f} deg ({ayanamsha})."
+    },
+    "house_chalit": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "chalit_house_sripati": {
+          "value_type": "num",
+          "unit": null,
+          "range": [
+            1,
+            12
+          ],
+          "precision": 0,
+          "verification_min": "single"
+        },
+        "whole_sign_house": {
+          "value_type": "num",
+          "unit": null,
+          "range": [
+            1,
+            12
+          ],
+          "precision": 0,
+          "verification_min": "single"
+        },
+        "dist_to_madhya_deg": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            180.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "dist_to_nearest_boundary_deg": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            180.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "nearest_boundary": {
+          "value_type": "text_enum",
+          "enum": [
+            "start",
+            "end"
+          ],
+          "verification_min": "single"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "note": "Per-graha Sripati bhava-chalit assignment + cusp distances (ADDITIVE second data layer; DR-2). whole_sign_house is the primary frame, mirrored here for divergence context. Lane B-1 / D-1.5b.",
+      "render_template": "{graha} Sripati bhava-chalit house {chalit_house_sripati} (whole-sign {whole_sign_house}); {dist_to_nearest_boundary_deg:.2f} deg to nearest bhava boundary ({ayanamsha})."
+    },
+    "sandhi_flag": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "sandhi_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "single"
+        },
+        "sandhi_reasons": {
+          "value_type": "text",
+          "verification_min": "single"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "note": "Bhava-sandhi (junction) flag per graha: fires when within the sandhi orb (3 deg default) of a Sripati bhava boundary OR when whole-sign house != chalit house. sandhi_reasons is a comma-joined composite of {within_boundary_orb, wholesign_chalit_divergence} or 'none'. Lane B-1 / D-1.5b.",
+      "render_template": "{graha} bhava-sandhi: {sandhi_flag} ({sandhi_reasons}) ({ayanamsha})."
     }
   },
   "channels": {

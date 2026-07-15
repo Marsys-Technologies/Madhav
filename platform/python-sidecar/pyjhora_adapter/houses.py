@@ -113,3 +113,166 @@ def compute_houses(ascendant: dict[str, Any]) -> list[dict[str, Any]]:
             "sign_lord": _names.sign_lord(sign_idx),
         })
     return houses
+
+
+# ── Bhāva-chalit (real astronomical cusps) ────────────────────────────────────
+# DR-2 doctrine: whole-sign (compute_houses / house_d1) STAYS PRIMARY and is NOT
+# touched. This is a FULL SECOND DATA LAYER, purely additive: real Sripati (Indian
+# bhava-chalita) + Placidus (KP/Western) cusps computed natively by PyJHora, used
+# for chalit-frame context and sandhi (junction) detection in synthesis.
+
+SANDHI_ORB_DEG_DEFAULT = 3.0  # Binder-adjudicated ACCEPT (BRIEF_D1_5B §B)
+
+
+def _arc_sep(a: float, b: float) -> float:
+    """Smallest angular separation (deg, 0..180) between two longitudes."""
+    d = abs((a - b) % 360.0)
+    return min(d, 360.0 - d)
+
+
+def _mid_point(a: float, b: float) -> float:
+    """Midpoint along the forward arc a -> b (mod 360). Mirrors PyJHora."""
+    return (a + ((b - a) % 360.0) / 2.0) % 360.0
+
+
+def _forward_arc_contains(long_deg: float, start: float, end: float) -> bool:
+    """True if long_deg lies on the forward arc [start, end) (mod 360)."""
+    span = (end - start) % 360.0
+    off = (long_deg - start) % 360.0
+    return off < span
+
+
+def compute_bhava_chalit(
+    jd_ut: float,
+    ayanamsha_id: str = "lahiri",
+    *,
+    lat: float = 0.0,
+    lon: float = 0.0,
+    tz: float = 0.0,
+    grahas: list[dict[str, Any]] | None = None,
+    sandhi_orb_deg: float = SANDHI_ORB_DEG_DEFAULT,
+) -> dict[str, Any]:
+    """
+    Real bhāva-chalit cusps (ADDITIVE second data layer; DR-2 — whole-sign stays
+    primary). Two house systems computed natively by PyJHora:
+
+      * Sripati (Indian bhāva-chalita): ``drik.bhaava_madhya_sripathi`` returns 12
+        bhāva-madhyas (house centres); bhāva boundaries (sandhis) are the midpoints
+        of adjacent madhyas. A graha's chalit bhāva is the arc [start, end) it is in.
+      * Placidus (KP/Western): ``drik.bhaava_madhya_swe(house_code='P')`` returns the
+        12 house-cusp boundaries (cusp[0] = ascendant). Surfaced for KP cuspal use.
+
+    jd_ut MUST be a LOCAL-time Julian Day (utils.julian_day_number(date, local_tob)),
+    exactly as ``compute_ascendant`` requires — a UTC-based JD gives a ~9-sign error
+    for IST births (see the caveat at compute_ascendant, houses.py:29-31). ``compute.py``
+    already builds jd_ut this way and passes it straight through.
+
+    ``grahas`` (optional): list of graha dicts carrying ``name``, ``longitude_deg``
+    and the whole-sign ``house`` (int). When provided, per-graha chalit assignment,
+    cusp distances and sandhi flags are computed; divergence between whole-sign and
+    chalit house is one of the two sandhi triggers.
+
+    Returns a dict::
+
+        {
+          "sandhi_orb_deg": 3.0,
+          "sripati":  {"madhyas": [12 floats],
+                       "cusps":   [{house, start, madhya, end}, ... 12]},
+          "placidus": {"cusp_boundaries": [12 floats],   # cusp[h] = KP cusp of house h+1
+                       "cusps":   [{house, start, madhya, end}, ... 12]},
+          "graha_chalit": {GRAHA_NAME: {chalit_house, whole_sign_house,
+                                        dist_to_madhya_deg, dist_to_nearest_boundary_deg,
+                                        nearest_boundary, sandhi_flag,
+                                        sandhi_reasons: [...]}}
+        }
+    """
+    mode, _sidm = resolve_mode(ayanamsha_id)
+    drik.set_ayanamsa_mode(mode)
+    place = _place(lat, lon, tz)
+
+    # --- Sripati (Indian bhāva-chalita) madhyas + derived boundaries ---
+    sri_madhyas = [float(x) % 360.0 for x in drik.bhaava_madhya_sripathi(jd_ut, place)]
+    # sandhi[h] = boundary between house h and house h+1 = midpoint(madhya[h], madhya[h+1]).
+    # House h therefore starts at sandhi[h-1] and ends at sandhi[h].
+    sri_sandhi = [_mid_point(sri_madhyas[h], sri_madhyas[(h + 1) % 12]) for h in range(12)]
+    sripati_cusps: list[dict[str, Any]] = []
+    for h in range(12):
+        start = sri_sandhi[(h - 1) % 12]
+        end = sri_sandhi[h]
+        sripati_cusps.append({
+            "house": h + 1,
+            "start": start,
+            "madhya": sri_madhyas[h],
+            "end": end,
+        })
+
+    # --- Placidus (KP/Western) cusp boundaries ---
+    plac_bounds = [float(x) % 360.0 for x in drik.bhaava_madhya_swe(jd_ut, place, house_code="P")]
+    placidus_cusps: list[dict[str, Any]] = []
+    for h in range(12):
+        start = plac_bounds[h]
+        end = plac_bounds[(h + 1) % 12]
+        placidus_cusps.append({
+            "house": h + 1,
+            "start": start,
+            "madhya": _mid_point(start, end),
+            "end": end,
+        })
+
+    # --- Per-graha chalit assignment (Sripati is the primary chalit frame) ---
+    graha_chalit: dict[str, Any] = {}
+    for g in (grahas or []):
+        name = g.get("name")
+        if not name:
+            continue
+        lon_deg = g.get("longitude_deg")
+        if lon_deg is None:
+            continue
+        lon_deg = float(lon_deg) % 360.0
+
+        chalit_house = None
+        for h in range(12):
+            start = sri_sandhi[(h - 1) % 12]
+            end = sri_sandhi[h]
+            if _forward_arc_contains(lon_deg, start, end):
+                chalit_house = h + 1
+                break
+        if chalit_house is None:  # numerical fallback (should not happen)
+            chalit_house = 1
+
+        hidx = chalit_house - 1
+        b_start = sri_sandhi[(hidx - 1) % 12]
+        b_end = sri_sandhi[hidx]
+        dist_start = _arc_sep(lon_deg, b_start)
+        dist_end = _arc_sep(lon_deg, b_end)
+        if dist_start <= dist_end:
+            nearest_boundary, dist_boundary = "start", dist_start
+        else:
+            nearest_boundary, dist_boundary = "end", dist_end
+        dist_madhya = _arc_sep(lon_deg, sri_madhyas[hidx])
+
+        whole_sign_house = g.get("house")
+        whole_sign_house = int(whole_sign_house) if whole_sign_house is not None else None
+
+        sandhi_reasons: list[str] = []
+        if dist_boundary <= sandhi_orb_deg:
+            sandhi_reasons.append("within_boundary_orb")
+        if whole_sign_house is not None and whole_sign_house != chalit_house:
+            sandhi_reasons.append("wholesign_chalit_divergence")
+
+        graha_chalit[name] = {
+            "chalit_house": chalit_house,
+            "whole_sign_house": whole_sign_house,
+            "dist_to_madhya_deg": dist_madhya,
+            "dist_to_nearest_boundary_deg": dist_boundary,
+            "nearest_boundary": nearest_boundary,
+            "sandhi_flag": bool(sandhi_reasons),
+            "sandhi_reasons": sandhi_reasons,
+        }
+
+    return {
+        "sandhi_orb_deg": sandhi_orb_deg,
+        "sripati": {"madhyas": sri_madhyas, "cusps": sripati_cusps},
+        "placidus": {"cusp_boundaries": plac_bounds, "cusps": placidus_cusps},
+        "graha_chalit": graha_chalit,
+    }

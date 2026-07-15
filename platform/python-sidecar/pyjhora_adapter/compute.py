@@ -78,6 +78,10 @@ def compute_chart(
     for g in grahas:
         planet_sign0 = int(g["sign_id"]) - 1
         g["house"] = ((planet_sign0 - asc_sign0) % 12) + 1
+    # Bhāva-chalit: real Sripati + Placidus cusps (ADDITIVE second data layer, DR-2 —
+    # whole-sign house_d1 above stays PRIMARY and untouched). jd_ut is the local-time
+    # JD (built above), which compute_bhava_chalit requires.
+    bhava_chalit = houses.compute_bhava_chalit(jd_ut, eff_ayan, grahas=grahas, **kw)
     varga_map = vargas.compute_vargas(jd_ut, eff_ayan, **kw)
     dasha_map = _dashas.compute_dashas(jd_ut, eff_ayan, **kw)
     panch = panchanga.compute_panchanga(jd_ut, eff_ayan, **kw)
@@ -119,6 +123,7 @@ def compute_chart(
         "ascendant": ascendant,
         "lagna": ascendant,        # alias for dashas_writer
         "houses": house_list,
+        "bhava_chalit": bhava_chalit,  # real Sripati + Placidus cusps (additive; DR-2)
         "midheaven": midheaven,
         "grahas": grahas,
         # 'planets' alias: id=lowercase name, sign_num=0-based sign index.
