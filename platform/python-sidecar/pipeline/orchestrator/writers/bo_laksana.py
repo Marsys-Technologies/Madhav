@@ -71,6 +71,57 @@ CANONICAL_AYANAMSHAS = [
 
 ENGINE_VERSION = "bo_laksana_v2.2"
 
+# ── D-1.5b hotfix: bo_laksana's ownership allowlist for bodha_msr_signals ────
+# `bodha_msr_signals` is a shared table: bo_laksana projects ALL L1
+# chart_facts into it (category-agnostic), and bo_sudarshana (an independent
+# top-level asset, depends_on=['ga_positions'] only) ALSO inserts directly
+# into it under signal_type_class='sudarshana_agreement'. bo_laksana's
+# delete-then-insert idempotency cycle must delete ONLY the signal_type_class
+# values bo_laksana itself emits — never a blanket per-(chart,ayanamsha) wipe
+# — or it silently destroys other writers' rows on every rebuild (see the
+# D-1.5b full-rebuild post-mortem on chart 482012f1, where this wiped 45
+# bo_sudarshana rows to 0 while bo_sudarshana's asset_throughput row kept
+# claiming state='lit', rows_written=45).
+#
+# This is the complete, closed set of signal_type_class values bo_laksana can
+# emit, enumerated from every "signal_type_class": <literal> assignment and
+# every SIGNAL_TYPE_CLASS import in this module:
+#   - _signal_type_class() below (category-agnostic L1-fact projection; its
+#     fallback branch is "composite_state" — the mapping is total/closed, so
+#     this list does not grow as new fact_categories appear in L1):
+#     yoga, dosha, sade_sati, panchanga, karaka_alignment, tradition_specific,
+#     parivartana, configuration, varga_pattern, annual, medical, vastu,
+#     composite_state
+#   - "varga_ratification_divergence" (CR-57 divergence signals, explicit literal)
+#   - bhavat_bhavam_amplifier.SIGNAL_TYPE_CLASS = "bhavat_bhavam_amplifier"
+#     (Lane B-4 in-process append hook — rows are appended to bo_laksana's OWN
+#     signal_rows list before the single delete+insert, so they must be in
+#     THIS allowlist too, or bo_laksana's own rebuild would delete them and
+#     never reinsert-because-they-werent-reinserted... they ARE reinserted
+#     every run since they're recomputed from signal_rows, but the allowlist
+#     must still cover them so a *partial* future refactor can't strand them).
+#
+# If bo_laksana grows a new signal_type_class, add it here — the idempotency
+# helper raises on an empty list rather than silently falling back to a
+# blanket delete.
+BO_LAKSANA_OWNED_SIGNAL_TYPE_CLASSES: list[str] = [
+    "yoga",
+    "dosha",
+    "sade_sati",
+    "panchanga",
+    "karaka_alignment",
+    "tradition_specific",
+    "parivartana",
+    "configuration",
+    "varga_pattern",
+    "annual",
+    "medical",
+    "vastu",
+    "composite_state",
+    "varga_ratification_divergence",
+    "bhavat_bhavam_amplifier",
+]
+
 # ── WP-2.4 (LCA-9b-1): flood-prone per-varga families ─────────────────────────
 # These categories 1:1-emit thousands of near-identical granular signals (worst:
 # aspect_jaimini_per_varga = 15,660/chart of chart-independent sign→sign rashi
@@ -3113,8 +3164,14 @@ class BoLaksanaWriter(WriterBase):
                 ayanamsha, prior_hit_rate * 100,
             )
 
-        # Idempotency: wipe prior rows for (chart_id, ayanamsha_id)
-        deleted = replace_prior_msr_for_chart(conn, chart_id, ayanamsha)
+        # Idempotency: wipe prior rows for (chart_id, ayanamsha_id) that bo_laksana
+        # itself owns (D-1.5b hotfix — see BO_LAKSANA_OWNED_SIGNAL_TYPE_CLASSES
+        # docstring: bodha_msr_signals is a shared table; a blanket delete here
+        # would destroy other writers' rows, e.g. bo_sudarshana's
+        # 'sudarshana_agreement' signals).
+        deleted = replace_prior_msr_for_chart(
+            conn, chart_id, ayanamsha, BO_LAKSANA_OWNED_SIGNAL_TYPE_CLASSES,
+        )
         logger.info("[bo_laksana] %s — deleted %d prior rows", ayanamsha, deleted)
 
         # Batch insert (salience_pctl_in_class now carried on each row — no second pass)

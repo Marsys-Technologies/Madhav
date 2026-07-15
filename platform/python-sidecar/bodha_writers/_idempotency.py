@@ -74,24 +74,63 @@ def replace_prior_msr_signals(conn: Any, rows: list[dict]) -> int:
     return deleted
 
 
-def replace_prior_msr_for_chart(conn: Any, chart_id: str, ayanamsha_id: str) -> int:
-    """Wipe ALL bodha_msr_signals for a (chart_id, ayanamsha_id) pair.
-    Used when a full per-ayanamsha rebuild replaces everything."""
-    # Delete all child tables referencing bodha_msr_signals first (all FKs are NO ACTION).
-    _delete(
-        conn,
-        "DELETE FROM bodha_signal_embeddings WHERE chart_id = %s AND ayanamsha_id = %s",
-        [chart_id, ayanamsha_id],
+def replace_prior_msr_for_chart(conn: Any, chart_id: str, ayanamsha_id: str,
+                                 owned_signal_type_classes: list[str]) -> int:
+    """Delete prior bodha_msr_signals rows for a (chart_id, ayanamsha_id) pair
+    that belong to ONE OF `owned_signal_type_classes` — i.e. exactly the
+    signal_type_class values the CALLING writer is known to emit.
+
+    NOT a blanket per-(chart,ayanamsha) wipe. `bodha_msr_signals` is a shared
+    table: as of D-1.5b, both bo_laksana (the category-agnostic L1-facts
+    projector) and bo_sudarshana (an independent top-level asset that emits
+    `sudarshana_agreement` rows from its own narrower idempotency call,
+    `replace_prior_msr_signals`) insert into it directly, and nothing prevents
+    a future asset from doing the same. Before this fix, this function
+    unconditionally deleted ALL rows for the (chart_id, ayanamsha_id) pair —
+    correct only under the now-false assumption that bo_laksana was the sole
+    writer to the table. That blanket delete silently destroyed
+    bo_sudarshana's rows on every bo_laksana rebuild even though
+    bo_sudarshana's own `asset_throughput` state kept claiming success
+    (state='lit') because bo_sudarshana was never told its data vanished.
+    See D-1.5b full-rebuild post-mortem, chart 482012f1, 2026-07-15/16.
+
+    Every caller MUST pass the exact, non-empty list of signal_type_class
+    values it owns (see e.g. bo_laksana.py's BO_LAKSANA_OWNED_SIGNAL_TYPE_CLASSES).
+    This keeps the delete scoped to "rows THIS writer produced" rather than
+    "all rows for this chart+ayanamsha", regardless of how many other writers
+    later start sharing the table.
+    """
+    if not owned_signal_type_classes:
+        raise ValueError(
+            "replace_prior_msr_for_chart requires a non-empty "
+            "owned_signal_type_classes allowlist — refusing to fall back to a "
+            "blanket delete (see D-1.5b bo_sudarshana data-loss postmortem)."
+        )
+    # Delete all child tables referencing bodha_msr_signals first (all FKs are
+    # NO ACTION), scoped to signal_id via the same owned-classes subquery so
+    # child rows belonging to OTHER writers' signals are never touched either.
+    child_scope = (
+        "SELECT signal_id FROM bodha_msr_signals"
+        " WHERE chart_id = %s AND ayanamsha_id = %s AND signal_type_class = ANY(%s)"
     )
     _delete(
         conn,
-        "DELETE FROM bodha_contradictions WHERE chart_id = %s AND ayanamsha_id = %s",
-        [chart_id, ayanamsha_id],
+        f"DELETE FROM bodha_signal_embeddings WHERE signal_id IN ({child_scope})",
+        [chart_id, ayanamsha_id, owned_signal_type_classes],
+    )
+    _delete(
+        conn,
+        f"DELETE FROM bodha_contradictions"
+        f" WHERE chart_id = %s AND (signal_a_id IN ({child_scope}) OR signal_b_id IN ({child_scope}))",
+        [chart_id,
+         chart_id, ayanamsha_id, owned_signal_type_classes,
+         chart_id, ayanamsha_id, owned_signal_type_classes],
     )
     return _delete(
         conn,
-        "DELETE FROM bodha_msr_signals WHERE chart_id = %s AND ayanamsha_id = %s",
-        [chart_id, ayanamsha_id],
+        "DELETE FROM bodha_msr_signals"
+        " WHERE chart_id = %s AND ayanamsha_id = %s AND signal_type_class = ANY(%s)",
+        [chart_id, ayanamsha_id, owned_signal_type_classes],
     )
 
 
