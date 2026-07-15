@@ -1031,3 +1031,84 @@ disagreement_register_entry:
     - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md
       linkage: registry_updated   # §4.1 codifies the Fable-doctrine/Opus-engineering delegation split this ruling exemplifies
 ```
+
+## DIS.016 (doctrine-waves campaign ref: DR-3) — B-3/B-4 salience constants for new signal classes
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.016
+  campaign_ref: DR-3
+  class: doctrine_parameterization
+  opened_on: 2026-07-15
+  opened_by_session: "D-1.5b Binder (Claude Fable 5, wave-open verification pass)"
+
+  parties: [fable-5-adjudicator-doctrine, conductor-formalization]
+  description: >
+    BRIEF_D1_5B.md §B requires salience constants / class priors for three NEW MSR signal
+    classes introduced by Lanes B-3 (Sudarśana Chakra tri-frame agreement) and B-4 (Bhavat
+    Bhavam gated amplifier), to be bound by "Adjudicator-doctrine" before those lanes can be
+    implemented against a real salience_formula_v2 weight. No prior class_prior anchor exists
+    for any of the three (sudarshana_agreement, frame_divergence, bhavat_bhavam_amplifier).
+    Cannot be silently defaulted because B-4 in particular carries a hard doctrinal constraint
+    (GATED AMPLIFIER — never a generator; must never outrank the primary configuration it
+    amplifies) that a wrong prior could silently violate.
+
+  authoritative_side: n/a
+  evidence_side_a:
+    source: D-1.5b Binder report (2026-07-15), read-only verification pass
+    excerpt: >
+      "Priors live in brahmagyan/l0_class_priors.py (seeded via bg_class_priors ->
+      brahma_class_priors), consumed by salience_formula_v2 as class_prior x varga_weight x
+      specificity x .... Existing anchors: configuration/yoga 1.40, relationship/composite_state/
+      parivartana 1.20, position 1.10, varga_pattern 0.95, absence 0.80. Proposed: 
+      sudarshana_agreement=1.15 (tri-frame corroboration is relationship-grade wiring but
+      derivative of existing positions; between position 1.10 and composite_state 1.20);
+      frame_divergence=1.00 (a real diagnostic, neither amplifier nor headline; baseline, letting
+      sandhi-distance condition terms do the discrimination); bhavat_bhavam_amplifier=0.85 (brief
+      mandates GATED AMPLIFIER, never a generator; below baseline / parity with annual so it can
+      never outrank the primary configuration it amplifies). Subsystem for all three: structural."
+
+  arbitration_steps_taken:
+    - step: adjudicator_doctrine_ruling
+      result: >
+        Fable 5, acting as adjudicator-doctrine per CONDUCTOR_PROTOCOL.md §4.1/§5 (salience
+        semantics is a doctrine-class question), proposed the three constants above during the
+        D-1.5b wave-open Binder pass, with explicit rationale keyed to existing class_prior
+        anchors and BRIEF_D1_5B.md's own restraint-rule language for B-4.
+      timestamp: 2026-07-15
+      session_id: "Claude Fable 5 (D-1.5b Binder)"
+    - step: conductor_formalization
+      result: >
+        Conductor (this session) reviewed the proposal against existing class_prior anchors
+        (configuration 1.40 down to absence 0.80) and BRIEF_D1_5B.md's Lane B-4 restraint rules
+        (never a generator, never outranks primary, no chaining) and found bhavat_bhavam_amplifier
+        =0.85 structurally consistent with "must never outrank the primary" only if the primary's
+        own prior is >=0.85 in every case a B-4 amplifier could apply — TRUE for all existing
+        anchors except absence (0.80), and B-4 by definition only fires atop an already-salient
+        (tier>=major or fired-yoga) configuration, which never carries the absence prior. Ratified
+        without amendment.
+      timestamp: 2026-07-15
+      session_id: "Claude Sonnet 5 (D-1.5b conductor)"
+
+  status: resolved
+  resolution: >
+    sudarshana_agreement=1.15, frame_divergence=1.00, bhavat_bhavam_amplifier=0.85, subsystem
+    "structural" for all three. Binds Lanes B-3 and B-4's class_prior seeding
+    (brahma_class_priors) for wave D-1.5b. B-4's implementer must additionally enforce the
+    restraint rules (gated firing, no chaining, never overturns primary) as CODE, not rely on
+    the prior alone to prevent over-ranking — the prior is a scoring input, not a hard cap.
+  resolved_on: 2026-07-15
+  resolved_by_session: "Claude Sonnet 5 (D-1.5b conductor), formalizing Fable 5's Binder-pass adjudicator-doctrine proposal per CONDUCTOR_PROTOCOL.md §8.8.ii (DR-n allocation is conductor-only)"
+
+  state_hashes:
+    side_a_before: null
+    side_a_after: null
+    side_b_before: null
+    side_b_after: null
+
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D1_5B.md
+      linkage: cause   # §B BIND-AT-OPEN slot requiring this ruling
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/STATE_D-1.5b.md
+      linkage: evidence   # Binder's draft proposal recorded pre-formalization
+```
