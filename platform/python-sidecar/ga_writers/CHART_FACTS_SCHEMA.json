@@ -8639,6 +8639,189 @@
         ]
       },
       "render_template": "Nishita Kala on birth day: {start_iso} to {end_iso} ({duration_minutes:.0f} min)."
+    },
+    "bhava_cusps": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "BHAVA_01",
+        "BHAVA_02",
+        "BHAVA_03",
+        "BHAVA_04",
+        "BHAVA_05",
+        "BHAVA_06",
+        "BHAVA_07",
+        "BHAVA_08",
+        "BHAVA_09",
+        "BHAVA_10",
+        "BHAVA_11",
+        "BHAVA_12"
+      ],
+      "allowed_keys": {
+        "sripati_start": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "sripati_madhya": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "sripati_end": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "placidus_start": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "placidus_madhya": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "placidus_end": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            360.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "note": "Real bhava-chalit cusps (ADDITIVE; DR-2 whole-sign house_d1 stays primary). Sripati (Indian bhava-chalita) + Placidus (KP) cusps per bhava, (start, madhya, end). Lane B-1 / D-1.5b.",
+      "render_template": "Bhava {bhava} Sripati cusp: {sripati_start:.2f}-{sripati_madhya:.2f}-{sripati_end:.2f} deg; Placidus: {placidus_start:.2f}-{placidus_madhya:.2f}-{placidus_end:.2f} deg ({ayanamsha})."
+    },
+    "house_chalit": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "chalit_house_sripati": {
+          "value_type": "num",
+          "unit": null,
+          "range": [
+            1,
+            12
+          ],
+          "precision": 0,
+          "verification_min": "single"
+        },
+        "whole_sign_house": {
+          "value_type": "num",
+          "unit": null,
+          "range": [
+            1,
+            12
+          ],
+          "precision": 0,
+          "verification_min": "single"
+        },
+        "dist_to_madhya_deg": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            180.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "dist_to_nearest_boundary_deg": {
+          "value_type": "num",
+          "unit": "deg",
+          "range": [
+            0.0,
+            180.0
+          ],
+          "precision": 6,
+          "verification_min": "single"
+        },
+        "nearest_boundary": {
+          "value_type": "text_enum",
+          "enum": [
+            "start",
+            "end"
+          ],
+          "verification_min": "single"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "note": "Per-graha Sripati bhava-chalit assignment + cusp distances (ADDITIVE second data layer; DR-2). whole_sign_house is the primary frame, mirrored here for divergence context. Lane B-1 / D-1.5b.",
+      "render_template": "{graha} Sripati bhava-chalit house {chalit_house_sripati} (whole-sign {whole_sign_house}); {dist_to_nearest_boundary_deg:.2f} deg to nearest bhava boundary ({ayanamsha})."
+    },
+    "sandhi_flag": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT",
+        "RAH_MEAN",
+        "KET_MEAN"
+      ],
+      "allowed_keys": {
+        "sandhi_flag": {
+          "value_type": "text_enum",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "verification_min": "single"
+        },
+        "sandhi_reasons": {
+          "value_type": "text",
+          "verification_min": "single"
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "note": "Bhava-sandhi (junction) flag per graha: fires when within the sandhi orb (3 deg default) of a Sripati bhava boundary OR when whole-sign house != chalit house. sandhi_reasons is a comma-joined composite of {within_boundary_orb, wholesign_chalit_divergence} or 'none'. Lane B-1 / D-1.5b.",
+      "render_template": "{graha} bhava-sandhi: {sandhi_flag} ({sandhi_reasons}) ({ayanamsha})."
     }
   },
   "channels": {

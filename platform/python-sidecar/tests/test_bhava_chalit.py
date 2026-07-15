@@ -203,3 +203,60 @@ class TestChalitFacts:
         moon_flag = [r for r in rows if r["fact_category"] == "sandhi_flag"
                      and r["fact_subject"] == "MOON" and r["fact_key"] == "sandhi_flag"]
         assert moon_flag and moon_flag[0]["fact_value_text"] == "true"
+
+
+# ── Governance: emitted chalit facts must be DECLARED in CHART_FACTS_SCHEMA.json ─
+# Guards the drift_detector gate (ga_writers/gates.py): SELECT DISTINCT fact_category
+# FROM chart_facts fails on any category/enum/range present in the DB but not declared.
+
+class TestSchemaDeclaration:
+    @staticmethod
+    def _schema():
+        import json
+        import pathlib
+        p = pathlib.Path(__file__).resolve().parents[1] / "ga_writers" / "CHART_FACTS_SCHEMA.json"
+        return json.loads(p.read_text())
+
+    @staticmethod
+    def _chalit_rows(chart_output):
+        from ga_writers.ga_positions_writer import _build_chalit_rows
+        return _build_chalit_rows(chart_output, "test-chart", "test-build",
+                                  "lahiri_chitrapaksha", "2026-07-15T00:00:00Z")
+
+    def test_every_emitted_category_is_declared(self, chart_output):
+        cats = {r["fact_category"] for r in self._chalit_rows(chart_output)}
+        declared = set(self._schema().get("categories", {}).keys())
+        undeclared = cats - declared
+        assert not undeclared, f"undeclared chalit categories (drift gate would red): {undeclared}"
+
+    def test_every_emitted_subject_is_declared(self, chart_output):
+        schema_cats = self._schema()["categories"]
+        by_cat: dict[str, set] = {}
+        for r in self._chalit_rows(chart_output):
+            by_cat.setdefault(r["fact_category"], set()).add(r["fact_subject"])
+        for cat, subjects in by_cat.items():
+            allowed = set(schema_cats[cat]["applies_to_subjects"])
+            assert subjects <= allowed, f"{cat} emits undeclared subjects: {subjects - allowed}"
+
+    def test_every_emitted_key_is_declared_with_matching_type(self, chart_output):
+        schema_cats = self._schema()["categories"]
+        for r in self._chalit_rows(chart_output):
+            spec = schema_cats[r["fact_category"]]["allowed_keys"].get(r["fact_key"])
+            assert spec is not None, f"{r['fact_category']}.{r['fact_key']} not declared"
+            vt = spec["value_type"]
+            if r["fact_value_num"] is not None:
+                assert vt == "num", f"{r['fact_category']}.{r['fact_key']} num value vs type {vt}"
+                lo, hi = spec["range"]
+                assert lo <= r["fact_value_num"] <= hi, (
+                    f"{r['fact_category']}.{r['fact_key']}={r['fact_value_num']} out of [{lo},{hi}]")
+            if r["fact_value_text"] is not None and vt == "text_enum":
+                assert r["fact_value_text"] in spec["enum"], (
+                    f"{r['fact_category']}.{r['fact_key']}='{r['fact_value_text']}' not in enum")
+
+    def test_verification_min_matches_emitted_status(self, chart_output):
+        """_chalit_row sets verification_pass_status='single'; declared verification_min
+        must match so the two-pass gate does not reject these rows."""
+        schema_cats = self._schema()["categories"]
+        for cat in ("bhava_cusps", "house_chalit", "sandhi_flag"):
+            for key_spec in schema_cats[cat]["allowed_keys"].values():
+                assert key_spec["verification_min"] == "single"
