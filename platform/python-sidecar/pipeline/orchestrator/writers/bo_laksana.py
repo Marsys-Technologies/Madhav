@@ -1096,7 +1096,12 @@ def _load_vichara_divergence_signals(
             "valence": valence,
             "lel_origin": False,
             "configuration_jsonb": json.dumps({"subject": subj, "domain": dom, "value_text": value_text}),
-            "constituent_facts_array": [str(c) for c in constituents if c] or None,
+            # CR-97 hotfix follow-up (89fe8824's residual-risk finding): the same
+            # NOT NULL column must never be collapsed to None by a falsy `or` —
+            # constituents == [] (a legitimate, fact-less divergence signal) must
+            # stay [] here, not become NULL against bodha_msr_signals' NOT NULL
+            # constraint.
+            "constituent_facts_array": [str(c) for c in constituents if c],
             "constituent_signals_array": None,
             "classical_sources_array": None,
             "source_corroboration_count_by_text": 2,
