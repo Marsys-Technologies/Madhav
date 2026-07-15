@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import sys
+import time
 import uuid
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -25,6 +26,15 @@ logger = logging.getLogger(__name__)
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 ASSETS = ["bo_laksana"]
 TRIGGERED_BY = "rebuild-script-d1-5a-bo-laksana-dep-fix"
+
+# Bounded-retry policy (same class of fix as rebuild_ga_sensitive_ga_strength.py's
+# R6 0h-watchdog ruling): this environment hits repeated Cloud SQL Auth Proxy
+# connection-interruption failures. Retries ONLY psycopg.OperationalError/OSError,
+# ONLY around this script's own execute_run() call — bo_laksana is idempotent
+# delete-then-insert per ayanamsha substep, so a retry safely resumes rather than
+# duplicates.
+_MAX_ATTEMPTS = 4
+_RETRY_BACKOFF_SECONDS = (10, 30, 60)
 
 _env_file = os.path.join(os.path.dirname(__file__), "..", ".env.local")
 if os.path.exists(_env_file):
@@ -40,13 +50,33 @@ if _sidecar not in sys.path:
     sys.path.insert(0, _sidecar)
 
 
+def _execute_run_with_bounded_retry(run_id: str) -> None:
+    import psycopg
+    from pipeline.orchestrator.runner import execute_run
+
+    for attempt in range(1, _MAX_ATTEMPTS + 1):
+        try:
+            execute_run(run_id)
+            return
+        except (psycopg.OperationalError, OSError) as exc:
+            if attempt >= _MAX_ATTEMPTS:
+                logger.error("[run] execute_run(%s) failed after %d/%d attempts — giving up: %s: %s",
+                             run_id, attempt, _MAX_ATTEMPTS, type(exc).__name__, exc)
+                raise
+            backoff = _RETRY_BACKOFF_SECONDS[min(attempt - 1, len(_RETRY_BACKOFF_SECONDS) - 1)]
+            logger.warning("[run] execute_run(%s) attempt %d/%d hit a connection-interruption "
+                            "error (%s: %s) — retrying in %ds (same run_id; bo_laksana's per-"
+                            "ayanamsha delete-then-insert makes this a safe resume)",
+                            run_id, attempt, _MAX_ATTEMPTS, type(exc).__name__, exc, backoff)
+            time.sleep(backoff)
+
+
 def main() -> None:
     import psycopg
     import psycopg.rows
 
     from pipeline.orchestrator.db import db_url
     from pipeline.orchestrator.writers import discover_all
-    from pipeline.orchestrator.runner import execute_run
     discover_all()
 
     conn = psycopg.connect(db_url(), row_factory=psycopg.rows.dict_row)
@@ -89,8 +119,8 @@ def main() -> None:
     logger.info("[run] created build_run %s", run_id)
     conn.close()
 
-    logger.info("[run] invoking execute_run(%s)…", run_id)
-    execute_run(run_id)
+    logger.info("[run] invoking execute_run(%s) with bounded retry…", run_id)
+    _execute_run_with_bounded_retry(run_id)
     logger.info("[run] execute_run complete — verifying throughput…")
 
     conn2 = psycopg.connect(db_url(), row_factory=psycopg.rows.dict_row)
