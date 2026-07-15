@@ -35,7 +35,10 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
     'ga_yoga_firings fired-count for this chart/ayanamsha — that table, served via ' +
     'get_yoga_firings/ganita_yoga_firings_get, is firings-authoritative; this tool\'s rows are ' +
     'single-pass catalog matches, JL-004) and catalog_only_rows_in_page (count of rows whose ' +
-    'fire_reason is requires_pass — not yet cross-verified confirmed firings).',
+    'fire_reason is requires_pass — not yet cross-verified confirmed firings). ' +
+    'B9 dosha gate (D-1.5b, mirrors the get_yoga_firings all=true pattern): dosha_label rows whose ' +
+    'fire_reason is requires_pass (shared-stub/catalog-only, not a confirmed per-chart finding) are ' +
+    'EXCLUDED from the default page — pass all=true to include them.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
@@ -43,6 +46,8 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
     categories:   { type: 'array',  description: 'Subset of categories.', items: { type: 'string' } },
     facet:        { type: 'string', description: "Structural facet alias from ganita_structural_get " +
       "('yoga_fires' | 'dosha_fires' scope categories; other facet values are ignored here)." },
+    all:          { type: 'boolean', description: 'B9 dosha gate: if true, include catalog-only ' +
+      'dosha_label rows (fire_reason=requires_pass) that are excluded by default. Default false.' },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 500 },
   },
@@ -62,7 +67,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
   // (facet=yoga_fires/dosha_fires) and ganita_yogas_get — both Lane-3-touched surfaces.
   density_contract: {
     paginated: true,
-    facets: ['type', 'categories', 'facet'],
+    facets: ['type', 'categories', 'facet', 'all'],
     empty_reason: false, // R5.3 total/pagination receipt exists; explicit empty_reason string not yet added on this tool
   },
   async handler(args, _ctx) {
@@ -72,6 +77,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       const offset     = (args.offset as number) ?? 0
       const facet      = args.facet as string | undefined
       const type       = (args.type as string | undefined) ?? (facet ? FACET_TO_TYPE[facet] : undefined)
+      const all        = args.all === true
 
       let categories = (args.categories as string[]) ?? YD_CATEGORIES
       if (type === 'yoga')  categories = categories.filter(c => c.startsWith('yoga') || c === 'bhadra_flag')
@@ -88,6 +94,16 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
         baseParams.push(args.ayanamsha_id as string)
         whereClause += ` AND ayanamsha_id = $${baseParams.length}`
       }
+      // B9 dosha gate (D-1.5b — mirrors get_yoga_firings.ts's `all` pattern): a shared-stub
+      // dosha_label row (fire_reason=requires_pass — a catalog/label match, not a cross-verified
+      // per-chart finding) is NEVER served in the default page. `all=true` lifts the gate. This
+      // is applied IN SQL (not a post-fetch filter) so `total`/pagination stay consistent with
+      // what is actually served.
+      const doshaGateClause =
+        `NOT (fact_category = 'dosha_label' AND (fact_value_jsonb->>'fire_reason') = 'requires_pass')`
+      if (!all) {
+        whereClause += ` AND ${doshaGateClause}`
+      }
 
       // A3 (CR-92 residue, R-3): ga_yoga_firings is the firings-authoritative table (per-yoga
       // strength, bhaṅga/cancellation state, partial-formation %, dāśā-activation) — this tool's
@@ -103,7 +119,17 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
         firingsWhere += ` AND ayanamsha_id = $${firingsParams.length}`
       }
 
-      const [countResult, result, firingsCountResult] = await Promise.all([
+      // B9 dosha gate honesty receipt: how many dosha_label/requires_pass rows this same
+      // chart/ayanamsha/category filter is currently withholding by default (0 when all=true,
+      // since the gate clause isn't applied to whereClause in that case).
+      const gatedCountParams: unknown[] = [chartId, categories]
+      let gatedCountWhere = `chart_id = $1 AND fact_category = ANY($2::text[]) AND NOT (${doshaGateClause})`
+      if (args.ayanamsha_id) {
+        gatedCountParams.push(args.ayanamsha_id as string)
+        gatedCountWhere += ` AND ayanamsha_id = $${gatedCountParams.length}`
+      }
+
+      const [countResult, result, firingsCountResult, doshaGatedCountResult] = await Promise.all([
         query<{ total: string }>(
           `SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${whereClause}`,
           baseParams,
@@ -121,9 +147,14 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
           `SELECT COUNT(*)::text AS total FROM ga_yoga_firings WHERE ${firingsWhere}`,
           firingsParams,
         ),
+        query<{ total: string }>(
+          `SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${gatedCountWhere}`,
+          gatedCountParams,
+        ),
       ])
 
       const total = Number(countResult.rows[0]?.total ?? 0)
+      const doshaLabelGatedTotal = Number(doshaGatedCountResult.rows[0]?.total ?? 0)
       const firingsFiredTotal = Number(firingsCountResult.rows[0]?.total ?? 0)
       const firingsPointer = {
         tool: 'ganita_yoga_firings_get',
@@ -181,6 +212,18 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
           chart_id: chartId, categories, rows: result.rows ?? [], total,
           firings_pointer: firingsPointer,
           catalog_only_rows_in_page: catalogOnlyCount,
+          dosha_label_gate: {
+            applied: !all,
+            all,
+            excluded_total: all ? 0 : doshaLabelGatedTotal,
+            note: all
+              ? 'all=true — catalog-only dosha_label rows (fire_reason=requires_pass) are included in this response.'
+              : doshaLabelGatedTotal > 0
+                ? `${doshaLabelGatedTotal} shared-stub dosha_label row(s) (fire_reason=requires_pass, ` +
+                  'catalog-only — not a cross-verified per-chart finding) are excluded from this ' +
+                  'default page (B9 dosha gate). Pass all=true to include them.'
+                : 'No shared-stub dosha_label rows matched this filter — nothing was gated.',
+          },
           ...(catalogOnlyCount > 0 ? {
             catalog_only_note:
               `${catalogOnlyCount} of ${(result.rows ?? []).length} row(s) in this page are ` +

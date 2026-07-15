@@ -63,6 +63,7 @@ import {
 } from '../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../constants'
 import type { DrillPointerType } from '../../envelope'
+import { derivedHouses } from '@/lib/jyotish/bhavat_bhavam_map'
 
 // ── The Shastra Map (design §28.5) ───────────────────────────────────────────────
 
@@ -78,9 +79,17 @@ interface DomainSpec {
   /** Maps onto bodha_msr_signals.domain (query_signals.ts) — 'other' where no exact
    *  domain tag exists yet in the signal store. */
   signal_domain: string
+  /** D-1.5b Lane B-4 (CR-97) — Bhavat-Bhavam "house of the house" derivation, backfilled
+   *  from the shared registry (`bhavat_bhavam_map.ts`) right after SHASTRA_MAP below is
+   *  declared. Optional in the type only because it is populated post-construction, not
+   *  hand-authored per entry; every SHASTRA_MAP value has it set by the time this module
+   *  finishes loading. Odd primary `bhava` -> real derived bhāvas; EVEN primary `bhava` ->
+   *  always [] (the doctrine: even houses receive nothing — never fabricate a derivation
+   *  for career/wealth/health/education/moksha/character/residence's even primaries). */
+  derived_bhavas?: readonly number[]
 }
 
-const SHASTRA_MAP: Record<string, DomainSpec> = {
+export const SHASTRA_MAP: Record<string, DomainSpec> = {
   marriage:     { bhava: 7,  karakas: ['Venus'],                     varga: 'D9',  label: 'Marriage / Partnership', signal_domain: 'relationship' },
   relationship: { bhava: 7,  karakas: ['Venus'],                     varga: 'D9',  label: 'Marriage / Partnership', signal_domain: 'relationship' },
   partnership:  { bhava: 7,  karakas: ['Venus'],                     varga: 'D9',  label: 'Marriage / Partnership', signal_domain: 'relationship' },
@@ -116,6 +125,22 @@ const SHASTRA_MAP: Record<string, DomainSpec> = {
   residence:    { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
   property:     { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
   home:         { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
+}
+
+// D-1.5b Lane B-4 (CR-97): extend every SHASTRA_MAP domain with its Bhavat-Bhavam derived
+// bhāvas — {primary} ∪ {derived}, derived-part data-sourced from bhavat_bhavam_map.ts's
+// registry (never hardcoded here). Pure append: does not modify any existing SHASTRA_MAP
+// entry above. Per the hard doctrinal rule (even houses receive nothing), only domains whose
+// primary `bhava` is ODD get a non-empty derived_bhavas:
+//   marriage/relationship/partnership (bhava 7 -> [4, 10])
+//   progeny/children                 (bhava 5 -> [3, 9])
+//   spirituality                     (bhava 9 -> [5, 11])
+//   health/vitality, character/buddhi (both bhava 1 -> [1, 7])
+// Every EVEN-primary domain resolves to [] — career/vocation (10), wealth/finance (2),
+// education/vidya (4), moksha/liberation (12), residence/property/home (4) — intentional,
+// not a gap (BRIEF_D1_5B.md Lane B-4: "even houses receive nothing").
+for (const spec of Object.values(SHASTRA_MAP)) {
+  spec.derived_bhavas = derivedHouses(spec.bhava)
 }
 
 /** Reverse map — used only when the caller gives a bare bhava number with no domain. EXPLICIT
