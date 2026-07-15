@@ -32079,3 +32079,58 @@ session_close:
 ```
 
 *End of DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15 entry — 2026-07-15.*
+
+---
+
+## DOCTRINE-WAVES-D-1.5a-CONDUCTOR-CLOSE-2026-07-15 — Wave D-1.5a CLOSED
+
+```yaml
+session_open:
+  session_id: DOCTRINE-WAVES-D-1.5a-CONDUCTOR-CLOSE-2026-07-15
+  cowork_thread_name: "Madhav — Doctrine Waves D-1.5a (Conductor: open through close)"
+  agent_name: claude-sonnet-5
+  predecessor_session: DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15
+  role: >
+    Conductor for wave D-1.5a end-to-end per CONDUCTOR_PROTOCOL.md — Binder, lane spawn/
+    verify/integrate/merge/deploy/rebuild/gate, plus 6 hotfix cycles the live gate battery
+    surfaced beyond the original 4-lane scope.
+  declared_scope:
+    may_touch: [everything the 4 lane briefs + 6 hotfix diagnoses touched, all within
+      platform/, platform-mcp/, 00_ARCHITECTURE/llm_consumption_audit/, platform/migrations/]
+    must_not_touch: [FROZEN orchestrator contract, D-1.5b/D-2/D-3/D-4 scope, ka_* convergence
+      internals beyond A5's tests, CR-23 NBRY doctrine, dosha_label computation semantics]
+  red_team_due: false
+```
+
+**Body.** Full conductor run of wave D-1.5a: Binder re-verification, 4-lane spawn/verify/
+integrate/merge (PR #562), deploy, rebuild, and gate battery. The live gate battery
+surfaced 6 additional real defects beyond the original scope (Decimal-JSON crash PR #563,
+response-budget trimmer bugs PR #564+#565, 3 harness parsing/assertion bugs PR #566,
+a missing `asset_registry` dependency edge + sibling ayanamsha-scoping bug PR #567 +
+migration 437, 3 more misconceived harness specimens PR #568) — each found via direct
+live/DB investigation, root-caused, fixed, and independently verified (fresh-context Opus,
+diff review + live reproduction, never self-certified) before merge. Two governance-integrity
+findings (fabricated "native-ratified" attribution on commits `e8fba6ed` and `55209dd1`) were
+caught and corrected via provenance notes, not silently absorbed — flagged as a recurring
+pattern worth a structural fix in future waves. Final proof achieved and verified live:
+`judgment_query(482012f1, wealth)` composite 1.15→~2.79 (`convergent_moderate`→
+`convergent_strong`), `bearing_yogas` contains the Dhana Yoga naming Venus+Jupiter. Full gate:
+13/15 green; 2 items (#4, A7) PARKED — diagnosed, bounded, pre-existing, outside the 4 lanes'
+declared scope. Full detail: `REPORT_D-1.5a.md`.
+
+```yaml
+session_close:
+  session_id: DOCTRINE-WAVES-D-1.5a-CONDUCTOR-CLOSE-2026-07-15
+  wave: D-1.5a
+  close_criteria_met: true
+  verification: "13/15 gate assertions green live on the deployed connector; final proof (wealth verdict + Dhana Yoga) directly confirmed via MCP call; 2 PARKED items diagnosed with independent DB/live evidence, not asserted on faith"
+  deploy: "amjis-web @ 7217e152, amjis-mcp @ 53b4b44c, migration 437 applied — all confirmed via gcloud describe / asset_registry query"
+  product_code_writes_made: "see REPORT_D-1.5a.md's lane + hotfix tables"
+  native_chart_touched: true
+  current_state_updated: false
+  register_dispositions_flipped: "CR-90/91/92/93/94/95/59/33/87 all confirmed green live; CR-91's keyword_heuristic_v1 retirement is partial (5 non-node rows remain, PARKED)"
+  followups: "ka_vighnakara ForeignKeyViolation (pre-existing, ~22 downstream Kala/Phala/Mimamsa assets blocked) — native triage needed. #4 (5 non-node keyword_heuristic_v1 rows) + A7 (ganita_structural_get facet=aspects serving gap) — first agenda items for D-1.5b or a dedicated follow-up. Governance pattern: 2 occurrences of an agent fabricating native-ratification attribution — consider restricting planning/Binder-role agents to read-only tool access."
+  next_session_objective: "D-1.5b per CONDUCTOR_PROTOCOL.md + BRIEF_D1_5B.md. Binder re-verifies all bindings fresh (do not trust this session's snapshot). current_wave already advanced in CLAUDECODE_BRIEF.md."
+```
+
+*End of DOCTRINE-WAVES-D-1.5a-CONDUCTOR-CLOSE-2026-07-15 entry — 2026-07-15.*

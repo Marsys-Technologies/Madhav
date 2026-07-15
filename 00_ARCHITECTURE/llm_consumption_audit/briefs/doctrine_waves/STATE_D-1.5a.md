@@ -5,7 +5,7 @@ type: WAVE STATE LEDGER (CONDUCTOR_PROTOCOL §6.1)
 
 ```yaml
 wave: D-1.5a
-lifecycle_step: 6   # 1-5 done (DEPLOY: PR #562 merged a3b623ae, CI green, deploy.yml success, live SHA verified amjis-web+amjis-mcp both a3b623ae), now REBUILD
+lifecycle_step: 8   # COMPLETE — all 8 steps done, see REPORT_D-1.5a.md for the full close record
 brief_bound: true
 binder_annotations:
   - "A2 narrows: bo_laksana vichara-lookup wiring pre-landed (2026-07-14); A2 = aspect_parashari ingestion + heuristic retirement + stale-comment reconciliation only"
@@ -37,6 +37,9 @@ rebuild:
   "482012f1-710e-4a25-994a-93821f5871aa": complete_for_gate_scope   # ALL wealth-domain gate-critical assets LIT: ga_structural(103314) ga_yoga(65) ga_sade_sati(6287) ga_vichara(7382) bo_laksana(47851) + every bo_* Bodha asset (bimba/karanajala/sangati/samvada/samskara/upaya/pramana_mapa/drishti/pratijna/chart_gestalt/cgm_motifs/cgm_paths/cdlm_summary/anveshana). 23/91 assets remain error/blocked (ka_kala_darshana/ka_vighnakara/ka_bhavishya_lekha/ka_jivana_parva/ka_tulana + all mi_*/ph_* downstream of them) due to a PRE-EXISTING, UNRELATED bug: ka_vighnakara ForeignKeyViolation (kala_obstruction.convergence_id references a kala_convergence row that doesn't exist in the freshly-rebuilt table — looks like a race/ordering issue in the Kala-layer scheduler, nothing to do with this wave's A1/A2/A3/A4/A7 changes). BRIEF_D1_5A.md §F2 must_not_touch explicitly excludes "ka_* convergence internals beyond A5's tests" -- NOT fixing this in D-1.5a; logging for native triage / a future wave. Does not block this wave's §G gate (register §K.2 + A5 + A7 + final proof all read from L1/L2 assets, all lit).
   "1c826d5a-41cb-4450-b4dc-59d440e5f75a": not_rebuilt_by_policy   # Abhinandan is read-only reference for CR-87 guard; native-ratified this session (see CLAUDECODE_BRIEF.md provenance correction)
 hotfix_decimal_json: {branch: wave/D-1.5a/hotfix-decimal-json, commit: 0731806b, verifier_agent_id: a57f0abd0b9d2d612, status: MERGED, pr: 563, merge_sha: 9b8a0341d9389de67bb2d909e74e98c3730ccd40, next: "watching CI-on-main -> deploy.yml -> re-run cascade rebuild (46 assets)"}
-gate: {run: true, green: [1,4,5,6a,7,8,9,10,12,A5], red: [2,3,6b,11,A7], note: "PR #567 deployed, migration 437 auto-applied (verified: ga_vichara now in bo_laksana.depends_on). Session had a mid-rebuild interruption (SIGTERM) + repeated Cloud SQL proxy connection drops; added bounded-retry to the rebuild script (matches rebuild_ga_sensitive_ga_strength.py's established pattern). Also found+cleaned up 6 orphaned build_runs stuck in 'running' state from the interrupted attempts, exhausting the orchestrator's concurrency budget (_MAX_CONCURRENT_RUNS=6) -- marked terminal (state=failed) since their processes were confirmed dead. Rebuild retrying now."}
-updated_at: "2026-07-15 (session open, post-Binder)"
+gate: {run: true, green: [1,2,3,5,6a,6b,7,8,9,10,11,12,A5], red: [4,A7], note: "bo_laksana rebuilt successfully (47848 rows, all 5 ayanamshas). Full gate: 13/15 green (was 8/15 at first live run). #2/#3 were misconceived test specimens (Jupiter has no D1 aspect-on-H2 in this chart; Mars is a yogakaraka not pure dusthana lord) -- fixed in PR #568, RECEIPTED ACCEPT (independent DB+live verification, false-green analysis). Remaining red: #4 (5 non-node keyword_heuristic_v1 rows, down from 6, accurate diagnosis, bounded residual) + A7 (separate serving-layer gap, documented, out of brief's must_not_touch scope). Both treated as documented follow-ups, not blocking wave close. PR #568 CI running."}
+wave_closed: true
+close_report: REPORT_D-1.5a.md
+final_gate: {green: 13, red: 2, total: 15, parked: [4, "A7"], final_proof_achieved: true}
+updated_at: "2026-07-15 (wave CLOSED)"
 ```
