@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "6.0"
+version: "6.3"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -13,6 +13,13 @@ mirror_obligations_retired: "2026-05-27 — Gemini mirror discipline retired per
 supersedes:
   - "CLAUDE.md v5.1 (2026-06-09 — realigned to L1-done/L2-next reality at v6.0)"
 changelog:
+  - v6.3 (2026-07-15, DOCTRINE-WAVES-D1.5B-B7):
+      New §N.6 Serving Density Principle — codifies the density/confidence-layering discipline
+      the `density_contract` field (registry/types.ts) and the response-budget `hardFloor`
+      mechanism (platform-mcp/src/lib/response_budget.ts) already embody in production
+      (judgment_query, ganita_yogas_get catalog-vs-confirmed handling). Frontmatter/footer
+      version drift corrected (frontmatter had stayed "6.0" since the v6.0 unification while
+      the footer advanced through v6.1/v6.2 — both now read 6.3). Full text: §N.6 body + footer.
   - v6.0 (2026-06-12, CLAUDE-MD-REALIGNMENT):
       Structural realignment to L1-done/L2-next reality. §F collapsed to CURRENT_STATE pointer
       (M5/M4 you-are-here specifics deleted). §E replaced: 15 completed arcs → layer-reality
@@ -224,6 +231,19 @@ The orchestrator was built once and is FROZEN at `ORCHESTRATOR_CONVERGENCE_CLOSE
 
 An L2+ signal NEVER restates an L1 computed value as its own truth — it REFERENCES the L1 `fact_id` and inherits L1's value. If a signal's derivation disagrees with the L1 fact it cites, that is a halt-worthy bug, not a stored divergence. The `constituent_facts_array` in MSR signals resolves back to `chart_facts.fact_id` — these MUST resolve. See `MSR_COMPUTED_VALUE_DRIFT_HANDOFF_v1_0.md` for the documented trap.
 
+### §N.6 — Serving Density Principle ([[density_contract]] · Doctrine Campaign D-1 → D-1.5b)
+
+Every served surface layers its rows/signals by verification/confidence density and never flattens them into one undifferentiated list. This principle was implicit in the codebase since the D-1 Night-1 `density_contract` field landed on `CapabilityDescriptor` (`platform/src/lib/retrieval/registry/types.ts`) and the R5.1 C1 response-budget trimmer (`platform-mcp/src/lib/response_budget.ts`); D-1.5b Lane B-7 is the first session to write the principle out in prose, from what the code already does, not from a fresh idea.
+
+**The principle, in the concrete form the code already enforces:**
+
+1. **Never present catalog/label matches as confirmed findings.** A row that is a single-pass catalog match awaiting cross-verification (e.g. `ganita_yogas_get` / `get_yoga_dosha.ts`'s `fire_reason: 'requires_pass'` rows) is still served — B.10 forbids silently dropping data — but is counted and flagged SEPARATELY from confirmed findings (`catalog_only_rows_in_page`, `catalog_only_note`, and the v3-envelope `judgment_flags` entry `catalog_only_rows_present`), with an explicit pointer to the firings-authoritative surface (`ganita_yoga_firings_get`) for the cross-verified layer. A caller must never be able to read the raw row count as "N confirmed yogas."
+2. **The densest, most-actionable layer is the one a budget trim protects first.** `response_budget.ts`'s `TrimmableSection.hardFloor` flag exists specifically because the generic biggest-section-first trim logic will, left alone, zero out a section the instant it becomes genuinely populated (the exact regression the D-1.5a wave gate caught in `judgment_query`'s `bearing_yogas`). A section carrying confirmed/high-density findings — a verdict's grounding evidence, a firings-authoritative row set — declares `hardFloor: true` so its declared `minKeep` survives even the hard-cap fallback pass; lower-density sections (label catalogs, secondary MSR corroboration) are trimmed first and are floorable to zero.
+3. **Within a layered response (verdict / grounding / drill_pointers / judgment_flags), the verdict layer is never empty when grounding data exists.** `judgment_query` (`register_d9_judgment.ts`) computes its deterministic `verdict` from already-graded dignity/varga/yoga terms and separately reports `bearing_yogas` (confirmed, firings-authoritative) ahead of `bearing_yogas_corroboration` (catalog-label, secondary) — sorted so a domain-matching confirmed row survives any row-count cut ahead of a higher-raw-strength but domain-irrelevant one. An honest empty result is reported via `judgment_flags` (e.g. `bearing_yogas_empty`, `timing_anchored_false`), never silently substituted with a populated-looking but hollow envelope.
+4. **Density signaling is data, not narration.** `density_contract` (optional on `CapabilityDescriptor`) declares a capability's `paginated`, `facets`, and `empty_reason` discipline machine-readably, so a CI/census harness can assert byte caps and facet/empty-reason coverage per tool without re-deriving it from source (§N.6 Part 2 below is that harness for two load-bearing surfaces).
+
+**What violates this principle:** flattening confirmed and catalog-only rows into one array with no distinguishing field; a generic budget trim that can zero a response's only confirmed-finding section while a less-dense section survives; a verdict/summary layer that goes silently empty instead of reporting the honest gap via a flags field; a capability that claims `density_contract` but ships no `empty_reason` discipline behind it.
+
 ---
 
-*End of CLAUDE.md v6.2 (2026-06-29 — L4 Phala SEALED: §E L4 BUILT→CLOSED (seal `L4_PHALA_CLOSE_v1_0.md`); §E "truly open items" note updated — all six layers L0–L5 now sealed/closed, build arc complete. Prior: v6.1 (2026-06-29 — §E layer-reality refresh: L2 NEXT→BUILT, L3 draft→CLOSED, L4 draft→BUILT, L5 draft→SEALED). v6.0 (2026-06-12 — structural realignment). Full changelog history at `00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
+*End of CLAUDE.md v6.3 (2026-07-15, DOCTRINE-WAVES D-1.5b Lane B-7) — new §N.6 Serving Density Principle: codifies the density-layering discipline the `density_contract` field (types.ts) and the response-budget `hardFloor` mechanism (response_budget.ts) already embody, drawn from `judgment_query` and `ganita_yogas_get`'s catalog-vs-confirmed handling. Frontmatter/footer version drift corrected (frontmatter had stayed "6.0" since v6.0 while the footer advanced to "6.2" — both now read 6.3). Prior: v6.2 (2026-06-29 — L4 Phala SEALED: §E L4 BUILT→CLOSED (seal `L4_PHALA_CLOSE_v1_0.md`); §E "truly open items" note updated — all six layers L0–L5 now sealed/closed, build arc complete). v6.1 (2026-06-29 — §E layer-reality refresh: L2 NEXT→BUILT, L3 draft→CLOSED, L4 draft→BUILT, L5 draft→SEALED). v6.0 (2026-06-12 — structural realignment). Full changelog history at `00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
