@@ -148,17 +148,32 @@ def emit_kp_lords(
             rows.append(_row(chart_id, ayanamsha_id, build_id, "graha_kp_lords", subj, key,
                              value_text=val, source=src))
 
-    # Per cusp (whole-sign: H1=Lagna long, H2-12=sign boundaries)
-    asc_sign0 = int(asc.get("sign_id", 1)) - 1
-    asc_long  = float(asc.get("longitude_deg", 0.0))
-    for h in range(12):
-        cusp_long = asc_long if h == 0 else ((asc_sign0 + h) % 12) * 30.0
-        cusp_subj = f"CUSP_{h+1:02d}"
-        kp = compute_kp_lords(cusp_long)
-        src = f"ga_nakshatra:KP:cusp={h+1}:longitude={cusp_long:.4f}"
-        for key, val in kp.items():
-            rows.append(_row(chart_id, ayanamsha_id, build_id, "cusp_kp_lords", cusp_subj, key,
-                             value_text=val, source=src))
+    # Per cusp: REAL Placidus cusp longitudes (KP == Placidus). The prior
+    # `(asc_sign0 + h) % 12 * 30` equal-house/sign-boundary cusps were FAKE precision
+    # (B.10) and are removed. Real boundaries come from compute_bhava_chalit
+    # (drik.bhaava_madhya_swe house_code='P'); cusp[h] = KP cusp of house h+1.
+    placidus_bounds = (
+        ((chart_output.get("bhava_chalit") or {}).get("placidus") or {}).get("cusp_boundaries")
+    )
+    if placidus_bounds and len(placidus_bounds) >= 12:
+        for h in range(12):
+            cusp_long = float(placidus_bounds[h]) % 360.0
+            cusp_subj = f"CUSP_{h+1:02d}"
+            kp = compute_kp_lords(cusp_long)  # real 249-division sub-lord chain
+            src = f"ga_nakshatra:KP:cusp={h+1}:placidus_longitude={cusp_long:.4f}"
+            for key, val in kp.items():
+                rows.append(_row(chart_id, ayanamsha_id, build_id, "cusp_kp_lords", cusp_subj, key,
+                                 value_text=val, source=src))
+    else:
+        # No fabricated fallback (B.10): emit a visible EXTERNAL_COMPUTATION_REQUIRED
+        # marker rather than fake equal-house cusps.
+        for h in range(12):
+            cusp_subj = f"CUSP_{h+1:02d}"
+            rows.append(_row(chart_id, ayanamsha_id, build_id, "cusp_kp_lords", cusp_subj,
+                             "sub_lord",
+                             value_text="[EXTERNAL_COMPUTATION_REQUIRED] real Placidus cusp "
+                                        "unavailable (bhava_chalit absent)",
+                             source="ga_nakshatra:KP:cusp:external_required"))
 
     return rows
 
