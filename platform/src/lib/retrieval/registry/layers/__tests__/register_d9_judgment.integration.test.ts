@@ -146,5 +146,27 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       const karakaCondition = (content['checklist'] as Record<string, unknown>)['karaka_condition'] as unknown[]
       expect(karakaCondition.length).toBe(3)
     })
+
+    it(`[${chartId}] wealth domain: domain-matching bearing_yogas survive the response-budget trim (D-1.5a gate finding)`, async () => {
+      // The response-budget trimmer's minKeep cut is a blind slice(0, N) — without sorting
+      // domain-matching firings first, a high-strength but domain-irrelevant yoga (e.g.
+      // Sasa on career) can rank ahead of a lower-strength domain-matching one (e.g. a
+      // Dhana Yoga at ~1.02), silently dropping the exact row the verdict's yoga_term
+      // already counted. Caught live post-deploy: composite score moved correctly but
+      // the served bearing_yogas array contradicted it.
+      const result = await handler()({ chart_id: chartId, domain: 'wealth' })
+      expect(result.is_error).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const verdict = content['verdict'] as Record<string, unknown>
+      const yogaSubscore = verdict['yoga_subscore'] as Record<string, unknown> | undefined
+      const domainBearingFirings = (yogaSubscore?.['domain_bearing_firings'] as number) ?? 0
+      const bearingYogas = (content['checklist'] as Record<string, unknown>)['bearing_yogas'] as Array<Record<string, unknown>>
+      if (domainBearingFirings > 0) {
+        // If the verdict counted at least one domain-matching firing, at least one must
+        // actually be visible in the served (possibly trimmed) bearing_yogas array —
+        // the served data must not contradict the score it's supposed to justify.
+        expect(bearingYogas.some(y => y['domain_match'] === true)).toBe(true)
+      }
+    })
   }
 })
