@@ -24,6 +24,9 @@
  * shape" rather than a false green (never fabricate a pass — CLAUDE.md B.10
  * spirit applied to this harness itself).
  */
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { AssertionDef, AssertionResult, RunContext } from './types'
 
 const WEALTH_TRIKONA_VIOLATION_VALENCES = new Set(['malefic', 'strong_malefic'])
@@ -607,7 +610,774 @@ const a7: AssertionDef = {
   },
 }
 
-export const ALL_ASSERTIONS: AssertionDef[] = [k2_1, k2_2, k2_3, k2_4, k2_5, k2_6a, k2_6b, k2_7, k2_8, k2_9, k2_10, k2_11, k2_12, a5, a7]
+// ═══════════════════════════════════════════════════════════════════════════
+// D-1.5b Gate B assertions (BRIEF_D1_5B.md §G;
+// DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §4 "Gate B (all MCP, deployed,
+// post-rebuild)" paragraph, verbatim, as harness scripts).
+//
+// ID MAPPING (conductor-assigned; disambiguates the brief's B1-B9 WORK-ITEM
+// ids and B6/B8/B9 LANE names from this file's assertion ids, which are
+// unique strings, never bare "B6"/"B8"/"B9"):
+//   Gate B core paragraph (9 assertions):
+//     B1_chalit               — chalit facts + divergence + sandhi flags (CR-98)
+//     B2_sudarshana            — Sudarshana tri-frame verdict (CR-100)
+//     B3_bhavat_bhavam         — BB gated amplifier, odd-house-only (CR-97)
+//     B4_bhava_bala            — bhava_bala rows served (CR-103)
+//     B5_sav_bav_sign_keyed    — SAV/BAV re-keyed by sign (CR-99a)
+//     B6_positions_lead        — nine grahas + lagna lead positions (CR-50)
+//     B7_budgets               — bodha_domain_reading_get / ephemeris_cache_year /
+//                                 ganita_tajaka_get bounded (CR-13/49)
+//     B8_n6_anchor             — CLAUDE.md §N.6 anchor text landed (static; design §6)
+//     B9_ci_density_job        — CI density-census job wired (static; design §6)
+//   Per-item B6/B8/B9-lane assertions (8 assertions; distinct ids, never
+//   colliding with the numeric-suffix ids above or with D-1.5a's bare "6"/"9"):
+//     B_karakamsha             — karakamsha fact resolvable (CR-17)
+//     B_shadbala_ratio         — shadbala required_rupa + ratio (CR-18)
+//     B_d2_hora_class          — D2 hora_class + wealth-lords-in-H12 (CR-58)
+//     B_anchor_dedup           — phala_anchors_get.anchor_count post-dedup (CR-46)
+//     B_remedies_search_honest — ref_remedies_search honor-or-reject (CR-42)
+//     B_structural_envelope    — ganita_structural_get layered envelope + density contract
+//     B_dasha_lord_capability  — ganita_dasha_lord_capability_get (B8 derived view)
+//     B_dosha_gate_kalasarpa   — zero default dosha_label stubs + per-varga kāla-sarpa (B9)
+//
+// Every live-shape comment below was confirmed against the DEPLOYED connector
+// while building this harness (2026-07-15) — BEFORE the D-1.5b rebuild
+// (Cloud Run job running concurrently). Several Gate B facts already resolved
+// green at build time (chalit/sandhi facts, the CLAUDE.md §N.6 anchor, the CI
+// density job, the dosha_label default-page gate, the per-varga kāla-sarpa
+// verdict) because their writer/serving code had already merged and some
+// facts pre-existed the chart rebuild; others (bhava_bala, sign-keyed AV,
+// karakamsha, D2 hora_class, the BB/Sudarshana signal classes, the
+// dasha_lord_capability tool's connector-face availability) legitimately
+// read red until the rebuild completes — this harness NEVER treats "no data
+// yet" as green; it reports red with a clear diagnosis (CLAUDE.md B.10
+// spirit, applied to the harness itself), exactly as D-1.5a's harness does
+// for genuinely-unresolved gaps.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Repo-root-relative path resolver, independent of the caller's cwd. */
+function repoPath(...segments: string[]): string {
+  const here = dirname(fileURLToPath(import.meta.url)) // .../platform/scripts/audit/doctrine_harness/lib
+  const repoRoot = join(here, '..', '..', '..', '..', '..') // -> lib -> doctrine_harness -> audit -> scripts -> platform -> repo root
+  return join(repoRoot, ...segments)
+}
+
+/** Pivoted-shape row extractor for ganita_chart_facts_get (live-confirmed shape: `content.facts[]`). */
+function chartFactsRows(content: unknown): Array<Record<string, unknown>> {
+  const top = content as { content?: { facts?: Array<Record<string, unknown>> } }
+  return top.content?.facts ?? []
+}
+
+/** Row extractor for ganita_positions_get (live-confirmed shape: `content.rows[]`). */
+function positionsRows(content: unknown): Array<{ fact_subject?: string; fact_category?: string; fact_key?: string }> {
+  const top = content as { content?: { rows?: Array<{ fact_subject?: string; fact_category?: string; fact_key?: string }> } }
+  return top.content?.rows ?? []
+}
+
+/**
+ * Generic v3-envelope parser shared by ganita_structural_get / ganita_yogas_get /
+ * ganita_tajaka_get (all confirmed live, 2026-07-15, to share the same top-level
+ * envelope: verdict/ranking_basis/grounding/pagination/drill_pointers/
+ * judgment_flags/content/chart_header/epistemic/timing/coverage/trim_report/
+ * response_format — the §N.6 "layered envelope" this wave's B8 lane retrofits
+ * onto ganita_structural_get and B7's response_budget.ts already gives every
+ * v3-opted-in tool).
+ */
+type V3Envelope = {
+  verdict: unknown
+  ranking_basis: unknown
+  grounding: unknown
+  pagination: unknown
+  drill_pointers: unknown
+  judgment_flags: unknown
+  content: unknown
+  chart_header: unknown
+  epistemic: unknown
+  timing: unknown
+  coverage: unknown
+  trim_report: unknown
+  response_format: unknown
+}
+function v3Envelope(content: unknown): V3Envelope {
+  const top = (content ?? {}) as Record<string, unknown>
+  return {
+    verdict: top.verdict,
+    ranking_basis: top.ranking_basis,
+    grounding: top.grounding,
+    pagination: top.pagination,
+    drill_pointers: top.drill_pointers,
+    judgment_flags: top.judgment_flags,
+    content: top.content,
+    chart_header: top.chart_header,
+    epistemic: top.epistemic,
+    timing: top.timing,
+    coverage: top.coverage,
+    trim_report: top.trim_report,
+    response_format: top.response_format,
+  }
+}
+
+type BodhaSignal = {
+  signal_type_id?: string
+  valence?: string
+  citation_human?: string
+  configuration_jsonb?: Record<string, unknown>
+}
+
+/** Generic (non-wealth-cached) bodha_signals_get pager — used by B2/B3, which scan
+ * signal classes outside the wealth domain the K.2 cache is scoped to. */
+async function fetchSignalsGeneric(
+  ctx: RunContext,
+  extra: Record<string, unknown>,
+  maxPages = 10,
+  pageSize = 20
+): Promise<BodhaSignal[]> {
+  const all: BodhaSignal[] = []
+  for (let page = 0; page < maxPages; page++) {
+    const { content } = await ctx.client.callTool('bodha_signals_get', {
+      chart_id: ctx.chartId,
+      top_k: pageSize,
+      offset: page * pageSize,
+      ...extra,
+    })
+    const c = (content as { content?: { signals?: BodhaSignal[] } })?.content
+    const signals = c?.signals ?? []
+    all.push(...signals)
+    if (signals.length < pageSize) break
+  }
+  return all
+}
+
+// ── B1_chalit ─────────────────────────────────────────────────────────────
+const b1Chalit: AssertionDef = {
+  id: 'B1_chalit',
+  title:
+    'Chalit facts (house_chalit + sandhi_flag) served with divergence for 482012f1 — Moon row flagged ' +
+    '(29°46′ Aquarius → Sripati chalit 12th vs whole-sign 11th; CR-98 type specimen)',
+  register_row: 'CR-98 (Gate B core)',
+  async run(ctx) {
+    const [chalitRes, sandhiRes] = await Promise.all([
+      ctx.client.callTool('ganita_chart_facts_get', { chart_id: ctx.chartId, fact_subject: 'MOON', category: 'house_chalit' }),
+      ctx.client.callTool('ganita_chart_facts_get', { chart_id: ctx.chartId, fact_subject: 'MOON', category: 'sandhi_flag' }),
+    ])
+    const chalitRow = chartFactsRows(chalitRes.content)[0] as
+      | { chalit_house_sripati?: number; whole_sign_house?: number }
+      | undefined
+    const sandhiRow = chartFactsRows(sandhiRes.content)[0] as { sandhi_flag?: string; sandhi_reasons?: string } | undefined
+    if (!chalitRow) {
+      return {
+        id: b1Chalit.id,
+        title: b1Chalit.title,
+        status: 'red',
+        evidence: 'house_chalit category not served for MOON on 482012f1 — chalit fact layer not present (expected until the rebuild completes).',
+        register_row: b1Chalit.register_row,
+      }
+    }
+    const moonChalit12 = chalitRow.chalit_house_sripati === 12
+    const wholeSign11 = chalitRow.whole_sign_house === 11
+    const divergenceDisclosed = moonChalit12 && wholeSign11 && chalitRow.chalit_house_sripati !== chalitRow.whole_sign_house
+    const sandhiFlagged = sandhiRow?.sandhi_flag === 'true' || sandhiRow?.sandhi_flag === true
+    const sandhiReasonsHonest = (sandhiRow?.sandhi_reasons ?? '').includes('divergence') || (sandhiRow?.sandhi_reasons ?? '').length > 0
+    const status = divergenceDisclosed && sandhiFlagged ? 'green' : 'red'
+    return {
+      id: b1Chalit.id,
+      title: b1Chalit.title,
+      status,
+      evidence: `MOON house_chalit row: chalit_house_sripati=${chalitRow.chalit_house_sripati}, whole_sign_house=${chalitRow.whole_sign_house} (expect 12 vs 11). sandhi_flag row: sandhi_flag=${sandhiRow?.sandhi_flag}, sandhi_reasons=${sandhiRow?.sandhi_reasons ?? '(absent)'} (${sandhiReasonsHonest ? 'reason text present' : 'no reason text'}).`,
+      register_row: b1Chalit.register_row,
+    }
+  },
+}
+
+// ── B2_sudarshana ────────────────────────────────────────────────────────
+const b2Sudarshana: AssertionDef = {
+  id: 'B2_sudarshana',
+  title:
+    'Sudarshana tri-frame (Lagna/Chandra/Sūrya) verdict served; the Sun+Mercury contradicted specimen ' +
+    '(10th-from-Lagna vs 12th-from-Moon) fires (CR-100)',
+  register_row: 'CR-100 (Gate B core)',
+  async run(ctx) {
+    const signals = await fetchSignalsGeneric(ctx, {}, 15, 20)
+    const sudarshanaRows = signals.filter((s) => JSON.stringify(s).toLowerCase().includes('sudarshan'))
+    if (sudarshanaRows.length === 0) {
+      return {
+        id: b2Sudarshana.id,
+        title: b2Sudarshana.title,
+        status: 'red',
+        evidence: `Scanned ${signals.length} signals across all domains; zero rows referencing "sudarshan*" — the sudarshana_agreement signal class is not yet served on 482012f1 (expected until B-3 merges + rebuild).`,
+        register_row: b2Sudarshana.register_row,
+      }
+    }
+    const specimen = sudarshanaRows.find((s) => {
+      const text = JSON.stringify(s).toLowerCase()
+      return (
+        text.includes('sun') &&
+        text.includes('mercury') &&
+        (text.includes('10th') || text.includes('tenth')) &&
+        (text.includes('12th') || text.includes('twelfth'))
+      )
+    })
+    const status = specimen ? 'green' : 'red'
+    return {
+      id: b2Sudarshana.id,
+      title: b2Sudarshana.title,
+      status,
+      evidence: specimen
+        ? `Sudarshana tri-frame served (${sudarshanaRows.length} row(s)); contradicted Sun+Mercury specimen found: ${JSON.stringify(specimen)}`
+        : `Sudarshana tri-frame served (${sudarshanaRows.length} row(s)) but the Sun+Mercury 10th-from-Lagna/12th-from-Moon contradicted specimen was not among them.`,
+      register_row: b2Sudarshana.register_row,
+    }
+  },
+}
+
+// ── B3_bhavat_bhavam ─────────────────────────────────────────────────────
+const ODD_PRIMARY_HOUSES = new Set([1, 3, 5, 7, 9, 11])
+const b3BhavatBhavam: AssertionDef = {
+  id: 'B3_bhavat_bhavam',
+  title:
+    'Bhavat Bhavam GATED AMPLIFIER emits only on pre-salient configurations — Dhana-in-H9→derived-11th ' +
+    'fires; zero even-house-sourced emissions anywhere in served signals (CR-97)',
+  register_row: 'CR-97 (Gate B core)',
+  async run(ctx) {
+    const signals = await fetchSignalsGeneric(ctx, {}, 15, 20)
+    const bbRows = signals.filter((s) => (s.signal_type_id ?? '').toLowerCase().includes('bhavat_bhavam'))
+    if (bbRows.length === 0) {
+      return {
+        id: b3BhavatBhavam.id,
+        title: b3BhavatBhavam.title,
+        status: 'red',
+        evidence: `Scanned ${signals.length} signals; zero bhavat_bhavam_amplifier-class rows served on 482012f1 (expected until B-4 merges + rebuild).`,
+        register_row: b3BhavatBhavam.register_row,
+      }
+    }
+    const evenHouseViolations = bbRows.filter((s) => {
+      const sourceHouse = (s.configuration_jsonb?.source_house ?? s.configuration_jsonb?.primary_house) as number | undefined
+      return sourceHouse !== undefined && !ODD_PRIMARY_HOUSES.has(sourceHouse)
+    })
+    const dhanaH9Specimen = bbRows.find((s) => {
+      const text = JSON.stringify(s).toLowerCase()
+      return text.includes('dhana') && (text.includes('h9') || text.includes('house 9') || text.includes('9th')) && (text.includes('h11') || text.includes('house 11') || text.includes('11th'))
+    })
+    const status = evenHouseViolations.length === 0 && dhanaH9Specimen ? 'green' : 'red'
+    return {
+      id: b3BhavatBhavam.id,
+      title: b3BhavatBhavam.title,
+      status,
+      evidence: `Scanned ${bbRows.length} bhavat_bhavam_amplifier row(s) among ${signals.length} total signals. Even-house-sourced violations: ${evenHouseViolations.length}${evenHouseViolations[0] ? ` (e.g. ${evenHouseViolations[0].citation_human})` : ''}. Dhana-in-H9→derived-11th specimen ${dhanaH9Specimen ? 'FOUND: ' + JSON.stringify(dhanaH9Specimen) : 'NOT found'}.`,
+      register_row: b3BhavatBhavam.register_row,
+    }
+  },
+}
+
+// ── B4_bhava_bala ─────────────────────────────────────────────────────────
+const b4BhavaBala: AssertionDef = {
+  id: 'B4_bhava_bala',
+  title: 'Bhāva Bala (six-source house strength) rows served via ganita_strength_get for 482012f1 (CR-103)',
+  register_row: 'CR-103 (Gate B core)',
+  async run(ctx) {
+    const { content } = await ctx.client.callTool('ganita_strength_get', { chart_id: ctx.chartId, limit: 500 })
+    const top = content as { content?: { categories?: string[]; rows?: Array<{ fact_category?: string; fact_value_num?: number | null }> } }
+    const categories = top.content?.categories ?? []
+    const bhavaBalaCategories = categories.filter((c) => /bhava_bala/i.test(c))
+    const rows = top.content?.rows ?? []
+    const bhavaBalaRows = rows.filter((r) => /bhava_bala/i.test(r.fact_category ?? '') && r.fact_value_num !== null && r.fact_value_num !== undefined)
+    const status = bhavaBalaCategories.length > 0 && bhavaBalaRows.length > 0 ? 'green' : 'red'
+    return {
+      id: b4BhavaBala.id,
+      title: b4BhavaBala.title,
+      status,
+      evidence: `ganita_strength_get categories: [${categories.join(', ')}]. bhava_bala-matching categories: [${bhavaBalaCategories.join(', ')}]. Populated bhava_bala rows in this page: ${bhavaBalaRows.length}.`,
+      register_row: b4BhavaBala.register_row,
+    }
+  },
+}
+
+// ── B5_sav_bav_sign_keyed ────────────────────────────────────────────────
+const SIGN_NAMES = new Set([
+  'ARIES', 'TAURUS', 'GEMINI', 'CANCER', 'LEO', 'VIRGO', 'LIBRA', 'SCORPIO', 'SAGITTARIUS', 'CAPRICORN', 'AQUARIUS', 'PISCES',
+])
+const b5SavBav: AssertionDef = {
+  id: 'B5_sav_bav_sign_keyed',
+  title: 'Ashtakavarga SAV/BAV re-keyed by SIGN (not just house) — sign-keyed rows served alongside the original house-keyed rows (CR-99a)',
+  register_row: 'CR-99a (Gate B core)',
+  async run(ctx) {
+    const candidateCategories = ['ashtakavarga_sav_sign', 'ashtakavarga_bav_sign', 'sav_by_sign', 'bav_by_sign', 'ashtakavarga_sign']
+    const attempts: string[] = []
+    for (const category of candidateCategories) {
+      const { content } = await ctx.client.callTool('ganita_chart_facts_get', { chart_id: ctx.chartId, category, limit: 30 })
+      const rows = chartFactsRows(content)
+      attempts.push(`${category}=${rows.length}`)
+      if (rows.length > 0) {
+        const signKeyed = rows.some((r) => SIGN_NAMES.has(String(r.fact_subject ?? '').toUpperCase()))
+        if (signKeyed) {
+          return {
+            id: b5SavBav.id,
+            title: b5SavBav.title,
+            status: 'green',
+            evidence: `category=${category} served ${rows.length} sign-keyed row(s) (fact_subject values include sign names, e.g. ${rows[0].fact_subject}).`,
+            register_row: b5SavBav.register_row,
+          }
+        }
+      }
+    }
+    // Fallback: a broad keyword scan in case the real category name isn't in our candidate list.
+    const { content: kwContent } = await ctx.client.callTool('ganita_chart_facts_get', { chart_id: ctx.chartId, keyword: 'ashtakavarga', limit: 100 })
+    const kwRows = chartFactsRows(kwContent)
+    const kwSignKeyed = kwRows.filter((r) => SIGN_NAMES.has(String(r.fact_subject ?? '').toUpperCase()))
+    const status = kwSignKeyed.length > 0 ? 'green' : 'red'
+    return {
+      id: b5SavBav.id,
+      title: b5SavBav.title,
+      status,
+      evidence:
+        status === 'green'
+          ? `keyword=ashtakavarga scan found ${kwSignKeyed.length} sign-keyed row(s) among ${kwRows.length} total.`
+          : `No sign-keyed ashtakavarga rows found. Candidate categories tried: [${attempts.join(', ')}]. keyword=ashtakavarga scan: ${kwRows.length} row(s), none sign-keyed. Expected until B-2 merges + rebuild.`,
+      register_row: b5SavBav.register_row,
+    }
+  },
+}
+
+// ── B6_positions_lead ────────────────────────────────────────────────────
+const GRAHA_OR_LAGNA_SUBJECT = /^(SUN|MOON|MAR(S)?|MER(CURY)?|JUP(ITER)?|VEN(US)?|SAT(URN)?|RAH(U)?(_MEAN)?|KET(U)?(_MEAN)?|LAGNA|ASC(ENDANT)?)$/i
+const b6PositionsLead: AssertionDef = {
+  id: 'B6_positions_lead',
+  title: 'ganita_positions_get default ordering leads with the nine grahas + lagna; upagrahas served behind them, not interleaved first (CR-50)',
+  register_row: 'CR-50 (Gate B core)',
+  async run(ctx) {
+    const { content } = await ctx.client.callTool('ganita_positions_get', { chart_id: ctx.chartId, limit: 150 })
+    const rows = positionsRows(content)
+    const firstIndexBySubject = new Map<string, number>()
+    rows.forEach((r, i) => {
+      const subj = r.fact_subject ?? ''
+      if (!firstIndexBySubject.has(subj)) firstIndexBySubject.set(subj, i)
+    })
+    const grahaIndices: number[] = []
+    const nonGrahaIndices: number[] = []
+    for (const [subj, idx] of firstIndexBySubject) {
+      if (GRAHA_OR_LAGNA_SUBJECT.test(subj)) grahaIndices.push(idx)
+      else nonGrahaIndices.push(idx)
+    }
+    if (rows.length === 0) {
+      return {
+        id: b6PositionsLead.id,
+        title: b6PositionsLead.title,
+        status: 'red',
+        evidence: 'ganita_positions_get returned zero rows for 482012f1 — cannot confirm ordering.',
+        register_row: b6PositionsLead.register_row,
+      }
+    }
+    const maxGrahaIdx = grahaIndices.length > 0 ? Math.max(...grahaIndices) : -1
+    const minNonGrahaIdx = nonGrahaIndices.length > 0 ? Math.min(...nonGrahaIndices) : Infinity
+    const status = maxGrahaIdx < minNonGrahaIdx ? 'green' : 'red'
+    return {
+      id: b6PositionsLead.id,
+      title: b6PositionsLead.title,
+      status,
+      evidence: `Distinct subjects: ${firstIndexBySubject.size} (graha/lagna: ${grahaIndices.length}, other: ${nonGrahaIndices.length}). Max first-occurrence index among graha/lagna subjects=${maxGrahaIdx}; min first-occurrence index among non-graha subjects=${minNonGrahaIdx === Infinity ? 'n/a (none present in page)' : minNonGrahaIdx}.`,
+      register_row: b6PositionsLead.register_row,
+    }
+  },
+}
+
+// ── B7_budgets ────────────────────────────────────────────────────────────
+const OVERSIZE_BUDGET_CAP_BYTES = 100_000
+const b7Budgets: AssertionDef = {
+  id: 'B7_budgets',
+  title: 'Budgets hold on the three oversize tools: bodha_domain_reading_get, ephemeris_cache_year, ganita_tajaka_get (CR-13/49)',
+  register_row: 'CR-13/49 (Gate B core)',
+  async run(ctx) {
+    const [domainReading, ephemerisYear, tajaka] = await Promise.all([
+      ctx.client.callTool('bodha_domain_reading_get', { chart_id: ctx.chartId, domain: 'wealth' }),
+      ctx.client.callTool('ephemeris_cache_year', { year: 2026 }),
+      ctx.client.callTool('ganita_tajaka_get', { chart_id: ctx.chartId }),
+    ])
+    const domainBytes = Buffer.byteLength(JSON.stringify(domainReading.content ?? {}), 'utf8')
+    const domainBounded = domainBytes <= OVERSIZE_BUDGET_CAP_BYTES
+
+    const ephemTop = ephemerisYear.content as { pagination?: { total?: number; returned_count?: number } }
+    const ephemPagination = ephemTop?.pagination
+    const ephemBounded = Boolean(
+      ephemPagination && typeof ephemPagination.returned_count === 'number' && ephemPagination.returned_count <= 1000
+    )
+
+    const tajakaTop = tajaka.content as { trim_report?: unknown[] }
+    const tajakaBytes = Buffer.byteLength(JSON.stringify(tajaka.content ?? {}), 'utf8')
+    const tajakaBounded = (Array.isArray(tajakaTop?.trim_report) && tajakaTop.trim_report.length > 0) || tajakaBytes <= OVERSIZE_BUDGET_CAP_BYTES
+
+    const problems: string[] = []
+    if (!domainBounded) problems.push(`bodha_domain_reading_get: ${domainBytes}B > ${OVERSIZE_BUDGET_CAP_BYTES}B cap, no pagination/trim evident`)
+    if (!ephemBounded) problems.push(`ephemeris_cache_year: pagination=${JSON.stringify(ephemPagination)} not bounded`)
+    if (!tajakaBounded) problems.push(`ganita_tajaka_get: ${tajakaBytes}B, no trim_report — not bounded`)
+
+    const status = problems.length === 0 ? 'green' : 'red'
+    return {
+      id: b7Budgets.id,
+      title: b7Budgets.title,
+      status,
+      evidence:
+        problems.length === 0
+          ? `All three bounded: bodha_domain_reading_get=${domainBytes}B, ephemeris_cache_year.pagination=${JSON.stringify(ephemPagination)}, ganita_tajaka_get=${tajakaBytes}B/trim_report=${Array.isArray(tajakaTop?.trim_report) ? tajakaTop.trim_report.length : 0} entries.`
+          : problems.join('; '),
+      register_row: b7Budgets.register_row,
+    }
+  },
+}
+
+// ── B8_n6_anchor (static — CLAUDE.md text, not an MCP call) ────────────────
+const b8N6Anchor: AssertionDef = {
+  id: 'B8_n6_anchor',
+  title: 'CLAUDE.md §N.6 (Serving Density Principle) anchor text landed where the code already cites it',
+  register_row: 'design §6 (Gate B core)',
+  async run() {
+    try {
+      const claudeMd = readFileSync(repoPath('CLAUDE.md'), 'utf8')
+      const hasHeading = /§N\.6\s*[—-]\s*Serving Density Principle/.test(claudeMd)
+      const hasDensityContractRef = claudeMd.includes('density_contract')
+      const status = hasHeading && hasDensityContractRef ? 'green' : 'red'
+      return {
+        id: b8N6Anchor.id,
+        title: b8N6Anchor.title,
+        status,
+        evidence: `CLAUDE.md §N.6 heading present: ${hasHeading}. density_contract cross-reference present: ${hasDensityContractRef}.`,
+        register_row: b8N6Anchor.register_row,
+      }
+    } catch (err) {
+      return {
+        id: b8N6Anchor.id,
+        title: b8N6Anchor.title,
+        status: 'red',
+        evidence: `Could not read CLAUDE.md: ${err instanceof Error ? err.message : String(err)}`,
+        register_row: b8N6Anchor.register_row,
+      }
+    }
+  },
+}
+
+// ── B9_ci_density_job (static — .github/workflows/ci.yml, not an MCP call) ─
+const b9CiDensityJob: AssertionDef = {
+  id: 'B9_ci_density_job',
+  title: 'CI density/census harness ("Density Census (§N.6)") wired into the pipeline',
+  register_row: 'design §6 (Gate B core)',
+  async run() {
+    try {
+      const ciYml = readFileSync(repoPath('.github', 'workflows', 'ci.yml'), 'utf8')
+      const hasJobName = ciYml.includes('Density Census (§N.6)')
+      const hasHarnessInvocation = ciYml.includes('scripts/audit/density_harness/run.ts')
+      const status = hasJobName && hasHarnessInvocation ? 'green' : 'red'
+      return {
+        id: b9CiDensityJob.id,
+        title: b9CiDensityJob.title,
+        status,
+        evidence: `ci.yml job name "Density Census (§N.6)" present: ${hasJobName}. density_harness/run.ts invocation present: ${hasHarnessInvocation}.`,
+        register_row: b9CiDensityJob.register_row,
+      }
+    } catch (err) {
+      return {
+        id: b9CiDensityJob.id,
+        title: b9CiDensityJob.title,
+        status: 'red',
+        evidence: `Could not read .github/workflows/ci.yml: ${err instanceof Error ? err.message : String(err)}`,
+        register_row: b9CiDensityJob.register_row,
+      }
+    }
+  },
+}
+
+// ── B_karakamsha (CR-17, B6-lane item) ─────────────────────────────────────
+const bKarakamsha: AssertionDef = {
+  id: 'B_karakamsha',
+  title: 'Karakamsha fact (Ātmakāraka\'s D9 sign) resolvable via the MCP surface (CR-17)',
+  register_row: 'CR-17',
+  async run(ctx) {
+    const candidates: Array<Record<string, unknown>> = [
+      { category: 'karakamsha' },
+      { fact_subject: 'AK' },
+      { keyword: 'karakamsha' },
+    ]
+    for (const params of candidates) {
+      const { content } = await ctx.client.callTool('ganita_chart_facts_get', { chart_id: ctx.chartId, limit: 20, ...params })
+      const rows = chartFactsRows(content)
+      if (rows.length > 0) {
+        return {
+          id: bKarakamsha.id,
+          title: bKarakamsha.title,
+          status: 'green',
+          evidence: `Resolved via ${JSON.stringify(params)}: ${rows.length} row(s), e.g. ${JSON.stringify(rows[0])}.`,
+          register_row: bKarakamsha.register_row,
+        }
+      }
+    }
+    return {
+      id: bKarakamsha.id,
+      title: bKarakamsha.title,
+      status: 'red',
+      evidence: `No karakamsha fact resolvable via category=karakamsha, fact_subject=AK, or keyword=karakamsha on 482012f1 (expected until B-5 merges + rebuild).`,
+      register_row: bKarakamsha.register_row,
+    }
+  },
+}
+
+// ── B_shadbala_ratio (CR-18, B6-lane item) ─────────────────────────────────
+const bShadbalaRatio: AssertionDef = {
+  id: 'B_shadbala_ratio',
+  title: 'Shadbala rows carry required_rupa + ratio per graha (BPHS minimums, CR-18)',
+  register_row: 'CR-18',
+  async run(ctx) {
+    const { content } = await ctx.client.callTool('ganita_strength_get', { chart_id: ctx.chartId, limit: 500 })
+    const top = content as { content?: { categories?: string[]; rows?: Array<{ fact_category?: string; fact_key?: string }> } }
+    const categories = top.content?.categories ?? []
+    const rows = top.content?.rows ?? []
+    const matchingCategory = categories.filter((c) => /required_rupa|shadbala_ratio/i.test(c))
+    const matchingRows = rows.filter((r) => /required_rupa|ratio/i.test(r.fact_key ?? '') || /required_rupa|ratio/i.test(r.fact_category ?? ''))
+    const status = matchingCategory.length > 0 || matchingRows.length > 0 ? 'green' : 'red'
+    return {
+      id: bShadbalaRatio.id,
+      title: bShadbalaRatio.title,
+      status,
+      evidence: `categories=[${categories.join(', ')}]. required_rupa/ratio-matching categories: [${matchingCategory.join(', ')}]; matching rows in this page: ${matchingRows.length}.`,
+      register_row: bShadbalaRatio.register_row,
+    }
+  },
+}
+
+// ── B_d2_hora_class (CR-58, B6-lane item) ──────────────────────────────────
+const bD2HoraClass: AssertionDef = {
+  id: 'B_d2_hora_class',
+  title: 'D2 dignity rows carry hora_class (surya_hora/chandra_hora); "both wealth lords in Chandra-hora H12" servable in one call (CR-58)',
+  register_row: 'CR-58',
+  async run(ctx) {
+    const { content } = await ctx.client.callTool('ganita_chart_facts_get', {
+      chart_id: ctx.chartId,
+      divisional_chart: 'D2',
+      keyword: 'hora',
+      limit: 30,
+    })
+    const rows = chartFactsRows(content)
+    if (rows.length === 0) {
+      return {
+        id: bD2HoraClass.id,
+        title: bD2HoraClass.title,
+        status: 'red',
+        evidence: `divisional_chart=D2, keyword=hora returned zero rows on 482012f1 — hora_class not yet served (expected until B-5 merges + rebuild).`,
+        register_row: bD2HoraClass.register_row,
+      }
+    }
+    // "Both wealth lords in Chandra-hora H12" — chart-derived, not hardcoded which
+    // grahas are 2L/11L (mirrors k2_2's pattern): look for >=2 distinct subjects
+    // whose D2 hora_class row is chandra_hora AND whose D2 house is 12.
+    const chandraHoraH12 = rows.filter((r) => {
+      const text = JSON.stringify(r).toLowerCase()
+      return text.includes('chandra_hora') && (text.includes('"12"') || text.includes(':12') || text.includes('house_d2":12'))
+    })
+    const distinctSubjects = new Set(chandraHoraH12.map((r) => r.fact_subject))
+    const status = distinctSubjects.size >= 2 ? 'green' : 'red'
+    return {
+      id: bD2HoraClass.id,
+      title: bD2HoraClass.title,
+      status,
+      evidence: `${rows.length} D2/hora row(s) served. Chandra-hora+H12 rows: ${chandraHoraH12.length} across ${distinctSubjects.size} distinct subject(s) (need >=2 for the "both wealth lords" specimen).`,
+      register_row: bD2HoraClass.register_row,
+    }
+  },
+}
+
+// ── B_anchor_dedup (CR-46, B6-lane item) ───────────────────────────────────
+const bAnchorDedup: AssertionDef = {
+  id: 'B_anchor_dedup',
+  title: 'phala_anchors_get.anchor_count is post-dedup (no duplicate anchors; count matches the deduplicated set) (CR-46)',
+  register_row: 'CR-46',
+  async run(ctx) {
+    const { content, raw, isToolError } = await ctx.client.callTool('phala_anchors_get', {
+      chart_id: ctx.chartId,
+      date_range: { start: '2020-01-01', end: '2032-12-31' },
+    })
+    if (isToolError || raw.status >= 400) {
+      return {
+        id: bAnchorDedup.id,
+        title: bAnchorDedup.title,
+        status: 'red',
+        evidence: `phala_anchors_get call failed (status=${raw.status}): ${raw.body.slice(0, 300)}`,
+        register_row: bAnchorDedup.register_row,
+      }
+    }
+    const top = content as {
+      anchor_count?: number
+      content?: { anchor_count?: number; anchors?: Array<Record<string, unknown>> }
+      anchors?: Array<Record<string, unknown>>
+    }
+    const anchors = top.anchors ?? top.content?.anchors ?? []
+    const anchorCount = top.anchor_count ?? top.content?.anchor_count
+    const dedupKeys = new Set(anchors.map((a) => JSON.stringify(a)))
+    const rawHasDuplicates = dedupKeys.size < anchors.length
+    const countMatchesDedup = anchorCount === undefined ? false : anchorCount <= dedupKeys.size || anchorCount === anchors.length
+    const status = !rawHasDuplicates && countMatchesDedup && anchorCount !== undefined ? 'green' : 'red'
+    return {
+      id: bAnchorDedup.id,
+      title: bAnchorDedup.title,
+      status,
+      evidence: `anchor_count=${anchorCount}; served anchors=${anchors.length}; distinct (post-dedup)=${dedupKeys.size}; raw duplicates present=${rawHasDuplicates}.`,
+      register_row: bAnchorDedup.register_row,
+    }
+  },
+}
+
+// ── B_remedies_search_honest (CR-42, B6-lane item) ─────────────────────────
+const bRemediesSearchHonest: AssertionDef = {
+  id: 'B_remedies_search_honest',
+  title: 'ref_remedies_search(keyword=Saturn) returns Saturn rows OR rejects loudly (never silently drops the keyword filter) (CR-42)',
+  register_row: 'CR-42',
+  async run(ctx) {
+    const { content } = await ctx.client.callTool('ref_remedies_search', { keyword: 'Saturn', planet: 'Saturn', limit: 50 })
+    const top = content as {
+      keyword_search?: { applied?: boolean; matched_count?: number; served_count?: number; note?: string }
+      result?: { results?: Array<Record<string, unknown>> }
+    }
+    const ks = top.keyword_search
+    const results = top.result?.results ?? []
+    const applied = ks?.applied === true
+    const honest = applied && (typeof ks?.matched_count === 'number') && (typeof ks?.note === 'string' && ks.note.length > 0)
+    const status = applied && honest ? 'green' : 'red'
+    return {
+      id: bRemediesSearchHonest.id,
+      title: bRemediesSearchHonest.title,
+      status,
+      evidence: `keyword_search.applied=${applied}; matched_count=${ks?.matched_count}; served_count=${ks?.served_count}; results.length=${results.length}; note="${ks?.note ?? '(absent)'}".`,
+      register_row: bRemediesSearchHonest.register_row,
+    }
+  },
+}
+
+// ── B_structural_envelope (§N.6 density contract, live) ────────────────────
+const bStructuralEnvelope: AssertionDef = {
+  id: 'B_structural_envelope',
+  title: 'ganita_structural_get serves the layered §N.6 envelope (verdict/ranking_basis/grounding/drill_pointers/judgment_flags/coverage/chart_header/epistemic) with a density contract',
+  register_row: 'design §10 (B6-lane item)',
+  async run(ctx) {
+    const { content } = await ctx.client.callTool('ganita_structural_get', {
+      chart_id: ctx.chartId,
+      facet: 'dispositors',
+      response_format: 'v3',
+      limit: 50,
+    })
+    const env = v3Envelope(content)
+    const present = {
+      verdict: env.verdict !== undefined,
+      ranking_basis: env.ranking_basis !== undefined,
+      grounding: env.grounding !== undefined,
+      drill_pointers: Array.isArray(env.drill_pointers),
+      judgment_flags: Array.isArray(env.judgment_flags),
+      chart_header: env.chart_header !== undefined && env.chart_header !== null,
+      epistemic: env.epistemic !== undefined && env.epistemic !== null,
+      coverage: env.coverage !== undefined && env.coverage !== null,
+    }
+    const missing = Object.entries(present).filter(([, ok]) => !ok).map(([k]) => k)
+    const status = missing.length === 0 ? 'green' : 'red'
+    return {
+      id: bStructuralEnvelope.id,
+      title: bStructuralEnvelope.title,
+      status,
+      evidence: missing.length === 0 ? `All §N.6 envelope fields present: ${Object.keys(present).join(', ')}.` : `Missing envelope fields: ${missing.join(', ')}.`,
+      register_row: bStructuralEnvelope.register_row,
+    }
+  },
+}
+
+// ── B_dasha_lord_capability (B8 derived view) ──────────────────────────────
+const bDashaLordCapability: AssertionDef = {
+  id: 'B_dasha_lord_capability',
+  title: 'dasha_lord_capability rows served for Ketu-MD (warning_tier present) and Venus-MD (shadbala/weakest-graha join present) on 482012f1 (B8)',
+  register_row: 'CR-60 (B8-lane item)',
+  async run(ctx) {
+    const tools = await ctx.client.listTools()
+    const discoverable = tools.some((t) => t.name === 'ganita_dasha_lord_capability_get')
+    if (!discoverable) {
+      return {
+        id: bDashaLordCapability.id,
+        title: bDashaLordCapability.title,
+        status: 'red',
+        evidence: `ganita_dasha_lord_capability_get not found among ${tools.length} tools/list entries — B-7's new tool is not yet exposed on this connector face.`,
+        register_row: bDashaLordCapability.register_row,
+      }
+    }
+    const { content, raw, isToolError } = await ctx.client.callTool('ganita_dasha_lord_capability_get', { chart_id: ctx.chartId })
+    if (isToolError || raw.status >= 400) {
+      return {
+        id: bDashaLordCapability.id,
+        title: bDashaLordCapability.title,
+        status: 'red',
+        evidence: `Call failed (status=${raw.status}): ${raw.body.slice(0, 300)}`,
+        register_row: bDashaLordCapability.register_row,
+      }
+    }
+    const top = content as {
+      rows?: Array<{ lord?: string; warning_tier?: string; shadbala_percentile?: number | null; ratification_factor?: number | null }>
+    }
+    const rows = top.rows ?? []
+    const ketuRow = rows.find((r) => (r.lord ?? '').toLowerCase() === 'ketu')
+    const venusRow = rows.find((r) => (r.lord ?? '').toLowerCase() === 'venus')
+    const ketuWarningTierPresent = Boolean(ketuRow?.warning_tier) && ['none', 'watch', 'elevated', 'high'].includes(ketuRow?.warning_tier ?? '')
+    const venusJoinPresent = venusRow !== undefined && venusRow.shadbala_percentile !== null && venusRow.shadbala_percentile !== undefined
+    const status = ketuWarningTierPresent && venusJoinPresent ? 'green' : 'red'
+    return {
+      id: bDashaLordCapability.id,
+      title: bDashaLordCapability.title,
+      status,
+      evidence: `${rows.length} MD-lord row(s) served. Ketu row: ${JSON.stringify(ketuRow) ?? '(absent)'}. Venus row: ${JSON.stringify(venusRow) ?? '(absent)'}.`,
+      register_row: bDashaLordCapability.register_row,
+    }
+  },
+}
+
+// ── B_dosha_gate_kalasarpa (B9-lane item) ──────────────────────────────────
+const bDoshaGateKalasarpa: AssertionDef = {
+  id: 'B_dosha_gate_kalasarpa',
+  title: 'ganita_yogas_get default page carries zero shared-stub dosha_label rows; per-varga kāla-sarpa verdict is servable (CR-72/73/74)',
+  register_row: 'CR-72/73/74 (B9-lane item)',
+  async run(ctx) {
+    const [yogas, structural] = await Promise.all([
+      ctx.client.callTool('ganita_yogas_get', { chart_id: ctx.chartId, response_format: 'v3', limit: 60 }),
+      ctx.client.callTool('ganita_structural_get', { chart_id: ctx.chartId, facet: 'dosha_fires', response_format: 'v3', limit: 20 }),
+    ])
+    const yogasPayload = ganitaYogasV3Payload(yogas.content)
+    const doshaLabelRows = yogasPayload.rows.filter((r) => (r as { fact_category?: string }).fact_category === 'dosha_label')
+
+    const structuralContent = (structural.content as { content?: { kala_sarpa_per_varga?: { natal?: unknown[] } } })?.content
+    const kalaSarpaNatal = structuralContent?.kala_sarpa_per_varga?.natal ?? []
+    const kalaSarpaServable = Array.isArray(kalaSarpaNatal) && kalaSarpaNatal.length > 0
+
+    const status = doshaLabelRows.length === 0 && kalaSarpaServable ? 'green' : 'red'
+    return {
+      id: bDoshaGateKalasarpa.id,
+      title: bDoshaGateKalasarpa.title,
+      status,
+      evidence: `ganita_yogas_get default page: ${yogasPayload.rows.length} row(s) total, ${doshaLabelRows.length} dosha_label (must be 0). kala_sarpa_per_varga.natal servable: ${kalaSarpaServable} (${kalaSarpaNatal.length} row(s)).`,
+      register_row: bDoshaGateKalasarpa.register_row,
+    }
+  },
+}
+
+const GATE_B_ASSERTIONS: AssertionDef[] = [
+  b1Chalit,
+  b2Sudarshana,
+  b3BhavatBhavam,
+  b4BhavaBala,
+  b5SavBav,
+  b6PositionsLead,
+  b7Budgets,
+  b8N6Anchor,
+  b9CiDensityJob,
+  bKarakamsha,
+  bShadbalaRatio,
+  bD2HoraClass,
+  bAnchorDedup,
+  bRemediesSearchHonest,
+  bStructuralEnvelope,
+  bDashaLordCapability,
+  bDoshaGateKalasarpa,
+]
+
+export const ALL_ASSERTIONS: AssertionDef[] = [k2_1, k2_2, k2_3, k2_4, k2_5, k2_6a, k2_6b, k2_7, k2_8, k2_9, k2_10, k2_11, k2_12, a5, a7, ...GATE_B_ASSERTIONS]
 
 export async function runAssertion(def: AssertionDef, ctx: RunContext): Promise<AssertionResult> {
   try {
