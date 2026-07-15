@@ -2968,6 +2968,105 @@ class BoLaksanaWriter(WriterBase):
         # stashed per-row as "_tier_ceiling" and consumed/popped here).
         _assign_tiers_by_percentile(signal_rows)
 
+        # ── D-1.5b Lane B-4 (CR-97): bhavat_bhavam_amplifier — GATED AMPLIFIER ──
+        # Append-only hook; owns its own module (bodha_writers/bhavat_bhavam_amplifier.py,
+        # bodha_writers/bhavat_bhavam_registry.py — the 12-cell doctrinal map). Runs AFTER
+        # _assign_tiers_by_percentile (needs signature_tier to find already-salient
+        # occupants) and re-runs the cheap post-processing passes on the augmented set
+        # so the new rows carry a consistent top_k_salience_rank / salience_pctl_in_class /
+        # strength_normalized_to_chart_max / signature_tier, same as every other row.
+        # SAVEPOINT-guarded (same defensive posture as the other best-effort blocks above):
+        # never a generator, never outranks its primary, never chains — see the module
+        # docstring for the code-enforced restraint guards.
+        sp_bb = "sp_bo_laksana_bhavat_bhavam"
+        try:
+            with conn.cursor() as _sp_cur:
+                _sp_cur.execute(f"SAVEPOINT {sp_bb}")
+            from bodha_writers.bhavat_bhavam_amplifier import (
+                SalientConfig,
+                compute_bhavat_bhavam_amplifiers,
+                to_msr_row as _bb_to_msr_row,
+                SALIENT_TIERS as _BB_SALIENT_TIERS,
+                SIGNAL_TYPE_CLASS as _BB_SIGNAL_TYPE_CLASS,
+            )
+            bb_yoga_rows = _fetch_dict(
+                conn,
+                """SELECT yoga_canonical_id, constituent_houses, strength
+                   FROM ga_yoga_firings
+                   WHERE chart_id = %s AND ayanamsha_id = %s AND fired = true""",
+                [chart_id, ayanamsha],
+            )
+            bb_candidates: list[SalientConfig] = []
+            for yr in bb_yoga_rows:
+                houses = yr.get("constituent_houses") or []
+                if isinstance(houses, str):
+                    try:
+                        houses = json.loads(houses)
+                    except Exception:
+                        houses = []
+                try:
+                    strength = float(yr.get("strength") or 1.0)
+                except (TypeError, ValueError):
+                    strength = 1.0
+                for h in (houses or []):
+                    try:
+                        h_int = int(h)
+                    except (TypeError, ValueError):
+                        continue
+                    if 1 <= h_int <= 12:
+                        bb_candidates.append(SalientConfig(
+                            identifier=str(yr.get("yoga_canonical_id")),
+                            house=h_int,
+                            source="yoga_firing",
+                            salience_reference=strength,
+                            signal_type_class="configuration",
+                            ayanamsha_id=ayanamsha,
+                        ))
+            for row in signal_rows:
+                if row.get("signature_tier") not in _BB_SALIENT_TIERS:
+                    continue
+                if row.get("signal_type_class") == _BB_SIGNAL_TYPE_CLASS:
+                    continue  # NO CHAINING: a prior amplifier can never itself be a candidate
+                try:
+                    cfg = json.loads(row.get("configuration_jsonb") or "{}")
+                except Exception:
+                    cfg = {}
+                house_num = _parse_house_number(None, cfg)
+                if house_num is None or not (1 <= house_num <= 12):
+                    continue
+                bb_candidates.append(SalientConfig(
+                    identifier=str(row.get("signal_type_id") or row.get("signal_id")),
+                    house=house_num,
+                    source="msr_tier",
+                    salience_reference=float(row.get("computed_salience") or 0.0),
+                    signal_type_class=str(row.get("signal_type_class") or "configuration"),
+                    signal_id=row.get("signal_id"),
+                    ayanamsha_id=ayanamsha,
+                ))
+            bb_amplifiers = compute_bhavat_bhavam_amplifiers(bb_candidates)
+            if bb_amplifiers:
+                bb_rows = [_bb_to_msr_row(sig, chart_id, build_id, now) for sig in bb_amplifiers]
+                signal_rows.extend(bb_rows)
+                # Re-run the cheap post-processing passes on the augmented set so the
+                # new rows (and, negligibly, everyone else) reflect the true full-set
+                # ranks/percentiles rather than being left with placeholder None values.
+                _set_top_k_ranks(signal_rows)
+                _normalize_by_chart_max(signal_rows)
+                _set_salience_pctl_in_class(signal_rows)
+                _assign_tiers_by_percentile(signal_rows)
+                logger.info("[bo_laksana] %s — CR-97 bhavat_bhavam_amplifier signals: %d",
+                            ayanamsha, len(bb_rows))
+            with conn.cursor() as _sp_cur:
+                _sp_cur.execute(f"RELEASE SAVEPOINT {sp_bb}")
+        except Exception as exc:
+            logger.warning("[bo_laksana] %s — CR-97 bhavat_bhavam_amplifier skipped: %s",
+                           ayanamsha, exc)
+            try:
+                with conn.cursor() as _sp_cur:
+                    _sp_cur.execute(f"ROLLBACK TO SAVEPOINT {sp_bb}")
+            except Exception:
+                pass
+
         # Night-1 Lane 4 — Change 1 (CR-81) hit-rate report: count signals whose
         # class_prior resolved to a real brahma_class_priors row (vs. the 1.0
         # miss-default). "_class_prior_hit" is bookkeeping only — not a DB column;
