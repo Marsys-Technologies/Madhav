@@ -23,6 +23,20 @@ rollback_pin:
     "482012f1-710e-4a25-994a-93821f5871aa": "5bdd933f-86b2-4609-ba7d-177f30ea1675"
 prerequisite_check: {d1_5a_gate: green, note: "13/15 + 2 documented PARKs per REPORT_D-1.5a.md; brief's hard-block (gate GREEN) satisfied"}
 lanes: []   # not yet spawned -- pre-lane blocker fix in progress
+precascade_rebuild:
+  ka_vighnakara_fk: RESOLVED   # was NOT a code bug -- purely the orphaned-concurrent-build_runs race from D-1.5a (cleaned up). ka_sangam/ka_vighnakara/full Kala cascade rebuilt lit once the pileup was cleared.
+  local_proxy_diagnosis: >
+    Repeated local-rebuild failures ROOT-CAUSED (not a product bug): the laptop
+    cloud-sql-proxy path is unreliable -- proxy intermittently drops (fresh
+    connect() fails in logs) AND bo_samskara's ~2-min/ayanamsha Vertex AI embed
+    loop holds an idle DB conn long enough that a drop mid-embed kills the whole
+    run, restarting embedding from scratch (Sisyphus loop). Product code already
+    fully resilient (keepalives, idle-txn timeout=0 x2, batch-level embed
+    tolerance) and completes fine in prod. Fix: stop using the laptop proxy for
+    the build -- dispatch the Cloud Run job (protocol §8.2 canonical mechanism),
+    which runs inside GCP with a direct Cloud SQL connection.
+  method: "gcloud run jobs execute brahma-build-pipeline-job --args=--run-id,<id> (build_runs row created via scripts/dispatch_d1_5b_precascade_job.py; execution brahma-build-pipeline-job-h5c7l; run_id 585d4a9c-8341-4b40-a116-0f063c3855c0; 23 remaining assets, bo_samskara first)"
+  status: running
 gate: {run: false, green: [], red: []}
-updated_at: "2026-07-15 (D-1.5b OPEN, Binder complete, fixing pre-lane blocker)"
+updated_at: "2026-07-15 (D-1.5b -- ka_vighnakara resolved as concurrency-race not code bug; local-proxy fragility root-caused, rebuild moved to Cloud Run job)"
 ```
