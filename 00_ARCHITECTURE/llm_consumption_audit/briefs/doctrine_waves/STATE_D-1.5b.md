@@ -22,7 +22,13 @@ rollback_pin:
   build_ids:
     "482012f1-710e-4a25-994a-93821f5871aa": "5bdd933f-86b2-4609-ba7d-177f30ea1675"
 prerequisite_check: {d1_5a_gate: green, note: "13/15 + 2 documented PARKs per REPORT_D-1.5a.md; brief's hard-block (gate GREEN) satisfied"}
-lanes: []   # not yet spawned -- pre-lane blocker fix in progress
+lanes:
+  # CYCLE 1 (Binder-recommended staging): fact writers + astronomical core. Merge order B-5 -> B-2 -> B-1.
+  - {lane: B-5, branch: wave/D-1.5b/B-5, status: implementing, agent_id: a0e2585e962da68fa, scope: "small L1 completions: karakamsha(CR-17), shadbala required_rupa+ratio(CR-18), D2 hora-class(CR-58), ph_nimitta anchor dedup(CR-46)"}
+  - {lane: B-2, branch: wave/D-1.5b/B-2, status: implementing, agent_id: a01f9747c2c67140c, scope: "bhava bala(CR-103, 3-source per Binder w/ documented_approximation) + astakavarga sign-rekey+shodhana/pinda/kakshya(CR-99a, bindu VALUES frozen)"}
+  - {lane: B-1, branch: wave/D-1.5b/B-1, status: implementing, agent_id: ad8c83defdb551e7b, scope: "HEADLINE: chalit + real Sripati/Placidus cusps(CR-98/DR-2), quarantine fake KP cusps(2 sites), sandhi_flag. Acceptance: Moon 29d46' Aquarius -> Sripati H12. 2 verifiers."}
+  # CYCLE 2 (spawn after cycle 1 integrates): B-3 (Sudarshana), B-4 (Bhavat Bhavam), B-6 (serving hygiene), B-7 (governance+derived view). B-3/B-4 need the salience DR (Binder draft: sudarshana_agreement=1.15, frame_divergence=1.00, bhavat_bhavam_amplifier=0.85) formalized by conductor at cycle-2 open.
+cycle: 1
 precascade_rebuild:
   ka_vighnakara_fk: RESOLVED   # was NOT a code bug -- purely the orphaned-concurrent-build_runs race from D-1.5a (cleaned up). ka_sangam/ka_vighnakara/full Kala cascade rebuilt lit once the pileup was cleared.
   local_proxy_diagnosis: >
