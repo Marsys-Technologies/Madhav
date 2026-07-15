@@ -687,6 +687,52 @@ ONGOING_HYGIENE").
   future hygiene pass, not fabricated as already-built per `CLAUDE.md` §N.4 ("never fabricate").
 - Cross-reference: `CONDUCTOR_PROTOCOL.md` §1 (Migration guard role), §8.5 (apply procedure).
 
+## §S — Density-contract hygiene check (doctrine-waves D-1.5b Lane B-7, 2026-07-15)
+
+### Policy
+
+**A capability declaring `density_contract` on its `CapabilityDescriptor` (CLAUDE.md §N.6) must
+have that contract mechanically verifiable, not merely self-asserted.** Any capability whose
+response layers confirmed findings against catalog-only/requires_pass rows, or whose response is
+subject to the response-budget trimmer's byte cap, is a hygiene-check candidate.
+
+### Rationale
+
+CLAUDE.md §N.6 (Serving Density Principle) codifies a discipline the code already practices
+(`judgment_query`'s verdict/grounding/drill_pointers/judgment_flags layering; `ganita_yogas_get`'s
+`catalog_only_rows_in_page` separation from confirmed `yogas_fired`). A principle written into
+governance text with no executable check attached is exactly the drift class this artifact exists
+to prevent (§0's own framing: "a validator check, a template field, a registry rule, or a
+documented human cadence" — prose alone is none of these). D-1.5b Lane B-7 wires the first
+executable check; see `platform/scripts/audit/density_harness/` for the harness itself.
+
+### Ruling
+
+1. Every new or modified capability that declares `density_contract` and layers confirmed vs.
+   catalog-only/requires_pass rows (or any other verification-density split) MUST have at least
+   one assertion in the density/census harness (`platform/scripts/audit/density_harness/`)
+   covering: (a) the confirmed-layer is never silently merged into the catalog-only count, and
+   (b) a `TrimmableSection` with `hardFloor: true` on that capability's confirmed layer actually
+   survives a forced hard-cap trim (regression guard for the class of bug the D-1.5a wave gate
+   caught in `judgment_query`'s `bearing_yogas`).
+2. The harness runs in CI (`.github/workflows/` — the Ganga Quality Gate or an equivalent
+   governance-gates job) on every PR touching a file under `platform/src/lib/retrieval/registry/`
+   or `platform-mcp/src/lib/response_budget.ts` / `platform-mcp/src/tools/`.
+3. A capability that declares `density_contract` but has zero harness coverage is a residual to
+   flag at the next quarterly governance pass (§H) — not a blocking condition for THIS wave (the
+   harness ships covering the two surfaces D-1.5b Lane B-7 verified: `judgment_query` and
+   `ganita_yogas_get`), but future waves extending density-layered surfaces inherit the obligation
+   in Ruling item 1.
+
+### Enforcement mechanism
+
+- `platform/scripts/audit/density_harness/` — executable assertions against the MCP/serving
+  layer (never prose), following the doctrine-waves convention set by the D-1.5a doctrine harness.
+- CI wiring per Ruling item 2 — a red result blocks merge like any other Ganga Quality Gate check.
+- Cross-reference: `CLAUDE.md` §N.6 (the principle text this check verifies); `CONDUCTOR_PROTOCOL.md`
+  §3 (Phase-1 verification's "executable assertion harness" requirement, the same discipline this
+  entry extends to density/layering rather than doctrine correctness).
+
 ---
 
-*End of ONGOING_HYGIENE_POLICIES_v1_0.md — amended at Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 (2026-04-26): §O extended (shards_emitted, cowork_ledger_referenced fields); §P Cowork ledger discipline added. Amended 2026-05-18 Phase 3C: §Q AIOps Routing Override Policy added. Amended 2026-07-15 (doctrine-waves D-1.5a Lane A-0, A6 process item): §R migration-directory ruling added (single directory `platform/migrations/`, per DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §1 finding + CONDUCTOR_PROTOCOL.md §1/§8.5).*
+*End of ONGOING_HYGIENE_POLICIES_v1_0.md — amended at Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_1 (2026-04-26): §O extended (shards_emitted, cowork_ledger_referenced fields); §P Cowork ledger discipline added. Amended 2026-05-18 Phase 3C: §Q AIOps Routing Override Policy added. Amended 2026-07-15 (doctrine-waves D-1.5a Lane A-0, A6 process item): §R migration-directory ruling added (single directory `platform/migrations/`, per DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §1 finding + CONDUCTOR_PROTOCOL.md §1/§8.5). Amended 2026-07-15 (doctrine-waves D-1.5b Lane B-7): §S density-contract hygiene check added (CLAUDE.md §N.6 companion enforcement mechanism).*

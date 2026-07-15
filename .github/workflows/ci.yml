@@ -309,3 +309,34 @@ jobs:
             --ignore=tests/test_l0_remedy_corpus.py \
             -m "not integration" \
             -q --tb=short --no-header
+
+  density-census:
+    # doctrine-waves D-1.5b Lane B-7 (CLAUDE.md §N.6 — Serving Density Principle).
+    # Mechanically verifies the §N.6 density/layering discipline on the two surfaces that
+    # implement it (judgment_query, ganita_yogas_get) — offline, no live MCP connector or DB
+    # needed (see platform/scripts/audit/density_harness/run.ts's module doc-comment for the
+    # BEHAVIORAL vs CENSUS assertion split). Scoped to two known-good test files rather than
+    # platform-mcp's full `npm test` — that suite currently carries pre-existing unrelated
+    # failures (tracked separately; not a B-7 regression) and wiring the whole suite into CI
+    # is a follow-on hygiene item, not this lane's job.
+    name: Density Census (§N.6)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: platform-mcp deps (density harness imports response_budget.ts)
+        working-directory: platform-mcp
+        run: npm ci
+      - name: density_harness — §N.6 census + hardFloor behavioral proof
+        run: npx tsx scripts/audit/density_harness/run.ts
+      - name: response_budget hardFloor regression test (platform-mcp)
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/response_budget_hard_floor.test.ts

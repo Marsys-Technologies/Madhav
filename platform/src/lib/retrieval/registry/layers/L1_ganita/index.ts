@@ -36,6 +36,9 @@ import { getAyurdayaCapability }           from './get_ayurdaya'
 import { getSensitiveDegreesCapability }   from './get_sensitive_degrees'
 // Doctrine Campaign D-1 Night-1, Lane 5: judged structure (ga_vichara, Lane 2's new asset)
 import { getVicharaCapability }            from './get_vichara'
+// Doctrine Campaign D-1.5b, Lane B-7: B8 derived view — per-MD-lord serving capability
+// (computed serving-layer aggregation over chart_dashas + chart_facts + chart_vichara).
+import { getDashaLordCapabilityCapability } from './get_dasha_lord_capability'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -66,3 +69,4 @@ registerCapability(getYogaFiringsCapability)
 registerCapability(getAyurdayaCapability)
 registerCapability(getSensitiveDegreesCapability)
 registerCapability(getVicharaCapability)
+registerCapability(getDashaLordCapabilityCapability)
