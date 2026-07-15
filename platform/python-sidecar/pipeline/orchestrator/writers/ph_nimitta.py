@@ -34,6 +34,54 @@ _MAX_CONVERGENCE = 200  # top windows by convergence_score
 _MAX_DISCOVERIES = 100  # top discoveries by confidence_score
 
 
+def _anchor_dedup_key(a) -> tuple:
+    """CR-46: content fingerprint for anchor dedup at the writer (source of truth).
+
+    Mirrors the widened serving-boundary key in
+    platform-mcp/src/tools/phala_event_anchors.ts (anchorDedupKey): a genuine
+    content fingerprint (what is predicted, when, how strongly, and why/falsifier)
+    — NOT just theme+window+confidence, which can false-merge two genuinely
+    distinct anchors. Two anchors with an identical fingerprint describe the same
+    predicted event and must collapse to one row so the served `anchor_count`
+    (== len(phala_anchors rows)) reflects distinct anchors, not upstream fan-out
+    multiplicity (the observed bug: 100 rows == 98 duplicates of 2 real anchors,
+    all career_discovery_event / conf 0.322).
+    """
+    return (
+        a.anchor_source,
+        a.event_type,
+        a.direction,
+        a.domain,
+        a.horizon_tier,
+        a.window_start,
+        a.peak_date,
+        a.window_end,
+        a.magnitude,
+        a.confidence_low,
+        a.confidence_high,
+        a.posterior,
+        a.falsifier,
+    )
+
+
+def _dedup_anchors(anchors: list) -> tuple[list, int]:
+    """Deduplicate anchors by content fingerprint, preserving first-seen order.
+
+    Callers pass anchors in priority order (convergence, then bhavishya, then
+    rank-ordered discoveries), so the first occurrence — the higher-ranked one —
+    is retained. Returns (deduped, duplicates_removed).
+    """
+    seen: set = set()
+    deduped: list = []
+    for a in anchors:
+        key = _anchor_dedup_key(a)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(a)
+    return deduped, len(anchors) - len(deduped)
+
+
 def _parse_iso_date(v) -> Optional[date]:
     """Coerce a psycopg date/datetime or ISO string to a date; None on failure."""
     if v is None:
@@ -141,6 +189,22 @@ class PhNimittaWriter(WriterBase):
         # upstream cause: an anchor whose window_end predates birth describes an
         # event that could not have happened to this native, full stop.
         anchors = self._clip_and_gate_anchors(anchors, chart_id)
+
+        # Step 4c (CR-46): deduplicate anchors by content fingerprint at the writer
+        # — the source-of-truth fix for the duplicate-anchor spam (100 rows that were
+        # 98 duplicates of 2 real anchors). Upstream fan-out (many bodha_discoveries
+        # collapsing to the same predicted event) produced near-identical anchors that
+        # differ only by discovery_id, so the `ON CONFLICT DO NOTHING` insert (keyed on
+        # the surrogate PK) never merged them. Deduping here makes the inserted row count
+        # — hence the served `anchor_count` (== len(phala_anchors rows)) — reflect the
+        # POST-dedup count. The TS serving-boundary dedup (phala_event_anchors.ts) stays
+        # as defense-in-depth; this removes the duplicates at their origin.
+        anchors, dup_removed = _dedup_anchors(anchors)
+        if dup_removed:
+            logger.info(
+                "ph_nimitta: CR-46 dedup — removed %d duplicate anchor(s); %d distinct anchors remain",
+                dup_removed, len(anchors),
+            )
 
         # Step 5: SPINE-FIRST gate (D26) — verify ≥1 anchor with all axes present
         self._spine_gate(anchors)
