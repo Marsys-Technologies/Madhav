@@ -47,6 +47,7 @@ from typing import Any
 
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter import strength as pyjhora_strength
+from pyjhora_adapter._names import SIGN_NAMES
 from pyjhora_adapter.version import ENGINE_VERSION
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -74,6 +75,19 @@ NAISARGIKA_BALA: dict[str, float] = {
     "Saturn": 0.486,
     "Mars": 0.481,
 }
+
+# ── Kakṣyā (sub-division) boundaries — fixed classical constants ──────────────
+# Each rāśi (30°) is divided into 8 kakṣyās of 3°45′ (3.75°) each, ruled in the
+# ascending order Saturn → Jupiter → Mars → Sun → Venus → Mercury → Moon →
+# Lagna (kakṣyā 1 = 0°–3°45′ ruled by Saturn ... kakṣyā 8 = 26°15′–30° ruled by
+# Lagna). Used for kakṣyā (sub-lord) gochara Aṣṭakavarga transit reading. The
+# boundaries are chart-independent (identical across all 12 signs); stored per
+# chart×ayanamsha to keep the L1 fact contract uniform. Source: classical
+# Aṣṭakavarga Kakṣyā-vibhāga (BPHS Aṣṭakavarga Prakaraṇa / Gochara tradition).
+KAKSHYA_LORDS: list[str] = [
+    "Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna",
+]
+KAKSHYA_ARC_DEG: float = 30.0 / 8.0  # 3.75° = 3°45′
 
 # Classical required shadbala (rupa) per graha
 SHADBALA_REQUIRED: dict[str, float] = {
@@ -150,16 +164,36 @@ def _citation_human_strength(category: str, subject: str, key: str,
         return f"{graha} vimsopaka ({vtype}): {value_num:.4f}/20 ({ay})."
     if category == "ashtakavarga_bindu" and house_num:
         return f"{graha} ashtakavarga house {house_num}: {int(value_num)} bindu ({ay})."
+    if category == "ashtakavarga_bindu_sign" and "-SIGN_" in subject:
+        gp, sn = subject.split("-SIGN_")
+        sign_name = SIGN_NAMES[int(sn) - 1] if sn.isdigit() and 1 <= int(sn) <= 12 else sn
+        return f"{gp.capitalize()} ashtakavarga (sign-keyed) {sign_name}: {int(value_num)} bindu ({ay})."
+    if category == "ashtakavarga_trikona_shodhana" and "-SIGN_" in subject:
+        gp, sn = subject.split("-SIGN_")
+        sign_name = SIGN_NAMES[int(sn) - 1] if sn.isdigit() and 1 <= int(sn) <= 12 else sn
+        return f"{gp.capitalize()} trikona-shodhita bindu {sign_name}: {int(value_num)} ({ay})."
+    if category == "ashtakavarga_ekadhipathya_shodhana" and "-SIGN_" in subject:
+        gp, sn = subject.split("-SIGN_")
+        sign_name = SIGN_NAMES[int(sn) - 1] if sn.isdigit() and 1 <= int(sn) <= 12 else sn
+        return f"{gp.capitalize()} ekadhipathya-shodhita bindu {sign_name}: {int(value_num)} ({ay})."
     if category == "ashtakavarga_pinda_sodhita":
         return f"{graha} pinda sodhita (trikona shodhana): {int(value_num)} ({ay})."
     if category == "ashtakavarga_pinda_bhinna":
         return f"{graha} pinda bhinna (ekadhipathya shodhana): {int(value_num)} ({ay})."
+    if category == "ashtakavarga_pinda_raasi":
+        return f"{graha} raasi pinda: {int(value_num)} ({ay})."
     if category == "ashtakavarga_pinda_sarva":
         return f"{graha} sarva pinda: {int(value_num)} ({ay})."
+    if category == "ashtakavarga_kakshya_boundary":
+        return (f"Kakṣyā {subject.replace('KAKSHYA_','')} ({key}): {value_num} "
+                f"(3°45′ arc; lord fixed classical, ayanamsha-invariant).")
     if category == "house_bhava_bala_subscore":
         return f"House {subject.replace('HOUSE_','')} {key}: {value_num:.4f} rupa ({ay})."
     if category == "house_bhava_bala_total":
         return f"House {subject.replace('HOUSE_','')} total bhava bala: {value_num:.4f} rupa ({ay})."
+    if category == "house_bhava_bala_ratio":
+        return (f"House {subject.replace('HOUSE_','')} bhava bala strength ratio: "
+                f"{value_num:.4f} (vs 7.0 rupa minimum) ({ay}).")
     return f"{subject} {category}/{key}: {value_num:.4f} ({ay})."
 
 
@@ -406,59 +440,126 @@ def _derive_ashtakavarga(
     )
 
 
+# CLASSICAL_7 planet order (PyJHora const.SUN_TO_SATURN index order).
+_AV_CLASSICAL_7 = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+
+
+def _derive_ashtakavarga_shodhana_grids(
+    jd_ut: float,
+    ayanamsha_id: str,
+    *,
+    lat: float = 0.0,
+    lon: float = 0.0,
+    tz: float = 0.0,
+) -> dict[str, dict[str, list[int]]]:
+    """
+    CR-99a: the intermediate **sign-keyed** śodhana GRIDS — trikoṇa-śodhita and
+    ekādhipatya-śodhita bindu arrays per graha — that the pinda totals reduce
+    from. Delegated to PyJHora (`ashtakavarga._trikona_sodhana` /
+    `._ekadhipatya_sodhana`), NOT hand-rolled, and derived from the SAME raw
+    binna the pinda writer uses (no bindu VALUE recompute — §L.3 baseline: this
+    reads the classical engine's own reductions, it does not re-derive bindus).
+
+    Arrays are 12-element, **sign-indexed** (index 0 = Aries), matching the raw
+    binna convention (the raw bindus feeding this are absolute-rāśi-indexed, not
+    house-relative — the very reason CR-99a re-keys by sign).
+
+    Returns {"trikona": {graha: [12]}, "ekadhipatya": {graha: [12]}}.
+
+    NOTE on the mutation trap (documented in pyjhora_adapter/strength.py):
+    PyJHora's `_trikona_sodhana`/`_ekadhipatya_sodhana` do a SHALLOW copy of the
+    binna outer list then mutate the inner per-sign lists in place. We snapshot
+    each grid into fresh int lists immediately after each call, and never read
+    `binna` as "raw" afterwards (raw bindus come from the separate
+    `_derive_ashtakavarga` call upstream), so no reduced values leak out
+    mislabeled.
+    """
+    from pyjhora_adapter._jhora import charts, utils
+    from jhora.horoscope.chart import ashtakavarga as _jhora_av
+
+    place = pyjhora_strength._place(lat, lon, tz)
+    pyjhora_strength._set_ayanamsha(ayanamsha_id)
+
+    pp = charts.rasi_chart(jd_ut, place)
+    chart_1d = utils.get_house_planet_list_from_planet_positions(pp)
+
+    binna, _samudhaya, _prastara = _jhora_av.get_ashtaka_varga(chart_1d)
+
+    after_trikona = _jhora_av._trikona_sodhana(binna)
+    trikona_grid = {
+        name: [int(v) for v in after_trikona[i]]
+        for i, name in enumerate(_AV_CLASSICAL_7)
+    }
+
+    after_ekadhipatya = _jhora_av._ekadhipatya_sodhana(after_trikona, chart_1d)
+    ekadhipatya_grid = {
+        name: [int(v) for v in after_ekadhipatya[i]]
+        for i, name in enumerate(_AV_CLASSICAL_7)
+    }
+
+    return {"trikona": trikona_grid, "ekadhipatya": ekadhipatya_grid}
+
+
 def _derive_bhava_bala(
-    chart_output: dict[str, Any],
-    shadbala: dict[str, dict[str, float]],
+    jd_ut: float,
+    ayanamsha_id: str,
+    *,
+    lat: float = 0.0,
+    lon: float = 0.0,
+    tz: float = 0.0,
 ) -> dict[str, dict[str, float]]:
     """
-    Derive bhava bala (house strength) from:
-    - Bhava adhipati bala: strength of house lord
-    - Bhava digbala: directional strength component for house
-    - Bhava drishti bala: aspectual strength (simplified)
+    Bhāva Bala (house strength), CR-103. **No hand-rolling** (D-1.5b Lane B-2 rule):
+    delegates to PyJHora's classical implementation
+    ``jhora.horoscope.chart.strength.bhava_bala(jd, place)`` and its three
+    per-source sub-computations.
 
-    Returns {house_key: {adhipati_bala, digbala, drishti_bala, total}}
-    where house_key = "HOUSE_1".."HOUSE_12".
+    DOCUMENTED-APPROXIMATION (Binder amendment, STATE_D-1.5b.md): PyJHora's
+    ``bhava_bala`` is a **THREE-source** composition — Bhāva Adhipati Bala
+    (``_bhava_adhipathi_bala``) + Bhāva Dig Bala (``_bhava_dig_bala``) + Bhāva
+    Dṛk/Dṛṣṭi Bala (``_bhava_drik_bala``) — NOT the full six-source Bhāva Bala of
+    BV Raman (Bhāvādhipati + Dig + Dṛṣṭi + and the three that PyJHora does not
+    compute). PyJHora's own docstring carries a "not getting BV Raman's book
+    values" caveat. Per Adjudicator-doctrine these facts are therefore stamped
+    ``verification_pass_status='documented_approximation'`` and cite the
+    3-component composition explicitly; they never claim six-source.
+
+    ``bhava_bala(jd, place)`` returns ``[shashtiamsas, rupas, strength_ratios]``
+    (each a 12-element list, bhāva 1..12, ascendant-relative). The three
+    sub-source functions each return 12-element shashtiamsa (virupa) lists that
+    sum to the composed total. This function converts sub-scores and total to
+    RUPA (÷60) to match the existing ``unit: "rupa"`` chart_facts contract, and
+    surfaces the classical strength ratio (total_rupa ÷ 7.0 minimum).
+
+    Returns {house_key: {bhava_adhipati_bala, bhava_digbala, bhava_drishti_bala,
+    total, strength_ratio}} where house_key = "HOUSE_1".."HOUSE_12". Key names
+    are unchanged from the prior contract (bhava_drishti_bala == the drik source)
+    so mv_chart_bhava_bala_summary keeps resolving.
     """
-    houses = chart_output.get("houses", [])
+    from jhora.horoscope.chart import strength as _jhora_strength
 
+    place = pyjhora_strength._place(lat, lon, tz)
+    pyjhora_strength._set_ayanamsha(ayanamsha_id)
+
+    _bb, bb_rupas, bb_strength = _jhora_strength.bhava_bala(jd_ut, place)
+    bab = _jhora_strength._bhava_adhipathi_bala(jd_ut, place)  # 3-source: adhipati
+    bdb = _jhora_strength._bhava_dig_bala(jd_ut, place)         # 3-source: dig
+    bdr = _jhora_strength._bhava_drik_bala(jd_ut, place)        # 3-source: drik
+
+    # Key names are kept identical to the pre-existing chart_facts contract
+    # (bhava_adhipati_bala / bhava_digbala / bhava_drishti_bala) so downstream
+    # consumers — notably mv_chart_bhava_bala_summary — keep resolving. Only the
+    # VALUES (now real PyJHora), the status (documented_approximation) and the
+    # provenance change. Bhāva Dṛṣṭi Bala == the drik source of PyJHora.
     result: dict[str, dict[str, float]] = {}
-
-    for h in houses:
-        house_num = int(h.get("house_number", h.get("house_num", 0)))
-        if house_num < 1 or house_num > 12:
-            continue
-
-        sign_lord = h.get("sign_lord", "")
-        lord_sb = shadbala.get(sign_lord, {})
-        lord_total = lord_sb.get("total", 2.0)
-
-        # Bhava adhipati bala: strength of the house lord
-        adhipati = lord_total * 30.0  # Scale to rupa
-
-        # Bhava digbala: houses 1/4/7/10 are angular (stronger)
-        angular = {1, 4, 7, 10}
-        succedent = {2, 5, 8, 11}
-        if house_num in angular:
-            digbala = 20.0
-        elif house_num in succedent:
-            digbala = 15.0
-        else:  # cadent
-            digbala = 10.0
-
-        # Bhava drishti bala: simplified from planet counts
-        # Number of planets in the house contributes
-        grahas = chart_output.get("grahas", [])
-        occupants_count = sum(1 for g in grahas if int(g.get("house", 0)) == house_num)
-        drishti = 10.0 + (occupants_count * 5.0)
-
-        total = adhipati + digbala + drishti
-
-        house_key = f"HOUSE_{house_num}"
+    for h in range(12):
+        house_key = f"HOUSE_{h + 1}"
         result[house_key] = {
-            "bhava_adhipati_bala": round(adhipati, 4),
-            "bhava_digbala": round(digbala, 4),
-            "bhava_drishti_bala": round(drishti, 4),
-            "total": round(total, 4),
+            "bhava_adhipati_bala": round(float(bab[h]) / 60.0, 4),
+            "bhava_digbala": round(float(bdb[h]) / 60.0, 4),
+            "bhava_drishti_bala": round(float(bdr[h]) / 60.0, 4),
+            "total": round(float(bb_rupas[h]), 4),
+            "strength_ratio": round(float(bb_strength[h]), 4),
         }
 
     return result
@@ -831,6 +932,7 @@ def _build_ashtakavarga_rows(
     pinda: dict[str, dict[str, int]],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str, verif_status: str,
+    grids: dict[str, dict[str, list[int]]] | None = None,
 ) -> list[dict[str, Any]]:
     """
     M-3 fix (see MARSYS_DEFECT_GAP_REGISTER): `pinda` now comes from PyJHora's
@@ -839,6 +941,8 @@ def _build_ashtakavarga_rows(
     `bhinna = bindus - 1`.
 
     Category mapping (existing chart_facts schema, values now real):
+      - ashtakavarga_bindu        -> raw BAV/SAV bindu, HOUSE-keyed subject
+        `{subject}-HOUSE_N` (RETAINED unchanged for continuity — see CR-99a).
       - ashtakavarga_pinda_sodhita -> pinda[graha]["sodhya"] (raasi_pinda +
         graha_pinda, the final trikona+ekadhipatya-reduced, gunakara-
         multiplied total — the classical "Sodhya Pinda").
@@ -851,90 +955,117 @@ def _build_ashtakavarga_rows(
     SARVA (the aggregate row) has no classical sodhya/graha pinda of its own;
     we report the sum across the 7 grahas' real values for that row so no
     rows go null, clearly documented here (not a fabricated per-graha value).
+
+    ── CR-99a Aṣṭakavarga completion (D-1.5b Lane B-2), ADDITIVE ──────────────
+    The raw ``ashtakavarga_bindu`` arrays are absolute-**rāśi**-indexed (index 0
+    = Aries), yet the legacy subject labels them ``-HOUSE_N`` — the wrong key for
+    transit (gochara) reading, which moves through SIGNS. This function KEEPS the
+    house-keyed rows for continuity and ADDS, from the SAME bindu values (NO
+    recompute — §L.3 baseline):
+      - ashtakavarga_bindu_sign             : sign-keyed BAV/SAV (`{subject}-SIGN_N`)
+      - ashtakavarga_trikona_shodhana       : trikoṇa-śodhita grid, sign-keyed
+      - ashtakavarga_ekadhipathya_shodhana  : ekādhipatya-śodhita grid, sign-keyed
+      - ashtakavarga_pinda_raasi            : rāśi-piṇḍa (was computed then dropped)
+      - ashtakavarga_kakshya_boundary       : 8 kakṣyā sub-arc boundaries (constants)
     """
     rows = []
+    grids = grids or {}
+    trikona_grid = grids.get("trikona", {})
+    ekadhipatya_grid = grids.get("ekadhipatya", {})
 
     planet_subjects = {
         "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
         "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT", "SARVA": "SARVA",
     }
 
+    src = f"pyjhora_adapter.strength.compute_ashtakavarga_shodhana/{eng_ver}"
+
+    def _mk(cat: str, subject: str, key: str, val: float, unit: str,
+            *, text: str | None = None, chum: str | None = None) -> None:
+        rows.append({
+            "fact_id": _fact_id(cat, subject, key, chart_id, ayanamsha_id, build_id),
+            "chart_id": chart_id,
+            "ayanamsha_id": ayanamsha_id,
+            "build_id": build_id,
+            "fact_category": cat,
+            "fact_subject": subject,
+            "fact_key": key,
+            "fact_value_text": text,
+            "fact_value_num": None if val is None else float(val),
+            "fact_value_jsonb": None,
+            "unit": unit,
+            "citation_ref": _citation_ref(cat, subject, key, chart_id, ayanamsha_id, eng_ver),
+            "citation_human": chum if chum is not None else _citation_human_strength(
+                cat, subject, key, float(val) if val is not None else 0.0, ayanamsha_id),
+            "source_calculation": src,
+            "verification_pass_status": verif_status,
+            "engine_version": eng_ver,
+            "computed_at": computed_at,
+        })
+
     sarva_sodhya_sum = sum(p["sodhya"] for p in pinda.values())
     sarva_graha_sum = sum(p["graha"] for p in pinda.values())
+    sarva_raasi_sum = sum(p.get("raasi", 0) for p in pinda.values())
 
     for planet_name, subject in planet_subjects.items():
-        bindus_list = bav.get(planet_name, [0]*12)
+        bindus_list = bav.get(planet_name, [0] * 12)
 
-        for h_idx, bindus in enumerate(bindus_list):
-            house_num = h_idx + 1
-            compound_subject = f"{subject}-HOUSE_{house_num}"
+        for idx, bindus in enumerate(bindus_list):
+            # RETAINED (continuity): legacy house-keyed subject. The array is
+            # actually sign-indexed, so idx+1 is the ABSOLUTE sign number; the
+            # `-HOUSE_` label is legacy and preserved verbatim.
+            _mk("ashtakavarga_bindu", f"{subject}-HOUSE_{idx + 1}", "bindus",
+                float(bindus), "bindu")
+            # ADDED (CR-99a): correct sign-keyed row, same value.
+            _mk("ashtakavarga_bindu_sign", f"{subject}-SIGN_{idx + 1}", "bindus",
+                float(bindus), "bindu")
 
-            # Atomic row: bindu for this (graha, house)
-            cat = "ashtakavarga_bindu"
-            fid = _fact_id(cat, compound_subject, "bindus",
-                           chart_id, ayanamsha_id, build_id)
-            cref = _citation_ref(cat, compound_subject, "bindus",
-                                 chart_id, ayanamsha_id, eng_ver)
-            chum = _citation_human_strength(cat, compound_subject, "bindus",
-                                             float(bindus), ayanamsha_id)
-            rows.append({
-                "fact_id": fid,
-                "chart_id": chart_id,
-                "ayanamsha_id": ayanamsha_id,
-                "build_id": build_id,
-                "fact_category": cat,
-                "fact_subject": compound_subject,
-                "fact_key": "bindus",
-                "fact_value_text": None,
-                "fact_value_num": float(bindus),
-                "fact_value_jsonb": None,
-                "unit": "bindu",
-                "citation_ref": cref,
-                "citation_human": chum,
-                "source_calculation": f"pyjhora_adapter.strength.compute_ashtakavarga_shodhana/{eng_ver}",
-                "verification_pass_status": verif_status,
-                "engine_version": eng_ver,
-                "computed_at": computed_at,
-            })
+        # ADDED (CR-99a): trikoṇa + ekādhipatya śodhana grids (7 grahas only;
+        # SARVA has no per-graha śodhana). Sign-keyed, same index convention.
+        # Category names + `reduced_bindus` key match the (pre-declared)
+        # CHART_FACTS_SCHEMA.json entries.
+        if planet_name != "SARVA":
+            tri = trikona_grid.get(planet_name)
+            if tri is not None:
+                for idx, v in enumerate(tri):
+                    _mk("ashtakavarga_trikona_shodhana", f"{subject}-SIGN_{idx + 1}",
+                        "reduced_bindus", float(v), "bindu")
+            eka = ekadhipatya_grid.get(planet_name)
+            if eka is not None:
+                for idx, v in enumerate(eka):
+                    _mk("ashtakavarga_ekadhipathya_shodhana", f"{subject}-SIGN_{idx + 1}",
+                        "reduced_bindus", float(v), "bindu")
 
         # Pinda totals for this graha
         if planet_name == "SARVA":
             pinda_sodhita = sarva_sodhya_sum
             pinda_bhinna = sarva_graha_sum
+            pinda_raasi = sarva_raasi_sum
         else:
-            p = pinda.get(planet_name, {"sodhya": 0, "graha": 0})
+            p = pinda.get(planet_name, {"sodhya": 0, "graha": 0, "raasi": 0})
             pinda_sodhita = p["sodhya"]
             pinda_bhinna = p["graha"]
+            pinda_raasi = p.get("raasi", 0)
 
-        for pinda_cat, pinda_key, pinda_val in [
-            ("ashtakavarga_pinda_sodhita", "total", pinda_sodhita),
-            ("ashtakavarga_pinda_bhinna", "total", pinda_bhinna),
-            ("ashtakavarga_pinda_sarva", "total", sum(bindus_list)),
-        ]:
-            fid2 = _fact_id(pinda_cat, subject, "total", chart_id, ayanamsha_id, build_id)
-            cref2 = _citation_ref(pinda_cat, subject, "total",
-                                   chart_id, ayanamsha_id, eng_ver)
-            chum2 = _citation_human_strength(pinda_cat, subject, "total",
-                                              float(pinda_val), ayanamsha_id)
-            rows.append({
-                "fact_id": fid2,
-                "chart_id": chart_id,
-                "ayanamsha_id": ayanamsha_id,
-                "build_id": build_id,
-                "fact_category": pinda_cat,
-                "fact_subject": subject,
-                "fact_key": "total",
-                "fact_value_text": None,
-                "fact_value_num": float(pinda_val),
-                "fact_value_jsonb": None,
-                "unit": "bindu",
-                "citation_ref": cref2,
-                "citation_human": chum2,
-                "source_calculation": f"pyjhora_adapter.strength.compute_ashtakavarga_shodhana/{eng_ver}",
-                "verification_pass_status": verif_status,
-                "engine_version": eng_ver,
-                "computed_at": computed_at,
-            })
+        _mk("ashtakavarga_pinda_sodhita", subject, "total", float(pinda_sodhita), "bindu")
+        _mk("ashtakavarga_pinda_bhinna", subject, "total", float(pinda_bhinna), "bindu")
+        # ADDED (CR-99a): raasi pinda — was computed by the engine then dropped.
+        _mk("ashtakavarga_pinda_raasi", subject, "total", float(pinda_raasi), "bindu")
+        _mk("ashtakavarga_pinda_sarva", subject, "total", float(sum(bindus_list)), "bindu")
+
+    # ADDED (CR-99a): kakṣyā sub-arc boundaries — 8 fixed classical constants
+    # (chart-independent; stored per chart×ayanamsha for a uniform L1 contract).
+    for k in range(8):
+        start_deg = round(k * KAKSHYA_ARC_DEG, 4)
+        end_deg = round((k + 1) * KAKSHYA_ARC_DEG, 4)
+        lord = KAKSHYA_LORDS[k]
+        subj = f"KAKSHYA_{k + 1}"
+        chum = (f"Kakṣyā {k + 1}: {start_deg}°–{end_deg}° within each rāśi, "
+                f"lord {lord} (fixed classical, ayanamsha-invariant).")
+        _mk("ashtakavarga_kakshya_boundary", subj, "lord",
+            None, "graha", text=lord, chum=chum)
+        _mk("ashtakavarga_kakshya_boundary", subj, "start_deg", start_deg, "degree", chum=chum)
+        _mk("ashtakavarga_kakshya_boundary", subj, "end_deg", end_deg, "degree", chum=chum)
 
     return rows
 
@@ -946,15 +1077,24 @@ def _build_bhava_bala_rows(
 ) -> list[dict[str, Any]]:
     rows = []
 
+    # CR-103 / Binder amendment: bhāva bala is a PyJHora 3-source composition
+    # (adhipathi + dig + drik) — NOT six-source. These rows are ALWAYS stamped
+    # documented_approximation regardless of the writer-global verif_status, and
+    # cite the 3-component provenance explicitly (never claim six-source).
+    _BB_STATUS = "documented_approximation"
+    _BB_SOURCE = (
+        f"pyjhora.strength.bhava_bala[3-source:adhipathi+dig+drik]/{eng_ver}"
+    )
     subscore_map = {
-        "bhava_adhipati_bala": ("house_bhava_bala_subscore", "bhava_adhipati_bala"),
-        "bhava_digbala": ("house_bhava_bala_subscore", "bhava_digbala"),
-        "bhava_drishti_bala": ("house_bhava_bala_subscore", "bhava_drishti_bala"),
-        "total": ("house_bhava_bala_total", "total"),
+        "bhava_adhipati_bala": ("house_bhava_bala_subscore", "bhava_adhipati_bala", "rupa"),
+        "bhava_digbala": ("house_bhava_bala_subscore", "bhava_digbala", "rupa"),
+        "bhava_drishti_bala": ("house_bhava_bala_subscore", "bhava_drishti_bala", "rupa"),
+        "total": ("house_bhava_bala_total", "total", "rupa"),
+        "strength_ratio": ("house_bhava_bala_ratio", "strength_ratio", "ratio"),
     }
 
     for house_key, hb in bhava_bala.items():
-        for data_key, (cat, fk) in subscore_map.items():
+        for data_key, (cat, fk, unit) in subscore_map.items():
             val = hb.get(data_key, 0.0)
             fid = _fact_id(cat, house_key, fk, chart_id, ayanamsha_id, build_id)
             cref = _citation_ref(cat, house_key, fk, chart_id, ayanamsha_id, eng_ver)
@@ -970,11 +1110,11 @@ def _build_bhava_bala_rows(
                 "fact_value_text": None,
                 "fact_value_num": val,
                 "fact_value_jsonb": None,
-                "unit": "rupa",
+                "unit": unit,
                 "citation_ref": cref,
                 "citation_human": chum,
-                "source_calculation": f"python_heuristic_approximation.bhava_bala_classical/{eng_ver}",
-                "verification_pass_status": verif_status,
+                "source_calculation": _BB_SOURCE,
+                "verification_pass_status": _BB_STATUS,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
             })
@@ -1574,7 +1714,14 @@ def build_ga_strength(
             av_result = _derive_ashtakavarga(_jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz)
             bav = av_result["bindus"]
             av_pinda = av_result["pinda"]
-            bhava_bala = _derive_bhava_bala(chart_output, shadbala)
+            # CR-99a: trikoṇa + ekādhipatya śodhana grids (sign-keyed), derived
+            # from the SAME raw bindus (no bindu VALUE recompute — §L.3 baseline).
+            av_grids = _derive_ashtakavarga_shodhana_grids(
+                _jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz,
+            )
+            # CR-103: bhāva bala via PyJHora library (no hand-roll); documented
+            # 3-source approximation stamped inside _build_bhava_bala_rows.
+            bhava_bala = _derive_bhava_bala(_jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz)
 
             # ── Two-pass verification ───────────────────────────────────
             try:
@@ -1613,7 +1760,7 @@ def build_ga_strength(
             ))
             all_rows.extend(_build_ashtakavarga_rows(
                 bav, av_pinda, chart_id, build_id, canonical_id,
-                computed_at, eng_ver, verif_status,
+                computed_at, eng_ver, verif_status, grids=av_grids,
             ))
             all_rows.extend(_build_bhava_bala_rows(
                 bhava_bala, chart_id, build_id, canonical_id,
