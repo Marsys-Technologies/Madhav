@@ -5,7 +5,7 @@ type: WAVE STATE LEDGER (CONDUCTOR_PROTOCOL §6.1)
 
 ```yaml
 wave: D-1.5b
-lifecycle_step: 4   # cycle-1 INTEGRATE/MERGE/DEPLOY complete; cycle-2 SPAWN+IMPLEMENT/VERIFY done, ALL 4 lanes (B-3/B-4/B-6/B-7) RECEIPTED; now INTEGRATE cycle-2
+lifecycle_step: 5   # cycle-1 + cycle-2 both MERGED_AND_DEPLOYED. All 7 lanes (B-1..B-7) live on main. Next: single full L1->L5 rebuild (Cloud Run job path) + Gate B assertion battery.
 brief_bound: true
 binder_annotations:
   - "B-1: all file:line citations confirmed within +/-1 line (brief's line numbers off by one vs actual). PyJHora is pip-installed (requirements.txt pinned 4.8.6), NOT repo-vendored as the brief states -- wording inaccuracy, harmless."
@@ -67,7 +67,9 @@ integration_cycle2:
   merges: "B-3(746b15cd) -> B-4(746800a9) -> B-6(7076a334) -> B-7(3c098fa5), base f299f852 (main). ONE expected conflict: l0_class_priors.py (both B-3+B-4 appended at same anchor per the brief's coordination note) -- resolved by keeping BOTH appends in commit order (sudarshana_agreement then bhavat_bhavam_amplifier), 4/4 new rows confirmed present post-merge. B-6/B-7 merged with zero conflicts (pure TS/docs lanes, no file overlap)."
   full_suite: "Python 3429/0 (own re-run on integrated tree); platform TS tsc clean + 5561/0 (npm test); platform-mcp tsc clean + 75 failed/435 passed -- EXACTLY matching the pre-existing main-baseline count independently confirmed by both B-6's and B-7's verifiers (75/426 on main; delta=new tests) -- NOT a cross-lane regression."
   cross_lane_gap_found: "none — all 4 lanes were pure-append or disjoint-file lanes by design this cycle; the one conflict was anticipated and mechanical."
-  status: INTEGRATED_CLEAN
+  status: MERGED_AND_DEPLOYED
+  ci_finding: "TAP-6 (M-22 method-audit grep) caught B-3's sudarshana_emitter.py hardcoding verification_pass_status=\"two_pass_verified\" as a literal at 3 emit sites (param + 2 dict keys) -- real violation, not a false positive: verification status must be earned by a verifier pass, never asserted at the emit site. Fixed directly on the integration branch (commit bda11540) by changing all 3 to \"documented_approximation\", matching the established L2 convention already used by bo_laksana.py and B-4's own bhavat_bhavam_amplifier.py for computed (even fully-deterministic) signals. B-3's 21/21 tests unaffected by the fix. Also hit one unrelated CI-infra flake (Build Check docker buildx 'no space left on device', transient runner disk exhaustion, unrelated to any code change -- confirmed by the SAME workflow succeeding on the pre-fix commit) -- resolved via gh run rerun --failed, passed clean on retry."
+  pr: "571 MERGED to main @ 92a7df4c (all 20 CI checks green after 1 code fix + 1 infra-flake retry). CI-on-main green (TAP CI + Ganga Quality Gate) -> deploy.yml run 29436536037 completed SUCCESS. amjis-web (rev amjis-web-00973-m99) + amjis-sidecar (rev amjis-sidecar-00860-8xb) confirmed live at 92a7df4c. Cycle-2 (B-3/B-4/B-6/B-7) fully deployed. All 7 D-1.5b lanes now merged+deployed."
 next_phase:
   cycle_2: "B-3 (Sudarshana), B-4 (Bhavat Bhavam), B-6 (serving hygiene), B-7 (governance+derived view). B-3/B-4 need the salience DR formalized at cycle-2 open (Binder draft: sudarshana_agreement=1.15, frame_divergence=1.00, bhavat_bhavam_amplifier=0.85, subsystem=structural). B-6 is single-owner of the retrieval registry (serving). B-7 lands the N.6 density text + CI harness + dasha_lord_capability derived view."
   then: "single FULL L1->L5 rebuild via the Cloud Run job path (validated this session -- NOT the laptop proxy) + Gate B battery on the deployed connector. Gate B assertions must be built as harness scripts extended from Lane A-0's harness (no named lane owns this -- conductor/a small pre-gate task builds it)."
