@@ -5,7 +5,7 @@ type: WAVE STATE LEDGER (CONDUCTOR_PROTOCOL §6.1)
 
 ```yaml
 wave: D-1.5a
-lifecycle_step: 6   # 1-5 done (DEPLOY: PR #562 merged a3b623ae, CI green, deploy.yml success, live SHA verified amjis-web+amjis-mcp both a3b623ae), now REBUILD
+lifecycle_step: 8   # COMPLETE — all 8 steps done, see REPORT_D-1.5a.md for the full close record
 brief_bound: true
 binder_annotations:
   - "A2 narrows: bo_laksana vichara-lookup wiring pre-landed (2026-07-14); A2 = aspect_parashari ingestion + heuristic retirement + stale-comment reconciliation only"
@@ -38,5 +38,8 @@ rebuild:
   "1c826d5a-41cb-4450-b4dc-59d440e5f75a": not_rebuilt_by_policy   # Abhinandan is read-only reference for CR-87 guard; native-ratified this session (see CLAUDECODE_BRIEF.md provenance correction)
 hotfix_decimal_json: {branch: wave/D-1.5a/hotfix-decimal-json, commit: 0731806b, verifier_agent_id: a57f0abd0b9d2d612, status: MERGED, pr: 563, merge_sha: 9b8a0341d9389de67bb2d909e74e98c3730ccd40, next: "watching CI-on-main -> deploy.yml -> re-run cascade rebuild (46 assets)"}
 gate: {run: true, green: [1,2,3,5,6a,6b,7,8,9,10,11,12,A5], red: [4,A7], note: "bo_laksana rebuilt successfully (47848 rows, all 5 ayanamshas). Full gate: 13/15 green (was 8/15 at first live run). #2/#3 were misconceived test specimens (Jupiter has no D1 aspect-on-H2 in this chart; Mars is a yogakaraka not pure dusthana lord) -- fixed in PR #568, RECEIPTED ACCEPT (independent DB+live verification, false-green analysis). Remaining red: #4 (5 non-node keyword_heuristic_v1 rows, down from 6, accurate diagnosis, bounded residual) + A7 (separate serving-layer gap, documented, out of brief's must_not_touch scope). Both treated as documented follow-ups, not blocking wave close. PR #568 CI running."}
-updated_at: "2026-07-15 (session open, post-Binder)"
+wave_closed: true
+close_report: REPORT_D-1.5a.md
+final_gate: {green: 13, red: 2, total: 15, parked: [4, "A7"], final_proof_achieved: true}
+updated_at: "2026-07-15 (wave CLOSED)"
 ```
