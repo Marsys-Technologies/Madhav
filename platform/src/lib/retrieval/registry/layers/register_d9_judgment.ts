@@ -570,6 +570,21 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               domain_match: domainMatch,
             }
           })
+          // D-1.5a wave gate finding (live post-deploy verification): the response-budget
+          // trimmer's generic minKeep cut is a blind `slice(0, N)` — it has no notion of
+          // which entries are semantically load-bearing for THIS domain call. Left in
+          // strength-descending order (the ga_yoga_firings query's own order), a high-
+          // strength but domain-irrelevant yoga (e.g. Śaśa on career) can rank ahead of a
+          // lower-strength but domain-matching one (e.g. this Dhana Yoga at 1.02 vs Śaśa's
+          // 1.57), so the trim silently drops the exact row the verdict's yoga_term already
+          // counted — the served bearing_yogas then contradicts the composite score it's
+          // supposed to justify. Domain-matching firings must sort first so any N-cut keeps
+          // them; relative strength order is preserved within each group.
+          bearingYogaFirings.sort((a, b) => {
+            const am = a['domain_match'] === true, bm = b['domain_match'] === true
+            if (am !== bm) return am ? -1 : 1
+            return 0
+          })
           yogaTerm = Math.min(yogaTermRaw, YOGA_TERM_CAP)
         }
       } catch (e) {
