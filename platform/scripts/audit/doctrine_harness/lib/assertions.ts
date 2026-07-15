@@ -82,19 +82,34 @@ function ganitaYogasV3Payload(content: unknown): {
   coverage: { served?: number | null; total?: number | null } | null
   rows: Array<{ fact_category?: string }>
   total: number | null
+  firingsPointer: { fired_count?: number | null } | null
 } {
   const top = content as {
     verdict?: { pancha_mahapurusha?: { summary?: string } }
     judgment_flags?: string[]
     coverage?: { served?: number | null; total?: number | null }
-    content?: { content?: { rows?: Array<{ fact_category?: string }>; total?: number } }
+    // D-1.5a wave gate finding (live post-deploy verification): this tool's response
+    // shape is `content.rows`/`content.total`/`content.firings_pointer` (single-nested)
+    // — the harness's original `content.content.rows` assumption predates A-beta's
+    // capability-route double-wrap fix (PR #562) and never got updated, so this parser
+    // silently read past the real payload into `[]` for every call, exactly the same
+    // class of bug that fix corrected server-side. Falls back to the old double-nested
+    // shape defensively in case an older/unpatched connector is ever targeted.
+    content?: {
+      rows?: Array<{ fact_category?: string }>
+      total?: number
+      firings_pointer?: { fired_count?: number | null }
+      content?: { rows?: Array<{ fact_category?: string }>; total?: number; firings_pointer?: { fired_count?: number | null } }
+    }
   }
+  const inner = top.content?.rows !== undefined ? top.content : top.content?.content
   return {
     verdict: top.verdict ?? {},
     judgment_flags: top.judgment_flags ?? [],
     coverage: top.coverage ?? null,
-    rows: top.content?.content?.rows ?? [],
-    total: top.content?.content?.total ?? null,
+    rows: inner?.rows ?? [],
+    total: inner?.total ?? null,
+    firingsPointer: inner?.firings_pointer ?? null,
   }
 }
 
@@ -252,18 +267,29 @@ const k2_6a: AssertionDef = {
 }
 const k2_6b: AssertionDef = {
   id: '6b',
-  title: 'ganita_yogas_get(482012f1).yoga_fires is non-empty (register text: "yoga_fires" fact_category)',
+  title: 'ganita_yogas_get(482012f1).yoga_fires is non-empty (register text: "yoga_fires" fact_category) OR a first-class firings_pointer with a positive count is served (A3 brief\'s own explicit alternative)',
   register_row: 'CR-92',
   async run(ctx) {
     const { content } = await ctx.client.callTool('ganita_yogas_get', { chart_id: ctx.chartId, limit: 60, response_format: 'v3' })
-    const { rows, total } = ganitaYogasV3Payload(content)
+    const { rows, total, firingsPointer } = ganitaYogasV3Payload(content)
     const yogaFireRows = rows.filter((r) => r.fact_category === 'yoga_fires')
-    const status = yogaFireRows.length > 0 ? 'green' : 'red'
+    // BRIEF_D1_5A.md's own A3 spec: "ganita_yogas_get should serve firings (or a
+    // first-class pointer + counts) instead of the disconnected v3 envelope that
+    // reports yoga_fires=0". chart_facts.yoga_fires is confirmed (2026-07-15, direct
+    // DB check) to be a genuine, pre-existing, already-documented gap in
+    // ga_structural_writer's own legacy computation — separate from and out of scope
+    // for this wave (the tool's own live description names ganita_yoga_firings_get,
+    // not this category, as firings-authoritative). The pointer is the brief-compliant
+    // satisfying condition; requiring the legacy category too would gate the wave on
+    // fixing an acknowledged, out-of-scope defect.
+    const pointerSatisfies = (firingsPointer?.fired_count ?? 0) > 0
+    const status = yogaFireRows.length > 0 || pointerSatisfies ? 'green' : 'red'
     return {
       id: k2_6b.id,
       title: k2_6b.title,
       status,
-      evidence: `ganita_yogas_get served ${rows.length} row(s) across all categories (page total=${total}); yoga_fires category rows = ${yogaFireRows.length}.`,
+      evidence: `ganita_yogas_get served ${rows.length} row(s) across all categories (page total=${total}); ` +
+        `yoga_fires category rows = ${yogaFireRows.length}; firings_pointer.fired_count = ${firingsPointer?.fired_count ?? 'absent'}.`,
       register_row: k2_6b.register_row,
     }
   },
@@ -378,7 +404,15 @@ const k2_11: AssertionDef = {
   async run(ctx) {
     const tools = await ctx.client.listTools()
     const tool = tools.find((t) => t.name === 'ganita_yogas_get')
-    const staleDescription = (tool?.description ?? '').includes('will never fire')
+    // D-1.5a wave gate finding: a naive `.includes('will never fire')` false-positives
+    // on A-beta's own A4/CR-93/CR-94 correction notice, which quotes the OLD claim
+    // verbatim ("supersedes the prior 'will never fire from this tool' claim") in order
+    // to explicitly retract it. Match the full original stale sentence instead — present
+    // only if the retraction was never applied, absent (superseded by the correction
+    // text) once it was, live-verified 2026-07-15 via direct MCP tools/list call.
+    const staleDescription = (tool?.description ?? '').includes(
+      'they will never fire from this tool regardless of chart data',
+    )
 
     const { content } = await ctx.client.callTool('ganita_yogas_get', { chart_id: ctx.chartId, limit: 60, response_format: 'v3' })
     const { judgment_flags, coverage, rows } = ganitaYogasV3Payload(content)
@@ -472,7 +506,11 @@ const a7: AssertionDef = {
       facet: 'aspects',
       limit: 2000,
     })
-    const rows = ((content as { content?: { content?: { rows?: unknown[] } } })?.content?.content?.rows ?? []) as Array<{
+    // D-1.5a wave gate finding: fixed the same content.content.rows double-nesting
+    // parse bug found in ganitaYogasV3Payload (see its comment) — this tool's real
+    // shape is content.rows (single-nested), live-verified 2026-07-15.
+    const top = content as { content?: { rows?: unknown[] } }
+    const rows = (top?.content?.rows ?? []) as Array<{
       fact_category?: string
       fact_key?: string
       fact_value_num?: number | null
@@ -490,11 +528,24 @@ const a7: AssertionDef = {
         (r.citation_human ?? '').toLowerCase().includes('7th aspect')
     )
     if (oppositionRows.length === 0) {
+      // D-1.5a finding (2026-07-15): even with the nesting bug fixed, this spot-check
+      // still can't confirm the fix — direct DB check confirms 19 real
+      // aspect_parashari_given rows exist for this chart, but ganita_structural_get's
+      // facet=aspects call only serves aspect_jaimini rows regardless of the declared
+      // FACET_CATEGORIES list including the parashari categories (register_p1_ganita.ts).
+      // This is a SEPARATE, pre-existing serving-layer completeness gap, unrelated to
+      // any of this wave's 4 lanes' changes — A7's actual fix (the offset formula in
+      // ga_structural_writer.py) is independently verified correct at the writer level
+      // by Lane A-gamma's own dedicated tests (hand-traced against PARASHARI_ASPECTS
+      // semantics, 27/27 passing) AND the DB-level data exists and is well-formed.
+      // Left conservatively red/unconfirmed here rather than papering over a real
+      // serving gap — flagged for native triage as a distinct follow-up, not part of
+      // this wave's must_not_touch-scoped work.
       return {
         id: a7.id,
         title: a7.title,
         status: 'red',
-        evidence: `Scanned ${rows.length} structural-aspect rows (facet=aspects); found zero rows citing a "7th aspect" — cannot confirm the fix from this response shape/sample; treated conservatively as unresolved. (Follow-up: this spot-check may need a more targeted per-graha aspect query once A-gamma lands a dedicated serving path.)`,
+        evidence: `Scanned ${rows.length} structural-aspect rows (facet=aspects, categories present: ${Array.from(new Set(rows.map(r => r.fact_category))).join(',')}); zero aspect_parashari_given/_received rows served despite 19 existing in chart_facts (direct DB check, 2026-07-15) — the writer-level fix is independently verified (Lane A-gamma tests), but ganita_structural_get's facet=aspects serving path does not surface these categories. Separate, pre-existing gap — not confirmable via this spot-check; not blocking on the writer fix itself.`,
         register_row: a7.register_row,
       }
     }
