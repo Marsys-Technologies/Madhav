@@ -2991,7 +2991,7 @@ class BoLaksanaWriter(WriterBase):
             )
             bb_yoga_rows = _fetch_dict(
                 conn,
-                """SELECT yoga_canonical_id, constituent_houses, strength
+                """SELECT yoga_canonical_id, constituent_houses, strength, constituent_fact_ids
                    FROM ga_yoga_firings
                    WHERE chart_id = %s AND ayanamsha_id = %s AND fired = true""",
                 [chart_id, ayanamsha],
@@ -3008,6 +3008,17 @@ class BoLaksanaWriter(WriterBase):
                     strength = float(yr.get("strength") or 1.0)
                 except (TypeError, ValueError):
                     strength = 1.0
+                # CR-97 Bug-1 fix: real L1 derivation ledger for a yoga-sourced
+                # candidate is ga_yoga_firings.constituent_fact_ids — thread it
+                # through so the emitted amplifier row's constituent_facts_array
+                # is a real ledger, not a fabricated NULL/empty one.
+                yoga_facts = yr.get("constituent_fact_ids") or []
+                if isinstance(yoga_facts, str):
+                    try:
+                        yoga_facts = json.loads(yoga_facts)
+                    except Exception:
+                        yoga_facts = []
+                yoga_facts = tuple(str(f) for f in (yoga_facts or []) if f)
                 for h in (houses or []):
                     try:
                         h_int = int(h)
@@ -3021,6 +3032,7 @@ class BoLaksanaWriter(WriterBase):
                             salience_reference=strength,
                             signal_type_class="configuration",
                             ayanamsha_id=ayanamsha,
+                            constituent_facts=yoga_facts,
                         ))
             for row in signal_rows:
                 if row.get("signature_tier") not in _BB_SALIENT_TIERS:
@@ -3034,6 +3046,12 @@ class BoLaksanaWriter(WriterBase):
                 house_num = _parse_house_number(None, cfg)
                 if house_num is None or not (1 <= house_num <= 12):
                     continue
+                # CR-97 Bug-1 fix: an msr_tier candidate's own derivation ledger
+                # (already resolved to L1 fact_ids by its original emitter) is the
+                # real ledger for this amplifier row — thread it through rather
+                # than emitting a null one.
+                row_facts = row.get("constituent_facts_array") or []
+                row_facts = tuple(str(f) for f in row_facts if f)
                 bb_candidates.append(SalientConfig(
                     identifier=str(row.get("signal_type_id") or row.get("signal_id")),
                     house=house_num,
@@ -3042,6 +3060,7 @@ class BoLaksanaWriter(WriterBase):
                     signal_type_class=str(row.get("signal_type_class") or "configuration"),
                     signal_id=row.get("signal_id"),
                     ayanamsha_id=ayanamsha,
+                    constituent_facts=row_facts,
                 ))
             bb_amplifiers = compute_bhavat_bhavam_amplifiers(bb_candidates)
             if bb_amplifiers:
