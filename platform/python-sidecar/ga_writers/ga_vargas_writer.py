@@ -889,6 +889,96 @@ def _build_position_rows(
                 "cross_ayanamsha_divergence_arcsec": None,
             })
 
+    # CR-58: D2 Hora semantic layer. The wealth varga was served as raw dignity
+    # only — the classical Hora doctrine (Sun's hora / Leo = self-earned, active
+    # wealth; Moon's hora / Cancer = inherited, passive, accumulated wealth) was
+    # computed nowhere. Emit per-graha hora_class (surya_hora / chandra_hora) plus
+    # the D2-house (whole-sign from the D2 Lagna) so a query like "both wealth
+    # lords in Chandra-hora, D2 house 12" is answerable in a single call.
+    if varga_n == 2:
+        rows.extend(_build_d2_hora_rows(
+            chart_id, ayanamsha_id, build_id, vid, varga_data, now))
+
+    return rows
+
+
+# D2 (Hora) sign indices from _compute_d2_hora: Leo=4 (Sun's hora), Cancer=3 (Moon's hora).
+_D2_HORA_CLASS = {4: "surya_hora", 3: "chandra_hora"}
+
+
+def _build_d2_hora_rows(
+    chart_id: str, ayanamsha_id: str, build_id: str,
+    vid: str, varga_data: dict, now: str,
+) -> list[dict]:
+    """CR-58: per-graha D2 hora-class (surya_hora/chandra_hora) + D2 whole-sign house.
+
+    hora_class is read off the graha's already-computed D2 sign (Leo→surya_hora,
+    Cancer→chandra_hora — the only two D2 signs under the Parashari hora rule).
+    hora_d2_house is the whole-sign house counted from the D2 Lagna's own hora sign
+    (so the Lagna is house 1). Emitted only for D2; no new astronomical computation
+    — a pure derivation over positions already in varga_data (B.10-clean).
+    """
+    rows: list[dict] = []
+    lagna_bdata = varga_data.get("Lagna")
+    if lagna_bdata is None:
+        return rows
+    lagna_sign_idx = lagna_bdata["sign_idx"]
+
+    for body in CLASSICAL_BODIES:
+        bdata = varga_data.get(body)
+        if bdata is None:
+            continue
+        sign_idx = bdata["sign_idx"]
+        hora_class = _D2_HORA_CLASS.get(sign_idx)
+        if hora_class is None:
+            continue  # defensive: D2 signs are only Leo/Cancer
+        d2_house = ((sign_idx - lagna_sign_idx) % 12) + 1
+        subject = BODY_TO_SUBJECT.get(body, body.upper())
+
+        for key, vtxt, vnum in [
+            ("hora_class", hora_class, None),
+            ("hora_d2_house", None, d2_house),
+        ]:
+            rid = _fact_id(vid, body, "varga_hora_class", key,
+                           chart_id, ayanamsha_id, build_id)
+            rows.append({
+                "fact_id": rid,
+                "chart_id": chart_id,
+                "graha": body,
+                "ayanamsha_id": ayanamsha_id,
+                "varga": vid,
+                "sign": SIGN_NAMES[sign_idx],
+                "sign_number": sign_idx + 1,
+                "degree_in_sign": bdata["degree_in_sign"],
+                "house": float(d2_house),
+                "vargottama": None,
+                "source_citation": f"pyjhora_adapter/{ENGINE_VERSION}",
+                "build_id": str(build_id),
+                "fact_category": "varga_hora_class",
+                "fact_key": key,
+                "fact_value_text": vtxt,
+                "fact_value_num": vnum,
+                "fact_subject": f"{vid}.{subject}",
+                "build_id_uuid": build_id,
+                "verification_pass_status": "classical_match",
+                "engine_version": ENGINE_VERSION,
+                "citation_ref": _citation_ref("varga_hora_class", vid, body, key,
+                                               chart_id, ayanamsha_id, ENGINE_VERSION),
+                "citation_human": (
+                    f"{body} in {SIGN_NAMES[sign_idx]} (D2) — "
+                    f"{hora_class} ({'active/self-earned' if hora_class == 'surya_hora' else 'passive/inherited'} "
+                    f"wealth), D2 house {d2_house} from Hora-Lagna."
+                ),
+                "source_calculation": f"d2_hora_class_derivation/{ENGINE_VERSION}",
+                "computed_at": now,
+                "tolerance_arcsec": 1800.0,
+                "near_sign_boundary_flag": False,
+                "near_nakshatra_boundary_flag": False,
+                "vargottama_flag_at_point": False,
+                "formula_provenance_text": "Parashari_Hora_D2_Leo_Cancer",
+                "cross_ayanamsha_divergence_arcsec": None,
+            })
+
     return rows
 
 

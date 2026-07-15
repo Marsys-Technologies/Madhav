@@ -153,9 +153,11 @@ def ashtakavarga_pinda(ashtakavarga_full):
 
 
 @pytest.fixture(scope="module")
-def bhava_bala(native_chart, shadbala):
+def bhava_bala(native_jd_ut):
+    # D-1.5b CR-103: _derive_bhava_bala now delegates to PyJHora's library
+    # bhava_bala(jd, place) (no hand-roll) — signature is (jd_ut, ayanamsha, kw).
     from ga_writers.ga_strength_writer import _derive_bhava_bala
-    return _derive_bhava_bala(native_chart, shadbala)
+    return _derive_bhava_bala(native_jd_ut, "lahiri_chitrapaksha", **_NATIVE_KW)
 
 
 # ── 1-4: FORENSIC gate ───────────────────────────────────────────────────────
