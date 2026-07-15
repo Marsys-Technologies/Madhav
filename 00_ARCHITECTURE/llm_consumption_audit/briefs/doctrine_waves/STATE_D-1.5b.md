@@ -56,8 +56,11 @@ integration_cycle1:
   full_suite: "3404 passed / 0 failed on the integrated tree -- CONFIRMS B-5 shadbala-ratio + B-2 bhava-bala-rewrite co-exist SEMANTICALLY (same file, both green together), and B-1 chalit co-exists clean. The cross-lane interference the INTEGRATE step exists to catch = NONE at the code level."
   cross_lane_gap_found: "B-1 emits 3 new chart_facts categories (bhava_cusps/house_chalit/sandhi_flag) but did NOT declare them in CHART_FACTS_SCHEMA.json. The drift_detector gate (gates.py:274-289) fails on undeclared categories -- separate governance gate from the DB CHECK, surfaced by B-2's lane. NOT caught by the pytest suite. Re-opened B-1 (targeted, not a rejection)."
   gap_resolved: "B-1 commit 9f59a193: declared all 3 categories (traced from actual emission -- subjects BHAVA_01..12 padded, 9 grahas for house_chalit/sandhi_flag, verification_min=single matching _chalit_row) + a TestSchemaDeclaration regression test (7 asserts) that guards emission==declaration going forward. Re-integrated fresh (B-5 d0a176ca -> B-1 9f59a193 -> B-2 803368ff, no conflicts). Merged schema valid, 188 categories, all lanes' new categories declared. Full suite on re-integrated tree: 3408 passed / 0 failed. Cycle-1 INTEGRATE COMPLETE + clean."
-  status: COMPLETE_GREEN
-  pr: "570 (cycle-1 -> main), CI running. NOTE: full rebuild + Gate B deferred to after cycle-2 per brief staging; cycle-1 PR just lands the fact writers on main."
+  status: MERGED
+  pr: "570 MERGED to main @ 417dadab (all 14 CI checks green incl. Governance Gates drift/schema/py-sidecar). Cycle-1 fact writers now on main; CI-on-main -> deploy.yml auto-deploys the sidecar+pipeline images. Full rebuild + Gate B deferred to after cycle-2 per brief staging."
+next_phase:
+  cycle_2: "B-3 (Sudarshana), B-4 (Bhavat Bhavam), B-6 (serving hygiene), B-7 (governance+derived view). B-3/B-4 need the salience DR formalized at cycle-2 open (Binder draft: sudarshana_agreement=1.15, frame_divergence=1.00, bhavat_bhavam_amplifier=0.85, subsystem=structural). B-6 is single-owner of the retrieval registry (serving). B-7 lands the N.6 density text + CI harness + dasha_lord_capability derived view."
+  then: "single FULL L1->L5 rebuild via the Cloud Run job path (validated this session -- NOT the laptop proxy) + Gate B battery on the deployed connector. Gate B assertions must be built as harness scripts extended from Lane A-0's harness (no named lane owns this -- conductor/a small pre-gate task builds it)."
 gate: {run: false, green: [], red: []}
 updated_at: "2026-07-15 (D-1.5b pre-lane blocker RESOLVED; estate 64/64 lit & healthy via Cloud Run job; ready to spawn cycle-1 lanes B-5/B-2/B-1)"
 ```
