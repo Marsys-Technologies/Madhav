@@ -57,6 +57,7 @@ integration_cycle1:
   cross_lane_gap_found: "B-1 emits 3 new chart_facts categories (bhava_cusps/house_chalit/sandhi_flag) but did NOT declare them in CHART_FACTS_SCHEMA.json. The drift_detector gate (gates.py:274-289) fails on undeclared categories -- separate governance gate from the DB CHECK, surfaced by B-2's lane. NOT caught by the pytest suite. Re-opened B-1 (targeted, not a rejection)."
   gap_resolved: "B-1 commit 9f59a193: declared all 3 categories (traced from actual emission -- subjects BHAVA_01..12 padded, 9 grahas for house_chalit/sandhi_flag, verification_min=single matching _chalit_row) + a TestSchemaDeclaration regression test (7 asserts) that guards emission==declaration going forward. Re-integrated fresh (B-5 d0a176ca -> B-1 9f59a193 -> B-2 803368ff, no conflicts). Merged schema valid, 188 categories, all lanes' new categories declared. Full suite on re-integrated tree: 3408 passed / 0 failed. Cycle-1 INTEGRATE COMPLETE + clean."
   status: COMPLETE_GREEN
+  pr: "570 (cycle-1 -> main), CI running. NOTE: full rebuild + Gate B deferred to after cycle-2 per brief staging; cycle-1 PR just lands the fact writers on main."
 gate: {run: false, green: [], red: []}
 updated_at: "2026-07-15 (D-1.5b pre-lane blocker RESOLVED; estate 64/64 lit & healthy via Cloud Run job; ready to spawn cycle-1 lanes B-5/B-2/B-1)"
 ```
