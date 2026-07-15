@@ -375,6 +375,133 @@ def _build_position_rows(
     return rows
 
 
+# ── Bhāva-chalit rows builder (real cusps; ADDITIVE — DR-2) ──────────────────
+
+def _chalit_row(
+    chart_id: str, ayanamsha_id: str, build_id: str, computed_at: str,
+    category: str, subject: str, key: str,
+    value_num: float | None, value_text: str | None,
+    unit: str | None, citation_human: str,
+) -> dict[str, Any]:
+    eng_ver = ENGINE_VERSION
+    _check_narration(value_text, f"{subject}.{key}")
+    return {
+        "fact_id": _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id),
+        "chart_id": chart_id,
+        "ayanamsha_id": ayanamsha_id,
+        "build_id": build_id,
+        "fact_category": category,
+        "fact_subject": subject,
+        "fact_key": key,
+        "fact_value_text": value_text,
+        "fact_value_num": value_num,
+        "fact_value_jsonb": None,
+        "unit": unit,
+        "citation_ref": _citation_ref(category, subject, key, chart_id, ayanamsha_id, eng_ver),
+        "citation_human": citation_human,
+        "source_calculation": f"pyjhora_adapter.houses.compute_bhava_chalit/{eng_ver}",
+        "verification_pass_status": "single",
+        "engine_version": eng_ver,
+        "computed_at": computed_at,
+    }
+
+
+def _build_chalit_rows(
+    chart_output: dict[str, Any],
+    chart_id: str,
+    build_id: str,
+    ayanamsha_id_canonical: str,
+    computed_at: str,
+) -> list[dict[str, Any]]:
+    """
+    Emit the new L1 chalit fact categories (ADDITIVE second data layer; DR-2 —
+    whole-sign house_d1 is NOT changed):
+
+      * ``bhava_cusps``  — subject BHAVA_01..12; keys {sripati,placidus}_{start,madhya,end}.
+      * ``house_chalit`` — subject per graha; Sripati chalit house + cusp distances.
+      * ``sandhi_flag``  — subject per graha; junction flag (within-orb OR whole-sign≠chalit).
+
+    Source: chart_output["bhava_chalit"] (pyjhora_adapter.houses.compute_bhava_chalit).
+    """
+    chalit = chart_output.get("bhava_chalit") or {}
+    if not chalit:
+        return []
+    rows: list[dict[str, Any]] = []
+    ay = ayanamsha_id_canonical
+    ay_title = ay.replace("_", " ").title()
+
+    # ── bhava_cusps: 12 houses × {sripati,placidus} × {start,madhya,end} ──
+    sri_cusps = (chalit.get("sripati") or {}).get("cusps") or []
+    plac_cusps = (chalit.get("placidus") or {}).get("cusps") or []
+    for system, cusp_list in (("sripati", sri_cusps), ("placidus", plac_cusps)):
+        for c in cusp_list:
+            hnum = int(c["house"])
+            subj = f"BHAVA_{hnum:02d}"
+            for edge in ("start", "madhya", "end"):
+                key = f"{system}_{edge}"
+                val = float(c[edge])
+                rows.append(_chalit_row(
+                    chart_id, ay, build_id, computed_at,
+                    "bhava_cusps", subj, key, val, None, "deg",
+                    f"Bhāva {hnum} {system.title()} {edge} cusp: {val:.6f} deg ({ay_title}).",
+                ))
+
+    # ── house_chalit + sandhi_flag: per graha ──
+    graha_chalit = chalit.get("graha_chalit") or {}
+    for gname, gc in graha_chalit.items():
+        subj = PLANET_TO_SUBJECT.get(gname)
+        if subj is None:
+            continue
+        chalit_house = int(gc["chalit_house"])
+        ws_house = gc.get("whole_sign_house")
+        dist_madhya = float(gc["dist_to_madhya_deg"])
+        dist_bound = float(gc["dist_to_nearest_boundary_deg"])
+        nearest = str(gc.get("nearest_boundary", ""))
+
+        rows.append(_chalit_row(
+            chart_id, ay, build_id, computed_at,
+            "house_chalit", subj, "chalit_house_sripati", float(chalit_house), None, None,
+            f"{gname} Sripati bhāva-chalit house: {chalit_house} ({ay_title}).",
+        ))
+        if ws_house is not None:
+            rows.append(_chalit_row(
+                chart_id, ay, build_id, computed_at,
+                "house_chalit", subj, "whole_sign_house", float(int(ws_house)), None, None,
+                f"{gname} whole-sign house: {int(ws_house)} (primary frame; {ay_title}).",
+            ))
+        rows.append(_chalit_row(
+            chart_id, ay, build_id, computed_at,
+            "house_chalit", subj, "dist_to_madhya_deg", dist_madhya, None, "deg",
+            f"{gname} arc to Sripati bhāva-madhya: {dist_madhya:.6f} deg ({ay_title}).",
+        ))
+        rows.append(_chalit_row(
+            chart_id, ay, build_id, computed_at,
+            "house_chalit", subj, "dist_to_nearest_boundary_deg", dist_bound, None, "deg",
+            f"{gname} arc to nearest Sripati bhāva boundary: {dist_bound:.6f} deg ({ay_title}).",
+        ))
+        rows.append(_chalit_row(
+            chart_id, ay, build_id, computed_at,
+            "house_chalit", subj, "nearest_boundary", None, nearest, None,
+            f"{gname} nearest Sripati bhāva boundary: {nearest} ({ay_title}).",
+        ))
+
+        # sandhi_flag category
+        flag = bool(gc.get("sandhi_flag"))
+        reasons = gc.get("sandhi_reasons") or []
+        rows.append(_chalit_row(
+            chart_id, ay, build_id, computed_at,
+            "sandhi_flag", subj, "sandhi_flag", None, str(flag).lower(), None,
+            f"{gname} bhāva-sandhi flag: {str(flag).lower()} ({ay_title}).",
+        ))
+        rows.append(_chalit_row(
+            chart_id, ay, build_id, computed_at,
+            "sandhi_flag", subj, "sandhi_reasons", None, ",".join(reasons) or "none", None,
+            f"{gname} bhāva-sandhi reasons: {','.join(reasons) or 'none'} ({ay_title}).",
+        ))
+
+    return rows
+
+
 # ── chart_facts INSERT (atomic rows) ─────────────────────────────────────────
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
@@ -491,6 +618,10 @@ def build_ga_positions(
                 chart_output, chart_id, build_id,
                 canonical_id, adapter_id, computed_at,
             )
+            # Bhāva-chalit fact categories (additive second data layer; DR-2)
+            cf_rows.extend(_build_chalit_rows(
+                chart_output, chart_id, build_id, canonical_id, computed_at,
+            ))
 
             # Write chart_facts atomic rows
             cf_count = _insert_chart_facts_rows(conn, cf_rows)
