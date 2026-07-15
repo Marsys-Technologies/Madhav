@@ -945,9 +945,22 @@ def _resolve_ratification_factor(
 # (valence_source='keyword_heuristic_v1') rather than raising — a genuine
 # per-chart defensive degradation, not a permanently-dead path.
 
-def _load_vichara_valence(conn: Any, chart_id: str) -> tuple[dict[tuple[str, str, str], dict], bool]:
+def _load_vichara_valence(conn: Any, chart_id: str, ayanamsha_id: str) -> tuple[dict[tuple[str, str, str], dict], bool]:
     """(actor, target, varga) -> {value_text, value_num}, from chart_vichara's
-    vichara_family='valence_pass' rows for this chart. Returns (lookup, table_available)."""
+    vichara_family='valence_pass' rows for this chart AND ayanamsha. Returns (lookup, table_available).
+
+    D-1.5a wave gate finding (live gate battery, 2026-07-15): this query was missing
+    the ayanamsha_id filter — chart_vichara carries rows for every ayanamsha the chart
+    was built with (5 on the canonical charts), and without this filter the lookup dict
+    silently mixed rows across ayanamshas keyed only on (actor, target, varga); whichever
+    ayanamsha's row Postgres happened to return last for a given key won, regardless of
+    which ayanamsha THIS build_substep is actually for. Confirmed live: chart_vichara had
+    zero 'malefic' rows for (MAR, D1_HOUSE_2, D1) under lahiri_chitrapaksha (all rows
+    'strong_benefic', the correct yogakaraka classification per A1's fix), yet
+    bodha_signals_get served 'malefic' with valence_source='ga_vichara_v1' — proving the
+    lookup itself, not the underlying data, was wrong. Pre-existing bug, invisible before
+    A1's precedence fix made classification genuinely ayanamsha-dependent (different sign
+    boundaries can put the same graha in a different house-lordship class per ayanamsha)."""
     sp = "sp_bo_laksana_vichara_valence"
     try:
         with conn.cursor() as _c:
@@ -955,8 +968,8 @@ def _load_vichara_valence(conn: Any, chart_id: str) -> tuple[dict[tuple[str, str
         rows = _fetch_dict(
             conn,
             """SELECT actor, target, varga, value_text, value_num FROM chart_vichara
-               WHERE chart_id = %s AND vichara_family = 'valence_pass'""",
-            [chart_id],
+               WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'valence_pass'""",
+            [chart_id, ayanamsha_id],
         )
         with conn.cursor() as _c:
             _c.execute(f"RELEASE SAVEPOINT {sp}")
@@ -2817,7 +2830,7 @@ class BoLaksanaWriter(WriterBase):
         # degradation, not a permanent block); every downstream consumer
         # already handles the empty-lookup case honestly.
         ratification_lookup, ratification_available = _load_varga_ratification(conn, chart_id)
-        vichara_valence_lookup, vichara_valence_available = _load_vichara_valence(conn, chart_id)
+        vichara_valence_lookup, vichara_valence_available = _load_vichara_valence(conn, chart_id, ayanamsha)
 
         # Fetch ALL fact rows for this ayanamsha (category-agnostic).
         # C3-fix: INVARIANT rows are fetched separately and appended so each
