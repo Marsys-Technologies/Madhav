@@ -24,6 +24,7 @@ from bodha_writers.bhavat_bhavam_amplifier import (
     SOURCE_SUBSYSTEM,
     SalientConfig,
     compute_bhavat_bhavam_amplifiers,
+    to_msr_row,
     _clamp_below_primary,
 )
 
@@ -232,3 +233,125 @@ def test_msr_tier_source_only_counts_as_salient_when_not_the_amplifier_class():
     ]
     out = compute_bhavat_bhavam_amplifiers(candidates)
     assert out == []  # H1's derived houses are {1, 7}; the only H7 occupant is excluded by no-chaining
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# CR-97 Bug-2 fix — BOUNDED EMISSION (no unbounded N×M cross-join)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_emission_is_bounded_not_cross_product_with_many_duplicate_candidates():
+    """Reproduces the real-chart scale defect: dozens of near-duplicate
+    already-salient candidates piled into a single (primary_house,
+    derived_house) pair. The old implementation emitted one row per
+    (primary, occupant) pair — N x M. The fix must emit exactly ONE row for
+    this (H9, H11) relationship, not N x M."""
+    n_primaries = 40
+    m_occupants = 40
+    candidates = [
+        SalientConfig(f"primary_{i}", house=9, source="yoga_firing",
+                      salience_reference=1.0 + (i * 0.001), ayanamsha_id=AYA)
+        for i in range(n_primaries)
+    ] + [
+        SalientConfig(f"occupant_{j}", house=11, source="yoga_firing",
+                      salience_reference=1.0 + (j * 0.001), ayanamsha_id=AYA)
+        for j in range(m_occupants)
+    ]
+    out = compute_bhavat_bhavam_amplifiers(candidates)
+    h9_to_h11 = [s for s in out if s.primary_house == 9 and s.derived_house == 11]
+    assert len(h9_to_h11) == 1, (
+        f"expected exactly 1 bounded amplifier row for (H9, H11), got {len(h9_to_h11)} "
+        f"(N*M would have been {n_primaries * m_occupants})"
+    )
+    # The representative chosen must be the highest-salience candidate in each house.
+    assert h9_to_h11[0].primary_identifier == f"primary_{n_primaries - 1}"
+    assert h9_to_h11[0].occupant_identifier == f"occupant_{m_occupants - 1}"
+
+
+def test_total_emission_bounded_across_full_chart_scale_candidate_pool():
+    """A realistic full-chart-scale pool (~60 candidates per house, matching
+    the live 482012f1 rebuild finding) across all 12 houses must still emit
+    at most one row per (primary_house, derived_house) pair — at most 12
+    rows total (6 odd houses x up to 2 derived houses each), never
+    thousands."""
+    import random
+    random.seed(99)
+    candidates = []
+    for h in range(1, 13):
+        for i in range(60):
+            candidates.append(SalientConfig(
+                f"h{h}_cfg_{i}", house=h, source="yoga_firing",
+                salience_reference=random.uniform(0.01, 5.0), ayanamsha_id=AYA,
+            ))
+    out = compute_bhavat_bhavam_amplifiers(candidates)
+    assert out, "sanity: a fully populated chart-scale pool should still fire"
+    assert len(out) <= 12, f"expected <=12 bounded rows, got {len(out)}"
+    # No duplicate (primary_house, derived_house) pairs.
+    pairs = [(s.primary_house, s.derived_house) for s in out]
+    assert len(pairs) == len(set(pairs))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# CR-97 Bug-1 fix — constituent_facts_array / constituent_signals_array never None
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_to_msr_row_never_has_null_constituent_facts_array():
+    """bodha_msr_signals.constituent_facts_array is NOT NULL — the emitted row
+    dict must never carry None there (or in constituent_signals_array, its
+    L2-over-L2 counterpart)."""
+    candidates = [
+        SalientConfig("dhana_yoga_2_5_9_11", house=9, source="yoga_firing",
+                       salience_reference=1.0218, ayanamsha_id=AYA,
+                       constituent_facts=("fact_a", "fact_b")),
+        SalientConfig("anapha", house=11, source="yoga_firing",
+                       salience_reference=1.0101, ayanamsha_id=AYA,
+                       constituent_facts=("fact_c",)),
+    ]
+    out = compute_bhavat_bhavam_amplifiers(candidates)
+    assert out
+    for sig in out:
+        row = to_msr_row(sig, chart_id="482012f1-710e-4a25-994a-93821f5871aa",
+                          build_id="test-build", now="2026-07-16T00:00:00Z")
+        assert row["constituent_facts_array"] is not None
+        assert isinstance(row["constituent_facts_array"], list)
+        assert row["constituent_signals_array"] is not None
+        assert isinstance(row["constituent_signals_array"], list)
+    # The real fact lineage from both legs must be present (deduped union).
+    fired = [s for s in out if s.derived_house == 11]
+    assert fired
+    row = to_msr_row(fired[0], chart_id="x", build_id="b", now="n")
+    assert set(row["constituent_facts_array"]) == {"fact_a", "fact_b", "fact_c"}
+
+
+def test_to_msr_row_constituent_facts_array_is_empty_list_not_none_when_no_lineage():
+    """A candidate with no constituent_facts at all (the SalientConfig default)
+    must still yield [] — never None — since the DB column is NOT NULL."""
+    candidates = [
+        SalientConfig("primary_no_lineage", house=1, source="yoga_firing",
+                       salience_reference=1.5, ayanamsha_id=AYA),
+        SalientConfig("occupant_no_lineage", house=7, source="yoga_firing",
+                       salience_reference=1.2, ayanamsha_id=AYA),
+    ]
+    out = compute_bhavat_bhavam_amplifiers(candidates)
+    assert out
+    row = to_msr_row(out[0], chart_id="x", build_id="b", now="n")
+    assert row["constituent_facts_array"] == []
+    assert row["constituent_signals_array"] == []
+
+
+def test_constituent_signals_array_carries_msr_tier_signal_ids():
+    """An msr_tier-sourced primary/occupant's own signal_id must land in
+    constituent_signals_array (the L2-over-L2 lineage field) — yoga_firing
+    candidates contribute nothing there (no MSR row to reference)."""
+    candidates = [
+        SalientConfig("primary_msr", house=9, source="msr_tier",
+                       salience_reference=1.5, ayanamsha_id=AYA,
+                       signal_id="11111111-1111-1111-1111-111111111111"),
+        SalientConfig("occupant_yoga", house=11, source="yoga_firing",
+                       salience_reference=1.0, ayanamsha_id=AYA),
+    ]
+    out = compute_bhavat_bhavam_amplifiers(candidates)
+    fired = [s for s in out if s.derived_house == 11]
+    assert fired
+    assert "11111111-1111-1111-1111-111111111111" in fired[0].constituent_signals_array
+    row = to_msr_row(fired[0], chart_id="x", build_id="b", now="n")
+    assert "11111111-1111-1111-1111-111111111111" in row["constituent_signals_array"]

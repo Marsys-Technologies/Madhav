@@ -56,7 +56,17 @@ _OUTRANK_EPSILON = 1e-6
 class SalientConfig:
     """An already-salient configuration: either a fired yoga (source="yoga_firing")
     or a tier>=major MSR signal (source="msr_tier"). `house` is the bhāva this
-    configuration occupies or rules."""
+    configuration occupies or rules.
+
+    `constituent_facts` (CR-97 Bug-1 fix, B.3 derivation-ledger mandate): the L1
+    `chart_facts.fact_id`s this configuration itself cites — for a yoga_firing
+    candidate this is `ga_yoga_firings.constituent_fact_ids`; for an msr_tier
+    candidate this is the source MSR row's own `constituent_facts_array`. Threaded
+    through so an emitted `bhavat_bhavam_amplifier` row never has to fabricate a
+    NULL/empty ledger when a real one is available one hop away (option (a) in the
+    fix design — resolve through to the underlying L1 facts rather than defaulting
+    to an empty array).
+    """
     identifier: str
     house: int
     source: str  # "yoga_firing" | "msr_tier"
@@ -64,6 +74,7 @@ class SalientConfig:
     signal_type_class: str = "configuration"
     signal_id: str | None = None  # populated only for source="msr_tier"
     ayanamsha_id: str = ""
+    constituent_facts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -81,6 +92,14 @@ class AmplifierSignal:
     signal_type_class: str
     source_subsystem: str
     configuration: dict[str, Any] = field(default_factory=dict)
+    # CR-97 Bug-1 fix: real derivation ledger, never None (NOT NULL columns).
+    # constituent_facts_array resolves through to the L1 fact_ids the primary
+    # and occupant themselves cite (option (a) — see SalientConfig docstring).
+    # constituent_signals_array carries the L2-over-L2 lineage: the MSR
+    # signal_id(s) of any msr_tier-sourced primary/occupant (yoga_firing
+    # candidates have no bodha_msr_signals row to reference).
+    constituent_facts_array: tuple[str, ...] = ()
+    constituent_signals_array: tuple[str, ...] = ()
 
 
 def _validate_candidates(candidates: list[SalientConfig]) -> list[SalientConfig]:
@@ -122,18 +141,46 @@ def _clamp_below_primary(raw_salience: float, primary_salience: float) -> float:
     return clamped
 
 
+def _best(configs: list[SalientConfig], exclude: SalientConfig | None = None) -> SalientConfig | None:
+    """Pick the single most-salient candidate (deterministic tie-break on
+    identifier so re-runs are stable). `exclude` (used for the occupant pick,
+    same-house self-corroboration case, e.g. derived_houses(1) == (1, 7))
+    removes the chosen primary object itself from consideration."""
+    pool = [c for c in configs if c is not exclude]
+    if not pool:
+        return None
+    return max(pool, key=lambda c: (c.salience_reference, c.identifier))
+
+
 def compute_bhavat_bhavam_amplifiers(
     candidates: list[SalientConfig],
 ) -> list[AmplifierSignal]:
     """The core doctrinal computation.
 
-    For every ODD primary house H that has at least one already-salient
-    candidate occupying/ruling it, and for every derived house D in
+    CR-97 Bug-2 fix (scale/design defect found during the D-1.5b real-chart
+    rebuild): the original implementation emitted one AmplifierSignal per
+    (primary_candidate, occupant_candidate) PAIR — an unbounded N×M
+    cross-join that produced tens of thousands of near-duplicate rows for a
+    single (primary_house, derived_house) relationship on a real chart
+    (candidate pools of 50-60+ already-salient configs per house are normal;
+    see bo_laksana's msr_tier + yoga_firing candidate build).
+
+    Bhavat-Bhavam corroboration is doctrinally a judgment about a
+    (primary_house, derived_house) RELATIONSHIP, not a claim that deserves
+    one row per possible witness pairing (BRIEF_D1_5B.md Lane B-4:
+    "GATED AMPLIFIER ... never a generator ... corroborating-only"). So for
+    every ODD primary house H that has at least one already-salient
+    candidate, and for every derived house D in
     bhavat_bhavam_registry.derived_houses(H) that ALSO has at least one
-    already-salient candidate, emit one AmplifierSignal per
-    (primary_candidate, derived_candidate) pair, corroborating the primary —
-    never generating a finding where neither leg is already salient, never
-    exceeding the primary's own weight, never chaining off a prior amplifier.
+    already-salient candidate, this now emits exactly ONE AmplifierSignal for
+    that (H, D) pair — anchored on the single highest-salience primary
+    candidate in H and the single highest-salience occupant candidate in D
+    (the two candidates each already-salient signal-selection process judges
+    "most representative" of that house). This keeps the restraint
+    guarantees (never a generator, never outranks the primary, no chaining,
+    even houses receive nothing) and bounds emission to at most
+    len(ODD_HOUSES) * 2 == 12 rows per ayanamsha-build (6 odd primary houses
+    x up to 2 derived houses each), instead of an unbounded cross-product.
     """
     candidates = _validate_candidates(candidates)
     salient = [c for c in candidates if _is_salient(c)]
@@ -157,41 +204,60 @@ def compute_bhavat_bhavam_amplifiers(
             )
             continue  # NEVER A GENERATOR: no derived house => nothing to amplify
 
+        primary = _best(primaries)
+        if primary is None:
+            continue  # NEVER A GENERATOR: no salient primary in this house
+
         for d_house in derived:
             occupants = by_house.get(d_house)
             if not occupants:
                 continue  # NEVER A GENERATOR: no salient occupant in the derived house
 
-            for primary in primaries:
-                for occupant in occupants:
-                    if occupant is primary:
-                        continue
-                    raw = CLASS_PRIOR * min(primary.salience_reference, occupant.salience_reference)
-                    amplifier_salience = _clamp_below_primary(raw, primary.salience_reference)
-                    out.append(AmplifierSignal(
-                        signal_id=str(uuid.uuid4()),
-                        ayanamsha_id=primary.ayanamsha_id or occupant.ayanamsha_id,
-                        primary_identifier=primary.identifier,
-                        primary_house=primary_house,
-                        primary_salience=primary.salience_reference,
-                        derived_house=d_house,
-                        occupant_identifier=occupant.identifier,
-                        occupant_salience=occupant.salience_reference,
-                        computed_salience=amplifier_salience,
-                        class_prior=CLASS_PRIOR,
-                        signal_type_class=SIGNAL_TYPE_CLASS,
-                        source_subsystem=SOURCE_SUBSYSTEM,
-                        configuration={
-                            "primary_house": primary_house,
-                            "primary_identifier": primary.identifier,
-                            "primary_source": primary.source,
-                            "derived_house": d_house,
-                            "occupant_identifier": occupant.identifier,
-                            "occupant_source": occupant.source,
-                            "gated_amplifier": True,
-                            "no_chaining": True,
-                        },
-                    ))
+            # Same-house self-corroboration case (derived_houses(1) == (1, 7)
+            # includes house 1 itself): exclude the chosen primary object so
+            # a config never corroborates itself.
+            occupant = _best(occupants, exclude=primary)
+            if occupant is None:
+                continue  # NEVER A GENERATOR: only candidate in D was the primary itself
+
+            raw = CLASS_PRIOR * min(primary.salience_reference, occupant.salience_reference)
+            amplifier_salience = _clamp_below_primary(raw, primary.salience_reference)
+
+            primary_facts = tuple(primary.constituent_facts or ())
+            occupant_facts = tuple(occupant.constituent_facts or ())
+            # dedup while keeping a stable, deterministic order
+            facts_array = tuple(dict.fromkeys((*primary_facts, *occupant_facts)))
+            signals_array = tuple(dict.fromkeys(
+                sid for sid in (primary.signal_id, occupant.signal_id) if sid
+            ))
+
+            out.append(AmplifierSignal(
+                signal_id=str(uuid.uuid4()),
+                ayanamsha_id=primary.ayanamsha_id or occupant.ayanamsha_id,
+                primary_identifier=primary.identifier,
+                primary_house=primary_house,
+                primary_salience=primary.salience_reference,
+                derived_house=d_house,
+                occupant_identifier=occupant.identifier,
+                occupant_salience=occupant.salience_reference,
+                computed_salience=amplifier_salience,
+                class_prior=CLASS_PRIOR,
+                signal_type_class=SIGNAL_TYPE_CLASS,
+                source_subsystem=SOURCE_SUBSYSTEM,
+                configuration={
+                    "primary_house": primary_house,
+                    "primary_identifier": primary.identifier,
+                    "primary_source": primary.source,
+                    "derived_house": d_house,
+                    "occupant_identifier": occupant.identifier,
+                    "occupant_source": occupant.source,
+                    "gated_amplifier": True,
+                    "no_chaining": True,
+                    "bounded_emission": True,
+                },
+                constituent_facts_array=facts_array,
+                constituent_signals_array=signals_array,
+            ))
     return out
 
 
@@ -259,8 +325,16 @@ def to_msr_row(
         "valence": "neutral",
         "lel_origin": False,
         "configuration_jsonb": _json.dumps(signal.configuration),
-        "constituent_facts_array": None,
-        "constituent_signals_array": None,
+        # CR-97 Bug-1 fix: bodha_msr_signals.constituent_facts_array is NOT NULL.
+        # Resolved through to the L1 fact_ids the primary/occupant themselves
+        # cite (option (a) — ga_yoga_firings.constituent_fact_ids for a
+        # yoga_firing candidate, the source MSR row's own
+        # constituent_facts_array for an msr_tier candidate); [] (never None)
+        # when neither leg carries any. constituent_signals_array is the
+        # correct field for the L2-over-L2 lineage (any msr_tier-sourced
+        # primary/occupant's own signal_id) — also never None.
+        "constituent_facts_array": list(signal.constituent_facts_array),
+        "constituent_signals_array": list(signal.constituent_signals_array),
         "classical_sources_array": None,
         "source_corroboration_count_by_text": 2,
         "source_corroboration_count_by_verse": None,
