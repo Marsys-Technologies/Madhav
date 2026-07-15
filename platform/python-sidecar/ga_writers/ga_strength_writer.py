@@ -682,6 +682,43 @@ def _build_shadbala_rows(
             "computed_at": computed_at,
         })
 
+        # CR-18: achieved/required shadbala ratio. Bare rupas were served without
+        # the classical normative band — consumers had to supply BPHS minimums from
+        # priors. The ratio (achieved total ÷ required minimum) is the normalized
+        # strength: ratio ≥ 1.0 = at/above the Parashara minimum, < 1.0 = deficient.
+        # Ayanamsha-dependent (the achieved total varies per ayanamsha; required is a
+        # classical constant), so keyed to the live ayanamsha_id, unlike required_rupa.
+        achieved_total = sb.get("total", 0.0)
+        ratio = (achieved_total / req) if req else None
+        if ratio is not None:
+            fid_ratio = _fact_id("graha_shadbala_total", subject, "ratio",
+                                 chart_id, ayanamsha_id, build_id)
+            rows.append({
+                "fact_id": fid_ratio,
+                "chart_id": chart_id,
+                "ayanamsha_id": ayanamsha_id,
+                "build_id": build_id,
+                "fact_category": "graha_shadbala_total",
+                "fact_subject": subject,
+                "fact_key": "ratio",
+                "fact_value_text": None,
+                "fact_value_num": ratio,
+                "fact_value_jsonb": None,
+                "unit": None,
+                "citation_ref": _citation_ref("graha_shadbala_total", subject, "ratio",
+                                              chart_id, ayanamsha_id, eng_ver),
+                "citation_human": (
+                    f"{graha_name} shadbala ratio: {ratio:.3f} "
+                    f"({achieved_total:.4f} achieved ÷ {req:.2f} required rupa; "
+                    f"{'at/above' if ratio >= 1.0 else 'below'} classical minimum) "
+                    f"({ayanamsha_id})."
+                ),
+                "source_calculation": f"achieved_total_div_required_rupa/{eng_ver}",
+                "verification_pass_status": verif_status,
+                "engine_version": eng_ver,
+                "computed_at": computed_at,
+            })
+
         # Ishta/Kashta phala
         ik = ishta_kashta.get(graha_name, {})
         for ik_key, ik_cat in [("ishta", "graha_ishta_phala"), ("kashta", "graha_kashta_phala")]:

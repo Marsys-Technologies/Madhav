@@ -560,6 +560,16 @@
           ],
           "precision": 4,
           "verification_min": "two_pass_verified"
+        },
+        "ratio": {
+          "value_type": "num",
+          "unit": null,
+          "range": [
+            0.0,
+            10.0
+          ],
+          "precision": 4,
+          "verification_min": "single"
         }
       },
       "since_engine_version": "pyjhora/1.0.0",
