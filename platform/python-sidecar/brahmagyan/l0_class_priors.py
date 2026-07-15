@@ -48,6 +48,14 @@ CLASS_ROWS: list[tuple] = [
     ("parivartana",     1.20, "Exchange of signs — equivalent to relationship class"),
     ("varga_pattern",   0.95, "Vargottama/varga structure; above birth_moment, below position"),
     ("magnitude",       1.00, "Bala/strength scores; modulates delivery; baseline"),
+    # ── D-1.5b Lane B-3 (CR-100, Sudarśana Chakra) — appended-only per
+    # DIS.016/DR-3 ratified constant (00_ARCHITECTURE/DISAGREEMENT_REGISTER_v1_0.md).
+    # Do NOT reorder/edit the rows above this line — B-4 (Bhavat Bhavam)
+    # appends its own bhavat_bhavam_amplifier row separately, same convention.
+    ("sudarshana_agreement", 1.15, "DIS.016/DR-3 ratified 2026-07-15: tri-frame "
+     "(Lagna/Chandra/Surya) corroboration is relationship-grade wiring but "
+     "derivative of existing positions — between position (1.10) and "
+     "composite_state (1.20)"),
 ]
 
 # ── §2.2 source_subsystem weights ────────────────────────────────────────────

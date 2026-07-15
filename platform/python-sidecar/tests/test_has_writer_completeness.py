@@ -109,6 +109,8 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bo_chart_gestalt",
     # ── L2 Bodha — migration 391 (BA-P3B) ────────────────────────────────────
     "bo_pratijna",
+    # ── L2 Bodha — migration 438 (D-1.5b Lane B-3, CR-100 Sudarshana Chakra) ──
+    "bo_sudarshana",
     # ── L3 Kāla — migration 342 ──────────────────────────────────────────────
     "ka_bhavishya_lekha",
     "ka_dasha_kala",
