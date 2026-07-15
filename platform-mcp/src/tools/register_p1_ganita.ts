@@ -225,6 +225,13 @@ const STRUCTURAL_FACET_URI: Record<string, string> = {
   yoga_fires:   'marsys://tool/L1/get_yoga_dosha',
   dosha_fires:  'marsys://tool/L1/get_yoga_dosha',
   graha_yuddha: 'marsys://tool/L1/get_graha_yuddha',
+  // D-1.5b (item 6): a FOCUSED facet dedicated to kala_sarpa_per_varga — the full per-varga
+  // (natal D1 + all 20 vargas) Kāla Sarpa map, computed by L1 but previously only reachable
+  // by drawing down `dispositors`' shared row budget alongside 4 OTHER categories (where
+  // kala_sarpa_per_varga sorts last alphabetically and can be truncated out of the page
+  // entirely at the default limit) — "computed but buried". This facet guarantees the full
+  // per-varga row set is served with zero competition from the other dispositor categories.
+  kala_sarpa:   'marsys://tool/L1/get_dispositors',
 }
 
 // R-17 fix: each facet's DECLARED fact_category set. Used two ways: (1) narrows the
@@ -254,6 +261,7 @@ const FACET_CATEGORIES: Record<string, string[]> = {
   yoga_fires:   ['yoga_fires', 'yoga_label', 'bhadra_flag'],
   dosha_fires:  ['dosha_fires', 'dosha_label'],
   graha_yuddha: ['graha_yuddha'],
+  kala_sarpa:   ['kala_sarpa_per_varga'],
   // argala intentionally omitted: get_argala is a single-purpose tool with no sibling facets
   // sharing its URI, so there is no cross-facet contamination risk to assert against.
 }
@@ -384,10 +392,15 @@ export const ganitaSadeSatiGetInputSchema = {
   offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
 }
 
+// CR-13/49 (D-1.5b item 2): the prior schema (max 25000, and the call site below forcing
+// `limit ?? 25000`) silently overrode get_tajik.ts's own sane default (200, hard cap 1000 —
+// see get_tajik.ts's `Math.min((args.limit as number) ?? 200, 1000)`) — the exact same
+// "schema promises more than the server will ever return" class the R5 W0a punch-list
+// already fixed for ganita_yogas_get. Bounds now tell the truth.
 export const ganitaTajakaGetInputSchema = {
   chart_id: z.string().uuid().describe('Chart UUID. Required.'),
   ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
-  limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
+  limit: z.number().int().min(1).max(1000).optional().describe('Max rows per section (default: 200, hard cap: 1000)'),
   offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
 }
 
@@ -422,18 +435,23 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'aspects (Graha Drishti), argala (planetary intervention), dispositors (sign-ruler chain), ' +
     'parivartana (exchange), yoga_fires (classical yoga patterns), dosha_fires (affliction patterns), ' +
     'conjunctions (same-sign occupancy), sambandha (relational bonds), ' +
-    'functional (functional benefic/malefic roles), graha_yuddha (planetary war). ' +
+    'functional (functional benefic/malefic roles), graha_yuddha (planetary war), ' +
+    'kala_sarpa (the FULL per-varga — natal D1 + every divisional chart — Kāla Sarpa map, a ' +
+    'focused facet so this row set is never truncated out by the 4 other dispositors categories). ' +
     'Specify exactly one facet per call. ' +
-    'response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope; for ' +
-    'facet=dosha_fires it additionally states an explicit Kala Sarpa Dosha natal verdict ' +
+    'response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified §N.6-density envelope ' +
+    '(verdict/ranking_basis/grounding/drill_pointers/judgment_flags/epistemic/coverage/chart_header); ' +
+    'for facet=dosha_fires it additionally states an explicit Kala Sarpa Dosha natal verdict ' +
     '(fired/not-fired, Rahu/Ketu house axis) sourced from the genuinely computed ' +
-    'kala_sarpa_per_varga L1 fact rather than the unrelated dosha_label catalog row.',
+    'kala_sarpa_per_varga L1 fact rather than the unrelated dosha_label catalog row. ' +
+    'B9 dosha gate (D-1.5b): for facet=dosha_fires, shared-stub dosha_label rows (fire_reason=' +
+    'requires_pass) are excluded from the default page — pass all=true to include them.',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       facet: z.enum([
         'aspects', 'argala', 'dispositors', 'parivartana',
         'yoga_fires', 'dosha_fires', 'conjunctions', 'sambandha',
-        'functional', 'graha_yuddha',
+        'functional', 'graha_yuddha', 'kala_sarpa',
       ]).describe('Which structural relationship layer to retrieve.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
@@ -441,8 +459,11 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       response_format: z.enum(['legacy', 'v3']).optional()
         .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/" +
           'drill_pointers/chart_header — for facet=dosha_fires includes an explicit Kala Sarpa verdict).'),
+      all: z.boolean().optional().describe(
+        'B9 dosha gate: for facet=dosha_fires, if true, includes catalog-only dosha_label rows ' +
+        '(fire_reason=requires_pass) that are excluded by default. Ignored for other facets.'),
     },
-    async ({ chart_id, facet, ayanamsha_id, limit, offset, response_format }) => {
+    async ({ chart_id, facet, ayanamsha_id, limit, offset, response_format, all }) => {
       if (!chart_id) return errorOutput('ganita_structural_get', 'chart_id is required')
       // R-17 fix: reject facets with no backing category outright, rather than silently
       // serving whatever unrelated rows the routed-to tool happens to return.
@@ -465,6 +486,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         const data = await callRegistryCapability(uri, {
           chart_id, ayanamsha_id: resolvedAyanamsha,
           limit: limit ?? 25000, offset: resolvedOffset, facet,
+          ...(facet === 'dosha_fires' ? { all: all === true } : {}),
           ...(declaredCategories ? { categories: declaredCategories } : {}),
         }, principal) as Record<string, unknown> | undefined
         const merged: Record<string, unknown> = { facet, ...(typeof data === 'object' && data ? data : { rows: data }) }
@@ -550,7 +572,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
                   : 'No divisional (varga) chart in this response showed fires=true.',
               },
             }
-            drill_pointers.push({ instrument: 'ganita_structural_get', hint: 'facet=dispositors surfaces the full kala_sarpa_per_varga row set (all vargas) directly.', pointer_type: 'other' })
+            drill_pointers.push({ instrument: 'ganita_structural_get', hint: 'facet=kala_sarpa surfaces the FULL kala_sarpa_per_varga row set (natal D1 + every divisional chart) directly — a focused facet, never truncated by the other dispositors categories (item 6, D-1.5b).', pointer_type: 'other' })
           }
         }
 
@@ -565,11 +587,37 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
 
         const total = typeof merged['total'] === 'number' ? merged['total'] as number : null
 
+        // §N.6 Serving Density Principle retrofit (D-1.5b Lane B-6, item 4 — pending B-7's
+        // formal §N.6 text landing in CLAUDE.md; applied here per the existing V3-envelope
+        // pattern already established by ganita_yogas_get in this same file, the reference
+        // "layered verdict/grounding/drill_pointers density contract" instrument): this v3
+        // branch previously stopped at {chart_header, verdict, grounding, drill_pointers,
+        // judgment_flags} — missing ranking_basis (the actual serve order, so a caller never
+        // has to guess it) and the epistemic/coverage receipts every other §N.6-retrofitted
+        // instrument in this file (ganita_yogas_get) already carries. Added here, zero new
+        // computation (B.10) — derived from rows THIS response already fetched.
+        const ranking_basis = {
+          mode: 'catalog_order',
+          fields: ['fact_category', 'ayanamsha_id', 'fact_key'],
+          note: `The underlying ${uri.split('/').pop()} tool orders alphabetically by category/` +
+            'ayanamsha/key, not by strength or salience — for salience-ranked cross-validation use ' +
+            'get_signals(signal_type_class=yoga|dosha).',
+        }
+        const epistemic = buildEpistemicSummary({
+          verifiedFraction: grounding.grounding_score,
+          note: 'verified_fraction = share of this page\'s rows with verification_pass_status=two_pass_verified.',
+        })
+        const coverage: CoverageStamp = {
+          family: `${facet}_rows[categories=${declaredCategories?.join(',') ?? 'all'}]`,
+          served: rows.length,
+          total,
+        }
+
         return dualOutput(envelope(merged, 'ganita_structural_get', {
           offset: resolvedOffset,
           limit: limit ?? 25000,
           total,
-        }, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }))
+        }, 'v3', { chart_header, verdict, ranking_basis, grounding, drill_pointers, judgment_flags, epistemic, coverage }))
       } catch (err) {
         return errorOutput('ganita_structural_get', String(err), { chart_id, facet })
       }
@@ -640,13 +688,18 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'Tajaka is the Perso-Arabic annual chart system used for year-by-year prediction: ' +
     'returns the current-year annual chart planetary positions, Muntha lord, year lord (Varshesha), ' +
     'Harsha Bala scores, and Tajaka aspects (Ithasala, Ishrafa, Nakta, Yamaya, Manahoo, Khallasara). ' +
-    'Use for yearly-window predictions layered over the natal Vimshottari frame.',
+    'Use for yearly-window predictions layered over the natal Vimshottari frame. ' +
+    'CR-13/49: default limit is 200 rows per section (hadda_lord_facts / varsha_year_lords are ' +
+    'paginated independently — see get_tajik.ts), hard cap 1000 — pass limit explicitly for a wider page.',
     ganitaTajakaGetInputSchema,
     async ({ chart_id, ayanamsha_id, limit, offset }) => {
       if (!chart_id) return errorOutput('ganita_tajaka_get', 'chart_id is required')
       try {
+        // CR-13/49 fix: `limit` now passes through UNFORCED — omitting it lets get_tajik.ts's
+        // own sane default (200, hard cap 1000) apply, instead of this call site silently
+        // inflating every unpaginated request to 25000 rows.
         const data = await callRegistryCapability('marsys://tool/L1/get_tajik', {
-          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
+          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit, offset: offset ?? 0,
         }, principal)
         return dualOutput(envelope(data, 'ganita_tajaka_get'))
       } catch (err) {
@@ -706,7 +759,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'citations from this response\'s own rows), ranking_basis (the actual serve order), ' +
     'drill_pointers (ganita_yoga_firings_get for cross-validated firing detail, mimamsa_insight_get ' +
     'for calibrated outlooks), judgment_flags (e.g. zero-row / truncated-page honesty markers), ' +
-    'and chart_header.',
+    'and chart_header. ' +
+    'B9 dosha gate (D-1.5b): shared-stub dosha_label rows (fire_reason=requires_pass — a catalog/ ' +
+    'label match, not a cross-verified per-chart finding) are EXCLUDED from the default page — see ' +
+    'dosha_label_gate in the response. Pass all=true to include them.',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
@@ -720,15 +776,18 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       // the pre-W0b response. 'v3' opts in to the populated unified envelope (closes P3).
       response_format: z.enum(['legacy', 'v3']).optional()
         .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/ranking_basis/drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default)."),
+      all: z.boolean().optional().describe(
+        'B9 dosha gate: if true, includes catalog-only dosha_label rows (fire_reason=requires_pass) ' +
+        'that are excluded by default. Default false.'),
     },
-    async ({ chart_id, ayanamsha_id, limit, offset, response_format }) => {
+    async ({ chart_id, ayanamsha_id, limit, offset, response_format, all }) => {
       if (!chart_id) return errorOutput('ganita_yogas_get', 'chart_id is required')
       try {
         const resolvedOffset = offset ?? 0
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
         const format = resolveEnvelopeFormat(response_format)
         const data = await callRegistryCapability('marsys://tool/L1/get_yoga_dosha', {
-          chart_id, ayanamsha_id: resolvedAyanamsha, limit, offset: resolvedOffset,
+          chart_id, ayanamsha_id: resolvedAyanamsha, limit, offset: resolvedOffset, all: all === true,
         }, principal) as { total?: number; rows?: Record<string, unknown>[] } | undefined
         const total = typeof data?.total === 'number' ? data.total : null
 
@@ -778,7 +837,12 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         // ga_yoga_firings fired-count) and `catalog_only_rows_in_page` (B9-preview guard) — surface
         // both here so the v3 verdict never again reads as "yogas_fired: 0" while ga_yoga_firings
         // shows real fired yogas underneath it (the exact CR-33/CR-56/CR-92 defect class).
-        const dataObj = data as { firings_pointer?: unknown; catalog_only_rows_in_page?: number; catalog_only_note?: string } | undefined
+        const dataObj = data as {
+          firings_pointer?: unknown
+          catalog_only_rows_in_page?: number
+          catalog_only_note?: string
+          dosha_label_gate?: { applied: boolean; all: boolean; excluded_total: number; note: string }
+        } | undefined
         const catalogOnlyRows = dataObj?.catalog_only_rows_in_page ?? 0
 
         const verdict = {
@@ -792,6 +856,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
           // `yogas_fired`/`doshas_fired` above and MUST NOT be read as confirmed findings — they
           // still serve (never silently dropped), just flagged. Full gating is D-1.5b's job.
           catalog_only_rows_in_page: catalogOnlyRows,
+          // B9 dosha gate (D-1.5b, closes the "full gating" TODO above for dosha_label
+          // specifically): shared-stub dosha_label rows are excluded from `rows`/`doshas_fired`
+          // above by default — this receipt states how many, and how to reach them (all=true).
+          ...(dataObj?.dosha_label_gate ? { dosha_label_gate: dataObj.dosha_label_gate } : {}),
           ...(dataObj?.firings_pointer ? { firings_pointer: dataObj.firings_pointer } : {}),
           ...(panchaMahapurusha ? { pancha_mahapurusha: panchaMahapurusha } : {}),
         }

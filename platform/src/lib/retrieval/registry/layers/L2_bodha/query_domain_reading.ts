@@ -293,6 +293,16 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       ].join(' '),
       enum: ['default', 'full'],
     },
+    lens_limit: {
+      type: 'number',
+      description: 'D-1.5b response budget: max bodha_question_lenses rows to return (default 60, ' +
+        'max 200). See `lens_pagination.total` in the response for the true family size.',
+    },
+    lens_offset: {
+      type: 'number',
+      description: 'D-1.5b response budget: pagination offset into the question-lens family ' +
+        '(default 0). Use with lens_limit to page beyond the default 60.',
+    },
   },
 
   llm_hints: {
@@ -323,6 +333,11 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           typeof args['max_signal_refs'] === 'number' ? (args['max_signal_refs'] as number) : 200,
           2000,
         )
+    // D-1.5b (item 2, response budget): the lens family was previously a hardcoded LIMIT 60
+    // with no offset and no total count — a chart with more than 60 matching lenses had the
+    // remainder permanently unreachable. Bounded, honest pagination now applies.
+    const lens_limit  = Math.min(Math.max(typeof args['lens_limit'] === 'number' ? (args['lens_limit'] as number) : 60, 1), 200)
+    const lens_offset = Math.max(typeof args['lens_offset'] === 'number' ? (args['lens_offset'] as number) : 0, 0)
 
     const VALID_DOMAINS = ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'education', 'moksha', 'other']
 
@@ -373,7 +388,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         WHERE chart_id = $1 AND ayanamsha_id = $2
           AND question_type = ANY($3)
         ORDER BY question_type
-        LIMIT 60
+        LIMIT $4 OFFSET $5
       `
         : `
         SELECT
@@ -388,8 +403,14 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         FROM bodha_question_lenses
         WHERE chart_id = $1 AND ayanamsha_id = $2
         ORDER BY question_type
-        LIMIT 60
+        LIMIT $3 OFFSET $4
       `
+
+      // D-1.5b: genuine COUNT(*) of the SAME filter the page above is drawn from, so
+      // `lens_pagination.total` is a real family size, not the page length mislabeled as total.
+      const lensCountSql = filterByQuestionType
+        ? `SELECT COUNT(*)::int AS n FROM bodha_question_lenses WHERE chart_id = $1 AND ayanamsha_id = $2 AND question_type = ANY($3)`
+        : `SELECT COUNT(*)::int AS n FROM bodha_question_lenses WHERE chart_id = $1 AND ayanamsha_id = $2`
 
       // CDLM cross-domain cell from bodha_cdlm_cells (real columns)
       const cdlmSql = `
@@ -412,16 +433,20 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         LIMIT 10
       `
 
-      const [lensRes, cdlmRes, discriminated] = await Promise.all([
+      const [lensRes, lensCountRes, cdlmRes, discriminated] = await Promise.all([
         filterByQuestionType
-          ? query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, relevantQuestionTypes])
-          : query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id]),
+          ? query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, relevantQuestionTypes, lens_limit, lens_offset])
+          : query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, lens_limit, lens_offset]),
+        filterByQuestionType
+          ? query<{ n: number }>(lensCountSql, [chart_id, ayanamsha_id, relevantQuestionTypes])
+          : query<{ n: number }>(lensCountSql, [chart_id, ayanamsha_id]),
         query<Record<string, unknown>>(cdlmSql, [chart_id, ayanamsha_id, domain]),
         // WP-1.2β: domain-discriminated composite ranked surface ('other' has no overlay).
         domain === 'other'
           ? Promise.resolve({ signals: [], pool_size: 0, filtered_by: null })
           : computeDiscriminatedSignals(chart_id, ayanamsha_id, domain),
       ])
+      const lensTotal = lensCountRes.rows[0]?.n ?? lensRes.rows.length
 
       // Collect signal refs from CDLM cells and apply bounding.
       // shared_signal_ids_array is stripped from served cells in default mode
@@ -521,6 +546,16 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           signal_id_refs_total:   signalRefsTotal,
           signal_id_refs_capped:  signalRefsArray.length < signalRefsTotal,
           lens_count:             lensRes.rows.length,
+          // D-1.5b response budget: honest pagination receipt for the question-lens family —
+          // previously a hardcoded LIMIT 60 with no offset/total, so any chart with more than
+          // 60 matching lenses had the remainder permanently unreachable.
+          lens_pagination: {
+            offset: lens_offset,
+            limit: lens_limit,
+            total: lensTotal,
+            returned_count: lensRes.rows.length,
+            more_available: lens_offset + lensRes.rows.length < lensTotal,
+          },
           cdlm_cell_count:        cdlmRes.rows.length,
           drill_next:             'marsys://tool/L2/query_signals',
           response_format,
