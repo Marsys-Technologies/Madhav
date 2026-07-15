@@ -48,6 +48,15 @@ CLASS_ROWS: list[tuple] = [
     ("parivartana",     1.20, "Exchange of signs — equivalent to relationship class"),
     ("varga_pattern",   0.95, "Vargottama/varga structure; above birth_moment, below position"),
     ("magnitude",       1.00, "Bala/strength scores; modulates delivery; baseline"),
+    # D-1.5b Lane B-4 (CR-97) — DIS.016/DR-3 ratified 2026-07-15 (Fable 5
+    # adjudicator-doctrine proposal, formalized by the D-1.5b conductor).
+    # GATED AMPLIFIER: fires only atop an already-salient primary (tier>=major
+    # or fired yoga); below every existing anchor except "absence" (0.80) so it
+    # can never outrank the primary it corroborates (primary anchors are all
+    # >=0.85 wherever B-4 can fire — see DR-3 resolution). Never a generator;
+    # code-enforced never-outranks-primary + no-chaining guards live in
+    # bodha_writers/bhavat_bhavam_amplifier.py, not in this prior alone.
+    ("bhavat_bhavam_amplifier", 0.85, "DIS.016/DR-3: Bhavat-Bhavam gated amplifier — corroborating-only, never a generator"),
 ]
 
 # ── §2.2 source_subsystem weights ────────────────────────────────────────────
