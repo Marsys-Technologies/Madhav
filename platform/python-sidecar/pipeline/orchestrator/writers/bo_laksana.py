@@ -874,10 +874,20 @@ def _resolve_class_prior(
 # before — only the framing ("permanently blocked" vs "per-chart degraded
 # path") has changed.
 
-def _load_varga_ratification(conn: Any, chart_id: str) -> tuple[dict[tuple[str, str], float], bool]:
+def _load_varga_ratification(conn: Any, chart_id: str, ayanamsha_id: str) -> tuple[dict[tuple[str, str], float], bool]:
     """(subject, domain) -> ratification_factor, from chart_vichara's
-    vichara_family='varga_ratification' rows for this chart. Returns
-    (lookup, table_available)."""
+    vichara_family='varga_ratification' rows for this chart AND ayanamsha. Returns
+    (lookup, table_available).
+
+    D-1.5a wave gate finding (2026-07-15): this query was missing the ayanamsha_id
+    filter (sibling defect of _load_vichara_valence's, see its docstring). Unlike
+    that function, THIS one has CONFIRMED LIVE cross-ayanamsha contamination on
+    482012f1: (JUP, wealth) ratification_factor is 1 in some ayanamshas and 1.4 in
+    others; (SAT, career/health/wealth) is 0.8 vs 1. Without this filter, whichever
+    ayanamsha Postgres returns last for a given (subject, domain) key silently wins
+    the lookup dict regardless of which ayanamsha the current build_substep is
+    actually for — directly corrupting the ratification_factor term of served
+    wealth/career/health judgments."""
     sp = "sp_bo_laksana_vichara_ratif"
     try:
         with conn.cursor() as _c:
@@ -885,8 +895,8 @@ def _load_varga_ratification(conn: Any, chart_id: str) -> tuple[dict[tuple[str, 
         rows = _fetch_dict(
             conn,
             """SELECT subject, domain, ratification_factor FROM chart_vichara
-               WHERE chart_id = %s AND vichara_family = 'varga_ratification'""",
-            [chart_id],
+               WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_ratification'""",
+            [chart_id, ayanamsha_id],
         )
         with conn.cursor() as _c:
             _c.execute(f"RELEASE SAVEPOINT {sp}")
@@ -952,15 +962,19 @@ def _load_vichara_valence(conn: Any, chart_id: str, ayanamsha_id: str) -> tuple[
     D-1.5a wave gate finding (live gate battery, 2026-07-15): this query was missing
     the ayanamsha_id filter — chart_vichara carries rows for every ayanamsha the chart
     was built with (5 on the canonical charts), and without this filter the lookup dict
-    silently mixed rows across ayanamshas keyed only on (actor, target, varga); whichever
-    ayanamsha's row Postgres happened to return last for a given key won, regardless of
-    which ayanamsha THIS build_substep is actually for. Confirmed live: chart_vichara had
-    zero 'malefic' rows for (MAR, D1_HOUSE_2, D1) under lahiri_chitrapaksha (all rows
-    'strong_benefic', the correct yogakaraka classification per A1's fix), yet
-    bodha_signals_get served 'malefic' with valence_source='ga_vichara_v1' — proving the
-    lookup itself, not the underlying data, was wrong. Pre-existing bug, invisible before
-    A1's precedence fix made classification genuinely ayanamsha-dependent (different sign
-    boundaries can put the same graha in a different house-lordship class per ayanamsha)."""
+    could silently mix rows across ayanamshas keyed only on (actor, target, varga).
+    VERIFIED CORRECTION (independent Opus review): for the specific live symptom that
+    surfaced this investigation (Mars/H2/wealth served 'malefic' while chart_vichara
+    stored 'strong_benefic'), a direct DB check across all 5 ayanamshas found EVERY
+    ayanamsha stores 'strong_benefic' for this exact key — so cross-ayanamsha
+    contamination could not have produced that specific 'malefic'. The real cause of
+    that symptom was staleness (bo_laksana's build completed at 22:05:07 UTC, over an
+    hour BEFORE ga_vichara's corrected data was ready at 23:10:50 UTC — see migration
+    437, which adds the missing depends_on edge). This filter is kept anyway as
+    independently-real hardening: the sibling function _load_varga_ratification (fixed
+    alongside this one) had PROVEN live cross-ayanamsha contamination on this same
+    chart ((JUP, wealth) ratification_factor 1 vs 1.4 across ayanamshas) — the same
+    missing-filter defect class is real even though it wasn't this specific bug."""
     sp = "sp_bo_laksana_vichara_valence"
     try:
         with conn.cursor() as _c:
@@ -1007,7 +1021,14 @@ def _load_vichara_divergence_signals(
     2026-07-14 (reconciled 2026-07-15, D-1.5a A2/CR-91) — this returns []
     only as a per-chart defensive degradation whenever chart_vichara is
     unavailable for THIS chart (see _load_varga_ratification's guard note),
-    not because the table is permanently absent."""
+    not because the table is permanently absent.
+
+    D-1.5a wave gate finding (2026-07-15): this function already RECEIVED
+    ayanamsha_id but never used it in the query — sibling defect of
+    _load_vichara_valence / _load_varga_ratification, discovered while fixing
+    those. Without the filter, this emitted a varga_ratification_divergence
+    signal per chart_vichara row across EVERY ayanamsha on each ayanamsha's own
+    build_substep — 5x duplicate/cross-contaminated divergence signals."""
     sp = "sp_bo_laksana_vichara_divergence"
     try:
         with conn.cursor() as _c:
@@ -1016,8 +1037,8 @@ def _load_vichara_divergence_signals(
             conn,
             """SELECT subject, domain, value_text, value_num, constituent_facts_array
                FROM chart_vichara
-               WHERE chart_id = %s AND vichara_family = 'varga_ratification_divergence'""",
-            [chart_id],
+               WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_ratification_divergence'""",
+            [chart_id, ayanamsha_id],
         )
         with conn.cursor() as _c:
             _c.execute(f"RELEASE SAVEPOINT {sp}")
@@ -2829,7 +2850,7 @@ class BoLaksanaWriter(WriterBase):
         # chart_vichara is unavailable for THIS chart (per-chart defensive
         # degradation, not a permanent block); every downstream consumer
         # already handles the empty-lookup case honestly.
-        ratification_lookup, ratification_available = _load_varga_ratification(conn, chart_id)
+        ratification_lookup, ratification_available = _load_varga_ratification(conn, chart_id, ayanamsha)
         vichara_valence_lookup, vichara_valence_available = _load_vichara_valence(conn, chart_id, ayanamsha)
 
         # Fetch ALL fact rows for this ayanamsha (category-agnostic).
