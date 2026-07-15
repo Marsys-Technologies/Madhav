@@ -204,26 +204,80 @@ export function registerQueryRetrogradePeriodsTools(server: McpServer): void {
 }
 
 // ── 5. ephemeris_cache_year (resource as tool for MCP compat) ─────────────────
-
+//
+// D-1.5b item 2 (response budget): this tool previously fetched the FULL calendar year
+// (up to 3,285 rows — 9 bodies × ~365 days) from the sidecar unconditionally, and shipped
+// the raw JSON.stringify(result, null, 2) with no pagination and no size cap — a real
+// problem at scale for an MCP wire channel. Two independent levers now bound it:
+//   1. `month` (optional): narrows the SIDECAR-SIDE date window to a single calendar month
+//      (~270 rows) instead of always requesting the full year — genuine narrowing, not a
+//      client-side afterthought.
+//   2. `limit`/`offset`: paginate the returned `rows` array (the sidecar itself has no
+//      offset/limit — see all_bodies_range's `LIMIT 10000`, python-sidecar, out of this
+//      lane's TS-only scope) — default 400 rows/page, honest `total`/`returned_count`.
 const EphemerisCacheYearInput = z.object({
   year: z.number().int().min(1900).max(2150).describe(
     '4-digit calendar year to fetch ephemeris cache for (1900-2150).'
   ),
+  month: z.number().int().min(1).max(12).optional().describe(
+    'Optional: narrow to a single calendar month (1-12) within `year` — reduces the sidecar-side ' +
+    'query window from ~365 days to ~28-31 days. Omit for the full year.'
+  ),
+  limit: z.number().int().min(1).max(3285).optional().describe(
+    'Max rows to return (default 400, max 3285 = 9 bodies × ~365 days). Paginates the `rows` array.'
+  ),
+  offset: z.number().int().min(0).optional().describe('Pagination offset into `rows` (default 0).'),
 })
+
+const EPHEMERIS_DEFAULT_LIMIT = 400
 
 export function registerEphemerisCacheYearTool(server: McpServer): void {
   server.tool(
     'ephemeris_cache_year',
-    'Fetch ephemeris data for a full calendar year — all 9 Jyotish bodies at daily resolution. ' +
-    'Up to 3,285 rows (9 bodies × ~365 days). Use for bulk transit analysis of a whole year.',
+    'Fetch ephemeris data for a calendar year (or, with `month`, a single month within it) — all 9 ' +
+    'Jyotish bodies at daily resolution. Up to 3,285 rows for a full year (9 bodies × ~365 days); ' +
+    'response budget: default page is 400 rows (pass `limit`/`offset` to page further, or `month` ' +
+    'to narrow the underlying query itself). Use for bulk transit analysis.',
     EphemerisCacheYearInput.shape,
     async (params) => {
       const input = EphemerisCacheYearInput.parse(params)
       try {
-        const qs = new URLSearchParams({ year: String(input.year) })
-        const result = await sidecarGet(`/brahmagyan/ephemeris/all_bodies_range?start_date=${input.year}-01-01&end_date=${input.year}-12-31`)
+        const startDate = input.month
+          ? `${input.year}-${String(input.month).padStart(2, '0')}-01`
+          : `${input.year}-01-01`
+        const endDate = input.month
+          ? new Date(Date.UTC(input.year, input.month, 0)).toISOString().slice(0, 10) // last day of month
+          : `${input.year}-12-31`
+
+        const result = await sidecarGet(
+          `/brahmagyan/ephemeris/all_bodies_range?start_date=${startDate}&end_date=${endDate}`,
+        ) as { rows?: unknown[]; [k: string]: unknown }
+
+        const allRows = Array.isArray(result.rows) ? result.rows : []
+        const limit = input.limit ?? EPHEMERIS_DEFAULT_LIMIT
+        const offset = input.offset ?? 0
+        const pagedRows = allRows.slice(offset, offset + limit)
+
+        const payload = {
+          ...result,
+          rows: pagedRows,
+          pagination: {
+            offset, limit,
+            total: allRows.length,
+            returned_count: pagedRows.length,
+            more_available: offset + pagedRows.length < allRows.length,
+          },
+          window: { start: startDate, end: endDate, month_filter: input.month ?? null },
+        }
+
+        const json = JSON.stringify(payload)
+        // Same dual-output size discipline as the rest of the estate (register_p1_ganita.ts's
+        // DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) — never ship an unbounded text blob even after paging.
+        const text = Buffer.byteLength(json, 'utf8') > 50_000
+          ? JSON.stringify({ ...payload, rows: '[omitted — see pagination; page is still large; lower `limit`]' })
+          : json
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text }],
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)

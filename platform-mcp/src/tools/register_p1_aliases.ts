@@ -310,9 +310,19 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   // get_domain_reading → bodha_domain_reading_get
   regAlias(server, 'bodha_domain_reading_get',
-    'L2 domain reading via Bodha synthesis (same as get_domain_reading)',
+    'L2 domain reading via Bodha synthesis (same as get_domain_reading). D-1.5b: the ' +
+    'question-lens family is paginated (lens_limit/lens_offset, default 60/page) — see ' +
+    'response.lens_pagination.total for the true family size.',
     'marsys://tool/L2/query_domain_reading',
-    { domain: z.string().describe('Life domain (career, health, relationship, wealth, etc.)') }, principal)
+    {
+      domain: z.string().describe('Life domain (career, health, relationship, wealth, etc.)'),
+      max_signal_refs: z.number().int().min(1).max(2000).optional(),
+      response_format: z.enum(['default', 'full']).optional(),
+      lens_limit: z.number().int().min(1).max(200).optional()
+        .describe('D-1.5b response budget: max question-lens rows to return (default 60).'),
+      lens_offset: z.number().int().min(0).optional()
+        .describe('D-1.5b response budget: pagination offset into the question-lens family (default 0).'),
+    }, principal)
 
   // get_signals → bodha_signals_get
   // R5.2 A3 (battery X-3 finding): top_k=200 (the max this schema allows) measured 234,278
@@ -431,13 +441,21 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'house_from_frame per row — e.g. frame="chandra" answers "what house is X in, from Moon" ' +
     'in this ONE call. The response\'s own `frame_note` field states exactly how many rows in ' +
     'THIS call actually carry house_from_frame (R-28: pass ayanamsha_id explicitly for full ' +
-    'coverage — an unfiltered call spanning all 5 ayanamshas may only re-base a subset).',
+    'coverage — an unfiltered call spanning all 5 ayanamshas may only re-base a subset). ' +
+    'CR-50: the default page serves ONLY the 9 classical grahas + Lagna — pass ' +
+    'include_upagrahas=true to also fetch upagrahas/aprakasha bodies (served after, never ' +
+    'interleaved into the default page).',
     'marsys://tool/L1/get_positions',
     {
       frame:  z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
       planet: z.string().optional().describe(
         'Filter to a single graha (e.g. "Sun", "Moon", "Mars"). SC-20 fix: this alias previously ' +
         'had no planet param at all, so a caller had no way to narrow the payload.'),
+      include_upagrahas: z.boolean().optional().describe(
+        'CR-50: when true, also serves upagraha_position/aprakasha_position rows AFTER the 9 ' +
+        'grahas + Lagna. Default false — the default page is grahas + Lagna only.'),
+      categories: z.array(z.enum(['graha_position', 'upagraha_position', 'aprakasha_position'])).optional()
+        .describe('Explicit category list — overrides the CR-50 default and include_upagrahas entirely.'),
     }, principal)
 
   // ── W4-loop-1 (E-6 group4): fronting tools for computed-but-unserved assets ──────
@@ -1071,14 +1089,75 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   )
 
   // Also: ref_remedies_search (dedup companion per brief disposition)
+  //
+  // CR-42 residue (D-1.5b item 3): this schema always declared a `keyword` param, but the
+  // underlying `query_remedies` primitive (platform/src/lib/retrieve/remedy_tools.ts) only
+  // ever reads planet/domain/category/top_k off its params — `keyword` was silently dropped,
+  // a search-in-name-only. CR-42's established discipline elsewhere in this codebase is:
+  // either genuinely honor the param, or explicitly reject/flag when it can't. Genuinely
+  // honoring it (rather than rejecting) is the more useful fix here, since the corpus text
+  // fields ARE available on every returned row — this pools a bounded candidate set from the
+  // primitive, applies a real case-insensitive substring search across the corpus's text
+  // fields, and discloses the honest scope of that search (candidate_pool_size) so a caller
+  // never mistakes a bounded-pool search for a full-corpus one.
+  const REMEDY_SEARCH_FIELDS = [
+    'prescription_text', 'mantra_text', 'mantra_sanskrit', 'mantra_transliteration',
+    'deity', 'category', 'source_citation', 'classical_attestation_text', 'planet', 'domain',
+  ]
   server.tool(
     'ref_remedies_search',
-    '[Phase-1 alias] Reference remedies search (dedup companion; retained per §Step 4 disposition).',
+    '[Phase-1 alias] Reference remedies search (dedup companion; retained per §Step 4 disposition). ' +
+    'CR-42 fix: `keyword` is now GENUINELY applied as a case-insensitive substring search across ' +
+    `${REMEDY_SEARCH_FIELDS.join('/')} — the underlying query_remedies primitive has no native ` +
+    'keyword filter, so this pools a bounded candidate set and searches it client-side; see the ' +
+    'response\'s `keyword_search` receipt for the honest scope (candidate_pool_size) actually covered.',
     { keyword: z.string().optional(), planet: z.string().optional(), category: z.string().optional(), ...GlobalBase },
     async (params) => {
       try {
-        const data = await callPlatformPrim('query_remedies', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        const { keyword, limit, offset, ...rest } = params as Record<string, unknown>
+        void offset // query_remedies has no offset concept (top_k only) — accepted for schema parity, unused.
+        const kw = typeof keyword === 'string' ? keyword.trim() : ''
+        const desiredLimit = typeof limit === 'number' && limit > 0 ? limit : 10
+
+        if (!kw) {
+          // No keyword requested — planet/category are genuinely honored natively by the
+          // primitive; behave exactly as before, just mapping limit -> top_k honestly.
+          const data = await callPlatformPrim('query_remedies', { ...rest, top_k: desiredLimit }, principal)
+          return dualOutput(data)
+        }
+
+        const POOL_SIZE = Math.min(Math.max(desiredLimit * 10, 100), 500)
+        const data = await callPlatformPrim('query_remedies', { ...rest, top_k: POOL_SIZE }, principal) as
+          { result?: { results?: { content: string; source_canonical_id?: string; source_version?: string; confidence?: number }[] } }
+        const pool = data?.result?.results ?? []
+        const kwLower = kw.toLowerCase()
+        const matched = pool.filter(r => {
+          let row: Record<string, unknown>
+          try { row = JSON.parse(r.content) } catch { return false }
+          return REMEDY_SEARCH_FIELDS.some(f => {
+            const v = row[f]
+            return typeof v === 'string' && v.toLowerCase().includes(kwLower)
+          })
+        })
+        const served = matched.slice(0, desiredLimit)
+
+        return dualOutput({
+          ...data,
+          result: { ...(data?.result ?? {}), results: served },
+          keyword_search: {
+            applied: true,
+            keyword: kw,
+            fields_searched: REMEDY_SEARCH_FIELDS,
+            candidate_pool_size: pool.length,
+            matched_count: matched.length,
+            served_count: served.length,
+            note: 'CR-42: query_remedies has no native keyword filter — this is a genuine ' +
+              `client-side substring search over a BOUNDED candidate pool (top_k=${POOL_SIZE}), ` +
+              'NOT a full-corpus search. Remedies outside the pool are not searched; narrow with ' +
+              'planet/category to shrink the pool the keyword search actually covers, or raise ' +
+              '`limit` to widen it (pool = limit × 10, capped at 500).',
+          },
+        })
       } catch (err) { return errOut('ref_remedies_search', String(err)) }
     }
   )

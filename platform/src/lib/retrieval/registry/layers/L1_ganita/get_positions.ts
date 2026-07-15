@@ -32,7 +32,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
   name: 'get_positions',
   description:
     'Retrieve Gaṇita graha positions for a chart. Returns sidereal longitudes, rashi, nakshatra, pada, ' +
-    'retrograde status, and combust status for all grahas including upagrahas and aprakasha (dark) planets. ' +
+    'retrograde status, and combust status. ' +
+    'CR-50: the DEFAULT page serves ONLY the 9 classical grahas (Sun/Moon/Mars/Mercury/Jupiter/' +
+    'Venus/Saturn/Rahu/Ketu) plus Lagna (fact_category graha_position, fact_subject LAGNA/' +
+    'NAVAMSA_LAGNA) — upagrahas (Gulika, Mandi, etc.) and aprakasha (dark/shadow) bodies are NOT ' +
+    'interleaved into the default page. Pass `include_upagrahas: true` (or an explicit `categories` ' +
+    'list containing "upagraha_position"/"aprakasha_position") to fetch those behind this facet — ' +
+    'when present, upagraha/aprakasha rows are still served AFTER the grahas, never interleaved. ' +
     'Each row carries fact_id for Bodha constituent_facts_array back-reference. ' +
     'Covers fact_categories: graha_position, upagraha_position, aprakasha_position. ' +
     'Optional `frame` facet (lagna default | chandra | surya | arudha | karakamsha) re-bases each ' +
@@ -50,8 +56,16 @@ export const getPositionsCapability: CapabilityDescriptor = {
     },
     categories: {
       type: 'array',
-      description: 'Optional list of fact_categories to include. Defaults to all position categories.',
+      description: 'Optional EXPLICIT list of fact_categories to include — overrides the CR-50 default ' +
+        '(graha_position only) and `include_upagrahas` entirely when supplied.',
       items: { type: 'string', enum: ['graha_position', 'upagraha_position', 'aprakasha_position'] },
+    },
+    include_upagrahas: {
+      type: 'boolean',
+      description: 'CR-50: when true (and `categories` is omitted), also includes upagraha_position ' +
+        'and aprakasha_position rows behind this explicit facet — served AFTER the 9 grahas + Lagna, ' +
+        'never interleaved into the default page. Default false.',
+      default: false,
     },
     planet: {
       type: 'string',
@@ -89,7 +103,14 @@ export const getPositionsCapability: CapabilityDescriptor = {
       const chartId = args.chart_id as string
       const limit   = Math.min((args.limit as number) ?? 200, 1000)
       const offset  = (args.offset as number) ?? 0
-      const categories = (args.categories as string[]) ?? ['graha_position', 'upagraha_position', 'aprakasha_position']
+      // CR-50: an EXPLICIT `categories` list always wins (back-compat + power-user override).
+      // Otherwise, the default page is graha_position ONLY (9 grahas + Lagna) — upagraha_position/
+      // aprakasha_position are opt-in via `include_upagrahas`, never interleaved by default.
+      const includeUpagrahas = (args.include_upagrahas as boolean) === true
+      const categories = (args.categories as string[] | undefined)
+        ?? (includeUpagrahas
+          ? ['graha_position', 'upagraha_position', 'aprakasha_position']
+          : ['graha_position'])
       const frame = ((args.frame as string) ?? 'lagna') as ReferenceFrame
       if (!FRAME_VALUES.includes(frame)) {
         return {
@@ -133,7 +154,19 @@ export const getPositionsCapability: CapabilityDescriptor = {
         }
       }
       params.push(limit, offset)
-      sql += ` ORDER BY ayanamsha_id, fact_category, fact_key LIMIT $${params.length - 1} OFFSET $${params.length}`
+      // CR-50: when a call spans multiple categories (include_upagrahas=true or an explicit
+      // multi-category list), grahas + Lagna still LEAD the ordering — upagraha_position/
+      // aprakasha_position sort after graha_position rather than interleaving alphabetically
+      // (plain `fact_category` ASC would put aprakasha_position BEFORE graha_position).
+      sql += ` ORDER BY ayanamsha_id,
+                 CASE fact_category
+                   WHEN 'graha_position' THEN 0
+                   WHEN 'upagraha_position' THEN 1
+                   WHEN 'aprakasha_position' THEN 2
+                   ELSE 3
+                 END,
+                 fact_category, fact_key
+               LIMIT $${params.length - 1} OFFSET $${params.length}`
 
       const result = await query<Record<string, unknown>>(sql, params)
       let rows = result.rows ?? []
@@ -201,6 +234,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
+          include_upagrahas: includeUpagrahas,
           ...(frameNote ? { frame_note: frameNote } : {}),
         },
         is_error: false,
