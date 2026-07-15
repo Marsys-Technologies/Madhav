@@ -298,16 +298,40 @@ class TestChange2RatificationFactor(unittest.TestCase):
 
     def test_load_varga_ratification_degrades_when_table_absent(self):
         conn = _make_raising_conn(Exception('relation "chart_vichara" does not exist'))
-        lookup, available = _load_varga_ratification(conn, "chart-1")
+        lookup, available = _load_varga_ratification(conn, "chart-1", "lahiri_chitrapaksha")
         self.assertEqual(lookup, {})
         self.assertFalse(available)
 
     def test_load_varga_ratification_parses_rows_when_present(self):
         rows = [{"subject": "VEN", "domain": "wealth", "ratification_factor": 1.32}]
         conn = _make_conn([rows])
-        lookup, available = _load_varga_ratification(conn, "chart-1")
+        lookup, available = _load_varga_ratification(conn, "chart-1", "lahiri_chitrapaksha")
         self.assertTrue(available)
         self.assertEqual(lookup[("VEN", "wealth")], 1.32)
+
+    def test_load_varga_ratification_filters_by_ayanamsha_id(self):
+        """D-1.5a wave gate finding: confirmed live cross-ayanamsha contamination
+        for (JUP, wealth) ratification_factor (1 vs 1.4 across ayanamshas) —
+        assert the query binds ayanamsha_id, not just chart_id."""
+        captured_params = []
+        conn = MagicMock()
+
+        def execute(sql, params=None):
+            captured_params.append((sql, params))
+            cur = MagicMock()
+            cur.fetchall.return_value = []
+            return cur
+
+        conn.execute.side_effect = execute
+        conn.cursor.return_value = MagicMock()
+
+        _load_varga_ratification(conn, "chart-1", "lahiri_chitrapaksha")
+
+        self.assertEqual(len(captured_params), 1)
+        sql, params = captured_params[0]
+        self.assertIn("ayanamsha_id", sql)
+        self.assertIn("chart-1", params)
+        self.assertIn("lahiri_chitrapaksha", params)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -363,9 +387,40 @@ class TestChange3JudgedValence(unittest.TestCase):
 
     def test_load_vichara_valence_degrades_when_table_absent(self):
         conn = _make_raising_conn(Exception('relation "chart_vichara" does not exist'))
-        lookup, available = _load_vichara_valence(conn, "chart-1")
+        lookup, available = _load_vichara_valence(conn, "chart-1", "lahiri_chitrapaksha")
         self.assertEqual(lookup, {})
         self.assertFalse(available)
+
+    def test_load_vichara_valence_filters_by_ayanamsha_id(self):
+        """D-1.5a wave gate finding: without an ayanamsha_id filter, chart_vichara's
+        rows for OTHER ayanamshas silently overwrite the correct one in the lookup
+        dict (keyed only on (actor, target, varga), which is the same across every
+        ayanamsha). Caught live: (MAR, D1_HOUSE_2, D1) was 'strong_benefic' for every
+        row in the DB, yet bo_laksana served 'malefic' for lahiri_chitrapaksha —
+        because the query pulled in a different ayanamsha's row for the same key and
+        it won the dict's last-write-wins semantics. This test asserts the query
+        actually passes ayanamsha_id as a bound parameter, not just chart_id."""
+        captured_params = []
+
+        conn = MagicMock()
+
+        def execute(sql, params=None):
+            captured_params.append((sql, params))
+            cur = MagicMock()
+            cur.fetchall.return_value = []
+            return cur
+
+        conn.execute.side_effect = execute
+        cursor_mock = MagicMock()
+        conn.cursor.return_value = cursor_mock
+
+        _load_vichara_valence(conn, "chart-1", "lahiri_chitrapaksha")
+
+        self.assertEqual(len(captured_params), 1)
+        sql, params = captured_params[0]
+        self.assertIn("ayanamsha_id", sql)
+        self.assertIn("chart-1", params)
+        self.assertIn("lahiri_chitrapaksha", params)
 
     def test_load_vichara_divergence_signals_empty_when_table_absent(self):
         conn = _make_raising_conn(Exception('relation "chart_vichara" does not exist'))
