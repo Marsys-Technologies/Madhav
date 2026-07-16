@@ -934,19 +934,16 @@ def _evaluate_yoga(yoga: dict, state: ChartState) -> dict | None:
                     constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
                 break
 
-            elif relation == "kendra_lord_and_trikona_lord_associate":
-                # R6A.2 (Y-10): Kendra-Trikona Raja Yoga — any kendra lord
-                # (1/4/7/10) associated with any trikona lord (1/5/9): the
-                # foundational Parashari raja yoga. Formation citation:
-                # catalog row kendra_trikona_raja_yoga, source_citation
-                # BPHS Ch.39 (Raja Yoga adhyaya).
-                hit = _check_kendra_trikona_raja(state)
-                if hit:
-                    fired = True
-                    constituent_planets = hit["lords"]
-                    constituent_houses = hit["placement_houses"]
-                    constituent_fact_ids = state.fact_ids_for_planets(constituent_planets)
-                break
+            # NOTE (Y-10, D-1.6/S-3): "kendra_lord_and_trikona_lord_associate" (catalog row
+            # kendra_trikona_raja_yoga) is INTENTIONALLY absent from this dispatch — it is a
+            # confirmed byte-identical duplicate of the Lane-3 detector raja_yoga_kendra_trikona
+            # (both call the exact same _check_kendra_trikona_raja(state) helper; live-observed
+            # on 482012f1: two ga_yoga_firings rows with identical constituent_planets/houses/
+            # strength under two different canonical_ids). Superseded by raja_yoga_kendra_trikona
+            # (DETECTOR_INSERT_IDS), which carries a proper mandatory-cancellation callable —
+            # same supersession pattern already applied to budha_aditya/lakshmi_yoga (module
+            # header, R6A.2). Floored here via R6A2_FLOOR_REASONS (falls through to the generic
+            # floor branch below) so the catalog loop never double-inserts this finding.
 
             elif relation in R6A2_LORD_ASSOCIATION_RELATIONS:
                 # R6A.2 (Y-10): two-house lord-association yogas.
@@ -1229,6 +1226,13 @@ R6A2_VIPARITA_RELATIONS: dict[str, int] = {
 # relation returns no row; firing it without resolving the stated blocker
 # would be fabrication (B.10). "Scope questions default to LESS scope."
 R6A2_FLOOR_REASONS: dict[str, str] = {
+    "kendra_lord_and_trikona_lord_associate": (
+        "kendra_trikona_raja_yoga (catalog row): confirmed duplicate of the Lane-3 detector "
+        "raja_yoga_kendra_trikona (Y-10, D-1.6/S-3) — both evaluate _check_kendra_trikona_raja "
+        "identically; the catalog row is floored here so it never double-fires alongside the "
+        "detector row, which is the authoritative one (it carries a mandatory cancellation "
+        "callable this catalog relation lacks)"
+    ),
     "4th_and_9th_lords_in_mutual_kendra": (
         "kahala: the mutual-kendra clause is computable, but the catalog "
         "co-requirement {lagna_lord strong} has no ratified deterministic "
