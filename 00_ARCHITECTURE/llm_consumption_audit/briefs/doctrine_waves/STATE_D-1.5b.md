@@ -5,7 +5,7 @@ type: WAVE STATE LEDGER (CONDUCTOR_PROTOCOL §6.1)
 
 ```yaml
 wave: D-1.5b
-lifecycle_step: 5   # cycle-1 + cycle-2 both MERGED_AND_DEPLOYED. All 7 lanes (B-1..B-7) live on main. Next: single full L1->L5 rebuild (Cloud Run job path) + Gate B assertion battery.
+lifecycle_step: 8   # CLOSE. All 7 lanes deployed; full L1->L5 rebuild done; 3 real defects found+fixed during rebuild (B-4 amplifier x2, bo_laksana cross-writer delete); Gate B = 17/17 GREEN on deployed connector after 4 serving-gap fixes. REPORT_D-1.5b.md written. Wave CLOSED.
 brief_bound: true
 binder_annotations:
   - "B-1: all file:line citations confirmed within +/-1 line (brief's line numbers off by one vs actual). PyJHora is pip-installed (requirements.txt pinned 4.8.6), NOT repo-vendored as the brief states -- wording inaccuracy, harmless."
@@ -89,6 +89,10 @@ gate_b_run:
 next_phase:
   cycle_2: "B-3 (Sudarshana), B-4 (Bhavat Bhavam), B-6 (serving hygiene), B-7 (governance+derived view). B-3/B-4 need the salience DR formalized at cycle-2 open (Binder draft: sudarshana_agreement=1.15, frame_divergence=1.00, bhavat_bhavam_amplifier=0.85, subsystem=structural). B-6 is single-owner of the retrieval registry (serving). B-7 lands the N.6 density text + CI harness + dasha_lord_capability derived view."
   then: "single FULL L1->L5 rebuild via the Cloud Run job path (validated this session -- NOT the laptop proxy) + Gate B battery on the deployed connector. Gate B assertions must be built as harness scripts extended from Lane A-0's harness (no named lane owns this -- conductor/a small pre-gate task builds it)."
-gate: {run: false, green: [], red: []}
+gate_b_final:
+  run: true
+  result: "D-1.5b Gate B = 17/17 GREEN on the deployed connector (amjis-mcp @ 470f2290 proxying amjis-web's capability API). All B-* assertions pass: B1_chalit, B2_sudarshana, B3_bhavat_bhavam, B4_bhava_bala, B5_sav_bav_sign_keyed, B6_positions_lead, B7_budgets, B8_n6_anchor, B9_ci_density_job, B_karakamsha, B_shadbala_ratio, B_d2_hora_class, B_anchor_dedup, B_remedies_search_honest, B_structural_envelope, B_dasha_lord_capability, B_dosha_gate_kalasarpa."
+  path_to_green: "First live run surfaced 4 real serving gaps + 5 harness bugs + the rate-limit cascade. Fixed all 4 serving gaps (PR #575: shadbala INVARIANT, sudarshana class-scope, B7 lens-cap, d2-hora divisional_facts) + the harness bugs (0566e1d6) + B7 2nd-pass (PR #576: template_element_ids_jsonb.signal_ids was the residual 155KB->41KB) + wired the B2/B_d2_hora assertions to the live serving fixes (PR #576). B7 confirmed 41KB (was 909KB). Each fix independently diagnosed+tested; PR #575's 4-fix bundle adversarially verified (incl. DB-level INVARIANT-pivot-collision analysis -> no corruption)."
+  d1_5a_carryforward: "The 2 non-B reds in the full 32-battery (assertion 4 = CR-90 keyword_heuristic_v1 valence; A7 = parashari-aspects serving) are the IDENTICAL 2 items D-1.5a documented as PARKED (REPORT_D-1.5a.md lines 75-76) -- pre-existing, non-regressions, out of D-1.5b scope, and provably unaffected by D-1.5b's TS-serving-only fixes (valence_source is a build-time field). Also confirmed the deployed connector rate-limits under the full 32-assertion sustained load (429 cascade); the 17 B-* run in one batch stays under that threshold and is clean."
 updated_at: "2026-07-15 (D-1.5b pre-lane blocker RESOLVED; estate 64/64 lit & healthy via Cloud Run job; ready to spawn cycle-1 lanes B-5/B-2/B-1)"
 ```
