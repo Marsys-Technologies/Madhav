@@ -522,7 +522,7 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
     // serving path is now the D7 registry bridge + ganita_dasha_periods_get alias.
     registerQuerySpecialLagnasTool(srv)
     registerHolisticBundleRetrievalTool(srv, () => principal)
-    registerKalaTemporalRetrievalTool(srv)
+    registerKalaTemporalRetrievalTool(srv, principal)
     registerRemedyTools(srv, () => principal)
     registerPhalaEventAnchorsTool(srv, principal)
     registerMitigationMapTool(srv, principal)

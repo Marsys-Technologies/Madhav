@@ -1183,7 +1183,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   server.tool(
     'phala_anchors_get',
-    '[Phase-1 alias] L4 Phala event anchors — calibrated probabilistic event windows (same as phala_event_anchors).',
+    // O-7 (D-1.6 Lane S-6): description previously said "(same as phala_event_anchors)" —
+    // no tool by that name is registered; the primitive's actual TOOL_NAME is
+    // 'event_anchors' (phala_event_anchors.ts:227). This stale reference made the
+    // alias<->primitive pair undiscoverable/unverifiable by the O-7 conformance check
+    // (platform/scripts/audit/alias_conformance_check.ts) — corrected to the real name.
+    '[Phase-1 alias] L4 Phala event anchors — calibrated probabilistic event windows (same as event_anchors).',
     {
       chart_id:   z.string().uuid().describe('Chart UUID'),
       date_range: z.object({

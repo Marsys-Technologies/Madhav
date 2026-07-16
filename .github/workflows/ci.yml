@@ -299,10 +299,15 @@ jobs:
         #     removed from module during L0 Brahma seal (3a6ec226); planet case also mismatched.
         #     Re-enable when remedy_corpus retrieval interface is restored (L1 build arc).
         #   Re-enable when L0 engine rebuild re-populates these modules.
+        # D15b-F2 (D-1.6 Lane S-6, 2026-07-16): bodha_writers/__tests__/ (74 tests, DB-free,
+        # 0.06s) lives OUTSIDE tests/ and was never collected by this command — `pytest tests/`
+        # is a positional-arg scope, not a repo-wide discovery, so a whole test package sat
+        # invisible to CI. Added as a second positional arg; verified green standalone and in
+        # combination with tests/ before landing here.
         run: |
           pip install -r platform/python-sidecar/requirements.txt --quiet
           cd platform/python-sidecar
-          pytest tests/ \
+          pytest tests/ bodha_writers/__tests__ \
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
