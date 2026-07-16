@@ -155,3 +155,44 @@ describe('WP-1.3(f) — handler honors the ayanamsha it is handed', () => {
     expect(countCall()!.params[1]).toBe('true_chitra')
   })
 })
+
+// D-1.5b Gate B (CR-18 / B_shadbala_ratio) — ayanamsha-INVARIANT facts surface alongside the
+// requested ayanamsha. `required_rupa` (graha_shadbala_total) is stored under
+// ayanamsha_id='INVARIANT' (a fixed BPHS constant), while `ratio`/`rupa` are per-ayanamsha.
+// Filtering strictly on `ayanamsha_id = $2` dropped required_rupa from the pivot (0/9), failing
+// Gate B, which requires each shadbala row to carry BOTH ratio AND required_rupa.
+describe('D-1.5b Gate B — INVARIANT-scoped facts (required_rupa) surface with the requested ayanamsha', () => {
+  it('the WHERE clause includes INVARIANT alongside the bound ayanamsha (main + count)', async () => {
+    const handler = await getCapabilityHandler()
+    wire(1, [])
+    await handler({ chart_id: CHART_ID, ayanamsha_id: AYANAMSHA, shape: 'rows' })
+    // $2 is still the caller's ayanamsha, and INVARIANT is unioned in for ayanamsha-independent facts.
+    expect(mainCall()!.sql).toMatch(/ayanamsha_id IN \(\$2, 'INVARIANT'\)/)
+    expect(countCall()!.sql).toMatch(/ayanamsha_id IN \(\$2, 'INVARIANT'\)/)
+    expect(mainCall()!.params[1]).toBe(AYANAMSHA)
+  })
+
+  it('pivots an INVARIANT required_rupa into the SAME wide row as the per-ayanamsha ratio/rupa for a graha', async () => {
+    const handler = await getCapabilityHandler()
+    // Simulate the DB returning, for subject SUN in graha_shadbala_total: the per-ayanamsha
+    // `ratio` + `rupa` rows AND the INVARIANT `required_rupa` row (now reachable via the widened
+    // WHERE). All three share fact_subject='SUN', so the pivot must collapse them into one row.
+    const rows = [
+      { fact_id: 'r', fact_category: 'graha_shadbala_total', fact_subject: 'SUN', fact_key: 'ratio', fact_value_num: 1.694, fact_value_text: null, fact_value_jsonb: null, unit: null, verification_pass_status: 'pass', citation_ref: 'c' },
+      { fact_id: 'u', fact_category: 'graha_shadbala_total', fact_subject: 'SUN', fact_key: 'rupa', fact_value_num: 8.47, fact_value_text: null, fact_value_jsonb: null, unit: null, verification_pass_status: 'pass', citation_ref: 'c' },
+      { fact_id: 'q', fact_category: 'graha_shadbala_total', fact_subject: 'SUN', fact_key: 'required_rupa', fact_value_num: 5, fact_value_text: null, fact_value_jsonb: null, unit: null, verification_pass_status: 'pass', citation_ref: 'c' },
+    ]
+    wire(1, rows)
+    const res = await handler({ chart_id: CHART_ID, ayanamsha_id: AYANAMSHA, shape: 'pivoted', category: 'graha_shadbala_total' })
+
+    const facts = res.content['facts'] as Array<Record<string, unknown>>
+    const sun = facts.find(f => f['fact_subject'] === 'SUN')
+    expect(sun).toBeDefined()
+    // Both the per-ayanamsha ratio AND the INVARIANT required_rupa must be present on the row.
+    expect(sun!['ratio']).toBe(1.694)
+    expect(sun!['required_rupa']).toBe(5)
+    expect(sun!['rupa']).toBe(8.47)
+    // required_rupa carries its own fact_id for §N.5 back-reference.
+    expect((sun!['fact_ids'] as Record<string, string>)['required_rupa']).toBe('q')
+  })
+})

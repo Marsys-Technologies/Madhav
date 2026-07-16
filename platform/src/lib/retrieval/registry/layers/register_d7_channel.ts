@@ -927,11 +927,25 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 
       // ── Whitelisted facet -> parameterized SQL compilation (design §3 SQL idiom / P2 rule) ──
       const params: unknown[] = [chart_id, ayanamsha_id]
+      // D-1.5b Gate B (CR-18 / B_shadbala_ratio): ayanamsha-INVARIANT facts must surface
+      // alongside the requested ayanamsha's facts. Some L1 quantities are genuinely
+      // ayanamsha-independent and are stored by the ga_* writers under ayanamsha_id='INVARIANT'
+      // rather than duplicated across all stored ayanamshas — e.g. graha_shadbala_total's
+      // `required_rupa` (the classical minimum shadbala per graha: Sun/Mars/Saturn=5, Mercury=7,
+      // Jupiter=6.5, Venus=5.5, Moon=6 rupas — a fixed BPHS constant, not a per-ayanamsha value),
+      // graha_shadbala_naisargika, and the whole panchanga_* birth-anchor set. Filtering strictly
+      // on `ayanamsha_id = $2` silently dropped ALL of these: a graha_shadbala_total pivot served
+      // `ratio` + `rupa` (per-ayanamsha) but never `required_rupa` (INVARIANT), so Gate B — which
+      // requires each shadbala row to carry BOTH ratio AND required_rupa — failed at 0/9. INVARIANT
+      // facts belong to every ayanamsha view by definition; include them. Pivoting is by
+      // fact_subject, so an INVARIANT `required_rupa` for SUN merges into the same wide row as
+      // SUN's lahiri `ratio`/`rupa`, with no key collision (INVARIANT keys are disjoint from the
+      // per-ayanamsha keys). `IN ($2,'INVARIANT')` de-dupes automatically when $2 is 'INVARIANT'.
       let sql = `
         SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
-        WHERE chart_id = $1 AND ayanamsha_id = $2
+        WHERE chart_id = $1 AND ayanamsha_id IN ($2, 'INVARIANT')
       `
 
       const categoriesRaw = subjectsFromAbout.length > 0 && categoryHintFromAbout
