@@ -830,7 +830,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       house:            z.number().int().min(1).max(12).optional(),
       sign:             z.string().optional(),
       nakshatra:        z.string().optional(),
-      divisional_chart: z.string().optional(),
+      divisional_chart: z.string().optional().describe('Divisional chart code (e.g. "D9", "D2"). Also returns that varga\'s chart_divisionals-native EAV facts (per-varga sign/house, hora class incl. surya_hora/chandra_hora + hora_d2_house, varga dignity, house lords/occupants) in a separate `divisional_facts` section.'),
       keyword:          z.string().optional(),
       fact_subject:     z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP"). Comma-separated for multiple.'),
       shape:            z.enum(['pivoted', 'rows']).optional(),
