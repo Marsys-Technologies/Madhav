@@ -14,14 +14,14 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-2   # advance this pointer at each wave close (conductor cleanup step). D-1.5b CLOSED 2026-07-16 (Gate B 17/17 green; REPORT_D-1.5b.md).
+current_wave: D-1.6   # advance this pointer at each wave close (conductor cleanup step). D-1.5b CLOSED 2026-07-16 (Gate B 17/17 green; REPORT_D-1.5b.md). D-1.6 "Śuddhi" INSERTED by native order 2026-07-16 (Cowork): pre-D2 total cleanup — brief at briefs/doctrine_waves/BRIEF_D1_6.md; D-2 opens at its close.
   # D-1.5a CLOSED 2026-07-15: 13/15 gate green, final proof achieved live (wealth
   # verdict convergent_moderate/1.15 -> convergent_strong/~2.79, Dhana Yoga in
   # bearing_yogas). 2 items PARKED (documented, non-blocking, out of scope) — see
   # REPORT_D-1.5a.md. D-1.5b's Binder should re-verify all bindings fresh rather
   # than trusting this snapshot, and carry forward the ka_vighnakara FK defect +
   # A7/#4 PARK items as open agenda.
-wave_sequence: [D-1.5a, D-1.5b, D-2, D-3, D-4]
+wave_sequence: [D-1.5a, D-1.5b, D-1.6, D-2, D-3, D-4]  # D-1.6 inserted by native order 2026-07-16
 parallel_tracks:
   - Track 2 (infra): CR-40/CR-8 ephemeris/transit sidecar auth restore — hard prereq for D-3
     T-2/T-5. TRIGGER: the D-1.5a conductor launches it at wave close if not already green (a

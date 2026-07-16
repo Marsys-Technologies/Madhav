@@ -336,3 +336,21 @@ rows CR-54..CR-71; 5 rows ELEVATED (CR-54, CR-55, CR-56, CR-57, CR-59 escalated,
 table; §G.1 judgment-layer priority axis. v1.1 (2026-07-13) — §F added: full-estate retrieval sweep of all
 126 exercisable read tools on 482012f1; rows CR-39..CR-53; 3 rows ELEVATED (CR-40, CR-41, CR-42); §F.1
 priority tiering. v1.0 (2026-07-13) — §A–§E, rows CR-1..CR-38.*
+
+---
+
+## §M — 2026-07-14/15 Cowork addenda (APPENDED — reconciliation flag)
+
+**⚠ STATE NOTE (2026-07-15).** This file is at **v1.4** on disk. Cowork sessions on 2026-07-14/15 authored
+**§J (CR-90/91), §K (CR-92..96 + the §K.2 12-assertion D-1.5 gate + DR-1 doctrine ruling), and §L
+(CR-97..106 capability-elevation intake)** — those sections were **read and absorbed into
+`DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md` + the Doctrine-Waves briefs** (the campaign brief's gate table
+cites "register §K.2 ×12"), but the register FILE was subsequently rebuilt to v1.4 and does **not** currently
+carry them. **A merge is owed:** re-integrate CR-90..107 into this file, or formally designate the
+Doctrine-Waves briefs as the system of record and mark this register SUPERSEDED. Do not assume CR-90..107 are
+captured here just because the plan references them — verify against whichever file is authoritative
+(the exact CR-96 lesson). CR-107 is appended below so it is not lost in the interim.
+
+| ID | Finding | Class | Sev | Evidence | Fix direction | Disposition |
+|---|---|---|---|---|---|---|
+| CR-107 | **`muhurta_finder` serves a composite auspiciousness score with NO classical decomposition** — the reasons behind the number are unreachable, so consumers hand-derive them and get them wrong. Live specimen (482012f1, business, Jul 2026): July 16 2026 → `score 0.616` (`panchanga 0.475 / dasha 0.72 / transit 0.69 / signal 0.72`), tithi/nakshatra/yoga/vara named but **nothing decomposed**: no **transit-navamsa**, no **janma-tithi-return** flag (Jul 16 afternoon = Shukla Tritīyā = native's birth tithi — first-order, unsurfaced), no **Sade-Sati state** (transit Saturn ~20° Pisces = 2nd-from-natal-Moon, final leg, near-stationary — unsurfaced), no **nakshatra-nature** tag (Ashlesha = tīkṣṇa — the reason panchanga scored 0.475, unexplained). **Observed twice in the wild:** two expert muhurta write-ups for this date both hand-derived exalted Jupiter's navamsa and both got it WRONG (claimed Cancer-1st / Taurus-11th; **correct = Virgo, 3rd from D9 lagna** — Jupiter 9.3° Cancer → movable-sign N3 = Virgo, verified against ephemeris). The engine holds the data to prevent this and serves none of it | 5+7 | HIGH | live b97b6eb0: muhurta_finder(business, 2026-07-10..25) + query_planet_transit 2026-07-16 (Jup 9.3°Can/Pushya, Moon Ashlesha, Sun 29.7°Gem, Sat ~20°Pis) | Muhurta output must decompose: per-graha transit sign + nakshatra + **navamsa**; janma-tithi / janma-nakshatra return flags; Sade-Sati / kaṇṭaka-śani state; panchanga-element nature tags with the element that drove each sub-score; Abhijit / Rahu-Kalam / Gulika intraday windows. **Fixture: July 16 2026 / 482012f1.** | **→ D-3** (temporal lane; pairs with CR-99 AV-gating, CR-100 Sudarśana, CR-102 vedha) |
