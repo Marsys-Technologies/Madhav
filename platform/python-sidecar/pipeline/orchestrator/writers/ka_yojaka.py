@@ -15,7 +15,11 @@ import logging
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
-from services.ka_temporal import extract_lords_from_config
+from services.ka_temporal import (
+    extract_lords_from_config,
+    extract_lords_from_text,
+    lord_from_house_varga,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +40,39 @@ class KaYojakaWriter(WriterBase):
             )
 
         # Step 2: read all MSR signals for this chart (SELECT only — never write to bodha_*)
+        # WP-S4-R45/CR-5/CR-12/CR-48: shadbala_norm added — real per-signal strength
+        # feeding the non-affliction proxy below (kills the flat-0.5 alignment wall).
         with conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT signal_id, chart_id, ayanamsha_id, signal_type_class, signal_type_id,
-                       configuration_jsonb, constituent_facts_array, valence, dignity_score
+                       configuration_jsonb, constituent_facts_array, valence, dignity_score,
+                       shadbala_norm
                 FROM bodha_msr_signals WHERE chart_id = %s
                 """,
                 (chart_id,),
             )
             signals = cur.fetchall()
+
+        # CR-5/CR-12/CR-48 (flat dasha_activation_proximity_score=0.5 wall): the
+        # writer's downstream _proximity_score() formula (dignity * non_affliction)
+        # was ALWAYS collapsing to exactly 0.5 because strength_affliction_hook
+        # only ever carried the STRING label 'scale_by': 'dignity_score' — never
+        # an actual number under either 'dignity_score' or 'non_affliction' keys —
+        # so both factors silently hit their defaults (0.5 * 1.0 = 0.5) on every
+        # one of 49,315 rows for 482012f1 (verified live). Fix: propagate the
+        # REAL per-signal bodha_msr_signals.dignity_score and a chart-normalized
+        # shadbala_norm (min-max, same normalization idiom as the CGM/CDLM
+        # prefetches above) as the actual dignity/non_affliction numbers the
+        # formula reads. No fabrication — both source columns are already
+        # L2-computed; this only stops dropping them on the floor.
+        _shadbala_vals = [
+            float(s['shadbala_norm']) for s in signals
+            if s.get('shadbala_norm') is not None
+        ]
+        max_shadbala = max(_shadbala_vals) if _shadbala_vals else 1.0
+        if max_shadbala <= 0:
+            max_shadbala = 1.0
 
         # D6: pre-fetch CGM centrality (pagerank) by node_subject for this chart.
         # Used to add cgm_centrality_weight to each predicate's dasha_eligibility_rule.
@@ -53,6 +80,14 @@ class KaYojakaWriter(WriterBase):
 
         # D6: pre-fetch CDLM domain strengths for this chart (domain → link_strength).
         cdlm_domain_strength: dict[str, float] = self._fetch_cdlm_domain_strength(conn, chart_id)
+
+        # WP-S4-R45-iter2: pre-fetch the (ayanamsha, varga, house) -> bhava-lord
+        # map from L1 chart_facts. Used as the SECOND lord-resolution fallback
+        # (after extract_lords_from_config) for SUBSYSTEM/composite_state
+        # predicates whose configuration_jsonb carries `house` (int) + `varga`
+        # (e.g. "D9") but no direct graha key — net_argala_per_varga and
+        # siblings. §N.5-clean: every lord traces to a real L1 fact row.
+        house_lord_map: dict[tuple, str] = self._fetch_house_lord_map(conn, chart_id)
 
         # Step 3a: pratijna linkage — promise-register IDs per domain + multi-system confirmation
         # SAVEPOINT-guarded: soft dependency on P3B data (bodha_pratijna may not be built yet)
@@ -98,7 +133,11 @@ class KaYojakaWriter(WriterBase):
 
         # Step 3: classify + bind each signal
         # Connection uses dict_row factory — access columns by name, not integer index.
-        rows = []
+        # Two-pass: pass 1 resolves lords via config keys + house/varga (both
+        # in-memory); anything still unresolved is queued for pass 2's single
+        # batched fact_subject lookup (WP-S4-R45-iter2) rather than N+1 queries.
+        enriched = []  # list of (sig, sc, pred)
+        needs_fact_subject: list[tuple[int, str]] = []  # (index into enriched, fact_id)
         for sig in signals:
             signal_dict = {
                 'signal_id': sig['signal_id'],
@@ -110,9 +149,21 @@ class KaYojakaWriter(WriterBase):
                 'constituent_facts_array': sig['constituent_facts_array'],
                 'valence': sig['valence'],
                 'dignity_score': sig['dignity_score'],
+                'shadbala_norm': sig.get('shadbala_norm'),
             }
             sc = classify_signal(signal_dict)
             pred = build_predicate(signal_dict, sc)
+
+            # CR-5/CR-12/CR-48: feed the REAL per-signal dignity_score /
+            # normalized shadbala into strength_affliction_hook so
+            # date_resolver._proximity_score's dignity*non_affliction formula
+            # stops defaulting to 0.5*1.0 on every row (see prefetch note above).
+            if signal_dict['dignity_score'] is not None:
+                pred['strength_affliction_hook']['dignity_score'] = round(float(signal_dict['dignity_score']), 4)
+            if signal_dict['shadbala_norm'] is not None:
+                pred['strength_affliction_hook']['non_affliction'] = round(
+                    min(1.0, max(0.0, float(signal_dict['shadbala_norm']) / max_shadbala)), 4
+                )
 
             # WP-2.1 / R-45 (LANE0 root cause): the ratified binder only set
             # concrete `constituent_lords` for the YOGA class, so ~99% of
@@ -125,15 +176,40 @@ class KaYojakaWriter(WriterBase):
             # overwrites the frozen template semantics (same enrichment pattern
             # as the D6 / P5A additions below).
             existing_lords = pred['dasha_eligibility_rule'].get('constituent_lords') or []
+            config = signal_dict.get('configuration_jsonb')
+            if isinstance(config, str):
+                import json as _json
+                try:
+                    config = _json.loads(config)
+                except Exception:
+                    config = {}
+            config = config or {}
             if not existing_lords:
                 resolved_lords = extract_lords_from_config(
-                    signal_dict.get('configuration_jsonb'),
+                    config,
                     signal_type_id=signal_dict.get('signal_type_id'),
                     signal_type_class=signal_dict.get('signal_type_class'),
                 )
                 if resolved_lords:
                     pred['dasha_eligibility_rule']['constituent_lords'] = resolved_lords
                     pred['dasha_eligibility_rule']['constituent_lords_source'] = 'ka_yojaka:extract_lords_from_config'
+                    existing_lords = resolved_lords
+
+            # WP-S4-R45-iter2 fallback #2: SUBSYSTEM/composite_state predicates
+            # (net_argala_per_varga and siblings) carry `house` (int) + `varga`
+            # ("D9") in configuration_jsonb but no direct graha key — the house
+            # is the signal's subject, its BHAVA LORD is the activating lord.
+            # Resolved from the L1 lord_in_house_per_varga fact via the
+            # prefetched map — no fabrication, real chart_facts row.
+            if not existing_lords and 'house' in config and 'varga' in config:
+                house_lord = lord_from_house_varga(
+                    house_lord_map, signal_dict.get('ayanamsha_id'),
+                    config.get('varga'), config.get('house'),
+                )
+                if house_lord:
+                    pred['dasha_eligibility_rule']['constituent_lords'] = [house_lord]
+                    pred['dasha_eligibility_rule']['constituent_lords_source'] = 'ka_yojaka:house_varga_bhava_lord'
+                    existing_lords = [house_lord]
 
             # D6: enrich dasha_eligibility_rule with CGM centrality weight.
             # Primary graha is the planet most likely to be the graph node subject.
@@ -151,6 +227,36 @@ class KaYojakaWriter(WriterBase):
             pred['dasha_eligibility_rule']['pratijna_ids'] = pratijna_by_domain.get(domain, [])[:5]
             pred['dasha_eligibility_rule']['multi_system_confirmation_count'] = domain_confirmation.get(domain, 0)
 
+            idx = len(enriched)
+            enriched.append((sig, sc, pred))
+
+            # WP-S4-R45-iter2 fallback #3 (queued): still no lord, but the
+            # signal references an L1 chart_facts row — queue its fact_id for
+            # a single batched fact_subject lookup after this loop (avoids
+            # N+1 queries across ~20K+ predicates).
+            if not existing_lords:
+                facts = signal_dict.get('constituent_facts_array') or []
+                if facts:
+                    needs_fact_subject.append((idx, str(facts[0])))
+
+        # Fallback #3: one batched query for every queued fact_id, then a
+        # cheap in-memory second pass via extract_lords_from_text (§N.5 —
+        # every recovered lord traces to a real chart_facts.fact_subject).
+        if needs_fact_subject:
+            fact_ids = list({fid for _, fid in needs_fact_subject})
+            subject_by_fact_id = self._fetch_fact_subjects(conn, fact_ids)
+            for idx, fid in needs_fact_subject:
+                subject = subject_by_fact_id.get(fid)
+                if not subject:
+                    continue
+                lords = extract_lords_from_text(subject)
+                if lords:
+                    _sig, _sc, pred = enriched[idx]
+                    pred['dasha_eligibility_rule']['constituent_lords'] = lords
+                    pred['dasha_eligibility_rule']['constituent_lords_source'] = 'ka_yojaka:fact_subject_tokens'
+
+        rows = []
+        for sig, sc, pred in enriched:
             rows.append((
                 str(sig['chart_id']),
                 str(sig['ayanamsha_id']),
@@ -178,6 +284,71 @@ class KaYojakaWriter(WriterBase):
                 cur.executemany(_INSERT_SQL, batch)
 
         return WriterResult(asset_id='ka_yojaka', rows_inserted=len(rows))
+
+    def _fetch_house_lord_map(self, conn, chart_id: str) -> dict:
+        """WP-S4-R45-iter2: fetch chart_facts(fact_category='lord_in_house_per_varga')
+        and build {(ayanamsha_id, "{varga}_H{house}"): lord_name}. Rows are
+        shaped fact_subject="D9_H1", fact_value_text="Mars_in_H12" (the lord
+        OF D9-H1 IS Mars — the "_in_H12" suffix is where that lord currently
+        sits, irrelevant here; only the prefix is the lord name). SAVEPOINT-
+        guarded soft dependency (per _fetch_cgm_pagerank's pattern) — returns
+        {} on any failure rather than aborting the writer's transaction.
+        """
+        result: dict = {}
+        with conn.cursor() as sp:
+            sp.execute("SAVEPOINT sp_house_lord")
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT ayanamsha_id, fact_subject, fact_value_text
+                    FROM chart_facts
+                    WHERE chart_id = %s AND fact_category = 'lord_in_house_per_varga'
+                      AND fact_value_text IS NOT NULL
+                    """,
+                    (chart_id,),
+                )
+                rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_house_lord")
+            for r in rows:
+                lord = str(r['fact_value_text']).split('_in_')[0]
+                if lord:
+                    result[(str(r['ayanamsha_id']), str(r['fact_subject']))] = lord
+            logger.debug("ka_yojaka: house-lord map loaded — %d entries", len(result))
+        except Exception as exc:
+            with conn.cursor() as sp:
+                sp.execute("ROLLBACK TO SAVEPOINT sp_house_lord")
+            logger.debug("ka_yojaka: house-lord map fetch skipped: %s", exc)
+        return result
+
+    def _fetch_fact_subjects(self, conn, fact_ids: list) -> dict:
+        """WP-S4-R45-iter2: batch-fetch fact_subject for a list of chart_facts
+        fact_ids (the last-resort fallback #3 source). One query for the whole
+        chart rather than N+1. SAVEPOINT-guarded soft dependency.
+        """
+        result: dict = {}
+        if not fact_ids:
+            return result
+        with conn.cursor() as sp:
+            sp.execute("SAVEPOINT sp_fact_subjects")
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT fact_id, fact_subject FROM chart_facts WHERE fact_id = ANY(%s)",
+                    (fact_ids,),
+                )
+                rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_fact_subjects")
+            for r in rows:
+                result[str(r['fact_id'])] = r['fact_subject']
+            logger.debug("ka_yojaka: fact_subject batch loaded — %d/%d resolved", len(result), len(fact_ids))
+        except Exception as exc:
+            with conn.cursor() as sp:
+                sp.execute("ROLLBACK TO SAVEPOINT sp_fact_subjects")
+            logger.debug("ka_yojaka: fact_subject batch fetch skipped: %s", exc)
+        return result
 
     def _fetch_cgm_pagerank(self, conn, chart_id: str) -> dict[str, float]:
         """
