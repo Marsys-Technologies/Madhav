@@ -428,6 +428,48 @@ function reconcileReceiptWithTrimReport(
   }
 }
 
+// WP-S4-fix2 (Gate Ś #10 — receipt-honesty violation): `reconcileReceiptWithTrimReport` above
+// only downgrades a receipt key when the response-budget trimmer's own trim_report confirms a
+// backing path was cut to zero. That leaves a gap: a section can be genuinely empty (never had
+// data, not a trim casualty — e.g. the `kala_activations` timing hook when nothing forward-dated
+// exists) and the trim_report has no entry for it at all, so `reconcileReceiptWithTrimReport`
+// silently skips it and an affirmative pre-trim `timing_anchored: true` (stamped honestly at
+// write time against DIFFERENT backing data, e.g. real chart_dashas mahadasha windows) ships
+// unreconciled against a served payload whose timing_hooks arrays are ALL empty. This is the
+// exact "✓-with-empty-evidence" class the density-principle doctrine (CLAUDE.md §N.6 point 3)
+// and B.10 forbid. Fix: after applyMcpBudget, definitively re-derive `timing_anchored` from what
+// SURVIVED onto the wire — never from the pre-trim intent — and force it false (with a flag) if
+// every constituent timing array is empty in the actually-served content, regardless of why.
+function enforceTimingAnchoredHonesty(
+  receipt: Record<string, unknown>,
+  servedContent: Record<string, unknown> | undefined,
+  judgmentFlags: string[],
+): void {
+  const timing = (servedContent?.['checklist'] as Record<string, unknown> | undefined)
+    ?.['timing_hooks'] as Record<string, unknown> | undefined
+  const current = timing?.['current']
+  const hasCurrent = Array.isArray(current) && current.length > 0
+  const windowsByGraha = timing?.['mahadasha_windows_by_graha'] as Record<string, unknown> | undefined
+  const hasWindows = windowsByGraha
+    ? Object.values(windowsByGraha).some(w => Array.isArray(w) && w.length > 0)
+    : false
+  const activations = timing?.['kala_activations']
+  const hasActivations = Array.isArray(activations) && activations.length > 0
+  const servedTimingAnchored = hasCurrent || hasWindows || hasActivations
+
+  const priorAffirmative = receipt['timing_anchored'] === true ||
+    (typeof receipt['timing_anchored'] === 'string' && receipt['timing_anchored'] !== 'false')
+  if (!servedTimingAnchored && priorAffirmative) {
+    receipt['timing_anchored'] = false
+    judgmentFlags.push(
+      'timing_anchored_forced_false: the served timing_hooks (current/mahadasha_windows_by_graha/' +
+      'kala_activations) are all empty on the wire — receipt.timing_anchored downgraded from an ' +
+      'affirmative pre-trim/pre-serve value rather than shipping a "✓-with-empty-evidence" receipt ' +
+      '(Gate Ś #10; CLAUDE.md §N.6 point 3 / B.10).',
+    )
+  }
+}
+
 // ── Dual output helper ────────────────────────────────────────────────────────
 
 // S3 fix (R5 W0a perf lane, design §21 serialization tax — measured 2.4x):
@@ -1978,6 +2020,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           varga_confirmed: ['content.checklist.varga_confirmation.rows'],
           timing_anchored: ['content.checklist.timing_hooks.current', 'content.checklist.timing_hooks.mahadasha_windows_by_graha'],
         }, budgeted['trim_report'] as TrimReportEntry[] | null | undefined)
+        // WP-S4-fix2 (Gate Ś #10): definitive post-trim honesty guard — see
+        // enforceTimingAnchoredHonesty's docstring. Runs AFTER the path-matched reconcile above
+        // so it catches the case that reconcile's trim_report-path matching cannot: a timing
+        // array that was already empty pre-trim (never appears in trim_report at all) rather
+        // than one the budget trimmer cut to zero.
+        enforceTimingAnchoredHonesty(
+          receipt,
+          budgeted['content'] as Record<string, unknown> | undefined,
+          budgeted['judgment_flags'] as string[] | undefined ?? [],
+        )
         return dualOutputBudgeted(budgeted)
       } catch (err) {
         return errorOutput('judgment_query', String(err), { chart_id })
