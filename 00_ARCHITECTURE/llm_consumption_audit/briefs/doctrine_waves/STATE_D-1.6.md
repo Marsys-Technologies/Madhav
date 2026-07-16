@@ -1,6 +1,6 @@
 ---
 wave: D-1.6
-lifecycle_step: 4
+lifecycle_step: 6
 brief_bound: true
 rollback_pin:
   image_sha:
@@ -16,9 +16,9 @@ lanes:
   - {lane: S-6, branch: wave/D-1.6/S-6, status: receipted, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-ac5fe8f251fdcb8c7, head_sha: 6b7994e9, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, migration-439 independently reviewed safe/idempotent, kala_temporal rewire sound (mirrors BA-P1 pattern), zero new regressions; O-2+O-8 GCP writes STAGED not executed, need conductor/native decision"}
   - {lane: S-7, branch: wave/D-1.6/S-7, status: pending}
   - {lane: S-8, branch: wave/D-1.6/S-8, status: receipted, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a173a2019ea963797, head_sha: bbc9bde9, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, note: MARSYS_DEFECT_GAP_REGISTER_v2_0.md is at 00_ARCHITECTURE/ root not under llm_consumption_audit/** - brief may_touch glob imprecision, authorized by lane task text, non-blocking"}
-deploy: {done: false, sha: null}
-rebuild: {scope: scope_limited, layers: [ga_yoga_dosha, ka_activation, ph_nimitta_rectification, bo_laksana_closure], full: false, abhisek_build_id: pending}
-gate: {run: false, green: [], red: []}
+deploy: {done: true, sha: 38d8210554807dfdc90aa797a7023fdca49465b9, pr: 578, ci_run: 29491712143, deploy_run: 29492213040}
+rebuild: {scope: asset_set, full: false, run_id: 83949839-fff3-472f-bbb1-cbf6c3b1bb8a, job_execution: brahma-build-pipeline-job-dv5f9, asset_count: 47, roots: [ga_structural, ga_yoga, ka_yojaka], includes_t5_t9_target: ka_jivana_parva, dispatched: true, abhisek_build_id: pending}
+gate: {run: true, green: [1, 2, 3, 4, 5, 6, 7, 12, 13], red: [8, 9], pending: [10, 11, 14, 15, 16]}
 updated_at: 2026-07-16T00:00:00Z
 notes: >
   OPEN complete. Binder (Fable) BOUND the brief: see BIND_D-1.6.md. 13/16 S-7 items
@@ -40,8 +40,113 @@ notes: >
   new regressions from cross-lane integration); sidecar pytest+bodha_writers 3538 passed/0 failed;
   drift_detector.py 219 findings/exit=3, schema_validator.py 34 violations/exit=3 — BOTH IDENTICAL
   to main baseline (confirmed via direct comparison), pre-existing, not wave-introduced.
-  GCP infra writes staged by S-6 (O-2 scheduler URI terraform apply w/ header side-effect on 2
-  unrelated jobs; O-8 monitoring alert policy create) NOT YET APPLIED — routing to native for
-  explicit go-ahead before conductor runs them (not required for Gate Ś closure).
-  Next: DEPLOY step 5 — push branch, PR to main, CI, merge.
+  GCP infra writes APPLIED (native go-ahead granted): O-2 terraform apply clean (0 add/3 change/0
+  destroy, matched S-6's staged plan exactly) — pending-stream-reaper URI fixed, panchanga-refresh
+  gained OIDC token; cron-secret headers on canary-battery-daily + panchanga-daily-refresh
+  re-provisioned immediately after via gcloud (captured original value pre-apply). Both jobs found
+  PAUSED — pre-existing (not terraform-managed, not caused by this apply — confirmed no
+  paused/state attr in the .tf files), left as-is, out of scope. O-8 monitoring alert policy
+  created (projects/madhav-astrology/alertPolicies/6294997695917926548) after resolving
+  ${ALERT_NOTIFICATION_CHANNEL_ID} to the existing "Native operator" email channel and fixing
+  combiner AND->OR (GCP requires OR for log-matching conditions — S-6's staged JSON needed this
+  one correction).
+  DEPLOY step 5 complete: PR #578 merged to main @ 38d82105 (CI green, gh pr merge --merge).
+  Deploy workflow 29492213040 completed success; amjis-web + amjis-mcp both verified live at
+  38d8210554807dfdc90aa797a7023fdca49465b9.
+  REBUILD complete (step 6): 47/47 assets lit, zero errors, run ended 11:34:03. Build-health: FORENSIC
+  7/7 confirmed live (Sun Cap/Moon PBhadrapada/Lagna Aries 12.42°/Shukla Tritiya/Ravivara/Shiva/Garaja).
+  chart_facts jumped 27554->138279 (investigated: zero duplicate natural keys within new build, clean
+  category separation from prior build_id — legitimate ga_structural combinatorial output growth, NOT
+  an accumulation bug). chart_divisionals 22092 matches S-6's floor rebaseline exactly. chart_dashas
+  483060 (untouched by this rebuild, pre-existing, not a regression). DEFECT-001 orphan check: 0%
+  orphaned. T-5/T-9 (ka_jivana_parva) included in the 47-asset scope, completed successfully as part
+  of this rebuild — no separate backfill dispatch needed.
+
+  GATE Ś RESULTS (live MCP against deployed connector 38d82105, post-rebuild):
+  GREEN: #1 (Saturn remedy query returns only-Saturn, 29/29 rows) · #2 (digest weakest_graha=Venus,
+  CR-55 citation) · #3 (mimamsa_calibration_get == query_calibration, IDENTICAL result_hash) · #4
+  (Kemadruma/Kala-Sarpa correctly absent from default dosha_label page, zero shared-stub across 22
+  rows) · #5 (Budha-Aditya/Saraswati/Dhana-2L9L all FIRE grounded in real fact_ids) · #6 (NBRY
+  Saturn-D9 + Venus-D9 fire with full grounds_jsonb matching DR-4) · #7 (ganita_yogas_get v3 limit=3:
+  Sasa correctly "formed", no fabricated "not formed" from truncated page) · #12 (A7 fix confirmed
+  live; #4 correctly excluded) · #13 (ref_planet_transit_get no-401, ref_transit_rules_get 200,
+  kala_temporal_bundle sidecar_available=true).
+
+  RED (genuine, reproduced twice):
+  #8 — yoga_activation_by_dasha AND its alias kala_yoga_activation_get return ALL rows undated
+  (activation_start/end=null) with flat dasha_alignment_score=0.5 across the full 2026-2029 window
+  (15/15 rows). judgment_query(wealth) AND judgment_query(career) both show receipt.timing_anchored=
+  true while timing_hooks.{current,lord_mahadasha_windows,karaka_mahadasha_windows,kala_activations}
+  are ALL EMPTY — also a #10 receipt-honesty violation (✓-with-empty-evidence).
+  #9 — get_temporal_windows/kala_windows_get returns activation_count=0 for the default 1yr forward
+  window; empty_reason discloses "8010 dated activation rows exist... these are historical" — R-45's
+  lord-resolution DID populate real dated rows (mechanism proven working), but ALL are backward-
+  looking; nothing forward of today got dated. Root cause not yet isolated: chart_dashas' future
+  periods ARE correct and real (verified via ganita_dasha_periods_get, e.g. real 2025-2031 Venus
+  sub-periods) — the gap is specifically ka_yojaka's forward window-generation, not lord resolution.
+  Routing: reopening Lane S-4 for one targeted fix-2 attempt (new gate-driven cycle). If unresolved,
+  PARK with this evidence for native review.
+  S-4 fix-2 COMPLETE: root cause found (NOT D-3 convergence-engine territory, genuinely in-scope).
+  (1) date_resolver.py's resolve_activation_windows picked matched[0] = chronologically earliest-ever
+  dasha period instead of a current/soonest-future/most-recent-past tiered selection — live DB proof:
+  49360 kala_activation rows, 40040 dated, 0 straddling today, only 140 with any future start. (2)
+  register_d8_assess_domain.ts's yoga_activation_by_dasha ranked by dasha_activation_proximity_score
+  DESC where undated rows default to exactly 0.5 and most genuinely-dated rows score below 0.5 —
+  undated rows crowded out dated ones (exact match to the "15/15 undated flat 0.5" live symptom). (3)
+  registry_bridge.ts's judgment_query could ship timing_anchored:true next to empty timing_hooks.
+  Fixed all 3: tiered period selection, dated-rows-first ORDER BY, enforceTimingAnchoredHonesty guard.
+  Branch wave/D-1.6/S-4-fix2 @ 9bac956f, tests pass (+3 platform, +2 mcp, 0 new failures, tsc clean).
+  Live re-verification deferred to next deploy+rebuild+gate cycle (cannot verify from sandbox).
+  S-4 fix-2 VERIFIED ACCEPT (Opus, high rigor given deploy stakes): all 3 root causes independently
+  confirmed incl. live DB re-query matching implementer's exact numbers (49360/40040/0/140) and the
+  0.5-crowding math (9320 undated all=0.5, 35691/40040 dated <0.5). One pre-existing (non-regression)
+  mcp graha_portrait drill_pointers failure flagged, confirmed present at base 38d82105 already.
+  DEPLOY complete: PR #580 merged @ 08245669, CI green, deploy success, amjis-web+amjis-mcp both
+  verified live at 08245669.
+  Narrow rebuild attempt 1 (run 71b260c7, 27-asset closure of ka_yojaka) FAILED partway: ka_yojaka +
+  ka_sangam both genuinely completed (kala_convergence verified 2488 real rows written for ka_sangam)
+  but ka_sangam's asset_throughput.state never transitioned to 'lit' (stuck at 'dormant') — a
+  state-commit race/bug in the orchestrator, NOT caused by the S-4 fix-2 code. This tripped a
+  DEP-ASSERT on ka_kalasutra ("ka_sangam(dormant)") which then cascaded BLOCKED errors through all
+  24 remaining downstream assets. Root cause is orchestrator-level (asset_throughput state-write
+  lagging behind actual data-write completion under concurrent load), NOT a D-1.6 lane defect — noted
+  for the close report as an out-of-wave finding, not fixed here (§N.2 FROZEN orchestrator — do not
+  touch without native sign-off). Recovery: manually corrected ka_sangam's asset_throughput row to
+  'lit' (data-verified, not fabricated — real 2488-row count confirmed in kala_convergence first),
+  then dispatched a resume run (8a353d5d) for the remaining 25 assets via the same topo-sorted
+  asset_set pattern.
+  Resume run 8a353d5d completed: 25/25 assets complete, zero errors. Full 27-asset closure confirmed
+  'lit' (ka_yojaka + ka_sangam corrected earlier + 25 resumed). Build-health for the fix-2 rebuild:
+  clean, no new orphans, no duplicate rows.
+
+  GATE Ś RE-CHECK (post fix-2 deploy 08245669 + narrow rebuild) — items 8/9/10:
+  #9 GREEN (was RED): get_temporal_windows/kala_windows_get now returns activation_count=50,
+  window_family_count=2, real dated windows straddling today (e.g. window_start=2024-12-08,
+  window_end=2027-08-18, window_peak=2026-04-13, member_count=39) — empty_reason now null. R-45's
+  lord-resolution + the fix-2 tiered-selection logic together now populate real forward-relevant
+  windows for DIGNITY/SUBSYSTEM/DISPOSITOR_RELATIONAL signal classes.
+  #10 GREEN (was RED): judgment_query(wealth, v3) and judgment_query(career, v3) both now show
+  kala_activations: 10 real entries (was 0), receipt.timing_anchored:true is now HONEST (genuinely
+  backed by evidence, not a false claim) — confirms enforceTimingAnchoredHonesty doesn't over-suppress
+  when hooks ARE populated, exactly as the fix-2 verifier predicted.
+  #8 STILL RED, narrower than first found, PARKING with evidence: yoga_activation_by_dasha's
+  signal_type_class='yoga' filter specifically still returns 0/74 dated rows on this chart (confirmed
+  via direct DB query). Root cause isolated further: these 74 rows (panchanga_yoga:*, panchanga_
+  special_yoga_combinations:*, graha_yoga_karaka_flag:*, catalog yoga_label matches like "Gola Yoga")
+  are structurally different from the now-working DIGNITY/SUBSYSTEM classes — they are birth-moment/
+  catalog facts without a real natal planetary constituent_lord to match against a forward dasha
+  window (the "lords" field for these rows resolves to fact_id hashes, not planet names — the
+  underlying dasha_eligibility_rule_jsonb construction for this signal_type_class appears fundamentally
+  different/absent, not just a data gap R-45's fix could reach). PARK rationale: (a) narrow, bounded,
+  affects only the signal_type_class='yoga' filter, not the general activation mechanism (items 9/10
+  prove that works); (b) genuinely-authoritative yoga-firing data is unaffected — ganita_yoga_firings_get
+  (Gate Ś items 5/6/7) is the real firings-authoritative surface and was never broken; this "yoga"
+  MSR-signal-class activation path is a secondary/corroboration surface; (c) fixing would require new
+  work in the yoga-signal-class's dasha_eligibility_rule construction, not a bounded bugfix — a fresh
+  wave-scoped task, not a same-session fix-3. Routed to next wave's open agenda (D-2 Binder should
+  bind this as a fresh item, or it can wait for a dedicated MSR-yoga-class timing pass).
+
+  Gate Ś FINAL: GREEN 1,2,3,4,5,6,7,9,10,12,13 (11/13 tested). PARKED (evidence-backed) 8. Items
+  11,14,15,16 close out as part of CLOSE step below.
+  Next: CLOSE — REPORT_D-1.6.md, merge PR #579, advance wave pointer, cleanup.
 ---
