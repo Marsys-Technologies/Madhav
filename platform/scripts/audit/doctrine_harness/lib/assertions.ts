@@ -1496,6 +1496,15 @@ const GATE_B_ASSERTIONS: AssertionDef[] = [
 
 export const ALL_ASSERTIONS: AssertionDef[] = [k2_1, k2_2, k2_3, k2_4, k2_5, k2_6a, k2_6b, k2_7, k2_8, k2_9, k2_10, k2_11, k2_12, a5, a7, ...GATE_B_ASSERTIONS]
 
+// D-2 Lane V-0 (BIND_D-2.md §F1.7 ledger row 6 — "extends doctrine_harness, never
+// duplicates"): re-exported so wealth_conclusions.ts (the §G.0 six-conclusion harness)
+// reuses these exact live-shape-verified parsers/pagers instead of re-deriving its own
+// copies of the same response-shape knowledge. Deliberately NOT imported back into THIS file
+// (would create an assertions.ts <-> wealth_conclusions.ts circular import) — run_master_gate.ts
+// imports ALL_ASSERTIONS (this file) and WEALTH_CONCLUSION_ASSERTIONS (wealth_conclusions.ts)
+// separately and runs both, one level up.
+export { fetchWealthSignals, v3Envelope, chartFactsRows, ganitaYogasV3Payload, judgmentQueryBearingYogas, positionsRows, fetchSignalsGeneric }
+
 export async function runAssertion(def: AssertionDef, ctx: RunContext): Promise<AssertionResult> {
   try {
     return await def.run(ctx)
