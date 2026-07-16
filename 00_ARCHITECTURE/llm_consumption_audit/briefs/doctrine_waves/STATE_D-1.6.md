@@ -115,5 +115,38 @@ notes: >
   'lit' (data-verified, not fabricated — real 2488-row count confirmed in kala_convergence first),
   then dispatched a resume run (8a353d5d) for the remaining 25 assets via the same topo-sorted
   asset_set pattern.
-  Next: monitor resume run 8a353d5d to completion, re-run Gate Ś items 8/9/10 live, then CLOSE.
+  Resume run 8a353d5d completed: 25/25 assets complete, zero errors. Full 27-asset closure confirmed
+  'lit' (ka_yojaka + ka_sangam corrected earlier + 25 resumed). Build-health for the fix-2 rebuild:
+  clean, no new orphans, no duplicate rows.
+
+  GATE Ś RE-CHECK (post fix-2 deploy 08245669 + narrow rebuild) — items 8/9/10:
+  #9 GREEN (was RED): get_temporal_windows/kala_windows_get now returns activation_count=50,
+  window_family_count=2, real dated windows straddling today (e.g. window_start=2024-12-08,
+  window_end=2027-08-18, window_peak=2026-04-13, member_count=39) — empty_reason now null. R-45's
+  lord-resolution + the fix-2 tiered-selection logic together now populate real forward-relevant
+  windows for DIGNITY/SUBSYSTEM/DISPOSITOR_RELATIONAL signal classes.
+  #10 GREEN (was RED): judgment_query(wealth, v3) and judgment_query(career, v3) both now show
+  kala_activations: 10 real entries (was 0), receipt.timing_anchored:true is now HONEST (genuinely
+  backed by evidence, not a false claim) — confirms enforceTimingAnchoredHonesty doesn't over-suppress
+  when hooks ARE populated, exactly as the fix-2 verifier predicted.
+  #8 STILL RED, narrower than first found, PARKING with evidence: yoga_activation_by_dasha's
+  signal_type_class='yoga' filter specifically still returns 0/74 dated rows on this chart (confirmed
+  via direct DB query). Root cause isolated further: these 74 rows (panchanga_yoga:*, panchanga_
+  special_yoga_combinations:*, graha_yoga_karaka_flag:*, catalog yoga_label matches like "Gola Yoga")
+  are structurally different from the now-working DIGNITY/SUBSYSTEM classes — they are birth-moment/
+  catalog facts without a real natal planetary constituent_lord to match against a forward dasha
+  window (the "lords" field for these rows resolves to fact_id hashes, not planet names — the
+  underlying dasha_eligibility_rule_jsonb construction for this signal_type_class appears fundamentally
+  different/absent, not just a data gap R-45's fix could reach). PARK rationale: (a) narrow, bounded,
+  affects only the signal_type_class='yoga' filter, not the general activation mechanism (items 9/10
+  prove that works); (b) genuinely-authoritative yoga-firing data is unaffected — ganita_yoga_firings_get
+  (Gate Ś items 5/6/7) is the real firings-authoritative surface and was never broken; this "yoga"
+  MSR-signal-class activation path is a secondary/corroboration surface; (c) fixing would require new
+  work in the yoga-signal-class's dasha_eligibility_rule construction, not a bounded bugfix — a fresh
+  wave-scoped task, not a same-session fix-3. Routed to next wave's open agenda (D-2 Binder should
+  bind this as a fresh item, or it can wait for a dedicated MSR-yoga-class timing pass).
+
+  Gate Ś FINAL: GREEN 1,2,3,4,5,6,7,9,10,12,13 (11/13 tested). PARKED (evidence-backed) 8. Items
+  11,14,15,16 close out as part of CLOSE step below.
+  Next: CLOSE — REPORT_D-1.6.md, merge PR #579, advance wave pointer, cleanup.
 ---
