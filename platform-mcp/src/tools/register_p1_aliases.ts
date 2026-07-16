@@ -652,13 +652,48 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   )
 
   // get_projections → kala_projections_get
-  regAlias(server, 'kala_projections_get',
-    'L3 time-indexed projections (same as get_projections)',
-    'marsys://tool/L3/query_projections',
+  // CR-6 (S-4): this alias used to declare start_date/end_date, which the underlying
+  // primitive (query_projections.ts) has NEVER understood (it reads horizon_years /
+  // domain / limit — no date_from/date_to concept at all) — those two params were a
+  // total silent no-op. Worse, domain and max_projections (which the primitive AND
+  // get_projections DO honor) were absent from the schema entirely, so a caller
+  // passing them had them silently stripped before the handler ever ran. Rewritten
+  // as a direct mirror of get_projections (registry_bridge.ts) rather than the
+  // generic regAlias() shape, including its client-side max_projections cap (F-008).
+  server.tool(
+    'kala_projections_get',
+    '[Phase-1 alias] L3 time-indexed probabilistic projections (same as get_projections).',
     {
-      start_date: z.string().optional(),
-      end_date:   z.string().optional(),
-    }, principal)
+      ...ChartBase,
+      domain: z.string().optional().describe('Domain to project (e.g. career, relationship).'),
+      horizon_years: z.number().int().min(1).max(20).optional().describe('Projection horizon in years (default: 5).'),
+      max_projections: z.number().int().min(1).max(200).optional().describe(
+        'Max projections to return (default: 20; the primitive is otherwise unbounded).'
+      ),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, domain, horizon_years, max_projections } =
+        params as Record<string, unknown>
+      if (!chart_id) return errOut('kala_projections_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L3/query_projections', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          ...(domain ? { domain } : {}),
+          horizon_years: (horizon_years as number | undefined) ?? 5,
+        }, principal)
+        const projData = data as Record<string, unknown>
+        const projections = (projData['projections'] as unknown[]) ?? []
+        const cap = (max_projections as number | undefined) ?? 20
+        const boundedProjections = projections.slice(0, cap)
+        return dualOutput({
+          ...projData,
+          projections: boundedProjections,
+          projections_total: projections.length,
+          projections_returned: boundedProjections.length,
+        }, 'kala_projections_get')
+      } catch (err) { return errOut('kala_projections_get', String(err), { chart_id }) }
+    }
+  )
 
   // get_classical_citation → ref_classical_citation_get
   server.tool(

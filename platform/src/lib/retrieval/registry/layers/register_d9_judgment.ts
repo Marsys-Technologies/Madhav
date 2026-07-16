@@ -393,6 +393,15 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Max yoga/dosha signals to include in the bearing-yogas check (default: 15, max: 50).',
     },
+    as_of_date: {
+      type: 'string',
+      description:
+        'CR-1/R-39/T-3: point-in-time date (ISO 8601: YYYY-MM-DD) the timing hooks are anchored ' +
+        'to. Default: today. Forwarded to the current-dasha-period fetch (containment filter — an ' +
+        'expired dasha is never served as "current" for a past/future as_of_date) and to the ' +
+        'kala_activation lookup below. Does not change which chart facts are read (those are ' +
+        'timeless natal facts) — only which "what is active" timing hooks are surfaced.',
+    },
   },
 
   archetype: 'rich_relational',
@@ -412,6 +421,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     'marsys://tool/L1/get_divisionals',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L1/get_dashas',
+    'marsys://tool/L3/query_temporal_activation',
     'marsys://tool/L2/traverse_chart_graph',
     'marsys://tool/L0/query_classical_texts',
   ],
@@ -431,6 +441,9 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     const domainInput = (args['domain'] as string | undefined)?.trim().toLowerCase()
     const bhavaInput = args['bhava'] !== undefined ? Number(args['bhava']) : undefined
     const max_signals = Math.min(Number(args['max_signals'] ?? 15), 50)
+    // CR-1/R-39/T-3: as_of_date now forwarded through the whole timing-hooks
+    // chain instead of a hardcoded `today` — see Step 9 below.
+    const as_of_date = (args['as_of_date'] as string | undefined) ?? new Date().toISOString().slice(0, 10)
 
     let spec: DomainSpec
     let domainKey: string | null = null
@@ -673,13 +686,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       )
 
       // ── Step 9: timing hooks (reuses get_dashas — no parallel dasha query) ──
-      const timing: Record<string, unknown> = { current: null, lord_mahadasha_windows: [], karaka_mahadasha_windows: [] }
+      // CR-1/R-39/T-3: as_of_date (default today) now drives the "current" fetch instead
+      // of a hardcoded today — get_dashas' as_of_date containment filter
+      // (start_date <= X AND end_date >= X) means an expired dasha is never served as
+      // "current" for a past as_of_date and a not-yet-started one never for a future date.
+      const timing: Record<string, unknown> = {
+        current: null, lord_mahadasha_windows: [], karaka_mahadasha_windows: [],
+        kala_activations: [],
+      }
       let timingAnchored = false
       try {
         const { getDashasCapability } = await import('./L1_ganita/get_dashas')
-        const today = new Date().toISOString().slice(0, 10)
         const currentRes = await getDashasCapability.handler(
-          { chart_id, ayanamsha_id, system: 'vimshottari', as_of_date: today, all_levels: true, limit: 5 },
+          { chart_id, ayanamsha_id, system: 'vimshottari', as_of_date, all_levels: true, limit: 5 },
           undefined,
         )
         if (!currentRes.is_error) {
@@ -702,22 +721,60 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           }
         }
         timing['mahadasha_windows_by_graha'] = windowsByGraha
+
+        // CR-1/R-39 (S-4): wire timing_hooks to the now-dated kala_activation output too
+        // (R-45 fix — activation_start/end are no longer ~99% NULL), not just chart_dashas.
+        // Domain-scoped (when a shastra-map domain matched) so this stays a targeted timing
+        // hook, not a generic activation dump — reuses query_temporal_activation, no parallel
+        // kala_activation SQL in this file (design §19 single-source discipline).
+        try {
+          const { queryTemporalActivationCapability } = await import('./L3_kala/query_temporal_activation')
+          const activationRes = await queryTemporalActivationCapability.handler(
+            {
+              chart_id, ayanamsha_id, as_of: as_of_date,
+              ...(domainKey ? { domain: domainKey } : {}),
+              top_k: 10,
+            },
+            undefined,
+          )
+          if (!activationRes.is_error) {
+            const c = activationRes.content as Record<string, unknown>
+            timing['kala_activations'] = c['activations'] ?? []
+            // T-12/T-13 (honest-flags-only this wave): kala_activation windows are a single
+            // transit/dasha cycle's worth of resolution, not a multi-cycle recurrence model
+            // (the multi-cycle generator is D-3 scope) — disclose so a caller never reads
+            // "no activation returned" as "this never recurs".
+            if (Array.isArray(timing['kala_activations']) && (timing['kala_activations'] as unknown[]).length > 0) {
+              judgment_flags.push(
+                'kala_activations_single_cycle: the kala_activations timing hook reflects ONE ' +
+                'resolved dasha/convergence window per signal, not an exhaustive multi-cycle ' +
+                'recurrence forecast (the multi-cycle generator is out of this wave\'s scope, D-3) ' +
+                '— treat as "at least one activation window exists", not "the only one ever".',
+              )
+            }
+          }
+        } catch {
+          // kala_activation lookup is a supplementary hook — a failure here must not fail
+          // the whole judgment_query response (get_dashas above remains the primary source).
+        }
+
         // Lane 5 (§N.6 / CR-1/63 handoff, serving-only — no new joins): honesty fix only.
         // The fetches above can each succeed (is_error=false) yet still hand back an empty
         // rows array — that is NOT the same thing as "timing anchored". Require actual
-        // content (a current-period row, or at least one non-empty mahadasha window) before
-        // claiming timing_anchored=true; an all-empty result is an honest false, one line,
-        // no new dasha joins (anti-scope respected).
+        // content (a current-period row, at least one non-empty mahadasha window, or a
+        // kala_activation hit) before claiming timing_anchored=true; an all-empty result is
+        // an honest false, no new dasha joins (anti-scope respected).
         const currentRows = (timing['current'] as unknown[] | undefined) ?? []
         const hasWindowRows = Object.values(windowsByGraha).some(
           w => Array.isArray(w) && w.length > 0,
         )
-        timingAnchored = currentRows.length > 0 || hasWindowRows
+        const hasActivationRows = Array.isArray(timing['kala_activations']) && (timing['kala_activations'] as unknown[]).length > 0
+        timingAnchored = currentRows.length > 0 || hasWindowRows || hasActivationRows
         if (!timingAnchored) {
           judgment_flags.push(
-            'timing_anchored_false: dasha fetches succeeded but returned zero rows for both ' +
-            'the current period and every mahadasha window checked — reported honestly as ' +
-            'not-anchored rather than claiming success over an empty payload (CR-1/63 class).',
+            'timing_anchored_false: dasha fetches succeeded but returned zero rows for the ' +
+            'current period, every mahadasha window checked, and kala_activation — reported ' +
+            'honestly as not-anchored rather than claiming success over an empty payload (CR-1/63 class).',
           )
         }
       } catch (e) {
