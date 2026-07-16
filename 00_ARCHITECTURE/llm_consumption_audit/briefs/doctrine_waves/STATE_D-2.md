@@ -21,9 +21,13 @@ adjudications:
 rebuild_scope_ruling:
   scope: asset_set
   full: false
-  layers: [L0-vidhi-rules, L1-subset, L2, minimal-L3-ingest]
-  expected_writers: [bg_vidhi_new, bo_karanajala, bo_cgm_motifs, bo_cgm_paths, bo_cgm_metrics, bo_yantra_new, bo_laksana, bo_anveshana, ka_yojaka, ga_structural, ga_sensitive, bo_signal_class_new_x4]
-  exact_closure: computed_post_cycle1_merge_via_asset_registry_depends_on
+  layers: [L0-vidhi-rules, L1-subset, L2, L3, L4, L5-partial]
+  changed_writers_seed: [bg_vidhi_primitives, bg_vidhi_floors, bo_karanajala, bo_laksana, ka_yojaka, ga_structural, ga_dashas, bo_yantra_mechanism, bo_laksana_rerank, bo_nakshatra_semantic, bo_arudha, bo_special_lagna, bo_vargottama_dhana]
+  seed_correction: "ga_sensitive REMOVED from seed (V-6's Phase-1 verifier confirmed it was read-only/not modified, contradicting the Binder's expected-writers guess at open); ga_dashas ADDED (V-6 added compute_narayana_system there, missed in the open-time guess). bo_anveshana not a seed (comment-only diff, no functional change) but appears in the closure anyway as a legitimate downstream dependent of bo_karanajala."
+  exact_closure: [bg_vidhi_floors, bg_vidhi_primitives, bo_anveshana, bo_arudha, bo_bimba, bo_cdlm_summary, bo_cgm_motifs, bo_cgm_paths, bo_chart_gestalt, bo_drishti, bo_karanajala, bo_laksana, bo_laksana_rerank, bo_nakshatra_semantic, bo_pramana_mapa, bo_pratijna, bo_samskara, bo_samvada, bo_sangati, bo_special_lagna, bo_upaya, bo_vargottama_dhana, bo_yantra_mechanism, ga_condition, ga_dashas, ga_medical, ga_sade_sati, ga_structural, ga_tajaka, ga_vastu, ga_vichara, ga_yoga, ka_avadhi, ka_bhavishya_lekha, ka_dasha_kala, ka_jivana_parva, ka_kala_darshana, ka_kalasutra, ka_sangam, ka_taranga, ka_tulana, ka_vighnakara, ka_yojaka, mi_abhilekha, mi_adhilepa, mi_bhavisya, mi_darshana, mi_gunanaka, mi_pariksha, mi_pramana, mi_sambandha, mi_seva, ph_muhurta, ph_nimitta, ph_phaladesa, ph_pramana, ph_pratikara, ph_rectification, ph_sankrama, ph_sodhana, ph_suddha_sodhana]
+  closure_count: 58
+  closure_computed_via: "live recursive asset_registry.depends_on query, 2026-07-17, post-deploy pre-rebuild"
+  rationale: "ga_structural is a broadly-consumed L1 foundation (touched by V-6 for upapada/kendradhipati-dosha), so its true downstream closure legitimately reaches into L3/L4/L5 - same order of magnitude as D-1.6's 47-asset closure when ga_structural/ga_yoga were touched. This is the MINIMAL-CASCADE rule's real cascade, not a layer-wide default - each of the 58 assets has a genuine depends_on path back to a changed writer."
 migration_blocks:
   V-1: [440, 444]
   V-4: [445, 449]
@@ -38,10 +42,36 @@ lanes:
   - {lane: V-2, branch: wave/D-2/V-2, status: pending, cycle: 2}
   - {lane: V-3, branch: wave/D-2/V-3, status: pending, cycle: 2}
 integration_branch: wave/D-2/integration
-deploy: {done: true, pr: 585, merge_sha: 58e320c40aabaf6fa582c70b9e68b66fd0555ced, ci_note: "one transient Build Check infra flake (no space left on device during docker load), unrelated to D-2 code, cleared on rerun"}
-rebuild: {scope: asset_set, full: false, abhisek_build_id: pending}
+deploy:
+  done: true
+  pr_585: {merge_sha: 58e320c40aabaf6fa582c70b9e68b66fd0555ced, ci_note: "one transient Build Check infra flake (no space left on device during docker load), unrelated to D-2 code, cleared on rerun"}
+  incident: >
+    deploy.yml's post-#585-merge run (29521618110) FAILED at the "Run database migrations"
+    step: migration 440's asset_registry INSERTs used columns (display_name/asset_type/
+    has_substeps) that don't exist on the real table. Migration ran in its own transaction
+    and ROLLED BACK cleanly (migrate.ts per-file BEGIN/COMMIT/ROLLBACK) - zero partial
+    application, prod stayed at migration 439, no other wave migration (441-459) was
+    reached. amjis-web deploy did not advance; amjis-mcp untouched (expected, no MCP
+    path changes this cycle); brahma-build-pipeline-job and the sidecar image HAD already
+    built+pushed successfully in that same run before the web-deploy step failed - they
+    carry the full D-2 cycle-1 code (confirmed via gcloud describe, SHA 58e320c4).
+  hotfix_pr_586: >
+    Rewrote migration 440's asset_registry INSERT column set to match the real schema
+    (precedent: migration 438 bo_sudarshana, and this wave's own 445/450). Migration-guard
+    review (dedicated subagent, 2 passes) caught a SECOND latent defect in the same fix:
+    layer='L0' is invalid (CHECK constraint requires brahmagyan/ganita/bodha/kala/phala/
+    mimamsa; 'L0' is the internal display label per CLAUDE.md §N.1, not the DB value - a
+    documented prior trap per migration 262's own header). Fixed to layer='brahmagyan'.
+    Guard re-confirmed SAFE TO APPLY. PR #586 merged def3ae68; deploy.yml re-ran
+    (29523671573) and succeeded. All 9 D-2 migrations (440, 445-448, 450-453) confirmed
+    applied via _migrations_applied. amjis-web now at def3ae68.
+  live_shas_confirmed:
+    amjis-web: def3ae687c28954797e7dacaa790f3a4afba6cf2
+    amjis-mcp: 0824566951a3189bc750e24d20eab650f5542fb4 (unchanged, expected)
+    brahma-build-pipeline-job: 58e320c40aabaf6fa582c70b9e68b66fd0555ced
+rebuild: {scope: asset_set, full: false, abhisek_build_id: pending, no_active_conflicting_run_confirmed: true}
 gate: {run: false, green: [], red: []}
-updated_at: 2026-07-16T22:45:00Z
+updated_at: 2026-07-17T00:05:00+05:30
 notes: >
   OPEN complete. Binder (Fable) BOUND the brief: see BIND_D-2.md — 12/12 regression sample PASS,
   0 unexpected reds (both expected residuals confirmed: PARK-#4, Gate Ś #8). §F1.7 promise ledger
