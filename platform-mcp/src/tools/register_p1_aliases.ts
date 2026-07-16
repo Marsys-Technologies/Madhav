@@ -19,7 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure, resolveChartFactsAyanamsha } from './registry_bridge.js'
-import { applyResponseBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
+import { applyResponseBudget, autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -164,17 +164,28 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 // through regAlias/globalAlias, and by every hand-written `server.tool` block below that
 // was touched in this pass). Falls back to a generic hint when the caller omits toolName —
 // still trims, just without a tool-specific recovery instrument name.
+//
+// D-1.6 S-5 (R-1/R-8/CR-49 residual — phala_mitigation_get measured 99.9KB live despite this
+// function's budgeting): the prior version called `applyResponseBudget` directly and SKIPPED
+// budgeting entirely when `sections.length === 0` — which happens whenever the real bulk lives
+// inside a JSON-encoded STRING nested inside a small (<=10 item) array (the surgical-primitives
+// ToolBundle shape `{result:{results:[{content:"<json string>"}]}}`, R-29's double-encoding
+// pattern), because autoDetectTrimmableSections only declares a section for arrays it can see
+// AND that are longer than 10 — a 1-item bundle array never qualifies, and the array-based
+// trimmer has no way to shrink a giant string. Routing through `finalizeMcpBudget` instead
+// (same self-verifying entry point registry_bridge.ts's assess_*/traverse_graph/judgment_query
+// already use) adds its last-resort bounded-depth long-string truncation fallback, which DOES
+// reach that shape — this is a strict superset of the prior behavior (array trimming still runs
+// first; string truncation only engages if arrays alone can't close the gap).
 function dualOutput(data: unknown, toolName = 'unknown_tool') {
+  let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>
     const sections = autoDetectTrimmableSections(obj, toolName)
-    if (sections.length > 0) {
-      const result = applyResponseBudget(obj, 40, sections)
-      if (result.trim_report) obj['trim_report'] = result.trim_report
-    }
+    finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
   }
-  const structuredContent = { type: 'object' as const, object: data }
-  const json = JSON.stringify(data)
+  const structuredContent = { type: 'object' as const, object: finalData }
+  const json = JSON.stringify(finalData)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
     return { structuredContent, content: [{ type: 'text' as const, text: '[large payload — see structuredContent]' }] }
   }
