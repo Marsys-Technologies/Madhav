@@ -274,13 +274,23 @@ BIND_D-2.md + this brief's status stamp ONLY)
    `signal_type_class` on 482012f1's CURRENT estate (post-D-1.6 rebuild — never a cached
    distribution); Adjudicator-doctrine (Fable) sets the four classes' constants as a recorded DR-n
    (DR-3's 1.15/0.85 rulings are the calibration precedent).
-3. **Orchestrator state-commit race — VERIFY the fix landed (do not fix):** the race documented in
-   REPORT_D-1.6 (asset_throughput `state` never transitioning to `lit` despite a correct data
-   write, cascading DEP-ASSERT/BLOCKED under narrow-scope rebuilds) is being fixed by a parallel
-   session. Binder checks main's commit history / the state-write path for that fix and records
-   landed|not-landed. If NOT landed: record as a rebuild-operations risk with the manual recovery
-   runbook (verify data → correct stuck flag → resume, per REPORT_D-1.6) — it is NOT a lane item
-   (FROZEN orchestrator, PARK class 1).
+3. **Orchestrator state-commit "race" — RESOLVED pre-open (this slot is now spot-verify only):**
+   fixed and adversarially verified 2026-07-16 (commit `b13640d1`, merged with this brief's own
+   PR). Root cause was NOT a race — deterministic: ka_sangam's same-day resume (fingerprint keyed
+   on `today`, not run_id) yields a zero-substep plan → old logic marked 'dormant' despite complete
+   data → DEP-ASSERT cascade. Fix: data-presence probe via `count_sql` before accepting 'dormant'
+   (savepoint-isolated, abstains on probe failure) + loud safety nets (`asset.noop_completion`,
+   `asset.state_write_anomaly`, DEP-ASSERT data-present diagnostics). Binder spot-verifies the
+   commit is on main, then carries the verifier's four NON-BLOCKING findings as Binder agenda:
+   **F1** monitor `asset.noop_completion` events from non-resumable writers (a §N.3 delete-then-
+   insert violation could be probed 'lit' over stale rows — loud, but worth alerting); **F2**
+   `bo_laksana.count_sql` is over-broad (counts bo_sudarshana's rows in shared bodha_msr_signals —
+   same class as PR #574's delete-scope bug, count-side; currently unreachable but tighten via a
+   surgical migration when V-4 touches bo_laksana anyway); **F3** the probe abstains (fail-safe)
+   on ~11 multi-`$1` and 4 literal-`%` count_sqls — fine today, but if resumption spreads to
+   those assets the protection won't follow; **F4** the 0-row-recovery upsert drops
+   `built_against_*`/`rows_written` (rare path, could confuse staleness detection). Forced
+   same-day ka_sangam recompute semantics remain resume-by-design (writer-level, deferred).
 4. **V-4 edge-strength formula terms:** probe `ganita_vichara_get` for the shipped valence-pass
    output shape (fields/classes actually emitted — `valence_pass` / `varga_ratification` /
    divergence rows); Fable rules the formula's terms/weights as a DR-n. The shape is inspectable
