@@ -1,7 +1,7 @@
 ---
 artifact: DOCTRINE_WAVES_CONDUCTOR_PROTOCOL
 type: STANDING PROTOCOL (governs every wave conductor D-1.5a → D-4)
-version: 1.0
+version: 1.3
 status: CURRENT
 authored_by: Fable 5 (Claude Code planning session, 2026-07-15), native-directed
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
@@ -42,6 +42,24 @@ is structural, not a norm.
 | **Adjudicator** | Fable (doctrine) / Opus (engineering) | Answers questions that would otherwise need the native (§4) | Doctrine rulings recorded as DR-n with delegation provenance |
 | **Anti-gaming verifier** (D-3/D-4 only) | Opus | Adversarially checks statistical gates: degenerate curves, base-rate artifacts, threshold gaming vs the negative controls | A statistical gate without an anti-gaming pass is not green |
 | **Migration guard** | Opus | Reviews every SQL migration pre-apply: destructive ops, idempotency, numbering (SINGLE directory — `platform/migrations/`; the 434-in-supabase split is the known failure) | A migration without a guard receipt does not apply |
+
+**§1.1 — Binder remit is READ-ONLY beyond its two designated output files (standing rule, added
+D-1.6 Lane S-8, 2026-07-16).** The Binder's job (per its role row above) is to *resolve* BIND-AT-OPEN
+slots against live state — it probes, it does not implement. Its write remit is exactly two files per
+wave: the `BIND_<wave>.md` findings record and the brief's `BOUND` status stamp. **Two recorded
+incidents** of planning-role (Binder/Fable) writes landing outside that remit have occurred across
+the campaign to date (see `BIND_D-1.6.md`'s own binder_notes: "the CONDUCTOR_PROTOCOL read-only-
+enforcement note is S-8's to write — NOT written by this Binder pass... two prior incidents of
+planning-role writes are exactly why"). **The structural fix is tool-access restriction, not a
+process reminder**: a Binder session should not be granted `Write`/`Edit` access to any path outside
+`{BIND_<wave>.md, the brief's status frontmatter field}` — the same class of fix this protocol already
+applies to lanes via the scope-warden check (§3, Phase 1(d)). Until tool-access scoping is wired into
+the Binder's harness invocation, this is a **process-level standing rule**: a Binder pass that touches
+any other file (a register, a governance doc, another brief, CURRENT_STATE, CONDUCTOR_PROTOCOL itself)
+is a protocol violation to flag in the wave's close report, exactly as a lane implementer touching a
+path outside its `may_touch` globs is a scope-warden REJECTION (§3(d)). Conductors should treat a
+Binder diff outside `{BIND_<wave>.md, brief frontmatter}` as a red flag requiring investigation before
+the wave proceeds to SPAWN.
 
 ## §2 — Wave lifecycle (deterministic; run in order; no step skippable)
 
@@ -304,7 +322,12 @@ copy** of the gate (register/plan text is provenance; the executable is authorit
 skew between them is a defect to fix in the harness).
 
 ---
-*Changelog: v1.2 (2026-07-15) — §8.2 MINIMAL-CASCADE RULE (native-ratified): rebuild the narrowest
+*Changelog: v1.3 (2026-07-16, D-1.6 Lane S-8) — §1.1 added: Binder remit is READ-ONLY beyond
+`{BIND_<wave>.md, brief frontmatter status stamp}` — standing rule after 2 recorded incidents of
+planning-role (Binder/Fable) writes landing outside remit; structural fix noted as tool-access
+restriction (not yet wired), process-level rule in force until then; a Binder diff outside its two
+files is a scope-warden-class red flag, same treatment as a lane implementer touching a path outside
+`may_touch`. v1.2 (2026-07-15) — §8.2 MINIMAL-CASCADE RULE (native-ratified): rebuild the narrowest
 DAG cascade — changed assets + actual dependents via asset_set, never full-by-default; only the
 three triggers force full; per-wave expected scopes tightened (D-1.5b is the sole full wave; D-4 =
 L5-only minutes). Rebuild scope is the primary time lever. v1.1 (2026-07-15) — resilience §6 (state
