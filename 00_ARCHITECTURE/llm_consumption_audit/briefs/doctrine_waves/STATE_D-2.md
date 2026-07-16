@@ -30,11 +30,11 @@ migration_blocks:
   V-5: [450, 454]
   V-6: [455, 459]
 lanes:
-  - {lane: V-0, branch: wave/D-2/V-0, status: pending, cycle: 1}
-  - {lane: V-1, branch: wave/D-2/V-1, status: pending, cycle: 1}
-  - {lane: V-4, branch: wave/D-2/V-4, status: pending, cycle: 1}
-  - {lane: V-5, branch: wave/D-2/V-5, status: pending, cycle: 1}
-  - {lane: V-6, branch: wave/D-2/V-6, status: pending, cycle: 1}
+  - {lane: V-0, branch: wave/D-2/V-0, status: implementing, cycle: 1}
+  - {lane: V-1, branch: wave/D-2/V-1, status: implementing, cycle: 1}
+  - {lane: V-4, branch: wave/D-2/V-4, status: implementing, cycle: 1}
+  - {lane: V-5, branch: wave/D-2/V-5, status: implementing, cycle: 1}
+  - {lane: V-6, branch: wave/D-2/V-6, status: implementing, cycle: 1}
   - {lane: V-2, branch: wave/D-2/V-2, status: pending, cycle: 2}
   - {lane: V-3, branch: wave/D-2/V-3, status: pending, cycle: 2}
 deploy: {done: false}
@@ -50,5 +50,9 @@ notes: >
   ~126). chart_dashas baseline revised 536,471(superseded) -> 483,060 (stability-checked at
   first rebuild, not assumed a defect). PARK-#4's "5 rows" framing is narrow-assertion-scope only;
   live keyword_heuristic_v1 population = 43,408/49,360 rows chart-wide (V-4 ledger row 39 note).
-  Proceeding to SPAWN: cycle-1 lanes V-0/V-1/V-4/V-5/V-6 launching as parallel isolated-worktree
-  implementers per §F1.5 merge order (V-0 -> V-1 -> V-4 -> V-5 -> V-6).
+  SPAWN complete: cycle-1 lanes V-0/V-1/V-4/V-5/V-6 launched as parallel isolated-worktree
+  implementer agents (2026-07-16 ~21:35 IST) per §F1.5 merge order (V-0 -> V-1 -> V-4 -> V-5 ->
+  V-6). Each briefed with its may_touch glob, its §F1.7 ledger rows, and (V-4/V-5) the binding
+  DR-7/DR-6 formula+prior rulings to implement exactly. V-6's kendradhipati-dosha item explicitly
+  instructed to BLOCK-and-report rather than self-adjudicate doctrine if no DR-n is available in
+  its own turn. Awaiting implementer claims -> Phase-1 Opus verifiers next.
