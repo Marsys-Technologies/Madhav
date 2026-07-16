@@ -289,6 +289,12 @@ const PANCHA_MAHAPURUSHA: {
  *  JL-004's ratified convention; graha_position sign/house_d1 = already-computed L1 facts,
  *  not a new derivation). Zero new computation.
  *
+ *  Y-12 (D-1.6/S-3, CR-33/CR-43): `yogaDoshaRows` MUST be an UNPAGINATED yoga_label fetch, never
+ *  the caller's own paginated page — the caller wires this via a dedicated get_yoga_dosha call
+ *  (limit=500, offset=0) precisely so a small `limit` on ganita_yogas_get can never cause this
+ *  function to assert "not formed" purely because pagination excluded a real yoga_label row from
+ *  the page. A verdict must never fabricate absence from truncation (B.10).
+ *
  *  A4 (CR-93 honesty hardening): `formed`/`not formed` is ALWAYS grounded in the yoga_label
  *  firing rows (a real signal, independent of position data). Position data is used only to
  *  ELABORATE the sign/kendra reason. Before this pass, when the position fetch came back empty
@@ -815,11 +821,27 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         // Fetch graha positions (already-computed L1 fact_category, zero new computation) to
         // label the 5 named Pancha Mahapurusha yogas formed/not-formed with a citable reason —
         // best-effort: if the fetch fails, verdict still ships with the receipt fields above.
+        //
+        // Y-12 (D-1.6/S-3, CR-33/CR-43 fix): buildPanchaMahapurushaVerdict MUST NOT be grounded
+        // in `rows` (the CALLER-PAGINATED page — e.g. limit=3 can return zero yoga_label rows
+        // at all) — doing so fabricated "Sasa is not formed" purely because pagination excluded
+        // Sasa's yoga_label row from THIS page, while the row genuinely exists (and Sasa
+        // genuinely fires in ga_yoga_firings). Live-confirmed defect: ganita_yogas_get(limit=3,
+        // response_format=v3) on 482012f1 asserted all 5 Pancha Mahapurusha yogas "not formed"
+        // with zero yoga_label rows even present in the page. Fix: fetch a SEPARATE, unpaginated,
+        // yoga_label-only slice (bounded to 500 — the tool's own sane default, well above the 5
+        // named Mahapurusha rows that could ever match) so the verdict is grounded in the full
+        // yoga_label population regardless of what the caller's own pagination window served.
         let panchaMahapurusha: ReturnType<typeof buildPanchaMahapurushaVerdict> | undefined
         try {
-          const positionsData = await callRegistryCapability('marsys://tool/L1/get_positions', {
-            chart_id, ayanamsha_id: resolvedAyanamsha, categories: ['graha_position'], limit: 200,
-          }, principal) as { rows?: Record<string, unknown>[] } | undefined
+          const [positionsData, panchaMahapurushaRowsData] = await Promise.all([
+            callRegistryCapability('marsys://tool/L1/get_positions', {
+              chart_id, ayanamsha_id: resolvedAyanamsha, categories: ['graha_position'], limit: 200,
+            }, principal) as Promise<{ rows?: Record<string, unknown>[] } | undefined>,
+            callRegistryCapability('marsys://tool/L1/get_yoga_dosha', {
+              chart_id, ayanamsha_id: resolvedAyanamsha, limit: 500, offset: 0, all: false,
+            }, principal) as Promise<{ rows?: Record<string, unknown>[] } | undefined>,
+          ])
           const posByPlanet: Record<string, { sign?: string; house?: number; factId?: string }> = {}
           for (const r of positionsData?.rows ?? []) {
             const subj = String(r['fact_subject'] ?? '')
@@ -828,7 +850,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
             if (r['fact_key'] === 'sign') slot.sign = String(r['fact_value_text'] ?? '')
             if (r['fact_key'] === 'house_d1' && r['fact_value_num'] != null) slot.house = Number(r['fact_value_num'])
           }
-          panchaMahapurusha = buildPanchaMahapurushaVerdict(rows, posByPlanet)
+          // Fall back to the page's own rows only if the dedicated unpaginated fetch failed
+          // (never silently swap to a KNOWN-truncated source when the honest one is reachable).
+          const groundingRows = panchaMahapurushaRowsData?.rows ?? rows
+          panchaMahapurusha = buildPanchaMahapurushaVerdict(groundingRows, posByPlanet)
         } catch {
           panchaMahapurusha = undefined // best-effort narration enrichment; never fails the instrument
         }
