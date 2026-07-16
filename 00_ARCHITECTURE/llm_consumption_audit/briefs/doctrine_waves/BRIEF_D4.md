@@ -2,23 +2,57 @@
 artifact: BRIEF_D4
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN)
 wave: D-4 — Calibration ignition (L5 finally fed)
-version: 1.0
+version: 1.1
 status: FROZEN — §B slots bind at wave open
 governing: CONDUCTOR_PROTOCOL.md + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §7 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §7
-prerequisite: D-3 gate GREEN (mechanism curves exist and retrodict).
+prerequisite: D-3 gate GREEN (mechanism curves exist and retrodict). Wave sequence to date —
+  D-1.5a, D-1.5b (Gate B 17/17), and D-1.6 "Śuddhi" (Gate Ś) are ALL CLOSED; D-2 then D-3
+  precede this wave.
 gate: discrimination + negative-control gates (§G) with anti-gaming verifier pass.
+changelog:
+  - v1.1 (2026-07-16, pre-D-2 alignment pass): §F0 added — post-D-1.6 baseline (CR-51/CR-30
+    calibration-alias unification; CR-47's serve-side non_discriminating honesty flag shipped,
+    matcher root fix remains Lane C-1; L5 STRUCTURAL-mode framing per CLAUDE.md §E; cited CR rows
+    re-verified against the register); §F3 added — standard parallel-execution discipline +
+    operational constants; C-1 stale premise updated. No scope, lane-structure, or gate changes.
+  - v1.0 (2026-07-15): initial FROZEN brief.
 ---
 
 # D-4 — Calibration Ignition
 
+## §F0 — Baseline as of D-1.6 close (alignment note, 2026-07-16 — read before binding)
+
+This brief froze before waves D-1.5a / D-1.5b / D-1.6 ran (all three CLOSED: Gate A 13/15 + 2
+documented PARKs; Gate B 17/17; Gate Ś). What changed in D-4's territory:
+
+- **Framing: L5 is SEALED in STRUCTURAL mode by design** (CLAUDE.md §E) — empirical calibration
+  values fill in as prediction→outcome data accrues. D-4 is the designed IGNITION of that loop
+  (the first real outcome feed), not a repair of unfinished L5 work. Nothing in this wave
+  re-opens the L5 seal; writers stay inside the FROZEN WriterBase contract.
+- **Calibration-alias unification (D-1.6 Lane S-1, CR-51/CR-30):** `query_calibration` and
+  `mimamsa_calibration_get` — previously documented aliases returning DIFFERENT payloads — are
+  now a strict twin (Gate Ś #3: IDENTICAL result_hash on the deployed connector), and an
+  alias→primitive conformance check lives in the harness (S-6, O-7). §G assertions may probe
+  either face; alias parity is a standing regression surface this wave must not break.
+- **CR-47's honesty half already shipped:** D-1.6 S-1 added the serve-side `non_discriminating`
+  flag to `phala_rectification_get` (a zero-signal run now self-reports instead of presenting a
+  fake ranking). Lane C-1's remaining scope is the MATCHER ROOT FIX itself (the 0/36 silent
+  zero-scoring), which D-1.6 explicitly deferred ("full method fix stays K-6/later" — that later
+  is this lane).
+- **Register verification (2026-07-16):** this brief's cited rows — CR-47, CR-79, CR-20/67,
+  CR-68 — are all still OPEN in `POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md` v1.5 (§A–§I+§M
+  remains system-of-record for CR-1..89+107; CR-90..106 resolve via the §N pointer table into
+  the execution plan §8 + wave briefs). No re-statusing by D-1.6 S-8 touched this brief's rows.
+
 ## FROZEN §F1 — Lane map (6 lanes)
 
 ### Lane C-1 — Shared LEL↔candidate matcher fix (CR-47 root)
-The matcher scored 0/36 LEL events across all 185 rectification candidates — silently. Root-cause
-the shared matcher; a zero-signal run must self-report as non-discriminating. Healing this heals
-rectification too (same component). Verifier: matcher matches known specimens (2025-05 fraud →
-8L-Mars→2H mechanism; 2010-07 windfall → wealth mechanism) with nonzero fit.
+The matcher scored 0/36 LEL events across all 185 rectification candidates — silently. The
+silent half is fixed (D-1.6 S-1's `non_discriminating` flag — see §F0); this lane root-causes
+the shared matcher itself. Healing this heals rectification too (same component). Verifier:
+matcher matches known specimens (2025-05 fraud → 8L-Mars→2H mechanism; 2010-07 windfall →
+wealth mechanism) with nonzero fit.
 
 ### Lane C-2 — LEL firewall re-scope + retrodiction backfill
 Firewall re-scoped: quarantine LEL → prediction-INPUTS only; LEL → outcome-SCORING flows freely.
@@ -56,6 +90,27 @@ multipliers update; the next compiled contract retrieves with calibrated priors.
 ## FROZEN §F2 — must_not_touch
 FROZEN orchestrator contract (PARK) · the leakage firewall on prediction-INPUTS (re-scoped, never
 removed) · raw LEL event data (append-only corpus) · all prior gate surfaces (regression batteries).
+
+## §F3 — Execution discipline + operational constants (standard, per CONDUCTOR_PROTOCOL — added v1.1)
+
+**Parallel-sub-agent discipline (protocol §2/§3, as run in D-1.5a → D-1.6):** every lane brief
+declares DISJOINT `may_touch` globs (scope-warden Phase-1(d): any stray path = automatic
+REJECTION); shared files are APPEND-ONLY with expected cross-lane conflicts named in advance;
+lanes merge in the DECLARED merge order above (C-1 → C-3/C-4 → C-2 → C-5/C-6); implementers run
+in ISOLATED git worktrees (`wave/D-4/<lane>`); every lane is verified by an INDEPENDENT
+fresh-context verifier (Opus) per protocol Phase-1 before merge — an implementer's "done" is a
+claim, never an acceptance. The one-shot C-2 backfill additionally requires its upstream lanes'
+RECEIPTS in hand before it runs (never on an unverified matcher).
+
+**Operational constants (hard-won D-1.5a/b + D-1.6):**
+- Rebuilds go via the Cloud Run job path (`brahma-build-pipeline-job`, protocol §8.2) — NEVER the
+  laptop cloud-sql-proxy (proxy-kill cycle, `O8_LOCAL_PROXY_KILL_ROOT_CAUSE_v1_0.md`). D-4's
+  expected rebuild scope is L5-only (minutes) per protocol §8.2 — the Binder confirms at open.
+- The deployed connector RATE-LIMITS under sustained assertion load (429 cascade → false reds;
+  REPORT_D-1.5b). Gate batteries must throttle/batch; keep the D-1.6 S-6 harness 429-retry.
+- Known orchestrator state-commit race under narrow-scope concurrent rebuilds (REPORT_D-1.6
+  residuals): verify underlying data before forward-fixing a stuck `asset_throughput.state`;
+  the orchestrator itself is FROZEN (PARK class).
 
 ## §B — BIND-AT-OPEN slots (Fable Binder)
 - Matcher root-cause hypothesis ← C-1 diagnosis spike at open (read the actual matcher code + one
