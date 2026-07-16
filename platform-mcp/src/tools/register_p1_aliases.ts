@@ -322,6 +322,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         .describe('D-1.5b response budget: max question-lens rows to return (default 60).'),
       lens_offset: z.number().int().min(0).optional()
         .describe('D-1.5b response budget: pagination offset into the question-lens family (default 0).'),
+      max_signals_per_lens: z.number().int().min(1).max(100).optional()
+        .describe('D-1.5b B-7 response budget: max ranked_signals served INSIDE each lens ' +
+          '(default 25, max 100). The stored lens holds hundreds–thousands of rows; serving it ' +
+          'unbounded blew this response past 900KB. See per-lens ranked_signals_total for the ' +
+          'true family size; response_format=full raises the cap to 200/lens.'),
     }, principal)
 
   // get_signals → bodha_signals_get
@@ -344,6 +349,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       min_weight: z.number().min(0).max(1).optional(),
       frame:      z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
       paradigm:   z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional(),
+      // §N.6 serving-reach (Gate B / B2_sudarshana): filter to one signal_type_class. This
+      // flows verbatim through `...rest` to query_signals, which applies it in the WHERE clause
+      // BEFORE the salience LIMIT/candidate-pool cap — so a class-scoped query returns ALL rows
+      // of that class regardless of their global salience rank. Without this facet on the alias
+      // schema, the MCP SDK strips the param and legitimately low-salience structural corroboration
+      // classes (sudarshana_agreement et al., ~rank 8k-9k of ~9.9k per ayanamsha) were unreachable
+      // through this surface by ANY domain/top_k/offset combination. Free string (no enum): an
+      // incomplete enum is exactly what hid these classes from callers.
+      signal_type_class: z.string().optional()
+        .describe('Filter to one bodha_msr_signals.signal_type_class (e.g. sudarshana_agreement, ' +
+          'yoga, dosha, karaka_alignment, composite_state). Applied pre-salience-cap, so it reaches ' +
+          'low-salience corroboration classes a chart-wide salience page never surfaces.'),
     },
     async (params) => {
       const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
@@ -813,7 +830,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       house:            z.number().int().min(1).max(12).optional(),
       sign:             z.string().optional(),
       nakshatra:        z.string().optional(),
-      divisional_chart: z.string().optional(),
+      divisional_chart: z.string().optional().describe('Divisional chart code (e.g. "D9", "D2"). Also returns that varga\'s chart_divisionals-native EAV facts (per-varga sign/house, hora class incl. surya_hora/chandra_hora + hora_d2_house, varga dignity, house lords/occupants) in a separate `divisional_facts` section.'),
       keyword:          z.string().optional(),
       fact_subject:     z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP"). Comma-separated for multiple.'),
       shape:            z.enum(['pivoted', 'rows']).optional(),

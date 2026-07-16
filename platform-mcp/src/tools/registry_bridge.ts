@@ -1607,7 +1607,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       house: z.number().int().min(1).max(12).optional().describe('Bhava number (1–12) filter.'),
       sign: z.string().optional().describe('Rashi name filter (e.g. "Aries", "Scorpio").'),
       nakshatra: z.string().optional().describe('Nakshatra name filter.'),
-      divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10").'),
+      divisional_chart: z.string().optional().describe('Divisional chart code filter (e.g. "D9", "D10", "D2"). Also returns that varga\'s chart_divisionals-native EAV facts (per-varga sign/house, hora class incl. surya_hora/chandra_hora + hora_d2_house, varga dignity, house lords/occupants) in a separate `divisional_facts` section — data not stored in chart_facts.'),
       keyword: z.string().optional().describe('Free-text keyword search over fact_key/fact_value_text.'),
       fact_subject: z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP", "HOUSE_10"). Comma-separated for multiple.'),
       shape: z.enum(['pivoted', 'rows']).optional().describe('"pivoted" (default, one wide row per subject) or "rows" (flat EAV rows).'),

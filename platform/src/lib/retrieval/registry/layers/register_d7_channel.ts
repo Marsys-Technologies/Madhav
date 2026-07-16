@@ -830,7 +830,13 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     },
     divisional_chart: {
       type: 'string',
-      description: 'Divisional chart code to filter by (e.g. "D9", "D10"); matches fact_subject="D9_<GRAHA>" convention. Optional.',
+      description: [
+        'Divisional chart code to filter by (e.g. "D9", "D10", "D2"); matches fact_subject="D9_<GRAHA>" convention',
+        'for the DERIVED chart_facts rows. Additionally surfaces the divisional-native EAV facts for that varga',
+        'from chart_divisionals in a separate `divisional_facts` section: per-varga sign/house (varga_position),',
+        'hora class (varga_hora_class — surya_hora/chandra_hora + hora_d2_house), varga_dignity, house',
+        'lords/occupants, etc. — data that lives ONLY in chart_divisionals, not chart_facts. Optional.',
+      ].join(' '),
     },
     keyword: {
       type: 'string',
@@ -927,11 +933,34 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 
       // ── Whitelisted facet -> parameterized SQL compilation (design §3 SQL idiom / P2 rule) ──
       const params: unknown[] = [chart_id, ayanamsha_id]
+      // D-1.5b Gate B (CR-18 / B_shadbala_ratio): ayanamsha-INVARIANT facts must surface
+      // alongside the requested ayanamsha's facts. Some L1 quantities are genuinely
+      // ayanamsha-independent and are stored by the ga_* writers under ayanamsha_id='INVARIANT'
+      // rather than duplicated across all stored ayanamshas — e.g. graha_shadbala_total's
+      // `required_rupa` (the classical minimum shadbala per graha: Sun/Mars/Saturn=5, Mercury=7,
+      // Jupiter=6.5, Venus=5.5, Moon=6 rupas — a fixed BPHS constant, not a per-ayanamsha value),
+      // graha_shadbala_naisargika, and the whole panchanga_* birth-anchor set. Filtering strictly
+      // on `ayanamsha_id = $2` silently dropped ALL of these: a graha_shadbala_total pivot served
+      // `ratio` + `rupa` (per-ayanamsha) but never `required_rupa` (INVARIANT), so Gate B — which
+      // requires each shadbala row to carry BOTH ratio AND required_rupa — failed at 0/9. INVARIANT
+      // facts belong to every ayanamsha view by definition; include them. Pivoting is by
+      // fact_subject, so an INVARIANT `required_rupa` for SUN merges into the same wide row as
+      // SUN's lahiri `ratio`/`rupa`. Collision safety (verified by DB enumeration, D-1.5b Gate B
+      // integration review): the fix's target keys (`required_rupa` et al.) exist ONLY under
+      // INVARIANT, so they are purely additive. Across the full INVARIANT set there are exactly two
+      // shared key-NAMES with per-ayanamsha rows — `rupa` (INVARIANT graha_shadbala_naisargika vs
+      // per-ayanamsha graha_shadbala_total) and `active_at_birth_flag` (bhadra_flag) — and BOTH are
+      // provably safe: the pivot's `ORDER BY fact_category, fact_key` makes the per-ayanamsha
+      // graha_shadbala_total row win the `rupa` slot (naisargika sorts earlier, never last-writes),
+      // and `active_at_birth_flag` is itself ayanamsha-invariant (identical value in every ayanamsha).
+      // So no served value changes. If you ADD a new INVARIANT key, re-check it does not destructively
+      // collide with a per-ayanamsha key of the same (fact_subject, fact_key). `IN ($2,'INVARIANT')`
+      // de-dupes automatically when $2 is 'INVARIANT'.
       let sql = `
         SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
-        WHERE chart_id = $1 AND ayanamsha_id = $2
+        WHERE chart_id = $1 AND ayanamsha_id IN ($2, 'INVARIANT')
       `
 
       const categoriesRaw = subjectsFromAbout.length > 0 && categoryHintFromAbout
@@ -1216,6 +1245,82 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
             `lagna-dependent D60 claim (e.g. D60 lagna sign/house placements) should be read`,
             `as indicative, not confirmed, until rectification resolves further.`,
           ].join(' ')
+        }
+      }
+
+      // ── S-12 / Gate B (CR-58): surface chart_divisionals EAV facts for the requested varga.
+      // chart_facts carries the DERIVED per-varga facts (dignity, argala, aspects, ...) but NOT
+      // the divisional-native EAV rows: per-varga sign/house (varga_position), hora class
+      // (varga_hora_class: surya_hora/chandra_hora + hora_d2_house), varga_dignity, house
+      // lords/occupants, etc. Those live ONLY in chart_divisionals — the S-12 "21,635
+      // chart_divisionals rows MCP-invisible" finding — and are exactly the "operative-varga
+      // placements" the confirm_in_varga recover-hints promise when they tell a caller to "pass
+      // divisional_chart=<varga>". Gate B needs "both wealth lords in Chandra-hora, D2 house 12"
+      // answerable in ONE call: ganita_chart_facts_get(divisional_chart='D2') must return the
+      // hora_class assignment, which chart_facts alone cannot provide.
+      //
+      // Served as a SEPARATE, source-tagged, budget-capped `divisional_facts` section so the
+      // chart_facts pivot/rows contract above is untouched — the chart_divisionals rows are
+      // never flattened into the chart_facts `rows`/`facts` arrays, they carry their own
+      // fact_id (chart_divisionals.id) and provenance, and the cap discloses `more_available`
+      // with a paging pointer (§N.6 Serving Density Principle: layered, capped, disclosed —
+      // catalog-native rows counted and pointed-at separately, never merged into confirmed
+      // chart_facts findings). Only fires when `divisional_chart` is set, and honours the same
+      // `category`/`planet` narrowing the caller already passed.
+      if (args['divisional_chart']) {
+        const DIVISIONAL_FACTS_CAP = 300
+        const dvParams: unknown[] = [chart_id, ayanamsha_id, String(args['divisional_chart'])]
+        let dvWhere = `FROM chart_divisionals WHERE chart_id = $1 AND ayanamsha_id = $2 AND varga = $3`
+        if (categoriesRaw) {
+          const categories = categoriesRaw.split(',').map((c) => c.trim()).filter(Boolean)
+          dvParams.push(categories)
+          dvWhere += ` AND fact_category = ANY($${dvParams.length}::text[])`
+        }
+        if (args['planet']) {
+          // chart_divisionals stores the full graha name ("Sun", "Moon"); callers typically
+          // pass the same. Tolerant ILIKE match — no code/name translation needed here.
+          dvParams.push(String(args['planet']))
+          dvWhere += ` AND graha ILIKE $${dvParams.length}`
+        }
+        const dvCountRes = await query<{ total: number }>(`SELECT COUNT(*)::int AS total ${dvWhere}`, dvParams)
+        const dvTotal = Number(dvCountRes.rows?.[0]?.total ?? 0)
+        dvParams.push(DIVISIONAL_FACTS_CAP)
+        const dvRes = await query<Record<string, unknown>>(
+          `SELECT id, graha, varga, fact_category, fact_key, fact_value_num, fact_value_text,
+                  sign, house, degree_in_sign
+           ${dvWhere}
+           ORDER BY fact_category, graha, fact_key
+           LIMIT $${dvParams.length}::int`,
+          dvParams,
+        )
+        const dvRows = (dvRes.rows ?? []).map((r) => ({
+          fact_id: r['id'],
+          graha: r['graha'],
+          varga: r['varga'],
+          fact_category: r['fact_category'],
+          fact_key: r['fact_key'],
+          fact_value_num: r['fact_value_num'],
+          fact_value_text: r['fact_value_text'],
+          sign: r['sign'],
+          house: r['house'],
+          degree_in_sign: r['degree_in_sign'],
+        }))
+        content['divisional_facts'] = {
+          source_table: 'chart_divisionals',
+          varga: String(args['divisional_chart']),
+          rows: dvRows,
+          returned_count: dvRows.length,
+          total: dvTotal,
+          more_available: dvRows.length < dvTotal,
+          note: [
+            `Divisional-native EAV facts for ${String(args['divisional_chart'])} sourced from`,
+            `chart_divisionals (per-varga sign/house, hora class [surya_hora/chandra_hora +`,
+            `hora_d2_house], varga dignity, house lords/occupants, ...) — these are NOT stored in`,
+            `chart_facts. fact_id references resolve to chart_divisionals.id.`,
+            dvRows.length < dvTotal
+              ? `Capped at ${DIVISIONAL_FACTS_CAP} of ${dvTotal} rows; narrow with category= to reach the rest.`
+              : '',
+          ].filter(Boolean).join(' '),
         }
       }
 

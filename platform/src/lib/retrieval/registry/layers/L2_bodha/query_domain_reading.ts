@@ -46,6 +46,23 @@ const DISCRIMINATION_CANDIDATE_SIZE = 400
 const DISCRIMINATED_TOP_K = 20
 
 /**
+ * D-1.5b Lane B-7 (Gate B B7_budgets) — per-lens cap on the served
+ * `all_relevant_ranked_jsonb.ranked_signals` array. Each stored question lens carries its
+ * FULL relevance family (measured 1,637 rows for wealth/property, up to 9,693 for progeny);
+ * emitting it unbounded is what blew `bodha_domain_reading_get(domain=wealth)` to 909,221
+ * bytes — ~785KB of it two lenses' ranked_signals alone. The Lane B-6 lens_limit fix bounded
+ * the lens FAMILY (how many lenses) but not the rows INSIDE each lens; this bounds the latter.
+ *
+ * The default (25) intentionally equals RANKED_HYDRATE_PER_LENS — beyond it the rows were not
+ * even text-hydrated (WP-1.2e), so serving them added ID-heavy bytes with no headline/summary.
+ * The true family size stays visible per lens (`ranked_signals_total`) and the whole family
+ * remains reachable via response_format=full (up to 200/lens) or the query_signals drill.
+ */
+const RANKED_SIGNALS_PER_LENS_DEFAULT = 25
+const RANKED_SIGNALS_PER_LENS_MAX = 100
+const RANKED_SIGNALS_PER_LENS_FULL = 200
+
+/**
  * External reading-domain → the value present in bodha_msr_signals.domains_affected_array
  * that scopes the candidate pool. `null` = no array pre-filter (the domain is not a stored
  * tag — e.g. moksha/education); the pool is the whole chart and the composite domain overlay
@@ -303,6 +320,15 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       description: 'D-1.5b response budget: pagination offset into the question-lens family ' +
         '(default 0). Use with lens_limit to page beyond the default 60.',
     },
+    max_signals_per_lens: {
+      type: 'number',
+      description: 'D-1.5b B-7 response budget: max ranked_signals to serve INSIDE each ' +
+        'question lens (default 25, max 100). The stored lens holds its full relevance family ' +
+        '(hundreds–thousands of rows); serving it unbounded blew this response past 900KB. ' +
+        'Each lens still reports `ranked_signals_total` (the true family size) and ' +
+        '`ranked_signals_capped`. Use response_format=full to raise the per-lens cap to 200, ' +
+        'or drill via query_signals for the whole family.',
+    },
   },
 
   llm_hints: {
@@ -338,6 +364,15 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
     // remainder permanently unreachable. Bounded, honest pagination now applies.
     const lens_limit  = Math.min(Math.max(typeof args['lens_limit'] === 'number' ? (args['lens_limit'] as number) : 60, 1), 200)
     const lens_offset = Math.max(typeof args['lens_offset'] === 'number' ? (args['lens_offset'] as number) : 0, 0)
+    // D-1.5b B-7 (Gate B B7_budgets): per-lens ranked_signals cap — the unbounded section
+    // that kept this response at ~909KB even after B-6's lens-family pagination. Full mode
+    // raises the cap to 200/lens (still bounded); default/explicit mode is 25 (max 100).
+    const max_signals_per_lens = is_full
+      ? RANKED_SIGNALS_PER_LENS_FULL
+      : Math.min(
+          Math.max(typeof args['max_signals_per_lens'] === 'number' ? (args['max_signals_per_lens'] as number) : RANKED_SIGNALS_PER_LENS_DEFAULT, 1),
+          RANKED_SIGNALS_PER_LENS_MAX,
+        )
 
     const VALID_DOMAINS = ['career', 'wealth', 'relationship', 'health', 'character', 'spirituality', 'education', 'moksha', 'other']
 
@@ -480,7 +515,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       // the CDLM-derived refs PLUS the top ranked_signals inside each question lens — and
       // hydrate them all with headline/summary text in one bounded lookup, so no served row
       // is a bare ID-without-text.
-      const RANKED_HYDRATE_PER_LENS = 25
+      // D-1.5b B-7: hydrate exactly the rows we will SERVE per lens (max_signals_per_lens),
+      // so no served ranked_signal is a bare ID-without-text (WP-1.2e) and no un-served row
+      // pays a hydration lookup.
       const lensRankedIds: string[] = []
       for (const lens of lensRes.rows as Array<Record<string, unknown>>) {
         const arj = lens['all_relevant_ranked_jsonb']
@@ -488,7 +525,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           ? (arj as Record<string, unknown>)['ranked_signals']
           : arj
         if (Array.isArray(ranked)) {
-          for (const rs of ranked.slice(0, RANKED_HYDRATE_PER_LENS)) {
+          for (const rs of ranked.slice(0, max_signals_per_lens)) {
             const sid = (rs as Record<string, unknown>)?.['signal_id']
             if (typeof sid === 'string' && sid) lensRankedIds.push(sid)
           }
@@ -504,18 +541,44 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       })
 
       // Enrich each lens's ranked_signals objects in place with headline/summary/tier.
+      // D-1.5b B-7 (Gate B B7_budgets): SLICE ranked_signals to max_signals_per_lens BEFORE
+      // enriching — the stored family is up to ~9.7k rows/lens and emitting it whole is what
+      // kept this response ~909KB. The true family size is disclosed per lens
+      // (ranked_signals_total / ranked_signals_capped) and the whole family stays reachable
+      // via response_format=full (200/lens) or the query_signals drill.
+      let anyLensCapped = false
       const hydratedLenses = (lensRes.rows as Array<Record<string, unknown>>).map(lens => {
         const arj = lens['all_relevant_ranked_jsonb']
         if (arj && typeof arj === 'object' && !Array.isArray(arj)) {
           const arjObj = arj as Record<string, unknown>
           const ranked = arjObj['ranked_signals']
           if (Array.isArray(ranked)) {
-            const enriched = ranked.map(rs => {
+            const total = ranked.length
+            const capped = total > max_signals_per_lens
+            if (capped) anyLensCapped = true
+            const enriched = ranked.slice(0, max_signals_per_lens).map(rs => {
               const r = rs as Record<string, unknown>
               const t = typeof r['signal_id'] === 'string' ? textById.get(r['signal_id'] as string) : undefined
               return t ? { ...r, headline: t.headline, summary: t.summary, signature_tier: t.signature_tier } : r
             })
-            return { ...lens, all_relevant_ranked_jsonb: { ...arjObj, ranked_signals: enriched } }
+            return {
+              ...lens,
+              all_relevant_ranked_jsonb: { ...arjObj, ranked_signals: enriched, total_count: total },
+              ranked_signals_total:  total,
+              ranked_signals_capped: capped,
+            }
+          }
+        }
+        // Flat-array schema-v1 fallback: bound it too.
+        if (Array.isArray(arj)) {
+          const total = arj.length
+          const capped = total > max_signals_per_lens
+          if (capped) anyLensCapped = true
+          return {
+            ...lens,
+            all_relevant_ranked_jsonb: (arj as unknown[]).slice(0, max_signals_per_lens),
+            ranked_signals_total:  total,
+            ranked_signals_capped: capped,
           }
         }
         return lens
@@ -540,6 +603,15 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
             ? `Composite-ranked over ${discriminated.pool_size} '${discriminated.filtered_by}'-tagged candidates with the ${domain} overlay (graha×bhāva×varga). See each row's rationale.`
             : `'${domain}' is not a stored signal domain-tag; ranked whole-chart (${discriminated.pool_size} candidates) purely by the ${domain} classical overlay (graha×bhāva×varga). See each row's rationale.`,
           question_lenses:        hydratedLenses,
+          // D-1.5b B-7 (Gate B B7_budgets): honest receipt for the per-lens ranked_signals
+          // cap — the section whose unbounded emission (up to ~9.7k rows/lens) kept this
+          // response at ~909KB. Per-lens ranked_signals_total/ranked_signals_capped carry the
+          // per-lens detail; this is the roll-up + recovery pointer.
+          ranked_signals_per_lens_cap: max_signals_per_lens,
+          ranked_signals_per_lens_note: anyLensCapped
+            ? `Each question lens serves at most ${max_signals_per_lens} ranked_signals (see per-lens ranked_signals_total for the true family size). ` +
+              (is_full ? 'response_format=full is already applied (cap 200/lens). ' : 'Use response_format=full (cap 200/lens), max_signals_per_lens (≤100), or drill query_signals for the whole family.')
+            : `All lenses returned their full ranked_signals family (each ≤ ${max_signals_per_lens}).`,
           cdlm_cells:             cdlmCells,
           signal_refs:            signalRefs,
           signal_id_refs:         signalRefsArray,
