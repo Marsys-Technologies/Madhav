@@ -547,7 +547,30 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       // (ranked_signals_total / ranked_signals_capped) and the whole family stays reachable
       // via response_format=full (200/lens) or the query_signals drill.
       let anyLensCapped = false
-      const hydratedLenses = (lensRes.rows as Array<Record<string, unknown>>).map(lens => {
+      let anyTemplateIdsCapped = false
+      const hydratedLenses = (lensRes.rows as Array<Record<string, unknown>>).map(lensRaw => {
+        // D-1.5b B-7 (Gate B B7_budgets, 2nd pass): the ranked_signals cap above killed the
+        // #1 offender, but each lens ALSO carries `template_element_ids_jsonb.signal_ids` — the
+        // SAME relevance family as a raw UUID list (measured ~63KB/lens, ~126KB for 2 lenses,
+        // which kept the served response at ~155KB > the 100KB gate even after ranked_signals
+        // was bounded). Cap that ID list to the same per-lens budget; the true count is already
+        // disclosed by the sibling `signal_count` field, so nothing is lost — the full family is
+        // reachable via response_format=full or the query_signals drill, same as ranked_signals.
+        const lens = { ...lensRaw }
+        const teij = lens['template_element_ids_jsonb']
+        if (teij && typeof teij === 'object' && !Array.isArray(teij)) {
+          const teijObj = teij as Record<string, unknown>
+          const ids = teijObj['signal_ids']
+          if (Array.isArray(ids) && ids.length > max_signals_per_lens) {
+            anyTemplateIdsCapped = true
+            lens['template_element_ids_jsonb'] = {
+              ...teijObj,
+              signal_ids: (ids as unknown[]).slice(0, max_signals_per_lens),
+              signal_ids_total: ids.length,
+              signal_ids_capped: true,
+            }
+          }
+        }
         const arj = lens['all_relevant_ranked_jsonb']
         if (arj && typeof arj === 'object' && !Array.isArray(arj)) {
           const arjObj = arj as Record<string, unknown>
@@ -612,6 +635,13 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
             ? `Each question lens serves at most ${max_signals_per_lens} ranked_signals (see per-lens ranked_signals_total for the true family size). ` +
               (is_full ? 'response_format=full is already applied (cap 200/lens). ' : 'Use response_format=full (cap 200/lens), max_signals_per_lens (≤100), or drill query_signals for the whole family.')
             : `All lenses returned their full ranked_signals family (each ≤ ${max_signals_per_lens}).`,
+          // D-1.5b B-7 (2nd pass): honest receipt for the per-lens template_element_ids_jsonb.signal_ids
+          // cap — the raw-UUID relevance-family list that dominated the response (~63KB/lens) once
+          // ranked_signals was bounded. Same cap, same recovery path; per-lens signal_ids_total
+          // discloses the true count.
+          template_element_ids_per_lens_note: anyTemplateIdsCapped
+            ? `Each lens's template_element_ids_jsonb.signal_ids is capped at ${max_signals_per_lens} (see per-lens signal_ids_total / the sibling signal_count for the true family size). Use response_format=full or drill query_signals for the whole family.`
+            : `All lenses returned their full template_element_ids_jsonb.signal_ids family (each ≤ ${max_signals_per_lens}).`,
           cdlm_cells:             cdlmCells,
           signal_refs:            signalRefs,
           signal_id_refs:         signalRefsArray,
