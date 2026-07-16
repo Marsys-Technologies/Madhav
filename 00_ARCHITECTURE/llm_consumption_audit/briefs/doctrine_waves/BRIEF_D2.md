@@ -2,7 +2,7 @@
 artifact: BRIEF_D2
 type: WAVE BRIEF (three-part: PRE-BOUND + FROZEN + BIND-AT-OPEN)
 wave: D-2 — Vidhi Engine + Mechanism wave
-version: 2.1
+version: 2.2
 status: FROZEN — §B slots bind at wave open (Fable Binder, per CONDUCTOR_PROTOCOL §2 step 1);
   §B0 slots are PRE-BOUND (resolved 2026-07-16 against repo + register HEAD; Binder spot-verifies,
   does not re-derive)
@@ -19,6 +19,7 @@ prerequisite: >
 gate: the design-§8 MASTER ACCEPTANCE TEST run by a FLOOR-MODEL (Sonnet) reading agent (§G).
   6/6 required — unchanged, not weakenable.
 changelog:
+  - v2.2 (2026-07-16, docs/pre-d2-definition-of-done): new §F1.7 Definition of DONE — anti-D-1-recurrence: Binder-emitted promise→assertion ledger (total over §F1, bind failure if not), three mandatory verification altitudes (per-lane / integration-cross-lane / post-deploy LIVE per cycle), scale realism, data-over-flags, anti-vacuous tests, truncation honesty, ledger-complete close discipline; §G scoped as a subset of the ledger, never a substitute.
   - v2.1 (2026-07-16, docs/pre-d2-orchestration-economy): new §F1.6 — native-granted
     orchestration-economy discretion: Workflow-based multi-agent fan-out where shape-appropriate,
     per-agent effort dials (down for mechanical, up for verification/doctrine), per-agent model
@@ -267,6 +268,69 @@ each up or down judiciously per task. The grants, and the hard limits the dials 
    documented evidence. Rule of thumb: economize on discovery and mechanical transforms; spend on
    verification and irreversible steps.
 
+## §F1.7 — Definition of DONE + verification altitudes (anti-D-1-recurrence, native-ordered 2026-07-16)
+
+**Why this section exists.** D-1 closed with its promises "verified", yet three unplanned
+remediation waves (D-1.5a, D-1.5b, D-1.6) had to run to make them true. The post-mortem across
+those waves identified exactly where agent verification fails, and this section hard-codes the
+countermeasures. **A phase is DONE only when everything it promised is LIVE on the deployed
+connector — not merged, not tests-green, LIVE.** The five documented failure classes this
+section exists to kill: (1) code-level verification passing while real-scale behavior fails
+(B-4's amplifier: verified ACCEPT on synthetic fixtures, then 22,000 duplicate rows + 100%
+insert failure on the real chart); (2) per-lane correctness hiding destructive cross-lane
+interaction (bo_laksana's blanket delete silently destroying bo_sudarshana's rows); (3) success
+flags lying (asset_throughput `lit/rows_written=45` over ZERO actual rows); (4) built-but-not-
+served (four D-1.5b features with perfect table data invisible to every deployed MCP surface);
+(5) vacuous tests (an empty-array fixture passing a "<100KB" size test while live served 155KB;
+brief type-specimens that don't match the real chart).
+
+1. **Promise ledger (Binder, at open — before any lane spawns).** The Binder enumerates EVERY
+   commitment in §F1 — per lane: deliverables, type specimens, servability claims, "closes CR-N"
+   claims — into a numbered promise→assertion table committed with the bind record. V-0 turns
+   every row into an executable harness assertion (or marks it structurally-verified-by-
+   construction with the exact evidence recipe). A §F1 promise with no ledger row is a BIND
+   FAILURE — the wave does not spawn until the ledger is total. At close, the wave may not close
+   while any ledger row is neither GREEN on the deployed connector nor a native-visible PARK
+   with documented evidence and an owner. "The gate passed" is not done; **the LEDGER is the
+   gate's scope** — §G's 6/6 master test is one (load-bearing) subset of it, never a substitute
+   for the rest.
+
+2. **Three verification altitudes — all mandatory, none substitutable for another:**
+   a. **Phase-1 per-lane (pre-merge):** fresh-context verifier, diff review, OWN test run,
+      scope-warden. Catches code defects. D-1 effectively had only this — necessary, insufficient.
+   b. **Integration (pre-deploy):** full suite on the integrated tree PLUS explicit cross-lane
+      interaction checks: shared-table delete/count scopes for every writer emitting to a shared
+      table (the bo_laksana/bo_sudarshana class), schema-declaration completeness vs actual
+      emission (the B-1 drift-detector class), append-only conflict resolutions verified keep-both.
+   c. **Post-deploy LIVE (per CYCLE, not only at wave end):** after each cycle's deploy(+rebuild
+      where applicable), the ledger rows that cycle claims to satisfy are re-run against the
+      DEPLOYED connector with REBUILT data before the next cycle spawns. Built-but-not-served
+      is NOT done and must surface here, not at wave close.
+
+3. **Scale realism.** Verifiers must exercise real chart-scale data (the live DB via the proxy or
+   postgres tool, read-only), never only synthetic fixtures. Any lane whose writer emits to a
+   shared table (`bodha_msr_signals`, `chart_facts`, …) gets an explicit cross-writer scope check
+   on BOTH its delete path and its `count_sql`.
+
+4. **Data over flags.** No verifier or gate accepts a success STATE (asset_throughput row,
+   register status, report checkmark, implementer's "done") as evidence — probe the underlying
+   rows/serving surface. Flags are claims; rows are facts (§N.4 cockpit truth).
+
+5. **Anti-vacuous tests.** Fixtures must model live payload shape AND volume. Type specimens must
+   be re-derived from the actual chart's data at verification time — three D-1.5b brief specimens
+   did not match the live chart and had to be replaced by what actually holds; a specimen that
+   "must fire" is verified by firing it, not by asserting it.
+
+6. **Truncation honesty.** No absence claim from a truncated/trimmed/paginated response (the
+   Gate-Ś Śaśa-fabrication class): any "X is not present" assertion pages to exhaustion or uses
+   an authoritative total/count field.
+
+7. **Close discipline.** REPORT_D-2.md must carry the full promise ledger with per-row
+   disposition (GREEN + evidence pointer | PARKED + evidence + owner + native visibility).
+   `current_wave` advances ONLY after the ledger is complete. An unmet promise silently dropped
+   at close is a governance breach — it is the precise D-1 failure mode this section exists
+   to kill.
+
 ## FROZEN §F2 — must_not_touch
 FROZEN orchestrator contract (PARK class 1) — **including the state-commit race fix: owned by a
 parallel session, D-2 VERIFIES only (§B.3), never patches** · Gate-A/B/Ś surfaces' semantics
@@ -358,6 +422,11 @@ BIND_D-2.md + this brief's status stamp ONLY)
    `depends_on` closure) and record `{scope, layers, full: bool, rationale}`; expected NON-full.
 
 ## §G — Gate (the wave's defining test — UNCHANGED from v1.0 in substance; 6/6 stays)
+
+**Scope rule (v2.2, §F1.7):** §G is the wave's defining test, but it is a SUBSET of the close
+condition — the wave closes on the FULL §F1.7 promise ledger (every §F1 commitment green on the
+deployed connector or native-visibly PARKed with evidence), of which the items below are the
+load-bearing core. Passing §G with unledgered or silently-dropped promises is NOT a close.
 
 1. **Master acceptance, floor-model:** a FRESH Sonnet reading agent, given only the served surfaces
    + the compiled vidhi (no priors, no register, no hand-derivation), produces the 482012f1 wealth
