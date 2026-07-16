@@ -14,7 +14,14 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-1.6   # advance this pointer at each wave close (conductor cleanup step). D-1.5b CLOSED 2026-07-16 (Gate B 17/17 green; REPORT_D-1.5b.md). D-1.6 "Śuddhi" INSERTED by native order 2026-07-16 (Cowork): pre-D2 total cleanup — brief at briefs/doctrine_waves/BRIEF_D1_6.md; D-2 opens at its close.
+current_wave: D-2   # advance this pointer at each wave close (conductor cleanup step). D-1.6 "Śuddhi"
+  # CLOSED 2026-07-16: 7 lanes (S-1,S-2,S-3,S-4,S-5,S-6,S-8) + 1 fix-2 cycle, all Opus-verified ACCEPT.
+  # Gate Ś 11/16 green + 4 confirmed-by-construction + 1 PARKED with evidence (item 8, narrow
+  # yoga-signal-class timing residual, authoritative firing surface unaffected). Two deploys
+  # (38d82105, 08245669), two scope-limited rebuilds. A pre-existing orchestrator asset_throughput
+  # state-commit race was discovered, recovered from, and documented as D-2's first-agenda item
+  # (FROZEN §N.2, not touched). See REPORT_D-1.6.md. D-1.5b CLOSED 2026-07-16 (Gate B 17/17 green;
+  # REPORT_D-1.5b.md).
   # D-1.5a CLOSED 2026-07-15: 13/15 gate green, final proof achieved live (wealth
   # verdict convergent_moderate/1.15 -> convergent_strong/~2.79, Dhana Yoga in
   # bearing_yogas). 2 items PARKED (documented, non-blocking, out of scope) — see

@@ -5379,7 +5379,25 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> ⚠️ **AUTHORITATIVE STATE (2026-07-16): Doctrine-Waves autonomous campaign ACTIVE — current_wave = D-1.6 "Śuddhi" (native-ordered pre-D2 total-cleanup wave, INSERTED 2026-07-16; brief FROZEN at `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D1_6.md`; Gate Ś 16 assertions; D-2 opens at its close).** L0–L5 build arc is CLOSED/SEALED (see §E of CLAUDE.md); the active work is the D-1 → D-4 doctrine-remediation wave sequence governed by `00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (v1.1 FINAL) and run per `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md`.
+> ⚠️ **AUTHORITATIVE STATE (2026-07-16): Doctrine-Waves autonomous campaign ACTIVE — current_wave = D-2.** L0–L5 build arc is CLOSED/SEALED (see §E of CLAUDE.md); the active work is the D-1 → D-4 doctrine-remediation wave sequence governed by `00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (v1.1 FINAL) and run per `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md`.
+>
+> **D-1.6 "Śuddhi" CLOSED 2026-07-16** — pre-D2 total-cleanup wave (native-ordered, INSERTED 2026-07-16).
+> 7 lanes (S-1 silent-wrong-answer purge, S-2 dosha integrity, S-3 yoga engine integrity, S-4 timing
+> substrate, S-5 serving-quality debt, S-6 infra one-liners, S-8 governance/register reconciliation)
+> + 1 fix-2 cycle (S-4-fix2, a genuine Phase-2 defect the first deploy's live Gate Ś testing caught:
+> forward-dated dasha-activation windows were never populated) — all independently Opus-verified
+> ACCEPT. Gate Ś (16 items): 11 green (#1–7, #9, #10, #12, #13), 4 confirmed by construction (#11,
+> #14, #15, #16), 1 PARKED with evidence (#8 — a narrow yoga-signal-class timing residual; the
+> authoritative yoga-firing surface `ganita_yoga_firings_get`, Gate Ś #5/#6/#7, is unaffected). Two
+> deploys (PR #578 → `38d82105`; PR #580 fix-2 → `08245669`), two scope-limited rebuilds of Abhisek
+> (482012f1): 47-asset closure of ga_structural/ga_yoga/ka_yojaka, then a 27-asset closure of
+> ka_yojaka alone post-fix-2. A pre-existing orchestrator `asset_throughput` state-commit race was
+> discovered mid-rebuild (data wrote correctly, state flag didn't commit, cascaded a DEP-ASSERT
+> block) — recovered same-session (data-verified before correcting the stuck flag), documented as
+> D-2's first-agenda item, NOT fixed (FROZEN orchestrator, CLAUDE.md §N.2). Two GCP infra items (O-2
+> scheduler URI fix, O-8 monitoring alert) applied with native go-ahead. Full arc:
+> `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/REPORT_D-1.6.md`; ledger
+> `STATE_D-1.6.md` CLOSED.
 >
 > **D-1.5b CLOSED 2026-07-16** — Gate B 17/17 green on the deployed connector. 7-lane brief merged, deployed, live-SHA verified (PRs #570, #571). Full L1→L5 rebuild of 482012f1 (Abhisek) via the Cloud Run job path surfaced 3 production defects invisible to per-lane verification — B-4 amplifier NULL-on-NOT-NULL + unbounded N×M cross-join (22k+ dup rows); a sibling same-class NULL bug; `bo_laksana` silently wiping B-3's Sudarshana signals via an over-broad shared-table delete — each root-caused, fixed, adversarially verified (PRs #573, #574). Gate B battery exposed 4 serving-layer gaps + 5 harness bugs + a connector rate-limit cascade; all 4 gaps fixed (PRs #575, #576): shadbala hidden INVARIANT facts, sudarshana class-scoping, the 909KB→41KB response-budget fix (two-pass), D2-hora divisional serving — bundle passed adversarial verification incl. DB-level pivot-collision analysis. Main synced at `aa1bad9f`; branches/worktrees cleaned. The 2 non-B reds in the full 32-battery are the identical pre-existing D-1.5a PARKs (#4 valence heuristic, #A7 aspects serving) — out of scope, provably not regressions, STILL OPEN (D-1.6 candidates). The `ka_vighnakara` ForeignKeyViolation carried from D-1.5a is **RESOLVED** (orphaned-concurrent-build_runs race, not a code bug — see STATE_D-1.5b). Full arc: `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/REPORT_D-1.5b.md`; ledger `STATE_D-1.5b.md` CLOSED. Non-blocking follow-ups flagged at close (harness rate-limit hardening, CI test-collection gap, `min_weight`/`min_salience` alias mismatch, deploy.yml path-detection verify, ga_vargas floor re-baseline) → rolled into the D-1.6 Śuddhi brief.
 >
