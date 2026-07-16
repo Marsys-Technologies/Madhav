@@ -1,6 +1,6 @@
 ---
 wave: D-1.6
-lifecycle_step: 4
+lifecycle_step: 6
 brief_bound: true
 rollback_pin:
   image_sha:
@@ -16,7 +16,7 @@ lanes:
   - {lane: S-6, branch: wave/D-1.6/S-6, status: receipted, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-ac5fe8f251fdcb8c7, head_sha: 6b7994e9, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, migration-439 independently reviewed safe/idempotent, kala_temporal rewire sound (mirrors BA-P1 pattern), zero new regressions; O-2+O-8 GCP writes STAGED not executed, need conductor/native decision"}
   - {lane: S-7, branch: wave/D-1.6/S-7, status: pending}
   - {lane: S-8, branch: wave/D-1.6/S-8, status: receipted, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a173a2019ea963797, head_sha: bbc9bde9, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, note: MARSYS_DEFECT_GAP_REGISTER_v2_0.md is at 00_ARCHITECTURE/ root not under llm_consumption_audit/** - brief may_touch glob imprecision, authorized by lane task text, non-blocking"}
-deploy: {done: false, sha: null}
+deploy: {done: true, sha: 38d8210554807dfdc90aa797a7023fdca49465b9, pr: 578, ci_run: 29491712143, deploy_run: 29492213040}
 rebuild: {scope: scope_limited, layers: [ga_yoga_dosha, ka_activation, ph_nimitta_rectification, bo_laksana_closure], full: false, abhisek_build_id: pending}
 gate: {run: false, green: [], red: []}
 updated_at: 2026-07-16T00:00:00Z
@@ -40,8 +40,18 @@ notes: >
   new regressions from cross-lane integration); sidecar pytest+bodha_writers 3538 passed/0 failed;
   drift_detector.py 219 findings/exit=3, schema_validator.py 34 violations/exit=3 — BOTH IDENTICAL
   to main baseline (confirmed via direct comparison), pre-existing, not wave-introduced.
-  GCP infra writes staged by S-6 (O-2 scheduler URI terraform apply w/ header side-effect on 2
-  unrelated jobs; O-8 monitoring alert policy create) NOT YET APPLIED — routing to native for
-  explicit go-ahead before conductor runs them (not required for Gate Ś closure).
-  Next: DEPLOY step 5 — push branch, PR to main, CI, merge.
+  GCP infra writes APPLIED (native go-ahead granted): O-2 terraform apply clean (0 add/3 change/0
+  destroy, matched S-6's staged plan exactly) — pending-stream-reaper URI fixed, panchanga-refresh
+  gained OIDC token; cron-secret headers on canary-battery-daily + panchanga-daily-refresh
+  re-provisioned immediately after via gcloud (captured original value pre-apply). Both jobs found
+  PAUSED — pre-existing (not terraform-managed, not caused by this apply — confirmed no
+  paused/state attr in the .tf files), left as-is, out of scope. O-8 monitoring alert policy
+  created (projects/madhav-astrology/alertPolicies/6294997695917926548) after resolving
+  ${ALERT_NOTIFICATION_CHANNEL_ID} to the existing "Native operator" email channel and fixing
+  combiner AND->OR (GCP requires OR for log-matching conditions — S-6's staged JSON needed this
+  one correction).
+  DEPLOY step 5 complete: PR #578 merged to main @ 38d82105 (CI green, gh pr merge --merge).
+  Deploy workflow 29492213040 completed success; amjis-web + amjis-mcp both verified live at
+  38d8210554807dfdc90aa797a7023fdca49465b9.
+  Next: REBUILD step 6 — scope-limited rebuild of Abhisek (482012f1) + T-5/T-9 backfill attempt.
 ---
