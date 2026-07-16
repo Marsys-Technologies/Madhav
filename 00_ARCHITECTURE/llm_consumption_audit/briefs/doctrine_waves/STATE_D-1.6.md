@@ -18,7 +18,7 @@ lanes:
   - {lane: S-8, branch: wave/D-1.6/S-8, status: receipted, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a173a2019ea963797, head_sha: bbc9bde9, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, note: MARSYS_DEFECT_GAP_REGISTER_v2_0.md is at 00_ARCHITECTURE/ root not under llm_consumption_audit/** - brief may_touch glob imprecision, authorized by lane task text, non-blocking"}
 deploy: {done: true, sha: 38d8210554807dfdc90aa797a7023fdca49465b9, pr: 578, ci_run: 29491712143, deploy_run: 29492213040}
 rebuild: {scope: asset_set, full: false, run_id: 83949839-fff3-472f-bbb1-cbf6c3b1bb8a, job_execution: brahma-build-pipeline-job-dv5f9, asset_count: 47, roots: [ga_structural, ga_yoga, ka_yojaka], includes_t5_t9_target: ka_jivana_parva, dispatched: true, abhisek_build_id: pending}
-gate: {run: false, green: [], red: []}
+gate: {run: true, green: [1, 2, 3, 4, 5, 6, 7, 12, 13], red: [8, 9], pending: [10, 11, 14, 15, 16]}
 updated_at: 2026-07-16T00:00:00Z
 notes: >
   OPEN complete. Binder (Fable) BOUND the brief: see BIND_D-1.6.md. 13/16 S-7 items
@@ -53,5 +53,38 @@ notes: >
   DEPLOY step 5 complete: PR #578 merged to main @ 38d82105 (CI green, gh pr merge --merge).
   Deploy workflow 29492213040 completed success; amjis-web + amjis-mcp both verified live at
   38d8210554807dfdc90aa797a7023fdca49465b9.
-  Next: REBUILD step 6 — scope-limited rebuild of Abhisek (482012f1) + T-5/T-9 backfill attempt.
+  REBUILD complete (step 6): 47/47 assets lit, zero errors, run ended 11:34:03. Build-health: FORENSIC
+  7/7 confirmed live (Sun Cap/Moon PBhadrapada/Lagna Aries 12.42°/Shukla Tritiya/Ravivara/Shiva/Garaja).
+  chart_facts jumped 27554->138279 (investigated: zero duplicate natural keys within new build, clean
+  category separation from prior build_id — legitimate ga_structural combinatorial output growth, NOT
+  an accumulation bug). chart_divisionals 22092 matches S-6's floor rebaseline exactly. chart_dashas
+  483060 (untouched by this rebuild, pre-existing, not a regression). DEFECT-001 orphan check: 0%
+  orphaned. T-5/T-9 (ka_jivana_parva) included in the 47-asset scope, completed successfully as part
+  of this rebuild — no separate backfill dispatch needed.
+
+  GATE Ś RESULTS (live MCP against deployed connector 38d82105, post-rebuild):
+  GREEN: #1 (Saturn remedy query returns only-Saturn, 29/29 rows) · #2 (digest weakest_graha=Venus,
+  CR-55 citation) · #3 (mimamsa_calibration_get == query_calibration, IDENTICAL result_hash) · #4
+  (Kemadruma/Kala-Sarpa correctly absent from default dosha_label page, zero shared-stub across 22
+  rows) · #5 (Budha-Aditya/Saraswati/Dhana-2L9L all FIRE grounded in real fact_ids) · #6 (NBRY
+  Saturn-D9 + Venus-D9 fire with full grounds_jsonb matching DR-4) · #7 (ganita_yogas_get v3 limit=3:
+  Sasa correctly "formed", no fabricated "not formed" from truncated page) · #12 (A7 fix confirmed
+  live; #4 correctly excluded) · #13 (ref_planet_transit_get no-401, ref_transit_rules_get 200,
+  kala_temporal_bundle sidecar_available=true).
+
+  RED (genuine, reproduced twice):
+  #8 — yoga_activation_by_dasha AND its alias kala_yoga_activation_get return ALL rows undated
+  (activation_start/end=null) with flat dasha_alignment_score=0.5 across the full 2026-2029 window
+  (15/15 rows). judgment_query(wealth) AND judgment_query(career) both show receipt.timing_anchored=
+  true while timing_hooks.{current,lord_mahadasha_windows,karaka_mahadasha_windows,kala_activations}
+  are ALL EMPTY — also a #10 receipt-honesty violation (✓-with-empty-evidence).
+  #9 — get_temporal_windows/kala_windows_get returns activation_count=0 for the default 1yr forward
+  window; empty_reason discloses "8010 dated activation rows exist... these are historical" — R-45's
+  lord-resolution DID populate real dated rows (mechanism proven working), but ALL are backward-
+  looking; nothing forward of today got dated. Root cause not yet isolated: chart_dashas' future
+  periods ARE correct and real (verified via ganita_dasha_periods_get, e.g. real 2025-2031 Venus
+  sub-periods) — the gap is specifically ka_yojaka's forward window-generation, not lord resolution.
+  Routing: reopening Lane S-4 for one targeted fix-2 attempt (new gate-driven cycle). If unresolved,
+  PARK with this evidence for native review.
+  Next: route S-4 fix-2, then re-run items 8/9/10 + remaining pending items (11,14,15,16), then CLOSE.
 ---
