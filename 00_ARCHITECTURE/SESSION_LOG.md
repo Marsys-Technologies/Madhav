@@ -32134,3 +32134,62 @@ session_close:
 ```
 
 *End of DOCTRINE-WAVES-D-1.5a-CONDUCTOR-CLOSE-2026-07-15 entry — 2026-07-15.*
+
+---
+
+## DOCTRINE-WAVES-D-1.6-CONDUCTOR-CLOSE-2026-07-16 — Wave D-1.6 "Śuddhi" CLOSED
+
+```yaml
+session_open:
+  session_id: DOCTRINE-WAVES-D-1.6-CONDUCTOR-CLOSE-2026-07-16
+  cowork_thread_name: "Madhav — Doctrine Waves D-1.6 Śuddhi (Conductor: open through close)"
+  agent_name: claude-sonnet-5
+  predecessor_session: DOCTRINE-WAVES-D-1.5b-GATEB-CLOSE-2026-07-16
+  role: >
+    Conductor for wave D-1.6 "Śuddhi" end-to-end per CONDUCTOR_PROTOCOL.md — Binder, 7-lane
+    spawn/verify/integrate/merge/deploy/rebuild/gate, plus a fix-2 cycle the live Gate Ś
+    battery surfaced beyond the original 7-lane scope.
+  declared_scope:
+    may_touch: [platform/, platform-mcp/, pyjhora_adapter/, migrations (surgical),
+      00_ARCHITECTURE/llm_consumption_audit/, CURRENT_STATE_v1_0.md §2 at close,
+      CONDUCTOR_PROTOCOL.md (Binder-remit note only), infra config for S-6 items]
+    must_not_touch: [FROZEN orchestrator core, bucket-7 engine internals (MSR prior/tier/
+      valence, CGM ranking, convergence engine, KP sub-lord engine, calibration/LEL loop),
+      99_ARCHIVE/**, chart data for 1c826d5a, CLAUDE.md]
+  red_team_due: false
+```
+
+**Body.** Full conductor run of wave D-1.6 "Śuddhi": Binder open (13/16 Lane S-7
+verify-then-close items closed on live evidence at bind time, DR-4 + DR-5 doctrine rulings),
+7-lane parallel spawn/verify/integrate (PR #578, one real merge conflict resolved), deploy,
+rebuild (47-asset scope-limited closure of ga_structural/ga_yoga/ka_yojaka), and a live
+Gate Ś battery against the deployed connector. The battery caught a genuine Phase-2 defect
+Lane S-4's Phase-1 verification could not see: forward-looking dasha-activation windows were
+never dated, and `judgment_query` claimed `timing_anchored:true` over empty evidence. Root-
+caused to 3 specific bugs (chronologically-earliest-period selection instead of a tiered
+current/future/past choice; an undated-rows-crowd-out-dated ranking bug; a receipt-honesty
+gap) — fixed in a fix-2 cycle (PR #580), independently Opus-verified against live DB numbers,
+deployed, and re-gated. A pre-existing orchestrator `asset_throughput` state-commit race
+surfaced during the fix-2 rebuild (data wrote correctly — 2,488 verified rows — but the state
+flag didn't commit, cascading a DEP-ASSERT block through 24 downstream assets); recovered
+same-session by verifying the underlying data before correcting the stuck flag, then resuming
+the remainder cleanly. Final Gate Ś: 11/16 green, 4 confirmed by construction, 1 PARKED with
+evidence (a narrow yoga-signal-class timing residual — the authoritative yoga-firing surface
+is unaffected). Full detail: `REPORT_D-1.6.md`.
+
+```yaml
+session_close:
+  session_id: DOCTRINE-WAVES-D-1.6-CONDUCTOR-CLOSE-2026-07-16
+  wave: D-1.6
+  close_criteria_met: true
+  verification: "11/16 gate assertions green live on the deployed connector (post both deploys); 4 confirmed by construction; 1 item (#8) PARKED with independent live-DB evidence, not asserted on faith; all 7 lanes + the fix-2 cycle independently Opus-verified (diff review + self-run tests + scope-warden), never self-certified"
+  deploy: "Deploy 1: amjis-web + amjis-mcp @ 38d8210554807dfdc90aa797a7023fdca49465b9 (PR #578). Deploy 2 (fix-2): amjis-web + amjis-mcp @ 0824566951a3189bc750e24d20eab650f5542fb4 (PR #580) — both confirmed via gcloud describe"
+  product_code_writes_made: "see REPORT_D-1.6.md's lane table"
+  native_chart_touched: true
+  current_state_updated: true
+  register_dispositions_flipped: "CR-90..107 reconciled to one system of record (S-8); MARSYS_DEFECT_GAP_REGISTER_v2_0.md synced against S-7 probe findings; R-48 honestly re-dispositioned from false REMEDIATED-PENDING-W4 to PENDING; §E CR-33..38 permanent IDs assigned; legacy M-series carry-forwards triaged"
+  followups: "Orchestrator asset_throughput state-commit race (discovered mid-rebuild, recovered same-session, NOT fixed — FROZEN per CLAUDE.md §N.2) is D-2's first-agenda item. Gate Ś item 8's residual (yoga-signal-class dasha_eligibility_rule construction, 74 undated rows on 482012f1) is a bounded pickup for D-2 or a dedicated MSR-timing pass. CR-28 (intent_classify prompt-vs-classification contract) remains open for Opus engineering adjudication."
+  next_session_objective: "D-2 (Vidhi Engine + Mechanism wave) per CONDUCTOR_PROTOCOL.md + BRIEF_D2.md. Binder re-verifies all bindings fresh. current_wave already advanced to D-2 in CLAUDECODE_BRIEF.md and CURRENT_STATE_v1_0.md."
+```
+
+*End of DOCTRINE-WAVES-D-1.6-CONDUCTOR-CLOSE-2026-07-16 entry — 2026-07-16.*

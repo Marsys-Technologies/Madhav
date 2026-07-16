@@ -1,6 +1,7 @@
 ---
 wave: D-1.6
-lifecycle_step: 6
+lifecycle_step: 8
+status: COMPLETE
 brief_bound: true
 rollback_pin:
   image_sha:
