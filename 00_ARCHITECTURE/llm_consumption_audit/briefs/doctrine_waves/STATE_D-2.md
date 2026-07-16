@@ -30,11 +30,11 @@ migration_blocks:
   V-5: [450, 454]
   V-6: [455, 459]
 lanes:
-  - {lane: V-0, branch: wave/D-2/V-0, status: implementing, cycle: 1}
-  - {lane: V-1, branch: wave/D-2/V-1, status: implementing, cycle: 1}
-  - {lane: V-4, branch: wave/D-2/V-4, status: implementing, cycle: 1}
-  - {lane: V-5, branch: wave/D-2/V-5, status: implementing, cycle: 1}
-  - {lane: V-6, branch: wave/D-2/V-6, status: implementing, cycle: 1}
+  - {lane: V-0, branch: worktree-agent-abd702623395ca54e, status: implementing, cycle: 1, worktree_base: d349a9c3, base_stale: true}
+  - {lane: V-1, branch: worktree-agent-a8c6723d1f643e6e8, status: verifying, cycle: 1, worktree_base: d349a9c3, base_stale: true, verifier_dispatched: a71e2161a9384739a}
+  - {lane: V-4, branch: worktree-agent-a2a7ae8a7815fc407, status: implementing, cycle: 1, worktree_base: d349a9c3, base_stale: true}
+  - {lane: V-5, branch: worktree-agent-a2af6d94c873f4ed9, status: implementing, cycle: 1, worktree_base: 47a72b77, base_stale: false}
+  - {lane: V-6, branch: worktree-agent-a38731279aa1a82f5, status: implementing, cycle: 1, worktree_base: fdc99de1, base_stale: false}
   - {lane: V-2, branch: wave/D-2/V-2, status: pending, cycle: 2}
   - {lane: V-3, branch: wave/D-2/V-3, status: pending, cycle: 2}
 deploy: {done: false}
