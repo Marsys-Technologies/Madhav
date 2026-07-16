@@ -3344,10 +3344,13 @@ class BoLaksanaRerankWriter(WriterBase):
                     payload = {
                         "structural_role_score": _structural_role_from_centrality(c),
                         "primary_graha": graha_title,
-                        "pagerank_score": c.get("pagerank_score"),
-                        "eigenvector_centrality": c.get("eigenvector_centrality"),
-                        "betweenness_centrality": c.get("betweenness_centrality"),
-                        "harmonic_centrality": c.get("harmonic_centrality"),
+                        # bodha_cgm_nodes' centrality columns are NUMERIC in
+                        # Postgres, so psycopg returns Decimal — cast to float
+                        # before json.dumps (Decimal is not JSON-serializable).
+                        "pagerank_score": float(c["pagerank_score"]) if c.get("pagerank_score") is not None else None,
+                        "eigenvector_centrality": float(c["eigenvector_centrality"]) if c.get("eigenvector_centrality") is not None else None,
+                        "betweenness_centrality": float(c["betweenness_centrality"]) if c.get("betweenness_centrality") is not None else None,
+                        "harmonic_centrality": float(c["harmonic_centrality"]) if c.get("harmonic_centrality") is not None else None,
                         "formula_version": "structural_role_rerank_v1",
                         "computed_at": now,
                     }
