@@ -101,8 +101,19 @@ notes: >
   confirmed incl. live DB re-query matching implementer's exact numbers (49360/40040/0/140) and the
   0.5-crowding math (9320 undated all=0.5, 35691/40040 dated <0.5). One pre-existing (non-regression)
   mcp graha_portrait drill_pointers failure flagged, confirmed present at base 38d82105 already.
-  Next: merge S-4-fix2 to main via PR, deploy, narrow rebuild (ka_activation writer's own re-run is
-  enough — its window-selection logic changed, not its lord-resolution facts, no downstream fact
-  changes so no cascade needed beyond ka_activation itself and its own direct MSR-serving path),
-  re-run Gate Ś items 8/9/10 live, then CLOSE.
+  DEPLOY complete: PR #580 merged @ 08245669, CI green, deploy success, amjis-web+amjis-mcp both
+  verified live at 08245669.
+  Narrow rebuild attempt 1 (run 71b260c7, 27-asset closure of ka_yojaka) FAILED partway: ka_yojaka +
+  ka_sangam both genuinely completed (kala_convergence verified 2488 real rows written for ka_sangam)
+  but ka_sangam's asset_throughput.state never transitioned to 'lit' (stuck at 'dormant') — a
+  state-commit race/bug in the orchestrator, NOT caused by the S-4 fix-2 code. This tripped a
+  DEP-ASSERT on ka_kalasutra ("ka_sangam(dormant)") which then cascaded BLOCKED errors through all
+  24 remaining downstream assets. Root cause is orchestrator-level (asset_throughput state-write
+  lagging behind actual data-write completion under concurrent load), NOT a D-1.6 lane defect — noted
+  for the close report as an out-of-wave finding, not fixed here (§N.2 FROZEN orchestrator — do not
+  touch without native sign-off). Recovery: manually corrected ka_sangam's asset_throughput row to
+  'lit' (data-verified, not fabricated — real 2488-row count confirmed in kala_convergence first),
+  then dispatched a resume run (8a353d5d) for the remaining 25 assets via the same topo-sorted
+  asset_set pattern.
+  Next: monitor resume run 8a353d5d to completion, re-run Gate Ś items 8/9/10 live, then CLOSE.
 ---
