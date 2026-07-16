@@ -199,6 +199,81 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
     const tailPointer = pointers.find(p => p.pointer_type === 'tail_dissent')
     expect(tailPointer?.instrument).toBe('synth_tail_divergence_get')
   })
+
+  // WP-S4-fix2 (Gate Ś #10 — receipt-honesty violation, live-reproduced twice against
+  // 482012f1): register_d9_judgment.ts can honestly stamp `receipt.timing_anchored: true`
+  // pre-serve (e.g. because real chart_dashas mahadasha-window data existed at write time)
+  // while the ACTUALLY SERVED `checklist.timing_hooks` arrays are all empty on the wire —
+  // whether from response-budget trimming the reconcile helper's trim_report-path matching
+  // didn't catch, or the section simply never had data. Either way, a caller must never see
+  // an affirmative "✓" receipt next to zero backing evidence (CLAUDE.md §N.6 point 3 / B.10).
+  it('forces receipt.timing_anchored=false when served timing_hooks are all empty, even if the capability stamped true (Gate Ś #10)', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID,
+        about: { domain: 'wealth', bhava: 2, label: 'Wealth / Artha', karakas: ['Jupiter'], operative_varga: 'D2' },
+        checklist: {
+          timing_hooks: { current: [], mahadasha_windows_by_graha: {}, kala_activations: [] },
+        },
+        // The capability honestly believed timing was anchored pre-serve (e.g. real
+        // chart_dashas rows existed at write time) — but nothing survived onto the wire.
+        receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D2✓', yogas_checked: 1, bhanga_checked: false, timing_anchored: true },
+        fact_id_refs: [],
+        drill_pointers: [],
+        judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'wealth', response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    const receipt = verdict['receipt'] as Record<string, unknown>
+    expect(receipt['timing_anchored']).toBe(false)
+    const flags = envelope['judgment_flags'] as string[]
+    expect(flags.some(f => f.startsWith('timing_anchored_forced_false'))).toBe(true)
+  })
+
+  it('leaves receipt.timing_anchored=true untouched when timing_hooks genuinely carry data', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID,
+        about: { domain: 'wealth', bhava: 2, label: 'Wealth / Artha', karakas: ['Jupiter'], operative_varga: 'D2' },
+        checklist: {
+          timing_hooks: {
+            current: [{ level_n: 1, lord_graha: 'Jupiter' }],
+            mahadasha_windows_by_graha: {},
+            kala_activations: [],
+          },
+        },
+        receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D2✓', yogas_checked: 1, bhanga_checked: false, timing_anchored: true },
+        fact_id_refs: [],
+        drill_pointers: [],
+        judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'wealth', response_format: 'v3' })
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    const receipt = verdict['receipt'] as Record<string, unknown>
+    expect(receipt['timing_anchored']).toBe(true)
+    const flags = envelope['judgment_flags'] as string[]
+    expect(flags.some(f => f.startsWith('timing_anchored_forced_false'))).toBe(false)
+  })
 })
 
 // ── graha_portrait ────────────────────────────────────────────────────────────

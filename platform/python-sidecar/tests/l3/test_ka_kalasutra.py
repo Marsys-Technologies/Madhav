@@ -240,8 +240,23 @@ class _Ctx:
 
 def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():
     """R-45 LANE0 regression: a predicate whose lord is in the dasha timeline
-    gets NON-NULL activation_start/end/peak even with NO convergence peak."""
+    gets NON-NULL activation_start/end/peak even with NO convergence peak.
+
+    WP-S4-fix2 (Gate Ś #8/#9): the writer calls resolve_activation_windows with
+    NO explicit as_of_date, so it defaults to date.today() — the fixture below
+    uses dates RELATIVE to date.today() (not hardcoded 2010-2029) so this test
+    deterministically exercises the "current tier" selection regardless of the
+    real wall-clock date the suite runs on, and so it would have caught the
+    fix-2 defect (the writer dating everything to the earliest-ever period —
+    e.g. a 2010-2029 MD — instead of the AD actually straddling "now").
+    """
     from pipeline.orchestrator.writers.ka_kalasutra import KaKalasutraWriter
+
+    today = date.today()
+    ad_start = today - timedelta(days=365 * 2)      # AD straddles "now"
+    ad_end = today + timedelta(days=365 * 2)
+    md_start = today - timedelta(days=365 * 12)     # wider co-current MD (coarser level)
+    md_end = today + timedelta(days=365 * 12)
 
     chart_id = "482012f1-710e-4a25-994a-93821f5871aa"
     sink = []
@@ -259,8 +274,13 @@ def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():
             # §8.4 regression: a PRE-BIRTH Saturn AD (1951) precedes the in-life one.
             # The global-earliest selector would have picked this — the fix must not.
             {"lord_graha": "Saturn", "level_n": 2, "start_date": _d(1951, 4, 14), "end_date": _d(1952, 5, 23)},
-            {"lord_graha": "Saturn", "level_n": 1, "start_date": _d(2010, 1, 1), "end_date": _d(2029, 1, 1)},
-            {"lord_graha": "Saturn", "level_n": 2, "start_date": _d(2012, 6, 1), "end_date": _d(2015, 3, 1)},
+            # WP-S4-fix2 regression: a co-current, COARSER (MD) period that spans an even
+            # wider range than the AD — the pre-fix2 "earliest matched[0]" selector would
+            # have picked whichever of these two sorted first by start date (in practice
+            # whichever period started first chronologically), NOT the one relevant to
+            # "now". The fix must select the AD (finer level, also current) over this MD.
+            {"lord_graha": "Saturn", "level_n": 1, "start_date": md_start.isoformat(), "end_date": md_end.isoformat()},
+            {"lord_graha": "Saturn", "level_n": 2, "start_date": ad_start.isoformat(), "end_date": ad_end.isoformat()},
         ]),
         ("FROM kala_convergence", []),  # NO convergence peak — the 99% case
     ]
@@ -274,9 +294,11 @@ def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():
     assert activation_start is not None, "activation_start must NOT be NULL (R-45 fix)"
     assert activation_end is not None
     assert activation_peak is not None
-    # §8.4: birth-forward — the resolved window is the IN-LIFE Saturn AD, NOT 1951.
-    assert activation_start == "2012-06-01"
-    assert activation_end == "2015-03-01"
+    # WP-S4-fix2: the resolved window is the CURRENT (straddles "today") Saturn AD,
+    # finer level preferred within the current tier — NOT the pre-birth 1951 AD, and
+    # NOT simply whichever in-life period happened to start earliest chronologically.
+    assert activation_start == ad_start.isoformat()
+    assert activation_end == ad_end.isoformat()
     assert activation_start >= "1984-02-05"
     assert activation_peak >= "1984-02-05"
     # every predicted date is in-life; no pre-birth leak

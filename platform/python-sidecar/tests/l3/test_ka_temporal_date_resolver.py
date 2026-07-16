@@ -48,13 +48,25 @@ class TestNormalizeGraha:
 
 
 class TestResolveNoConvergence:
-    """THE R-45 fix: dates come from the dasha timeline, not convergence."""
+    """THE R-45 fix: dates come from the dasha timeline, not convergence.
+
+    WP-S4-fix2: these tests pin an explicit `as_of_date` that falls INSIDE the
+    Saturn AD window (2012-06-01..2015-03-01) so the primary-period selection
+    (current > soonest-future > most-recent-past, see resolve_activation_windows'
+    docstring) deterministically lands on that AD regardless of the real
+    wall-clock date the test suite happens to run on — resolve_activation_windows
+    defaults `as_of_date` to `date.today()` when not supplied, which would make
+    these assertions flaky/date-dependent otherwise.
+    """
+
+    _AS_OF = date(2013, 1, 1)  # inside the Saturn AD window — exercises the "current" tier
 
     def test_lord_resolves_to_real_dates(self):
         rule = {"constituent_lords": ["Saturn"]}
-        w = resolve_activation_windows(rule, _timeline())
+        w = resolve_activation_windows(rule, _timeline(), as_of_date=self._AS_OF)
         assert w.resolution_source == "dasha_timeline"
-        # Finer level (AD) preferred as the primary bound.
+        # Current tier (as_of falls inside this AD), finer level (AD) preferred
+        # over the co-current MD within that tier.
         assert w.activation_start == date(2012, 6, 1)
         assert w.activation_end == date(2015, 3, 1)
         assert w.activation_peak is not None
@@ -63,26 +75,26 @@ class TestResolveNoConvergence:
     def test_predicted_dates_non_empty(self):
         """activation_predicted_dates_jsonb must NOT be empty — the fallback."""
         rule = {"constituent_lords": ["Saturn"]}
-        w = resolve_activation_windows(rule, _timeline())
+        w = resolve_activation_windows(rule, _timeline(), as_of_date=self._AS_OF)
         assert len(w.predicted_dates) > 0
         assert all("date" in d and "source" in d for d in w.predicted_dates)
         assert all(d["source"] == "dasha_timeline" for d in w.predicted_dates)
 
     def test_active_dasha_periods_dated(self):
         rule = {"constituent_lords": ["Saturn"]}
-        w = resolve_activation_windows(rule, _timeline())
+        w = resolve_activation_windows(rule, _timeline(), as_of_date=self._AS_OF)
         dated = [p for p in w.active_dasha_periods if p.get("match_kind") == "exact_lord"]
         assert len(dated) >= 1
         assert all("start" in p and "end" in p for p in dated)
 
     def test_alias_lord_still_matches(self):
         rule = {"constituent_lords": ["shani"]}  # alias for Saturn
-        w = resolve_activation_windows(rule, _timeline())
+        w = resolve_activation_windows(rule, _timeline(), as_of_date=self._AS_OF)
         assert w.activation_start is not None
 
     def test_unresolvable_lord_leaves_dates_none(self):
         rule = {"constituent_lords": ["Sun"]}  # not in timeline
-        w = resolve_activation_windows(rule, _timeline())
+        w = resolve_activation_windows(rule, _timeline(), as_of_date=self._AS_OF)
         assert w.resolution_source == "none"
         assert w.activation_start is None
         assert w.activation_peak is None
@@ -90,10 +102,78 @@ class TestResolveNoConvergence:
         assert any(p.get("match_kind") == "lord_only_no_timeline" for p in w.active_dasha_periods)
 
     def test_empty_rule_and_empty_timeline(self):
-        w = resolve_activation_windows({}, [])
+        w = resolve_activation_windows({}, [], as_of_date=self._AS_OF)
         assert w.activation_start is None
         assert w.resolution_source == "none"
         assert w.proximity_score == 0.5
+
+
+class TestPrimaryPeriodSelection:
+    """WP-S4-fix2 (Gate Ś #8/#9 root cause, S-4 fix-2 cycle): the primary bounded
+    window must be the CURRENT or NEXT-relevant matched period relative to
+    `as_of_date` — never simply the chronologically earliest-ever occurrence.
+    Before this fix `matched[0]` (finest-level, then earliest start) was always
+    the primary, which for a chart with 40+ years already elapsed meant almost
+    every activation dated to a long-past period, and get_temporal_windows'
+    default forward-looking window (and yoga_activation_by_dasha's 2026-2029
+    query) saw near-zero coverage even though R-45's lord resolution and the
+    underlying chart_dashas rows were both correct (live evidence: 8010 dated
+    kala_activation rows for 482012f1, ALL historical, 0 straddling "today").
+    """
+
+    def _tl(self):
+        # Three non-overlapping Saturn AD occurrences across a long timeline —
+        # one clearly past, one straddling a chosen "now", one clearly future.
+        return [
+            DashaPeriod(lord="Saturn", level_n=2, start=date(1995, 1, 1), end=date(1998, 1, 1)),
+            DashaPeriod(lord="Saturn", level_n=2, start=date(2010, 1, 1), end=date(2013, 1, 1)),
+            DashaPeriod(lord="Saturn", level_n=2, start=date(2030, 1, 1), end=date(2033, 1, 1)),
+        ]
+
+    def test_prefers_period_straddling_as_of_date(self):
+        rule = {"constituent_lords": ["Saturn"]}
+        w = resolve_activation_windows(rule, self._tl(), as_of_date=date(2011, 6, 1))
+        assert w.activation_start == date(2010, 1, 1)
+        assert w.activation_end == date(2013, 1, 1)
+
+    def test_prefers_soonest_future_when_no_current_period(self):
+        """as_of_date sits in a GAP between periods — must pick the SOONEST
+        upcoming occurrence, not the earliest-ever (1995) — the exact bug."""
+        rule = {"constituent_lords": ["Saturn"]}
+        w = resolve_activation_windows(rule, self._tl(), as_of_date=date(2020, 1, 1))
+        assert w.activation_start == date(2030, 1, 1)
+        assert w.activation_end == date(2033, 1, 1)
+
+    def test_falls_back_to_most_recent_past_when_nothing_current_or_future(self):
+        """as_of_date is AFTER every matched period — falls back to the most
+        recently-ended one (1998), not the earliest-ever (1998 IS the earliest
+        here too, so use a 4th, older period to disambiguate)."""
+        rule = {"constituent_lords": ["Saturn"]}
+        tl = self._tl() + [DashaPeriod("Saturn", 2, date(1960, 1, 1), date(1963, 1, 1))]
+        w = resolve_activation_windows(rule, tl, as_of_date=date(2040, 1, 1))
+        # Most recently-ENDED period among 1963/1998/2013/2033-all-past is 2033.
+        assert w.activation_start == date(2030, 1, 1)
+        assert w.activation_end == date(2033, 1, 1)
+
+    def test_full_listing_still_includes_every_in_life_period(self):
+        """The primary-selection fix must not drop periods from the FULL
+        active_dasha_periods_jsonb listing — only change which one anchors the
+        single bounded activation_start/end window."""
+        rule = {"constituent_lords": ["Saturn"]}
+        w = resolve_activation_windows(rule, self._tl(), as_of_date=date(2020, 1, 1))
+        dated = [p for p in w.active_dasha_periods if p.get("match_kind") == "exact_lord"]
+        assert len(dated) == 3
+
+    def test_default_as_of_date_is_today_when_omitted(self):
+        """No as_of_date supplied -> defaults to date.today(), not a fixed
+        historical anchor (defensive: guards against a hardcoded default that
+        would silently reintroduce the earliest-ever bug)."""
+        rule = {"constituent_lords": ["Saturn"]}
+        tl = [DashaPeriod("Saturn", 2, date.today().replace(year=date.today().year - 1),
+                          date.today().replace(year=date.today().year + 1))]
+        w = resolve_activation_windows(rule, tl)
+        assert w.activation_start == tl[0].start
+        assert w.activation_end == tl[0].end
 
 
 class TestResolveWithConvergence:
@@ -238,19 +318,31 @@ def _apply_load_semantics(rows, ayanamsha_id, birth_date):
 
 class TestBirthForwardRegression:
     def test_prefix_selector_would_have_returned_prebirth(self):
-        """Guard the guard: with NO birth bound the OLD behaviour resolves to the
-        1951 pre-birth AD — proving the fixture actually exercises the bug."""
+        """Guard the guard: with NO birth bound, and `as_of_date` itself falling
+        inside the pre-birth AD window, the resolver selects it — proving
+        birth_date filtering (not the WP-S4-fix2 current/future-aware selector)
+        is the load-bearing guard against pre-birth leakage. (WP-S4-fix2: pinned
+        `as_of_date` inside the 1951 window — the old matched[0]/earliest-ever
+        selector reproduced this defect unconditionally; the new selector only
+        reproduces it when "now" itself lands inside the pre-birth period, which
+        is exactly the scenario birth_date filtering exists to close off.)"""
         raw = [p for (_, p) in _multi_ayanamsha_prebirth_timeline()
                if _  == "lahiri_chitrapaksha"]
-        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, raw)  # no birth_date
+        w = resolve_activation_windows(
+            {"constituent_lords": ["Saturn"]}, raw, as_of_date=date(1951, 6, 1),
+        )  # no birth_date
         assert w.activation_start == date(1951, 4, 14)  # the DEFECT reproduced
 
     def test_birth_forward_window_is_in_life(self):
         """With birth_date the resolved window falls in the native's IN-LIFE
-        Saturn AD (post-1984), never 1951."""
+        Saturn AD (post-1984), never 1951. WP-S4-fix2: as_of_date pinned inside
+        that AD's own window so the current-tier selector lands on it (rather
+        than on the co-current, coarser Saturn MD) — see TestPrimaryPeriodSelection
+        for the dedicated current/future/past-tier coverage."""
         tl = _apply_load_semantics(_multi_ayanamsha_prebirth_timeline(),
                                    "lahiri_chitrapaksha", BIRTH)
-        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, tl, birth_date=BIRTH)
+        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, tl, birth_date=BIRTH,
+                                       as_of_date=date(2013, 1, 1))
         assert w.activation_start == date(2012, 6, 1)
         assert w.activation_start >= BIRTH
         assert w.activation_peak >= BIRTH
@@ -261,9 +353,13 @@ class TestBirthForwardRegression:
 
     def test_ayanamsha_consistent_resolution(self):
         """A raman predicate resolves against RAMAN periods (2020-09-01), not the
-        lahiri periods (2012-06-01) — no cross-ayanamsha bleed."""
+        lahiri periods (2012-06-01) — no cross-ayanamsha bleed. WP-S4-fix2:
+        as_of_date pinned inside the raman AD so this stays deterministic
+        (only one candidate period either way, but pinned for clarity/CI
+        stability rather than relying on the fallback tier)."""
         tl = _apply_load_semantics(_multi_ayanamsha_prebirth_timeline(), "raman", BIRTH)
-        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, tl, birth_date=BIRTH)
+        w = resolve_activation_windows({"constituent_lords": ["Saturn"]}, tl, birth_date=BIRTH,
+                                       as_of_date=date(2021, 1, 1))
         assert w.activation_start == date(2020, 9, 1)     # raman, not lahiri's 2012
         assert w.activation_start >= BIRTH
 

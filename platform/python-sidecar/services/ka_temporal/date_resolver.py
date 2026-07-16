@@ -399,6 +399,7 @@ def resolve_activation_windows(
     signature_class: Optional[str] = None,
     birth_date: Optional[date] = None,
     max_windows: int = 8,
+    as_of_date: Optional[date] = None,
 ) -> ActivationWindows:
     """Resolve one predicate into concrete, LIFE-INDEXED activation date windows.
 
@@ -422,6 +423,20 @@ def resolve_activation_windows(
         is clipped to >= birth_date, so no window falls in a pre-birth cycle even
         if the timeline was loaded without a birth bound.
     max_windows : cap on emitted dasha periods / date clusters (row-size guard).
+    as_of_date : WP-S4-fix2 (Gate Ś #8/#9 root cause). Defaults to `date.today()` when
+        not supplied. Drives WHICH in-life matched period becomes the PRIMARY bounded
+        window when no convergence peak exists: a period straddling `as_of_date` wins,
+        else the soonest period starting after it, else (only when every matched period
+        has already elapsed — no current or future occurrence for any constituent lord)
+        the most recently-ended past period. Before this fix the primary was always
+        `matched[0]` — the chronologically EARLIEST in-life period, which for a chart
+        with 40+ years already elapsed is almost always a long-past period, so
+        forward-looking callers (get_temporal_windows' default 1yr-forward window,
+        yoga_activation_by_dasha's 2026-2029 window) saw zero coverage even though the
+        lord-resolution mechanism (R-45) and the underlying chart_dashas rows were both
+        correct. This does not change the FULL matched-period listing (still every
+        in-life period, birth-forward) — only which one is elevated to the single
+        bounded activation_start/end/peak window.
 
     Returns
     -------
@@ -431,13 +446,41 @@ def resolve_activation_windows(
     """
     lords = set(_extract_constituent_lords(dasha_rule))
 
-    # Matched real dasha periods, birth-forward (drop periods that end before
-    # birth), finest level first (ADs — tighter windows — preferred as primary
-    # bound), then chronological → matched[0] is the EARLIEST IN-LIFE period.
-    matched = [p for p in dasha_timeline if p.lord in lords]
+    # Matched real dasha periods, birth-forward (drop periods that end before birth).
+    matched_all = [p for p in dasha_timeline if p.lord in lords]
     if birth_date is not None:
-        matched = [p for p in matched if p.end >= birth_date]
-    matched.sort(key=lambda p: (-p.level_n, p.start))
+        matched_all = [p for p in matched_all if p.end >= birth_date]
+
+    # WP-S4-fix2: select the temporally-relevant PRIMARY period before truncating the
+    # listing, so a period selected for the bounded activation_start/end/peak window is
+    # never accidentally cut by the max_windows row-size guard below.
+    today = as_of_date if as_of_date is not None else date.today()
+    primary_selected: Optional[DashaPeriod] = None
+    if matched_all:
+        current_tier = [p for p in matched_all if p.start <= today <= p.end]
+        future_tier = [p for p in matched_all if p.start > today]
+        if current_tier:
+            # Finest level (AD tighter than MD), then earliest start (tightest window).
+            current_tier.sort(key=lambda p: (-p.level_n, p.start))
+            primary_selected = current_tier[0]
+        elif future_tier:
+            # Finest level, then SOONEST upcoming start — the next occurrence in time,
+            # not the earliest-ever (which is what the old matched[0] bug picked).
+            future_tier.sort(key=lambda p: (-p.level_n, p.start))
+            primary_selected = future_tier[0]
+        else:
+            # Nothing current or future for any constituent lord — every matched period
+            # has already elapsed. Fall back to the most recently-ended past period
+            # (closest to "now" is still more relevant than the earliest-ever).
+            past_tier = sorted(matched_all, key=lambda p: (p.end, -p.level_n), reverse=True)
+            primary_selected = past_tier[0]
+
+    # Listing order for active_dasha_periods_jsonb / _dasha_period_dates: finest level
+    # first, then chronological — same ordering as before this fix — but with the
+    # selected primary period always guaranteed a slot ahead of the max_windows cut.
+    matched = sorted(matched_all, key=lambda p: (-p.level_n, p.start))
+    if primary_selected is not None and primary_selected not in matched[:max_windows]:
+        matched = [primary_selected] + [p for p in matched if p is not primary_selected]
     matched = matched[:max_windows]
 
     def _clip(d: Optional[date]) -> Optional[date]:
@@ -488,7 +531,11 @@ def resolve_activation_windows(
         result.resolution_source = "convergence"
         result.predicted_dates = _peak_cluster_dates(peak, transit_rule, birth_date)
     elif matched:
-        primary = matched[0]  # finest-level, earliest IN-LIFE matched period
+        # WP-S4-fix2: primary_selected (current > soonest-future > most-recent-past,
+        # computed above) — NOT matched[0]/earliest-ever. Falls back to matched[0] only
+        # if selection somehow didn't run (defensive; primary_selected is always set
+        # when matched_all is non-empty, and matched is a superset-preserving reorder).
+        primary = primary_selected if primary_selected is not None else matched[0]
         start = _clip(primary.start)
         end = primary.end
         result.activation_start = start
