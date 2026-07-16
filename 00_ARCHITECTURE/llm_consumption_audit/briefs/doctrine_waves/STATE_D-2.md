@@ -30,7 +30,7 @@ migration_blocks:
   V-5: [450, 454]
   V-6: [455, 459]
 lanes:
-  - {lane: V-0, branch: worktree-agent-abd702623395ca54e, status: implementing, cycle: 1, worktree_base: d349a9c3, base_stale: true}
+  - {lane: V-0, branch: worktree-agent-abd702623395ca54e, status: verifying, cycle: 1, worktree_base: d349a9c3, base_stale: true, verifier_dispatched: af53a1908ddf611ae, flag: "G0-4 (CR-54 wealth-loss mechanism) reports RED on live data - verifier to confirm real gap vs harness bug"}
   - {lane: V-1, branch: worktree-agent-a8c6723d1f643e6e8, status: verifying, cycle: 1, worktree_base: d349a9c3, base_stale: true, verifier_dispatched: a71e2161a9384739a}
   - {lane: V-4, branch: worktree-agent-a2a7ae8a7815fc407, status: implementing, cycle: 1, worktree_base: d349a9c3, base_stale: true}
   - {lane: V-5, branch: worktree-agent-a2af6d94c873f4ed9, status: implementing, cycle: 1, worktree_base: 47a72b77, base_stale: false}
