@@ -31,7 +31,7 @@ migration_blocks:
   V-6: [455, 459]
 lanes:
   - {lane: V-0, branch: worktree-agent-abd702623395ca54e, status: verifying, cycle: 1, worktree_base: d349a9c3, base_stale: true, verifier_dispatched: af53a1908ddf611ae, flag: "G0-4 (CR-54 wealth-loss mechanism) reports RED on live data - verifier to confirm real gap vs harness bug"}
-  - {lane: V-1, branch: worktree-agent-a8c6723d1f643e6e8, status: verifying, cycle: 1, worktree_base: d349a9c3, base_stale: true, verifier_dispatched: a71e2161a9384739a}
+  - {lane: V-1, branch: worktree-agent-a8c6723d1f643e6e8, status: receipted, cycle: 1, worktree_base: d349a9c3, base_stale: true, head_sha: c12adcc6, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, 24/24 tests, reconciled against real BIND_D-2.md (CR-status/migration-440/census all consistent); note track3/README overstates migration allocation as 440-441 (only 440 exists, harmless doc inaccuracy)"}
   - {lane: V-4, branch: worktree-agent-a2a7ae8a7815fc407, status: implementing, cycle: 1, worktree_base: d349a9c3, base_stale: true}
   - {lane: V-5, branch: worktree-agent-a2af6d94c873f4ed9, status: implementing, cycle: 1, worktree_base: 47a72b77, base_stale: false}
   - {lane: V-6, branch: worktree-agent-a38731279aa1a82f5, status: implementing, cycle: 1, worktree_base: fdc99de1, base_stale: false}
