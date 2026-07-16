@@ -86,5 +86,18 @@ notes: >
   sub-periods) — the gap is specifically ka_yojaka's forward window-generation, not lord resolution.
   Routing: reopening Lane S-4 for one targeted fix-2 attempt (new gate-driven cycle). If unresolved,
   PARK with this evidence for native review.
-  Next: route S-4 fix-2, then re-run items 8/9/10 + remaining pending items (11,14,15,16), then CLOSE.
+  S-4 fix-2 COMPLETE: root cause found (NOT D-3 convergence-engine territory, genuinely in-scope).
+  (1) date_resolver.py's resolve_activation_windows picked matched[0] = chronologically earliest-ever
+  dasha period instead of a current/soonest-future/most-recent-past tiered selection — live DB proof:
+  49360 kala_activation rows, 40040 dated, 0 straddling today, only 140 with any future start. (2)
+  register_d8_assess_domain.ts's yoga_activation_by_dasha ranked by dasha_activation_proximity_score
+  DESC where undated rows default to exactly 0.5 and most genuinely-dated rows score below 0.5 —
+  undated rows crowded out dated ones (exact match to the "15/15 undated flat 0.5" live symptom). (3)
+  registry_bridge.ts's judgment_query could ship timing_anchored:true next to empty timing_hooks.
+  Fixed all 3: tiered period selection, dated-rows-first ORDER BY, enforceTimingAnchoredHonesty guard.
+  Branch wave/D-1.6/S-4-fix2 @ 9bac956f, tests pass (+3 platform, +2 mcp, 0 new failures, tsc clean).
+  Live re-verification deferred to next deploy+rebuild+gate cycle (cannot verify from sandbox).
+  Next: verify S-4 fix-2, merge to main, re-deploy, re-rebuild (scope: ka_activation + true downstream
+  dependents only — much narrower than the first 47-asset rebuild since only the writer's window-
+  selection logic changed, not its lord-resolution facts), re-run Gate Ś items 8/9/10, then CLOSE.
 ---
