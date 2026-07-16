@@ -2,7 +2,7 @@
 artifact: BRIEF_D3
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN)
 wave: D-3 — Kāla Taraṅga + Three-Lock activation
-version: 1.1
+version: 1.2
 status: FROZEN — §B slots bind at wave open
 governing: CONDUCTOR_PROTOCOL.md + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §6 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §5/§13
@@ -15,6 +15,7 @@ prerequisites: D-2 gate GREEN (Mechanism object shipped). Wave sequence to date 
 gate: falsifiable LEL-retrodiction thresholds (§G) + timing surfaces live — with an ANTI-GAMING
   verifier pass (statistical gates are never green on the primary runner alone).
 changelog:
+  - v1.2 (2026-07-16, docs/pre-d2-orchestration-economy): §F3 orchestration-economy grant added (Workflow fan-out where shape-appropriate, per-agent effort/model dials, non-dialable verification/gate invariants — mirrors BRIEF_D2 §F1.6); stale state-commit-race residual note replaced with the landed fix (b13640d1) + F1-F4 pointer.
   - v1.1 (2026-07-16, pre-D-2 alignment pass): CR-40/CR-8 INFRA-PREREQ re-statused SATISFIED
     (D-1.6 S-6 fix, Gate Ś #13, live re-probe); §F0 added — post-D-1.5b/D-1.6 substrate baseline
     (S-4 timing fixes, sign-keyed AV facts shipped, Gate Ś #8 parked residual as known input);
@@ -149,10 +150,24 @@ an implementer's "done" is a claim, never an acceptance.
 - The deployed connector RATE-LIMITS under sustained assertion load (429 cascade → false reds;
   Gate B evidence in REPORT_D-1.5b). Gate batteries must throttle/batch; the harness client's
   429-retry landed in D-1.6 S-6 — keep it, don't strip it.
-- Known orchestrator state-commit race under narrow-scope concurrent rebuilds (REPORT_D-1.6
-  residuals): a writer's data can land correctly while `asset_throughput.state` sticks, cascading
-  DEP-ASSERT blocks. Verify underlying data before forward-fixing; orchestrator itself is FROZEN
-  (PARK class).
+- The D-1.6 "state-commit race" was FIXED pre-D-2 (commit `b13640d1`, adversarially verified —
+  deterministic same-day resume-skip misclassified as dormant, not a race; data-presence probe +
+  loud safety nets now in `asset_runner.py`). Binder spot-verifies it is on main; four
+  non-blocking follow-ups (F1–F4) are recorded in BRIEF_D2 §B item 3. The orchestrator remains
+  FROZEN — if a NEW state anomaly appears, verify underlying data first, then PARK class 1.
+
+**Orchestration economy (native-granted, 2026-07-16 — same grant as BRIEF_D2 §F1.6, restated
+for standalone reading):** the conductor balances COST vs QUALITY with three dials. (1) Prefer
+Workflow scripts (`pipeline()`/`parallel()`, per-agent `model`/`effort` overrides) for fan-out-
+shaped phases — verification panels, gate batteries, LEL-retrodiction acceptance sweeps, window/
+kernel validation sweeps — while deep implementation stays one isolated-worktree agent per lane;
+live-connector fan-outs must throttle. (2) Effort dial: down (`low`/`medium`) for mechanical
+stages, up (`high`/`xhigh`) for adversarial verification, root-cause, and doctrine-feeding work.
+(3) Model dial: cheaper models for mechanical fan-out, stronger for verification/judgment;
+Fable adjudication is not dialable. NON-DIALABLE invariants: every lane/hotfix still receives an
+independent full-scrutiny fresh-context verifier receipt before merge; gate thresholds and
+reds-are-reds honesty are untouchable; economize on discovery, spend on verification and
+irreversible steps.
 
 ## §B — BIND-AT-OPEN slots (Fable Binder)
 - Mechanism-object interface as actually shipped (probe the D-2 serving face) → PROMISE lock inputs.

@@ -2,7 +2,7 @@
 artifact: BRIEF_D4
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN)
 wave: D-4 — Calibration ignition (L5 finally fed)
-version: 1.1
+version: 1.2
 status: FROZEN — §B slots bind at wave open
 governing: CONDUCTOR_PROTOCOL.md + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §7 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §7
@@ -11,6 +11,7 @@ prerequisite: D-3 gate GREEN (mechanism curves exist and retrodict). Wave sequen
   precede this wave.
 gate: discrimination + negative-control gates (§G) with anti-gaming verifier pass.
 changelog:
+  - v1.2 (2026-07-16, docs/pre-d2-orchestration-economy): §F3 orchestration-economy grant added (Workflow fan-out where shape-appropriate, per-agent effort/model dials, non-dialable verification/gate invariants — mirrors BRIEF_D2 §F1.6); stale state-commit-race residual note replaced with the landed fix (b13640d1) + F1-F4 pointer.
   - v1.1 (2026-07-16, pre-D-2 alignment pass): §F0 added — post-D-1.6 baseline (CR-51/CR-30
     calibration-alias unification; CR-47's serve-side non_discriminating honesty flag shipped,
     matcher root fix remains Lane C-1; L5 STRUCTURAL-mode framing per CLAUDE.md §E; cited CR rows
@@ -108,9 +109,23 @@ RECEIPTS in hand before it runs (never on an unverified matcher).
   expected rebuild scope is L5-only (minutes) per protocol §8.2 — the Binder confirms at open.
 - The deployed connector RATE-LIMITS under sustained assertion load (429 cascade → false reds;
   REPORT_D-1.5b). Gate batteries must throttle/batch; keep the D-1.6 S-6 harness 429-retry.
-- Known orchestrator state-commit race under narrow-scope concurrent rebuilds (REPORT_D-1.6
-  residuals): verify underlying data before forward-fixing a stuck `asset_throughput.state`;
-  the orchestrator itself is FROZEN (PARK class).
+- The D-1.6 "state-commit race" was FIXED pre-D-2 (commit `b13640d1`, adversarially verified —
+  deterministic same-day resume-skip misclassified as dormant, not a race). Binder spot-verifies
+  it is on main; follow-ups F1–F4 recorded in BRIEF_D2 §B item 3. The orchestrator remains
+  FROZEN — a NEW state anomaly means verify underlying data first, then PARK class 1.
+
+**Orchestration economy (native-granted, 2026-07-16 — same grant as BRIEF_D2 §F1.6, restated
+for standalone reading):** the conductor balances COST vs QUALITY with three dials. (1) Prefer
+Workflow scripts (`pipeline()`/`parallel()`, per-agent `model`/`effort` overrides) for fan-out-
+shaped phases — verification panels, gate batteries, calibration backfill receipt sweeps,
+prediction→outcome scoring passes — while deep implementation stays one isolated-worktree agent
+per lane; live-connector fan-outs must throttle. (2) Effort dial: down (`low`/`medium`) for
+mechanical stages, up (`high`/`xhigh`) for adversarial verification, root-cause, and
+doctrine-feeding work. (3) Model dial: cheaper models for mechanical fan-out, stronger for
+verification/judgment; Fable adjudication is not dialable. NON-DIALABLE invariants: every
+lane/hotfix still receives an independent full-scrutiny fresh-context verifier receipt before
+merge; gate thresholds and reds-are-reds honesty are untouchable; economize on discovery, spend
+on verification and irreversible steps.
 
 ## §B — BIND-AT-OPEN slots (Fable Binder)
 - Matcher root-cause hypothesis ← C-1 diagnosis spike at open (read the actual matcher code + one
