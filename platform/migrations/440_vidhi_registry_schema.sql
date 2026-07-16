@@ -82,43 +82,53 @@ CREATE INDEX IF NOT EXISTS idx_vidhi_floor_items_primitive ON vidhi_floor_items 
 CREATE INDEX IF NOT EXISTS idx_vidhi_primitives_known_gap ON vidhi_primitives (known_gap) WHERE known_gap IS NOT NULL;
 
 -- ── §4 — asset_registry entries ──────────────────────────────────────────────
+-- Column set matches the real schema per migration 438's precedent (bo_sudarshana) —
+-- NOT display_name/asset_type/has_substeps, which do not exist on asset_registry.
 
-INSERT INTO asset_registry (asset_id, display_name, layer, scope, asset_type, depends_on,
-    count_sql, target_floor, sort_order, has_substeps)
-VALUES (
-    'bg_vidhi_primitives',
-    'Vidhi Registry — Primitives (bg_vidhi_primitives)',
-    'L0',
-    'global',
-    'brahmagyan',
-    ARRAY[]::TEXT[],
+INSERT INTO asset_registry (
+    asset_id, layer, sort_order, sanskrit_name, english_name,
+    english_description, storage_type, target_table, count_sql,
+    target_floor, depends_on, scope, has_writer, created_at
+) VALUES (
+    'bg_vidhi_primitives', 'brahmagyan', 68,
+    'vidhi_pramana', 'Vidhi Registry — Primitives',
+    'Versioned vidhi primitive atoms — definition, live-tool mapping+args, fallback face, '
+    'known_gap CR pointer. Global, chart-agnostic (D-2 Lane V-1).',
+    'postgres_table', 'vidhi_primitives',
     '(SELECT COUNT(*) FROM vidhi_primitives)',
-    25,
-    68,
-    false
+    25, ARRAY[]::TEXT[], 'global', true, NOW()
 ) ON CONFLICT (asset_id) DO UPDATE SET
-    display_name = EXCLUDED.display_name,
-    count_sql    = EXCLUDED.count_sql,
-    target_floor = EXCLUDED.target_floor;
+    layer               = EXCLUDED.layer,
+    sanskrit_name       = EXCLUDED.sanskrit_name,
+    english_name        = EXCLUDED.english_name,
+    english_description = EXCLUDED.english_description,
+    storage_type        = EXCLUDED.storage_type,
+    target_table        = EXCLUDED.target_table,
+    count_sql           = EXCLUDED.count_sql,
+    target_floor        = EXCLUDED.target_floor;
 
-INSERT INTO asset_registry (asset_id, display_name, layer, scope, asset_type, depends_on,
-    count_sql, target_floor, sort_order, has_substeps)
-VALUES (
-    'bg_vidhi_floors',
-    'Vidhi Registry — Intent Floors (bg_vidhi_floors)',
-    'L0',
-    'global',
-    'brahmagyan',
-    ARRAY['bg_vidhi_primitives']::TEXT[],
+INSERT INTO asset_registry (
+    asset_id, layer, sort_order, sanskrit_name, english_name,
+    english_description, storage_type, target_table, count_sql,
+    target_floor, depends_on, scope, has_writer, created_at
+) VALUES (
+    'bg_vidhi_floors', 'brahmagyan', 69,
+    'vidhi_marga', 'Vidhi Registry — Intent Floors',
+    'Per-intent-class acharya floor + machine band header + ordered floor items — the '
+    'compiled scope_tuple->contract input (D-2 Lane V-1).',
+    'postgres_table', 'vidhi_floor_items',
     '(SELECT COUNT(*) FROM vidhi_floor_items)',
-    8,
-    69,
-    false
+    8, ARRAY['bg_vidhi_primitives']::TEXT[], 'global', true, NOW()
 ) ON CONFLICT (asset_id) DO UPDATE SET
-    display_name = EXCLUDED.display_name,
-    count_sql    = EXCLUDED.count_sql,
-    target_floor = EXCLUDED.target_floor,
-    depends_on   = EXCLUDED.depends_on;
+    layer               = EXCLUDED.layer,
+    sanskrit_name       = EXCLUDED.sanskrit_name,
+    english_name        = EXCLUDED.english_name,
+    english_description = EXCLUDED.english_description,
+    storage_type        = EXCLUDED.storage_type,
+    target_table        = EXCLUDED.target_table,
+    count_sql           = EXCLUDED.count_sql,
+    target_floor        = EXCLUDED.target_floor,
+    depends_on          = EXCLUDED.depends_on;
 
 COMMIT;
 
