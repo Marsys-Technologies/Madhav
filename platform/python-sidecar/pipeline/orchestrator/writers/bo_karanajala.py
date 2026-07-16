@@ -72,6 +72,7 @@ INSERT INTO bodha_cgm_edges (
   graph_compute_library, graph_compute_library_version,
   is_cross_subsystem, subsystem_from, subsystem_to,
   valence, relationship_basis, affected_domains,
+  constituent_ga_vichara_ids_array,
   verification_pass_status, citation_ref, citation_human, computed_at, engine_version
 ) VALUES (
   %(edge_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(snapshot_type)s,
@@ -85,6 +86,7 @@ INSERT INTO bodha_cgm_edges (
   %(graph_compute_library)s, %(graph_compute_library_version)s,
   %(is_cross_subsystem)s, %(subsystem_from)s, %(subsystem_to)s,
   %(valence)s, %(relationship_basis)s, %(affected_domains)s,
+  %(constituent_ga_vichara_ids_array)s,
   %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s,
   %(computed_at)s, %(engine_version)s
 )
@@ -157,6 +159,195 @@ def _typed_edge_fields(
         "relationship_basis": basis,
         "affected_domains":   domains or [],
     }
+
+
+# ── DR-7 (DIS.020) — edge_strength_v1 formula (D-2 Lane V-4, CR-86) ──────────
+# edge_strength = base_relation_weight × valence_factor × ratification_factor
+#                 × consistency_weight, clamped [0.1, 2.0].
+# Retires the CR-86 hardcoded literals: the per-edge-type constants that used
+# to be the FINAL computed_strength (argala 0.5, dispositor 0.6, lordship/
+# occupancy/bhava_aspect 0.5-0.7, yoga_member 0.5) are now only the
+# base_relation_weight TERM; the three multipliers are real, chart-specific
+# values read from ga_vichara's shipped valence pass (chart_vichara) — never
+# invented here (§N.5: V-4 references L1/L2 values, it never restates them).
+EDGE_STRENGTH_FORMULA_VERSION = "edge_strength_v1"
+
+_VALENCE_FACTOR_BY_LABEL: dict[str, float] = {
+    "strong_benefic": 1.25, "strong_malefic": 1.25,
+    "benefic": 1.10, "malefic": 1.10,
+    "neutral": 1.00,
+}
+
+_EDGE_STRENGTH_CLAMP = (0.1, 2.0)
+
+
+def _clamp_edge_strength(v: float) -> float:
+    lo, hi = _EDGE_STRENGTH_CLAMP
+    return max(lo, min(hi, v))
+
+
+_GRAHA_TO_VICHARA_CODE: dict[str, str] = {v: k for k, v in _GRAHA_SUBJECT_MAP.items()}
+
+
+def _vichara_code(graha_title: str) -> str | None:
+    """Title-case graha ('Mars') -> ga_vichara's subject/actor code ('MAR')."""
+    return _GRAHA_TO_VICHARA_CODE.get(graha_title)
+
+
+def _fetch_vichara_valence_by_actor_house(conn, chart_id: str, aya: str) -> dict:
+    """(actor_code, house) -> (value_text, chart_vichara.id) for varga='D1'
+    valence_pass rows. Chart-vichara unavailable degrades to {} — every caller
+    then falls back to valence_factor=1.0 (neutral), honestly, never a guess."""
+    try:
+        rows = conn.execute(
+            """SELECT id, actor, target, value_text FROM chart_vichara
+               WHERE chart_id = %s AND ayanamsha_id = %s
+                 AND vichara_family = 'valence_pass' AND varga = 'D1'""",
+            [chart_id, aya],
+        ).fetchall()
+    except Exception as exc:
+        logger.warning("[bo_karanajala] chart_vichara valence_pass unavailable (%s); "
+                        "valence_factor=1.0 for every edge this build", exc)
+        return {}
+    out: dict = {}
+    for r in rows:
+        rid, actor, target, val = (r["id"], r["actor"], r["target"], r["value_text"]) \
+            if isinstance(r, dict) else (r[0], r[1], r[2], r[3])
+        if not actor or not target:
+            continue
+        try:
+            house = int(str(target).rsplit("_HOUSE_", 1)[-1])
+        except (ValueError, IndexError):
+            continue
+        out[(str(actor), house)] = (str(val or "neutral"), str(rid))
+    return out
+
+
+def _fetch_vichara_consistency_by_subject(conn, chart_id: str, aya: str) -> dict:
+    """subject_code -> (varga_consistency 0..1, chart_vichara.id)."""
+    try:
+        rows = conn.execute(
+            """SELECT id, subject, value_num FROM chart_vichara
+               WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_consistency'""",
+            [chart_id, aya],
+        ).fetchall()
+    except Exception as exc:
+        logger.warning("[bo_karanajala] chart_vichara varga_consistency unavailable (%s); "
+                        "consistency_weight=1.0 for every edge this build", exc)
+        return {}
+    out: dict = {}
+    for r in rows:
+        rid, subj, val = (r["id"], r["subject"], r["value_num"]) if isinstance(r, dict) else (r[0], r[1], r[2])
+        if subj is None or val is None:
+            continue
+        out[str(subj)] = (float(val), str(rid))
+    return out
+
+
+def _fetch_vichara_ratification_by_subject_domain(conn, chart_id: str, aya: str) -> dict:
+    """(subject_code, domain) -> (ratification_factor [0.6,1.4], chart_vichara.id)."""
+    try:
+        rows = conn.execute(
+            """SELECT id, subject, domain, ratification_factor FROM chart_vichara
+               WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'varga_ratification'""",
+            [chart_id, aya],
+        ).fetchall()
+    except Exception as exc:
+        logger.warning("[bo_karanajala] chart_vichara varga_ratification unavailable (%s); "
+                        "ratification_factor=1.0 for every domain-tagged edge this build", exc)
+        return {}
+    out: dict = {}
+    for r in rows:
+        rid, subj, dom, factor = (r["id"], r["subject"], r["domain"], r["ratification_factor"]) \
+            if isinstance(r, dict) else (r[0], r[1], r[2], r[3])
+        if not subj or not dom or factor is None:
+            continue
+        out[(str(subj), str(dom))] = (float(factor), str(rid))
+    return out
+
+
+class ViharaLookups:
+    """Bundles the three ga_vichara-sourced lookups for one (chart, ayanamsha)
+    substep, plus the graha's own D1 occupied-house map (needed to resolve the
+    valence_pass key), so _edge_strength_v1() call sites stay one line."""
+
+    __slots__ = ("valence_by_actor_house", "consistency_by_subject",
+                 "ratification_by_subject_domain", "occupied_house_by_graha")
+
+    def __init__(self, conn, chart_id: str, aya: str, occupied_house_by_graha: dict):
+        self.valence_by_actor_house = _fetch_vichara_valence_by_actor_house(conn, chart_id, aya)
+        self.consistency_by_subject = _fetch_vichara_consistency_by_subject(conn, chart_id, aya)
+        self.ratification_by_subject_domain = _fetch_vichara_ratification_by_subject_domain(conn, chart_id, aya)
+        self.occupied_house_by_graha = occupied_house_by_graha
+
+
+def _edge_strength_v1(
+    base_relation_weight: float,
+    graha_title: str | None,
+    domains: list | None,
+    lookups: "ViharaLookups | None",
+) -> tuple:
+    """DR-7 (DIS.020): edge_strength = base_relation_weight × valence_factor ×
+    ratification_factor × consistency_weight, clamped [0.1, 2.0].
+
+    Returns (strength, constituent_ga_vichara_ids). A graha-less edge (no
+    subject to judge) or an unavailable vichara substrate returns
+    (clamp(base_relation_weight), []) — honest neutral, never fabricated.
+    """
+    if not graha_title or lookups is None:
+        return _clamp_edge_strength(base_relation_weight), []
+    code = _vichara_code(graha_title)
+    if not code:
+        return _clamp_edge_strength(base_relation_weight), []
+
+    constituents: list = []
+
+    # valence_factor: judged at the graha's own D1 occupied house (a single
+    # canonical per-graha value reusable across every edge that graha anchors).
+    valence_factor = 1.0
+    house = lookups.occupied_house_by_graha.get(graha_title)
+    if house is not None:
+        rec = lookups.valence_by_actor_house.get((code, house))
+        if rec is not None:
+            label, vid = rec
+            valence_factor = _VALENCE_FACTOR_BY_LABEL.get(label, 1.0)
+            constituents.append(vid)
+
+    # ratification_factor: domain-scoped, only when the edge is domain-tagged;
+    # takes the max-magnitude-deviation-from-1.0 across the edge's domains
+    # (design §11 precedent, mirrored from bo_laksana's _resolve_ratification_factor).
+    ratification_factor = 1.0
+    if domains:
+        best_dev = 0.0
+        for dom in domains:
+            rec = lookups.ratification_by_subject_domain.get((code, dom))
+            if rec is None:
+                continue
+            factor, vid = rec
+            if abs(factor - 1.0) > best_dev:
+                best_dev = abs(factor - 1.0)
+                ratification_factor = factor
+                if vid not in constituents:
+                    constituents.append(vid)
+
+    # consistency_weight: 0.75 + 0.25 × varga_consistency.
+    consistency_weight = 1.0
+    rec = lookups.consistency_by_subject.get(code)
+    if rec is not None:
+        consistency, vid = rec
+        consistency_weight = 0.75 + 0.25 * consistency
+        if vid not in constituents:
+            constituents.append(vid)
+
+    strength = base_relation_weight * valence_factor * ratification_factor * consistency_weight
+    return _clamp_edge_strength(strength), constituents
+
+
+def _occupied_house_by_graha(occupancy_facts: list) -> dict:
+    """{graha_title: house} from bo_karanajala's own occupancy_facts fetch
+    (graha -> D1 house it occupies) — the anchor _edge_strength_v1 uses to key
+    into ga_vichara's per-(actor,house) valence_pass lookup."""
+    return {f["graha"]: f["house"] for f in occupancy_facts}
 
 
 KNOWN_GRAHAS = {
@@ -281,7 +472,8 @@ def _house_of_b_from_a(sign_a: int, sign_b: int) -> int:
 
 def _build_argala_edges(
     chart_id: str, aya: str, build_id: str,
-    graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str
+    graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str,
+    lookups: "ViharaLookups | None" = None,
 ) -> list[dict]:
     """Build argala edges per BPHS Ch. 28.
 
@@ -338,6 +530,7 @@ def _build_argala_edges(
                 # O(1) lookup into the prebuilt virodha_occupied set
                 cancelled = virodha_h in virodha_occupied if virodha_h else False
 
+            _strength, _vichara_ids = _edge_strength_v1(0.5, graha_a, None, lookups)
             edges.append({
                 "edge_id": str(uuid.uuid4()),
                 "chart_id": chart_id,
@@ -348,8 +541,9 @@ def _build_argala_edges(
                 "from_node_id": node_b,   # B is the argala-karaka (intervener)
                 "to_node_id": node_a,     # A is the argala-subject
                 "direction": "directed",
-                "computed_strength": 0.5,
-                "weight_formula_version": "edge_weight_v1.0",
+                "computed_strength": _strength,
+                "weight_formula_version": EDGE_STRENGTH_FORMULA_VERSION,
+                "constituent_ga_vichara_ids_array": _vichara_ids,
                 "edge_properties_jsonb": json.dumps({
                     "argala_subject": graha_a,
                     "argala_karaka": graha_b,
@@ -386,7 +580,8 @@ def _build_argala_edges(
 
 def _build_dispositor_edges(
     chart_id: str, aya: str, build_id: str,
-    graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str
+    graha_signs: dict[str, int], node_map: dict[tuple[str, str], str], now: str,
+    lookups: "ViharaLookups | None" = None,
 ) -> list[dict]:
     """Build dispositor edges: graha → its sign lord.
 
@@ -411,6 +606,7 @@ def _build_dispositor_edges(
         to_node   = node_map.get(("graha", lord))
         if not from_node or not to_node:
             continue
+        _strength, _vichara_ids = _edge_strength_v1(0.6, graha, None, lookups)
         edges.append({
             "edge_id":                         str(uuid.uuid4()),
             "chart_id":                        chart_id,
@@ -421,8 +617,9 @@ def _build_dispositor_edges(
             "from_node_id":                    from_node,
             "to_node_id":                      to_node,
             "direction":                       "directed",
-            "computed_strength":               0.6,
-            "weight_formula_version":          "edge_weight_v1.0",
+            "computed_strength":               _strength,
+            "weight_formula_version":          EDGE_STRENGTH_FORMULA_VERSION,
+            "constituent_ga_vichara_ids_array": _vichara_ids,
             "edge_properties_jsonb":           json.dumps({
                 "graha":      graha,
                 "sign_num":   sign_num,
@@ -516,8 +713,10 @@ def _graha_bhava_edge(
     edge_type: str, chart_id: str, aya: str, build_id: str,
     graha_node: str, bhava_node: str, graha: str, house: int,
     fact_ids: list[str], now: str, dasha_periods: list | None = None,
+    lookups: "ViharaLookups | None" = None,
 ) -> dict:
-    verb, sem_class, strength, cite_root = _BHAVA_EDGE_META[edge_type]
+    verb, sem_class, base_strength, cite_root = _BHAVA_EDGE_META[edge_type]
+    _strength, _vichara_ids = _edge_strength_v1(base_strength, graha, None, lookups)
     return {
         "edge_id":                         str(uuid.uuid4()),
         "chart_id":                        chart_id,
@@ -528,8 +727,9 @@ def _graha_bhava_edge(
         "from_node_id":                    graha_node,   # graha → bhava
         "to_node_id":                      bhava_node,
         "direction":                       "directed",
-        "computed_strength":               strength,
-        "weight_formula_version":          "edge_weight_v1.0",
+        "computed_strength":               _strength,
+        "weight_formula_version":          EDGE_STRENGTH_FORMULA_VERSION,
+        "constituent_ga_vichara_ids_array": _vichara_ids,
         "edge_properties_jsonb":           json.dumps({
             "graha": graha, "house": house, "relation": verb,
         }),
@@ -659,6 +859,7 @@ def _build_bhava_edges(
     lordship_facts: list[dict], occupancy_facts: list[dict], aspect_facts: list[dict],
     node_map: dict[tuple[str, str], str], now: str,
     dasha_periods_by_graha: dict | None = None,
+    lookups: "ViharaLookups | None" = None,
 ) -> list[dict]:
     """graha↔bhava edges: lordship, occupancy, bhava_aspect. Each cites its L1
     fact_id (constituent_fact_ids_array) and carries the resting graha's ruling
@@ -680,7 +881,7 @@ def _build_bhava_edges(
             edges.append(_graha_bhava_edge(
                 edge_type, chart_id, aya, build_id,
                 graha_node, bhava_node, graha, house, [fid], now,
-                dp_by_graha.get(graha, []),
+                dp_by_graha.get(graha, []), lookups,
             ))
     return edges
 
@@ -690,6 +891,7 @@ def _build_yoga_membership_edges(
     signals: list[dict], node_map: dict[tuple[str, str], str],
     occupancy_by_graha: dict[str, str], lord_fact_by_house: dict[int, str],
     now: str, dasha_periods_by_graha: dict | None = None,
+    lookups: "ViharaLookups | None" = None,
 ) -> list[dict]:
     """Membership edges: yoga/dosha config node ↔ its constituent grahas / bhavas.
 
@@ -723,7 +925,7 @@ def _build_yoga_membership_edges(
                     chart_id, aya, build_id, yoga_node, graha_node,
                     sig_class, subject, "graha", graha,
                     [fid] if fid else [], now,
-                    dp_by_graha.get(graha, []),
+                    dp_by_graha.get(graha, []), lookups,
                 ))
 
         # Constituent bhava (if the configuration names a house) — no graha rests
@@ -736,7 +938,7 @@ def _build_yoga_membership_edges(
                 edges.append(_membership_edge(
                     chart_id, aya, build_id, yoga_node, bhava_node,
                     sig_class, subject, "bhava", str(house),
-                    [fid] if fid else [], now, [],
+                    [fid] if fid else [], now, [], lookups,
                 ))
     return edges
 
@@ -746,7 +948,10 @@ def _membership_edge(
     yoga_node: str, member_node: str, sig_class: str, yoga_subject: str,
     member_kind: str, member_subject: str, fact_ids: list[str], now: str,
     dasha_periods: list | None = None,
+    lookups: "ViharaLookups | None" = None,
 ) -> dict:
+    _graha_subject = member_subject if member_kind == "graha" else None
+    _strength, _vichara_ids = _edge_strength_v1(0.5, _graha_subject, None, lookups)
     return {
         "edge_id":                         str(uuid.uuid4()),
         "chart_id":                        chart_id,
@@ -757,8 +962,9 @@ def _membership_edge(
         "from_node_id":                    yoga_node,       # config → constituent
         "to_node_id":                      member_node,
         "direction":                       "undirected",
-        "computed_strength":               0.5,
-        "weight_formula_version":          "edge_weight_v1.0",
+        "computed_strength":               _strength,
+        "weight_formula_version":          EDGE_STRENGTH_FORMULA_VERSION,
+        "constituent_ga_vichara_ids_array": _vichara_ids,
         "edge_properties_jsonb":           json.dumps({
             "config_class": sig_class, "config": yoga_subject,
             "member_kind": member_kind, "member": member_subject,
@@ -837,7 +1043,8 @@ def _graha_from_cfg(cfg: dict) -> str | None:
 
 def _build_edges_and_contradictions(
     chart_id: str, aya: str, build_id: str,
-    signals: list[dict], node_map: dict[tuple[str, str], str], now: str
+    signals: list[dict], node_map: dict[tuple[str, str], str], now: str,
+    lookups: "ViharaLookups | None" = None,
 ) -> tuple[list[dict], list[dict]]:
     edges: list[dict] = []
     contradictions: list[dict] = []
@@ -871,6 +1078,7 @@ def _build_edges_and_contradictions(
             for domain in domains:
                 to_node = _get_node("domain", domain)
                 if from_node and to_node:
+                    _strength, _vichara_ids = _edge_strength_v1(round(salience, 6), graha, [domain], lookups)
                     edges.append({
                         "edge_id": str(uuid.uuid4()),
                         "chart_id": chart_id,
@@ -881,8 +1089,9 @@ def _build_edges_and_contradictions(
                         "from_node_id": from_node,
                         "to_node_id": to_node,
                         "direction": "directed",
-                        "computed_strength": round(salience, 6),
-                        "weight_formula_version": "edge_weight_v1.0",
+                        "computed_strength": _strength,
+                        "weight_formula_version": EDGE_STRENGTH_FORMULA_VERSION,
+                        "constituent_ga_vichara_ids_array": _vichara_ids,
                         "edge_properties_jsonb": json.dumps({"signal_id": sig_id, "yoga": type_id}),
                         "relationship_class": "activation",
                         "semantic_path_class": "yoga_activation",
@@ -914,6 +1123,11 @@ def _build_edges_and_contradictions(
             for domain in domains:
                 to_node = _get_node("domain", domain)
                 if from_node and to_node:
+                    # Formula applies to MAGNITUDE only — antagonist sign is a
+                    # sign convention on computed_strength, never folded into the
+                    # DR-7 clamp (which would otherwise clamp a negative value
+                    # up to +0.1 and silently flip an antagonist edge positive).
+                    _magnitude, _vichara_ids = _edge_strength_v1(round(salience, 6), graha, [domain], lookups)
                     edges.append({
                         "edge_id": str(uuid.uuid4()),
                         "chart_id": chart_id,
@@ -924,8 +1138,9 @@ def _build_edges_and_contradictions(
                         "from_node_id": from_node,
                         "to_node_id": to_node,
                         "direction": "directed",
-                        "computed_strength": round(-salience, 6),
-                        "weight_formula_version": "edge_weight_v1.0",
+                        "computed_strength": -_magnitude,
+                        "weight_formula_version": EDGE_STRENGTH_FORMULA_VERSION,
+                        "constituent_ga_vichara_ids_array": _vichara_ids,
                         "edge_properties_jsonb": json.dumps({"signal_id": sig_id, "dosha": type_id}),
                         "relationship_class": "antagonist",
                         "semantic_path_class": "dosha_impairment",
@@ -977,6 +1192,8 @@ def _build_edges_and_contradictions(
                     # For graha→graha edges, both endpoints share the same tradition
                     # (the signal's tradition) — cross-subsystem only if tradition differs,
                     # which for a single signal cannot happen; we record same→same here.
+                    _strength, _vichara_ids = _edge_strength_v1(
+                        round(salience, 6), graha, list(domains), lookups)
                     edges.append({
                         "edge_id": str(uuid.uuid4()),
                         "chart_id": chart_id,
@@ -987,8 +1204,9 @@ def _build_edges_and_contradictions(
                         "from_node_id": from_node,
                         "to_node_id": to_node,
                         "direction": "directed",
-                        "computed_strength": round(salience, 6),
-                        "weight_formula_version": "edge_weight_v1.0",
+                        "computed_strength": _strength,
+                        "weight_formula_version": EDGE_STRENGTH_FORMULA_VERSION,
+                        "constituent_ga_vichara_ids_array": _vichara_ids,
                         "edge_properties_jsonb": json.dumps({"signal_id": sig_id}),
                         "relationship_class": etype,
                         "semantic_path_class": "graha_graha",
@@ -1152,9 +1370,168 @@ def _batch_insert(conn, rows: list[dict], sql: str) -> int:
             # New B.3 ledger column (WP-2.3): legacy edge builders don't set it —
             # default to empty so their %(constituent_fact_ids_array)s param binds.
             row.setdefault("constituent_fact_ids_array", [])
+            row.setdefault("constituent_ga_vichara_ids_array", [])
             conn.execute(sql, row)
         inserted += len(rows[i:i + _BATCH_SIZE])
     return inserted
+
+
+# ── Arudha + special-lagna nodes/edges (D-2 Lane V-4) ────────────────────────
+# CGM previously carried only graha/bhava/domain/yoga/dosha node types (BIND-D2
+# verified live: 0 'arudha'/'special_lagna' nodes on 482012f1). bo_bimba.py
+# (node creation) is OUTSIDE V-4's may_touch glob, but bo_karanajala already has
+# write access to bodha_cgm_nodes (the PageRank UPDATE below) — so these two
+# node classes + their house-joining edges are added here rather than left
+# unwired for the wave. Source: L1 chart_facts (arudha_pada, special_lagna) —
+# §N.5-clean (every node cites its resolving L1 fact_id).
+
+_NODE_UPSERT = """
+INSERT INTO bodha_cgm_nodes (
+  node_id, chart_id, ayanamsha_id, build_id, snapshot_type,
+  node_type, node_subject, node_label_human,
+  position_in_chart_jsonb, strength_score, dignity_state,
+  degree_in, degree_out,
+  primary_domain, domain_affiliations_jsonb, cluster_membership_array,
+  msr_signal_id, configuration_constituents_array, configuration_lifecycle_state,
+  hub_flag, present_in_traditions_array,
+  graph_compute_library, graph_compute_library_version,
+  verification_pass_status, citation_ref, citation_human, computed_at, engine_version
+) VALUES (
+  %(node_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(snapshot_type)s,
+  %(node_type)s, %(node_subject)s, %(node_label_human)s,
+  %(position_in_chart_jsonb)s::jsonb, NULL, NULL,
+  0, 0,
+  NULL, NULL, NULL,
+  NULL, NULL, NULL,
+  FALSE, %(present_in_traditions_array)s,
+  %(graph_compute_library)s, %(graph_compute_library_version)s,
+  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s, %(engine_version)s
+)
+ON CONFLICT (chart_id, ayanamsha_id, build_id, snapshot_type, node_type, node_subject)
+DO NOTHING
+"""
+
+
+def _fetch_arudha_special_lagna_facts(conn, chart_id: str, aya: str) -> dict:
+    """{(node_type, node_subject): {house, sign, fact_id}} for arudha_pada +
+    special_lagna L1 facts. node_subject: 'A1'..'A12' for arudha (stripped
+    'ARUDHA_' prefix); the raw fact_subject (e.g. 'GHATI_LAGNA') for special_lagna."""
+    rows = conn.execute(
+        """SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_text, fact_value_num
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category IN ('arudha_pada', 'special_lagna')
+             AND fact_key IN ('house_d1', 'sign', 'sign_lord')""",
+        [chart_id, aya],
+    ).fetchall()
+    out: dict = {}
+    for r in rows:
+        cat, subj, key, txt, num, fid = (
+            (r["fact_category"], r["fact_subject"], r["fact_key"], r["fact_value_text"], r["fact_value_num"], r["fact_id"])
+            if isinstance(r, dict) else (r[1], r[2], r[3], r[4], r[5], r[0])
+        )
+        node_type = "arudha" if cat == "arudha_pada" else "special_lagna"
+        node_subject = subj.removeprefix("ARUDHA_") if cat == "arudha_pada" else subj
+        rec = out.setdefault((node_type, node_subject), {"house": None, "sign": None,
+                                                            "sign_lord": None, "fact_id": None})
+        if key == "house_d1" and num is not None:
+            rec["house"] = int(float(num))
+            rec["fact_id"] = str(fid)
+        elif key == "sign" and txt:
+            rec["sign"] = txt
+        elif key == "sign_lord" and txt:
+            rec["sign_lord"] = txt
+        if rec["fact_id"] is None:
+            rec["fact_id"] = str(fid)
+    return out
+
+
+def _build_arudha_special_lagna_nodes_and_edges(
+    conn, chart_id: str, aya: str, build_id: str, now: str,
+    node_map: dict, lookups: "ViharaLookups | None",
+) -> tuple[int, list[dict]]:
+    """Inserts arudha (A1-A12) + special-lagna (Ghati/Hora/Bhava-lagna/…) nodes
+    into bodha_cgm_nodes (idempotent, ON CONFLICT DO NOTHING per-build) and
+    returns (nodes_inserted, house-joining edges). Edge base weight 0.6
+    ('occupies its house', mirrors the 'occupancy' base_relation_weight)."""
+    facts = _fetch_arudha_special_lagna_facts(conn, chart_id, aya)
+    inserted = 0
+    edges: list[dict] = []
+    with conn.cursor() as cur:
+        for (node_type, node_subject), rec in facts.items():
+            house = rec.get("house")
+            node_row = {
+                "node_id": str(uuid.uuid4()),
+                "chart_id": chart_id,
+                "ayanamsha_id": aya,
+                "build_id": build_id,
+                "snapshot_type": SNAPSHOT_TYPE,
+                "node_type": node_type,
+                "node_subject": node_subject,
+                "node_label_human": f"{node_type.replace('_', ' ').title()} {node_subject}",
+                "position_in_chart_jsonb": json.dumps(
+                    {"house": house, "sign": rec.get("sign")}) if house or rec.get("sign") else None,
+                "present_in_traditions_array": ["jaimini" if node_type == "arudha" else "parashari"],
+                "graph_compute_library": GRAPH_LIB,
+                "graph_compute_library_version": GRAPH_LIB_VER,
+                "verification_pass_status": "single_pass",
+                "citation_ref": f"chart_facts/{'arudha_pada' if node_type == 'arudha' else 'special_lagna'}/{node_subject}",
+                "citation_human": f"{node_type} node: {node_subject}" + (f" (house {house})" if house else ""),
+                "computed_at": now,
+                "engine_version": ENGINE_VERSION,
+            }
+            cur.execute(_NODE_UPSERT, node_row)
+            inserted += 1
+            node_map[(node_type, node_subject)] = node_row["node_id"]
+
+    for (node_type, node_subject), rec in facts.items():
+        node_id = node_map.get((node_type, node_subject))
+        house = rec.get("house")
+        if not node_id or not house:
+            continue
+        bhava_node = node_map.get(("bhava", str(house)))
+        if not bhava_node:
+            continue
+        lord = rec.get("sign_lord")
+        base = 0.6
+        _strength, _vichara_ids = _edge_strength_v1(base, lord, None, lookups)
+        edge_type = "arudha_house" if node_type == "arudha" else "special_lagna_house"
+        edges.append({
+            "edge_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "snapshot_type": SNAPSHOT_TYPE,
+            "edge_type": edge_type,
+            "from_node_id": node_id,
+            "to_node_id": bhava_node,
+            "direction": "directed",
+            "computed_strength": _strength,
+            "weight_formula_version": EDGE_STRENGTH_FORMULA_VERSION,
+            "constituent_ga_vichara_ids_array": _vichara_ids,
+            "edge_properties_jsonb": json.dumps({"house": house, "sign_lord": lord}),
+            "relationship_class": edge_type,
+            "semantic_path_class": "arudha_placement" if node_type == "arudha" else "special_lagna_placement",
+            "active_duration_class": "natal_permanent",
+            "active_dasha_periods_jsonb": None,
+            "underlying_msr_signal_ids_array": [],
+            "constituent_fact_ids_array": [rec["fact_id"]] if rec.get("fact_id") else [],
+            "cross_system_consensus_count": 1,
+            "cancelled_flag": False,
+            "present_in_traditions_array": ["jaimini" if node_type == "arudha" else "parashari"],
+            "graph_compute_library": GRAPH_LIB,
+            "graph_compute_library_version": GRAPH_LIB_VER,
+            "is_cross_subsystem": False,
+            "subsystem_from": "jaimini" if node_type == "arudha" else "parashari",
+            "subsystem_to": "parashari",
+            **_typed_edge_fields(edge_type, relationship_class=edge_type),
+            "verification_pass_status": "single_pass",
+            "citation_ref": f"bo_karanajala/{edge_type}/{node_subject}",
+            "citation_human": f"{node_subject} falls in house {house}",
+            "computed_at": now,
+            "engine_version": ENGINE_VERSION,
+        })
+    return inserted, edges
 
 
 @register("bo_karanajala")
@@ -1199,17 +1576,31 @@ class BoKaranajalaWriter(WriterBase):
                     "bo_bimba must run and succeed before bo_karanajala"
                 )
 
+            # ── graha↔bhava structural edges (WP-2.3 / LCA-9a-1) — fetched
+            # early so occupied_house_by_graha can seed the DR-7 vichara lookups.
+            lordship_facts = _fetch_bhava_lordship_facts(conn, chart_id, aya)
+            occupancy_facts = _fetch_occupancy_facts(conn, chart_id, aya)
+            aspect_bhava_facts = _fetch_graha_bhava_aspect_facts(conn, chart_id, aya)
+
+            # DR-7 (DIS.020): the ga_vichara-sourced lookups for this (chart,
+            # ayanamsha) substep, bundled once and threaded through every edge
+            # builder below. Missing/partial chart_vichara degrades honestly to
+            # neutral multipliers (1.0) per-lookup — never fabricated, never a halt.
+            lookups = ViharaLookups(
+                conn, chart_id, aya, _occupied_house_by_graha(occupancy_facts)
+            )
+
             edges, contradictions = _build_edges_and_contradictions(
-                chart_id, aya, build_id, signals, node_map, now
+                chart_id, aya, build_id, signals, node_map, now, lookups
             )
 
             argala_edges = _build_argala_edges(
-                chart_id, aya, build_id, graha_signs, node_map, now
+                chart_id, aya, build_id, graha_signs, node_map, now, lookups
             )
             edges.extend(argala_edges)
 
             dispositor_edges = _build_dispositor_edges(
-                chart_id, aya, build_id, graha_signs, node_map, now
+                chart_id, aya, build_id, graha_signs, node_map, now, lookups
             )
             edges.extend(dispositor_edges)
 
@@ -1224,14 +1615,10 @@ class BoKaranajalaWriter(WriterBase):
                 dasha_timeline, birth_date
             )
 
-            # ── graha↔bhava structural edges (WP-2.3 / LCA-9a-1) ──────────────
-            lordship_facts = _fetch_bhava_lordship_facts(conn, chart_id, aya)
-            occupancy_facts = _fetch_occupancy_facts(conn, chart_id, aya)
-            aspect_bhava_facts = _fetch_graha_bhava_aspect_facts(conn, chart_id, aya)
             bhava_edges = _build_bhava_edges(
                 chart_id, aya, build_id,
                 lordship_facts, occupancy_facts, aspect_bhava_facts, node_map, now,
-                dasha_periods_by_graha,
+                dasha_periods_by_graha, lookups,
             )
             edges.extend(bhava_edges)
 
@@ -1241,11 +1628,23 @@ class BoKaranajalaWriter(WriterBase):
             membership_edges = _build_yoga_membership_edges(
                 chart_id, aya, build_id, signals, node_map,
                 occupancy_by_graha, lord_fact_by_house, now,
-                dasha_periods_by_graha,
+                dasha_periods_by_graha, lookups,
             )
             edges.extend(membership_edges)
 
-            # ── PageRank (networkx) ───────────────────────────────────────────
+            # ── D-2 Lane V-4: arudha + special-lagna nodes joined into the
+            # mechanism graph (BIND_D-2.md verified 0 such nodes existed).
+            arudha_nodes_inserted, arudha_edges = _build_arudha_special_lagna_nodes_and_edges(
+                conn, chart_id, aya, build_id, now, node_map, lookups,
+            )
+            edges.extend(arudha_edges)
+
+            # ── Centralities (networkx): pagerank + eigenvector + betweenness +
+            # harmonic (D-2 Lane V-4, ledger row 33 — CR-25 completes what
+            # bo_bimba.py's docstring flagged as "left NULL here"). Computed over
+            # the FULL real edge set (incl. the DR-7-weighted + arudha/special-
+            # lagna edges just added), so the metrics are non-degenerate on any
+            # chart carrying real structure.
             try:
                 import networkx as nx
                 G = nx.DiGraph()
@@ -1260,25 +1659,54 @@ class BoKaranajalaWriter(WriterBase):
                         str(e["to_node_id"]),
                         weight=abs(float(e.get("computed_strength") or 0.5)),
                     )
-                pagerank_scores: dict[str, float] = {}
+                metrics_by_node: dict[str, dict] = {n: {} for n in node_ids}
                 if G.number_of_nodes() > 0 and G.number_of_edges() > 0:
                     pagerank_scores = nx.pagerank(G, alpha=0.85, weight="weight")
-                if pagerank_scores:
-                    with conn.cursor() as _pr_cur:
-                        for node_id, score in pagerank_scores.items():
-                            _pr_cur.execute(
+                    for n, v in pagerank_scores.items():
+                        metrics_by_node[n]["pagerank_score"] = round(v, 8)
+                    try:
+                        eig = nx.eigenvector_centrality(G, max_iter=500, weight="weight")
+                        for n, v in eig.items():
+                            metrics_by_node[n]["eigenvector_centrality"] = round(v, 8)
+                    except (nx.PowerIterationFailedConvergence, nx.NetworkXException) as eig_exc:
+                        logger.warning("[bo_karanajala] %s — eigenvector_centrality "
+                                        "skipped: %s", aya, eig_exc)
+                    bet = nx.betweenness_centrality(G, weight="weight", normalized=True)
+                    for n, v in bet.items():
+                        metrics_by_node[n]["betweenness_centrality"] = round(v, 8)
+                    UG = G.to_undirected()
+                    harm = nx.harmonic_centrality(UG, distance="weight")
+                    max_harm = max(harm.values()) if harm else 0.0
+                    for n, v in harm.items():
+                        metrics_by_node[n]["harmonic_centrality"] = round(
+                            v / max_harm, 8) if max_harm > 0 else 0.0
+                non_null = {n: m for n, m in metrics_by_node.items() if m}
+                if non_null:
+                    with conn.cursor() as _cent_cur:
+                        for node_id, m in non_null.items():
+                            _cent_cur.execute(
                                 """UPDATE bodha_cgm_nodes
-                                   SET pagerank_score = %s
-                                   WHERE node_id = %s AND chart_id = %s AND ayanamsha_id = %s""",
-                                [round(score, 8), node_id, chart_id, aya],
+                                   SET pagerank_score = COALESCE(%(pagerank_score)s, pagerank_score),
+                                       eigenvector_centrality = COALESCE(%(eigenvector_centrality)s, eigenvector_centrality),
+                                       betweenness_centrality = COALESCE(%(betweenness_centrality)s, betweenness_centrality),
+                                       harmonic_centrality = COALESCE(%(harmonic_centrality)s, harmonic_centrality)
+                                   WHERE node_id = %(node_id)s AND chart_id = %(chart_id)s AND ayanamsha_id = %(ayanamsha_id)s""",
+                                {
+                                    "pagerank_score": m.get("pagerank_score"),
+                                    "eigenvector_centrality": m.get("eigenvector_centrality"),
+                                    "betweenness_centrality": m.get("betweenness_centrality"),
+                                    "harmonic_centrality": m.get("harmonic_centrality"),
+                                    "node_id": node_id, "chart_id": chart_id, "ayanamsha_id": aya,
+                                },
                             )
                     logger.info(
-                        "[bo_karanajala] %s — pagerank updated for %d nodes",
-                        aya, len(pagerank_scores),
+                        "[bo_karanajala] %s — centralities updated for %d nodes "
+                        "(pagerank+eigenvector+betweenness+harmonic)",
+                        aya, len(non_null),
                     )
             except Exception as pr_exc:
                 logger.warning(
-                    "[bo_karanajala] %s — pagerank skipped: %s", aya, pr_exc
+                    "[bo_karanajala] %s — centrality computation skipped: %s", aya, pr_exc
                 )
 
             replace_prior_cgm_edges(conn, chart_id, aya, SNAPSHOT_TYPE)
@@ -1286,9 +1714,9 @@ class BoKaranajalaWriter(WriterBase):
 
             logger.info(
                 "[bo_karanajala] %s — %d edges (%d argala, %d dispositor, "
-                "%d bhava, %d yoga_member), %d contradictions",
+                "%d bhava, %d yoga_member, %d arudha/special_lagna nodes), %d contradictions",
                 aya, len(edges), len(argala_edges), len(dispositor_edges),
-                len(bhava_edges), len(membership_edges), len(contradictions),
+                len(bhava_edges), len(membership_edges), arudha_nodes_inserted, len(contradictions),
             )
             total_e += _batch_insert(conn, edges, _EDGE_INSERT)
             total_c += _batch_insert(conn, contradictions, _CONTRADICTION_INSERT)

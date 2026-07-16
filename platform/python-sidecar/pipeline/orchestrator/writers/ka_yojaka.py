@@ -427,8 +427,43 @@ class KaYojakaWriter(WriterBase):
 
 # ── D6 helpers (module-level) ─────────────────────────────────────────────────
 
+# CR-85 (D-2 Lane V-4): centrality-consumption stub removal, bounded to this
+# one normalization fix — nothing else in ka_yojaka touched (D-3 owns the full
+# convergence engine). Root cause of the flat-0.5 cgm_centrality_weight (live-
+# probed at BIND_D-2.md §B.1 check 5 before this fix): _fetch_cgm_pagerank
+# keys its lookup by bodha_cgm_nodes.node_subject, which bo_bimba writes in
+# Title Case ('Mars', 'Rahu', …) — but this function returned the RAW
+# configuration_jsonb value verbatim (often 'MAR', 'mars', 'RAH_MEAN', or a
+# 2-char L1 code), so `cgm_pagerank.get(primary_graha, 0.5)` almost always
+# missed the dict and silently fell back to the 0.5 default for nearly every
+# predicate. Fix: normalize through the SAME Title-Case map bo_bimba/
+# bo_karanajala already use as the CGM node_subject convention, so a real hit
+# — not the 0.5 stub — is the common case.
+_GRAHA_CODE_TO_TITLE: dict[str, str] = {
+    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MARS": "Mars",
+    "MER": "Mercury", "MERCURY": "Mercury", "JUP": "Jupiter", "JUPITER": "Jupiter",
+    "VEN": "Venus", "VENUS": "Venus", "SAT": "Saturn", "SATURN": "Saturn",
+    "RAH": "Rahu", "RAH_MEAN": "Rahu", "RAHU": "Rahu",
+    "KET": "Ketu", "KET_MEAN": "Ketu", "KETU": "Ketu",
+}
+
+
+def _normalize_graha_to_node_subject(raw: str) -> str | None:
+    """Any graha token (2/3-letter L1 code, upper/lower/mixed case full name)
+    -> the exact Title-Case form bodha_cgm_nodes.node_subject stores for
+    node_type='graha' (bo_bimba._SUBJECT_TO_GRAHA's convention)."""
+    if not raw or not isinstance(raw, str):
+        return None
+    key = raw.strip().upper()
+    if key in _GRAHA_CODE_TO_TITLE:
+        return _GRAHA_CODE_TO_TITLE[key]
+    title = raw.strip().title()
+    return title if title in _GRAHA_CODE_TO_TITLE.values() else None
+
+
 def _extract_primary_graha(signal_dict: dict) -> str | None:
-    """Extract the primary graha name from a signal's configuration_jsonb."""
+    """Extract the primary graha name from a signal's configuration_jsonb,
+    normalized to the CGM node_subject convention (CR-85)."""
     cfg = signal_dict.get('configuration_jsonb') or {}
     if isinstance(cfg, str):
         import json as _json
@@ -440,7 +475,9 @@ def _extract_primary_graha(signal_dict: dict) -> str | None:
     for key in ('fact_value_text', 'primary_graha', 'graha', 'planet', 'lord'):
         val = cfg.get(key)
         if val and isinstance(val, str):
-            return val
+            normalized = _normalize_graha_to_node_subject(val)
+            if normalized:
+                return normalized
     return None
 
 
