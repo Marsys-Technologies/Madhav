@@ -945,8 +945,17 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       // requires each shadbala row to carry BOTH ratio AND required_rupa — failed at 0/9. INVARIANT
       // facts belong to every ayanamsha view by definition; include them. Pivoting is by
       // fact_subject, so an INVARIANT `required_rupa` for SUN merges into the same wide row as
-      // SUN's lahiri `ratio`/`rupa`, with no key collision (INVARIANT keys are disjoint from the
-      // per-ayanamsha keys). `IN ($2,'INVARIANT')` de-dupes automatically when $2 is 'INVARIANT'.
+      // SUN's lahiri `ratio`/`rupa`. Collision safety (verified by DB enumeration, D-1.5b Gate B
+      // integration review): the fix's target keys (`required_rupa` et al.) exist ONLY under
+      // INVARIANT, so they are purely additive. Across the full INVARIANT set there are exactly two
+      // shared key-NAMES with per-ayanamsha rows — `rupa` (INVARIANT graha_shadbala_naisargika vs
+      // per-ayanamsha graha_shadbala_total) and `active_at_birth_flag` (bhadra_flag) — and BOTH are
+      // provably safe: the pivot's `ORDER BY fact_category, fact_key` makes the per-ayanamsha
+      // graha_shadbala_total row win the `rupa` slot (naisargika sorts earlier, never last-writes),
+      // and `active_at_birth_flag` is itself ayanamsha-invariant (identical value in every ayanamsha).
+      // So no served value changes. If you ADD a new INVARIANT key, re-check it does not destructively
+      // collide with a per-ayanamsha key of the same (fact_subject, fact_key). `IN ($2,'INVARIANT')`
+      // de-dupes automatically when $2 is 'INVARIANT'.
       let sql = `
         SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
