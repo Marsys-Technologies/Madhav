@@ -2,7 +2,7 @@
 artifact: BRIEF_D2
 type: WAVE BRIEF (three-part: PRE-BOUND + FROZEN + BIND-AT-OPEN)
 wave: D-2 — Vidhi Engine + Mechanism wave
-version: 2.0
+version: 2.1
 status: FROZEN — §B slots bind at wave open (Fable Binder, per CONDUCTOR_PROTOCOL §2 step 1);
   §B0 slots are PRE-BOUND (resolved 2026-07-16 against repo + register HEAD; Binder spot-verifies,
   does not re-derive)
@@ -19,6 +19,11 @@ prerequisite: >
 gate: the design-§8 MASTER ACCEPTANCE TEST run by a FLOOR-MODEL (Sonnet) reading agent (§G).
   6/6 required — unchanged, not weakenable.
 changelog:
+  - v2.1 (2026-07-16, docs/pre-d2-orchestration-economy): new §F1.6 — native-granted
+    orchestration-economy discretion: Workflow-based multi-agent fan-out where shape-appropriate,
+    per-agent effort dials (down for mechanical, up for verification/doctrine), per-agent model
+    dials, with the non-dialable invariants named (independent full-scrutiny verifier receipts,
+    6/6 gate, FLOOR-MODEL Sonnet gate reader, Fable adjudication, reds-are-reds).
   - v2.0 (2026-07-16, pre-D-2 brief surgery, docs/pre-d2-brief-d2-alignment): reconciled to
     post-freeze reality (D-1.5a/D-1.5b/D-1.6 all closed AFTER v1.0 froze). (a) Every cited CR
     re-verified against POST_REMEDIATION_CONSUMPTION_REGISTER v1.5 + MARSYS_DEFECT_GAP_REGISTER
@@ -224,6 +229,43 @@ parallel. Therefore, mirroring D-1.5b's clean 2-cycle merge:
 **Merge order (declared):** V-0 → V-1 → V-4 → V-5 → V-6 ‖ then cycle-2: V-2 → V-3 ‖ then
 V-0-final-run. (Harness first — §8.8(v) makes its assertions canonical; registry before graph;
 graph before classes that read it; doctrine data last in cycle 1; serving last overall.)
+
+## §F1.6 — Orchestration economy: workflows, effort dials, model dials (native-granted, 2026-07-16)
+
+The native has granted the conductor explicit discretion to balance COST against QUALITY by
+choosing the orchestration mechanism, per-agent reasoning effort, and per-agent model — dialing
+each up or down judiciously per task. The grants, and the hard limits the dials may never cross:
+
+1. **Workflow orchestration (opt-in granted).** Where a phase is fan-out-shaped, the conductor
+   SHOULD prefer a Workflow script (deterministic `pipeline()`/`parallel()` orchestration with
+   per-agent `model`/`effort` overrides and structured-output schemas) over hand-spawned agent
+   sequences: per-lane Phase-1 verification panels, the §G gate assertion battery + 126-tool
+   census sweep, discover→transform→verify passes, judge panels on design choices (e.g. V-1's
+   floor-content review, V-4's mechanism-shape alternatives). Deep single-lane implementation
+   stays ONE isolated-worktree agent per lane (worktree isolation composes with workflow agents
+   but is expensive — reserve it for agents that genuinely mutate files in parallel). Any
+   live-connector fan-out MUST carry the throttle/backoff discipline (the deployed connector
+   429s under sustained load; the harness client retries only 5xx) — a workflow that hammers
+   the MCP in parallel is itself a defect, not a speedup.
+
+2. **Effort dial.** Default: inherit. Dial DOWN (`low`/`medium`) for mechanical stages — greps,
+   census probes, receipt collection, schema-declaration checks, count/paging sweeps, formatting.
+   Dial UP (`high`/`xhigh`) for adversarial verification, root-cause analysis, cross-lane
+   integration review, and anything that feeds a doctrine ruling.
+
+3. **Model dial.** Cheaper/faster models for mechanical fan-out stages; stronger models for
+   verification, judgment, and doctrine-adjacent work — same judgment the conductor already
+   applies to its own model selection. Two fixed points that are NOT dialable: adjudicator-
+   doctrine rulings remain Fable (protocol §1.1), and the §G gate reading agent remains
+   FLOOR-MODEL Sonnet **by design** — that constraint IS the test (can a floor model reach the
+   6 conclusions from served surfaces alone), not a cost lever.
+
+4. **Invariants the dials may never weaken:** every lane and every substantive hotfix still gets
+   an INDEPENDENT fresh-context verifier at full scrutiny before merge — a cheap/low-effort agent
+   may draft, scan, or collect, but the ACCEPT/REJECT receipt must come from a verifier dialed UP,
+   never down. Gate thresholds (6/6) and reds-are-reds honesty are untouchable; PARKs still need
+   documented evidence. Rule of thumb: economize on discovery and mechanical transforms; spend on
+   verification and irreversible steps.
 
 ## FROZEN §F2 — must_not_touch
 FROZEN orchestrator contract (PARK class 1) — **including the state-commit race fix: owned by a
