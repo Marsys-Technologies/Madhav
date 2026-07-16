@@ -303,6 +303,15 @@ const MCP_RESPONSE_BUDGET_KB = {
   assess_career: 40,
   assess_health: 40,
   assess_wealth: 40,
+  // D-1.6 Lane S-5 (R-1/R-8/CR-49 residuals): traverse_graph/get_cgm_subgraph measured 99KB,
+  // get_projections 70KB on the live connector (BIND_D-1.6 S-7 probe) — all over the 64KB
+  // Gate Ś default-page ceiling. 55KB leaves headroom under that ceiling for the dualOutput
+  // wrapper's own overhead (same SAFETY_MARGIN_BYTES rationale as judgment_query/graha_portrait
+  // above), while still serving a genuinely useful default page (these are graph-shaped
+  // responses — nodes/edges/projections are the actionable payload, not decorative).
+  traverse_graph: 55,
+  get_cgm_subgraph: 55,
+  get_projections: 55,
 } as const
 
 /**
@@ -1081,7 +1090,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        // D-1.6 S-5 (R-1/R-8/CR-49 residual): live probe measured 99KB at depth=1 default,
+        // well over the 64KB Gate Ś ceiling — this response was never budget-wrapped. Same
+        // applyMcpBudgetAuto + dualOutputBudgeted mechanism already used for assess_*/
+        // judgment_query (response_budget.ts) — generic array-section auto-detection plus
+        // the self-verifying finalizeMcpBudget re-measure and string-truncation fallback.
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.traverse_graph, 'traverse_graph'))
       } catch (err) {
         return errorOutput('traverse_graph', String(err), { chart_id })
       }
@@ -1218,14 +1233,21 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const projections = (projData['projections'] as unknown[]) ?? []
         const cap = max_projections ?? 20
         const boundedProjections = projections.slice(0, cap)
-        return dualOutput({
+        // D-1.6 S-5 (R-1/R-8/CR-49 residual): live probe measured 70KB even with the
+        // `projections` array already capped by max_projections — other fields in the
+        // response (e.g. per-projection detail objects, nested breakdowns) still pushed it
+        // over the 64KB Gate Ś ceiling. Wrap the whole assembled response through the same
+        // budget mechanism as traverse_graph/assess_* rather than relying solely on the
+        // hand-rolled projections cap above.
+        const response = {
           orientation_context,
           orientation_ok,
           ...projData,
           projections: boundedProjections,
           projections_total: projections.length,
           projections_returned: boundedProjections.length,
-        })
+        }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.get_projections, 'get_projections'))
       } catch (err) {
         return errorOutput('get_projections', String(err), { chart_id })
       }
@@ -1566,7 +1588,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        // D-1.6 S-5 (R-1/R-8/CR-49 residual): live probe measured 99.7KB default page — over
+        // the 64KB Gate Ś ceiling. Same generic auto-budget mechanism as traverse_graph.
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.get_cgm_subgraph, 'get_cgm_subgraph'))
       } catch (err) {
         return errorOutput('get_cgm_subgraph', String(err), { chart_id })
       }
