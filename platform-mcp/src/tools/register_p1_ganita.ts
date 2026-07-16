@@ -214,8 +214,23 @@ function normalizeAyanamsha(id?: string): string {
 // unfiltered ~107-row yoga/dosha union. Their real data lives elsewhere: parivartana
 // (mutual sign exchange) is fact_category parivartana_per_varga on get_dispositors;
 // graha_yuddha (planetary war) has its own dedicated capability, get_graha_yuddha.
-const STRUCTURAL_FACET_URI: Record<string, string> = {
-  aspects:      'marsys://tool/L1/get_aspects',
+export const STRUCTURAL_FACET_URI: Record<string, string> = {
+  aspects:          'marsys://tool/L1/get_aspects',
+  // D-1.6 S-5 (PARK-A7 + R-17, the standing A7 PARK / S-4-sputa-drishti routed item):
+  // `aspects` shared its declared category set with jaimini/tajik/matrix-summary rows, and
+  // get_aspects.ts's underlying SQL orders `ORDER BY fact_category` GLOBALLY across every
+  // requested category under ONE shared LIMIT — 'aspect_jaimini*' sorts alphabetically BEFORE
+  // 'aspect_parashari_*', so a large aspect_jaimini_per_varga population (per graha × per
+  // varga) could consume the entire row budget before a single Parashari (Graha Drishti) row
+  // was ever reached — exactly the live symptom BIND_D-1.6 confirmed ("default page leads
+  // with aspect_jaimini rasi-drishti boilerplate", 19 real aspect_parashari_given rows never
+  // surfacing). Fix mirrors the D-1.5b kala_sarpa extraction (item 6): pull jaimini and tajik
+  // aspects into their OWN focused facets sharing the same underlying URI/tool but a
+  // DISJOINT declared category set (see FACET_CATEGORIES below), so neither can crowd out
+  // the other under the shared-LIMIT tool. `aspects` now serves ONLY genuine Graha Drishti
+  // (Parashari given/received/per-varga) — matching its own description text.
+  aspects_jaimini:  'marsys://tool/L1/get_aspects',
+  aspects_tajik:    'marsys://tool/L1/get_aspects',
   conjunctions: 'marsys://tool/L1/get_aspects',
   sambandha:    'marsys://tool/L1/get_aspects',
   argala:       'marsys://tool/L1/get_argala',
@@ -246,11 +261,17 @@ const STRUCTURAL_FACET_URI: Record<string, string> = {
 // classification is derived logic living in graha_portrait.ts (R-6), not a stored chart_facts
 // row. Declared as an empty/unbacked facet below: rejected outright rather than silently
 // serving unrelated dispositor rows (canonical-or-floor: no backing category = no serve).
-const FACET_CATEGORIES: Record<string, string[]> = {
+export const FACET_CATEGORIES: Record<string, string[]> = {
+  // D-1.6 S-5 (PARK-A7 + R-17): narrowed to genuine Graha Drishti (Parashari) only — see
+  // STRUCTURAL_FACET_URI comment above for the full root-cause writeup. aspect_matrix_summary
+  // (a same-tool rollup ACROSS traditions) stays here too since it summarizes the Parashari
+  // matrix this facet is now dedicated to, and is a small, bounded row (no crowding risk).
   aspects: [
     'aspect_parashari_given', 'aspect_parashari_received', 'aspect_parashari_per_varga',
-    'aspect_jaimini', 'aspect_jaimini_per_varga', 'aspect_matrix_summary', 'aspect_tajik',
+    'aspect_matrix_summary',
   ],
+  aspects_jaimini: ['aspect_jaimini', 'aspect_jaimini_per_varga'],
+  aspects_tajik:   ['aspect_tajik'],
   conjunctions: ['conjunction_within_orb', 'conjunction_per_varga'],
   sambandha:    ['lord_aspects_lord_per_varga', 'lord_in_house_per_varga'],
   dispositors:  [
@@ -432,7 +453,12 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'ganita_structural_get',
     'Retrieve structural chart relationships via a single facet-parameterized tool (L1 Gaṇita). ' +
     'ONE tool covers all inter-planetary structural layers: ' +
-    'aspects (Graha Drishti), argala (planetary intervention), dispositors (sign-ruler chain), ' +
+    'aspects (Graha Drishti — Parashari planetary aspects given/received/per-varga ONLY; D-1.6 ' +
+    'PARK-A7/R-17 fix: jaimini rashi-drishti and tajik aspects moved to their own dedicated ' +
+    'facets below so they can never crowd Parashari rows out of the shared row budget), ' +
+    'aspects_jaimini (Jaimini rashi drishti, natal + per-varga), ' +
+    'aspects_tajik (Tajaka aspects: Itthasala/Ishrafa/Nakta/Yamaya/Manahoo/Khallasara), ' +
+    'argala (planetary intervention), dispositors (sign-ruler chain), ' +
     'parivartana (exchange), yoga_fires (classical yoga patterns), dosha_fires (affliction patterns), ' +
     'conjunctions (same-sign occupancy), sambandha (relational bonds), ' +
     'functional (functional benefic/malefic roles), graha_yuddha (planetary war), ' +
@@ -449,7 +475,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       facet: z.enum([
-        'aspects', 'argala', 'dispositors', 'parivartana',
+        'aspects', 'aspects_jaimini', 'aspects_tajik', 'argala', 'dispositors', 'parivartana',
         'yoga_fires', 'dosha_fires', 'conjunctions', 'sambandha',
         'functional', 'graha_yuddha', 'kala_sarpa',
       ]).describe('Which structural relationship layer to retrieve.'),
