@@ -107,6 +107,34 @@ describeIf('chart_query (marsys://tool/L1/chart_facts_query) — live DB', () =>
     })
   }
 
+  // D-1.5b Gate B (CR-18 / B_shadbala_ratio): graha_shadbala_total rows must carry BOTH the
+  // per-ayanamsha `ratio` AND the ayanamsha-INVARIANT `required_rupa` (stored under
+  // ayanamsha_id='INVARIANT'). The single-ayanamsha WHERE filter used to drop required_rupa (0/9);
+  // the widened `ayanamsha_id IN ($2,'INVARIANT')` clause surfaces it in the same pivoted row.
+  it('[native] graha_shadbala_total serves BOTH ratio and required_rupa on the same graha row (Gate B)', async () => {
+    const result = await handler()({ chart_id: NATIVE_CHART_ID, category: 'graha_shadbala_total', limit: 20 })
+    expect(result.is_error).toBe(false)
+    const facts = (result.content as Record<string, unknown>)['facts'] as Array<Record<string, unknown>>
+    // The 7 real grahas (Sun..Saturn) all carry required_rupa; nodes (RAH/KET) carry only rupa.
+    const withRatio = facts.filter(f => f['ratio'] != null)
+    const withRequiredRupa = facts.filter(f => f['required_rupa'] != null)
+    expect(withRatio.length).toBeGreaterThanOrEqual(7)
+    expect(withRequiredRupa.length).toBeGreaterThanOrEqual(7)
+    // Every graha that has a ratio must ALSO carry required_rupa (the Gate B pairing).
+    for (const f of withRatio) {
+      expect(f['required_rupa'], `${f['fact_subject']} missing required_rupa`).not.toBeNull()
+      expect(f['required_rupa']).toBeDefined()
+      // required_rupa must ground back to a real chart_facts.fact_id (§N.5).
+      expect((f['fact_ids'] as Record<string, string>)['required_rupa']).toBeTruthy()
+    }
+    // Spot-check SUN's known classical minimum shadbala (5 rupas) and that shape="rows" also serves it.
+    const sunPivot = facts.find(f => f['fact_subject'] === 'SUN')
+    expect(sunPivot?.['required_rupa']).toBe(5)
+    const rowsResult = await handler()({ chart_id: NATIVE_CHART_ID, category: 'graha_shadbala_total', shape: 'rows', limit: 100 })
+    const rows = (rowsResult.content as Record<string, unknown>)['rows'] as Array<Record<string, unknown>>
+    expect(rows.some(r => r['fact_key'] === 'required_rupa')).toBe(true)
+  })
+
   it('rejects an unrecognized planet name honestly (no silent empty)', async () => {
     const result = await handler()({ chart_id: NATIVE_CHART_ID, planet: 'Pluto' })
     expect(result.is_error).toBe(true)
