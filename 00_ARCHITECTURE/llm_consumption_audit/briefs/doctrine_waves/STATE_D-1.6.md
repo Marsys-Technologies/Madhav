@@ -97,7 +97,12 @@ notes: >
   Fixed all 3: tiered period selection, dated-rows-first ORDER BY, enforceTimingAnchoredHonesty guard.
   Branch wave/D-1.6/S-4-fix2 @ 9bac956f, tests pass (+3 platform, +2 mcp, 0 new failures, tsc clean).
   Live re-verification deferred to next deploy+rebuild+gate cycle (cannot verify from sandbox).
-  Next: verify S-4 fix-2, merge to main, re-deploy, re-rebuild (scope: ka_activation + true downstream
-  dependents only — much narrower than the first 47-asset rebuild since only the writer's window-
-  selection logic changed, not its lord-resolution facts), re-run Gate Ś items 8/9/10, then CLOSE.
+  S-4 fix-2 VERIFIED ACCEPT (Opus, high rigor given deploy stakes): all 3 root causes independently
+  confirmed incl. live DB re-query matching implementer's exact numbers (49360/40040/0/140) and the
+  0.5-crowding math (9320 undated all=0.5, 35691/40040 dated <0.5). One pre-existing (non-regression)
+  mcp graha_portrait drill_pointers failure flagged, confirmed present at base 38d82105 already.
+  Next: merge S-4-fix2 to main via PR, deploy, narrow rebuild (ka_activation writer's own re-run is
+  enough — its window-selection logic changed, not its lord-resolution facts, no downstream fact
+  changes so no cascade needed beyond ka_activation itself and its own direct MSR-serving path),
+  re-run Gate Ś items 8/9/10 live, then CLOSE.
 ---
