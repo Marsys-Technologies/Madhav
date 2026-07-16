@@ -1,6 +1,6 @@
 ---
 wave: D-2
-lifecycle_step: 4
+lifecycle_step: 5
 status: ACTIVE
 brief_bound: true
 rollback_pin:
@@ -38,10 +38,10 @@ lanes:
   - {lane: V-2, branch: wave/D-2/V-2, status: pending, cycle: 2}
   - {lane: V-3, branch: wave/D-2/V-3, status: pending, cycle: 2}
 integration_branch: wave/D-2/integration
-deploy: {done: false}
+deploy: {done: true, pr: 585, merge_sha: 58e320c40aabaf6fa582c70b9e68b66fd0555ced, ci_note: "one transient Build Check infra flake (no space left on device during docker load), unrelated to D-2 code, cleared on rerun"}
 rebuild: {scope: asset_set, full: false, abhisek_build_id: pending}
 gate: {run: false, green: [], red: []}
-updated_at: 2026-07-16T22:15:00Z
+updated_at: 2026-07-16T22:45:00Z
 notes: >
   OPEN complete. Binder (Fable) BOUND the brief: see BIND_D-2.md — 12/12 regression sample PASS,
   0 unexpected reds (both expected residuals confirmed: PARK-#4, Gate Ś #8). §F1.7 promise ledger
