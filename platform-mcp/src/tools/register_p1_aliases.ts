@@ -849,6 +849,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       house:            z.number().int().min(1).max(12).optional(),
       sign:             z.string().optional(),
       nakshatra:        z.string().optional(),
+      // r18-intentional-passthrough: divisional_chart
+      // (R-18 param no-op audit: forwarded verbatim via `...rest` below to chart_facts_query,
+      // which reads it directly — live-verified S-12 CLOSED_WITH_EVIDENCE, BIND_D-1.6 S-7:
+      // ganita_chart_facts_get(divisional_chart=D2|D9) serves the divisional_facts section.)
       divisional_chart: z.string().optional().describe('Divisional chart code (e.g. "D9", "D2"). Also returns that varga\'s chart_divisionals-native EAV facts (per-varga sign/house, hora class incl. surya_hora/chandra_hora + hora_d2_house, varga dignity, house lords/occupants) in a separate `divisional_facts` section.'),
       keyword:          z.string().optional(),
       fact_subject:     z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP"). Comma-separated for multiple.'),
@@ -1307,6 +1311,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     '[Phase-1 alias] Record an outcome against a prediction (same as record_outcome).',
     {
       chart_id:    z.string().uuid(),
+      // r18-intentional-passthrough: prediction_id, outcome, verdict
+      // (R-18 param no-op audit: the entire `params` object — every declared key, not a
+      // filtered subset — is forwarded verbatim to callPlatformPrim('record_outcome', ...)
+      // below; there is no per-key handling to audit because nothing here filters anything.)
       prediction_id: z.string().optional(),
       outcome:     z.string().describe('Actual outcome description'),
       verdict:     z.enum(['confirmed', 'partial', 'denied']).optional(),

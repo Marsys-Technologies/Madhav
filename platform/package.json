@@ -22,6 +22,7 @@
     "tap:6-method-grep": "tsx scripts/audit/tap/tap6_method_grep.ts",
     "tap:pointer-validation": "tsx scripts/audit/tap/sc_pointer_validation.ts",
     "tap:mcp-smoke": "tsx scripts/audit/tap/mcp_tool_smoke.ts",
+    "tap:r18-param-noop": "tsx --conditions=react-server scripts/audit/tap/r18_param_noop_audit.ts",
     "tap:s13-coverage": "tsx --conditions=react-server scripts/audit/tap/s13_coverage_matrix_live.ts",
     "tap:5-seam-conservation": "tsx --conditions=react-server scripts/audit/tap/tap5_seam_conservation.ts",
     "tap:7-distribution-gates": "tsx --conditions=react-server scripts/audit/tap/tap7_distribution_gates.ts",

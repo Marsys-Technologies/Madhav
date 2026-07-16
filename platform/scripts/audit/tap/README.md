@@ -12,6 +12,7 @@ lane-5-harness brief.
 | Script | Battery | Needs DB? | Needs live MCP server? |
 |---|---|---|---|
 | `tap6_method_grep.ts` | TAP-6 method audit (grep set) | No | No |
+| `r18_param_noop_audit.ts` | R-18 estate-wide param no-op audit (static, ratchet-baselined) | No | No |
 | `sc_pointer_validation.ts` | Boot-time pointer validation (SC-17/18/19 + Law-7) | No | No |
 | `mcp_tool_smoke.ts` | Per-tool smoke battery | No | Yes (falls back to PLAN mode) |
 | `s13_coverage_matrix_live.ts` | S-13 / TAP-5 Law-1 | Yes | No |
