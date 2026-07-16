@@ -69,6 +69,9 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bg_formula_constants",
     # ── L0 Brahmagyan — migration 431 (WP-2.5 / LCA-16) ──────────────────────
     "bg_sign_medical",
+    # ── L0/L1 Brahmagyan — migration 440 (D-2 Lane V-1, vidhi registry) ──────
+    "bg_vidhi_primitives",
+    "bg_vidhi_floors",
     # ── L1 Gaṇita — migration 342 ────────────────────────────────────────────
     "ga_condition",
     "ga_dashas",
@@ -111,6 +114,14 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bo_pratijna",
     # ── L2 Bodha — migration 438 (D-1.5b Lane B-3, CR-100 Sudarshana Chakra) ──
     "bo_sudarshana",
+    # ── L2 Bodha — migrations 445/446 (D-2 Lane V-4, Mechanism object) ────────
+    "bo_yantra_mechanism",
+    "bo_laksana_rerank",
+    # ── L2 Bodha — migrations 450-453 (D-2 Lane V-5, CR-26/64+61+76+36) ──────
+    "bo_nakshatra_semantic",
+    "bo_arudha",
+    "bo_special_lagna",
+    "bo_vargottama_dhana",
     # ── L3 Kāla — migration 342 ──────────────────────────────────────────────
     "ka_bhavishya_lekha",
     "ka_dasha_kala",

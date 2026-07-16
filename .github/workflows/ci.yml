@@ -5,6 +5,13 @@ on:
     branches: [main, 'feature/**']
   pull_request:
     branches: [main]
+  # D-2 Lane V-0 (BIND_D-2.md §F1.7 ledger row 2): the census-battery job below hits the LIVE
+  # deployed connector with real credentials and takes several minutes (135-tool paced sweep) —
+  # it must never run on every push/PR (cost, rate-limit risk, and it needs a secret that may not
+  # exist on every fork/branch). workflow_dispatch is the minimal addition that lets the wave's
+  # gate runner (CONDUCTOR_PROTOCOL §2 step 7) invoke it on demand via `gh workflow run` without
+  # changing push/pull_request behavior for any other job in this file.
+  workflow_dispatch:
 
 jobs:
   typecheck:
@@ -345,3 +352,38 @@ jobs:
       - name: response_budget hardFloor regression test (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/response_budget_hard_floor.test.ts
+
+  census-battery:
+    # D-2 Lane V-0 (BRIEF_D2.md §F1 Lane V-0 / BIND_D-2.md §F1.7 ledger rows 1-5). Runs the
+    # master-acceptance harness (§G.0 six wealth conclusions + the full paced 135-tool census +
+    # completeness-receipt validator + alias-count check) against the DEPLOYED connector — this
+    # is a live-estate check, not a source-tree check like density-census above, so it is
+    # workflow_dispatch-only (see the `on:` block comment) and requires an MCP credential secret.
+    # Manual invocation (the wave's gate runner, CONDUCTOR_PROTOCOL §2 step 7): `gh workflow run
+    # "CI — Ganga Quality Gate" --ref <branch>` after adding this job's name to the dispatch, or
+    # `gh workflow run ci.yml -f job=census-battery` once repo actions support job-level dispatch
+    # inputs — until then, a workflow_dispatch run executes every job in this file; this job's
+    # own `if` guard is what makes it a no-op on ordinary push/pull_request events.
+    name: Census Battery (D-2 §G master gate)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: doctrine_harness — §G.0 wealth conclusions + census + receipt + alias check
+        env:
+          MARSYS_MCP_KEY: ${{ secrets.MARSYS_MCP_KEY }}
+        run: |
+          if [ -z "$MARSYS_MCP_KEY" ]; then
+            echo "MARSYS_MCP_KEY secret not configured — skipping the live census battery (never a fabricated pass)." >&2
+            exit 0
+          fi
+          npx tsx scripts/audit/doctrine_harness/run_master_gate.ts

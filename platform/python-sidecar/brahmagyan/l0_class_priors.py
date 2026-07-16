@@ -65,6 +65,27 @@ CLASS_ROWS: list[tuple] = [
     # code-enforced never-outranks-primary + no-chaining guards live in
     # bodha_writers/bhavat_bhavam_amplifier.py, not in this prior alone.
     ("bhavat_bhavam_amplifier", 0.85, "DIS.016/DR-3: Bhavat-Bhavam gated amplifier — corroborating-only, never a generator"),
+    # D-2 Lane V-5 (CR-26/64, CR-61, CR-76, CR-36) — DIS.019/DR-6 ratified
+    # 2026-07-16 (Fable 5 D-2 Binder proposal, BIND_D-2.md §B.2, recorded by
+    # the D-2 conductor per protocol §8.8(ii)). APPEND-ONLY per this file's
+    # shared-file discipline (V-5 + V-6 both append; do not reorder/edit the
+    # rows above this line).
+    ("nakshatra_semantic", 1.00, "DIS.019/DR-6: high-volume corroborative fabric "
+     "(own-star, dispositor chains, tara bala) — neutral class-wide prior so it "
+     "enriches without flooding; gandanta/end-degree flags earn a per-signal "
+     "specificity boost, never a class-wide one"),
+    ("arudha", 1.10, "DIS.019/DR-6: Jaimini perception layer (AL conjunctions, "
+     "A2/A11, AL-bhava relations) — reading-bearing per CR-61, modest boost "
+     "above fabric"),
+    ("special_lagna", 0.90, "DIS.019/DR-6: Indu/Sree/Ghati/Hora Lagna are "
+     "domain-scoped corroborators — below-neutral chart-wide; domain_salience "
+     "on each signal carries in-domain rank, mirroring DR-3's sudarshana "
+     "supporting-tier treatment"),
+    ("vargottama_amplification", 1.15, "DIS.019/DR-6: cross-frame (D1/D9) "
+     "confirmation class — same epistemics as sudarshana_agreement's DR-3 1.15"),
+    ("dhana_axis", 1.05, "DIS.019/DR-6: domain-load-bearing 2nd/11th-house "
+     "tenancy class, overlapping existing dhana-yoga rows — slight boost, "
+     "dedup discipline against the yoga class enforced at emission"),
 ]
 
 # ── §2.2 source_subsystem weights ────────────────────────────────────────────
