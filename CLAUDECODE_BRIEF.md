@@ -14,7 +14,7 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-1.5b   # advance this pointer at each wave close (conductor cleanup step)
+current_wave: D-2   # advance this pointer at each wave close (conductor cleanup step). D-1.5b CLOSED 2026-07-16 (Gate B 17/17 green; REPORT_D-1.5b.md).
   # D-1.5a CLOSED 2026-07-15: 13/15 gate green, final proof achieved live (wealth
   # verdict convergent_moderate/1.15 -> convergent_strong/~2.79, Dhana Yoga in
   # bearing_yogas). 2 items PARKED (documented, non-blocking, out of scope) — see
