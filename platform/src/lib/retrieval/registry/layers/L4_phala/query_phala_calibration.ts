@@ -659,6 +659,35 @@ export const queryRectificationCapability: CapabilityDescriptor = {
               : 'lel_training_matched/lel_training_events are the training-subset accounting that selected the winning offset; lel_event_count is the full corroboration count driving calibration_state. See match_criterion for how lel_training_matched is computed.',
           }
 
+      // CR-47 fix (D-1.6 S-1): lel_fit_score is flat 0 across ALL 185 candidates for this
+      // chart (confirmed live 2026-07-16 — every one of the top-50 rows returned
+      // lel_fit_score:0, ORDER BY lel_fit_score DESC NULLS LAST is therefore a no-op
+      // tie-break, not a real ranking), yet the surface presented `candidates` sorted by
+      // that score with no signal that the ranking is degenerate — a caller reading
+      // "row 1 of 185, sorted by lel_fit_score DESC" would reasonably (and wrongly) infer
+      // row 1 is the best-supported candidate. Compute variance across the SERVED page's
+      // lel_fit_score values (the same column the ORDER BY sorts on) and flag
+      // `non_discriminating: true` with an explanatory note whenever there is zero (or
+      // near-zero) spread — B.10: this does not attempt the full ranking-method fix
+      // (K-6/later scope, see ph_rectification/engine.py's own "deliberately uniform"
+      // docstring), it only stops presenting a degenerate ranking as a meaningful one.
+      // `win_margin` (best vs. second-best offset's mean score) is a second, independent
+      // corroborating signal already computed by the engine — ~0 confirms the same
+      // degeneracy at the offset-aggregate level, not just the raw candidate page.
+      const scores = (result.rows as Array<{ lel_fit_score: number | string | null }>)
+        .map(r => (r.lel_fit_score == null ? null : Number(r.lel_fit_score)))
+        .filter((v): v is number => v != null && !Number.isNaN(v))
+      const scoreVariance = scores.length > 1
+        ? (() => {
+            const mean = scores.reduce((a, b) => a + b, 0) / scores.length
+            return scores.reduce((a, b) => a + (b - mean) ** 2, 0) / scores.length
+          })()
+        : null
+      const ZERO_VARIANCE_EPSILON = 1e-9
+      const pageNonDiscriminating = scoreVariance != null && scoreVariance < ZERO_VARIANCE_EPSILON
+      const winMarginNonDiscriminating = best?.win_margin != null && Math.abs(best.win_margin) < ZERO_VARIANCE_EPSILON
+      const non_discriminating = pageNonDiscriminating || winMarginNonDiscriminating
+
       return {
         content: {
           chart_id, ayanamsha_id,
@@ -673,6 +702,16 @@ export const queryRectificationCapability: CapabilityDescriptor = {
           confidence_high: best?.confidence_high ?? null,
           win_margin: best?.win_margin ?? null,
           competing_candidates: best?.competing_candidates ?? null,
+          non_discriminating,
+          ...(non_discriminating
+            ? {
+                non_discriminating_note:
+                  `lel_fit_score has ${pageNonDiscriminating ? 'zero variance across the served candidate page' : 'a near-zero win_margin between the top offsets'} ` +
+                  `(${scores.length} scored candidates on this page, variance=${scoreVariance ?? 'n/a'}, win_margin=${best?.win_margin ?? 'n/a'}) — ` +
+                  'the ORDER BY lel_fit_score DESC ranking is NOT discriminating between candidates; row order does not indicate which offset is more classically supported. ' +
+                  'The underlying scoring-method fix (a richer classical-rule set that actually differentiates offsets) is tracked separately (K-6/later); this flag exists so a caller never reads "first row" as "best candidate."',
+              }
+            : {}),
           override_note: 'D43 NO-AUTO-OVERRIDE: the canonical chart birth time is never auto-mutated. phala_rectification has no staging/approval column — candidates are advisory LEL-fit scores only; native sign-off is required out-of-band before any rectification is adopted.',
           filters: { ayanamsha_id, top_k, offset },
         },

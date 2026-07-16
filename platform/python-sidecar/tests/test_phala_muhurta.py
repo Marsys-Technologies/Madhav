@@ -316,19 +316,29 @@ class TestGenerateMuhurtaWindows:
 
     def _patched(self, mod):
         """
-        Context-manager triple: fake DB url + every date resolves to a real-shaped
+        Context-manager tuple: fake DB url + every date resolves to a real-shaped
         row + coverage lookup short-circuited (no live network attempt in tests).
+
+        T-8 fix (D-1.6 S-1): generate_muhurta_windows now also calls
+        _current_dasha_lords() per window (live chart_dashas lookup, replacing the
+        old hardcoded "Mercury MD (2026-2043)" citation) — mocked here the same way
+        _fetch_panchanga_row already was, so these tests never attempt a real
+        psycopg.connect() against the fake DB URL.
         """
         return (
             patch.object(mod, "_get_db_url", return_value="postgresql://fake/test"),
             patch.object(mod, "_fetch_panchanga_row", return_value=_fake_panchanga_row()),
             patch.object(mod, "_panchanga_coverage", return_value=("2026-06-01", "2027-06-01")),
+            patch.object(mod, "_current_dasha_lords", return_value={
+                "md_lord": "Mercury", "md_start": "2010-08-17", "md_end": "2027-08-17",
+                "ad_lord": "Saturn",
+            }),
         )
 
     def test_returns_at_least_one_window_for_90_day_range(self):
         mod = _get_muhurta_module()
-        p1, p2, p3 = self._patched(mod)
-        with p1, p2, p3:
+        p1, p2, p3, p4 = self._patched(mod)
+        with p1, p2, p3, p4:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -358,8 +368,8 @@ class TestGenerateMuhurtaWindows:
 
     def test_all_scores_in_range(self):
         mod = _get_muhurta_module()
-        p1, p2, p3 = self._patched(mod)
-        with p1, p2, p3:
+        p1, p2, p3, p4 = self._patched(mod)
+        with p1, p2, p3, p4:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -375,8 +385,8 @@ class TestGenerateMuhurtaWindows:
     def test_source_citation_non_null_on_all_windows(self):
         """B.3 mandate: source_citation is NON-NULL on every row."""
         mod = _get_muhurta_module()
-        p1, p2, p3 = self._patched(mod)
-        with p1, p2, p3:
+        p1, p2, p3, p4 = self._patched(mod)
+        with p1, p2, p3, p4:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -390,8 +400,8 @@ class TestGenerateMuhurtaWindows:
 
     def test_windows_sorted_by_score_desc(self):
         mod = _get_muhurta_module()
-        p1, p2, p3 = self._patched(mod)
-        with p1, p2, p3:
+        p1, p2, p3, p4 = self._patched(mod)
+        with p1, p2, p3, p4:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -411,8 +421,8 @@ class TestGenerateMuhurtaWindows:
     def test_min_score_filter_applied(self):
         mod = _get_muhurta_module()
         min_score = 0.60
-        p1, p2, p3 = self._patched(mod)
-        with p1, p2, p3:
+        p1, p2, p3, p4 = self._patched(mod)
+        with p1, p2, p3, p4:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -428,8 +438,8 @@ class TestGenerateMuhurtaWindows:
 
     def test_factors_structure_present(self):
         mod = _get_muhurta_module()
-        p1, p2, p3 = self._patched(mod)
-        with p1, p2, p3:
+        p1, p2, p3, p4 = self._patched(mod)
+        with p1, p2, p3, p4:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -450,8 +460,8 @@ class TestGenerateMuhurtaWindows:
     def test_limit_respected(self):
         mod = _get_muhurta_module()
         limit = 5
-        p1, p2, p3 = self._patched(mod)
-        with p1, p2, p3:
+        p1, p2, p3, p4 = self._patched(mod)
+        with p1, p2, p3, p4:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -535,3 +545,118 @@ class TestPanchangaQualityForAction:
             assert 0.0 <= quality <= 1.0, (
                 f"Quality {quality} out of range for action_type={action_type}"
             )
+
+
+# ── §7 — T-8 fix: live dasha-lord citation (D-1.6 S-1) ───────────────────────
+#
+# Regression coverage for the T-8 fix: the muhurta citation used to hardcode
+# "FORENSIC v8.0 §5.1 DSH.V.023 Mercury MD (2026-2043)" on every window
+# regardless of chart or date — wrong even for the native, whose actual
+# Mercury MD (per chart_dashas) runs 2010-08-17 -> 2027-08-17. These tests
+# pin the fix: (1) _current_dasha_lords queries chart_dashas, not a hardcoded
+# literal; (2) the built citation never contains the stale "2026-2043" string;
+# (3) an honest fallback when no chart_dashas row matches (never fabricated).
+
+class TestLiveDashaCitation:
+
+    def _mock_conn(self, mod, md_row, ad_row):
+        """Build a psycopg-connect mock returning md_row then ad_row (2 cursor.execute calls)."""
+        cursor = MagicMock()
+        cursor.fetchone.side_effect = [md_row, ad_row]
+        cursor.__enter__ = MagicMock(return_value=cursor)
+        cursor.__exit__ = MagicMock(return_value=False)
+        conn = MagicMock()
+        conn.cursor.return_value = cursor
+        conn.__enter__ = MagicMock(return_value=conn)
+        conn.__exit__ = MagicMock(return_value=False)
+        return conn
+
+    def setup_method(self):
+        # _current_dasha_lords caches by (chart_id, ayanamsha_id, date) — clear
+        # between tests so mocks aren't short-circuited by a prior test's cache hit.
+        mod = _get_muhurta_module()
+        mod._DASHA_LORD_CACHE.clear()
+
+    def test_current_dasha_lords_queries_chart_dashas_live(self):
+        """The MD/AD lord is read from chart_dashas via a real SQL query, not hardcoded."""
+        mod = _get_muhurta_module()
+        md_row = {"lord_graha": "Mercury", "start_date": "2010-08-17", "end_date": "2027-08-17"}
+        ad_row = {"lord_graha": "Saturn"}
+        conn = self._mock_conn(mod, md_row, ad_row)
+        with patch.object(mod, "_get_db_url", return_value="postgresql://fake/test"), \
+             patch("psycopg.connect", return_value=conn):
+            result = mod._current_dasha_lords(
+                NATIVE_CHART_ID, datetime(2026, 7, 16, tzinfo=timezone.utc)
+            )
+        assert result is not None
+        assert result["md_lord"] == "Mercury"
+        assert result["md_start"] == "2010-08-17"
+        assert result["md_end"] == "2027-08-17"
+        assert result["ad_lord"] == "Saturn"
+        # SQL actually targets chart_dashas, level_n=1/2 — not a hardcoded value.
+        executed_sql = [c.args[0] for c in conn.cursor.return_value.execute.call_args_list]
+        assert any("chart_dashas" in sql for sql in executed_sql)
+        assert any("level_n = 1" in sql for sql in executed_sql)
+        assert any("level_n = 2" in sql for sql in executed_sql)
+
+    def test_current_dasha_lords_honest_none_when_no_row(self):
+        """No matching chart_dashas row -> honest None, never a fabricated fallback."""
+        mod = _get_muhurta_module()
+        conn = self._mock_conn(mod, None, None)
+        with patch.object(mod, "_get_db_url", return_value="postgresql://fake/test"), \
+             patch("psycopg.connect", return_value=conn):
+            result = mod._current_dasha_lords(
+                "00000000-0000-0000-0000-000000000000", datetime(2026, 7, 16, tzinfo=timezone.utc)
+            )
+        assert result is None
+
+    def test_current_dasha_lords_honest_none_on_db_error(self):
+        """DB unreachable -> honest None (B.10), not a fabricated Mercury default."""
+        mod = _get_muhurta_module()
+        with patch.object(mod, "_get_db_url", side_effect=RuntimeError("no DB")):
+            result = mod._current_dasha_lords(
+                NATIVE_CHART_ID, datetime(2026, 7, 16, tzinfo=timezone.utc)
+            )
+        assert result is None
+
+    def test_citation_fragment_never_contains_stale_hardcoded_string(self):
+        """The exact T-8 regression: no window citation may claim 'Mercury MD (2026-2043)'
+        or the stale FORENSIC DSH.V.023 fragment — this must always be LIVE-derived."""
+        mod = _get_muhurta_module()
+        live = {"md_lord": "Mercury", "md_start": "2010-08-17", "md_end": "2027-08-17", "ad_lord": "Saturn"}
+        fragment = mod._dasha_citation_fragment_from(live)
+        assert "2026-2043" not in fragment
+        assert "DSH.V.023" not in fragment
+        assert "Mercury MD" in fragment
+        assert "2010-08-17" in fragment and "2027-08-17" in fragment
+
+    def test_citation_fragment_honest_when_no_live_data(self):
+        fragment = _get_muhurta_module()._dasha_citation_fragment_from(None)
+        assert "unavailable" in fragment
+        assert "2026-2043" not in fragment
+
+    def test_generate_muhurta_windows_citation_reflects_live_dasha(self):
+        """End-to-end: a window's source_citation and dasha_details come from the
+        live-mocked dasha lookup, not the old hardcoded Mercury/2026-2043 string."""
+        mod = _get_muhurta_module()
+        with patch.object(mod, "_get_db_url", return_value="postgresql://fake/test"), \
+             patch.object(mod, "_fetch_panchanga_row", return_value=_fake_panchanga_row()), \
+             patch.object(mod, "_panchanga_coverage", return_value=("2026-06-01", "2027-06-01")), \
+             patch.object(mod, "_current_dasha_lords", return_value={
+                 "md_lord": "Mercury", "md_start": "2010-08-17", "md_end": "2027-08-17",
+                 "ad_lord": "Saturn",
+             }):
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="general",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 6, 10, 23, 59, 59, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=45,
+            )
+        assert len(result["windows"]) >= 1
+        for w in result["windows"]:
+            assert "2026-2043" not in w["source_citation"]
+            assert w["factors"]["dasha_details"]["md_lord"] == "Mercury"
+            assert w["factors"]["dasha_details"]["ad_lord"] == "Saturn"
+            assert "chart_dashas" in w["source_citation"]
