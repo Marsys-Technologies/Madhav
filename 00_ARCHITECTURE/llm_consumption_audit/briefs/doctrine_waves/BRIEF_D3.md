@@ -2,7 +2,7 @@
 artifact: BRIEF_D3
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN)
 wave: D-3 — Kāla Taraṅga + Three-Lock activation
-version: 1.2
+version: 1.3
 status: FROZEN — §B slots bind at wave open
 governing: CONDUCTOR_PROTOCOL.md + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §6 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §5/§13
@@ -15,6 +15,7 @@ prerequisites: D-2 gate GREEN (Mechanism object shipped). Wave sequence to date 
 gate: falsifiable LEL-retrodiction thresholds (§G) + timing surfaces live — with an ANTI-GAMING
   verifier pass (statistical gates are never green on the primary runner alone).
 changelog:
+  - v1.3 (2026-07-16, docs/pre-d2-definition-of-done): Definition-of-DONE block added to §F3 (condensed from BRIEF_D2 §F1.7, anti-D-1-recurrence): Binder promise→assertion ledger at open, three mandatory verification altitudes incl. post-deploy LIVE per-cycle re-runs, scale-realism/data-over-flags/anti-vacuous/truncation-honesty evidence rules, ledger-complete close; §G scoped as the ledger's load-bearing subset.
   - v1.2 (2026-07-16, docs/pre-d2-orchestration-economy): §F3 orchestration-economy grant added (Workflow fan-out where shape-appropriate, per-agent effort/model dials, non-dialable verification/gate invariants — mirrors BRIEF_D2 §F1.6); stale state-commit-race residual note replaced with the landed fix (b13640d1) + F1-F4 pointer.
   - v1.1 (2026-07-16, pre-D-2 alignment pass): CR-40/CR-8 INFRA-PREREQ re-statused SATISFIED
     (D-1.6 S-6 fix, Gate Ś #13, live re-probe); §F0 added — post-D-1.5b/D-1.6 substrate baseline
@@ -168,6 +169,23 @@ Fable adjudication is not dialable. NON-DIALABLE invariants: every lane/hotfix s
 independent full-scrutiny fresh-context verifier receipt before merge; gate thresholds and
 reds-are-reds honesty are untouchable; economize on discovery, spend on verification and
 irreversible steps.
+
+**Definition of DONE (native-ordered 2026-07-16 — full text at BRIEF_D2 §F1.7; binding here in
+condensed form):** D-1 closed "verified" and still required three remediation waves; that may not
+recur. (1) **Promise ledger:** at open, the Binder enumerates EVERY §F1 commitment (deliverables,
+type specimens, servability claims, "kills CR-N" claims) into a promise→assertion table; T-0
+turns each row into an executable check. No ledger row → bind failure. (2) **Three altitudes,
+all mandatory:** per-lane Phase-1 (pre-merge) + integration cross-lane checks (shared-table
+delete/count scopes, schema-declaration completeness) + post-deploy LIVE re-run of each cycle's
+ledger rows on the deployed connector with rebuilt data BEFORE the next cycle spawns —
+built-but-not-served is not done. (3) **Evidence rules:** verify at real chart scale, never
+synthetic-only; data over flags (never trust asset_throughput/register/report states — probe
+rows); fixtures model live payload shape AND volume; type specimens re-derived from the actual
+chart at verification time; no absence claim from a truncated page (page to exhaustion or use an
+authoritative total). (4) **Close:** REPORT_D-3.md carries the full ledger with per-row
+disposition (GREEN + evidence | PARKED + evidence + owner); `current_wave` advances only when the
+ledger is complete. §G's retrodiction thresholds are the load-bearing subset of the ledger, never
+a substitute for the rest.
 
 ## §B — BIND-AT-OPEN slots (Fable Binder)
 - Mechanism-object interface as actually shipped (probe the D-2 serving face) → PROMISE lock inputs.

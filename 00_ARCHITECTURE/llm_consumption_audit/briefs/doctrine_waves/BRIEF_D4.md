@@ -2,7 +2,7 @@
 artifact: BRIEF_D4
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN)
 wave: D-4 — Calibration ignition (L5 finally fed)
-version: 1.2
+version: 1.3
 status: FROZEN — §B slots bind at wave open
 governing: CONDUCTOR_PROTOCOL.md + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §7 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §7
@@ -11,6 +11,7 @@ prerequisite: D-3 gate GREEN (mechanism curves exist and retrodict). Wave sequen
   precede this wave.
 gate: discrimination + negative-control gates (§G) with anti-gaming verifier pass.
 changelog:
+  - v1.3 (2026-07-16, docs/pre-d2-definition-of-done): Definition-of-DONE block added to §F3 (condensed from BRIEF_D2 §F1.7, anti-D-1-recurrence): Binder promise→assertion ledger at open, three mandatory verification altitudes incl. post-deploy LIVE per-cycle re-runs, scale-realism/data-over-flags/anti-vacuous/truncation-honesty evidence rules, ledger-complete close; §G scoped as the ledger's load-bearing subset.
   - v1.2 (2026-07-16, docs/pre-d2-orchestration-economy): §F3 orchestration-economy grant added (Workflow fan-out where shape-appropriate, per-agent effort/model dials, non-dialable verification/gate invariants — mirrors BRIEF_D2 §F1.6); stale state-commit-race residual note replaced with the landed fix (b13640d1) + F1-F4 pointer.
   - v1.1 (2026-07-16, pre-D-2 alignment pass): §F0 added — post-D-1.6 baseline (CR-51/CR-30
     calibration-alias unification; CR-47's serve-side non_discriminating honesty flag shipped,
@@ -126,6 +127,23 @@ verification/judgment; Fable adjudication is not dialable. NON-DIALABLE invarian
 lane/hotfix still receives an independent full-scrutiny fresh-context verifier receipt before
 merge; gate thresholds and reds-are-reds honesty are untouchable; economize on discovery, spend
 on verification and irreversible steps.
+
+**Definition of DONE (native-ordered 2026-07-16 — full text at BRIEF_D2 §F1.7; binding here in
+condensed form):** D-1 closed "verified" and still required three remediation waves; that may not
+recur. (1) **Promise ledger:** at open, the Binder enumerates EVERY §F1 commitment (deliverables,
+matcher specimens, backfill counts, "closes CR-N" claims) into a promise→assertion table; the
+gate harness turns each row into an executable check. No ledger row → bind failure. (2) **Three
+altitudes, all mandatory:** per-lane Phase-1 (pre-merge) + integration cross-lane checks
+(shared-table delete/count scopes; the one-shot C-2 backfill gets a pre-flight dry-run receipt) +
+post-deploy LIVE re-run of each cycle's ledger rows on the deployed connector with rebuilt data —
+built-but-not-served is not done. (3) **Evidence rules:** verify at real chart scale, never
+synthetic-only; data over flags (probe rows, never trust state columns/registers/reports);
+fixtures model live payload shape AND volume; specimens (2025-05 fraud, 2010-07 windfall)
+re-derived from the actual LEL/mechanism data at verification time; no absence claim from a
+truncated page. (4) **Close:** REPORT_D-4.md carries the full ledger with per-row disposition
+(GREEN + evidence | PARKED + evidence + owner); `current_wave`/campaign-close advances only when
+the ledger is complete. §G's discrimination + negative-control gates are the load-bearing subset
+of the ledger, never a substitute for the rest.
 
 ## §B — BIND-AT-OPEN slots (Fable Binder)
 - Matcher root-cause hypothesis ← C-1 diagnosis spike at open (read the actual matcher code + one
