@@ -368,7 +368,19 @@ class TestRegistryHygiene:
             assert callable(sut.DOSHA_CANCELLATIONS[dosha_id])
 
     def test_bespoke_detector_ids_match_expected_set(self):
-        assert set(sut.BESPOKE_DOSHA_DETECTORS) == {"kemadruma", "daridra", "kala_sarpa"}
+        # D-2 Lane V-6 (CR-73 completion): the 12 named Kala Sarpa variants
+        # (Anant..Sheshnag) were added as bespoke detectors, each narrowing
+        # the base `kala_sarpa` verdict to a specific Rahu house — no second
+        # detector, per this file's own CR-74 non-duplication precedent
+        # (see `_make_kala_sarpa_named_variant_detector` in
+        # ga_structural_writer.py). Expected set grows from 3 to 15.
+        expected = {"kemadruma", "daridra", "kala_sarpa"} | {
+            f"kala_sarpa_{v}" for v in (
+                "anant", "kulik", "vasuki", "shankhpal", "padma", "mahapadma",
+                "takshak", "karkotak", "shankhachud", "ghatak", "vishdhar", "sheshnag",
+            )
+        }
+        assert set(sut.BESPOKE_DOSHA_DETECTORS) == expected
 
 
 # ── §6: Real dict_row regression guard (Night-1 post-merge production fix) ──

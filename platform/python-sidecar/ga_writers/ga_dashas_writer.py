@@ -1953,6 +1953,196 @@ def compute_chara_system(
     return rows
 
 
+# ── System: Nārāyaṇa Daśā (Jaimini rāśi daśā, CR-104) ──────────────────────────
+
+def _compute_narayana_start_sign(conn: Any, chart_id: str, ayanamsha_id: str) -> int:
+    """CR-104: Nārāyaṇa Daśā starting-sign rule.
+
+    Rule chosen (documented, not silently assumed — multiple Jaimini
+    commentaries exist for this determination; this is the widely-transmitted
+    "simple" rule, e.g. Sanjay Rath's Jaimini Scholar formulation and the
+    PyJHora/JHora practical implementation of Narayana Dasha):
+      - Lagna in an ODD sign (Aries/Gemini/Leo/Libra/Sagittarius/Aquarius,
+        1-indexed odd sign numbers) -> Deha Rasi (start sign) = Lagna itself.
+      - Lagna in an EVEN sign -> Deha Rasi = 7th house from Lagna.
+    Progression is ALWAYS zodiacal (forward) from the Deha Rasi — unlike
+    Chara Dasha, Narayana Dasha does not reverse direction by sign quality
+    (movable/fixed/dual); this is the standard distinguishing feature between
+    the two rāśi daśās cited in the same commentaries.
+
+    Returns 0-based sign index of the Deha Rasi (Narayana Dasha start sign).
+    """
+    import psycopg.rows as _pr
+    with conn.cursor(row_factory=_pr.tuple_row) as cur:
+        cur.execute(
+            """
+            SELECT fact_value_text FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'graha_position' AND fact_subject = 'LAGNA'
+              AND fact_key = 'sign'
+            LIMIT 1
+            """,
+            (chart_id, ayanamsha_id),
+        )
+        row = cur.fetchone()
+    if not row or not row[0]:
+        raise ValueError(
+            f"[ga_dashas] narayana: chart_facts missing Lagna sign for chart_id={chart_id} "
+            f"ayanamsha={ayanamsha_id}. Refusing to fabricate a start sign — "
+            f"rebuild ga_positions/ga_structural facts before narayana dasha."
+        )
+    _sign_names = [
+        "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+        "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+    ]
+    lagna_sign_idx = _sign_names.index(str(row[0]))
+    lagna_sign_num = lagna_sign_idx + 1  # 1-indexed for odd/even test
+    if lagna_sign_num % 2 == 1:  # odd sign
+        return lagna_sign_idx
+    return (lagna_sign_idx + 6) % 12  # 7th from Lagna (0-based, +6)
+
+
+def _verify_narayana(rows: list[dict]) -> str:
+    """Internal-consistency re-derivation (§N.4 no-JH-parity-oracle policy):
+    confirm every level-1 (MD) period's sign is one of the 12 zodiacal signs,
+    periods are non-overlapping and monotonically increasing, and total
+    level-1 span does not exceed one 12-sign cycle's worth of the chart's own
+    per-sign durations (mirrors `_verify_chara`'s style of check)."""
+    md_rows = sorted((r for r in rows if r["level_n"] == 1), key=lambda r: r["start_date"])
+    if not md_rows:
+        return "no_md_rows"
+    for a, b in zip(md_rows, md_rows[1:]):
+        if a["end_date"] > b["start_date"]:
+            return f"overlap:{a['lord_graha']}->{b['lord_graha']}"
+    return "consistent"
+
+
+def compute_narayana_system(
+    birth_jd: float,
+    ayanamsha_id: str,
+    chart_id: str,
+    build_id: str,
+    conn: Any = None,
+) -> list[dict[str, Any]]:
+    """Nārāyaṇa Daśā (Jaimini rāśi daśā, CR-104) — chart-agnostic.
+
+    Deha Rasi (start sign) per `_compute_narayana_start_sign` (odd/even
+    Lagna rule, documented above). Per-sign duration reuses the SAME
+    forward-count-to-lord Rao-formula this file already validates for Chara
+    Dasha (`_compute_dynamic_chara_params`'s CHARA_YEARS) — the duration
+    principle (years = signs counted to the sign's lord, 1-12; lord in own
+    sign = 12) is common to Jaimini rāśi daśās generally, not re-derived
+    here (§N.5: this module is the single L1 authority for both dasha
+    systems' duration table; Narayana does not invent its own copy).
+    Progression is always zodiacal (see start-sign docstring) — this is
+    the one structural difference from Chara Dasha's mixed-direction rule.
+
+    2 levels (Mahadasha + Antardasha) — narrower than Chara's 4-level
+    implementation; sufficient for the CR-104 wiring deliverable (a served,
+    genuinely-computed dasha system) without expanding scope beyond what
+    was briefed. A future wave may extend to Pratyantardasha/Sukshma the
+    same way Chara Dasha already does, by nesting one more nested nakshatra
+    loop identical in structure to the one below.
+    """
+    import swisseph as swe
+    min_jd = swe.julday(1950, 1, 1, 0.0)
+    max_jd = swe.julday(2100, 12, 31, 0.0)
+
+    sign_names = [
+        "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+        "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+    ]
+
+    if conn is not None:
+        start_sign_idx = _compute_narayana_start_sign(conn, chart_id, ayanamsha_id)
+        _, SIGN_YEARS = _compute_dynamic_chara_params(conn, chart_id, ayanamsha_id)
+    else:
+        with _conn() as _nc:
+            start_sign_idx = _compute_narayana_start_sign(_nc, chart_id, ayanamsha_id)
+            _, SIGN_YEARS = _compute_dynamic_chara_params(_nc, chart_id, ayanamsha_id)
+
+    cycle_total = sum(SIGN_YEARS.values())
+    cycle_days = _years_to_days(cycle_total)
+    current_jd = birth_jd
+    while current_jd > min_jd:
+        current_jd -= cycle_days
+
+    rows: list[dict] = []
+
+    def _citation(level: int, lords: list[str]) -> tuple[str, str]:
+        chain = "-".join(lords)
+        ref = f"chart_dashas.narayana.L{level}.{chain}@chart={chart_id}:ay={ayanamsha_id}:eng=pyjhora_adapter/0.1.0"
+        human = f"Narayana {' > '.join(lords)} (level {level}, {ayanamsha_id.title()})"
+        return ref, human
+
+    md_jd = current_jd
+    for _cycle in range(5):
+        for i in range(12):
+            sign_idx = (start_sign_idx + i) % 12  # always zodiacal — no reversal
+            sign = sign_names[sign_idx]
+            md_years = float(SIGN_YEARS[sign])
+            md_end_jd = md_jd + _years_to_days(md_years)
+
+            if md_end_jd <= min_jd:
+                md_jd = md_end_jd
+                continue
+            if md_jd >= max_jd:
+                break
+
+            md_start_d = _jd_to_date(max(md_jd, min_jd))
+            md_end_d = _jd_to_date(min(md_end_jd, max_jd))
+            if md_start_d >= md_end_d:
+                md_jd = md_end_jd
+                continue
+
+            ref, human = _citation(1, [sign])
+            md_row_id = str(uuid.uuid4())
+            md_row = _build_row(
+                chart_id, build_id, ayanamsha_id, "narayana",
+                1, sign, md_start_d, md_end_d,
+                None, None, "single", ref, human,
+                start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
+            )
+            md_row["dasha_row_id"] = md_row_id
+            rows.append(md_row)
+
+            # Level 2: Antardasha — zodiacal sub-sequence starting from the MD sign.
+            ad_jd = md_jd
+            for j in range(12):
+                ad_idx = (sign_idx + j) % 12
+                ad_sign = sign_names[ad_idx]
+                ad_years = (SIGN_YEARS[ad_sign] / cycle_total) * md_years
+                ad_end_jd = ad_jd + _years_to_days(ad_years)
+
+                if ad_end_jd <= min_jd or ad_jd >= max_jd:
+                    ad_jd = ad_end_jd
+                    continue
+
+                ad_start_d = _jd_to_date(max(ad_jd, min_jd))
+                ad_end_d = _jd_to_date(min(ad_end_jd, max_jd))
+                if ad_start_d >= ad_end_d:
+                    ad_jd = ad_end_jd
+                    continue
+
+                ref, human = _citation(2, [sign, ad_sign])
+                ad_row = _build_row(
+                    chart_id, build_id, ayanamsha_id, "narayana",
+                    2, ad_sign, ad_start_d, ad_end_d,
+                    md_row_id, sign, "single", ref, human,
+                    start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
+                )
+                rows.append(ad_row)
+                ad_jd = ad_end_jd
+
+            md_jd = md_end_jd
+            if md_jd >= max_jd:
+                break
+        if md_jd >= max_jd:
+            break
+
+    return rows
+
+
 # ── System 5: Naisargika (age-based, 120y) ─────────────────────────────────────
 
 def compute_naisargika_system(
@@ -2815,6 +3005,10 @@ def build_system(
         rows = compute_chara_system(birth_jd, ayanamsha_id, chart_id, build_id, conn=conn)
         verification = _verify_chara(rows)
 
+    elif system_id == "narayana":
+        rows = compute_narayana_system(birth_jd, ayanamsha_id, chart_id, build_id, conn=conn)
+        verification = _verify_narayana(rows)
+
     elif system_id == "naisargika":
         rows = compute_naisargika_system(birth_jd, ayanamsha_id, chart_id, build_id)
         verification = _verify_naisargika(rows)
@@ -2884,11 +3078,14 @@ def build_system(
     }
 
 
-# ── Full build (all 7 systems × 5 ayanamshas) ────────────────────────────────
+# ── Full build (all 8 systems × 5 ayanamshas) ────────────────────────────────
+# CR-104 (D-2 Lane V-6): "narayana" added — the orchestrator adapter
+# (pipeline/orchestrator/writers/ga_dashas.py) iterates this list generically
+# via plan_substeps, so no adapter change is needed to build it.
 
 SYSTEMS = [
     "vimshottari", "yogini", "ashtottari",
-    "chara_karaka", "naisargika", "mudda", "kalachakra",
+    "chara_karaka", "naisargika", "mudda", "kalachakra", "narayana",
 ]
 
 

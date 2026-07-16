@@ -222,8 +222,11 @@ class TestConstants(unittest.TestCase):
         assert mod.CANONICAL_CHART_ID == "482012f1-710e-4a25-994a-93821f5871aa"
 
     def test_02_systems_seven(self):
+        # D-2 Lane V-6 (CR-104): "narayana" added as an 8th dasha system —
+        # SYSTEMS now has 8 entries, not 7. Test name kept for history/diff
+        # minimality; the assertion is the source of truth.
         mod = _get_mod()
-        assert len(mod.SYSTEMS) == 7
+        assert len(mod.SYSTEMS) == 8
 
     def test_03_ayanamshas_five(self):
         mod = _get_mod()
@@ -259,10 +262,12 @@ class TestConstants(unittest.TestCase):
         assert mod.FORENSIC_MOON_NAK_NAME == "Purva Bhadrapada"
 
     def test_69_systems_contains_all_7(self):
+        # D-2 Lane V-6 (CR-104): "narayana" added — expected set now has 8
+        # members (7 original + narayana).
         mod = _get_mod()
         expected = {
             "vimshottari", "yogini", "ashtottari",
-            "chara_karaka", "naisargika", "mudda", "kalachakra",
+            "chara_karaka", "naisargika", "mudda", "kalachakra", "narayana",
         }
         assert set(mod.SYSTEMS) == expected
 
