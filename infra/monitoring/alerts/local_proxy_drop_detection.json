@@ -1,0 +1,21 @@
+{
+  "displayName": "Cloud SQL — client connection drops (local proxy-kill cycle detector)",
+  "documentation": {
+    "content": "O-8 (D-1.6 Lane S-6, 2026-07-16): detects the recurring failure mode documented in STATE_D-1.5b.md `precascade_rebuild.local_proxy_diagnosis` (lines 39-56) and REPORT_D-1.5a.md (line ~111) — the LOCAL developer-machine `cloud-sql-proxy` process started by `platform/scripts/start_db_proxy.sh` intermittently drops its connection to Cloud SQL under sustained/long-running load (NOT an OOM kill, NOT a session/shell timeout, NOT a GCP-side watchdog — the proxy's own connection reset). When a long-running writer holds an idle connection across a slow step (the documented case: `bo_samskara`'s ~2-min-per-ayanamsha Vertex AI embed loop), a drop mid-loop kills the whole in-flight local rebuild and forces a restart from scratch (a 'Sisyphus loop' — 7 retries died to this before the D-1.5b session routed around it via the Cloud Run job path). This alert fires on the Cloud SQL server-side log signature of an abruptly-dropped client connection (`unexpected EOF on client connection` / `could not receive data from client: Connection reset by peer` in the Postgres log), which is the GCP-observable symptom of a proxy-kill event server-side — there is no first-class metric for 'a laptop process died', so this is the closest true signal. A cluster of these entries in a short window is the detection signature; it does not by itself distinguish a legitimate client disconnect from a proxy-kill mid-rebuild, so the alert is advisory (page a human to check `build_runs` for a stalled/restarted row), not an auto-remediation trigger.",
+    "mimeType": "text/markdown"
+  },
+  "combiner": "AND",
+  "conditions": [
+    {
+      "displayName": "Cloud SQL client-connection-drop log burst",
+      "conditionMatchedLog": {
+        "filter": "resource.type=\"cloudsql_database\" resource.labels.database_id=\"madhav-astrology:amjis-postgres\" (textPayload:\"unexpected EOF on client connection\" OR textPayload:\"could not receive data from client\")"
+      }
+    }
+  ],
+  "notificationChannels": ["${ALERT_NOTIFICATION_CHANNEL_ID}"],
+  "alertStrategy": {
+    "autoClose": "3600s",
+    "notificationRateLimit": { "period": "1800s" }
+  }
+}

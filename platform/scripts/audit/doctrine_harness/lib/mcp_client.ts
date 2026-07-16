@@ -10,6 +10,20 @@
  * and tool-discoverability checks) and small retry/backoff discipline for
  * transient failures (protocol §6.4 — a transient failure is never a red
  * assertion, only a retry).
+ *
+ * D15b-F1 (D-1.6 Lane S-6, 2026-07-16): the D-1.5b Gate-B 429 cascade
+ * (REPORT_D-1.5b.md) happened because the server-side per-key rate limiter
+ * (platform-mcp/src/lib/rate_limiter.ts, wired in server.ts — M8) returns a
+ * well-formed 429 JSON body (`{error, message, retry_after_seconds}`), and
+ * this client's retry logic previously only treated `status >= 500` as
+ * retryable. A 429 has valid JSON (`raw.json` is defined), so it fell
+ * through both retry guards and was returned to the caller as if it were a
+ * genuine tool result — every assertion built on that call then read
+ * `{error: "rate_limit_exceeded", ...}` as the tool's real payload and
+ * failed as a false red, not a real defect. `callTool` now retries on 429
+ * too, honoring `retry_after_seconds` from the body (falling back to the
+ * backoff schedule when absent) — this is the harness-side half of the
+ * O-1/D15b-F1 fix; the server-side rate limiter itself was already correct.
  */
 
 export type McpToolResult = {
@@ -23,6 +37,30 @@ export type McpToolDescriptor = {
   name: string
   description?: string
   inputSchema?: unknown
+}
+
+/**
+ * D15b-F1: thrown when the connector returns HTTP 429 (rate_limit_exceeded — see
+ * platform-mcp/src/lib/rate_limiter.ts / server.ts M8 dispatch-level limiter). A 429 has a
+ * well-formed JSON body, so unlike a >=500 transport error it must be explicitly detected
+ * and retried — otherwise it is silently returned to the caller as if it were the tool's
+ * real result (the D-1.5b Gate-B 429 cascade: every assertion built on that call then read
+ * `{error: "rate_limit_exceeded", ...}` as the payload and failed as a false red).
+ */
+export class RateLimitedError extends Error {
+  constructor(
+    public readonly toolLabel: string,
+    public readonly retryAfterSeconds: number | undefined
+  ) {
+    super(`RATE-LIMITED calling ${toolLabel}${retryAfterSeconds !== undefined ? ` (retry_after_seconds=${retryAfterSeconds})` : ''}`)
+    this.name = 'RateLimitedError'
+  }
+}
+
+/** Extracts retry_after_seconds from a 429 JSON body, if present. */
+function extractRetryAfterSeconds(json: unknown): number | undefined {
+  const v = (json as { retry_after_seconds?: unknown } | undefined)?.retry_after_seconds
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined
 }
 
 // Minimum gap between outbound requests to the deployed connector. Built
@@ -105,7 +143,14 @@ export class McpClient {
           // with backoff; never counted as a substantive result. Capped at
           // 2s in practice so the harness stays usable interactively; the
           // full backoff schedule is documented for the unattended/CI case.
-          await new Promise((r) => setTimeout(r, Math.min(backoffsMs[attempt], 2_000)))
+          // D15b-F1: a RateLimitedError carries the server's own
+          // retry_after_seconds — honor it (still capped at 2s here for
+          // interactive runs) instead of the generic schedule when present.
+          const waitMs =
+            err instanceof RateLimitedError && err.retryAfterSeconds !== undefined
+              ? err.retryAfterSeconds * 1000
+              : backoffsMs[attempt]
+          await new Promise((r) => setTimeout(r, Math.min(waitMs, 2_000)))
           continue
         }
       }
@@ -148,8 +193,12 @@ export class McpClient {
 
   async listTools(): Promise<McpToolDescriptor[]> {
     return this.withRetry(async () => {
-      const { json } = await this.post({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })
-      const tools = (json as { result?: { tools?: McpToolDescriptor[] } } | undefined)?.result?.tools
+      const raw = await this.post({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })
+      // D15b-F1: 429 must be retried, not read as a real (empty) tools/list result.
+      if (raw.status === 429) {
+        throw new RateLimitedError('tools/list', extractRetryAfterSeconds(raw.json))
+      }
+      const tools = (raw.json as { result?: { tools?: McpToolDescriptor[] } } | undefined)?.result?.tools
       if (!tools) throw new Error('tools/list returned no tools array')
       return tools
     }, 'tools/list')
@@ -162,6 +211,13 @@ export class McpClient {
   ): Promise<{ raw: McpToolResult; content: unknown; isToolError: boolean }> {
     return this.withRetry(async () => {
       const raw = await this.post({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name, arguments: args } })
+      // D15b-F1: the MCP dispatch-level rate limiter (server.ts M8) returns a well-formed
+      // 429 JSON body ({error: "rate_limit_exceeded", retry_after_seconds}) — a status
+      // outside the `>= 500` transport-error check below, so it must be caught explicitly
+      // or it is silently treated as the tool's real result (the D-1.5b Gate-B cascade).
+      if (raw.status === 429) {
+        throw new RateLimitedError(name, extractRetryAfterSeconds(raw.json))
+      }
       if (raw.status >= 500) {
         throw new Error(`TRANSPORT-ERROR ${raw.status} calling ${name}`)
       }
