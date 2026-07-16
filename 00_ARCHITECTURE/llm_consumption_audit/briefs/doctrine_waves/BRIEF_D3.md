@@ -2,17 +2,65 @@
 artifact: BRIEF_D3
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN)
 wave: D-3 — Kāla Taraṅga + Three-Lock activation
-version: 1.0
+version: 1.1
 status: FROZEN — §B slots bind at wave open
 governing: CONDUCTOR_PROTOCOL.md + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §6 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §5/§13
-prerequisites: D-2 gate GREEN (Mechanism object shipped) + INFRA-PREREQ CR-40/CR-8 sidecar auth
-  restored (Track 2 — HARD gate condition for T-2/T-5; T-1 is deliberately sidecar-independent).
+prerequisites: D-2 gate GREEN (Mechanism object shipped). Wave sequence to date — D-1.5a,
+  D-1.5b (Gate B 17/17), and D-1.6 "Śuddhi" (Gate Ś) are ALL CLOSED; D-2 is the next wave.
+  INFRA-PREREQ CR-40/CR-8 (transit sidecar) — SATISFIED by D-1.6 Lane S-6 (the flag was a
+  dead-route bug, not a live auth outage — see §F0) — verified at Gate Ś #13 and re-verified
+  live 2026-07-16. §B still re-verifies at open; the T-1-only partial-open contingency is
+  retained as a FALLBACK only, no longer the expected path.
 gate: falsifiable LEL-retrodiction thresholds (§G) + timing surfaces live — with an ANTI-GAMING
   verifier pass (statistical gates are never green on the primary runner alone).
+changelog:
+  - v1.1 (2026-07-16, pre-D-2 alignment pass): CR-40/CR-8 INFRA-PREREQ re-statused SATISFIED
+    (D-1.6 S-6 fix, Gate Ś #13, live re-probe); §F0 added — post-D-1.5b/D-1.6 substrate baseline
+    (S-4 timing fixes, sign-keyed AV facts shipped, Gate Ś #8 parked residual as known input);
+    §F3 added — standard parallel-execution discipline + operational constants; T-1/T-6 stale
+    premises updated. No scope, lane-structure, or gate changes.
+  - v1.0 (2026-07-15): initial FROZEN brief.
 ---
 
 # D-3 — Kāla Taraṅga + Three-Lock
+
+## §F0 — Substrate baseline as of D-1.6 close (alignment note, 2026-07-16 — read before binding)
+
+This brief froze before waves D-1.5a / D-1.5b / D-1.6 ran. All three are CLOSED (Gate A battery
+green 13/15 + 2 documented PARKs; Gate B 17/17; Gate Ś 11 green / 4 by-construction / 1 parked
+with evidence). The timing substrate D-3 builds on has materially changed:
+
+- **CR-40/CR-8 (transit sidecar) — SATISFIED.** The estate-wide `sidecar_available: false` was a
+  dead-route bug in `kala_temporal_bundle`'s wiring plus ref_* member defects (401 key wiring,
+  404 URI registration, literal-"undefined" date param), all fixed by D-1.6 Lane S-6. Gate Ś #13
+  green on the deployed connector (`ref_planet_transit_get` no-401, `ref_transit_rules_get` 200,
+  `kala_temporal_bundle` `sidecar_available: true`); re-verified live 2026-07-16 by this alignment
+  pass (`sidecar_available: true`; `ref_aspects_at_time_get` serving real ephemeris rows). T-2/T-5
+  are no longer infra-blocked. NOTE: the register rows CR-40/CR-8 still read "OPEN — ELEVATED" /
+  "OPEN" (row-status drift; the D-1.6 close report + Gate Ś are the closure evidence) — the Binder
+  should trust the live probe, not the register row.
+- **D-1.6 Lane S-4 (timing substrate first-line fixes).** `kala_activation` activation dates
+  recovered via fact-traceable lord resolution (R-45; NULL-on-miss, never guesses): post-rebuild
+  49,360 rows / 40,040 dated (was ~99% NULL). Flat-0.5 `dasha_activation_proximity` fixed
+  (CR-5/12/48); window FAMILIES with member counts already serve interim (Gate Ś #9:
+  activation_count=50, real dated forward windows via fix-2's tiered dasha-window selection +
+  dated-rows-first ranking); `judgment_query.timing_hooks` now populated with real
+  kala_activations and `timing_anchored` is honest (Gate Ś #10; CR-1/CR-63 receipt-lie halves
+  closed). D-3 therefore does NOT open onto a temporal blackout — it REPLACES a working interim
+  join with the kernel. The supersession claims in T-6 stand, but "currently empty/broken"
+  premises in the CR texts are stale.
+- **Known input — PARKED residual (Gate Ś #8):** `yoga_activation_by_dasha` signal_type_class=
+  'yoga' rows (74 on 482012f1, 0 dated) are birth-moment/catalog facts lacking a real natal
+  constituent_lord for dasha matching — needs new `dasha_eligibility_rule` construction work.
+  Bounded, evidenced, and squarely inside T-6's yoga-activation-dating scope (CR-12/48): D-3
+  should absorb it, not rediscover it. The authoritative firing surface
+  (`ganita_yoga_firings_get`) is unaffected.
+- **T-1's facts half IS DONE.** D-1.5b Lane B-2 shipped the sign-keyed aṣṭakavarga re-key:
+  `chart_facts` categories `ashtakavarga_bindu_sign` (subject `{GRAHA|SAV}-SIGN_N`) and
+  `ashtakavarga_kakshya_boundary` (8 sub-arc boundaries: lord, start_deg, end_deg), declared in
+  `ga_writers/CHART_FACTS_SCHEMA.json` and written by `ga_strength_writer.py`. T-1 consumes;
+  it does not build facts.
 
 ## FROZEN §F1 — Lane map
 
@@ -25,10 +73,11 @@ shuffled-birth negative control; lead/lag distribution reported. Thresholds are 
 revisable by Adjudicator-doctrine with a DR-n.
 
 ### Lane T-1 — Aṣṭakavarga gating + kakṣyā (FIRST capability; sidecar-independent)
-Consumes B-2's sign-keyed AV facts: SAV/BAV transit thresholds damp/amplify windows (SAV-10th=27
-damps career windows; SAV-7th=34 amplifies partnership — the type specimens); kakṣyā sub-windows
-(~3.4-day dated precision) as a served timing face. Delivers dated timing capability even if
-Track 2 slips.
+Consumes B-2's sign-keyed AV facts — SHIPPED in D-1.5b (`ashtakavarga_bindu_sign` +
+`ashtakavarga_kakshya_boundary` in chart_facts; see §F0): SAV/BAV transit thresholds damp/amplify
+windows (SAV-10th=27 damps career windows; SAV-7th=34 amplifies partnership — the type specimens);
+kakṣyā sub-windows (~3.4-day dated precision) as a served timing face. Delivers dated timing
+capability even in the (now unexpected) case that the sidecar regresses.
 
 ### Lane T-2 — Taraṅga service core
 Stateless sidecar service (the 2nd sidecar instance; uniform contract per design §2):
@@ -59,13 +108,18 @@ pairs already in bg_transit_rules; roughly a third of served "favourable" window
 void today) + repair-or-retire school_consensus and the ~90% stub predicates under staged admission.
 
 ### Lane T-6 — Serving (last)
-`judgment_query.timing_hooks` fed by the kernel (closes CR-1/CR-63 by supersession);
-`kala_windows_get`/`get_temporal_windows`/`kala_priority_ranking_get` re-pointed to the service
-(window FAMILIES with member counts — CR-4/29); pact TRIGGER stage unblocked (CR-40 consumer);
-phala wealth anchors fed (CR-19/66); yoga-activation dating (CR-12/48) via kernel; receipts honest.
+`judgment_query.timing_hooks` fed by the kernel (CR-1/CR-63's empty-hooks/receipt-lie halves were
+already closed by D-1.6 S-4 — see §F0; T-6 supersedes the interim chart_dashas+kala_activation
+join with the kernel); `kala_windows_get`/`get_temporal_windows`/`kala_priority_ranking_get`
+re-pointed to the service (window FAMILIES with member counts — CR-4/29 — already serve interim
+per Gate Ś #9; re-point, don't rebuild); pact TRIGGER stage unblocked (CR-40 consumer; sidecar
+already live per §F0 — wire the stage, infra is not the blocker); phala wealth anchors fed
+(CR-19/66); yoga-activation dating (CR-12/48) via kernel — INCLUDING the Gate Ś #8 parked
+yoga-signal-class `dasha_eligibility_rule` residual (§F0); receipts honest.
 (The remaining temporal-blackout rows — CR-2/3/5/6/37 — are superseded BY CONSTRUCTION through
-T-2/T-3/T-6: the broken L3 joins/writers are replaced, not patched; the gate's live timing
-assertions are their closure proof.)
+T-2/T-3/T-6: the interim-fixed or still-broken L3 joins/writers are replaced, not patched; the
+gate's live timing assertions are their closure proof. Note CR-3's bearing_yogas regression was
+already fixed in D-1.5a and CR-5/6/37's first-line fixes landed in D-1.6 S-4.)
 
 **Kernel admission loop (conductor-run, inherently serial):** T-1/T-4/T-5 currents are IMPLEMENTED
 in parallel but ADMITTED one at a time: v1 kernel = dasha-capability steps + slow-transit pulses +
@@ -75,12 +129,36 @@ earned against lived history, not doctrine.
 ## FROZEN §F2 — must_not_touch
 FROZEN orchestrator contract (PARK) · CR-87 per-chart NatalContext (regression-guarded by the
 two-chart test — any new current must take chart context as a REQUIRED param, no defaults) ·
-L5 multipliers (D-4) · Gate-A/B/D-2 surface semantics (regression batteries re-run).
+L5 multipliers (D-4) · Gate-A/B/Ś/D-2 surface semantics (regression batteries re-run).
+
+## §F3 — Execution discipline + operational constants (standard, per CONDUCTOR_PROTOCOL — added v1.1)
+
+**Parallel-sub-agent discipline (protocol §2/§3, as run in D-1.5a → D-1.6):** every lane brief
+declares DISJOINT `may_touch` globs (scope-warden Phase-1(d): any stray path = automatic
+REJECTION); shared files (class-prior tables, registries, schema declarations) are APPEND-ONLY
+with the expected cross-lane conflict named in advance; lanes merge in the brief's DECLARED order
+(here: T-0 first, then the T-1..T-5 implementation set under the conductor-run serial admission
+loop, T-6 last); implementers run in ISOLATED git worktrees (`wave/D-3/<lane>`); every lane is
+verified by an INDEPENDENT fresh-context verifier (Opus) per protocol Phase-1 before merge —
+an implementer's "done" is a claim, never an acceptance.
+
+**Operational constants (hard-won D-1.5a/b + D-1.6):**
+- Rebuilds go via the Cloud Run job path (`brahma-build-pipeline-job`, protocol §8.2) — NEVER the
+  laptop cloud-sql-proxy (proxy-kill cycle, root-caused in `O8_LOCAL_PROXY_KILL_ROOT_CAUSE_v1_0.md`;
+  the job path is the sanctioned route).
+- The deployed connector RATE-LIMITS under sustained assertion load (429 cascade → false reds;
+  Gate B evidence in REPORT_D-1.5b). Gate batteries must throttle/batch; the harness client's
+  429-retry landed in D-1.6 S-6 — keep it, don't strip it.
+- Known orchestrator state-commit race under narrow-scope concurrent rebuilds (REPORT_D-1.6
+  residuals): a writer's data can land correctly while `asset_throughput.state` sticks, cascading
+  DEP-ASSERT blocks. Verify underlying data before forward-fixing; orchestrator itself is FROZEN
+  (PARK class).
 
 ## §B — BIND-AT-OPEN slots (Fable Binder)
 - Mechanism-object interface as actually shipped (probe the D-2 serving face) → PROMISE lock inputs.
-- Sidecar status: Track-2 outcome verified live (`ref_*`/`kala_temporal_bundle` answer) — if red,
-  wave opens with T-1 ONLY and holds T-2/T-5 (partial-open is legal for this wave alone).
+- Sidecar status: re-verify live at open (`ref_*`/`kala_temporal_bundle` answer). Expected GREEN
+  since D-1.6 S-6 (§F0) — if regressed, wave opens with T-1 ONLY and holds T-2/T-5 (partial-open
+  is legal for this wave alone, now as fallback).
 - Scorable-LEL event list + train/test split re-derived from LEL HEAD under PH-4-3's discipline
   (57 total / 36 pre-2020 train / ~40 scorable — reconcile counts at open).
 - Current inventory final order for the admission loop (Adjudicator-engineering ranks by expected
