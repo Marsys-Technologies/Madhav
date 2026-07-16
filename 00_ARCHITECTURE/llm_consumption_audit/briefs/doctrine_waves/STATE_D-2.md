@@ -1,6 +1,6 @@
 ---
 wave: D-2
-lifecycle_step: 2
+lifecycle_step: 4
 status: ACTIVE
 brief_bound: true
 rollback_pin:
@@ -31,16 +31,17 @@ migration_blocks:
   V-6: [455, 459]
 lanes:
   - {lane: V-0, branch: worktree-agent-abd702623395ca54e, status: receipted, cycle: 1, worktree_base: d349a9c3, base_stale: true, head_sha: a3e6ad56, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass (incl. necessary workflow_dispatch top-level trigger, judged safe/additive), 33/33 tests, tsc/eslint clean", risk_flag: "G0-4 (CR-54 wealth-loss mechanism, Rahu/Mars-on-H2) CONFIRMED GENUINE RED on live data (true-negative, not harness bug) - expected to flip green only after V-4 (edge-strength/CR-84/85 re-rank) + V-5 (dhana_axis CR-36) deploy+rebuild; MUST re-verify before stamping §G.1 6/6 - tracked as wave-level gate risk"}
-  - {lane: V-1, branch: worktree-agent-a8c6723d1f643e6e8, status: receipted, cycle: 1, worktree_base: d349a9c3, base_stale: true, head_sha: c12adcc6, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, 24/24 tests, reconciled against real BIND_D-2.md (CR-status/migration-440/census all consistent); note track3/README overstates migration allocation as 440-441 (only 440 exists, harmless doc inaccuracy)"}
+  - {lane: V-1, branch: worktree-agent-a8c6723d1f643e6e8, status: receipted, cycle: 1, worktree_base: d349a9c3, base_stale: true, head_sha: 254200fd, attempt: 2, receipt_ref: "verdict=ACCEPT (attempt 1), verifier=opus, scope_warden=pass, 24/24 tests. INTEGRATE (attempt 2): found missing KNOWN_HAS_WRITER_TRUE entries for bg_vidhi_primitives/bg_vidhi_floors (Step-2 companion edit V-4/V-5 got right, V-1 initially missed); 2-line fix conductor-reviewed directly (trivial, convention-matching, tests confirmed 3 passed/1 skipped) and merged"}
   - {lane: V-4, branch: worktree-agent-a2a7ae8a7815fc407, status: receipted, cycle: 1, worktree_base: d349a9c3, base_stale: true, head_sha: 1be1639e, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, 3521/3521 tests, all 7 judgment calls independently reverified GREEN (DR-7 exact, CR-24 live-confirmed negative, CR-78 PARK genuine, write-scope safe)", risk_flag: "implementer's LOCAL rebuild attempt failed FORENSIC (Sun=Aries/Moon=Ashwini/Lagna=Scorpio, the known trap) - almost certainly a sandbox/env artifact (V-4 touches no position computation) but MUST confirm FORENSIC 7/7 on the real deployed rebuild before closing", followup: "composite_ranker.ts (V-3's file) should consume the now-populated graph_node_strength_contribution_jsonb column - CR-84/25 only closed at data layer by V-4"}
   - {lane: V-5, branch: wave/D-2/V-5, status: receipted, cycle: 1, worktree_base: 47a72b77, base_stale: false, head_sha: 13cc4349, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, 3520/3520 sidecar tests, DR-6 exact match, cross-writer delete-scope proven disjoint, live specimen verified (Mercury sole D9-vargottama). Gate Ś #8 legitimately deferred (fix outside glob)"}
-  - {lane: V-6, branch: wave/D-2/V-6, status: verifying, cycle: 1, worktree_base: fdc99de1, base_stale: false, head_sha: 3c0c49ed, attempt: 2, verifier_dispatched: ae0c7f0be0cad7a66, note: "attempt 1 REJECT was narrow (stale test constants + false self-report, doctrine substance already sound); implementer committed fix 3c0c49ed, re-verifier confirming"}
+  - {lane: V-6, branch: wave/D-2/V-6, status: receipted, cycle: 1, worktree_base: fdc99de1, base_stale: false, head_sha: 3c0c49ed, attempt: 2, receipt_ref: "verdict=ACCEPT (attempt 2/3), verifier=opus, scope_warden=pass, 3479/3479 canonical §8.6 count reconfirmed exactly, all 4 test-constant fixes verified correct against production source (not tautological), bo_laksana pre-existing failure independently reconfirmed"}
   - {lane: V-2, branch: wave/D-2/V-2, status: pending, cycle: 2}
   - {lane: V-3, branch: wave/D-2/V-3, status: pending, cycle: 2}
+integration_branch: wave/D-2/integration
 deploy: {done: false}
 rebuild: {scope: asset_set, full: false, abhisek_build_id: pending}
 gate: {run: false, green: [], red: []}
-updated_at: 2026-07-16T15:50:00Z
+updated_at: 2026-07-16T22:15:00Z
 notes: >
   OPEN complete. Binder (Fable) BOUND the brief: see BIND_D-2.md — 12/12 regression sample PASS,
   0 unexpected reds (both expected residuals confirmed: PARK-#4, Gate Ś #8). §F1.7 promise ledger
@@ -51,8 +52,38 @@ notes: >
   first rebuild, not assumed a defect). PARK-#4's "5 rows" framing is narrow-assertion-scope only;
   live keyword_heuristic_v1 population = 43,408/49,360 rows chart-wide (V-4 ledger row 39 note).
   SPAWN complete: cycle-1 lanes V-0/V-1/V-4/V-5/V-6 launched as parallel isolated-worktree
-  implementer agents (2026-07-16 ~21:35 IST) per §F1.5 merge order (V-0 -> V-1 -> V-4 -> V-5 ->
-  V-6). Each briefed with its may_touch glob, its §F1.7 ledger rows, and (V-4/V-5) the binding
-  DR-7/DR-6 formula+prior rulings to implement exactly. V-6's kendradhipati-dosha item explicitly
-  instructed to BLOCK-and-report rather than self-adjudicate doctrine if no DR-n is available in
-  its own turn. Awaiting implementer claims -> Phase-1 Opus verifiers next.
+  implementer agents per §F1.5 merge order. Each briefed with its may_touch glob, its §F1.7
+  ledger rows, and (V-4/V-5) the binding DR-7/DR-6 formula+prior rulings.
+
+  All 5 lanes RECEIPTED (ACCEPT) at Phase-1. V-6 needed one fix-cycle (attempt 2: 4 stale
+  test-constant regressions + a false self-reported test count — doctrine substance was sound
+  throughout, including the kendradhipati-dosha PROPOSED-marking safety property). Two agents
+  (V-6 implementer, integration verifier) hit transient API disconnects mid-task and were
+  resumed per protocol §6.4 (does not count against attempt counters).
+
+  INTEGRATE complete: wave/D-2/integration created from main, all 5 lanes merged in declared
+  order (V-0->V-1->V-4->V-5->V-6), one expected append-only conflict in
+  test_has_writer_completeness.py (V-4+V-5 both appended) resolved keep-both. Full-suite +
+  5 mandatory cross-lane checks run: found ONE genuine integration-level regression (V-1 missed
+  the KNOWN_HAS_WRITER_TRUE 'Step 2' companion entries for its 2 new writers - a class of edit
+  V-4/V-5 got right individually but only surfaces once all lanes combine). Routed back to V-1
+  (attempt 2, a 2-line fix), conductor-reviewed directly given its triviality and exact match to
+  an already-verified convention, merged. All other 4 cross-lane checks (shared-table
+  delete/count scope safety, schema-declaration completeness, migration numbering, FROZEN
+  orchestrator conformance) were clean on first pass.
+
+  RISKS CARRIED INTO DEPLOY/REBUILD: (1) G0-4 (CR-54 wealth-loss mechanism) confirmed genuinely
+  RED on pre-D-2 live data - expected to flip green only after this cycle's rebuild (V-4 edge-
+  strength/CR-84/85 re-rank + V-5 dhana_axis); MUST re-verify post-rebuild, this is the key
+  §G.1 6/6 gate risk. (2) V-4's LOCAL rebuild attempt failed FORENSIC in its sandbox
+  (Sun=Aries/Moon=Ashwini/Lagna=Scorpio) - almost certainly a sandbox/env artifact since V-4
+  touches no position computation, but the REAL deployed rebuild's FORENSIC 7/7 must be
+  confirmed, not assumed. (3) Gate Ś #8 stays open/non-blocking (V-5 legitimately deferred it -
+  fix requires files outside its glob). (4) composite_ranker.ts (V-3's file, cycle 2) should
+  eventually consume the graph_node_strength_contribution_jsonb column V-4 populated - CR-84/25
+  only closed at the data layer this cycle.
+
+  NEXT: DEPLOY wave/D-2/integration to main -> CI -> deploy.yml, then REBUILD Abhisek's chart
+  (scope computed live from asset_registry.depends_on per §B.10 at rebuild time, expected
+  asset_set of similar order to D-1.6's 47), then POST-DEPLOY LIVE verification of cycle-1
+  ledger rows before cycle-2 (V-2/V-3) spawns.
