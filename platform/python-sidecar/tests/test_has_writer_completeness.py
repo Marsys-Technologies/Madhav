@@ -111,6 +111,9 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "bo_pratijna",
     # ── L2 Bodha — migration 438 (D-1.5b Lane B-3, CR-100 Sudarshana Chakra) ──
     "bo_sudarshana",
+    # ── L2 Bodha — migrations 445/446 (D-2 Lane V-4, Mechanism object) ────────
+    "bo_yantra_mechanism",
+    "bo_laksana_rerank",
     # ── L3 Kāla — migration 342 ──────────────────────────────────────────────
     "ka_bhavishya_lekha",
     "ka_dasha_kala",

@@ -587,17 +587,53 @@ def _assign_kp_domains(fact_subject: str | None, fvj: dict | None) -> list[str] 
     return None
 
 
+# ── D-2 Lane V-4 (CR-62): multi-varga map for the wealth/career lenses ───────
+# CR-62: wealth uses {D1,D2,D9,D11}; career uses {D1,D9,D10}. Before this, a
+# varga-scoped signal's 'wealth'/'career' domain tag came only from its
+# fact_category (_DOMAIN_MAP / _CATEGORY_DEFAULT_DOMAINS above), regardless of
+# WHICH varga the signal lived in — a D10 (career-only varga) lord-placement
+# signal could still surface in a wealth query, and a D2/D11 (wealth-only
+# varga) signal could surface in a career query. This gate is applied AFTER
+# the base domain assignment: 'wealth' is dropped unless varga_id is one of
+# CR-62's wealth vargas (or the signal is varga-agnostic, i.e. varga_id is
+# None); 'career' is dropped unless varga_id is one of CR-62's career vargas
+# (or varga-agnostic). Every OTHER domain (health/relationship/spirituality/
+# character) is untouched — CR-62 only names the wealth/career lenses.
+CR62_WEALTH_VARGAS = frozenset({"D1", "D2", "D9", "D11"})
+CR62_CAREER_VARGAS = frozenset({"D1", "D9", "D10"})
+
+
+def _apply_cr62_multi_varga_gate(domains: list[str], varga_id: str | None) -> list[str]:
+    if not varga_id:
+        return domains  # varga-agnostic signal — CR-62 does not apply
+    varga = varga_id.upper()
+    out = []
+    for d in domains:
+        if d == "wealth" and varga not in CR62_WEALTH_VARGAS:
+            continue
+        if d == "career" and varga not in CR62_CAREER_VARGAS:
+            continue
+        out.append(d)
+    # Never return an empty list from a gate — B.10 (no silent drop): if the
+    # gate would empty a signal's domains entirely (e.g. a D2-only signal that
+    # was ONLY ever tagged 'career'), fall back to the ungated domains rather
+    # than making the signal domain-less.
+    return out if out else domains
+
+
 def _assign_domains(fact_category: str, source_subsystem: str,
                     fact_subject: str | None = None,
-                    fvj: dict | None = None) -> list[str]:
+                    fvj: dict | None = None,
+                    varga_id: str | None = None) -> list[str]:
     # WP-2.4 (9b-3): KP cusp facts inherit their bhava's domains house-by-house.
     if fact_category in _KP_HOUSE_CATS:
         kp = _assign_kp_domains(fact_subject, fvj)
         if kp:
-            return kp
+            return _apply_cr62_multi_varga_gate(kp, varga_id)
     if fact_category in _DOMAIN_MAP:
-        return _DOMAIN_MAP[fact_category]
-    return _CATEGORY_DEFAULT_DOMAINS.get(source_subsystem, ["career", "character"])
+        return _apply_cr62_multi_varga_gate(_DOMAIN_MAP[fact_category], varga_id)
+    base = _CATEGORY_DEFAULT_DOMAINS.get(source_subsystem, ["career", "character"])
+    return _apply_cr62_multi_varga_gate(base, varga_id)
 
 
 # ── Signal text builders ──────────────────────────────────────────────────────
@@ -1987,7 +2023,7 @@ def _build_signal_row(
     # Domains (WP-2.4 9b-3: KP cusp facts inherit their bhava's domains)
     domains        = _assign_domains(fact_cat, source_subsystem,
                                      fact_subject=str(fact_row.get("fact_subject") or ""),
-                                     fvj=fvj)
+                                     fvj=fvj, varga_id=varga_id)
     duration_class = _duration_class(fact_cat)
 
     # B3: Populate configuration_jsonb.graha for yoga/dosha signals (CONTRACT-1).
@@ -3189,4 +3225,210 @@ class BoLaksanaWriter(WriterBase):
             asset_id=self.asset_id,
             rows_inserted=inserted,
             notes=f"aya={ayanamsha};facts={len(fact_rows)};skipped={skipped}{lane4_notes}",
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# D-2 Lane V-4 — BoLaksanaRerankWriter (CR-84 + PARK-#4 pickup)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Registered as a SEPARATE asset_id ('bo_laksana_rerank', migration 446) in
+# THIS file (bo_laksana.py — V-4's EXCLUSIVE re-rank-pass file per
+# BRIEF_D2.md Lane V-4) rather than folded into BoLaksanaWriter's own
+# depends_on, because bo_karanajala already depends_on bo_laksana — adding the
+# reverse edge onto bo_laksana itself would create a DAG cycle (a FROZEN-
+# orchestrator-contract-class change; CLAUDE.md §N.2 says STOP and raise with
+# the native rather than force it). A second @register'd WriterBase in the
+# same file, scheduled strictly after bo_karanajala in the DAG via its own
+# depends_on, is the extension-not-modification path §N.2 already sanctions.
+#
+# UPDATE-only (never delete-then-insert): it never touches row identity or
+# ownership — only enriches two already-existing, previously-always-NULL
+# columns (graph_node_strength_contribution_jsonb, valence/valence_source for
+# the PARK-#4 subset). It is therefore safe against the bo_laksana/
+# bo_sudarshana shared-table class of defect (F2 / PR#574): it can never
+# delete any bodha_msr_signals row, of bo_laksana's own classes or any
+# sibling's.
+
+_SHORT_TO_LONG: dict[str, str] = {v: k for k, v in _LONG_TO_SHORT.items()}
+
+
+def _extract_primary_graha_for_rerank(config: dict) -> str | None:
+    """Best-effort primary-graha extraction from a signal's configuration_jsonb
+    — mirrors the tag keys _resolve_valence already treats as authoritative
+    (graha / primary_graha / lord / body), normalized via the SAME
+    _canonical_graha_code() the rest of this file uses (no new normalization
+    logic introduced)."""
+    if not isinstance(config, dict):
+        return None
+    raw = config.get("graha") or config.get("primary_graha") or config.get("lord") or config.get("body")
+    return _canonical_graha_code(raw)
+
+
+def _structural_role_from_centrality(c: dict) -> float:
+    """Composite structural-role multiplier from real CGM centrality metrics
+    (CR-84/CR-25: closes the MSR structural_role dead link at the data layer —
+    the serving-side composite_ranker.ts fallback this closes is OUT of V-4's
+    may_touch glob; see migration 446's header for the full rationale).
+    Blend: 40% pagerank + 25% eigenvector + 20% betweenness + 15% harmonic,
+    each already normalized [0,1] by bo_karanajala, mapped onto a [0.8, 1.5]
+    multiplier band (the same order of magnitude as composite_ranker.ts's
+    existing class-based fallback range) so a hub graha structurally
+    outweighs a peripheral one, never zeroes one out (B.10 — no fabricated
+    zero)."""
+    pr  = float(c.get("pagerank_score") or 0.0)
+    eig = float(c.get("eigenvector_centrality") or 0.0)
+    bet = float(c.get("betweenness_centrality") or 0.0)
+    harm = float(c.get("harmonic_centrality") or 0.0)
+    composite = 0.40 * pr + 0.25 * eig + 0.20 * bet + 0.15 * harm
+    return round(0.8 + composite * 0.7, 6)  # composite ∈ [0,1] -> role ∈ [0.8, 1.5]
+
+
+def _fetch_graha_centrality(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, dict]:
+    """{graha_title: {pagerank_score, eigenvector_centrality,
+    betweenness_centrality, harmonic_centrality}} from bodha_cgm_nodes
+    (post-bo_karanajala — this writer's own depends_on)."""
+    rows = _fetch_dict(
+        conn,
+        """SELECT node_subject, pagerank_score, eigenvector_centrality,
+                  betweenness_centrality, harmonic_centrality
+           FROM bodha_cgm_nodes
+           WHERE chart_id = %s AND ayanamsha_id = %s AND node_type = 'graha'""",
+        [chart_id, ayanamsha_id],
+    )
+    return {str(r["node_subject"]): r for r in rows}
+
+
+@register("bo_laksana_rerank")
+class BoLaksanaRerankWriter(WriterBase):
+    """Post-CGM structural re-rank pass (CR-84) + PARK-#4 valence pickup.
+    UPDATE-only; never deletes or re-inserts bodha_msr_signals rows."""
+    asset_id = "bo_laksana_rerank"
+
+    def run(self, ctx: ContextSpec) -> WriterResult:
+        chart_id = ctx.config["chart_id"]
+        conn     = ctx.db_conn
+        now      = datetime.now(timezone.utc).isoformat()
+
+        if ctx.dry_run:
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                 notes="dry_run — would UPDATE structural_role + attempt PARK-#4 valence re-resolution")
+
+        total_rerank = 0
+        total_park4_reclaimed = 0
+        total_park4_remaining = 0
+
+        for ayanamsha in CANONICAL_AYANAMSHAS:
+            centrality_by_graha = _fetch_graha_centrality(conn, chart_id, ayanamsha)
+
+            # ── CR-84: structural_role from real CGM centrality ──────────────
+            signal_rows = _fetch_dict(
+                conn,
+                """SELECT signal_id, configuration_jsonb FROM bodha_msr_signals
+                   WHERE chart_id = %s AND ayanamsha_id = %s""",
+                [chart_id, ayanamsha],
+            )
+            with conn.cursor() as cur:
+                for sig in signal_rows:
+                    cfg = sig.get("configuration_jsonb")
+                    if isinstance(cfg, str):
+                        try:
+                            cfg = json.loads(cfg)
+                        except Exception:
+                            cfg = {}
+                    code = _extract_primary_graha_for_rerank(cfg or {})
+                    graha_title = _SHORT_TO_LONG.get(code) if code else None
+                    c = centrality_by_graha.get(graha_title) if graha_title else None
+                    if not c:
+                        continue
+                    payload = {
+                        "structural_role_score": _structural_role_from_centrality(c),
+                        "primary_graha": graha_title,
+                        "pagerank_score": c.get("pagerank_score"),
+                        "eigenvector_centrality": c.get("eigenvector_centrality"),
+                        "betweenness_centrality": c.get("betweenness_centrality"),
+                        "harmonic_centrality": c.get("harmonic_centrality"),
+                        "formula_version": "structural_role_rerank_v1",
+                        "computed_at": now,
+                    }
+                    cur.execute(
+                        """UPDATE bodha_msr_signals
+                           SET graph_node_strength_contribution_jsonb = %s::jsonb
+                           WHERE signal_id = %s""",
+                        [json.dumps(payload), sig["signal_id"]],
+                    )
+                    total_rerank += 1
+
+            # ── PARK-#4: widened valence re-resolution for keyword_heuristic_v1
+            # rows. Original PARK scoped "5 rows"; live population is
+            # 43,408/49,360 chart-wide (BIND_D-2.md §B.4 scoping finding) — this
+            # pass works the FULL population reachable by configuration_jsonb,
+            # not a narrow 5-row slice, and reports the real before/after count.
+            # Widening over bo_laksana's original _resolve_valence: (a) tries
+            # the row's OWN varga_id (ga_vichara ships all 29 vargas, not just
+            # D1 — the original call hardcoded varga='D1'); (b) tries the
+            # additional tag keys _extract_primary_graha_for_rerank already
+            # recognizes (lord/body) when 'graha'/'primary_graha' are absent.
+            # A row that still cannot resolve (no graha subject at all — e.g.
+            # panchanga/sade_sati-class signals with no natal graha anchor) is
+            # left honestly as keyword_heuristic_v1 — not forced, per B.10.
+            kw_rows = _fetch_dict(
+                conn,
+                """SELECT signal_id, configuration_jsonb, varga_id, fact_kind
+                   FROM bodha_msr_signals
+                   WHERE chart_id = %s AND ayanamsha_id = %s AND valence_source = 'keyword_heuristic_v1'""",
+                [chart_id, ayanamsha],
+            )
+            if kw_rows:
+                # varga-aware valence_pass lookup: (actor, target_house, varga) -> value_text
+                try:
+                    vrows = _fetch_dict(
+                        conn,
+                        """SELECT actor, target, varga, value_text FROM chart_vichara
+                           WHERE chart_id = %s AND ayanamsha_id = %s AND vichara_family = 'valence_pass'""",
+                        [chart_id, ayanamsha],
+                    )
+                except Exception:
+                    vrows = []
+                widened_lookup: dict[tuple, dict] = {}
+                for r in vrows:
+                    actor, target, varga = r.get("actor"), r.get("target"), r.get("varga")
+                    if actor and target and varga:
+                        widened_lookup[(str(actor), str(target), str(varga))] = {
+                            "value_text": r.get("value_text"), "value_num": None,
+                        }
+
+                with conn.cursor() as cur:
+                    for row in kw_rows:
+                        cfg = row.get("configuration_jsonb")
+                        if isinstance(cfg, str):
+                            try:
+                                cfg = json.loads(cfg)
+                            except Exception:
+                                cfg = {}
+                        cfg = cfg or {}
+                        row_varga = str(row.get("varga_id") or "D1").upper()
+                        new_valence, new_source, _judged = _resolve_valence(
+                            widened_lookup, "", None,
+                            {**cfg, "varga": row_varga},
+                        )
+                        if new_source == "ga_vichara_v1":
+                            cur.execute(
+                                """UPDATE bodha_msr_signals
+                                   SET valence = %s, valence_source = %s
+                                   WHERE signal_id = %s""",
+                                [new_valence, new_source, row["signal_id"]],
+                            )
+                            total_park4_reclaimed += 1
+                        else:
+                            total_park4_remaining += 1
+
+        return WriterResult(
+            asset_id=self.asset_id,
+            rows_inserted=total_rerank,
+            notes=(
+                f"structural_role_updated={total_rerank};"
+                f"park4_reclaimed={total_park4_reclaimed};"
+                f"park4_still_keyword_heuristic={total_park4_remaining}"
+            ),
         )

@@ -773,6 +773,23 @@ class BoAnveshanaWriter(WriterBase):
     asset_id = "bo_anveshana"
 
     def run(self, ctx: ContextSpec) -> WriterResult:
+        # CR-78 DISPOSITION (D-2 Lane V-4, PARKED — see migration 447's header
+        # and the wave close report): bo_anveshana is NOT deactivated here.
+        # Live probe (postgres, read-only, this session) found THREE registered
+        # assets still depends_on=['...', 'bo_anveshana', ...]: bo_chart_gestalt,
+        # bo_pramana_mapa, ph_nimitta — all outside V-4's may_touch glob. Setting
+        # has_writer=false or no-op'ing this writer without first confirming
+        # (a) whether the orchestrator tolerates a depends_on edge onto a
+        # has_writer=false asset, and (b) whether those three writers actually
+        # CONSUME bodha_discoveries/bodha_anomalies data (vs. only using
+        # bo_anveshana for build-ordering) risks breaking three live downstream
+        # writers whose files V-4 cannot touch to repoint. Per CONDUCTOR_PROTOCOL
+        # §4.3 PARK class 2/3 ("destructive/irreversible data operations outside
+        # the idempotent delete-then-insert pattern" / "anything inside a
+        # brief's must_not_touch") this is STOPPED and flagged rather than
+        # improvised. bo_anveshana keeps building as before; full CR-78
+        # retirement (registry deactivation + repointing the three downstream
+        # consumers to bo_yantra_mechanism) is native/next-wave work.
         chart_id = ctx.config["chart_id"]
         build_id = ctx.build_id
         conn     = ctx.db_conn
