@@ -946,7 +946,7 @@ const assessWealthCapability: CapabilityDescriptor = {
 
 // ── R3.2: yoga_activation_by_dasha ───────────────────────────────────────────
 
-const yogaActivationByDashaCapability: CapabilityDescriptor = {
+export const yogaActivationByDashaCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha',
   type: 'tool',
   layer: 'L3',
@@ -1056,6 +1056,18 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
       // one, returning 0 "activated yogas". Surface the undated activations too (they are
       // the reachable data), keeping the date window as an INCLUSIVE filter for dated rows:
       // a row passes if it has no dates yet OR its window overlaps the requested range.
+      //
+      // WP-S4-fix2 (Gate Ś #8): admitting undated rows here (correct, above) combined with
+      // an ORDER BY that ranked purely on dasha_activation_proximity_score DESC was a second,
+      // compounding defect. An undated row's proximity score always defaults to exactly 0.5
+      // (date_resolver._proximity_score returns 0.5 whenever no peak resolves) while the
+      // MAJORITY of genuinely dated rows compute a real score below 0.5 (most sit ~0.2-0.4 on
+      // this chart) — so undated rows, ranking as a false "above-average" 0.5, systematically
+      // crowded dated rows out of the top-K page. Root-caused live: 15/15 rows returned for a
+      // 2026-2029 window were ALL undated with the tell-tale flat 0.5. The ORDER BY below now
+      // sorts dated rows first (regardless of score), THEN by proximity/salience within each
+      // tier — undated rows still surface (never silently dropped, B.10) but only fill out the
+      // page after every dated, temporally-real activation for the window is shown.
       const conds: string[] = [
         'm.chart_id = $1',
         'm.ayanamsha_id = $2',
@@ -1109,7 +1121,8 @@ const yogaActivationByDashaCapability: CapabilityDescriptor = {
           AND ka.ayanamsha_id = m.ayanamsha_id
           AND ka.chart_id = m.chart_id
         WHERE ${conds.join('\n          AND ')}
-        ORDER BY ka.dasha_activation_proximity_score DESC NULLS LAST,
+        ORDER BY (ka.activation_start IS NULL) ASC,
+                 ka.dasha_activation_proximity_score DESC NULLS LAST,
                  m.computed_salience DESC NULLS LAST,
                  ka.activation_start
         LIMIT ${limitPh}
