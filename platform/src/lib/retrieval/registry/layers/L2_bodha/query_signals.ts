@@ -263,8 +263,17 @@ export const querySignalsCapability: CapabilityDescriptor = {
     },
     signal_type_class: {
       type: 'string',
-      description: "Filter by type class: 'yoga'|'dosha'|'karaka_alignment'|'composite_state'|'sade_sati'|'panchanga'.",
-      enum: ['yoga', 'dosha', 'karaka_alignment', 'composite_state', 'sade_sati', 'panchanga'],
+      description: [
+        'Filter to one bodha_msr_signals.signal_type_class. Applied in the WHERE clause BEFORE the',
+        'salience LIMIT/candidate-pool cap, so a class-scoped query returns ALL rows of that class',
+        'for the chart/ayanamsha regardless of their global salience rank — the reach path for',
+        'legitimately low-salience structural CORROBORATION classes (e.g. sudarshana_agreement) that',
+        'a chart-wide salience page would never surface. No enum restriction: any real class value',
+        'is accepted (an incomplete enum here previously hid whole classes from callers, §N.6). Known',
+        'classes include: composite_state, karaka_alignment, sade_sati, varga_pattern, panchanga,',
+        'tradition_specific, annual, parivartana, configuration, dosha, yoga, bhavat_bhavam_amplifier,',
+        'sudarshana_agreement, varga_ratification_divergence.',
+      ].join(' '),
     },
     min_salience: {
       type: 'number',

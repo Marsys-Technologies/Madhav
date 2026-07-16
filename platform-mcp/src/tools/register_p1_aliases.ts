@@ -344,6 +344,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       min_weight: z.number().min(0).max(1).optional(),
       frame:      z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
       paradigm:   z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional(),
+      // §N.6 serving-reach (Gate B / B2_sudarshana): filter to one signal_type_class. This
+      // flows verbatim through `...rest` to query_signals, which applies it in the WHERE clause
+      // BEFORE the salience LIMIT/candidate-pool cap — so a class-scoped query returns ALL rows
+      // of that class regardless of their global salience rank. Without this facet on the alias
+      // schema, the MCP SDK strips the param and legitimately low-salience structural corroboration
+      // classes (sudarshana_agreement et al., ~rank 8k-9k of ~9.9k per ayanamsha) were unreachable
+      // through this surface by ANY domain/top_k/offset combination. Free string (no enum): an
+      // incomplete enum is exactly what hid these classes from callers.
+      signal_type_class: z.string().optional()
+        .describe('Filter to one bodha_msr_signals.signal_type_class (e.g. sudarshana_agreement, ' +
+          'yoga, dosha, karaka_alignment, composite_state). Applied pre-salience-cap, so it reaches ' +
+          'low-salience corroboration classes a chart-wide salience page never surfaces.'),
     },
     async (params) => {
       const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
