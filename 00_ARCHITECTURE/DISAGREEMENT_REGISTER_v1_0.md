@@ -1202,3 +1202,131 @@ disagreement_register_entry:
     - path: 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md
       linkage: cause   # C-6 row (+ R-48/LCA-15 same ceiling)
 ```
+
+## DIS.019 (doctrine-waves campaign ref: DR-6) — V-5 signal-class priors (nakshatra-semantic, arudha, special-lagna, vargottama/dhana-axis)
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.019
+  campaign_ref: DR-6
+  question: >
+    D-2 Lane V-5 introduces 4 new bodha_msr_signals signal_type_classes (nakshatra-semantic,
+    arudha, special-lagna, vargottama+dhana-axis). Each needs a class-level salience prior
+    multiplier + tier-assignment logic, DR-3-precedent style (DR-3 set sudarshana_agreement=1.15,
+    bhavat_bhavam_amplifier=0.85).
+  ruling: >
+    DR-6 (Fable by native delegation, 2026-07-16 — D-2 Binder pass, BIND_D-2.md §B.2; queued for
+    native ratification at campaign close). Class priors, based on the live pre-D-2 class
+    distribution probed on chart 482012f1 (14 existing classes, salience range 0.215–2.716):
+    nakshatra_semantic = 1.00 (neutral — high-volume corroborative fabric: own-star, dispositor
+    chains, tara bala; a class-wide boost would flood the ranking, so per-signal boosts on
+    end-degree/gandanta flags are left to the emitter, not the class prior);
+    arudha = 1.10 (Jaimini perception layer; AL-conjunction/AL-bhāva relations are reading-bearing
+    per CR-61 and currently never surface — modest boost above fabric);
+    special_lagna = 0.90 (Indu/Sree/Ghati/Hora are domain-scoped corroborators; below-neutral
+    chart-wide with domain_salience carrying in-domain rank, mirroring how DR-3 kept sudarshana at
+    supporting tier chart-wide while still domain-relevant);
+    vargottama_amplification = 1.15 (cross-frame confirmation class, same epistemics as
+    sudarshana_agreement's DR-3 1.15 — two independent frames agreeing);
+    dhana_axis (if emitted as its own class rather than folded into vargottama's lane) = 1.05
+    (domain-load-bearing but overlapping existing dhana-yoga rows; slight boost with dedup
+    discipline against the `yoga` class required at emission).
+    All four/five values stay within the DR-3 band [0.85, 1.15] except dhana_axis's minor 1.05 —
+    nothing new outranks the chart-defining amplifier/divergence classes; per-domain relevance is
+    carried by domain fields on each signal, never by inflating the class-wide prior.
+  status: resolved (binding for D-2; native ratification queued at campaign close)
+  resolved_on: 2026-07-16
+  resolved_by_session: "Claude Fable 5 (D-2 Binder, adjudicator-doctrine per CONDUCTOR_PROTOCOL §4.1), recorded by the D-2 conductor per §8.8.ii (register edits are conductor-only)"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-2.md
+      linkage: cause   # §B.2 proposed ruling
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D2.md
+      linkage: cause   # Lane V-5, §F1.7 ledger row 43
+```
+
+## DIS.020 (doctrine-waves campaign ref: DR-7) — V-4 mechanism edge-strength formula terms
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.020
+  campaign_ref: DR-7
+  question: >
+    D-2 Lane V-4 must retire CR-86's hardcoded edge-strength literals on the Mechanism object
+    (named valenced CGM subgraph) with a real formula sourced from ga_vichara's shipped valence
+    pass. What are the formula's terms and weights?
+  ruling: >
+    DR-7 (Fable by native delegation, 2026-07-16 — D-2 Binder pass, BIND_D-2.md §B.4; queued for
+    native ratification at campaign close). Based on the live-probed ga_vichara output shape
+    (5 families: valence_pass 1,421 rows, varga_ratification 9, varga_ratification_divergence 3
+    subjects/12 signals, varga_consistency 9, leverage_index 35 — every row carrying
+    constituent_fact_ids + formula_version per §N.5):
+    edge_strength = base_relation_weight × valence_factor × ratification_factor × consistency_weight, where
+    base_relation_weight = the existing CGM edge-type weight already on bodha_cgm edges
+    (dispositor/aspect/exchange/lordship) — this retires the CR-86 hardcoded literals by
+    reattaching to the CGM's own typed-edge weights rather than inventing new ones;
+    valence_factor from the edge subject's valence_pass row: strong_benefic/strong_malefic = 1.25,
+    benefic/malefic = 1.10, neutral = 1.00 (magnitude only — sign/direction stays on the edge's
+    valence field, never folded into strength, so a strong malefic mechanism reads as STRONG, not
+    weak);
+    ratification_factor = the domain-scoped ga_vichara varga_ratification value [0.6, 1.4] when
+    the edge is domain-tagged, else 1.0 (no domain-tag penalty/bonus);
+    consistency_weight = 0.75 + 0.25 × varga_consistency (a fully vargottama-consistent subject
+    amplifies at 1.0×; a fully inconsistent one dampens to 0.75×, never zeroes out);
+    result clamped to [0.1, 2.0]; formula_version = 'edge_strength_v1'; every edge stores its
+    constituent ga_vichara row ids (§N.5 — V-4 references L1/L2 values, never restates them).
+    The composed range [0.6,1.4]×[0.75,1.0]×[1.0,1.25] (×base) yields a bounded, non-degenerate
+    distribution — anti-vacuous per §F1.7(5).
+  status: resolved (binding for D-2; native ratification queued at campaign close)
+  resolved_on: 2026-07-16
+  resolved_by_session: "Claude Fable 5 (D-2 Binder, adjudicator-doctrine per CONDUCTOR_PROTOCOL §4.1), recorded by the D-2 conductor per §8.8.ii (register edits are conductor-only)"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-2.md
+      linkage: cause   # §B.4 proposed ruling
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D2.md
+      linkage: cause   # Lane V-4, §F1.7 ledger row 31, CR-86
+```
+
+## DIS.021 (doctrine-waves campaign ref: DR-8) — CR-28 intent_classify contract (engineering)
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.021
+  campaign_ref: DR-8
+  question: >
+    CR-28: `intent_classify`/`util_intent_classify` currently returns a rendered classifier PROMPT
+    (prompt-delegation to the consuming LLM), not a classification. D-2 Lane V-3 needs to wire a
+    scope-tuple classifier (question → intent/domains/width/depth/horizon/intervention/
+    entitlement) for the Vidhi Engine compiler, and Lane V-2 has already briefed "scope tuple
+    echoed for correction before execution." Ratify prompt-delegation as the permanent contract,
+    or redesign to return an actual classification?
+  ruling: >
+    DR-8 (Opus, engineering adjudication per CONDUCTOR_PROTOCOL §4.1, 2026-07-16, routed by the
+    D-2 Binder at BIND_D-2.md §B.7). REDESIGN — option (b), Binder's hybrid form. Ratifying
+    prompt-delegation is rejected: the server cannot echo a tuple it never computes, so it would
+    silently break V-2's already-briefed promise — an unacceptable cross-lane regression.
+    `intent_classify`/`util_intent_classify` (currently `platform-mcp/src/tools/l0_brahmagyan.ts`
+    + `register_p1_aliases.ts`, returning `{prompt, usage}`) is redesigned to return:
+    `{scope_tuple: {intent, domains[], width, depth, horizon, intervention, entitlement},
+    confidence: 0.0-1.0, method: "deterministic_rules", matched_rules: string[],
+    fallback_prompt: <the current rendered prompt, retained>, fallback_recommended: boolean,
+    usage}`. Classification is DETERMINISTIC rule/pattern matching over the intent vocabulary —
+    not server-side LLM inference — per CLAUDE.md §N.4 Deterministic-first ("Python over LLM for
+    computation... generative LLM for curation is NOT") and B.10 no-fabricated-computation: zero
+    inference cost/latency, no model-coupling, fully auditable via `matched_rules`. The rendered
+    prompt is retained as `fallback_prompt`, disclosed and used when `fallback_recommended` (low
+    confidence / unmatched intent) — so genuinely ambiguous queries keep an LLM-delegation escape
+    hatch, but the common path is self-contained and lets V-2 echo `scope_tuple` verbatim for
+    correction as already briefed.
+  status: resolved (binding for D-2; native ratification queued at campaign close)
+  resolved_on: 2026-07-16
+  resolved_by_session: "Claude Opus (D-2 Adjudicator-engineering per CONDUCTOR_PROTOCOL §4.1), recorded by the D-2 conductor per §8.8.ii (register edits are conductor-only)"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-2.md
+      linkage: cause   # §B.7 routing
+    - path: 00_ARCHITECTURE/POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md
+      linkage: cause   # CR-28 row
+    - path: platform-mcp/src/tools/l0_brahmagyan.ts
+      linkage: consequence   # intent_classify redesign target
+    - path: platform-mcp/src/tools/register_p1_aliases.ts
+      linkage: consequence   # util_intent_classify redesign target
+```

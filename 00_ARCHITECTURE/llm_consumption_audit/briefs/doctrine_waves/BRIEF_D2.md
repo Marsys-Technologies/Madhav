@@ -3,9 +3,10 @@ artifact: BRIEF_D2
 type: WAVE BRIEF (three-part: PRE-BOUND + FROZEN + BIND-AT-OPEN)
 wave: D-2 — Vidhi Engine + Mechanism wave
 version: 2.2
-status: FROZEN — §B slots bind at wave open (Fable Binder, per CONDUCTOR_PROTOCOL §2 step 1);
-  §B0 slots are PRE-BOUND (resolved 2026-07-16 against repo + register HEAD; Binder spot-verifies,
-  does not re-derive)
+status: BOUND (2026-07-16, Fable Binder pass per CONDUCTOR_PROTOCOL §2 step 1; see BIND_D-2.md —
+  12/12 regression sample PASS, 0 unexpected reds, all 10 §B slots resolved, §F1.7 promise ledger
+  total at 56 rows; conductor actions pending at spawn: CR-28 Opus adjudication, DR-n recording
+  for §B.2/§B.4 proposed rulings)
 governing: CONDUCTOR_PROTOCOL.md (v1.3) + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §5 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §3/§6/§12
 prerequisite: >
