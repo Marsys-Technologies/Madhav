@@ -87,7 +87,15 @@ describe('queryDomainReadingCapability (bodha_domain_reading_get) — per-lens r
   const bigLens = (question_type: string, n: number) => ({
     lens_id: `lens_${question_type}`,
     question_type,
-    template_element_ids_jsonb: [],
+    // D-1.5b B-7 (2nd pass): model the live object shape — template_element_ids_jsonb carries
+    // the SAME relevance family as a raw UUID list (~63KB/lens live). The pre-fix fixture used
+    // `[]` here, which is exactly why the original "under 100KB" test passed while the live
+    // response stayed at 155KB. A realistic 36-char UUID per row makes the size test load-bearing.
+    template_element_ids_jsonb: {
+      domains_matched: [question_type],
+      signal_count: n,
+      signal_ids: Array.from({ length: n }, (_v, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`),
+    },
     all_relevant_ranked_jsonb: {
       total_count: n,
       ranked_signals: Array.from({ length: n }, (_v, i) => ({
@@ -133,9 +141,25 @@ describe('queryDomainReadingCapability (bodha_domain_reading_get) — per-lens r
   it('the DEFAULT response is bounded well under the ~100KB Gate B budget', async () => {
     const result = await runWealth({})
     const bytes = Buffer.byteLength(JSON.stringify(result.content), 'utf8')
-    // Pre-fix this same content serialized to 909,221 bytes live. Assert an order-of-
-    // magnitude cut and a hard ceiling comfortably under the ~100KB (102,400B) gate.
+    // Pre-fix this same content serialized to 909,221 bytes live (ranked_signals), then 155,029
+    // bytes after the first B-7 pass left template_element_ids_jsonb.signal_ids unbounded. With
+    // both sections capped it lands well under the ~100KB (102,400B) gate.
     expect(bytes).toBeLessThan(100 * 1024)
+  })
+
+  it('bounds each lens\'s template_element_ids_jsonb.signal_ids to the per-lens cap and discloses the true count', async () => {
+    const result = await runWealth({})
+    const content = result.content as Record<string, unknown>
+    const lenses = content['question_lenses'] as Array<Record<string, unknown>>
+    for (const lens of lenses) {
+      const teij = lens['template_element_ids_jsonb'] as Record<string, unknown>
+      const ids = teij['signal_ids'] as unknown[]
+      expect(ids.length).toBe(25)               // capped to the same per-lens budget
+      expect(teij['signal_ids_total']).toBe(1637)  // true family size disclosed
+      expect(teij['signal_ids_capped']).toBe(true)
+      expect(teij['signal_count']).toBe(1637)   // original disclosure field preserved
+    }
+    expect(typeof content['template_element_ids_per_lens_note']).toBe('string')
   })
 
   it('clamps max_signals_per_lens to its ceiling (100) and honors an explicit value', async () => {
