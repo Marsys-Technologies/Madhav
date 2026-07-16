@@ -19,7 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure, resolveChartFactsAyanamsha } from './registry_bridge.js'
-import { applyResponseBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
+import { applyResponseBudget, autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -164,17 +164,28 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 // through regAlias/globalAlias, and by every hand-written `server.tool` block below that
 // was touched in this pass). Falls back to a generic hint when the caller omits toolName —
 // still trims, just without a tool-specific recovery instrument name.
+//
+// D-1.6 S-5 (R-1/R-8/CR-49 residual — phala_mitigation_get measured 99.9KB live despite this
+// function's budgeting): the prior version called `applyResponseBudget` directly and SKIPPED
+// budgeting entirely when `sections.length === 0` — which happens whenever the real bulk lives
+// inside a JSON-encoded STRING nested inside a small (<=10 item) array (the surgical-primitives
+// ToolBundle shape `{result:{results:[{content:"<json string>"}]}}`, R-29's double-encoding
+// pattern), because autoDetectTrimmableSections only declares a section for arrays it can see
+// AND that are longer than 10 — a 1-item bundle array never qualifies, and the array-based
+// trimmer has no way to shrink a giant string. Routing through `finalizeMcpBudget` instead
+// (same self-verifying entry point registry_bridge.ts's assess_*/traverse_graph/judgment_query
+// already use) adds its last-resort bounded-depth long-string truncation fallback, which DOES
+// reach that shape — this is a strict superset of the prior behavior (array trimming still runs
+// first; string truncation only engages if arrays alone can't close the gap).
 function dualOutput(data: unknown, toolName = 'unknown_tool') {
+  let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>
     const sections = autoDetectTrimmableSections(obj, toolName)
-    if (sections.length > 0) {
-      const result = applyResponseBudget(obj, 40, sections)
-      if (result.trim_report) obj['trim_report'] = result.trim_report
-    }
+    finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
   }
-  const structuredContent = { type: 'object' as const, object: data }
-  const json = JSON.stringify(data)
+  const structuredContent = { type: 'object' as const, object: finalData }
+  const json = JSON.stringify(finalData)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
     return { structuredContent, content: [{ type: 'text' as const, text: '[large payload — see structuredContent]' }] }
   }
@@ -224,6 +235,14 @@ const BirthBase = {
  */
 
 // Helper for simple chart-scoped registry aliases
+//
+// `opts.paramAliases`: CR-42 fix — maps an alias-only param name (e.g. `planet`, the name
+// LLM callers naturally reach for) onto the underlying capability's native param name
+// (e.g. `graha`) before the call. Without this, a caller-supplied `planet` value would
+// either be stripped by the zod schema (if not declared at all) or passed through under
+// the WRONG key name that the capability's handler never reads — both are silent
+// filter-fallthrough. If both the alias name and the native name are supplied, the native
+// name wins (caller explicitly used the capability's own vocabulary).
 function regAlias(
   server: McpServer,
   name: string,
@@ -231,6 +250,7 @@ function regAlias(
   uri: string,
   extraSchema: Record<string, z.ZodTypeAny> = {},
   principal: Principal,
+  opts?: { paramAliases?: Record<string, string> },
 ) {
   server.tool(
     name, `[Phase-1 alias] ${desc}. Delegates to the same handler as the legacy tool name.`,
@@ -239,9 +259,18 @@ function regAlias(
       const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
       if (!chart_id) return errOut(name, 'chart_id is required')
       try {
+        const resolvedRest: Record<string, unknown> = { ...rest }
+        if (opts?.paramAliases) {
+          for (const [aliasKey, nativeKey] of Object.entries(opts.paramAliases)) {
+            if (resolvedRest[aliasKey] !== undefined) {
+              if (resolvedRest[nativeKey] === undefined) resolvedRest[nativeKey] = resolvedRest[aliasKey]
+              delete resolvedRest[aliasKey]
+            }
+          }
+        }
         const data = await callRegistryCap(uri, {
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
-          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
+          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...resolvedRest,
         }, principal)
         return dualOutput(data, name)
       } catch (err) { return errOut(name, String(err), { chart_id }) }
@@ -363,12 +392,20 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           'low-salience corroboration classes a chart-wide salience page never surfaces.'),
     },
     async (params) => {
-      const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
+      const { chart_id, ayanamsha_id, limit, offset, min_weight, ...rest } = params as Record<string, unknown>
       if (!chart_id) return errOut('bodha_signals_get', 'chart_id is required')
       try {
+        // D15b-F3 (R-18 param no-op audit): this schema documents `min_weight`, but the
+        // downstream capability (query_signals.ts) only ever reads `args['min_salience']` —
+        // `min_weight` was forwarded verbatim via `...rest` and silently ignored on every
+        // call (a documented param that filters nothing). Alias it onto `min_salience`
+        // before forwarding; an explicit `min_salience` in the caller's own params (if ever
+        // added) still wins since it would already be a rest key.
         const data = await callRegistryCap('marsys://tool/L2/query_signals', {
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
-          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
+          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0,
+          ...(min_weight != null && rest['min_salience'] == null ? { min_salience: min_weight } : {}),
+          ...rest,
         }, principal) as Record<string, unknown>
         const inner = data['content'] as Record<string, unknown> | undefined
         if (inner) {
@@ -634,13 +671,48 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   )
 
   // get_projections → kala_projections_get
-  regAlias(server, 'kala_projections_get',
-    'L3 time-indexed projections (same as get_projections)',
-    'marsys://tool/L3/query_projections',
+  // CR-6 (S-4): this alias used to declare start_date/end_date, which the underlying
+  // primitive (query_projections.ts) has NEVER understood (it reads horizon_years /
+  // domain / limit — no date_from/date_to concept at all) — those two params were a
+  // total silent no-op. Worse, domain and max_projections (which the primitive AND
+  // get_projections DO honor) were absent from the schema entirely, so a caller
+  // passing them had them silently stripped before the handler ever ran. Rewritten
+  // as a direct mirror of get_projections (registry_bridge.ts) rather than the
+  // generic regAlias() shape, including its client-side max_projections cap (F-008).
+  server.tool(
+    'kala_projections_get',
+    '[Phase-1 alias] L3 time-indexed probabilistic projections (same as get_projections).',
     {
-      start_date: z.string().optional(),
-      end_date:   z.string().optional(),
-    }, principal)
+      ...ChartBase,
+      domain: z.string().optional().describe('Domain to project (e.g. career, relationship).'),
+      horizon_years: z.number().int().min(1).max(20).optional().describe('Projection horizon in years (default: 5).'),
+      max_projections: z.number().int().min(1).max(200).optional().describe(
+        'Max projections to return (default: 20; the primitive is otherwise unbounded).'
+      ),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, domain, horizon_years, max_projections } =
+        params as Record<string, unknown>
+      if (!chart_id) return errOut('kala_projections_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L3/query_projections', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          ...(domain ? { domain } : {}),
+          horizon_years: (horizon_years as number | undefined) ?? 5,
+        }, principal)
+        const projData = data as Record<string, unknown>
+        const projections = (projData['projections'] as unknown[]) ?? []
+        const cap = (max_projections as number | undefined) ?? 20
+        const boundedProjections = projections.slice(0, cap)
+        return dualOutput({
+          ...projData,
+          projections: boundedProjections,
+          projections_total: projections.length,
+          projections_returned: boundedProjections.length,
+        }, 'kala_projections_get')
+      } catch (err) { return errOut('kala_projections_get', String(err), { chart_id }) }
+    }
+  )
 
   // get_classical_citation → ref_classical_citation_get
   server.tool(
@@ -658,16 +730,36 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   )
 
   // get_remedies → bodha_remedies_get (PRIMARY alias per dedup disposition)
+  //
+  // CR-42/R-19/R-20 fix (D-1.6 S-1): `graha`/`planet` were NOT in this alias's zod schema —
+  // the MCP SDK strips any param an LLM caller sends that isn't declared in the tool's
+  // input shape, so a `planet="Saturn"` filter was silently discarded before the request
+  // body was even built (never reached `...rest`, never reached the underlying
+  // L2/query_remedies capability's `graha` filter at all). A Saturn-scoped remedy query
+  // therefore served ALL grahas' resonances/prescriptions unfiltered — the exact "Saturn
+  // query must never serve Jupiter remedies" failure mode this fix closes. `planet` is
+  // accepted as an alias of the capability's native `graha` param name.
   regAlias(server, 'bodha_remedies_get',
     'L2 remedy recommendations via Bodha (PRIMARY Phase-1 name for get_remedies)',
     'marsys://tool/L2/query_remedies',
-    { domain: z.string().optional() }, principal)
+    {
+      domain: z.string().optional(),
+      graha: z.string().optional().describe('Filter by target graha (e.g. Saturn, Venus) — case-insensitive.'),
+      planet: z.string().optional().describe('Alias of `graha`.'),
+      tradition: z.string().optional(),
+    }, principal, { paramAliases: { planet: 'graha' } })
 
   // Also: bodha_remedies_search as secondary alias
   regAlias(server, 'bodha_remedies_search',
     'L2 remedy search via Bodha (alias of bodha_remedies_get)',
     'marsys://tool/L2/query_remedies',
-    { domain: z.string().optional(), keyword: z.string().optional() }, principal)
+    {
+      domain: z.string().optional(),
+      keyword: z.string().optional(),
+      graha: z.string().optional().describe('Filter by target graha (e.g. Saturn, Venus) — case-insensitive.'),
+      planet: z.string().optional().describe('Alias of `graha`.'),
+      tradition: z.string().optional(),
+    }, principal, { paramAliases: { planet: 'graha' } })
 
   // get_chart_quality → bodha_quality_get
   regAlias(server, 'bodha_quality_get',
@@ -830,6 +922,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       house:            z.number().int().min(1).max(12).optional(),
       sign:             z.string().optional(),
       nakshatra:        z.string().optional(),
+      // r18-intentional-passthrough: divisional_chart
+      // (R-18 param no-op audit: forwarded verbatim via `...rest` below to chart_facts_query,
+      // which reads it directly — live-verified S-12 CLOSED_WITH_EVIDENCE, BIND_D-1.6 S-7:
+      // ganita_chart_facts_get(divisional_chart=D2|D9) serves the divisional_facts section.)
       divisional_chart: z.string().optional().describe('Divisional chart code (e.g. "D9", "D2"). Also returns that varga\'s chart_divisionals-native EAV facts (per-varga sign/house, hora class incl. surya_hora/chandra_hora + hora_d2_house, varga dignity, house lords/occupants) in a separate `divisional_facts` section.'),
       keyword:          z.string().optional(),
       fact_subject:     z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP"). Comma-separated for multiple.'),
@@ -1183,7 +1279,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   server.tool(
     'phala_anchors_get',
-    '[Phase-1 alias] L4 Phala event anchors — calibrated probabilistic event windows (same as phala_event_anchors).',
+    // O-7 (D-1.6 Lane S-6): description previously said "(same as phala_event_anchors)" —
+    // no tool by that name is registered; the primitive's actual TOOL_NAME is
+    // 'event_anchors' (phala_event_anchors.ts:227). This stale reference made the
+    // alias<->primitive pair undiscoverable/unverifiable by the O-7 conformance check
+    // (platform/scripts/audit/alias_conformance_check.ts) — corrected to the real name.
+    '[Phase-1 alias] L4 Phala event anchors — calibrated probabilistic event windows (same as event_anchors).',
     {
       chart_id:   z.string().uuid().describe('Chart UUID'),
       date_range: z.object({
@@ -1288,6 +1389,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     '[Phase-1 alias] Record an outcome against a prediction (same as record_outcome).',
     {
       chart_id:    z.string().uuid(),
+      // r18-intentional-passthrough: prediction_id, outcome, verdict
+      // (R-18 param no-op audit: the entire `params` object — every declared key, not a
+      // filtered subset — is forwarded verbatim to callPlatformPrim('record_outcome', ...)
+      // below; there is no per-key handling to audit because nothing here filters anything.)
       prediction_id: z.string().optional(),
       outcome:     z.string().describe('Actual outcome description'),
       verdict:     z.enum(['confirmed', 'partial', 'denied']).optional(),

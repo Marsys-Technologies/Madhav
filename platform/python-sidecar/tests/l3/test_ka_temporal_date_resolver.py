@@ -287,6 +287,78 @@ class TestBirthForwardRegression:
         assert w.activation_start >= BIRTH
 
 
+# ── WP-S4-R45-iter2: fact_subject-token + house/varga bhava-lord fallbacks ────
+from services.ka_temporal.date_resolver import extract_lords_from_text, lord_from_house_varga
+
+
+class TestExtractLordsFromText:
+    """WP-S4-R45-iter2 fallback #3: last-resort lord extraction from
+    chart_facts.fact_subject strings for signals whose configuration_jsonb
+    carries no direct graha/sign key at all (sambandha_grade, dispositor
+    chains, ...)."""
+
+    def test_two_graha_pair_subject(self):
+        # sambandha_grade fact_subject: "D20_SUN_MER"
+        assert extract_lords_from_text("D20_SUN_MER") == ["Sun", "Mercury"]
+
+    def test_lord_placement_subject(self):
+        # lord_in_house_per_varga fact_value_text shape reused as a subject-like string
+        assert extract_lords_from_text("Mars_in_H7") == ["Mars"]
+
+    def test_house_only_subject_no_match(self):
+        # D9_H1 — pure house/varga identifier, no graha token: must NOT fabricate
+        assert extract_lords_from_text("D108_H1") == []
+        assert extract_lords_from_text("D9_H1") == []
+
+    def test_no_false_positive_on_concatenated_word(self):
+        # "SUNDER" must not match "Sun" via substring — normalize_graha is exact-match
+        assert extract_lords_from_text("SUNDER_POINT") == []
+
+    def test_dedup_and_order_preserved(self):
+        assert extract_lords_from_text("SUN_SUN_MOON") == ["Sun", "Moon"]
+
+    def test_empty_and_none(self):
+        assert extract_lords_from_text("") == []
+        assert extract_lords_from_text(None) == []
+
+    def test_dispositor_chain_list_rendered_text(self):
+        assert extract_lords_from_text("Jupiter→Sun") == ["Jupiter", "Sun"]
+
+
+class TestLordFromHouseVarga:
+    """WP-S4-R45-iter2 fallback #2: net_argala_per_varga and siblings carry
+    house (int) + varga ("D9") but no direct graha key — resolve via the
+    prefetched lord_in_house_per_varga map."""
+
+    def _map(self):
+        return {
+            ("lahiri_chitrapaksha", "D9_H1"): "Mars",
+            ("lahiri_chitrapaksha", "D9_H7"): "Venus",
+            ("raman", "D9_H1"): "Saturn",
+        }
+
+    def test_resolves_from_map(self):
+        assert lord_from_house_varga(self._map(), "lahiri_chitrapaksha", "D9", 1) == "Mars"
+
+    def test_resolves_with_string_house(self):
+        assert lord_from_house_varga(self._map(), "lahiri_chitrapaksha", "D9", "7") == "Venus"
+
+    def test_ayanamsha_scoped(self):
+        # Same (varga, house) resolves DIFFERENTLY per ayanamsha — no cross-bleed.
+        assert lord_from_house_varga(self._map(), "raman", "D9", 1) == "Saturn"
+
+    def test_missing_entry_returns_none(self):
+        assert lord_from_house_varga(self._map(), "lahiri_chitrapaksha", "D9", 12) is None
+
+    def test_missing_inputs_return_none(self):
+        assert lord_from_house_varga(self._map(), None, "D9", 1) is None
+        assert lord_from_house_varga(self._map(), "lahiri_chitrapaksha", None, 1) is None
+        assert lord_from_house_varga(self._map(), "lahiri_chitrapaksha", "D9", None) is None
+
+    def test_non_numeric_house_returns_none(self):
+        assert lord_from_house_varga(self._map(), "lahiri_chitrapaksha", "D9", "not_a_house") is None
+
+
 class TestResolveBirthDate:
     def test_from_birth_params_iso(self):
         bd = resolve_birth_date(None, "cid", {"datetime_iso": "1984-02-05T10:43:00+05:30"})

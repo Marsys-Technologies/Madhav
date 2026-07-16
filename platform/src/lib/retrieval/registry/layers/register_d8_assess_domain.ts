@@ -37,6 +37,15 @@ import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
 import { deriveDefect001Note } from '../../provenance/freshness_notes'
+import { resolveAddress } from '../../address_resolver'
+import { SHASTRA_MAP } from './register_d9_judgment'
+
+// Y-2 (D-1.6 Lane S-3, CRIT): assess_* domain-bearing yoga discount, mirroring
+// judgment_query's YOGA_BHANGA_DISCOUNT (register_d9_judgment.ts) semantics — a firing whose
+// bhaṅga (cancellation) is active is annotated but not treated as a full-strength confirmed
+// finding. assess_* does not compute a numeric verdict term (judgment_query does), so this
+// constant only affects display ordering/annotation here, not a composite score.
+const ASSESS_YOGA_BHANGA_DISCOUNT = 0.3
 
 // ── Shared: domain handler factory ───────────────────────────────────────────
 //
@@ -327,6 +336,85 @@ async function runAssessDomain(
       : []
     const stageContra   = contrItems.slice(0, 5)
 
+    // ── Y-2 (D-1.6 Lane S-3, CRIT): firings-authoritative bearing yogas ────────────────
+    // Before this fix, assess_*'s ONLY yoga surface was `stageYoga` above — a slice of
+    // bodha_msr_signals (signal_type_class in configuration,yoga), which are single-pass
+    // CATALOG label matches (JL-004), not cross-verified confirmed firings (the same
+    // provenance ganita_yogas_get's yoga_label rows carry — see CLAUDE.md §N.6.1: "never
+    // present catalog/label matches as confirmed findings"). judgment_query already fixed
+    // this for its own bearing_yogas (A3/CR-92/R-3); assess_* had not been wired to the
+    // same firings-authoritative source (ga_yoga_firings, via ganita_yoga_firings_get).
+    // This block adds that source, following the identical pattern: real fired rows first
+    // (source: 'ga_yoga_firings', domain_match flag, bhaṅga-aware), the MSR-derived
+    // stageYoga slice demoted to corroboration-only via stage_status's source string below.
+    let bearingYogaFirings: Record<string, unknown>[] = []
+    const yogaFactIds = new Set<string>()
+    try {
+      const domainSpec = SHASTRA_MAP[domain]
+      const domainActors = new Set<string>()
+      if (domainSpec) {
+        for (const k of domainSpec.karakas) domainActors.add(k.toLowerCase())
+        try {
+          const lordRes = await resolveAddress(
+            chart_id, { type: 'lord_of', house: domainSpec.bhava }, { ayanamsha_id },
+          )
+          const lordEntity = lordRes.entities[0] as { kind?: string; graha?: string } | undefined
+          if (lordEntity?.kind === 'graha' && lordEntity.graha) {
+            domainActors.add(lordEntity.graha.toLowerCase())
+          }
+        } catch {
+          // Non-fatal: domain_match degrades to karaka-only matching if bhāveśa resolution fails.
+        }
+      }
+      const { getYogaFiringsCapability } = await import('./L1_ganita/get_yoga_firings')
+      const firingsRes = await getYogaFiringsCapability.handler(
+        { chart_id, ayanamsha_id, fired: true, limit: 50 },
+        undefined,
+      )
+      if (!firingsRes.is_error) {
+        const fc = firingsRes.content as Record<string, unknown>
+        const firedRows = (fc['rows'] as Record<string, unknown>[]) ?? []
+        bearingYogaFirings = firedRows.map(r => {
+          const constituentPlanets = ((r['constituent_planets'] as string[] | null) ?? []).map(p => p.toLowerCase())
+          const domainMatch = domainActors.size > 0 && constituentPlanets.length > 0
+            && constituentPlanets.every(p => domainActors.has(p))
+          if (domainMatch) {
+            for (const fid of (r['constituent_fact_ids'] as string[] | null) ?? []) yogaFactIds.add(fid)
+          }
+          const rawStrength = typeof r['strength'] === 'number' ? r['strength'] as number : Number(r['strength'] ?? 0)
+          const bhangaActive = r['bhanga_active'] === true
+          return {
+            yoga_canonical_id: r['yoga_canonical_id'],
+            strength: r['strength'],
+            strength_label: r['strength_label'],
+            bhanga_active: r['bhanga_active'],
+            bhanga_rule_fired: r['bhanga_rule_fired'],
+            constituent_planets: r['constituent_planets'],
+            constituent_houses: r['constituent_houses'],
+            source: 'ga_yoga_firings',
+            domain_match: domainMatch,
+            // bhaṅga-discounted display weight (never a verdict score here — assess_* has no
+            // composite verdict term; judgment_query owns that computation).
+            effective_weight: Number.isFinite(rawStrength)
+              ? Math.round(rawStrength * (bhangaActive ? ASSESS_YOGA_BHANGA_DISCOUNT : 1) * 10000) / 10000
+              : null,
+          }
+        })
+        // Domain-matching firings sort first (same defensive rationale as judgment_query's
+        // D-1.5a wave-gate fix): a response-budget trim must not silently drop a
+        // domain-relevant confirmed firing while keeping a higher-strength but irrelevant one.
+        bearingYogaFirings.sort((a, b) => {
+          const am = a['domain_match'] === true, bm = b['domain_match'] === true
+          if (am !== bm) return am ? -1 : 1
+          const as_ = typeof a['strength'] === 'number' ? a['strength'] as number : 0
+          const bs_ = typeof b['strength'] === 'number' ? b['strength'] as number : 0
+          return bs_ - as_
+        })
+      }
+    } catch {
+      // Non-fatal: bearing_yoga_firings degrades to empty; stageYoga (MSR catalog) still served.
+    }
+
     // Honest empty-reasons (never faked). The temporal stage empties because of a KNOWN
     // L3 kala_activation writer defect (R-45/R-40 shared root: ~99% of rows have NULL
     // activation_start/end; native chart 0/13,364 dated on lahiri) — a DATA-PLANE issue
@@ -339,7 +427,16 @@ async function runAssessDomain(
       'kala_yoga_activation_get / query_temporal_activation.'
 
     const stage_status: Record<string, Record<string, unknown>> = {
-      yoga:     { count: stageYoga.length,   source: 'bodha_msr_signals (signal_type_class in configuration,yoga)' },
+      // Y-2: stageYoga (bodha_msr_signals) is single-pass catalog-label corroboration only
+      // (JL-004) — bearing_yoga_firings (ga_yoga_firings, above) is the firings-authoritative
+      // confirmed-finding surface. §N.6.1: a caller must never read this stage's count as
+      // "N confirmed yogas."
+      yoga:     {
+        count: stageYoga.length,
+        source: 'bodha_msr_signals (signal_type_class in configuration,yoga) — catalog-label ' +
+          'corroboration only (JL-004); see bearing_yoga_firings (ga_yoga_firings) for the ' +
+          'firings-authoritative confirmed set',
+      },
       karaka:   { count: stageKaraka.length, source: 'bodha_msr_signals (signal_type_class=karaka_alignment)' },
       lord:     { count: stageLord.length,   source: 'bodha_msr_signals (signal_type_class=parivartana — lord/dispositor exchange)' },
       // strength has NO MSR signal source — it is an L1 chart_facts (shadbala/ashtakavarga)
@@ -381,6 +478,10 @@ async function runAssessDomain(
     const verdict_skeleton = {
       top_10_composite: top10,
       cross_surface,
+      // Y-2: firings-authoritative confirmed yogas (ga_yoga_firings), domain-matched against
+      // this domain's bhāveśa + kāraka(s) — served ahead of/separate from by_stage.yoga's
+      // MSR catalog-label corroboration (§N.6.1).
+      bearing_yoga_firings: bearingYogaFirings,
       by_stage: {
         yoga:      stageYoga,
         karaka:    stageKaraka,
@@ -395,7 +496,9 @@ async function runAssessDomain(
         'salience-ordered stratified pool (top_10_composite uses the domain composite ranking). ' +
         'No LLM inference. stage_status discloses each stage\'s provenance + honest empty reasons ' +
         '(temporal is PENDING WP-2.1 per R-45/R-40; strength is an L1 concept). Drill via ' +
-        'query_signals / get_domain_reading for the full per-class sets.',
+        'query_signals / get_domain_reading for the full per-class sets. bearing_yoga_firings ' +
+        '(ga_yoga_firings) is the firings-authoritative yoga source (Y-2, D-1.6/S-3) — ' +
+        'by_stage.yoga (bodha_msr_signals) is catalog-label corroboration only.',
     }
 
     // ── Assemble reconciled bundle ─────────────────────────────────────────
@@ -481,6 +584,9 @@ async function runAssessDomain(
           }
         })(),
         contradictions: boundedContradictions,
+        // Y-11 (shared with S-2d): bearing_yoga_firings' domain-matching rows cite their real
+        // ga_yoga_firings.constituent_fact_ids (→ chart_facts.fact_id, §N.5) — never a shared stub.
+        yoga_fact_ids: Array.from(yogaFactIds),
         citations: {
           note: 'Classical citations available via classical_attribution_lookup for signal_id_refs above.',
           drill_uri: 'marsys://tool/L2/classical_attribution_lookup',
@@ -490,6 +596,27 @@ async function runAssessDomain(
           {
             claim: judgment_flag_note,
             requires_acharya_validation: true,
+          },
+          ...(bearingYogaFirings.length === 0
+            ? [{
+                claim: 'bearing_yoga_firings_empty: no fired rows returned from ga_yoga_firings ' +
+                  '(firings-authoritative) for this chart/ayanamsha — honest absence, not fabricated.',
+                requires_acharya_validation: false,
+              }]
+            : !bearingYogaFirings.some(y => y['domain_match'] === true)
+            ? [{
+                claim: `bearing_yoga_firings_no_domain_match: ${bearingYogaFirings.length} yoga(s) ` +
+                  `fired on this chart but none name only this domain's bhāveśa/kāraka(s) — shown ` +
+                  'for context (Y-2, D-1.6/S-3).',
+                requires_acharya_validation: false,
+              }]
+            : []),
+          {
+            claim: 'bearing_yoga_firings (ga_yoga_firings) is the firings-authoritative source; ' +
+              'by_stage.yoga / verdict_skeleton.by_stage.yoga (bodha_msr_signals) are single-pass ' +
+              'catalog-label matches (JL-004) and must never be read as confirmed findings ' +
+              '(CLAUDE.md §N.6.1).',
+            requires_acharya_validation: false,
           },
         ],
         provenance: {

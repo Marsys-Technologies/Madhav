@@ -224,26 +224,71 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
   )
 
   // ── 4. ref_dignity_reference_get ──────────────────────────────────────────
+  // CR-42/R-19/R-20 fix (D-1.6 S-1): this handler used to merge `planet` into a
+  // generic keyword string and send it through query_classical_texts' hybrid
+  // free-text search as `topic: 'dignity'` — because that capability's freeText
+  // priority is query_text ?? query ?? topic, the static 4-letter `topic` value
+  // WON the priority race and `planet`/`keyword` were silently discarded
+  // (`query_used` was always literally "dignity", confirmed live 2026-07-16:
+  // ref_dignity_reference_get(planet="saturn") -> query_used:"dignity", a
+  // hybrid-vector dump of the whole corpus instead of Saturn's structured row).
+  // Fix: query the REAL structured table (bg_dignity_reference, 9 rows — one
+  // per graha, seeded by migration 250) directly by graha when `planet` is
+  // given (case-insensitive exact match on the `graha` column). Only fall
+  // through to the classical-texts hybrid search when no structured planet
+  // match exists, and that fallback is now labelled `source:
+  // 'classical_text_fallback'` so a caller can tell structured-table rows
+  // from a keyword-search degradation.
   server.tool(
     'ref_dignity_reference_get',
     'Retrieve classical dignity rules and planetary sign-state references from L0 Brahmagyan. ' +
     'Returns classical authority on Ucha (exaltation), Moolatrikona, Swakshetra (own sign), ' +
-    'Mitra/Sama/Shatru (friend/neutral/enemy), Neecha (debilitation), Neecha Bhanga conditions, ' +
-    'Vargottama criteria, and Pushkara positions. ' +
+    'Neecha (debilitation), and own-sign positions — sourced from the structured ' +
+    'bg_dignity_reference table (one row per graha) when `planet` is given. ' +
     'Grounds dignity assessments in L0 Brahmagyan authority before interpreting L1 dignity data.',
     {
-      planet:  z.string().optional().describe('Filter by planet name (e.g. sun, moon, mars).'),
-      keyword: z.string().optional().describe('Free-text search within dignity rules.'),
+      planet:  z.string().optional().describe('Filter by planet name (e.g. sun, moon, mars) — matched case-insensitively against the structured bg_dignity_reference table.'),
+      keyword: z.string().optional().describe('Free-text search within dignity rules (classical-text fallback; used only when planet is omitted or matches no structured row).'),
       limit:   z.number().int().min(1).max(200).optional().describe('Max results (default: 50)'),
       offset:  z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
     },
     async ({ planet, keyword, limit, offset }) => {
       try {
+        if (planet) {
+          const structured = await platformQuery(
+            `SELECT graha, exaltation_sign, exaltation_degree, debilitation_sign, debilitation_degree,
+                    moolatrikona_sign, moolatrikona_from, moolatrikona_to, own_signs,
+                    classical_citation, notes
+             FROM bg_dignity_reference
+             WHERE LOWER(graha) = LOWER($1)`,
+            [planet],
+            principal,
+          )
+          if (structured.rows.length > 0) {
+            return dualOutput(envelope({
+              source: 'bg_dignity_reference',
+              structured_filter_applied: true,
+              planet,
+              rows: structured.rows,
+              total: structured.rows.length,
+            }, 'ref_dignity_reference_get'))
+          }
+        }
+        // No planet given, or planet matched no structured row — degrade to the
+        // classical-text hybrid search, but say so explicitly (no silent swap).
         const kw = [keyword, planet, 'dignity'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
-          keyword: kw, topic: 'dignity', limit: limit ?? 50, offset: offset ?? 0,
+          query_text: kw, limit: limit ?? 50, offset: offset ?? 0,
         }, principal)
-        return dualOutput(envelope(data, 'ref_dignity_reference_get'))
+        const dataObj = (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : { result: data }
+        return dualOutput(envelope({
+          source: 'classical_text_fallback',
+          structured_filter_applied: false,
+          fallback_reason: planet
+            ? `No structured bg_dignity_reference row for planet="${planet}" — degraded to classical-text hybrid search.`
+            : 'No planet filter given — classical-text hybrid search over dignity corpus.',
+          ...dataObj,
+        }, 'ref_dignity_reference_get'))
       } catch (err) {
         return errorOutput('ref_dignity_reference_get', String(err))
       }
@@ -266,11 +311,25 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     },
     async ({ system, keyword, limit, offset }) => {
       try {
-        const kw = [keyword, system, 'dasha'].filter(Boolean).join(' ')
+        // CR-42/R-19/R-20 fix (D-1.6 S-1): no structured bg_dasha_systems catalog table
+        // exists (confirmed absent from the migration set), so this stays a classical-text
+        // search — but it used to send the actual `system` filter value only inside a
+        // `keyword` param that query_classical_texts' hybrid handler NEVER READS once
+        // `topic` is also present (freeText priority is query_text ?? query ?? topic, so
+        // the static 4-letter `topic: 'dasha'` value always won and `system`/`keyword` were
+        // silently discarded — confirmed live: system="vimshottari" -> query_used:"dasha").
+        // Fix: send the joined filter string via `query_text` (top priority) so `system`
+        // genuinely participates in the search, and disclose the degraded mode honestly.
+        const kw = [keyword, system, 'dasha system'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
-          keyword: kw, topic: 'dasha', limit: limit ?? 30, offset: offset ?? 0,
+          query_text: kw, limit: limit ?? 30, offset: offset ?? 0,
         }, principal)
-        return dualOutput(envelope(data, 'ref_dasha_systems_get'))
+        const dataObj = (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : { result: data }
+        return dualOutput(envelope({
+          structured_filter_applied: false,
+          fallback_reason: 'No structured bg_dasha_systems catalog table exists — this is a classical-text hybrid search using the system/keyword filter as the search query, not a WHERE-clause match.',
+          ...dataObj,
+        }, 'ref_dasha_systems_get'))
       } catch (err) {
         return errorOutput('ref_dasha_systems_get', String(err))
       }
@@ -294,11 +353,22 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     },
     async ({ nakshatra, lord, keyword, limit, offset }) => {
       try {
+        // CR-42/R-19/R-20 fix (D-1.6 S-1): same class of bug as ref_dasha_systems_get above
+        // — no structured bg_nakshatra catalog table exists, and `nakshatra`/`lord` were
+        // silently discarded because `topic: 'nakshatra'` always won the freeText priority
+        // race inside query_classical_texts. Send the joined filter via `query_text` so the
+        // actual nakshatra/lord value participates in the search, and disclose the
+        // degraded (non-structural) mode honestly.
         const kw = [keyword, nakshatra, lord, 'nakshatra'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
-          keyword: kw, topic: 'nakshatra', limit: limit ?? 30, offset: offset ?? 0,
+          query_text: kw, limit: limit ?? 30, offset: offset ?? 0,
         }, principal)
-        return dualOutput(envelope(data, 'ref_nakshatra_get'))
+        const dataObj = (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : { result: data }
+        return dualOutput(envelope({
+          structured_filter_applied: false,
+          fallback_reason: 'No structured bg_nakshatra catalog table exists — this is a classical-text hybrid search using the nakshatra/lord/keyword filter as the search query, not a WHERE-clause match.',
+          ...dataObj,
+        }, 'ref_nakshatra_get'))
       } catch (err) {
         return errorOutput('ref_nakshatra_get', String(err))
       }

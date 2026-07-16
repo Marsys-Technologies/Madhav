@@ -21,6 +21,7 @@ operator close-out runbook.
 | `alerts/error_rate_burn.json`       | 1h fast-burn + 6h slow-burn on error-rate SLO                  |
 | `alerts/build_failure.json`         | Two consecutive failed deploys → page                          |
 | `alerts/budget_kill_switch.json`    | Billing budget breach (>= 80% / >= 100%) wired to gate         |
+| `alerts/local_proxy_drop_detection.json` | O-8 (D-1.6): Cloud SQL client-connection-drop burst — advisory signal for the local-proxy-kill-cycle that stalls session-driven rebuilds (see root-cause doc `O8_LOCAL_PROXY_KILL_ROOT_CAUSE_v1_0.md`) |
 
 ## Apply
 

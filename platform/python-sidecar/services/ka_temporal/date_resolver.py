@@ -100,6 +100,68 @@ def normalize_graha(name) -> Optional[str]:
     return _GRAHA_CANON.get(str(name).strip().lower())
 
 
+_TEXT_TOKEN_RE = None  # lazily compiled
+
+
+def extract_lords_from_text(text) -> list[str]:
+    """WP-S4-R45-iter2: best-effort DETERMINISTIC lord extraction from a
+    free-form identifier string — specifically `chart_facts.fact_subject`
+    (e.g. "D20_SUN_MER" for a sambandha_grade cell, "Mars_in_H7" for a
+    lord_placement row). Tokenizes on non-alpha boundaries and normalizes
+    each token via `normalize_graha`; house/varga tokens ("D20", "H7") never
+    match because `normalize_graha` only recognizes graha names/codes/aliases
+    via an exact (not substring) lookup. Returns de-duped canonical names in
+    order of first appearance; [] when nothing recognizable is present.
+
+    This is the LAST-RESORT fallback in the ka_yojaka lord-resolution chain
+    (config keys -> house/varga bhava-lord lookup -> this), used only when a
+    signal's `configuration_jsonb` carries no graha/sign-valued key at all but
+    its `constituent_facts_array[0]` resolves to an L1 `chart_facts` row whose
+    `fact_subject` names the graha(s) involved (§N.5 — still an L1 reference,
+    never a fabrication).
+    """
+    global _TEXT_TOKEN_RE
+    if not text:
+        return []
+    if _TEXT_TOKEN_RE is None:
+        import re
+        _TEXT_TOKEN_RE = re.compile(r"[A-Za-z]+")
+    out: list[str] = []
+    for tok in _TEXT_TOKEN_RE.findall(str(text)):
+        g = normalize_graha(tok)
+        if g and g not in out:
+            out.append(g)
+    return out
+
+
+def lord_from_house_varga(
+    house_lord_map: dict,
+    ayanamsha_id: Optional[str],
+    varga: Optional[str],
+    house,
+) -> Optional[str]:
+    """WP-S4-R45-iter2: resolve a (varga, house) pair to its bhava lord using a
+    prebuilt map from `chart_facts` (fact_category='lord_in_house_per_varga').
+    Pure — the map itself is fetched once per chart by the caller (I/O stays
+    in the writer, per this module's existing contract). `house` may be an int
+    or a numeric string; returns None if the map has no entry (e.g. an
+    unrecognized varga id) — no fabrication.
+
+    `house_lord_map` keys are `(ayanamsha_id, "{varga}_H{house}")` ->
+    canonical lord name, built by the caller from rows shaped like
+    fact_subject="D9_H1", fact_value_text="Mars_in_H12" (lord of D9-H1 is
+    Mars; parsed by the caller, not here).
+    """
+    if not varga or house is None or ayanamsha_id is None:
+        return None
+    try:
+        house_int = int(house)
+    except (TypeError, ValueError):
+        return None
+    key = (ayanamsha_id, f"{varga}_H{house_int}")
+    return house_lord_map.get(key)
+
+
 def sign_lord(sign) -> Optional[str]:
     """Return the canonical rāśi lord for a sign name, or None if unrecognized."""
     if not sign:

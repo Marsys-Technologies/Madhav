@@ -168,6 +168,10 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       // e.g. 1964-01-22 to "1964-01-21T18:30:00.000Z" (off-by-one to the consumer, and
       // un-round-trippable: feeding that back as as_of misses the window). to_char pins
       // the true calendar value as a plain 'YYYY-MM-DD' text with no timezone coercion.
+      // CR-4/CR-29/T-10: domains_affected_array pulled via a correlated SCALAR subquery
+      // (not a JOIN) so the WHERE clause built above needs no table-qualification changes
+      // and this stays exactly ONE round-trip — no new query call, so existing callers'
+      // exact-query-count assumptions (and mocks) are undisturbed.
       const activationSql = `
         SELECT id, signal_id, ayanamsha_id, signature_class,
                to_char(activation_start, 'YYYY-MM-DD')     AS activation_start,
@@ -175,7 +179,11 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
                to_char(activation_peak_date, 'YYYY-MM-DD') AS activation_peak_date,
                orb_strength, convergence_score, dasha_activation_proximity_score,
                active_dasha_periods_jsonb, activation_predicted_dates_jsonb,
-               source_citation
+               source_citation,
+               (SELECT ms.domains_affected_array FROM bodha_msr_signals ms
+                 WHERE ms.signal_id = kala_activation.signal_id
+                   AND ms.chart_id = kala_activation.chart_id
+                   AND ms.ayanamsha_id = kala_activation.ayanamsha_id) AS domains_affected_array
         FROM kala_activation
         WHERE ${actConds.join(' AND ')}
         ORDER BY orb_strength DESC NULLS LAST, activation_start
@@ -183,6 +191,64 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       `
 
       const activations = await query<Record<string, unknown>>(activationSql, actParams)
+
+      // CR-4/CR-29/T-10 (window-family collapse): the raw row set above is frequently
+      // MANY signals sharing the exact same resolved [activation_start, activation_end]
+      // window (they all matched the same dasha period) — served flat, that reads as N
+      // duplicate/overlapping windows rather than 1 window with N corroborating signals.
+      // Collapse rows sharing an identical dated window into one family, keeping the raw
+      // `activations` array too (existing consumers unaffected) and adding
+      // `window_families` — one entry per DISTINCT window, its member signal_ids
+      // (bounded), signature classes present, and the union of domains its members affect
+      // (the "per-domain flavor", from the subquery column above). Undated rows
+      // (activation_start IS NULL) each stay their own family — nothing to collapse
+      // without a window to key on.
+      const familyMap = new Map<string, {
+        window_start: string | null
+        window_end: string | null
+        window_peak: string | null
+        member_signal_ids: string[]
+        member_count: number
+        signature_classes: Set<string>
+        domains: Set<string>
+        max_orb_strength: number
+      }>()
+      for (const row of activations.rows as Array<Record<string, unknown>>) {
+        const start = (row['activation_start'] as string | null) ?? null
+        const end = (row['activation_end'] as string | null) ?? null
+        const key = start && end ? `${start}|${end}` : `undated:${String(row['id'])}`
+        const sigId = row['signal_id'] as string | undefined
+        const orb = Number(row['orb_strength'] ?? 0)
+        let fam = familyMap.get(key)
+        if (!fam) {
+          fam = {
+            window_start: start, window_end: end,
+            window_peak: (row['activation_peak_date'] as string | null) ?? null,
+            member_signal_ids: [], member_count: 0,
+            signature_classes: new Set(), domains: new Set(),
+            max_orb_strength: orb,
+          }
+          familyMap.set(key, fam)
+        }
+        fam.member_count += 1
+        if (sigId && fam.member_signal_ids.length < 10) fam.member_signal_ids.push(sigId)
+        if (row['signature_class']) fam.signature_classes.add(String(row['signature_class']))
+        for (const d of (row['domains_affected_array'] as string[] | null) ?? []) fam.domains.add(d)
+        if (orb > fam.max_orb_strength) fam.max_orb_strength = orb
+      }
+      const window_families = [...familyMap.values()]
+        .sort((a, b) => b.max_orb_strength - a.max_orb_strength || b.member_count - a.member_count)
+        .slice(0, top_k)
+        .map(f => ({
+          window_start: f.window_start,
+          window_end: f.window_end,
+          window_peak: f.window_peak,
+          member_count: f.member_count,
+          member_signal_ids: f.member_signal_ids,
+          signature_classes: [...f.signature_classes],
+          domains: [...f.domains],
+          max_orb_strength: f.max_orb_strength,
+        }))
 
       // Predicates link to activations by signal_id (+ signature_class), not an
       // activation_id FK. Fetch predicates for the signals in the returned set.
@@ -295,6 +361,12 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           ayanamsha_id,
           activations:       activations.rows,
           activation_count:  activations.rows.length,
+          // CR-4/CR-29/T-10: window-family collapse — one entry per DISTINCT dated
+          // window with its member signal_ids + per-domain flavor, instead of the raw
+          // (often duplicate-windowed) `activations` array above. `activations` is kept
+          // for existing consumers; new callers should prefer `window_families`.
+          window_families,
+          window_family_count: window_families.length,
           // W4-loop-1: forward projection windows (kala_bhavishya) surfaced when the primary
           // activation set is empty — makes forward "what's activating?" queries useful.
           forward_windows,
@@ -315,6 +387,24 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           },
           empty_reason,
           awaiting_activation_dates,
+          // T-12/T-13 (S-4, honest-flags-only this wave — the multi-cycle generator +
+          // build-date-relative "near" tier fix are D-3 scope): two structural limitations
+          // of the current activation/convergence layer, disclosed unconditionally rather
+          // than left implicit. (1) each window here is ONE resolved cycle per signal, not
+          // an exhaustive recurrence model — a signal can legitimately activate again in a
+          // LATER dasha/antardasha not represented in this response. (2) the "near"-tier
+          // convergence windows feeding some of these activations are computed relative to
+          // the chart's LAST BUILD date, not query time — a chart not rebuilt recently can
+          // carry a stale "near" horizon. Neither is a bug in this response; both are
+          // properties of the underlying data a caller must not assume away.
+          caveats: [
+            'single_cycle_per_signal: each activation/window here reflects one resolved ' +
+            'dasha or convergence cycle per signal — not an exhaustive multi-cycle ' +
+            'recurrence forecast (the multi-cycle generator is D-3 scope).',
+            'near_tier_build_date_relative: convergence "near"-tier windows are computed ' +
+            'relative to this chart\'s last build date, not the current query time — a ' +
+            'chart that has not been rebuilt recently may carry a stale near-tier horizon.',
+          ],
           drill_next: [
             'marsys://tool/L3/query_convergence_windows',
             'marsys://tool/L3/query_life_arc',

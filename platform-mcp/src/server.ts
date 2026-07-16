@@ -318,7 +318,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // KEYSTONE: holistic_bundle sidecar path (bo_2-8) RETIRED.
   // Registry path: holistic_bundle_chart_facts (retrieval/holistic_bundle.ts → callPlatformPrimitive).
   registerHolisticBundleRetrievalTool(server, () => principal)  // chart_facts via registry (L2 Bodha — chart-SCOPED; requires chart_id)
-  registerKalaTemporalRetrievalTool(server)    // L3 Kāla composite bundle (chart-SCOPED; sidecar — REQUEST: registry primitive pending)
+  registerKalaTemporalRetrievalTool(server, principal)    // L3 Kāla composite bundle (chart-SCOPED; CR-40/T-1: now registry-backed, not the dead sidecar path)
   // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
   registerRemedyTools(server, () => principal)
   // L4 Phala tools

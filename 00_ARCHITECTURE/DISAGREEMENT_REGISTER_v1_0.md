@@ -1112,3 +1112,93 @@ disagreement_register_entry:
     - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/STATE_D-1.5b.md
       linkage: evidence   # Binder's draft proposal recorded pre-formalization
 ```
+
+## DIS.017 (doctrine-waves campaign ref: DR-4) — NBRY classical grounds set + varga scoping (CR-23 / CR-34 / CR-59)
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.017
+  campaign_ref: DR-4
+  question: >
+    CR-23 (first live P-3 case): the ga_yoga NB detector marks Jupiter neecha-bhanga
+    "not_applicable_or_intact" while a classical two-ground derivation finds NBRY. Which
+    classical grounds does the detector recognize, and how is the verdict scoped per varga?
+  ruling: >
+    DR-4 (Fable by native delegation, 2026-07-16 — D-1.6 Binder pass; queued for native
+    ratification at campaign close).
+    (1) SCOPE RESOLUTION of the live conflict: the engine's D1 verdict for Jupiter is CORRECT
+    (Jupiter is not debilitated in D1 — own-sign Sagittarius); the classical derivation finding
+    NBRY is varga-scoped. There is no doctrine conflict once scope is explicit — the defect is
+    the detector's D1-only blindness (CR-34/CR-59), not its D1 answer. Neither side "wins";
+    both are right at their own scope, and every NB verdict must henceforth carry its varga scope.
+    (2) RECOGNIZED GROUNDS (canonical cancel set, evaluated IN THE VARGA where the debility
+    occurs, kendra counted from that varga's lagna OR from the Moon in that varga):
+      G-a: the dispositor (lord of the debility sign) is in a kendra;
+      G-b: the graha which is EXALTED in the debility sign is in a kendra;
+      G-c: the lord of the debilitated graha's own exaltation sign is in a kendra;
+      G-d: the debilitated graha is exalted in navamsha (D9) [D1-debility case only].
+    G-e ("the debilitated graha itself stands in a kendra") is recognized as a SUPPORTING
+    ground only — recorded when present, never sufficient alone (weaker textual authority
+    than the Phaladeepika-mainline G-a..G-d).
+    (3) VERDICT TIERS: bhanga (cancellation) fires on ANY one of G-a..G-d; raja_grade flag
+    fires when >=2 grounds are met, or when the single cancelling graha is itself dignified
+    (own sign or better) in that varga. grounds_jsonb records every ground CHECKED and every
+    ground MET per verdict — an unchecked ground is listed as unchecked, never silently absent.
+    (4) LAYERING (per §N.5/§N.6): a varga-scoped NBRY is stored and served as a fact of that
+    varga; it never restates as a D1 fact; serving surfaces label the scope explicitly.
+    Type specimens that must fire post-implementation (482012f1, per CR-59 evidence rows):
+    Saturn D9 Aries debilitated → cancelled via G-b (Sun, the graha exalted in Aries, sits in
+    D9 lagna Cancer = kendra) with G-e supporting (Saturn itself in D9 H10 kendra); Venus D9
+    Virgo debilitated → cancelled via G-a/G-b coinciding (Mercury is both dispositor of Virgo
+    and the graha exalted in Virgo, in D9 Capricorn H7 = kendra). Lane S-3 grading unblocks on
+    this ruling; detection plumbing was never blocked.
+  status: resolved (binding for the campaign; native ratification queued at campaign close)
+  resolved_on: 2026-07-16
+  resolved_by_session: "Claude Fable 5 (D-1.6 Binder, adjudicator-doctrine per CONDUCTOR_PROTOCOL §4.1), recorded by explicit parent-task remit; conductor to cross-check numbering per §8.8.ii"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D1_6.md
+      linkage: cause   # native-rulings queue item 1; Lane S-3 blocks on this for grading
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-1.6.md
+      linkage: evidence
+    - path: 00_ARCHITECTURE/llm_consumption_audit/POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md
+      linkage: cause   # CR-23 / CR-34 / CR-59 rows
+```
+
+## DIS.018 (doctrine-waves campaign ref: DR-5) — Composed 2+-tool rubric items: product boundary (C-6)
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.018
+  campaign_ref: DR-5
+  question: >
+    C-6: rubric items requiring 2+ independent raw-data tool calls (e.g. Q8-A-1 "is the graha
+    broken, THEN what's the remedy") structurally cannot pass an LLM-synthesis rubric floor —
+    two concatenated structured payloads cannot express a synthesized ordering answer. Redesign
+    the battery items (option a) or build an in-product orchestrating-LLM synthesis step (option b)?
+  ruling: >
+    DR-5 (Fable by native delegation, 2026-07-16 — D-1.6 Binder pass; queued for native
+    ratification at campaign close). OPTION (a), with a bridge. The instrument's product
+    boundary is: serve dense, honest, COMPOSABLE layers; the consuming LLM composes. This is
+    the same doctrine already ratified in the floor-model rule (§5: if the weakest model reaches
+    the gate from served surfaces, the instrument is doing the work) and §N.6 serving-density
+    discipline. Accordingly:
+    (i) composed rubric items are re-specified to grade each tool call against its own contract,
+    PLUS a composition check run over an existing composed instrument (judgment_query,
+    synth_chart_brief_get, domain readings) whenever one covers the question — grading the
+    served composition, not an imagined orchestrator;
+    (ii) items whose answer genuinely requires cross-tool narrative synthesis with no existing
+    composed instrument are EXCLUDED from the D-4 floor with an explicit product-boundary note,
+    and queued as R6/R-48-class architecture candidates for native ratification — a gate must
+    never be blocked on an engine class the campaign is designed not to build;
+    (iii) building an in-product orchestrating-LLM synthesis step is REJECTED as a D-1.6..D-4
+    deliverable (it is a product-architecture change, PARK-class relative to this campaign's
+    scope), without prejudice to the native choosing it post-campaign.
+  status: resolved (binding for the campaign; native ratification queued at campaign close)
+  resolved_on: 2026-07-16
+  resolved_by_session: "Claude Fable 5 (D-1.6 Binder, adjudicator-doctrine per CONDUCTOR_PROTOCOL §4.1), recorded by explicit parent-task remit; conductor to cross-check numbering per §8.8.ii"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D1_6.md
+      linkage: cause   # native-rulings queue item 3; feeds D-4's gate design
+    - path: 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md
+      linkage: cause   # C-6 row (+ R-48/LCA-15 same ceiling)
+```

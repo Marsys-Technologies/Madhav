@@ -85,6 +85,117 @@ def _get_db_url() -> str:
     )
 
 
+# ── T-8 fix (D-1.6 S-1): live dasha-lord lookup ──────────────────────────────
+#
+# The muhurta citation used to hardcode "FORENSIC v8.0 §5.1 DSH.V.023 Mercury MD
+# (2026-2043)" for EVERY window on EVERY chart, regardless of which Mahadasha was
+# actually active at that window's date. This was doubly wrong for the native
+# chart itself: chart_dashas (the canonical L1 fact table) shows Mercury MD
+# running 2010-08-17 -> 2027-08-17 (confirmed live via query), not 2026-2043 —
+# the hardcoded string was never derived from chart_dashas at all. Fixed by
+# querying chart_dashas directly for the MD (level_n=1) and AD (level_n=2) lord
+# actually active at the window's start date, and building the citation from
+# that live result. Falls back to "unknown"/no-citation-claim rather than ever
+# re-asserting the stale hardcoded string (B.10 — no fabricated computation).
+_DASHA_LORD_CACHE: dict[tuple[str, str, str], dict[str, Any] | None] = {}
+
+
+def _current_dasha_lords(
+    chart_id: str,
+    at_date: datetime,
+    ayanamsha_id: str = "lahiri_chitrapaksha",
+    system_id: str = "vimshottari",
+) -> dict[str, Any] | None:
+    """
+    Look up the live Mahadasha (level_n=1) and Antardasha (level_n=2) lord + window
+    actually active at `at_date` for `chart_id`, from the canonical chart_dashas table.
+
+    Returns {"md_lord": str, "md_start": date, "md_end": date,
+             "ad_lord": str | None} or None if no DB / no matching row.
+    Cached per (chart_id, ayanamsha_id, at_date.date()) within process lifetime —
+    windows in the same muhurta_finder call frequently share a date.
+    """
+    date_key = at_date.date().isoformat()
+    cache_key = (chart_id, ayanamsha_id, date_key)
+    if cache_key in _DASHA_LORD_CACHE:
+        return _DASHA_LORD_CACHE[cache_key]
+
+    result: dict[str, Any] | None = None
+    try:
+        db_url = _get_db_url()
+        with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT lord_graha, start_date, end_date
+                    FROM chart_dashas
+                    WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = %s
+                      AND level_n = 1
+                      AND start_date <= %s AND end_date >= %s
+                    ORDER BY start_date DESC
+                    LIMIT 1
+                    """,
+                    [chart_id, ayanamsha_id, system_id, date_key, date_key],
+                )
+                md_row = cur.fetchone()
+                if md_row:
+                    ad_lord: Optional[str] = None
+                    cur.execute(
+                        """
+                        SELECT lord_graha
+                        FROM chart_dashas
+                        WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = %s
+                          AND level_n = 2
+                          AND start_date <= %s AND end_date >= %s
+                        ORDER BY start_date DESC
+                        LIMIT 1
+                        """,
+                        [chart_id, ayanamsha_id, system_id, date_key, date_key],
+                    )
+                    ad_row = cur.fetchone()
+                    if ad_row:
+                        ad_lord = str(ad_row.get("lord_graha", "")) or None
+                    result = {
+                        "md_lord": str(md_row.get("lord_graha", "")),
+                        "md_start": md_row.get("start_date"),
+                        "md_end": md_row.get("end_date"),
+                        "ad_lord": ad_lord,
+                    }
+    except Exception:
+        result = None  # honest None — never fabricated; caller degrades gracefully
+
+    _DASHA_LORD_CACHE[cache_key] = result
+    return result
+
+
+def _dasha_citation_fragment_from(live: dict[str, Any] | None) -> str:
+    """
+    Build the dasha portion of a muhurta window's source_citation from an
+    already-resolved `_current_dasha_lords(...)` result (T-8 fix) instead of a
+    hardcoded lord/date-range string. Takes the dict directly (rather than
+    re-querying) so callers that already resolved it for `dasha_details` don't
+    pay for a second lookup — `_current_dasha_lords` is itself cached, but this
+    keeps the call site simple and avoids relying on cache-hit behavior.
+    """
+    if live and live.get("md_lord"):
+        md_start = live.get("md_start")
+        md_end = live.get("md_end")
+        span = (
+            f"({md_start}→{md_end})"
+            if md_start is not None and md_end is not None
+            else ""
+        )
+        ad_part = f" / {live['ad_lord']} AD" if live.get("ad_lord") else ""
+        return f"chart_dashas: {live['md_lord']} MD{span}{ad_part}"
+    return "chart_dashas: dasha lord unavailable for this window (no matching row)"
+
+
+def _dasha_citation_fragment(chart_id: str, at_date: datetime) -> str:
+    """Convenience wrapper: resolve + format in one call (used where the caller
+    has not already fetched `_current_dasha_lords` for this date)."""
+    return _dasha_citation_fragment_from(_current_dasha_lords(chart_id, at_date))
+
+
 # ── Scoring engine ────────────────────────────────────────────────────────────
 
 
@@ -640,6 +751,11 @@ def generate_muhurta_windows(
             if transit_q < 0.35:
                 avoid_notes.append("Dark moon phase — reduced lunar strength")
 
+            # T-8 fix (D-1.6 S-1): resolve the live dasha lord(s) for THIS window's
+            # date once, reused for both dasha_details and source_citation below
+            # (cached across windows sharing the same date, see _current_dasha_lords).
+            live_dasha = _current_dasha_lords(chart_id, current)
+
             windows.append({
                 "muhurta_id": None,
                 "action_type": action_type,
@@ -658,14 +774,19 @@ def generate_muhurta_windows(
                         "yoga": yoga,
                         "inauspicious_windows": [],
                     },
+                    # T-8 fix (D-1.6 S-1): md_lord/ad_lord derived LIVE from chart_dashas
+                    # for this window's date, instead of a hardcoded "Mercury" literal
+                    # that was wrong even for the native (Mercury MD actually runs
+                    # 2010-08-17→2027-08-17 per chart_dashas, not the citation's claimed
+                    # 2026-2043 range) and always "unknown" for every other chart.
                     "dasha_details": {
-                        "md_lord": "Mercury" if chart_id == NATIVE_CHART_ID else "unknown",
-                        "ad_lord": "unknown",
+                        "md_lord": live_dasha["md_lord"] if live_dasha else "unknown",
+                        "ad_lord": (live_dasha.get("ad_lord") if live_dasha else None) or "unknown",
                     },
                     "avoid_notes": avoid_notes,
                 },
                 "source_citation": (
-                    "FORENSIC v8.0 §5.1 DSH.V.023 Mercury MD (2026-2043); "
+                    f"{_dasha_citation_fragment_from(live_dasha)}; "
                     f"panchanga_daily {current.date().isoformat()} "
                     f"({tithi_name}/{moon_nakshatra}/{vara_lord}); "
                     "MSR v5.0 SIG.08/SIG.14/SIG.09 signal activation; "
@@ -865,8 +986,16 @@ def muhurta_finder(
             "chart_id": chart_id,
             "action_type": action_type,
             "queried_at": queried_at,
+            # T-8 fix (D-1.6 S-1): was a hardcoded "FORENSIC v8.0 §5.1 DSH.V.023 Mercury MD
+            # (2026-2043)" fragment on every response regardless of which dasha lord was
+            # actually active — wrong even for the native (chart_dashas shows Mercury MD
+            # 2010-08-17→2027-08-17, not 2026-2043). Each window already carries its own
+            # live-derived source_citation (see _dasha_citation_fragment_from); this
+            # envelope-level summary now points at the live table generically instead of
+            # re-asserting a specific (and here, incorrect) lord/date-range.
             "l1_ground_truth": (
-                "FORENSIC v8.0 §5.1 DSH.V.023 Mercury MD (2026-2043); "
+                "chart_dashas (canonical L1 dasha table — see each window's own "
+                "source_citation for the live MD/AD lord active at that window's date); "
                 "panchanga_daily (real rolling +12mo table — migration "
                 "427_panchanga_daily_reprovision.sql, R5.1 C3); "
                 "MSR v5.0 SIG.08/SIG.14/SIG.09/SIG.12/SIG.04/SIG.11"

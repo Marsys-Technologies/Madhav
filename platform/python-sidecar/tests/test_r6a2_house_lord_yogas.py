@@ -199,13 +199,25 @@ class TestDharmaKarmadhipati:
 
 
 class TestKendraTrikonaRaja:
-    def test_fires_4th_and_5th_lords_conjunct(self):
-        # Aries lagna: 4th lord Moon + 5th lord Sun conjunct in Leo (H5).
+    # Y-10 (D-1.6/S-3) fix: the catalog relation "kendra_lord_and_trikona_lord_associate"
+    # (canonical_id kendra_trikona_raja_yoga) is now FLOORED in the main catalog loop —
+    # it was a confirmed byte-identical duplicate of the Lane-3 detector
+    # raja_yoga_kendra_trikona (both call _check_kendra_trikona_raja identically; live
+    # chart 482012f1 fired two ga_yoga_firings rows with identical constituent data under
+    # two canonical_ids before this fix). _check_kendra_trikona_raja itself (the REAL,
+    # non-stub evaluator landed by R6A.2) is untouched and still backs the Lane-3 detector
+    # — only the catalog loop's duplicate insertion path is removed.
+
+    def test_catalog_relation_now_floored_as_duplicate(self):
+        # Pre-Y-10-fix this fired via _evaluate_yoga's catalog loop; post-fix it must be a
+        # documented floor (never a silent/unexplained None) — mirrors the kala_sarpa
+        # relation-form precedent (test_kala_sarpa_relation_form_stays_floored_as_duplicate).
         pos = dict(_NEG, moon="leo", sun="leo")
-        res = _fire("kendra_trikona_raja_yoga", _state("aries", pos))
-        assert res is not None and res["fired"]
-        assert sorted(res["constituent_planets"]) == ["moon", "sun"]
-        assert res["constituent_houses"] == [5]
+        assert _fire("kendra_trikona_raja_yoga", _state("aries", pos)) is None
+        assert "kendra_lord_and_trikona_lord_associate" in R6A2_FLOOR_REASONS
+        assert "raja_yoga_kendra_trikona" in R6A2_FLOOR_REASONS[
+            "kendra_lord_and_trikona_lord_associate"
+        ]
 
     def test_stub_replaced_negative(self):
         # The old stub returned False unconditionally; now assert the REAL
@@ -214,6 +226,9 @@ class TestKendraTrikonaRaja:
         assert _fire("kendra_trikona_raja_yoga", _neg_state()) is None
 
     def test_stub_replaced_positive_direct(self):
+        # The real (non-stub) evaluator still correctly detects the association — this is
+        # what backs the Lane-3 detector raja_yoga_kendra_trikona, which is now the sole
+        # firing surface for this classical yoga (see test_lane3_detector_registry.py).
         pos = dict(_NEG, moon="leo", sun="leo")
         hit = _check_kendra_trikona_raja(_state("aries", pos))
         assert hit is not None and hit["association_mode"] == "conjunction"
@@ -403,12 +418,16 @@ _OLD_SKIP_TUPLE = {
 }
 
 # Relations R6A.2 actually implements in _evaluate_yoga.
+# Y-10 (D-1.6/S-3) fix: "kendra_lord_and_trikona_lord_associate" moved OUT of this set and
+# into R6A2_FLOOR_REASONS — it is a confirmed duplicate of the Lane-3 detector
+# raja_yoga_kendra_trikona (see TestKendraTrikonaRaja.test_catalog_relation_now_floored_
+# as_duplicate). It remains dispositioned (test_every_old_skip_relation_dispositioned below
+# still passes, now via the R6A2_FLOOR_REASONS branch of that assertion).
 _IMPLEMENTED = (
     set(R6A2_LORD_ASSOCIATION_RELATIONS)
     | set(R6A2_VIPARITA_RELATIONS)
     | {
         "9th_and_10th_lords_associate_conjunction_aspect_or_exchange",
-        "kendra_lord_and_trikona_lord_associate",
         "association_among_2_5_9_11_lords",
         "11th_lord_in_dusthana_or_lagna_lord_in_6_8_12",
         "moon_jupiter_in_6_8_from_each_other",

@@ -41,6 +41,52 @@ const PYTHON_SIDECAR_URL = (
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
 const TOOL_TIMEOUT_MS = 30_000
 
+// CR-51/CR-30 fix (D-1.6 S-1): the `query_calibration` MCP tool below used to call
+// the sidecar's `/api/compute/mimamsa/query_calibration` endpoint directly
+// (queryCalibration(), still exported below for any external caller that imports it
+// directly), while the twin alias `mimamsa_calibration_get` (register_p1_aliases.ts)
+// called the platform primitive `query_calibration` -> registry capability
+// `marsys://tool/L5/query_calibration` (platform/.../L5_mimamsa/query_calibration.ts),
+// which reads mimamsa_calibration + mimamsa_reliability + mimamsa_multipliers +
+// mimamsa_qa_eval and returns a rich payload (verdict_distribution, reliability_curve,
+// multipliers, qa_results). Confirmed live 2026-07-16 on chart 482012f1: the sidecar
+// path returned `{ok:true, rows:[], row_count:0}` while mimamsa_calibration_get
+// returned the full multipliers/qa_results payload for the SAME chart — two different
+// answers to what a caller reasonably expects to be one capability. The registry-backed
+// path is the richer, live one (it actually has data for this chart), so it is now the
+// canonical face: `query_calibration`'s tool handler below delegates to the SAME
+// platform primitive `mimamsa_calibration_get` uses, making the two tool names a
+// strict alias pair (same handler, same payload shape) rather than two divergent
+// implementations. The sidecar-backed `queryCalibration()` function is retained
+// (exported) for callers that still need the raw mimamsa_calibration table view, but
+// the MCP tool surface no longer uses it as the query_calibration handler.
+const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
+const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+
+async function callPlatformPrimitiveDirect(
+  tool: string,
+  params: Record<string, unknown>,
+  principal: Principal,
+): Promise<unknown> {
+  const res = await fetch(`${PLATFORM_URL}/api/mcp/primitives/${encodeURIComponent(tool)}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Audience-Tier': principal.role === 'super_admin' ? 'super_admin' : 'client',
+      'X-MCP-Key-Id': principal.key_id,
+    },
+    body: JSON.stringify({ params }),
+    signal: AbortSignal.timeout(TOOL_TIMEOUT_MS),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`[mimamsa_outcome] platform primitive "${tool}" failed: ${res.status} ${text}`)
+  }
+  return res.json()
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface UpdatedCalibration {
@@ -344,42 +390,46 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
   )
 
   // ── Tool 2: query_calibration ──────────────────────────────────────────────
+  // CR-51/CR-30 fix (D-1.6 S-1): canonical-face unification. `query_calibration` now
+  // delegates to the SAME platform primitive as `mimamsa_calibration_get`
+  // (marsys://tool/L5/query_calibration) so both tool names return an identical
+  // payload shape — the two are a strict alias pair, not two divergent
+  // implementations. See the CR-51/CR-30 comment above `callPlatformPrimitiveDirect`
+  // for the full before/after.
 
   server.tool(
     'query_calibration',
-    'Query the mimamsa_calibration table for Brier-score calibration state (MI-5-3).\n\n' +
-      'Returns calibration rows ordered by computed_at DESC (most recent first).\n' +
-      'Each row: {technique, ayanamsha_id, brier_score [0-1], sample_size, ' +
-      'computed_at, source_citation}.\n\n' +
+    '[Canonical alias of mimamsa_calibration_get — CR-51/CR-30 unification] ' +
+      'Query calibration state for a chart (MI-5-3): verdict distribution, reliability ' +
+      'curve, Learning-Layer multipliers (LL1 family weights), and QA eval results ' +
+      '(degenerate-distribution / negative-control / control-window checks). ' +
+      'Each multiplier row: {weight_id, mechanism, target_kind, target_ref, domain, ' +
+      'applied_multiplier, raw_multiplier, n_observations, promotion_status, ' +
+      'gate_passed, kill_switch_state, divergence_from_classical}.\n\n' +
       'Calibration = mean((confidence - outcome_binary)²) per (technique, ayanamsha_id).\n' +
       'Uninformative baseline = 0.25 (equivalent to random 50/50 at 0.5 confidence).\n\n' +
       'L1 ground-truth: FORENSIC v8.0 §5.1 DSH.V.023–028 + LEL v1.7.\n' +
       'BRAHMA-MI-5-3 | mimamsa.outcome contract.',
     {
+      // CR-51/CR-30: chart_id is now REQUIRED (matches mimamsa_calibration_get and the
+      // underlying marsys://tool/L5/query_calibration capability's required_inputs).
+      // technique/ayanamsha_id are no longer accepted params — the richer canonical
+      // capability scores the whole chart's calibration scorecard (verdict distribution +
+      // reliability curve + multipliers + QA results), not a per-technique row slice; the
+      // old sidecar-backed technique/ayanamsha_id filtering is retained only on the
+      // separately-exported queryCalibration() helper for any caller that still needs the
+      // raw mimamsa_calibration table view.
       chart_id: z
         .string()
         .uuid()
-        .optional()
         .describe(
-          'Chart UUID filter. Must be a valid chart UUID from the charts table.'
+          'Chart UUID. Required — must be a valid chart UUID from the charts table.'
         ),
 
-      technique: z
-        .enum(TECHNIQUES)
+      domain: z
+        .string()
         .optional()
-        .describe(
-          'Filter by technique. Default: all techniques. ' +
-            'Options: vimshottari | yogini | kp | jaimini_chara | transit_outer | ' +
-            'transit_inner | sade_sati | ashtakavarga | ensemble.'
-        ),
-
-      ayanamsha_id: z
-        .enum(AYANAMSHAS)
-        .optional()
-        .describe(
-          'Filter by ayanamsha. Default: all ayanamshas. ' +
-            'Options: lahiri | true_chitra | kp | raman | surya_siddhanta.'
-        ),
+        .describe('Optional domain filter (forwarded to the capability; currently informational).'),
 
       limit: z
         .number()
@@ -387,18 +437,22 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
         .min(1)
         .max(100)
         .optional()
-        .describe(
-          'Maximum rows to return (most recent first). Default: 10.'
-        ),
+        .describe('Maximum rows to return where applicable. Default: capability default.'),
+
+      offset: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe('Pagination offset.'),
     },
     async (params) => {
       try {
-        const result = await queryCalibration({
-          chartId: params.chart_id,
-          technique: params.technique,
-          ayanamshaId: params.ayanamsha_id,
-          limit: params.limit,
-        })
+        const result = await callPlatformPrimitiveDirect(
+          'query_calibration',
+          { chart_id: params.chart_id, domain: params.domain, limit: params.limit, offset: params.offset },
+          principal,
+        )
 
         return {
           content: [
@@ -419,6 +473,7 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
                   error: true,
                   tool: 'query_calibration',
                   message,
+                  chart_id: params.chart_id,
                 },
                 null,
                 2

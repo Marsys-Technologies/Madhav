@@ -214,8 +214,23 @@ function normalizeAyanamsha(id?: string): string {
 // unfiltered ~107-row yoga/dosha union. Their real data lives elsewhere: parivartana
 // (mutual sign exchange) is fact_category parivartana_per_varga on get_dispositors;
 // graha_yuddha (planetary war) has its own dedicated capability, get_graha_yuddha.
-const STRUCTURAL_FACET_URI: Record<string, string> = {
-  aspects:      'marsys://tool/L1/get_aspects',
+export const STRUCTURAL_FACET_URI: Record<string, string> = {
+  aspects:          'marsys://tool/L1/get_aspects',
+  // D-1.6 S-5 (PARK-A7 + R-17, the standing A7 PARK / S-4-sputa-drishti routed item):
+  // `aspects` shared its declared category set with jaimini/tajik/matrix-summary rows, and
+  // get_aspects.ts's underlying SQL orders `ORDER BY fact_category` GLOBALLY across every
+  // requested category under ONE shared LIMIT — 'aspect_jaimini*' sorts alphabetically BEFORE
+  // 'aspect_parashari_*', so a large aspect_jaimini_per_varga population (per graha × per
+  // varga) could consume the entire row budget before a single Parashari (Graha Drishti) row
+  // was ever reached — exactly the live symptom BIND_D-1.6 confirmed ("default page leads
+  // with aspect_jaimini rasi-drishti boilerplate", 19 real aspect_parashari_given rows never
+  // surfacing). Fix mirrors the D-1.5b kala_sarpa extraction (item 6): pull jaimini and tajik
+  // aspects into their OWN focused facets sharing the same underlying URI/tool but a
+  // DISJOINT declared category set (see FACET_CATEGORIES below), so neither can crowd out
+  // the other under the shared-LIMIT tool. `aspects` now serves ONLY genuine Graha Drishti
+  // (Parashari given/received/per-varga) — matching its own description text.
+  aspects_jaimini:  'marsys://tool/L1/get_aspects',
+  aspects_tajik:    'marsys://tool/L1/get_aspects',
   conjunctions: 'marsys://tool/L1/get_aspects',
   sambandha:    'marsys://tool/L1/get_aspects',
   argala:       'marsys://tool/L1/get_argala',
@@ -246,11 +261,17 @@ const STRUCTURAL_FACET_URI: Record<string, string> = {
 // classification is derived logic living in graha_portrait.ts (R-6), not a stored chart_facts
 // row. Declared as an empty/unbacked facet below: rejected outright rather than silently
 // serving unrelated dispositor rows (canonical-or-floor: no backing category = no serve).
-const FACET_CATEGORIES: Record<string, string[]> = {
+export const FACET_CATEGORIES: Record<string, string[]> = {
+  // D-1.6 S-5 (PARK-A7 + R-17): narrowed to genuine Graha Drishti (Parashari) only — see
+  // STRUCTURAL_FACET_URI comment above for the full root-cause writeup. aspect_matrix_summary
+  // (a same-tool rollup ACROSS traditions) stays here too since it summarizes the Parashari
+  // matrix this facet is now dedicated to, and is a small, bounded row (no crowding risk).
   aspects: [
     'aspect_parashari_given', 'aspect_parashari_received', 'aspect_parashari_per_varga',
-    'aspect_jaimini', 'aspect_jaimini_per_varga', 'aspect_matrix_summary', 'aspect_tajik',
+    'aspect_matrix_summary',
   ],
+  aspects_jaimini: ['aspect_jaimini', 'aspect_jaimini_per_varga'],
+  aspects_tajik:   ['aspect_tajik'],
   conjunctions: ['conjunction_within_orb', 'conjunction_per_varga'],
   sambandha:    ['lord_aspects_lord_per_varga', 'lord_in_house_per_varga'],
   dispositors:  [
@@ -288,6 +309,12 @@ const PANCHA_MAHAPURUSHA: {
  *  and planetary positions THIS RESPONSE ALREADY FETCHED (yoga_label presence = fired, per
  *  JL-004's ratified convention; graha_position sign/house_d1 = already-computed L1 facts,
  *  not a new derivation). Zero new computation.
+ *
+ *  Y-12 (D-1.6/S-3, CR-33/CR-43): `yogaDoshaRows` MUST be an UNPAGINATED yoga_label fetch, never
+ *  the caller's own paginated page — the caller wires this via a dedicated get_yoga_dosha call
+ *  (limit=500, offset=0) precisely so a small `limit` on ganita_yogas_get can never cause this
+ *  function to assert "not formed" purely because pagination excluded a real yoga_label row from
+ *  the page. A verdict must never fabricate absence from truncation (B.10).
  *
  *  A4 (CR-93 honesty hardening): `formed`/`not formed` is ALWAYS grounded in the yoga_label
  *  firing rows (a real signal, independent of position data). Position data is used only to
@@ -432,7 +459,12 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'ganita_structural_get',
     'Retrieve structural chart relationships via a single facet-parameterized tool (L1 Gaṇita). ' +
     'ONE tool covers all inter-planetary structural layers: ' +
-    'aspects (Graha Drishti), argala (planetary intervention), dispositors (sign-ruler chain), ' +
+    'aspects (Graha Drishti — Parashari planetary aspects given/received/per-varga ONLY; D-1.6 ' +
+    'PARK-A7/R-17 fix: jaimini rashi-drishti and tajik aspects moved to their own dedicated ' +
+    'facets below so they can never crowd Parashari rows out of the shared row budget), ' +
+    'aspects_jaimini (Jaimini rashi drishti, natal + per-varga), ' +
+    'aspects_tajik (Tajaka aspects: Itthasala/Ishrafa/Nakta/Yamaya/Manahoo/Khallasara), ' +
+    'argala (planetary intervention), dispositors (sign-ruler chain), ' +
     'parivartana (exchange), yoga_fires (classical yoga patterns), dosha_fires (affliction patterns), ' +
     'conjunctions (same-sign occupancy), sambandha (relational bonds), ' +
     'functional (functional benefic/malefic roles), graha_yuddha (planetary war), ' +
@@ -449,7 +481,7 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       facet: z.enum([
-        'aspects', 'argala', 'dispositors', 'parivartana',
+        'aspects', 'aspects_jaimini', 'aspects_tajik', 'argala', 'dispositors', 'parivartana',
         'yoga_fires', 'dosha_fires', 'conjunctions', 'sambandha',
         'functional', 'graha_yuddha', 'kala_sarpa',
       ]).describe('Which structural relationship layer to retrieve.'),
@@ -815,11 +847,27 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         // Fetch graha positions (already-computed L1 fact_category, zero new computation) to
         // label the 5 named Pancha Mahapurusha yogas formed/not-formed with a citable reason —
         // best-effort: if the fetch fails, verdict still ships with the receipt fields above.
+        //
+        // Y-12 (D-1.6/S-3, CR-33/CR-43 fix): buildPanchaMahapurushaVerdict MUST NOT be grounded
+        // in `rows` (the CALLER-PAGINATED page — e.g. limit=3 can return zero yoga_label rows
+        // at all) — doing so fabricated "Sasa is not formed" purely because pagination excluded
+        // Sasa's yoga_label row from THIS page, while the row genuinely exists (and Sasa
+        // genuinely fires in ga_yoga_firings). Live-confirmed defect: ganita_yogas_get(limit=3,
+        // response_format=v3) on 482012f1 asserted all 5 Pancha Mahapurusha yogas "not formed"
+        // with zero yoga_label rows even present in the page. Fix: fetch a SEPARATE, unpaginated,
+        // yoga_label-only slice (bounded to 500 — the tool's own sane default, well above the 5
+        // named Mahapurusha rows that could ever match) so the verdict is grounded in the full
+        // yoga_label population regardless of what the caller's own pagination window served.
         let panchaMahapurusha: ReturnType<typeof buildPanchaMahapurushaVerdict> | undefined
         try {
-          const positionsData = await callRegistryCapability('marsys://tool/L1/get_positions', {
-            chart_id, ayanamsha_id: resolvedAyanamsha, categories: ['graha_position'], limit: 200,
-          }, principal) as { rows?: Record<string, unknown>[] } | undefined
+          const [positionsData, panchaMahapurushaRowsData] = await Promise.all([
+            callRegistryCapability('marsys://tool/L1/get_positions', {
+              chart_id, ayanamsha_id: resolvedAyanamsha, categories: ['graha_position'], limit: 200,
+            }, principal) as Promise<{ rows?: Record<string, unknown>[] } | undefined>,
+            callRegistryCapability('marsys://tool/L1/get_yoga_dosha', {
+              chart_id, ayanamsha_id: resolvedAyanamsha, limit: 500, offset: 0, all: false,
+            }, principal) as Promise<{ rows?: Record<string, unknown>[] } | undefined>,
+          ])
           const posByPlanet: Record<string, { sign?: string; house?: number; factId?: string }> = {}
           for (const r of positionsData?.rows ?? []) {
             const subj = String(r['fact_subject'] ?? '')
@@ -828,7 +876,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
             if (r['fact_key'] === 'sign') slot.sign = String(r['fact_value_text'] ?? '')
             if (r['fact_key'] === 'house_d1' && r['fact_value_num'] != null) slot.house = Number(r['fact_value_num'])
           }
-          panchaMahapurusha = buildPanchaMahapurushaVerdict(rows, posByPlanet)
+          // Fall back to the page's own rows only if the dedicated unpaginated fetch failed
+          // (never silently swap to a KNOWN-truncated source when the honest one is reachable).
+          const groundingRows = panchaMahapurushaRowsData?.rows ?? rows
+          panchaMahapurusha = buildPanchaMahapurushaVerdict(groundingRows, posByPlanet)
         } catch {
           panchaMahapurusha = undefined // best-effort narration enrichment; never fails the instrument
         }
