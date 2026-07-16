@@ -114,6 +114,11 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # ── L2 Bodha — migrations 445/446 (D-2 Lane V-4, Mechanism object) ────────
     "bo_yantra_mechanism",
     "bo_laksana_rerank",
+    # ── L2 Bodha — migrations 450-453 (D-2 Lane V-5, CR-26/64+61+76+36) ──────
+    "bo_nakshatra_semantic",
+    "bo_arudha",
+    "bo_special_lagna",
+    "bo_vargottama_dhana",
     # ── L3 Kāla — migration 342 ──────────────────────────────────────────────
     "ka_bhavishya_lekha",
     "ka_dasha_kala",
