@@ -91,6 +91,9 @@ jobs:
       - name: npm ci (platform)
         working-directory: platform
         run: npm ci
+      - name: R-18 param no-op audit (static, no DB required)
+        working-directory: platform
+        run: npx tsx --conditions=react-server scripts/audit/tap/r18_param_noop_audit.ts
       - name: S-13 live coverage matrix
         working-directory: platform
         # See file header: exits 3 (SKIPPED-WITH-REASON) instead of a false

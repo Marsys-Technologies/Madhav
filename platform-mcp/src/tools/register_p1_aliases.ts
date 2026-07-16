@@ -19,7 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure, resolveChartFactsAyanamsha } from './registry_bridge.js'
-import { applyResponseBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
+import { applyResponseBudget, autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -164,17 +164,28 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 // through regAlias/globalAlias, and by every hand-written `server.tool` block below that
 // was touched in this pass). Falls back to a generic hint when the caller omits toolName —
 // still trims, just without a tool-specific recovery instrument name.
+//
+// D-1.6 S-5 (R-1/R-8/CR-49 residual — phala_mitigation_get measured 99.9KB live despite this
+// function's budgeting): the prior version called `applyResponseBudget` directly and SKIPPED
+// budgeting entirely when `sections.length === 0` — which happens whenever the real bulk lives
+// inside a JSON-encoded STRING nested inside a small (<=10 item) array (the surgical-primitives
+// ToolBundle shape `{result:{results:[{content:"<json string>"}]}}`, R-29's double-encoding
+// pattern), because autoDetectTrimmableSections only declares a section for arrays it can see
+// AND that are longer than 10 — a 1-item bundle array never qualifies, and the array-based
+// trimmer has no way to shrink a giant string. Routing through `finalizeMcpBudget` instead
+// (same self-verifying entry point registry_bridge.ts's assess_*/traverse_graph/judgment_query
+// already use) adds its last-resort bounded-depth long-string truncation fallback, which DOES
+// reach that shape — this is a strict superset of the prior behavior (array trimming still runs
+// first; string truncation only engages if arrays alone can't close the gap).
 function dualOutput(data: unknown, toolName = 'unknown_tool') {
+  let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>
     const sections = autoDetectTrimmableSections(obj, toolName)
-    if (sections.length > 0) {
-      const result = applyResponseBudget(obj, 40, sections)
-      if (result.trim_report) obj['trim_report'] = result.trim_report
-    }
+    finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
   }
-  const structuredContent = { type: 'object' as const, object: data }
-  const json = JSON.stringify(data)
+  const structuredContent = { type: 'object' as const, object: finalData }
+  const json = JSON.stringify(finalData)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
     return { structuredContent, content: [{ type: 'text' as const, text: '[large payload — see structuredContent]' }] }
   }
@@ -381,12 +392,20 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           'low-salience corroboration classes a chart-wide salience page never surfaces.'),
     },
     async (params) => {
-      const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
+      const { chart_id, ayanamsha_id, limit, offset, min_weight, ...rest } = params as Record<string, unknown>
       if (!chart_id) return errOut('bodha_signals_get', 'chart_id is required')
       try {
+        // D15b-F3 (R-18 param no-op audit): this schema documents `min_weight`, but the
+        // downstream capability (query_signals.ts) only ever reads `args['min_salience']` —
+        // `min_weight` was forwarded verbatim via `...rest` and silently ignored on every
+        // call (a documented param that filters nothing). Alias it onto `min_salience`
+        // before forwarding; an explicit `min_salience` in the caller's own params (if ever
+        // added) still wins since it would already be a rest key.
         const data = await callRegistryCap('marsys://tool/L2/query_signals', {
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
-          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
+          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0,
+          ...(min_weight != null && rest['min_salience'] == null ? { min_salience: min_weight } : {}),
+          ...rest,
         }, principal) as Record<string, unknown>
         const inner = data['content'] as Record<string, unknown> | undefined
         if (inner) {
@@ -903,6 +922,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       house:            z.number().int().min(1).max(12).optional(),
       sign:             z.string().optional(),
       nakshatra:        z.string().optional(),
+      // r18-intentional-passthrough: divisional_chart
+      // (R-18 param no-op audit: forwarded verbatim via `...rest` below to chart_facts_query,
+      // which reads it directly — live-verified S-12 CLOSED_WITH_EVIDENCE, BIND_D-1.6 S-7:
+      // ganita_chart_facts_get(divisional_chart=D2|D9) serves the divisional_facts section.)
       divisional_chart: z.string().optional().describe('Divisional chart code (e.g. "D9", "D2"). Also returns that varga\'s chart_divisionals-native EAV facts (per-varga sign/house, hora class incl. surya_hora/chandra_hora + hora_d2_house, varga dignity, house lords/occupants) in a separate `divisional_facts` section.'),
       keyword:          z.string().optional(),
       fact_subject:     z.string().optional().describe('Exact fact_subject filter (e.g. "LAGNA", "SUN", "D9_JUP"). Comma-separated for multiple.'),
@@ -1361,6 +1384,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     '[Phase-1 alias] Record an outcome against a prediction (same as record_outcome).',
     {
       chart_id:    z.string().uuid(),
+      // r18-intentional-passthrough: prediction_id, outcome, verdict
+      // (R-18 param no-op audit: the entire `params` object — every declared key, not a
+      // filtered subset — is forwarded verbatim to callPlatformPrim('record_outcome', ...)
+      // below; there is no per-key handling to audit because nothing here filters anything.)
       prediction_id: z.string().optional(),
       outcome:     z.string().describe('Actual outcome description'),
       verdict:     z.enum(['confirmed', 'partial', 'denied']).optional(),
