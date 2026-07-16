@@ -223,7 +223,19 @@ def _solar_return(varsha_year: int, natal_sun_long: float, aya_adapter: str,
     """Root-find the local-wallclock instant in calendar year
     (birth_year + varsha_year - 1) where the sidereal Sun returns to
     `natal_sun_long`. Bisection on the signed Sun-longitude difference within a
-    ±2-day bracket around the birthday anniversary (widened to ±5 if needed)."""
+    ±2-day bracket around the birthday anniversary (widened to ±5 if needed).
+
+    D-2 cycle-1 rebuild incident: the underlying swisseph engine has been
+    observed (deployed container only, not locally reproducible — likely an
+    ephemeris-file/Moshier-fallback edge case specific to that environment)
+    to occasionally raise on a specific bisection instant it cannot compute
+    (`jd ... outside Moshier planet range`). A single unresolvable instant
+    inside an otherwise-healthy bisection must not crash this asset (and its
+    ~26-asset downstream L3/L4/L5 closure) — `_safe_f` catches any exception
+    from the underlying position engine and treats that instant as
+    "no information" (None), same honesty-preserving non-fabrication
+    discipline as the existing "no sign change" fallback below: a row is
+    still emitted, honestly marked not converged, never silently dropped."""
     if not birth_params:
         raise ValueError(
             "[ga_tajaka_writer._solar_return] birth_params is required; "
@@ -241,31 +253,56 @@ def _solar_return(varsha_year: int, natal_sun_long: float, aya_adapter: str,
     def f(dt: datetime) -> float:
         return _ang_diff(_sun_longitude(dt, aya_adapter, birth_params=bp), natal_sun_long)
 
+    def _safe_f(dt: datetime) -> float | None:
+        try:
+            return f(dt)
+        except Exception as exc:  # noqa: BLE001 — engine-level failure, not a logic bug
+            logger.warning(
+                "[ga_tajaka_writer] _solar_return: position engine failed at %s "
+                "(varsha_year=%d, aya=%s): %s — treating as unresolvable instant",
+                dt.isoformat(), varsha_year, aya_adapter, exc,
+            )
+            return None
+
+    def _unconverged(reason: str, bracket_days_: int) -> tuple[datetime, dict[str, Any]]:
+        diff = _safe_f(anniversary)
+        return anniversary, {"converged": False,
+                             "diff_deg": round(diff, 6) if diff is not None else None,
+                             "bracket_days": bracket_days_, "iterations": 0,
+                             "unconverged_reason": reason}
+
     bracket_days = 2
     lo = anniversary - timedelta(days=bracket_days)
     hi = anniversary + timedelta(days=bracket_days)
-    f_lo, f_hi = f(lo), f(hi)
-    while f_lo * f_hi > 0 and bracket_days < 6:
+    f_lo, f_hi = _safe_f(lo), _safe_f(hi)
+    while (f_lo is None or f_hi is None or f_lo * f_hi > 0) and bracket_days < 6:
         bracket_days += 2
         lo = anniversary - timedelta(days=bracket_days)
         hi = anniversary + timedelta(days=bracket_days)
-        f_lo, f_hi = f(lo), f(hi)
+        f_lo, f_hi = _safe_f(lo), _safe_f(hi)
+    if f_lo is None or f_hi is None:
+        return _unconverged("position_engine_error", bracket_days)
     if f_lo * f_hi > 0:
         # No sign change — fall back to the anniversary itself (deg diff recorded).
-        return anniversary, {"converged": False, "diff_deg": round(f(anniversary), 6),
-                             "bracket_days": bracket_days, "iterations": 0}
+        return _unconverged("no_sign_change", bracket_days)
 
     iters = 0
     while (hi - lo) > timedelta(minutes=1) and iters < 64:
         mid = lo + (hi - lo) / 2
-        f_mid = f(mid)
+        f_mid = _safe_f(mid)
+        if f_mid is None:
+            # Unresolvable midpoint — stop bisecting here rather than crash;
+            # [lo, hi] still brackets a real root, just not narrowed further.
+            break
         if f_lo * f_mid <= 0:
             hi, f_hi = mid, f_mid
         else:
             lo, f_lo = mid, f_mid
         iters += 1
     instant = lo + (hi - lo) / 2
-    diff = f(instant)
+    diff = _safe_f(instant)
+    if diff is None:
+        return _unconverged("position_engine_error_at_final_instant", bracket_days)
     return instant, {"converged": True, "diff_deg": round(diff, 6),
                      "bracket_days": bracket_days, "iterations": iters}
 
@@ -461,7 +498,12 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
     grahas_by_name = {g["name"]: g for g in annual["grahas"]}
 
     # Solar-return cross-check (±1 min ⇒ ≤ SOLAR_RETURN_TOL_DEG).
-    sr_diff = abs(sr_audit.get("diff_deg", 99.0))
+    # diff_deg can be None (position-engine failure even at the fallback
+    # anniversary instant, see _solar_return's _unconverged) — (v or 99.0)
+    # coalesces None the same way the prior missing-key default did, since
+    # `.get(key, default)` only applies the default when the key is ABSENT,
+    # not when it's present with value None.
+    sr_diff = abs(sr_audit.get("diff_deg") or 99.0)
     sr_ok = sr_audit.get("converged", False) and sr_diff <= SOLAR_RETURN_TOL_DEG
 
     # ── Vārṣeśa candidate office-bearers ─────────────────────────────────────
