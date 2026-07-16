@@ -69,21 +69,41 @@ def test_narayana_start_sign_missing_lagna_raises_no_fabrication():
 
 def test_verify_narayana_detects_overlap():
     from datetime import date
+    import pytest
     rows = [
         {"level_n": 1, "lord_graha": "Aries", "start_date": date(2000, 1, 1), "end_date": date(2010, 1, 1)},
         {"level_n": 1, "lord_graha": "Taurus", "start_date": date(2005, 1, 1), "end_date": date(2015, 1, 1)},
     ]
-    verdict = sut._verify_narayana(rows)
-    assert verdict.startswith("overlap:")
+    with pytest.raises(ValueError, match="overlapping MD periods"):
+        sut._verify_narayana(rows)
 
 
 def test_verify_narayana_consistent_when_non_overlapping():
+    # Return value MUST be a valid chart_dashas.verification_pass_status
+    # CHECK-constraint value (two_pass_verified/classical_match/
+    # divergent_flagged/single) — this test caught a real production
+    # incident where the prior return value ("consistent") violated the
+    # live schema's CHECK constraint during the D-2 cycle-1 rebuild.
     from datetime import date
     rows = [
         {"level_n": 1, "lord_graha": "Aries", "start_date": date(2000, 1, 1), "end_date": date(2010, 1, 1)},
         {"level_n": 1, "lord_graha": "Taurus", "start_date": date(2010, 1, 1), "end_date": date(2020, 1, 1)},
     ]
-    assert sut._verify_narayana(rows) == "consistent"
+    assert sut._verify_narayana(rows) == "two_pass_verified"
+
+
+def test_verify_narayana_return_value_is_valid_chart_dashas_enum():
+    """Regression guard: every possible return value of _verify_narayana must
+    be a member of chart_dashas.verification_pass_status's CHECK-constraint
+    set, since ga_dashas_writer.build_system() assigns it directly onto every
+    row with no translation step."""
+    from datetime import date
+    VALID_STATUSES = {"two_pass_verified", "classical_match", "divergent_flagged", "single"}
+    assert sut._verify_narayana([]) in VALID_STATUSES
+    non_overlapping = [
+        {"level_n": 1, "lord_graha": "Aries", "start_date": date(2000, 1, 1), "end_date": date(2010, 1, 1)},
+    ]
+    assert sut._verify_narayana(non_overlapping) in VALID_STATUSES
 
 
 def test_narayana_registered_in_systems_list():
