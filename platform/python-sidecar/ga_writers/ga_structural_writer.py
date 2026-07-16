@@ -97,6 +97,21 @@ from ga_writers.ga_positions_writer import (
     forensic_gate,
     _conn,
 )
+from brahmagyan.l0_upapada_maitri_rules import (
+    UPAPADA_RULES,
+    TEMPORAL_FRIEND_HOUSES,
+    TEMPORAL_ENEMY_HOUSES,
+    MAITRI_TEMPORAL_RULE_ID,
+    MAITRI_TEMPORAL_CITATION_HUMAN,
+    MAITRI_COMPOUND_TABLE,
+    MAITRI_COMPOUND_RULE_ID,
+    MAITRI_COMPOUND_CITATION_HUMAN,
+    KENDRADHIPATI_RULE_ID,
+    KENDRADHIPATI_CITATION_HUMAN,
+    NATURAL_BENEFICS_FOR_KENDRADHIPATI,
+    KENDRA_HOUSES_NON_LAGNA,
+    TRIKONA_HOUSES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -2334,6 +2349,108 @@ def _cancel_daridra(
     }
 
 
+# Mars sign-specific cancellation pairs (house, sign) per brahma_dosha_catalog's
+# stored `manglik` cancellation_conditions text ("Mars in 2nd in Gemini/Virgo,
+# 4th in Aries/Scorpio, 7th in Capricorn/Cancer, 12th in Sagittarius/Pisces,
+# 8th in Cancer") — BPHS ch.81 tradition, sign-specific bhanga.
+_MANGLIK_SIGN_SPECIFIC_CANCEL: dict[int, frozenset[str]] = {
+    2: frozenset({"Gemini", "Virgo"}),
+    4: frozenset({"Aries", "Scorpio"}),
+    7: frozenset({"Capricorn", "Cancer"}),
+    8: frozenset({"Cancer"}),
+    12: frozenset({"Sagittarius", "Pisces"}),
+}
+
+
+def _cancel_manglik(
+    finding: dict[str, Any] | None, chart_output: dict[str, Any],
+    conn: Any, chart_id: str, ayanamsha_id: str,
+) -> dict[str, Any]:
+    """CR-73: manglik cancellation per brahma_dosha_catalog's own stored
+    `cancellation_conditions` (BPHS ch.81 tradition) — encodes the classical
+    grounds literally, evaluated against THIS chart, never a re-derivation
+    of a different classical source. `finding` is None (manglik runs the
+    generic catalog-rule path, not a bespoke detector) — Mars's house and
+    sign are read directly from chart_output."""
+    ref = "bphs:manglik:own_exalt_or_jupiter_aspect_or_sign_specific_cancels"
+    mars_house = _graha_house(chart_output, "Mars")
+    mars_sign = _graha_in_sign(chart_output, "Mars")
+    jup_house = _graha_house(chart_output, "Jupiter")
+    venus_house = _graha_house(chart_output, "Venus")
+    kendra = {1, 4, 7, 10}
+
+    grounds: list[str] = []
+    if mars_sign in OWN_SIGNS.get("Mars", []) or mars_sign == EXALTATION_SIGNS.get("Mars"):
+        grounds.append(f"mars_own_or_exalt_sign:{mars_sign}")
+    if _graha_aspects_house("Jupiter", jup_house, mars_house) > 0.0:
+        grounds.append(f"jupiter_aspects_mars_house_{mars_house}")
+    if jup_house in kendra:
+        grounds.append(f"jupiter_in_kendra_h{jup_house}")
+    if venus_house in kendra:
+        grounds.append(f"venus_in_kendra_h{venus_house}")
+    sign_specific = _MANGLIK_SIGN_SPECIFIC_CANCEL.get(mars_house, frozenset())
+    if mars_sign in sign_specific:
+        grounds.append(f"sign_specific_cancel:mars_h{mars_house}_{mars_sign}")
+
+    if grounds:
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": ";".join(grounds),
+            "cancellation_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": (
+                "brahma_dosha_catalog manglik cancellation_conditions (BPHS ch.81): "
+                f"{'; '.join(grounds)} — Manglik does not serve as a finding."
+            ),
+        }
+    return {
+        "bhanga_active": False,
+        "bhanga_rule_fired": None,
+        "cancellation_na_reason": None,
+        "citation_ref": ref,
+        "citation_human": (
+            "No cancellation ground (own/exalt sign, Jupiter aspect/kendra, "
+            "Venus kendra, sign-specific pairing) found — Manglik stands uncancelled. "
+            "Both-partners-Manglik cancellation is a synastry-only ground and is "
+            "out of scope for a single-chart evaluation (documented, not silently dropped)."
+        ),
+    }
+
+
+# 12 named Kala Sarpa variants keyed by Rahu's house (1-12) — classical naming
+# (Anant/Kulik/Vasuki/Shankhpal/Padma/Mahapadma/Takshak/Karkotak/Shankhachud/
+# Ghatak/Vishdhar/Sheshnag). BESPOKE_DOSHA_DETECTORS only maps the base
+# "kala_sarpa" canonical_id; these 12 catalog rows are distinct canonical_ids
+# whose formation test IS "kala_sarpa fires AND Rahu occupies house N" — no
+# second detector, wired to the same genuinely-computed `_detect_kala_sarpa`
+# result (mirrors the base wiring's own CR-74 instruction).
+KALA_SARPA_NAMED_VARIANT_HOUSE: dict[str, int] = {
+    "kala_sarpa_anant": 1, "kala_sarpa_kulik": 2, "kala_sarpa_vasuki": 3,
+    "kala_sarpa_shankhpal": 4, "kala_sarpa_padma": 5, "kala_sarpa_mahapadma": 6,
+    "kala_sarpa_takshak": 7, "kala_sarpa_karkotak": 8, "kala_sarpa_shankhachud": 9,
+    "kala_sarpa_ghatak": 10, "kala_sarpa_vishdhar": 11, "kala_sarpa_sheshnag": 12,
+}
+
+
+def _make_kala_sarpa_named_variant_detector(house: int) -> Callable[[dict[str, Any]], dict[str, Any] | None]:
+    def _detect(chart_output: dict[str, Any]) -> dict[str, Any] | None:
+        base = _detect_kala_sarpa_dosha(chart_output)
+        if base is None or base["constituent_houses"][0] != house:
+            return None
+        return base
+    return _detect
+
+
+def _cancel_kala_sarpa_named_variant(
+    finding: dict[str, Any], chart_output: dict[str, Any],
+    conn: Any, chart_id: str, ayanamsha_id: str,
+) -> dict[str, Any]:
+    """Same non-duplication rationale as the base `_cancel_kala_sarpa` —
+    a named variant IS the base kala_sarpa verdict narrowed to a specific
+    Rahu house; no separate bhanga layer applies on top."""
+    return _cancel_kala_sarpa(finding, chart_output)
+
+
 def _detect_kala_sarpa_dosha(chart_output: dict[str, Any]) -> dict[str, Any] | None:
     """Wires the `kala_sarpa` dosha_label row directly to the SAME
     genuinely-computed `_detect_kala_sarpa` function this writer already
@@ -2382,6 +2499,16 @@ BESPOKE_DOSHA_DETECTORS: dict[str, Callable[[dict[str, Any]], dict[str, Any] | N
     "kemadruma": _detect_kemadruma,
     "daridra": _detect_daridra,
     "kala_sarpa": _detect_kala_sarpa_dosha,
+    # CR-73 completion: manglik runs the generic per-chart catalog-rule path
+    # (formation_rule_jsonb already narrowly evaluable — no bespoke detector
+    # needed), but the 12 named Kala Sarpa variants DO need bespoke wiring
+    # since their canonical_ids are distinct catalog rows narrowing the base
+    # kala_sarpa verdict to a specific Rahu house (no second detector — see
+    # `_make_kala_sarpa_named_variant_detector`'s docstring).
+    **{
+        canonical_id: _make_kala_sarpa_named_variant_detector(house)
+        for canonical_id, house in KALA_SARPA_NAMED_VARIANT_HOUSE.items()
+    },
 }
 
 # Mandatory cancellation callables — every entry here (and every dosha in
@@ -2394,6 +2521,13 @@ DOSHA_CANCELLATIONS: dict[str, Callable[..., dict[str, Any]]] = {
     "kemadruma": lambda finding, chart_output, conn, chart_id, ayanamsha_id: _cancel_kemadruma(finding, chart_output),
     "daridra": _cancel_daridra,
     "kala_sarpa": lambda finding, chart_output, conn, chart_id, ayanamsha_id: _cancel_kala_sarpa(finding, chart_output),
+    # CR-73 completion (this lane): manglik — the single most classically-
+    # documented single-chart dosha with an explicit stored cancellation set.
+    "manglik": _cancel_manglik,
+    **{
+        canonical_id: _cancel_kala_sarpa_named_variant
+        for canonical_id in KALA_SARPA_NAMED_VARIANT_HOUSE
+    },
 }
 
 
@@ -2679,6 +2813,293 @@ def _build_dosha_rows(
                 ),
             ))
 
+    return rows
+
+
+# ── Group G2: Upapada Lagna wiring (CR-101) ───────────────────────────────────
+
+def _house_from_reference_sign(target_sign: str, reference_sign: str) -> int:
+    """1-indexed house-count of target_sign counted from reference_sign
+    (reference_sign = house 1). Whole-sign counting, same convention as
+    `_sign_house` but with an arbitrary reference point instead of Lagna."""
+    ref_idx = SIGN_NAMES.index(reference_sign)
+    tgt_idx = SIGN_NAMES.index(target_sign)
+    return ((tgt_idx - ref_idx) % 12) + 1
+
+
+def _load_upapada_lagna(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, Any] | None:
+    """Read the already-computed Upapada Lagna (UL = Arudha of the 12th
+    house, A12 — Jaimini/BPHS ch.30 reduction) from chart_facts. UL is
+    computed by `_build_bhava_arudha_rows` (ga_sensitive, GA5) under
+    fact_subject='BHAVA_ARUDHA_A12' — this function READS that row; it never
+    re-derives the arudha (§N.5: L1 is the authority over its own facts,
+    a downstream family never restates an upstream computed value).
+    NOTE: `_ARUDHA_ALIASES` in ga_sensitive_writer.py labels A2 as "UPA" —
+    that alias is a legacy label on the DIFFERENT A2 (Dhana pada) row and is
+    NOT Upapada Lagna; per BPHS ch.30 and the Jaimini Upapada reduction
+    (UL = arudha of the bhava that is 2nd-from-11th = A12), this function
+    deliberately reads BHAVA_ARUDHA_A12, not BHAVA_ARUDHA_A2/UPA."""
+    try:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute(
+                """
+                SELECT MAX(CASE WHEN fact_key = 'sign' THEN fact_value_text END) AS sign,
+                       MAX(CASE WHEN fact_key = 'house_d1' THEN fact_value_num END) AS house_d1
+                FROM chart_facts
+                WHERE chart_id = %s AND ayanamsha_id = %s
+                  AND fact_category = 'bhava_arudha' AND fact_subject = 'BHAVA_ARUDHA_A12'
+                """,
+                (chart_id, ayanamsha_id),
+            )
+            row = cur.fetchone()
+        if not row or not row[0]:
+            return None
+        return {"sign": str(row[0]), "house_d1": int(row[1]) if row[1] is not None else None}
+    except Exception as exc:
+        logger.warning("[ga_structural] _load_upapada_lagna failed (chart_id=%s): %s", chart_id, exc)
+        return None
+
+
+def _build_upapada_rows(
+    conn: Any,
+    chart_output: dict[str, Any],
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """CR-101: wire BPHS ch.30 Upapada Lagna rules against the already-
+    computed A12 (Upapada Lagna). Emits:
+      - upapada_lagna.sign / house_d1 (mirror of the source fact, for
+        one-hop discoverability without a cross-category join)
+      - upapada_lagna.lord_placement_verdict (derivation-ledger cites the
+        exact UPAPADA_RULES rule_id fired)
+      - upapada_lagna.benefic_association / malefic_association (conjunction
+        test only — aspect-based association is a documented, not fabricated,
+        scope limitation; see docstring)
+    Every row's citation_ref points at the specific UPAPADA_RULES rule_id
+    consumed (CLAUDE.md B.3).
+    """
+    ul = _load_upapada_lagna(conn, chart_id, ayanamsha_id)
+    if ul is None:
+        return []
+
+    ul_sign = ul["sign"]
+    ul_lord = SIGN_LORDS.get(ul_sign, "Sun")
+    lord_sign = _graha_in_sign(chart_output, ul_lord)
+    lord_house_from_ul = _house_from_reference_sign(lord_sign, ul_sign)
+
+    rules_by_slug = {r["slug"]: r for r in UPAPADA_RULES}
+
+    rows: list[dict[str, Any]] = []
+    ul_fid = _real_fact_id_ref(conn, chart_id, ayanamsha_id, "bhava_arudha", "BHAVA_ARUDHA_A12", "sign")
+    lord_subj = PLANET_TO_SUBJECT.get(ul_lord, ul_lord.upper())
+    lord_fid = _real_fact_id_ref(conn, chart_id, ayanamsha_id, "graha_position", lord_subj, "sign")
+    constituents = [f for f in (ul_fid, lord_fid) if f]
+
+    rows.append(_base_row(
+        "upapada_lagna", "UPAPADA_LAGNA", "sign",
+        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+        value_text=ul_sign,
+        value_jsonb={"house_d1": ul["house_d1"], "lord": ul_lord},
+        constituent_facts_array=[f for f in (ul_fid,) if f],
+        source=f"ga_structural.upapada/{eng_ver}",
+        citation_human=(
+            f"Upapada Lagna (A12, BPHS ch.30 Jaimini reduction) = {ul_sign}, "
+            f"lord {ul_lord}."
+        ),
+    ))
+
+    if lord_house_from_ul in KENDRA_HOUSES_NON_LAGNA | TRIKONA_HOUSES | {1}:
+        rule = rules_by_slug["ul_lord_kendra_trikona_from_ul"]
+        verdict = rule["verdict"]
+    elif lord_house_from_ul in {6, 8, 12}:
+        rule = rules_by_slug["ul_lord_dusthana_from_ul"]
+        verdict = rule["verdict"]
+    else:
+        rule = None
+        verdict = "neutral_placement"
+
+    rows.append(_base_row(
+        "upapada_lagna", "UPAPADA_LAGNA", "lord_placement_verdict",
+        chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+        value_text=verdict,
+        value_jsonb={
+            "ul_lord": ul_lord,
+            "ul_lord_house_from_ul": lord_house_from_ul,
+            "rule_id": rule["rule_id"] if rule else None,
+        },
+        constituent_facts_array=constituents,
+        source=f"ga_structural.upapada/{eng_ver}",
+        citation_human=(rule["citation_human"] if rule else
+                        "UL lord is in an upachaya (3/11) from UL — the cited "
+                        "BPHS ch.30 rule set does not classify this placement; "
+                        "reported as neutral, not fabricated."),
+    ))
+
+    benefic_conj = [g for g in CLASSICAL_GRAHAS
+                    if g in _NATURAL_BENEFICS and _graha_in_sign(chart_output, g) == ul_sign]
+    malefic_conj = [g for g in CLASSICAL_GRAHAS
+                    if g in _NATURAL_MALEFICS and _graha_in_sign(chart_output, g) == ul_sign]
+
+    if benefic_conj:
+        rule = rules_by_slug["natural_benefic_conjunct_ul"]
+        rows.append(_base_row(
+            "upapada_lagna", "UPAPADA_LAGNA", "benefic_association",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_text=",".join(benefic_conj),
+            value_jsonb={"rule_id": rule["rule_id"], "conjunct_grahas": benefic_conj},
+            constituent_facts_array=constituents,
+            source=f"ga_structural.upapada/{eng_ver}",
+            citation_human=rule["citation_human"],
+        ))
+    if malefic_conj:
+        rule = rules_by_slug["natural_malefic_conjunct_ul"]
+        rows.append(_base_row(
+            "upapada_lagna", "UPAPADA_LAGNA", "malefic_association",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_text=",".join(malefic_conj),
+            value_jsonb={"rule_id": rule["rule_id"], "conjunct_grahas": malefic_conj},
+            constituent_facts_array=constituents,
+            source=f"ga_structural.upapada/{eng_ver}",
+            citation_human=rule["citation_human"],
+        ))
+
+    return rows
+
+
+# ── Group G3: Pañcadhā-maitrī compound matrix (CR-105) ────────────────────────
+
+def _temporal_relation(source: str, target: str, chart_output: dict[str, Any]) -> str:
+    """BPHS ch.4 v.19-20 temporal (tatkalika) friendship: houses counted from
+    the SOURCE graha's own sign to the TARGET graha's sign."""
+    source_sign = _graha_in_sign(chart_output, source)
+    target_sign = _graha_in_sign(chart_output, target)
+    h = _house_from_reference_sign(target_sign, source_sign)
+    if h in TEMPORAL_FRIEND_HOUSES:
+        return "friend"
+    return "enemy"  # TEMPORAL_ENEMY_HOUSES is the complement by construction
+
+
+def _natural_relation(source: str, target: str) -> str:
+    if source == target:
+        return "friend"  # a graha is its own natural friend by convention (self-row excluded by caller)
+    rel = NATURAL_PLANET_RELATIONS.get(source, {})
+    if target in rel.get("friends", frozenset()):
+        return "friend"
+    if target in rel.get("enemies", frozenset()):
+        return "enemy"
+    return "neutral"
+
+
+def _build_panchadha_maitri_rows(
+    conn: Any,
+    chart_output: dict[str, Any],
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """CR-105: pañcadhā-maitrī (5-fold compound friendship) matrix over the
+    7 classical grahas — 42 ordered pairs (friendship is directional: A's
+    compound relation to B need not equal B's to A, since temporal
+    friendship is directional by construction — BPHS ch.4 is explicit that
+    maitri is read FROM each graha, not as a symmetric relation).
+    Natural relation reuses `NATURAL_PLANET_RELATIONS` (already the L1
+    authority for natural friendship, consumed by `_get_planet_concordance`
+    — this family never restates it, only compounds it — §N.5).
+    """
+    rows: list[dict[str, Any]] = []
+    for source in CLASSICAL_GRAHAS:
+        source_fid = _real_fact_id_ref(
+            conn, chart_id, ayanamsha_id, "graha_position",
+            PLANET_TO_SUBJECT.get(source, source.upper()), "sign",
+        )
+        for target in CLASSICAL_GRAHAS:
+            if source == target:
+                continue
+            target_fid = _real_fact_id_ref(
+                conn, chart_id, ayanamsha_id, "graha_position",
+                PLANET_TO_SUBJECT.get(target, target.upper()), "sign",
+            )
+            natural = _natural_relation(source, target)
+            temporal = _temporal_relation(source, target, chart_output)
+            compound = MAITRI_COMPOUND_TABLE[(natural, temporal)]
+            subj = f"MAITRI_{PLANET_TO_SUBJECT.get(source, source.upper())}_{PLANET_TO_SUBJECT.get(target, target.upper())}"
+            rows.append(_base_row(
+                "panchadha_maitri", subj, "compound_relation",
+                chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                value_text=compound,
+                value_jsonb={
+                    "source": source, "target": target,
+                    "natural_relation": natural, "temporal_relation": temporal,
+                    "natural_rule_id": None,  # natural table is L1-inherited, not re-derived (§N.5)
+                    "temporal_rule_id": MAITRI_TEMPORAL_RULE_ID,
+                    "compound_rule_id": MAITRI_COMPOUND_RULE_ID,
+                },
+                constituent_facts_array=[f for f in (source_fid, target_fid) if f],
+                source=f"ga_structural.panchadha_maitri/{eng_ver}",
+                citation_human=(
+                    f"{source}→{target}: natural={natural} (NATURAL_PLANET_RELATIONS, "
+                    f"BPHS ch.3/§N.5-inherited) × temporal={temporal} "
+                    f"({MAITRI_TEMPORAL_CITATION_HUMAN}) = {compound} "
+                    f"({MAITRI_COMPOUND_CITATION_HUMAN})"
+                ),
+            ))
+    return rows
+
+
+# ── Group G4: Kendrādhipati-doṣa — PROPOSED ruling, per-lagna (ledger #49) ────
+
+def _build_kendradhipati_dosha_rows(
+    conn: Any,
+    chart_output: dict[str, Any],
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """PROPOSED ruling (NOT binding — see V-6 close report / DR-n-pending):
+    a natural benefic that rules ONLY a kendra house (4/7/10; lagna/1st
+    exempted as also-trikona) and no trikona house (1/5/9) carries
+    kendrādhipati-doṣa. Emits one row per natural benefic on THIS chart's
+    actual lagna (all 12 lagnas are covered structurally because
+    `_get_functional_class_dynamic`'s underlying kendra/trikona-by-lordship
+    logic — reused here via the same sign-lord table — is lagna-generic; only
+    the natal lagna is exercised per chart, per project convention).
+    `value_jsonb.doctrine_status = "PROPOSED"` on every row — CI/serving must
+    not treat this as an adjudicated fact until a DR-n binds it (protocol
+    §4.1/§4.3)."""
+    lagna_sign = _get_lagna_sign(chart_output)
+    lagna_idx = SIGN_NAMES.index(lagna_sign)
+
+    rows: list[dict[str, Any]] = []
+    for planet in NATURAL_BENEFICS_FOR_KENDRADHIPATI:
+        ruled_houses: set[int] = set()
+        for h in range(1, 13):
+            sign_idx = (lagna_idx + h - 1) % 12
+            if _SIGN_LORDS_ORDERED[sign_idx] == planet:
+                ruled_houses.add(h)
+        if not ruled_houses:
+            continue  # Rahu/Ketu-adjacent or a planet ruling no sign here (never true for the 7 classical grahas)
+
+        rules_kendra_only = bool(ruled_houses & KENDRA_HOUSES_NON_LAGNA) and not bool(ruled_houses & TRIKONA_HOUSES)
+        subj = PLANET_TO_SUBJECT.get(planet, planet.upper())
+        fid = _real_fact_id_ref(conn, chart_id, ayanamsha_id, "graha_position", subj, "sign")
+        rows.append(_base_row(
+            "kendradhipati_dosha", subj, "doshas_kendradhipati",
+            chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+            value_text="afflicted" if rules_kendra_only else "unafflicted",
+            value_jsonb={
+                "planet": planet,
+                "ruled_houses": sorted(ruled_houses),
+                "kendradhipati_active": rules_kendra_only,
+                "rule_id": KENDRADHIPATI_RULE_ID,
+                "doctrine_status": "PROPOSED",
+            },
+            constituent_facts_array=[f for f in (fid,) if f],
+            source=f"ga_structural.kendradhipati_dosha/{eng_ver}",
+            citation_human=(
+                f"[PROPOSED, not binding] {planet} rules house(s) "
+                f"{sorted(ruled_houses)} from {lagna_sign} lagna — "
+                f"{'kendra-only, no trikona: kendrādhipati-doṣa active' if rules_kendra_only else 'not kendra-only (also rules a trikona, or rules no kendra): unafflicted'}. "
+                f"{KENDRADHIPATI_CITATION_HUMAN}"
+            ),
+        ))
     return rows
 
 
@@ -5658,6 +6079,9 @@ def build_ga_structural(
             all_rows.extend(_build_vimsopaka_ext_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_yoga_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None))
             all_rows.extend(_build_dosha_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None))
+            all_rows.extend(_build_upapada_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_panchadha_maitri_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_kendradhipati_dosha_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_avastha_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_composite_strength_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
@@ -6800,6 +7224,9 @@ STRUCTURAL_SUB_BUILDERS: list[tuple[str, Callable[..., list[dict[str, Any]]], st
     ("vimsopaka_ext", _build_vimsopaka_ext_rows, "top_level", None),
     ("yoga", _build_yoga_rows, "top_level", None),
     ("dosha", _build_dosha_rows, "top_level", None),
+    ("upapada", _build_upapada_rows, "top_level", None),
+    ("panchadha_maitri", _build_panchadha_maitri_rows, "top_level", None),
+    ("kendradhipati_dosha", _build_kendradhipati_dosha_rows, "top_level", None),
     ("avastha", _build_avastha_rows, "top_level", None),
     ("composite_strength", _build_composite_strength_rows, "top_level", None),
     ("functional_class", _build_functional_class_rows, "top_level", None),
@@ -6890,6 +7317,9 @@ def build_ga_structural_substep(
         "vimsopaka_ext": lambda: _build_vimsopaka_ext_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "yoga": lambda: _build_yoga_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, yoga_catalog if yoga_catalog else None),
         "dosha": lambda: _build_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, dosha_catalog if dosha_catalog else None),
+        "upapada": lambda: _build_upapada_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "panchadha_maitri": lambda: _build_panchadha_maitri_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "kendradhipati_dosha": lambda: _build_kendradhipati_dosha_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "avastha": lambda: _build_avastha_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "composite_strength": lambda: _build_composite_strength_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "functional_class": lambda: _build_functional_class_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),

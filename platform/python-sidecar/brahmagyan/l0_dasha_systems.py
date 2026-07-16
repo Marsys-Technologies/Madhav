@@ -7,15 +7,16 @@ Populates three tables per §0.1 contract (Doc 12 brief):
   2. brahma_ontology       — entity_class='dasha_system' pointer row
   3. reference_dasha_systems — thin pointer row (FK → brahma_dasha_systems)
 
-18 classical dasha systems embedded as hardcoded source-cited data.
+19 classical dasha systems embedded as hardcoded source-cited data (18
+original + narayana, CR-104 / D-2 Lane V-6 addition, 2026-07-16).
 ZERO LLM. All period lengths / sequences are attested classical values.
 
 Sources:
   - BPHS Ch.46-50 (Vimshottari, Yogini, conditional nakshatra dashas, Kalachakra)
-  - Jaimini Sutram Ch.1 (Chara, Sthira, Niryana Shoola, Brahma)
+  - Jaimini Sutram Ch.1 (Chara, Sthira, Niryana Shoola, Brahma, Narayana)
 
 Volume floor: >= 15 rows in brahma_dasha_systems (design aspiration 15-18).
-Achieved: 18 rows (all embedded inline — closed set).
+Achieved: 19 rows (all embedded inline).
 
 BRAHMA-BG-0-12
 """
@@ -82,6 +83,7 @@ _SYNONYMS: dict[str, list[str]] = {
     "tara_dasha":         ["tara dasha", "tara chakra dasha", "nakshatra tara"],
     "brahma_dasha":       ["brahma dasha", "jaimini brahma", "brahma graha dasha"],
     "yogardha_dasha":     ["yogardha dasha", "108-year average dasha", "vimshottari ashtottari mean"],
+    "narayana":           ["narayana dasha", "narayan dasha", "jaimini narayana", "rashi dasha (narayana)"],
 }
 
 
@@ -573,11 +575,51 @@ DASHA_SYSTEMS: list[dict[str, Any]] = [
         "source_citation": BPHS_CH48,
         "python_impl_module": "pyjhora.yogardha",
     },
+
+    # ── 19. Nārāyaṇa Daśā (Jaimini rāśi daśā) — CR-104, D-2 Lane V-6 ─────────
+    {
+        "canonical_id": "narayana",
+        "name_sa": "Nārāyaṇa Daśā",
+        "name_en": "Narayana Dasha",
+        "total_cycle_years": 144,
+        "base_unit": "sign_lord",
+        "school": "jaimini",
+        "sequence_jsonb": {
+            "type": "rashi_sequence",
+            "note": (
+                "Start sign (Deha Rasi): Lagna itself if Lagna is an odd sign, "
+                "else the 7th sign from Lagna. Progression is ALWAYS zodiacal "
+                "(forward) — unlike Chara Dasha, no direction reversal by "
+                "movable/fixed/dual sign quality. Years per sign = count of "
+                "signs from the sign to its lord's current sign (1-12; lord in "
+                "own sign = 12) — the same Rao-formula duration principle "
+                "already used for chara_jaimini in this catalog."
+            ),
+        },
+        "computation_method": "narayana_rashi_dasha",
+        "computation_pseudocode": (
+            "1. Deha Rasi = Lagna if Lagna sign number (1-indexed) is odd, "
+            "else the 7th sign from Lagna. "
+            "2. Direction: always zodiacal (forward), sign-by-sign. "
+            "3. Years for a sign = number of signs from the sign to its lord "
+            "(counted zodiacally), minus 1 (i.e. inclusive count 1-12; lord "
+            "in own sign = 12)."
+        ),
+        "conditions_for_use": (
+            "Marriage/general-life rāśi daśā in the Jaimini tradition, read "
+            "alongside Chara Dasha; CR-104 wiring — see V-6 close report for "
+            "the exact rule-choice documentation (multiple commentarial "
+            "variants exist for the start-sign determination)."
+        ),
+        "classical_citations": [{"text_id": "jaimini_sutram", "chapter": 1}],
+        "source_citation": JAIMINI_CH1,
+        "python_impl_module": "ga_writers.ga_dashas_writer.compute_narayana_system",
+    },
 ]
 
 # ── Sanity check at import time ────────────────────────────────────────────────
 
-assert len(DASHA_SYSTEMS) == 18, f"Expected 18 systems, got {len(DASHA_SYSTEMS)}"
+assert len(DASHA_SYSTEMS) == 19, f"Expected 19 systems, got {len(DASHA_SYSTEMS)}"
 
 
 # ── Main seed function ─────────────────────────────────────────────────────────

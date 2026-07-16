@@ -4,8 +4,8 @@ Proves the 9 L1 Gaṇita writers are orchestrator-native:
   A. all 9 register and resolve via get_writer (discoverable);
   B. each adapter threads ctx.db_conn / chart_id / build_id into its writer
      (connection ownership inverted to the caller);
-  C. heavy writers expose sub-steps (ga_dashas 35 chunks + post-pass; ga_vargas
-     per-ayanamsha);
+  C. heavy writers expose sub-steps (ga_dashas 40 chunks + post-pass — 8 systems
+     x 5 ayanamshas since D-2 Lane V-6 added "narayana"; ga_vargas per-ayanamsha);
   D. on an INJECTED connection a writer does NOT commit, does NOT close, and does
      NOT write asset_throughput (proven on ga_positions, the canonical light
      writer; the 6 other light writers share the identical owns_conn pattern); on
@@ -59,8 +59,12 @@ def test_has_substeps_flag(asset_id):
 # ── C. Heavy sub-step plans ──────────────────────────────────────────────────────
 
 def test_ga_dashas_plan_is_35_chunks_plus_postpass():
+    # D-2 Lane V-6 (CR-104): "narayana" added as an 8th dasha system —
+    # 8 systems × 5 ayanamshas + post-pass = 41 substeps (was 36 for 7
+    # systems). Test name kept for history/diff minimality; the assertion
+    # below is the source of truth.
     steps = get_writer('ga_dashas')().plan_substeps(_ctx(_Sentinel()))
-    assert len(steps) == 36                     # 7 systems × 5 ayanamshas + post-pass
+    assert len(steps) == 41                     # 8 systems × 5 ayanamshas + post-pass
     assert steps[-1].key == '__concurrency_post_pass__'
     assert all(isinstance(s, SubStep) for s in steps)
 
