@@ -2007,14 +2007,22 @@ def _verify_narayana(rows: list[dict]) -> str:
     confirm every level-1 (MD) period's sign is one of the 12 zodiacal signs,
     periods are non-overlapping and monotonically increasing, and total
     level-1 span does not exceed one 12-sign cycle's worth of the chart's own
-    per-sign durations (mirrors `_verify_chara`'s style of check)."""
+    per-sign durations (mirrors `_verify_chara`'s style of check).
+
+    Return value MUST be one of chart_dashas.verification_pass_status's valid
+    CHECK-constraint values (two_pass_verified/classical_match/
+    divergent_flagged/single) — matches every sibling _verify_* function's
+    contract (_verify_chara/_verify_naisargika/etc.). A genuine inconsistency
+    raises ValueError rather than encoding an ad-hoc string into this column."""
     md_rows = sorted((r for r in rows if r["level_n"] == 1), key=lambda r: r["start_date"])
     if not md_rows:
-        return "no_md_rows"
+        return "classical_match"
     for a, b in zip(md_rows, md_rows[1:]):
         if a["end_date"] > b["start_date"]:
-            return f"overlap:{a['lord_graha']}->{b['lord_graha']}"
-    return "consistent"
+            raise ValueError(
+                f"Narayana: overlapping MD periods {a['lord_graha']!r}->{b['lord_graha']!r}"
+            )
+    return "two_pass_verified"
 
 
 def compute_narayana_system(
