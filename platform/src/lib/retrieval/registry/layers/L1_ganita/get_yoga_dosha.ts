@@ -176,14 +176,17 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
         return v?.fire_reason === 'requires_pass'
       }).length
 
-      // R5.3 B2 (Q9-N-1 ruling item C): the dosha_label catalog row for "Kala Sarpa Dosha" is
-      // NOT the genuine per-chart Rahu/Ketu computation — its constituent_facts_array cites an
-      // unrelated placeholder fact shared by dozens of catalog rows. The real computed detection
-      // lives in fact_category `kala_sarpa_per_varga` (an already-computed L1 fact, currently
-      // fetched only via facet=dispositors on get_dispositors.ts — never reachable from this
-      // dosha-facing facet). Bounded, zero-new-computation SELECT of that already-built category,
-      // scoped to this same chart/ayanamsha filter, only when the caller actually asked for the
-      // dosha facet — so this stays a targeted fix, not a blanket payload inflation.
+      // R5.3 B2 (Q9-N-1 ruling item C, updated D-1.6 Lane S-2/CR-74): the dosha_label catalog
+      // row for "Kala Sarpa Dosha" is now wired directly to the SAME genuinely-computed
+      // `_detect_kala_sarpa` function this writer already runs per-varga (`ga_structural_writer.
+      // _detect_kala_sarpa_dosha`, on the D1 varga only — CR-74's "no second detector, wire the
+      // label to the existing computed fact") — the two are consistent by construction on any
+      // fresh build, not by a serve-time coincidence. This block still surfaces the raw
+      // `kala_sarpa_per_varga` rows (fetched only via facet=dosha_fires, unchanged bounded
+      // zero-new-computation SELECT) AND now adds an explicit `kala_sarpa_reconciliation` check
+      // below (Gate Ś item 4 assertion surface) — a live agreement receipt, not just a
+      // side-by-side pointer, so any future regression in the wiring is caught at serve time
+      // rather than silently trusted.
       let kalaSarpaPerVarga: { natal: Record<string, unknown>[]; divisional_fired: Record<string, unknown>[] } | undefined
       if (facet === 'dosha_fires') {
         const ksParams: unknown[] = [chartId]
@@ -205,6 +208,46 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
           return v?.varga !== 'D1' && v?.fires === true
         })
         kalaSarpaPerVarga = { natal, divisional_fired }
+      }
+
+      // D-1.6 Lane S-2 item (c): a live agreement receipt between the served dosha_label
+      // "kala_sarpa" row and the D1 kala_sarpa_per_varga computed fact — the label row must
+      // NEVER contradict the per-varga authoritative verdict. Computed only when both sides are
+      // actually in view (facet=dosha_fires so kalaSarpaPerVarga was fetched, and the current
+      // page includes the dosha_label row) — a null verdict on either side is an honest
+      // "not_checked_this_call", never a fabricated agreement.
+      let kalaSarpaReconciliation: Record<string, unknown> | undefined
+      if (kalaSarpaPerVarga) {
+        const doshaLabelRow = (result.rows ?? []).find(
+          r => r['fact_category'] === 'dosha_label' && r['fact_subject'] === 'kala_sarpa',
+        )
+        const doshaLabelFires = doshaLabelRow
+          ? ((doshaLabelRow['fact_value_jsonb'] as { fires?: boolean | null } | null)?.fires ?? null)
+          : null
+        const perVargaD1 = kalaSarpaPerVarga.natal[0]
+        const perVargaFires = perVargaD1
+          ? ((perVargaD1['fact_value_jsonb'] as { fires?: boolean } | null)?.fires ?? null)
+          : null
+        // dosha_label omits the row entirely when the bespoke detector returns "does not form"
+        // (honest absence, not a stub — see ga_structural_writer._detect_kala_sarpa_dosha) — so
+        // "no row served" + "per-varga D1 fires=false" IS agreement, not a gap.
+        const effectiveDoshaLabelFires = doshaLabelRow ? doshaLabelFires : (perVargaFires === false ? false : null)
+        const agrees = perVargaFires === null || effectiveDoshaLabelFires === null
+          ? null
+          : perVargaFires === effectiveDoshaLabelFires
+        kalaSarpaReconciliation = {
+          dosha_label_row_served: !!doshaLabelRow,
+          dosha_label_fires: effectiveDoshaLabelFires,
+          per_varga_d1_fires: perVargaFires,
+          agrees,
+          note: agrees === null
+            ? 'per-varga D1 fact not resolved this call — cannot check agreement.'
+            : agrees
+              ? 'dosha_label kala_sarpa verdict agrees with the computed kala_sarpa_per_varga D1 fact.'
+              : 'CONTRADICTION: dosha_label kala_sarpa verdict disagrees with kala_sarpa_per_varga D1 ' +
+                '— per CLAUDE.md §N.5, the L1 computed fact is authoritative; this indicates a build ' +
+                'regression in ga_structural_writer._detect_kala_sarpa_dosha, not a data-quality choice.',
+        }
       }
 
       return {
@@ -232,6 +275,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
               'ganita_yoga_firings_get for cross-verified detection detail.',
           } : {}),
           ...(kalaSarpaPerVarga ? { kala_sarpa_per_varga: kalaSarpaPerVarga } : {}),
+          ...(kalaSarpaReconciliation ? { kala_sarpa_reconciliation: kalaSarpaReconciliation } : {}),
         },
         is_error: false,
       }

@@ -420,6 +420,149 @@ class _DictRowConn:
         return _DictRowCursor(vichara_row=self._vichara_row, yoga_rows=self._yoga_rows)
 
 
+# ── §7: S-2(d) — constituent_facts_array grounding (kills the shared-stub) ──
+#
+# CR-72's original defect: all 22 dosha_label rows shared ONE constituent
+# fact_id. §1-§6 above fixed `fires`/`bhanga_active` genuinely-computed, but
+# `_get_catalog_constituent_fact_ids` still resolved the SAME SUN/sign
+# fact_id for every bespoke dosha (kemadruma/daridra/kala_sarpa all store
+# their catalog "requires" as a narrative string, so the structured-list
+# branch never matches and every one falls through to the single hardcoded
+# SUN/sign fallback) — a shared-stub bug reappearing one layer down from the
+# one CR-72 named. These tests pin the fix: each bespoke dosha's
+# constituent_facts_array must be grounded in ITS OWN finding's
+# constituent_planets, not a single chart-wide fallback fact.
+
+class _PerPlanetFactCursor:
+    """Cursor stand-in returning a distinct, deterministic fact_id per
+    (fact_subject, fact_key) pair — mirrors real chart_facts uniqueness
+    (each graha's each attribute has its own row/fact_id). Lets tests assert
+    that two different doshas' constituent arrays are NOT identical."""
+
+    def __init__(self):
+        self._last_params = None
+
+    def execute(self, query, params=None):
+        self._last_params = params
+
+    def fetchone(self):
+        # _real_fact_id_ref params: (chart_id, ayanamsha_id, category, subject, key)
+        if not self._last_params or len(self._last_params) < 5:
+            return None
+        _, _, category, subject, key = self._last_params
+        return (f"FID::{category}::{subject}::{key}",)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _PerPlanetFactConn:
+    def cursor(self, row_factory=None):
+        return _PerPlanetFactCursor()
+
+
+PER_PLANET_CONN = _PerPlanetFactConn()
+
+
+class TestBespokeDoshaConstituentGrounding:
+    def test_bespoke_resolver_grounds_on_the_findings_own_planets(self):
+        """_bespoke_dosha_constituent_fact_ids must resolve fact_ids keyed to
+        the finding's actual constituent_planets, not a fixed subject."""
+        finding = {"constituent_planets": ["Moon"], "constituent_houses": [11]}
+        fids = sut._bespoke_dosha_constituent_fact_ids(
+            PER_PLANET_CONN, CHART_ID, AY_ID, finding,
+        )
+        assert fids, "must resolve at least one real fact_id"
+        assert all("MOON" in f for f in fids), "Kemadruma must ground on Moon, not a fixed fallback subject"
+        assert "SUN" not in "".join(fids)
+
+    def test_kemadruma_and_daridra_constituent_arrays_are_not_identical(self):
+        """The CR-72 defect, restated: two different doshas serving the same
+        constituent_facts_array. Kemadruma grounds on Moon; Daridra (on
+        MOCK_CHART_OUTPUT, Aries lagna) grounds on the 11L/2L house lords —
+        different planets, so the resolved fact_id sets must differ."""
+        kemadruma_finding = sut._detect_kemadruma(MOCK_CHART_OUTPUT)
+        assert kemadruma_finding is None, (
+            "MOCK_CHART_OUTPUT reproduces the Anapha precondition (Mercury in "
+            "12th-from-Moon) — Kemadruma itself never forms here; use a chart "
+            "shape where it does to compare against Daridra's grounding."
+        )
+
+        # Build a chart shape where Kemadruma DOES form (Moon isolated,
+        # outside kendra) AND Daridra's own formation ground genuinely fires
+        # (11L Saturn in a dusthana, H8) so both detectors can be compared
+        # side by side. Aries lagna: 11th house = Aquarius -> 11L = Saturn.
+        chart = {
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
+            "grahas": [
+                {"name": "Sun", "sign": "Capricorn", "sign_id": 10, "house": 10, "longitude": 295.0, "retrograde": False},
+                {"name": "Moon", "sign": "Gemini", "sign_id": 3, "house": 3, "longitude": 70.0, "retrograde": False},
+                {"name": "Mars", "sign": "Leo", "sign_id": 5, "house": 5, "longitude": 130.0, "retrograde": False},
+                {"name": "Mercury", "sign": "Capricorn", "sign_id": 10, "house": 10, "longitude": 300.0, "retrograde": False},
+                {"name": "Jupiter", "sign": "Sagittarius", "sign_id": 9, "house": 9, "longitude": 265.0, "retrograde": False},
+                {"name": "Venus", "sign": "Capricorn", "sign_id": 10, "house": 10, "longitude": 308.0, "retrograde": False},
+                {"name": "Saturn", "sign": "Scorpio", "sign_id": 8, "house": 8, "longitude": 225.0, "retrograde": False},
+                {"name": "Rahu", "sign": "Taurus", "sign_id": 2, "house": 2, "longitude": 48.0, "retrograde": True},
+                {"name": "Ketu", "sign": "Scorpio", "sign_id": 8, "house": 8, "longitude": 228.0, "retrograde": True},
+            ],
+        }
+        kema_finding = sut._detect_kemadruma(chart)
+        assert kema_finding is not None
+        dari_finding = sut._detect_daridra(chart)
+        assert dari_finding is not None, "11L Saturn in H8 (dusthana) must satisfy Daridra's own formation ground"
+        assert set(kema_finding["constituent_planets"]) != set(dari_finding["constituent_planets"]), (
+            "fixture must exercise genuinely different constituent planets"
+        )
+
+        kema_fids = sut._bespoke_dosha_constituent_fact_ids(PER_PLANET_CONN, CHART_ID, AY_ID, kema_finding)
+        dari_fids = sut._bespoke_dosha_constituent_fact_ids(PER_PLANET_CONN, CHART_ID, AY_ID, dari_finding)
+        assert kema_fids, "Kemadruma must resolve real constituent fact_ids"
+        assert dari_fids, "Daridra must resolve real constituent fact_ids"
+        assert set(kema_fids) != set(dari_fids), (
+            "CR-72 shared-stub regression: two different doshas must not serve "
+            "the same constituent_facts_array"
+        )
+
+    def test_build_dosha_rows_end_to_end_no_shared_stub_across_bespoke_doshas(self):
+        """Full _build_dosha_rows path (the actual served dosha_label rows):
+        kemadruma/daridra/kala_sarpa, when co-firing on one chart, must not
+        collapse onto the generic SUN/sign fallback fact_id."""
+        chart = {
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
+            "grahas": [
+                {"name": "Sun", "sign": "Capricorn", "sign_id": 10, "house": 10, "longitude": 295.0, "retrograde": False},
+                {"name": "Moon", "sign": "Gemini", "sign_id": 3, "house": 3, "longitude": 70.0, "retrograde": False},
+                {"name": "Mars", "sign": "Leo", "sign_id": 5, "house": 5, "longitude": 130.0, "retrograde": False},
+                {"name": "Mercury", "sign": "Capricorn", "sign_id": 10, "house": 10, "longitude": 300.0, "retrograde": False},
+                {"name": "Jupiter", "sign": "Sagittarius", "sign_id": 9, "house": 9, "longitude": 265.0, "retrograde": False},
+                {"name": "Venus", "sign": "Capricorn", "sign_id": 10, "house": 10, "longitude": 308.0, "retrograde": False},
+                {"name": "Saturn", "sign": "Libra", "sign_id": 7, "house": 7, "longitude": 195.0, "retrograde": False},
+                {"name": "Rahu", "sign": "Taurus", "sign_id": 2, "house": 2, "longitude": 48.0, "retrograde": True},
+                {"name": "Ketu", "sign": "Scorpio", "sign_id": 8, "house": 8, "longitude": 228.0, "retrograde": True},
+            ],
+        }
+        rows = sut._build_dosha_rows(
+            PER_PLANET_CONN, chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            dosha_catalog=[
+                _dosha_entry("kemadruma", "no planet in 2nd or 12th from Moon"),
+                _dosha_entry("daridra", "11th lord in dusthana or 2nd/11th lords afflicted"),
+            ],
+        )
+        served = {r["fact_subject"]: r["fact_value_jsonb"]["constituent_facts_array"] for r in rows}
+        assert len(served) >= 1, "fixture must produce at least one served bespoke dosha row"
+        arrays = [tuple(sorted(a)) for a in served.values() if a]
+        if len(arrays) >= 2:
+            assert len(set(arrays)) == len(arrays), (
+                f"two dosha_label rows served the identical constituent_facts_array "
+                f"(the CR-72 shared-stub regression): {served}"
+            )
+        for name, fids in served.items():
+            assert fids, f"{name} dosha_label row must carry real constituent fact_ids, not an empty array"
+
+
 class TestDictRowRegressionGuard:
     def test_dhana_yoga_fires_for_handles_dict_rows_not_just_tuples(self):
         conn = _DictRowConn(
