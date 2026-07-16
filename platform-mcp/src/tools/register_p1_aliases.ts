@@ -322,6 +322,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         .describe('D-1.5b response budget: max question-lens rows to return (default 60).'),
       lens_offset: z.number().int().min(0).optional()
         .describe('D-1.5b response budget: pagination offset into the question-lens family (default 0).'),
+      max_signals_per_lens: z.number().int().min(1).max(100).optional()
+        .describe('D-1.5b B-7 response budget: max ranked_signals served INSIDE each lens ' +
+          '(default 25, max 100). The stored lens holds hundreds–thousands of rows; serving it ' +
+          'unbounded blew this response past 900KB. See per-lens ranked_signals_total for the ' +
+          'true family size; response_format=full raises the cap to 200/lens.'),
     }, principal)
 
   // get_signals → bodha_signals_get
