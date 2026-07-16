@@ -169,6 +169,108 @@ def get_writer_git_hash(asset_id: str) -> str:
         return "unknown"
 
 
+# ── Data-presence probe (D-1.6 state-write defect fix) ───────────────────────
+
+def _data_rows_present(conn, cur, asset_id: str, chart_id) -> int | None:
+    """Count the data rows that actually exist for (asset_id, chart_id) using the
+    asset's chart-scoped `count_sql` from asset_registry (§N.4 "Cockpit truth").
+
+    Used to distinguish "writer ran and produced nothing because NO data exists"
+    (a real dormant) from "writer reported 0 rows this run but the asset's data IS
+    present" (e.g. a resumable writer like ka_sangam whose cross-attempt ledger
+    said every substep was already committed, so it planned zero substeps — the
+    D-1.6 incident, run 71b260c7).
+
+    Returns the row count, or None when the probe cannot answer (no count_sql,
+    global asset, or SQL failure). NEVER raises, and savepoint-isolates the count
+    query so a broken count_sql cannot abort the caller's ambient transaction.
+    """
+    if chart_id is None:
+        return None
+    try:
+        cur.execute(
+            "SELECT count_sql FROM asset_registry WHERE asset_id = %s",
+            (asset_id,),
+        )
+        row = cur.fetchone()
+        count_sql = (row or {}).get("count_sql") if isinstance(row, dict) else None
+        if not count_sql or "$1" not in count_sql:
+            return None
+        cur.execute("SAVEPOINT presence_probe")
+        try:
+            cur.execute(count_sql.replace("$1", "%s"), (chart_id,))
+            r = cur.fetchone()
+            cur.execute("RELEASE SAVEPOINT presence_probe")
+        except Exception:
+            cur.execute("ROLLBACK TO SAVEPOINT presence_probe")
+            raise
+        if r is None:
+            return None
+        val = next(iter(r.values())) if isinstance(r, dict) else r[0]
+        return int(val or 0)
+    except Exception as exc:
+        logger.warning(
+            "[orchestrator] presence probe failed for %s (chart %s): %s",
+            asset_id, chart_id, exc,
+        )
+        return None
+
+
+def _upsert_throughput_state(cur, chart_id, asset_id: str, state: str, error: str | None) -> None:
+    """Recovery INSERT for a state UPDATE that matched 0 rows — the throughput row
+    is missing (it should have been created by run_asset's 'building' upsert).
+    Mirrors run_asset's partial-unique-index upsert forms (migration 184)."""
+    if chart_id is not None:
+        cur.execute(
+            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
+               VALUES (%s, %s, %s, %s, NOW())
+               ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
+               DO UPDATE SET state=EXCLUDED.state, last_error=EXCLUDED.last_error, last_built_at=NOW()""",
+            (asset_id, chart_id, state, error),
+        )
+    else:
+        cur.execute(
+            """INSERT INTO asset_throughput (asset_id, chart_id, state, last_error, last_built_at)
+               VALUES (%s, NULL, %s, %s, NOW())
+               ON CONFLICT (asset_id) WHERE chart_id IS NULL
+               DO UPDATE SET state=EXCLUDED.state, last_error=EXCLUDED.last_error, last_built_at=NOW()""",
+            (asset_id, state, error),
+        )
+
+
+def _guard_state_write(cur, run_id: str, chart_id, asset_id: str, intended_state: str,
+                       error: str | None = None) -> None:
+    """SAFETY NET (D-1.6): a state UPDATE on asset_throughput that matched 0 rows
+    means the intended state transition was silently LOST — exactly the failure
+    mode that cost wall-clock time in the D-1.6 incident because nothing surfaced
+    it. Log loudly with actionable diagnostics and re-insert the row so the state
+    is never dropped. Call immediately after a state UPDATE on asset_throughput."""
+    rc = getattr(cur, "rowcount", None)
+    if rc != 0:
+        return
+    logger.error(
+        "[orchestrator] STATE-WRITE ANOMALY: asset_throughput UPDATE matched 0 rows "
+        "— intended state '%s' for asset=%s chart=%s run=%s would have been silently "
+        "lost (row missing; expected a 'building' row from run_asset). Re-inserting.",
+        intended_state, asset_id, chart_id, run_id,
+    )
+    try:
+        _upsert_throughput_state(cur, chart_id, asset_id, intended_state, error)
+        emit_event({
+            "type": "asset.state_write_anomaly",
+            "chart_id": chart_id,
+            "asset_id": asset_id,
+            "run_id": run_id,
+            "intended_state": intended_state,
+            "recovered": True,
+        })
+    except Exception as exc:
+        logger.error(
+            "[orchestrator] STATE-WRITE ANOMALY recovery insert also failed for %s: %s",
+            asset_id, exc,
+        )
+
+
 # ── Error helper ──────────────────────────────────────────────────────────────
 
 def mark_asset_error(
@@ -185,6 +287,7 @@ def mark_asset_error(
            WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
         (error, chart_id, asset_id),
     )
+    _guard_state_write(cur, run_id, chart_id, asset_id, "error", error)
     cur.execute(
         """UPDATE build_run_assets SET state = 'error', ended_at = NOW(), error = %s
            WHERE run_id = %s AND asset_id = %s""",
@@ -492,6 +595,34 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     zero_rows_is_complete = (chart_id is None) or (target_floor == 0)
     final_state = 'lit' if (rows_written > 0 or zero_rows_is_complete) else 'dormant'
 
+    # ── No-op-completion reclassification (D-1.6 root-cause fix) ──────────────
+    # 'dormant' means "ran and produced nothing → data absent → retry next build".
+    # But a writer with cross-attempt substep resumption (ka_sangam, migration 436)
+    # can legitimately report 0 rows THIS RUN because every substep was already
+    # committed by a prior same-fingerprint build — its data is fully present and
+    # correct. Marking that 'dormant' poisons every downstream DEP-ASSERT (the
+    # D-1.6 incident: run 71b260c7, ka_sangam(dormant) → 24 BLOCKED). Before
+    # accepting 'dormant', probe the asset's actual data via its chart-scoped
+    # count_sql: if rows exist, this was a no-op completion → 'lit', loudly.
+    if final_state == 'dormant':
+        present = _data_rows_present(conn, cur, asset_id, chart_id)
+        if present is not None and present > 0:
+            logger.warning(
+                "[orchestrator] NO-OP COMPLETION: asset %s (chart %s, run %s) reported "
+                "0 rows this run but %d data rows are present (resumable-writer skip or "
+                "equivalent). Marking 'lit', not 'dormant' — downstream deps stay unblocked.",
+                asset_id, chart_id, run_id, present,
+            )
+            emit_event({
+                "type": "asset.noop_completion",
+                "chart_id": chart_id,
+                "asset_id": asset_id,
+                "run_id": run_id,
+                "rows_present": present,
+            })
+            final_state = 'lit'
+            rows_written = present
+
     if target_floor and rows_written < target_floor:
         logger.warning(
             "asset %s: rows_written=%d below target_floor=%d; marking %s",
@@ -506,6 +637,7 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
            WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
         (final_state, rows_written, upstream_hash, writer_hash, chart_id, asset_id),
     )
+    _guard_state_write(cur, run_id, chart_id, asset_id, final_state)
     cur.execute(
         """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
            WHERE run_id = %s AND asset_id = %s""",
@@ -573,10 +705,48 @@ def run_asset(
                 emit_event({"type": "asset.dep_assert", "chart_id": chart_id,
                             "asset_id": asset_id, "mode": "warn", "unmet": detail[:500]})
             else:  # enforce
+                # SAFETY NET (D-1.6): before blocking, check each unmet dep for the
+                # "state says not-lit but the data is demonstrably present" anomaly.
+                # In the D-1.6 incident this block fired 24 times on ka_sangam(dormant)
+                # while kala_convergence held all 2,488 correct rows — and nothing in
+                # the error said so, which is what made recovery slow. The block still
+                # happens (state is the contract), but the diagnostics now name the
+                # exact asset, run, expected-vs-actual state, and observed row count.
+                anomalies: list[str] = []
+                for item in unmet:
+                    dep_id = item.split("(", 1)[0]
+                    dep_state = item[len(dep_id) + 1:-1] if "(" in item else "?"
+                    present = _data_rows_present(conn, cur, dep_id, chart_id)
+                    if present is not None and present > 0:
+                        anomaly = (
+                            f"{dep_id}: expected state 'lit', actual '{dep_state}', "
+                            f"but {present} data rows ARE present (run={run_id})"
+                        )
+                        anomalies.append(anomaly)
+                        logger.error(
+                            "[orchestrator] DEP-ASSERT ANOMALY for %s → dep %s — "
+                            "state/data mismatch: %s. Likely a no-op completion "
+                            "misclassified (see asset.noop_completion) or a lost "
+                            "state write; verify the dep's data, correct "
+                            "asset_throughput.state, and resume.",
+                            asset_id, dep_id, anomaly,
+                        )
+                        emit_event({
+                            "type": "asset.dep_assert_anomaly",
+                            "chart_id": chart_id,
+                            "asset_id": asset_id,
+                            "dep_id": dep_id,
+                            "run_id": run_id,
+                            "expected_state": "lit",
+                            "actual_state": dep_state,
+                            "rows_present": present,
+                        })
                 msg = (
                     "DEP-ASSERT: declared dependency(ies) not lit before run: %s — "
                     "refused to build on incomplete/missing upstream data" % detail
                 )
+                if anomalies:
+                    msg += " | ANOMALY (data present despite state): " + "; ".join(anomalies)
                 logger.error("[orchestrator] %s %s", asset_id, msg)
                 mark_asset_error(conn, cur, run_id, chart_id, asset_id, msg)
                 conn.commit()
