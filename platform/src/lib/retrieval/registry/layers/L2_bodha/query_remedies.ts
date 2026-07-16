@@ -175,7 +175,13 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       const resConds = ['chart_id = $1', 'ayanamsha_id = $2']
       const resParams: unknown[] = [chart_id, ayanamsha_id]
       let rp = 3
-      if (graha) { resConds.push(`graha = $${rp++}`); resParams.push(graha) }
+      // CR-42/CR-10 fix (D-1.6 S-1): was an exact-match `graha = $` with no case
+      // normalization, unlike every sibling L0 remedy handler (query_remedy_corpus,
+      // query_remedies_by_planet, etc., all use LOWER(x) = LOWER($)). bodha_rm_resonances
+      // stores graha as capitalized full names ("Saturn", "Venus", ...) — a caller
+      // passing lowercase ("saturn") silently got ZERO resonance rows back instead of
+      // Saturn's rows. Case-insensitive match closes the gap.
+      if (graha) { resConds.push(`LOWER(graha) = LOWER($${rp++})`); resParams.push(graha) }
       if (domain) {
         resConds.push(
           `EXISTS (SELECT 1 FROM bodha_cdlm_cells cc WHERE cc.cell_id = ANY(bodha_rm_resonances.associated_cdlm_cells_array) ` +
@@ -204,8 +210,10 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       const preConds = ['chart_id = $1', 'ayanamsha_id = $2']
       const preParams: unknown[] = [chart_id, ayanamsha_id]
       let pp = 3
-      if (tradition)  { preConds.push(`tradition = $${pp++}`);  preParams.push(tradition) }
-      if (graha)      { preConds.push(`target_graha = $${pp++}`); preParams.push(graha) }
+      if (tradition)  { preConds.push(`LOWER(tradition) = LOWER($${pp++})`);  preParams.push(tradition) }
+      // CR-42/CR-10 fix (D-1.6 S-1): same case-sensitivity gap as the resonance-side
+      // filter above, on target_graha.
+      if (graha)      { preConds.push(`LOWER(target_graha) = LOWER($${pp++})`); preParams.push(graha) }
       if (keyword) {
         preConds.push(
           `(remedy_label_human ILIKE $${pp} OR remedy_category ILIKE $${pp} OR sub_tradition ILIKE $${pp})`

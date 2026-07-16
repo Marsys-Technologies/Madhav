@@ -224,6 +224,14 @@ const BirthBase = {
  */
 
 // Helper for simple chart-scoped registry aliases
+//
+// `opts.paramAliases`: CR-42 fix — maps an alias-only param name (e.g. `planet`, the name
+// LLM callers naturally reach for) onto the underlying capability's native param name
+// (e.g. `graha`) before the call. Without this, a caller-supplied `planet` value would
+// either be stripped by the zod schema (if not declared at all) or passed through under
+// the WRONG key name that the capability's handler never reads — both are silent
+// filter-fallthrough. If both the alias name and the native name are supplied, the native
+// name wins (caller explicitly used the capability's own vocabulary).
 function regAlias(
   server: McpServer,
   name: string,
@@ -231,6 +239,7 @@ function regAlias(
   uri: string,
   extraSchema: Record<string, z.ZodTypeAny> = {},
   principal: Principal,
+  opts?: { paramAliases?: Record<string, string> },
 ) {
   server.tool(
     name, `[Phase-1 alias] ${desc}. Delegates to the same handler as the legacy tool name.`,
@@ -239,9 +248,18 @@ function regAlias(
       const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
       if (!chart_id) return errOut(name, 'chart_id is required')
       try {
+        const resolvedRest: Record<string, unknown> = { ...rest }
+        if (opts?.paramAliases) {
+          for (const [aliasKey, nativeKey] of Object.entries(opts.paramAliases)) {
+            if (resolvedRest[aliasKey] !== undefined) {
+              if (resolvedRest[nativeKey] === undefined) resolvedRest[nativeKey] = resolvedRest[aliasKey]
+              delete resolvedRest[aliasKey]
+            }
+          }
+        }
         const data = await callRegistryCap(uri, {
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
-          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
+          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...resolvedRest,
         }, principal)
         return dualOutput(data, name)
       } catch (err) { return errOut(name, String(err), { chart_id }) }
@@ -658,16 +676,36 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   )
 
   // get_remedies → bodha_remedies_get (PRIMARY alias per dedup disposition)
+  //
+  // CR-42/R-19/R-20 fix (D-1.6 S-1): `graha`/`planet` were NOT in this alias's zod schema —
+  // the MCP SDK strips any param an LLM caller sends that isn't declared in the tool's
+  // input shape, so a `planet="Saturn"` filter was silently discarded before the request
+  // body was even built (never reached `...rest`, never reached the underlying
+  // L2/query_remedies capability's `graha` filter at all). A Saturn-scoped remedy query
+  // therefore served ALL grahas' resonances/prescriptions unfiltered — the exact "Saturn
+  // query must never serve Jupiter remedies" failure mode this fix closes. `planet` is
+  // accepted as an alias of the capability's native `graha` param name.
   regAlias(server, 'bodha_remedies_get',
     'L2 remedy recommendations via Bodha (PRIMARY Phase-1 name for get_remedies)',
     'marsys://tool/L2/query_remedies',
-    { domain: z.string().optional() }, principal)
+    {
+      domain: z.string().optional(),
+      graha: z.string().optional().describe('Filter by target graha (e.g. Saturn, Venus) — case-insensitive.'),
+      planet: z.string().optional().describe('Alias of `graha`.'),
+      tradition: z.string().optional(),
+    }, principal, { paramAliases: { planet: 'graha' } })
 
   // Also: bodha_remedies_search as secondary alias
   regAlias(server, 'bodha_remedies_search',
     'L2 remedy search via Bodha (alias of bodha_remedies_get)',
     'marsys://tool/L2/query_remedies',
-    { domain: z.string().optional(), keyword: z.string().optional() }, principal)
+    {
+      domain: z.string().optional(),
+      keyword: z.string().optional(),
+      graha: z.string().optional().describe('Filter by target graha (e.g. Saturn, Venus) — case-insensitive.'),
+      planet: z.string().optional().describe('Alias of `graha`.'),
+      tradition: z.string().optional(),
+    }, principal, { paramAliases: { planet: 'graha' } })
 
   // get_chart_quality → bodha_quality_get
   regAlias(server, 'bodha_quality_get',
