@@ -374,12 +374,20 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           'low-salience corroboration classes a chart-wide salience page never surfaces.'),
     },
     async (params) => {
-      const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
+      const { chart_id, ayanamsha_id, limit, offset, min_weight, ...rest } = params as Record<string, unknown>
       if (!chart_id) return errOut('bodha_signals_get', 'chart_id is required')
       try {
+        // D15b-F3 (R-18 param no-op audit): this schema documents `min_weight`, but the
+        // downstream capability (query_signals.ts) only ever reads `args['min_salience']` —
+        // `min_weight` was forwarded verbatim via `...rest` and silently ignored on every
+        // call (a documented param that filters nothing). Alias it onto `min_salience`
+        // before forwarding; an explicit `min_salience` in the caller's own params (if ever
+        // added) still wins since it would already be a rest key.
         const data = await callRegistryCap('marsys://tool/L2/query_signals', {
           chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
-          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
+          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0,
+          ...(min_weight != null && rest['min_salience'] == null ? { min_salience: min_weight } : {}),
+          ...rest,
         }, principal) as Record<string, unknown>
         const inner = data['content'] as Record<string, unknown> | undefined
         if (inner) {
