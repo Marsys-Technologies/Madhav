@@ -1,6 +1,6 @@
 ---
 wave: D-1.6
-lifecycle_step: 2
+lifecycle_step: 4
 brief_bound: true
 rollback_pin:
   image_sha:
@@ -32,4 +32,16 @@ notes: >
   current_wave=D-1.5b; the D-1.6 banner is an uncommitted working-tree edit only (pre-existing at
   session start, matches original git status M flag) — un-checkpointed per protocol §6.1. Conductor
   action: commit this banner (as part of INTEGRATE or CLOSE step, not standalone) once lanes land.
+  INTEGRATE (step 4) complete: all 7 lanes merged onto wave/D-1.6/integration (5cbe0a8c) in order
+  S-1..S-6,S-8; one real conflict (POST_REMEDIATION register §M/§N, both sides authored the same
+  addendum text independently — resolved by taking S-8's superseding §N version). Full suite on
+  integrated branch: platform tsc clean, npm test 5589/0 failed; platform-mcp tsc clean, npm test
+  449 passed/75 failed (IDENTICAL to main baseline via direct file-content diff comparison — zero
+  new regressions from cross-lane integration); sidecar pytest+bodha_writers 3538 passed/0 failed;
+  drift_detector.py 219 findings/exit=3, schema_validator.py 34 violations/exit=3 — BOTH IDENTICAL
+  to main baseline (confirmed via direct comparison), pre-existing, not wave-introduced.
+  GCP infra writes staged by S-6 (O-2 scheduler URI terraform apply w/ header side-effect on 2
+  unrelated jobs; O-8 monitoring alert policy create) NOT YET APPLIED — routing to native for
+  explicit go-ahead before conductor runs them (not required for Gate Ś closure).
+  Next: DEPLOY step 5 — push branch, PR to main, CI, merge.
 ---
