@@ -2442,9 +2442,26 @@ def _build_dosha_rows(
             name_en = entry.get("name_en", dosha_name)
             citations = entry.get("classical_citations") or {}
             source_chunks = entry.get("source_chunk_ids") or []
-            constituents = _get_catalog_constituent_fact_ids(
-                conn, entry, chart_output, chart_id, ayanamsha_id
-            )
+            # S-2(d): bespoke-detected doshas (kemadruma/daridra/kala_sarpa)
+            # ground on their OWN finding's constituent_planets — never the
+            # generic catalog-rule resolver, which falls back to a single
+            # shared SUN/sign fact_id for every narrative-"requires" dosha
+            # (the CR-72 shared-stub pattern reappearing one layer down).
+            if bespoke_finding is not None:
+                constituents = _bespoke_dosha_constituent_fact_ids(
+                    conn, chart_id, ayanamsha_id, bespoke_finding
+                )
+                if not constituents:
+                    # Defensive fallback only (e.g. a conn with no real
+                    # chart_facts rows yet) — never silently empty when the
+                    # generic path can still resolve something honest.
+                    constituents = _get_catalog_constituent_fact_ids(
+                        conn, entry, chart_output, chart_id, ayanamsha_id
+                    )
+            else:
+                constituents = _get_catalog_constituent_fact_ids(
+                    conn, entry, chart_output, chart_id, ayanamsha_id
+                )
 
             # ── Mandatory cancellation check (CR-73 doctrine) ───────────────────
             bhanga_active: bool | None = None
@@ -5493,6 +5510,46 @@ def _get_catalog_constituent_fact_ids(
         if fid:
             constituents.append(fid)
 
+    return constituents
+
+
+# CR-72/CR-74/S-2(d): the three BESPOKE_DOSHA_DETECTORS (kemadruma, daridra,
+# kala_sarpa) store their catalog "requires" as a free-text narrative string
+# (see the comment on `_evaluate_catalog_rule`'s "requires" handling above),
+# so `_get_catalog_constituent_fact_ids` — which only walks a STRUCTURED
+# requires list — always falls through to its single hardcoded SUN/sign
+# fallback for all three. That fallback resolves to the SAME fact_id for
+# every dosha on a given chart+ayanamsha: a de-facto shared-stub
+# constituent_facts_array, functionally identical to the CR-72 defect this
+# lane exists to kill, even though `fires`/`bhanga_active` are now genuinely
+# computed. Each bespoke detector already returns its own real
+# `constituent_planets` (and, for kemadruma/kala_sarpa, `constituent_houses`)
+# in its finding dict — this resolver grounds the served row in THOSE, one
+# real graha_position fact per constituent planet, never the narrative rule.
+def _bespoke_dosha_constituent_fact_ids(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    bespoke_finding: dict[str, Any],
+) -> list[str]:
+    """Resolve real per-dosha grounding fact_ids from a bespoke detector's
+    own finding (constituent_planets), instead of the generic catalog-rule
+    resolver's narrative-string fallback (which collapses every bespoke
+    dosha onto the same SUN/sign fact_id — the shared-stub pattern CR-72/
+    S-2(d) requires killed). Pulls both the `house_d1` fact (the classical
+    ground actually being tested — house placement) and `sign` fact
+    (planet-identity corroboration) per constituent planet; falls back to
+    the generic resolver only if no real facts resolve at all (defensive —
+    e.g. a disconnected/mock conn in a caller that hasn't wired real data),
+    never a fabricated fact_id."""
+    constituents: list[str] = []
+    planets = bespoke_finding.get("constituent_planets") or []
+    for planet in planets:
+        subj = PLANET_TO_SUBJECT.get(planet, str(planet).upper())
+        for key in ("house_d1", "sign"):
+            fid = _real_fact_id_ref(conn, chart_id, ayanamsha_id, "graha_position", subj, key)
+            if fid and fid not in constituents:
+                constituents.append(fid)
     return constituents
 
 
