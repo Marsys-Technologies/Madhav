@@ -17,7 +17,7 @@ lanes:
   - {lane: S-7, branch: wave/D-1.6/S-7, status: pending}
   - {lane: S-8, branch: wave/D-1.6/S-8, status: receipted, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a173a2019ea963797, head_sha: bbc9bde9, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, note: MARSYS_DEFECT_GAP_REGISTER_v2_0.md is at 00_ARCHITECTURE/ root not under llm_consumption_audit/** - brief may_touch glob imprecision, authorized by lane task text, non-blocking"}
 deploy: {done: true, sha: 38d8210554807dfdc90aa797a7023fdca49465b9, pr: 578, ci_run: 29491712143, deploy_run: 29492213040}
-rebuild: {scope: scope_limited, layers: [ga_yoga_dosha, ka_activation, ph_nimitta_rectification, bo_laksana_closure], full: false, abhisek_build_id: pending}
+rebuild: {scope: asset_set, full: false, run_id: 83949839-fff3-472f-bbb1-cbf6c3b1bb8a, job_execution: brahma-build-pipeline-job-dv5f9, asset_count: 47, roots: [ga_structural, ga_yoga, ka_yojaka], includes_t5_t9_target: ka_jivana_parva, dispatched: true, abhisek_build_id: pending}
 gate: {run: false, green: [], red: []}
 updated_at: 2026-07-16T00:00:00Z
 notes: >
