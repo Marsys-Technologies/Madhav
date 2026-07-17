@@ -1,13 +1,17 @@
 ---
 wave: D-3
-lifecycle_step: 3  # IMPLEMENT ∥ VERIFY COMPLETE for both cycle-1 lanes: T-0 receipted ACCEPT,
-                   # T-1 receipted ACCEPT (both fresh-context Opus verifiers, live-reproduced
-                   # independently, scope-warden pass). Ready for INTEGRATE (step 4) — PAUSED
-                   # here per the native's standing rule (milestone-pause at integrate/deploy/
-                   # gate boundaries); awaiting go before merging to the wave integration branch.
-                   # ka_avadhi "gap" reclassified mid-spawn as a code bug (double-content-unwrap
-                   # in kala_temporal.ts), not a data/rebuild issue — no rebuild fired; fix not
-                   # yet applied, disposition (fold into T-6 vs standalone hotfix) pending native.
+lifecycle_step: 4  # INTEGRATE complete (native GO 2026-07-18): T-0 fast-forward merged, T-1
+                   # merged, onto wave/D-3/integration (base origin/main@b536e13b). Full suite +
+                   # cross-lane sweep run: platform tsc clean, eslint clean, vitest 5727/5727
+                   # pass (0 new failures); platform-mcp tsc clean, vitest 75 failed/515 passed/
+                   # 15 skipped — BYTE-IDENTICAL to the pre-existing baseline the T-1 verifier
+                   # already confirmed (no cross-lane interference). T-0's 3 red retrodiction
+                   # checks correctly NOT treated as an integration/merge blocker per native
+                   # instruction — DR-11's ≥0.50 gate is a wave-close metric evaluated after the
+                   # T-2/T-3 kernel ships, not an integration-time gate.
+                   # PARALLEL: kala_temporal.ts double-unwrap hotfix dispatched as its own
+                   # diagnostic-first standalone lane (wave/D-3/hotfix-kala-temporal), NOT yet
+                   # verified/merged — result pending.
 status: ACTIVE
 cycle: 1
 brief_bound: true
@@ -33,8 +37,10 @@ rebuild_scope_ruling:
 lanes:
   - {lane: T-0, branch: wave/D-3/T-0, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T0, base: origin/main@b536e13b, head_sha: 9a67f986, status: receipted, model: sonnet, verifier_model: opus, receipt_ref: "verdict=ACCEPT, tests=40/40, scope_warden=pass, live independent reproduction on 482012f1 matched implementer numbers EXACTLY (check-a intensity0/threshold0 FAIL, check-b 2/6 FAIL, check-c 18/40=0.45 vs 0.50 floor FAIL, control_gap=-0.0464 FAIL). DR-10 peak_basis=dasha_lord_confluence_v1 correctly NOT claimed as a named model. DR-11 anti-gaming independent-reproduction requirement satisfied by this verifier pass itself. All-red retrodiction result judged legitimate v1-proxy weakness, not a defect. 2 flag-forward non-blocking items for T-2/T-3 kernel work: (1) top_decile_fraction=1.0 sparse-curve artifact on check-a (does not flip result), (2) verifier-found localMax grid tie-break makes lead/lag distribution (peak_lag_days=-42 on every hit) uninformative, no pass/fail impact."}
   - {lane: T-1, branch: wave/D-3/T-1, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T1, base: origin/main@b536e13b, head_sha: 3d888223, status: receipted, model: sonnet, verifier_model: opus, receipt_ref: "verdict=ACCEPT, tests: platform 5687/5687 pass, platform-mcp 515/605 pass (75 pre-existing failures verified byte-identical vs origin/main baseline, none reference AV/kakshya code), new file 25/26 (1 live-integration skipped). scope_warden=pass (exactly 4 files, all in-lane, append-only registrations). CR-87 verified: chart_id required no-default both modes. Live SAV bindus independently re-pulled and re-computed by verifier: 29,29,27,32,30,26,34,32,25,27,23,23 (sum=337 classical total) — exact match; house7=34 amplifying/house10=27 damping confirmed against BRIEF_D3 type specimens. Both v1-tradeoff flags (kakshya duration correction, Lahiri mean-rate sidereal approx) judged RIGHT calls matching the brief's own illustrative framing, not defects. One non-blocking Phase-2 note: kakshya_windows live-serving depends on sidecar transit endpoint, unproven at Phase-1, gate runner should exercise post-deploy."}
-integration_branch: null
+integration_branch: {branch: wave/D-3/integration, base: origin/main@b536e13b, merges: ["9a67f986 (T-0, fast-forward)", "3d888223 (T-1, merge commit 9166f5ca)"], suite: {platform: {tsc: clean, eslint: clean, vitest: "5727 passed / 317 skipped / 1 todo, 0 failed"}, platform_mcp: {tsc: clean, vitest: "515 passed / 75 failed / 15 skipped — byte-identical to pre-existing baseline, no new failures"}}, pushed: false}
+hotfix_lanes:
+  - {lane: hotfix-kala-temporal, branch: wave/D-3/hotfix-kala-temporal, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-hotfix-katemporal, base: origin/main, status: implementing, note: "diagnostic-first standalone per native directive 2026-07-18 — fix the double-content-unwrap in kala_temporal.ts fetchCapabilityRows(), serving-layer only, acceptance = live MCP kala_temporal_bundle assertion on deployed connector; route on result (populates -> root cause confirmed, keep fix, T-2/T-5 critical path, stand down the ka_avadhi rebuild question, CR-41 supersession still stands for the writer; stays empty -> genuinely upstream, fold serving fix into T-6 as hygiene, CR-41 supersession applies to T-1/T-2's stateless surface)"}
 deploy: {done: false}
 gate: {run: false}
-updated_at: "2026-07-18T00:05+05:30"
+updated_at: "2026-07-18T02:10+05:30"
 resumed_at: null
