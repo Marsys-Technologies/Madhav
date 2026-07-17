@@ -67,11 +67,15 @@ PRIMITIVE_ROWS: list[tuple] = [
      "doctrine", "ganita_yoga_firings_get",
      {"chart_id": "{chart_id}", "domain": "{domain}", "family": "house_lord"},
      "ganita_yogas_get", "CR-56", [], ["CR-27c"]),
+    # D-2 gate fix (2026-07-17): route to the firings-authoritative surface. ganita_yoga_firings_get
+    # serves neecha_bhanga_raja_yoga FIRED with bhanga_active + a per-varga grounds_jsonb ledger
+    # (BPHS Ch.39) since D-1.6 S-3; the prior route (ganita_yogas_get catalog face) does NOT evaluate
+    # NBRY. known_gap CR-59 cleared: L1 detection is live; residual is L2 ranking/surfacing, not detection.
     ("nbry_scan", 1,
      "Nicha-Bhanga (debility cancellation) scan, per-varga (not D1-only).",
-     "doctrine", "ganita_yogas_get",
-     {"chart_id": "{chart_id}", "rule": "neecha_bhanga", "per_varga": True},
-     "ganita_condition_get", "CR-59", [], []),
+     "doctrine", "ganita_yoga_firings_get",
+     {"chart_id": "{chart_id}", "bhanga_active": True},
+     "ganita_condition_get", None, [], []),
     ("wealth_loss_mechanism_scan", 1,
      "Scans functional-lordship links (dusthana/maraka/badhaka aspects) that constitute a loss mechanism.",
      "signal", "bodha_signals_get",

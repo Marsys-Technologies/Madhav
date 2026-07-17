@@ -128,10 +128,14 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     version: 1,
     definition: 'Nīcha-Bhaṅga (debility cancellation) scan, per-varga (not D1-only).',
     category: 'doctrine',
-    live_tool: 'ganita_yogas_get',
-    tool_args: { chart_id: '{chart_id}', rule: 'neecha_bhanga', per_varga: true },
+    // D-2 gate fix (2026-07-17): routed to the firings-authoritative surface. ganita_yoga_firings_get
+    // serves neecha_bhanga_raja_yoga FIRED with bhanga_active + a per-varga grounds_jsonb ledger
+    // (BPHS Ch.39 rule-by-rule) since D-1.6 S-3. The prior route (ganita_yogas_get) is the catalog
+    // face that does NOT evaluate NBRY — following it left the reading blind to the D9 cancellations.
+    live_tool: 'ganita_yoga_firings_get',
+    tool_args: { chart_id: '{chart_id}', bhanga_active: true },
     fallback_face: 'ganita_condition_get',
-    known_gap: 'CR-59', // detector D1-scoped only, blindness can invert verdicts — OPEN, ELEVATED
+    known_gap: null, // CR-59 CORRECTED (D-2, 2026-07-17): L1 NBRY detector is LIVE (D9-scoped, grounds-carried) since D-1.6 S-3. Residual is L2 ranking/surfacing, not detection.
     mandatory_tags: [],
     cr27_prevents: [],
   },
