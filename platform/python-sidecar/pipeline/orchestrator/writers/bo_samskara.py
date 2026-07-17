@@ -136,6 +136,30 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
     return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
 
 
+def _fetch_existing_embeddings(conn, chart_id: str, aya: str) -> dict[str, dict]:
+    """signal_id -> {embedding_input_summary, embedding_vec (text), embedding_model,
+    embedding_model_version} for this chart/ayanamsha's CURRENT rows — read before
+    replace_prior_signal_embeddings deletes them, so a rebuild can reuse an
+    embedding whose input text hasn't changed instead of re-calling Vertex AI.
+    _build_input_summary is a pure function of already-stored signal fields, so an
+    unchanged summary guarantees the reused vector is the value Vertex would return
+    for the same input again — this is the perf-pre-D3 embedding-reuse optimization."""
+    rows = conn.execute(
+        """SELECT signal_id, embedding_input_summary, embedding_vec::text,
+                  embedding_model, embedding_model_version
+           FROM bodha_signal_embeddings
+           WHERE chart_id = %s AND ayanamsha_id = %s""",
+        [chart_id, aya],
+    ).fetchall()
+    keys = ["signal_id", "embedding_input_summary", "embedding_vec",
+            "embedding_model", "embedding_model_version"]
+    out: dict[str, dict] = {}
+    for r in rows:
+        d = dict(zip(keys, r)) if not isinstance(r, dict) else r
+        out[str(d["signal_id"])] = d
+    return out
+
+
 def _batch_insert(conn, rows: list[dict]) -> int:
     inserted = 0
     total = len(rows)
@@ -199,10 +223,43 @@ class BoSamskaraWriter(WriterBase):
             (sig, _build_input_summary(sig)) for sig in signals
         ]
 
-        # Batch-embed all summaries for this ayanamsha
+        # perf-pre-D3: reuse a prior embedding when its stored input text is
+        # byte-identical (same model+version too) — _build_input_summary is a pure
+        # function of already-stored signal fields, so an unchanged summary means
+        # Vertex would return the same vector again. Read BEFORE
+        # replace_prior_signal_embeddings (below) deletes the current rows.
+        existing = _fetch_existing_embeddings(conn, chart_id, aya)
         rows: list[dict] = []
-        for batch_start in range(0, len(signal_summaries), EMBED_BATCH_SIZE):
-            batch = signal_summaries[batch_start:batch_start + EMBED_BATCH_SIZE]
+        to_embed: list[tuple[dict, str]] = []
+        reused_count = 0
+        for sig, summary in signal_summaries:
+            prior = existing.get(str(sig["signal_id"]))
+            if (prior is not None
+                    and prior["embedding_input_summary"] == summary
+                    and prior["embedding_model"] == EMBEDDING_MODEL
+                    and prior["embedding_model_version"] == EMBEDDING_VER):
+                rows.append({
+                    "embedding_id":             str(uuid.uuid4()),
+                    "signal_id":                str(sig["signal_id"]),
+                    "chart_id":                 chart_id,
+                    "ayanamsha_id":             aya,
+                    "build_id":                 build_id,
+                    "embedding_vec":            prior["embedding_vec"],
+                    "embedding_model":          EMBEDDING_MODEL,
+                    "embedding_model_version":  EMBEDDING_VER,
+                    "embedding_input_summary":  summary,
+                    "computed_at":              now,
+                })
+                reused_count += 1
+            else:
+                to_embed.append((sig, summary))
+        if reused_count:
+            logger.info("[bo_samskara] %s — reused %d/%d embeddings (unchanged input text)",
+                        aya, reused_count, len(signal_summaries))
+
+        # Batch-embed only the summaries that changed or are new for this ayanamsha
+        for batch_start in range(0, len(to_embed), EMBED_BATCH_SIZE):
+            batch = to_embed[batch_start:batch_start + EMBED_BATCH_SIZE]
             batch_texts = [summary for _, summary in batch]
             try:
                 vecs = _embed_batch(batch_texts)
