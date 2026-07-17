@@ -1602,43 +1602,47 @@ def _build_kala_cheshta_floor_rows(
 
 # ── chart_facts INSERT ────────────────────────────────────────────────────────
 
+_CHART_FACTS_UPSERT_SQL = """
+    INSERT INTO chart_facts
+      (fact_id, chart_id, ayanamsha_id, build_id,
+       fact_category, fact_subject, fact_key,
+       fact_value_text, fact_value_num, fact_value_jsonb,
+       unit, citation_ref, citation_human,
+       source_calculation, verification_pass_status,
+       engine_version, computed_at)
+    VALUES
+      (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+       %(fact_category)s, %(fact_subject)s, %(fact_key)s,
+       %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
+       %(unit)s, %(citation_ref)s, %(citation_human)s,
+       %(source_calculation)s, %(verification_pass_status)s,
+       %(engine_version)s, %(computed_at)s)
+    ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+    WHERE formula_id IS NULL
+    DO UPDATE SET
+      fact_id          = EXCLUDED.fact_id,
+      fact_value_num   = EXCLUDED.fact_value_num,
+      citation_ref     = EXCLUDED.citation_ref,
+      citation_human   = EXCLUDED.citation_human,
+      verification_pass_status = EXCLUDED.verification_pass_status,
+      engine_version   = EXCLUDED.engine_version,
+      computed_at      = EXCLUDED.computed_at
+"""
+
+
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
     # Idempotency: replace this chart's prior rows for the scope being written so a
     # rebuild under a new build_id replaces instead of accreting.
     replace_prior_chart_facts(conn, rows)
-    written = 0
-    for r in rows:
-        conn.execute(
-            """
-            INSERT INTO chart_facts
-              (fact_id, chart_id, ayanamsha_id, build_id,
-               fact_category, fact_subject, fact_key,
-               fact_value_text, fact_value_num, fact_value_jsonb,
-               unit, citation_ref, citation_human,
-               source_calculation, verification_pass_status,
-               engine_version, computed_at)
-            VALUES
-              (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
-               %(fact_category)s, %(fact_subject)s, %(fact_key)s,
-               %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
-               %(unit)s, %(citation_ref)s, %(citation_human)s,
-               %(source_calculation)s, %(verification_pass_status)s,
-               %(engine_version)s, %(computed_at)s)
-            ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
-            WHERE formula_id IS NULL
-            DO UPDATE SET
-              fact_id          = EXCLUDED.fact_id,
-              fact_value_num   = EXCLUDED.fact_value_num,
-              citation_ref     = EXCLUDED.citation_ref,
-              citation_human   = EXCLUDED.citation_human,
-              verification_pass_status = EXCLUDED.verification_pass_status,
-              engine_version   = EXCLUDED.engine_version,
-              computed_at      = EXCLUDED.computed_at
-            """,
-            r,
-        )
-        written += 1
-    return written
+    if not rows:
+        return 0
+    # Batched executemany (same SQL text/params as the prior per-row conn.execute()
+    # loop — perf-pre-D3: ~13k rows of single-row round trips was the dominant cost
+    # in this writer's ~130s p50; batching removes the per-row network round trip
+    # without changing a single value written).
+    with conn.cursor() as cur:
+        cur.executemany(_CHART_FACTS_UPSERT_SQL, rows)
+    return len(rows)
 
 
 # ── Main build function ───────────────────────────────────────────────────────

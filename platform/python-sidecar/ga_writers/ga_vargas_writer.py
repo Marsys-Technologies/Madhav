@@ -2540,15 +2540,36 @@ def _write_rows_batch(conn, rows: list[dict]) -> int:
     # Idempotency: replace this chart's prior rows for the (ayanamsha, varga) scope
     # in this batch so a rebuild replaces rather than leaving stale values.
     replace_prior_chart_divisionals(conn, rows)
-    written = 0
-    for row in rows:
+    if not rows:
+        return 0
+    # Batched happy path (perf-pre-D3): same SQL/values as the prior per-row loop,
+    # just one round trip instead of N. A SAVEPOINT wraps the batch attempt —
+    # without it, a mid-batch failure leaves the ambient transaction aborted and
+    # the per-row fallback below would silently no-op every row (worse than the
+    # original behavior it's meant to preserve). On failure, roll back to the
+    # savepoint and fall back to the original per-row try/except, which keeps
+    # writing past a single malformed row exactly as it did before batching.
+    with conn.cursor() as cur:
         try:
-            conn.execute(_UPSERT_WITH_FACT_ID_SQL, row)
-            written += 1
-        except Exception as exc:
-            logger.warning("[ga_vargas] Row write failed: %s | row keys=%s",
-                           exc, list(row.keys())[:5])
-    return written
+            cur.execute("SAVEPOINT ga_vargas_batch_sp")
+            cur.executemany(_UPSERT_WITH_FACT_ID_SQL, rows)
+            cur.execute("RELEASE SAVEPOINT ga_vargas_batch_sp")
+            return len(rows)
+        except Exception as batch_exc:
+            cur.execute("ROLLBACK TO SAVEPOINT ga_vargas_batch_sp")
+            logger.warning("[ga_vargas] batch write failed (%s), falling back to per-row", batch_exc)
+            written = 0
+            for row in rows:
+                try:
+                    cur.execute("SAVEPOINT ga_vargas_row_sp")
+                    cur.execute(_UPSERT_WITH_FACT_ID_SQL, row)
+                    cur.execute("RELEASE SAVEPOINT ga_vargas_row_sp")
+                    written += 1
+                except Exception as exc:
+                    cur.execute("ROLLBACK TO SAVEPOINT ga_vargas_row_sp")
+                    logger.warning("[ga_vargas] Row write failed: %s | row keys=%s",
+                                   exc, list(row.keys())[:5])
+            return written
 
 
 def _update_asset_throughput(conn, chart_id: str, build_id: str,
