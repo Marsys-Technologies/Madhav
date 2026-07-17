@@ -17,6 +17,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure } from './registry_bridge.js'
+import {
+  buildTeachingError, reconcileVocabulary,
+  YOGA_CATALOG_DOMAINS, YOGA_CATALOG_TRADITIONS, YOGA_DOMAIN_SYNONYMS,
+} from './errors_that_teach.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -187,6 +191,30 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     },
     async ({ yoga_name, tradition, domain, limit, offset }) => {
       try {
+        // CR-7 CLASS / errors-that-teach (D-2 V-3, ledger row 24): the §B.5 domain-vocabulary trap.
+        // The stored `category` vocabulary is raja/dhana/aristha/pancha_mahapurusha/sannyasa/other —
+        // a caller filtering domain="wealth" gets an HONEST 0 rows, but 0 rows reads like "no wealth
+        // yogas exist". If the requested domain isn't in the stored vocabulary, pre-empt with a
+        // teaching error naming the corrected call (domain="dhana") instead of a silent empty page.
+        if (domain) {
+          const rec = reconcileVocabulary(domain, YOGA_CATALOG_DOMAINS, YOGA_DOMAIN_SYNONYMS)
+          if (!rec.matched) {
+            const corrected = rec.stored_value
+              ? { yoga_name, tradition, domain: rec.stored_value, limit, offset }
+              : null
+            return dualOutput(buildTeachingError(
+              'ref_yogas_get',
+              `domain="${domain}" is not in the stored yoga-catalog vocabulary — it would return 0 rows ` +
+              `(honest, but misleading as "no such yogas").`,
+              corrected,
+              rec.stored_value
+                ? `The stored category for "${domain}" is "${rec.stored_value}". Retry with domain="${rec.stored_value}".`
+                : `Use one of the stored categories: ${YOGA_CATALOG_DOMAINS.join(', ')}.`,
+              { domain: YOGA_CATALOG_DOMAINS, tradition: YOGA_CATALOG_TRADITIONS },
+            ))
+          }
+          domain = rec.stored_value ?? domain // forward the reconciled stored term
+        }
         const data = await callRegistryCapability('marsys://tool/L0/query_yoga_catalog', {
           yoga_name, tradition, domain, limit: limit ?? 100, offset: offset ?? 0,
         }, principal)

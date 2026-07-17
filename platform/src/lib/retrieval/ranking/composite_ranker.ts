@@ -70,6 +70,10 @@ export interface MsrSignalRow {
   lel_origin?: boolean | null
   signature_tier?: string | null
   configuration_jsonb?: Record<string, unknown> | null
+  // CR-84 serving leg (D-2 V-3 bonus): real CGM centrality (pagerank/eigenvector/betweenness/
+  // harmonic) written onto each signal by V-4's bo_laksana re-rank pass (migration 446). Consumed
+  // by structuralRole() below — closes the "pagerank is 100% NULL" dead link at the serving side.
+  graph_node_strength_contribution_jsonb?: Record<string, unknown> | null
 }
 
 // ── Sub-score computation ─────────────────────────────────────────────────────
@@ -174,20 +178,8 @@ function intrinsicStrength(row: MsrSignalRow, ctx: L1ChartContext): number {
   return 0.6 * shabdala_norm + 0.4 * dignity_score
 }
 
-/**
- * structural_role:
- *   Per BA-P2 brief: COALESCE(pagerank, f(yoga_membership, signature_class)).
- *   pagerank = 100% NULL (grounding G-5b); fallback is REQUIRED.
- *   Fallback: signal_type_class-based structural weight.
- *     configuration/yoga → 1.30 (chart-backbone: raja/dhana yogas)
- *     composite_state → 1.20 (multi-system)
- *     relationship → 1.15 (argala, parivartana)
- *     dasha_period → 1.10
- *     position/karaka_alignment → 1.00
- *     magnitude/birth_moment → 0.90
- *     others → 0.80
- */
-function structuralRole(row: MsrSignalRow): number {
+/** Class-based structural weight (the ORIGINAL fallback; now also the floor when graph data exists). */
+function structuralRoleClassConstant(row: MsrSignalRow): number {
   const stc = row.signal_type_class?.toLowerCase() ?? ''
   if (stc === 'configuration' || stc === 'yoga') return 1.30
   if (stc === 'composite_state') return 1.20
@@ -198,6 +190,38 @@ function structuralRole(row: MsrSignalRow): number {
   if (stc === 'varga_pattern') return 0.95  // vargottama/varga structure — above birth_moment
   if (stc === 'magnitude' || stc === 'birth_moment') return 0.90
   return 0.80
+}
+
+/** Extract a usable [0,1] centrality from the CGM contribution jsonb, or null if absent/unusable. */
+export function extractGraphCentrality(jsonb: Record<string, unknown> | null | undefined): number | null {
+  if (!jsonb || typeof jsonb !== 'object') return null
+  // Prefer an explicitly-normalized composite; else fall back through the standard centralities.
+  for (const key of ['normalized', 'composite', 'pagerank', 'eigenvector', 'harmonic', 'betweenness']) {
+    const v = jsonb[key]
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      // pagerank/eigenvector are already 0..1-ish; clamp defensively so a mis-scaled value can't blow up.
+      return Math.max(0, Math.min(1, v))
+    }
+  }
+  return null
+}
+
+/**
+ * structural_role:
+ *   Per BA-P2 brief: COALESCE(pagerank, f(yoga_membership, signature_class)).
+ *   CR-84 (D-2 V-3 serving leg): pagerank is no longer 100% NULL — V-4's bo_laksana re-rank writes
+ *   real CGM centrality into graph_node_strength_contribution_jsonb. When present, blend it with the
+ *   class constant (60% graph / 40% class) so the graph is no longer structurally subordinate (CR-25)
+ *   while the class semantics still floor the score; when absent (un-re-ranked chart), fall back to
+ *   the class constant exactly as before. The graph term is mapped into the class-constant's own
+ *   [0.80,1.35] span so it composes on the same scale — NOT tuned against any G0-4 assertion (DR-9).
+ */
+function structuralRole(row: MsrSignalRow): number {
+  const classConstant = structuralRoleClassConstant(row)
+  const c = extractGraphCentrality(row.graph_node_strength_contribution_jsonb)
+  if (c === null) return classConstant
+  const graphTerm = 0.80 + 0.55 * c // map [0,1] centrality onto the class-constant span [0.80,1.35]
+  return 0.4 * classConstant + 0.6 * graphTerm
 }
 
 /**

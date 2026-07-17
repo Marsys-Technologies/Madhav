@@ -18,6 +18,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { classifyScope } from './intent_scope_classifier.js'
 
 // REMEDIATION D7: NATIVE_CHART_ID removed.
 // intent_classify is a global tool — it MUST NOT stamp a chart_id on every call.
@@ -228,49 +229,26 @@ const IntentClassifyInput = z.object({
   ),
 })
 
-const INTENT_CLASSIFY_TEMPLATE = `You are a Jyotish query classifier. Your job is to identify the PRIMARY intent of a query about a birth chart.
-
-INTENTS (pick exactly ONE):
-- dasha_timing: questions about planetary periods, sub-periods, Vimshottari or Jaimini dashas
-- transit_analysis: current planetary transits, Gochar, upcoming transits
-- yoga_identification: identifying chart yogas (Raj Yoga, Dhana Yoga, etc.)
-- planet_strength: graha bala, Shadbala, dignity, debilitation, exaltation
-- house_analysis: bhava analysis, house lords, house strength
-- remedy_lookup: upayas, mantras, gemstones, rituals, remedies
-- panchanga: tithi, vara, nakshatra, yoga, karana, muhurta
-- classical_rule: looking up a specific classical text rule or sutra
-- chart_overview: general chart reading, lagna analysis, overall summary
-- prediction_calibration: evaluating or calibrating a specific prediction
-- unknown: none of the above
-
-QUERY:
-{{query}}
-
-Respond with ONLY valid JSON:
-{"primary_intent": "<intent>", "confidence": <0.0-1.0>, "reasoning": "<one sentence>"}`
-
 export function registerIntentClassifyTool(server: McpServer): void {
   server.tool(
     'intent_classify',
-    'Classify a Jyotish query into one of the canonical intent categories ' +
-    '(dasha_timing, transit_analysis, yoga_identification, planet_strength, ' +
-    'house_analysis, remedy_lookup, panchanga, classical_rule, chart_overview, ' +
-    'prediction_calibration, unknown). Returns the rendered prompt for the LLM.',
+    'Classify a Jyotish query into a Vidhi scope tuple — DETERMINISTIC rule/pattern matching ' +
+    '(zero LLM inference). Returns {scope_tuple:{intent, domains[], width, depth, horizon, ' +
+    'intervention, entitlement}, confidence, method:"deterministic_rules", matched_rules[], ' +
+    'fallback_prompt, fallback_recommended, usage}. The scope_tuple is what the Vidhi compiler ' +
+    'consumes and what a consumer echoes back for correction before execution (CR-28 / DR-8). ' +
+    'When fallback_recommended is true (low confidence / unmatched intent), pass fallback_prompt ' +
+    'to an LLM for a stronger classification.',
     IntentClassifyInput.shape,
-    // REMEDIATION D7: removed chart_id: NATIVE_CHART_ID from response.
-    // intent_classify is chart-agnostic (global tool) — must not inject a chart_id.
+    // REMEDIATION D7: intent_classify is chart-agnostic (global tool) — must not inject a chart_id.
+    // CR-28 / DR-8 (DIS.021): redesigned from prompt-delegation to a deterministic scope-tuple
+    // classifier; the old rendered prompt is retained as fallback_prompt.
     async (params) => {
       const input = IntentClassifyInput.parse(params)
-      const rendered = INTENT_CLASSIFY_TEMPLATE.replace('{{query}}', input.query)
+      const result = classifyScope(input.query)
       return {
         content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              prompt: rendered,
-              usage: 'Pass prompt to an LLM for intent classification. Provide chart_id separately when routing.',
-            }, null, 2),
-          },
+          { type: 'text' as const, text: JSON.stringify(result, null, 2) },
         ],
       }
     }

@@ -1,0 +1,58 @@
+/**
+ * canonical_faces.test.ts — D-2 Lane V-3, ledger row 22 (CR-30 dedup).
+ *
+ * Validates the authored canonical-face list that V-0's alias_check.ts consumes
+ * (platform/scripts/audit/doctrine_harness/lib/alias_check.ts). Asserts the file matches the
+ * documented interface { canonical_faces: string[], deprecated_aliases: Record<string,string> }
+ * and reconciles internally: every deprecated alias's canonical target exists in canonical_faces,
+ * no name is both canonical and deprecated, and the union covers the 135 live tools with no orphans.
+ */
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+// Read-only import of V-0's consumer to prove the row-4 reconcile end-to-end (their glob; not edited).
+import { checkAliasCount } from '../../../../scripts/audit/doctrine_harness/lib/alias_check.js'
+
+const FILE = path.resolve(process.cwd(), 'src/lib/retrieval/registry/canonical_faces.json')
+const parsed = JSON.parse(readFileSync(FILE, 'utf-8')) as {
+  canonical_faces: string[]
+  deprecated_aliases: Record<string, string>
+}
+
+describe('canonical_faces.json — V-0 alias_check contract', () => {
+  it('matches the CanonicalFacesFile interface', () => {
+    expect(Array.isArray(parsed.canonical_faces)).toBe(true)
+    expect(typeof parsed.deprecated_aliases).toBe('object')
+  })
+
+  it('every deprecated alias maps to a canonical face that exists (no orphan twins)', () => {
+    const canon = new Set(parsed.canonical_faces)
+    const orphans = Object.entries(parsed.deprecated_aliases).filter(([, c]) => !canon.has(c))
+    expect(orphans).toEqual([])
+  })
+
+  it('no name is both canonical and a deprecated alias key', () => {
+    const canon = new Set(parsed.canonical_faces)
+    const overlap = Object.keys(parsed.deprecated_aliases).filter((a) => canon.has(a))
+    expect(overlap).toEqual([])
+  })
+
+  it('canonical faces are unique', () => {
+    expect(new Set(parsed.canonical_faces).size).toBe(parsed.canonical_faces.length)
+  })
+
+  it('accounts for all 135 live tools (canonical ∪ deprecated = census), no unaccounted', () => {
+    const union = new Set([...parsed.canonical_faces, ...Object.keys(parsed.deprecated_aliases)])
+    expect(union.size).toBe(135)
+  })
+
+  it('V-0 checkAliasCount reconciles against the 135-tool census (row-4 green, source=v3)', () => {
+    const census = [...parsed.canonical_faces, ...Object.keys(parsed.deprecated_aliases)]
+      .map((name) => ({ name, description: '' }))
+    const result = checkAliasCount(census)
+    expect(result.source).toBe('v3_canonical_face_list')
+    expect(result.reconciles).toBe(true)
+    expect(result.orphan_twins).toEqual([])
+    expect(result.unaccounted_tools).toEqual([])
+  })
+})

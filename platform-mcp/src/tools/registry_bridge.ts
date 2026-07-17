@@ -2897,10 +2897,58 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const stages = (inner['stages'] as Record<string, unknown>[]) ?? []
         const pactStatus = inner['pact_status'] as string | undefined
 
+        // R-22 fix: echo the REQUESTED as_of_date (falling back to the resolved/defaulted value the
+        // capability actually evaluated against), not envelope()'s own new-Date()-at-response-time
+        // default. Declared here (ahead of the verdict) because CR-15's MD derivation keys on it.
+        const resolvedAsOfDate = (inner['as_of_date'] as string | undefined) ?? as_of_date
+
+        // CR-15 (D-2 V-3, ledger row 27): NAME the true running Mahādaśā lord. The PACT chain's
+        // ACTIVATION stage locates which dasha carries the promise but the served verdict never
+        // named the CURRENT MD lord — a caller could not tell whose period is actually running.
+        // Derive it deterministically from the level-1 Vimśottarī spine (get_dashas), §N.5 canonical
+        // values, relative to the same as_of_date the chain evaluated. This is a view over data the
+        // estate already computes — no re-derivation of the dasha itself.
+        let mahadasha: {
+          current_lord: string | null; current_from: string | null; current_to: string | null
+          next_lord: string | null; next_from: string | null; as_of: string | null
+          note: string
+        } | null = null
+        try {
+          const asOf = resolvedAsOfDate ?? new Date().toISOString().slice(0, 10)
+          const mdRaw = await callRegistryCapability(
+            'marsys://tool/L1/get_dashas',
+            { chart_id, ayanamsha_id: resolvedAyanamsha, system: 'vimshottari', level: 1, all_levels: false, fields: 'compact' },
+            chart_id, principal,
+          ) as Record<string, unknown>
+          const mdContent = (mdRaw?.['content'] as Record<string, unknown>) ?? mdRaw
+          const mdRows = (Array.isArray(mdContent?.['rows']) ? mdContent['rows'] : []) as Record<string, unknown>[]
+          const l1 = mdRows
+            .filter(r => Number(r['level_n']) === 1 && r['start_date'] && r['end_date'])
+            .sort((a, b) => String(a['start_date']).localeCompare(String(b['start_date'])))
+          const curIdx = l1.findIndex(r => String(r['start_date']) <= asOf && asOf < String(r['end_date']))
+          const cur = curIdx >= 0 ? l1[curIdx] : undefined
+          if (cur) {
+            const nxt = l1[curIdx + 1]
+            mahadasha = {
+              current_lord: (cur['lord_graha'] as string) ?? null,
+              current_from: (cur['start_date'] as string) ?? null,
+              current_to: (cur['end_date'] as string) ?? null,
+              next_lord: (nxt?.['lord_graha'] as string) ?? null,
+              next_from: (nxt?.['start_date'] as string) ?? null,
+              as_of: asOf,
+              note: 'Running Vimśottarī Mahādaśā lord as of as_of_date (level-1 spine, §N.5 canonical). ' +
+                'The PACT ACTIVATION stage tells you whether the promise-carrying graha is favored by THIS period.',
+            }
+          }
+        } catch {
+          mahadasha = null // MD naming is enrichment — a failure here must not break the chain.
+        }
+
         const verdict = {
           pact_status: pactStatus,
           stages_completed: stages.length,
           stages: stages.map(s => ({ stage: s['stage'], status: s['status'] })),
+          mahadasha, // CR-15: the named running MD lord (+ next), or null if underivable.
           note: 'Chain-honesty verdict (design §30 W4 acceptance): a denied stage halts the chain — ' +
             'stages_completed < 4 with pact_status starting "denied_at_" is a CORRECT honest halt, ' +
             'not a failure. pact_status="chain_complete" means all four stages ran, TRIGGER data ' +
@@ -2921,12 +2969,6 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         } catch {
           chart_header = null
         }
-
-        // R-22 fix: echo the REQUESTED as_of_date (falling back to the resolved/defaulted
-        // value the capability actually evaluated against), not envelope()'s own
-        // new-Date()-at-response-time default — timing.as_of_date previously always showed
-        // today regardless of what as_of_date the caller passed.
-        const resolvedAsOfDate = (inner['as_of_date'] as string | undefined) ?? as_of_date
 
         const v3Response = {
           orientation_context, orientation_ok,
