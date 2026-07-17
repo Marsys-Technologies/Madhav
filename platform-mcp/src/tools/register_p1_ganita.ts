@@ -783,7 +783,10 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'strength scoring, bhaṅga/cancellation state, partial-formation %, and dāśā-activation — use it ' +
     'for any fired/not-fired judgment; treat this tool\'s rows as catalog labels to cross-check ' +
     'against, never as the sole word on whether a yoga fired. Neecha Bhanga (debility-cancellation) ' +
-    'remains a genuine gap: not evaluated by either tool on any live path in this build. ' +
+    'IS evaluated and served — but by `ganita_yoga_firings_get`, NOT by this tool: it fires ' +
+    'neecha_bhanga_raja_yoga with bhanga_active + a per-varga grounds_jsonb ledger (BPHS Ch.39, ' +
+    'rule-by-rule) since D-1.6 S-3 (D-2 gate-verified 2026-07-17). For any debility-cancellation ' +
+    'read, call ganita_yoga_firings_get (optionally bhanga_active=true) — this catalog tool does not carry it. ' +
     'Returns yoga_name, constituent planets, house conditions, and activation_flag. ' +
     'response_format=\'v3\' (opt-in; default \'legacy\') returns the R5 unified envelope: ' +
     'a populated verdict (fired-yoga/dosha/flag counts — catalog-only/requires_pass rows are ' +
