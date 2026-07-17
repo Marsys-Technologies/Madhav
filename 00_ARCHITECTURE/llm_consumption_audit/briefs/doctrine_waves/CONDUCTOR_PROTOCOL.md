@@ -1,7 +1,7 @@
 ---
 artifact: DOCTRINE_WAVES_CONDUCTOR_PROTOCOL
 type: STANDING PROTOCOL (governs every wave conductor D-1.5a → D-4)
-version: 1.3
+version: 1.4
 status: CURRENT
 authored_by: Fable 5 (Claude Code planning session, 2026-07-15), native-directed
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
@@ -25,10 +25,18 @@ native_directives:
 ## §0 — What this document is
 
 The standing operating system for the D-1.5a → D-4 autonomous campaign. Each wave's conductor is a
-FRESH session that reads exactly three things: **this protocol**, **its wave's bound brief**
-(BRIEF_D*.md in this directory), and **the previous wave's close report**. No conversation-memory
-handoff — artifacts only. The conductor executes the §2 lifecycle deterministically; verification
-is structural, not a norm.
+FRESH session that reads exactly **five** things: **this protocol**, **`ESCALATION_POLICY_v1_0.md`**
+(decision routing — which pauses auto-proceed, which route to the Adjudicator, which halt for the
+native), **`ADJUDICATOR_CHARGE_v1_0.md`** (the standing judgment the in-session Adjudicator applies),
+**its wave's bound brief** (BRIEF_D*.md in this directory), and **the previous wave's close report**
+(`REPORT_<wave>.md` — the close artifacts are named `REPORT_*`, not `CLOSE_*`). No conversation-memory
+handoff — artifacts only. The conductor executes the §2 lifecycle deterministically; verification is
+structural, not a norm.
+
+**Precedence (added v1.4):** where `ESCALATION_POLICY_v1_0.md` and this protocol disagree —
+retry/PARK arithmetic, the auto-proceed set, the model+effort matrix, ceilings — **ESCALATION_POLICY
+governs** and the named protocol sections are read as amended. Everything ESCALATION_POLICY does not
+touch, this protocol governs verbatim.
 
 ## §1 — Roles
 
@@ -109,6 +117,12 @@ lived in the deploy/wiring layer that Phase-1-style checks can never see.
 `{lane, verifier_model, diff_reviewed: sha, tests: {run, passed, failed}, assertions: {script, green: [...], red: [...]}, scope_warden: pass|fail, verdict: ACCEPT|REJECT, diagnosis?}`
 
 ## §4 — Adjudicator (the human-proxy)
+
+**Routing is governed by `ESCALATION_POLICY_v1_0.md`; the Adjudicator operates under
+`ADJUDICATOR_CHARGE_v1_0.md` (added v1.4).** This §4 defines the seats and PARK classes; ESCALATION
+decides which decisions reach the Adjudicator (its §1), which auto-proceed (§0), and the three that
+halt-and-report for async native review (§2). On any disagreement of routing or retry/PARK arithmetic,
+ESCALATION governs (see §0 precedence).
 
 **§4.1 Routing:** doctrine-class questions (valence semantics, classical rules, interpretation,
 anything citing śāstra) → **Fable**, recorded as `DR-n (Fable by native delegation, <date>)` in the

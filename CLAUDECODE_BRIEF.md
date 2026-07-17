@@ -56,6 +56,14 @@ native_directives:
   - Fully autonomous, bypass permissions, no human gates. Adjudicator agent answers human-class
     questions (Fable=doctrine → DR-n recorded; Opus=engineering). PARK classes in
     CONDUCTOR_PROTOCOL §4.3 are never auto-adjudicated.
+  - AMENDED 2026-07-18 (native): decision routing, model, and effort are governed by
+    ESCALATION_POLICY_v1_0.md + ADJUDICATOR_CHARGE_v1_0.md (doctrine_waves/). Its §2 native-surface
+    set — a RED integrity/falsification gate, contested-AND-behavior-changing doctrine, and a
+    circuit-breaker trip — supersedes the bare "no human gates" phrasing (these three halt-and-report
+    async; the wave never blocks in-session). Implementers/conductor choose MODEL and reasoning-EFFORT
+    per task; verifiers/adjudicators/gate-runners stay Opus-or-stronger at high effort (the Opus
+    verification floor). This supersedes the "Models: Sonnet implements/conducts" line below for the
+    implementer/conductor seats; the floor for the acceptance seats is unchanged.
   - Models: Sonnet implements/conducts; Opus verifies/gates/guards (EXCEPT D-2's synthesis gate,
     which runs on Sonnet deliberately — floor-model rule, protocol §5); Fable binds briefs +
     adjudicates doctrine. Escalation pre-approved (native, 2026-07-15).
@@ -72,10 +80,12 @@ native_directives:
     — the POLICY stands as native-confirmed from this point forward, but the ORIGINAL commit's
     self-asserted authorization was not genuine. Recorded for audit-trail honesty (CLAUDE.md B.8).
 session_open_instruction: >
-  An execution session reads, in order: CLAUDE.md → this brief → CONDUCTOR_PROTOCOL.md → the
-  current_wave brief → the previous wave's CLOSE_*.md (if any). Then it acts as that wave's
-  CONDUCTOR and runs the protocol §2 lifecycle. It does not re-plan the campaign; re-planning
-  belongs to the Binder step inside the lifecycle.
+  An execution session reads, in order: CLAUDE.md → this brief → CONDUCTOR_PROTOCOL.md →
+  ESCALATION_POLICY_v1_0.md → ADJUDICATOR_CHARGE_v1_0.md → the current_wave brief → the previous
+  wave's REPORT_<wave>.md close report (if any; the close artifacts are named REPORT_*, not CLOSE_*).
+  Then it acts as that wave's CONDUCTOR and runs the protocol §2 lifecycle under
+  ESCALATION_POLICY_v1_0.md routing. It does not re-plan the campaign; re-planning belongs to the
+  Binder step inside the lifecycle.
 close_condition: >
   Set status: COMPLETE here only when ALL FIVE waves' gates are green and the D-4 campaign-close
   items (parked review, DR-n ratification queue, register sweep, CURRENT_STATE/SESSION_LOG seal)
