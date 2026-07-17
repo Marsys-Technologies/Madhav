@@ -46,8 +46,9 @@ status: ACTIVE
 cycle: 2  # CYCLE-2 OPEN (native directive 2026-07-18): T-2/T-3 transit kernel, T-4/T-5
           # kernel-admission loop, T-6 serving, then the §G retrodiction gate battery
           # (the empirical crux of D-3). Binder pass complete, BOUND — see
-          # BIND_D-3_CYCLE2.md. PAUSED here per native's explicit instruction: report
-          # before spawning the T-2/T-3 kernel lane, hold for go.
+          # BIND_D-3_CYCLE2.md. GO received 2026-07-18 (native: run fully autonomously
+          # under ESCALATION_POLICY_v1_0.md to the §G gate). RR-fix/T-2/T-3 lanes
+          # SPAWNED (isolated worktrees, Sonnet implementers) — see cycle2_lanes below.
 cycle2_bind_record: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3_CYCLE2.md
 cycle2_notes:
   - "B-3 correction: cycle-1 BIND_D-3.md recorded test-span start as 2020-01-15; live
@@ -97,10 +98,22 @@ cycle1_hotfix_lanes:
   - {lane: hotfix-kala-temporal, branch: wave/D-3/hotfix-kala-temporal, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-hotfix-katemporal, base: origin/main, head_sha: 04643e3a, status: receipted+merged, verifier_model: opus, merged_into: wave/D-3/integration, receipt_ref: "verdict=ACCEPT, scope_warden=pass, tests: 75 failed/517 passed/15 skipped (own vitest run) vs origin/main scratch-checkout baseline 75/515/15 — delta=+2 new passing tests only, no regression. Wire shape independently traced from source on BOTH ends (route.ts response wrapping + all 4 L3 handlers' is_error-bearing return shape) — diagnosis confirmed, not taken on faith. CR-93/94 precedent independently confirmed as a faithful transplant of an already-accepted identical fix. Judgment call: code-level evidence (source-traced shape + existing precedent + corrected regression test with a negative don't-mis-unwrap case) sufficient for Phase-1 ACCEPT with live confirmation properly deferred to Phase-2 post-deploy gate, per protocol's own two-phase design — verifier explicitly does not consider this risky enough to require live confirmation before merge. FORWARD-POINTER (not blocking, not this lane's scope): 3 other /api/retrieval/capability callers (register_p1_synthesis.ts, register_p1_reference.ts, l0_brahmagyan.ts) return content raw without the is_error descent — may share the same latent bug class depending on downstream consumption; flagged for a follow-up audit, not traced to a conclusion.", integration_note: "merged into wave/D-3/integration cleanly (2 files, 73 insertions/4 deletions); platform-mcp re-run post-merge: tsc clean, vitest 75 failed/517 passed/15 skipped — matches hotfix lane's own count exactly, full wave integration remains clean."}
 cycle1_deploy: {done: true, pr: 602, merge_sha: "11377530892799afd8015d3ee9b6ec68efeb0c0d", images: {amjis_web: "11377530892799afd8015d3ee9b6ec68efeb0c0d", amjis_mcp: "11377530892799afd8015d3ee9b6ec68efeb0c0d"}, rebuild: {needed: false, reasoning: "T-1 and hotfix are both pure serving-layer changes, zero migrations, zero new writers, no new fact categories — no R-5/§8.2 trigger"}}
 cycle1_gate: {run: false, blocker: null, note: "regression guard RESOLVED BENIGN 2026-07-18 — see carried_item_dispositions / DISAGREEMENT_REGISTER wealth-rebaseline FINDING. ganita_yoga_firings_get confirmed 12/12 yogas fired=true at unchanged strengths (fork check per native directive); the 2.78->2.38 delta is entirely yoga_term, driven by domain-bearing classification 4->3, itself downstream of kala_activations now populating (this wave's own hotfix) + the DR-9 Part B affliction/threat layer going live — not a lost firing. Wealth guard RE-BASELINED to convergent_moderate/~2.38+Dhana Yoga+affliction layer+kala_activations populated; the prior 2.78 pin retired as pre-timing/pre-affliction. Not a D-3 wave-blocker (D-3's gate is the T-0 retrodiction battery). No code changes made."}
-cycle2_lanes: []  # not yet spawned — PAUSED here per native's explicit instruction, reporting
-                  # before spawning the T-2/T-3 kernel lane, holding for go
+cycle2_lanes:
+  # SPAWNED 2026-07-18 (native GO received: "resume ... run the cycle to the §G retrodiction gate
+  # FULLY AUTONOMOUSLY under ESCALATION_POLICY_v1_0.md"). Pre-spawn housekeeping done first: cycle-1
+  # worktrees/branches (T-0/T-1/hotfix-kala-temporal, already squash-merged via PR #602) removed per
+  # §0 mandatory cleanup (was a stranded-worktree close-report defect, now corrected); 3 unrelated
+  # stale .claude/worktrees/agent-* worktrees (no unique commits, base b536e13b) also pruned.
+  # ESCALATION_POLICY_v1_0/ADJUDICATOR_CHARGE_v1_0 wiring edits (pending uncommitted from a prior
+  # session) committed+pushed (commit 1506852d) before spawn, per §0 activation requirement.
+  - {lane: RR-fix, branch: wave/D-3/RR-fix, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-RRfix, base: origin/main@11377530, status: implementing, model: sonnet, verifier_model: opus, note: "first-agenda carried item from D-2 close (orchestrator run-rollup race, runner.py execute_run() final-state reconciliation + watchdog reconcile-to-truth); platform-owned, run-machinery only, FROZEN WriterBase contract untouched by design; may_touch=runner.py + watchdog/route.ts + colocated tests"}
+  - {lane: T-2, branch: wave/D-3/T-2, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T2, base: origin/main@11377530, status: implementing, model: sonnet, verifier_model: opus, note: "Taranga service core (activation/curve on-demand contract, cos^2 orb, superposition, evidence write-through opt-in, CR-41 dissolves by construction); builds against today's services.ka_sangam.engine import with an isolated one-line adapter point for T-3's extracted shared kernel at integration; may_touch=new routers/taranga.py + new services/taranga_service.py + one-line main.py mount + colocated tests, explicitly excludes services/ka_sangam/** and pipeline/orchestrator/**"}
+  - {lane: T-3, branch: wave/D-3/T-3, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T3, base: origin/main@11377530, status: implementing, model: sonnet, verifier_model: opus, note: "shared kernel extraction from services/ka_sangam/engine.py (byte-identical writer regression) + PROMISE lock formula (salience x functional_valence x varga_ratification x NBRY_deferral_semantics x mechanism_graph_weight, kills CR-88); CR-87 required-chart-context guarded; may_touch=services/ka_sangam/** + new shared-kernel module + ka_sangam.py/ka_taranga.py writers + colocated tests"}
+  # Kernel-admission loop (T-1 currents already delivered cycle-1; T-4/T-5 admission) and T-6 serving
+  # spawn AFTER RR-fix/T-2/T-3 receipt+integrate, per brief §F1 declared order (T-2/T-3 kernel core
+  # before the admission loop; T-6 last). Not yet spawned.
 cycle2_integration_branch: null
 cycle2_deploy: {done: false}
 cycle2_gate: {run: false, note: "the D-3 wave gate (§G) — retrodiction battery, the empirical crux of the wave. Not run until T-2/T-3/T-4/T-5/T-6 land. Blind-construction constraint binding: test split (21 events) must not be inspected/tuned against before T-0's single scoring pass."}
-updated_at: "2026-07-18T03:10+05:30"
-resumed_at: null
+updated_at: "2026-07-18T03:45+05:30"
+resumed_at: "2026-07-18T03:45+05:30 — fresh conductor session resumed at STATE_D-3.md, reconciled ledger vs reality (git worktree/branch list matched cycle-1 lanes as stale-but-merged; cleaned), received native GO, executed lifecycle step 2 (SPAWN) for RR-fix/T-2/T-3"
