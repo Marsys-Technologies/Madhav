@@ -20,6 +20,7 @@ import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure, resolveChartFactsAyanamsha } from './registry_bridge.js'
 import { applyResponseBudget, autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { classifyScope } from './intent_scope_classifier.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -1100,12 +1101,17 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   server.tool(
     'util_intent_classify',
-    '[Phase-1 alias] Intent classification prompt (same as intent_classify).',
+    '[Phase-1 alias] Deterministic Vidhi scope-tuple classifier (same as intent_classify). ' +
+    'CR-28 / DR-8: returns {scope_tuple, confidence, method:"deterministic_rules", matched_rules, ' +
+    'fallback_prompt, fallback_recommended, usage} — not a rendered prompt. Both twins share ONE ' +
+    'classifier module so they never diverge.',
     { query: z.string().describe('Query text to classify') },
     async ({ query }) => {
       try {
-        const data = await callRegistryCap('marsys://prompt/intent-classify', { query }, principal)
-        return dualOutput(data)
+        // DR-8 (DIS.021): deterministic classification runs locally (no server-side LLM, no proxy
+        // to the marsys://prompt/intent-classify prompt) — same pure module as intent_classify.
+        const result = classifyScope(query)
+        return dualOutput(result, 'util_intent_classify')
       } catch (err) { return errOut('util_intent_classify', String(err)) }
     }
   )
@@ -1459,15 +1465,53 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal)
 
+  // CR-16 (D-2 V-3, ledger row 26): special-lagna access was birth-data-ONLY — a caller holding a
+  // built chart_id had no path to that chart's STORED special-lagna facts and was forced to
+  // re-supply raw birth data for a sidecar recompute (which also bypasses entitlement + the L1
+  // canonical values §N.5). Now chart_id is a first-class alternative input: when supplied, the
+  // stored special_lagna/upagraha/saham facts are served from chart_facts via the entitlement-gated
+  // registry capability marsys://tool/L1/get_sensitive_points (categories filter) — the same
+  // canonical rows the rest of the estate reads. Birth-data path retained for un-built charts.
   server.tool(
     'ganita_special_lagnas_get',
-    '[Phase-1 alias] Compute special lagnas + upagrahas via PyJHora sidecar (same as query_special_lagnas).',
-    BirthBase,
+    '[Phase-1 alias] Special lagnas + upagrahas. TWO input modes: (1) chart_id — serves the ' +
+    "chart's STORED special_lagna/upagraha/saham facts (chart_facts, §N.5 canonical, entitlement-" +
+    'gated) — preferred for a built chart; (2) birth data (datetime_iso/latitude_deg/…) — a ' +
+    'PyJHora sidecar recompute for an un-built chart. Supersedes query_special_lagnas ' +
+    '(birth-data only). CR-16.',
+    {
+      chart_id: z.string().uuid().optional().describe(
+        'Built chart UUID — serves stored special-lagna facts (preferred). If omitted, birth data is required.'),
+      categories: z.array(z.enum(['special_lagna', 'upagraha', 'saham', 'sensitive_point']))
+        .optional().describe('chart_id mode: which stored fact_categories to return (default special_lagna + upagraha).'),
+      ...BirthBase,
+      datetime_iso:  z.string().optional().describe("Birth datetime local ISO (birth-data mode). Not needed when chart_id is given."),
+      latitude_deg:  z.number().optional().describe('Latitude decimal degrees (birth-data mode).'),
+      longitude_deg: z.number().optional().describe('Longitude decimal degrees (birth-data mode).'),
+    },
     async (params) => {
+      const p = params as Record<string, unknown>
+      const chartId = p['chart_id'] as string | undefined
       try {
-        const data = await callSidecarPath('/api/pyhora/compute', params as Record<string, unknown>)
+        if (chartId) {
+          // Chart-keyed path: stored special-lagna facts via the entitlement-gated capability.
+          const cats = (p['categories'] as string[] | undefined) ?? ['special_lagna', 'upagraha']
+          const data = await callRegistryCap('marsys://tool/L1/get_sensitive_points', {
+            chart_id: chartId,
+            ayanamsha_id: na(p['ayanamsha_id'] as string | undefined),
+            categories: cats,
+            limit: (p['limit'] as number) ?? 25000,
+            offset: (p['offset'] as number) ?? 0,
+          }, principal)
+          return dualOutput(data, 'ganita_special_lagnas_get')
+        }
+        if (!p['datetime_iso']) {
+          return errOut('ganita_special_lagnas_get',
+            'Provide either chart_id (stored facts, preferred) or birth data (datetime_iso/latitude_deg/longitude_deg).')
+        }
+        const data = await callSidecarPath('/api/pyhora/compute', p)
         return dualOutput(data)
-      } catch (err) { return errOut('ganita_special_lagnas_get', String(err)) }
+      } catch (err) { return errOut('ganita_special_lagnas_get', String(err), chartId ? { chart_id: chartId } : undefined) }
     }
   )
 }

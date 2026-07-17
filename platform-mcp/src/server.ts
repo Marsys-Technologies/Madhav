@@ -97,6 +97,10 @@ import { registerP1SynthesisTools } from './tools/register_p1_synthesis.js'
 import { registerP1AliasTools }     from './tools/register_p1_aliases.js'
 // D-1.5b Lane B-7 — B8 derived view: ganita_dasha_lord_capability_get
 import { registerP2DashaLordTools } from './tools/register_p2_dasha_lord.js'
+// D-2 Lane V-3: two-pass SCAN/FETCH channel over the large signals surface (ledger row 20)
+import { registerScanFetchTool } from './tools/scan_fetch_signals.js'
+// D-2 Lane V-3: per-chart verified reading-notes (CR-38/71/80), ledger row 25
+import { registerReadingNotesTool } from './tools/reading_notes.js'
 // M2 — Chart selection: list_my_charts + select_chart
 import { registerChartSelectionTools } from './tools/chart_selection.js'
 // M3+M4 — Session tools: recall_session + list_my_sessions
@@ -104,6 +108,8 @@ import { registerSessionTools } from './tools/session_tools.js'
 // R5 — Richness Layer: MCP resources (9 registered) + guided-reading prompts
 import { registerResources } from './resources/index.js'
 import { registerPrompts } from './prompts/index.js'
+// D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (+ capability-version staleness kill)
+import { registerVidhiPlanTool } from './tools/register_vidhi_plan.js'
 
 const app = express()
 app.use(express.json())
@@ -356,6 +362,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerP1AliasTools(server, principal)
   // D-1.5b Lane B-7 — B8 derived view (ganita_dasha_lord_capability_get)
   registerP2DashaLordTools(server, principal)
+  // D-2 Lane V-3: scan_fetch_signals — two-pass channel (SCAN dense index → FETCH-by-id)
+  registerScanFetchTool(server, principal)
+  // D-2 Lane V-3: reading_notes_get — per-chart verified reading-notes (CR-38/71/80)
+  registerReadingNotesTool(server)
 
   // M2 — Chart selection: list_my_charts + select_chart (2 tools)
   // list_my_charts: entitled chart list by display name; select_chart: validate + return chart_id.
@@ -370,6 +380,12 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // M0: principal passed for chart-snapshot gate
   registerResources(server, principal)
   registerPrompts(server)
+
+  // D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (fallback path to a compiled plan;
+  // primary path is the vidhi_plan prompt). Serves capability_version + tools/list_changed
+  // staleness kill. Registered on this request-scoped server so the staleness notification
+  // targets the caller's transport.
+  registerVidhiPlanTool(server)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -501,7 +517,9 @@ app.get('/mcp', (_req: Request, res: Response) => {
 //     list_my_charts→catalog_charts_list, select_chart→catalog_chart_select,
 //     holistic_bundle_chart_facts→bodha_bundle_get, kala_temporal_bundle→kala_bundle_get
 // ── TOTAL (WP-1.3(i) recount 2026-07-12: −4 apex_*_assess retired): ───        117
-const REGISTERED_TOOL_COUNT = 117
+// D-2 Lane V-2 — +1 plan_retrieval (Vidhi Engine meta-tool):                  +1
+// D-2 Lane V-3 — +2 scan_fetch_signals, reading_notes_get:                    +2
+const REGISTERED_TOOL_COUNT = 120
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
