@@ -1,7 +1,9 @@
 ---
 wave: D-2
-lifecycle_step: 5
+lifecycle_step: 8  # cycle-1: through 8 (close+verified) — deployed, rebuilt, live-verified,
+                   # G0-4 CLOSED. Wave stays ACTIVE for cycle-2 (V-2/V-3) per the 2-cycle staging.
 status: ACTIVE
+cycle: 2  # cycle-1 complete; spawning cycle-2 (V-2 MCP delivery + V-3 channel) next.
 brief_bound: true
 rollback_pin:
   image_sha:
@@ -38,10 +40,23 @@ lanes:
   - {lane: V-2, branch: wave/D-2/V-2, status: pending, cycle: 2}
   - {lane: V-3, branch: wave/D-2/V-3, status: pending, cycle: 2}
 integration_branch: wave/D-2/integration
-deploy: {done: true, pr: 585, merge_sha: 58e320c40aabaf6fa582c70b9e68b66fd0555ced, ci_note: "one transient Build Check infra flake (no space left on device during docker load), unrelated to D-2 code, cleared on rerun"}
-rebuild: {scope: asset_set, full: false, abhisek_build_id: pending}
-gate: {run: false, green: [], red: []}
-updated_at: 2026-07-16T22:45:00Z
+cycle1: complete   # merged (PR #585) + deployed + rebuilt (61/61) + live-verified. 4 rebuild
+                   # hotfixes required (PRs #586/#588/#589/#590), see notes.
+deploy:
+  cycle1: {done: true, pr: 585, merge_sha: 58e320c40aabaf6fa582c70b9e68b66fd0555ced}
+  hotfixes:
+    - {pr: 586, what: "migration 440 asset_registry column set + layer='L0'->'brahmagyan' (2 defects, migration-guard-caught)"}
+    - {pr: 588, what: "Narayana Dasha verification_pass_status enum violation (ad-hoc strings not in CHECK set)"}
+    - {pr: 589, what: "bo_laksana_rerank Decimal not JSON-serializable (NUMERIC centrality cols)"}
+    - {pr: 590, what: "ga_tajaka solar-return engine-failure resilience (pre-existing, not D-2; env-specific Moshier-range)"}
+  g0_4_valence: {parts: {A_data: {pr: 591}, B_serve: {pr: 592}}, both_deployed: true, note: "amjis-web+amjis-mcp live at 4f320a77"}
+rebuild:
+  cycle1: {scope: asset_set, full: false, closure: 61, build_id: 58747f9b-ddca-4e48-8278-8efc2fb016ec, result: "61/61, 0 errors (4th attempt after the 4 hotfixes)"}
+  g0_4_valence: {build_id: b84c3797-b64a-4956-a431-5f4ccdf9ee55, result: "61/61, 0 errors", forensic: "7/7 intact"}
+gate:
+  cycle1_live: {forensic: "7/7", defect_001_orphan_pct: 0.1, row_counts: sane}
+  g0_4: "CLOSED — data plane (DR-9 Part A) + serving plane (DR-9 Part B) both live-verified 2026-07-17; 6/6 specimens green both directions; mechanism valence spreads (was 121/121 benefic -> mixed78/malefic30/neutral8/benefic7); judgment_query(wealth) serves Rahu-occupies-dhana in the affliction_mechanisms threat layer with grounding + afflictions_present flag. See DIS.022/DR-9, VAL-ROOT register row."
+updated_at: 2026-07-17T12:25:00+05:30
 notes: >
   OPEN complete. Binder (Fable) BOUND the brief: see BIND_D-2.md — 12/12 regression sample PASS,
   0 unexpected reds (both expected residuals confirmed: PARK-#4, Gate Ś #8). §F1.7 promise ledger
@@ -83,7 +98,55 @@ notes: >
   eventually consume the graph_node_strength_contribution_jsonb column V-4 populated - CR-84/25
   only closed at the data layer this cycle.
 
-  NEXT: DEPLOY wave/D-2/integration to main -> CI -> deploy.yml, then REBUILD Abhisek's chart
-  (scope computed live from asset_registry.depends_on per §B.10 at rebuild time, expected
-  asset_set of similar order to D-1.6's 47), then POST-DEPLOY LIVE verification of cycle-1
-  ledger rows before cycle-2 (V-2/V-3) spawns.
+  === CYCLE-1 COMPLETE (deployed + rebuilt + live-verified) ===
+  DEPLOY: PR #585 merged to main. deploy.yml's first post-merge run FAILED at the migration
+  step (migration 440's asset_registry INSERTs used non-existent columns display_name/
+  asset_type/has_substeps + layer='L0'). Clean transaction rollback (no partial apply). Hotfix
+  PR #586 (2 defects, the 2nd — layer='L0' invalid vs the brahmagyan/ganita/... CHECK — caught
+  by a dedicated migration-guard pass before a repeat incident). Re-deploy succeeded; all 9 D-2
+  migrations (440,445-448,450-453) applied.
+  REBUILD required FOUR attempts, each surfacing a real defect invisible to every pre-deploy
+  altitude (exactly the §F1.7 Definition-of-DONE thesis — code-green != live-correct):
+    (1) migration 440 schema (PR #586); (2) Narayana Dasha verification_pass_status enum
+    violation, ga_dashas asset (PR #588); (3) bo_laksana_rerank Decimal-not-JSON-serializable,
+    60/61 then failed (PR #589); (4) ga_tajaka solar-return swisseph Moshier-range crash —
+    PRE-EXISTING legacy code (commit 4d4bda8e), not D-2, pulled into the closure via ga_structural;
+    env-specific, unreproducible locally; fixed with graceful engine-failure resilience (PR #590,
+    native-approved to fix now). Each fix independently Opus-verified before merge. 4th rebuild
+    (build 58747f9b): 61/61, 0 errors. Build-health: FORENSIC 7/7, DEFECT-001 0.1% orphan,
+    row counts sane.
+  CYCLE-1 LIVE-VERIFY: build-health green; but G0-4 (the §G.1 gate risk) CONFIRMED STILL RED
+    post-rebuild — the Rahu/Mars-on-H2 wealth-loss mechanism did NOT surface. Diagnosed, not
+    papered over.
+
+  === G0-4 INVESTIGATION -> DR-9 / VAL-ROOT (CRITICAL, estate-wide) — CLOSED ===
+  Step-1 (native-directed, diagnosis-only): root-caused to a CRITICAL estate-wide valence-
+  computation defect at 4 divergent sites, all defaulting adverse->favorable — the D-16/CR-54/
+  CR-83 lineage root (retroactively root-causes D-16 "estate emits ZERO adverse-valence claims").
+  Ordering-constraint answer: inversion lived in ga_vichara's own computation (a) — trikoṇa-
+  membership pre-empted the dusthāna-affliction cell for dual-lord Mars, no contact-type, nodes
+  skipped; plus edge-type-keyed mechanism valence (121/121 benefic) + hardcoded-benefic V-5
+  tenancy/vargottama.
+  Step-2 (native-directed, both parts ratified): PART A (data) — one shared brahmagyan/
+  valence_doctrine.py (natural × functional × dignity incl. classical node exaltation × contact-
+  type -> signed 4-way, mixed first-class), consumed by ga_vichara, bo_karanajala edges,
+  bo_yantra mechanisms (+ NEW graha_bhava_affliction tenancy Mechanism class), V-5
+  tenancy/vargottama emitters (PR #591). PART B (serve, native-ratified at Step-2 close) —
+  judgment_query serves a SIGNED PARTITIONED verdict: supporting (bearing_yogas) AND threatening
+  (bearing_afflictions + affliction_mechanisms), each with its own §N.6 hardFloor so a trim can
+  never zero the adverse layer (PR #592). Both deployed (amjis-web+amjis-mcp @ 4f320a77).
+  VERIFIED: 6/6 anti-overcorrection specimens green both directions (unit + live); independent
+  adversarial Opus verify SAFE; full sidecar suite 3574/0; mechanism valence spreads; live
+  judgment_query(wealth) serves "Rahu occupies dhana (2nd) bhāva (mixed)" in the threat layer
+  with grounding. Governance: DR-9/DIS.022 (both parts ratified), VAL-ROOT CRIT row (D-16
+  root-caused). FINDING: top_k_salience_rank NULL is NOT the serve gate (serve orders by
+  computed_salience DESC NULLS LAST) -> Part B, not a rank fix, surfaces low-salience adverse
+  content. Residual follow-up (non-blocking, never mislabels adverse->benefic): arudha AL
+  bhava-relation under-call.
+
+  NEXT: SPAWN cycle-2 (V-2 MCP delivery/receipts + capability_version; V-3 channel scan/fetch +
+  canonical-face list + CR-9/44/16/15/14/39 + intent_classify per the DR-8 ruling) as parallel
+  isolated-worktree implementers per §F1.5 (merge order V-2 -> V-3). V-3 should also pick up the
+  composite_ranker.ts follow-up (consume V-4's graph_node_strength_contribution_jsonb, CR-84/25
+  serving leg) flagged in the V-4 receipt. No rebuild expected for cycle-2 (serving-only) unless
+  a diff touches a writer.
