@@ -103,7 +103,22 @@ async function callRegistryCapability(
 
 /** Fetch a capability and pull out its `.rows` array. Never throws — a transport/proxy
  *  failure or a malformed envelope both resolve to `{ rows: [], ok: false }` so the caller
- *  can distinguish "capability unreachable" from "capability reached, zero real rows". */
+ *  can distinguish "capability unreachable" from "capability reached, zero real rows".
+ *
+ *  CR-93/94 double-unwrap fix (same root cause already documented/fixed in
+ *  register_p1_ganita.ts's callRegistryCapability and register_p2_dasha_lord.ts's):
+ *  /api/retrieval/capability responds `{ ok: true, content: await capability.handler(args) }`,
+ *  and every CapabilityDescriptor handler (registry/types.ts contract) itself returns
+ *  `{ content: <realPayload>, is_error: boolean }`. So the `content` this function receives
+ *  from callRegistryCapability is really `{ content: { rows: [...], ... }, is_error: false }` —
+ *  one level deeper than a bare `.rows` read expects. Live-confirmed on chart 482012f1
+ *  (1,571 kala_avadhi rows / full vimshottari coverage 1949-2100): every fetchCapabilityRows
+ *  call in this file was reading `content.rows` (undefined) instead of
+ *  `content.content.rows`, so kala_temporal_bundle silently reported timeline_count: 0 for
+ *  every date range while still marking sidecar_available/ok as successful. Defensive: only
+ *  unwraps one level deeper when the shape actually matches the handler-result contract (has
+ *  an `is_error` key) — never mis-unwraps a legitimately content-shaped payload that happens
+ *  to lack that key. */
 async function fetchCapabilityRows<T>(
   uri: string,
   args: Record<string, unknown>,
@@ -112,7 +127,12 @@ async function fetchCapabilityRows<T>(
   try {
     const { content, ok } = await callRegistryCapability(uri, args, principal)
     if (!ok || !content || typeof content !== 'object') return { rows: [], ok: false }
-    const rows = (content as { rows?: unknown }).rows
+    const inner =
+      !Array.isArray(content) && 'is_error' in (content as Record<string, unknown>)
+        ? (content as { content?: unknown }).content
+        : content
+    if (!inner || typeof inner !== 'object') return { rows: [], ok: true }
+    const rows = (inner as { rows?: unknown }).rows
     return { rows: Array.isArray(rows) ? (rows as T[]) : [], ok: true }
   } catch {
     return { rows: [], ok: false }

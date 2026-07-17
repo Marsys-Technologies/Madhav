@@ -601,6 +601,33 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       yoga_canonical_id: z.string().optional().describe('Filter to a specific yoga by canonical id.'),
     }, principal)
 
+  // Doctrine Campaign D-3 (Kāla Taraṅga), Lane T-1: sign-keyed Aṣṭakavarga (D-1.5b Lane B-2
+  // ashtakavarga_bindu_sign / ashtakavarga_kakshya_boundary chart_facts) → transit-gating
+  // (SAV/BAV damp/amplify per sign) + dated kakṣyā sub-windows (registry cap
+  // marsys://tool/L1/get_av_transit_gating). No default mode/planet/dates for
+  // kakshya_windows — CR-87: nothing here silently falls back onto a cached chart/planet/date.
+  regAlias(server, 'ganita_av_transit_gating_get',
+    'D-3 Kāla Taraṅga: sign-keyed Aṣṭakavarga transit gating + kakṣyā sub-windows for a ' +
+    'chart. mode="sav_bav_gating" (default) serves SAV/BAV bindu counts per sign classified ' +
+    'damping/amplifying/neutral against the classical mean (~28.08 bindus/sign) — used to ' +
+    'damp or amplify a timing window when a transiting planet crosses that sign. Filter by ' +
+    'sign_number, house (resolved via the chart LAGNA), or graha (BAV only). mode=' +
+    '"kakshya_windows" (requires planet, target_sign, start_date, end_date — no defaults) ' +
+    'returns dated ~3.75-degree kakṣyā sub-arcs the planet crosses in that sidereal sign ' +
+    'across the date range, each tagged with its classical kakṣyā lord and real entry/exit ' +
+    'dates derived from the planet\'s actual transit speed (not a fixed day-count).',
+    'marsys://tool/L1/get_av_transit_gating',
+    {
+      mode:        z.enum(['sav_bav_gating', 'kakshya_windows']).optional(),
+      sign_number: z.number().int().min(1).max(12).optional().describe('sav_bav_gating: filter to one sidereal sign.'),
+      house:       z.number().int().min(1).max(12).optional().describe('sav_bav_gating: filter by house (resolved via LAGNA).'),
+      graha:       z.string().optional().describe('sav_bav_gating: filter BAV to one graha.'),
+      planet:      z.string().optional().describe('kakshya_windows (required): transiting planet, e.g. "Saturn".'),
+      target_sign: z.number().int().min(1).max(12).optional().describe('kakshya_windows (required): target sidereal sign 1-12.'),
+      start_date:  z.string().optional().describe('kakshya_windows (required): YYYY-MM-DD.'),
+      end_date:    z.string().optional().describe('kakshya_windows (required): YYYY-MM-DD.'),
+    }, principal)
+
   // ka_tulana → kala_priority_ranking_get (registry cap marsys://tool/L3/call_priority_ranking)
   regAlias(server, 'kala_priority_ranking_get',
     'L3 priority-ranked signals for a chart in a period (ka_tulana service) — ranks active ' +
