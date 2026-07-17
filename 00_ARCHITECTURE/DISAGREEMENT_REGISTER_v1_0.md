@@ -1405,3 +1405,110 @@ disagreement_register_entry:
     - path: platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py
       linkage: consequence   # dhana_axis unconditional-benefic target
 ```
+
+## DIS.023 (doctrine-waves campaign ref: DR-10) — Within-period peak model (pratyantar-lord default; midpoint-triangle deprecated)
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.023
+  campaign_ref: DR-10
+  severity: HIGH (D-3 T-2/T-3/T-6 serving-shape decision; affects every served period-peak claim)
+  question: >
+    What is the classical default basis for a served within-period "peak" date, and what happens
+    to the legacy midpoint-triangle model (period_peak = arithmetic midpoint of the antardaśā, with
+    a 0.6/1.0/0.4 rise/peak/taper envelope) once D-3's transit-kernel exists? Drafted as
+    DR-CANDIDATE C.1 in PRE_D3_READINESS.md §C (2026-07-17), with a concrete falsifier: on
+    482012f1's current Saturn-AD (2024-12-08 → 2027-08-18), the midpoint-triangle places
+    period_peak ≈ 2026-04-13, but the classically strongest sub-window is the Saturn-Jupiter
+    pratyantar (≈2027-04-09 → 2027-08-18) — which the midpoint model scores as a fading 0.4-taper
+    tail, inverting the true peak on a live chart.
+  ruling: >
+    DR-10 (native-ratified 2026-07-17, D-3 open directive). The classical default basis for a
+    within-period peak becomes PRATYANTAR-LORD (sub-sub-period) decomposition — the peak is the
+    strongest pratyantar window within the antardaśā, by classical lord-strength, not an
+    arithmetic construct. The legacy midpoint-triangle is DEPRECATED: it must never serve as a
+    bare peak date. Every served peak must carry peak_basis provenance
+    (pratyantar_lord | midpoint_triangle | transit_kernel). Where the D-3 transit-kernel computes
+    a peak, it SUPERSEDES both pratyantar-lord and midpoint-triangle. Binding for D-3 lanes T-2/
+    T-3/T-6 and any surface serving a period_peak field.
+  status: RATIFIED — binding for D-3. Registered at wave open (BIND_D-3.md); implementation is
+    T-2/T-3/T-6's to carry (peak_basis field on every served peak).
+  resolved_on: 2026-07-17
+  resolved_by_session: "native-ratified at D-3 open directive; drafted as DR-CANDIDATE C.1 by the
+    pre-D-3 readiness pass 2026-07-17; recorded by the D-3 conductor per §8.8.ii"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/PRE_D3_READINESS.md
+      linkage: cause   # DR-CANDIDATE C.1 draft + 482012f1 falsifier evidence
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D3.md
+      linkage: consequence   # T-2 (Taranga service core) / T-3 (shared kernel + PROMISE lock) / T-6 (serving) scope
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3.md
+      linkage: consequence   # bind record carrying this ratification into the wave's promise ledger
+```
+
+## DIS.024 (doctrine-waves campaign ref: DR-11) — T-0 retrodiction-gate thresholds (v1) + anti-gaming rule
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.024
+  campaign_ref: DR-11
+  severity: HIGH (D-3 §G gate load-bearing — the wave does not close without T-0 green)
+  question: >
+    What statistical thresholds does the T-0 retrodiction-gate harness use for its three checks
+    (peak-proximity, windfall-proximity, blind battery), and how are they protected from gaming?
+    Drafted as DR-CANDIDATE C.2 in PRE_D3_READINESS.md §C (2026-07-17).
+  ruling: >
+    DR-11 (native-ratified 2026-07-17, D-3 open directive). T-0 harness v1 statistical gates:
+    ±45 days window tolerance; top-decile salience placement; ≥50% blind-battery hit-rate across
+    scorable LEL events, measured above a shuffled-birth negative control. These are v1 gates,
+    revisable ONLY by a recorded DR (never silently retuned). Anti-gaming rule restated as
+    binding: a statistical gate never greens on the primary runner alone — an independent
+    fresh-context runner (Opus anti-gaming verifier per CONDUCTOR_PROTOCOL §1) must reproduce the
+    hit-rate against live payloads, generalizing the D-2 §G.1 Opus-verifier discipline to T-0's
+    statistical battery. A gate lacking this independent-reproduction pass is not green
+    (CONDUCTOR_PROTOCOL §1 role table, "Anti-gaming verifier" row).
+  status: RATIFIED — binding for D-3 §G. Registered at wave open (BIND_D-3.md); T-0 is the FIRST
+    lane to spawn per BRIEF_D3 §F1 lane-order.
+  resolved_on: 2026-07-17
+  resolved_by_session: "native-ratified at D-3 open directive; drafted as DR-CANDIDATE C.2 by the
+    pre-D-3 readiness pass 2026-07-17; recorded by the D-3 conductor per §8.8.ii"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/PRE_D3_READINESS.md
+      linkage: cause   # DR-CANDIDATE C.2 draft
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D3.md
+      linkage: consequence   # Lane T-0 + §G gate text
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3.md
+      linkage: consequence   # bind record
+```
+
+## DIS.025 (doctrine-waves campaign ref: DR-12) — D-4 peak-model adjudication hook (registered now, fires at D-4)
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.025
+  campaign_ref: DR-12
+  severity: MEDIUM (forward-binding on D-4's battery design; no D-3 implementation consequence)
+  question: >
+    Once D-3 ships three competing peak models (midpoint-triangle, pratyantar-lord, transit-
+    kernel — see DR-10/DIS.023), which model should ultimately govern served peaks, and who
+    decides? Drafted as DR-CANDIDATE C.3 in PRE_D3_READINESS.md §C (2026-07-17), proposed to be
+    registered at D-3 so D-4's Binder inherits it without rediscovery.
+  ruling: >
+    DR-12 (native-ratified 2026-07-17, D-3 open directive). The D-4 retrodiction battery MUST
+    score midpoint-triangle vs pratyantar-lord vs transit-kernel as competing peak models against
+    the full LEL outcome corpus — the data retires the loser. Neither doctrine nor engineering
+    decides the peak model by opinion; the empirical retrodiction score does. This hook is
+    registered at D-3 open so the D-4 Binder inherits it as a MANDATORY battery dimension at
+    D-4's own bind (not optional, not re-litigated).
+  status: RATIFIED — forward-binding on D-4. No D-3 lane action required; D-4's Binder must carry
+    this hook into BIND_D-4.md at that wave's open.
+  resolved_on: 2026-07-17
+  resolved_by_session: "native-ratified at D-3 open directive; drafted as DR-CANDIDATE C.3 by the
+    pre-D-3 readiness pass 2026-07-17; recorded by the D-3 conductor per §8.8.ii"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/PRE_D3_READINESS.md
+      linkage: cause   # DR-CANDIDATE C.3 draft
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D4.md
+      linkage: consequence   # D-4 battery design must inherit this as a mandatory dimension
+    - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3.md
+      linkage: consequence   # bind record carrying the forward hook
+```

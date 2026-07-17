@@ -110,3 +110,7 @@ python-sidecar/venv/
 
 # Accuracy-harness output dumps (generated per-chart result JSON; do not commit new ones — CLASS-C ruling 2026-07-12)
 /accuracy/*.json
+
+# Personal devotional documents (not MARSYS artifacts)
+/Yajna_*
+/Yajna_Vidhi_Design_Philosophy_*
