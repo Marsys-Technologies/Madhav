@@ -78,6 +78,45 @@ function bundleEntriesSection(): TrimmableSection<Record<string, unknown>> {
   }
 }
 
+// CR-14/39 (D-2 V-3): per-subsystem sub-error detection. The bundle endpoint may fold a failing
+// subsystem into bundle_entries while still returning a 200/ok top-level envelope. This scans every
+// entry (at either nesting location) for an error marker and returns the named, failing subsystems.
+// Pure + exported so a test can drive it against a synthetic partial-ok bundle (anti-vacuous: the
+// induced sub-error must actually be caught, §F1.7 anti-vacuous tests).
+export type BundleSubError = { subsystem: string; error: string }
+
+export function collectBundleSubErrors(result: Record<string, unknown>): BundleSubError[] {
+  const nested = result['envelope'] as Record<string, unknown> | undefined
+  const entries =
+    (nested && Array.isArray(nested['bundle_entries']) ? nested['bundle_entries'] : undefined) ??
+    (Array.isArray(result['bundle_entries']) ? result['bundle_entries'] : undefined) ??
+    []
+  const out: BundleSubError[] = []
+  for (const e of entries as unknown[]) {
+    if (!e || typeof e !== 'object') continue
+    const entry = e as Record<string, unknown>
+    const status = String(entry['status'] ?? entry['grounding_status'] ?? '').toUpperCase()
+    const failed =
+      entry['ok'] === false ||
+      entry['is_error'] === true ||
+      entry['isError'] === true ||
+      entry['error'] != null ||
+      status === 'ERROR' || status === 'FAILED' || status === 'FAIL'
+    if (!failed) continue
+    const subsystem = String(
+      entry['subsystem'] ?? entry['name'] ?? entry['source'] ?? entry['key'] ?? entry['category'] ?? 'unknown',
+    )
+    const errObj = entry['error']
+    const error =
+      typeof errObj === 'string' ? errObj
+      : errObj && typeof errObj === 'object' && typeof (errObj as Record<string, unknown>)['message'] === 'string'
+        ? (errObj as Record<string, unknown>)['message'] as string
+        : `sub-tool reported status=${status || 'error'}`
+    out.push({ subsystem, error })
+  }
+  return out
+}
+
 // REMEDIATION D7: NATIVE_CHART_ID removed. chart_id is now REQUIRED from caller.
 // chart_agnostic_gate RULE-1/RULE-4: no default on chart_id.
 // R2.1 (2026-06-30): Repointed from direct pg.Pool to callPlatformPrimitive —
@@ -132,9 +171,32 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
         }
 
         const resultObj = envelope.result as Record<string, unknown>
+
+        // CR-14/39 (D-2 V-3, ledger row 28): a top-level 200/ok envelope could still carry a
+        // per-subsystem FAILURE folded into bundle_entries — the prior code passed that through as
+        // success (silent partial-ok), so a B.11 whole-chart-read could report a hole as if it were
+        // complete. Scan every bundle_entry for an error marker; if ANY sub-tool failed, surface an
+        // explicit sub_errors section AND downgrade to non-ok (isError). An honest whole-chart read
+        // never hides a missing subsystem behind an ok envelope.
+        const subErrors = collectBundleSubErrors(resultObj)
+
         const budgeted = applyResponseBudget(resultObj, HOLISTIC_BUNDLE_BUDGET_KB, [bundleEntriesSection()])
         if (budgeted.trim_report) {
           budgeted.content['trim_report'] = budgeted.trim_report
+        }
+
+        if (subErrors.length > 0) {
+          budgeted.content['status'] = 'PARTIAL_ERROR'
+          budgeted.content['b11_floor_passed'] = false
+          budgeted.content['sub_errors'] = subErrors
+          budgeted.content['sub_errors_note'] =
+            `${subErrors.length} subsystem(s) failed inside the bundle. This is NOT a complete ` +
+            'whole-chart read (B.11) — the failing subsystems are named in sub_errors; do not treat ' +
+            'the served sections as exhaustive. Retry, or call the named subsystem tool directly.'
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(budgeted.content) }],
+            isError: true,
+          }
         }
 
         return {

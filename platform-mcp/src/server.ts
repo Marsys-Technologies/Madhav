@@ -97,6 +97,10 @@ import { registerP1SynthesisTools } from './tools/register_p1_synthesis.js'
 import { registerP1AliasTools }     from './tools/register_p1_aliases.js'
 // D-1.5b Lane B-7 — B8 derived view: ganita_dasha_lord_capability_get
 import { registerP2DashaLordTools } from './tools/register_p2_dasha_lord.js'
+// D-2 Lane V-3: two-pass SCAN/FETCH channel over the large signals surface (ledger row 20)
+import { registerScanFetchTool } from './tools/scan_fetch_signals.js'
+// D-2 Lane V-3: per-chart verified reading-notes (CR-38/71/80), ledger row 25
+import { registerReadingNotesTool } from './tools/reading_notes.js'
 // M2 — Chart selection: list_my_charts + select_chart
 import { registerChartSelectionTools } from './tools/chart_selection.js'
 // M3+M4 — Session tools: recall_session + list_my_sessions
@@ -358,6 +362,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerP1AliasTools(server, principal)
   // D-1.5b Lane B-7 — B8 derived view (ganita_dasha_lord_capability_get)
   registerP2DashaLordTools(server, principal)
+  // D-2 Lane V-3: scan_fetch_signals — two-pass channel (SCAN dense index → FETCH-by-id)
+  registerScanFetchTool(server, principal)
+  // D-2 Lane V-3: reading_notes_get — per-chart verified reading-notes (CR-38/71/80)
+  registerReadingNotesTool(server)
 
   // M2 — Chart selection: list_my_charts + select_chart (2 tools)
   // list_my_charts: entitled chart list by display name; select_chart: validate + return chart_id.
