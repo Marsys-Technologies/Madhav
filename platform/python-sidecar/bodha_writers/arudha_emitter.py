@@ -31,6 +31,7 @@ from typing import Any
 
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2
 from bodha_writers.sudarshana_emitter import GRAHAS, classify_house
+from brahmagyan import valence_doctrine as _vd
 
 ENGINE_VERSION = "bo_arudha_v1.0"
 
@@ -112,6 +113,7 @@ def _make_row(
     summary: str, headline: str, config: dict, constituent_facts: list[str],
     specificity: float, house: int | None, valence: str,
     domains: list[str], relationship_classification: str, now: str,
+    valence_source: str = "categorical_deterministic_v1",
 ) -> dict[str, Any]:
     inputs = _base_inputs(specificity, house)
     sal = salience_formula_v2(inputs)
@@ -201,7 +203,7 @@ def _make_row(
         "computed_at": now,
         "engine_version": ENGINE_VERSION,
         "ratification_factor": None,
-        "valence_source": "categorical_deterministic_v1",
+        "valence_source": valence_source,
     }
 
 
@@ -272,25 +274,35 @@ def build_signal_rows(
         pada_sign = (rec.get("sign") or {}).get("text")
         pada_fact_id = rec["house_d1"]["fact_id"]
 
-        occupants = [
-            _GRAHA_DISPLAY.get(gc, gc) for gc in GRAHAS
-            if graha_houses.get(gc, {}).get("house_d1") == pada_house
+        occupant_codes = [gc for gc in GRAHAS
+                          if graha_houses.get(gc, {}).get("house_d1") == pada_house]
+        occupants = [_GRAHA_DISPLAY.get(gc, gc) for gc in occupant_codes]
+        occupant_fact_ids = [graha_houses[gc]["fact_id"] for gc in occupant_codes]
+        # DR-9 / VAL-ROOT: the ārūḍha-pāda tenancy valence is the occupant
+        # grahas' natures (natural × dignity, incl. node exaltation from the
+        # pāda's sign — occupants share the pāda house/sign), NOT unconditional
+        # benefic. A malefic tenanting the dhana/lābha ārūḍha corrodes it.
+        occ_verdicts = [
+            _vd.graha_valence(gc, contact_type="occupancy", target_house=pada_house,
+                              graha_sign=pada_sign)
+            for gc in occupant_codes
         ]
-        occupant_fact_ids = [
-            graha_houses[gc]["fact_id"] for gc in GRAHAS
-            if graha_houses.get(gc, {}).get("house_d1") == pada_house
-        ]
+        tenancy_valence, tenancy_net = _vd.combine_occupant_verdicts(occ_verdicts)
         rows.append(_make_row(
             chart_id=chart_id, ayanamsha_id=ayanamsha_id, build_id=build_id,
             signal_subkey=f"{pada_key}_tenancy",
-            summary=f"category=arudha | pada={pada_label} | house={pada_house} | sign={pada_sign} | occupants={occupants}",
+            summary=(f"category=arudha | pada={pada_label} | house={pada_house} | sign={pada_sign} "
+                     f"| occupants={occupants} | valence={tenancy_valence}"),
             headline=(f"{pada_label} in H{pada_house} ({pada_sign})"
-                      + (f" — tenanted by {', '.join(occupants)}" if occupants else " — untenanted")),
-            config={"pada": pada_key, "house": pada_house, "sign": pada_sign, "occupants": occupants},
+                      + (f" — tenanted by {', '.join(occupants)} ({tenancy_valence})" if occupants else " — untenanted")),
+            config={"pada": pada_key, "house": pada_house, "sign": pada_sign,
+                    "occupants": occupants, "valence_net": tenancy_net,
+                    "valence_source": "valence_doctrine_v1"},
             constituent_facts=[pada_fact_id] + occupant_fact_ids,
             specificity=1.2 if occupants else 1.0,
             house=pada_house,
-            valence="benefic" if occupants else "neutral",
+            valence=tenancy_valence,
+            valence_source="valence_doctrine_v1",
             domains=[domain],
             relationship_classification="arudha_pada_tenancy",
             now=now,

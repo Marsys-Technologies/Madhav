@@ -1330,3 +1330,79 @@ disagreement_register_entry:
     - path: platform-mcp/src/tools/register_p1_aliases.ts
       linkage: consequence   # util_intent_classify redesign target
 ```
+
+## DIS.022 (doctrine-waves campaign ref: DR-9) — Valence computation doctrine (the D-16/CR-54/CR-83 lineage root)
+
+```yaml
+disagreement_register_entry:
+  dr_id: DIS.022
+  campaign_ref: DR-9
+  severity: CRITICAL (estate-wide, all charts)
+  question: >
+    G0-4 (the Rahu-in-H2 / Mars-8th-aspect-on-H2 wealth-loss mechanism) never surfaces in the
+    served wealth surface. Step-1 diagnosis (D-2 conductor, evidence in REPORT/STATE_D-2) found
+    the cause is NOT ranking-formula tuning but a CRITICAL estate-wide valence-computation defect
+    with (at least) four independent broken sites, all labeling adverse configurations as
+    favorable: (1) `bo_karanajala._EDGE_TYPE_VALENCE` keys edge valence on edge TYPE
+    ("aspect"→"harmonious") ignoring the aspecting grahas' natures → 121/121 mechanisms on
+    482012f1 carry valence="benefic", including Mars↔Saturn (two malefics); (2) `ga_vichara.
+    compute_valence` uses an (actor_lordship_class × target_house) matrix whose trikoṇa-membership
+    rule pre-empts the dusthāna-affliction rule for a dual-lord (Mars, Aries 1L+8L), has NO
+    contact-type dimension, and skips Rahu/Ketu entirely → the Mars-8th-aspect-on-H2 signal reads
+    "benefic" despite valence_source="ga_vichara_v1"; (3) V-5's dhana_axis emitter hardcodes
+    valence="benefic" unconditionally (occupancy-alone); (4) V-5's tenancy classes similarly
+    default benefic-on-occupancy. This retroactively root-causes D-16 ("estate emits ZERO
+    adverse-valence dated claims") — previously attributed to Y-2/Y-5 dosha wiring; the deeper
+    root is that valence computation itself never emits adverse. What is the doctrine-correct
+    valence computation, and how should an adverse mechanism be served given the wealth domain
+    carries 12 fired benefic yogas (a unified top-15 fills with promise)?
+  ruling: >
+    DR-9 (native-ratified grounds, 2026-07-16, recorded by the D-2 conductor per §8.8.ii;
+    native-directed during the G0-4 Step-2 GO). Two parts.
+    PART A — valence computation (these grounds are native-ratified). Valence is NEVER a constant
+    and NEVER derived from occupancy alone. Minimum computation, per signal AND per
+    mechanism/edge:
+    (1) Natural nature (BPHS svabhāva): Rahu/Ketu/Mars/Saturn/waning-Moon/afflicted-Mercury =
+    malefic; Jupiter/Venus/strong-Moon = benefic; Sun = mild malefic.
+    (2) Functional lordship for THIS lagna (BPHS Ch.34 functional benefic/malefic) — consumed from
+    the stored graha_functional_class_per_ascendant fact (§N.5, never re-derived). Natural ×
+    functional CAN disagree; both are inputs (e.g. Aries: Mars is lagneśa/functional-benefic
+    despite natural malefic).
+    (3) Dignity/state modifiers: exaltation, own sign, combustion, retrogression, NBRY state.
+    (4) Contact type: occupancy vs aspect; Mars's 4th/8th and Saturn's 3rd/10th special aspects
+    carry harsh texture; benefic drishti softens.
+    Output is SIGNED and can be MIXED — the 4-way vocabulary {benefic, malefic, mixed, neutral};
+    `mixed` is FIRST-CLASS (a genuine tension where a benefic and a malefic component both exist
+    and are both non-trivial), NOT a weak-neutral fallback. All valence-emitting sites consume ONE
+    shared doctrine module (the divergent-copies disease is what produced four different wrong
+    answers). `valence_source` must state what actually computed each row — the pre-fix rows were
+    stub/occupancy constants and the register narrative keeps that provenance honest (no laundering).
+    Anti-overcorrection is mandatory and gated by verifier specimens in BOTH directions:
+    Rahu-in-H2 (Taurus, exalted, Rohini) → mixed/adverse-leaning NOT strongly_adverse (exalted
+    Rahu in dhana is classically dual: unconventional gains AND deception/loss); Mars-8th-aspect-
+    on-H2 → mixed/adverse (natural malefic harsh aspect, but Mars is Aries lagneśa — pure-adverse
+    would ignore functional lordship); Venus+Jupiter-in-H9 (the Dhana yoga) → MUST remain
+    supportive; Mars↔Saturn mechanism → adverse; Jupiter↔Venus mechanism → supportive. Post-fit
+    the 121 mechanisms must show a real spread across the vocabulary — all-benefic was the bug;
+    all-adverse (or any single-value collapse) is the same bug with a different constant.
+    PART B — serving (proposed ruling for native review, PARK-class, submitted at Step-2 close):
+    the wealth surface serves a SIGNED, PARTITIONED verdict — top-K supporting AND top-K
+    threatening, each layer carrying its own §N.6 hardFloor — NOT a unified top-15. G0-4's
+    assertion is amended from "ranks into the top-15" to "the Rahu/Mars-on-H2 mechanism is served
+    in the wealth surface's adverse/threat layer with nonzero signed salience and real constituent
+    grounding." The composite ranking formula is NOT tuned against the old assertion (that would
+    game the gate this campaign exists to prevent).
+  status: PART A resolved (native-ratified grounds, binding for D-2); PART B proposed (queued for
+    native review at Step-2 close per the standing partitioned-serve DR proposal)
+  resolved_on: 2026-07-16
+  resolved_by_session: "native-directed (G0-4 Step-2 GO), grounds native-ratified; recorded by the D-2 conductor per §8.8.ii"
+  linked_artifacts:
+    - path: 00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md
+      linkage: cause   # D-16 root-cause; new valence-lineage-root CRIT row
+    - path: platform/python-sidecar/ga_writers/ga_vichara_writer.py
+      linkage: consequence   # compute_valence redesign target
+    - path: platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py
+      linkage: consequence   # _EDGE_TYPE_VALENCE graha-nature-aware target
+    - path: platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py
+      linkage: consequence   # dhana_axis unconditional-benefic target
+```
