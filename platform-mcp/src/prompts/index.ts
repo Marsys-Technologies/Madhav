@@ -20,8 +20,16 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+// D-2 Lane V-2 — compiled vidhi plans as an MCP prompt
+import { registerVidhiPlanPrompt } from './vidhi_plan.js'
 
 export function registerPrompts(server: McpServer): void {
+
+  // ── 0. vidhi_plan (D-2 Lane V-2) ─────────────────────────────────────────────
+  // Compiles the Vidhi Engine contract (V-1 registry + deterministic compiler) into an
+  // executable guided-reading scaffold: acharya floor + machine band with each item's live
+  // tool, the scope_tuple echoed for correction, and the completeness-receipt discipline.
+  registerVidhiPlanPrompt(server)
 
   // ── 1. orient_chart ─────────────────────────────────────────────────────────
   //

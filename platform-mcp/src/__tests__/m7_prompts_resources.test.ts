@@ -83,18 +83,18 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
     expect(names).toContain('find_active_yogas')
   })
 
-  it('registers exactly 4 prompts (3 R5 + demand_side_chase WP-1.6)', () => {
+  it('registers exactly 5 prompts (3 R5 + demand_side_chase WP-1.6 + vidhi_plan D-2 V-2)', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerPrompts(server as any)
-    expect(server._registeredPrompts).toHaveLength(4)
+    expect(server._registeredPrompts).toHaveLength(5)
   })
 
-  it('server.prompt() is called 4 times', () => {
+  it('server.prompt() is called 5 times', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerPrompts(server as any)
-    expect(server.prompt).toHaveBeenCalledTimes(4)
+    expect(server.prompt).toHaveBeenCalledTimes(5)
   })
 
   it('registers the WP-1.6 demand_side_chase prompt', () => {
