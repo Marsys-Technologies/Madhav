@@ -39,10 +39,38 @@ lifecycle_step: 5  # DEPLOY complete (native GO 2026-07-18): PR #602 (wave/D-3/i
                    # possible double-unwrap bug class) logged in DISAGREEMENT_REGISTER_v1_0.md
                    # as a non-DR FINDING entry (register_p1_synthesis.ts, register_p1_reference.ts,
                    # l0_brahmagyan.ts) — out of D-3 scope, not chased.
+cycle1_status: CLOSED  # T-0 + T-1 + kala_temporal.ts hotfix deployed clean; wealth guard
+                       # re-baselined convergent_moderate/~2.38 (benign, 12/12 yogas fire
+                       # structurally). Not re-opened.
 status: ACTIVE
-cycle: 1
+cycle: 2  # CYCLE-2 OPEN (native directive 2026-07-18): T-2/T-3 transit kernel, T-4/T-5
+          # kernel-admission loop, T-6 serving, then the §G retrodiction gate battery
+          # (the empirical crux of D-3). Binder pass complete, BOUND — see
+          # BIND_D-3_CYCLE2.md. PAUSED here per native's explicit instruction: report
+          # before spawning the T-2/T-3 kernel lane, hold for go.
+cycle2_bind_record: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3_CYCLE2.md
+cycle2_notes:
+  - "B-3 correction: cycle-1 BIND_D-3.md recorded test-span start as 2020-01-15; live
+     re-verification shows 2021-01-15 (1-char transcription slip, counts unchanged
+     21/21). Zero test events fall in calendar-year 2020."
+  - "Test-split (21 events) content NEVER inspected this pass — counts/boundary only,
+     per the native's blind-construction constraint. Sacrosanct until T-0's single
+     scoring pass."
+  - "Kernel admission order (B-4) unchanged from cycle-1, strengthened by cycle-1
+     delivery (dasha spine + SAV/kakshya now proven-serving, still ranked by expected
+     retrodiction lift not implementation readiness). Two T-0 flag-forwards (sparse-
+     curve top_decile_fraction=1.0 artifact; localMax grid tie-break on peak_lag_days)
+     must be addressed in the kernel/admission-loop scorer before train-delta scoring,
+     or they contaminate the staged-admission measurements."
 brief_bound: true
 bind_record: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3.md
+cycle2_rollback_pin:
+  image_sha:
+    amjis-web: 11377530892799afd8015d3ee9b6ec68efeb0c0d
+    amjis-mcp: 11377530892799afd8015d3ee9b6ec68efeb0c0d
+    amjis-sidecar: b536e13b63168839187692b50f94a3d334f5ee1b
+    brahma-build-pipeline-job: b536e13b63168839187692b50f94a3d334f5ee1b
+  abhisek_build_id: b84c3797-b64a-4956-a431-5f4ccdf9ee55
 rollback_pin:
   image_sha:
     amjis-web: e8b1047f56a06591352dbb748373a59b6dea5715
@@ -61,13 +89,18 @@ rebuild_scope_ruling:
   scope: pending  # full-wave scope not yet computed; the kala_avadhi scoped rebuild above is a
                   # separate pre-spawn action, not the wave's own T-lane rebuild (lifecycle step 6)
   expected_per_brief: "L3 convergence assets + Taranga service; L2 read-only (no L2 rebuild) — BRIEF_D3 §8.2 per-wave expected scope"
-lanes:
+cycle1_lanes:
   - {lane: T-0, branch: wave/D-3/T-0, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T0, base: origin/main@b536e13b, head_sha: 9a67f986, status: receipted, model: sonnet, verifier_model: opus, receipt_ref: "verdict=ACCEPT, tests=40/40, scope_warden=pass, live independent reproduction on 482012f1 matched implementer numbers EXACTLY (check-a intensity0/threshold0 FAIL, check-b 2/6 FAIL, check-c 18/40=0.45 vs 0.50 floor FAIL, control_gap=-0.0464 FAIL). DR-10 peak_basis=dasha_lord_confluence_v1 correctly NOT claimed as a named model. DR-11 anti-gaming independent-reproduction requirement satisfied by this verifier pass itself. All-red retrodiction result judged legitimate v1-proxy weakness, not a defect. 2 flag-forward non-blocking items for T-2/T-3 kernel work: (1) top_decile_fraction=1.0 sparse-curve artifact on check-a (does not flip result), (2) verifier-found localMax grid tie-break makes lead/lag distribution (peak_lag_days=-42 on every hit) uninformative, no pass/fail impact."}
   - {lane: T-1, branch: wave/D-3/T-1, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T1, base: origin/main@b536e13b, head_sha: 3d888223, status: receipted, model: sonnet, verifier_model: opus, receipt_ref: "verdict=ACCEPT, tests: platform 5687/5687 pass, platform-mcp 515/605 pass (75 pre-existing failures verified byte-identical vs origin/main baseline, none reference AV/kakshya code), new file 25/26 (1 live-integration skipped). scope_warden=pass (exactly 4 files, all in-lane, append-only registrations). CR-87 verified: chart_id required no-default both modes. Live SAV bindus independently re-pulled and re-computed by verifier: 29,29,27,32,30,26,34,32,25,27,23,23 (sum=337 classical total) — exact match; house7=34 amplifying/house10=27 damping confirmed against BRIEF_D3 type specimens. Both v1-tradeoff flags (kakshya duration correction, Lahiri mean-rate sidereal approx) judged RIGHT calls matching the brief's own illustrative framing, not defects. One non-blocking Phase-2 note: kakshya_windows live-serving depends on sidecar transit endpoint, unproven at Phase-1, gate runner should exercise post-deploy."}
-integration_branch: {branch: wave/D-3/integration, base: origin/main@b536e13b, merges: ["9a67f986 (T-0, fast-forward)", "3d888223 (T-1, merge commit 9166f5ca)", "04643e3a (hotfix-kala-temporal, merge)"], suite: {platform: {tsc: clean, eslint: clean, vitest: "5727 passed / 317 skipped / 1 todo, 0 failed"}, platform_mcp: {tsc: clean, vitest: "517 passed / 75 failed / 15 skipped — pre-existing baseline (+2 new passing from the hotfix), no new failures across all 3 merges"}}, pushed: false}
-hotfix_lanes:
+cycle1_integration_branch: {branch: wave/D-3/integration, base: origin/main@b536e13b, merges: ["9a67f986 (T-0, fast-forward)", "3d888223 (T-1, merge commit 9166f5ca)", "04643e3a (hotfix-kala-temporal, merge)"], suite: {platform: {tsc: clean, eslint: clean, vitest: "5727 passed / 317 skipped / 1 todo, 0 failed"}, platform_mcp: {tsc: clean, vitest: "517 passed / 75 failed / 15 skipped — pre-existing baseline (+2 new passing from the hotfix), no new failures across all 3 merges"}}, pushed: false, merged_to_main: {pr: 602, sha: "11377530892799afd8015d3ee9b6ec68efeb0c0d"}}
+cycle1_hotfix_lanes:
   - {lane: hotfix-kala-temporal, branch: wave/D-3/hotfix-kala-temporal, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-hotfix-katemporal, base: origin/main, head_sha: 04643e3a, status: receipted+merged, verifier_model: opus, merged_into: wave/D-3/integration, receipt_ref: "verdict=ACCEPT, scope_warden=pass, tests: 75 failed/517 passed/15 skipped (own vitest run) vs origin/main scratch-checkout baseline 75/515/15 — delta=+2 new passing tests only, no regression. Wire shape independently traced from source on BOTH ends (route.ts response wrapping + all 4 L3 handlers' is_error-bearing return shape) — diagnosis confirmed, not taken on faith. CR-93/94 precedent independently confirmed as a faithful transplant of an already-accepted identical fix. Judgment call: code-level evidence (source-traced shape + existing precedent + corrected regression test with a negative don't-mis-unwrap case) sufficient for Phase-1 ACCEPT with live confirmation properly deferred to Phase-2 post-deploy gate, per protocol's own two-phase design — verifier explicitly does not consider this risky enough to require live confirmation before merge. FORWARD-POINTER (not blocking, not this lane's scope): 3 other /api/retrieval/capability callers (register_p1_synthesis.ts, register_p1_reference.ts, l0_brahmagyan.ts) return content raw without the is_error descent — may share the same latent bug class depending on downstream consumption; flagged for a follow-up audit, not traced to a conclusion.", integration_note: "merged into wave/D-3/integration cleanly (2 files, 73 insertions/4 deletions); platform-mcp re-run post-merge: tsc clean, vitest 75 failed/517 passed/15 skipped — matches hotfix lane's own count exactly, full wave integration remains clean."}
-deploy: {done: true, pr: 602, merge_sha: "11377530892799afd8015d3ee9b6ec68efeb0c0d", images: {amjis_web: "11377530892799afd8015d3ee9b6ec68efeb0c0d", amjis_mcp: "11377530892799afd8015d3ee9b6ec68efeb0c0d"}, rebuild: {needed: false, reasoning: "T-1 and hotfix are both pure serving-layer changes, zero migrations, zero new writers, no new fact categories — no R-5/§8.2 trigger"}}
-gate: {run: false, blocker: null, note: "regression guard RESOLVED BENIGN 2026-07-18 — see carried_item_dispositions / DISAGREEMENT_REGISTER wealth-rebaseline FINDING. ganita_yoga_firings_get confirmed 12/12 yogas fired=true at unchanged strengths (fork check per native directive); the 2.78->2.38 delta is entirely yoga_term, driven by domain-bearing classification 4->3, itself downstream of kala_activations now populating (this wave's own hotfix) + the DR-9 Part B affliction/threat layer going live — not a lost firing. Wealth guard RE-BASELINED to convergent_moderate/~2.38+Dhana Yoga+affliction layer+kala_activations populated; the prior 2.78 pin retired as pre-timing/pre-affliction. Not a D-3 wave-blocker (D-3's gate is the T-0 retrodiction battery). No code changes made."}
-updated_at: "2026-07-18T03:05+05:30"
+cycle1_deploy: {done: true, pr: 602, merge_sha: "11377530892799afd8015d3ee9b6ec68efeb0c0d", images: {amjis_web: "11377530892799afd8015d3ee9b6ec68efeb0c0d", amjis_mcp: "11377530892799afd8015d3ee9b6ec68efeb0c0d"}, rebuild: {needed: false, reasoning: "T-1 and hotfix are both pure serving-layer changes, zero migrations, zero new writers, no new fact categories — no R-5/§8.2 trigger"}}
+cycle1_gate: {run: false, blocker: null, note: "regression guard RESOLVED BENIGN 2026-07-18 — see carried_item_dispositions / DISAGREEMENT_REGISTER wealth-rebaseline FINDING. ganita_yoga_firings_get confirmed 12/12 yogas fired=true at unchanged strengths (fork check per native directive); the 2.78->2.38 delta is entirely yoga_term, driven by domain-bearing classification 4->3, itself downstream of kala_activations now populating (this wave's own hotfix) + the DR-9 Part B affliction/threat layer going live — not a lost firing. Wealth guard RE-BASELINED to convergent_moderate/~2.38+Dhana Yoga+affliction layer+kala_activations populated; the prior 2.78 pin retired as pre-timing/pre-affliction. Not a D-3 wave-blocker (D-3's gate is the T-0 retrodiction battery). No code changes made."}
+cycle2_lanes: []  # not yet spawned — PAUSED here per native's explicit instruction, reporting
+                  # before spawning the T-2/T-3 kernel lane, holding for go
+cycle2_integration_branch: null
+cycle2_deploy: {done: false}
+cycle2_gate: {run: false, note: "the D-3 wave gate (§G) — retrodiction battery, the empirical crux of the wave. Not run until T-2/T-3/T-4/T-5/T-6 land. Blind-construction constraint binding: test split (21 events) must not be inspected/tuned against before T-0's single scoring pass."}
+updated_at: "2026-07-18T03:10+05:30"
 resumed_at: null
