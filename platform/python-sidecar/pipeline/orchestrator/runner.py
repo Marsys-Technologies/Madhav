@@ -575,6 +575,67 @@ def _schedule_parallel(
     )
 
 
+def _reconcile_failed_assets_from_db(cur, run_id: str, plan: list[str], failed_assets: set[str]) -> set[str]:
+    """RR-fix (D-3 carried-forward from D-2 close report): the run-rollup race.
+
+    `_schedule_parallel` tracks `failed_assets` IN-PROCESS (an in-memory Python set
+    built up as worker futures resolve). That set is a cache, not the source of
+    truth — a worker can write 'error' (or, via a retried/late commit, 'complete')
+    to `build_run_assets`/`asset_throughput` in a way the in-process bookkeeping
+    misses or mis-tracks (e.g. a future read racing a worker's own crash-cleanup
+    write in `worker()`'s except-block, or a `build_run_assets` row that never
+    reached a terminal state at all). Before computing `final_state`, re-query
+    `build_run_assets` for this run_id and let DB reality override the cache in
+    BOTH directions:
+      - DB shows 'error'/'aborted', or never reached a terminal state at all
+        ('queued'/'building' still, or the row is simply missing) → treat as
+        failed even if the in-process set missed it.
+      - DB shows 'complete' for an asset the in-process set believed failed →
+        trust the DB and drop it from the failed set (a false failure would
+        report a run 'failed' when every child asset actually landed clean).
+    """
+    cur.execute(
+        "SELECT asset_id, state FROM build_run_assets WHERE run_id = %s",
+        (run_id,),
+    )
+    db_state = {r["asset_id"]: r["state"] for r in cur.fetchall()}
+
+    reconciled = set(failed_assets)
+    for asset_id in plan:
+        state = db_state.get(asset_id)
+        if state in ("error", "aborted"):
+            if asset_id not in reconciled:
+                logger.error(
+                    "[orchestrator] RR-fix: run %s asset %s missed by in-process "
+                    "tracking but build_run_assets shows %r — reconciling to failed",
+                    run_id, asset_id, state,
+                )
+            reconciled.add(asset_id)
+        elif state in ("building", "queued", None):
+            logger.error(
+                "[orchestrator] RR-fix: run %s asset %s in non-terminal DB state "
+                "%r at final rollup — treating as failed (never confirmed complete)",
+                run_id, asset_id, state,
+            )
+            reconciled.add(asset_id)
+        elif state == "complete" and asset_id in reconciled:
+            logger.warning(
+                "[orchestrator] RR-fix: run %s asset %s was in the in-process "
+                "failed set but build_run_assets shows 'complete' — trusting DB, "
+                "removing from failed set", run_id, asset_id,
+            )
+            reconciled.discard(asset_id)
+
+    if reconciled != failed_assets:
+        emit_event({
+            "type": "run.rollup_reconciled",
+            "run_id": run_id,
+            "in_process_failed": sorted(failed_assets),
+            "db_reconciled_failed": sorted(reconciled),
+        })
+    return reconciled
+
+
 def execute_run(run_id: str) -> None:
     """
     Load build_run by run_id, acquire chart advisory lock, run the asset plan via
@@ -718,6 +779,13 @@ def execute_run(run_id: str) -> None:
             mark_run_state(conn, cur, run_id, "paused")
             emit_event({"type": "run.state_change", "run_id": run_id, "chart_id": chart_id, "state": "paused"})
             return
+
+        # RR-fix (D-3): reconcile the in-process failed_assets cache against DB
+        # reality (build_run_assets for this run_id) before computing the final
+        # state — see _reconcile_failed_assets_from_db for the race this closes.
+        conn.rollback()  # release the read snapshot so the reconciliation query sees fresh commits
+        failed_assets = _reconcile_failed_assets_from_db(cur, run_id, plan, failed_assets)
+        conn.commit()
 
         # BA-P3 FIX 3: a run whose plan included any failed/blocked asset must NOT
         # be reported as "completed" — that reads as a clean, trustworthy build to

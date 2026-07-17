@@ -94,6 +94,10 @@ app.include_router(transit_search_router.router, prefix="/api/compute", dependen
 from brahmagyan.mimamsa.outcome import router as mimamsa_outcome_router
 app.include_router(mimamsa_outcome_router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
 
+# L3 Kāla Taraṅga — stateless temporal-convolution service (D-3 Lane T-2)
+from routers import taranga as taranga_router
+app.include_router(taranga_router.router, prefix="/api/compute/taranga", dependencies=[Depends(verify_api_key)])
+
 # BRAHMA L2 Bodha — holistic bundle (bo_2-8; filename uses hyphen, import via importlib)
 # Route: POST /api/compute/brahma/holistic_bundle
 import importlib as _importlib
