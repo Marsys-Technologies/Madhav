@@ -27,6 +27,8 @@ import { registerClassicalTextsResource } from './classical_texts_resource.js'
 import { registerSutravaliResources } from './sutravali_resource.js'
 import { registerChartCatalogResource } from './chart_catalog_resource.js'
 import { registerConsumptionProtocol } from './consumption_protocol.js'
+// D-2 Lane V-2 — Vidhi registry as an MCP resource (registry + per-intent floors)
+import { registerVidhiRegistryResource } from './vidhi_registry_resource.js'
 
 /**
  * Register all 5 MARSYS-JIS MCP resources on the given server.
@@ -94,4 +96,10 @@ export function registerResources(server: McpServer, principal: Principal): void
   //     operative from W1 deploy — pairs with the capability map + acquisition tracker.
   //     marsys://consumption-protocol
   registerConsumptionProtocol(server)
+
+  // 12. vidhi-registry + vidhi-floor: the Vidhi Engine registry (D-2 Lane V-2).
+  //     marsys://vidhi/registry — full primitives + intent floors + capability_version.
+  //     marsys://vidhi/floor/{intent} — per-intent floor (template, all 8 enumerated in list).
+  //     Rows mirror V-1's platform/src/lib/vidhi registry (parity-guarded).
+  registerVidhiRegistryResource(server)
 }
