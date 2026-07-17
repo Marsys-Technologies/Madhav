@@ -909,6 +909,79 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         timing_anchored: timingAnchored,
       }
 
+      // ── DR-9 Part B (native-ratified 2026-07-17): partitioned SIGNED serve ──
+      // The threatening/adverse layer, symmetric to bearing_yogas. Now that the
+      // valence doctrine (VAL-ROOT) emits real malefic/mixed valence, this
+      // surfaces the domain's adverse-valence signals + graha-to-house
+      // affliction mechanisms (e.g. Rahu-occupies-dhana) in their OWN layer with
+      // its own §N.6 hardFloor — never crowded out of a unified top-K by the
+      // benefic yogas (the exact reason a wealth chart with 12 fired benefic
+      // yogas showed zero adverse content; D-16/G-04). The verdict stays a signed
+      // composite; supporting and threatening layers are served SEPARATELY.
+      let bearing_afflictions: Record<string, unknown>[] = []
+      let affliction_mechanisms: Record<string, unknown>[] = []
+      try {
+        const advRes = await query<{
+          signal_id: string; signal_type_id: string; signal_summary_text: string | null
+          valence: string | null; valence_source: string | null
+          computed_salience: number | null; constituent_facts_array: string[] | null
+        }>(
+          `SELECT signal_id, signal_type_id, signal_summary_text, valence, valence_source,
+                  computed_salience, constituent_facts_array
+             FROM bodha_msr_signals
+            WHERE chart_id = $1 AND ayanamsha_id = $2
+              AND $3 = ANY(domains_affected_array)
+              AND valence IN ('malefic','mixed')
+            ORDER BY computed_salience DESC NULLS LAST
+            LIMIT $4`,
+          [chart_id, ayanamsha_id, spec.signal_domain, max_signals],
+        )
+        bearing_afflictions = advRes.rows.map(r => {
+          for (const fid of (r.constituent_facts_array ?? [])) fact_ids.add(fid)
+          return {
+            signal_id: r.signal_id, signal_type_id: r.signal_type_id,
+            signal_summary: r.signal_summary_text, valence: r.valence,
+            valence_source: r.valence_source, computed_salience: r.computed_salience,
+            constituent_facts_array: r.constituent_facts_array,
+          }
+        })
+        const mechRes = await query<{
+          mechanism_name: string; mechanism_class: string; valence: string | null
+          citation_human: string | null
+        }>(
+          `SELECT mechanism_name, mechanism_class, valence, citation_human
+             FROM bodha_mechanisms
+            WHERE chart_id = $1 AND ayanamsha_id = $2
+              AND valence IN ('malefic','mixed')
+              AND $3 = ANY(domains_affected_array)
+            ORDER BY CASE valence WHEN 'malefic' THEN 0 ELSE 1 END
+            LIMIT $4`,
+          [chart_id, ayanamsha_id, spec.signal_domain, max_signals],
+        )
+        affliction_mechanisms = mechRes.rows.map(r => ({
+          mechanism_name: r.mechanism_name, mechanism_class: r.mechanism_class,
+          valence: r.valence, citation_human: r.citation_human,
+        }))
+      } catch (e) {
+        judgment_flags.push(`afflictions_fetch_failed: ${String(e)}`)
+      }
+      if (bearing_afflictions.length === 0 && affliction_mechanisms.length === 0) {
+        judgment_flags.push(
+          'afflictions_empty: no adverse-valence (malefic/mixed) signal or affliction mechanism ' +
+          'bears on this domain — reported honestly (DR-9 Part B partitioned serve; an honest ' +
+          'empty threat layer, not an omission).',
+        )
+      } else {
+        judgment_flags.push(
+          `afflictions_present: ${bearing_afflictions.length} adverse signal(s) + ` +
+          `${affliction_mechanisms.length} affliction mechanism(s) served in the THREAT layer ` +
+          '(DR-9 Part B, native-ratified). The verdict is a SIGNED composite; the supporting ' +
+          '(bearing_yogas) and threatening (bearing_afflictions/affliction_mechanisms) layers are ' +
+          'served SEPARATELY, each with its own §N.6 hardFloor — neither crowds out the other. A ' +
+          'unified top-K would fill with the benefic yogas and hide the adverse content (D-16/G-04).',
+        )
+      }
+
       // Astrologically typed per design §28.4 ("the closed pointer vocabulary becomes
       // shastra moves") — pointer_type is ADDITIVE alongside the pre-existing
       // {instrument, hint} shape (R5 W3 Phase B); no caller reading only instrument/hint
@@ -953,6 +1026,9 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             // sibling array, never discarded (B.10) — see judgment_flags for both caveats.
             bearing_yogas: bearingYogaFirings,
             bearing_yogas_corroboration: yogaSignalsCorroboration,
+            // DR-9 Part B: the threatening layer (signed partitioned serve).
+            bearing_afflictions,
+            affliction_mechanisms,
             timing_hooks: timing,
           },
           verdict,

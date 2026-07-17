@@ -1896,6 +1896,44 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             hardFloor: true,
           },
           {
+            // DR-9 Part B (native-ratified): the THREAT layer's own §N.6 hardFloor —
+            // symmetric to bearing_yogas. The whole point of the partitioned serve is
+            // that a budget trim can NEVER zero the adverse layer while the supporting
+            // layer survives (that asymmetry is how the estate showed all-benefic).
+            path: 'content.checklist.bearing_afflictions',
+            getArray: (root) => {
+              const checklist = (root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined
+              const arr = checklist?.['bearing_afflictions']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const checklist = (root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined
+              if (checklist) checklist['bearing_afflictions'] = kept
+            },
+            minKeep: 3,
+            recover: { instrument: 'get_signals', hint: 'full adverse-valence (malefic/mixed) signal set for this domain beyond the lean threat-layer slice kept here — pass domain + a higher top_k.' },
+            label: 'checklist.bearing_afflictions',
+            hardFloor: true,
+          },
+          {
+            // affliction mechanisms (graha-to-house tenancy afflictions, e.g.
+            // Rahu-occupies-dhana) — the mechanism-level threat layer, also floored.
+            path: 'content.checklist.affliction_mechanisms',
+            getArray: (root) => {
+              const checklist = (root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined
+              const arr = checklist?.['affliction_mechanisms']
+              return Array.isArray(arr) ? arr : undefined
+            },
+            setArray: (root, kept) => {
+              const checklist = (root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined
+              if (checklist) checklist['affliction_mechanisms'] = kept
+            },
+            minKeep: 2,
+            recover: { instrument: 'bodha_discoveries_get', hint: 'full graha_bhava_affliction + adverse mechanism set beyond the slice kept here.' },
+            label: 'checklist.affliction_mechanisms',
+            hardFloor: true,
+          },
+          {
             path: 'content.checklist.varga_confirmation.rows',
             getArray: (root) => {
               const vc = ((root['content'] as Record<string, unknown> | undefined)?.['checklist'] as Record<string, unknown> | undefined)?.['varga_confirmation'] as Record<string, unknown> | undefined

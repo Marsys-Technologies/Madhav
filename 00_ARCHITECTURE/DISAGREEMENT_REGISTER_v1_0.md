@@ -1392,8 +1392,7 @@ disagreement_register_entry:
     in the wealth surface's adverse/threat layer with nonzero signed salience and real constituent
     grounding." The composite ranking formula is NOT tuned against the old assertion (that would
     game the gate this campaign exists to prevent).
-  status: PART A resolved (native-ratified grounds, binding for D-2); PART B proposed (queued for
-    native review at Step-2 close per the standing partitioned-serve DR proposal)
+  status: PART A resolved (native-ratified, binding for D-2, live-verified 2026-07-17: 6/6 specimens green, mechanism valence spreads mixed78/malefic30/neutral8/benefic7, Rahu-occupies-dhana served as mixed mechanism). PART B RATIFIED by native 2026-07-17 (Step-2 close) — partitioned adverse/supportive wealth serve with per-layer §N.6 hardFloor; being wired.
   resolved_on: 2026-07-16
   resolved_by_session: "native-directed (G0-4 Step-2 GO), grounds native-ratified; recorded by the D-2 conductor per §8.8.ii"
   linked_artifacts:
