@@ -47,8 +47,13 @@ cycle: 2  # CYCLE-2 OPEN (native directive 2026-07-18): T-2/T-3 transit kernel, 
           # kernel-admission loop, T-6 serving, then the §G retrodiction gate battery
           # (the empirical crux of D-3). Binder pass complete, BOUND — see
           # BIND_D-3_CYCLE2.md. GO received 2026-07-18 (native: run fully autonomously
-          # under ESCALATION_POLICY_v1_0.md to the §G gate). RR-fix/T-2/T-3 lanes
-          # SPAWNED (isolated worktrees, Sonnet implementers) — see cycle2_lanes below.
+          # under ESCALATION_POLICY_v1_0.md to the §G gate). RR-fix/T-2/T-3: all 3 lanes
+          # receipted ACCEPT, integrated (391 tests clean), merged (PR #603, eb21bb61),
+          # deployed (web/sidecar/pipeline-job @ eb21bb61, mcp unchanged @ 11377530 —
+          # correct, no platform-mcp touch this cycle), rebuild ruled NOT NEEDED (no
+          # writer/schema/serving-surface change yet — T-2/T-3 are unwired new capability).
+          # NEXT: T-4/T-5 kernel-admission loop, then T-6 serving (wires T-2/T-3 in),
+          # THEN a rebuild trigger will likely apply once T-6 repoints serving surfaces.
 cycle2_bind_record: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3_CYCLE2.md
 cycle2_notes:
   - "B-3 correction: cycle-1 BIND_D-3.md recorded test-span start as 2020-01-15; live
@@ -118,8 +123,8 @@ cycle2_lanes:
   # Kernel-admission loop (T-1 currents already delivered cycle-1; T-4/T-5 admission) and T-6 serving
   # spawn AFTER RR-fix/T-2/T-3 receipt+integrate, per brief §F1 declared order (T-2/T-3 kernel core
   # before the admission loop; T-6 last). Not yet spawned.
-cycle2_integration_branch: null
-cycle2_deploy: {done: false}
+cycle2_integration_branch: {branch: wave/D-3/integration, base: origin/main@11377530, merges: ["eebe05e5 (RR-fix, fast-forward)", "9478aced (T-3, merge commit)", "04104bc9 (T-2, merge commit)"], suite: {targeted_cross_lane: "306 passed (orchestrator/taranga/ka_sangam/promise/nbry/cr87 -k subset)", exact_new_files_together: "85 passed", tsc: clean, import_smoke: "all 6 cross-lane modules import cleanly in one process, no collision"}, pushed: true, merged_to_main: {pr: 603, sha: "eb21bb613aa7140bc02dedce6a7c04e22e903173"}}
+cycle2_deploy: {done: true, pr: 603, merge_sha: "eb21bb613aa7140bc02dedce6a7c04e22e903173", images: {amjis_web: "eb21bb613aa7140bc02dedce6a7c04e22e903173", amjis_sidecar: "eb21bb613aa7140bc02dedce6a7c04e22e903173", pipeline_job: "eb21bb613aa7140bc02dedce6a7c04e22e903173", amjis_mcp: "11377530892799afd8015d3ee9b6ec68efeb0c0d (unchanged — no platform-mcp path touched this cycle, workflow correctly skipped it)"}, rebuild: {needed: false, reasoning: "RR-fix is orchestrator run-machinery only (no writer/schema change); T-3 is a byte-identical extraction (ka_taranga.py/ka_sangam.py writer output unchanged) + a new PROMISE formula not yet wired into any writer or fact category; T-2 is a new standalone service not yet consumed by any writer or existing serving surface. No new fact categories, no schema changes, no writer behavior change — no R-5/§8.2 trigger. Abhisek's existing build (b84c3797) remains valid."}}
 cycle2_gate: {run: false, note: "the D-3 wave gate (§G) — retrodiction battery, the empirical crux of the wave. Not run until T-2/T-3/T-4/T-5/T-6 land. Blind-construction constraint binding: test split (21 events) must not be inspected/tuned against before T-0's single scoring pass."}
 updated_at: "2026-07-18T03:45+05:30"
 resumed_at: "2026-07-18T03:45+05:30 — fresh conductor session resumed at STATE_D-3.md, reconciled ledger vs reality (git worktree/branch list matched cycle-1 lanes as stale-but-merged; cleaned), received native GO, executed lifecycle step 2 (SPAWN) for RR-fix/T-2/T-3"
