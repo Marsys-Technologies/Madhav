@@ -1537,3 +1537,40 @@ finding_entry:
     re-points several serving surfaces). No DR/adjudication needed unless the audit finds a real
     defect, at which point it becomes its own CR/DR per the normal process.
 ```
+
+## FINDING (not a DR — re-baseline record, benign confirmed) — D-2/D-3 wealth verdict baseline moves 2.78 -> 2.38
+
+```yaml
+finding_entry:
+  logged_by: "D-3 conductor, post-DEPLOY regression-guard follow-up, 2026-07-18"
+  context: >
+    Post-deploy (PR #602, kala_temporal.ts hotfix + T-1 AV capability + T-0 harness), a live
+    judgment_query(wealth, 482012f1) read showed composite_score 2.38 (was ~2.78, the D-2 close
+    baseline) and verdict_grade convergent_moderate (was convergent_strong). Initially flagged
+    RED per standing rule (a moved regression guard is reported red, not silently absorbed).
+  diagnosis: >
+    The entire delta is in yoga_term (1.63 -> 1.23), tracking domain-bearing yoga-firing count
+    4 -> 3 in judgment_query's classification; d1_score is UNCHANGED (1.15). Root cause is NOT a
+    regression — it is two features coming online with this exact deploy: (a) kala_activations
+    now POPULATED in the verdict (dasha_activation_proximity=0.28), a direct downstream effect of
+    THIS wave's own kala_temporal.ts hotfix — yoga firings are now temporally weighted where
+    before (empty timing surface) they were not; (b) the native-ratified affliction/threat layer
+    (DR-9/DIS.022 Part B) now live in this serving path — bearing_afflictions + the Rahu-in-2nd
+    "mixed" mechanism (the CR-54 wealth-loss mechanism) now surfaces alongside the Dhana Yoga.
+  fork_check: >
+    ganita_yoga_firings_get(482012f1) called fresh, live, post-deploy: 12/12 yogas fired=true,
+    ALL at UNCHANGED strengths vs pre-deploy (dhana_yoga_2_5_9_11=1.0218, dhana_yoga_house_lords=
+    1.0218, raja_yoga_kendra_trikona=1.0218, sasa=1.566, budha_aditya=1.3863, neecha_bhanga_raja_
+    yoga=0.4 with bhanga_active=true and both venus/saturn NBRY rules 1+2 firing at D9, etc.).
+    NO yoga stopped firing structurally. Fork resolves BENIGN, not a regression.
+  disposition: >
+    RE-BASELINED. The wealth guard's reference value is now convergent_moderate / composite~2.38
+    with: Dhana Yoga present (dhana_yoga_2_5_9_11 in bearing_yogas), the affliction/threat layer
+    populated (Rahu-in-2nd mixed mechanism, DR-9 Part B), and kala_activations populated
+    (dasha_activation_proximity=0.28, direct effect of the kala_temporal.ts hotfix). The prior
+    2.78 pin was PRE-TIMING/PRE-AFFLICTION and is RETIRED — it reflected an incompletely-served
+    verdict (empty temporal surface, threat layer not yet live), not the correct target state.
+    NOT a D-3 wave-blocker: D-3's own gate is the T-0 retrodiction battery, not this wealth
+    number; 2.38 still clears D-1.5a's original gate (composite off d1_score=1.15, Dhana Yoga
+    served). No code changes made or needed — this entry documents the baseline shift only.
+```
