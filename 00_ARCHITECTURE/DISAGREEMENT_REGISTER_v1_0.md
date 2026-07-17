@@ -1512,3 +1512,28 @@ disagreement_register_entry:
     - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3.md
       linkage: consequence   # bind record carrying the forward hook
 ```
+
+## FINDING (not a DR — logged for a future audit, no adjudication needed) — latent double-content-unwrap bug class, 3 unconfirmed sites
+
+```yaml
+finding_entry:
+  logged_by: "D-3 conductor, cycle-1 hotfix verifier (Opus, wave/D-3/hotfix-kala-temporal), 2026-07-18"
+  context: >
+    While verifying the kala_temporal.ts double-content-unwrap hotfix (the fix that resolved
+    kala_temporal_bundle's empty timeline_excerpt — root cause, not CR-41 or a data gap; see
+    STATE_D-3.md carried_item_dispositions), the verifier swept for sibling copies of the same
+    bug pattern. fetchCapabilityRows() itself is a single definition (no duplicate broken copy),
+    but three OTHER callers of /api/retrieval/capability return `content` raw without the
+    is_error-key descent that kala_temporal.ts needed:
+      - platform-mcp/src/tools/retrieval/register_p1_synthesis.ts:42
+      - platform-mcp/src/tools/retrieval/register_p1_reference.ts:48
+      - platform-mcp/src/lib/retrieval/l0_brahmagyan.ts:56
+  status: UNCONFIRMED — NOT traced to a conclusion. Whether these are live bugs depends on how
+    their downstream consumers read the payload: if a consumer reads `.rows`/`.total`/similar off
+    the un-descended object, it would hit the same class of bug (empty/undefined silently
+    swallowed while reporting ok:true); if a consumer consumes the whole wrapped object, it may
+    be unaffected. Out of D-3 scope — not chased further this wave.
+  action: Candidate item for a future audit pass (or an early T-6 hygiene check, since T-6 already
+    re-points several serving surfaces). No DR/adjudication needed unless the audit finds a real
+    defect, at which point it becomes its own CR/DR per the normal process.
+```
