@@ -2,12 +2,13 @@
 artifact: BRIEF_D3
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN)
 wave: D-3 — Kāla Taraṅga + Three-Lock activation
-version: 1.3
-status: BOUND (2026-07-17, BIND_D-3.md) — §B slots resolved fresh at open
+version: 1.4
+status: BOUND (2026-07-17, BIND_D-3.md) — §B slots resolved fresh at open; v1.4 non-scope alignment edits do not re-bind
 governing: CONDUCTOR_PROTOCOL.md + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §6 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §5/§13
-prerequisites: D-2 gate GREEN (Mechanism object shipped). Wave sequence to date — D-1.5a,
-  D-1.5b (Gate B 17/17), and D-1.6 "Śuddhi" (Gate Ś) are ALL CLOSED; D-2 is the next wave.
+prerequisites: D-2 gate GREEN (Mechanism object shipped) — SATISFIED (D-2 "Vidhi Engine +
+  Mechanism" CLOSED 2026-07-17, gate 6/6). Wave sequence to date — D-1.5a, D-1.5b (Gate B 17/17),
+  D-1.6 "Śuddhi" (Gate Ś), and D-2 are ALL CLOSED; D-3 is the current wave.
   INFRA-PREREQ CR-40/CR-8 (transit sidecar) — SATISFIED by D-1.6 Lane S-6 (the flag was a
   dead-route bug, not a live auth outage — see §F0) — verified at Gate Ś #13 and re-verified
   live 2026-07-16. §B still re-verifies at open; the T-1-only partial-open contingency is
@@ -15,6 +16,13 @@ prerequisites: D-2 gate GREEN (Mechanism object shipped). Wave sequence to date 
 gate: falsifiable LEL-retrodiction thresholds (§G) + timing surfaces live — with an ANTI-GAMING
   verifier pass (statistical gates are never green on the primary runner alone).
 changelog:
+  - v1.4 (2026-07-17, pre-D-3 clean-sweep review): frontmatter prerequisite re-statused (D-2 CLOSED
+    2026-07-17, gate 6/6; D-3 is the current wave — was the stale "D-2 is the next wave"); §F0 intro +
+    a new bullet note D-2's close and the shipped Mechanism object (T-3 PROMISE / §B slot 1 / T-0 /
+    T-5 inputs); §F3 model dial made EXPLICIT per the native model-economy directive (base = Sonnet /
+    escalate to Opus for all verification+hard-debug / Fable minimal — restates protocol §1/§5 for
+    standalone reading). NON-SCOPE alignment only: FROZEN §F1 lane map, §F2 must_not_touch, and §G
+    gate are untouched → no re-bind required; BOUND status (BIND_D-3.md) holds.
   - v1.3 (2026-07-16, docs/pre-d2-definition-of-done): Definition-of-DONE block added to §F3 (condensed from BRIEF_D2 §F1.7, anti-D-1-recurrence): Binder promise→assertion ledger at open, three mandatory verification altitudes incl. post-deploy LIVE per-cycle re-runs, scale-realism/data-over-flags/anti-vacuous/truncation-honesty evidence rules, ledger-complete close; §G scoped as the ledger's load-bearing subset.
   - v1.2 (2026-07-16, docs/pre-d2-orchestration-economy): §F3 orchestration-economy grant added (Workflow fan-out where shape-appropriate, per-agent effort/model dials, non-dialable verification/gate invariants — mirrors BRIEF_D2 §F1.6); stale state-commit-race residual note replaced with the landed fix (b13640d1) + F1-F4 pointer.
   - v1.1 (2026-07-16, pre-D-2 alignment pass): CR-40/CR-8 INFRA-PREREQ re-statused SATISFIED
@@ -29,9 +37,9 @@ changelog:
 
 ## §F0 — Substrate baseline as of D-1.6 close (alignment note, 2026-07-16 — read before binding)
 
-This brief froze before waves D-1.5a / D-1.5b / D-1.6 ran. All three are CLOSED (Gate A battery
+This brief froze before waves D-1.5a / D-1.5b / D-1.6 / D-2 ran. All four are CLOSED (Gate A battery
 green 13/15 + 2 documented PARKs; Gate B 17/17; Gate Ś 11 green / 4 by-construction / 1 parked
-with evidence). The timing substrate D-3 builds on has materially changed:
+with evidence; D-2 gate 6/6, 2026-07-17). The timing substrate D-3 builds on has materially changed:
 
 - **CR-40/CR-8 (transit sidecar) — SATISFIED.** The estate-wide `sidecar_available: false` was a
   dead-route bug in `kala_temporal_bundle`'s wiring plus ref_* member defects (401 key wiring,
@@ -63,6 +71,13 @@ with evidence). The timing substrate D-3 builds on has materially changed:
   `ashtakavarga_kakshya_boundary` (8 sub-arc boundaries: lord, start_deg, end_deg), declared in
   `ga_writers/CHART_FACTS_SCHEMA.json` and written by `ga_strength_writer.py`. T-1 consumes;
   it does not build facts.
+- **D-2 Mechanism object — SHIPPED (CLOSED 2026-07-17, gate 6/6).** The Mechanism/CGM serving
+  object that T-3's PROMISE lock consumes (mechanism graph-weight term) and §B slot 1 probes is
+  now live — re-verify the actual serving face at open, not this note. D-2's valence-root fix
+  (DR-9/DIS.022 Parts A+B) also landed: the 8L-aspect-on-2nd wealth-loss mechanism, formerly served
+  valence:neutral/salience 0.575 ("noise"), now surfaces signed+grounded in an adverse/threat layer
+  (anti-overcorrection specimens hold) — directly relevant to T-0's 8L-Mars→2H retrodiction check
+  and T-5's SIGNED suppressive currents. D-2's 4 forward findings route into D-3 per its close report.
 
 ## FROZEN §F1 — Lane map
 
@@ -164,8 +179,15 @@ shaped phases — verification panels, gate batteries, LEL-retrodiction acceptan
 kernel validation sweeps — while deep implementation stays one isolated-worktree agent per lane;
 live-connector fan-outs must throttle. (2) Effort dial: down (`low`/`medium`) for mechanical
 stages, up (`high`/`xhigh`) for adversarial verification, root-cause, and doctrine-feeding work.
-(3) Model dial: cheaper models for mechanical fan-out, stronger for verification/judgment;
-Fable adjudication is not dialable. NON-DIALABLE invariants: every lane/hotfix still receives an
+(3) Model dial (per protocol §1/§5 — the explicit tiers, restated for standalone reading):
+**base implementation = Sonnet** (cockpit default — every lane implementer and the conductor);
+**escalate to Opus** for ALL verification and irreversible-judgment work — per-lane fresh-context
+verifiers, gate runners, migration guard, the anti-gaming verifier, engineering-adjudication, and
+hard debugging (an implementer stuck twice may respawn as Opus — escalation, not a new attempt);
+**Fable is reserved for the Binder and doctrine adjudication only — used least, if at all** (D-3 is
+already BOUND, so Fable's remaining touch is rare doctrine rulings). Cheaper models for mechanical
+fan-out, stronger for verification/judgment; Fable adjudication is not dialable. NON-DIALABLE
+invariants: every lane/hotfix still receives an
 independent full-scrutiny fresh-context verifier receipt before merge; gate thresholds and
 reds-are-reds honesty are untouchable; economize on discovery, spend on verification and
 irreversible steps.
