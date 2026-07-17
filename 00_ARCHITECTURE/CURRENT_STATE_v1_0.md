@@ -5379,7 +5379,25 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> ⚠️ **AUTHORITATIVE STATE (2026-07-16): Doctrine-Waves autonomous campaign ACTIVE — current_wave = D-2.** L0–L5 build arc is CLOSED/SEALED (see §E of CLAUDE.md); the active work is the D-1 → D-4 doctrine-remediation wave sequence governed by `00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (v1.1 FINAL) and run per `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md`.
+> ⚠️ **AUTHORITATIVE STATE (2026-07-17): Doctrine-Waves autonomous campaign ACTIVE — current_wave = D-3.** L0–L5 build arc is CLOSED/SEALED (see §E of CLAUDE.md); the active work is the D-1 → D-4 doctrine-remediation wave sequence governed by `00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (v1.1 FINAL) and run per `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md`.
+>
+> **D-2 "Vidhi Engine + Mechanism" CLOSED 2026-07-17 — GATE GREEN 6/6.** The valence-computation
+> root cause (VAL-ROOT / D-16 / CR-54 / CR-83; ruling DR-9/DIS.022) is fixed and gate-verified: the
+> 8L-aspect-on-2nd wealth-loss mechanism, previously served `valence:neutral, salience 0.575`
+> ("ranked as noise"), now surfaces in a signed, grounded adverse/threat layer, while the doctrine
+> does NOT over-correct (3 anti-overcorrection specimens hold). Cycle-1 (V-0/1/4/5/6, valence
+> doctrine + mechanism, PR #585, chart rebuilt 61/61 build `b84c3797`, FORENSIC 7/7) + cycle-2
+> (V-2 Vidhi Engine `plan_retrieval` + V-3 two-pass channel/canonical_faces/CR-batch/intent_classify,
+> PR #594, `43210b21`, health tools=120). §G.1 master-acceptance **6/6 single-pass, independently
+> confirmed by an adversarial Opus verifier on live payloads** (G0-1 dhana firings · G0-2 varga
+> divergence · G0-3 NBRY bhaṅga grounds · G0-4 Rahu-tenancy affliction_mechanism −0.50 · G0-5
+> leverage_index 3.94 · G0-6 Ketu dasha-capability watch/0.625). §G.3 career probe PASS
+> (adverse-layer generalization). Census 135=baseline; Gate-B + Gate-Ś honesty live; Gate Ś #8 the
+> sole dispositioned residual. Gate-phase serving fixes: `nbry_scan`→firings (PR #596),
+> judgment_query v3 timing-trim 73KB→23KB + wealth_loss_mechanism_scan dead-route (PR #597),
+> ganita_yogas_get NBRY doc-string correction (D-2 close PR). DR-6/7/8/9 recorded. Four honest
+> consumability/budget findings carried to D-3 as opening candidates. Full arc:
+> `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/REPORT_D-2.md`; ledger `STATE_D-2.md` CLOSED.
 >
 > **D-1.6 "Śuddhi" CLOSED 2026-07-16** — pre-D2 total-cleanup wave (native-ordered, INSERTED 2026-07-16).
 > 7 lanes (S-1 silent-wrong-answer purge, S-2 dosha integrity, S-3 yoga engine integrity, S-4 timing
