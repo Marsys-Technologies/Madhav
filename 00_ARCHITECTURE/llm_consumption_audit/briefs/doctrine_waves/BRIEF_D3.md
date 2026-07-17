@@ -3,7 +3,7 @@ artifact: BRIEF_D3
 type: WAVE BRIEF (two-part: FROZEN + BIND-AT-OPEN)
 wave: D-3 — Kāla Taraṅga + Three-Lock activation
 version: 1.3
-status: FROZEN — §B slots bind at wave open
+status: BOUND (2026-07-17, BIND_D-3.md) — §B slots resolved fresh at open
 governing: CONDUCTOR_PROTOCOL.md + DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §6 +
   DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §5/§13
 prerequisites: D-2 gate GREEN (Mechanism object shipped). Wave sequence to date — D-1.5a,
