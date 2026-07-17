@@ -39,6 +39,9 @@ import { getVicharaCapability }            from './get_vichara'
 // Doctrine Campaign D-1.5b, Lane B-7: B8 derived view — per-MD-lord serving capability
 // (computed serving-layer aggregation over chart_dashas + chart_facts + chart_vichara).
 import { getDashaLordCapabilityCapability } from './get_dasha_lord_capability'
+// Doctrine Campaign D-3 (Kāla Taraṅga), Lane T-1: sign-keyed Aṣṭakavarga transit-gating
+// (SAV/BAV damp/amplify per sign) + dated kakṣyā sub-windows for a transiting planet.
+import { getAvTransitGatingCapability }     from './get_av_transit_gating'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -70,3 +73,4 @@ registerCapability(getAyurdayaCapability)
 registerCapability(getSensitiveDegreesCapability)
 registerCapability(getVicharaCapability)
 registerCapability(getDashaLordCapabilityCapability)
+registerCapability(getAvTransitGatingCapability)
