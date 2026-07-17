@@ -1,9 +1,10 @@
 ---
 wave: D-2
-lifecycle_step: 8  # cycle-1: through 8 (close+verified) — deployed, rebuilt, live-verified,
-                   # G0-4 CLOSED. Wave stays ACTIVE for cycle-2 (V-2/V-3) per the 2-cycle staging.
+lifecycle_step: 7  # BOTH cycles integrated+deployed+live-verified (cycle-1 @ 4f320a77 + 61/61
+                   # rebuild; cycle-2 @ 43210b21 serving-only). At lifecycle step 7 (Gate) — §G
+                   # battery launching under native directive (2026-07-17, strict §G.0 isolation).
 status: ACTIVE
-cycle: 2  # cycle-1 complete; spawning cycle-2 (V-2 MCP delivery + V-3 channel) next.
+cycle: 2  # BOTH cycles complete (integrated+deployed+live). Gate battery next, then Close.
 brief_bound: true
 rollback_pin:
   image_sha:
@@ -37,12 +38,15 @@ lanes:
   - {lane: V-4, branch: worktree-agent-a2a7ae8a7815fc407, status: receipted, cycle: 1, worktree_base: d349a9c3, base_stale: true, head_sha: 1be1639e, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, 3521/3521 tests, all 7 judgment calls independently reverified GREEN (DR-7 exact, CR-24 live-confirmed negative, CR-78 PARK genuine, write-scope safe)", risk_flag: "implementer's LOCAL rebuild attempt failed FORENSIC (Sun=Aries/Moon=Ashwini/Lagna=Scorpio, the known trap) - almost certainly a sandbox/env artifact (V-4 touches no position computation) but MUST confirm FORENSIC 7/7 on the real deployed rebuild before closing", followup: "composite_ranker.ts (V-3's file) should consume the now-populated graph_node_strength_contribution_jsonb column - CR-84/25 only closed at data layer by V-4"}
   - {lane: V-5, branch: wave/D-2/V-5, status: receipted, cycle: 1, worktree_base: 47a72b77, base_stale: false, head_sha: 13cc4349, receipt_ref: "verdict=ACCEPT, verifier=opus, scope_warden=pass, 3520/3520 sidecar tests, DR-6 exact match, cross-writer delete-scope proven disjoint, live specimen verified (Mercury sole D9-vargottama). Gate Ś #8 legitimately deferred (fix outside glob)"}
   - {lane: V-6, branch: wave/D-2/V-6, status: receipted, cycle: 1, worktree_base: fdc99de1, base_stale: false, head_sha: 3c0c49ed, attempt: 2, receipt_ref: "verdict=ACCEPT (attempt 2/3), verifier=opus, scope_warden=pass, 3479/3479 canonical §8.6 count reconfirmed exactly, all 4 test-constant fixes verified correct against production source (not tautological), bo_laksana pre-existing failure independently reconfirmed"}
-  - {lane: V-2, branch: wave/D-2/V-2, status: pending, cycle: 2}
-  - {lane: V-3, branch: wave/D-2/V-3, status: pending, cycle: 2}
+  - {lane: V-2, branch: wave/D-2/V-2, status: receipted, cycle: 2, head_sha: 33b15f5f, receipt_ref: "verdict=ACCEPT, verifier=opus fresh-context, Phase-1. Vidhi Engine MCP delivery: plan_retrieval meta-tool + vidhi_plan prompt + registry resource + completeness receipts (ledger rows 14-19). tsc clean, tests pass."}
+  - {lane: V-3, branch: wave/D-2/V-3, status: receipted, cycle: 2, head_sha: 20e2da8e, receipt_ref: "verdict=ACCEPT, verifier=opus fresh-context, Phase-1. Two-pass channel (scan_fetch_signals) + reading_notes_get + canonical_faces.json (92 canonical/43 deprecated) + CR-44 description-payload audit + CR-84 composite-ranker graph-centrality leg + DR-8 deterministic intent_classify + CR-9 verified no-op (rows 20-29). 67 tests pass, net-zero regression (79->75, -4 pre-existing fixed)."}
 integration_branch: wave/D-2/integration
 cycle1: complete   # merged (PR #585) + deployed + rebuilt (61/61) + live-verified. 4 rebuild
                    # hotfixes required (PRs #586/#588/#589/#590), see notes.
+cycle2: complete   # V-2 + V-3 integrated (PR #594) + deployed (serving-only, no rebuild) +
+                   # live-verified (health tools=120). Both lanes Phase-1 ACCEPT.
 deploy:
+  cycle2: {done: true, pr: 594, merge_sha: 43210b21aef7e4a78f459fe21b3795cb81c296eb, images: "amjis-web + amjis-mcp only (sidecar/pipeline-job path-scoped OUT — serving-only, no chart rebuild)", mcp_image: "amjis-mcp:43210b21@sha256:39ecdd1b55c0d2be41f986254f46bbf3e0f25a37aefc027b25d35609f08f82c6", live_verified: "GET /health -> tools:120 (117 base + V-2 plan_retrieval + V-3 scan_fetch_signals/reading_notes_get); advanced off amjis-mcp pin 08245669", integration_note: "merges clean (ort auto-resolved server.ts appends); tsc 0-err both packages; platform-mcp suite failing-file set IDENTICAL to main baseline (75 pre-existing DB-dependent) + 64 net-new passing; platform V-3 tests 33/33; V-0 alias_check.test.ts companion edit -> v3_canonical_face_list branch 4/4; no migrations"}
   cycle1: {done: true, pr: 585, merge_sha: 58e320c40aabaf6fa582c70b9e68b66fd0555ced}
   hotfixes:
     - {pr: 586, what: "migration 440 asset_registry column set + layer='L0'->'brahmagyan' (2 defects, migration-guard-caught)"}
@@ -56,7 +60,8 @@ rebuild:
 gate:
   cycle1_live: {forensic: "7/7", defect_001_orphan_pct: 0.1, row_counts: sane}
   g0_4: "CLOSED — data plane (DR-9 Part A) + serving plane (DR-9 Part B) both live-verified 2026-07-17; 6/6 specimens green both directions; mechanism valence spreads (was 121/121 benefic -> mixed78/malefic30/neutral8/benefic7); judgment_query(wealth) serves Rahu-occupies-dhana in the affliction_mechanisms threat layer with grounding + afflictions_present flag. See DIS.022/DR-9, VAL-ROOT register row."
-updated_at: 2026-07-17T12:25:00+05:30
+gate_battery: {status: launching, directive: "native GO 2026-07-17 with strict §G.0 isolation (fresh Sonnet floor-model, served surfaces only, no repo/register access, no conclusion hints), G0-4 amended-assertion + anti-overcorrection specimen checks, career adverse-layer generalization, Opus anti-gaming verifier pass (live-payload not harness-internal), honest-reds-stand, full 56-promise ledger close", live_at_gate: "cycle-1 4f320a77 (chart rebuilt 61/61, FORENSIC 7/7) + cycle-2 43210b21 (serving-only, health tools=120)"}
+updated_at: 2026-07-17T13:55:00+05:30
 notes: >
   OPEN complete. Binder (Fable) BOUND the brief: see BIND_D-2.md — 12/12 regression sample PASS,
   0 unexpected reds (both expected residuals confirmed: PARK-#4, Gate Ś #8). §F1.7 promise ledger
