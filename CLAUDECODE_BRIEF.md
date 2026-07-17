@@ -14,7 +14,17 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-2   # advance this pointer at each wave close (conductor cleanup step). D-1.6 "Śuddhi"
+current_wave: D-3   # advance this pointer at each wave close (conductor cleanup step). D-2 "Vidhi
+  # Engine + Mechanism" CLOSED 2026-07-17 — GATE GREEN 6/6. VAL-ROOT/D-16/CR-54/CR-83 valence root
+  # cause fixed (DR-9/DIS.022 Parts A+B): the 8L-aspect-on-2nd wealth-loss mechanism, formerly served
+  # valence:neutral/salience 0.575 ("noise"), now surfaces signed+grounded in an adverse/threat layer
+  # without over-correcting (3 anti-overcorrection specimens hold). §G.1 6/6 single-pass, Opus-verified
+  # live; §G.3 career PASS; census 135=baseline; Gate-B/Ś live (Ś#8 sole residual → folds into D-3 T-6).
+  # cycle-1 (V-0/1/4/5/6, PR #585, rebuild 61/61 build b84c3797 FORENSIC 7/7) + cycle-2 (V-2/V-3,
+  # PR #594, 43210b21) + gate fixes (PRs #596/#597 + doc-string). DR-6/7/8/9 recorded. 4 findings →
+  # D-3. Orchestrator run-rollup race diagnosed (D-3 first-agenda; NOT a frozen-contract change per
+  # §N.2 — platform-owned watchdog reconcile-to-truth fix). Pre-D-3 readiness: PRE_D3_READINESS.md.
+  # See REPORT_D-2.md. --- D-1.6 "Śuddhi"
   # CLOSED 2026-07-16: 7 lanes (S-1,S-2,S-3,S-4,S-5,S-6,S-8) + 1 fix-2 cycle, all Opus-verified ACCEPT.
   # Gate Ś 11/16 green + 4 confirmed-by-construction + 1 PARKED with evidence (item 8, narrow
   # yoga-signal-class timing residual, authoritative firing surface unaffected). Two deploys
