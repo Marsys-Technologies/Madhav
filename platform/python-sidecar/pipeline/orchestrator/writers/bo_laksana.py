@@ -344,6 +344,7 @@ def _infer_valence(fact_category: str, fact_value_text: str | None) -> str:
 _VICHARA_TO_MSR_VALENCE: dict[str, str] = {
     "strong_benefic": "benefic", "benefic": "benefic",
     "strong_malefic": "malefic", "malefic": "malefic",
+    "mixed": "mixed",   # DR-9: mixed is first-class on the served signal, not collapsed to neutral
     "neutral": "neutral",
 }
 

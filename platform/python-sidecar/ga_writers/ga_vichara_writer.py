@@ -52,6 +52,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from brahmagyan import valence_doctrine as _vd
+
 logger = logging.getLogger(__name__)
 
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
@@ -67,7 +69,7 @@ PLANET_TO_SUBJECT: dict[str, str] = {
 SUBJECT_TO_PLANET: dict[str, str] = {v: k for k, v in PLANET_TO_SUBJECT.items()}
 
 FORMULA_VERSION = "leverage_index_v1"
-VALENCE_FORMULA_VERSION = "valence_pass_v1"
+VALENCE_FORMULA_VERSION = "valence_pass_v2_doctrine"  # DR-9/VAL-ROOT: shared valence_doctrine
 RATIFICATION_FORMULA_VERSION = "varga_ratification_v1"
 CONSISTENCY_FORMULA_VERSION = "varga_consistency_v1"
 
@@ -262,6 +264,9 @@ class VicharaFactIndex:
                     "graha": SUBJECT_TO_PLANET.get(bare_subj, bare_subj),
                     "target_house": int(tgt_h),
                     "strength": float(f["fact_value_num"]) if f.get("fact_value_num") is not None else None,
+                    # DR-9 contact-type input: the aspect house-count offset
+                    # (Mars 4/8, Saturn 3/10 are the harsh special aspects).
+                    "aspect_offset": vj.get("offset"),
                     "fact_id": f.get("fact_id"),
                 })
 
@@ -304,82 +309,57 @@ def classify_actor(houses: set[int]) -> tuple[list[str], str]:
     return classes, "neutral"
 
 
+def _verdict_to_vichara_label(v: "_vd.ValenceVerdict") -> str:
+    """Map the shared doctrine's signed ValenceVerdict → chart_vichara's
+    magnitude vocabulary {neutral, benefic, malefic, strong_benefic,
+    strong_malefic, mixed}. `mixed` is first-class (DR-9); the strong_* bands
+    preserve the magnitude signal that bo_karanajala's edge-strength factor and
+    downstream consumers read."""
+    if v.is_mixed:
+        return "mixed"
+    n = v.value_num
+    if n >= 0.75:
+        return "strong_benefic"
+    if n > 0.10:
+        return "benefic"
+    if n <= -0.75:
+        return "strong_malefic"
+    if n < -0.10:
+        return "malefic"
+    return "neutral"
+
+
 def compute_valence(
-    actor_classes: list[str],
-    primary: str,
+    graha_subject: str,
     target_house: int,
-    is_yogakaraka: bool,
-    matrix: dict[str, Any],
+    functional_class: str | None,
+    *,
+    contact_type: str = "lordship",
+    dignity_state: str | None = None,
+    aspect_offset: int | None = None,
 ) -> tuple[str, float, str, str]:
-    """Matrix over (actor_class x target_class). Returns
-    (value_text, value_num, citation, matrix_key). Every cell must carry a
-    citation (brief §3.1) — matrix rows are seeded in brahma_vichara_constants,
-    never Python literals (this function only decides WHICH cell applies).
+    """DR-9 / VAL-ROOT: valence via the single shared doctrine module
+    (brahmagyan.valence_doctrine). REPLACES the prior (actor_lordship_class ×
+    target_house) matrix, whose trikoṇa-membership rule pre-empted the
+    dusthāna-affliction cell for a dual-lord graha (Mars, Aries 1L+8L → the
+    CR-54 8L-Mars→H2 specimen mislabeled benefic), had NO contact-type
+    dimension, and skipped Rahu/Ketu entirely.
 
-    CR-90/DR-1: rule order now honors `_PRECEDENCE` (:83) — trikoṇa is
-    evaluated BEFORE dusthāna. The two dusthāna-gated rules below branch on
-    `primary` (classify_actor's already precedence-correct verdict, :263-266)
-    rather than raw `"dusthana_lord" in classes` membership: since trikoṇa
-    outranks dusthāna in `_PRECEDENCE`, `primary == "dusthana_lord"` is true
-    only for actors with NO trikoṇa ownership — exactly the CR-90
-    requirement ("strong_malefic reserved for actors with no trikoṇa
-    ownership"). A dual-lordship actor (e.g. Jupiter as 9L/12L) whose
-    primary is `trikona_lord` therefore never reaches the dusthāna cells,
-    even though `dusthana_lord` still appears in its `actor_classes` (kept
-    for provenance in `vjsonb["actor_classes"]`). Maraka/upachaya/kendra
-    rules are unaffected — their relative order already matched
-    `_PRECEDENCE`."""
-    classes = set(actor_classes)
-
-    def cell(key: str) -> tuple[str, float, str]:
-        c = matrix.get(key) or matrix.get("ambiguous_default", {})
-        return c.get("value_text", "neutral"), float(c.get("value_num", 0.0)), c.get("citation", "")
-
-    # 1. trikona_lord -> kendra/trikona/2/11: benefic (strong_benefic if yogakaraka).
-    #    Evaluated FIRST per _PRECEDENCE (trikona > dusthana > kendra > maraka >
-    #    upachaya) — a trikona_lord that also happens to be dusthana_lord
-    #    (e.g. Jupiter 9L/12L) must classify benefic on its trikona merit,
-    #    never fall into the dusthana cells below (CR-90/DR-1).
-    if "trikona_lord" in classes and (
-        target_house in KENDRA_HOUSES or target_house in TRIKONA_HOUSES or target_house in WEALTH_HOUSES
-    ):
-        if is_yogakaraka:
-            vt, vn, cit = cell("trikona_lord_yogakaraka")
-            return vt, vn, cit, "trikona_lord_yogakaraka"
-        vt, vn, cit = cell("trikona_lord_benefic_target")
-        return vt, vn, cit, "trikona_lord_benefic_target"
-
-    # 2. dusthana_lord -> wealth axis (2/11) or lagna (1): strong_malefic
-    #    (CR-54 type specimen: 8L Mars -> H2). Gated on `primary`, not raw
-    #    class membership — see docstring: fires only for actors with NO
-    #    trikona ownership (CR-90/DR-1).
-    if primary == "dusthana_lord" and (target_house in WEALTH_HOUSES or target_house == 1):
-        vt, vn, cit = cell("dusthana_lord_wealth_or_lagna")
-        return vt, vn, cit, "dusthana_lord_wealth_or_lagna"
-
-    # 3. maraka -> 2/7: malefic.
-    if "maraka" in classes and target_house in MARAKA_HOUSES:
-        vt, vn, cit = cell("maraka")
-        return vt, vn, cit, "maraka"
-
-    # 4. upachaya_lord -> upachaya (3/6/10/11): mildly benefic.
-    if "upachaya_lord" in classes and target_house in UPACHAYA_HOUSES:
-        vt, vn, cit = cell("upachaya_lord")
-        return vt, vn, cit, "upachaya_lord"
-
-    # 5. dusthana_lord elsewhere: malefic (non-anchor extension of the CR-54
-    #    cell). Also `primary`-gated for the same reason as rule 2.
-    if primary == "dusthana_lord":
-        vt, vn, cit = cell("dusthana_lord_other")
-        return vt, vn, cit, "dusthana_lord_other"
-
-    # 6. kendra_lord (non-trikona) — kendradhipatya dosha tempers to neutral.
-    if "kendra_lord" in classes:
-        vt, vn, cit = cell("kendra_lord_neutral")
-        return vt, vn, cit, "kendra_lord_neutral"
-
-    vt, vn, cit = cell("ambiguous_default")
-    return vt, vn, cit, "ambiguous_default"
+    Now: natural nature × functional lordship (the stored functional_class fact,
+    §N.5) × dignity × contact-type → signed, MIXED-capable verdict. Returns
+    (value_text, value_num, citation, valence_label) — value_text is the 6-way
+    magnitude vocab (see _verdict_to_vichara_label); value_num the signed net;
+    valence_label the raw 4-way {benefic/malefic/mixed/neutral} for provenance."""
+    verdict = _vd.graha_valence(
+        graha_subject,
+        contact_type=contact_type,
+        target_house=int(target_house),
+        functional_class=functional_class,
+        dignity_state=dignity_state,
+        aspect_offset=aspect_offset,
+    )
+    return (_verdict_to_vichara_label(verdict), verdict.value_num,
+            verdict.citation, verdict.valence)
 
 
 def build_valence_pass_rows(
@@ -394,17 +374,26 @@ def build_valence_pass_rows(
         if not lord or not tgt_h:
             continue
         houses = lordships.get(lord, set())
+        # classify_actor retained for provenance + the §N.5 divergence cross-check
+        # below (the valence itself now comes from the shared doctrine, not this
+        # class × house matrix — which pre-empted dusthāna affliction for a
+        # dual-lord graha; DR-9/VAL-ROOT).
         actor_classes, primary = classify_actor(houses)
+        actor_subj = PLANET_TO_SUBJECT.get(lord, lord.upper())
 
-        fc = idx.functional_class.get(PLANET_TO_SUBJECT.get(lord, lord.upper()))
-        is_yogakaraka = bool(fc and fc["value_text"] and "yogakaraka" in str(fc["value_text"]).lower())
+        fc = idx.functional_class.get(actor_subj)
+        fc_text = fc["value_text"] if fc else None
+        is_yogakaraka = bool(fc_text and "yogakaraka" in str(fc_text).lower())
+        dig = None  # dignity refinement deferred (tuple-keyed idx.dignity; module handles None; no specimen requires it)
+        # lord_aspects links are an aspect contact; lord_placed is lordship.
+        contact = "aspect" if link.get("kind") == "lord_aspects" else "lordship"
 
         value_text, value_num, citation, matrix_key = compute_valence(
-            actor_classes, primary, int(tgt_h), is_yogakaraka, matrix,
+            actor_subj, int(tgt_h), fc_text,
+            contact_type=contact, dignity_state=dig,
         )
 
         constituent_ids = list({link["fact_id"], *idx.lordship_fact_ids(varga, lord)} - {None})
-        actor_subj = PLANET_TO_SUBJECT.get(lord, lord.upper())
 
         vjsonb: dict[str, Any] = {
             "varga": varga,
@@ -477,20 +466,22 @@ def build_aspect_valence_rows(
         graha = asp["graha"]
         tgt_h = asp["target_house"]
         houses = lordships.get(graha, set())
-        if not houses:
-            # No functional lordship to judge from (e.g. Rahu/Ketu own no
-            # sign classically) — B.10: never fabricate a judgment; leave
-            # this population on the honestly-tagged keyword_heuristic_v1
-            # fallback at the bo_laksana consuming end.
-            continue
-        actor_classes, primary = classify_actor(houses)
-
         actor_subj = asp["graha_subject"]
+        # DR-9 / VAL-ROOT: NO LONGER skip nodes. Rahu/Ketu own no sign lordship,
+        # but the shared doctrine judges them by NATURAL nature (both malefic) +
+        # contact-type — the prior skip is exactly why an adverse Rahu/Ketu
+        # aspect on a money house never reached a computed valence.
+        actor_classes, primary = classify_actor(houses)  # provenance only (may be empty for nodes)
+
         fc = idx.functional_class.get(actor_subj)
-        is_yogakaraka = bool(fc and fc["value_text"] and "yogakaraka" in str(fc["value_text"]).lower())
+        fc_text = fc["value_text"] if fc else None
+        is_yogakaraka = bool(fc_text and "yogakaraka" in str(fc_text).lower())
+        dig = None  # dignity refinement deferred (tuple-keyed idx.dignity; module handles None; no specimen requires it)
+        offset = asp.get("aspect_offset")
 
         value_text, value_num, citation, matrix_key = compute_valence(
-            actor_classes, primary, tgt_h, is_yogakaraka, matrix,
+            actor_subj, tgt_h, fc_text,
+            contact_type="aspect", dignity_state=dig, aspect_offset=offset,
         )
 
         constituent_ids = list({asp["fact_id"], *idx.lordship_fact_ids(varga, graha)} - {None})
@@ -503,6 +494,7 @@ def build_aspect_valence_rows(
             "target_house": tgt_h,
             "link_kind": "graha_aspect_parashari",
             "aspect_strength": asp.get("strength"),
+            "aspect_offset": offset,
             "is_yogakaraka": is_yogakaraka,
             "matrix_key": matrix_key,
             "signal_source": "aspect_parashari_per_varga",

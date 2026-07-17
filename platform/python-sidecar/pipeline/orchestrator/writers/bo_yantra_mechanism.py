@@ -57,6 +57,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from brahmagyan import valence_doctrine as _vd
 from . import WriterBase, ContextSpec, WriterResult, register
 
 logger = logging.getLogger(__name__)
@@ -112,19 +113,12 @@ def _fingerprint(node_ids: list[str], mechanism_class: str) -> str:
 
 def _mechanism_valence(edge_valences: list[str]) -> str:
     """Real valence from member edges' `valence` field (bo_karanajala's
-    _typed_edge_fields — harmonious/antagonistic/neutral) — never re-guessed.
-    benefic if ALL harmonious, malefic if ALL antagonistic, mixed if both
-    present, neutral if none carry a directional valence."""
-    vals = set(v for v in edge_valences if v)
-    harmonious = "harmonious" in vals
-    antagonistic = "antagonistic" in vals
-    if harmonious and antagonistic:
-        return "mixed"
-    if harmonious:
-        return "benefic"
-    if antagonistic:
-        return "malefic"
-    return "neutral"
+    _typed_edge_fields — now DR-9 graha-nature-aware:
+    harmonious/antagonistic/mixed/neutral) — never re-guessed. Delegates to the
+    shared valence doctrine's combiner: a 'mixed' member edge, or co-present
+    harmonious AND antagonistic edges, → MIXED (the prior two-way logic
+    collapsed a 'mixed' edge to neutral, losing it)."""
+    return _vd.mechanism_valence_from_edges(edge_valences)
 
 
 def _edge_strength_summary(edges: list[dict]) -> tuple[float | None, float | None, float | None]:
@@ -153,8 +147,14 @@ def _make_mechanism(
     member_node_ids: list[str], member_edges: list[dict],
     domains: list[str] | None, nodes_by_id: dict[str, dict],
     source_motif_id: str | None, citation_ref: str, citation_human: str,
+    valence_override: str | None = None,
 ) -> dict:
-    valence = _mechanism_valence([e.get("valence") for e in member_edges])
+    # valence_override: for a graha-to-house tenancy/affliction mechanism (DR-9),
+    # valence is the OCCUPANT graha's own signed valence (natural × dignity ×
+    # contact), computed by the caller — the occupancy edge itself is
+    # structurally polarity-neutral, so the edge-derived combiner would wrongly
+    # read neutral.
+    valence = valence_override or _mechanism_valence([e.get("valence") for e in member_edges])
     avg_s, min_s, max_s = _edge_strength_summary(member_edges)
     formula_versions = {e.get("weight_formula_version") for e in member_edges if e.get("weight_formula_version")}
     formula_version = sorted(formula_versions)[0] if len(formula_versions) == 1 else (
@@ -461,6 +461,101 @@ def _detect_house_lordship_cycles_and_chains(
     return rows
 
 
+# ── Graha-to-house tenancy / affliction mechanisms (DR-9 / VAL-ROOT) ─────────
+
+# Wealth/loss-relevant houses whose adverse tenancy D-3's retrodiction needs as
+# first-class valenced Mechanism objects (the 2025-05 loss/financial_deception
+# LEL event retrodicts to Rahu-occupies-dhana). dhana(2)/labha(11) + the three
+# dusthānas(6/8/12).
+_TENANCY_HOUSES = {
+    2: "dhana (2nd)", 6: "ari (6th)", 8: "randhra (8th)",
+    11: "labha (11th)", 12: "vyaya (12th)",
+}
+
+
+def _detect_tenancy_afflictions(
+    conn: Any, chart_id: str, aya: str, build_id: str, now: str,
+    nodes_by_id: dict[str, dict],
+) -> list[dict]:
+    """DR-9 / VAL-ROOT scope addition: a graha-to-house tenancy is a
+    representable, valenced Mechanism object. Emits one 'graha_bhava_affliction'
+    mechanism per graha whose OWN valence (natural × dignity incl. node
+    exaltation × occupancy contact) is adverse (malefic/mixed) in a
+    wealth/loss-relevant house — 'Rahu occupies dhana bhāva' becomes a served,
+    valenced mechanism (the D-3 retrodiction target), no longer invisible."""
+    positions = _fetch_dict(
+        conn,
+        """SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_position'
+             AND fact_key IN ('house_d1', 'sign')""",
+        [chart_id, aya],
+    )
+    by_graha: dict[str, dict] = {}
+    for p in positions:
+        subj = str(p["fact_subject"]).upper()
+        by_graha.setdefault(subj, {})[p["fact_key"]] = (
+            p["fact_value_text"] if p["fact_key"] == "sign" else p["fact_value_num"])
+
+    # Node-id lookups: graha nodes (title-case subject → id), bhava nodes (num → id).
+    graha_node_by_code: dict[str, str] = {}
+    bhava_node_by_num: dict[int, str] = {}
+    for nid, n in nodes_by_id.items():
+        if n.get("node_type") == "graha":
+            graha_node_by_code[_vd.norm_graha(n.get("node_subject"))] = nid
+        elif n.get("node_type") == "bhava":
+            try:
+                bhava_node_by_num[int(n.get("node_subject"))] = nid
+            except (TypeError, ValueError):
+                pass
+
+    rows: list[dict] = []
+    for subj, rec in by_graha.items():
+        code = _vd.norm_graha(subj)
+        house = rec.get("house_d1")
+        sign = rec.get("sign")
+        if house is None:
+            continue
+        house = int(house)
+        if house not in _TENANCY_HOUSES:
+            continue
+        verdict = _vd.graha_valence(
+            code, contact_type="occupancy", target_house=house, graha_sign=sign)
+        # Only adverse tenancies are "afflictions" — a benefic in the house is
+        # not an affliction mechanism (B.10: never fabricate an adverse claim).
+        if verdict.valence not in (_vd.MALEFIC, _vd.MIXED):
+            continue
+        g_node = graha_node_by_code.get(code)
+        b_node = bhava_node_by_num.get(house)
+        member_ids = [x for x in (g_node, b_node) if x]
+        if not member_ids:
+            continue
+        display = SUBJECT_DISPLAY.get(code, subj.title())
+        label = _TENANCY_HOUSES[house]
+        rows.append(_make_mechanism(
+            chart_id=chart_id, aya=aya, build_id=build_id, now=now,
+            mechanism_name=f"{display} occupies {label} bhāva ({verdict.valence})",
+            mechanism_class="graha_bhava_affliction",
+            member_node_ids=member_ids, member_edges=[],
+            domains=["wealth"] if house in (2, 11) else None,
+            nodes_by_id=nodes_by_id, source_motif_id=None,
+            citation_ref=f"graha_position/{code}/H{house}",
+            citation_human=(f"{display} ({sign}) tenants the {label} bhāva — "
+                            f"valence {verdict.valence} (net {verdict.value_num:+.2f}); "
+                            f"natural {verdict.natural_score:+.1f}, "
+                            f"dignity {verdict.dignity_mod:+.2f}"),
+            valence_override=verdict.valence,
+        ))
+    return rows
+
+
+SUBJECT_DISPLAY = {
+    "SUN": "Sun", "MOON": "Moon", "MAR": "Mars", "MER": "Mercury",
+    "JUP": "Jupiter", "VEN": "Venus", "SAT": "Saturn",
+    "RAH_MEAN": "Rahu", "KET_MEAN": "Ketu",
+}
+
+
 @register("bo_yantra_mechanism")
 class BoYantraMechanismWriter(WriterBase):
     """bo_yantra_mechanism: Mechanism object — named, valenced CGM subgraphs."""
@@ -510,6 +605,8 @@ class BoYantraMechanismWriter(WriterBase):
             rows.extend(_detect_dispositor_cycles_and_chains(
                 conn, chart_id, aya, build_id, now, edges_by_id, nodes_by_id))
             rows.extend(_detect_house_lordship_cycles_and_chains(
+                conn, chart_id, aya, build_id, now, nodes_by_id))
+            rows.extend(_detect_tenancy_afflictions(
                 conn, chart_id, aya, build_id, now, nodes_by_id))
 
             inserted = 0

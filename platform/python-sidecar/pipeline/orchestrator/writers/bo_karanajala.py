@@ -32,6 +32,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 
+from brahmagyan import valence_doctrine as _vd
 from . import WriterBase, ContextSpec, WriterResult, register
 from pipeline.orchestrator.writers.bo_bimba import (
     _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
@@ -144,16 +145,39 @@ _EDGE_TYPE_BASIS: dict[str, str] = {
 }
 
 
+# DR-9 / VAL-ROOT: texture-bearing graha↔graha edge types whose valence must be
+# derived from the ENDPOINT GRAHAS' natures, NOT the edge type alone. The prior
+# _EDGE_TYPE_VALENCE mapped every one of these to "harmonious" → 121/121
+# mechanisms on 482012f1 read "benefic" (incl. Mars↔Saturn). yoga_domain/
+# dosha_domain stay type-keyed (they ARE domain-semantic: a yoga edge is
+# harmonious, a dosha edge antagonistic, by definition); structural edges stay
+# neutral.
+_GRAHA_TEXTURE_EDGE_TYPES = frozenset({"aspect", "conjunction", "dispositor", "argala"})
+
+
 def _typed_edge_fields(
     edge_type: str,
     domains: list[str] | None = None,
     relationship_class: str | None = None,
+    graha_a: str | None = None,
+    graha_b: str | None = None,
 ) -> dict:
-    """Return valence, relationship_basis, affected_domains for an edge type."""
-    valence = _EDGE_TYPE_VALENCE.get(edge_type, "neutral")
-    basis   = _EDGE_TYPE_BASIS.get(edge_type, relationship_class or edge_type)
+    """Return valence, relationship_basis, affected_domains for an edge.
+
+    DR-9: for a texture-bearing graha↔graha edge (aspect/conjunction/dispositor/
+    argala) with BOTH endpoint grahas known, valence is computed from the two
+    grahas' natures via the shared valence doctrine (edge_valence → the
+    harmonious/antagonistic/mixed/neutral vocabulary). Falls back to the legacy
+    type-keyed map only for domain-semantic edges (yoga/dosha), structural edges,
+    or when an endpoint graha is unavailable (honest neutral, never a guess)."""
+    basis = _EDGE_TYPE_BASIS.get(edge_type, relationship_class or edge_type)
     if edge_type == "argala" and relationship_class == "argala_virodha":
+        # virodha-argala is definitionally obstructive regardless of grahas.
         valence = "antagonistic"
+    elif edge_type in _GRAHA_TEXTURE_EDGE_TYPES and graha_a and graha_b:
+        valence = _vd.edge_valence(graha_a, graha_b, relationship_type=edge_type)
+    else:
+        valence = _EDGE_TYPE_VALENCE.get(edge_type, "neutral")
     return {
         "valence":            valence,
         "relationship_basis": basis,
@@ -175,6 +199,7 @@ EDGE_STRENGTH_FORMULA_VERSION = "edge_strength_v1"
 _VALENCE_FACTOR_BY_LABEL: dict[str, float] = {
     "strong_benefic": 1.25, "strong_malefic": 1.25,
     "benefic": 1.10, "malefic": 1.10,
+    "mixed": 1.15,   # DR-9: a mixed valence is a real tension, moderately strong
     "neutral": 1.00,
 }
 
@@ -563,7 +588,8 @@ def _build_argala_edges(
                 "is_cross_subsystem": False,
                 "subsystem_from": "parashari",
                 "subsystem_to": "parashari",
-                **_typed_edge_fields("argala", relationship_class=relationship_class),
+                **_typed_edge_fields("argala", relationship_class=relationship_class,
+                                     graha_a=graha_a, graha_b=graha_b),
                 "verification_pass_status": "documented_approximation",
                 "citation_ref": "BPHS_Ch28/argala",
                 "citation_human": (
@@ -638,7 +664,7 @@ def _build_dispositor_edges(
             "is_cross_subsystem":              False,
             "subsystem_from":                  "parashari",
             "subsystem_to":                    "parashari",
-            **_typed_edge_fields("dispositor"),
+            **_typed_edge_fields("dispositor", graha_a=graha, graha_b=lord),
             # M-22 fix: a single deterministic construction pass (sign-lord
             # table lookup) over already-computed upstream data — real, but
             # not independently cross-checked by a second pass. Demoted to
@@ -1221,7 +1247,8 @@ def _build_edges_and_contradictions(
                         "is_cross_subsystem": False,
                         "subsystem_from": tradition,
                         "subsystem_to": tradition,
-                        **_typed_edge_fields(etype, domains=list(domains)),
+                        **_typed_edge_fields(etype, domains=list(domains),
+                                             graha_a=graha, graha_b=aspected_graha),
                         "verification_pass_status": ver_pass,
                         "citation_ref": f"bodha_msr_signals/{sig_id}",
                         "citation_human": f"{etype}: {graha}→{aspected_graha}",

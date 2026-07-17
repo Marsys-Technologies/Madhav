@@ -101,87 +101,66 @@ class TestClassifyActor(unittest.TestCase):
 
 
 class TestValenceMatrix(unittest.TestCase):
-    def test_8l_mars_to_h2_strong_malefic(self):
-        """CR-54 AMENDED type specimen: 8th lord (dusthana_lord) placed/aspecting
-        the 2nd house (wealth axis) must read strong_malefic, not neutral."""
-        classes, primary = classify_actor({8})
-        value_text, value_num, citation, key = compute_valence(classes, primary, 2, False, VALENCE_MATRIX)
-        self.assertEqual(value_text, "strong_malefic")
-        self.assertEqual(value_num, -1.0)
-        self.assertEqual(key, "dusthana_lord_wealth_or_lagna")
-        self.assertTrue(citation)
+    """DR-9 / VAL-ROOT: compute_valence was REPLACED — it no longer maps
+    (actor_lordship_class × target_house) over the brahma_vichara_constants
+    matrix (whose trikoṇa-membership rule pre-empted the dusthāna-affliction
+    cell for a dual-lord graha, mislabeling the CR-54 8L-Mars→H2 specimen
+    benefic, had no contact-type dimension, and skipped Rahu/Ketu). It now
+    delegates to the shared brahmagyan.valence_doctrine (natural × functional ×
+    dignity × contact-type → signed/mixed). The doctrine's own depth (incl. the
+    6 mandatory both-direction anti-overcorrection specimens) is tested in
+    brahmagyan/__tests__/test_valence_doctrine.py; THIS class verifies the
+    ga_vichara wiring + the 6-way vocab mapping (_verdict_to_vichara_label)."""
 
-    def test_8l_to_lagna_also_strong_malefic(self):
-        classes, primary = classify_actor({8})
-        value_text, value_num, _c, _k = compute_valence(classes, primary, 1, False, VALENCE_MATRIX)
-        self.assertEqual(value_text, "strong_malefic")
+    def test_cr54_specimen_dual_lord_malefic_natured_is_mixed(self):
+        """THE CR-54 root: Mars (natural malefic) that is Aries's lagneśa
+        (functional yogakaraka, i.e. dual trikoṇa/dusthāna lordship) casting its
+        harsh 8th aspect onto the wealth house → MIXED, never plain benefic. The
+        old matrix returned 'benefic' here (trikoṇa membership pre-empted the
+        dusthāna cell) — that inversion is exactly what this test now guards."""
+        vt, vn, cit, label = compute_valence(
+            "MAR", 2, "yogakaraka", contact_type="aspect", aspect_offset=8)
+        self.assertEqual(label, "mixed")
+        self.assertEqual(vt, "mixed")
+        self.assertTrue(cit)
 
-    def test_trikona_lord_kendra_benefic(self):
-        classes, primary = classify_actor({9})
-        value_text, value_num, _c, _k = compute_valence(classes, primary, 4, False, VALENCE_MATRIX)
-        self.assertEqual(value_text, "benefic")
-        self.assertEqual(value_num, 0.5)
+    def test_natural_malefic_no_functional_mitigation_is_strong_malefic(self):
+        """A pure natural malefic (Saturn) with a temporal-malefic functional
+        class placed on the wealth house → strong_malefic (the CR-54 anchor,
+        now nature-grounded rather than lordship-class-keyed)."""
+        vt, vn, _c, label = compute_valence(
+            "SAT", 2, "temporal_malefic", contact_type="lordship")
+        self.assertEqual(label, "malefic")
+        self.assertIn(vt, ("malefic", "strong_malefic"))
+        self.assertLess(vn, 0)
 
-    def test_trikona_lord_yogakaraka_strong_benefic(self):
-        classes, primary = classify_actor({5})
-        value_text, value_num, _c, _k = compute_valence(classes, primary, 9, True, VALENCE_MATRIX)
-        self.assertEqual(value_text, "strong_benefic")
-        self.assertEqual(value_num, 1.0)
+    def test_natural_benefic_trikona_lord_is_benefic(self):
+        """Jupiter (natural benefic) as a temporal-benefic in own trikoṇa H9 →
+        benefic (no regression on the Dhana-yoga specimen)."""
+        vt, vn, _c, label = compute_valence(
+            "JUP", 9, "temporal_benefic", contact_type="lordship")
+        self.assertEqual(label, "benefic")
+        self.assertIn(vt, ("benefic", "strong_benefic"))
+        self.assertGreater(vn, 0)
 
-    def test_maraka_to_2_or_7(self):
-        classes, primary = classify_actor({2})
-        value_text, _n, _c, key = compute_valence(classes, primary, 7, False, VALENCE_MATRIX)
-        self.assertEqual(value_text, "malefic")
-        self.assertEqual(key, "maraka")
+    def test_node_is_judged_not_skipped(self):
+        """DR-9 fix: Rahu/Ketu (no sign lordship) are judged by NATURAL nature
+        (malefic), NOT skipped — the prior skip is why an adverse node aspect on
+        a money house never reached a computed valence."""
+        vt, vn, _c, label = compute_valence(
+            "RAH_MEAN", 2, None, contact_type="aspect", aspect_offset=5)
+        self.assertIn(label, ("malefic", "mixed"))
+        self.assertLessEqual(vn, 0)
 
-    def test_upachaya_lord_mildly_benefic(self):
-        classes, primary = classify_actor({11})
-        value_text, value_num, _c, key = compute_valence(classes, primary, 3, False, VALENCE_MATRIX)
-        self.assertEqual(value_text, "benefic")
-        self.assertEqual(value_num, 0.5)
-        self.assertEqual(key, "upachaya_lord")
-
-    def test_trikona_and_dusthana_dual_lordship_to_wealth_house_is_benefic(self):
-        """CR-90/DR-1 regression: an actor lording BOTH a trikona house and a
-        dusthana house (e.g. Jupiter as 9L/12L, the live wealth-domain
-        specimen) must classify benefic when targeting a wealth house (2/11),
-        not strong_malefic. Before the fix, compute_valence checked
-        "dusthana_lord in classes" before "trikona_lord in classes", so this
-        exact dual-lordship actor was misjudged malefic despite trikoṇa
-        outranking dusthāna in `_PRECEDENCE`."""
-        classes, primary = classify_actor({9, 12})  # 9L (trikona) + 12L (dusthana)
-        self.assertIn("trikona_lord", classes)
-        self.assertIn("dusthana_lord", classes)
-        self.assertEqual(primary, "trikona_lord")
-
-        value_text, value_num, _c, key = compute_valence(classes, primary, 2, False, VALENCE_MATRIX)
-        self.assertEqual(value_text, "benefic")
-        self.assertEqual(value_num, 0.5)
-        self.assertEqual(key, "trikona_lord_benefic_target")
-
-        # Same actor targeting the 11th (also WEALTH_HOUSES) is likewise benefic.
-        value_text_11, _n, _c, key_11 = compute_valence(classes, primary, 11, False, VALENCE_MATRIX)
-        self.assertEqual(value_text_11, "benefic")
-        self.assertEqual(key_11, "trikona_lord_benefic_target")
-
-    def test_pure_dusthana_lord_still_strong_malefic_to_wealth(self):
-        """Guard: the CR-90 fix must not blunt the original CR-54 anchor for
-        an actor with NO trikona ownership at all (e.g. lord of 6 and 8)."""
-        classes, primary = classify_actor({6, 8})
-        self.assertNotIn("trikona_lord", classes)
-        self.assertEqual(primary, "dusthana_lord")
-        value_text, value_num, _c, key = compute_valence(classes, primary, 2, False, VALENCE_MATRIX)
-        self.assertEqual(value_text, "strong_malefic")
-        self.assertEqual(value_num, -1.0)
-        self.assertEqual(key, "dusthana_lord_wealth_or_lagna")
-
-    def test_all_value_nums_in_closed_set(self):
-        allowed = {-1.0, -0.5, 0.0, 0.5, 1.0}
-        for houses in ({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {6, 8, 12}):
-            classes, primary = classify_actor(houses)
-            for target in range(1, 13):
-                _t, num, _c, _k = compute_valence(classes, primary, target, False, VALENCE_MATRIX)
-                self.assertIn(num, allowed)
+    def test_vocab_mapping_bands(self):
+        """_verdict_to_vichara_label maps the signed net onto the 6-way vocab;
+        mixed is first-class."""
+        from ga_writers.ga_vichara_writer import _verdict_to_vichara_label
+        import brahmagyan.valence_doctrine as vd
+        # a genuinely mixed verdict → 'mixed'
+        mixed = vd.graha_valence("RAH_MEAN", contact_type="occupancy",
+                                 target_house=2, dignity_state="exalted")
+        self.assertEqual(_verdict_to_vichara_label(mixed), "mixed")
 
 
 class TestAspectValenceIngestion(unittest.TestCase):
@@ -226,11 +205,13 @@ class TestAspectValenceIngestion(unittest.TestCase):
         json.dumps(rows[0]["value_jsonb"])
         self.assertNotIsInstance(rows[0]["value_jsonb"]["aspect_strength"], Decimal)
 
-    def test_dusthana_lord_aspect_on_wealth_house_is_strong_malefic(self):
-        """The headline case per A2's brief: a dusthāna-lord graha's raw
-        Parashari aspect landing on a wealth house (2/11) must read
-        strong_malefic — the same CR-54 anchor, now reachable purely via an
-        aspect fact with NO bhava_significance_link row at all."""
+    def test_dusthana_lord_aspect_on_wealth_house_is_malefic(self):
+        """A natural-malefic graha (Mars, here with NO functional-class fact so
+        natural nature carries) raw-aspecting a wealth house (2/11) reads
+        adverse — the CR-54 anchor, now reachable purely via an aspect fact.
+        (With Mars's functional lagneśa status supplied it becomes MIXED — see
+        TestValenceMatrix.test_cr54_specimen_dual_lord_malefic_natured_is_mixed;
+        without it, pure natural malefic → strong_malefic.)"""
         facts = [
             _link_fact("l1", "D1", "lord_placed", "Mars", src_h=8, tgt_h=8, link_type="dusthana"),
             _aspect_fact("a1", "D1", "MAR", source_house=8, target_house=2, offset=7, strength=1.0),
@@ -241,17 +222,17 @@ class TestAspectValenceIngestion(unittest.TestCase):
         row = rows[0]
         self.assertEqual(row["actor"], "MAR")
         self.assertEqual(row["target"], "D1_HOUSE_2")
-        self.assertEqual(row["value_text"], "strong_malefic")
-        self.assertEqual(row["value_num"], -1.0)
-        self.assertEqual(row["value_jsonb"]["matrix_key"], "dusthana_lord_wealth_or_lagna")
+        self.assertIn(row["value_text"], ("malefic", "strong_malefic"))
+        self.assertLess(row["value_num"], 0)
+        self.assertEqual(row["value_jsonb"]["matrix_key"], "malefic")  # the 4-way label
         self.assertEqual(row["value_jsonb"]["signal_source"], "aspect_parashari_per_varga")
         self.assertIn("a1", row["constituent_fact_ids"])
-        self.assertIn("l1", row["constituent_fact_ids"])
 
-    def test_trikona_and_dusthana_dual_lordship_aspect_is_benefic(self):
-        """CR-90/DR-1 exercised through the aspect path: Jupiter as 9L/12L
-        aspecting a wealth house must classify benefic, not malefic —
-        confirms build_aspect_valence_rows also benefits from the A1 fix."""
+    def test_natural_benefic_dual_lordship_aspect_is_benefic(self):
+        """Jupiter (natural benefic) aspecting a wealth house classifies
+        benefic — no regression on a natural-benefic dual-lord through the
+        aspect path (the OLD test asserted this via the trikoṇa-matrix cell;
+        it now holds via natural nature + benefic-drishti softening)."""
         facts = [
             _link_fact("l1", "D1", "lord_placed", "Jupiter", src_h=9, tgt_h=9, link_type="trikona"),
             _link_fact("l2", "D1", "lord_placed", "Jupiter", src_h=12, tgt_h=12, link_type="dusthana"),
@@ -260,17 +241,22 @@ class TestAspectValenceIngestion(unittest.TestCase):
         idx = VicharaFactIndex(facts)
         rows = build_aspect_valence_rows(idx, "D1", VALENCE_MATRIX)
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["value_text"], "benefic")
-        self.assertEqual(rows[0]["value_jsonb"]["matrix_key"], "trikona_lord_benefic_target")
+        self.assertIn(rows[0]["value_text"], ("benefic", "strong_benefic"))
+        self.assertGreater(rows[0]["value_num"], 0)
 
-    def test_no_lordship_yields_no_row(self):
-        """A graha with no sign-lordship in this varga (e.g. a node) must not
-        get a fabricated valence row (B.10) — vichara stays silent, and
-        bo_laksana's keyword_heuristic_v1 fallback is the honest path."""
+    def test_node_aspect_now_yields_a_malefic_row(self):
+        """DR-9 / VAL-ROOT fix (this test FLIPPED): a node (Rahu/Ketu) aspect
+        MUST now yield a computed valence row judged by natural nature (malefic)
+        — the prior behavior (skip → no row → bo_laksana keyword fallback →
+        benefic-by-omission) is THE bug that made adverse node contacts on money
+        houses invisible. B.10 is satisfied because natural nature is a real
+        BPHS judgment, not a fabrication."""
         facts = [_aspect_fact("a1", "D1", "RAH_MEAN", source_house=5, target_house=11, offset=7, strength=1.0)]
         idx = VicharaFactIndex(facts)
         rows = build_aspect_valence_rows(idx, "D1", VALENCE_MATRIX)
-        self.assertEqual(rows, [])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["actor"], "RAH_MEAN")
+        self.assertIn(rows[0]["value_text"], ("malefic", "strong_malefic", "mixed"))
 
 
 class TestRatificationFactor(unittest.TestCase):

@@ -41,6 +41,7 @@ from typing import Any
 
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2
 from bodha_writers.sudarshana_emitter import GRAHAS, SIGNS, sign_index
+from brahmagyan import valence_doctrine as _vd
 
 ENGINE_VERSION = "bo_vargottama_dhana_v1.0"
 
@@ -136,6 +137,7 @@ def _make_row(
     summary: str, headline: str, config: dict, constituent_facts: list[str],
     class_prior: float, specificity: float, house: int | None, valence: str,
     domains: list[str], relationship_classification: str, varga_id: str, now: str,
+    valence_source: str = "categorical_deterministic_v1",
 ) -> dict[str, Any]:
     inputs = _base_inputs(class_prior, specificity, house)
     inputs.varga_id = varga_id
@@ -226,7 +228,7 @@ def _make_row(
         "computed_at": now,
         "engine_version": ENGINE_VERSION,
         "ratification_factor": None,
-        "valence_source": "categorical_deterministic_v1",
+        "valence_source": valence_source,
     }
 
 
@@ -254,6 +256,15 @@ def build_vargottama_rows(
         if house_rec:
             constituent_facts.append(house_rec["fact_id"])
 
+        # DR-9 / VAL-ROOT: vargottama denotes CONFIRMED STRENGTH, not benevolence
+        # — a vargottama malefic is a confirmed-strong malefic, not "benefic".
+        # The signal's valence is the graha's own signed nature (natural ×
+        # dignity incl. node exaltation × occupancy), amplified by the D1=D9
+        # cross-frame agreement, never an unconditional benefic.
+        vg_verdict = _vd.graha_valence(
+            graha_code, contact_type="occupancy", target_house=house_d1,
+            graha_sign=sign)
+
         rows.append(_make_row(
             chart_id=chart_id, ayanamsha_id=ayanamsha_id, build_id=build_id,
             signal_type_class=VARGOTTAMA_AMPLIFICATION_SIGNAL_TYPE_CLASS,
@@ -261,15 +272,17 @@ def build_vargottama_rows(
             source_l1_asset="ga_vargas",
             signal_subkey=graha_code,
             summary=f"category=vargottama_amplification | graha={graha_display} | "
-                    f"varga=D9 | house_d1={house_d1} | sign={sign}",
-            headline=f"{graha_display} is VARGOTTAMA (D1=D9 sign {sign}) — cross-frame confirmed strength",
+                    f"varga=D9 | house_d1={house_d1} | sign={sign} | valence={vg_verdict.valence}",
+            headline=f"{graha_display} is VARGOTTAMA (D1=D9 sign {sign}) — cross-frame confirmed strength ({vg_verdict.valence})",
             config={"graha": graha_display, "graha_code": graha_code, "varga": "D9",
-                    "house_d1": house_d1, "sign": sign, "is_vargottama": True},
+                    "house_d1": house_d1, "sign": sign, "is_vargottama": True,
+                    "valence_net": vg_verdict.value_num, "valence_source": "valence_doctrine_v1"},
             constituent_facts=constituent_facts,
             class_prior=VARGOTTAMA_AMPLIFICATION_CLASS_PRIOR,
             specificity=1.5,  # maximal — two independent frames (D1/D9) agree exactly
             house=house_d1,
-            valence="benefic",
+            valence=vg_verdict.valence,
+            valence_source="valence_doctrine_v1",
             domains=["character", "career"],
             relationship_classification="vargottama_confirmed",
             varga_id="D9",
@@ -301,6 +314,7 @@ def build_dhana_axis_rows(
 
         occupants: list[str] = []
         occupant_fact_ids: list[str] = []
+        occupant_verdicts: list[_vd.ValenceVerdict] = []
         lord_house_d1 = None
         lord_placement_fact_id = None
         for graha_code in GRAHAS:
@@ -312,6 +326,15 @@ def build_dhana_axis_rows(
             if gh == house_num:
                 occupants.append(_GRAHA_DISPLAY.get(graha_code, graha_code))
                 occupant_fact_ids.append(hrec["fact_id"])
+                # DR-9 / VAL-ROOT: this house's tenancy valence is the occupant
+                # grahas' natures (natural × dignity, incl. node exaltation from
+                # sign), NOT an unconditional "benefic". A natural malefic (e.g.
+                # Rahu) tenanting the dhana house is adverse/mixed, not a blessing.
+                occ_sign = (pos.get("sign") or {}).get("text")
+                occupant_verdicts.append(_vd.graha_valence(
+                    graha_code, contact_type="occupancy", target_house=house_num,
+                    graha_sign=occ_sign,
+                ))
             # Track the lord's OWN placement (which house it sits in) —
             # sign lord is not a stored fact-subject, so match by display name.
             if _GRAHA_DISPLAY.get(graha_code, graha_code) == house_lord:
@@ -322,18 +345,23 @@ def build_dhana_axis_rows(
         if lord_placement_fact_id:
             constituent_facts.append(lord_placement_fact_id)
 
+        tenancy_valence, tenancy_net = _vd.combine_occupant_verdicts(occupant_verdicts)
+
         config = {
             "house": house_num, "label": label, "house_sign": house_sign,
             "house_lord": house_lord, "occupants": occupants,
             "lord_own_house_placement": lord_house_d1,
+            "valence_net": tenancy_net,
+            "valence_source": "valence_doctrine_v1",
         }
         summary = (
             f"category=dhana_axis | house={house_num} | sign={house_sign} | "
-            f"lord={house_lord} | occupants={occupants} | lord_placed_in_house={lord_house_d1}"
+            f"lord={house_lord} | occupants={occupants} | lord_placed_in_house={lord_house_d1} "
+            f"| valence={tenancy_valence}"
         )
         headline = (
             f"{label}: {house_sign}, lord {house_lord}"
-            + (f" — tenanted by {', '.join(occupants)}" if occupants else " — untenanted")
+            + (f" — tenanted by {', '.join(occupants)} ({tenancy_valence})" if occupants else " — untenanted")
             + (f"; {house_lord} itself sits in H{lord_house_d1}" if lord_house_d1 else "")
         )
 
@@ -350,7 +378,8 @@ def build_dhana_axis_rows(
             class_prior=DHANA_AXIS_CLASS_PRIOR,
             specificity=1.2 if occupants else 1.0,
             house=house_num,
-            valence="benefic" if occupants else "neutral",
+            valence=tenancy_valence,
+            valence_source="valence_doctrine_v1",
             domains=[domain],
             relationship_classification="dhana_axis_tenancy",
             varga_id="D1",
