@@ -1,12 +1,13 @@
 ---
 wave: D-3
-lifecycle_step: 3  # SPAWN dispatched (native GO 2026-07-18): T-0 + T-1 implementers launched
-                   # in isolated worktrees, background. ka_avadhi disposition classified live
-                   # as (a) stale-build/current-population gap (NOT CR-41's forward-horizon
-                   # shape — CR-41 rows exist-but-historical; here zero rows at ANY date range,
-                   # even fully historical 2010-2020) and scoped rebuild dispatched via the
-                   # documented non-session fallback. IMPLEMENT ∥ VERIFY in flight for T-0/T-1;
-                   # verifiers not yet spawned (awaiting implementer claims).
+lifecycle_step: 3  # IMPLEMENT ∥ VERIFY COMPLETE for both cycle-1 lanes: T-0 receipted ACCEPT,
+                   # T-1 receipted ACCEPT (both fresh-context Opus verifiers, live-reproduced
+                   # independently, scope-warden pass). Ready for INTEGRATE (step 4) — PAUSED
+                   # here per the native's standing rule (milestone-pause at integrate/deploy/
+                   # gate boundaries); awaiting go before merging to the wave integration branch.
+                   # ka_avadhi "gap" reclassified mid-spawn as a code bug (double-content-unwrap
+                   # in kala_temporal.ts), not a data/rebuild issue — no rebuild fired; fix not
+                   # yet applied, disposition (fold into T-6 vs standalone hotfix) pending native.
 status: ACTIVE
 cycle: 1
 brief_bound: true
@@ -31,7 +32,7 @@ rebuild_scope_ruling:
   expected_per_brief: "L3 convergence assets + Taranga service; L2 read-only (no L2 rebuild) — BRIEF_D3 §8.2 per-wave expected scope"
 lanes:
   - {lane: T-0, branch: wave/D-3/T-0, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T0, base: origin/main@b536e13b, head_sha: 9a67f986, status: receipted, model: sonnet, verifier_model: opus, receipt_ref: "verdict=ACCEPT, tests=40/40, scope_warden=pass, live independent reproduction on 482012f1 matched implementer numbers EXACTLY (check-a intensity0/threshold0 FAIL, check-b 2/6 FAIL, check-c 18/40=0.45 vs 0.50 floor FAIL, control_gap=-0.0464 FAIL). DR-10 peak_basis=dasha_lord_confluence_v1 correctly NOT claimed as a named model. DR-11 anti-gaming independent-reproduction requirement satisfied by this verifier pass itself. All-red retrodiction result judged legitimate v1-proxy weakness, not a defect. 2 flag-forward non-blocking items for T-2/T-3 kernel work: (1) top_decile_fraction=1.0 sparse-curve artifact on check-a (does not flip result), (2) verifier-found localMax grid tie-break makes lead/lag distribution (peak_lag_days=-42 on every hit) uninformative, no pass/fail impact."}
-  - {lane: T-1, branch: wave/D-3/T-1, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T1, base: origin/main@b536e13b, head_sha: 3d888223, status: verifying, model: sonnet, implementer_claim: "get_av_transit_gating.ts capability built + registered (ganita_av_transit_gating_get), SAV/BAV gating + kakshya windows; live SAV bindus by sign 29,29,27,32,30,26,34,32,25,27,23,23 reconcile BRIEF_D3 type specimens exactly (house7=34 amplifying, house10=27 damping); 25/26 new tests pass (1 gated live-integration skipped, no DB creds in worktree); platform full suite 5687/5687 pass, platform-mcp 515 pass/75 fail claimed identical to pre-existing baseline. Flagged: brief's ~3.4-day kakshya figure doesn't hold for slow planets (Saturn/Jupiter take weeks per kakshya, computed from real daily motion instead); tropical->sidereal via linear Lahiri-mean-rate approximation (~1-day edge uncertainty), no sidereal ephemeris cache exists to do better. Opus verifier dispatched."}
+  - {lane: T-1, branch: wave/D-3/T-1, worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-wave-D3-T1, base: origin/main@b536e13b, head_sha: 3d888223, status: receipted, model: sonnet, verifier_model: opus, receipt_ref: "verdict=ACCEPT, tests: platform 5687/5687 pass, platform-mcp 515/605 pass (75 pre-existing failures verified byte-identical vs origin/main baseline, none reference AV/kakshya code), new file 25/26 (1 live-integration skipped). scope_warden=pass (exactly 4 files, all in-lane, append-only registrations). CR-87 verified: chart_id required no-default both modes. Live SAV bindus independently re-pulled and re-computed by verifier: 29,29,27,32,30,26,34,32,25,27,23,23 (sum=337 classical total) — exact match; house7=34 amplifying/house10=27 damping confirmed against BRIEF_D3 type specimens. Both v1-tradeoff flags (kakshya duration correction, Lahiri mean-rate sidereal approx) judged RIGHT calls matching the brief's own illustrative framing, not defects. One non-blocking Phase-2 note: kakshya_windows live-serving depends on sidecar transit endpoint, unproven at Phase-1, gate runner should exercise post-deploy."}
 integration_branch: null
 deploy: {done: false}
 gate: {run: false}
