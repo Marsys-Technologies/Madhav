@@ -739,7 +739,48 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           )
           if (!activationRes.is_error) {
             const c = activationRes.content as Record<string, unknown>
-            timing['kala_activations'] = c['activations'] ?? []
+            // §N.6 budget fix (D-2 gate): the raw activation rows each carry a ~3.5KB
+            // activation_predicted_dates_jsonb + ~1KB active_dasha_periods_jsonb, so 10 rows
+            // ballooned timing_hooks to ~51KB (69% of a 73KB v3 payload) and pushed the
+            // load-bearing adverse layers (affliction_mechanisms, bearing_afflictions) past a
+            // floor-model consumer's token budget. Project each row to its essential scalar
+            // fields, drop the verbose JSONB blobs (available via the kala temporal-activation
+            // drill tool), and dedupe by distinct activation window — keeping the highest
+            // convergence per window, capped at 6.
+            const rawActivations = (Array.isArray(c['activations']) ? c['activations'] : []) as Array<Record<string, unknown>>
+            const byWindow = new Map<string, Record<string, unknown>>()
+            for (const a of rawActivations) {
+              const compact = {
+                id: a['id'],
+                signal_id: a['signal_id'],
+                signature_class: a['signature_class'],
+                activation_start: a['activation_start'],
+                activation_peak_date: a['activation_peak_date'],
+                activation_end: a['activation_end'],
+                convergence_score: a['convergence_score'],
+                dasha_activation_proximity_score: a['dasha_activation_proximity_score'],
+                orb_strength: a['orb_strength'],
+                domains_affected_array: a['domains_affected_array'],
+                source_citation: a['source_citation'],
+              }
+              const key = `${String(a['activation_start'] ?? '')}|${String(a['activation_peak_date'] ?? '')}|${String(a['activation_end'] ?? '')}|${String(a['signature_class'] ?? '')}`
+              const prev = byWindow.get(key)
+              const prevConv = prev ? Number(prev['convergence_score'] ?? -Infinity) : -Infinity
+              const curConv = Number(a['convergence_score'] ?? -Infinity)
+              if (!prev || curConv > prevConv) byWindow.set(key, compact)
+            }
+            const trimmedActivations = [...byWindow.values()]
+              .sort((x, y) => Number(y['convergence_score'] ?? 0) - Number(x['convergence_score'] ?? 0))
+              .slice(0, 6)
+            timing['kala_activations'] = trimmedActivations
+            if (rawActivations.length > trimmedActivations.length) {
+              judgment_flags.push(
+                `kala_activations_trimmed: ${rawActivations.length} raw activation row(s) deduped by ` +
+                `window to ${trimmedActivations.length} distinct window(s); per-row ` +
+                `activation_predicted_dates_jsonb / active_dasha_periods_jsonb dropped from this ` +
+                `envelope (§N.6 budget) — full predicted-date detail via the kala temporal-activation drill.`,
+              )
+            }
             // T-12/T-13 (honest-flags-only this wave): kala_activation windows are a single
             // transit/dasha cycle's worth of resolution, not a multi-cycle recurrence model
             // (the multi-cycle generator is D-3 scope) — disclose so a caller never reads

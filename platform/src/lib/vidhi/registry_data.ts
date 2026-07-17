@@ -144,10 +144,16 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     version: 1,
     definition: 'Scans functional-lordship links (dusthana/maraka/badhaka aspects) that constitute a loss mechanism.',
     category: 'signal',
+    // D-2 gate fix (2026-07-17): dropped the dead signal_type_class 'functional_lordship_link'
+    // (0 rows on live) — it left this floor item empty and the reading blind to the adverse
+    // wealth signals. Now returns the composite-ranked wealth signals (adverse valence rows —
+    // e.g. Ketu→H2 major-malefic, Saturn→H9 chart-defining — surface here); the derived
+    // graha-bhava-affliction MECHANISM (Rahu-occupies-dhana) is served by the fallback_face
+    // judgment_query's affliction_mechanisms layer (now budget-trimmed to be floor-model-digestible).
     live_tool: 'bodha_signals_get',
-    tool_args: { chart_id: '{chart_id}', domain: '{domain}', signal_type_class: 'functional_lordship_link' },
+    tool_args: { chart_id: '{chart_id}', domain: '{domain}' },
     fallback_face: 'judgment_query',
-    known_gap: 'CR-54', // functional-lordship valence broken (no dusthana/maraka/kendra link_type) — OPEN, ELEVATED
+    known_gap: null, // CR-54 functional-lordship valence is LIVE (ga_vichara valence_pass, DR-9 doctrine) since D-2; residual taxonomy completeness tracked separately, not a route gap
     mandatory_tags: [],
     cr27_prevents: ['CR-27c'],
   },

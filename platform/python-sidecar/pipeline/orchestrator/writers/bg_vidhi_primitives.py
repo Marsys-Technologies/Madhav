@@ -76,11 +76,16 @@ PRIMITIVE_ROWS: list[tuple] = [
      "doctrine", "ganita_yoga_firings_get",
      {"chart_id": "{chart_id}", "bhanga_active": True},
      "ganita_condition_get", None, [], []),
+    # D-2 gate fix (2026-07-17): dropped dead signal_type_class 'functional_lordship_link' (0 rows
+    # on live) — it left this floor item empty. Now returns composite-ranked wealth signals
+    # (adverse valence rows surface here); the derived Rahu-occupies-dhana MECHANISM is served by
+    # fallback judgment_query.affliction_mechanisms (budget-trimmed to be floor-model-digestible).
+    # known_gap CR-54 cleared: functional-lordship valence is LIVE (ga_vichara, DR-9) since D-2.
     ("wealth_loss_mechanism_scan", 1,
      "Scans functional-lordship links (dusthana/maraka/badhaka aspects) that constitute a loss mechanism.",
      "signal", "bodha_signals_get",
-     {"chart_id": "{chart_id}", "domain": "{domain}", "signal_type_class": "functional_lordship_link"},
-     "judgment_query", "CR-54", [], ["CR-27c"]),
+     {"chart_id": "{chart_id}", "domain": "{domain}"},
+     "judgment_query", None, [], ["CR-27c"]),
     ("dasha_spine_lord_capability", 1,
      "Full dasha spine enriched with per-lord capability (shadbala percentile, house class, "
      "functional lordship, ratification factor, warning tier).",
