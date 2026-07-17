@@ -518,7 +518,8 @@ app.get('/mcp', (_req: Request, res: Response) => {
 //     holistic_bundle_chart_facts→bodha_bundle_get, kala_temporal_bundle→kala_bundle_get
 // ── TOTAL (WP-1.3(i) recount 2026-07-12: −4 apex_*_assess retired): ───        117
 // D-2 Lane V-2 — +1 plan_retrieval (Vidhi Engine meta-tool):                  +1
-const REGISTERED_TOOL_COUNT = 118
+// D-2 Lane V-3 — +2 scan_fetch_signals, reading_notes_get:                    +2
+const REGISTERED_TOOL_COUNT = 120
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
