@@ -75,7 +75,7 @@ def nbry_deferral_semantics(
     cancellation re-times the promise into the CANCELLER's own daśā periods
     (BPHS Ch.39 neecha-bhanga adhyāya: the cancelling graha's strength is what
     "restores" the promise, so its own periods are when the restored promise
-    is live). The type specimen the brief names: Venus debilitated in Pisces,
+    is live). The type specimen the brief names: Venus debilitated in Virgo,
     cancelled by Mercury (e.g. nbry_rule_1_dispositor_kendra firing with
     Mercury as the dispositor-in-kendra) — the PROMISE should re-time toward
     MERCURY's daśā periods, not Venus's.

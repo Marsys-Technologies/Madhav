@@ -36,7 +36,7 @@ _ABHINANDAN_CHART_ID = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
 # ─── nbry_deferral_semantics ─────────────────────────────────────────────────
 
 class TestNbryDeferralSemanticsVenusViaMercury:
-    """The brief's illustrative type specimen: Venus debilitated in Pisces,
+    """The brief's illustrative type specimen: Venus debilitated in Virgo,
     cancelled by Mercury (nbry_rule_1_dispositor_kendra: Mercury as
     dispositor-of-debilitation-sign in a kendra) — PROMISE-timing weight
     must shift toward MERCURY's own daśā periods."""
