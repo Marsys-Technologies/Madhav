@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.1
+version: 3.2
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -735,9 +735,34 @@ POST_REMEDIATION register's git history either); system-of-record for that range
 `DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §8` + the live doctrine-wave briefs, per the pointer table
 in POST_REMEDIATION §N. No dangling row range remains across either register.
 
+**CR-108 (NEW, 2026-07-18, D-3 cycle-2b, conductor-discovered, native-ratified — pre-existing class,
+same system-of-record convention as CR-90..107):** predicate-selection dignity_score saturation +
+insertion-order tiebreak. `ka_sangam.py::plan_substeps()` selects the top-200 (near tier) / top-60
+(lifetime tier) `kala_activation_predicates` via `ORDER BY dignity_score DESC NULLS LAST, id ASC
+LIMIT N`. On 482012f1, **4,441 predicates across ALL 6 signature classes sit at the exact ceiling
+`dignity_score = 1.0`** (SUBSYSTEM 3,827 / DISPOSITOR_RELATIONAL 552 / DIGNITY 60 / YOGA 2) — a score
+field saturated at its ceiling for 4,441 rows has zero discriminating power at the top, which is
+either a clamp/normalization bug or a degenerate scoring formula (root cause not yet diagnosed).
+Compounded by an insertion-order tiebreak (`id ASC`) that always resolves the tie in favor of
+SUBSYSTEM (systematically lowest ids), so predicate selection is 100% SUBSYSTEM for this chart,
+every rebuild — starving the Mode A/B convergence-scoring path (and everything downstream that
+depends on it, including D-3's TRIGGER suppression and CR-102 vedha fix) of any real-data exercise.
+Native disposition: fix at source if a clamp/default-fill bug (§1 of the fix lane), else document as
+a genuine ceiling-by-construction finding; harden selection with a per-signature-class quota + a
+content-hash tiebreak (not insertion-order — flagged as a reproducibility-trap pattern to grep for
+estate-wide); STOP-and-report if the saturation traces into `ga_vichara` or the core scoring writer
+(would expand this from a selection fix into a scoring rework, out of one lane's scope). System-of-
+record: `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/MEMO_D-3_1.md` (full finding +
+native disposition) + `STATE_D-3.md` (`cycle2b_critical_finding_predicate_selection_bug`) — this row
+is a pointer only, per the CR-90..107 convention above.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.1 (2026-07-16, D-1.6 Lane S-8) — Section 13 added:
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.2 (2026-07-18, D-3 cycle-2b, conductor session) —
+CR-108 pointer added (predicate-selection dignity_score saturation + insertion-order tiebreak
+starving Mode A/B on 482012f1; halt-and-report MEMO_D-3_1.md, native-dispositioned Option-C-amended
+fix lane, raw finding text kept in the doctrine-wave artifacts per the CR-90..107 convention). v3.1
+(2026-07-16, D-1.6 Lane S-8) — Section 13 added:
 governance/register reconciliation sync. 10 rows closed/routed/re-dispositioned with S-7 Binder
 probe evidence (S-4, S-5, S-12, S-14, R-11, R-47, R-48, D-5, K-3, KP-4); R-48 specifically
 RE-DISPOSITIONED from a false REMEDIATED-PENDING-W4 to honestly PENDING with a code-verified root
