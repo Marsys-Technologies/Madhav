@@ -150,8 +150,22 @@ class KaKalasutraWriter(WriterBase):
                     f"ka_kalasutra:v1.0:signal={sig_id_str[:8]}:src={pw['resolution_source']}:period={idx}",
                 ))
 
+        rows_actually_inserted = 0
         if rows:
             with conn.cursor() as cur:
+                # CR-109 follow-up #2 (migration 456, per migration-guard finding on
+                # 455): activation_start/activation_end are DERIVED, CLIPPED values —
+                # a convergence-refined AD nested inside its own MD routinely clips to
+                # the EXACT SAME [peak-half, peak+half] window as its parent when the
+                # peak sits comfortably inside both periods (the typical case for a
+                # convergence-anchored signal, not a rare coincidence), so keying
+                # uniqueness on (start, end) can collide two genuinely DISTINCT period
+                # rows (different graha/level/proximity). source_citation instead
+                # embeds `period={idx}` — idx is this loop's own enumerate() position,
+                # so it is unique per row for a given (chart_id, signal_id,
+                # ayanamsha_id) BY CONSTRUCTION, independent of how any date clips.
+                # ON CONFLICT here is therefore a true no-op safety net (should never
+                # actually fire), not a silent-drop risk.
                 cur.executemany(
                     """INSERT INTO kala_activation (
                         chart_id, signal_id, ayanamsha_id, signature_class,
@@ -159,14 +173,23 @@ class KaKalasutraWriter(WriterBase):
                         dasha_activation_proximity_score,
                         activation_start, activation_end, activation_peak_date,
                         orb_strength, convergence_score, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (chart_id, signal_id, ayanamsha_id, source_citation)
+                    DO NOTHING""",
                     rows,
                 )
+                # rowcount after executemany reflects ACTUAL rows inserted (post any
+                # ON CONFLICT DO NOTHING skips) — not just len(rows) attempted, so a
+                # future silent collapse (however unlikely per the comment above)
+                # would be directly observable in this asset's build notes.
+                _rc = getattr(cur, 'rowcount', None)
+                rows_actually_inserted = _rc if isinstance(_rc, int) and _rc >= 0 else len(rows)
 
         return WriterResult(
             asset_id='ka_kalasutra',
-            rows_inserted=len(rows),
-            notes=f"{dated}/{len(predicates)} predicates dated; {len(rows)} period-window rows "
+            rows_inserted=rows_actually_inserted,
+            notes=f"{dated}/{len(predicates)} predicates dated; {rows_actually_inserted}/{len(rows)} "
+                  f"period-window rows inserted "
                   f"(CR-109: >=1 row per matched in-life dasha period, not one collapsed row/predicate)",
         )
 
