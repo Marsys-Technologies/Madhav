@@ -1,16 +1,20 @@
 ---
 wave: D-3
 title: "Kāla Taraṅga + Three-Lock — Wave Exit Report"
-status: blocked
+status: CLOSED_BLOCKED_RED
 gate: RED
-lifecycle_step: 7  # GATE ran; wave halts here per ESCALATION_POLICY §2.1, does not proceed to step 8 (CLOSE)
-closed_at: null  # not closed — halted, awaiting native disposition
-halted_at: 2026-07-18
-supersedes_state: STATE_D-3.md (rolling; this is the sealed exit record for this halt point)
+lifecycle_step: 8  # CLOSED per native closeout directive, 2026-07-18 — sealed BLOCKED-RED per the
+  # standing pre-committed ruling (MEMO_D-3_1.md's Option-C amendment). The standing one-re-run
+  # allowance lapses with the wave; this gate is not re-litigated.
+closed_at: 2026-07-18
+halted_at: 2026-07-18  # the original halt point; superseded by closed_at above
+supersedes_state: STATE_D-3.md (rolling; this is the sealed exit record, FINAL)
 canonical_id: REPORT_D-3
+next_wave: D-4  # current_wave advanced; D-4 status INCOMING (brief under native/Cowork revision,
+  # not opened, not bound) — a separate kickoff directive follows native's ratification
 ---
 
-# D-3 (Kāla Taraṅga + Three-Lock) — Wave Exit Report (HALTED, gate RED)
+# D-3 (Kāla Taraṅga + Three-Lock) — Wave Exit Report (CLOSED, BLOCKED-RED)
 
 ## §1 — Executive summary
 
@@ -30,8 +34,10 @@ randomized negative control.
 
 Per `ESCALATION_POLICY_v1_0.md` §2.1 ("A RED INTEGRITY GATE — above all the retrodiction /
 falsification gate... The Adjudicator may not disposition a red integrity gate toward green"),
-this is a halt-and-report trigger. The conductor is not attempting to fix, tune, or re-run
-anything. This report is the halt record; native review is required before D-3 proceeds further.
+this triggered a halt-and-report. Following native review, a pre-D-4 wrap-up pass confirmed the
+RED is a genuine kernel finding (not a coverage artifact — see §7), and native dispositioned per
+the standing pre-committed ruling: **D-3 closes BLOCKED-RED, the result stands** (§10). This
+report is that closure record.
 
 ## §2 — What the wave built (all independently Opus-verified ACCEPT)
 
@@ -127,19 +133,36 @@ it does not mean the transit-kernel approach is wrong in principle, but it is th
 adversarially-verified evidence of how it performs against this native's actual history, and
 D-4's Binder inherits it as load-bearing input.
 
-## §7 — Register updates
+## §7 — Register updates (FINAL, post pre-D-4 wrap-up pass)
 
 - **CR-108** (predicate-selection dignity_score saturation + insertion-order tiebreak) — CLOSED,
   fixed and verified (`MARSYS_DEFECT_GAP_REGISTER_v2_0.md` v3.2).
-- New follow-up items logged in `STATE_D-3.md cycle2b_followups` / lane receipts: T-3's CR-88
-  wiring (formula-complete, not yet consuming), T-4's warning-score cross-surface reconciliation,
-  T-2's SAV-bindu live-DB confirmation, RR-fix's global-asset join subcase, T-5's estate-wide
-  no-tiebreak-at-all pattern found in 4 other writers (`bo_drishti.py`, `mi_darshana.py`,
-  `ph_nimitta.py`, `bo_chart_gestalt.py` — not fixed, flagged for a future audit),
-  PERF-TRIGGER-CACHE's low-risk global-sid_mode-race hardening opportunity.
-- The served `kala_activation` surface's date-coverage gaps (pre-2010, post-2032) discovered by
-  the gate runner are a new, real finding — not yet given a CR number, recommended for the
-  native's review alongside this report.
+- **A1 control-matching check** (pre-D-4 wrap-up pass): re-scored §G's saved data with the
+  shuffled-birth control coverage/N-matched to the real chart. Gap moved from −16.1pp (all-N) to
+  −15.8pp (coverage-matched, N=29) — nearly identical. **This is what makes the RED safe to seal
+  as a genuine kernel finding rather than a coverage artifact**, and is the evidentiary basis for
+  closing D-3 now rather than waiting on a re-run.
+- **A2/FIX-COV** (pre-D-4 wrap-up pass) — STOPPED correctly per its own native-set guard: the
+  served `kala_activation` coverage gap (pre-2010, post-2032) traces to `resolve_activation_windows()`
+  collapsing every matched dasha period to one "current" window instead of serving all of them.
+  Fixing it needs a migration + writer-cardinality change, not a narrow reachability fix — **this
+  transfers to D-4 as infrastructure lane C-0**, not resolved within D-3. The standing one-re-run
+  allowance for §G has LAPSED with this wave's closure; no further re-run occurs under D-3.
+- T-3's CR-88 wiring (formula-complete, not yet consuming), T-4's warning-score cross-surface
+  divergence (CLOSE-AS-DOCUMENTED — already discharged via an existing `percentile_note`), T-2's
+  SAV-bindu category (CLOSE-AS-DOCUMENTED — confirmed correct against live data, the flagged
+  concern was a false alarm), RR-fix's global-asset join subcase (CLOSE-AS-DOCUMENTED, cosmetic —
+  premise overstated, no correctness impact), T-5's estate-wide no-tiebreak pattern (**FIXED,
+  VERIFIED, MERGED, DEPLOYED** — PR #607, `91c5cfcb`, 13 sites across 4 writers), the vedha
+  graha-case bug (**FIXED**, confirmed already live), the NBRY `inactive_weight=0.4` (**RULED** by
+  the Opus Adjudicator — provisional placeholder, unwired, not behavior-changing today),
+  PERF-TRIGGER-CACHE's sid_mode race (still open, low-risk, logged). Full detail:
+  `PRE_D4_WRAPUP_REPORT.md`.
+- **DR-13/DIS.026** (Event-Scoring Semantics) — **RATIFIED** this closeout (was draft). Full text:
+  `DR_13_EVENT_SCORING_SEMANTICS_DRAFT.md` + `DISAGREEMENT_REGISTER_v1_0.md`.
+- **LEL schema v2** — approved (additive migration, executes in D-4, not this wave).
+- **Windfall event reclassification** (interval-shaped) — approved; its proximity check already
+  passed in this wave's §G run, only intensity failed.
 
 ## §8 — Rollback pin (unchanged from cycle-2b deploy, no rollback performed)
 
@@ -156,16 +179,32 @@ All merged-lane worktrees/branches removed (RR-fix, T-2, T-3, T-4, T-5, ADMIT, h
 T-6, FIX-PSEL, PERF-TRIGGER-CACHE, both integration branches) — verified via `git worktree list`
 showing only the main checkout. Zero stranded worktrees or un-merged/un-parked branches remain.
 
-## §10 — What native needs to decide
+## §10 — Native disposition (RECEIVED, EXECUTED)
 
-This report does not recommend a disposition — that is native's call per the integrity-gate
-carve-out. Context for the decision: the engineering is sound and independently verified at every
-step; the RED is a real, reproducible finding about this specific chart's served data coverage
-and TRIGGER's current domain/date concentration, not a build defect. Options broadly available
-(not exhaustive, native may choose otherwise): treat this as D-3's honest close (RED gate
-reported red, wave done, findings feed D-4's bakeoff per DR-12); investigate the coverage-horizon
-and domain-concentration questions as a new scoped wave before re-gating; or something else
-entirely. The conductor halts here, as designed.
+Native reviewed this report plus the pre-D-4 wrap-up pass (`PRE_D4_WRAPUP_REPORT.md`) and
+dispositioned per the standing pre-committed ruling: **D-3 closes BLOCKED-RED, the §G result
+stands.** A1's coverage-matched control (−15.8pp, nearly identical to the original −16.1pp)
+confirmed the red is a genuine kernel finding, not a coverage confound — the basis for closing
+now rather than waiting on a contingent re-run. The re-run allowance lapses with the wave; this
+gate is not re-litigated. `current_wave` has been advanced to **D-4** (status `INCOMING` — the
+brief is under native/Cowork revision, not yet opened or bound; a separate kickoff directive
+follows native's ratification of the revised brief).
+
+## §11 — What transfers to D-4
+
+- **Lane C-0** (new, infrastructure): the `kala_activation` writer-cardinality fix (full-span
+  window serving birth→2054) that A2/FIX-COV correctly stopped short of — plus two NEW findings
+  from the native's own live temporal testing (double dasha spine in `kala_temporal_bundle`;
+  a build-vs-serve join gap leaving TRIGGER-refined convergence windows unserved for 2026–2027).
+  Full scope: `D4_BRIEF_REVISION_INPUTS.md`.
+- **DR-12's bakeoff**: this wave's §G RED + full per-event scoring table as the transit-kernel
+  arm's real baseline data point.
+- **DR-13** (ratified): the event-shape-aware scoring discipline D-4's C-1 matcher must implement
+  against.
+- **LEL schema v2** (approved): the additive migration C-1's matcher will read from, once it
+  executes in D-4.
+- The date-tightening questionnaire, delivered to the native for offline completion; answers
+  enter the LEL as data under C-2's firewall once returned.
 
 ---
 *Sealed exit record. `STATE_D-3.md` remains the rolling working file; this is the authoritative

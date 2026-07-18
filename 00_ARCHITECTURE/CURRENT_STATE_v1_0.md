@@ -5379,7 +5379,25 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> ⚠️ **AUTHORITATIVE STATE (2026-07-17): Doctrine-Waves autonomous campaign ACTIVE — current_wave = D-3.** L0–L5 build arc is CLOSED/SEALED (see §E of CLAUDE.md); the active work is the D-1 → D-4 doctrine-remediation wave sequence governed by `00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (v1.1 FINAL) and run per `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md`.
+> ⚠️ **AUTHORITATIVE STATE (2026-07-18): Doctrine-Waves autonomous campaign ACTIVE — current_wave = D-4 (INCOMING, brief under native/Cowork revision — NOT opened, NOT bound; a separate kickoff directive follows native ratification).** L0–L5 build arc is CLOSED/SEALED (see §E of CLAUDE.md); the active work is the D-1 → D-4 doctrine-remediation wave sequence governed by `00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (v1.1 FINAL) and run per `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/CONDUCTOR_PROTOCOL.md`.
+>
+> **D-3 "Kāla Taraṅga + Three-Lock" CLOSED 2026-07-18 — BLOCKED-RED** (standing pre-committed
+> ruling). The §G retrodiction gate ran once, blind, full LEL access, against a freshly-rebuilt
+> chart where two real bugs (a predicate-selection saturation/tiebreak defect, `FIX-PSEL`; a
+> resulting rebuild-hang from uncached ephemeris lookups, `PERF-TRIGGER-CACHE`) were found and
+> fixed first — the falsifier confirmed TRIGGER genuinely fires on real served data (16,767 rows)
+> for the first time in the campaign's history. RESULT: RED — both named-mechanism checks miss
+> their top-decile bar; the blind battery scores 17.5% against a 50% floor and, decisively,
+> *worse* than its own shuffled-birth negative control (−16.1pp gap; a coverage-matched re-check
+> confirmed −15.8pp, ruling out coverage as the driver — a genuine kernel finding). Per
+> `ESCALATION_POLICY_v1_0.md` §2.1 a red integrity gate may not be dispositioned toward green;
+> native reviewed and closed the wave as BLOCKED-RED, the result standing as campaign evidence
+> feeding DR-12's D-4 model bakeoff. A pre-D-4 wrap-up pass closed 7 engineering follow-ups,
+> ratified DR-13 (event-scoring semantics: point/interval/chain shapes + a non-negotiable
+> control-mirroring rule), approved an additive LEL schema v2, and transferred the served
+> `kala_activation` coverage-gap fix to D-4 as new infrastructure lane **C-0** (writer-cardinality
+> fix + a double-dasha-spine bug + a convergence-window build-vs-serve gap, both native-reported).
+> Full record: `REPORT_D-3.md` (final), `PRE_D4_WRAPUP_REPORT.md`, `D4_BRIEF_REVISION_INPUTS.md`.
 >
 > **D-2 "Vidhi Engine + Mechanism" CLOSED 2026-07-17 — GATE GREEN 6/6.** The valence-computation
 > root cause (VAL-ROOT / D-16 / CR-54 / CR-83; ruling DR-9/DIS.022) is fixed and gate-verified: the

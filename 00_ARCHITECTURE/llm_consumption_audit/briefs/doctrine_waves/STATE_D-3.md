@@ -42,7 +42,16 @@ lifecycle_step: 5  # DEPLOY complete (native GO 2026-07-18): PR #602 (wave/D-3/i
 cycle1_status: CLOSED  # T-0 + T-1 + kala_temporal.ts hotfix deployed clean; wealth guard
                        # re-baselined convergent_moderate/~2.38 (benign, 12/12 yogas fire
                        # structurally). Not re-opened.
-status: blocked  # §G RETRODICTION GATE RAN — RESULT: RED (2026-07-18). Full sequence per native's
+status: CLOSED_BLOCKED_RED  # SEALED 2026-07-18 per native closeout directive. D-3 closes
+                 # BLOCKED-RED per the standing pre-committed ruling (MEMO_D-3_1.md's Option-C
+                 # amendment: "if §G then fails, that's a true red about the kernel, and it
+                 # stands"). A1's coverage-matched control (-15.8pp, nearly identical to the
+                 # original -16.1pp) establishes the red as a genuine kernel finding, not a
+                 # coverage artifact -- this is what makes the closure safe to seal now rather
+                 # than wait on a re-run. The standing one-re-run allowance LAPSES WITH THE WAVE;
+                 # nothing further re-litigates this gate. current_wave has been ADVANCED to D-4
+                 # (status INCOMING -- brief under native/Cowork revision, NOT opened, NOT bound).
+                 # Full closure record: REPORT_D-3.md (final). §G RETRODICTION GATE RAN — RESULT: RED (2026-07-18). Full sequence per native's
                  # Option-C-amended disposition executed cleanly: FIX-PSEL fixed the predicate-
                  # selection bug (verified), PERF-TRIGGER-CACHE fixed the resulting rebuild hang
                  # (verified), the chart rebuilt clean, the falsifier confirmed TRIGGER genuinely
