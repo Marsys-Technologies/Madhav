@@ -13,6 +13,10 @@ from __future__ import annotations
 
 import os
 import sys
+import types
+from datetime import date
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -163,3 +167,80 @@ class TestNearSelfScoping:
         assert "horizon_tier = 'near'" in joined
         assert "horizon_tier = 'lifetime'" in joined, \
             "with no lifetime substeps, near must still clear stale lifetime rows itself"
+
+
+# ── D-3 T-6: apply_trigger_suppression — TRIGGER wired at ADMITTED 0.2/0.2 ───
+#
+# Proves the writer-level TRIGGER composition (services.kala_trigger.trigger.
+# compute_trigger_currents + compose_with_ka_sangam, called from THIS file's
+# apply_trigger_suppression) actually uses the ADMIT-lane-winning 0.2/0.2
+# weights on a real window dict shape (as produced by mode_a_search/
+# mode_b_sweep), not services.kala_trigger.trigger's own 0.5/0.6 defaults.
+
+class _FakeGocharaMalefic:
+    """Reports a strong (0-deg orb, applying) Saturn hit ONLY when queried at
+    the exact mechanism longitude (100.0) — the strongest possible
+    malefic_transit_over_mechanism current in isolation, deliberately NOT
+    also firing papa_kartari_sandwich's before/after-sign-center queries
+    (70.0 / 130.0), so the suppressive math below is the single-current case
+    this test's hand-computed expectation assumes."""
+
+    def find_aspects(self, transit_planet, target_lon, aspect_degrees, orb, start_jd, end_jd):
+        if transit_planet != "Saturn" or round(target_lon, 1) != 100.0:
+            return []
+        ev = types.SimpleNamespace(
+            orb_at_event_deg=0.0, applying_separating="applying", extra={"aspect_deg": 0},
+        )
+        return [ev]
+
+
+class TestApplyTriggerSuppression:
+    def _window(self, convergence_score=0.8):
+        return {
+            "convergence_score": convergence_score,
+            "window_start": date(2024, 5, 15),
+            "window_end": date(2024, 6, 15),
+            "constituent_factors": {
+                "planet": "Jupiter",
+                "sign": "Taurus",
+                "signature_class": "DIGNITY",
+            },
+        }
+
+    def test_no_gochara_service_is_a_safe_noop(self):
+        windows = [self._window()]
+        out = ks.apply_trigger_suppression(
+            windows, chart_id="cid", target_lon=100.0, gochara_service=None,
+            vedha_rules=None, moon_sign_idx=3,
+        )
+        assert out[0]["convergence_score"] == pytest.approx(0.8)
+        assert "trigger_weights_used" not in out[0]["constituent_factors"]
+
+    def test_admitted_weights_actually_reach_the_composed_score(self):
+        """THE wiring proof: a real malefic hit lowers the window's SERVED
+        convergence_score by exactly the admitted-weight suppressive amount
+        (-0.2), not the module's own -0.6 default."""
+        windows = [self._window(convergence_score=0.8)]
+        out = ks.apply_trigger_suppression(
+            windows, chart_id="cid", target_lon=100.0,
+            gochara_service=_FakeGocharaMalefic(),
+            vedha_rules=None, moon_sign_idx=3,
+        )
+        cf = out[0]["constituent_factors"]
+        assert cf["trigger_weights_used"]["suppressive"] == ks.TRIGGER_ADMITTED_SUPPRESSIVE_WEIGHTS
+        assert cf["trigger_weights_used"]["additive"] == ks.TRIGGER_ADMITTED_ADDITIVE_WEIGHTS
+        assert cf["convergence_score_pre_trigger"] == pytest.approx(0.8)
+        # suppressive = -(1 - (1 - 0.2*1.0)) = -0.2 at the ADMITTED weight
+        assert cf["trigger_suppressive_applied"] == pytest.approx(-0.2, abs=1e-4)
+        assert out[0]["convergence_score"] == pytest.approx(0.6, abs=1e-4)  # 0.8 + (-0.2)
+        # Explicitly NOT the module's own 0.6 default, which would have produced 0.2.
+        assert out[0]["convergence_score"] != pytest.approx(0.2, abs=1e-4)
+
+    def test_missing_window_dates_skipped_safely(self):
+        windows = [{"convergence_score": 0.5, "constituent_factors": {}}]
+        out = ks.apply_trigger_suppression(
+            windows, chart_id="cid", target_lon=100.0,
+            gochara_service=_FakeGocharaMalefic(),
+            vedha_rules=None, moon_sign_idx=3,
+        )
+        assert out[0]["convergence_score"] == pytest.approx(0.5)

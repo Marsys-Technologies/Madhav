@@ -547,6 +547,8 @@ def compute_trigger_currents(
     signature_class: str = "UNKNOWN",
     school_consensus_by_domain: Optional[dict[str, int]] = None,
     orb_deg: float = 5.0,
+    additive_weights: Optional[dict[str, float]] = None,
+    suppressive_weights: Optional[dict[str, float]] = None,
 ) -> dict[str, Any]:
     """
     TRIGGER lock entry point. Computes:
@@ -565,9 +567,26 @@ def compute_trigger_currents(
     CR-87: chart_id is REQUIRED (keyword-only, no default) — every entry
     point in this module that could resolve to a specific chart enforces
     this; a missing/falsy chart_id raises, never silently defaults.
+
+    additive_weights / suppressive_weights (D-3 ADMIT lane, T-6 wiring):
+    override the module-level TRIGGER_ADDITIVE_WEIGHTS / TRIGGER_
+    SUPPRESSIVE_WEIGHTS constants (this module's own transparent, UNRATIFIED
+    defaults — 0.5/0.5 additive, 0.6/0.6 suppressive). The kernel-admission
+    loop (wave/D-3/ADMIT, receipted ACCEPT) found 0.2/0.2 for BOTH weight
+    keys on each side scores best on the train split (train_score=0.312,
+    +0.024 vs the v1 baseline) — genuinely tuned, not the module's own
+    defaults. A caller wiring the ADMITTED score MUST pass
+    `additive_weights={'guru_shani_double_transit': 0.2, 'saham_activation': 0.2}`
+    and `suppressive_weights={'malefic_transit_over_mechanism': 0.2,
+    'papa_kartari_sandwich': 0.2}` explicitly — omitting these falls back to
+    the module's own unratified 0.5/0.6 defaults, which is correct for
+    standalone/exploratory use but WRONG for the admitted composite score.
     """
     if not chart_id:
         raise ValueError("compute_trigger_currents: chart_id is REQUIRED (CR-87) — no default")
+
+    additive_w = additive_weights if additive_weights is not None else TRIGGER_ADDITIVE_WEIGHTS
+    suppressive_w = suppressive_weights if suppressive_weights is not None else TRIGGER_SUPPRESSIVE_WEIGHTS
 
     components: dict[str, Any] = {}
 
@@ -586,7 +605,7 @@ def compute_trigger_currents(
             "malefic_transit_over_mechanism": malefic_score,
             "papa_kartari_sandwich": papa_score,
         },
-        TRIGGER_SUPPRESSIVE_WEIGHTS,
+        suppressive_w,
     )
     suppressive = -suppressive_raw
 
@@ -606,7 +625,7 @@ def compute_trigger_currents(
             "guru_shani_double_transit": gs["score"],
             "saham_activation": saham_score,
         },
-        TRIGGER_ADDITIVE_WEIGHTS,
+        additive_w,
     )
 
     # ── Vedha-filter extension (CR-102), reported for explainability ──
@@ -640,6 +659,10 @@ def compute_trigger_currents(
         "suppressive": round(suppressive, 4),
         "net": round(additive + suppressive, 4),
         "components": components,
+        "weights_used": {
+            "additive": dict(additive_w),
+            "suppressive": dict(suppressive_w),
+        },
     }
 
 
