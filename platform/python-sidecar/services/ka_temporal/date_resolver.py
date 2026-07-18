@@ -254,10 +254,25 @@ class ActivationWindows:
 
     active_dasha_periods : list of dicts for active_dasha_periods_jsonb
     predicted_dates      : list of dicts for activation_predicted_dates_jsonb
-    activation_start/end : bounded DATE window (None only when NOTHING resolves)
-    activation_peak      : representative peak DATE
-    proximity_score      : [0,1] dasha_activation_proximity_score
-    resolution_source    : 'convergence' | 'dasha_timeline' | 'none'
+    activation_start/end : bounded DATE window (None only when NOTHING resolves).
+        Kept for backward compatibility — this is the single PRIMARY window
+        (current > soonest-future > most-recent-past) — same selection as before
+        CR-109. Existing single-window consumers (ka_vighnakara's anchor scan,
+        the CGM-edge lane) are unaffected by the CR-109 addition below.
+    activation_peak      : representative peak DATE (primary window's peak)
+    proximity_score      : [0,1] dasha_activation_proximity_score (primary window)
+    resolution_source    : 'convergence' | 'dasha_timeline' | 'none' (primary window)
+    period_windows       : CR-109 fix (D-4a Lane A-0). One entry per matched
+        in-life dasha period (birth-forward, capped at max_windows) — NOT
+        collapsed to the single primary. Each entry:
+        {start, end, peak, graha, level, proximity_score, resolution_source}.
+        Same peak/proximity FORMULAS as the primary window above (zero
+        kernel/weight change) — applied per period instead of once, so a
+        writer can serve every period the dasha table holds instead of
+        silently collapsing coverage to one bounded band. Always non-empty
+        whenever activation_start is non-None (falls back to a single entry
+        mirroring the primary window when `matched` is empty but a bare
+        convergence peak still resolved).
     """
     active_dasha_periods: list = field(default_factory=list)
     predicted_dates: list = field(default_factory=list)
@@ -266,6 +281,7 @@ class ActivationWindows:
     activation_peak: Optional[date] = None
     proximity_score: float = 0.5
     resolution_source: str = "none"
+    period_windows: list = field(default_factory=list)
 
 
 # ── DB load (the only I/O in this module) ─────────────────────────────────────
@@ -548,6 +564,56 @@ def resolve_activation_windows(
         result.resolution_source = "none"
 
     result.proximity_score = _proximity_score(dasha_rule, strength_hook, result.activation_peak)
+
+    # CR-109 fix (D-4a Lane A-0): one bounded window PER matched in-life period,
+    # not just the single primary. Same peak-refinement and proximity FORMULAS as
+    # the primary window above (no kernel/weight/threshold change) — a convergence
+    # peak still refines whichever period it actually falls inside; every other
+    # matched period gets its own natural [start, end] bound with a midpoint peak.
+    # This is what lets a writer serve >1 period per lord (full birth-forward
+    # coverage) instead of collapsing to one build-time-relative band.
+    for p in matched:
+        p_start = _clip(p.start)
+        p_end = p.end
+        if (
+            convergence_peak is not None
+            and (birth_date is None or convergence_peak >= birth_date)
+            and p_start is not None and p_start <= convergence_peak <= p_end
+        ):
+            p_peak = convergence_peak
+            p_win_start = _clip(max(p_start, p_peak - timedelta(days=half)))
+            p_win_end = min(p_end, p_peak + timedelta(days=half))
+            p_source = "convergence"
+        else:
+            p_peak = _midpoint(p_start, p_end) if p_start is not None else None
+            p_win_start = p_start
+            p_win_end = p_end
+            p_source = "dasha_timeline"
+        result.period_windows.append({
+            "start": p_win_start,
+            "end": p_win_end,
+            "peak": p_peak,
+            "graha": p.lord,
+            "level": level_name.get(p.level_n, f"level_{p.level_n}"),
+            "proximity_score": _proximity_score(dasha_rule, strength_hook, p_peak),
+            "resolution_source": p_source,
+        })
+
+    if not result.period_windows and result.activation_start is not None:
+        # No real matched period (pure convergence-only resolution, e.g. a signal
+        # with no constituent_lords timeline coverage at all) — mirror the primary
+        # window as the sole entry so a caller can always iterate period_windows
+        # rather than special-casing an empty list.
+        result.period_windows.append({
+            "start": result.activation_start,
+            "end": result.activation_end,
+            "peak": result.activation_peak,
+            "graha": None,
+            "level": None,
+            "proximity_score": result.proximity_score,
+            "resolution_source": result.resolution_source,
+        })
+
     return result
 
 

@@ -119,21 +119,36 @@ class KaKalasutraWriter(WriterBase):
             if windows.activation_start is not None:
                 dated += 1
 
-            rows.append((
-                chart_id,
-                signal_id,
-                ayanamsha_id,
-                sig_class,
-                json.dumps(windows.active_dasha_periods),
-                json.dumps(windows.predicted_dates),
-                windows.proximity_score,
-                windows.activation_start.isoformat() if windows.activation_start else None,
-                windows.activation_end.isoformat() if windows.activation_end else None,
-                windows.activation_peak.isoformat() if windows.activation_peak else None,
-                conv.get('orb_strength'),
-                conv.get('convergence_score'),
-                f"ka_kalasutra:v1.0:signal={sig_id_str[:8]}:src={windows.resolution_source}",
-            ))
+            # CR-109 fix (D-4a Lane A-0): one row per matched in-life period
+            # (windows.period_windows), not one collapsed row per predicate. Every
+            # row carries the SAME full active_dasha_periods_jsonb / predicted_dates
+            # listing (unchanged — still the complete birth-forward context) but its
+            # OWN activation_start/end/peak, so a date-range query against
+            # kala_activation genuinely finds every period the dasha table holds,
+            # not just whichever one was elevated to "primary" at build time. When
+            # nothing resolves at all (period_windows empty), fall back to the
+            # single all-None row — identical to pre-fix behaviour.
+            period_entries = windows.period_windows or [{
+                'start': None, 'end': None, 'peak': None,
+                'proximity_score': windows.proximity_score,
+                'resolution_source': windows.resolution_source,
+            }]
+            for idx, pw in enumerate(period_entries):
+                rows.append((
+                    chart_id,
+                    signal_id,
+                    ayanamsha_id,
+                    sig_class,
+                    json.dumps(windows.active_dasha_periods),
+                    json.dumps(windows.predicted_dates),
+                    pw['proximity_score'],
+                    pw['start'].isoformat() if pw['start'] else None,
+                    pw['end'].isoformat() if pw['end'] else None,
+                    pw['peak'].isoformat() if pw['peak'] else None,
+                    conv.get('orb_strength'),
+                    conv.get('convergence_score'),
+                    f"ka_kalasutra:v1.0:signal={sig_id_str[:8]}:src={pw['resolution_source']}:period={idx}",
+                ))
 
         if rows:
             with conn.cursor() as cur:
@@ -151,7 +166,8 @@ class KaKalasutraWriter(WriterBase):
         return WriterResult(
             asset_id='ka_kalasutra',
             rows_inserted=len(rows),
-            notes=f"{dated}/{len(rows)} activations dated",
+            notes=f"{dated}/{len(predicates)} predicates dated; {len(rows)} period-window rows "
+                  f"(CR-109: >=1 row per matched in-life dasha period, not one collapsed row/predicate)",
         )
 
 

@@ -1,0 +1,8489 @@
+[
+  {
+    "signal_id": "08c5f7e9-2dc4-402d-bc53-ea30e4d0ce59",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=08c5f7e9:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "098195de-cc0e-421d-a004-0f14a625993f",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=098195de:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "0cc74408-98ab-4594-9254-4367e2d8992a",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=0cc74408:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "110dbce8-ddf8-4ec3-a848-acbe563792eb",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=110dbce8:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "1142dd2a-f568-4357-bee2-16cc0b0c7506",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=1142dd2a:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1984-02-05",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1985-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-03-01",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1998-06-09",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2000-01-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2001-08-09",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2014-01-11",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2015-06-12",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2016-11-11",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-01-15",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-08-15",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-03-16",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "14453cfe-ac44-4ccf-9d7c-a9d4a48ab934",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=14453cfe:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-03-01",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-07-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-12-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2001-08-09",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2002-01-29",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2002-07-22",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2016-11-11",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2017-04-15",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2017-09-17",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-03-16",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-05-19",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-07-22",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "1899a727-60a1-49aa-96da-8f2bd06fbdc1",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=1899a727:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "189ed6ce-f16b-4497-a76a-3c37c0692843",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=189ed6ce:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "190d2ea4-cf58-4cae-8aa4-ab6f08f9d4c1",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=190d2ea4:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "1ba774c8-071f-4b94-95db-b164860f1972",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=1ba774c8:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "23e1e136-89f2-498a-a3be-fcce36085d94",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=23e1e136:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "2ac7b589-da4d-4eba-a105-3b8f70e20079",
+    "sig_class": "CLASSIFY_RESIDUAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=2ac7b589:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "2ad3f756-47da-41fa-a405-0cb23d5e0a33",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=2ad3f756:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "2b256a75-70c1-468e-9238-f636832c13e7",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=2b256a75:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "322f1ca4-7f70-4c79-957d-5357d477c5f8",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=322f1ca4:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-04-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-10-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1989-03-25",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-02-20",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-09-09",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2005-03-31",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2020-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-02-20",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-05-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-07-19",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "3498cd0b-484f-4640-84a4-a539b934b008",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=3498cd0b:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "37ca6f64-2e8f-471e-af14-66adb068e5f5",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=37ca6f64:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "42811f8f-6701-426f-9095-c1deba4ca28f",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=42811f8f:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "43fad057-6292-411b-9d76-a0c24f80d8e2",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=43fad057:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "46591e11-66c6-44c8-8b6b-d1450731a80e",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 1,
+    "peak": "2026-04-13",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=46591e11:src=dasha_timeline",
+    "points": [
+      {
+        "date": "1991-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1993-02-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2024-12-08",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2026-04-13",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-07-12",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-01-30",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2047-06-19",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2049-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2057-06-24",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2057-12-14",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2064-11-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2065-09-02",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2073-01-08",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2073-07-29",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2082-09-24",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2084-02-26",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2085-07-31",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "4ab7daff-d7e8-4f9b-a8ea-ef79b7aa7b2b",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=4ab7daff:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "4c670a55-ae7c-453e-9e5c-6d8425f1750c",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=4c670a55:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "4cb62c4b-3a0e-4179-9b4f-4ede3d0c4330",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=4cb62c4b:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-11-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1998-06-09",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-07-14",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2014-01-11",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-01-15",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "52000f8b-98a9-43ed-83b3-2a40154f464c",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "health",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=52000f8b:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "58500e7c-24c5-438c-b663-cd474fb6d3dc",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=58500e7c:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "5ea196a9-fa14-4c10-8ee9-e9a833969c93",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=5ea196a9:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-04-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-10-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1989-03-25",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-02-20",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-09-09",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2005-03-31",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2020-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-02-20",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-05-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-07-19",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "605614da-b96d-4795-9d5c-00859c6edf5a",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 1,
+    "peak": "2026-04-13",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=605614da:src=dasha_timeline",
+    "points": [
+      {
+        "date": "1991-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1993-02-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2024-12-08",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2026-04-13",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-07-12",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-01-30",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2047-06-19",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2049-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2057-06-24",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2057-12-14",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2064-11-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2065-09-02",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2073-01-08",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2073-07-29",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2082-09-24",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2084-02-26",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2085-07-31",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "6081ca7c-2d68-4661-95a7-e661cf9d75e3",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=6081ca7c:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1989-03-25",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1990-06-06",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1991-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2005-03-31",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2006-09-02",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2008-02-05",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2020-02-14",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2021-05-24",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2022-09-02",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-07-19",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2031-01-26",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2031-08-06",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "6496275f-6a6c-495b-a1be-dc0a76981270",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=6496275f:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "65e3921a-6f16-4b58-a89d-52ea66395267",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=65e3921a:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "66a66530-4bb2-41c8-93fa-49ea3c58d650",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=66a66530:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "6d6c30c0-9a21-44ac-aa88-4a0c6e5e2df5",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=6d6c30c0:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "79916d94-7b17-4e4a-8209-19ed29848f88",
+    "sig_class": "DOSHA",
+    "orb": 1,
+    "conv": 0.5161,
+    "peak": "2017-09-12",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=79916d94:src=convergence",
+    "points": [
+      {
+        "date": "2017-09-09",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2017-09-10",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2017-09-11",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2017-09-12",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2017-09-13",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2017-09-14",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2017-09-15",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "7f568327-8b48-4546-8299-d5e3d84fb8b5",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=7f568327:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "833cff5d-61a3-4164-95a3-8cf05d9d8612",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=833cff5d:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "85870686-10b7-46ee-b2a9-269e33a7f019",
+    "sig_class": "CLASSIFY_RESIDUAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=85870686:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "8a1f079c-64c5-4c55-850c-435ea41226e4",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 1,
+    "peak": "2026-04-13",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=8a1f079c:src=dasha_timeline",
+    "points": [
+      {
+        "date": "1991-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1993-02-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2024-12-08",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2026-04-13",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-07-12",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-01-30",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2047-06-19",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2049-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2057-06-24",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2057-12-14",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2064-11-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2065-09-02",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2073-01-08",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2073-07-29",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2082-09-24",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2084-02-26",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2085-07-31",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "8b3cda22-f9e9-4c19-b285-130089cba387",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=8b3cda22:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "8ea979d6-8e97-4ffd-b42c-bcdfb682fd90",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=8ea979d6:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "90f65ddb-9b68-4702-a8c0-d71b2ec39b82",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=90f65ddb:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "91937b09-3025-4b02-ad39-25e34d432e2b",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=91937b09:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "928dfc46-6091-4787-b8f8-2a3bca425bf5",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=928dfc46:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "92eda2f1-457c-4a9d-9e3c-6000fa46e2a3",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=92eda2f1:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1989-03-25",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1990-06-06",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1991-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2005-03-31",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2006-09-02",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2008-02-05",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2020-02-14",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2021-05-24",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2022-09-02",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-07-19",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2031-01-26",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2031-08-06",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "97892f26-4553-412e-95ce-b4e6009395b0",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=97892f26:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-04-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-10-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1989-03-25",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-02-20",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-09-09",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2005-03-31",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2020-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-02-20",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-05-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-07-19",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "99119ff8-af9d-4d8c-a059-4030c4c11c77",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=99119ff8:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "9a7e8dea-5b10-4011-a2d7-7122bf0ddaa1",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=9a7e8dea:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2008-02-05",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2009-05-12",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2022-09-02",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2023-10-21",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2024-12-08",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2031-08-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-01-23",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-07-12",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2044-10-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2046-02-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2047-06-19",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "9cc9a24f-a15d-48b1-996e-1661f4c442b4",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=9cc9a24f:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "a308715f-74e5-4d24-a8c2-c0ce2722688e",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=a308715f:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "a63721b1-3c6a-4cee-b04f-41f29790563b",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=a63721b1:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "a9408664-e895-4d04-b722-924fd31f53e4",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=a9408664:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "ae0dc9be-0e55-4182-9e1d-8f8184b7a55c",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=ae0dc9be:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "b16bafb7-3a52-4122-90ac-0070510d079e",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=b16bafb7:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2008-02-05",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2009-05-12",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2022-09-02",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2023-10-21",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2024-12-08",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2031-08-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-01-23",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-07-12",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2044-10-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2046-02-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2047-06-19",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "b1e9eb80-a3d9-4386-a01a-70638eece7a1",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=b1e9eb80:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "b6303553-2a58-43f2-a37f-417164db18dd",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=b6303553:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-12-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1987-08-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-04-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2002-07-22",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2003-05-07",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-02-20",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2017-09-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2018-06-03",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-17",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-07-22",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-11-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-02-20",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "b73334bb-0c1b-4af7-920a-413258f788bb",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": 1,
+    "conv": 0.6071,
+    "peak": "2026-04-13",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=b73334bb:src=dasha_timeline",
+    "points": [
+      {
+        "date": "1989-03-25",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1990-06-06",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1991-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1991-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1993-02-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2005-03-31",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2006-09-02",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2008-02-05",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2020-02-14",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2021-05-24",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2022-09-02",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2024-12-08",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2026-04-13",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-07-19",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2031-01-26",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2031-08-06",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-07-12",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-01-30",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2041-10-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2043-04-19",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2044-10-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "b8ecd0f2-daba-4918-a281-f37d49440a48",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=b8ecd0f2:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "bd37ede4-9179-415f-8e1f-27654e4b2276",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": 1,
+    "conv": 0.6071,
+    "peak": "2026-04-13",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=bd37ede4:src=dasha_timeline",
+    "points": [
+      {
+        "date": "1986-12-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1987-08-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-04-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1991-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1993-02-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2002-07-22",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2003-05-07",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-02-20",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2017-09-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2018-06-03",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-17",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2024-12-08",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2026-04-13",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-07-22",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-11-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-02-20",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2032-07-12",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-01-30",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2038-12-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2039-10-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2040-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "c3fa3c43-a73d-4a37-9221-7530bd75dc31",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=c3fa3c43:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "cba19f43-99df-4031-be72-10b448053c33",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=cba19f43:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "cc3e8d35-398f-4958-bb35-2f406a5386e7",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "career",
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=cc3e8d35:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "cf781c5c-b9c0-4889-9f37-00ddc28d9244",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "wealth",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=cf781c5c:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "d3d7ddc6-d6a1-4543-9d5b-d5b2b8b24bd0",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=d3d7ddc6:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "d5d9d3f4-69e1-48a5-a408-d1fe8810916e",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=d5d9d3f4:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1984-02-05",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1985-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-03-01",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1998-06-09",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2000-01-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2001-08-09",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2014-01-11",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2015-06-12",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2016-11-11",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-01-15",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-08-15",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-03-16",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "d989b999-2c06-4cc8-a49f-9fdb9342a37a",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=d989b999:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "df289427-5bbc-41f6-bd47-108e423a2e84",
+    "sig_class": "CLASSIFY_RESIDUAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "wealth"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=df289427:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "e4248d40-ec9b-4723-83c6-11b35269f2c1",
+    "sig_class": "CLASSIFY_RESIDUAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "wealth"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=e4248d40:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "e59028b2-22cc-45ec-bdd0-8720ba1935ef",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=e59028b2:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "ea81797a-d56e-4397-a2c4-fdbf68fdc9a8",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=ea81797a:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1984-02-05",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1985-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-03-01",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1998-06-09",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2000-01-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2001-08-09",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2014-01-11",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2015-06-12",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2016-11-11",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-01-15",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-08-15",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-03-16",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "ef25de64-6b97-4796-b9ee-7f96b563ce84",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "spirituality",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=ef25de64:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "f08dad2f-bd51-4888-9c36-387ad029a70b",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 1,
+    "peak": "2027-11-01",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=f08dad2f:src=dasha_timeline",
+    "points": [
+      {
+        "date": "1997-04-30",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-11-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1998-06-09",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-07-14",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2014-01-11",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-01-15",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2054-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2054-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-06-15",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2068-03-03",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2068-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-04-29",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-07-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2088-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2088-08-27",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2089-03-07",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "f32bbbbc-ca16-43cd-a550-debac2a37f0f",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=f32bbbbc:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "f65dee9b-b9b7-45aa-b898-6711e62e7c23",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character",
+      "relationship"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=f65dee9b:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-03-01",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-07-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-12-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2001-08-09",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2002-01-29",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2002-07-22",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2016-11-11",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2017-04-15",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2017-09-17",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-03-16",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-05-19",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-07-22",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "f82835f9-5142-4271-b77c-3e8b3c9cb1bb",
+    "sig_class": "SUBSYSTEM",
+    "orb": 1,
+    "conv": 0.7,
+    "peak": "2027-10-20",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=f82835f9:src=convergence",
+    "points": [
+      {
+        "date": "2027-10-17",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-18",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-19",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-20",
+        "strength": 1,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-21",
+        "strength": 0.8,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-22",
+        "strength": 0.6,
+        "source": "convergence_peak"
+      },
+      {
+        "date": "2027-10-23",
+        "strength": 0.4,
+        "source": "convergence_peak"
+      }
+    ]
+  },
+  {
+    "signal_id": "f8687b79-21a5-454b-825d-6978c562057c",
+    "sig_class": "DIGNITY",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "wealth",
+      "career"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=f8687b79:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "faa28d6f-8e72-43cb-b135-4f6c2b85cfcb",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=faa28d6f:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-04-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1988-10-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1989-03-25",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-02-20",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2004-09-09",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2005-03-31",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2020-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-02-20",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-05-05",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2030-07-19",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "fe2d24a1-fe89-4fef-b87e-f93df2d6d1e3",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=fe2d24a1:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1984-02-05",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1985-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1986-03-01",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1998-06-09",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2000-01-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2001-08-09",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2014-01-11",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2015-06-12",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2016-11-11",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-01-15",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2028-08-15",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2029-03-16",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  },
+  {
+    "signal_id": "ff98be13-b100-4e6e-a94f-e8166487f236",
+    "sig_class": "DISPOSITOR_RELATIONAL",
+    "orb": null,
+    "conv": null,
+    "peak": "2019-02-16",
+    "domains": [
+      "character"
+    ],
+    "src": "ka_kalasutra:v1.0:signal=ff98be13:src=dasha_timeline",
+    "points": [
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2019-02-16",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2027-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1994-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1995-12-25",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "1997-04-30",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2010-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2011-11-01",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2013-01-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2033-08-21",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-02-18",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2034-08-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2050-08-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2052-01-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2053-06-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-06-06",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2058-11-08",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2059-04-13",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2066-06-18",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-03-04",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2067-11-18",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-02-17",
+        "strength": 0.6,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2074-08-17",
+        "strength": 1,
+        "source": "dasha_timeline"
+      },
+      {
+        "date": "2075-02-14",
+        "strength": 0.4,
+        "source": "dasha_timeline"
+      }
+    ]
+  }
+]
