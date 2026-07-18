@@ -32193,3 +32193,134 @@ session_close:
 ```
 
 *End of DOCTRINE-WAVES-D-1.6-CONDUCTOR-CLOSE-2026-07-16 entry — 2026-07-16.*
+
+---
+
+## RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19 — Retrieval Audit (parallel infrastructure track, NOT D-4) CLOSED
+
+```yaml
+session_open:
+  session_id: RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19
+  cowork_thread_name: "Madhav — Retrieval Audit (Conductor: open through close)"
+  agent_name: claude-sonnet-5
+  predecessor_session: D-4a Lane A-0 (Serving-Substrate Repair) — orthogonal; this session
+    does NOT open or touch D-4, per its own governing brief's explicit exclusion
+  role: >
+    Conductor for `00_ARCHITECTURE/briefs/RETRIEVAL_AUDIT_EXECUTION_BRIEF_v1_0.md`
+    end-to-end: Phase 0 (docs commit + worktree), six parallel audit lanes (A-F) auditing
+    RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md (v1.2) claim-by-claim against code reality,
+    §F reconciliation (ground-truth register, plan amendment to v1.3, final report), close.
+  declared_scope:
+    may_touch: [NEW worktree ../madhav-retrieval + branch ret/strategy-s1 and everything
+      inside it, 00_ARCHITECTURE/RETRIEVAL_*.md amendments, 00_ARCHITECTURE/briefs/
+      retrieval_audit/** (NEW), SESSION_LOG.md (append-only, this entry), git commits on
+      ret/strategy-s1 only plus the single Phase-0 main commit]
+    must_not_touch: [platform/** and platform-mcp/** SOURCE (read-only for the entire
+      session), the FROZEN orchestrator/WriterBase/ga_*/bo_*/ka_*/ph_*/mi_* writers,
+      root CLAUDECODE_BRIEF.md (D-4 pointer), database writes, deploy configs, CI
+      workflows, migrations]
+  red_team_due: false
+```
+
+**Body.** Fully autonomous execution of the retrieval-audit brief, start to finish, no
+human intervention. **Phase 0:** committed the docs-only set (3 RETRIEVAL_*.md,
+PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md, MCP_CHANNEL_WORKSTREAM_HANDOFF_v1_0.md, this
+brief, CLAUDE.md, PROJECT_ARCHITECTURE_v2_2.md, CLAUDE_MD_CHANGELOG.md — exactly the
+listed set, nothing else) to `9c358819`, and created `../madhav-retrieval` on
+`ret/strategy-s1`, branched from that commit. **Deviation logged (not silently
+resolved):** the brief said "commit to main"; git's literal `main` ref was 58 commits
+behind the checked-out trunk `pg1/wave` (the D-3/D-4 working line) — committing to
+literal `main` would have orphaned the docs from the project history this session and
+prior D-3/D-4 sessions actually run against. The Phase-0 commit landed on `pg1/wave`
+instead; recorded in `STATE.md` with full rationale.
+
+**Six lanes (A-F), parallel subagents, per-lane model/effort chosen by task shape:**
+mechanical verification lanes (A catalog/registration, B envelope/budget, D MCP
+edge/adaptivity) ran `sonnet` at default effort; judgment-heavy lanes (C planner/
+taxonomy, E data-plane/service coverage, F Paripraśna interface — the brief's own
+mandate for "strongest model, high effort") ran `opus`. Each lane wrote its own
+`LANE_<X>_REPORT.md` under `00_ARCHITECTURE/briefs/retrieval_audit/`, verdicted every
+assigned claim (CONFIRMED/STALE/WRONG/UNVERIFIABLE, or lane-appropriate equivalents),
+and the conductor committed after each landed. Lane E had no dev DSN available and
+correctly marked all row-count claims UNVERIFIABLE-NO-DSN rather than guessing.
+**One background-agent stall occurred** during the §F.2 plan-amendment pass (600s no
+progress) — per the brief's own failure discipline, respawned once with narrowed scope;
+the retry succeeded and the stall is recorded in `STATE.md`, not hidden.
+
+**Headline findings:** Lane C (planner/taxonomy) found the plan's most accurate section
+(7/7 claims confirmed) but also the audit's most consequential structural correction —
+the three live intent taxonomies (DR-8, Vidhi `IntentClass`, `pipeline_planner`
+`query_class`) are orthogonal axes, not dialects of one vocabulary; the plan's R-3.1
+"flat superset enum" cannot unify them and was re-scoped to a decomposed
+`{answer_mode × domain × depth × horizon}` tuple. Lane A found the plan's own
+"three-catalog" claim conflates two differently-typed tables (the real served chat
+contract catalog is 6 rows, not the cited 76) and that the D9/D10-class bootstrap
+disagreement the plan calls "fixed" is still live for 5+1 other capabilities. Lane D
+found description-leakage worse than claimed (11 instances/8 files, including the
+native's full PII in a served resource description) and a 13-file duplicated fail-open
+dev-token pattern. Lane E found a live in-code dark service (`ka_graha_sancara`,
+arbitrary-datetime ephemeris) blocking all date-parameterized position queries, named
+nowhere in the plan or strategy, plus a built-but-never-imported `kala_timeline` handler
+(one-line fix). Lane F extracted 15 Paripraśna-rebuild requirements against the plan:
+8 COVERED, 4 UNDER-SPECIFIED, 3 CONTRADICTED — six genuine architectural tensions
+(C-1..C-6) raised for native ruling, never silently adjudicated, including a live-code
+risk (R-3 would edit `consult/route.ts` around a D-15 `audience_tier` violation without
+excising it) and a cheap-to-fix one (the unbuilt `prashna_ask` contract in the plan
+still carries a `depth` param D-15 forbids).
+
+**§F reconciliation:** `GROUND_TRUTH_REGISTER.md` adjudicates all 37 plan §1 factual
+claims (19 CONFIRMED / 13 CORRECTED / 1 PLAN-ITEM-ALREADY-DONE / 4 carried-forward) plus
+17 NEW-GAP items, 52 phase-item feasibility notes, 6 native-ruling contradictions, and 4
+explicitly-flagged cross-lane ambiguities (none silently collapsed).
+`RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md` amended in place to v1.3 with a real changelog
+entry, corrected §1 subsections, the R-3.1 re-scope, absorbed new-gap items into the
+right phases, and a new §8.5 carrying C-1..C-6 as open rulings.
+`AUDIT_FINAL_REPORT.md` closes the loop with the executive summary, per-lane verdict
+table, top-10 corrections/gaps, the Paripraśna alignment table, open questions for the
+native, the full 20+-commit ledger (stall included), and the model/effort/cost
+accounting. **Zero production-source writes the entire session** —
+`git diff --stat 9c358819...HEAD -- platform platform-mcp` empty at every checkpoint,
+reconfirmed at close. Branch `ret/strategy-s1` is NOT merged to main/pg1/wave per the
+brief's explicit instruction — left for native review.
+
+```yaml
+session_close:
+  session_id: RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19
+  wave: RETRIEVAL-AUDIT (parallel infrastructure track, not a doctrine wave; D-4 remains
+    INCOMING and untouched)
+  close_criteria_met: true
+  verification: "all six §G acceptance criteria verified by the conductor before close:
+    (1) Phase-0 commit contains exactly the listed doc set, worktree+branch exist,
+    git log --oneline -2 identical in both trees at Phase-0; (2) six lane reports exist,
+    each with per-claim verdicts + file:line evidence + a model/effort ledger section,
+    zero claims silently skipped; (3) GROUND_TRUTH_REGISTER covers 100% of plan §1
+    (37/37 rows) and all §3/§7/§8 phase items (52 feasibility notes); (4) plan v1.3
+    committed, every CORRECTED/NEW-GAP row traced into a phase or explicitly deferred
+    with reason; (5) Lane F's 15-requirement alignment table present, all 6 conflicts
+    RAISED with a PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md pointer, none silently
+    resolved; (6) STATE.md shows an unbroken transition log incl. the one agent stall,
+    AUDIT_FINAL_REPORT complete, this SESSION_LOG entry appended,
+    `git diff --stat 9c358819...HEAD -- platform platform-mcp` empty"
+  deploy: "N/A — audit-only session, no deploy, no production writes"
+  product_code_writes_made: "NONE — read-only audit per brief; verified empty diff at
+    every lane landing and at close"
+  native_chart_touched: false
+  current_state_updated: false
+  register_dispositions_flipped: "none — this audit cross-references
+    MARSYS_DEFECT_GAP_REGISTER_v2_0.md, never duplicates or mutates its rows, per brief
+    §D"
+  followups: "Six native rulings required (GROUND_TRUTH_REGISTER Part C / plan §8.5
+    C-1..C-6), headline: C-1 (prashna_ask contract's depth param violates D-15, cheap
+    fix, tool unbuilt) and C-2 (R-3's consult/route.ts edit would leave a live D-15
+    audience_tier violation un-excised two lines away). Four ambiguities need native/
+    implementer resolution (GT-AMBIG-1..4), notably the live MCP tool count is unknown
+    to ±30 pending an AST/runtime census. Branch `ret/strategy-s1` awaits native review
+    and merge decision — not merged by this session per brief instruction."
+  next_session_objective: "Native reviews `ret/strategy-s1` (worktree at
+    ../madhav-retrieval): rules on the six C-1..C-6 Paripraśna-alignment contradictions
+    and the four ambiguities, decides on merge of the docs-only branch, and — separately
+    — D-4 (model bakeoff) remains INCOMING and unopened, per this brief's explicit
+    exclusion; this session does not advance current_wave."
+```
+
+*End of RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19 entry — 2026-07-19.*
