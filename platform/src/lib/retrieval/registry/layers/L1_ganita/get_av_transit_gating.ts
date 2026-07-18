@@ -40,6 +40,7 @@ import type { CapabilityDescriptor, ToolResult } from '../../types'
 import { query } from '@/lib/db/client'
 
 const SIDECAR_URL = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
+const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
 
 const AV_BINDU_SIGN_CATEGORY = 'ashtakavarga_bindu_sign'
 const AV_KAKSHYA_CATEGORY = 'ashtakavarga_kakshya_boundary'
@@ -407,8 +408,14 @@ async function handleKakshyaWindows(
     // 2. Daily tropical transit series from the BRAHMA sidecar (no pre-computed sidereal
     //    cache exists — verified live this pass; ephemeris_daily stores ayanamsha_id='tropical' only).
     const params = new URLSearchParams({ planet, start_date, end_date })
+    const sidecarHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+    // forward the sidecar API key when configured (the sidecar's verify_api_key dependency
+    // 401s on a missing/mismatched x-api-key when PYTHON_SIDECAR_API_KEY is set) — same fix
+    // pattern as query_planet_position.ts / call_service_wrappers.ts (WP-1.7); this handler
+    // predated that fix and never inherited it (D-3 T-6, live-confirmed 401 root cause).
+    if (SIDECAR_API_KEY) sidecarHeaders['x-api-key'] = SIDECAR_API_KEY
     const res = await fetch(`${SIDECAR_URL}/brahmagyan/ephemeris/planet_transit?${params}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: sidecarHeaders,
     })
     if (!res.ok) {
       const msg = await res.text().catch(() => res.statusText)

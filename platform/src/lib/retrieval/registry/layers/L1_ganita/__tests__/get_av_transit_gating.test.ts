@@ -293,6 +293,35 @@ describe('getAvTransitGatingCapability handler — kakshya_windows', () => {
     expect(content.windows[0].lord).toBe('Saturn')
   })
 
+  it('forwards the PYTHON_SIDECAR_API_KEY as x-api-key when configured (D-3 T-6 hotfix — was a live 401)', async () => {
+    const prevKey = process.env['PYTHON_SIDECAR_API_KEY']
+    process.env['PYTHON_SIDECAR_API_KEY'] = 'test-sidecar-key'
+    vi.resetModules()
+    try {
+      const mod = await import('../get_av_transit_gating')
+      mockQuery.mockResolvedValue({
+        rows: [
+          { fact_subject: 'KAKSHYA_1', fact_key: 'lord', fact_value_text: 'Saturn', fact_value_num: null },
+          { fact_subject: 'KAKSHYA_1', fact_key: 'start_deg', fact_value_text: null, fact_value_num: 0 },
+          { fact_subject: 'KAKSHYA_1', fact_key: 'end_deg', fact_value_text: null, fact_value_num: 3.75 },
+        ],
+      })
+      const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
+      fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true, rows: [] }) })
+      await mod.getAvTransitGatingCapability.handler(
+        { chart_id: CHART_ID, mode: 'kakshya_windows', planet: 'Saturn', target_sign: 12, start_date: '2026-01-01', end_date: '2026-01-25' },
+        undefined,
+      )
+      expect(fetchMock).toHaveBeenCalled()
+      const [, init] = fetchMock.mock.calls[0]
+      expect((init as { headers: Record<string, string> }).headers['x-api-key']).toBe('test-sidecar-key')
+    } finally {
+      if (prevKey === undefined) delete process.env['PYTHON_SIDECAR_API_KEY']
+      else process.env['PYTHON_SIDECAR_API_KEY'] = prevKey
+      vi.resetModules()
+    }
+  })
+
   it('propagates a sidecar error honestly (never a fabricated window)', async () => {
     mockQuery.mockResolvedValue({
       rows: [
