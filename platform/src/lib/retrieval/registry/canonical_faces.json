@@ -63,7 +63,9 @@
     "phala_outlook_get",
     "phala_predictive_anchors_get",
     "phala_rectification_get",
+    "plan_retrieval",
     "prashna_undertaking_get",
+    "reading_notes_get",
     "recall_session",
     "ref_aspects_at_time_get",
     "ref_classical_citation_get",
@@ -90,6 +92,7 @@
     "ref_vector_search",
     "ref_yogas_get",
     "resolve_entity",
+    "scan_fetch_signals",
     "select_chart",
     "synth_chart_brief_get",
     "synth_tail_divergence_get"

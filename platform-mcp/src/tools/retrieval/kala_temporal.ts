@@ -101,7 +101,7 @@ async function callRegistryCapability(
   return { content: data.content, ok: data.ok, error: data.error }
 }
 
-/** Fetch a capability and pull out its `.rows` array. Never throws — a transport/proxy
+/** Fetch a capability and pull out its row array. Never throws — a transport/proxy
  *  failure or a malformed envelope both resolve to `{ rows: [], ok: false }` so the caller
  *  can distinguish "capability unreachable" from "capability reached, zero real rows".
  *
@@ -118,11 +118,28 @@ async function callRegistryCapability(
  *  every date range while still marking sidecar_available/ok as successful. Defensive: only
  *  unwraps one level deeper when the shape actually matches the handler-result contract (has
  *  an `is_error` key) — never mis-unwraps a legitimately content-shaped payload that happens
- *  to lack that key. */
+ *  to lack that key.
+ *
+ *  CR-111 fix (D-4a Lane A-0): the double-unwrap above fixed `query_dasha_dossier` (whose
+ *  handler names its array field `rows` — see query_dasha_dossier.ts), but
+ *  `query_convergence_windows` names its field `convergence_windows` and
+ *  `query_obstruction_periods` names its field `obstructions` (neither is called `rows` —
+ *  see each capability's own `content: {...}` shape). A hardcoded `.rows` read therefore
+ *  always resolved to `undefined` → `[]` for those two capabilities specifically, while
+ *  `ok` stayed `true` (the round-trip genuinely succeeded) — so kala_temporal_bundle
+ *  reported honest-looking `convergence_count: 0` / `obstruction_count: 0` even when the
+ *  backing tables held real, dated rows for the exact requested range (live-confirmed:
+ *  chart 482012f1, kala_convergence holds 1,685 rows overlapping 2026-01-01..2027-12-31
+ *  incl. the 2027-10-20→11-01 TRIGGER-refined peak, yet the bundle served zero). Fix: an
+ *  explicit `fieldName` parameter — defaults to `'rows'` for existing callers (timeline,
+ *  MD/AD/PD dasha-dossier snapshot lookups), passed as `'convergence_windows'` /
+ *  `'obstructions'` for those two capabilities specifically. No change to any scoring,
+ *  weighting, or threshold — this is purely which JSON key gets read. */
 async function fetchCapabilityRows<T>(
   uri: string,
   args: Record<string, unknown>,
-  principal: Principal
+  principal: Principal,
+  fieldName: string = 'rows'
 ): Promise<{ rows: T[]; ok: boolean }> {
   try {
     const { content, ok } = await callRegistryCapability(uri, args, principal)
@@ -132,7 +149,7 @@ async function fetchCapabilityRows<T>(
         ? (content as { content?: unknown }).content
         : content
     if (!inner || typeof inner !== 'object') return { rows: [], ok: true }
-    const rows = (inner as { rows?: unknown }).rows
+    const rows = (inner as Record<string, unknown>)[fieldName]
     return { rows: Array.isArray(rows) ? (rows as T[]) : [], ok: true }
   } catch {
     return { rows: [], ok: false }
@@ -263,12 +280,14 @@ export async function computeKalaTemporalBundle(
     fetchCapabilityRows<ConvergenceWindow>(
       'marsys://tool/L3/query_convergence_windows',
       { chart_id: chartId, date_from: start, date_to: end, top_k: 50 },
-      principal
+      principal,
+      'convergence_windows'
     ),
     fetchCapabilityRows<ObstructionEntry>(
       'marsys://tool/L3/query_obstruction_periods',
       { chart_id: chartId, limit: 50 },
-      principal
+      principal,
+      'obstructions'
     ),
   ])
 

@@ -49,6 +49,27 @@ _GRAHA_DOMAINS: dict[str, list[str]] = {
     "Ketu":    ["moksha", "spirituality", "loss", "liberation"],
 }
 
+# CR-110 fix (D-4a Lane A-0): kala_avadhi carries NO ayanamsha_id column at all —
+# it is a single-ayanamsha table by design (same canonical scope as the
+# pratijna/fact_refs queries below, which already pin 'lahiri_chitrapaksha').
+# chart_dashas, however, pools ALL 5 ayanamsha computations (~9,200 MD/AD rows
+# each per chart — see services/ka_temporal/date_resolver.py's own docstring).
+# _FETCH_MD_SQL / _FETCH_AD_SQL previously carried NO ayanamsha_id filter, so
+# every ayanamsha's variant of a given (system_id, level_n, lord_graha) period
+# — each with a slightly different sidereal boundary (day-level drift, e.g.
+# Mercury MD ending 2027-08-11 under true_chitra vs 2027-08-18 under lahiri) —
+# was fetched and inserted as if it were the single canonical period. The
+# INSERT's ON CONFLICT key (chart_id, system_id, level_n, period_start) could
+# not de-duplicate these because their period_start values genuinely differ by
+# a few days, so distinct ayanamsha variants landed as separate, silently
+# conflicting rows in the SAME served spine — this is CR-110's double
+# dasha-spine bug (confirmed live: two Mercury MD rows for chart 482012f1,
+# ending 2027-08-11 and 2027-08-18, sourced from chart_dashas.ayanamsha_id
+# 'true_chitra' vs the other four ayanamshas respectively). Fix: scope both
+# fetches to the canonical ayanamsha, exactly like every other query in this
+# writer already does.
+_CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
+
 _FETCH_MD_SQL = """
 SELECT d.chart_id, d.system_id, d.lord_graha,
        d.start_date AS period_start,
@@ -56,6 +77,7 @@ SELECT d.chart_id, d.system_id, d.lord_graha,
        1 AS level_n
 FROM chart_dashas d
 WHERE d.chart_id = %s AND d.level_n = 1 AND d.system_id = ANY(%s)
+  AND d.ayanamsha_id = %s
 ORDER BY d.system_id, d.start_date
 """
 
@@ -68,6 +90,7 @@ SELECT d.chart_id, d.system_id, d.lord_graha,
 FROM chart_dashas d
 JOIN chart_dashas p ON p.dasha_row_id = d.parent_row_id
 WHERE d.chart_id = %s AND d.level_n = 2 AND d.system_id = ANY(%s)
+  AND d.ayanamsha_id = %s AND p.ayanamsha_id = %s
 ORDER BY d.system_id, d.start_date
 """
 
@@ -140,12 +163,12 @@ class KaAvdhiWriter(WriterBase):
 
         # Load MD periods
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute(_FETCH_MD_SQL, (chart_id, systems_list))
+            cur.execute(_FETCH_MD_SQL, (chart_id, systems_list, _CANONICAL_AYANAMSHA))
             md_rows = cur.fetchall()
 
         # Load AD periods
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute(_FETCH_AD_SQL, (chart_id, systems_list))
+            cur.execute(_FETCH_AD_SQL, (chart_id, systems_list, _CANONICAL_AYANAMSHA, _CANONICAL_AYANAMSHA))
             ad_rows = cur.fetchall()
 
         if not md_rows:

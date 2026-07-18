@@ -1,0 +1,848 @@
+{
+  "lel_total": 57,
+  "scorable_count": 40,
+  "excluded_count": 17,
+  "excluded": [
+    {
+      "event_id": "5d039007-0244-58c6-ad39-152c179c6ac8",
+      "event_date": "1984-02-05",
+      "reasons": [
+        "birth_anchor_not_an_outcome"
+      ]
+    },
+    {
+      "event_id": "64c475da-5248-5332-9127-9331fae79f23",
+      "event_date": "1995-07-01",
+      "reasons": [
+        "bare_around_year"
+      ]
+    },
+    {
+      "event_id": "3e96c6da-3ad6-5329-a40b-0b9240a1cbdb",
+      "event_date": "1995-07-01",
+      "reasons": [
+        "phase_marker",
+        "arc_marker",
+        "resurfaced_marker",
+        "tilde_year",
+        "paren_year_range"
+      ]
+    },
+    {
+      "event_id": "d5db1b9a-b8c5-5b90-9641-c9ae9b1c2035",
+      "event_date": "1998-07-01",
+      "reasons": [
+        "tilde_year",
+        "paren_year_range"
+      ]
+    },
+    {
+      "event_id": "39f8395f-dfa6-5deb-9d3d-e4881c905e29",
+      "event_date": "2000-06-01",
+      "reasons": [
+        "tilde_year"
+      ]
+    },
+    {
+      "event_id": "123eee97-8885-5d50-b0f1-94281f8f2d49",
+      "event_date": "2002-07-01",
+      "reasons": [
+        "tilde_year",
+        "paren_year_range"
+      ]
+    },
+    {
+      "event_id": "62f0460d-0cf1-5eab-bedc-47ecfcb04657",
+      "event_date": "2002-07-01",
+      "reasons": [
+        "approximately",
+        "year_span_years"
+      ]
+    },
+    {
+      "event_id": "8573c0ca-9fc5-52a0-8309-f1b324a51d4a",
+      "event_date": "2007-09-01",
+      "reasons": [
+        "persisted_n_years"
+      ]
+    },
+    {
+      "event_id": "1dc207bc-a85e-5383-b39d-39be4629a582",
+      "event_date": "2009-06-15",
+      "reasons": [
+        "month_or_month"
+      ]
+    },
+    {
+      "event_id": "bd7f5711-8668-5315-8e25-94dc94f2a101",
+      "event_date": "2010-07-01",
+      "reasons": [
+        "bare_around_year"
+      ]
+    },
+    {
+      "event_id": "56a1222d-8c88-5445-b2a2-1fd89d470719",
+      "event_date": "2015-07-01",
+      "reasons": [
+        "tilde_year",
+        "paren_year_range"
+      ]
+    },
+    {
+      "event_id": "74e527bb-1b22-51a8-bafb-8d4d7d80ae1d",
+      "event_date": "2021-07-01",
+      "reasons": [
+        "tilde_year",
+        "year_span_years"
+      ]
+    },
+    {
+      "event_id": "86cbb042-8c3b-54e0-bf79-8f51b5850c13",
+      "event_date": "2022-07-01",
+      "reasons": [
+        "paren_year_range"
+      ]
+    },
+    {
+      "event_id": "021e49f5-9c6a-5e0e-ad6c-84c8ea2ad83f",
+      "event_date": "2022-10-15",
+      "reasons": [
+        "approximately"
+      ]
+    },
+    {
+      "event_id": "63e90113-eb35-5be4-9bce-1da7eda7d82d",
+      "event_date": "2024-07-01",
+      "reasons": [
+        "tilde_year"
+      ]
+    },
+    {
+      "event_id": "275b0c18-a159-5560-95f7-2a6cfbec58c4",
+      "event_date": "2025-06-15",
+      "reasons": [
+        "tilde_year"
+      ]
+    },
+    {
+      "event_id": "732a4119-a333-5ce5-afbf-082453e1f6d5",
+      "event_date": "2026-04-08",
+      "reasons": [
+        "year_span_years"
+      ]
+    }
+  ],
+  "check_a_peak_proximity": {
+    "event_id": "d81fae4e-edf4-58d9-b201-cced7eae19d7",
+    "event_date": "2025-05-15",
+    "window_start": "2022-11-15",
+    "window_end": "2027-11-13",
+    "target_domain": "wealth",
+    "threshold_percentile": 0.9,
+    "threshold_value": 2.803478260869565,
+    "peak_date": "2025-04-03",
+    "peak_intensity": 2.270144927536232,
+    "peak_lag_days": -42,
+    "within_proximity": true,
+    "at_or_above_threshold": false,
+    "pass": false
+  },
+  "check_a_anti_gaming": {
+    "variance": 0.1628509477837887,
+    "variance_ok": true,
+    "top_decile_fraction": 0.10136986301369863,
+    "top_decile_fraction_ok": true,
+    "pass": true
+  },
+  "check_b_windfall": {
+    "event_id": "bd7f5711-8668-5315-8e25-94dc94f2a101",
+    "event_date": "2010-07-01",
+    "window_start": "2008-01-01",
+    "window_end": "2012-12-29",
+    "target_domain": "wealth",
+    "threshold_percentile": 0.9,
+    "threshold_value": 3.6,
+    "peak_date": "2010-08-13",
+    "peak_intensity": 2.3991766158913133,
+    "peak_lag_days": 43,
+    "within_proximity": true,
+    "at_or_above_threshold": false,
+    "pass": false
+  },
+  "check_b_anti_gaming": {
+    "variance": 0.29415470552870837,
+    "variance_ok": true,
+    "top_decile_fraction": 0.10136986301369863,
+    "top_decile_fraction_ok": true,
+    "pass": true
+  },
+  "check_c_blind_battery": {
+    "threshold_hit_rate": 0.5,
+    "scored_count": 40,
+    "hit_count": 7,
+    "hit_rate": 0.175,
+    "meets_threshold": false,
+    "lead_lag_distribution_days": [
+      -37,
+      43,
+      43,
+      43,
+      43,
+      43,
+      -42
+    ],
+    "shuffled_birth_control": [
+      {
+        "shift_days": 2324,
+        "hit_rate": 0.55
+      },
+      {
+        "shift_days": 4648,
+        "hit_rate": 0.375
+      },
+      {
+        "shift_days": 6972,
+        "hit_rate": 0.225
+      },
+      {
+        "shift_days": 9296,
+        "hit_rate": 0.425
+      },
+      {
+        "shift_days": 11620,
+        "hit_rate": 0.15
+      },
+      {
+        "shift_days": 13944,
+        "hit_rate": 0.275
+      },
+      {
+        "shift_days": 16268,
+        "hit_rate": 0.35
+      }
+    ],
+    "shuffled_mean_hit_rate": 0.33571428571428574,
+    "control_gap": -0.16071428571428575,
+    "beats_shuffled_control": false,
+    "pass": false
+  },
+  "check_c_per_event": [
+    {
+      "event_id": "0d03e02a-e619-52b5-8a78-8f26e13ba125",
+      "event_date": "1993-07-01",
+      "window_start": "1991-01-01",
+      "window_end": "1995-12-30",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 11.11538809383606,
+      "peak_date": "1993-05-20",
+      "peak_intensity": 11.015737593579303,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "3a37fa76-cfc1-599b-bbdf-97cff784f5ac",
+      "event_date": "1998-02-16",
+      "window_start": "1995-08-19",
+      "window_end": "2000-08-16",
+      "target_domain": "relationship",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 6.497646781821709,
+      "peak_date": "1998-01-05",
+      "peak_intensity": 5.662515827506723,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "359944e3-908f-5eb0-ba38-6696bbbefbe6",
+      "event_date": "2001-03-15",
+      "window_start": "1998-09-15",
+      "window_end": "2003-09-13",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 26.937833389901417,
+      "peak_date": "2001-02-01",
+      "peak_intensity": 26.437853926749778,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "4a1b1dc0-df38-56d8-a2c8-0383bb2acc7c",
+      "event_date": "2003-06-15",
+      "window_start": "2000-12-15",
+      "window_end": "2005-12-13",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 27.97010788261328,
+      "peak_date": "2003-05-09",
+      "peak_intensity": 27.97300460762022,
+      "peak_lag_days": -37,
+      "within_proximity": true,
+      "at_or_above_threshold": true,
+      "pass": true
+    },
+    {
+      "event_id": "45ba996d-5923-5570-8055-8cbf4a470636",
+      "event_date": "2004-01-15",
+      "window_start": "2001-07-17",
+      "window_end": "2006-07-15",
+      "target_domain": "relationship",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 6.141529546141167,
+      "peak_date": "2004-02-27",
+      "peak_intensity": 5.859119668629129,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "cd68bc5c-c5fc-5914-bd95-e18ba639a5dc",
+      "event_date": "2004-06-01",
+      "window_start": "2001-12-02",
+      "window_end": "2006-11-30",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 28.794816274789312,
+      "peak_date": "2004-07-14",
+      "peak_intensity": 29.21642650972607,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": true,
+      "pass": true
+    },
+    {
+      "event_id": "fd04fecc-21f7-5dfd-b68b-f1a6f1cd6bfa",
+      "event_date": "2007-06-10",
+      "window_start": "2004-12-10",
+      "window_end": "2009-12-08",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 6.082897779109257,
+      "peak_date": "2007-07-23",
+      "peak_intensity": 5.955413540790805,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "71af4f61-3efc-557b-949a-d855845a5ca5",
+      "event_date": "2007-06-15",
+      "window_start": "2004-12-15",
+      "window_end": "2009-12-13",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 30.293508544481526,
+      "peak_date": "2007-05-04",
+      "peak_intensity": 30.109449265611676,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "4e09e1e1-7925-5675-9af8-74e8eea6fe67",
+      "event_date": "2007-06-15",
+      "window_start": "2004-12-15",
+      "window_end": "2009-12-13",
+      "target_domain": "health",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 0.5647179909427748,
+      "peak_date": "2007-07-28",
+      "peak_intensity": 0.5540139975298477,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "aed78f94-87ca-5347-a1d0-7f277a99b6c4",
+      "event_date": "2008-06-09",
+      "window_start": "2005-12-10",
+      "window_end": "2010-12-08",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 6.2618660367486285,
+      "peak_date": "2008-07-22",
+      "peak_intensity": 6.134381798430172,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "132b61e0-3409-53fd-bb1a-80b4b6bdcc67",
+      "event_date": "2010-07-01",
+      "window_start": "2008-01-01",
+      "window_end": "2012-12-29",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 36.07286640838456,
+      "peak_date": "2010-08-13",
+      "peak_intensity": 32.25149258766967,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "a1ef10c2-c52d-536e-9fd5-51342d58721e",
+      "event_date": "2010-12-15",
+      "window_start": "2008-06-16",
+      "window_end": "2013-06-14",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 36.164063205316594,
+      "peak_date": "2011-01-27",
+      "peak_intensity": 40.039927074927164,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": true,
+      "pass": true
+    },
+    {
+      "event_id": "4e96f4b9-fe3b-5b40-bdb3-c60e3024abfa",
+      "event_date": "2011-01-15",
+      "window_start": "2008-07-17",
+      "window_end": "2013-07-15",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 36.18305631208045,
+      "peak_date": "2011-02-27",
+      "peak_intensity": 41.45347742737332,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": true,
+      "pass": true
+    },
+    {
+      "event_id": "95138517-2d23-51a6-b13b-71801e806a11",
+      "event_date": "2011-06-15",
+      "window_start": "2008-12-15",
+      "window_end": "2013-12-13",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 36.115018346910084,
+      "peak_date": "2011-07-28",
+      "peak_intensity": 48.33883559574046,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": true,
+      "pass": true
+    },
+    {
+      "event_id": "cf0c918d-da71-504f-9c62-4920c48cd69e",
+      "event_date": "2012-09-01",
+      "window_start": "2010-03-04",
+      "window_end": "2015-03-02",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 36.18305631208045,
+      "peak_date": "2012-07-21",
+      "peak_intensity": 34.82229700867329,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "852d1420-e733-582b-a2ae-f7de33b8d38e",
+      "event_date": "2012-09-15",
+      "window_start": "2010-03-18",
+      "window_end": "2015-03-16",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 36.164063205316594,
+      "peak_date": "2012-08-04",
+      "peak_intensity": 33.86976549628831,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "aa591eb5-8e00-5600-b9c1-7177f7919ab8",
+      "event_date": "2012-10-15",
+      "window_start": "2010-04-17",
+      "window_end": "2015-04-15",
+      "target_domain": "relationship",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 7.876948585885966,
+      "peak_date": "2012-09-03",
+      "peak_intensity": 6.91405665492003,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "c143ce2a-f1e1-5092-9c04-f659fa0de5e1",
+      "event_date": "2013-03-15",
+      "window_start": "2010-09-15",
+      "window_end": "2015-09-13",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 36.210920011654196,
+      "peak_date": "2013-04-27",
+      "peak_intensity": 24.882050274943307,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "6f5ee9cb-8b35-5da9-a601-30430e8ad7d9",
+      "event_date": "2013-05-15",
+      "window_start": "2010-11-15",
+      "window_end": "2015-11-13",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 7.275396457027928,
+      "peak_date": "2013-06-27",
+      "peak_intensity": 4.966870006299108,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "72fad18c-ad30-5f46-9418-c2ed28c4d9ac",
+      "event_date": "2013-07-01",
+      "window_start": "2011-01-01",
+      "window_end": "2015-12-30",
+      "target_domain": "relationship",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 7.9740458833882775,
+      "peak_date": "2013-07-14",
+      "peak_intensity": 6.069542134320808,
+      "peak_lag_days": 13,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "b72f40f7-687e-51dd-a21d-06b184fc24c1",
+      "event_date": "2013-12-11",
+      "window_start": "2011-06-13",
+      "window_end": "2016-06-10",
+      "target_domain": "relationship",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 7.962429927411389,
+      "peak_date": "2014-01-23",
+      "peak_intensity": 6.063136802432792,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "b5ea6a4d-6e0a-5ed3-875c-e241d3cb50a5",
+      "event_date": "2016-07-01",
+      "window_start": "2014-01-01",
+      "window_end": "2018-12-30",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 8.77729660673738,
+      "peak_date": "2016-08-13",
+      "peak_intensity": 8.071159104161508,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "e3b2f1d5-5609-5dca-af84-d9fac54cd3cd",
+      "event_date": "2017-03-15",
+      "window_start": "2014-09-15",
+      "window_end": "2019-09-13",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 9.475286368898916,
+      "peak_date": "2017-04-27",
+      "peak_intensity": 8.769148866323041,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "b75c63f4-ead1-5d6d-9811-011277347d57",
+      "event_date": "2018-11-28",
+      "window_start": "2016-05-30",
+      "window_end": "2021-05-28",
+      "target_domain": "wealth",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 3.7271497584541065,
+      "peak_date": "2019-01-10",
+      "peak_intensity": 3.960071942446043,
+      "peak_lag_days": 43,
+      "within_proximity": true,
+      "at_or_above_threshold": true,
+      "pass": true
+    },
+    {
+      "event_id": "928a1f56-0940-5428-a35a-8591f84fd5b4",
+      "event_date": "2019-05-15",
+      "window_start": "2016-11-14",
+      "window_end": "2021-11-12",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 47.63709439876888,
+      "peak_date": "2019-04-03",
+      "peak_intensity": 50.46871788624752,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": true,
+      "pass": true
+    },
+    {
+      "event_id": "974651b2-f743-56d9-b9e9-178e0b8e7431",
+      "event_date": "2021-01-15",
+      "window_start": "2018-07-18",
+      "window_end": "2023-07-16",
+      "target_domain": "health",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 0.9242512077294686,
+      "peak_date": "2020-12-04",
+      "peak_intensity": 0.8730434782608696,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "b8884cbe-b894-588b-a70f-2c0a90fdeac5",
+      "event_date": "2021-07-01",
+      "window_start": "2019-01-01",
+      "window_end": "2023-12-30",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 8.999579949791979,
+      "peak_date": "2021-05-20",
+      "peak_intensity": 8.543499396953735,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "25a0f2ec-98fc-5bc9-a6e7-3916f35149a3",
+      "event_date": "2022-01-03",
+      "window_start": "2019-07-06",
+      "window_end": "2024-07-03",
+      "target_domain": "relationship",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 9.977771520937583,
+      "peak_date": "2021-11-22",
+      "peak_intensity": 9.276837515746127,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "7f29458f-db56-5a4b-a564-6a4754d0821d",
+      "event_date": "2023-05-15",
+      "window_start": "2020-11-14",
+      "window_end": "2025-11-12",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 38.20069949716512,
+      "peak_date": "2023-04-03",
+      "peak_intensity": 36.377518457891036,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "d506f3e6-6188-5327-8920-d3896e630f08",
+      "event_date": "2023-06-15",
+      "window_start": "2020-12-15",
+      "window_end": "2025-12-13",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 37.836573593845756,
+      "peak_date": "2023-05-04",
+      "peak_intensity": 36.20106744735167,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "661c8535-5906-5333-8b38-e14305bddad6",
+      "event_date": "2023-07-15",
+      "window_start": "2021-01-14",
+      "window_end": "2026-01-12",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 7.7191122844649795,
+      "peak_date": "2023-06-03",
+      "peak_intensity": 7.263031731626734,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "836bb274-6a6f-5c29-a298-f3c476197b8a",
+      "event_date": "2024-02-16",
+      "window_start": "2021-08-18",
+      "window_end": "2026-08-16",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 7.34736360743456,
+      "peak_date": "2024-01-05",
+      "peak_intensity": 6.891283054596314,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "d81fae4e-edf4-58d9-b201-cced7eae19d7",
+      "event_date": "2025-05-15",
+      "window_start": "2022-11-15",
+      "window_end": "2027-11-13",
+      "target_domain": "wealth",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 2.4749758454106283,
+      "peak_date": "2025-04-03",
+      "peak_intensity": 2.270144927536232,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "acb209c7-8107-53e7-b6ea-b8596e0f07cb",
+      "event_date": "2025-07-01",
+      "window_start": "2023-01-01",
+      "window_end": "2027-12-30",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 32.00290688483819,
+      "peak_date": "2025-05-20",
+      "peak_intensity": 30.151725001345547,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "a95552d7-0c6c-5188-8ab2-e972a8d13118",
+      "event_date": "2025-07-01",
+      "window_start": "2023-01-01",
+      "window_end": "2027-12-30",
+      "target_domain": "health",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 0.6096618357487923,
+      "peak_date": "2025-05-20",
+      "peak_intensity": 0.5584541062801932,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "4018cc05-6f8f-51c4-9ffc-3c1de800dc72",
+      "event_date": "2025-07-15",
+      "window_start": "2023-01-15",
+      "window_end": "2028-01-13",
+      "target_domain": "wealth",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 2.4278260869565216,
+      "peak_date": "2025-06-03",
+      "peak_intensity": 2.2229951690821257,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "3ea3a2fc-3568-56a9-963b-57c7e7b4755c",
+      "event_date": "2025-11-15",
+      "window_start": "2023-05-18",
+      "window_end": "2028-05-15",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 30.74347960539615,
+      "peak_date": "2025-10-04",
+      "peak_intensity": 29.542173266345973,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "2bfb5b17-6901-5d15-ba80-5f0f1d5611f0",
+      "event_date": "2026-01-15",
+      "window_start": "2023-07-18",
+      "window_end": "2028-07-15",
+      "target_domain": null,
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 30.47207335842554,
+      "peak_date": "2025-12-04",
+      "peak_intensity": 29.270767019375434,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "153d920e-640d-598c-9380-795a5d4efa63",
+      "event_date": "2026-03-20",
+      "window_start": "2023-09-20",
+      "window_end": "2028-09-17",
+      "target_domain": "career",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 6.161650580005313,
+      "peak_date": "2026-02-06",
+      "peak_intensity": 5.916666961834765,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    },
+    {
+      "event_id": "1f9c6775-30c2-5f92-b1a5-24512f5681a6",
+      "event_date": "2026-04-17",
+      "window_start": "2023-10-18",
+      "window_end": "2028-10-15",
+      "target_domain": "relationship",
+      "threshold_percentile": 0.6666666666666666,
+      "threshold_value": 6.549632515717703,
+      "peak_date": "2026-03-06",
+      "peak_intensity": 6.2907819002922185,
+      "peak_lag_days": -42,
+      "within_proximity": true,
+      "at_or_above_threshold": false,
+      "pass": false
+    }
+  ],
+  "substrate_coverage_note": {
+    "earliest_confirmed_served_activation_date": "2010-08-18",
+    "scorable_events_before_earliest_coverage": 11,
+    "scorable_events_before_earliest_coverage_ids": [
+      "0d03e02a-e619-52b5-8a78-8f26e13ba125",
+      "3a37fa76-cfc1-599b-bbdf-97cff784f5ac",
+      "359944e3-908f-5eb0-ba38-6696bbbefbe6",
+      "4a1b1dc0-df38-56d8-a2c8-0383bb2acc7c",
+      "45ba996d-5923-5570-8055-8cbf4a470636",
+      "cd68bc5c-c5fc-5914-bd95-e18ba639a5dc",
+      "fd04fecc-21f7-5dfd-b68b-f1a6f1cd6bfa",
+      "71af4f61-3efc-557b-949a-d855845a5ca5",
+      "4e09e1e1-7925-5675-9af8-74e8eea6fe67",
+      "aed78f94-87ca-5347-a1d0-7f277a99b6c4",
+      "132b61e0-3409-53fd-bb1a-80b4b6bdcc67"
+    ]
+  }
+}

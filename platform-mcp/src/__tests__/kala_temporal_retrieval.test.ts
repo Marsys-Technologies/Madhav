@@ -95,11 +95,23 @@ function mockRegistryFetch(opts: { reachable: boolean }) {
     } else if (body.uri === 'marsys://tool/L3/query_temporal_view') {
       rows = [DARSHANA_ROW]
     }
+    // CR-111 fix (D-4a Lane A-0): each capability names its array field DIFFERENTLY —
+    // query_dasha_dossier/query_temporal_view use `rows`, but query_convergence_windows
+    // uses `convergence_windows` and query_obstruction_periods uses `obstructions` (see
+    // each capability's own `content: {...}` shape in layers/L3_kala/*.ts). This mock
+    // previously hardcoded every URI's response to a `{ rows }` shape, which is why the
+    // real fieldName-mismatch bug (fetchCapabilityRows always reading `.rows`) shipped
+    // undetected — the mock could never disagree with the buggy reader. Fixed to mirror
+    // each capability's REAL field name so this suite is an effective regression guard.
+    const fieldName =
+      body.uri === 'marsys://tool/L3/query_convergence_windows' ? 'convergence_windows' :
+      body.uri === 'marsys://tool/L3/query_obstruction_periods' ? 'obstructions' :
+      'rows'
     return {
       ok: true,
       // Double-wrapped — matches the real /api/retrieval/capability + CapabilityDescriptor
       // handler contract (see doc-comment above).
-      json: async () => ({ ok: true, content: { content: { rows }, is_error: false } }),
+      json: async () => ({ ok: true, content: { content: { [fieldName]: rows }, is_error: false } }),
       text: async () => '',
     } as Response
   })
