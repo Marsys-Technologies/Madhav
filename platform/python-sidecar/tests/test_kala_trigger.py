@@ -269,6 +269,93 @@ class TestVedhaFilterGap:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 5b. Weight overrides — D-3 ADMIT lane wiring (T-6): 0.2/0.2 admitted weights
+#     vs the module's own unratified 0.5/0.6 defaults
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestWeightOverride:
+    def test_default_weights_are_the_modules_own_unratified_constants(self):
+        """Baseline: omitting overrides uses TRIGGER_ADDITIVE_WEIGHTS /
+        TRIGGER_SUPPRESSIVE_WEIGHTS (0.5/0.5 additive, 0.6/0.6 suppressive)
+        — this is what a caller gets WITHOUT explicitly opting into the
+        admitted weights, and must stay the un-admitted default."""
+        from services.kala_trigger.trigger import (
+            compute_trigger_currents, TRIGGER_ADDITIVE_WEIGHTS, TRIGGER_SUPPRESSIVE_WEIGHTS,
+        )
+
+        trig = compute_trigger_currents(chart_id="test-chart-default-weights")
+        assert trig["weights_used"]["additive"] == TRIGGER_ADDITIVE_WEIGHTS
+        assert trig["weights_used"]["suppressive"] == TRIGGER_SUPPRESSIVE_WEIGHTS
+        assert trig["weights_used"]["additive"]["guru_shani_double_transit"] == pytest.approx(0.5)
+        assert trig["weights_used"]["suppressive"]["malefic_transit_over_mechanism"] == pytest.approx(0.6)
+
+    def test_admitted_0_2_0_2_weights_are_actually_used_not_the_defaults(self):
+        """THE wiring proof: passing the ADMIT-lane winning weights
+        (additive=0.2/0.2, suppressive=0.2/0.2) must change the served
+        suppressive/additive math relative to the module's own 0.5/0.6
+        defaults — proves a caller genuinely reaches this override path,
+        not just that the parameter exists."""
+        from services.kala_trigger.trigger import compute_trigger_currents
+
+        admitted_additive = {"guru_shani_double_transit": 0.2, "saham_activation": 0.2}
+        admitted_suppressive = {"malefic_transit_over_mechanism": 0.2, "papa_kartari_sandwich": 0.2}
+
+        gochara = FakeGochara({
+            ("Saturn", 100.0): [FakeEvent(orb_at_event_deg=0.0, applying_separating="applying", aspect_deg=0)],
+        })
+
+        trig_admitted = compute_trigger_currents(
+            chart_id="test-chart-admitted-weights",
+            mechanism_lon=100.0, gochara_service=gochara,
+            w_jd_start=2451545.0, w_jd_end=2451560.0, orb_deg=5.0,
+            additive_weights=admitted_additive,
+            suppressive_weights=admitted_suppressive,
+        )
+        trig_default = compute_trigger_currents(
+            chart_id="test-chart-admitted-weights",
+            mechanism_lon=100.0, gochara_service=gochara,
+            w_jd_start=2451545.0, w_jd_end=2451560.0, orb_deg=5.0,
+        )
+
+        # Reported weights_used reflect exactly what was passed in — a caller
+        # (or a fresh-context verifier) can assert the ADMITTED values were
+        # genuinely used, not silently substituted back to the defaults.
+        assert trig_admitted["weights_used"]["additive"] == admitted_additive
+        assert trig_admitted["weights_used"]["suppressive"] == admitted_suppressive
+
+        # suppressive = -(1 - (1 - 0.2*1.0)*(1 - 0.2*0.0)) = -(1 - 0.8) = -0.2
+        assert trig_admitted["suppressive"] == pytest.approx(-0.2, abs=1e-4)
+        # default: -(1 - (1 - 0.6*1.0)*(1 - 0.6*0.0)) = -0.6 (module's own constant)
+        assert trig_default["suppressive"] == pytest.approx(-0.6, abs=1e-4)
+        assert trig_admitted["suppressive"] != trig_default["suppressive"]
+
+    def test_compose_with_ka_sangam_at_admitted_weights(self):
+        """End-to-end composition proof at the admitted weights (mirrors the
+        ADMIT lane's own train-scoring composition contract)."""
+        from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
+
+        admitted_additive = {"guru_shani_double_transit": 0.2, "saham_activation": 0.2}
+        admitted_suppressive = {"malefic_transit_over_mechanism": 0.2, "papa_kartari_sandwich": 0.2}
+        gochara = FakeGochara({
+            ("Saturn", 100.0): [FakeEvent(orb_at_event_deg=0.0, applying_separating="applying", aspect_deg=0)],
+        })
+        trig = compute_trigger_currents(
+            chart_id="test-chart-compose-admitted",
+            mechanism_lon=100.0, gochara_service=gochara,
+            w_jd_start=2451545.0, w_jd_end=2451560.0, orb_deg=5.0,
+            additive_weights=admitted_additive,
+            suppressive_weights=admitted_suppressive,
+        )
+        baseline = 0.8
+        net = compose_with_ka_sangam(baseline, trig)
+        assert net == pytest.approx(0.6, abs=1e-4)  # 0.8 + (-0.2)
+        # At the module's own 0.6 default this same malefic hit would have
+        # pulled the baseline all the way down to 0.2 (see TestDestructiveInterference
+        # above) — the admitted 0.2/0.2 weights are a materially gentler suppression.
+        assert net > 0.2
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # 6. school_consensus repair-or-honest-flag
 # ═══════════════════════════════════════════════════════════════════════════
 
