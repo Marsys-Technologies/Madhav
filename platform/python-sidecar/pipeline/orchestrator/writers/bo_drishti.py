@@ -128,7 +128,7 @@ def _fetch_wildcard_signals(
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND NOT (domains_affected_array && %s::text[])
              AND computed_salience >= %s
-           ORDER BY computed_salience DESC NULLS LAST LIMIT 20""",
+           ORDER BY computed_salience DESC NULLS LAST, signal_id ASC LIMIT 20""",
         [chart_id, aya, template_domains, top_salience_threshold],
     )
     domain_exclusion_wildcards = {r["sig_id"] for r in domain_exclusion_raw}
@@ -144,7 +144,7 @@ def _fetch_wildcard_signals(
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND signal_id = ANY(%s::uuid[])
-           ORDER BY computed_salience DESC NULLS LAST LIMIT 20""",
+           ORDER BY computed_salience DESC NULLS LAST, signal_id ASC LIMIT 20""",
         [chart_id, aya, list(wildcard_ids)],
     )
 

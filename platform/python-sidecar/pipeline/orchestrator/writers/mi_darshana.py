@@ -280,7 +280,7 @@ class MiDarshanaWriter(WriterBase):
                                resolution_hint_jsonb, verification_pass_status
                         FROM bodha_contradictions
                         WHERE chart_id = %s AND ayanamsha_id = %s
-                        ORDER BY combined_salience DESC NULLS LAST LIMIT 100
+                        ORDER BY combined_salience DESC NULLS LAST, contradiction_id ASC LIMIT 100
                     """, (chart_id, CANONICAL_AYA))
                     all_contradictions = cur.fetchall()
 
