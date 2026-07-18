@@ -735,8 +735,13 @@ POST_REMEDIATION register's git history either); system-of-record for that range
 `DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §8` + the live doctrine-wave briefs, per the pointer table
 in POST_REMEDIATION §N. No dangling row range remains across either register.
 
-**CR-108 (NEW, 2026-07-18, D-3 cycle-2b, conductor-discovered, native-ratified — pre-existing class,
-same system-of-record convention as CR-90..107):** predicate-selection dignity_score saturation +
+**CR-108 [CLOSED 2026-07-18, FIX-PSEL lane, PR #605, verified ACCEPT twice (predicate-selection
+diagnosis confirmed genuine ceiling-by-construction not a bug; quota+content-hash tiebreak
+fix independently traced correct), deployed, falsifier-confirmed live (16,767 real Mode A/B
+kala_convergence rows bear trigger_weights_used post-rebuild — TRIGGER genuinely exercises real
+data for the first time in the campaign's history)] (2026-07-18, D-3 cycle-2b, conductor-discovered,
+native-ratified — pre-existing class, same system-of-record convention as CR-90..107):**
+predicate-selection dignity_score saturation +
 insertion-order tiebreak. `ka_sangam.py::plan_substeps()` selects the top-200 (near tier) / top-60
 (lifetime tier) `kala_activation_predicates` via `ORDER BY dignity_score DESC NULLS LAST, id ASC
 LIMIT N`. On 482012f1, **4,441 predicates across ALL 6 signature classes sit at the exact ceiling

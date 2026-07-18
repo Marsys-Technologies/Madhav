@@ -1574,3 +1574,32 @@ finding_entry:
     number; 2.38 still clears D-1.5a's original gate (composite off d1_score=1.15, Dhana Yoga
     served). No code changes made or needed — this entry documents the baseline shift only.
 ```
+
+## DIS.026 (proposed, campaign ref: DR-13 DRAFT) — Event-Scoring Semantics (shape/tolerance/control-mirroring)
+
+```yaml
+finding_entry:
+  logged_by: "D-3 conductor, pre-D-4 wrap-up pass, 2026-07-18, per native directive"
+  dr_id: DIS.026
+  campaign_ref: DR-13 (DRAFT — NOT YET RATIFIED)
+  status: draft_awaiting_native_ratification_at_D4_bind
+  full_text: "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/DR_13_EVENT_SCORING_SEMANTICS_DRAFT.md"
+  context: >
+    D-3's §G retrodiction gate scored every LEL event as a bare point matched to a served curve's
+    peak within a fixed +/-45-day window (DR-11's discipline). Reviewing the per-event detail
+    surfaced that a meaningful share of the LEL corpus is not actually point-shaped in reality —
+    it is a process over an interval or a chain of independently dateable milestones recorded as
+    one fuzzy date at intake. This draft proposes five amendments (event shape tags; interval
+    overlap scoring; chain milestone decomposition; confidence-scaled tolerance; and a
+    non-negotiable control-mirroring rule — every loosening applies identically to the shuffled-
+    birth negative control) to fix the MEASUREMENT for D-4's C-1 matcher, explicitly NOT to
+    retroactively re-score D-3's already-recorded RED result.
+  disposition: >
+    PENDING. This is a DRAFT for native ratification at D-4's own bind, not a provisionally-ruled
+    DR — unlike DR-6 through DR-12 (Fable/Opus provisional rulings batch-ratified at campaign
+    close), this one requires native's direct input up front (via
+    NATIVE_DATE_TIGHTENING_QUESTIONNAIRE.md) before it can even be drafted with real content, and
+    the ruling itself (event-scoring discipline) is squarely native's call per the same
+    reasoning DR-11's original thresholds were native-set, not Adjudicator-set. No implementation
+    work is authorized against this draft until ratified.
+```
