@@ -224,16 +224,49 @@ def _c11_vedha_factor(
 
     Enters necessary_conditions as (1 - 0.0) = 1.0 (no vedha) or lower.
     Classical source: Phaladeepika Ch.26 Gochara Vedha.
+
+    CR-102 (2nd bug, T-6 fix): `bg_transit_rules.graha` is seeded lowercase
+    ("saturn", "jupiter", ...; see brahmagyan/l0_transit.py) while callers in
+    this module pass capitalized planet names ("Saturn", "Jupiter", ... —
+    see `_resolve_transit_planet`). The comparison below is case-normalized
+    so a real fetched vedha rule is never missed on case alone. `transit_house`
+    itself must ALSO be in the correct house-FROM-MOON reference frame — see
+    `_house_from_moon` below and its callers in mode_a_search/mode_b_sweep
+    (the CR-102 primary bug: both call sites used to pass the transiting
+    planet's raw rasi sign number here instead).
     """
     if not ctx.vedha_rules or transit_house is None:
         return 1.0  # no data → no vedha → neutral (1.0)
+    planet_norm = (planet or '').strip().lower()
     for rule in ctx.vedha_rules:
         rule_planet = rule.get('graha') or rule.get('planet')
         to_house = rule.get('transit_to_house') or rule.get('to_house')
         vedha_h = rule.get('vedha_house')
-        if rule_planet == planet and to_house == transit_house and vedha_h:
+        rule_planet_norm = (rule_planet or '').strip().lower()
+        if rule_planet_norm == planet_norm and to_house == transit_house and vedha_h:
             return 0.3  # vedha present → strongly damp
     return 1.0
+
+
+def _house_from_moon(
+    transit_sign_idx_1based: Optional[int],
+    moon_sign_idx_0based: Optional[int],
+) -> Optional[int]:
+    """
+    CR-102 fix: classical Chandra Gochara house number (1-12) of a
+    transiting sign, counted FROM THE NATAL MOON's sign — the reference
+    frame `bg_transit_rules.primary_house` actually encodes (see
+    brahmagyan/l0_transit.py: "Jupiter 2nd from Moon" etc.). Returns None
+    (caller then falls back to the old, bugged sign-number behavior) when
+    either input is unavailable, so this is additive-safe.
+
+    Structurally identical to services.kala_trigger.trigger.house_from_moon
+    (T-5's standalone re-derivation) — duplicated here, not imported, to
+    avoid a reverse import (kala_trigger already imports from this module).
+    """
+    if transit_sign_idx_1based is None or moon_sign_idx_0based is None:
+        return None
+    return ((transit_sign_idx_1based - 1 - moon_sign_idx_0based) % 12) + 1
 
 
 # ── Nakshatra / tara helpers (C5 nakshatra_subsystem, C_tara_bala) ────────────
@@ -837,9 +870,17 @@ def mode_a_search(
     janma_nakshatra_idx: int,
     enrichment_context: Optional[EnrichmentContext] = None,
     native_location: Optional[dict] = None,
+    moon_sign: Optional[str] = None,
 ) -> list[dict]:
     """
     Mode A: daśā-eligibility soft prior → transit search INSIDE eligible survivors.
+
+    moon_sign (CR-102, T-6 fix): this chart's natal Moon sign name (e.g.
+    "Aquarius"), used to compute the C11 vedha filter's `transit_house` in
+    the correct house-FROM-MOON reference frame. Optional only for backward
+    compatibility with pre-fix callers/tests — when omitted, the C11 vedha
+    check falls back to the OLD (bugged, CR-102) sign-number behavior rather
+    than silently producing a wrong-but-confident house number.
 
     CR-87: janma_nakshatra_idx is REQUIRED (0-based index into
     _NAKSHATRAS_ORDERED) — this chart's own Moon nakshatra, resolved by the
@@ -861,6 +902,7 @@ def mode_a_search(
 
     ctx = enrichment_context or EnrichmentContext.empty()
     windows: list[dict] = []
+    moon_sign_idx = _SIGN_NAME_TO_IDX.get(moon_sign) if moon_sign else None
 
     # Extract predicate fields
     dasha_rule   = predicate.get('dasha_eligibility_rule_jsonb', {}) or {}
@@ -969,8 +1011,13 @@ def mode_a_search(
         c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
-        # C11 vedha: NECESSARY side, not supporting
-        transit_house = transit_sign  # house ≈ sign for transits in this model
+        # C11 vedha: NECESSARY side, not supporting.
+        # CR-102 fix: transit_house must be house-FROM-MOON, not the raw rasi
+        # sign number (see _house_from_moon docstring). Falls back to the old
+        # (bugged) sign-number behavior only when moon_sign wasn't supplied.
+        transit_house = _house_from_moon(transit_sign, moon_sign_idx)
+        if transit_house is None:
+            transit_house = transit_sign
         vedha_factor  = _c11_vedha_factor(planet, transit_house, ctx)
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
@@ -1058,9 +1105,13 @@ def mode_b_sweep(
     enrichment_context: Optional[EnrichmentContext] = None,
     muhurta_service: Any = None,
     native_location: Optional[dict] = None,
+    moon_sign: Optional[str] = None,
 ) -> list[dict]:
     """
     Mode B: un-gated long-horizon anomaly sweep.
+
+    moon_sign (CR-102, T-6 fix): see mode_a_search's docstring — same
+    house-from-Moon reference-frame fix for the C11 vedha filter.
 
     Sweeps the full horizon for transit events matching the predicate's
     transit_trigger, WITHOUT filtering by dasha eligibility. Any window whose
@@ -1078,6 +1129,7 @@ def mode_b_sweep(
 
     ctx = enrichment_context or EnrichmentContext.empty()
     windows: list[dict] = []
+    moon_sign_idx = _SIGN_NAME_TO_IDX.get(moon_sign) if moon_sign else None
 
     transit_trig  = predicate.get('transit_trigger_jsonb', {}) or {}
     sig_class     = predicate.get('signature_class', 'UNKNOWN')
@@ -1136,7 +1188,11 @@ def mode_b_sweep(
         c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
-        vedha_factor = _c11_vedha_factor(planet, transit_sign, ctx)
+        # CR-102 fix (see mode_a_search's identical fix + _house_from_moon docstring).
+        transit_house = _house_from_moon(transit_sign, moon_sign_idx)
+        if transit_house is None:
+            transit_house = transit_sign
+        vedha_factor = _c11_vedha_factor(planet, transit_house, ctx)
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 

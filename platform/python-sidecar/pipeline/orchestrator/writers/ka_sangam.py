@@ -26,6 +26,7 @@ from services.ka_sangam.engine import (
     independent_current_count,
     _date_to_jd,
     _NAK_NAME_TO_IDX,
+    _SIGN_NAME_TO_IDX,
     EnrichmentContext,
     NativeChartContext,
     derive_sade_sati_signs,
@@ -34,6 +35,78 @@ from services.ka_sangam.engine import (
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
+from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
+
+# ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
+# wave/D-3/ADMIT (receipted ACCEPT) found additive=0.2/suppressive=0.2 for
+# BOTH weight keys on each side scores best on the train split -- NOT
+# services.kala_trigger.trigger's own unratified 0.5/0.6 defaults. T-4
+# PERMISSION was admission-REJECTED (degrades train score) and is
+# deliberately NOT wired into this score anywhere in this file.
+TRIGGER_ADMITTED_ADDITIVE_WEIGHTS = {'guru_shani_double_transit': 0.2, 'saham_activation': 0.2}
+TRIGGER_ADMITTED_SUPPRESSIVE_WEIGHTS = {'malefic_transit_over_mechanism': 0.2, 'papa_kartari_sandwich': 0.2}
+
+
+def apply_trigger_suppression(windows: list[dict], *, chart_id: str, target_lon,
+                               gochara_service, vedha_rules, moon_sign_idx) -> list[dict]:
+    """
+    D-3 T-6: compose each window's convergence_score with T-5's TRIGGER
+    suppressive term (malefic-transit-over-mechanism + papa-kartari-sandwich)
+    via compose_with_ka_sangam, at the ADMITTED 0.2/0.2 weights above. This is
+    the headline TRIGGER deliverable per services/kala_trigger/trigger.py's
+    own module docstring: "the first place ... a current can push a score
+    DOWN below what the additive terms alone would produce" (CR-89).
+
+    Deliberately NOT applied in this pass (named follow-ups, T-6 claim):
+    guru_shani_double_transit / saham_activation additive currents (need
+    dasha_lord + saham_lord resolution — the day/night-birth Dhana Saham
+    formula lord lookup — out of this pass's scope) and the school_consensus
+    informational current (needs EnrichmentContext.school_consensus_by_domain,
+    a separate documented gap). PERMISSION (T-4) is never applied anywhere —
+    admission-REJECTED.
+
+    Safe no-op when gochara_service is None (mirrors every other U3 current's
+    None-guard in services.ka_sangam.engine) — a build without a live
+    gochara_service serves the pre-TRIGGER convergence_score unchanged, never
+    raises.
+    """
+    if gochara_service is None:
+        return windows
+    for w in windows:
+        try:
+            cf = w.get('constituent_factors') or {}
+            ws, we = w.get('window_start'), w.get('window_end')
+            if ws is None or we is None:
+                continue
+            w_jd_start = _date_to_jd(ws)
+            w_jd_end = _date_to_jd(we)
+            sign_name = cf.get('sign')
+            transit_sign = (_SIGN_NAME_TO_IDX[sign_name] + 1) if sign_name in _SIGN_NAME_TO_IDX else None
+            trig = compute_trigger_currents(
+                chart_id=chart_id,
+                mechanism_lon=target_lon,
+                target_lon=target_lon,
+                transit_sign_idx_1based=transit_sign,
+                moon_sign_idx_0based=moon_sign_idx,
+                w_jd_start=w_jd_start,
+                w_jd_end=w_jd_end,
+                gochara_service=gochara_service,
+                vedha_rules=vedha_rules,
+                vedha_planet=cf.get('planet'),
+                signature_class=cf.get('signature_class', 'UNKNOWN'),
+                additive_weights=TRIGGER_ADMITTED_ADDITIVE_WEIGHTS,
+                suppressive_weights=TRIGGER_ADMITTED_SUPPRESSIVE_WEIGHTS,
+            )
+            pre_score = float(w.get('convergence_score', 0.0) or 0.0)
+            new_score = compose_with_ka_sangam(pre_score, trig)
+            w['convergence_score'] = round(new_score, 4)
+            cf['convergence_score_pre_trigger'] = pre_score
+            cf['trigger_suppressive_applied'] = trig['suppressive']
+            cf['trigger_weights_used'] = trig['weights_used']
+            w['constituent_factors'] = cf
+        except Exception as exc:
+            logger.debug("ka_sangam: TRIGGER suppression skipped for a window: %s", exc)
+    return windows
 
 # CR-87 fix: the module-level _NATIVE_LOCATION constant (hardcoded to
 # Bhubaneswar, lat/lon of chart 482012f1) has been DELETED — not defaulted.
@@ -462,6 +535,12 @@ class KaSangamWriter(WriterBase):
                     keepalive()
                 continue
 
+            # D-3 T-6: target_lon feeds TRIGGER's mechanism_lon/target_lon below —
+            # same longitude mode_a_search/mode_b_sweep already scan against.
+            target_lon = float((pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg', 0.0))
+            moon_sign_idx = _SIGN_NAME_TO_IDX.get(native_ctx.moon_sign)
+            vedha_rules = (enrichment_context.vedha_rules if enrichment_context else None) or None
+
             try:
                 new_windows_a = mode_a_search(
                     predicate=pred_dict,
@@ -474,6 +553,14 @@ class KaSangamWriter(WriterBase):
                     janma_nakshatra_idx=native_ctx.janma_nakshatra_idx,
                     enrichment_context=enrichment_context,
                     native_location=native_ctx.location,
+                    moon_sign=native_ctx.moon_sign,  # CR-102 fix (T-6): correct house-from-Moon vedha frame
+                )
+                # D-3 T-6: TRIGGER suppressive term at the ADMITTED 0.2/0.2 weights
+                # (wave/D-3/ADMIT, receipted ACCEPT) — see apply_trigger_suppression docstring.
+                new_windows_a = apply_trigger_suppression(
+                    new_windows_a, chart_id=chart_id, target_lon=target_lon,
+                    gochara_service=gochara_service, vedha_rules=vedha_rules,
+                    moon_sign_idx=moon_sign_idx,
                 )
                 for w in new_windows_a:
                     w['primary_domain'] = primary_domain
@@ -494,6 +581,12 @@ class KaSangamWriter(WriterBase):
                     enrichment_context=enrichment_context,
                     muhurta_service=muhurta_service,
                     native_location=native_ctx.location,
+                    moon_sign=native_ctx.moon_sign,  # CR-102 fix (T-6): correct house-from-Moon vedha frame
+                )
+                new_windows_b = apply_trigger_suppression(
+                    new_windows_b, chart_id=chart_id, target_lon=target_lon,
+                    gochara_service=gochara_service, vedha_rules=vedha_rules,
+                    moon_sign_idx=moon_sign_idx,
                 )
                 for w in new_windows_b:
                     w['primary_domain'] = primary_domain
