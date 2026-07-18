@@ -57,6 +57,12 @@ authored_by: Claude (conductor), 2026-07-19
 - Recorded per brief's "never guesses, never silently drops" rule: this is
   the hole the failure discipline anticipates, logged here rather than
   silently retried without a note.
+- Narrowed respawn `a14a65e106bd86656` **succeeded** — plan v1.3 committed
+  `faa5b936` (343 insertions / 91 deletions). All 5 §1 subsections corrected,
+  R-3.1 re-scoped to the decomposed scope tuple, C-1..C-6 added as new §8.5,
+  changelog entry is real (13 corrected facts, 17 new-gaps, 1 already-done,
+  R-3.1 re-scope, six rulings). `git diff --stat 9c358819...HEAD -- platform
+  platform-mcp` reconfirmed empty by conductor.
 
 ## Transition log
 
