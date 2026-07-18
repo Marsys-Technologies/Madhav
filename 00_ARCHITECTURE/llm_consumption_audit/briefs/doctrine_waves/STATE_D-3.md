@@ -42,13 +42,24 @@ lifecycle_step: 5  # DEPLOY complete (native GO 2026-07-18): PR #602 (wave/D-3/i
 cycle1_status: CLOSED  # T-0 + T-1 + kala_temporal.ts hotfix deployed clean; wealth guard
                        # re-baselined convergent_moderate/~2.38 (benign, 12/12 yogas fire
                        # structurally). Not re-opened.
-status: blocked  # HALT-AND-REPORT per ESCALATION_POLICY_v1_0.md §2 — see MEMO_D-3_1.md.
-                 # Cycle-2b fully shipped/deployed/verified; §G retrodiction gate blocked by a
-                 # newly-discovered pre-existing predicate-selection bug that prevents TRIGGER
-                 # from firing on Abhisek's chart at all. Adjudicator ruled running §G as-is is
-                 # FORBIDDEN (would launder a baseline result as kernel evidence); the
-                 # sequencing decision (defer TRIGGER-retrodiction test vs. fix predicate
-                 # selection first) is native-only per CHARGE §4. Awaiting native disposition.
+status: ACTIVE  # NATIVE DISPOSITION RECEIVED 2026-07-18 (MEMO_D-3_1.md): Option C, AMENDED.
+                 # D-3 stays open; §G waits for a real TRIGGER exercise (not Option B — closing
+                 # with the empirical contribution unexercised converts the flagship falsifiable
+                 # gate into deferred debt D-4's calibration ignition would then inherit; not
+                 # Option D alone — mechanism correctness already established, what's missing is
+                 # real-data exercise, a synthetic pass can't substitute). AMENDMENT to C: fix the
+                 # disease not just the symptom — two-part FIX-PSEL/T-7 lane: (1) diagnose the
+                 # dignity_score=1.0 saturation (4,441 predicates at exact ceiling) — fix at
+                 # source if clamp/default-fill bug, document if genuine ceiling-by-construction;
+                 # (2) selection hardening regardless of (1) — per-signature-class quota + a
+                 # content-hash (not insertion-order) tiebreak, grep estate-wide for the same
+                 # antipattern. Full implement->verify->integrate->deploy->L3-rebuild cycle, THEN
+                 # check the memo's own falsifier (Mode A/B rows w/ trigger_weights_used present),
+                 # THEN run §G once (standing one-re-run rule). GUARD: quota must not be tuned
+                 # against §G's outcome — freeze selection, then run the gate blind; a red §G
+                 # after that stands as a true red. STOP-and-report if diagnosis traces into
+                 # ga_vichara or the core scoring writer (don't let a selection fix silently
+                 # become a scoring rework) — bring expanded scope back to native before proceeding.
 cycle: 2  # CYCLE-2 OPEN (native directive 2026-07-18): T-2/T-3 transit kernel, T-4/T-5
           # kernel-admission loop, T-6 serving, then the §G retrodiction gate battery
           # (the empirical crux of D-3). Binder pass complete, BOUND — see
