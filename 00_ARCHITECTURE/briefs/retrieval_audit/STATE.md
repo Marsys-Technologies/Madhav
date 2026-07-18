@@ -36,14 +36,23 @@ authored_by: Claude (conductor), 2026-07-19
 
 | Lane | Territory | Model/effort | Status |
 |---|---|---|---|
-| A | Catalog & registration reality | TBD | pending |
-| B | Envelope & budget reality | TBD | pending |
-| C | Planner & taxonomy reality | TBD | pending |
-| D | MCP edge & adaptivity reality | TBD | pending |
-| E | Data-plane & service coverage reality | TBD | pending |
-| F | Paripraśna rebuild interface | TBD | pending |
+| A | Catalog & registration reality | sonnet, default effort (mechanical: counts, file:line grep) | spawned (background) |
+| B | Envelope & budget reality | sonnet, default effort (mechanical + moderate judgment) | spawned (background) |
+| C | Planner & taxonomy reality | opus, high effort (taxonomy adjudication + synthesis) | spawned (background) |
+| D | MCP edge & adaptivity reality | sonnet, default effort (mechanical) | spawned (background) |
+| E | Data-plane & service coverage reality | opus, high effort (census + disposition judgment) | spawned (background) |
+| F | Paripraśna rebuild interface | opus, high/xhigh effort (heaviest judgment, per brief mandate) | spawned (background) |
 
 ## Transition log
 
 - T0 (Phase 0 close): main commit + worktree verified. Proceeding to spawn
   lanes A–F in parallel.
+- T1: all six lanes spawned as parallel background subagents (single
+  message, concurrent). Each writes its own `LANE_<X>_REPORT.md` under this
+  directory; conductor commits after each lane lands per brief §D.
+  Rationale for model split: A/B/D are mostly mechanical verification
+  (counts, file:line existence checks) → sonnet, default effort. C/E/F carry
+  real adjudication/synthesis work (taxonomy unification, table/service
+  disposition judgment calls, cross-document architectural conflict-finding)
+  → opus, high effort; F additionally per the brief's explicit mandate
+  ("strongest model, high effort").
