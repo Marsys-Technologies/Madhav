@@ -1,0 +1,27 @@
+{
+  "fetch_meta": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "tool": "ganita_dasha_lord_capability_get",
+    "ayanamsha_id": "lahiri_chitrapaksha",
+    "note": "Live values, 9/9 MD lords. ratification_domains/ratification_factor match mechanisms.ts's hand-maintained DOMAIN_LORDS table exactly (cross-checked): wealth={Jupiter:1.0,Saturn:0.8,Venus:1.0}, career={Saturn:0.8}, health={Mercury:1.0}, marriage={Venus:1.0}. warning_score/warning_tier used here as the T-4 PERMISSION capability-term proxy (see harness docstring for exactly what is and is not reproduced from compute_permission())."
+  },
+  "lords": {
+    "Jupiter": {"house_class": "trikona_lord", "functional_lordship": "temporal_benefic", "shadbala_percentile": 0.75, "ratification_factor": 1.0, "ratification_domains": ["wealth"], "warning_score": 0, "warning_tier": "none"},
+    "Ketu":    {"house_class": "neutral", "functional_lordship": null, "shadbala_percentile": 0.125, "ratification_factor": null, "ratification_domains": [], "warning_score": 1, "warning_tier": "watch"},
+    "Mars":    {"house_class": "trikona_lord", "functional_lordship": "yogakaraka", "shadbala_percentile": 0.375, "ratification_factor": 1.0, "ratification_domains": ["general"], "warning_score": 0, "warning_tier": "none"},
+    "Mercury": {"house_class": "dusthana_lord", "functional_lordship": "temporal_malefic", "shadbala_percentile": 0.625, "ratification_factor": 1.0, "ratification_domains": ["health"], "warning_score": 2, "warning_tier": "elevated"},
+    "Moon":    {"house_class": "kendra_lord", "functional_lordship": "functional_benefic", "shadbala_percentile": 0.5, "ratification_factor": null, "ratification_domains": [], "warning_score": 0, "warning_tier": "none"},
+    "Rahu":    {"house_class": "neutral", "functional_lordship": null, "shadbala_percentile": 0.0, "ratification_factor": null, "ratification_domains": [], "warning_score": 1, "warning_tier": "watch"},
+    "Saturn":  {"house_class": "kendra_lord", "functional_lordship": "temporal_malefic", "shadbala_percentile": 0.875, "ratification_factor": 0.8, "ratification_domains": ["career", "health", "wealth"], "warning_score": 2, "warning_tier": "elevated"},
+    "Sun":     {"house_class": "trikona_lord", "functional_lordship": "temporal_malefic", "shadbala_percentile": 1.0, "ratification_factor": 1.0, "ratification_domains": ["general"], "warning_score": 1, "warning_tier": "watch"},
+    "Venus":   {"house_class": "kendra_lord", "functional_lordship": "temporal_benefic", "shadbala_percentile": 0.25, "ratification_factor": 1.0, "ratification_domains": ["marriage", "wealth"], "warning_score": 1, "warning_tier": "watch"}
+  },
+  "saham_dhana": {
+    "fetch_meta": {"table": "chart_facts", "fact_category": "saham_position", "fact_subject": "SAHAM_DHANA", "queried_via": "direct read-only SQL (mcp postgres connector), not lel_query -- chart_facts is a deterministic L1 computed fact, not an LEL outcome event, so no test-split concern applies"},
+    "sign": "Pisces",
+    "sign_lord": "Jupiter",
+    "house_d1": 11,
+    "nakshatra": "Purva Bhadrapada",
+    "nakshatra_lord": "Jupiter"
+  }
+}
