@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from functools import lru_cache
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -142,6 +143,73 @@ def orb_strength_score(
 
 # ── SWE position lookup ───────────────────────────────────────────────────────
 
+# PERF-TRIGGER-CACHE (Doctrine-Waves D-3): `_get_planet_pos` is the sole
+# swe.calc_ut call site in this module, and is called from every day-step of
+# every scan loop below. Two access patterns dominate at real build scale:
+#   1. Within a single find_aspect_events/find_transit_to_transit_events call,
+#      the `aspect_degrees` loop re-walks the IDENTICAL start_jd/step jd
+#      sequence once per aspect degree -- the planet's position at a given jd
+#      does not depend on which aspect_deg is being tested, so this was pure
+#      redundant computation (a 5-aspect call = up to 5x the necessary
+#      ephemeris work).
+#   2. Across `services/kala_trigger/trigger.py::compute_trigger_currents`,
+#      ~38 separate find_aspects() calls share the SAME window
+#      (w_jd_start, w_jd_end) -- planets recur (Saturn/Mars/Rahu/Ketu across
+#      malefic_transit_over_mechanism + papa_kartari_sandwich; Jupiter/Saturn
+#      in guru_shani_double_transit) -- so the exact-jd day-step sequence
+#      repeats across calls, not just within one.
+#
+# `_calc_ut_cached` memoizes the raw swe.calc_ut(jd, planet_id, flags) call
+# on the EXACT (unrounded) jd float actually passed by a caller -- this is
+# what keeps the cache a pure performance optimization rather than a
+# numerical approximation: a cache hit returns bit-identical output to what
+# an uncached swe.calc_ut call would have produced for that same jd, because
+# it IS that same call's result, memoized. No jd rounding/snapping is done --
+# rounding the cache KEY without also rounding the value actually fed to
+# swe.calc_ut would silently substitute a neighboring jd's position for the
+# one actually requested, which is exactly the kind of semantic change this
+# cache must not make. The within-call and cross-call redundancy above is
+# already expressed as EXACT float repeats (same arithmetic: start_jd + n*step
+# on the same start_jd/step pair produces bit-identical floats every time),
+# so an exact-match cache captures the dominant redundancy without needing
+# approximate keys.
+#
+# Bounded via `maxsize` (LRU eviction) rather than an unbounded dict so a
+# very long multi-chart build run cannot leak memory: a single chart's full
+# lifetime-horizon (~100 years) x ~365 steps/year x ~9 planets is a few
+# hundred thousand entries at most, well under this cap.
+_EPHEMERIS_CACHE_MAXSIZE = 400_000
+
+
+@lru_cache(maxsize=_EPHEMERIS_CACHE_MAXSIZE)
+def _calc_ut_cached(swe, jd: float, planet_id: int, flags: int) -> tuple[float, float]:
+    """
+    Memoized swe.calc_ut(jd, planet_id, flags) -> (sidereal_lon_deg, speed_deg_per_day).
+    Keyed on the exact (swe module identity, jd, planet_id, flags) tuple --
+    no rounding. See the module note above for the correctness rationale.
+    """
+    result = swe.calc_ut(jd, planet_id, flags)
+    # result[0] is (lon, lat, dist, speed_lon, speed_lat, speed_dist)
+    lon = result[0][0] % 360.0
+    speed = result[0][3]
+    return lon, speed
+
+
+def clear_ephemeris_cache() -> None:
+    """Clear the process-local `_get_planet_pos` memoization cache. Exposed
+    for tests/benchmarks; production callers do not need to call this -- the
+    cache is keyed on absolute (swe, jd, planet_id, flags), which is valid to
+    reuse across charts/builds within the same process (a given jd's
+    ephemeris position does not depend on which chart is being built)."""
+    _calc_ut_cached.cache_clear()
+
+
+def ephemeris_cache_info():
+    """`functools.lru_cache` CacheInfo (hits, misses, maxsize, currsize) for
+    `_get_planet_pos`'s underlying memoization -- exposed for benchmarking."""
+    return _calc_ut_cached.cache_info()
+
+
 def _get_planet_pos(swe, planet: str, jd: float) -> tuple[float, float]:
     """
     Return (sidereal_longitude_deg, speed_deg_per_day) for a planet at JD jd.
@@ -162,11 +230,7 @@ def _get_planet_pos(swe, planet: str, jd: float) -> tuple[float, float]:
         raise ValueError(f"Unexpected planet_id type for {planet!r}: {planet_id!r}")
 
     flags = swe.FLG_SIDEREAL | swe.FLG_SPEED
-    result = swe.calc_ut(jd, planet_id, flags)
-    # result[0] is (lon, lat, dist, speed_lon, speed_lat, speed_dist)
-    lon = result[0][0] % 360.0
-    speed = result[0][3]
-    return lon, speed
+    return _calc_ut_cached(swe, jd, planet_id, flags)
 
 
 def _step_size(planet: str) -> float:
@@ -841,6 +905,8 @@ __all__ = [
     "_sign_nak",
     "_jd_to_ist_iso",
     "_get_planet_pos",
+    "clear_ephemeris_cache",
+    "ephemeris_cache_info",
     "find_aspect_events",
     "find_conjunction_events",
     "find_ingress_events",
