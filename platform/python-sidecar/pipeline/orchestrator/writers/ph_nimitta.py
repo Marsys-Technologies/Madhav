@@ -279,7 +279,7 @@ class PhNimittaWriter(WriterBase):
                        confidence_score, confidence_label
                 FROM kala_convergence
                 WHERE chart_id = %s
-                ORDER BY convergence_score DESC
+                ORDER BY convergence_score DESC, convergence_id ASC
                 LIMIT %s
                 """,
                 (chart_id, _MAX_CONVERGENCE),

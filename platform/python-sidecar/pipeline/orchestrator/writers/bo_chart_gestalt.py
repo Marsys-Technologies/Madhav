@@ -118,7 +118,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND signature_tier IN ('chart_defining', 'major')
-           ORDER BY computed_salience DESC NULLS LAST
+           ORDER BY computed_salience DESC NULLS LAST, signal_id ASC
            LIMIT %s""",
         [chart_id, aya, TOP_SIGNAL_COUNT],
     )
@@ -132,7 +132,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
                       constituent_facts_array
                FROM bodha_msr_signals
                WHERE chart_id = %s AND ayanamsha_id = %s
-               ORDER BY computed_salience DESC NULLS LAST
+               ORDER BY computed_salience DESC NULLS LAST, signal_id ASC
                LIMIT %s""",
             [chart_id, aya, TOP_SIGNAL_COUNT],
         )
@@ -153,7 +153,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
         """SELECT cell_id, domain_row, domain_col, computed_linkage_strength
            FROM bodha_cdlm_cells
            WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s
-           ORDER BY computed_linkage_strength DESC NULLS LAST
+           ORDER BY computed_linkage_strength DESC NULLS LAST, cell_id ASC
            LIMIT 5""",
         [chart_id, aya, SNAPSHOT_TYPE],
     )
@@ -166,7 +166,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
            FROM bodha_cgm_nodes
            WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s
              AND node_type = 'graha'
-           ORDER BY pagerank_score DESC NULLS LAST
+           ORDER BY pagerank_score DESC NULLS LAST, node_id ASC
            LIMIT %s""",
         [chart_id, aya, SNAPSHOT_TYPE, TOP_NODE_COUNT],
     )
@@ -194,7 +194,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
                signal_id, computed_salience, valence, signature_tier
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s
-           ORDER BY unnested_domain, computed_salience DESC NULLS LAST
+           ORDER BY unnested_domain, computed_salience DESC NULLS LAST, signal_id ASC
            LIMIT 50""",
         [chart_id, aya],
     )
@@ -244,7 +244,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND valence = 'malefic'
-           ORDER BY computed_salience DESC NULLS LAST
+           ORDER BY computed_salience DESC NULLS LAST, signal_id ASC
            LIMIT 5""",
         [chart_id, aya],
     )
@@ -262,7 +262,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
         """SELECT signal_id, signal_type_id, domains_affected_array
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s AND valence = 'benefic'
-           ORDER BY computed_salience DESC NULLS LAST
+           ORDER BY computed_salience DESC NULLS LAST, signal_id ASC
            LIMIT 1""",
         [chart_id, aya],
     )
@@ -281,7 +281,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
            FROM bodha_discoveries
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND discovery_class IN ('embedding_outlier', 'distributional_anomaly')
-           ORDER BY composite_discovery_rank DESC
+           ORDER BY composite_discovery_rank DESC, discovery_id ASC
            LIMIT 5""",
         [chart_id, aya],
     )
@@ -302,7 +302,8 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
            HAVING COUNT(*) FILTER (WHERE valence = 'benefic') > 0
               AND COUNT(*) FILTER (WHERE valence = 'malefic') > 0
            ORDER BY
-             (COUNT(*) FILTER (WHERE valence = 'benefic') + COUNT(*) FILTER (WHERE valence = 'malefic')) DESC
+             (COUNT(*) FILTER (WHERE valence = 'benefic') + COUNT(*) FILTER (WHERE valence = 'malefic')) DESC,
+             domain ASC
            LIMIT 3""",
         [chart_id, aya],
     )
