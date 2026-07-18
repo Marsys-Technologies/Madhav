@@ -15,6 +15,17 @@ uncommitted changes from concurrent D-4a/D-3 closeout work (native's own session
 touch those paths (§F2 must_not_touch) and does not stage/commit them. `pg1/wave` branch cut from
 this HEAD.
 
+**CORRECTION (recorded post-SPAWN, integration step):** local `main` had already diverged from
+`origin/main` by commit `9c358819` ("docs(retrieval): strategy+plan+consult v1 set..."), an
+already-committed-but-unpushed commit from a concurrent session that itself touches `CLAUDE.md`
+(§F2 must_not_touch) — `pg1/wave` was cut from local `main` HEAD, which includes this commit, not
+from `origin/main` directly. This is NOT a PG-1 scope violation (PG-1 authored none of that
+commit's content) but it means a naive `git diff origin/main...HEAD` scope-warden check would
+falsely attribute `9c358819`'s `CLAUDE.md` touch to PG-1. Corrected: scope-warden and gate G.9 are
+scoped to PG-1's own commit range (`9c358819..HEAD`, i.e. from PG-1's first commit `e58e19ce`'s
+parent forward). Verified clean: `git diff --stat 9c358819...HEAD` touches 31 files, all under
+`00_ARCHITECTURE/pg1_audit/**` or the wave's own brief file, zero forbidden paths.
+
 ## B-2 — Concurrency status
 `CLAUDECODE_BRIEF.md:current_wave = D-4a` (INCOMING). A `BIND_D-4A.md` exists (status: OPEN) and a
 `wave/D-4a/A-0` branch exists — D-4a is mid-flight (a concurrent native/Claude-Code session per the

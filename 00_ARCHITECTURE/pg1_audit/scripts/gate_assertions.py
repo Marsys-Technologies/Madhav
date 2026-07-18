@@ -92,7 +92,13 @@ def g8():
 
 
 def g9():
-    out = subprocess.run(["git", "diff", "--stat", "origin/main...HEAD"], cwd=ROOT, capture_output=True, text=True)
+    # PG-1's own fork point, not origin/main: local main had already diverged from
+    # origin/main (concurrent-session commit 9c358819, unrelated to PG-1, touches
+    # CLAUDE.md) by the time pg1/wave was cut. Scope-warden must judge PG-1's own
+    # commits only. PG1_FORK_POINT is PG-1's first commit's parent (A-0's parent).
+    fork = subprocess.run(["git", "log", "--format=%H", "--grep=chore(pg1/A-0)"], cwd=ROOT, capture_output=True, text=True).stdout.strip().splitlines()
+    base = f"{fork[-1]}^" if fork else "origin/main"
+    out = subprocess.run(["git", "diff", "--stat", f"{base}...HEAD"], cwd=ROOT, capture_output=True, text=True)
     forbidden = ["platform/src", "platform-mcp/src", "platform/migrations", "infra/", ".github/workflows"]
     hits = [line for line in out.stdout.splitlines() if any(f in line for f in forbidden)]
     results["G.9"] = (len(hits) == 0, "clean" if not hits else f"touched forbidden paths: {hits}")
