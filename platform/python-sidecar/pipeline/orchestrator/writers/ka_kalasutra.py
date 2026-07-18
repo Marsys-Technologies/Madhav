@@ -153,7 +153,7 @@ class KaKalasutraWriter(WriterBase):
         rows_actually_inserted = 0
         if rows:
             with conn.cursor() as cur:
-                # CR-109 follow-up #2 (migration 456, per migration-guard finding on
+                # CR-109 follow-up #2 (migration 455, per migration-guard finding on
                 # 455): activation_start/activation_end are DERIVED, CLIPPED values —
                 # a convergence-refined AD nested inside its own MD routinely clips to
                 # the EXACT SAME [peak-half, peak+half] window as its parent when the
