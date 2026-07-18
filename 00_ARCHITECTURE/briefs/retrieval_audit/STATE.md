@@ -37,7 +37,7 @@ authored_by: Claude (conductor), 2026-07-19
 | Lane | Territory | Model/effort | Status |
 |---|---|---|---|
 | A | Catalog & registration reality | sonnet, default effort (mechanical: counts, file:line grep) | spawned (background) |
-| B | Envelope & budget reality | sonnet, default effort (mechanical + moderate judgment) | spawned (background) |
+| B | Envelope & budget reality | sonnet, default effort (mechanical + moderate judgment) | **LANDED** — `LANE_B_REPORT.md` committed `fe3f709f`. 6 CONFIRMED / 2 CORRECTED / 1 WRONG (result_clipper.ts NOT orphaned — live caller `adapters/bulk_context/bundler.ts:47`) / 1 CONFIRMED-BUT-UNDERSTATED (unclamped: ~36/115 tools, not just "reference tools"). Top new gaps: `still_over_budget` dead on every path; `chart_header` fails silently twice with zero flag; two handler files emit static empty `judgment_flags: []`. |
 | C | Planner & taxonomy reality | opus, high effort (taxonomy adjudication + synthesis) | spawned (background) |
 | D | MCP edge & adaptivity reality | sonnet, default effort (mechanical) | spawned (background) |
 | E | Data-plane & service coverage reality | opus, high effort (census + disposition judgment) | spawned (background) |
