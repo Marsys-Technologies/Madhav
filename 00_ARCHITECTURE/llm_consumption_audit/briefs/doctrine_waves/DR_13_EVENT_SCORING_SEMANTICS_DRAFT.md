@@ -1,9 +1,10 @@
 ---
 artifact: DR_13_EVENT_SCORING_SEMANTICS_DRAFT
-type: DOCTRINE RULING DRAFT — NOT YET RATIFIED
-status: DRAFT — awaiting native ratification at D-4 bind
-proposed_dr_id: DR-13
-proposed_dis_id: DIS.026
+type: DOCTRINE RULING — RATIFIED
+status: RATIFIED (native, 2026-07-18, D-3 closeout directive). See DISAGREEMENT_REGISTER_v1_0.md
+  DIS.026 for the canonical ratified text; this file is retained as the full authoring record.
+dr_id: DR-13
+dis_id: DIS.026
 campaign_ref: D-4 C-1 (event-shape-aware matcher spec)
 authored_by: D-3 conductor session, pre-D-4 wrap-up pass, 2026-07-18, per native directive
 depends_on: DR-11 (DIS.024, T-0 retrodiction thresholds) — this DR AMENDS DR-11's scoring

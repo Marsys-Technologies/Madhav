@@ -1,8 +1,9 @@
 ---
 artifact: LEL_SCHEMA_V2_PROPOSAL
-type: SCHEMA PROPOSAL — staged for D-4, not yet migrated
-status: PROPOSAL — implementation gated on DR-13 ratification at D-4 bind
-depends_on: DR_13_EVENT_SCORING_SEMANTICS_DRAFT.md
+type: SCHEMA PROPOSAL — APPROVED, staged for D-4, not yet migrated
+status: APPROVED (native, 2026-07-18, D-3 closeout directive). Additive migration executes in
+  D-4's own migration lane, not this session — approval covers the design, not the apply.
+depends_on: DR_13_EVENT_SCORING_SEMANTICS_DRAFT.md (RATIFIED)
 authored_by: D-3 conductor session, pre-D-4 wrap-up pass, 2026-07-18
 current_schema_verified_live: "life_events table, confirmed via live schema query 2026-07-18 —
   id(uuid), event_id(text), event_date(date), category(text), description(text),

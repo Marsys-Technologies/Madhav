@@ -107,12 +107,14 @@ full event list to find the actual event_ids). **Firewall verified**: contains o
 recorded event_date, category/domain, and the existing description — zero curve outputs, peak
 dates, or model information anywhere in the document.
 
-### B4 — 2010 windfall reclassification ✅ NOTED
+### B4 — 2010 windfall reclassification ✅ APPROVED (native, 2026-07-18, D-3 closeout directive)
 
 Folded into both DR-13 (explicit non-scope callout) and the questionnaire (Part 2 item B) — the
-windfall anchor event is flagged for `interval`-shape reclassification at the next re-scoring;
-its own proximity check already PASSED under the old point-only scoring (peak within +43 days),
-only intensity failed — this is recorded so a future re-score doesn't need to rediscover it.
+windfall anchor event `EVT.2010.XX.XX.01` is approved for `interval`-shape reclassification at
+the next re-scoring; its own proximity check already PASSED under the old point-only scoring
+(peak 2010-08-13, lag +43d within the +/-45d window), only intensity failed (2.40 vs. 3.60
+top-decile threshold, 67%) — recorded so a future re-score doesn't need to rediscover it. This
+does not retroactively touch D-3's closed RED result.
 
 ---
 

@@ -175,4 +175,18 @@ Does it belong to a specific corpus layer (L1/L2.5/L3/domain/remedial/temporal)?
 
 ---
 
-*End of ROOT_FILE_POLICY v1.0 — authored 2026-05-04.*
+## §6 — Logged root exceptions
+
+A file placed at project root that does NOT appear in §2's exhaustive list is a policy violation
+unless logged here with its authorizing directive and a removal/relocation plan. This section
+exists so root exceptions are visible and time-bounded, not silently accreted.
+
+| File | Authorized by | Reason | Disposition |
+|---|---|---|---|
+| `NATIVE_DATE_TIGHTENING_QUESTIONNAIRE.md` | Native directive, 2026-07-18 (D-3 closeout + D-4 staging, item 4) | One-time native-facing handoff artifact (blind date-tightening questionnaire for D-4's LEL corpus); root placement makes it immediately visible to the native without navigating the doctrine_waves briefs tree. Canonical copy lives at `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/NATIVE_DATE_TIGHTENING_QUESTIONNAIRE.md` — the root copy is a delivery convenience, not a second source of truth. | Root copy to be removed once the native has retrieved/answered it (next session's hygiene sweep); canonical copy stays in the doctrine_waves folder permanently. |
+
+---
+
+*End of ROOT_FILE_POLICY v1.0 — authored 2026-05-04. §6 added 2026-07-18 (D-3 closeout
+directive) — no prior exception-ledger section existed; created per the directive's
+either/or instruction since neither an exception ledger nor a declared handoff folder existed.*
