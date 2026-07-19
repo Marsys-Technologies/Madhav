@@ -141,6 +141,7 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "ka_taranga",
     # ── L3 Kāla — migration 459 (D-5 Lane G-1 Resonance Map) ─────────────────
     "ka_gochara_resonance",
+    "ka_gochara_sweep",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",
