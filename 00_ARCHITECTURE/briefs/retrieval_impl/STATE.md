@@ -504,3 +504,65 @@ itself is not a general-purpose import-graph tool.
   found candidate hits in ~20 files under `platform/src/app/api`. Per plan §9.3 AMBIG-1/2
   doctrine ("no grep count is an invariant"), the real count is established by the S-2 lane's
   own enumeration, not asserted here.
+- This worktree's copy of `RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md` is v1.3 (811 lines, ends at
+  §8.5) — no §9, no §9.6 "Concept Spine" prose, no W-24/25/22 rows. Two independent W1 lanes
+  (L1a, L1c) hit this gap and sourced the v1.8 doctrine/row-text from the conductor's own
+  read-only reference copy instead. The v1.3 copy on `main` should be updated to v1.8 as part of
+  this campaign's docs (flagged, not actioned — outside any single lane's scope).
+
+## V1 fix-cycle log
+
+**Cycle 1 (2026-07-19) — REJECT-WITH-FINDINGS (narrow).** Independent opus verifier: the
+overwhelming majority of all four lanes (L1a/b/c/d) genuinely real and independently reproducible
+— extensive spot-checks (live DB row counts via the read-only DSN, a live `/openapi.json` fetch,
+migration idempotency against a disposable local Postgres, full test-suite re-run) all matched
+exactly. One confirmed defect: `generate_concept_reachability.ts` asserted a "confirmed by grep"
+claim that was never actually computed, and was false (see the L1d entry above's
+self-correction). **Disposition:** one fix cycle, narrowly scoped to the defect + the missing
+L1d STATE.md entry.
+
+**Cycle 2 (2026-07-19) — ACCEPT** (two verifier sub-passes, the first interrupted mid-run by a
+connection error, the second finishing the remaining checks). Confirmed: `scanImportSites()` is
+a real repo-wide scanner (independently re-run, reproduces "1 import site" exactly); zero
+remaining "confirmed by grep"/"zero import sites" strings across all 6 regenerated files;
+`coverage_gate.test.ts` 6/6 pass; both `tsc --noEmit` clean; full suite 498 files / 5861 passed /
+0 failed (no regression vs. the wave baseline); migration 461 idempotent on a second local run;
+change surface entirely within `may_touch`, nothing under `must_not_touch`. No other instance of
+the "asserted as computed but not computed" defect class found on an adversarial sweep of all
+four lanes' outputs.
+
+**V1 VERDICT: ACCEPT.** No runtime deploy required beyond the automatic migration-runner step
+(creates one new, empty, unwired table). Confirmed live: `concept_ledger` exists on
+`amjis-postgres`/`amjis`, 0 rows, via the read-only DSN.
+
+### W1 CLOSE (2026-07-19)
+
+Merged: PR #636 (`impl/wave-1` → `main`, merge commit `bec40718`), all CI checks green. Deploy
+triggered automatically (main push → `Deploy to Cloud Run`, run `29705024922`, headSha
+`bec40718` confirmed, `success`) — migration 461 applied, `concept_ledger` confirmed live via the
+read-only DSN (`to_regclass('public.concept_ledger')` resolves, `count(*)=0`). No serving-path
+behavior changed. Remote branch `impl/wave-1` deleted post-merge.
+
+### §F HUMAN GATE — NATIVE REVIEW PACKET (2026-07-19)
+
+Packet assembled at `00_ARCHITECTURE/briefs/retrieval_impl/NATIVE_REVIEW_PACKET_W1/` (5 files:
+`SUMMARY.md`, `ASSET_AND_CONCEPT_MAP.md`, `CONCEPT_TOOL_MAPPING.md`, `TOOL_SHAPE_DESIGN.md`,
+`VISUALIZATION.html` + its `VISUALIZATION_DATA.json` source) — merged via PR #638
+(`docs/w1-native-review-packet` → `main`, merge commit `f9084394`), docs-only, CI green, no
+deploy required. Every number in the packet traces to a real W1 harvest/census artifact.
+
+**Per master brief §F: STOP here.** W2 does not open until the native reviews this packet.
+Corrections are absorbed as W1 addenda before W2 begins. Flagged for the native's ruling at this
+gate (full detail in `NATIVE_REVIEW_PACKET_W1/SUMMARY.md`):
+1. The 51 NEEDS-OWNER dark tables, especially `mimamsa_fact_adjustment` /
+   `mimamsa_signal_adjustment` (L5-sealed calibration internals — no disposition proposed here).
+2. `bodha_cgm_sub_graphs` + 3 siblings likely already served via a route this wave's scan
+   couldn't see — needs a targeted re-scan before any wiring decision.
+3. **D-5/G-4 sequencing (master brief §I.2):** already overtaken — Gochara-Chitra's serving lane
+   (`kala_gochara_windows`) merged to `main` (commits `095a2bc1`/`f1d8e339`) before this campaign
+   opened, and the doctrine campaign has continued advancing throughout W0/W1 (multiple D-5
+   fix/incident commits landed on `main` concurrently, most recently a `ka_gochara_sweep`
+   savepoint-poisoning incident fix). §I.2's originally-imagined path ("W2/W3 land before D-5
+   serving opens") is foreclosed; its own fallback applies ("W2 absorbs the gochara tools in its
+   migration"), but per §I.2's own text this is a native ruling, not a conductor decision — W2
+   does not open until the native confirms this sequencing.
