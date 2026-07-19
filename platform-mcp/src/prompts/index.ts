@@ -22,14 +22,20 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 // D-2 Lane V-2 — compiled vidhi plans as an MCP prompt
 import { registerVidhiPlanPrompt } from './vidhi_plan.js'
+import type { Principal } from '../types.js'
 
-export function registerPrompts(server: McpServer): void {
+// S-3 (RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §1.5, GT-35): `principal` is threaded through
+// here solely so registerVidhiPlanPrompt can run its M0 entitlement gate before compiling a
+// plan for the caller's chart_id. The other 4 prompts here are chart-agnostic instruction
+// scaffolds (they tell the LLM which already-entitlement-gated tool to call next) and do not
+// consume `principal` themselves.
+export function registerPrompts(server: McpServer, principal: Principal): void {
 
   // ── 0. vidhi_plan (D-2 Lane V-2) ─────────────────────────────────────────────
   // Compiles the Vidhi Engine contract (V-1 registry + deterministic compiler) into an
   // executable guided-reading scaffold: acharya floor + machine band with each item's live
   // tool, the scope_tuple echoed for correction, and the completeness-receipt discipline.
-  registerVidhiPlanPrompt(server)
+  registerVidhiPlanPrompt(server, principal)
 
   // ── 1. orient_chart ─────────────────────────────────────────────────────────
   //

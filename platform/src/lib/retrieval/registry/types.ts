@@ -312,6 +312,13 @@ export interface ParityCheckResult {
   missing_in_mcp: CapabilityUri[]
   missing_in_consume: CapabilityUri[]
   extra_in_mcp: CapabilityUri[]
+  /**
+   * Non-null when the MCP capability bridge failed to import/execute (GT-36).
+   * A non-null bridge_error ALWAYS forces `passed: false`, even in the
+   * degenerate case where both URI sets end up empty — a failed bridge means
+   * the check could not run at all and must never be reported as a pass.
+   */
+  bridge_error: string | null
 }
 
 /** Capability filter for listing */

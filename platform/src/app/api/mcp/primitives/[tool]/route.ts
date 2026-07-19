@@ -47,21 +47,9 @@ import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limi
 import { traceEmitter } from '@/lib/trace/emitter'
 import { buildTraceSummary } from '@/lib/mcp/trace_summary'
 import { query } from '@/lib/db/client'
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 export const maxDuration = 60
-
-// ── Service-to-service token validation ─────────────────────────────────────
-
-function validateServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    if (process.env.NODE_ENV === 'development') return true
-    console.error('[mcp:primitives] MCP_INTERNAL_TOKEN not set in production')
-    return false
-  }
-  return token === expected
-}
 
 // ── Route params ─────────────────────────────────────────────────────────────
 

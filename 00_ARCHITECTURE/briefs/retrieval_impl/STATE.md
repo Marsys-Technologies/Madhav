@@ -42,7 +42,7 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
   This is the §I.2 fallback case ("if native sequences D-5 first... W2 absorbs the gochara tools
   in its migration"). No action this wave; recorded for the native's W2-sequencing ruling.
 - **Deploy mutex:** this ledger claims the mutex for the W0 S-1..S-5 safety deploy (see §Deploy
-  Mutex Log below). No doctrine-campcampaign deploy is in flight as of this entry (last doctrine
+  Mutex Log below). No doctrine-campaign deploy is in flight as of this entry (last doctrine
   merge to main: `f1d8e339`, no open PR at this ledger's open per `gh pr list` — see verifier log).
 - **Baseline re-snapshot rule:** if the doctrine campaign deploys again before this campaign's
   next probe diff, the W0 baseline is re-snapshotted before diffing (§B.2).
@@ -83,6 +83,53 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
   password from the secret above. This satisfies W-18's precondition for the W1 harvest/census
   lanes (E1/E3 DB truth).
 - **W0.6:** envelope codegen parity test wired into CI — see below.
+
+### V0 fix-cycle log
+
+**Cycle 1 (2026-07-19) — REJECT-WITH-FINDINGS** (independent opus verifier, Workflow
+`wf_309e240b-ad2`). S-3, S-4, CI-wiring (GT-9): clean, all tests pass, ACCEPT-quality.
+S-2: mostly solid (20 routes migrated to shared `service_token.ts` guard) but incomplete —
+missed a live fail-open bypass of the identical vulnerability class in
+`brahma/sutravali/by_house/[house_num]/route.ts` and `by_planet/[planet]/route.ts`
+(`if (INTERNAL_TOKEN && token !== INTERNAL_TOKEN)` short-circuits open when the secret is
+unset), plus 5 more unmigrated (but currently fail-closed) duplicate guards. **S-1/S-5:
+REJECTED** — the new chart-agnostic-gate Rule 9 (cardinality-literal detector) false-positives
+on legitimate non-native row-count documentation (get_divisionals 21,635 etc.), breaking 10
+existing tests including the registry-wide "Gate passes GREEN" master invariant; the lane's own
+regression test (T14) was left asserting the removed exemption and fails; the native PII this
+item was supposed to remove is still served in the resource's actual runtime payload (fallback
+branches of `ephemeris_cache_native_lifetime.ts`'s loader), not just its static description;
+and the new `checkTextForNativeLeak` scanner is dead code never wired into its own cited
+motivating example (d8's `TEMPORAL_EMPTY_REASON`). Full findings: verifier transcript,
+Workflow run `wf_309e240b-ad2`, journal.jsonl. **Disposition:** respawning a fix cycle for
+S-1/S-5 rework + S-2 completion (the two sutravali routes + 5 remaining files); S-3/S-4/CI-wiring
+retained as-is (independently ACCEPT-quality, no rework needed).
+
+**Cycle 2 (2026-07-19) — REJECT-WITH-FINDINGS (narrower).** Fix cycle 1 addressed all cycle-1
+findings but the runtime-PII fix (ephemeris_cache_native_lifetime.ts loader() fallback payloads)
+had already been started opportunistically; a follow-up verifier pass found 2 residual items:
+(a) the S-1 Rule-9 description rewrite for `query_contradictions.ts` broke
+`d5_l2_capabilities.test.ts` (a pre-existing test asserting `.toContain('0 rows')` had been
+passing only via an accidental substring inside the now-removed "1,034–1,100 rows" literal) —
+a genuine regression caused by this wave, not pre-existing as cycle-1's verifier had assumed;
+(b) `checkTextForNativeLeak` was claimed wired into d8's `TEMPORAL_EMPTY_REASON` but was in fact
+never called against the real constant (dead code, synthetic-only test coverage).
+
+**Cycle 3 (2026-07-19) — ACCEPT.** Both cycle-2 findings fixed precisely: `query_contradictions.ts`
+now carries an honest graceful-empty/0-row sentence (no cardinality literal reintroduced,
+satisfies the test's real intent, not an accidental match — confirmed "0 rows" has no
+thousands-separator so it doesn't trip Rule 9 either); `TEMPORAL_EMPTY_REASON` hoisted to module
+scope + exported from `register_d8_assess_domain.ts`, a real test now imports the actual
+constant and calls the actual `checkTextForNativeLeak`, asserting zero violations. Final
+independent verifier (opus, full re-run of all 3 cycles' findings plus a full collateral-damage
+sweep — `platform` full suite 497 files / 5856 passed / 0 failed, registry suite 596/0 failed,
+`platform-mcp` S-3 suites 68/0 failed, both `tsc --noEmit` clean): **ACCEPT.** 3 non-blocking
+notes recorded (Rule 9 only scans top-level `cap.description` not nested `input_schema` field
+descriptions — pre-existing scanner scope, not a regression; this typo now fixed; S-4's parity
+gate deliberately does not hard-gate the separately-tracked 47-vs-118 MCP_TOOL_TO_URI drift
+backlog).
+
+**V0 VERDICT: ACCEPT.** S-1..S-5 + CI wiring (GT-9/GT-36) ready to commit, merge to main, deploy.
 
 ## Model/effort choices log
 
