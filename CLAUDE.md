@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "6.3"
+version: "6.4"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -13,6 +13,13 @@ mirror_obligations_retired: "2026-05-27 — Gemini mirror discipline retired per
 supersedes:
   - "CLAUDE.md v5.1 (2026-06-09 — realigned to L1-done/L2-next reality at v6.0)"
 changelog:
+  - v6.4 (2026-07-19, COWORK-RETRIEVAL-STRATEGY):
+      §I B.11 amended with the RS-4 proportionality carve-out (native-authorized 2026-07-19):
+      B.11 scoped to interpretive queries; pinpointed factual lookups (depth: retrieval) satisfy
+      it via frame check (chart_header + session pin) + escalation valve (one-line flag + drill
+      pointer when the fact touches an active contradiction, firing yoga, or open prediction
+      window). Mirrors in-place amendments to PROJECT_ARCHITECTURE_v2_2.md §B.11/§H.4. Doctrine
+      source: RETRIEVAL_STRATEGY_v1_0.md §3.6. §D snapshot CLAUDE row corrected 6.2 → 6.4.
   - v6.3 (2026-07-15, DOCTRINE-WAVES-D1.5B-B7):
       New §N.6 Serving Density Principle — codifies the density/confidence-layering discipline
       the `density_contract` field (registry/types.ts) and the response-budget `hardFloor`
@@ -114,7 +121,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v1_0.md` | 1.0 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 6.2 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 6.4 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -161,7 +168,7 @@ The full principle list is `PROJECT_ARCHITECTURE_v2_2.md §B — Architectural P
 - **B.3 — Derivation-ledger mandate.** Every L2+ claim carries a `DERIVATION_LEDGER` entry listing the specific L1 fact IDs it consumes. No claim rests on "as is known classically" or "per tradition" without a source.
 - **B.8 — Versioning discipline.** Every canonical artifact carries frontmatter `version`, `status`, and a changelog. Registries must not disagree (GA.1 failure mode). Silent file mutation fails `drift_detector.py` and `schema_validator.py`.
 - **B.10 — No fabricated computation.** If a computation requires a specialist tool (Jagannatha Hora, Parashara's Light, Swiss Ephemeris) and the value is not already in L1, the session marks it `[EXTERNAL_COMPUTATION_REQUIRED]` with exact specification of what to compute. Claude never invents numerical chart values.
-- **B.11 — Whole-Chart-Read discipline.** Every query routes through L2 Bodha synthesis first (MSR + CDLM + CGM + RM), surfaces cross-domain signals via the Cross-Domain Linkage Matrix, then produces its domain-specific answer. A query-answer that skips L2 consultation is a procedural violation equivalent to a red-team finding.
+- **B.11 — Whole-Chart-Read discipline.** Every *interpretive* query routes through L2 Bodha synthesis first (MSR + CDLM + CGM + RM), surfaces cross-domain signals via the Cross-Domain Linkage Matrix, then produces its domain-specific answer. A query-answer that skips L2 consultation is a procedural violation equivalent to a red-team finding. **Proportionality carve-out (RS-4, native-authorized 2026-07-19):** a pinpointed factual lookup (`depth: retrieval`) satisfies B.11 via the frame check its response carries (chart_header + session pin) plus the escalation valve — a one-line flag with drill pointer whenever the fact touches an active contradiction, firing yoga, or open prediction window. Source: `RETRIEVAL_STRATEGY_v1_0.md` §3.6; PROJECT_ARCHITECTURE §B.11/§H.4 amended in place.
 
 **Scope declaration (protocol §F; GA.20 closure).** Every session declares `may_touch` and `must_not_touch` globs at session open. An empty `must_not_touch` fails the handshake.
 
@@ -246,4 +253,4 @@ Every served surface layers its rows/signals by verification/confidence density 
 
 ---
 
-*End of CLAUDE.md v6.3 (2026-07-15, DOCTRINE-WAVES D-1.5b Lane B-7) — new §N.6 Serving Density Principle: codifies the density-layering discipline the `density_contract` field (types.ts) and the response-budget `hardFloor` mechanism (response_budget.ts) already embody, drawn from `judgment_query` and `ganita_yogas_get`'s catalog-vs-confirmed handling. Frontmatter/footer version drift corrected (frontmatter had stayed "6.0" since v6.0 while the footer advanced to "6.2" — both now read 6.3). Prior: v6.2 (2026-06-29 — L4 Phala SEALED: §E L4 BUILT→CLOSED (seal `L4_PHALA_CLOSE_v1_0.md`); §E "truly open items" note updated — all six layers L0–L5 now sealed/closed, build arc complete). v6.1 (2026-06-29 — §E layer-reality refresh: L2 NEXT→BUILT, L3 draft→CLOSED, L4 draft→BUILT, L5 draft→SEALED). v6.0 (2026-06-12 — structural realignment). Full changelog history at `00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
+*End of CLAUDE.md v6.4 (2026-07-19, Cowork retrieval-strategy session) — §I B.11 amended with the RS-4 proportionality carve-out (native-authorized): B.11 scoped to interpretive queries; factual lookups satisfy it via frame check + escalation valve. Mirrors the in-place amendments to `PROJECT_ARCHITECTURE_v2_2.md` §B.11/§H.4; doctrine source `RETRIEVAL_STRATEGY_v1_0.md` §3.6. Prior: v6.3 (2026-07-15, DOCTRINE-WAVES D-1.5b Lane B-7) — new §N.6 Serving Density Principle: codifies the density-layering discipline the `density_contract` field (types.ts) and the response-budget `hardFloor` mechanism (response_budget.ts) already embody, drawn from `judgment_query` and `ganita_yogas_get`'s catalog-vs-confirmed handling. Frontmatter/footer version drift corrected (frontmatter had stayed "6.0" since v6.0 while the footer advanced to "6.2" — both now read 6.3). Prior: v6.2 (2026-06-29 — L4 Phala SEALED: §E L4 BUILT→CLOSED (seal `L4_PHALA_CLOSE_v1_0.md`); §E "truly open items" note updated — all six layers L0–L5 now sealed/closed, build arc complete). v6.1 (2026-06-29 — §E layer-reality refresh: L2 NEXT→BUILT, L3 draft→CLOSED, L4 draft→BUILT, L5 draft→SEALED). v6.0 (2026-06-12 — structural realignment). Full changelog history at `00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
