@@ -1,5 +1,8 @@
--- Migration 456: LEL schema v2 — additive event-shape columns (DR-13/DIS.026)
+-- Migration 457: LEL schema v2 — additive event-shape columns (DR-13/DIS.026)
 -- Created: 2026-07-19
+-- (renumbered 456->457 post-rebase: Lane A-2's 456_brahma_event_ontology_dr13_shapes.sql
+--  landed on main first, in platform/supabase/migrations/, which migrate.ts pools together
+--  with platform/migrations/ for numbering purposes — 457 is the corrected next-free number.)
 --
 -- Implements LEL_SCHEMA_V2_PROPOSAL.md (APPROVED, native 2026-07-18, D-3 closeout
 -- directive). Additive only: 9 new nullable/defaulted columns on `life_events`, no

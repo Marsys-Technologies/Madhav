@@ -318,6 +318,18 @@ DO $$ BEGIN
 END $$;
 
 -- irreversibility_milestone, when set, must name a milestone actually in milestone_template.
+-- FIX (D-4a Lane A-1, post-merge blocker fix, 2026-07-19): the original form of this constraint
+-- used `EXISTS (SELECT 1 FROM jsonb_array_elements(...) ...)` inside a CHECK clause — Postgres
+-- does not support subqueries (including set-returning-function-based ones) in CHECK constraints
+-- (error 0A000, "cannot use subquery in check constraint"), so this migration failed to apply on
+-- every environment that reached it. Rewritten as a pure jsonb containment expression (`@>`),
+-- which Postgres DOES allow in a CHECK: jsonb array containment recursively tests whether ANY
+-- element of the left array is a superset of the corresponding element of the right array, so
+-- `milestone_template @> [{"milestone_id": X}]` is true iff some element of milestone_template
+-- has milestone_id = X, regardless of that element's other keys (name_en, typical_offset_days_
+-- from_first, ...). Verified live: '[{"milestone_id":"a","name_en":"A"},{"milestone_id":"b",...}]'
+-- @> '[{"milestone_id":"b"}]' -> true; a milestone_id absent from the array -> false. Semantically
+-- identical to the original EXISTS form, just expressible without a subquery.
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'brahma_event_ontology_irreversibility_milestone_check'
@@ -326,10 +338,7 @@ DO $$ BEGIN
       ADD CONSTRAINT brahma_event_ontology_irreversibility_milestone_check
         CHECK (
           irreversibility_milestone IS NULL
-          OR EXISTS (
-            SELECT 1 FROM jsonb_array_elements(milestone_template) AS m
-            WHERE m ->> 'milestone_id' = irreversibility_milestone
-          )
+          OR milestone_template @> jsonb_build_array(jsonb_build_object('milestone_id', irreversibility_milestone))
         );
   END IF;
 END $$;
