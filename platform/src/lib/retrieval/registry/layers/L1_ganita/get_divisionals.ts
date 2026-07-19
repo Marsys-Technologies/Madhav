@@ -16,7 +16,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
     'Contains graha positions in each of the 16 standard vargas (D1–D60 including D1, D2, D3, D4, D5, ' +
     'D6, D7, D8, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45, D60). ' +
     'Each row: graha, varga, sign, sign_number, degree_in_sign, house, vargottama. ' +
-    'Contains 21,635 rows for the native.',
+    'Contains a large, paginated row set per chart.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },

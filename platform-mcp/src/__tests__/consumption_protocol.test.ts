@@ -9,6 +9,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { registerConsumptionProtocol, CONSUMPTION_PROTOCOL_TEXT } from '../resources/consumption_protocol.js'
 import { registerPrompts } from '../prompts/index.js'
+import type { Principal } from '../types.js'
+
+// S-3 (GT-35): registerPrompts now requires a principal so the vidhi_plan prompt it registers
+// can run its M0 entitlement gate. Unused by the other prompts these tests exercise.
+const TEST_PRINCIPAL: Principal = { user_uid: 'u-consumption-protocol-test', key_id: 'k-cp-test', role: 'guest' }
 
 function makeMockServer() {
   const resourceHandlers = new Map<string, (...a: unknown[]) => unknown>()
@@ -68,7 +73,7 @@ describe('WP-1.6 served consumption protocol — resource', () => {
 describe('WP-1.6 served consumption protocol — guided prompt', () => {
   it('registers demand_side_chase alongside the 3 existing prompts', () => {
     const server = makeMockServer()
-    registerPrompts(server as never)
+    registerPrompts(server as never, TEST_PRINCIPAL)
     expect(server.getPrompt('demand_side_chase')).toBeDefined()
     // the 3 pre-existing R5 prompts still register (no regression)
     for (const p of ['orient_chart', 'assess_domain', 'find_active_yogas']) {
@@ -78,7 +83,7 @@ describe('WP-1.6 served consumption protocol — guided prompt', () => {
 
   it('demand_side_chase emits the five-move chase for the given chart + question', async () => {
     const server = makeMockServer()
-    registerPrompts(server as never)
+    registerPrompts(server as never, TEST_PRINCIPAL)
     const def = server.getPrompt('demand_side_chase')!
     const chart = '482012f1-710e-4a25-994a-93821f5871aa'
     const out = (await def.handler({ chart_id: chart, question: 'How is the marriage?', domain: 'marriage' })) as {

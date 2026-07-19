@@ -120,7 +120,7 @@ export const getDashasCapability: CapabilityDescriptor = {
     'or all_levels=true for every level), and window (default now±5y when no date filter is ' +
     'given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). ' +
     'Use as_of_date to retrieve the dasha running on a specific date (e.g. today). ' +
-    'Contains 601,443 rows for the native across all systems, levels and ayanamshas — ' +
+    'Spans all systems, levels and ayanamshas as a large, paginated result set — ' +
     'never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. ' +
     'NOTE: unlike system/level/window, ayanamsha_id has NO server-side default — omitting it ' +
     'returns one row PER AYANAMSHA (5 rows). For the standard "current dasha" gate shape (one ' +

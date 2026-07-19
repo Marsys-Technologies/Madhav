@@ -25,7 +25,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
 
   description: [
     'Returns temporal activation windows and predicate conditions for a chart.',
-    'Sources: kala_activation (66,738 rows per chart) and kala_activation_predicates (66,738 rows).',
+    'Sources: kala_activation and kala_activation_predicates (both large, paginated per-chart row sets).',
     'Filter by date range, signal_ids, and ayanamsha_id.',
     'Returns signal_id references back to bodha_msr_signals for downstream hydration.',
     'Drill further with query_convergence_windows (temporal convergence scoring) and',

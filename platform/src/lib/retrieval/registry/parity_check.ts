@@ -42,34 +42,46 @@ import type { ParityCheckResult, CapabilityUri } from './types'
 // ── MCP exports snapshot ──────────────────────────────────────────────────────
 
 /**
- * Returns the set of URIs that the MCP server exports.
- * This function reads the MCP tool registrations at runtime.
+ * Returns the set of URIs that the MCP server exports, plus the bridge's
+ * error state (GT-36).
  *
  * Implementation: imports the MCP tool list and normalizes to marsys:// URIs.
  * In CI, this compares against the Consume Chat registry to detect drift.
+ *
+ * IMPORTANT: a failed dynamic import (`bridgeError !== null`) is NOT the same
+ * condition as "the bridge loaded and legitimately exports zero URIs". The
+ * caller (buildParityResult) must treat a failed bridge as a hard failure,
+ * never as an empty-but-passing set.
  */
-export async function getMcpExportedUris(): Promise<Set<CapabilityUri>> {
+export async function getMcpExportedUris(): Promise<{
+  uris: Set<CapabilityUri>
+  bridgeError: string | null
+}> {
   // Dynamic import to avoid hard dependency in non-MCP contexts
   try {
     const { listMcpCapabilityUris } = await import('./mcp_capability_bridge')
     const uris = await listMcpCapabilityUris()
-    return new Set(uris)
-  } catch {
-    // Bridge not available (standalone mode) — return empty set
-    return new Set<CapabilityUri>()
+    return { uris: new Set(uris), bridgeError: null }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { uris: new Set<CapabilityUri>(), bridgeError: message }
   }
 }
 
 // ── Parity check ─────────────────────────────────────────────────────────────
 
 /**
- * Run the parity check between MCP exports and Consume Chat registry.
- * Returns a ParityCheckResult with details.
+ * Pure decision function: computes a ParityCheckResult from already-resolved
+ * URI sets and bridge status. Split out from checkParity() so the GT-36
+ * invariant — a failed bridge import is ALWAYS a hard failure, even in the
+ * degenerate case where the Consume Chat registry is also empty — can be
+ * unit-tested directly without mocking the dynamic import.
  */
-export async function checkParity(): Promise<ParityCheckResult> {
-  const consumeUris = new Set(listCapabilityUris())
-  const mcpUris = await getMcpExportedUris()
-
+export function buildParityResult(
+  consumeUris: Set<CapabilityUri>,
+  mcpUris: Set<CapabilityUri>,
+  bridgeError: string | null,
+): ParityCheckResult {
   const missing_in_mcp: CapabilityUri[] = []
   const missing_in_consume: CapabilityUri[] = []
   const extra_in_mcp: CapabilityUri[] = []
@@ -85,13 +97,15 @@ export async function checkParity(): Promise<ParityCheckResult> {
   for (const uri of mcpUris) {
     if (!consumeUris.has(uri)) {
       extra_in_mcp.push(uri)
-    }
-    if (!consumeUris.has(uri)) {
       missing_in_consume.push(uri)
     }
   }
 
-  const passed = missing_in_mcp.length === 0 && extra_in_mcp.length === 0
+  // GT-36: a failed bridge import must NEVER silently auto-pass — not even in
+  // the degenerate case where the Consume Chat registry is also empty (which
+  // would otherwise leave missing_in_mcp and extra_in_mcp both trivially
+  // empty and report a false PASS).
+  const passed = bridgeError === null && missing_in_mcp.length === 0 && extra_in_mcp.length === 0
 
   return {
     passed,
@@ -100,7 +114,18 @@ export async function checkParity(): Promise<ParityCheckResult> {
     missing_in_mcp,
     missing_in_consume,
     extra_in_mcp,
+    bridge_error: bridgeError,
   }
+}
+
+/**
+ * Run the parity check between MCP exports and Consume Chat registry.
+ * Returns a ParityCheckResult with details.
+ */
+export async function checkParity(): Promise<ParityCheckResult> {
+  const consumeUris = new Set(listCapabilityUris())
+  const { uris: mcpUris, bridgeError } = await getMcpExportedUris()
+  return buildParityResult(consumeUris, mcpUris, bridgeError)
 }
 
 /**
@@ -116,6 +141,13 @@ export async function runParityCheck(): Promise<void> {
       `  MCP exports: ${result.mcp_count}`,
       `  Consume Chat registry: ${result.consume_count}`,
     ]
+
+    if (result.bridge_error) {
+      lines.push(`  MCP bridge FAILED to load: ${result.bridge_error}`)
+      lines.push(
+        `  (GT-36: parity cannot be verified while the bridge is unavailable — this is always a hard failure, never an auto-pass)`
+      )
+    }
 
     if (result.missing_in_mcp.length > 0) {
       lines.push(`  In Consume Chat but NOT in MCP (${result.missing_in_mcp.length}):`)

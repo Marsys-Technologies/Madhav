@@ -32,7 +32,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
     'Maharṣi-specific points, midpoints (all graha pairs), ' +
     '2800 Arabic Parts (Sahams) across all ayanamshas, Saturn-derived points, ' +
     'and nakshatra-pada sensitive degrees. ' +
-    'Covers 20 fact_categories (~7,400 rows).',
+    'Covers 20 fact_categories (a large row set per chart).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },

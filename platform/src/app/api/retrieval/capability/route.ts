@@ -25,19 +25,7 @@ import { authorizeChartAccess, type Permission } from '@/lib/auth/authorizeChart
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { buildEntitlementDenialEnvelope, buildErrorEnvelope } from '@/lib/mcp/epistemics'
 import { query } from '@/lib/db/client'
-
-// ── Service-to-service internal token gate ────────────────────────────────────
-
-function validateServiceToken(request: Request): boolean {
-  const token = request.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    if (process.env.NODE_ENV === 'development') return true
-    console.error('[api/retrieval/capability] MCP_INTERNAL_TOKEN not set in production')
-    return false
-  }
-  return token === expected
-}
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 // ── Per-call chart entitlement gate (R5.2 A1) ─────────────────────────────────
 //

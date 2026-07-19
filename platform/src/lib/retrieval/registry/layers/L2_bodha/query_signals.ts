@@ -205,7 +205,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
 
   description: [
     'Query MSR signals for a chart from the Bodha synthesis layer.',
-    'Returns signals ranked by computed_salience (66,738 signals for the canonical chart).',
+    'Returns signals ranked by computed_salience (a large signal set per chart).',
     'Supports filters: domain, source_subsystem, min_salience, lel_enabled.',
     'Optional semantic_query uses pgvector cosine similarity over signal embeddings (768-dim).',
     'emits_references: returns signal_id + constituent_facts_array as reference list.',

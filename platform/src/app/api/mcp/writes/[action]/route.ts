@@ -50,6 +50,7 @@ import {
 import type { PredictionEntry, OutcomeEntry } from '@/lib/mcp/ppl_writer'
 import type { DisagreementEntry } from '@/lib/mcp/disagreement_writer'
 import type { LelEvent } from '@/lib/mcp/lel_event_writer'
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 export const maxDuration = 30
 
@@ -67,19 +68,6 @@ type WriteAction = (typeof ALLOWED_ACTIONS)[number]
 
 function isAllowedAction(action: string): action is WriteAction {
   return (ALLOWED_ACTIONS as readonly string[]).includes(action)
-}
-
-// ── Service-to-service token validation ───────────────────────────────────────
-
-function validateServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    if (process.env.NODE_ENV === 'development') return true
-    console.error('[mcp:writes] MCP_INTERNAL_TOKEN not set in production')
-    return false
-  }
-  return token === expected
 }
 
 // ── Route params ──────────────────────────────────────────────────────────────

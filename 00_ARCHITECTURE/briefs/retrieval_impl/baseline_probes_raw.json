@@ -1,0 +1,419 @@
+{
+  "artifact": "baseline_probes_raw.json",
+  "canonical_id": "RETRIEVAL_W0_BASELINE_PROBES_RAW",
+  "version": "1.0",
+  "status": "CURRENT",
+  "captured_by": "Claude Code (Sonnet 5), W0 baseline probe session",
+  "captured_at_utc": "2026-07-19T17:15:00Z_to_17:20:20Z",
+  "methodology_note": "Every entry below reflects an actual mcp__marsys-jis-direct__* tool call made live against the deployed MARSYS-JIS MCP connector this session. Sizes are the harness-reported/observed character counts of the raw tool-result payload (JSON is close to byte-count in this corpus; treated as an approximation, not exact byte length, except where the harness explicitly reported an exact char count on truncation). Where the harness truncated a result for exceeding its own token cap, that is recorded as oversized:true with the harness-reported exact char count.",
+  "charts": {
+    "abhisek": "482012f1-710e-4a25-994a-93821f5871aa",
+    "abhinandan": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "arunima": "acdf0d66-7541-451c-be35-80285028810b",
+    "kiran": "cb73cd3d-9eba-4220-9902-0de91566e980"
+  },
+  "probes": [
+    {
+      "n": 1,
+      "tool": "list_my_charts",
+      "chart_id": null,
+      "args": {},
+      "envelope_version": "custom_ok_envelope",
+      "chart_header_present": false,
+      "approx_size_chars": 420,
+      "notes": "Returns 4 entitled charts incl. canonical Abhisek 482012f1 and Abhinandan 1c826d5a-41cb-4450-b4dc-59d440e5f75a."
+    },
+    {
+      "n": 2,
+      "tool": "get_chart_orientation",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "args": { "response_format": "digest" },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 3200,
+      "judgment_flags": [],
+      "notes": "Abhinandan orientation, digest mode, legacy envelope (default). msr_signal_count=9578, yoga_count=13."
+    },
+    {
+      "n": 3,
+      "tool": "get_chart_orientation",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "response_format": "digest", "envelope_format": "v3" },
+      "envelope_version": "v1",
+      "envelope_shape_actually_served": "v3_populated",
+      "chart_header_present": true,
+      "approx_size_chars": 7100,
+      "judgment_flags": [],
+      "notes": "GT-CONFIRM: envelope_version field literally reads 'v1' even though envelope_format=v3 was passed and the response DOES carry populated verdict/ranking_basis/drill_pointers/chart_header/epistemic/timing/coverage/build_id fields (v3 shape). chart_header.content.name='Abhisek Mohanty' (native's real name) served in the v3 chart_header block."
+    },
+    {
+      "n": 4,
+      "tool": "get_dashas",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 3 },
+      "envelope_version": "plain_content_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 1400,
+      "notes": "GT-CHECK: tool description (fetched live via ToolSearch before this call) does NOT mention '601,443' anywhere. Response itself carries only 3 dasha rows, no bulk count leak observed."
+    },
+    {
+      "n": 5,
+      "tool": "ganita_dashas_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "ayanamsha_id": "lahiri_chitrapaksha", "level": 1 },
+      "envelope_version": "plain_content_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 1500,
+      "notes": "Phase-1 alias of get_dashas; description explicitly warns omitting ayanamsha_id busts the <=1KB current-dasha gate (5 rows/ayanamsha) -- gate-awareness now baked into tool description text."
+    },
+    {
+      "n": 6,
+      "tool": "ganita_chart_facts_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "about": "lagna" },
+      "envelope_version": "plain_content_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 900,
+      "notes": "about-facet lagna resolution worked correctly; grounding.fact_ids + citations returned."
+    },
+    {
+      "n": 7,
+      "tool": "ganita_yogas_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 5 },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 3400,
+      "judgment_flags": ["partial_page_more_available", "catalog_only_rows_present: 1 row(s) in this page are catalog_only/requires_pass label matches..."],
+      "notes": "N.6-point-1 density discipline CONFIRMED LIVE: catalog_only_rows_in_page + dosha_label_gate fields distinctly flag single-pass catalog rows vs firings-authoritative rows, with an explicit pointer to ganita_yoga_firings_get."
+    },
+    {
+      "n": 8,
+      "tool": "ganita_yogas_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 5, "response_format": "v3" },
+      "envelope_version": "v1",
+      "envelope_shape_actually_served": "v3_populated",
+      "chart_header_present": true,
+      "approx_size_chars": 6400,
+      "judgment_flags": ["partial_page_more_available", "catalog_only_rows_present..."],
+      "notes": "Second GT-CONFIRM of envelope_version staying 'v1' under response_format=v3 with fully populated v3 fields (chart_header, epistemic, coverage, build_id)."
+    },
+    {
+      "n": 9,
+      "tool": "ganita_yoga_firings_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 5 },
+      "envelope_version": "plain_content_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 4200,
+      "notes": "fired=true default confirmed (CR-72/CR-43); total_matching=12, this page returned 5, more_available=true."
+    },
+    {
+      "n": 10,
+      "tool": "ganita_positions_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "ayanamsha_id": "lahiri_chitrapaksha" },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 15300,
+      "notes": "No limit passed -> served all 86 rows (9 grahas x multiple fact_keys) in one page; CR-50 default (grahas+lagna only, no upagrahas) held."
+    },
+    {
+      "n": 11,
+      "tool": "ganita_strength_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 5 },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 1700,
+      "notes": "graha_composite_state_classification rows only in this narrow page; total field absent (design gap, minor)."
+    },
+    {
+      "n": 12,
+      "tool": "ganita_nakshatra_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 5 },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 1900,
+      "notes": "chandra_bala_natal_baseline rows returned; total=5 (matches limit, so page likely == all of this category at this limit)."
+    },
+    {
+      "n": 13,
+      "tool": "ganita_tajaka_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 5 },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 15900,
+      "notes": "hadda_lord_facts total=245, varsha_year_lords total=293 -- large nested jsonb per varsha year (panchavargiya_bala breakdown). Even limit=5 per section produced a sizeable multi-KB response due to nested jsonb depth."
+    },
+    {
+      "n": 14,
+      "tool": "ganita_ayurdaya_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": {},
+      "envelope_version": "plain_content_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 3100,
+      "notes": "No hard limit needed -- 26 rows total, all served. disclaimer field present ('NOT a death prediction')."
+    },
+    {
+      "n": 15,
+      "tool": "ephemeris_cache_year",
+      "chart_id": null,
+      "args": { "year": 1984, "month": 2, "limit": 5 },
+      "envelope_version": "custom_ok_envelope",
+      "chart_header_present": false,
+      "approx_size_chars": 900,
+      "notes": "GT-CHECK (PII leak, S-item candidate): response contains ONLY ephemeris body positions -- no native name/DOB/birthplace anywhere in payload or in the tool description fetched live. No live PII leak reproduced from this tool today. Note: a tool literally named 'ephemeris_cache_native_lifetime' was not found in the live tool catalog under that exact name; closest live surfaces are ephemeris_cache_year and its alias ref_ephemeris_year_get, both clean."
+    },
+    {
+      "n": 16,
+      "tool": "ref_yogas_get",
+      "chart_id": null,
+      "args": { "limit": 5 },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "query_class": "reference",
+      "approx_size_chars": 2500,
+      "notes": "Chart-agnostic L0 catalog lookup; clean small page."
+    },
+    {
+      "n": 17,
+      "tool": "ref_doshas_get",
+      "chart_id": null,
+      "args": { "limit": 5 },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "query_class": "reference",
+      "approx_size_chars": 2400,
+      "notes": "Chart-agnostic L0 catalog lookup; clean small page."
+    },
+    {
+      "n": 18,
+      "tool": "ref_dignity_reference_get",
+      "chart_id": null,
+      "args": { "planet": "saturn" },
+      "envelope_version": null,
+      "error": true,
+      "error_shape": { "ok": false, "error": { "class": "internal_error", "message": "Error: [p1_reference] platform DB query failed: 400" }, "tool": "ref_dignity_reference_get" },
+      "approx_size_chars": 180,
+      "notes": "LIVE ERROR captured honestly, not silently substituted. p1_reference sidecar returned a 400 on this call."
+    },
+    {
+      "n": 19,
+      "tool": "asset_registry_l0",
+      "chart_id": null,
+      "args": {},
+      "envelope_version": "plain_content_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 8200,
+      "notes": "28 L0 assets returned in full, no pagination needed at this size."
+    },
+    {
+      "n": 20,
+      "tool": "asset_registry_all",
+      "chart_id": null,
+      "args": {},
+      "envelope_version": null,
+      "oversized": true,
+      "harness_reported_exact_chars": 60695,
+      "harness_reported_lines": 1741,
+      "chart_header_present": false,
+      "notes": "Exceeded the MCP client's max-token result cap with ZERO params (no limit/offset available on this tool). Full-catalog dump with no clamp -- budget-discipline gap on a no-filter reference tool."
+    },
+    {
+      "n": 21,
+      "tool": "get_signals",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 5, "response_format": "v3" },
+      "envelope_version": "v1",
+      "envelope_shape_actually_served": "v3_populated",
+      "chart_header_present": true,
+      "approx_size_chars": 7800,
+      "judgment_flags": [],
+      "notes": "Third GT-CONFIRM of envelope_version='v1' literal string coexisting with populated v3 shape. Also carries orientation_context (B.11 whole-chart-read auto-injection) -- confirms B.11-by-construction is live in production today. DEFECT-001 self-check embedded in provenance: 0/5 orphan refs on this chart (previously ~91.5% orphan pre-R4)."
+    },
+    {
+      "n": 22,
+      "tool": "get_domain_reading",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "domain": "career", "max_lenses": 2, "max_signals_per_lens": 3 },
+      "envelope_version": null,
+      "oversized": true,
+      "harness_reported_exact_chars": 95380,
+      "chart_header_present": null,
+      "notes": "UNCLAMPED-TOOL LIVE CONFIRMATION (W-5/W-8 candidate): even with max_lenses=2 and max_signals_per_lens=3 explicitly narrowed, the response exceeded the MCP client's max-token cap. This is one of the clearest live reproductions of the 'unclamped tools exceed budget' finding."
+    },
+    {
+      "n": 23,
+      "tool": "get_chart_quality",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": {},
+      "envelope_version": "custom_orientation_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 7500,
+      "notes": "scorecard.msr_signal_count=49705 (chart-wide, not page-scoped); defect_001 self-check embedded: 50/71430 orphan refs (0.1%) -- MOSTLY_RESOLVED status, down from ~91.5% historical baseline."
+    },
+    {
+      "n": 24,
+      "tool": "bodha_remedies_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 3 },
+      "envelope_version": "plain_content_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 4400,
+      "notes": "data_gap_note discloses associated_doshas_array and estimated_cost_inr_range_jsonb are 100% NULL chart-wide (writer gap, honestly disclosed, not silently dropped)."
+    },
+    {
+      "n": 25,
+      "tool": "get_temporal_windows",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "as_of": "2026-07-19" },
+      "envelope_version": null,
+      "oversized": true,
+      "harness_reported_exact_chars": 289415,
+      "chart_header_present": null,
+      "notes": "LARGEST oversized response captured this session -- 289KB for a single as_of point-in-time query with no date range specified. Strongest live evidence for the unclamped-tools / response-budget-unification (W-5/W-8) finding."
+    },
+    {
+      "n": 26,
+      "tool": "kala_life_arc_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 3, "include_lel_events": false },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 1900,
+      "notes": "parva_count=3 of an unstated total; clean small page when limit is passed explicitly."
+    },
+    {
+      "n": 27,
+      "tool": "kala_temporal_bundle",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "date_range": { "start": "2026-07-01", "end": "2026-08-01" } },
+      "envelope_version": null,
+      "oversized": true,
+      "harness_reported_exact_chars": 124315,
+      "harness_reported_lines": 3747,
+      "chart_header_present": null,
+      "notes": "UNCLAMPED even with a narrow 1-month date_range and no pagination params available on this composite-bundle tool. Third distinct oversized-response reproduction this session."
+    },
+    {
+      "n": 28,
+      "tool": "kala_priority_ranking_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "date_from": "2026-07-01", "date_to": "2026-08-01", "top_k": 3 },
+      "envelope_version": "plain_content_wrapper",
+      "chart_header_present": false,
+      "approx_size_chars": 1500,
+      "notes": "top_k respected; clean small page -- contrasts with kala_temporal_bundle's lack of a top_k/limit knob."
+    },
+    {
+      "n": 29,
+      "tool": "phala_anchors_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "date_range": { "start": "2026-07-01", "end": "2027-07-01" } },
+      "envelope_version": "custom_ok_envelope",
+      "chart_header_present": false,
+      "approx_size_chars": 4800,
+      "notes": "Each anchor carries falsifier + structured_falsifier + derivation_ledger + causal_chain (B.3 mandate) -- confirmed on live data, all anchors this call had non-null source_citation."
+    },
+    {
+      "n": 30,
+      "tool": "mitigation_map",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 3 },
+      "envelope_version": "tool_bundle_ok_envelope",
+      "chart_header_present": false,
+      "approx_size_chars": 4400,
+      "notes": "total_count=605, returned=3, more_available=true. Uses a DIFFERENT envelope family (ok/trace_id/epistemics/result/citations/plan/predictions_logged/synthesis_audit/warnings) vs. the type/object/envelope_version family used by ganita_*/get_* tools -- confirms two coexisting envelope shapes live in production simultaneously (pre-R-2-unification evidence). recommended_tier_jsonb and tradition_options_jsonb arrays are empty on every row served (writer-level gap, not hidden)."
+    },
+    {
+      "n": 31,
+      "tool": "mimamsa_insight_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "top_k": 3 },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 1700,
+      "notes": "calibration_status='prior_only', mode='STRUCTURAL' -- confirms L5 SEALED-in-structural-mode framing is live and correctly disclosed (not fabricated empirical scores)."
+    },
+    {
+      "n": 32,
+      "tool": "query_calibration",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "limit": 3 },
+      "envelope_version": "tool_bundle_ok_envelope",
+      "chart_header_present": false,
+      "approx_size_chars": 11800,
+      "latency_ms": 14,
+      "notes": "Same 'tool_bundle' envelope family as mitigation_map/vector_search. latency_ms field present and fast (14ms, served_from_cache=false). 141 QA checks (control_window/negative_control/degenerate_distribution) all status-reported, fail_count=0 -- learning-layer QA harness is live and populated, all kill_switch_state='active' (LL1 multipliers gated off pending real observations, n_observations=0 across the board -- correctly conservative)."
+    },
+    {
+      "n": 33,
+      "tool": "judgment_query",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "domain": "marriage", "max_signals": 3 },
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 9800,
+      "judgment_flags": ["bearing_yogas_no_domain_match", "bearing_yogas_corroboration_caveat", "notably_absent_not_checked", "afflictions_present", "response_still_over_12kb_budget_after_full_trim", "timing_anchored_forced_false"],
+      "notes": "verdict_grade='contested' for marriage (D9 Venus debilitated pulls it down from D1 'mixed'). trim_report shows active trimming to fit budget, with recover_via pointer to response_format:legacy for the untrimmed version -- honest trim disclosure (§N.6 point 2/3) confirmed live even in legacy envelope_format."
+    },
+    {
+      "n": 34,
+      "tool": "judgment_query",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "domain": "career", "max_signals": 3, "response_format": "v3" },
+      "envelope_version": "v1",
+      "envelope_shape_actually_served": "v3_populated",
+      "chart_header_present": true,
+      "approx_size_chars": 11200,
+      "judgment_flags": ["bearing_yogas_corroboration_caveat", "notably_absent_not_checked", "kala_activations_trimmed", "kala_activations_single_cycle", "afflictions_present", "response_still_over_12kb_budget_after_full_trim"],
+      "notes": "Fourth GT-CONFIRM of envelope_version='v1' string under response_format=v3 with fully populated v3 fields. verdict_grade='convergent_strong' for career (D10 Saturn exalted, 2 domain-matching yogas fired). Response STILL exceeds its own 12KB budget even after full trim -- confirms judgment_query is near/over its intended cap on a real chart even at max_signals=3."
+    },
+    {
+      "n": 35,
+      "tool": "plan_retrieval",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "args": { "question": "How is my career looking this year?" },
+      "envelope_version": "custom_ok_envelope",
+      "chart_header_present": false,
+      "approx_size_chars": 3600,
+      "notes": "Vidhi Engine plan: scope_tuple resolved via v2_fallback_keyword (fallback_recommended=true -- confirms intent_classify/DR-8 is the preferred but not-yet-mandatory path). completeness_receipt.dark cites 3 OPEN/LOGGED CRs (CR-56, CR-64, CR-24) by name for known gaps -- dark-set-with-owner discipline confirmed live."
+    },
+    {
+      "n": 36,
+      "tool": "vector_search",
+      "chart_id": null,
+      "args": { "query_text": "Saturn exalted seventh house marriage timing", "top_k": 3 },
+      "envelope_version": "tool_bundle_ok_envelope",
+      "chart_header_present": false,
+      "approx_size_chars": 2600,
+      "latency_ms": 5948,
+      "notes": "Semantic search over classical-text corpus; ~6s latency observed (semantic/embedding lookup, notably slower than the ~14ms structured-query latency on query_calibration)."
+    },
+    {
+      "n": 37,
+      "tool": "get_chart_orientation",
+      "chart_id": "00000000-0000-0000-0000-000000000000",
+      "args": {},
+      "envelope_version": "v1",
+      "chart_header_present": false,
+      "approx_size_chars": 1600,
+      "error": false,
+      "notes": "ERROR-SHAPE FINDING: the all-zero sentinel chart_id (which the schema's regex explicitly allows) does NOT error -- it returns a well-formed 200-shaped envelope with entity_profiles=[], top_signals=[], convergence_domains=[], candidate_pool_size=0, i.e. a SILENT EMPTY rather than an explicit 'chart not found' error. Relevant to the W3 'chart_header fail-loud' (W-9) item: this call's chart_header is simply absent (legacy envelope_format), so fail-loud has not yet been observed to trigger on an unresolvable chart_id in the legacy path."
+    }
+  ],
+  "summary_counts": {
+    "total_probes": 37,
+    "distinct_tools_probed": 30,
+    "charts_covered": ["482012f1-710e-4a25-994a-93821f5871aa (Abhisek, deep sweep)", "1c826d5a-41cb-4450-b4dc-59d440e5f75a (Abhinandan, orientation)"],
+    "layers_covered": ["L0 (bg_*/ref_*)", "L1 (ganita_*)", "L2 (bodha_*/get_signals/get_domain_reading/get_chart_quality)", "L3 (kala_*/get_temporal_windows)", "L4 (phala_*)", "L5 (mimamsa_*/query_calibration)", "cross-cutting (get_chart_orientation/judgment_query/plan_retrieval/get_dashas/vector_search/list_my_charts)"],
+    "errors_captured": 1,
+    "oversized_responses_captured": 4,
+    "envelope_version_v3_mismatch_reproductions": 4
+  }
+}

@@ -15,7 +15,7 @@ export const getArgalaCapability: CapabilityDescriptor = {
     'Retrieve Argala (intervention) and Virodha Argala (obstruction) matrices for a chart. ' +
     'Argala measures which grahas intervene in the results of each house via 2nd/4th/5th/11th placements; ' +
     'Virodha Argala measures which grahas block those interventions via 3rd/12th/10th/3rd (opposite). ' +
-    'These are large matrices (~21,600 rows each) covering all 5 ayanamshas × all house × graha combos. ' +
+    'These are large matrices covering all 5 ayanamshas × all house × graha combos. ' +
     'Use offset/limit for pagination. Covers: argala_natal_matrix, virodha_argala_natal_matrix.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
