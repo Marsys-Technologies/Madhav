@@ -469,3 +469,81 @@ def test_live_permission_multisystem_not_vimshottari_only():
         assert non_vimshottari_active, "PERMISSION must not be Vimsottari-only"
     finally:
         conn.close()
+
+
+# ── SAVEPOINT-nesting safety, second module (D-5 G-4 incident expanded fix,
+# 2026-07-20) ─────────────────────────────────────────────────────────────
+#
+# `tests/test_gochara_grammar.py` already proves this property for
+# `gochara_grammar.primitives`. This section proves the SAME property for
+# `gochara_intensity.permission` and `gochara_intensity.enrichment` -- two of
+# the modules whose own `safe_rollback` call sites were converted to
+# `savepoint_scope` in this fix's expanded second pass (the Conductor's
+# review correctly flagged that fixing `primitives.py` alone left the exact
+# same bug live in `engine.py` / `permission.py` / `valence.py` /
+# `enrichment.py` / `configuration_activity.py` / `ka_gochara_sweep/sweep.py`,
+# since G-4's sweep calls straight into all of them from inside the
+# orchestrator's `SAVEPOINT writer_exec`).
+#
+# Same technique as the primitives.py tests: stdlib `sqlite3` in explicit-
+# transaction mode gives real `SAVEPOINT`/`RELEASE SAVEPOINT`/`ROLLBACK TO
+# SAVEPOINT` semantics without needing a live Postgres (none is reachable in
+# this sandbox outside the `@pytest.mark.integration` tests above).
+import sqlite3  # noqa: E402
+
+from services.gochara_intensity.permission import compute_permission  # noqa: E402,F811
+from services.gochara_intensity.enrichment import _fetch_graha_position  # noqa: E402
+
+
+def _sqlite_conn_in_explicit_transaction() -> sqlite3.Connection:
+    conn = sqlite3.connect(":memory:", isolation_level=None)
+    conn.execute("BEGIN")
+    return conn
+
+
+def test_permission_compute_survives_inside_orchestrator_owned_savepoint():
+    """`compute_permission`'s several DB-touching branches (dasha periods,
+    sade_sati, guru_shani_double_transit, av_threshold, planetary_return)
+    each ran through `safe_rollback` (bare `conn.rollback()`) before this
+    fix. Against a bare SQLite connection, `DD.fetch_dasha_periods` and the
+    primitive calls inside will all fail (Postgres-only SQL / missing
+    tables) -- exactly the "everything degrades honestly" scenario this
+    module is built for. The assertion that matters, mirroring
+    `test_gochara_grammar.py::test_primitive_survives_inside_orchestrator_owned_savepoint`:
+    a manually-opened outer `SAVEPOINT writer_exec` (mimicking
+    `asset_runner.py::_drive_substeps`) must still be releasable after
+    `compute_permission` returns."""
+    conn = _sqlite_conn_in_explicit_transaction()
+    try:
+        conn.execute("SAVEPOINT writer_exec")
+
+        target = ResonanceTarget(
+            chart_id=CHART_ID, event_class="wealth", target_type="bhava",
+            target_ref="11", weight=0.75, classical_citation="TEST FIXTURE",
+            target_sign="Pisces",
+        )
+        permission, detail = compute_permission(
+            swe, conn, CHART_ID, "wealth", [target], _jd(2020, 1, 1),
+        )
+        assert isinstance(permission, float)  # degraded, but did not crash
+
+        # THE critical assertion.
+        conn.execute("RELEASE SAVEPOINT writer_exec")
+    finally:
+        conn.close()
+
+
+def test_enrichment_fetch_graha_position_survives_inside_orchestrator_owned_savepoint():
+    """Same proof for `enrichment._fetch_graha_position` -- a bare SQLite
+    connection has no `chart_facts` table, so the query fails; before this
+    fix the except block called `safe_rollback` (bare `conn.rollback()`)."""
+    conn = _sqlite_conn_in_explicit_transaction()
+    try:
+        conn.execute("SAVEPOINT writer_exec")
+
+        result = _fetch_graha_position(conn, CHART_ID, "SUN", "lahiri_chitrapaksha")
+        assert result is None  # honest degrade, not a crash
+
+        conn.execute("RELEASE SAVEPOINT writer_exec")
+    finally:
+        conn.close()

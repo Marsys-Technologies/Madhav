@@ -260,29 +260,53 @@ class _PoisonableConn:
     correct query (`kakshya_cell_crossing`'s `chart_facts` read, in the real
     incident).
 
-    This fake models that exact mechanic: `.execute()` on the `bg_transit_av_gates`
-    query always raises (the "root cause" query), which sets `poisoned=True`;
-    every subsequent `.execute()` call raises the generic aborted-transaction
-    error WHILE `poisoned` is still True; `.rollback()` clears it. This lets a
-    test assert, without any live DB, that the connection self-heals (the
-    fix's `safe_rollback` call inside each primitive's own except block) and a
-    later, unrelated primitive is NOT starved of its own honest DB read by an
-    earlier primitive's unrelated bug."""
+    This fake ALSO models the SECOND, more severe bug this module's fix
+    corrects: `av_threshold_state`'s original fix (bug #1) called
+    `_dbutil.safe_rollback`, which issues a bare full `conn.rollback()` --
+    fine here (no outer savepoint in THIS fake), but on the real orchestrator
+    connection that destroys the orchestrator's own `SAVEPOINT writer_exec`
+    (see `tests/test_gochara_grammar.py::
+    test_primitive_survives_inside_orchestrator_owned_savepoint` below, which
+    uses a real sqlite3 connection specifically to prove savepoint nesting
+    safety -- something this string-matching fake cannot prove on its own).
+    This fake recognizes `SAVEPOINT <n>` / `RELEASE SAVEPOINT <n>` /
+    `ROLLBACK TO SAVEPOINT <n>` (issued by the fix's `savepoint_scope`) the
+    same way real Postgres does: a `ROLLBACK TO SAVEPOINT` un-aborts the
+    transaction (real Postgres behavior -- it's the one statement allowed
+    while aborted, precisely because it targets a savepoint established
+    BEFORE the abort), while a bare `.rollback()` is tracked separately so a
+    test can assert the fixed code path never calls it."""
 
     def __init__(self):
         self.poisoned = False
-        self.rollback_called = 0
+        self.rollback_called = 0  # bare conn.rollback() -- the OLD, unsafe path
+        self.savepoints_opened: list[str] = []
+        self.savepoints_released: list[str] = []
+        self.savepoints_rolled_back_to: list[str] = []
         self.autocommit = False
 
     def execute(self, sql, params=None):
+        s = sql if isinstance(sql, str) else str(sql)
+        stripped = s.strip()
+        if stripped.startswith("ROLLBACK TO SAVEPOINT "):
+            name = stripped[len("ROLLBACK TO SAVEPOINT "):].strip()
+            self.savepoints_rolled_back_to.append(name)
+            self.poisoned = False  # real Postgres: this is the one statement that un-aborts
+            return _FakeCursor([])
         if self.poisoned:
             raise RuntimeError(
                 "current transaction is aborted, commands ignored until end of transaction block"
             )
-        if "bg_transit_av_gates" in sql:
+        if stripped.startswith("SAVEPOINT "):
+            self.savepoints_opened.append(stripped[len("SAVEPOINT "):].strip())
+            return _FakeCursor([])
+        if stripped.startswith("RELEASE SAVEPOINT "):
+            self.savepoints_released.append(stripped[len("RELEASE SAVEPOINT "):].strip())
+            return _FakeCursor([])
+        if "bg_transit_av_gates" in s:
             self.poisoned = True
             raise RuntimeError("could not determine data type of parameter $1")
-        if "ashtakavarga_kakshya_boundary" in sql:
+        if "ashtakavarga_kakshya_boundary" in s:
             # Real DB-backed boundary rows -- only reachable if this call was
             # NOT starved by the earlier bg_transit_av_gates failure.
             return _FakeCursor([
@@ -301,10 +325,13 @@ def test_bad_query_does_not_poison_subsequent_query_on_same_connection():
     brahma-build-pipeline-job-kb4zr, chart 482012f1, 2026-07-19T16:29:37Z):
     `av_threshold_state`'s DB read genuinely fails (bad SQL against
     `bg_transit_av_gates`) and must degrade to an honest [] AND self-heal the
-    shared connection (via `safe_rollback`) rather than leaving it poisoned
-    for whatever primitive runs next on the same `conn` -- exactly the shape
-    `ka_gochara_sweep.sweep` shares one connection across many primitive
-    calls per grid point."""
+    shared connection -- now via a per-query `SAVEPOINT`/`ROLLBACK TO
+    SAVEPOINT` (`savepoint_scope`), NOT a bare `conn.rollback()` (that was
+    bug #1's fix, itself the cause of the SECOND incident this module now
+    fixes -- see `_PoisonableConn`'s docstring) -- rather than leaving the
+    connection poisoned for whatever primitive runs next on the same `conn`.
+    Exactly the shape `ka_gochara_sweep.sweep` shares one connection across
+    many primitive calls per grid point."""
     conn = _PoisonableConn()
 
     av_target = ResonanceTarget(
@@ -315,13 +342,23 @@ def test_bad_query_does_not_poison_subsequent_query_on_same_connection():
     start_jd, end_jd = _jd(2019, 1, 1), _jd(2023, 6, 1)
 
     # 1) The bad query. Must degrade honestly (empty, not a crash) AND reset
-    #    the connection's transaction state -- not just log-and-return.
+    #    the connection's transaction state via a SAVEPOINT-scoped undo --
+    #    never the bare full `conn.rollback()`.
     sentences = P.av_threshold_state(swe, CHART_ID, av_target, start_jd, end_jd, conn=conn)
     assert sentences == []
-    assert conn.rollback_called == 1, (
-        "av_threshold_state's except block must call safe_rollback so a bad "
-        "query doesn't poison the connection for the next primitive."
+    assert conn.rollback_called == 0, (
+        "av_threshold_state's except block must never call the bare/full "
+        "conn.rollback() -- that is exactly what destroyed the orchestrator's "
+        "outer SAVEPOINT writer_exec in the live G-4 incident. It must use "
+        "savepoint_scope's SAVEPOINT/ROLLBACK TO SAVEPOINT instead."
     )
+    assert len(conn.savepoints_opened) == 1
+    assert conn.savepoints_opened[0].startswith("safe_av_gate_rows_")
+    assert conn.savepoints_rolled_back_to == conn.savepoints_opened, (
+        "the failed query's own savepoint must be rolled back to (undoing "
+        "only this query), not released."
+    )
+    assert conn.savepoints_released == [], "a failed query's savepoint must never be RELEASEd"
     assert conn.poisoned is False
 
     # 2) A SUBSEQUENT, unrelated primitive on the SAME connection -- the exact
@@ -347,6 +384,158 @@ def test_bad_query_does_not_poison_subsequent_query_on_same_connection():
         "connection was still poisoned from the earlier av_threshold_state failure."
     )
     assert s.detail["source"] == "chart_facts.ashtakavarga_kakshya_boundary"
+    assert conn.rollback_called == 0
+    assert conn.savepoints_opened[-1].startswith("safe_kakshya_boundaries_")
+    assert conn.savepoints_released[-1] == conn.savepoints_opened[-1], (
+        "the successful kakshya_boundaries query's savepoint must be RELEASEd, not rolled back."
+    )
+
+
+# ── SAVEPOINT-nesting safety: the D-5 G-4 second-incident regression ───────
+#
+# `test_bad_query_does_not_poison_subsequent_query_on_same_connection` above
+# proves the FAKE connection's string-level SAVEPOINT/RELEASE/ROLLBACK TO
+# bookkeeping is correct -- but that fake cannot prove the property that
+# actually matters: does an INNER `ROLLBACK TO SAVEPOINT` leave an OUTER,
+# independently-established savepoint alone? That is exactly what
+# `pipeline.orchestrator.asset_runner._drive_substeps` depends on (its own
+# `SAVEPOINT writer_exec` / `RELEASE SAVEPOINT writer_exec` around
+# `writer.run_substep(...)`), and exactly what the live G-4 incident violated
+# (bug #1's fix called a bare `conn.rollback()` inside that scope, which on
+# real Postgres destroys EVERY savepoint on the connection -- outer ones
+# included -- so the orchestrator's later `RELEASE SAVEPOINT writer_exec`
+# failed with `InvalidSavepointSpecification`).
+#
+# This sandbox has no DATABASE_URL (see module docstring), so these tests use
+# Python's stdlib `sqlite3` instead of psycopg/Postgres. SQLite implements
+# the same standard-SQL `SAVEPOINT` / `RELEASE SAVEPOINT` / `ROLLBACK TO
+# SAVEPOINT` statements with the exact nesting-isolation property under
+# test here (an inner `ROLLBACK TO SAVEPOINT` never touches an outer
+# savepoint; a bare full `ROLLBACK` destroys every savepoint on the
+# connection, outer ones included) -- so this is a REAL SQL engine proving a
+# REAL property of the fix, not a mocked assertion on call strings.
+import sqlite3  # noqa: E402
+
+
+def _sqlite_conn_in_explicit_transaction() -> sqlite3.Connection:
+    """`isolation_level=None` puts the sqlite3 module in autocommit-per-call
+    mode for ITS OWN implicit transaction management, so raw `BEGIN` /
+    `SAVEPOINT` / `COMMIT` statements we issue ourselves are the only thing
+    controlling transaction state -- mirroring how `savepoint_scope` controls
+    a psycopg3 connection explicitly via `conn.execute(...)`."""
+    conn = sqlite3.connect(":memory:", isolation_level=None)
+    conn.execute("BEGIN")
+    return conn
+
+
+def test_primitive_survives_inside_orchestrator_owned_savepoint():
+    """THE critical test for this fix: exercises the ACTUAL fixed production
+    code path (`av_threshold_state` -> `_fetch_av_gate_rows` ->
+    `savepoint_scope`) with a query that is GUARANTEED to fail (no
+    `bg_transit_av_gates` table in this bare SQLite connection, plus
+    Postgres-only `%s::int` cast syntax it doesn't understand) -- while
+    nested inside a manually-opened `SAVEPOINT writer_exec`, exactly
+    mirroring `asset_runner.py::_drive_substeps`'s own SAVEPOINT lifecycle
+    around `writer.run_substep(ctx, step)`:
+
+        cur.execute("SAVEPOINT writer_exec")
+        try:
+            result = writer.run_substep(ctx, step)   # <- av_threshold_state
+        except Exception:                            #    runs INSIDE here
+            cur.execute("ROLLBACK TO SAVEPOINT writer_exec")
+            raise
+        cur.execute("RELEASE SAVEPOINT writer_exec")
+
+    Before this fix, `av_threshold_state`'s except block called
+    `_dbutil.safe_rollback` -> a bare `conn.rollback()`, which would destroy
+    `writer_exec` here too -- reproducing psycopg's live
+    `InvalidSavepointSpecification: savepoint "writer_exec" does not exist`.
+    The assertion that matters is the final `RELEASE SAVEPOINT writer_exec`
+    succeeding.
+    """
+    conn = _sqlite_conn_in_explicit_transaction()
+    try:
+        conn.execute("SAVEPOINT writer_exec")  # the orchestrator's own outer savepoint
+
+        target = ResonanceTarget(
+            chart_id=CHART_ID, event_class="wealth", target_type="bhava",
+            target_ref="11", weight=0.75, classical_citation="TEST FIXTURE",
+            target_sign="Pisces",
+        )
+        start_jd, end_jd = _jd(2019, 1, 1), _jd(2023, 6, 1)
+
+        # Runs the real production code path; the query fails (Postgres-only
+        # syntax against SQLite / missing table) and must degrade honestly.
+        sentences = P.av_threshold_state(swe, CHART_ID, target, start_jd, end_jd, conn=conn)
+        assert sentences == []
+
+        # THE critical assertion: writer_exec must still exist and be
+        # releasable -- exactly what the orchestrator does next on success.
+        conn.execute("RELEASE SAVEPOINT writer_exec")
+    finally:
+        conn.close()
+
+
+def test_savepoint_scope_rollback_never_touches_outer_savepoint():
+    """Lower-level companion to the test above, isolating `savepoint_scope`
+    itself (not routed through a primitive) with an explicit failure inside
+    the wrapped block, run inside a manually-opened outer `writer_exec`
+    savepoint -- proving the general mechanism, not just this one call site.
+    """
+    from services.gochara_intensity._dbutil import savepoint_scope
+
+    conn = _sqlite_conn_in_explicit_transaction()
+    try:
+        conn.execute("SAVEPOINT writer_exec")
+
+        with pytest.raises(sqlite3.OperationalError):
+            with savepoint_scope(conn, "kakshya_boundaries"):
+                conn.execute("SELECT * FROM this_table_does_not_exist_at_all")
+
+        # The inner failure must not have disturbed the outer savepoint.
+        conn.execute("RELEASE SAVEPOINT writer_exec")
+    finally:
+        conn.close()
+
+
+def test_savepoint_scope_success_path_releases_and_preserves_outer_savepoint():
+    """The success-path mirror: savepoint_scope's own SAVEPOINT is RELEASEd,
+    and the outer writer_exec savepoint is untouched either way."""
+    from services.gochara_intensity._dbutil import savepoint_scope
+
+    conn = _sqlite_conn_in_explicit_transaction()
+    try:
+        conn.execute("SAVEPOINT writer_exec")
+        conn.execute("CREATE TABLE t (x INTEGER)")
+        conn.execute("INSERT INTO t VALUES (1)")
+
+        with savepoint_scope(conn, "kakshya_boundaries"):
+            cur = conn.execute("SELECT x FROM t")
+            assert cur.fetchall() == [(1,)]
+
+        conn.execute("RELEASE SAVEPOINT writer_exec")
+    finally:
+        conn.close()
+
+
+def test_bare_full_rollback_WOULD_have_destroyed_outer_savepoint():
+    """Negative control -- proves the OLD (bug #1) mechanism really was
+    unsafe, by reproducing it directly: after an outer `SAVEPOINT
+    writer_exec` is opened, a bare full `conn.rollback()` (exactly what the
+    OLD `_dbutil.safe_rollback` called, and what `primitives.py`'s 4 call
+    sites called before this fix) makes the outer savepoint disappear --
+    the subsequent `RELEASE SAVEPOINT writer_exec` raises, reproducing the
+    shape of the live incident's `InvalidSavepointSpecification`. This is
+    exactly why `savepoint_scope` (SAVEPOINT-to-SAVEPOINT, never a bare
+    rollback) is the correct fix."""
+    conn = _sqlite_conn_in_explicit_transaction()
+    try:
+        conn.execute("SAVEPOINT writer_exec")
+        conn.rollback()  # the OLD, unsafe safe_rollback behavior
+        with pytest.raises(sqlite3.OperationalError):
+            conn.execute("RELEASE SAVEPOINT writer_exec")
+    finally:
+        conn.close()
 
 
 def test_primitive_7_gochara_vedha_pair_cancellation_check():

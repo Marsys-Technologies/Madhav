@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from ._dbutil import safe_rollback
+from ._dbutil import savepoint_scope
 
 logger = logging.getLogger(__name__)
 
@@ -90,22 +90,22 @@ def fetch_valence(conn, event_class: str) -> str:
     `gochara_grammar.resonance_map.fetch_resonance_targets`."""
     if conn is not None:
         try:
-            cur = conn.execute(
-                "SELECT evidence_requirements->>'valence' AS valence "
-                "FROM brahma_event_ontology WHERE event_class_id = %s",
-                [event_class],
-            )
-            row = cur.fetchone()
-            if row is not None:
-                v = row["valence"] if isinstance(row, dict) else row[0]
-                if v:
-                    return str(v)
+            with savepoint_scope(conn, "valence"):
+                cur = conn.execute(
+                    "SELECT evidence_requirements->>'valence' AS valence "
+                    "FROM brahma_event_ontology WHERE event_class_id = %s",
+                    [event_class],
+                )
+                row = cur.fetchone()
+                if row is not None:
+                    v = row["valence"] if isinstance(row, dict) else row[0]
+                    if v:
+                        return str(v)
         except Exception as exc:  # noqa: BLE001
             logger.info(
                 "[gochara_intensity.valence] brahma_event_ontology live read failed for "
                 "event_class=%s, falling back to VALENCE_MAP: %s", event_class, exc,
             )
-            safe_rollback(conn)
     return VALENCE_MAP.get(event_class, "neutral")
 
 

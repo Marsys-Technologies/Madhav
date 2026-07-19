@@ -83,7 +83,7 @@ from services.gochara_grammar import primitives as P
 from services.gochara_grammar import composition as CO
 from services.gochara_grammar.models import ResonanceTarget
 from pipeline.transit_search import _jd_to_ist_iso
-from ._dbutil import safe_rollback
+from ._dbutil import savepoint_scope
 
 logger = logging.getLogger(__name__)
 
@@ -230,11 +230,13 @@ def compute_permission(
     # of these eight, never gating the rest). systems=DASHA_SYSTEM_IDS uses
     # the LIVE-VERIFIED system_id list (see module docstring correction),
     # not G-2's dasha_data.DASHA_SYSTEMS default.
-    periods = dasha_periods if dasha_periods is not None else DD.fetch_dasha_periods(
-        conn, chart_id, ayanamsha_id=ayanamsha_id, systems=list(DASHA_SYSTEM_IDS)
-    )
-    safe_rollback(conn)  # defensive: reset connection state in case that read hit a DB-shape
-                          # surprise it swallowed internally (see _dbutil.py module docstring)
+    if dasha_periods is not None:
+        periods = dasha_periods
+    else:
+        with savepoint_scope(conn, "dasha_periods"):
+            periods = DD.fetch_dasha_periods(
+                conn, chart_id, ayanamsha_id=ayanamsha_id, systems=list(DASHA_SYSTEM_IDS)
+            )
     dasha_hits = _dasha_contributions(periods, t_iso, _relevant_grahas(targets), _relevant_signs(targets))
     for sid in DASHA_SYSTEM_IDS:
         hit = dasha_hits[sid]
@@ -251,21 +253,21 @@ def compute_permission(
     sade_sati_detail: dict = {}
     if targets:
         try:
-            sentences = P.sade_sati_phase(chart_id, targets[0], conn=conn)
-            for s in sentences:
-                start_iso = s.detail.get("phase_start_iso")
-                end_iso = s.detail.get("phase_end_iso")
-                if not start_iso:
-                    continue
-                pseudo_period = {"start_iso": start_iso, "end_iso": end_iso or "9999-12-31T00:00:00+00:00"}
-                if DD.period_contains(pseudo_period, t_iso):
-                    sade_sati_active = True
-                    sade_sati_detail = {"phase": s.detail.get("phase_name") or s.detail.get("subject"),
-                                         "start_iso": start_iso, "end_iso": end_iso}
-                    break
+            with savepoint_scope(conn, "sade_sati_permission"):
+                sentences = P.sade_sati_phase(chart_id, targets[0], conn=conn)
+                for s in sentences:
+                    start_iso = s.detail.get("phase_start_iso")
+                    end_iso = s.detail.get("phase_end_iso")
+                    if not start_iso:
+                        continue
+                    pseudo_period = {"start_iso": start_iso, "end_iso": end_iso or "9999-12-31T00:00:00+00:00"}
+                    if DD.period_contains(pseudo_period, t_iso):
+                        sade_sati_active = True
+                        sade_sati_detail = {"phase": s.detail.get("phase_name") or s.detail.get("subject"),
+                                             "start_iso": start_iso, "end_iso": end_iso}
+                        break
         except Exception as exc:  # noqa: BLE001 -- honest degrade, never crash PERMISSION
             logger.info("[permission] sade_sati_phase check failed: %s", exc)
-            safe_rollback(conn)
     systems.append({"system_id": "sade_sati", "active": sade_sati_active,
                      "weight": SYSTEM_WEIGHTS["sade_sati"], "detail": sade_sati_detail})
 
@@ -273,21 +275,21 @@ def compute_permission(
     gsdt_active = False
     gsdt_detail: dict = {}
     try:
-        contact_sentences = []
-        for target in targets:
-            if target.target_longitude_deg is None:
-                continue
-            contact_sentences += P.drishti_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-            contact_sentences += P.degree_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-        comps = CO.double_transit(contact_sentences, window_days=window_days)
-        for c in comps:
-            if c.detail.get("is_guru_shani_double_transit"):
-                gsdt_active = True
-                gsdt_detail = {"target_ref": c.detail.get("target_ref"), "event_datetime_ist": c.event_datetime_ist}
-                break
+        with savepoint_scope(conn, "guru_shani_double_transit"):
+            contact_sentences = []
+            for target in targets:
+                if target.target_longitude_deg is None:
+                    continue
+                contact_sentences += P.drishti_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+                contact_sentences += P.degree_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+            comps = CO.double_transit(contact_sentences, window_days=window_days)
+            for c in comps:
+                if c.detail.get("is_guru_shani_double_transit"):
+                    gsdt_active = True
+                    gsdt_detail = {"target_ref": c.detail.get("target_ref"), "event_datetime_ist": c.event_datetime_ist}
+                    break
     except Exception as exc:  # noqa: BLE001
         logger.info("[permission] guru_shani_double_transit check failed: %s", exc)
-        safe_rollback(conn)
     systems.append({"system_id": "guru_shani_double_transit", "active": gsdt_active,
                      "weight": SYSTEM_WEIGHTS["guru_shani_double_transit"], "detail": gsdt_detail})
 
@@ -295,17 +297,17 @@ def compute_permission(
     av_active = False
     av_detail: dict = {}
     try:
-        for target in targets:
-            if target.target_type != "bhava" or not target.target_sign:
-                continue
-            events = P.av_threshold_state(swe, chart_id, target, start_jd, end_jd, conn=conn)
-            if events:
-                av_active = True
-                av_detail = {"target_ref": target.target_ref, "count": len(events)}
-                break
+        with savepoint_scope(conn, "av_threshold_permission"):
+            for target in targets:
+                if target.target_type != "bhava" or not target.target_sign:
+                    continue
+                events = P.av_threshold_state(swe, chart_id, target, start_jd, end_jd, conn=conn)
+                if events:
+                    av_active = True
+                    av_detail = {"target_ref": target.target_ref, "count": len(events)}
+                    break
     except Exception as exc:  # noqa: BLE001
         logger.info("[permission] av_threshold_state check failed: %s", exc)
-        safe_rollback(conn)
     systems.append({"system_id": "av_threshold", "active": av_active,
                      "weight": SYSTEM_WEIGHTS["av_threshold"], "detail": av_detail})
 
@@ -313,19 +315,19 @@ def compute_permission(
     return_active = False
     return_detail: dict = {}
     try:
-        for target in targets:
-            if target.natal_planet not in ("Saturn", "Jupiter", "Rahu", "Ketu"):
-                continue
-            if target.target_longitude_deg is None:
-                continue
-            events = P.planetary_return(swe, chart_id, target, start_jd, end_jd)
-            if events:
-                return_active = True
-                return_detail = {"natal_planet": target.natal_planet, "count": len(events)}
-                break
+        with savepoint_scope(conn, "planetary_return_permission"):
+            for target in targets:
+                if target.natal_planet not in ("Saturn", "Jupiter", "Rahu", "Ketu"):
+                    continue
+                if target.target_longitude_deg is None:
+                    continue
+                events = P.planetary_return(swe, chart_id, target, start_jd, end_jd)
+                if events:
+                    return_active = True
+                    return_detail = {"natal_planet": target.natal_planet, "count": len(events)}
+                    break
     except Exception as exc:  # noqa: BLE001
         logger.info("[permission] planetary_return check failed: %s", exc)
-        safe_rollback(conn)
     systems.append({"system_id": "planetary_return", "active": return_active,
                      "weight": SYSTEM_WEIGHTS["planetary_return"], "detail": return_detail})
 
