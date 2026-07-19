@@ -80,11 +80,23 @@ from panchang_engine.tara_bala import compute_tara_position, get_tara_detail
 # incident's root cause was `_fetch_av_gate_rows`'s own bad SQL (an untyped
 # bare `%s IS NULL` placeholder -> `IndeterminateDatatype`, fixed below by
 # casting that placeholder too), but ANY future bad query in ANY of these
-# families would reproduce the same cascade without this. `safe_rollback` is
-# G-3's own connection-hygiene helper (`gochara_intensity._dbutil`); imported
-# here (not duplicated) and called at each of these four call-boundary except
-# blocks so a single bad/failed read never poisons the rest of the sweep.
-from services.gochara_intensity._dbutil import safe_rollback
+# families would reproduce the same cascade without this.
+#
+# CORRECTION (found live at the VERY NEXT D-5 G-4 run, 2026-07-19/20, same
+# job lineage): the first fix here called `_dbutil.safe_rollback`, which does
+# a bare `conn.rollback()` -- a FULL transaction rollback. `ka_gochara_sweep`
+# (G-4) runs these primitives from WITHIN the orchestrator's own
+# `SAVEPOINT writer_exec` (`asset_runner.py::_drive_substeps`); a full
+# `conn.rollback()` from in there destroys that outer savepoint too, so the
+# orchestrator's later `RELEASE SAVEPOINT writer_exec` then fails with
+# `InvalidSavepointSpecification`. Each of the four `_fetch_*` helpers below
+# now wraps its query in `savepoint_scope` (`gochara_intensity._dbutil`)
+# instead -- a uniquely-named SAVEPOINT scoped to just that one query, so a
+# caught failure unwinds ONLY this read and never touches any savepoint an
+# outer caller (orchestrator or otherwise) established. Safe in both this
+# module's orchestrator-nested (G-4) context and any standalone (no outer
+# savepoint) context.
+from services.gochara_intensity._dbutil import savepoint_scope
 
 from .models import ConfigurationSentence, ResonanceTarget
 from . import citations as C
@@ -313,19 +325,19 @@ def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
     fact_subject=f'{planet}.<kakshya_index>', fact_key in
     {'lord','start_deg','end_deg'}). Defensive -- [] on any failure."""
     try:
-        cur = conn.execute(
-            """
-            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
-              FROM chart_facts
-             WHERE chart_id = %s AND fact_category = 'ashtakavarga_kakshya_boundary'
-               AND fact_subject LIKE %s
-            """,
-            [chart_id, f"{planet}.%"],
-        )
-        rows = cur.fetchall()
+        with savepoint_scope(conn, "kakshya_boundaries"):
+            cur = conn.execute(
+                """
+                SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+                  FROM chart_facts
+                 WHERE chart_id = %s AND fact_category = 'ashtakavarga_kakshya_boundary'
+                   AND fact_subject LIKE %s
+                """,
+                [chart_id, f"{planet}.%"],
+            )
+            rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[kakshya_cell_crossing] chart_facts kakshya boundary read failed: %s", exc)
-        safe_rollback(conn)
         return []
     by_subject: dict[str, dict] = {}
     for row in rows:
@@ -400,20 +412,20 @@ def _fetch_av_gate_rows(conn, target_house: Optional[str]) -> list[dict]:
     if conn is None:
         return []
     try:
-        cur = conn.execute(
-            """
-            SELECT gate_kind, graha, house_from_moon, min_av_score, min_sav_score,
-                   effect, classical_citation
-              FROM bg_transit_av_gates
-             WHERE gate_kind = 'sav_threshold'
-               AND (%s::int IS NULL OR house_from_moon = %s::int)
-            """,
-            [target_house, target_house],
-        )
-        rows = cur.fetchall()
+        with savepoint_scope(conn, "av_gate_rows"):
+            cur = conn.execute(
+                """
+                SELECT gate_kind, graha, house_from_moon, min_av_score, min_sav_score,
+                       effect, classical_citation
+                  FROM bg_transit_av_gates
+                 WHERE gate_kind = 'sav_threshold'
+                   AND (%s::int IS NULL OR house_from_moon = %s::int)
+                """,
+                [target_house, target_house],
+            )
+            rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[av_threshold_state] bg_transit_av_gates read failed: %s", exc)
-        safe_rollback(conn)
         return []
     keys = ["gate_kind", "graha", "house_from_moon", "min_av_score", "min_sav_score", "effect", "classical_citation"]
     return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
@@ -482,19 +494,19 @@ def _fetch_vedha_rules(conn, primary_house: Optional[str]) -> list[dict]:
     if conn is None:
         return []
     try:
-        cur = conn.execute(
-            """
-            SELECT graha, primary_house, vedha_house, phala, classical_citation
-              FROM bg_transit_rules
-             WHERE rule_type = 'vedha'
-               AND (%s::int IS NULL OR primary_house = %s::int)
-            """,
-            [primary_house, primary_house],
-        )
-        rows = cur.fetchall()
+        with savepoint_scope(conn, "vedha_rules"):
+            cur = conn.execute(
+                """
+                SELECT graha, primary_house, vedha_house, phala, classical_citation
+                  FROM bg_transit_rules
+                 WHERE rule_type = 'vedha'
+                   AND (%s::int IS NULL OR primary_house = %s::int)
+                """,
+                [primary_house, primary_house],
+            )
+            rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[gochara_vedha_pair] bg_transit_rules read failed: %s", exc)
-        safe_rollback(conn)
         return []
     keys = ["graha", "primary_house", "vedha_house", "phala", "classical_citation"]
     return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
@@ -713,18 +725,18 @@ def _fetch_sade_sati_rows(conn, chart_id: str) -> list[dict]:
     if conn is None:
         return []
     try:
-        cur = conn.execute(
-            """
-            SELECT fact_subject, fact_key, fact_value_text, fact_value_num, citation_human
-              FROM chart_facts
-             WHERE chart_id = %s AND fact_category IN ('sade_sati_cycle', 'sade_sati_phase')
-            """,
-            [chart_id],
-        )
-        rows = cur.fetchall()
+        with savepoint_scope(conn, "sade_sati_rows"):
+            cur = conn.execute(
+                """
+                SELECT fact_subject, fact_key, fact_value_text, fact_value_num, citation_human
+                  FROM chart_facts
+                 WHERE chart_id = %s AND fact_category IN ('sade_sati_cycle', 'sade_sati_phase')
+                """,
+                [chart_id],
+            )
+            rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[sade_sati_phase] chart_facts sade_sati read failed: %s", exc)
-        safe_rollback(conn)
         return []
     keys = ["fact_subject", "fact_key", "fact_value_text", "fact_value_num", "citation_human"]
     return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]

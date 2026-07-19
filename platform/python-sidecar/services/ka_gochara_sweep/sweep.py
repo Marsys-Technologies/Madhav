@@ -47,7 +47,7 @@ from services.gochara_intensity.engine import fetch_temporal_shape
 from services.gochara_grammar import resonance_map as RM
 from services.gochara_grammar import dasha_data as DD
 from services.gochara_intensity.enrichment import enrich_targets
-from services.gochara_intensity._dbutil import safe_rollback
+from services.gochara_intensity._dbutil import savepoint_scope
 
 from .shape_output import build_rows_for_event_class
 
@@ -71,25 +71,25 @@ def fetch_ontology_meta(conn, event_class: str) -> dict[str, Any]:
     if conn is None:
         return meta
     try:
-        cur = conn.execute(
-            "SELECT temporal_shape, duration_prior, milestone_template, irreversibility_milestone "
-            "FROM brahma_event_ontology WHERE event_class_id = %s",
-            [event_class],
-        )
-        row = cur.fetchone()
-        if row is not None:
-            if isinstance(row, dict):
-                meta["temporal_shape"] = row.get("temporal_shape")
-                meta["duration_prior"] = row.get("duration_prior")
-                meta["milestone_template"] = row.get("milestone_template")
-                meta["irreversibility_milestone"] = row.get("irreversibility_milestone")
-            else:
-                meta["temporal_shape"], meta["duration_prior"], meta["milestone_template"], \
-                    meta["irreversibility_milestone"] = row
+        with savepoint_scope(conn, "ontology_meta"):
+            cur = conn.execute(
+                "SELECT temporal_shape, duration_prior, milestone_template, irreversibility_milestone "
+                "FROM brahma_event_ontology WHERE event_class_id = %s",
+                [event_class],
+            )
+            row = cur.fetchone()
+            if row is not None:
+                if isinstance(row, dict):
+                    meta["temporal_shape"] = row.get("temporal_shape")
+                    meta["duration_prior"] = row.get("duration_prior")
+                    meta["milestone_template"] = row.get("milestone_template")
+                    meta["irreversibility_milestone"] = row.get("irreversibility_milestone")
+                else:
+                    meta["temporal_shape"], meta["duration_prior"], meta["milestone_template"], \
+                        meta["irreversibility_milestone"] = row
     except Exception as exc:  # noqa: BLE001
         logger.info("[ka_gochara_sweep] brahma_event_ontology read failed for event_class=%s: %s",
                     event_class, exc)
-        safe_rollback(conn)
     if not meta["temporal_shape"]:
         meta["temporal_shape"] = fetch_temporal_shape(conn, event_class)
     return meta
@@ -101,32 +101,37 @@ def _gather_active_sentences_at(swe, conn, chart_id: str, targets, t_jd: float,
     single served row's date (peak or milestone date) -- see module
     docstring's PERFORMANCE note for why this is a bounded, per-row cost,
     not a per-grid-day one."""
+    # DEFENSIVE (found live at this lane's verification pass, 2026-07-19):
+    # G-2's `primitives.kakshya_cell_crossing` can catch its OWN chart_facts
+    # read failure INTERNALLY (logs + returns [], never raises) without
+    # itself resetting the connection's transaction state -- so
+    # `gather_configuration_sentences` can return a normally-degraded
+    # (non-exceptional) result while leaving `conn` in Postgres'
+    # "current transaction is aborted" state. G-3's own `compute_lambda_e`
+    # never surfaces this because its LATER internal calls (compute_permission,
+    # valence.fetch_valence, etc.) each carry their own savepoint_scope-guarded
+    # try/except and happen to clear it before returning -- but THIS module
+    # calls `gather_configuration_sentences` a SECOND time, standalone, after
+    # `compute_lambda_e_series` has already returned, with no such later call
+    # to absorb a poisoned state. `savepoint_scope` here is this module's OWN
+    # defensive boundary (both the raise-on-failure path AND the
+    # silently-swallowed-internally path -- see `_dbutil.savepoint_scope`'s
+    # own docstring for how it now covers both) -- not a change to any
+    # G-1/G-2/G-3 file (all three remain untouched, must_not_touch honored).
+    # CORRECTION (D-5 G-4 second incident, 2026-07-19/20): this used to call
+    # `safe_rollback` (bare `conn.rollback()`) unconditionally in a `finally`
+    # block -- exactly the pattern that destroys the orchestrator's own
+    # `SAVEPOINT writer_exec` when this module runs inside a real substep.
+    # `savepoint_scope` replaces both the except-path AND the
+    # always-run-regardless-of-outcome `finally` shape with a single
+    # SAVEPOINT-scoped block.
     try:
-        sentences = gather_configuration_sentences(swe, conn, chart_id, targets,
-                                                    t_jd - window_days, t_jd + window_days)
+        with savepoint_scope(conn, "active_sentences_regather"):
+            sentences = gather_configuration_sentences(swe, conn, chart_id, targets,
+                                                        t_jd - window_days, t_jd + window_days)
     except Exception as exc:  # noqa: BLE001
         logger.info("[ka_gochara_sweep] active-sentence re-gather failed at t_jd=%s: %s", t_jd, exc)
-        safe_rollback(conn)
         return []
-    finally:
-        # DEFENSIVE (found live at this lane's verification pass, 2026-07-19):
-        # G-2's `primitives.kakshya_cell_crossing` can catch its OWN chart_facts
-        # read failure INTERNALLY (logs + returns [], never raises) without
-        # itself resetting the connection's transaction state -- so
-        # `gather_configuration_sentences` can return a normally-degraded
-        # (non-exceptional) result while leaving `conn` in Postgres'
-        # "current transaction is aborted" state. G-3's own `compute_lambda_e`
-        # never surfaces this because its LATER internal calls (compute_permission,
-        # valence.fetch_valence, etc.) each carry their own safe_rollback-guarded
-        # try/except and happen to clear it before returning -- but THIS module
-        # calls `gather_configuration_sentences` a SECOND time, standalone, after
-        # `compute_lambda_e_series` has already returned, with no such later call
-        # to absorb a poisoned state. Unconditional safe_rollback here (success or
-        # failure) is this module's OWN defensive boundary, per `_dbutil.py`'s own
-        # documented discipline ("called ... right after any of ITS OWN try/except
-        # blocks around a G-1/G-2 call catches something") -- not a change to any
-        # G-1/G-2/G-3 file (all three remain untouched, must_not_touch honored).
-        safe_rollback(conn)
     return [
         {
             "primitive": s.primitive,
@@ -162,24 +167,25 @@ def sweep_event_class_chunk(
     meta = fetch_ontology_meta(conn, event_class)
     shape = meta["temporal_shape"] or "point"
 
-    raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
-    safe_rollback(conn)
+    with savepoint_scope(conn, "resonance_targets_sweep"):
+        raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
     targets = enrich_targets(conn, raw_targets, ayanamsha_id=ayanamsha_id)
-    dasha_periods = DD.fetch_dasha_periods(conn, chart_id, ayanamsha_id=ayanamsha_id)
-    safe_rollback(conn)
+    with savepoint_scope(conn, "dasha_periods_sweep"):
+        dasha_periods = DD.fetch_dasha_periods(conn, chart_id, ayanamsha_id=ayanamsha_id)
 
     if not targets:
         logger.info("[ka_gochara_sweep] no gochara_resonance_map targets for chart=%s event_class=%s "
                     "-- honest empty chunk (PROMISE=0.0), not fabricated.", chart_id, event_class)
 
     if shape in ("point", "interval"):
-        series = compute_lambda_e_series(
-            swe, conn, chart_id, event_class, horizon_start_jd, horizon_end_jd, step_days,
-            targets=targets, dasha_periods=dasha_periods, temporal_shape=shape,
-            ayanamsha_id=ayanamsha_id,
-        )
-        safe_rollback(conn)  # defensive reset before this module's own second query pass (see
-                              # _gather_active_sentences_at's docstring for why this is needed)
+        with savepoint_scope(conn, "lambda_e_series"):
+            series = compute_lambda_e_series(
+                swe, conn, chart_id, event_class, horizon_start_jd, horizon_end_jd, step_days,
+                targets=targets, dasha_periods=dasha_periods, temporal_shape=shape,
+                ayanamsha_id=ayanamsha_id,
+            )
+        # (this module's own second query pass, `_gather_active_sentences_at`
+        # below, is independently savepoint-scoped -- see that function.)
         active_by_jd: dict[float, list] = {}
         rows = build_rows_for_event_class(
             swe, event_class, shape, series=series,
