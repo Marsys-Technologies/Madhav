@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-07-19T20:13:04.217Z",
+  "generator": "generate_concept_projections.ts",
+  "generator_version": "1.0",
+  "source": "concept_ledger (migration 461)",
+  "total_concepts": 0,
+  "counts_by_lifecycle_state": {
+    "DISCOVERED": 0,
+    "SERVED": 0,
+    "PLANNER_KNOWN": 0,
+    "INTERNAL_BY_DESIGN": 0,
+    "RETIRED": 0,
+    "DARK": 0
+  },
+  "counts_by_source_layer": {
+    "L0": 0,
+    "L1": 0,
+    "L2": 0,
+    "L3": 0,
+    "L4": 0,
+    "L5": 0
+  },
+  "counts_by_lifecycle_and_layer": [],
+  "note": "concept_ledger is empty — population is the W-25 harvest pipeline (later wave). This census proves the ledger→projection loop runs end to end pre-population."
+}

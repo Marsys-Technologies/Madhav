@@ -8,7 +8,7 @@
  * Core shape (CapabilityDescriptor + chart-agnostic gate fields) is FROZEN.
  * New optional fields may only be added via a versioned amendment that bumps
  * the amendment_version below and documents the change.
- * amendment_version: 1 (initial freeze)
+ * amendment_version: 2 (R-1.1 descriptor extension, 2026-07-20 — see D1_AMENDMENTS)
  *
  * AMENDMENT PROCEDURE:
  * 1. Add the new OPTIONAL field to CapabilityDescriptor (never remove or rename required fields).
@@ -211,6 +211,142 @@ interface CapabilityDescriptorBase {
     facets: string[]
     empty_reason: boolean
   }
+
+  // ── R-1.1 descriptor extension (D1 amendment_version 2, 2026-07-20) ────────
+  // RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §3 R-1 item 1 ("Promote the registry to
+  // sole author surface"). TYPE-ONLY this wave (W1 Lane L1a) — every field below is
+  // OPTIONAL so all ~118 existing descriptors remain valid untouched. Populating
+  // these across the estate is W2's migration, not this wave's. See D1_AMENDMENTS
+  // at the bottom of this file for the amendment-log entry.
+
+  /**
+   * Reader-facing display strings, length-disciplined per surface (plan §3 R-1.1).
+   * Distinct from `description` (the full LLM-facing prose) — these are the short
+   * forms a projection compiler emits for space-constrained surfaces (MCP-compact
+   * umbrella lists, docs resource index, etc.).
+   */
+  display?: {
+    /** A few words — umbrella-list / compact-profile display. */
+    short_label?: string
+    /** One sentence — chat tool-picker / docs index row. */
+    one_line?: string
+    /** Longer prose, if distinct from `description`; omit to fall back to `description`. */
+    full_description?: string
+  }
+
+  /**
+   * MCP-style behavioral annotations (plan §3 R-1.1; closes GT-30 — "no MCP tool
+   * annotations anywhere", zero matches at audit time). Mirrors MCP spec
+   * readOnlyHint/idempotentHint/destructiveHint/openWorldHint so a foreign LLM
+   * client's approval flow can relax on the read-only, non-destructive majority
+   * without inferring read-vs-write from prose. Supersedes the narrower
+   * `mcp_annotations` field above once populated (W2); both may coexist meanwhile.
+   */
+  annotations?: {
+    read_only?: boolean
+    idempotent?: boolean
+    destructive?: boolean
+    /** True if the tool's effects are visible outside this system (per MCP openWorldHint). */
+    open_world?: boolean
+  }
+
+  /**
+   * Reader-facing plain-language glossary for internal tokens this capability's
+   * output may emit (SIG.MSR.* ids, marsys:// URIs, layer-coded tokens, flag codes,
+   * epistemic-grade codes). Plan §3 R-1.1 (A-18); rides in the v3 envelope per R-2.3
+   * so a careless-reading foreign LLM still gets the label adjacent to the token
+   * (handoff §7.2's "loud failure for careless readers"). `enforce_complete: true`
+   * is the future CI register-linter hook (A-18: "missing labels fail CI") — v1
+   * lands the field only, the linter is a later wave.
+   */
+  register?: {
+    glossary?: Record<string, string>
+    enforce_complete?: boolean
+  }
+
+  /**
+   * A-04 mutation capability class (plan §3 R-1.1; PARIPRASHNA_TARGET_ARCHITECTURE
+   * §8.4 / A-04: "A `mutation: true` capability class is introduced; sidecar-served
+   * tools are pulled into the registry"). Absent or false = read-only (the
+   * overwhelming majority of today's estate). Set true for write-capable tools
+   * (outcome recording, explicit prediction filing, etc.) so the projection
+   * compiler and per-family annotations can treat them distinctly from reads.
+   */
+  mutation?: boolean
+
+  /**
+   * Which generated surfaces serve this capability (plan §3 R-1.1 + R-4's four
+   * projections). Absent = not yet classified (v1; classification is W2's
+   * migration). `mcp_consult` per OT-10 is the minimal orienting-tool surface.
+   */
+  projection_tags?: Array<'chat' | 'mcp_full' | 'mcp_compact' | 'mcp_consult'>
+
+  /**
+   * Per-family serving overrides (plan §3 R-1.1: "subsumes `behavioral_overrides`").
+   * Broader than the existing `behavioral_overrides` field above (which stays as-is
+   * this wave — consolidating the two is W2's migration, not a type-only addition).
+   * Shape follows the §7 industry-consult amendments: per-family description/name
+   * overrides, strict-schema opt-in (OpenAI), and few-shot examples emitted only
+   * for families that benefit from them (Claude) and omitted where they hurt
+   * (OpenAI reasoning models).
+   */
+  family_overrides?: {
+    anthropic?: FamilyOverrideSpec
+    gemini?: FamilyOverrideSpec
+    openai?: FamilyOverrideSpec
+    deepseek?: FamilyOverrideSpec
+  }
+
+  /**
+   * Strategy §5.3 (native-ruled 2026-07-19): "Every capability descriptor declares
+   * data_source: stored | computed | hybrid; census axis A6 audits service
+   * reachability exactly as it audits tables." `stored` = reads sealed build data
+   * (chart_facts, bodha_*, kala_*, phala_*, mimamsa_* tables). `computed` = real-time
+   * sidecar computation (ga_chart_service, panchanga service, ephemeris/tajaka/
+   * muhurta/prashna sidecars) with no build_id, carrying its own `computed_at` +
+   * engine-version provenance instead. `hybrid` = mixes both; such tools must
+   * declare in `description`/`register` which output fields are stored vs computed
+   * so the LLM never mistakes a live transit for a sealed build fact (B.1 applied
+   * to time).
+   */
+  data_source?: 'stored' | 'computed' | 'hybrid'
+
+  /**
+   * Question-conditioned ranking hook (plan §8 R-2 item 5: "demand_ranking
+   * descriptor field + question-conditioned ranking on every umbrella
+   * (bearing-first ordering generalized from judgment_query; static salience
+   * demoted to tiebreaker)"). `static_salience` is a FALLBACK tiebreaker only —
+   * never the primary sort key once bearing-first ordering is wired (a later
+   * wave); this field just reserves the shape.
+   */
+  demand_ranking?: {
+    bearing_first?: boolean
+    static_salience?: number
+  }
+
+  /**
+   * NO-LEAKAGE arms 2 & 4 (plan §8.5 ruling F-R7, ACCEPTED): "`calibration_context_
+   * only` flag on the descriptor (R-1.1), excluded from ALL projections and the
+   * `prashna_ask` tool set (R-4), + CI canary." Set true on outcome/LEL-read tools
+   * whose role is calibration-context supply, never a planner-selectable or
+   * prashna_ask-exposed capability. The exclusion enforcement itself (projection
+   * compiler filter + CI canary) is R-4's job — this wave lands the flag only.
+   */
+  calibration_context_only?: boolean
+}
+
+/** Per-family override shape for `family_overrides` (R-1.1; plan §7 amendments). */
+export interface FamilyOverrideSpec {
+  /** Family-specific description text, if the default `description` needs adjustment. */
+  description_override?: string
+  /** Family-specific short name, e.g. OpenAI's <=64-char `[a-z0-9_]` constraint. */
+  name_override?: string
+  /** Opt into strict-mode schema emission (OpenAI: additionalProperties:false, all-required). */
+  strict_schema?: boolean
+  /** Few-shot input examples — emit for Claude-family, omit where few-shot hurts (OpenAI reasoning models). */
+  input_examples?: Array<Record<string, unknown>>
+  /** Emit MCP `search_result` content-block framing for corpus/citation tools (native span citations). */
+  search_result_content_block?: boolean
 }
 
 // ── Discriminated union: per_chart enforces chart_id in required_inputs ──────
@@ -431,5 +567,19 @@ export const D1_AMENDMENTS: Array<{
   field: string
   description: string
 }> = [
-  // No amendments yet — initial freeze only.
+  {
+    version: 2,
+    date: '2026-07-20',
+    field: 'display, annotations, register, mutation, projection_tags, family_overrides, data_source, demand_ranking, calibration_context_only',
+    description:
+      'Retrieval Plane Elevation W1 Lane L1a — RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md ' +
+      '§3 R-1.1 descriptor extension (all fields OPTIONAL; no existing capability ' +
+      'descriptor requires changes). display/annotations/register/mutation/' +
+      'projection_tags/family_overrides land the R-1 catalog-projection groundwork; ' +
+      'data_source lands the §5.3 stored|computed|hybrid service-asset ruling; ' +
+      'demand_ranking lands the §8 R-2 item-5 question-conditioned-ranking hook; ' +
+      'calibration_context_only lands the §8.5 F-R7 NO-LEAKAGE flag. TYPE-ONLY this ' +
+      'wave — populating these across the ~118-capability estate is a later wave ' +
+      '(W2), not this one.',
+  },
 ]
