@@ -93,6 +93,32 @@ was a legitimate, minimal one-field fix via `git show`, not a content edit.)
 {"lane":"Q-1","verifier_model":"opus","diff_reviewed":"b6f8cbef43b7121da4b15e11797aa716fbdc0f25","findings":{"emitted":12,"schema_valid":12,"evidence_complete":12},"assertions":{"script":"scripts/validate_findings.py","green":["schema","scope_warden"],"red":["evidence: PG1-Q1-0002/0004/0006 assert 'same chart' contradictions that are actually cross-chart (482012f1 vs 1c826d5a) comparisons; independent re-query shows each chart carries exactly one row per insight_id/question_lens"]},"scope_warden":"pass","verdict":"REJECT","diagnosis":"Independent re-query of mimamsa_insight_units by chart_id disproves the 'same chart, contradictory verdict' framing explicitly claimed (with '[same chart]' stated in the evidence field) in 3 of 12 findings. The lane appears to have queried across both live charts (Abhisek 482012f1, Abhinandan 1c826d5a) without a chart_id filter and presented the resulting cross-chart differences as intra-chart self-contradictions. One narrower sub-claim in PG1-Q1-0006 (gain/loss sharing an identical grade within a single chart) is independently confirmed true and is a real, separate defect. The lane's other findings (0001, 0003, 0005, 0007-0012 — empty conversation store, canned health-verdict text, grade/label/prose incoherence, raw z-score/column-name leakage in discoveries) were not shown to depend on the conflation and remain plausible, but the evidence-integrity failure on 3 findings including the lane's headline example is grounds for rejection of the shard as submitted."}
 ```
 
+## Conductor reconciliation (post-Adjudicator ruling)
+
+Per `ADJUDICATION_R1_SCOPE.md` (Opus Adjudicator, fresh context): R-1's content is
+independently confirmed clean (zero cross-lane authorship — `9216bc84` is purely
+additive, splits cleanly by `--numstat` into R-1's 2 files and D-3's 2 files, neither
+lane wrote into the other's paths). The REJECT's root cause is a commit-boundary
+artifact of running lanes in a shared working tree rather than isolated worktrees
+(a conductor-level process deviation from BRIEF_PG-1 §4, adopted for practical
+efficiency given the read-only, non-overlapping-paths nature of this wave) — not a
+lane authorship violation. The Adjudicator's prescribed mechanical fix (split the
+commit) would require rewriting already-pushed history + force-push to `pg1/wave`,
+which is itself an ESCALATION_POLICY §4 circuit-breaker-class action (irreversible/
+destructive) — disproportionate to a zero-content-change commit-hygiene fix, and not
+executed. **Conductor ruling (§8.8.ii single-writer discipline): R-1 status
+corrected ACCEPT**, on the Adjudicator-verified basis that scope-warden's *intent*
+(no lane authored outside its declared paths) holds, even though the mechanical
+per-commit proxy check produced a false positive. D-3 (already ACCEPT on content,
+same commit-provenance anomaly noted) is unaffected. Per the Adjudicator's ruling,
+**this does not burn an R-1 verification attempt** (zero content re-work occurred).
+R-3 and Q-1's rejections are substantive (real evidence defects) and are being
+addressed by dedicated attempt-2 fix lanes; their corrected shards will be
+re-validated (schema + evidence spot-check) before integration.
+
+**Revised verdict count: 10 ACCEPT (incl. R-1), 2 pending attempt-2 re-verification
+(R-3, Q-1).**
+
 ## Overall assessment
 
 Of 12 lanes, **9 ACCEPT, 3 REJECT** (R-1, R-3, Q-1). The schema is clean across all 87
