@@ -1,0 +1,604 @@
+<title>Retrieval Plane Elevation — W1 Native Review Packet</title>
+<style>
+  :root {
+    --bg: #0a0d13;
+    --surface: #12161f;
+    --surface-2: #171c27;
+    --surface-3: #1d2330;
+    --ink: #eef1f6;
+    --ink-dim: #92a0b8;
+    --ink-faint: #5c667c;
+    --line: rgba(255,255,255,0.09);
+    --line-strong: rgba(255,255,255,0.16);
+    --accent: #6fd6c4;
+    --accent-dim: #3a7f74;
+    --accent-ink: #06110f;
+    --good: #5fb87a;
+    --info: #6fa8dc;
+    --warn: #e0a94a;
+    --bad: #e0645a;
+    --l0: #b98ce0;
+    --l1: #6fd6c4;
+    --l2: #6fa8dc;
+    --l3: #e0a94a;
+    --l4: #e0645a;
+    --l5: #d68fb0;
+    --radius: 10px;
+    --display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    --body: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f2ea;
+      --surface: #ffffff;
+      --surface-2: #faf7f0;
+      --surface-3: #f1ecdf;
+      --ink: #1b1e24;
+      --ink-dim: #5c6270;
+      --ink-faint: #8b9099;
+      --line: rgba(20,20,30,0.10);
+      --line-strong: rgba(20,20,30,0.18);
+      --accent: #128571;
+      --accent-dim: #b7ded6;
+      --accent-ink: #ffffff;
+      --good: #2e8b52;
+      --info: #3a6ea8;
+      --warn: #a86c1a;
+      --bad: #b8402f;
+      --l0: #7c4fa8;
+      --l1: #128571;
+      --l2: #3a6ea8;
+      --l3: #a86c1a;
+      --l4: #b8402f;
+      --l5: #a8447a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0d13; --surface: #12161f; --surface-2: #171c27; --surface-3: #1d2330;
+    --ink: #eef1f6; --ink-dim: #92a0b8; --ink-faint: #5c667c;
+    --line: rgba(255,255,255,0.09); --line-strong: rgba(255,255,255,0.16);
+    --accent: #6fd6c4; --accent-dim: #3a7f74; --accent-ink: #06110f;
+    --good: #5fb87a; --info: #6fa8dc; --warn: #e0a94a; --bad: #e0645a;
+    --l0: #b98ce0; --l1: #6fd6c4; --l2: #6fa8dc; --l3: #e0a94a; --l4: #e0645a; --l5: #d68fb0;
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f2ea; --surface: #ffffff; --surface-2: #faf7f0; --surface-3: #f1ecdf;
+    --ink: #1b1e24; --ink-dim: #5c6270; --ink-faint: #8b9099;
+    --line: rgba(20,20,30,0.10); --line-strong: rgba(20,20,30,0.18);
+    --accent: #128571; --accent-dim: #b7ded6; --accent-ink: #ffffff;
+    --good: #2e8b52; --info: #3a6ea8; --warn: #a86c1a; --bad: #b8402f;
+    --l0: #7c4fa8; --l1: #128571; --l2: #3a6ea8; --l3: #a86c1a; --l4: #b8402f; --l5: #a8447a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px 96px; }
+
+  /* ---------- Header ---------- */
+  header.top {
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+    padding: 56px 0 36px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  h1 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(28px, 4vw, 42px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    max-width: 16ch;
+  }
+  .dek {
+    font-size: 16.5px;
+    color: var(--ink-dim);
+    max-width: 62ch;
+    margin: 0 0 30px;
+  }
+  .layerband {
+    display: flex;
+    gap: 3px;
+    height: 6px;
+    border-radius: 4px;
+    overflow: hidden;
+    max-width: 520px;
+    margin-bottom: 28px;
+  }
+  .layerband span { flex: 1; }
+
+  .kpirow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .kpi {
+    background: var(--surface);
+    padding: 16px 18px;
+  }
+  .kpi .n {
+    font-family: var(--display);
+    font-variant-numeric: tabular-nums;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1.1;
+  }
+  .kpi .l {
+    font-size: 11.5px;
+    color: var(--ink-dim);
+    margin-top: 4px;
+    letter-spacing: 0.01em;
+  }
+  .kpi.warn .n { color: var(--warn); }
+  .kpi.good .n { color: var(--good); }
+
+  /* ---------- Sections ---------- */
+  section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: none; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  h2 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 25px;
+    margin: 2px 0 8px;
+    letter-spacing: -0.005em;
+  }
+  .sec-note { color: var(--ink-dim); font-size: 14px; max-width: 68ch; margin: 0 0 26px; }
+  h3 { font-family: var(--display); font-size: 17px; font-weight: 600; margin: 0 0 10px; }
+
+  /* ---------- Coverage bars ---------- */
+  .covrow { display: grid; grid-template-columns: 90px 1fr 220px; align-items: center; gap: 16px; padding: 10px 0; }
+  .covrow + .covrow { border-top: 1px solid var(--line); }
+  .covlabel { font-family: var(--mono); font-size: 13px; color: var(--ink-dim); }
+  .covlabel b { color: var(--ink); font-weight: 600; }
+  .covbar { display: flex; height: 22px; border-radius: 5px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--line); }
+  .covbar .seg { height: 100%; min-width: 2px; }
+  .covtotal { font-family: var(--mono); font-size: 12.5px; color: var(--ink-dim); text-align: right; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px 20px; margin-top: 18px; }
+  .legend .item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-dim); }
+  .legend .sw { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* ---------- Lattice explorer ---------- */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-dim);
+    cursor: pointer; transition: all .12s ease; user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--ink); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .chip .cnt { opacity: .7; margin-left: 5px; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table.lattice { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.lattice th {
+    text-align: left; font-family: var(--mono); font-weight: 500; font-size: 11px;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint);
+    padding: 10px 14px; border-bottom: 1px solid var(--line-strong); position: sticky; top: 0; background: var(--surface);
+  }
+  table.lattice td { padding: 8px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+  table.lattice tr:last-child td { border-bottom: none; }
+  table.lattice td.id { font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: normal; min-width: 220px; }
+  .layerpill { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 5px; font-weight: 600; }
+  .statepill { font-family: var(--mono); font-size: 11px; padding: 3px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+  .statepill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .rowcount { font-size: 12.5px; color: var(--ink-faint); margin-top: 10px; font-family: var(--mono); }
+
+  /* ---------- Topology canvas ---------- */
+  .canvas-wrap { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+  canvas#topo { display: block; width: 100%; height: 520px; cursor: grab; }
+  .canvas-hint { position: absolute; top: 12px; right: 14px; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); background: color-mix(in srgb, var(--surface) 80%, transparent); padding: 4px 9px; border-radius: 6px; border: 1px solid var(--line); }
+  #topoTooltip { position: absolute; pointer-events: none; font-family: var(--mono); font-size: 11.5px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 10px; opacity: 0; transition: opacity .1s; max-width: 280px; z-index: 5; }
+
+  /* ---------- Adjudication tiles ---------- */
+  .tilerow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 26px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+  .tile .n { font-family: var(--display); font-size: 30px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .tile .l { font-size: 12px; color: var(--ink-dim); margin-top: 4px; }
+  .tile.bad .n { color: var(--bad); }
+  .tile.good .n { color: var(--good); }
+  .tile.warn .n { color: var(--warn); }
+  .minibars { display: flex; gap: 10px; flex-wrap: wrap; }
+  .minibar { flex: 1; min-width: 160px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .minibar .head { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--ink-dim); margin-bottom: 8px; }
+  .minibar .track { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .minibar .fill { height: 100%; background: var(--warn); }
+
+  /* ---------- Worked examples ---------- */
+  .examples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  @media (max-width: 900px) { .examples { grid-template-columns: 1fr; } }
+  .excard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; display: flex; flex-direction: column; }
+  .exkind { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 9px; border-radius: 5px; width: fit-content; margin-bottom: 12px; }
+  .exkind.existing { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+  .exkind.elevated { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .exkind.new { background: color-mix(in srgb, var(--info) 18%, transparent); color: var(--info); }
+  .excard h3 { font-family: var(--mono); font-size: 14.5px; margin-bottom: 8px; }
+  .excard p { font-size: 13px; color: var(--ink-dim); margin: 0 0 14px; }
+  .excard pre {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px;
+    font-family: var(--mono); font-size: 11px; line-height: 1.55; overflow-x: auto; margin: 0; flex: 1;
+  }
+  .excard .fieldkey { color: var(--accent); }
+  .excard .fieldval { color: var(--ink); }
+  .excard .fieldcomment { color: var(--ink-faint); }
+
+  /* ---------- Judgment calls ---------- */
+  .jcards { display: flex; flex-direction: column; gap: 14px; }
+  .jcard { background: var(--surface); border: 1px solid var(--line-strong); border-left: 3px solid var(--warn); border-radius: var(--radius); padding: 18px 22px; }
+  .jcard .jn { font-family: var(--mono); font-size: 11px; color: var(--warn); letter-spacing: .06em; margin-bottom: 6px; }
+  .jcard p { margin: 0; font-size: 14px; color: var(--ink); }
+  .jcard p b { color: var(--ink); }
+  .jcard .src { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); margin-top: 8px; }
+
+  /* ---------- Footer ---------- */
+  footer { padding: 40px 0 20px; }
+  footer .waves { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 24px; }
+  footer .wave { flex: 1; min-width: 260px; }
+  footer .wave h4 { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
+  footer .wave p { font-size: 13px; color: var(--ink-dim); margin: 0; }
+  footer .prov { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); border-top: 1px solid var(--line); padding-top: 20px; }
+
+  .stopnotice {
+    margin-top: 40px; padding: 20px 24px; border-radius: var(--radius);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface));
+    border: 1px solid var(--accent-dim);
+  }
+  .stopnotice .st-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .stopnotice p { margin: 0; font-size: 14px; }
+</style>
+
+<div id="topoTooltip"></div>
+
+<header class="top">
+  <div class="wrap">
+    <div class="eyebrow"><span class="dot"></span>MARSYS-JIS · Retrieval Plane Elevation · Wave 1 of 6</div>
+    <h1>Concept Spine &amp; Census — Native Review Packet</h1>
+    <p class="dek">Every table, service and signal class the retrieval plane can reach — and cannot — mapped, harvested and reconciled against live production. This is the §F human gate: the last checkpoint before W2 begins migrating the actual serving surface.</p>
+    <div class="layerband" aria-hidden="true">
+      <span style="background:var(--l0)"></span><span style="background:var(--l1)"></span><span style="background:var(--l2)"></span><span style="background:var(--l3)"></span><span style="background:var(--l4)"></span><span style="background:var(--l5)"></span>
+    </div>
+    <div class="kpirow" id="kpiRow"></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section id="sec-coverage">
+    <div class="sec-head"><span class="sec-num">01</span></div>
+    <h2>Coverage by layer</h2>
+    <p class="sec-note">314 concepts harvested across five layers with live production data — table rows, fact categories, and cross-plane signal classes. Served (reachable today) vs. internal-by-design (deliberately unserved) vs. needs-owner (real, undecided).</p>
+    <div id="covRows"></div>
+    <div class="legend" id="covLegend"></div>
+  </section>
+
+  <section id="sec-lattice">
+    <div class="sec-head"><span class="sec-num">02</span></div>
+    <h2>Concept lattice</h2>
+    <p class="sec-note">Every harvested concept, one row each — filter by lifecycle state to see what's reachable today versus what still needs a disposition.</p>
+    <div class="filters" id="latticeFilters"></div>
+    <div class="table-scroll">
+      <table class="lattice">
+        <thead><tr><th>Layer</th><th>Concept</th><th>Kind</th><th>State</th></tr></thead>
+        <tbody id="latticeBody"></tbody>
+      </table>
+    </div>
+    <div class="rowcount" id="latticeCount"></div>
+  </section>
+
+  <section id="sec-topo">
+    <div class="sec-head"><span class="sec-num">03</span></div>
+    <h2>Tool topology</h2>
+    <p class="sec-note">118 registered capabilities and the 294 serving relationships extracted mechanically from their descriptor prose — colored by layer, sized by how many concepts each tool reaches. Drag to pan; hover a node for detail.</p>
+    <div class="canvas-wrap">
+      <canvas id="topo"></canvas>
+      <div class="canvas-hint">drag to pan</div>
+    </div>
+  </section>
+
+  <section id="sec-adj">
+    <div class="sec-head"><span class="sec-num">04</span></div>
+    <h2>Adjudication queue</h2>
+    <p class="sec-note">Cross-diffing what the registry declares against what production actually holds. Zero drift is a genuine positive result — no capability claims a table that doesn't exist.</p>
+    <div class="tilerow" id="adjTiles"></div>
+    <div class="minibars" id="adjLayerBars"></div>
+  </section>
+
+  <section id="sec-examples">
+    <div class="sec-head"><span class="sec-num">05</span></div>
+    <h2>Three worked examples</h2>
+    <p class="sec-note">The extended descriptor contract's nine new fields, sketched against one asset in each lifecycle stage. Illustrative — none of this is landed code; the migration itself is W2.</p>
+    <div class="examples" id="examplesGrid"></div>
+  </section>
+
+  <section id="sec-judgment">
+    <div class="sec-head"><span class="sec-num">06</span></div>
+    <h2>What needs your call</h2>
+    <p class="sec-note">Everything mechanically resolvable already has been. These three don't reduce to a script.</p>
+    <div class="jcards" id="judgmentCards"></div>
+  </section>
+
+  <div class="stopnotice">
+    <div class="st-eyebrow">§F human gate — conductor stops here</div>
+    <p>W0 and W1 are both closed, independently verifier-ACCEPTed, and deployed. W2 (One Catalog — the actual serving-surface migration) does not open until this packet is reviewed. Corrections are absorbed as W1 addenda before W2 begins.</p>
+  </div>
+
+  <footer>
+    <div class="waves" id="waveSummary"></div>
+    <div class="prov" id="provenance"></div>
+  </footer>
+</div>
+
+<script id="packet-data" type="application/json">{"meta":{"generated_from":["platform/src/generated/census/concept_reachability_v1.json","platform/src/generated/census/tool_census_v1.json","platform/src/generated/harvest/adjudication_queue.json","platform/src/generated/harvest/e2_db_truth.json"],"sampling_method":"NONE \u2014 full concept lattice (314 rows: 218 fact_category + 77 dark_table + 19 signal_class) and full tool census (118 capabilities) are included verbatim, not sampled. Edge extraction is a mechanical regex scan (marsys:// URI pattern) over each concept row's served_basis prose field \u2014 an honest, inspectable heuristic, not an AST/import-graph resolution; it will miss a serving relationship if the source prose does not literally name the tool URI.","true_totals":{"concept_lattice_rows":314,"tool_nodes":118,"tool_topology_edges":294}},"lattice":[{"l":"L1","id":"anumukha_shani_period","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aprakasha_position","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ardha_ashtama_shani_period","k":"fact_category","s":"SERVED"},{"l":"L1","id":"argala_natal_matrix","k":"fact_category","s":"SERVED"},{"l":"L1","id":"arudha_pada","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_bindu","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_bindu_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_bindu_sign","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_ekadhipathya_shodhana","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_kakshya_boundary","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_pinda_bhinna","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_pinda_raasi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_pinda_sarva","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_pinda_sarva_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_pinda_sodhita","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtakavarga_trikona_shodhana","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ashtama_shani_period","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aspect_jaimini","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aspect_jaimini_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aspect_matrix_summary","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aspect_parashari_given","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aspect_parashari_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aspect_parashari_received","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aspect_received_by_special_point","k":"fact_category","s":"SERVED"},{"l":"L1","id":"aspect_tajik","k":"fact_category","s":"SERVED"},{"l":"L1","id":"ayurdaya","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhadra_flag","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_arudha","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_bala_aspectual","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_bala_directional","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_bala_lord","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_bala_occupant","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_bala_positional","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_bala_temporal","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_bala_total_extended","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_cusps","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhava_significance_link","k":"fact_category","s":"SERVED"},{"l":"L1","id":"bhrigu_nadi_point","k":"fact_category","s":"SERVED"},{"l":"L1","id":"chandra_bala_natal_baseline","k":"fact_category","s":"SERVED"},{"l":"L1","id":"chart_center_of_gravity","k":"fact_category","s":"SERVED"},{"l":"L1","id":"chart_cluster","k":"fact_category","s":"SERVED"},{"l":"L1","id":"combustion_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"combustion_relationship","k":"fact_category","s":"SERVED"},{"l":"L1","id":"composite_dispositor_strength","k":"fact_category","s":"SERVED"},{"l":"L1","id":"conjunction_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"conjunction_special_point","k":"fact_category","s":"SERVED"},{"l":"L1","id":"conjunction_within_orb","k":"fact_category","s":"SERVED"},{"l":"L1","id":"contradiction_pair","k":"fact_category","s":"SERVED"},{"l":"L1","id":"convergence_count","k":"fact_category","s":"SERVED"},{"l":"L1","id":"cusp_kp_lords","k":"fact_category","s":"SERVED"},{"l":"L1","id":"dhaiya_period","k":"fact_category","s":"SERVED"},{"l":"L1","id":"dispositor_chain_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"dispositor_tree","k":"fact_category","s":"SERVED"},{"l":"L1","id":"dosha_label","k":"fact_category","s":"SERVED"},{"l":"L1","id":"eclipse_proximity_natal","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_avayogi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_bhrigu_bindu","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_brahma","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_mrityu","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_pranapada_sphuta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_shiva","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_sphuta_fertility","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_sri_yantra_position","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_trikona_dasha_sphuta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_vishnu","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_yogi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"esoteric_point_yogi_system","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_baladi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_baladi_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_deepta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_deeptaadi_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_jagrad","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_jagradadi_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_lajjitadi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_lajjitadi_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_lifetime_exposure_summary","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_sayanadi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_avastha_sayanadi_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_centrality","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_cheshta_bala_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_composite_state_classification","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_dignity_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_dispositor_chain","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_drik_bala_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_effective_dignity_modified_by_aspects","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_functional_class_per_ascendant","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_gandanta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_in_house_composite_strength","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_ishta_phala","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_kala_bala_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_kashta_phala","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_kp_lords","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_nakshatra_join","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_pada_join","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_position","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_saptavargaja_bala_component","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_shadbala_cheshta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_shadbala_dig","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_shadbala_drik","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_shadbala_kala","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_shadbala_naisargika","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_shadbala_sthana","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_shadbala_total","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_sign_attributes","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_special_state_rollup","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_sthana_bala_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_tara_bala","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_tri_deva_role_strength","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_vargottama_amplification_factor","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_vimsopaka_dasavarga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_vimsopaka_saptavarga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_vimsopaka_shadvarga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_vimsopaka_shodasavarga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_yoga_karaka_flag","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_yuddha","k":"fact_category","s":"SERVED"},{"l":"L1","id":"graha_yuddha_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"house_bhava_bala_ratio","k":"fact_category","s":"SERVED"},{"l":"L1","id":"house_bhava_bala_subscore","k":"fact_category","s":"SERVED"},{"l":"L1","id":"house_bhava_bala_total","k":"fact_category","s":"SERVED"},{"l":"L1","id":"house_chalit","k":"fact_category","s":"SERVED"},{"l":"L1","id":"house_strength_classification_rollup","k":"fact_category","s":"SERVED"},{"l":"L1","id":"jaimini_tri_deva_role_per_graha","k":"fact_category","s":"SERVED"},{"l":"L1","id":"janma_shani_period","k":"fact_category","s":"SERVED"},{"l":"L1","id":"kala_sarpa_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"kantaka_shani_period","k":"fact_category","s":"SERVED"},{"l":"L1","id":"karaka_bhava_concordance","k":"fact_category","s":"SERVED"},{"l":"L1","id":"karaka_chara_position","k":"fact_category","s":"SERVED"},{"l":"L1","id":"karaka_house_lord_overlap_flag","k":"fact_category","s":"SERVED"},{"l":"L1","id":"karakamsa_position","k":"fact_category","s":"SERVED"},{"l":"L1","id":"karakatva_strength_per_significance","k":"fact_category","s":"SERVED"},{"l":"L1","id":"karaka_web_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"kendradhipati_dosha","k":"fact_category","s":"SERVED"},{"l":"L1","id":"kp_cuspal_significators","k":"fact_category","s":"SERVED"},{"l":"L1","id":"kp_ruling_planets_natal","k":"fact_category","s":"SERVED"},{"l":"L1","id":"lal_kitab_special_point","k":"fact_category","s":"SERVED"},{"l":"L1","id":"lord_aspects_lord_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"lord_in_house_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"maharsi_specific_point","k":"fact_category","s":"SERVED"},{"l":"L1","id":"midpoint","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_cogravity","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_conjunction","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_co_tenancy","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_cross_ayanamsha","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_dispositor","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_dispositor_chain","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_lord_relationship","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_pada_sensitive","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nakshatra_statistics","k":"fact_category","s":"SERVED"},{"l":"L1","id":"net_argala_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"nway_config_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchadha_maitri","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchaka_flag","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_abhijit_muhurta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_agni_vasa","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_brahma_muhurta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_calendrical","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_choghadiya_birth","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_disha_shul","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_durmuhurta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_godhuli_muhurta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_gulika_kalam","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_hora_birth","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_karana","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_krakaca","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_madhyahna_sandhya","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_nakshatra_moon","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_nakshatra_shoonya_rashi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_nishita_kala","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_panchaka_classification","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_pratah_sandhya","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_rahu_kalam","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_sashtighati","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_sayam_sandhya","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_solar_context","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_special_yoga_combinations","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_sun_moon_dynamics","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_tithi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_tithi_shoonya_rashi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_vara","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_varjyam","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_vijaya_muhurta","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_visha_ghati","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_yamaganda_kalam","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_yamakantaka","k":"fact_category","s":"SERVED"},{"l":"L1","id":"panchanga_yoga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"parivartana_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"pranic_strength_per_graha","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sade_sati_cancellation_check","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sade_sati_concurrent_dasha_overlay","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sade_sati_cycle","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sade_sati_downstream_cross_reference","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sade_sati_modifier_overlay","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sade_sati_phase","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sade_sati_phase_quarter","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sade_sati_saturn_retrograde_subset","k":"fact_category","s":"SERVED"},{"l":"L1","id":"saham_position","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sambandha_grade","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sandhi_flag","k":"fact_category","s":"SERVED"},{"l":"L1","id":"saturn_derived_point","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sensitive_degree_check","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sensitive_point_gulika_mandi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"significator_path","k":"fact_category","s":"SERVED"},{"l":"L1","id":"special_lagna","k":"fact_category","s":"SERVED"},{"l":"L1","id":"sun_derived_upagraha","k":"fact_category","s":"SERVED"},{"l":"L1","id":"swamsa_position","k":"fact_category","s":"SERVED"},{"l":"L1","id":"tajik_hadda_lord","k":"fact_category","s":"SERVED"},{"l":"L1","id":"tajik_triraashipathi","k":"fact_category","s":"SERVED"},{"l":"L1","id":"tajik_vargottama_specific","k":"fact_category","s":"SERVED"},{"l":"L1","id":"tara_bala","k":"fact_category","s":"SERVED"},{"l":"L1","id":"tara_bala_natal_baseline","k":"fact_category","s":"SERVED"},{"l":"L1","id":"upagraha_position","k":"fact_category","s":"SERVED"},{"l":"L1","id":"upapada_lagna","k":"fact_category","s":"SERVED"},{"l":"L1","id":"vargottama_per_varga","k":"fact_category","s":"SERVED"},{"l":"L1","id":"vimsopaka_bala_per_graha","k":"fact_category","s":"SERVED"},{"l":"L1","id":"virodha_argala_natal_matrix","k":"fact_category","s":"SERVED"},{"l":"L1","id":"virupa_drishti","k":"fact_category","s":"SERVED"},{"l":"L1","id":"vishakha_shani_period","k":"fact_category","s":"SERVED"},{"l":"L1","id":"yoga_label","k":"fact_category","s":"SERVED"},{"l":"L0","id":"bg_avastha_schemes","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_combustion_orbs","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_dignity_reference","k":"dark_table","s":"SERVED"},{"l":"L0","id":"bg_graha_dik","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_graha_naisargika_friendship","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_medical_mappings","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_motion_state_thresholds","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_nakshatra_medical","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_prashna_fructification_rules","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_prashna_lagna_methods","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"bg_prashna_significators","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"bg_prashna_special_techniques","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"bg_prashna_tajik_yogas","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"bg_shashtiamsha_deities","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_transit_av_gates","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"bg_transit_engine","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"bg_transit_moorti","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_transit_rules","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_transit_vedha","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_vastu_direction_remedials","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L0","id":"bg_vastu_directions","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L2","id":"bodha_anomalies","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_cdlm_domain_rollups","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_cdlm_evolution_gradients","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_cdlm_pattern_clusters","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_cgm_chart_topology_summary","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_cgm_edges","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_cgm_nodes","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_cgm_sub_graphs","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_contradictions","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_convergence","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_rm_chart_summary","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_rm_dasha_windowed_prescriptions","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_rm_dosha_remedy_bundles","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_rm_pattern_remedies","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_signal_embeddings","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L2","id":"bodha_triangulation","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"brahma_activity_ontology","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"brahma_class_priors","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"brahma_compendium_index","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"brahma_dasha_systems","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"brahma_event_ontology","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"brahma_formula_constants","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"brahma_prospective_ledger","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L0","id":"brahma_vichara_constants","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L1","id":"chart_facts_history","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L1","id":"chart_facts_supersedence","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L1","id":"chart_grants","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L1","id":"chart_panchanga","k":"dark_table","s":"SERVED"},{"l":"L1","id":"chart_panchanga_cache","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L1","id":"ga_condition_composite","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L1","id":"ga_prashna_judgment","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L1","id":"ga_prashna_lagna","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L1","id":"ganita_dashas","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L1","id":"ganita_graha_sthana","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L3","id":"kala_activation_predicates","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L3","id":"kala_convergence_staging","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L3","id":"kala_gochara_windows","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_adjudication_log","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L5","id":"mimamsa_anchor_adjustment","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_attribution","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_calibration_snapshot","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L5","id":"mimamsa_convergence_adjustment","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_discoveries","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_event_provenance","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_export_log","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L5","id":"mimamsa_fact_adjustment","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_insight_embeddings","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_journal","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_load_bearing","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_manifestation_sets","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_negative_controls","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_pool_contributions","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L5","id":"mimamsa_preferences","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_resonance_feedback","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L5","id":"mimamsa_signal_adjustment","k":"dark_table","s":"NEEDS-OWNER"},{"l":"L5","id":"mimamsa_snapshot_cosign","k":"dark_table","s":"INTERNAL-BY-DESIGN"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=composite_state","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=karaka_alignment","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=sade_sati","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=varga_pattern","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=panchanga","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=tradition_specific","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=annual","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=parivartana","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=configuration","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=yoga","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=dosha","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=nakshatra_semantic","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=sudarshana_agreement","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=varga_ratification_divergence","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=arudha","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=special_lagna","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=dhana_axis","k":"signal_class","s":"SERVED"},{"l":"L2","id":"bodha_msr_signals.signal_type_class=vargottama_amplification","k":"signal_class","s":"SERVED"}],"coverage":[{"layer":"L0","INTERNAL-BY-DESIGN":14,"SERVED":1,"NEEDS-OWNER":14,"total":29},{"layer":"L1","SERVED":219,"INTERNAL-BY-DESIGN":3,"NEEDS-OWNER":6,"total":228},{"layer":"L2","NEEDS-OWNER":16,"SERVED":19,"total":35},{"layer":"L3","NEEDS-OWNER":2,"INTERNAL-BY-DESIGN":1,"total":3},{"layer":"L5","INTERNAL-BY-DESIGN":6,"NEEDS-OWNER":13,"total":19}],"nodes":[{"id":"marsys://prompt/intent-classify","layer":"L0","name":"intent_classify","role":"umbrella"},{"id":"marsys://resource/asset-registry/all","layer":"L0","name":"asset_registry_all","role":"umbrella"},{"id":"marsys://resource/asset-registry/L0","layer":"L0","name":"asset_registry_l0","role":"umbrella"},{"id":"marsys://resource/ephemeris-cache/native-lifetime","layer":"L0","name":"ephemeris_cache_native_lifetime","role":"umbrella"},{"id":"marsys://resource/ephemeris-cache/year/{yyyy}","layer":"L0","name":"ephemeris_cache_year","role":"leaf"},{"id":"marsys://tool/channel/chat_dispatch","layer":"L0","name":"channel_chat_dispatch","role":"quality"},{"id":"marsys://tool/channel/mcp_wiring","layer":"L0","name":"channel_mcp_wiring","role":"quality"},{"id":"marsys://tool/L-DOMAIN/assess_career","layer":"L2","name":"assess_career","role":"drill"},{"id":"marsys://tool/L-DOMAIN/assess_health","layer":"L2","name":"assess_health","role":"drill"},{"id":"marsys://tool/L-DOMAIN/assess_marriage","layer":"L2","name":"assess_marriage","role":"drill"},{"id":"marsys://tool/L-DOMAIN/assess_wealth","layer":"L2","name":"assess_wealth","role":"drill"},{"id":"marsys://tool/L-JUDGMENT/judgment_query","layer":"L2","name":"judgment_query","role":"drill"},{"id":"marsys://tool/L-PACT/pact_query","layer":"L2","name":"pact_query","role":"drill"},{"id":"marsys://tool/L-TIMING/yoga_activation_by_dasha","layer":"L3","name":"yoga_activation_by_dasha","role":"temporal"},{"id":"marsys://tool/L0/find_verses_about","layer":"L0","name":"find_verses_about","role":"hybrid_retrieval"},{"id":"marsys://tool/L0/list_classical_texts","layer":"L0","name":"list_classical_texts","role":"umbrella"},{"id":"marsys://tool/L0/list_entities","layer":"L0","name":"list_entities","role":"umbrella"},{"id":"marsys://tool/L0/list_remedies_by_category","layer":"L0","name":"list_remedies_by_category","role":"drill"},{"id":"marsys://tool/L0/list_sutravali_rules_by_text","layer":"L0","name":"list_sutravali_rules_by_text","role":"drill"},{"id":"marsys://tool/L0/query_aspects_at_time","layer":"L0","name":"query_aspects_at_time","role":"temporal"},{"id":"marsys://tool/L0/query_classical_texts","layer":"L0","name":"query_classical_texts","role":"hybrid_retrieval"},{"id":"marsys://tool/L0/query_dosha_catalog","layer":"L0","name":"query_dosha_catalog","role":"leaf"},{"id":"marsys://tool/L0/query_mantras","layer":"L0","name":"query_mantras","role":"drill"},{"id":"marsys://tool/L0/query_planet_position","layer":"L0","name":"query_planet_position","role":"leaf"},{"id":"marsys://tool/L0/query_planet_transit","layer":"L0","name":"query_planet_transit","role":"temporal"},{"id":"marsys://tool/L0/query_remedies_by_planet","layer":"L0","name":"query_remedies_by_planet","role":"drill"},{"id":"marsys://tool/L0/query_remedies_for_chart","layer":"L0","name":"query_remedies_for_chart","role":"drill"},{"id":"marsys://tool/L0/query_remedy_corpus","layer":"L0","name":"query_remedy_corpus","role":"hybrid_retrieval"},{"id":"marsys://tool/L0/query_retrograde_periods","layer":"L0","name":"query_retrograde_periods","role":"temporal"},{"id":"marsys://tool/L0/query_sign_medical","layer":"L0","name":"query_sign_medical","role":"leaf"},{"id":"marsys://tool/L0/query_sutravali_rules","layer":"L0","name":"query_sutravali_rules","role":"hybrid_retrieval"},{"id":"marsys://tool/L0/query_sutravali_rules_for_planet","layer":"L0","name":"query_sutravali_rules_for_planet","role":"drill"},{"id":"marsys://tool/L0/query_tantric_remedies","layer":"L0","name":"query_tantric_remedies","role":"drill"},{"id":"marsys://tool/L0/query_yoga_catalog","layer":"L0","name":"query_yoga_catalog","role":"leaf"},{"id":"marsys://tool/L0/read_chapter","layer":"L0","name":"read_chapter","role":"leaf"},{"id":"marsys://tool/L0/read_remedy","layer":"L0","name":"read_remedy","role":"leaf"},{"id":"marsys://tool/L0/read_sutravali_rule","layer":"L0","name":"read_sutravali_rule","role":"leaf"},{"id":"marsys://tool/L0/resolve_entity","layer":"L0","name":"resolve_entity","role":"leaf"},{"id":"marsys://tool/L1/chart_facts_query","layer":"L1","name":"chart_facts_query","role":"umbrella"},{"id":"marsys://tool/L1/chart_snapshot","layer":"L1","name":"chart_snapshot","role":"leaf"},{"id":"marsys://tool/L1/get_argala","layer":"L1","name":"get_argala","role":"leaf"},{"id":"marsys://tool/L1/get_ashtakavarga","layer":"L1","name":"get_ashtakavarga","role":"leaf"},{"id":"marsys://tool/L1/get_aspects","layer":"L1","name":"get_aspects","role":"leaf"},{"id":"marsys://tool/L1/get_av_transit_gating","layer":"L1","name":"get_av_transit_gating","role":"leaf"},{"id":"marsys://tool/L1/get_avasthas","layer":"L1","name":"get_avasthas","role":"leaf"},{"id":"marsys://tool/L1/get_ayurdaya","layer":"L1","name":"get_ayurdaya","role":"leaf"},{"id":"marsys://tool/L1/get_bhava_bala","layer":"L1","name":"get_bhava_bala","role":"leaf"},{"id":"marsys://tool/L1/get_chart_header","layer":"L1","name":"get_chart_header","role":"leaf"},{"id":"marsys://tool/L1/get_dasha_lord_capability","layer":"L1","name":"get_dasha_lord_capability","role":"leaf"},{"id":"marsys://tool/L1/get_dashas","layer":"L1","name":"get_dashas","role":"leaf"},{"id":"marsys://tool/L1/get_dignity","layer":"L1","name":"get_dignity","role":"leaf"},{"id":"marsys://tool/L1/get_dispositors","layer":"L1","name":"get_dispositors","role":"leaf"},{"id":"marsys://tool/L1/get_divisionals","layer":"L1","name":"get_divisionals","role":"leaf"},{"id":"marsys://tool/L1/get_eclipse_flags","layer":"L1","name":"get_eclipse_flags","role":"leaf"},{"id":"marsys://tool/L1/get_graha_yuddha","layer":"L1","name":"get_graha_yuddha","role":"leaf"},{"id":"marsys://tool/L1/get_karakas","layer":"L1","name":"get_karakas","role":"leaf"},{"id":"marsys://tool/L1/get_medical_indications","layer":"L1","name":"get_medical_indications","role":"leaf"},{"id":"marsys://tool/L1/get_panchanga","layer":"L1","name":"get_panchanga","role":"leaf"},{"id":"marsys://tool/L1/get_positions","layer":"L1","name":"get_positions","role":"leaf"},{"id":"marsys://tool/L1/get_sade_sati","layer":"L1","name":"get_sade_sati","role":"leaf"},{"id":"marsys://tool/L1/get_sensitive_degrees","layer":"L1","name":"get_sensitive_degrees","role":"leaf"},{"id":"marsys://tool/L1/get_sensitive_points","layer":"L1","name":"get_sensitive_points","role":"leaf"},{"id":"marsys://tool/L1/get_strength","layer":"L1","name":"get_strength","role":"leaf"},{"id":"marsys://tool/L1/get_tajik","layer":"L1","name":"get_tajik","role":"leaf"},{"id":"marsys://tool/L1/get_tara_chandra_bala","layer":"L1","name":"get_tara_chandra_bala","role":"leaf"},{"id":"marsys://tool/L1/get_transit_anchors","layer":"L1","name":"get_transit_anchors","role":"leaf"},{"id":"marsys://tool/L1/get_vastu_directions","layer":"L1","name":"get_vastu_directions","role":"leaf"},{"id":"marsys://tool/L1/get_vichara","layer":"L1","name":"get_vichara","role":"leaf"},{"id":"marsys://tool/L1/get_yoga_dosha","layer":"L1","name":"get_yoga_dosha","role":"leaf"},{"id":"marsys://tool/L1/get_yoga_firings","layer":"L1","name":"get_yoga_firings","role":"leaf"},{"id":"marsys://tool/L2/classical_attribution_lookup","layer":"L2","name":"classical_attribution_lookup","role":"leaf"},{"id":"marsys://tool/L2/graha_portrait","layer":"L2","name":"graha_portrait","role":"synthesizer"},{"id":"marsys://tool/L2/query_cdlm_summary","layer":"L2","name":"query_cdlm_summary","role":"umbrella"},{"id":"marsys://tool/L2/query_cgm_motifs","layer":"L2","name":"query_cgm_motifs","role":"graph"},{"id":"marsys://tool/L2/query_cgm_paths","layer":"L2","name":"query_cgm_paths","role":"graph"},{"id":"marsys://tool/L2/query_chart_gestalt","layer":"L2","name":"query_chart_gestalt","role":"umbrella"},{"id":"marsys://tool/L2/query_contradictions","layer":"L2","name":"query_contradictions","role":"leaf"},{"id":"marsys://tool/L2/query_discoveries","layer":"L2","name":"query_discoveries","role":"umbrella"},{"id":"marsys://tool/L2/query_domain_reading","layer":"L2","name":"query_domain_reading","role":"drill"},{"id":"marsys://tool/L2/query_pratijna","layer":"L2","name":"query_pratijna","role":"leaf"},{"id":"marsys://tool/L2/query_quality_scorecard","layer":"L2","name":"query_quality_scorecard","role":"quality"},{"id":"marsys://tool/L2/query_question_lenses","layer":"L2","name":"query_question_lenses","role":"umbrella"},{"id":"marsys://tool/L2/query_remedies","layer":"L2","name":"query_remedies","role":"drill"},{"id":"marsys://tool/L2/query_rm_prescriptions","layer":"L2","name":"query_rm_prescriptions","role":"leaf"},{"id":"marsys://tool/L2/query_rm_resonances","layer":"L2","name":"query_rm_resonances","role":"leaf"},{"id":"marsys://tool/L2/query_signals","layer":"L2","name":"query_signals","role":"drill"},{"id":"marsys://tool/L2/query_ucd","layer":"L2","name":"query_ucd","role":"umbrella"},{"id":"marsys://tool/L2/traverse_chart_graph","layer":"L2","name":"traverse_chart_graph","role":"graph"},{"id":"marsys://tool/L3/call_dasha_eligibility","layer":"L3","name":"call_dasha_eligibility","role":"temporal"},{"id":"marsys://tool/L3/call_ephemeris_at_t","layer":"L3","name":"call_ephemeris_at_t","role":"temporal"},{"id":"marsys://tool/L3/call_muhurta_score","layer":"L3","name":"call_muhurta_score","role":"temporal"},{"id":"marsys://tool/L3/call_priority_ranking","layer":"L3","name":"call_priority_ranking","role":"temporal"},{"id":"marsys://tool/L3/call_transit_search","layer":"L3","name":"call_transit_search","role":"temporal"},{"id":"marsys://tool/L3/query_activation_waveform","layer":"L3","name":"query_activation_waveform","role":"temporal"},{"id":"marsys://tool/L3/query_convergence_windows","layer":"L3","name":"query_convergence_windows","role":"drill"},{"id":"marsys://tool/L3/query_dasha_dossier","layer":"L3","name":"query_dasha_dossier","role":"temporal"},{"id":"marsys://tool/L3/query_life_arc","layer":"L3","name":"query_life_arc","role":"drill"},{"id":"marsys://tool/L3/query_obstruction_periods","layer":"L3","name":"query_obstruction_periods","role":"temporal"},{"id":"marsys://tool/L3/query_projections","layer":"L3","name":"query_projections","role":"leaf"},{"id":"marsys://tool/L3/query_temporal_activation","layer":"L3","name":"query_temporal_activation","role":"umbrella"},{"id":"marsys://tool/L3/query_temporal_view","layer":"L3","name":"query_temporal_view","role":"temporal"},{"id":"marsys://tool/L4/query_anomaly_flags","layer":"L4","name":"query_anomaly_flags","role":"quality"},{"id":"marsys://tool/L4/query_auspicious_windows","layer":"L4","name":"query_auspicious_windows","role":"leaf"},{"id":"marsys://tool/L4/query_cleansed_anchors","layer":"L4","name":"query_cleansed_anchors","role":"quality"},{"id":"marsys://tool/L4/query_domain_result","layer":"L4","name":"query_domain_result","role":"drill"},{"id":"marsys://tool/L4/query_falsifiers","layer":"L4","name":"query_falsifiers","role":"quality"},{"id":"marsys://tool/L4/query_muhurat","layer":"L4","name":"query_muhurat","role":"temporal"},{"id":"marsys://tool/L4/query_predictive_anchors","layer":"L4","name":"query_predictive_anchors","role":"umbrella"},{"id":"marsys://tool/L4/query_rectification","layer":"L4","name":"query_rectification","role":"quality"},{"id":"marsys://tool/L4/query_remedy_program","layer":"L4","name":"query_remedy_program","role":"leaf"},{"id":"marsys://tool/L4/query_spillover_cascades","layer":"L4","name":"query_spillover_cascades","role":"leaf"},{"id":"marsys://tool/L5/lel_query","layer":"L5","name":"lel_query","role":"quality"},{"id":"marsys://tool/L5/query_calibration","layer":"L5","name":"query_calibration","role":"quality"},{"id":"marsys://tool/L5/query_insights","layer":"L5","name":"query_insights","role":"quality"},{"id":"marsys://tool/L5/query_manifestation_grammar","layer":"L5","name":"query_manifestation_grammar","role":"quality"},{"id":"marsys://tool/L5/query_predictions","layer":"L5","name":"query_predictions","role":"quality"},{"id":"marsys://tool/L5/query_signal_families","layer":"L5","name":"query_signal_families","role":"quality"},{"id":"marsys://tool/synthesis/compose_large_n","layer":"L2","name":"compose_large_n","role":"synthesizer"}],"edges":[{"f":"marsys://tool/L1/chart_facts_query","t":"anumukha_shani_period"},{"f":"marsys://tool/L1/chart_facts_query","t":"aprakasha_position"},{"f":"marsys://tool/L1/chart_facts_query","t":"ardha_ashtama_shani_period"},{"f":"marsys://tool/L1/chart_facts_query","t":"argala_natal_matrix"},{"f":"marsys://tool/L1/chart_facts_query","t":"arudha_pada"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_bindu"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_bindu_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_bindu_sign"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_ekadhipathya_shodhana"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_kakshya_boundary"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_pinda_bhinna"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_pinda_raasi"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_pinda_sarva"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_pinda_sarva_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_pinda_sodhita"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtakavarga_trikona_shodhana"},{"f":"marsys://tool/L1/chart_facts_query","t":"ashtama_shani_period"},{"f":"marsys://tool/L1/chart_facts_query","t":"aspect_jaimini"},{"f":"marsys://tool/L1/chart_facts_query","t":"aspect_jaimini_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"aspect_matrix_summary"},{"f":"marsys://tool/L1/chart_facts_query","t":"aspect_parashari_given"},{"f":"marsys://tool/L1/chart_facts_query","t":"aspect_parashari_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"aspect_parashari_received"},{"f":"marsys://tool/L1/chart_facts_query","t":"aspect_received_by_special_point"},{"f":"marsys://tool/L1/chart_facts_query","t":"aspect_tajik"},{"f":"marsys://tool/L1/chart_facts_query","t":"ayurdaya"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhadra_flag"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_arudha"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_bala_aspectual"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_bala_directional"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_bala_lord"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_bala_occupant"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_bala_positional"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_bala_temporal"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_bala_total_extended"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_cusps"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhava_significance_link"},{"f":"marsys://tool/L1/chart_facts_query","t":"bhrigu_nadi_point"},{"f":"marsys://tool/L1/chart_facts_query","t":"chandra_bala_natal_baseline"},{"f":"marsys://tool/L1/chart_facts_query","t":"chart_center_of_gravity"},{"f":"marsys://tool/L1/chart_facts_query","t":"chart_cluster"},{"f":"marsys://tool/L1/chart_facts_query","t":"combustion_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"combustion_relationship"},{"f":"marsys://tool/L1/chart_facts_query","t":"composite_dispositor_strength"},{"f":"marsys://tool/L1/chart_facts_query","t":"conjunction_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"conjunction_special_point"},{"f":"marsys://tool/L1/chart_facts_query","t":"conjunction_within_orb"},{"f":"marsys://tool/L1/chart_facts_query","t":"contradiction_pair"},{"f":"marsys://tool/L1/chart_facts_query","t":"convergence_count"},{"f":"marsys://tool/L1/chart_facts_query","t":"cusp_kp_lords"},{"f":"marsys://tool/L1/chart_facts_query","t":"dhaiya_period"},{"f":"marsys://tool/L1/chart_facts_query","t":"dispositor_chain_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"dispositor_tree"},{"f":"marsys://tool/L1/chart_facts_query","t":"dosha_label"},{"f":"marsys://tool/L1/chart_facts_query","t":"eclipse_proximity_natal"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_avayogi"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_bhrigu_bindu"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_brahma"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_mrityu"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_pranapada_sphuta"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_shiva"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_sphuta_fertility"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_sri_yantra_position"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_trikona_dasha_sphuta"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_vishnu"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_yogi"},{"f":"marsys://tool/L1/chart_facts_query","t":"esoteric_point_yogi_system"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_baladi"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_baladi_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_deepta"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_deeptaadi_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_jagrad"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_jagradadi_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_lajjitadi"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_lajjitadi_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_lifetime_exposure_summary"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_sayanadi"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_avastha_sayanadi_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_centrality"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_cheshta_bala_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_composite_state_classification"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_dignity_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_dispositor_chain"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_drik_bala_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_effective_dignity_modified_by_aspects"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_functional_class_per_ascendant"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_gandanta"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_in_house_composite_strength"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_ishta_phala"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_kala_bala_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_kashta_phala"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_kp_lords"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_nakshatra_join"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_pada_join"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_position"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_saptavargaja_bala_component"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_shadbala_cheshta"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_shadbala_dig"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_shadbala_drik"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_shadbala_kala"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_shadbala_naisargika"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_shadbala_sthana"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_shadbala_total"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_sign_attributes"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_special_state_rollup"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_sthana_bala_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_tara_bala"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_tri_deva_role_strength"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_vargottama_amplification_factor"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_vimsopaka_dasavarga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_vimsopaka_saptavarga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_vimsopaka_shadvarga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_vimsopaka_shodasavarga"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_yoga_karaka_flag"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_yuddha"},{"f":"marsys://tool/L1/chart_facts_query","t":"graha_yuddha_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"house_bhava_bala_ratio"},{"f":"marsys://tool/L1/chart_facts_query","t":"house_bhava_bala_subscore"},{"f":"marsys://tool/L1/chart_facts_query","t":"house_bhava_bala_total"},{"f":"marsys://tool/L1/chart_facts_query","t":"house_chalit"},{"f":"marsys://tool/L1/chart_facts_query","t":"house_strength_classification_rollup"},{"f":"marsys://tool/L1/chart_facts_query","t":"jaimini_tri_deva_role_per_graha"},{"f":"marsys://tool/L1/chart_facts_query","t":"janma_shani_period"},{"f":"marsys://tool/L1/chart_facts_query","t":"kala_sarpa_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"kantaka_shani_period"},{"f":"marsys://tool/L1/chart_facts_query","t":"karaka_bhava_concordance"},{"f":"marsys://tool/L1/chart_facts_query","t":"karaka_chara_position"},{"f":"marsys://tool/L1/chart_facts_query","t":"karaka_house_lord_overlap_flag"},{"f":"marsys://tool/L1/chart_facts_query","t":"karakamsa_position"},{"f":"marsys://tool/L1/chart_facts_query","t":"karakatva_strength_per_significance"},{"f":"marsys://tool/L1/chart_facts_query","t":"karaka_web_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"kendradhipati_dosha"},{"f":"marsys://tool/L1/chart_facts_query","t":"kp_cuspal_significators"},{"f":"marsys://tool/L1/chart_facts_query","t":"kp_ruling_planets_natal"},{"f":"marsys://tool/L1/chart_facts_query","t":"lal_kitab_special_point"},{"f":"marsys://tool/L1/chart_facts_query","t":"lord_aspects_lord_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"lord_in_house_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"maharsi_specific_point"},{"f":"marsys://tool/L1/chart_facts_query","t":"midpoint"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_cogravity"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_conjunction"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_co_tenancy"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_cross_ayanamsha"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_dispositor"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_dispositor_chain"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_lord_relationship"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_pada_sensitive"},{"f":"marsys://tool/L1/chart_facts_query","t":"nakshatra_statistics"},{"f":"marsys://tool/L1/chart_facts_query","t":"net_argala_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"nway_config_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchadha_maitri"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchaka_flag"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_abhijit_muhurta"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_agni_vasa"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_brahma_muhurta"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_calendrical"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_choghadiya_birth"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_disha_shul"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_durmuhurta"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_godhuli_muhurta"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_gulika_kalam"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_hora_birth"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_karana"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_krakaca"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_madhyahna_sandhya"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_nakshatra_moon"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_nakshatra_shoonya_rashi"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_nishita_kala"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_panchaka_classification"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_pratah_sandhya"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_rahu_kalam"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_sashtighati"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_sayam_sandhya"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_solar_context"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_special_yoga_combinations"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_sun_moon_dynamics"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_tithi"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_tithi_shoonya_rashi"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_vara"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_varjyam"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_vijaya_muhurta"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_visha_ghati"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_yamaganda_kalam"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_yamakantaka"},{"f":"marsys://tool/L1/chart_facts_query","t":"panchanga_yoga"},{"f":"marsys://tool/L1/chart_facts_query","t":"parivartana_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"pranic_strength_per_graha"},{"f":"marsys://tool/L1/chart_facts_query","t":"sade_sati_cancellation_check"},{"f":"marsys://tool/L1/chart_facts_query","t":"sade_sati_concurrent_dasha_overlay"},{"f":"marsys://tool/L1/chart_facts_query","t":"sade_sati_cycle"},{"f":"marsys://tool/L1/chart_facts_query","t":"sade_sati_downstream_cross_reference"},{"f":"marsys://tool/L1/chart_facts_query","t":"sade_sati_modifier_overlay"},{"f":"marsys://tool/L1/chart_facts_query","t":"sade_sati_phase"},{"f":"marsys://tool/L1/chart_facts_query","t":"sade_sati_phase_quarter"},{"f":"marsys://tool/L1/chart_facts_query","t":"sade_sati_saturn_retrograde_subset"},{"f":"marsys://tool/L1/chart_facts_query","t":"saham_position"},{"f":"marsys://tool/L1/chart_facts_query","t":"sambandha_grade"},{"f":"marsys://tool/L1/chart_facts_query","t":"sandhi_flag"},{"f":"marsys://tool/L1/chart_facts_query","t":"saturn_derived_point"},{"f":"marsys://tool/L1/chart_facts_query","t":"sensitive_degree_check"},{"f":"marsys://tool/L1/chart_facts_query","t":"sensitive_point_gulika_mandi"},{"f":"marsys://tool/L1/chart_facts_query","t":"significator_path"},{"f":"marsys://tool/L1/chart_facts_query","t":"special_lagna"},{"f":"marsys://tool/L1/chart_facts_query","t":"sun_derived_upagraha"},{"f":"marsys://tool/L1/chart_facts_query","t":"swamsa_position"},{"f":"marsys://tool/L1/chart_facts_query","t":"tajik_hadda_lord"},{"f":"marsys://tool/L1/chart_facts_query","t":"tajik_triraashipathi"},{"f":"marsys://tool/L1/chart_facts_query","t":"tajik_vargottama_specific"},{"f":"marsys://tool/L1/chart_facts_query","t":"tara_bala"},{"f":"marsys://tool/L1/chart_facts_query","t":"tara_bala_natal_baseline"},{"f":"marsys://tool/L1/chart_facts_query","t":"upagraha_position"},{"f":"marsys://tool/L1/chart_facts_query","t":"upapada_lagna"},{"f":"marsys://tool/L1/chart_facts_query","t":"vargottama_per_varga"},{"f":"marsys://tool/L1/chart_facts_query","t":"vimsopaka_bala_per_graha"},{"f":"marsys://tool/L1/chart_facts_query","t":"virodha_argala_natal_matrix"},{"f":"marsys://tool/L1/chart_facts_query","t":"virupa_drishti"},{"f":"marsys://tool/L1/chart_facts_query","t":"vishakha_shani_period"},{"f":"marsys://tool/L1/chart_facts_query","t":"yoga_label"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=composite_state"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=composite_state"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=composite_state"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=composite_state"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=karaka_alignment"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=karaka_alignment"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=karaka_alignment"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=karaka_alignment"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=sade_sati"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=sade_sati"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=sade_sati"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=sade_sati"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=varga_pattern"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=varga_pattern"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=varga_pattern"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=varga_pattern"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=panchanga"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=panchanga"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=panchanga"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=panchanga"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=tradition_specific"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=tradition_specific"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=tradition_specific"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=tradition_specific"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=annual"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=annual"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=annual"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=annual"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=parivartana"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=parivartana"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=parivartana"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=parivartana"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=configuration"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=configuration"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=configuration"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=configuration"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=yoga"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=yoga"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=yoga"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=yoga"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=dosha"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=dosha"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=dosha"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=dosha"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=nakshatra_semantic"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=nakshatra_semantic"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=nakshatra_semantic"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=nakshatra_semantic"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=sudarshana_agreement"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=sudarshana_agreement"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=sudarshana_agreement"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=sudarshana_agreement"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=varga_ratification_divergence"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=varga_ratification_divergence"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=varga_ratification_divergence"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=varga_ratification_divergence"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=arudha"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=arudha"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=arudha"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=arudha"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=special_lagna"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=special_lagna"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=special_lagna"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=special_lagna"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=dhana_axis"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=dhana_axis"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=dhana_axis"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=dhana_axis"},{"f":"marsys://tool/L-JUDGMENT/judgment_query","t":"bodha_msr_signals.signal_type_class=vargottama_amplification"},{"f":"marsys://tool/L3/call_priority_ranking","t":"bodha_msr_signals.signal_type_class=vargottama_amplification"},{"f":"marsys://tool/L2/query_signals","t":"bodha_msr_signals.signal_type_class=vargottama_amplification"},{"f":"marsys://tool/L-TIMING/yoga_activation_by_dasha","t":"bodha_msr_signals.signal_type_class=vargottama_amplification"}],"adj":{"dark_count":77,"drift_count":0,"fact_category_gap_rows":3,"dark_by_layer":{"L0":29,"L2":16,"L1":10,"L3":3,"L5":19},"dark_by_proposed_disposition":{"INTERNAL-BY-DESIGN":25,"NEEDS-OWNER":52}}}</script>
+<script>
+(function(){
+  var DATA = JSON.parse(document.getElementById('packet-data').textContent);
+  var LAYER_COLOR = { L0:'var(--l0)', L1:'var(--l1)', L2:'var(--l2)', L3:'var(--l3)', L4:'var(--l4)', L5:'var(--l5)' };
+  var LAYER_NAME = { L0:'Brahmagyan', L1:'Gaṇita', L2:'Bodha', L3:'Kāla', L4:'Phala', L5:'Mīmāṃsā' };
+  var STATE_COLOR = { 'SERVED':'var(--good)', 'INTERNAL-BY-DESIGN':'var(--info)', 'NEEDS-OWNER':'var(--warn)', 'RETIRE':'var(--bad)', 'DRIFT':'var(--bad)' };
+
+  // ---------- KPI row ----------
+  var kpis = [
+    { n: DATA.meta.true_totals.concept_lattice_rows, l: 'concepts harvested' },
+    { n: DATA.meta.true_totals.tool_nodes, l: 'live capabilities' },
+    { n: DATA.adj.dark_count, l: 'dark tables', cls: 'warn' },
+    { n: DATA.adj.drift_count, l: 'drift (declared≠real)', cls: 'good' },
+    { n: 20, l: 'sidecar routers' },
+    { n: 49, l: 'sidecar endpoints' },
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(function(k){
+    return '<div class="kpi '+(k.cls||'')+'"><div class="n">'+k.n+'</div><div class="l">'+k.l+'</div></div>';
+  }).join('');
+
+  // ---------- Coverage bars ----------
+  var covOrder = ['SERVED','INTERNAL-BY-DESIGN','NEEDS-OWNER','RETIRE','DRIFT'];
+  var covRowsHtml = '';
+  DATA.coverage.forEach(function(row){
+    var total = row.total;
+    var segs = covOrder.filter(function(k){ return row[k]; }).map(function(k){
+      var pct = (row[k]/total*100).toFixed(1);
+      return '<div class="seg" style="width:'+pct+'%;background:'+STATE_COLOR[k]+'" title="'+k+': '+row[k]+'"></div>';
+    }).join('');
+    covRowsHtml += '<div class="covrow">'+
+      '<div class="covlabel"><b>'+row.layer+'</b><br>'+LAYER_NAME[row.layer]+'</div>'+
+      '<div class="covbar">'+segs+'</div>'+
+      '<div class="covtotal">'+total+' concepts</div>'+
+    '</div>';
+  });
+  document.getElementById('covRows').innerHTML = covRowsHtml;
+  document.getElementById('covLegend').innerHTML = covOrder.map(function(k){
+    return '<div class="item"><span class="sw" style="background:'+STATE_COLOR[k]+'"></span>'+k.replace('-',' – ').toLowerCase()+'</div>';
+  }).join('');
+
+  // ---------- Lattice explorer ----------
+  var activeState = 'ALL';
+  var stateCounts = {};
+  DATA.lattice.forEach(function(r){ stateCounts[r.s] = (stateCounts[r.s]||0)+1; });
+  var allStates = Object.keys(stateCounts).sort(function(a,b){ return stateCounts[b]-stateCounts[a]; });
+
+  function renderFilters(){
+    var chips = ['<div class="chip'+(activeState==='ALL'?' active':'')+'" data-state="ALL">All<span class="cnt">'+DATA.lattice.length+'</span></div>'];
+    allStates.forEach(function(s){
+      chips.push('<div class="chip'+(activeState===s?' active':'')+'" data-state="'+s+'">'+s+'<span class="cnt">'+stateCounts[s]+'</span></div>');
+    });
+    document.getElementById('latticeFilters').innerHTML = chips.join('');
+    document.querySelectorAll('#latticeFilters .chip').forEach(function(el){
+      el.addEventListener('click', function(){ activeState = el.getAttribute('data-state'); renderFilters(); renderTable(); });
+    });
+  }
+
+  function renderTable(){
+    var rows = DATA.lattice.filter(function(r){ return activeState==='ALL' || r.s===activeState; });
+    var shown = rows.slice(0, 400);
+    var html = shown.map(function(r){
+      return '<tr>'+
+        '<td><span class="layerpill" style="background:color-mix(in srgb, '+LAYER_COLOR[r.l]+' 22%, transparent);color:'+LAYER_COLOR[r.l]+'">'+r.l+'</span></td>'+
+        '<td class="id">'+r.id+'</td>'+
+        '<td style="color:var(--ink-dim);font-family:var(--mono);font-size:12px">'+r.k+'</td>'+
+        '<td><span class="statepill" style="background:color-mix(in srgb, '+STATE_COLOR[r.s]+' 16%, transparent);color:'+STATE_COLOR[r.s]+'"><span style="background:'+STATE_COLOR[r.s]+'"></span></span> '+r.s+'</td>'+
+      '</tr>';
+    }).join('');
+    document.getElementById('latticeBody').innerHTML = html;
+    document.getElementById('latticeCount').textContent = 'Showing ' + shown.length + ' of ' + rows.length + ' matching rows (' + DATA.lattice.length + ' total in the full harvest).';
+  }
+  renderFilters(); renderTable();
+
+  // ---------- Topology canvas ----------
+  var canvas = document.getElementById('topo');
+  var ctx = canvas.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  var tooltip = document.getElementById('topoTooltip');
+  var wrapEl = canvas.parentElement;
+
+  function sizeCanvas(){
+    var r = wrapEl.getBoundingClientRect();
+    canvas.width = r.width * dpr;
+    canvas.height = 520 * dpr;
+    canvas.style.width = r.width + 'px';
+    canvas.style.height = '520px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  sizeCanvas();
+
+  // group nodes by layer into columns, position within column by index
+  var byLayer = {};
+  DATA.nodes.forEach(function(n){ (byLayer[n.layer]=byLayer[n.layer]||[]).push(n); });
+  var layerOrder = ['L0','L1','L2','L3','L4','L5'].filter(function(l){ return byLayer[l]; });
+  var colW = 1;
+  var nodePos = {};
+  var W = wrapEl.getBoundingClientRect().width, H = 520;
+  var margin = 60;
+  layerOrder.forEach(function(l, ci){
+    var nodes = byLayer[l];
+    var x = margin + (W - margin*2) * (ci / Math.max(1,(layerOrder.length-1)));
+    nodes.forEach(function(n, i){
+      var y = 50 + (H-100) * ((i+0.5) / nodes.length);
+      nodePos[n.id] = { x:x, y:y, node:n };
+    });
+  });
+
+  // edge count per tool -> node size
+  var edgeCountByTool = {};
+  DATA.edges.forEach(function(e){ edgeCountByTool[e.f] = (edgeCountByTool[e.f]||0)+1; });
+
+  var panX = 0, panY = 0, dragging = false, lastX, lastY;
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.save();
+    ctx.translate(panX, panY);
+
+    // edges
+    ctx.lineWidth = 0.6;
+    DATA.edges.forEach(function(e){
+      var a = nodePos[e.f];
+      if(!a) return;
+      // find any node position representing the concept's layer roughly (approximate landing point near tool's own column+1)
+      var b = a; // fallback
+      ctx.strokeStyle = 'rgba(111,214,196,0.10)';
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      var midx = a.x + 40;
+      ctx.bezierCurveTo(midx, a.y, midx, a.y+18, a.x+70, a.y+10);
+      ctx.stroke();
+    });
+
+    // nodes
+    Object.keys(nodePos).forEach(function(id){
+      var p = nodePos[id];
+      var r = 2.6 + Math.min(9, Math.sqrt(edgeCountByTool[id]||0)*1.6);
+      var col = LAYER_COLOR[p.node.layer].startsWith('var') ? cssVar(LAYER_COLOR[p.node.layer].slice(4,-1)) : LAYER_COLOR[p.node.layer];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+      ctx.fillStyle = col;
+      ctx.globalAlpha = 0.88;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    ctx.restore();
+
+    // column labels
+    ctx.font = '11px ' + cssVar('--mono').split(',')[0] + ', monospace';
+    ctx.fillStyle = cssVar('--ink-faint');
+    ctx.textAlign = 'center';
+    layerOrder.forEach(function(l, ci){
+      var x = margin + (W - margin*2) * (ci / Math.max(1,(layerOrder.length-1))) + panX;
+      ctx.fillText(l, x, 24);
+    });
+  }
+  draw();
+
+  canvas.addEventListener('mousedown', function(e){ dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.style.cursor='grabbing'; });
+  window.addEventListener('mouseup', function(){ dragging = false; canvas.style.cursor='grab'; });
+  canvas.addEventListener('mousemove', function(e){
+    if(dragging){
+      panX += (e.clientX-lastX); panY += (e.clientY-lastY);
+      lastX = e.clientX; lastY = e.clientY;
+      draw();
+      tooltip.style.opacity = 0;
+      return;
+    }
+    var rect = canvas.getBoundingClientRect();
+    var mx = e.clientX-rect.left-panX, my = e.clientY-rect.top-panY;
+    var hit = null;
+    Object.keys(nodePos).forEach(function(id){
+      var p = nodePos[id];
+      var d = Math.hypot(p.x-mx, p.y-my);
+      if(d < 8) hit = p;
+    });
+    if(hit){
+      tooltip.style.opacity = 1;
+      tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
+      tooltip.style.top = (e.clientY - rect.top + 8) + 'px';
+      var n = hit.node;
+      tooltip.innerHTML = '<b>'+n.name+'</b><br>'+n.layer+' · '+(n.role||'')+' · '+(edgeCountByTool[n.id]||0)+' concepts reached';
+    } else {
+      tooltip.style.opacity = 0;
+    }
+  });
+  window.addEventListener('resize', function(){ sizeCanvas(); draw(); });
+
+  // ---------- Adjudication tiles ----------
+  var adjTilesHtml =
+    '<div class="tile warn"><div class="n">'+DATA.adj.dark_count+'</div><div class="l">dark tables total</div></div>'+
+    '<div class="tile good"><div class="n">'+DATA.adj.drift_count+'</div><div class="l">drift (false claims)</div></div>'+
+    '<div class="tile"><div class="n">'+(DATA.adj.dark_by_proposed_disposition['INTERNAL-BY-DESIGN']||0)+'</div><div class="l">auto-resolved internal</div></div>'+
+    '<div class="tile warn"><div class="n">'+(DATA.adj.dark_by_proposed_disposition['NEEDS-OWNER']||0)+'</div><div class="l">needs a native call</div></div>';
+  document.getElementById('adjTiles').innerHTML = adjTilesHtml;
+
+  var maxDark = Math.max.apply(null, Object.values(DATA.adj.dark_by_layer));
+  var barsHtml = Object.keys(DATA.adj.dark_by_layer).sort().map(function(l){
+    var v = DATA.adj.dark_by_layer[l];
+    return '<div class="minibar"><div class="head"><span>'+l+' · '+LAYER_NAME[l]+'</span><span>'+v+'</span></div><div class="track"><div class="fill" style="width:'+(v/maxDark*100)+'%;background:'+LAYER_COLOR[l]+'"></div></div></div>';
+  }).join('');
+  document.getElementById('adjLayerBars').innerHTML = barsHtml;
+
+  // ---------- Worked examples ----------
+  var examples = [
+    {
+      kind: 'existing', kindLabel: 'Existing asset',
+      title: 'chart_facts_query', sub: 'L1 · already served · the single umbrella reaching all 218 fact_category concepts',
+      code: '{\n  <span class="fieldkey">"display"</span>: {\n    <span class="fieldkey">"short_label"</span>: <span class="fieldval">"Chart facts lookup"</span>,\n    <span class="fieldkey">"one_line"</span>: <span class="fieldval">"Parametric lookup over any of 218\n      chart_facts categories."</span>\n  },\n  <span class="fieldkey">"annotations"</span>: {\n    <span class="fieldkey">"read_only"</span>: <span class="fieldval">true</span>, <span class="fieldkey">"idempotent"</span>: <span class="fieldval">true</span>\n  },\n  <span class="fieldkey">"projection_tags"</span>: [<span class="fieldval">"chat","mcp_full","mcp_compact"</span>],\n  <span class="fieldkey">"data_source"</span>: <span class="fieldval">"stored"</span>,\n  <span class="fieldkey">"demand_ranking"</span>: { <span class="fieldkey">"static_salience"</span>: <span class="fieldval">0.9</span> }\n  <span class="fieldcomment">// reads sealed build data only, no live compute</span>\n}'
+    },
+    {
+      kind: 'elevated', kindLabel: 'Elevated asset',
+      title: 'bodha_triangulation_get', sub: 'L2 · proposed · 200 real rows, NEEDS-OWNER → the most consequential dark class',
+      code: '{\n  <span class="fieldkey">"uri"</span>: <span class="fieldval">"marsys://tool/L2/bodha_triangulation_get"</span>,\n  <span class="fieldkey">"tool_role"</span>: <span class="fieldval">"drill"</span>,\n  <span class="fieldkey">"display"</span>: {\n    <span class="fieldkey">"one_line"</span>: <span class="fieldval">"Cross-signal convergence clusters —\n      200 rows on the live chart."</span>\n  },\n  <span class="fieldkey">"projection_tags"</span>: [<span class="fieldval">"mcp_full","mcp_compact"</span>],\n  <span class="fieldcomment">// not chat — drill-only until demand is observed</span>\n  <span class="fieldkey">"demand_ranking"</span>: { <span class="fieldkey">"bearing_first"</span>: <span class="fieldval">true</span> }\n}\n\n<span class="fieldcomment">// elevation path: confirm FK shape → commission\n// under W-27\'s CI contract → ledger flips to SERVED</span>'
+    },
+    {
+      kind: 'new', kindLabel: 'New asset',
+      title: 'call_ephemeris_at_t', sub: 'L3 · ka_graha_sancara · commissioning the top-priority dark service (GT-50)',
+      code: '{\n  <span class="fieldkey">"uri"</span>: <span class="fieldval">"marsys://tool/L3/call_ephemeris_at_t"</span>,\n  <span class="fieldkey">"scope"</span>: <span class="fieldval">"global"</span>,\n  <span class="fieldcomment">// geocentric longitudes — no chart_id needed</span>\n  <span class="fieldkey">"data_source"</span>: <span class="fieldval">"computed"</span>,\n  <span class="fieldcomment">// live swisseph compute, no build_id — carries\n  // its own computed_at + engine-version instead</span>\n  <span class="fieldkey">"input_schema"</span>: {\n    <span class="fieldkey">"datetime_utc"</span>: { <span class="fieldkey">"required"</span>: <span class="fieldval">true</span> }\n  }\n}\n\n<span class="fieldcomment">// handler already stubbed, errors unconditionally —\n// first live test case for the W-27 commissioning gate</span>'
+    }
+  ];
+  document.getElementById('examplesGrid').innerHTML = examples.map(function(ex){
+    return '<div class="excard"><span class="exkind '+ex.kind+'">'+ex.kindLabel+'</span><h3>'+ex.title+'</h3><p>'+ex.sub+'</p><pre>'+ex.code+'</pre></div>';
+  }).join('');
+
+  // ---------- Judgment calls ----------
+  var judgments = [
+    { n: '01', text: 'The <b>51 NEEDS-OWNER dark tables</b> are genuinely ambiguous, not mechanically resolvable — the highest-stakes pair, <b>mimamsa_fact_adjustment</b> (121,100 rows) and <b>mimamsa_signal_adjustment</b> (97,504 rows), are almost certainly L5 calibration-ledger internals. L5 is sealed in STRUCTURAL mode; wiring either without sign-off risks exposing raw adjustment rows as settled facts.', src: 'SUMMARY.md § judgment call 1' },
+    { n: '02', text: '<b>bodha_cgm_sub_graphs</b> and 3 siblings may already be served. Live tools (get_cgm_subgraph, bodha_graph_subgraph_get) suggest the CGM graph plane is reachable via a route this wave’s TS-registry-only scan couldn’t see — the same false-dark pattern already caught twice this wave. Needs a targeted re-scan before treating it as a build gap.', src: 'SUMMARY.md § judgment call 2' },
+    { n: '03', text: 'The master brief’s D-5/G-4 sequencing assumption was <b>already overtaken</b>: Gochara-Chitra’s serving lane merged to main before this campaign opened. The brief’s own fallback applies (“W2 absorbs the gochara tools in its migration”) — but this is a live sequencing fact the native should confirm before W2 opens, not a call the conductor makes alone.', src: 'STATE.md § coexistence check' },
+  ];
+  document.getElementById('judgmentCards').innerHTML = judgments.map(function(j){
+    return '<div class="jcard"><div class="jn">JUDGMENT CALL '+j.n+'</div><p>'+j.text+'</p><div class="src">'+j.src+'</div></div>';
+  }).join('');
+
+  // ---------- Footer ----------
+  document.getElementById('waveSummary').innerHTML =
+    '<div class="wave"><h4>W0 — Foundations</h4><p>5 safety items (PII scrub, 20-file token guard unification, plan entitlement, parity_check disposition, description hygiene), baseline probe suite, read-only census DSN, envelope-codegen CI parity. 3 verifier fix-cycles (2 REJECT, 1 ACCEPT) — deployed and live-verified.</p></div>'+
+    '<div class="wave"><h4>W1 — Concept Spine + Census</h4><p>concept_ledger schema, 9 new descriptor fields, a 4-extractor harvest pipeline, a 20-router/49-endpoint service manifest, an 8-axis tool census, a 314-concept reachability matrix. 2 verifier passes (1 fabrication found + fixed, 1 ACCEPT) — deployed and live-verified.</p></div>';
+  document.getElementById('provenance').textContent = 'Generated from platform/src/generated/{harvest,census}/*.json and 00_ARCHITECTURE/briefs/retrieval_impl/*.md · nothing in this page is hand-estimated · RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md §F';
+})();
+</script>
