@@ -145,3 +145,75 @@ respawn R-3 (correct or drop the PG1-R3-0001 evidence[0] citation), and respawn 
 before Z-1 synthesis consumes them) rather than treating any of the three as
 salvageable via a synthesis-time patch — each failure lives inside the finding's own
 evidentiary claim, which is Z-1's raw material.
+
+## Attempt-2 re-verification
+
+verifier_model: opus (fresh context, no implementer-session memory)
+date: 2026-07-19
+scope: exactly the two lanes rejected in attempt 1 and since fixed — R-3 and Q-1.
+method: independently re-derived, not report-read. Read the cited `route.ts` line
+directly; re-ran the chart-scoped `mimamsa_insight_units` queries against the live
+`amjis` DB myself (`WHERE chart_id` per lens); re-ran `validate_findings.py`; ran
+`git show --stat` on each fix commit for scope-warden.
+
+**Validator: clean.** `Validated 87 findings across 12 shards. All shards valid.`
+
+### R-3 — ACCEPT (attempt 2)
+
+The rejected citation is fixed. PG1-R3-0001 evidence[0] now cites
+`consult/route.ts:436`. I Read line 436 directly: it contains exactly
+`plan = await runPlanner(` — a byte-exact match to the finding's quote. `grep -n
+"runPlanner"` returns only the import alias (line 72) and this single call site (line
+436) — no line 758 involvement remains anywhere. PG1-R3-0007 (the other touched
+finding) was also re-inspected; its evidence citations are unrelated to the line-number
+defect and remain intact. Scope-warden: fix commit `34a3af18` touches ONLY
+`pg1_findings_R-3.jsonl` (+4/-4) and `PG1_LANE_R-3.md` — R-3's two designated files,
+no stray path. The prior REJECT's sole defect is cured; the shard's other 7/8
+independently-confirmed citations were never in question.
+
+### Q-1 — ACCEPT (attempt 2)
+
+The cross-chart conflation is fully corrected in PG1-Q1-0002/-0004/-0006, and
+PG1-Q1-0012's cross-reference is updated to note the correction does not disturb the
+cross-cutting diagnosis. I re-ran the verdict lenses filtered by `chart_id` and
+confirmed independently:
+
+- **Career** (`verdict_career_advancement`): chart `482012f1` (Abhisek) returns
+  EXACTLY ONE row — "conditional (grade 4.0/10)", band `[0.25,0.55)`, n_support 5. The
+  "promised (8.2/10)", band `[0.62,0.92)` row belongs to chart `1c826d5a` (Abhinandan),
+  a different native — exactly as the corrected finding now states.
+- **Marriage** (`verdict_marriage`): `482012f1` returns EXACTLY ONE row — "denied
+  (1.6/10)", band `[0.16,0.36)`. The "grade 1.8" row (band `[0.18,0.38)`) is
+  `1c826d5a`, not an intra-chart duplicate — matches the correction.
+- **Wealth** (`verdict_major_gain` / `verdict_major_loss`): `482012f1` carries one row
+  each, both "conditional (grade 2.3/10)", both band `[0.23,0.43)` — the identical
+  grade+band for gain and its opposite is confirmed as a genuine intra-chart defect
+  (the surviving, narrower finding). The "denied (1.5/10)" gain/loss rows are
+  `1c826d5a`, not a second Abhisek verdict.
+
+A `count(*) OVER (PARTITION BY chart_id, insight_id, question_lens)` window returned
+**1 for every row** across all four insight_ids and both charts — delete-then-insert
+idempotency is functioning; there is no chart carrying two contradictory verdicts for
+one lens. The "same chart, contradictory verdicts" claim that grounded the original
+REJECT is independently disproved to be gone, and the genuine intra-chart defects the
+corrected findings now assert are independently confirmed present. Scope-warden: fix
+commit `1714a9ac` touches ONLY `pg1_findings_Q-1.jsonl` (+8/-8... i.e. 4 lines changed)
+and `PG1_LANE_Q-1.md` — Q-1's two designated files, no stray path.
+
+### Machine-checkable receipts (attempt 2)
+
+```json
+{"lane":"R-3","attempt":2,"verifier_model":"opus","diff_reviewed":"34a3af18","findings":{"emitted":7,"schema_valid":7},"assertions":{"script":"scripts/validate_findings.py","green":["schema","scope_warden","evidence"],"red":[]},"scope_warden":"pass","verdict":"ACCEPT","diagnosis":"PG1-R3-0001 evidence[0] now cites consult/route.ts:436; Read of line 436 shows 'plan = await runPlanner(' byte-exact, and grep confirms 436 is the sole call site (no line-758 residue). Fix commit 34a3af18 touches only R-3's two designated files. Prior single-citation defect cured."}
+```
+
+```json
+{"lane":"Q-1","attempt":2,"verifier_model":"opus","diff_reviewed":"1714a9ac","findings":{"emitted":12,"schema_valid":12},"assertions":{"script":"scripts/validate_findings.py","green":["schema","scope_warden","evidence"],"red":[]},"scope_warden":"pass","verdict":"ACCEPT","diagnosis":"Independent chart-scoped re-query confirms each chart carries exactly one row per insight/lens (window count=1 across all four insight_ids, both charts). The conflated rows (career promised-8.2, marriage 1.8, wealth denied-1.5) all belong to chart 1c826d5a, not 482012f1 — matching the corrected findings. Surviving intra-chart defect (major_gain==major_loss at 2.3/[0.23,0.43) for 482012f1) independently confirmed real. PG1-Q1-0012 cross-ref updated. Fix commit 1714a9ac touches only Q-1's two designated files."}
+```
+
+### Attempt-2 outcome
+
+Both re-verified lanes ACCEPT. Combined with the 10 lanes previously ACCEPT (incl.
+R-1 per the conductor reconciliation above), the wave now stands at **12 of 12 ACCEPT**.
+Schema clean (87/87), both fixes scope-clean, both prior evidence defects independently
+confirmed cured. No lane requires a further pass. **The wave is clear to proceed to Z-1
+integration.**
