@@ -262,7 +262,16 @@ _FETCH_YOGA_FIRINGS_SQL = """
 SELECT DISTINCT yoga_canonical_id
 FROM ga_yoga_firings
 WHERE chart_id = %s AND ayanamsha_id = %s AND fired = true
-  AND (constituent_houses && %s OR constituent_planets && %s)
+  AND (
+    EXISTS (
+      SELECT 1 FROM jsonb_array_elements(constituent_houses) elem
+      WHERE (elem::text)::int = ANY(%s::int[])
+    )
+    OR EXISTS (
+      SELECT 1 FROM jsonb_array_elements_text(constituent_planets) elem
+      WHERE elem = ANY(%s::text[])
+    )
+  )
 """
 
 _FETCH_DASHA_ROWS_SQL = """
