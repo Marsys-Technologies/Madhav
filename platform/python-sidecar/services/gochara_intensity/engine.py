@@ -48,7 +48,7 @@ from .suppression import compute_suppression
 from .beta_priors import beta_for
 from .valence import is_adverse
 from .enrichment import enrich_targets
-from ._dbutil import safe_rollback
+from ._dbutil import savepoint_scope
 
 logger = logging.getLogger(__name__)
 
@@ -76,19 +76,19 @@ SHAPE_MAP: dict[str, str] = {
 def fetch_temporal_shape(conn, event_class: str) -> str:
     if conn is not None:
         try:
-            cur = conn.execute(
-                "SELECT temporal_shape FROM brahma_event_ontology WHERE event_class_id = %s",
-                [event_class],
-            )
-            row = cur.fetchone()
-            if row is not None:
-                v = row["temporal_shape"] if isinstance(row, dict) else row[0]
-                if v:
-                    return str(v)
+            with savepoint_scope(conn, "temporal_shape"):
+                cur = conn.execute(
+                    "SELECT temporal_shape FROM brahma_event_ontology WHERE event_class_id = %s",
+                    [event_class],
+                )
+                row = cur.fetchone()
+                if row is not None:
+                    v = row["temporal_shape"] if isinstance(row, dict) else row[0]
+                    if v:
+                        return str(v)
         except Exception as exc:  # noqa: BLE001
             logger.info("[engine] brahma_event_ontology temporal_shape read failed for "
                         "event_class=%s: %s", event_class, exc)
-            safe_rollback(conn)
     return SHAPE_MAP.get(event_class, "point")
 
 
@@ -114,8 +114,8 @@ def compute_lambda_e(
     DB-shape surprise, per `resonance_map.fetch_resonance_targets`'s own
     contract)."""
     if targets is None:
-        raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
-        safe_rollback(conn)
+        with savepoint_scope(conn, "resonance_targets"):
+            raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
         targets = enrich_targets(conn, raw_targets, ayanamsha_id=ayanamsha_id)
 
     shape = temporal_shape or fetch_temporal_shape(conn, event_class)
@@ -198,8 +198,8 @@ def compute_lambda_e_series(
     per-point) so a live series computation does not re-issue the same
     `gochara_resonance_map`/`chart_dashas` queries `len(series)` times."""
     if targets is None:
-        raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
-        safe_rollback(conn)
+        with savepoint_scope(conn, "resonance_targets_series"):
+            raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
         targets = enrich_targets(conn, raw_targets)
     if dasha_periods is None:
         dasha_periods = DD.fetch_dasha_periods(conn, chart_id)

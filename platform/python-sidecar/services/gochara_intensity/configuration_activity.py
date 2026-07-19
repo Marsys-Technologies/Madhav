@@ -34,7 +34,7 @@ from typing import Any
 from services.gochara_grammar import primitives as P
 from services.gochara_grammar import sarvatobhadra as SBC
 from services.gochara_grammar.models import ConfigurationSentence, ResonanceTarget
-from ._dbutil import safe_rollback
+from ._dbutil import savepoint_scope
 
 logger = logging.getLogger(__name__)
 
@@ -71,20 +71,20 @@ def gather_configuration_sentences(
             (P.gochara_vedha_pair, True),
         ):
             try:
-                if needs_conn:
-                    out.extend(fn(swe, chart_id, target, start_jd, end_jd, conn=conn))
-                else:
-                    out.extend(fn(swe, chart_id, target, start_jd, end_jd))
+                with savepoint_scope(conn, "config_activity_primitive"):
+                    if needs_conn:
+                        out.extend(fn(swe, chart_id, target, start_jd, end_jd, conn=conn))
+                    else:
+                        out.extend(fn(swe, chart_id, target, start_jd, end_jd))
             except Exception as exc:  # noqa: BLE001
                 logger.info("[configuration_activity] %s failed for target_ref=%s: %s",
                             getattr(fn, "__name__", fn), target.target_ref, exc)
-                safe_rollback(conn)
         try:
-            out.extend(SBC.find_sarvatobhadra_vedha_states(swe, chart_id, target, start_jd, end_jd, conn=conn))
+            with savepoint_scope(conn, "sarvatobhadra_vedha"):
+                out.extend(SBC.find_sarvatobhadra_vedha_states(swe, chart_id, target, start_jd, end_jd, conn=conn))
         except Exception as exc:  # noqa: BLE001
             logger.info("[configuration_activity] sarvatobhadra_vedha failed for target_ref=%s: %s",
                         target.target_ref, exc)
-            safe_rollback(conn)
     return out
 
 

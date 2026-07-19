@@ -64,7 +64,7 @@ from dataclasses import replace
 from typing import Optional
 
 from services.gochara_grammar.models import ResonanceTarget
-from ._dbutil import safe_rollback
+from ._dbutil import savepoint_scope
 
 logger = logging.getLogger(__name__)
 
@@ -94,19 +94,19 @@ def _fetch_graha_position(conn, chart_id: str, subject: str, ayanamsha_id: str) 
     if conn is None:
         return None
     try:
-        cur = conn.execute(
-            """
-            SELECT fact_key, fact_value_text, fact_value_num
-              FROM chart_facts
-             WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_position'
-               AND fact_subject = %s AND fact_key IN ('longitude_sidereal', 'sign')
-            """,
-            [chart_id, ayanamsha_id, subject],
-        )
-        rows = cur.fetchall()
+        with savepoint_scope(conn, "graha_position"):
+            cur = conn.execute(
+                """
+                SELECT fact_key, fact_value_text, fact_value_num
+                  FROM chart_facts
+                 WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_position'
+                   AND fact_subject = %s AND fact_key IN ('longitude_sidereal', 'sign')
+                """,
+                [chart_id, ayanamsha_id, subject],
+            )
+            rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[enrichment] graha_position read failed for subject=%s: %s", subject, exc)
-        safe_rollback(conn)
         return None
     out: dict = {}
     for row in rows:
