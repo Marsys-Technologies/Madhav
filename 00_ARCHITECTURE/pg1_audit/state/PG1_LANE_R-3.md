@@ -23,7 +23,7 @@ islands.**
 
 | # | Surface | Wired? | Emits | Has floor/dark/CR/capability_version? |
 |---|---|---|---|---|
-| 1 | `pipeline_planner.ts:269` `callPipelinePlanner` (web consult) | **LIVE** — `consult/route.ts:758` `runPlanner(...)` | `PipelinePlan` (query_class + LLM-chosen `tool_calls[{tool_name,params,priority,reason}]` + `asset_bundle`) | **NO** — none of it |
+| 1 | `pipeline_planner.ts:269` `callPipelinePlanner` (web consult) | **LIVE** — `consult/route.ts:436` `runPlanner(...)` | `PipelinePlan` (query_class + LLM-chosen `tool_calls[{tool_name,params,priority,reason}]` + `asset_bundle`) | **NO** — none of it |
 | 2 | `plan_builder.ts:52` `buildVidhiPlan` (MCP `plan_retrieval`) | **LIVE** — `server.ts:388` `registerVidhiPlanTool` | `VidhiPlan` (floor + machine_band + `completeness_receipt` served/empty/dark + `capability_version`) | **YES** — all of it |
 | 3 | `retrieval/router/router.ts` `route()` "D2 Query Router" | **DEAD ISLAND** — zero production importer (only its own test + barrel) | `RouteResult` (rule classifier → tool chain) | partial |
 | 4 | `lib/vidhi/compiler.ts` `compileContract` (D-2 Lane V-1) | **DEAD ISLAND** — zero production importer | `CompiledContract` (a duplicate of #2's compiler) | YES but unused |
@@ -181,7 +181,7 @@ The MCP path already realizes almost all of U:
 3. **Two runtimes.** Deterministic vidhi is MCP-only; the live web route runs
    `PipelinePlan` with no floor/receipt/dark/capability_version. Unifying = wire the web
    consult route through the already-built vidhi compiler and emit U — which C-2
-   independently showed touches `consult/route.ts` (planner call `route.ts:758` + the
+   independently showed touches `consult/route.ts` (planner call `route.ts:436` + the
    dispatch). So the unification is coupled to the same route reorder C-2 priced.
 
 ### Why NOT a contradiction
@@ -226,3 +226,21 @@ islands), not a design impossibility. (PG1-R3-0007)
 - **R-1** (`PlanReceipt` "zero hits, low confidence") and **R-2** ("zero hits" flagged) —
   reconciled: absent-from-code-entirely, not type-only. See PG1-R3-0005.
 - **R-1** (`prashna_ask` "Proposed") — confirmed: zero hits in source. See PG1-R3-0002.
+
+## CORRECTED post-verification (2026-07-19, attempt 2)
+
+Phase-1 verifier REJECTED PG1-R3-0001: its first evidence entry cited
+`consult/route.ts:758` for the `runPlanner(...)` quote, but line 758 holds unrelated
+`step_done` telemetry (`conversation_id: finalConversationId`). The live planner call
+site is actually **`consult/route.ts:436`** — `plan = await runPlanner(` (call spans
+436–444), where `runPlanner` is the alias for `callPipelinePlanner` imported at
+`route.ts:72`. The `758` was a stale/mis-copied line number; the CLAIM about the call
+being the live constrained-LLM planner surface is unchanged and correct.
+
+Corrections applied (line number only; no substantive finding change):
+- PG1-R3-0001 evidence[0]: `line 758 → 436`; quote set to verbatim `plan = await runPlanner(`.
+- PG1-R3-0001 reality prose: `route.ts:758` → `route.ts:436` (+ note it is imported as `runPlanner` at route.ts:72).
+- PG1-R3-0007 reality prose carried the same wrong `route.ts:758` for the planner call site → corrected to `route.ts:436` (same factual error surfaced by this investigation).
+- This state doc: the `consult/route.ts:758` in the §1 planner table and the §6 gap-3 prose → both corrected to `route.ts:436`.
+
+The verifier confirmed 7/8 other citations checked out; those were left untouched.
