@@ -14,8 +14,15 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-4   # INCOMING — BRIEF_D4.md is under native/Cowork revision; NOT opened, NOT
-  # bound. A separate kickoff directive follows native's ratification of the revised brief.
+current_wave: D-5   # INCOMING, not opened. D-4a "Measurement Foundry" CLOSED 2026-07-19 —
+  # GATE GREEN 7/7 (BIND_D-4A.md §7, REPORT_D-4A.md). 6 lanes (A-0 serving-substrate repair,
+  # A-1 shape-aware matcher + LEL v2 + native corrections, A-2 canonical event ontology,
+  # A-3 controls + proper-scoring harness, A-4 prospective ledger, A-5 harness dry-run), all
+  # independently Opus-verified (4 ACCEPT-WITH-FINDINGS non-blocking, 2 clean ACCEPT, 0 REJECT,
+  # 0 circuit-breaker trips). CR-109/110/111 fixed+live-verified; DR-13/14/15/16 ratified as
+  # DIS.026-029; carried D-2 findings #2/#4 PARKed to D-4b with named ownership. D-5's own brief
+  # (BRIEF_D5.md, Gochara-Chitra) opens on the native's kickoff directive per the ARC PLAN
+  # sequence D-4a → D-5 → D-4b (TEMPORAL_ENGINE_ARC_PLAN_v1_0.md).
   # D-3 "Kāla Taraṅga + Three-Lock" CLOSED 2026-07-18 — BLOCKED-RED (standing pre-committed
   # ruling, MEMO_D-3_1.md's Option-C amendment: "if §G then fails, that's a true red about the
   # kernel, and it stands"). §G retrodiction gate ran once, blind, full LEL access, post
@@ -57,7 +64,8 @@ current_wave: D-4   # INCOMING — BRIEF_D4.md is under native/Cowork revision; 
   # REPORT_D-1.5a.md. D-1.5b's Binder should re-verify all bindings fresh rather
   # than trusting this snapshot, and carry forward the ka_vighnakara FK defect +
   # A7/#4 PARK items as open agenda.
-wave_sequence: [D-1.5a, D-1.5b, D-1.6, D-2, D-3, D-4]  # D-1.6 inserted by native order 2026-07-16
+wave_sequence: [D-1.5a, D-1.5b, D-1.6, D-2, D-3, D-4a, D-5, D-4b]  # D-1.6 inserted 2026-07-16;
+  # D-4 split into D-4a/D-5/D-4b by native-ratified ARC PLAN 2026-07-19 (TEMPORAL_ENGINE_ARC_PLAN_v1_0.md)
 parallel_tracks:
   - Track 2 (infra): CR-40/CR-8 ephemeris/transit sidecar auth restore — hard prereq for D-3
     T-2/T-5. TRIGGER: the D-1.5a conductor launches it at wave close if not already green (a
