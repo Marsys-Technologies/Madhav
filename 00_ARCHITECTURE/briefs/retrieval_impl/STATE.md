@@ -51,7 +51,7 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
 
 | When | Campaign | Action | Released |
 |---|---|---|---|
-| (pending) | retrieval | W0 S-1..S-5 safety deploy | pending |
+| 2026-07-19 19:12–19:34 | retrieval | W0 S-1..S-5 safety deploy (PR #633 → main `2f4b67e8` → amjis-mcp `amjis-mcp-00440-n29` + amjis-web `amjis-web-01031-rmj`, 100% traffic) | **RELEASED** 2026-07-19 19:5x, post live-verification |
 
 ## Wave log
 
@@ -130,6 +130,25 @@ gate deliberately does not hard-gate the separately-tracked 47-vs-118 MCP_TOOL_T
 backlog).
 
 **V0 VERDICT: ACCEPT.** S-1..S-5 + CI wiring (GT-9/GT-36) ready to commit, merge to main, deploy.
+
+### W0 CLOSE (2026-07-19)
+
+Merged: PR #633 (`impl/wave-0` → `main`, merge commit `2f4b67e8`), all CI checks green. Deployed:
+`amjis-mcp-00440-n29` + `amjis-web-01031-rmj`, both confirmed 100% traffic, no rollback. Remote
+branch `impl/wave-0` deleted post-merge. `ret/strategy-s1` remote ref was already absent
+(pre-merge cleanup by another process); a pre-existing local worktree at
+`/Users/Dev/Vibe-Coding/Apps/madhav-retrieval` still holds a `ret/strategy-s1` local branch ref —
+not created by this session, left untouched (not this campaign's to unilaterally remove).
+
+Live-verified post-deploy (`VERIFY_W0.md`): S-1 clean; S-3 initially flagged, investigated,
+confirmed clean (probe-premise artifact — session principal is `super_admin`, a pre-existing
+out-of-scope break-glass path, not an S-3 defect); S-5 clean; no regression on 3 untouched
+control surfaces. **V0 gate: CLOSED — W0 done.**
+
+**Residual for campaign final handoff (master brief §H.6):** `authorizeChartAccess.ts` Rule 1
+grants `super_admin` access to any chart_id without checking existence in `charts` first
+(pre-existing, not introduced by this campaign, orthogonal to S-3's scope) — noted for the
+native, not actioned here.
 
 ## Model/effort choices log
 
