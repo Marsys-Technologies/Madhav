@@ -761,8 +761,9 @@ record: `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/MEMO_D-3_1.
 native disposition) + `STATE_D-3.md` (`cycle2b_critical_finding_predicate_selection_bug`) — this row
 is a pointer only, per the CR-90..107 convention above.
 
-**CR-109 [OPEN, TRANSFERS TO D-4 as Lane C-0(a), 2026-07-18, pre-D-4 wrap-up pass, A2/FIX-COV
-lane, conductor-discovered, native-ratified disposition]:** served activation-window coverage
+**CR-109 [CLOSED — FIXED 2026-07-19, D-4a Lane A-0, migrations 454/455, independently
+Opus-verified live at D-4a close, re-spot-checked live 2026-07-19 pre-D-5 readiness pass
+(50 real rows served for 2080-2085, previously-empty range)]:** served activation-window coverage
 gap. `resolve_activation_windows()` (`platform/python-sidecar/services/ka_temporal/date_resolver.py`
 ~L392-551) computes ALL matched dasha periods for a predicate but collapses to a single
 `primary_selected` window (current-straddling > soonest-future > most-recent-past, anchored to
@@ -779,9 +780,11 @@ surgical migration + writer-cardinality change per CLAUDE.md §N.4, zero kernel/
 System-of-record: `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/STATE_D-3.md`
 (`cycle2_wrapup_pass_A1_A2`), `PRE_D4_WRAPUP_REPORT.md` (§A2), `REPORT_D-3.md` §11.
 
-**CR-110 [OPEN, TRANSFERS TO D-4 as Lane C-0(b), 2026-07-18, native-reported, D-3 closeout
-directive, NOT YET INDEPENDENTLY VERIFIED BY CONDUCTOR — recorded on native's own stated
-evidence per explicit instruction]:** double dasha-spine bug in `kala_temporal_bundle`. Native's
+**CR-110 [CLOSED — REPRODUCED then FIXED 2026-07-19, D-4a Lane A-0 (root cause: `ka_avadhi.py`'s
+`_FETCH_MD_SQL`/`_FETCH_AD_SQL` missing an `ayanamsha_id` filter, pooling across 5 ayanamshas),
+independently Opus-verified live at D-4a close, re-spot-checked live 2026-07-19 pre-D-5
+readiness pass (Mercury MD under vimshottari/lahiri_chitrapaksha: exactly 1 row)]:** double
+dasha-spine bug in `kala_temporal_bundle`. Native's
 2026-07-18 temporal test on the deployed connector observed two ayanamsha dasha-period variants
 interleaved undisclosed in a single served bundle: Mercury MD reported as ending BOTH
 2027-08-12 and 2027-08-18 (two different values for the same period boundary in the same
@@ -793,9 +796,12 @@ attempted this session. Transfers to D-4 as Lane C-0(b); D-4's binder must indep
 before scoping a fix. System-of-record: native's 2026-07-18 temporal test (conductor-relayed,
 not independently reproduced); `D4_BRIEF_REVISION_INPUTS.md` §C-0.
 
-**CR-111 [OPEN, TRANSFERS TO D-4 as Lane C-0(c), 2026-07-18, native-reported, D-3 closeout
-directive, NOT YET INDEPENDENTLY VERIFIED BY CONDUCTOR — recorded on native's own stated
-evidence per explicit instruction]:** convergence-windows build-vs-serve gap. Native's
+**CR-111 [CLOSED — REPRODUCED then FIXED 2026-07-19, D-4a Lane A-0 (root cause:
+`kala_temporal.ts`'s `fetchCapabilityRows` always reading a `.rows` field when
+`query_convergence_windows`/`query_obstruction_periods` name their arrays
+`convergence_windows`/`obstructions`), independently Opus-verified live at D-4a close,
+re-spot-checked live 2026-07-19 pre-D-5 readiness pass (`convergence_count=50` for 2026-2027,
+matches `kala_convergence` table)]:** convergence-windows build-vs-serve gap. Native's
 2026-07-18 temporal test observed `kala_temporal_bundle` returning 0 convergence windows for
 the 2026-2027 range on the deployed connector, while the underlying `kala_convergence` table
 holds 16,767 TRIGGER-refined rows (the same FIX-PSEL/PERF-TRIGGER-CACHE-fixed real data
@@ -809,9 +815,45 @@ independently verify (direct DB query against the deployed connector, CR-96 disc
 the consuming surface) before scoping a fix. System-of-record: native's 2026-07-18 temporal
 test (conductor-relayed, not independently reproduced); `D4_BRIEF_REVISION_INPUTS.md` §C-0.
 
+**CR-112 [CLOSED — FIXED 2026-07-19, pre-D-5 readiness pass, conductor-discovered own briefing
+error]:** item #3 (father's spiritual dialogues, 1997→2001 correction) of
+`NATIVE_DATE_TIGHTENING_RESPONSES_v1_0.md` was never ingested during D-4a's Lane A-1 — the
+conductor mis-briefed the implementer to skip it as "quarantined pending native confirmation,"
+when `BRIEF_D4A.md`'s own frontmatter already stated `item-#3-quarantine RESOLVED` and the
+responses doc itself showed the item `RESOLVED (native, 2026-07-19)`. Fixed via
+`platform/scripts/d4a/fix_item3_spiritual_arc_correction.mts` (committed `3a53acdb`): append-only
+correction row inserted (chart 482012f1 `life_events` 62→63), chain-linked to 4 existing
+milestone rows (items #6/#10/#14/#15). Independently Opus-verified live (ACCEPT-WITH-FINDINGS,
+2 cosmetic-only findings: a 1-day-off provenance date field, no explicit event_class FK column
+on `life_events` — neither blocks acceptance).
+
+**CR-113 [OPEN, carried to D-5, discovered pre-D-5 readiness pass 2026-07-19, live-verified]:**
+orphaned `build_runs` row `372b5cfa-9aa6-45b7-b72f-dcb813e57f7b` (`state='running'`,
+`ended_at=NULL`, `action='rebuild'`, chart 482012f1, `created_at` 2026-07-18T12:36 — ties to a
+failed Cloud Run job execution `brahma-build-pipeline-job-lj545`). First flagged by D-4a's Lane
+A-0 as out-of-scope; still stuck, unresolved, as of this pre-D-5 pass. D-5's G-4 lane (the only
+lane expected to trigger a chart rebuild, for the `ka_gochara_sweep` asset) should sweep/
+reconcile this row before trusting a clean `build_runs` table state — flagged in BRIEF_D5.md
+§B.5 as a Binder disposition item, not silently carried forward again.
+
+**CR-114 [OPEN, carried to D-5, discovered pre-D-5 readiness pass 2026-07-19, live-verified,
+DEGRADED not FAIL]:** `amjis-mcp` and `amjis-sidecar`/`brahma-build-pipeline-job` (shared image)
+are deployed 10 and 7 commits behind `origin/main` HEAD respectively, last synced at D-4a's
+A-0/A-0-fix merges (PRs #608/#610). Confirmed the gap contains zero `platform-mcp/`/
+`python-sidecar/` source changes (pure docs/migrations/TypeScript-app-layer commits in the gap)
+— inert today. Flagged because D-5's G-2/G-3 lanes will add real `platform/python-sidecar/
+services/gochara_*` code, which requires a fresh sidecar deploy to run live; the D-5 Binder must
+not assume the currently-stale sidecar image auto-picks up new G-lane sidecar code — recorded in
+BRIEF_D5.md §B.5.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.3 (2026-07-18, D-3 closeout directive,
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.4 (2026-07-19, pre-D-5 readiness pass,
+conductor session) — CR-109/110/111 CLOSED (all three fixed + independently verified in D-4a
+Lane A-0, re-spot-checked live this session); CR-112 added and CLOSED (item #3 native
+correction, mis-quarantined in D-4a, fixed this session); CR-113/CR-114 added OPEN, carried to
+D-5 with named Binder disposition points in BRIEF_D5.md §B.5 (orphaned build_runs row; stale
+mcp/sidecar image SHAs ahead of upcoming D-5 sidecar-code lanes). v3.3 (2026-07-18, D-3 closeout directive,
 conductor session) — CR-109 pointer added (served activation-window coverage gap,
 `resolve_activation_windows()` primary_selected collapse, A2/FIX-COV correct-STOP transferring
 to D-4 Lane C-0(a); native-ratified disposition recorded on this row per closeout directive item
