@@ -10,11 +10,33 @@ live-verify against chart 482012f1, needs a real (if best-effort) version of
 that step. `enrich_target` resolves what it honestly can from
 `chart_facts.graha_position` rows (`ga_positions_writer.py`'s
 `fact_category='graha_position'`, `fact_key in
-('longitude_sidereal','sign')`, `fact_subject` = graha name or 'LAGNA') and
-leaves the rest None -- primitives already degrade gracefully (log + return
-[]) when a needed anchor is unresolved, so an under-enriched target never
-crashes the engine, it just contributes nothing to X(t)/PERMISSION for the
-primitives that need the anchor it lacks.
+('longitude_sidereal','sign')`, `fact_subject` = graha ABBREVIATION or
+'LAGNA') and leaves the rest None -- primitives already degrade gracefully
+(log + return []) when a needed anchor is unresolved, so an under-enriched
+target never crashes the engine, it just contributes nothing to
+X(t)/PERMISSION for the primitives that need the anchor it lacks.
+
+`fact_subject` naming CORRECTION (found by the wave verifier, fixed
+2026-07-19, live-confirmed via `SELECT DISTINCT fact_subject FROM
+chart_facts WHERE chart_id=... AND fact_category='graha_position'` against
+chart 482012f1): the live convention is NOT the full Title-case graha name
+(`'Venus'`) that G-2's `gochara_grammar.primitives.ALL_GRAHAS` and this
+package's own PERMISSION/relevance code use everywhere else -- it is a
+3-letter abbreviation (`SUN, MOON, MAR, MER, JUP, VEN, SAT`) with the two
+nodes carrying an explicit `_MEAN` suffix (`RAH_MEAN, KET_MEAN`) reflecting
+this engine's mean (not true) node convention, plus `'LAGNA'` for the
+ascendant. `GRAHA_TO_FACT_SUBJECT` below is the translation table applied
+ONLY at this module's query boundary -- every other module in this package
+(and all of G-2) keeps using full Title-case graha names throughout, since
+that is what `pipeline.transit_search`/`gochara_grammar.primitives`
+actually expect as their `planets` argument vocabulary. Before this fix,
+`_fetch_graha_position` queried `fact_subject = 'Venus'` (etc.), which
+never matches any live row -- graha-anchored targets silently never got
+`target_longitude_deg`/`target_sign` (an honest empty-result degrade, not a
+crash, but a real signal-loss bug: `guru_shani_double_transit` and
+`planetary_return` PERMISSION generators, and every degree/drishti-contact
+X(t) contribution for a graha-anchored (karaka/dasha_lord_portfolio)
+target, could never fire against live data).
 
 Resolution coverage (documented, NOT exhaustive -- an honest scope choice):
   - `target_type in ('karaka', 'dasha_lord_portfolio')` where `target_ref`
@@ -53,8 +75,22 @@ SIGNS = [
 
 _GRAHA_NAMES = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"}
 
+# Full Title-case graha name (this package's/G-2's vocabulary everywhere
+# else) -> live chart_facts.fact_subject abbreviation. See module docstring
+# "fact_subject naming CORRECTION" for provenance/live-verification.
+GRAHA_TO_FACT_SUBJECT: dict[str, str] = {
+    "Sun": "SUN", "Moon": "MOON", "Mars": "MAR", "Mercury": "MER",
+    "Jupiter": "JUP", "Venus": "VEN", "Saturn": "SAT",
+    "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN",
+}
+
 
 def _fetch_graha_position(conn, chart_id: str, subject: str, ayanamsha_id: str) -> Optional[dict]:
+    """`subject` must already be a live `chart_facts.fact_subject` value
+    (a `GRAHA_TO_FACT_SUBJECT` abbreviation, or `'LAGNA'`) -- callers
+    translate from the full graha name BEFORE calling this, never here, so
+    this function's own contract stays a direct 1:1 pass-through to the
+    live column value."""
     if conn is None:
         return None
     try:
@@ -95,7 +131,8 @@ def enrich_target(
         graha_ref = target.natal_planet
 
     if graha_ref is not None:
-        pos = _fetch_graha_position(conn, target.chart_id, graha_ref, ayanamsha_id)
+        fact_subject = GRAHA_TO_FACT_SUBJECT[graha_ref]
+        pos = _fetch_graha_position(conn, target.chart_id, fact_subject, ayanamsha_id)
         if pos:
             return replace(
                 target,

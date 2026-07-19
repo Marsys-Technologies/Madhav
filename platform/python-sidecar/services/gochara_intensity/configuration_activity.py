@@ -98,7 +98,19 @@ def compute_x_t(
     chart-critical target contributes more than one on a peripheral target.
     Sentences whose primitive is a cancelled gochara_vedha_pair are EXCLUDED
     from X(t) -- a cancelled primary transit is not "loud sky activity", it
-    is the suppression term's job (see `suppression.py`) to represent it."""
+    is the suppression term's job (see `suppression.py`) to represent it.
+
+    `target_weight` is clamped to `[0.0, +inf)` before use (mirrors
+    `promise.py`'s own clamp) -- live `gochara_resonance_map` rows CAN carry
+    a negative weight (e.g. a `mechanism_node` target tagged
+    `unfavourable`, confirmed live: `venus:unfavourable:h7` weight=-1) to
+    encode DIRECTION at the resonance-map layer. X(t) is documented as an
+    "unbounded NON-NEGATIVE" activity magnitude (see module docstring); a
+    negative weight flowing through unclamped would silently violate that
+    contract and could drive X(t) negative, which `exp(beta*X(t))` does not
+    expect. Direction/valence is handled once, at the whole-lambda_e level
+    (`valence.is_adverse`'s final sign flip in `engine.py`), not re-derived
+    per-target inside X(t) -- clamping here keeps that separation clean."""
     contributions = []
     x_t = 0.0
     for s in sentences:
@@ -106,7 +118,7 @@ def compute_x_t(
             continue
         if s.primitive == "gochara_vedha_pair" and s.detail.get("cancelled"):
             continue  # suppression.py's job, not X(t)'s
-        target_weight = weight_by_target_ref.get(s.target_ref or "", 0.5)  # honest neutral default
+        target_weight = max(0.0, weight_by_target_ref.get(s.target_ref or "", 0.5))  # honest neutral default
         orb_strength = s.detail.get("orb_strength")
         strength = float(orb_strength) if orb_strength is not None else 1.0
         contribution = target_weight * strength
