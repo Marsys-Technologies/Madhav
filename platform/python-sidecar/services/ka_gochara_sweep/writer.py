@@ -119,6 +119,33 @@ class KaGocharaSweepWriter(WriterBase):
                           f"({self._birth_year + year_idx})",
                 ))
 
+        # SPECIMEN-PRIORITY ORDERING (D-5 GATE fix, 2026-07-20): the wave's
+        # §G gate demands live reproduction of named LEL specimens
+        # (BRIEF_D5 §2) as soon as possible, not after a full chronological
+        # sweep from birth_year. A first gate run found the chronological
+        # order (career_advancement from ~1950) had committed only 2/300
+        # substeps with none of the specimen years reached. This reorders
+        # `steps` (stable sort) so calendar years overlapping the named
+        # specimens' event_classes are dispatched FIRST -- pure scheduling,
+        # zero change to substep semantics/keys/idempotency (resumption
+        # still keys off `{event_class}:year:{year_idx}`, unaffected by
+        # ordering). Sarvatobhadra (~2025-05) has no populated event_class
+        # of its own (G-2's honest finding: no classical vedha-grid data
+        # exists live) so it cannot be specimen-prioritized this way --
+        # unchanged, already-carried limitation.
+        _priority_years: set[tuple[str, int]] = set()
+        for _yr in (2010, 2011):   # major_gain windfall interval 2010-07->2011-03
+            _priority_years.add(("major_gain", _yr - self._birth_year))
+        for _yr in (2013,):        # marriage double-transit specimen 2013-12-11
+            _priority_years.add(("marriage", _yr - self._birth_year))
+
+        def _priority_key(step: SubStep) -> tuple[int, str]:
+            ec_part, _, year_part = step.key.rpartition(':year:')
+            is_priority = (ec_part, int(year_part)) in _priority_years
+            return (0 if is_priority else 1, step.key)
+
+        steps.sort(key=_priority_key)
+
         # ── cross-attempt substep resumption (migration 436, ka_sangam pattern) ──
         self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
         if getattr(ctx, 'dry_run', False):
