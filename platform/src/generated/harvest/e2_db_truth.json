@@ -1,0 +1,1779 @@
+{
+  "extractor": "E2 — DB truth",
+  "generated_at": "2026-07-19T20:35:11.161Z",
+  "db": {
+    "instance": "madhav-astrology:asia-south1:amjis-postgres",
+    "database": "amjis",
+    "role": "retrieval_census_ro (SELECT-only)"
+  },
+  "method": {
+    "exact_count_threshold_reltuples": 20000,
+    "exact_count_tables": 235,
+    "estimate_count_tables": 12,
+    "estimate_source": "pg_class.reltuples (last ANALYZE, not live-exact for those tables)"
+  },
+  "summary": {
+    "total_tables": 247,
+    "by_layer": {
+      "OTHER": {
+        "table_count": 119,
+        "row_total": 851998
+      },
+      "L0": {
+        "table_count": 34,
+        "row_total": 11454
+      },
+      "L2": {
+        "table_count": 28,
+        "row_total": 196129
+      },
+      "L1": {
+        "table_count": 18,
+        "row_total": 1288923
+      },
+      "L3": {
+        "table_count": 11,
+        "row_total": 630067
+      },
+      "L5": {
+        "table_count": 27,
+        "row_total": 221190
+      },
+      "L4": {
+        "table_count": 10,
+        "row_total": 4393
+      }
+    }
+  },
+  "tables": [
+    {
+      "table_name": "_migrations_applied",
+      "layer": "OTHER",
+      "row_count": 342,
+      "count_method": "exact",
+      "reltuples_raw": 274
+    },
+    {
+      "table_name": "access_requests",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "admin_audit_log",
+      "layer": "OTHER",
+      "row_count": 8,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "asset_coefficients",
+      "layer": "OTHER",
+      "row_count": 5,
+      "count_method": "exact",
+      "reltuples_raw": 5
+    },
+    {
+      "table_name": "asset_registry",
+      "layer": "OTHER",
+      "row_count": 107,
+      "count_method": "exact",
+      "reltuples_raw": 96
+    },
+    {
+      "table_name": "asset_throughput",
+      "layer": "OTHER",
+      "row_count": 169,
+      "count_method": "exact",
+      "reltuples_raw": 169
+    },
+    {
+      "table_name": "audit_events",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "audit_log",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_avastha_schemes",
+      "layer": "L0",
+      "row_count": 35,
+      "count_method": "exact",
+      "reltuples_raw": 35
+    },
+    {
+      "table_name": "bg_combustion_orbs",
+      "layer": "L0",
+      "row_count": 8,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_dignity_reference",
+      "layer": "L0",
+      "row_count": 9,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_graha_dik",
+      "layer": "L0",
+      "row_count": 9,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_graha_naisargika_friendship",
+      "layer": "L0",
+      "row_count": 72,
+      "count_method": "exact",
+      "reltuples_raw": 72
+    },
+    {
+      "table_name": "bg_medical_mappings",
+      "layer": "L0",
+      "row_count": 21,
+      "count_method": "exact",
+      "reltuples_raw": 21
+    },
+    {
+      "table_name": "bg_motion_state_thresholds",
+      "layer": "L0",
+      "row_count": 27,
+      "count_method": "exact",
+      "reltuples_raw": 27
+    },
+    {
+      "table_name": "bg_nakshatra_medical",
+      "layer": "L0",
+      "row_count": 27,
+      "count_method": "exact",
+      "reltuples_raw": 27
+    },
+    {
+      "table_name": "bg_prashna_fructification_rules",
+      "layer": "L0",
+      "row_count": 5,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_prashna_lagna_methods",
+      "layer": "L0",
+      "row_count": 5,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_prashna_significators",
+      "layer": "L0",
+      "row_count": 12,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_prashna_special_techniques",
+      "layer": "L0",
+      "row_count": 3,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_prashna_tajik_yogas",
+      "layer": "L0",
+      "row_count": 16,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_shashtiamsha_deities",
+      "layer": "L0",
+      "row_count": 60,
+      "count_method": "exact",
+      "reltuples_raw": 60
+    },
+    {
+      "table_name": "bg_sign_medical",
+      "layer": "L0",
+      "row_count": 12,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_transit_av_gates",
+      "layer": "L0",
+      "row_count": 8,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_transit_engine",
+      "layer": "L0",
+      "row_count": 9,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_transit_moorti",
+      "layer": "L0",
+      "row_count": 27,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_transit_rules",
+      "layer": "L0",
+      "row_count": 57,
+      "count_method": "exact",
+      "reltuples_raw": 50
+    },
+    {
+      "table_name": "bg_transit_vedha",
+      "layer": "L0",
+      "row_count": 33,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_vastu_direction_remedials",
+      "layer": "L0",
+      "row_count": 24,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bg_vastu_directions",
+      "layer": "L0",
+      "row_count": 8,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bodha_anomalies",
+      "layer": "L2",
+      "row_count": 4954,
+      "count_method": "exact",
+      "reltuples_raw": 4954
+    },
+    {
+      "table_name": "bodha_cdlm_cells",
+      "layer": "L2",
+      "row_count": 150,
+      "count_method": "exact",
+      "reltuples_raw": 150
+    },
+    {
+      "table_name": "bodha_cdlm_chart_summary",
+      "layer": "L2",
+      "row_count": 10,
+      "count_method": "exact",
+      "reltuples_raw": 10
+    },
+    {
+      "table_name": "bodha_cdlm_domain_rollups",
+      "layer": "L2",
+      "row_count": 60,
+      "count_method": "exact",
+      "reltuples_raw": 60
+    },
+    {
+      "table_name": "bodha_cdlm_evolution_gradients",
+      "layer": "L2",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bodha_cdlm_pattern_clusters",
+      "layer": "L2",
+      "row_count": 10,
+      "count_method": "exact",
+      "reltuples_raw": 10
+    },
+    {
+      "table_name": "bodha_cgm_chart_topology_summary",
+      "layer": "L2",
+      "row_count": 10,
+      "count_method": "exact",
+      "reltuples_raw": 10
+    },
+    {
+      "table_name": "bodha_cgm_edges",
+      "layer": "L2",
+      "row_count": 1573,
+      "count_method": "exact",
+      "reltuples_raw": 1573
+    },
+    {
+      "table_name": "bodha_cgm_motifs",
+      "layer": "L2",
+      "row_count": 1206,
+      "count_method": "exact",
+      "reltuples_raw": 1206
+    },
+    {
+      "table_name": "bodha_cgm_nodes",
+      "layer": "L2",
+      "row_count": 649,
+      "count_method": "exact",
+      "reltuples_raw": 649
+    },
+    {
+      "table_name": "bodha_cgm_paths",
+      "layer": "L2",
+      "row_count": 90,
+      "count_method": "exact",
+      "reltuples_raw": 90
+    },
+    {
+      "table_name": "bodha_cgm_sub_graphs",
+      "layer": "L2",
+      "row_count": 10,
+      "count_method": "exact",
+      "reltuples_raw": 10
+    },
+    {
+      "table_name": "bodha_chart_gestalt",
+      "layer": "L2",
+      "row_count": 10,
+      "count_method": "exact",
+      "reltuples_raw": 10
+    },
+    {
+      "table_name": "bodha_contradictions",
+      "layer": "L2",
+      "row_count": 23,
+      "count_method": "exact",
+      "reltuples_raw": 23
+    },
+    {
+      "table_name": "bodha_convergence",
+      "layer": "L2",
+      "row_count": 60,
+      "count_method": "exact",
+      "reltuples_raw": 60
+    },
+    {
+      "table_name": "bodha_discoveries",
+      "layer": "L2",
+      "row_count": 2198,
+      "count_method": "exact",
+      "reltuples_raw": 2198
+    },
+    {
+      "table_name": "bodha_mechanisms",
+      "layer": "L2",
+      "row_count": 615,
+      "count_method": "exact",
+      "reltuples_raw": 615
+    },
+    {
+      "table_name": "bodha_msr_signals",
+      "layer": "L2",
+      "row_count": 97504,
+      "count_method": "estimate",
+      "reltuples_raw": 97504
+    },
+    {
+      "table_name": "bodha_pratijna",
+      "layer": "L2",
+      "row_count": 220,
+      "count_method": "exact",
+      "reltuples_raw": 220
+    },
+    {
+      "table_name": "bodha_question_lenses",
+      "layer": "L2",
+      "row_count": 120,
+      "count_method": "exact",
+      "reltuples_raw": 120
+    },
+    {
+      "table_name": "bodha_rm_chart_summary",
+      "layer": "L2",
+      "row_count": 10,
+      "count_method": "exact",
+      "reltuples_raw": 10
+    },
+    {
+      "table_name": "bodha_rm_dasha_windowed_prescriptions",
+      "layer": "L2",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bodha_rm_dosha_remedy_bundles",
+      "layer": "L2",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "bodha_rm_pattern_remedies",
+      "layer": "L2",
+      "row_count": 90,
+      "count_method": "exact",
+      "reltuples_raw": 90
+    },
+    {
+      "table_name": "bodha_rm_remedy_prescriptions",
+      "layer": "L2",
+      "row_count": 270,
+      "count_method": "exact",
+      "reltuples_raw": 270
+    },
+    {
+      "table_name": "bodha_rm_resonances",
+      "layer": "L2",
+      "row_count": 90,
+      "count_method": "exact",
+      "reltuples_raw": 90
+    },
+    {
+      "table_name": "bodha_signal_embeddings",
+      "layer": "L2",
+      "row_count": 85997,
+      "count_method": "estimate",
+      "reltuples_raw": 85997
+    },
+    {
+      "table_name": "bodha_triangulation",
+      "layer": "L2",
+      "row_count": 200,
+      "count_method": "exact",
+      "reltuples_raw": 200
+    },
+    {
+      "table_name": "brahma_activity_ontology",
+      "layer": "L0",
+      "row_count": 12,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "brahma_class_priors",
+      "layer": "L0",
+      "row_count": 164,
+      "count_method": "exact",
+      "reltuples_raw": 164
+    },
+    {
+      "table_name": "brahma_compendium_index",
+      "layer": "L0",
+      "row_count": 9538,
+      "count_method": "exact",
+      "reltuples_raw": 9538
+    },
+    {
+      "table_name": "brahma_dasha_systems",
+      "layer": "L0",
+      "row_count": 18,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "brahma_dosha_catalog",
+      "layer": "L0",
+      "row_count": 79,
+      "count_method": "exact",
+      "reltuples_raw": 79
+    },
+    {
+      "table_name": "brahma_event_ontology",
+      "layer": "L0",
+      "row_count": 27,
+      "count_method": "exact",
+      "reltuples_raw": 27
+    },
+    {
+      "table_name": "brahma_formula_constants",
+      "layer": "L0",
+      "row_count": 18,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "brahma_ontology",
+      "layer": "L0",
+      "row_count": 652,
+      "count_method": "exact",
+      "reltuples_raw": 652
+    },
+    {
+      "table_name": "brahma_prospective_ledger",
+      "layer": "L0",
+      "row_count": 7,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "brahma_remedy_corpus",
+      "layer": "L0",
+      "row_count": 266,
+      "count_method": "exact",
+      "reltuples_raw": 217
+    },
+    {
+      "table_name": "brahma_vichara_constants",
+      "layer": "L0",
+      "row_count": 7,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "brahma_yoga_catalog",
+      "layer": "L0",
+      "row_count": 179,
+      "count_method": "exact",
+      "reltuples_raw": 175
+    },
+    {
+      "table_name": "build_checkpoints",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "build_dependencies",
+      "layer": "OTHER",
+      "row_count": 27,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "build_engine_versions",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "build_events",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "build_notifications",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "build_run_assets",
+      "layer": "OTHER",
+      "row_count": 4970,
+      "count_method": "exact",
+      "reltuples_raw": 4891
+    },
+    {
+      "table_name": "build_runs",
+      "layer": "OTHER",
+      "row_count": 380,
+      "count_method": "exact",
+      "reltuples_raw": 372
+    },
+    {
+      "table_name": "build_substep_progress",
+      "layer": "OTHER",
+      "row_count": 122,
+      "count_method": "exact",
+      "reltuples_raw": 69
+    },
+    {
+      "table_name": "builds_staging",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "capability_asset_tool_bindings",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "capability_tool_registry",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "chart_dashas",
+      "layer": "L1",
+      "row_count": 954299,
+      "count_method": "estimate",
+      "reltuples_raw": 954299
+    },
+    {
+      "table_name": "chart_divisionals",
+      "layer": "L1",
+      "row_count": 44184,
+      "count_method": "estimate",
+      "reltuples_raw": 44184
+    },
+    {
+      "table_name": "chart_facts",
+      "layer": "L1",
+      "row_count": 276206,
+      "count_method": "estimate",
+      "reltuples_raw": 276206
+    },
+    {
+      "table_name": "chart_facts_history",
+      "layer": "L1",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "chart_facts_supersedence",
+      "layer": "L1",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "chart_grants",
+      "layer": "L1",
+      "row_count": 9,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "chart_panchanga",
+      "layer": "L1",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": 0
+    },
+    {
+      "table_name": "chart_panchanga_cache",
+      "layer": "L1",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": 0
+    },
+    {
+      "table_name": "chart_vichara",
+      "layer": "L1",
+      "row_count": 13744,
+      "count_method": "exact",
+      "reltuples_raw": 13744
+    },
+    {
+      "table_name": "charts",
+      "layer": "OTHER",
+      "row_count": 4,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "classical_attributions",
+      "layer": "OTHER",
+      "row_count": 720,
+      "count_method": "exact",
+      "reltuples_raw": 720
+    },
+    {
+      "table_name": "classical_chunks",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "classical_text_chunks",
+      "layer": "OTHER",
+      "row_count": 10651,
+      "count_method": "exact",
+      "reltuples_raw": 10651
+    },
+    {
+      "table_name": "classical_texts",
+      "layer": "OTHER",
+      "row_count": 16,
+      "count_method": "exact",
+      "reltuples_raw": 16
+    },
+    {
+      "table_name": "classical_texts_source",
+      "layer": "OTHER",
+      "row_count": 11,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "concordance_ayanamsha_flags",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "concordance_ayanamsha_flags_staging",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "context_assembly_item_log",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "convergence_scores",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "conversation_branches",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "conversation_folder_members",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "conversation_folders",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "conversation_message_embeddings",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "conversation_messages",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "conversation_shares",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "conversations",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "engine_versions",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "ephemeris_daily",
+      "layer": "OTHER",
+      "row_count": 825084,
+      "count_method": "estimate",
+      "reltuples_raw": 825084
+    },
+    {
+      "table_name": "eval_runs",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "event_chart_state_index",
+      "layer": "OTHER",
+      "row_count": 57,
+      "count_method": "exact",
+      "reltuples_raw": 57
+    },
+    {
+      "table_name": "fact_category_ownership",
+      "layer": "OTHER",
+      "row_count": 59,
+      "count_method": "exact",
+      "reltuples_raw": 59
+    },
+    {
+      "table_name": "ga_condition_composite",
+      "layer": "L1",
+      "row_count": 90,
+      "count_method": "exact",
+      "reltuples_raw": 90
+    },
+    {
+      "table_name": "ga_medical",
+      "layer": "L1",
+      "row_count": 90,
+      "count_method": "exact",
+      "reltuples_raw": 90
+    },
+    {
+      "table_name": "ga_prashna_judgment",
+      "layer": "L1",
+      "row_count": 5,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "ga_prashna_lagna",
+      "layer": "L1",
+      "row_count": 5,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "ga_transit_anchors",
+      "layer": "L1",
+      "row_count": 90,
+      "count_method": "exact",
+      "reltuples_raw": 90
+    },
+    {
+      "table_name": "ga_vastu_planet_direction_map",
+      "layer": "L1",
+      "row_count": 80,
+      "count_method": "exact",
+      "reltuples_raw": 80
+    },
+    {
+      "table_name": "ga_yoga_firings",
+      "layer": "L1",
+      "row_count": 121,
+      "count_method": "exact",
+      "reltuples_raw": 121
+    },
+    {
+      "table_name": "ganita_dashas",
+      "layer": "L1",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": 0
+    },
+    {
+      "table_name": "ganita_graha_sthana",
+      "layer": "L1",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": 0
+    },
+    {
+      "table_name": "gochara_resonance_map",
+      "layer": "OTHER",
+      "row_count": 80,
+      "count_method": "exact",
+      "reltuples_raw": 80
+    },
+    {
+      "table_name": "kala_activation",
+      "layer": "L3",
+      "row_count": 379069,
+      "count_method": "estimate",
+      "reltuples_raw": 379069
+    },
+    {
+      "table_name": "kala_activation_predicates",
+      "layer": "L3",
+      "row_count": 78996,
+      "count_method": "estimate",
+      "reltuples_raw": 78996
+    },
+    {
+      "table_name": "kala_avadhi",
+      "layer": "L3",
+      "row_count": 2754,
+      "count_method": "exact",
+      "reltuples_raw": 2754
+    },
+    {
+      "table_name": "kala_bhavishya",
+      "layer": "L3",
+      "row_count": 200,
+      "count_method": "exact",
+      "reltuples_raw": 200
+    },
+    {
+      "table_name": "kala_convergence",
+      "layer": "L3",
+      "row_count": 46129,
+      "count_method": "estimate",
+      "reltuples_raw": 46129
+    },
+    {
+      "table_name": "kala_convergence_staging",
+      "layer": "L3",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "kala_darshana",
+      "layer": "L3",
+      "row_count": 1500,
+      "count_method": "exact",
+      "reltuples_raw": 1500
+    },
+    {
+      "table_name": "kala_gochara_windows",
+      "layer": "L3",
+      "row_count": 5,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "kala_jivana_parva",
+      "layer": "L3",
+      "row_count": 200,
+      "count_method": "exact",
+      "reltuples_raw": 200
+    },
+    {
+      "table_name": "kala_obstruction",
+      "layer": "L3",
+      "row_count": 1389,
+      "count_method": "exact",
+      "reltuples_raw": 1389
+    },
+    {
+      "table_name": "kala_taranga",
+      "layer": "L3",
+      "row_count": 119825,
+      "count_method": "estimate",
+      "reltuples_raw": 119825
+    },
+    {
+      "table_name": "l1_tajik_varsha_year_lords",
+      "layer": "OTHER",
+      "row_count": 475,
+      "count_method": "exact",
+      "reltuples_raw": 475
+    },
+    {
+      "table_name": "l25_cdlm_cells",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "l25_cgm_edges",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "l25_cgm_nodes",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "l25_msr_signals",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "l25_rm_resonances",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "l25_ucn_digests",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "layer_approvals",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "life_events",
+      "layer": "OTHER",
+      "row_count": 63,
+      "count_method": "exact",
+      "reltuples_raw": 61
+    },
+    {
+      "table_name": "life_events_staging",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "llm_budget_rules",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "llm_call_log",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "llm_cost_reconciliation",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "llm_pricing_versions",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "llm_provider_cost_reports",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "llm_stack_config",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "llm_usage_events",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mcp_alerts_config",
+      "layer": "OTHER",
+      "row_count": 7,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mcp_api_keys",
+      "layer": "OTHER",
+      "row_count": 13,
+      "count_method": "exact",
+      "reltuples_raw": 13
+    },
+    {
+      "table_name": "mcp_disagreements",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mcp_oauth_auth_codes",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mcp_oauth_clients",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mcp_oauth_tokens",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mcp_prediction_outcomes",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mcp_predictions",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mcp_sessions",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": 2
+    },
+    {
+      "table_name": "mimamsa_adjudication_log",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_anchor_adjustment",
+      "layer": "L5",
+      "row_count": 384,
+      "count_method": "exact",
+      "reltuples_raw": 380
+    },
+    {
+      "table_name": "mimamsa_attribution",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": 0
+    },
+    {
+      "table_name": "mimamsa_calibration",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": 0
+    },
+    {
+      "table_name": "mimamsa_calibration_snapshot",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_convergence_adjustment",
+      "layer": "L5",
+      "row_count": 1000,
+      "count_method": "exact",
+      "reltuples_raw": 1000
+    },
+    {
+      "table_name": "mimamsa_discoveries",
+      "layer": "L5",
+      "row_count": 45,
+      "count_method": "exact",
+      "reltuples_raw": 45
+    },
+    {
+      "table_name": "mimamsa_event_provenance",
+      "layer": "L5",
+      "row_count": 57,
+      "count_method": "exact",
+      "reltuples_raw": 57
+    },
+    {
+      "table_name": "mimamsa_export_log",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_fact_adjustment",
+      "layer": "L5",
+      "row_count": 121100,
+      "count_method": "estimate",
+      "reltuples_raw": 121100
+    },
+    {
+      "table_name": "mimamsa_insight_embeddings",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_insight_units",
+      "layer": "L5",
+      "row_count": 101,
+      "count_method": "exact",
+      "reltuples_raw": 101
+    },
+    {
+      "table_name": "mimamsa_journal",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_load_bearing",
+      "layer": "L5",
+      "row_count": 10,
+      "count_method": "exact",
+      "reltuples_raw": 10
+    },
+    {
+      "table_name": "mimamsa_manifestation_grammar",
+      "layer": "L5",
+      "row_count": 41,
+      "count_method": "exact",
+      "reltuples_raw": 41
+    },
+    {
+      "table_name": "mimamsa_manifestation_sets",
+      "layer": "L5",
+      "row_count": 384,
+      "count_method": "exact",
+      "reltuples_raw": 380
+    },
+    {
+      "table_name": "mimamsa_multipliers",
+      "layer": "L5",
+      "row_count": 18,
+      "count_method": "exact",
+      "reltuples_raw": 18
+    },
+    {
+      "table_name": "mimamsa_negative_controls",
+      "layer": "L5",
+      "row_count": 4,
+      "count_method": "exact",
+      "reltuples_raw": 4
+    },
+    {
+      "table_name": "mimamsa_pool_contributions",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_predictions",
+      "layer": "L5",
+      "row_count": 384,
+      "count_method": "exact",
+      "reltuples_raw": 380
+    },
+    {
+      "table_name": "mimamsa_preferences",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_qa_eval",
+      "layer": "L5",
+      "row_count": 147,
+      "count_method": "exact",
+      "reltuples_raw": 147
+    },
+    {
+      "table_name": "mimamsa_reliability",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_resonance_feedback",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "mimamsa_signal_adjustment",
+      "layer": "L5",
+      "row_count": 97504,
+      "count_method": "estimate",
+      "reltuples_raw": 97504
+    },
+    {
+      "table_name": "mimamsa_signal_families",
+      "layer": "L5",
+      "row_count": 11,
+      "count_method": "exact",
+      "reltuples_raw": 11
+    },
+    {
+      "table_name": "mimamsa_snapshot_cosign",
+      "layer": "L5",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "notification_views",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "panchanga_daily",
+      "layer": "OTHER",
+      "row_count": 366,
+      "count_method": "exact",
+      "reltuples_raw": 366
+    },
+    {
+      "table_name": "pending_streams",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "performance_judge_verdict",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "performance_queries",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "personas",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "phala_anchors",
+      "layer": "L4",
+      "row_count": 384,
+      "count_method": "exact",
+      "reltuples_raw": 379
+    },
+    {
+      "table_name": "phala_mitigation",
+      "layer": "L4",
+      "row_count": 1389,
+      "count_method": "exact",
+      "reltuples_raw": 1389
+    },
+    {
+      "table_name": "phala_muhurta",
+      "layer": "L4",
+      "row_count": 14,
+      "count_method": "exact",
+      "reltuples_raw": 14
+    },
+    {
+      "table_name": "phala_phaladesa",
+      "layer": "L4",
+      "row_count": 14,
+      "count_method": "exact",
+      "reltuples_raw": 14
+    },
+    {
+      "table_name": "phala_pramana",
+      "layer": "L4",
+      "row_count": 384,
+      "count_method": "exact",
+      "reltuples_raw": 380
+    },
+    {
+      "table_name": "phala_rectification",
+      "layer": "L4",
+      "row_count": 370,
+      "count_method": "exact",
+      "reltuples_raw": 370
+    },
+    {
+      "table_name": "phala_rectification_best",
+      "layer": "L4",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": 1
+    },
+    {
+      "table_name": "phala_sankrama",
+      "layer": "L4",
+      "row_count": 1330,
+      "count_method": "exact",
+      "reltuples_raw": 1300
+    },
+    {
+      "table_name": "phala_sodhana",
+      "layer": "L4",
+      "row_count": 122,
+      "count_method": "exact",
+      "reltuples_raw": 117
+    },
+    {
+      "table_name": "phala_suddha_sodhana",
+      "layer": "L4",
+      "row_count": 384,
+      "count_method": "exact",
+      "reltuples_raw": 380
+    },
+    {
+      "table_name": "plan_alternatives_log",
+      "layer": "OTHER",
+      "row_count": 9,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "prashna_charts",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "prashna_followup_schedule",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "profiles",
+      "layer": "OTHER",
+      "row_count": 3,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "project_conversations",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "project_files",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "projects",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "pyramid_layers",
+      "layer": "OTHER",
+      "row_count": 26,
+      "count_method": "exact",
+      "reltuples_raw": 26
+    },
+    {
+      "table_name": "query_plan_log",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "query_trace_steps",
+      "layer": "OTHER",
+      "row_count": 534,
+      "count_method": "exact",
+      "reltuples_raw": 528
+    },
+    {
+      "table_name": "reference_aspects",
+      "layer": "OTHER",
+      "row_count": 19,
+      "count_method": "exact",
+      "reltuples_raw": 19
+    },
+    {
+      "table_name": "reference_constants",
+      "layer": "OTHER",
+      "row_count": 203,
+      "count_method": "exact",
+      "reltuples_raw": 203
+    },
+    {
+      "table_name": "reference_dasha_systems",
+      "layer": "OTHER",
+      "row_count": 18,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "reference_doshas",
+      "layer": "OTHER",
+      "row_count": 79,
+      "count_method": "exact",
+      "reltuples_raw": 79
+    },
+    {
+      "table_name": "reference_glossary",
+      "layer": "OTHER",
+      "row_count": 364,
+      "count_method": "exact",
+      "reltuples_raw": 364
+    },
+    {
+      "table_name": "reference_houses",
+      "layer": "OTHER",
+      "row_count": 12,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "reference_karakas",
+      "layer": "OTHER",
+      "row_count": 77,
+      "count_method": "exact",
+      "reltuples_raw": 77
+    },
+    {
+      "table_name": "reference_nakshatra",
+      "layer": "OTHER",
+      "row_count": 28,
+      "count_method": "exact",
+      "reltuples_raw": 28
+    },
+    {
+      "table_name": "reference_nakshatra_matrix",
+      "layer": "OTHER",
+      "row_count": 2721,
+      "count_method": "exact",
+      "reltuples_raw": 2721
+    },
+    {
+      "table_name": "reference_nakshatra_pada",
+      "layer": "OTHER",
+      "row_count": 108,
+      "count_method": "exact",
+      "reltuples_raw": 108
+    },
+    {
+      "table_name": "reference_nakshatras",
+      "layer": "OTHER",
+      "row_count": 27,
+      "count_method": "exact",
+      "reltuples_raw": 0
+    },
+    {
+      "table_name": "reference_planets",
+      "layer": "OTHER",
+      "row_count": 11,
+      "count_method": "exact",
+      "reltuples_raw": 11
+    },
+    {
+      "table_name": "reference_signs",
+      "layer": "OTHER",
+      "row_count": 12,
+      "count_method": "exact",
+      "reltuples_raw": 12
+    },
+    {
+      "table_name": "reference_strength_systems",
+      "layer": "OTHER",
+      "row_count": 33,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "reference_topic_tags",
+      "layer": "OTHER",
+      "row_count": 481,
+      "count_method": "exact",
+      "reltuples_raw": 481
+    },
+    {
+      "table_name": "reference_upagrahas",
+      "layer": "OTHER",
+      "row_count": 11,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "reference_vargas",
+      "layer": "OTHER",
+      "row_count": 19,
+      "count_method": "exact",
+      "reltuples_raw": 19
+    },
+    {
+      "table_name": "reference_yogas",
+      "layer": "OTHER",
+      "row_count": 175,
+      "count_method": "exact",
+      "reltuples_raw": 175
+    },
+    {
+      "table_name": "remedy_review_queue",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "runtime_config",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "school_analysis_runs",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "school_disagreements",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "school_signal_coverage",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "sutravali_review",
+      "layer": "OTHER",
+      "row_count": 154,
+      "count_method": "exact",
+      "reltuples_raw": 154
+    },
+    {
+      "table_name": "sutravali_rules",
+      "layer": "OTHER",
+      "row_count": 2912,
+      "count_method": "exact",
+      "reltuples_raw": 2912
+    },
+    {
+      "table_name": "synthesis_quality_scorecard",
+      "layer": "OTHER",
+      "row_count": 2,
+      "count_method": "exact",
+      "reltuples_raw": 0
+    },
+    {
+      "table_name": "system_health",
+      "layer": "OTHER",
+      "row_count": 64,
+      "count_method": "exact",
+      "reltuples_raw": 64
+    },
+    {
+      "table_name": "tool_execution_log",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "tool_registry",
+      "layer": "OTHER",
+      "row_count": 20,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "vidhi_floor_items",
+      "layer": "OTHER",
+      "row_count": 77,
+      "count_method": "exact",
+      "reltuples_raw": 77
+    },
+    {
+      "table_name": "vidhi_intent_floors",
+      "layer": "OTHER",
+      "row_count": 8,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "vidhi_primitives",
+      "layer": "OTHER",
+      "row_count": 37,
+      "count_method": "exact",
+      "reltuples_raw": 37
+    },
+    {
+      "table_name": "yoga_families",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "yoga_family_members",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
+      "table_name": "yoga_interaction_rules",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    }
+  ]
+}

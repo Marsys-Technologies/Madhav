@@ -1,0 +1,702 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-19T20:10:57.114050+00:00",
+  "wave": "W1 Lane L1c (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0 / RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0 W-22 service half)",
+  "extraction_method": "HYBRID. (1) The set of 20 app.include_router() mount points is HAND-ENUMERATED from platform/python-sidecar/main.py \u2014 verified exhaustive via `grep -rn include_router` across the whole python-sidecar tree (zero other call sites exist). (2) The per-router endpoint list (path + method) is MECHANICALLY cross-checked two ways: (a) each router file's own @router.get/@router.post decorators were grepped directly, and (b) a live GET /openapi.json snapshot was fetched from the deployed amjis-sidecar Cloud Run service on 2026-07-20 (see openapi_snapshot.json in this directory) and diffed against (a) \u2014 the two agree exactly, zero missing / zero extra paths (see validation block below). (3) health_probe, concurrency_cap, and cost_class fields are HAND-AUTHORED v1 judgments \u2014 no per-router health-check or concurrency metadata exists anywhere in this codebase to extract mechanically; these are conservative defaults, not measurements.",
+  "validation": {
+    "openapi_total_paths": 50,
+    "manifest_computed_paths": 50,
+    "missing_from_openapi": [],
+    "extra_in_openapi_not_in_manifest": [],
+    "clean_match": true
+  },
+  "sidecar_service": {
+    "service_name": "amjis-sidecar",
+    "cloud_run_service_name": "amjis-sidecar",
+    "deployed_base_url": "https://amjis-sidecar-938361928218.asia-south1.run.app",
+    "base_url_env_var": "PYTHON_SIDECAR_URL",
+    "entrypoint": "platform/python-sidecar/main.py (uvicorn main:app; platform/python-sidecar/Dockerfile CMD)",
+    "deploy_workflow": ".github/workflows/deploy.yml job `deploy-sidecar`",
+    "deploy_flags_as_of_snapshot": {
+      "cpu": 2,
+      "memory": "1Gi",
+      "min_instances": 0,
+      "timeout_s": 300,
+      "concurrency_flag_set_in_deploy_yml": false,
+      "concurrency_effective": "Cloud Run platform default (80 concurrent requests per container instance) \u2014 deploy.yml does not pass --concurrency, verified by reading the `flags:` block of the deploy-sidecar job",
+      "max_instances_flag_set_in_deploy_yml": false
+    },
+    "auth": "x-api-key header (PYTHON_SIDECAR_API_KEY secret via Secret Manager), enforced per-router via FastAPI `Depends(verify_api_key)` passed to each app.include_router() call. NOT applied to /health, /docs, /openapi.json \u2014 those are unauthenticated by construction (confirmed: openapi_snapshot.json in this directory was fetched with no API key).",
+    "health_probe": {
+      "method": "GET",
+      "path": "/health",
+      "full_url": "https://amjis-sidecar-938361928218.asia-south1.run.app/health",
+      "expect_status": 200,
+      "expect_body": {
+        "status": "ok"
+      },
+      "auth_required": false,
+      "verified_live_2026_07_20": true,
+      "existing_ts_side_probe": "platform/src/app/api/sidecar/health/route.ts \u2014 server-side proxy for this endpoint (auth-gated to logged-in users; adds a 5s AbortSignal.timeout)"
+    },
+    "process_model": "SINGLE FastAPI process. All 20 routers below (49 endpoints) plus /health run in the same Cloud Run service/container \u2014 there is NO per-router process or concurrency isolation today. A concurrency problem in one router (e.g. an expensive PyJHora compute) can starve every other router sharing the same instance.",
+    "concurrency_note": "No per-router concurrency caps exist in the running system \u2014 this is the honest v1 finding, not a gap in this manifest. The only real ceiling is Cloud Run's shared per-instance concurrency (80, platform default, NOT overridden in deploy.yml) applied across ALL 50 endpoints in this one process, with min-instances=0 (cold starts possible) and cpu=2 (so CPU-bound compute routers \u2014 ephemeris, pyhora, panchang, phala muhurta/holistic_bundle \u2014 will bottleneck on CPU well before hitting the 80-request ceiling). The per-router `cost_class` field below (cheap / medium / expensive) is a hand-authored QUALITATIVE judgment of compute weight per request, read from each handler's own code (DB-only read = cheap; ephemeris/dasha/panchang derivation = medium; full natal/electional/holistic-bundle multi-technique compute = expensive) \u2014 it is NOT a measured number and NOT independently enforced (no semaphore, no queue, no per-route rate limit exists anywhere in main.py or the router files). Actually adding per-route concurrency isolation (e.g. a semaphore per cost_class) is W2 scope if the native wants it, not landed here."
+  },
+  "routers": [
+    {
+      "module": "platform/python-sidecar/routers/ephemeris.py",
+      "router_variable": "ephemeris.router",
+      "mount_prefix": "/ephemeris",
+      "main_py_include_router_line": 35,
+      "conditional_mount": false,
+      "summary": "Natal ephemeris compute (birth-params -> positions). Original L0FR ephemeris endpoint, pre-dates the later /brahmagyan/ephemeris query surface.",
+      "provides_apis": [
+        {
+          "path": "/ephemeris",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 1,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/events.py",
+      "router_variable": "events.router",
+      "mount_prefix": "/event_chart_states",
+      "main_py_include_router_line": 36,
+      "conditional_mount": false,
+      "summary": "Event chart state compute (chart snapshot at an event datetime).",
+      "provides_apis": [
+        {
+          "path": "/event_chart_states",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 1,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/sade_sati.py",
+      "router_variable": "sade_sati.router",
+      "mount_prefix": "/sade_sati",
+      "main_py_include_router_line": 37,
+      "conditional_mount": false,
+      "summary": "Sade Sati (Saturn transit over natal Moon) window compute.",
+      "provides_apis": [
+        {
+          "path": "/sade_sati",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 1,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "cheap"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/jaimini.py",
+      "router_variable": "jaimini.router",
+      "mount_prefix": "/jaimini_drishti",
+      "main_py_include_router_line": 38,
+      "conditional_mount": false,
+      "summary": "Jaimini drishti (sign-aspect) + chara dasha compute.",
+      "provides_apis": [
+        {
+          "path": "/jaimini_drishti",
+          "method": "POST"
+        },
+        {
+          "path": "/jaimini_drishti/chara_dasha",
+          "method": "GET"
+        },
+        {
+          "path": "/jaimini_drishti/chara_dasha/full",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 3,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/v7_additions.py",
+      "router_variable": "v7_additions.router",
+      "mount_prefix": "/v7_additions",
+      "main_py_include_router_line": 39,
+      "conditional_mount": false,
+      "summary": "V7 additional-technique batch compute (grab-bag endpoint from a prior wave; name is not self-documenting).",
+      "provides_apis": [
+        {
+          "path": "/v7_additions",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 1,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/panchang.py",
+      "router_variable": "panchang_router",
+      "mount_prefix": "/api/compute",
+      "main_py_include_router_line": 42,
+      "conditional_mount": false,
+      "summary": "Panchang (tithi/vara/yoga/karana/nakshatra) compute \u2014 single datetime, refresh (cache write), and range queries.",
+      "provides_apis": [
+        {
+          "path": "/api/compute/panchanga",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/panchanga/refresh",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/panchanga/range",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 3,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/brahmagyan/phala/muhurta.py",
+      "router_variable": "phala_muhurta_router",
+      "mount_prefix": "/api/compute",
+      "main_py_include_router_line": 46,
+      "conditional_mount": false,
+      "summary": "L4 Phala electional-muhurta finder (PH-4-4) + seed/acceptance-gate admin endpoints.",
+      "provides_apis": [
+        {
+          "path": "/api/compute/phala/muhurta_finder",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/phala/seed_muhurta",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/phala/muhurta_acceptance_gate/{chart_id}",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 3,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "expensive"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/brahmagyan/phala/anchors.py",
+      "router_variable": "phala_anchors_router",
+      "mount_prefix": "/api/compute",
+      "main_py_include_router_line": 51,
+      "conditional_mount": false,
+      "summary": "L4 Phala event-anchor compute (PH-4-1) + seed/acceptance-gate admin endpoints.",
+      "provides_apis": [
+        {
+          "path": "/api/compute/phala/event_anchors",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/phala/seed_anchors",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/phala/acceptance_gate/{chart_id}",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 3,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/brahmagyan/phala/outlook.py",
+      "router_variable": "phala_outlook_router",
+      "mount_prefix": "/api/compute",
+      "main_py_include_router_line": 52,
+      "conditional_mount": false,
+      "summary": "L4 Phala composite outlook compute (PH-4-5) + acceptance-gate admin endpoint.",
+      "provides_apis": [
+        {
+          "path": "/api/compute/phala/outlook",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/phala/outlook/acceptance_gate/{chart_id}",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 2,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/brahmagyan/mimamsa/prediction_ledger.py",
+      "router_variable": "mimamsa_prediction_router",
+      "mount_prefix": "/api/brahma",
+      "main_py_include_router_line": 56,
+      "conditional_mount": false,
+      "summary": "L5 Mimamsa prediction ledger \u2014 log_prediction + record_outcome + list_predictions (MI-5-2). NOTE: a second, DIFFERENT record_outcome exists at /api/compute/mimamsa/record_outcome (brahmagyan/mimamsa/outcome.py, MI-5-3) \u2014 two distinct handlers share the verb name under different prefixes; not a duplicate route, but a naming trap for callers.",
+      "provides_apis": [
+        {
+          "path": "/api/brahma/mimamsa/log_prediction",
+          "method": "POST"
+        },
+        {
+          "path": "/api/brahma/mimamsa/record_outcome",
+          "method": "POST"
+        },
+        {
+          "path": "/api/brahma/mimamsa/list_predictions",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 3,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "cheap"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/brahmagyan/mimamsa/lel_intake.py",
+      "router_variable": "mimamsa_lel_router",
+      "mount_prefix": "/brahma/mimamsa",
+      "main_py_include_router_line": 64,
+      "conditional_mount": true,
+      "summary": "L5 Mimamsa LEL (Life Event Log) intake query (MI-5-1). CONDITIONALLY mounted \u2014 main.py wraps this include_router in `if mimamsa_lel_router is not None`; the module sets router=None if FastAPI import fails (test/CLI contexts). Live-verified mounted in the deployed service (present in the fetched openapi snapshot).",
+      "provides_apis": [
+        {
+          "path": "/brahma/mimamsa/lel_query",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 1,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "cheap"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/pyhora.py",
+      "router_variable": "pyhora_router",
+      "mount_prefix": "/api/pyhora",
+      "main_py_include_router_line": 67,
+      "conditional_mount": false,
+      "summary": "PyJHora full natal computation (graha_sthana, bhava_lagna, special_lagnas, vimshottari_dasha, panchanga) \u2014 in-process PyJHora call, Stream G BRAHMA-G-1. /smoke is a lightweight self-test endpoint (see health_probe note).",
+      "provides_apis": [
+        {
+          "path": "/api/pyhora/compute",
+          "method": "POST"
+        },
+        {
+          "path": "/api/pyhora/smoke",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 2,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "expensive"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/prashna.py",
+      "router_variable": "prashna_router",
+      "mount_prefix": "/api/compute/prashna",
+      "main_py_include_router_line": 70,
+      "conditional_mount": false,
+      "summary": "Prashna (horary) chart cast + judgment. Namespace-isolated per its docstring \u2014 never writes to the native natal stream.",
+      "provides_apis": [
+        {
+          "path": "/api/compute/prashna/cast",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 1,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/brahmagyan_almanac.py",
+      "router_variable": "almanac_router",
+      "mount_prefix": "/api/brahmagyan/almanac",
+      "main_py_include_router_line": 73,
+      "conditional_mount": false,
+      "summary": "L0 Wave-2 Daily Almanac (BG-0-8) \u2014 query + cache_stats + its OWN sub-health endpoint (distinct from the app-level /health).",
+      "provides_apis": [
+        {
+          "path": "/api/brahmagyan/almanac/query",
+          "method": "POST"
+        },
+        {
+          "path": "/api/brahmagyan/almanac/cache_stats",
+          "method": "GET"
+        },
+        {
+          "path": "/api/brahmagyan/almanac/health",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 3,
+      "health_probe": {
+        "method": "GET",
+        "path": "/api/brahmagyan/almanac/health",
+        "note": "This router DOES declare its own sub-health endpoint, distinct from the app-level /health."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "cheap"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
+      "router_variable": "ephemeris_brahmagyan_router",
+      "mount_prefix": "/brahmagyan/ephemeris",
+      "main_py_include_router_line": 78,
+      "conditional_mount": false,
+      "summary": "L0FR Stream B ephemeris QUERY endpoints (reads ephemeris_daily table, 1900-2150, 9 bodies) \u2014 planet_position, transit, aspects, retrograde_periods, all_bodies_range, native_lifetime_meta. This is a DIFFERENT service than call_ephemeris_at_t / ka_graha_sancara (GT-50): this router answers from the precomputed ephemeris_daily table (bounded 1900-2150 range, DB-backed), whereas ka_graha_sancara is meant to be an on-demand arbitrary-datetime compute path with no backing table. Their overlap/boundary is exactly the kind of ambiguity a W2 ka_graha_sancara wiring decision needs to resolve (see DESIGN_KA_GRAHA_SANCARA.md).",
+      "provides_apis": [
+        {
+          "path": "/brahmagyan/ephemeris/planet_position",
+          "method": "GET"
+        },
+        {
+          "path": "/brahmagyan/ephemeris/planet_transit",
+          "method": "GET"
+        },
+        {
+          "path": "/brahmagyan/ephemeris/aspects",
+          "method": "GET"
+        },
+        {
+          "path": "/brahmagyan/ephemeris/retrograde_periods",
+          "method": "GET"
+        },
+        {
+          "path": "/brahmagyan/ephemeris/all_bodies_range",
+          "method": "GET"
+        },
+        {
+          "path": "/brahmagyan/ephemeris/native_lifetime_meta",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 6,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "cheap"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/sutravali.py",
+      "router_variable": "sutravali_router",
+      "mount_prefix": "/api/brahma",
+      "main_py_include_router_line": 82,
+      "conditional_mount": false,
+      "summary": "L0 Stream D Sutravali pattern-extraction endpoints (SQL-only, zero LLM, per docstring in main.py).",
+      "provides_apis": [
+        {
+          "path": "/api/brahma/sutravali/query_rules",
+          "method": "POST"
+        },
+        {
+          "path": "/api/brahma/sutravali/query_rules_for_planet",
+          "method": "GET"
+        },
+        {
+          "path": "/api/brahma/sutravali/read_rule/{rule_id}",
+          "method": "GET"
+        },
+        {
+          "path": "/api/brahma/sutravali/list_rules_by_text/{text_id}",
+          "method": "GET"
+        },
+        {
+          "path": "/api/brahma/sutravali/by_planet/{planet}",
+          "method": "GET"
+        },
+        {
+          "path": "/api/brahma/sutravali/by_house/{house_num}",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 6,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "cheap"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/transit_search.py",
+      "router_variable": "transit_search_router",
+      "mount_prefix": "/api/compute",
+      "main_py_include_router_line": 87,
+      "conditional_mount": false,
+      "summary": "L3 Kala ka_gochara service \u2014 transit event search (aspect/conjunction). Backs the TS call_transit_search wrapper (call_service_wrappers.ts) \u2014 the one L3 call_* wrapper that IS wired end-to-end.",
+      "provides_apis": [
+        {
+          "path": "/api/compute/transit_search",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 1,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/brahmagyan/mimamsa/outcome.py",
+      "router_variable": "mimamsa_outcome_router",
+      "mount_prefix": "/api/compute",
+      "main_py_include_router_line": 95,
+      "conditional_mount": false,
+      "summary": "L5 Mimamsa outcome scoring + calibration query + acceptance gate (MI-5-3). See prediction_ledger.py note re: the second record_outcome route.",
+      "provides_apis": [
+        {
+          "path": "/api/compute/mimamsa/record_outcome",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/mimamsa/query_calibration",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/mimamsa/acceptance_gate/{chart_id}",
+          "method": "GET"
+        },
+        {
+          "path": "/api/compute/mimamsa/acceptance_gate",
+          "method": "GET"
+        }
+      ],
+      "endpoint_count": 4,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/routers/taranga.py",
+      "router_variable": "taranga_router",
+      "mount_prefix": "/api/compute/taranga",
+      "main_py_include_router_line": 99,
+      "conditional_mount": false,
+      "summary": "L3 Kala Taranga stateless temporal-convolution service (D-3 Lane T-2).",
+      "provides_apis": [
+        {
+          "path": "/api/compute/taranga/activation",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/taranga/curve",
+          "method": "POST"
+        },
+        {
+          "path": "/api/compute/taranga/record_evidence",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 3,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "medium"
+      }
+    },
+    {
+      "module": "platform/python-sidecar/brahmagyan/bodha/bo_2-8.py",
+      "router_variable": "_bodha_bundle.router",
+      "mount_prefix": "/api/compute/brahma",
+      "main_py_include_router_line": 105,
+      "conditional_mount": false,
+      "summary": "L2 Bodha holistic bundle (bo_2-8). Imported via importlib because the filename contains a hyphen (bo_2-8.py is not a valid Python module identifier).",
+      "provides_apis": [
+        {
+          "path": "/api/compute/brahma/holistic_bundle",
+          "method": "POST"
+        }
+      ],
+      "endpoint_count": 1,
+      "health_probe": {
+        "method": "none-dedicated",
+        "note": "No dedicated per-router health endpoint exists except where noted. Use the app-level GET /health as the liveness signal for this router (same process) unless `dedicated_health_endpoint` is set below."
+      },
+      "concurrency_cap": {
+        "isolation": "none \u2014 shares the single sidecar process's Cloud Run instance concurrency (see sidecar_service.concurrency_note)",
+        "cost_class": "expensive"
+      }
+    }
+  ],
+  "app_level_endpoints": [
+    {
+      "path": "/health",
+      "method": "GET",
+      "summary": "Liveness probe. Not gated by verify_api_key (defined directly on `app`, not via an included router with the auth dependency) \u2014 publicly reachable, confirmed live 2026-07-20."
+    }
+  ],
+  "logical_l3_services": {
+    "source": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts \u2014 5 call_* CapabilityDescriptors registered as MCP tools (L3_kala/index.ts:49-53), each wrapping one L3 Kala compute service.",
+    "note": "These are the MCP-facing 'service' capabilities the retrieval plane exposes to the LLM. Two of the five (call_dasha_eligibility, call_priority_ranking) do NOT call the Python sidecar at all \u2014 they query Postgres directly (chart_dashas / kala_activation+bodha_msr_signals) and are therefore NOT part of the sidecar router set above; included here for completeness since they are part of the same 'ka_*' logical-service family.",
+    "services": [
+      {
+        "capability_name": "call_transit_search",
+        "logical_service_id": "ka_gochara",
+        "wired": true,
+        "backing": "HTTP call to sidecar POST /api/compute/transit_search (routers/transit_search.py)",
+        "notes": "The one call_* wrapper that is fully wired end-to-end."
+      },
+      {
+        "capability_name": "call_ephemeris_at_t",
+        "logical_service_id": "ka_graha_sancara",
+        "wired": false,
+        "backing": "NONE \u2014 handler returns a hard is_error:true stub unconditionally.",
+        "notes": "GT-50 dark service, TOP PRIORITY per the audit register \u2014 blocks ALL date-parameterized 'positions at arbitrary time T' retrieval. Stub source: platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts lines 208-209 (error message), full stub handler body lines ~196-214. See DESIGN_KA_GRAHA_SANCARA_WIRING.md in this directory for the W2 wiring proposal. NOT implemented here per brief scope (DESIGNED in W1, wired in W2)."
+      },
+      {
+        "capability_name": "call_dasha_eligibility",
+        "logical_service_id": "ka_dasha_kala",
+        "wired": true,
+        "backing": "Direct Postgres query against chart_dashas \u2014 NOT a sidecar HTTP call despite living in call_service_wrappers.ts.",
+        "notes": "Misnomer risk: named as a 'call_service_wrappers' entry but has no sidecar dependency."
+      },
+      {
+        "capability_name": "call_muhurta_score",
+        "logical_service_id": "ka_muhurta_seva",
+        "wired": false,
+        "backing": "NONE \u2014 handler returns a hard is_error:true stub unconditionally.",
+        "notes": "A second dark L3 service, same shape as ka_graha_sancara but not named in GT-50/the plan's dark-set list. Stub source: call_service_wrappers.ts lines ~411-421. NOTE: a DIFFERENT, already-wired muhurta endpoint exists at the sidecar's /api/compute/phala/muhurta_finder (L4 Phala's electional finder, brahmagyan/phala/muhurta.py) \u2014 that is a different logical service (ph_muhurta, electional/purpose-scored) from ka_muhurta_seva (a raw per-datetime muhurta SCORE, no electional search). Flagged for native attention; not actioned in this wave (out of L1c scope, and GT-50/the plan only names ka_graha_sancara as top-priority)."
+      },
+      {
+        "capability_name": "call_priority_ranking",
+        "logical_service_id": "ka_tulana",
+        "wired": true,
+        "backing": "Direct Postgres query (JOIN bodha_msr_signals + kala_activation) \u2014 NOT a sidecar HTTP call.",
+        "notes": "Same misnomer pattern as call_dasha_eligibility."
+      }
+    ]
+  },
+  "dark_set": [
+    {
+      "service_id": "ka_graha_sancara",
+      "ground_truth_ref": "GROUND_TRUTH_REGISTER.md GT-50 (00_ARCHITECTURE/briefs/retrieval_audit/GROUND_TRUTH_REGISTER.md); AUDIT_FINAL_REPORT.md Lane E New-Finding 2",
+      "priority": "top-priority dark-set item per the plan \u2014 blocks ALL date-parameterized 'positions at time T' retrieval",
+      "stub_file": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
+      "stub_lines": "196-214 (handler body); error string at line 208, note string at line 209",
+      "disposition": "DARK / NOT YET WIRED \u2014 documented here (W1). Wiring is explicitly OUT OF SCOPE for this wave (W2 per the master brief's 'DESIGNED in W1, wired in W2' sequencing).",
+      "design_note": "DESIGN_KA_GRAHA_SANCARA_WIRING.md (this directory) \u2014 proposes what a real /api/compute/ephemeris_at_t sidecar endpoint would require. Not implemented."
+    },
+    {
+      "service_id": "ka_muhurta_seva",
+      "ground_truth_ref": "Not named in GT-50 or the plan's dark-set list \u2014 a NEW finding surfaced by this manifest pass, same shape as ka_graha_sancara.",
+      "priority": "not ranked by the plan; flagged here for native triage, not actioned",
+      "stub_file": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
+      "stub_lines": "~404-421 (handler body); error string ~line 414",
+      "disposition": "DARK / NOT YET WIRED. Distinct from the already-wired /api/compute/phala/muhurta_finder (a different logical service, L4 Phala electional finder).",
+      "design_note": null
+    }
+  ],
+  "orphaned_artifacts": [
+    {
+      "path": "platform/python-sidecar/pyhora.Dockerfile",
+      "finding": "Builds a SEPARATE container image (CMD `uvicorn pyjhora_adapter.main:app --port 8001`) but pyjhora_adapter/ has NO main.py (verified: directory listing + `git log --all -- platform/python-sidecar/pyjhora_adapter/main.py` returns zero commits \u2014 the file has never existed in this repo's history). Not referenced anywhere in .github/workflows/deploy.yml (grep-verified). The live PyHora integration path is routers/pyhora.py, mounted IN-PROCESS inside the single amjis-sidecar service at /api/pyhora (see routers entry above) \u2014 it imports pyjhora_adapter's submodules directly rather than calling a second HTTP service. Conclusion: pyhora.Dockerfile is dead/orphaned build infra, not a second deployed service. This means the real router count is the 20 enumerated above (single service), not 20+a-second-pyhora-service as a naive Dockerfile inventory might suggest. Flagged for the native; not deleted or fixed here (out of L1c scope \u2014 this lane documents, W2+ or a hygiene pass can clean it up)."
+    },
+    {
+      "path": "platform/python-sidecar/brahmagyan/phala/l4_muhurta.py, l4_outlook.py, l4_anchors.py, l4_mitigation.py, l4_rectification.py, brahmagyan/bodha/bo_2-5.py, brahmagyan/mimamsa/answer_quality.py, brahmagyan/mimamsa/multiplier.py",
+      "finding": "Each defines its own FastAPI APIRouter() but none is ever passed to app.include_router() in main.py (verified: `grep -rn include_router` across the whole python-sidecar tree returns exactly the 20 mounts enumerated in `routers` above and nothing referencing these files). Dead/unreachable route code in production. Of particular note: l4_mitigation.py and l4_rectification.py have NO non-'l4_'-prefixed sibling file the way muhurta/outlook/anchors do (muhurta.py, outlook.py, anchors.py ARE mounted) \u2014 meaning phala_mitigation_get / phala_rectification_get MCP tools (if they exist) either call the DB directly or are themselves unwired; not investigated further here, out of L1c scope. Flagged for native triage / a future hygiene pass, not actioned."
+    }
+  ]
+}
