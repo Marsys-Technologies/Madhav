@@ -379,13 +379,15 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // guided-reading prompts (incl. demand_side_chase)
   // M0: principal passed for chart-snapshot gate
   registerResources(server, principal)
-  registerPrompts(server)
+  registerPrompts(server, principal)
 
   // D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (fallback path to a compiled plan;
   // primary path is the vidhi_plan prompt). Serves capability_version + tools/list_changed
   // staleness kill. Registered on this request-scoped server so the staleness notification
   // targets the caller's transport.
-  registerVidhiPlanTool(server)
+  // S-3: principal threaded through so the M0 entitlement gate (remoteAuthorize) can check
+  // the caller against the requested chart_id before compiling a plan (GT-35).
+  registerVidhiPlanTool(server, principal)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

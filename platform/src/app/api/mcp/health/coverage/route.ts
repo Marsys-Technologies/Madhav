@@ -13,15 +13,9 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { query } from '@/lib/db/client'
-
-const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 // extractPrincipal removed (Stream A 3.tier_excision 2026-05-28); audience_tier excised from the auth surface.
-
-function validateToken(req: NextRequest): boolean {
-  const token = req.headers.get('X-MCP-Internal-Token')
-  return !!token && token === MCP_INTERNAL_TOKEN
-}
 
 interface DataSourceExpectedRow {
   tool_name: string
@@ -40,7 +34,7 @@ interface ToolCaveatRow {
 }
 
 export async function GET(req: NextRequest): Promise<Response> {
-  if (!validateToken(req)) {
+  if (!validateServiceToken(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

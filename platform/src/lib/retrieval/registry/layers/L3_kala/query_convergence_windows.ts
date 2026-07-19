@@ -22,7 +22,7 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
 
   description: [
     'Returns temporal convergence windows for a chart — periods where multiple signals co-activate.',
-    'Source: kala_convergence (19,482 rows per chart).',
+    'Source: kala_convergence (a large row set per chart).',
     'Filter by date range, domain, and min_convergence_score.',
     'Returns convergence_score, rarity_years, confidence_score, and independent_current_count.',
     'High convergence_score + low rarity_years = high-attention period.',

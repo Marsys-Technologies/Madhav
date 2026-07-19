@@ -21,7 +21,7 @@ export const ephemerisCacheYearCapability: ResourceCapability = {
     'Ephemeris cache for a calendar year — all 9 Jyotish bodies (Sun through Ketu) ' +
     'at daily resolution. Covers 1900-2150. ' +
     'URI parameter {yyyy} is the 4-digit year (e.g. 1984, 2026). ' +
-    'Returns up to 3,285 rows (9 bodies × ~365 days). ' +
+    'Returns up to one row per body per day for the year (9 bodies × ~365 days). ' +
     'Use for bulk-context pre-fetch when querying a whole year of transits.',
   mime_type: 'application/json',
   scope: 'global',

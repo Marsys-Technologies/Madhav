@@ -79,6 +79,18 @@ jobs:
         # unmistakable in CI logs. Mutation-proven: removing a URI makes this step fail.
         run: npx vitest run src/lib/retrieval/registry/whitelist_resolution_invariant.test.ts
 
+      - name: GT-36 — parity_check bridge-failure invariant (RETRIEVAL_PLANE_ELEVATION_PLAN §1.5/§3 R-0.5)
+        # DURABLE GUARD. checkParity()/runParityCheck() previously had NO caller anywhere
+        # in CI (confirmed dead by repo-wide grep during S-4 investigation) and carried a
+        # bug where a failed MCP bridge import silently downgraded to an empty URI set,
+        # auto-passing whenever the Consume Chat registry was also empty. This step is now
+        # the live enforcement of the fixed invariant: a failed bridge import is ALWAYS a
+        # hard failure. Run as a dedicated, named gate for the same "unmistakable in CI
+        # logs" reason as WP-1.7 above. Does NOT hard-gate on pre-existing MCP_TOOL_TO_URI
+        # staleness (a separate, larger backlog — see parity_check.test.ts file header);
+        # it hard-gates only on the bridge module failing to load.
+        run: npx vitest run src/lib/retrieval/registry/parity_check.test.ts
+
   planner-regression:
     name: Planner Regression Gate
     runs-on: ubuntu-latest
@@ -352,6 +364,9 @@ jobs:
       - name: response_budget hardFloor regression test (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/response_budget_hard_floor.test.ts
+      - name: envelope codegen parity test (platform-mcp) — GT-9
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/r5_codegen_parity.test.ts
 
   census-battery:
     # D-2 Lane V-0 (BRIEF_D2.md §F1 Lane V-0 / BIND_D-2.md §F1.7 ledger rows 1-5). Runs the

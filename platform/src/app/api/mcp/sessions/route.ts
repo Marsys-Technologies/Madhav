@@ -24,16 +24,7 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { listUserSessions } from '@/lib/mcp/sessions'
-
-function validateServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    if (process.env.NODE_ENV === 'development') return true
-    return false
-  }
-  return token === expected
-}
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 export async function GET(request: Request) {
   if (!validateServiceToken(request)) {

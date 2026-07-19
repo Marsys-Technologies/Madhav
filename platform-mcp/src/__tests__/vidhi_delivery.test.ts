@@ -9,7 +9,17 @@
  *   row 17 — completeness receipt (served/empty/dark) VALIDATED by V-0's real validator
  *   row 18 — capability_version served; a stale version triggers tools/list_changed
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// S-3 (GT-35): mock the M0 entitlement helper BEFORE importing the modules under test — same
+// pattern as mimamsa_lel_intake.test.ts. Defaults to authorized so rows 14-18's existing
+// assertions (which predate the entitlement gate) keep exercising the real compile path; the
+// dedicated "row 19 — entitlement gate" block below flips it to denied.
+const mockRemoteAuthorize = vi.fn();
+vi.mock('../lib/authz.js', () => ({
+  remoteAuthorize: (...args: unknown[]) => mockRemoteAuthorize(...args),
+}));
+
 import { registerResources } from '../resources/index.js';
 import { registerPrompts } from '../prompts/index.js';
 import { registerVidhiPlanTool } from '../tools/register_vidhi_plan.js';
@@ -30,7 +40,7 @@ const CHART = '482012f1-710e-4a25-994a-93821f5871aa';
 
 type Captured = {
   resources: Array<{ name: string; uri: string; cb: (...a: unknown[]) => unknown }>;
-  prompts: Array<{ name: string }>;
+  prompts: Array<{ name: string; cb: (args: Record<string, unknown>) => unknown }>;
   tools: Array<{ name: string; cb: (args: Record<string, unknown>) => unknown }>;
   toolListChanged: ReturnType<typeof vi.fn>;
 };
@@ -46,8 +56,10 @@ function makeMockServer(): { server: unknown; captured: Captured } {
           : ((uriOrTemplate as { uriTemplate?: string }).uriTemplate ?? '(template)');
       captured.resources.push({ name, uri, cb });
     },
-    prompt: (name: string) => {
-      captured.prompts.push({ name });
+    // S-3: capture the callback too (not just the name) so row 19's entitlement-gate tests can
+    // invoke the vidhi_plan prompt directly, same as the existing `tool` capture below.
+    prompt: (name: string, _desc: string, _schema: unknown, cb: (args: Record<string, unknown>) => unknown) => {
+      captured.prompts.push({ name, cb });
     },
     tool: (name: string, _desc: string, _schema: unknown, cb: (args: Record<string, unknown>) => unknown) => {
       captured.tools.push({ name, cb });
@@ -60,6 +72,11 @@ function makeMockServer(): { server: unknown; captured: Captured } {
 function principal(): Principal {
   return { user_uid: 'u-v2-test', key_id: 'mcp_test_v2', role: 'guest' };
 }
+
+beforeEach(() => {
+  mockRemoteAuthorize.mockReset();
+  mockRemoteAuthorize.mockResolvedValue(true);
+});
 
 // ── row 14: registry resource ────────────────────────────────────────────────
 describe('row 14 — vidhi registry as an MCP resource', () => {
@@ -92,14 +109,14 @@ describe('row 15 — compiled plans as prompt + plan_retrieval fallback tool', (
   it('registers the vidhi_plan prompt', () => {
     const { server, captured } = makeMockServer();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any);
+    registerPrompts(server as any, principal());
     expect(captured.prompts.map((p) => p.name)).toContain('vidhi_plan');
   });
 
   it('plan_retrieval returns a compiled wealth plan (floor non-empty)', async () => {
     const { server, captured } = makeMockServer();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerVidhiPlanTool(server as any);
+    registerVidhiPlanTool(server as any, principal());
     const tool = captured.tools.find((t) => t.name === 'plan_retrieval')!;
     const out = (await tool.cb({ chart_id: CHART, question: 'How is my wealth and money?' })) as {
       structuredContent: { object: { ok: boolean; plan: { scope_tuple: { intent: string }; floor: unknown[] } } };
@@ -189,7 +206,7 @@ describe('row 18 — capability_version + tools/list_changed staleness kill', ()
   it('the plan_retrieval tool emits the notification on a stale client version', async () => {
     const { server, captured } = makeMockServer();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerVidhiPlanTool(server as any);
+    registerVidhiPlanTool(server as any, principal());
     const tool = captured.tools.find((t) => t.name === 'plan_retrieval')!;
     const out = (await tool.cb({
       chart_id: CHART,
@@ -199,5 +216,76 @@ describe('row 18 — capability_version + tools/list_changed staleness kill', ()
     expect(out.structuredContent.object.capability_stale).toBe(true);
     expect(out.structuredContent.object.tools_list_changed_emitted).toBe(true);
     expect(captured.toolListChanged).toHaveBeenCalled();
+  });
+});
+
+// ── row 19: M0 entitlement gate (S-3 / GT-35) ─────────────────────────────────
+// RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §1.5: `plan_retrieval` and the `vidhi_plan` prompt used
+// to compile a full plan for ANY chart_id with zero authorize/entitle hits. Both now gate on the
+// same M0 `remoteAuthorize` helper (lib/authz.ts) every other per-chart tool in this codebase
+// uses, checked BEFORE plan compilation. Proven here by flipping the mocked helper to denied.
+describe('row 19 — M0 entitlement gate rejects an unentitled chart_id (S-3 / GT-35)', () => {
+  const UNENTITLED_CHART = '00000000-0000-0000-0000-0000000000ba';
+
+  it('plan_retrieval: denies and never compiles a plan for an unentitled chart_id', async () => {
+    mockRemoteAuthorize.mockResolvedValueOnce(false);
+    const { server, captured } = makeMockServer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerVidhiPlanTool(server as any, principal());
+    const tool = captured.tools.find((t) => t.name === 'plan_retrieval')!;
+    const out = (await tool.cb({ chart_id: UNENTITLED_CHART, question: 'wealth' })) as {
+      isError?: boolean;
+      structuredContent: { object: { ok: boolean; error?: { class: string; message: string }; plan?: unknown } };
+    };
+    expect(out.isError).toBe(true);
+    expect(out.structuredContent.object.ok).toBe(false);
+    expect(out.structuredContent.object.error?.class).toBe('entitlement_denied');
+    expect(out.structuredContent.object.error?.message).toContain('AUTHZ_DENIED');
+    // No plan was compiled for the unentitled chart — the denial short-circuits before compilation.
+    expect(out.structuredContent.object.plan).toBeUndefined();
+    expect(mockRemoteAuthorize).toHaveBeenCalledWith(expect.anything(), UNENTITLED_CHART);
+  });
+
+  it('plan_retrieval: compiles normally once authorized (baseline — not a false-positive denial)', async () => {
+    mockRemoteAuthorize.mockResolvedValueOnce(true);
+    const { server, captured } = makeMockServer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerVidhiPlanTool(server as any, principal());
+    const tool = captured.tools.find((t) => t.name === 'plan_retrieval')!;
+    const out = (await tool.cb({ chart_id: CHART, question: 'wealth' })) as {
+      isError?: boolean;
+      structuredContent: { object: { ok: boolean; plan: { floor: unknown[] } } };
+    };
+    expect(out.isError).toBeUndefined();
+    expect(out.structuredContent.object.ok).toBe(true);
+    expect(out.structuredContent.object.plan.floor.length).toBeGreaterThan(0);
+  });
+
+  it('vidhi_plan prompt: denies and never compiles a plan for an unentitled chart_id', async () => {
+    mockRemoteAuthorize.mockResolvedValueOnce(false);
+    const { server, captured } = makeMockServer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerPrompts(server as any, principal());
+    const prompt = captured.prompts.find((p) => p.name === 'vidhi_plan')!;
+    const result = (await prompt.cb({ chart_id: UNENTITLED_CHART })) as {
+      messages: Array<{ content: { text: string } }>;
+    };
+    expect(result.messages[0]!.content.text).toContain('AUTHZ_DENIED');
+    // No plan scaffold leaked — the denial message never reaches the floor/machine-band render.
+    expect(result.messages[0]!.content.text).not.toContain('ACHARYA FLOOR');
+    expect(mockRemoteAuthorize).toHaveBeenCalledWith(expect.anything(), UNENTITLED_CHART);
+  });
+
+  it('vidhi_plan prompt: renders the plan scaffold once authorized (baseline — not a false-positive denial)', async () => {
+    mockRemoteAuthorize.mockResolvedValueOnce(true);
+    const { server, captured } = makeMockServer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerPrompts(server as any, principal());
+    const prompt = captured.prompts.find((p) => p.name === 'vidhi_plan')!;
+    const result = (await prompt.cb({ chart_id: CHART, question: 'wealth' })) as {
+      messages: Array<{ content: { text: string } }>;
+    };
+    expect(result.messages[0]!.content.text).toContain('ACHARYA FLOOR');
+    expect(result.messages[0]!.content.text).not.toContain('AUTHZ_DENIED');
   });
 });

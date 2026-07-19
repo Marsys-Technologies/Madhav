@@ -52,6 +52,20 @@ export const NATIVE_IDENTIFIERS_IN_DESCRIPTION = [
   'Bhubaneswar',
 ] as const
 
+/**
+ * Native-cardinality leak pattern (GT-32/GT-43, 2026-07-19 audit): a thousands-separated
+ * literal figure (e.g. "27,554", "601,443") embedded in served text. This is the DB's exact
+ * row count for the canonical/native chart baked into a description or empty_reason string
+ * served to every caller regardless of chart context — a chart-agnostic-mandate violation
+ * distinct from (but the same class as) a literal chart_id or PII leak. Matches any 4+ digit
+ * figure with at least one thousands-separator comma; does not match bare 1-3 digit numbers,
+ * years, or dimension counts (e.g. "768-dim") which carry no comma.
+ */
+export const NATIVE_CARDINALITY_PATTERN = /\b\d{1,3}(?:,\d{3}){1,2}\b/
+
+/** Phrase pattern for "native chart" / "the native" leaking into served text (GT-54). */
+export const NATIVE_CHART_PHRASE_PATTERN = /\bnative chart\b/i
+
 // ── Violation type ────────────────────────────────────────────────────────────
 
 export interface GateViolation {
@@ -105,13 +119,18 @@ function checkNoNativeIdInDescription(cap: CapabilityDescriptor): GateViolation 
 /**
  * Rule 3: native identifier (name, birthdate, birthplace) in LLM-visible description.
  * These bias the model to fill in the native when the user did not specify a chart.
+ *
+ * Applies uniformly to every primitive_type — tool AND resource. There is NO exemption
+ * for native-scoped resources (e.g. ephemeris_cache_native_lifetime): a resource being
+ * "about" the native's lifetime window does not require restating the native's PII
+ * (name/DOB/birth-time/birthplace) in a description served to every caller regardless
+ * of chart context. GT-42 (2026-07-19 audit): a prior deliberate exception carved out
+ * for `marsys://resource/ephemeris-cache/native-lifetime` was itself the reason this
+ * gate missed a full-PII leak in that resource's description — removed, not weakened
+ * (the freeze declaration governs the forbidden-pattern set, not narrow per-URI
+ * carve-outs that undermine it).
  */
 function checkNoNativeIdentifierInDescription(cap: CapabilityDescriptor): GateViolation | null {
-  // Skip ephemeris_cache_native_lifetime — it is explicitly a native-scoped resource
-  // and its description of the native is architectural (it describes what the resource IS),
-  // not a default chart_id. This is the single deliberate exception, documented here.
-  if (cap.uri === 'marsys://resource/ephemeris-cache/native-lifetime') return null
-
   const desc = cap.description
   for (const id of NATIVE_IDENTIFIERS_IN_DESCRIPTION) {
     if (id === NATIVE_CHART_ID) continue // already checked in rule 2
@@ -219,6 +238,95 @@ function checkD1ContractFieldsPresent(cap: CapabilityDescriptor): GateViolation 
   return null
 }
 
+/**
+ * Rule 9: literal thousands-separated cardinality figure (native/chart row count) embedded
+ * in LLM-visible description text (GT-32/GT-43, 2026-07-19 audit — e.g. "27,554 rows per
+ * chart", "601,443 rows for the native"). Descriptions are served to every caller regardless
+ * of chart context; a specific figure is (a) a chart-agnostic-mandate violation of the same
+ * class as a literal chart_id, and (b) liable to go stale/wrong relative to the live table
+ * (GT-43: 601,443 vs. the canonical L1 seal's 536,471). Say "bounded" / "paginated" / omit
+ * the figure entirely instead.
+ */
+function checkNoNativeCardinalityInDescription(cap: CapabilityDescriptor): GateViolation | null {
+  const desc = cap.description ?? ''
+  const match = desc.match(NATIVE_CARDINALITY_PATTERN)
+  if (match) {
+    return {
+      uri: cap.uri,
+      rule: 'RULE-9-NATIVE_CARDINALITY_IN_DESCRIPTION',
+      detail: `Literal thousands-separated figure '${match[0]}' found in description — likely an ` +
+        `embedded native/chart-specific row count (GT-32/GT-43). Strip the literal figure; ` +
+        `descriptions are served to every caller regardless of chart context.`,
+    }
+  }
+  if (NATIVE_CHART_PHRASE_PATTERN.test(desc)) {
+    return {
+      uri: cap.uri,
+      rule: 'RULE-9B-NATIVE_CHART_PHRASE_IN_DESCRIPTION',
+      detail: `Phrase 'native chart' found in description — served text must not reference ` +
+        `"the native" or "the native chart" (chart-agnostic mandate).`,
+    }
+  }
+  return null
+}
+
+/**
+ * Reusable, non-capability-scoped text scanner (GT-54, 2026-07-19 audit).
+ * Applies the same forbidden-pattern set as Rules 2/3/9 to an arbitrary served string that
+ * is NOT a CapabilityDescriptor.description field — e.g. a dynamically constructed
+ * `empty_reason` string built inside a handler body (invisible to checkCapability, which
+ * only ever sees the static descriptor object). d8's TEMPORAL_EMPTY_REASON leaked a
+ * native-derived count ("native chart 0/13,364 dated on lahiri") via exactly this code path.
+ * Call directly wherever a served free-text literal is constructed, or from a test that
+ * imports the literal.
+ */
+export function checkTextForNativeLeak(text: string, label = 'served_text'): GateViolation[] {
+  const violations: GateViolation[] = []
+
+  if (text.includes(NATIVE_CHART_ID)) {
+    violations.push({
+      uri: label,
+      rule: 'RULE-2-NATIVE_ID_IN_DESCRIPTION',
+      detail: `Literal native chart_id '${NATIVE_CHART_ID}' found in ${label}.`,
+    })
+  }
+  if (text.includes(PHANTOM_CHART_ID)) {
+    violations.push({
+      uri: label,
+      rule: 'RULE-2-PHANTOM_ID_IN_DESCRIPTION',
+      detail: `Phantom chart_id prefix '${PHANTOM_CHART_ID}' found in ${label}.`,
+    })
+  }
+  for (const id of NATIVE_IDENTIFIERS_IN_DESCRIPTION) {
+    if (id === NATIVE_CHART_ID) continue // already checked above
+    if (text.includes(id)) {
+      violations.push({
+        uri: label,
+        rule: 'RULE-3-NATIVE_IDENTIFIER_IN_DESCRIPTION',
+        detail: `Native identifier '${id}' found in ${label}. Served text must not carry native PII.`,
+      })
+    }
+  }
+  const cardinalityMatch = text.match(NATIVE_CARDINALITY_PATTERN)
+  if (cardinalityMatch) {
+    violations.push({
+      uri: label,
+      rule: 'RULE-9-NATIVE_CARDINALITY_IN_DESCRIPTION',
+      detail: `Literal thousands-separated figure '${cardinalityMatch[0]}' found in ${label} — ` +
+        `likely an embedded native/chart-specific row count (GT-32/GT-43/GT-54).`,
+    })
+  }
+  if (NATIVE_CHART_PHRASE_PATTERN.test(text)) {
+    violations.push({
+      uri: label,
+      rule: 'RULE-9B-NATIVE_CHART_PHRASE_IN_DESCRIPTION',
+      detail: `Phrase 'native chart' found in ${label} — served text must not reference ` +
+        `"the native" or "the native chart" (chart-agnostic mandate).`,
+    })
+  }
+  return violations
+}
+
 // ── Gate runner ───────────────────────────────────────────────────────────────
 
 /**
@@ -236,6 +344,7 @@ export function checkCapability(cap: CapabilityDescriptor): GateViolation[] {
     checkNoNativeIdInChartIdDescription,
     checkGlobalNotRequiringChartId,
     checkD1ContractFieldsPresent,
+    checkNoNativeCardinalityInDescription,
   ]
 
   for (const check of checks) {
