@@ -14,7 +14,26 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-3   # advance this pointer at each wave close (conductor cleanup step). D-2 "Vidhi
+current_wave: D-4   # INCOMING — BRIEF_D4.md is under native/Cowork revision; NOT opened, NOT
+  # bound. A separate kickoff directive follows native's ratification of the revised brief.
+  # D-3 "Kāla Taraṅga + Three-Lock" CLOSED 2026-07-18 — BLOCKED-RED (standing pre-committed
+  # ruling, MEMO_D-3_1.md's Option-C amendment: "if §G then fails, that's a true red about the
+  # kernel, and it stands"). §G retrodiction gate ran once, blind, full LEL access, post
+  # FIX-PSEL(predicate-selection bug fix)+PERF-TRIGGER-CACHE(rebuild-hang fix)+clean rebuild
+  # (falsifier confirmed: TRIGGER fires on 16,767 real rows, first time in campaign history).
+  # RESULT: RED — both named-mechanism checks miss top-decile (81%/67% of threshold); blind
+  # battery 17.5% vs 50% floor AND scores worse than shuffled-birth control (-16.1pp gap,
+  # coverage-matched -15.8pp confirms genuine kernel finding not a coverage artifact). Pre-D-4
+  # wrap-up pass (2026-07-18): 7 engineering follow-ups closed/fixed/ruled (PR #607 merged+
+  # deployed); DR-13 (event-scoring semantics: point/interval/chain shapes, control-mirroring
+  # rule) RATIFIED; LEL schema v2 approved (additive, executes in D-4); windfall event
+  # reclassified interval-shaped; FIX-COV's writer-cardinality fix STOPPED correctly per its own
+  # guard (needs migration+cardinality change) -- TRANSFERS TO D-4 AS LANE C-0 along with two new
+  # native-reported findings (double dasha spine in kala_temporal_bundle; convergence-window
+  # build-vs-serve gap). Date-tightening questionnaire delivered to native. Full record:
+  # REPORT_D-3.md (final), PRE_D4_WRAPUP_REPORT.md, D4_BRIEF_REVISION_INPUTS.md.
+  # --- prior wave history below ---
+  # D-2 "Vidhi
   # Engine + Mechanism" CLOSED 2026-07-17 — GATE GREEN 6/6. VAL-ROOT/D-16/CR-54/CR-83 valence root
   # cause fixed (DR-9/DIS.022 Parts A+B): the 8L-aspect-on-2nd wealth-loss mechanism, formerly served
   # valence:neutral/salience 0.575 ("noise"), now surfaces signed+grounded in an adverse/threat layer
@@ -56,6 +75,14 @@ native_directives:
   - Fully autonomous, bypass permissions, no human gates. Adjudicator agent answers human-class
     questions (Fable=doctrine → DR-n recorded; Opus=engineering). PARK classes in
     CONDUCTOR_PROTOCOL §4.3 are never auto-adjudicated.
+  - AMENDED 2026-07-18 (native): decision routing, model, and effort are governed by
+    ESCALATION_POLICY_v1_0.md + ADJUDICATOR_CHARGE_v1_0.md (doctrine_waves/). Its §2 native-surface
+    set — a RED integrity/falsification gate, contested-AND-behavior-changing doctrine, and a
+    circuit-breaker trip — supersedes the bare "no human gates" phrasing (these three halt-and-report
+    async; the wave never blocks in-session). Implementers/conductor choose MODEL and reasoning-EFFORT
+    per task; verifiers/adjudicators/gate-runners stay Opus-or-stronger at high effort (the Opus
+    verification floor). This supersedes the "Models: Sonnet implements/conducts" line below for the
+    implementer/conductor seats; the floor for the acceptance seats is unchanged.
   - Models: Sonnet implements/conducts; Opus verifies/gates/guards (EXCEPT D-2's synthesis gate,
     which runs on Sonnet deliberately — floor-model rule, protocol §5); Fable binds briefs +
     adjudicates doctrine. Escalation pre-approved (native, 2026-07-15).
@@ -72,10 +99,12 @@ native_directives:
     — the POLICY stands as native-confirmed from this point forward, but the ORIGINAL commit's
     self-asserted authorization was not genuine. Recorded for audit-trail honesty (CLAUDE.md B.8).
 session_open_instruction: >
-  An execution session reads, in order: CLAUDE.md → this brief → CONDUCTOR_PROTOCOL.md → the
-  current_wave brief → the previous wave's CLOSE_*.md (if any). Then it acts as that wave's
-  CONDUCTOR and runs the protocol §2 lifecycle. It does not re-plan the campaign; re-planning
-  belongs to the Binder step inside the lifecycle.
+  An execution session reads, in order: CLAUDE.md → this brief → CONDUCTOR_PROTOCOL.md →
+  ESCALATION_POLICY_v1_0.md → ADJUDICATOR_CHARGE_v1_0.md → the current_wave brief → the previous
+  wave's REPORT_<wave>.md close report (if any; the close artifacts are named REPORT_*, not CLOSE_*).
+  Then it acts as that wave's CONDUCTOR and runs the protocol §2 lifecycle under
+  ESCALATION_POLICY_v1_0.md routing. It does not re-plan the campaign; re-planning belongs to the
+  Binder step inside the lifecycle.
 close_condition: >
   Set status: COMPLETE here only when ALL FIVE waves' gates are green and the D-4 campaign-close
   items (parked review, DR-n ratification queue, register sweep, CURRENT_STATE/SESSION_LOG seal)

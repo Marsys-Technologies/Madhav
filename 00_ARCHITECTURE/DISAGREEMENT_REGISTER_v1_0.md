@@ -1512,3 +1512,101 @@ disagreement_register_entry:
     - path: 00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BIND_D-3.md
       linkage: consequence   # bind record carrying the forward hook
 ```
+
+## FINDING (not a DR — logged for a future audit, no adjudication needed) — latent double-content-unwrap bug class, 3 unconfirmed sites
+
+```yaml
+finding_entry:
+  logged_by: "D-3 conductor, cycle-1 hotfix verifier (Opus, wave/D-3/hotfix-kala-temporal), 2026-07-18"
+  context: >
+    While verifying the kala_temporal.ts double-content-unwrap hotfix (the fix that resolved
+    kala_temporal_bundle's empty timeline_excerpt — root cause, not CR-41 or a data gap; see
+    STATE_D-3.md carried_item_dispositions), the verifier swept for sibling copies of the same
+    bug pattern. fetchCapabilityRows() itself is a single definition (no duplicate broken copy),
+    but three OTHER callers of /api/retrieval/capability return `content` raw without the
+    is_error-key descent that kala_temporal.ts needed:
+      - platform-mcp/src/tools/retrieval/register_p1_synthesis.ts:42
+      - platform-mcp/src/tools/retrieval/register_p1_reference.ts:48
+      - platform-mcp/src/lib/retrieval/l0_brahmagyan.ts:56
+  status: UNCONFIRMED — NOT traced to a conclusion. Whether these are live bugs depends on how
+    their downstream consumers read the payload: if a consumer reads `.rows`/`.total`/similar off
+    the un-descended object, it would hit the same class of bug (empty/undefined silently
+    swallowed while reporting ok:true); if a consumer consumes the whole wrapped object, it may
+    be unaffected. Out of D-3 scope — not chased further this wave.
+  action: Candidate item for a future audit pass (or an early T-6 hygiene check, since T-6 already
+    re-points several serving surfaces). No DR/adjudication needed unless the audit finds a real
+    defect, at which point it becomes its own CR/DR per the normal process.
+```
+
+## FINDING (not a DR — re-baseline record, benign confirmed) — D-2/D-3 wealth verdict baseline moves 2.78 -> 2.38
+
+```yaml
+finding_entry:
+  logged_by: "D-3 conductor, post-DEPLOY regression-guard follow-up, 2026-07-18"
+  context: >
+    Post-deploy (PR #602, kala_temporal.ts hotfix + T-1 AV capability + T-0 harness), a live
+    judgment_query(wealth, 482012f1) read showed composite_score 2.38 (was ~2.78, the D-2 close
+    baseline) and verdict_grade convergent_moderate (was convergent_strong). Initially flagged
+    RED per standing rule (a moved regression guard is reported red, not silently absorbed).
+  diagnosis: >
+    The entire delta is in yoga_term (1.63 -> 1.23), tracking domain-bearing yoga-firing count
+    4 -> 3 in judgment_query's classification; d1_score is UNCHANGED (1.15). Root cause is NOT a
+    regression — it is two features coming online with this exact deploy: (a) kala_activations
+    now POPULATED in the verdict (dasha_activation_proximity=0.28), a direct downstream effect of
+    THIS wave's own kala_temporal.ts hotfix — yoga firings are now temporally weighted where
+    before (empty timing surface) they were not; (b) the native-ratified affliction/threat layer
+    (DR-9/DIS.022 Part B) now live in this serving path — bearing_afflictions + the Rahu-in-2nd
+    "mixed" mechanism (the CR-54 wealth-loss mechanism) now surfaces alongside the Dhana Yoga.
+  fork_check: >
+    ganita_yoga_firings_get(482012f1) called fresh, live, post-deploy: 12/12 yogas fired=true,
+    ALL at UNCHANGED strengths vs pre-deploy (dhana_yoga_2_5_9_11=1.0218, dhana_yoga_house_lords=
+    1.0218, raja_yoga_kendra_trikona=1.0218, sasa=1.566, budha_aditya=1.3863, neecha_bhanga_raja_
+    yoga=0.4 with bhanga_active=true and both venus/saturn NBRY rules 1+2 firing at D9, etc.).
+    NO yoga stopped firing structurally. Fork resolves BENIGN, not a regression.
+  disposition: >
+    RE-BASELINED. The wealth guard's reference value is now convergent_moderate / composite~2.38
+    with: Dhana Yoga present (dhana_yoga_2_5_9_11 in bearing_yogas), the affliction/threat layer
+    populated (Rahu-in-2nd mixed mechanism, DR-9 Part B), and kala_activations populated
+    (dasha_activation_proximity=0.28, direct effect of the kala_temporal.ts hotfix). The prior
+    2.78 pin was PRE-TIMING/PRE-AFFLICTION and is RETIRED — it reflected an incompletely-served
+    verdict (empty temporal surface, threat layer not yet live), not the correct target state.
+    NOT a D-3 wave-blocker: D-3's own gate is the T-0 retrodiction battery, not this wealth
+    number; 2.38 still clears D-1.5a's original gate (composite off d1_score=1.15, Dhana Yoga
+    served). No code changes made or needed — this entry documents the baseline shift only.
+```
+
+## DIS.026 (campaign ref: DR-13) — Event-Scoring Semantics (shape/tolerance/control-mirroring) — RATIFIED
+
+```yaml
+finding_entry:
+  logged_by: "D-3 conductor, pre-D-4 wrap-up pass, 2026-07-18, per native directive"
+  dr_id: DIS.026
+  campaign_ref: DR-13
+  status: RATIFIED (native, 2026-07-18, D-3 closeout directive)
+  full_text: "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/DR_13_EVENT_SCORING_SEMANTICS_DRAFT.md"
+  context: >
+    D-3's §G retrodiction gate scored every LEL event as a bare point matched to a served curve's
+    peak within a fixed +/-45-day window (DR-11's discipline). Reviewing the per-event detail
+    surfaced that a meaningful share of the LEL corpus is not actually point-shaped in reality —
+    it is a process over an interval or a chain of independently dateable milestones recorded as
+    one fuzzy date at intake.
+  ratified_text: >
+    (a) LEL events carry a shape: point | interval | chain, default point for legacy rows.
+    (b) Interval-shaped events score by overlap with a served top-decile curve window, not
+    distance-to-a-point. (c) Chain-shaped events record named milestone anchors, each
+    independently scoreable — collapsing a chain to one fuzzy date is a recording error, not an
+    acceptable simplification. (d) Tolerance scales with date_confidence: exact=+/-45d (DR-11's
+    figure, unchanged), month_known=+/-75d, year_only -> interval-scored in a clearly-labeled
+    SECONDARY battery, never silently folded into the primary hit-rate, never discarded. (e)
+    Control-mirroring rule, non-negotiable: every scoring loosening in (a)-(d) applies IDENTICALLY
+    to the shuffled-birth negative control — a looser real-chart criterion without an
+    identically-loosened control is gate-gaming by definition.
+  explicit_non_scope: >
+    Does NOT retroactively re-score D-3's already-closed §G RED result (that gate ran and closed
+    under DR-11's point-only discipline, correctly). Does NOT loosen DR-11's +/-45d figure for
+    exact-confidence events. Does NOT authorize any kernel-weight/threshold/orb/valence change.
+  disposition: >
+    RATIFIED. D-4's C-1 (event-shape-aware matcher spec) is speced against this ruling. LEL
+    schema v2 (also approved this closeout, see below) implements the shape/date_confidence
+    fields this DR requires.
+```

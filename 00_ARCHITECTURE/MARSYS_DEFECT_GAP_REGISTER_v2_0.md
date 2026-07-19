@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.1
+version: 3.2
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -735,9 +735,95 @@ POST_REMEDIATION register's git history either); system-of-record for that range
 `DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md §8` + the live doctrine-wave briefs, per the pointer table
 in POST_REMEDIATION §N. No dangling row range remains across either register.
 
+**CR-108 [CLOSED 2026-07-18, FIX-PSEL lane, PR #605, verified ACCEPT twice (predicate-selection
+diagnosis confirmed genuine ceiling-by-construction not a bug; quota+content-hash tiebreak
+fix independently traced correct), deployed, falsifier-confirmed live (16,767 real Mode A/B
+kala_convergence rows bear trigger_weights_used post-rebuild — TRIGGER genuinely exercises real
+data for the first time in the campaign's history)] (2026-07-18, D-3 cycle-2b, conductor-discovered,
+native-ratified — pre-existing class, same system-of-record convention as CR-90..107):**
+predicate-selection dignity_score saturation +
+insertion-order tiebreak. `ka_sangam.py::plan_substeps()` selects the top-200 (near tier) / top-60
+(lifetime tier) `kala_activation_predicates` via `ORDER BY dignity_score DESC NULLS LAST, id ASC
+LIMIT N`. On 482012f1, **4,441 predicates across ALL 6 signature classes sit at the exact ceiling
+`dignity_score = 1.0`** (SUBSYSTEM 3,827 / DISPOSITOR_RELATIONAL 552 / DIGNITY 60 / YOGA 2) — a score
+field saturated at its ceiling for 4,441 rows has zero discriminating power at the top, which is
+either a clamp/normalization bug or a degenerate scoring formula (root cause not yet diagnosed).
+Compounded by an insertion-order tiebreak (`id ASC`) that always resolves the tie in favor of
+SUBSYSTEM (systematically lowest ids), so predicate selection is 100% SUBSYSTEM for this chart,
+every rebuild — starving the Mode A/B convergence-scoring path (and everything downstream that
+depends on it, including D-3's TRIGGER suppression and CR-102 vedha fix) of any real-data exercise.
+Native disposition: fix at source if a clamp/default-fill bug (§1 of the fix lane), else document as
+a genuine ceiling-by-construction finding; harden selection with a per-signature-class quota + a
+content-hash tiebreak (not insertion-order — flagged as a reproducibility-trap pattern to grep for
+estate-wide); STOP-and-report if the saturation traces into `ga_vichara` or the core scoring writer
+(would expand this from a selection fix into a scoring rework, out of one lane's scope). System-of-
+record: `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/MEMO_D-3_1.md` (full finding +
+native disposition) + `STATE_D-3.md` (`cycle2b_critical_finding_predicate_selection_bug`) — this row
+is a pointer only, per the CR-90..107 convention above.
+
+**CR-109 [OPEN, TRANSFERS TO D-4 as Lane C-0(a), 2026-07-18, pre-D-4 wrap-up pass, A2/FIX-COV
+lane, conductor-discovered, native-ratified disposition]:** served activation-window coverage
+gap. `resolve_activation_windows()` (`platform/python-sidecar/services/ka_temporal/date_resolver.py`
+~L392-551) computes ALL matched dasha periods for a predicate but collapses to a single
+`primary_selected` window (current-straddling > soonest-future > most-recent-past, anchored to
+build-time "today"), so served coverage effectively brackets ~2010-2032 and drops everything
+outside that band — confirmed as the majority driver of D-3's §G RED (A1's coverage-matched
+control-gap re-analysis: -16.1pp raw -> -15.8pp coverage-matched, i.e. the gap is real kernel
+signal, not a coverage artifact, but the coverage gap itself is a separate genuine defect
+independent of that finding). FIX-COV (A2) diagnosed this root cause correctly and STOPPED per
+its own guard: a real fix requires a schema/cardinality change (serving multiple windows per
+predicate, full-span birth->2054) exceeding FIX-COV's narrow infra-only remit — correct STOP
+behavior per protocol, not a failure. The standing one-re-run allowance lapsed with the wave
+closing; §G does not re-run on this fix. Disposition: transfers to D-4 as Lane C-0(a),
+surgical migration + writer-cardinality change per CLAUDE.md §N.4, zero kernel/weight changes.
+System-of-record: `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/STATE_D-3.md`
+(`cycle2_wrapup_pass_A1_A2`), `PRE_D4_WRAPUP_REPORT.md` (§A2), `REPORT_D-3.md` §11.
+
+**CR-110 [OPEN, TRANSFERS TO D-4 as Lane C-0(b), 2026-07-18, native-reported, D-3 closeout
+directive, NOT YET INDEPENDENTLY VERIFIED BY CONDUCTOR — recorded on native's own stated
+evidence per explicit instruction]:** double dasha-spine bug in `kala_temporal_bundle`. Native's
+2026-07-18 temporal test on the deployed connector observed two ayanamsha dasha-period variants
+interleaved undisclosed in a single served bundle: Mercury MD reported as ending BOTH
+2027-08-12 and 2027-08-18 (two different values for the same period boundary in the same
+response), plus phantom Ketu-MD-2025 rows carrying Venus/Sun antardashas that do not belong to
+that mahadasha lineage. Suspected root cause (unverified): the bundle join pulls dasha rows
+across more than one ayanamsha computation without a discriminating filter, silently merging
+variant timelines into one served structure. Disposition: intake only — no diagnosis, no fix
+attempted this session. Transfers to D-4 as Lane C-0(b); D-4's binder must independently verify
+before scoping a fix. System-of-record: native's 2026-07-18 temporal test (conductor-relayed,
+not independently reproduced); `D4_BRIEF_REVISION_INPUTS.md` §C-0.
+
+**CR-111 [OPEN, TRANSFERS TO D-4 as Lane C-0(c), 2026-07-18, native-reported, D-3 closeout
+directive, NOT YET INDEPENDENTLY VERIFIED BY CONDUCTOR — recorded on native's own stated
+evidence per explicit instruction]:** convergence-windows build-vs-serve gap. Native's
+2026-07-18 temporal test observed `kala_temporal_bundle` returning 0 convergence windows for
+the 2026-2027 range on the deployed connector, while the underlying `kala_convergence` table
+holds 16,767 TRIGGER-refined rows (the same FIX-PSEL/PERF-TRIGGER-CACHE-fixed real data
+verified live earlier this wave) peaking 2027-10-20 through 2027-11-01 — i.e. the build side
+has real, dated, high-density data for exactly the window the serve side reports empty.
+Suspected root cause (unverified): a join predicate or date-window filter on the serving path
+excludes rows the build path already produced; distinct from CR-109 (which is about window
+*selection/collapse*, not a build-vs-serve join mismatch). Disposition: intake only — no
+diagnosis, no fix attempted this session. Transfers to D-4 as Lane C-0(c); D-4's binder must
+independently verify (direct DB query against the deployed connector, CR-96 discipline: verify
+the consuming surface) before scoping a fix. System-of-record: native's 2026-07-18 temporal
+test (conductor-relayed, not independently reproduced); `D4_BRIEF_REVISION_INPUTS.md` §C-0.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.1 (2026-07-16, D-1.6 Lane S-8) — Section 13 added:
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.3 (2026-07-18, D-3 closeout directive,
+conductor session) — CR-109 pointer added (served activation-window coverage gap,
+`resolve_activation_windows()` primary_selected collapse, A2/FIX-COV correct-STOP transferring
+to D-4 Lane C-0(a); native-ratified disposition recorded on this row per closeout directive item
+2). CR-110 (double dasha-spine bug in kala_temporal_bundle, native-reported, unverified intake)
+and CR-111 (convergence-windows build-vs-serve gap, native-reported, unverified intake) added as
+Lane C-0(b)/(c) — both explicitly flagged NOT YET INDEPENDENTLY VERIFIED, per closeout
+directive item 3's single consolidated C-0 candidate-scope entry. v3.2 (2026-07-18, D-3
+cycle-2b, conductor session) —
+CR-108 pointer added (predicate-selection dignity_score saturation + insertion-order tiebreak
+starving Mode A/B on 482012f1; halt-and-report MEMO_D-3_1.md, native-dispositioned Option-C-amended
+fix lane, raw finding text kept in the doctrine-wave artifacts per the CR-90..107 convention). v3.1
+(2026-07-16, D-1.6 Lane S-8) — Section 13 added:
 governance/register reconciliation sync. 10 rows closed/routed/re-dispositioned with S-7 Binder
 probe evidence (S-4, S-5, S-12, S-14, R-11, R-47, R-48, D-5, K-3, KP-4); R-48 specifically
 RE-DISPOSITIONED from a false REMEDIATED-PENDING-W4 to honestly PENDING with a code-verified root
