@@ -1,8 +1,8 @@
 ---
 artifact: RETRIEVAL_STRATEGY_v1_0.md
 canonical_id: RETRIEVAL_STRATEGY
-version: 1.0
-status: DRAFT — FOR NATIVE REVIEW
+version: 1.2
+status: CURRENT — §F gate ruling absorbed 2026-07-19/20
 authored_by: Claude (Cowork, Fable 5) 2026-07-19
 parent_documents:
   - 00_ARCHITECTURE/RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md (v1.2 absorbs §9)
@@ -18,6 +18,14 @@ purpose: >
   channel-variation capability set, the per-tool review rubric, and the
   data-plane coverage doctrine (grounded in the 2026-07-19 coverage census).
 changelog:
+  - v1.2 (2026-07-19/20, §F human gate ruling, RS-2 authority exercised): §5.2
+    disposition taxonomy amended — DARK abolished as a terminal state,
+    replaced with SERVED-DIRECT / SERVED-VIA / OPERATIONAL / GATED / RETIRED,
+    default bias SERVE (burden of proof on withholding). GATED requires a
+    doctrine-grounded reason (A-19 NO-LEAKAGE / L5 structural seal / D-14
+    register safety), a named served aggregate, and a written revisit
+    condition — not an ad hoc rationale. Full ruling text:
+    `briefs/retrieval_impl/RULINGS_ADOPTED.md` §F gate ruling.
   - v1.1 (2026-07-19): native review absorbed — §3.5 distillation boundary
     (librarian/scholar split, tail protection, dissent quota), §3.6
     proportionality principle + B.11 carve-out (ruling RS-4), §5.3 service-
@@ -312,9 +320,37 @@ different strata — and the census data settles it empirically:
 
 ### §5.2 Coverage doctrine
 
-**Rule: every substantive table is either SERVED, INTERNAL-BY-DESIGN
-(declared, with rationale), or RETIRED. Dark-by-accident is a defect
-class** (extends §N.6 to the data plane). Census (2026-07-19, full map in
+**AMENDED v1.2 (§F human gate ruling, RS-2 authority exercised, 2026-07-19/20).** DARK is
+abolished as a terminal state. Every substantive table resolves to exactly one of:
+
+- **SERVED-DIRECT** — a capability serves this table's concepts directly.
+- **SERVED-VIA** — concepts fully covered by a *named* other serving surface (per-concept cover
+  recorded in the `concept_ledger`, CI-verified — not merely asserted in prose).
+- **OPERATIONAL** — the table carries no astrological concept (bookkeeping, journaling, export,
+  cosign ledgers, embedding-store infrastructure); declared, not a coverage gap.
+- **GATED** — an astrological concept is deliberately withheld, with (a) a cited reason already
+  grounded in standing doctrine (A-19 NO-LEAKAGE / the L5 structural seal / D-14 register
+  safety — never an ad hoc rationale invented at disposition time), (b) a named served aggregate
+  that stands in for the withheld detail, and (c) a written revisit condition.
+- **RETIRED** — dead/superseded, no live consumer.
+
+**Default bias is SERVE: the burden of proof sits on withholding, not on serving.** A table with
+no discovered serving route is not "dark" pending investigation — it is evidence-checked against
+the reachability matrix + a live probe (per the mechanical resolution procedure,
+`briefs/retrieval_impl/RULINGS_ADOPTED.md` §F gate ruling item 2) and assigned the state the
+evidence dictates. Only a table whose evidence points to a genuinely NEW gate reason — not
+already covered by A-19/L5-seal/D-14 — escalates to the native; nothing sits at an unresolved
+"needs owner" state as a terminal outcome. Dark-by-accident (a table with no route AND no
+doctrine-grounded gate reason) remains a defect class (extends §N.6 to the data plane), but its
+disposition is SERVE-it, not label-and-park-it.
+
+~~Prior v1.0/1.1 rule: every substantive table is either SERVED, INTERNAL-BY-DESIGN (declared,
+with rationale), or RETIRED. Dark-by-accident is a defect class.~~ Superseded by the five-state
+taxonomy above — INTERNAL-BY-DESIGN's single catch-all bucket conflated "no concept here"
+(now OPERATIONAL) with "concept withheld for a reason" (now GATED, which additionally requires
+the doctrine citation + named aggregate + revisit condition INTERNAL-BY-DESIGN never demanded).
+
+Census (2026-07-19, full map in
 session record; method: migration inventory × retrieval-source grep):
 
 - Physical inventory far exceeds the asset counts: L2 has 34 tables
