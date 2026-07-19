@@ -69,7 +69,19 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
 - **W0.2:** rulings recorded — see `RULINGS_ADOPTED.md`.
 - **W0.3:** safety items S-1..S-5 — see per-item log below.
 - **W0.4:** baseline probe suite — see `BASELINE_PROBES.md`.
-- **W0.5:** read-only DSN (W-18) — see below.
+- **W0.5 (2026-07-19):** read-only DSN provisioned (W-18). Role `retrieval_census_ro` created
+  on `madhav-astrology:asia-south1:amjis-postgres` (Cloud SQL instance `amjis-postgres`, DB
+  `amjis`) via `amjis_app`'s existing `CREATEROLE` grant — no superuser credential was touched
+  or reset. Grants: `CONNECT` on `amjis`, `USAGE` on schema `public`, `SELECT` on all tables in
+  `public` + `ALTER DEFAULT PRIVILEGES ... GRANT SELECT` so future tables inherit read access
+  automatically. Confirmed non-superuser / non-createrole / non-createdb, connection limit 5.
+  Live-verified: `SELECT count(*) FROM chart_facts` → 276,206 (succeeds); `INSERT` →
+  `permission denied for table chart_facts` (correctly fails). Credential stored as Secret
+  Manager secret `retrieval-census-ro-db-password` (project `madhav-astrology`) — never written
+  to any file in this repo or committed. Connection: Cloud SQL Auth Proxy →
+  `madhav-astrology:asia-south1:amjis-postgres`, user `retrieval_census_ro`, db `amjis`,
+  password from the secret above. This satisfies W-18's precondition for the W1 harvest/census
+  lanes (E1/E3 DB truth).
 - **W0.6:** envelope codegen parity test wired into CI — see below.
 
 ## Model/effort choices log
