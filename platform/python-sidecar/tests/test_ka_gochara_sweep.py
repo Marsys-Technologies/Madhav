@@ -269,27 +269,39 @@ def test_empty_ledger_returns_none_first_run():
 
 def test_matching_fingerprint_returns_completed_keys_for_resume():
     rows = [
-        {"substep_key": "marriage:decade:0", "build_fingerprint": "fp"},
-        {"substep_key": "marriage:decade:1", "build_fingerprint": "fp"},
+        {"substep_key": "marriage:year:0", "build_fingerprint": "fp"},
+        {"substep_key": "marriage:year:1", "build_fingerprint": "fp"},
     ]
     w = _writer()
     completed = w._load_completed_substeps(_FakeConn(rows), "cid", "fp")
-    assert completed == {"marriage:decade:0", "marriage:decade:1"}
+    assert completed == {"marriage:year:0", "marriage:year:1"}
 
 
 def test_mismatched_fingerprint_forces_replan_all():
-    rows = [{"substep_key": "marriage:decade:0", "build_fingerprint": "OLD"}]
+    rows = [{"substep_key": "marriage:year:0", "build_fingerprint": "OLD"}]
     w = _writer()
     assert w._load_completed_substeps(_FakeConn(rows), "cid", "fp_new") is None
 
 
-def test_substep_key_encodes_event_class_and_decade():
-    """plan_substeps' key format `<event_class>:decade:<idx>` must round-trip
-    through run_substep's own rpartition parse."""
-    key = "career_advancement:decade:3"
-    event_class, _, decade_str = key.rpartition(":decade:")
+def test_substep_key_encodes_event_class_and_year():
+    """plan_substeps' key format `<event_class>:year:<idx>` must round-trip
+    through run_substep's own rpartition parse. (D-5 REBUILD chunking fix,
+    2026-07-20: re-chunked from decade-sized to year-sized substeps -- a
+    real Cloud Run dispatch hit the 1800s writer_timeout_seconds watchdog on
+    a single decade substep with zero rows committed.)"""
+    key = "career_advancement:year:37"
+    event_class, _, year_str = key.rpartition(":year:")
     assert event_class == "career_advancement"
-    assert int(decade_str) == 3
+    assert int(year_str) == 37
+
+
+def test_plan_substeps_produces_year_granularity_not_decade():
+    """Regression guard for the D-5 REBUILD chunking fix: plan_substeps must
+    emit one substep per (event_class x year) -- 100 per event_class over
+    the 100-year horizon -- not the old one-per-decade (10 per event_class)
+    grain that timed out against real data."""
+    from services.ka_gochara_sweep.writer import _N_YEARS, _HORIZON_YEARS
+    assert _N_YEARS == _HORIZON_YEARS == 100
 
 
 # ── integration (live proxy, excluded by -m "not integration") ───────────

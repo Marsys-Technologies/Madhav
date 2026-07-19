@@ -10,14 +10,27 @@ writer).
 SUBSTEP CHUNKING (why this is the ONE G-lane expected to need real
 sub-stepping, per BRIEF_D5 §1 G-4 row): a chart-relative birth->birth+100y
 daily grid is ~36,500 candidate days. This writer never evaluates that in
-one substep. It chunks by (event_class x decade): one substep per
-populated `gochara_resonance_map` event_class, per 10-year slice of the
-birth->birth+100y horizon (10 decades) -- mirroring `ka_sangam`'s
+one substep. It chunks by (event_class x year): one substep per populated
+`gochara_resonance_map` event_class, per 1-year slice of the
+birth->birth+100y horizon (100 years) -- mirroring `ka_sangam`'s
 per-predicate/per-tier sub-stepping grain (`pipeline/orchestrator/writers/
 ka_sangam.py`) and reusing the SAME cross-attempt substep-resumption ledger
 (`build_substep_progress`, migration 436) that writer pioneered, so a build
-interrupted mid-horizon resumes from the last committed decade rather than
+interrupted mid-horizon resumes from the last committed year rather than
 restarting the whole sweep.
+
+CHUNK GRANULARITY (D-5 REBUILD lifecycle fix, 2026-07-20): a real Cloud Run
+dispatch against chart 482012f1 hit the orchestrator's 1800s
+`writer_timeout_seconds` watchdog on a single DECADE-sized substep (~3650
+days x full primitive/composition/intensity pipeline per day) with zero
+rows committed -- a pure chunking-granularity problem, not a correctness
+defect (the SAVEPOINT-poisoning bug this wave also fixed is confirmed
+resolved separately; this run had zero transaction-abort errors). Since a
+decade (~3650 days) didn't finish in 1800s, per-day cost is >0.49s, so this
+writer now chunks per YEAR (~365 days/substep, ~10x finer) -- measured live
+against chart 482012f1 (see close-report) at well under the budget with
+comfortable margin. If a future chart's per-day cost regresses, drop to
+per-quarter/per-month chunking rather than raising the timeout.
 
 Event-class discovery is LIVE, not hardcoded: this writer sweeps whatever
 `event_class` values actually have `gochara_resonance_map` rows for this
@@ -30,8 +43,8 @@ next build -- no code change required.
 
 Idempotency (§N.3): delete-then-insert scoped to (chart_id, event_class) --
 each event_class's OWN substeps clear only that event_class's rows before
-inserting, exactly once (in that event_class's FIRST decade substep), so a
-resumed attempt that skips already-committed decades never re-deletes them.
+inserting, exactly once (in that event_class's FIRST year substep), so a
+resumed attempt that skips already-committed years never re-deletes them.
 """
 from __future__ import annotations
 
@@ -48,20 +61,25 @@ logger = logging.getLogger(__name__)
 # (BRIEF_D5 §6, ratified ARC PLAN §10 Q3) -- deliberately NOT tied to computed
 # longevity/ayurdaya (an Ethical Framework violation to do so).
 _HORIZON_YEARS = 100
-_DECADE_YEARS = 10
-_N_DECADES = _HORIZON_YEARS // _DECADE_YEARS  # 10
+_N_YEARS = _HORIZON_YEARS  # one substep per calendar year -- see module
+                            # docstring's CHUNK GRANULARITY note (was 10
+                            # decade-sized substeps; a real dispatch hit the
+                            # 1800s writer_timeout_seconds watchdog on a
+                            # single decade substep, D-5 REBUILD fix 2026-07-20)
 
 # Bump when substep SEMANTICS change, so an in-flight resume ledger from an
 # older writer build is treated as a different build and replanned-all
-# (mirrors ka_sangam.py's _KA_SANGAM_RESUME_VERSION).
-_RESUME_VERSION = 1
+# (mirrors ka_sangam.py's _KA_SANGAM_RESUME_VERSION). Bumped 2 -> decade to
+# year re-chunk changes substep-key SEMANTICS (D-5 REBUILD fix 2026-07-20):
+# an old decade-keyed ledger must NOT be misread as a completed year.
+_RESUME_VERSION = 2
 
 
 @register('ka_gochara_sweep')
 class KaGocharaSweepWriter(WriterBase):
     """G-4 forward sweep: daily-grid lambda_e(t|chart) over birth->birth+100y,
     shape-aware served rows into `kala_gochara_windows`. HEAVY writer: one
-    substep per (populated event_class x decade)."""
+    substep per (populated event_class x year)."""
     asset_id = 'ka_gochara_sweep'
     has_substeps = True
 
@@ -94,12 +112,11 @@ class KaGocharaSweepWriter(WriterBase):
 
         steps: list[SubStep] = []
         for ec in self._event_classes:
-            for decade_idx in range(_N_DECADES):
+            for year_idx in range(_N_YEARS):
                 steps.append(SubStep(
-                    key=f"{ec}:decade:{decade_idx}",
-                    label=f"{ec} decade {decade_idx} "
-                          f"({self._birth_year + decade_idx * _DECADE_YEARS}-"
-                          f"{self._birth_year + (decade_idx + 1) * _DECADE_YEARS})",
+                    key=f"{ec}:year:{year_idx}",
+                    label=f"{ec} year {year_idx} "
+                          f"({self._birth_year + year_idx})",
                 ))
 
         # ── cross-attempt substep resumption (migration 436, ka_sangam pattern) ──
@@ -116,8 +133,8 @@ class KaGocharaSweepWriter(WriterBase):
                     (chart_id,),
                 )
             logger.info("ka_gochara_sweep: fresh/replan build for chart %s -- %d substeps "
-                        "(%d event_classes x %d decades)", chart_id, len(steps),
-                        len(self._event_classes), _N_DECADES)
+                        "(%d event_classes x %d years)", chart_id, len(steps),
+                        len(self._event_classes), _N_YEARS)
             return steps
 
         remaining = [s for s in steps if s.key not in completed]
@@ -133,26 +150,25 @@ class KaGocharaSweepWriter(WriterBase):
         chart_id = self._chart_id
         dry_run = getattr(ctx, 'dry_run', False)
 
-        event_class, _, decade_str = step.key.rpartition(':decade:')
-        decade_idx = int(decade_str)
+        event_class, _, year_str = step.key.rpartition(':year:')
+        year_idx = int(year_str)
 
-        decade_start = date(self._birth_year + decade_idx * _DECADE_YEARS, 1, 1)
-        decade_end_year = self._birth_year + (decade_idx + 1) * _DECADE_YEARS
-        decade_end = date(decade_end_year, 1, 1)
+        year_start = date(self._birth_year + year_idx, 1, 1)
+        year_end = date(self._birth_year + year_idx + 1, 1, 1)
 
         # Self-scoped delete (mirrors ka_sangam's "each substep clears only its own
-        # rows" discipline): the FIRST decade substep for an event_class clears ALL
-        # of that event_class's prior rows once, so later decades never re-delete
-        # already-committed sibling decades on a resumed run.
-        if decade_idx == 0 and not dry_run:
+        # rows" discipline): the FIRST year substep for an event_class clears ALL
+        # of that event_class's prior rows once, so later years never re-delete
+        # already-committed sibling years on a resumed run.
+        if year_idx == 0 and not dry_run:
             with conn.cursor() as cur:
                 cur.execute(
                     "DELETE FROM kala_gochara_windows WHERE chart_id = %s AND event_class = %s",
                     (chart_id, event_class),
                 )
 
-        horizon_start_jd = self._swe.julday(decade_start.year, decade_start.month, decade_start.day, 0.0)
-        horizon_end_jd = self._swe.julday(decade_end.year, decade_end.month, decade_end.day, 0.0)
+        horizon_start_jd = self._swe.julday(year_start.year, year_start.month, year_start.day, 0.0)
+        horizon_end_jd = self._swe.julday(year_end.year, year_end.month, year_end.day, 0.0)
 
         def _keepalive():
             with conn.cursor() as _cur:
@@ -164,7 +180,7 @@ class KaGocharaSweepWriter(WriterBase):
                 horizon_start_jd, horizon_end_jd, step_days=DEFAULT_STEP_DAYS,
             )
         except Exception as exc:
-            logger.error("ka_gochara_sweep: sweep failed for %s decade %d: %s", event_class, decade_idx, exc)
+            logger.error("ka_gochara_sweep: sweep failed for %s year %d: %s", event_class, year_idx, exc)
             return WriterResult(asset_id='ka_gochara_sweep', rows_inserted=0,
                                  notes=f"sweep failed for {step.key}: {exc}")
 
