@@ -83,10 +83,22 @@ at BIND against 113 (wrong artifact entirely).*
 PG-1 R-2 exercised 35/139 tools against chart `482012f1` (Abhisek) via the `?api_key=`
 seat (mostly `response_format=legacy`). PG-2 Lane X-3 then exercised **98 additional
 distinct tool names**, bringing combined coverage to **133/139 ≈ 96%** (`PG2-X3-0010`),
-closing the G.4 coverage gap PG-1 disclosed. Two tools remain genuinely unexercised:
-`prashna_undertaking_get` (needs a horary/prashna-cast chart — none of the 4 charts
-qualify) and `mimamsa_outcome_record` (alias twin of `record_outcome`, not re-probed once
-the shared handler's 500 was confirmed).
+closing most of the G.4 coverage gap PG-1 disclosed.
+
+**[CORRECTED PG-2 gate-runner review, 2026-07-19]** — the arithmetic as first written
+did not reconcile: 35 (R-2) + 98 (X-3, "additional distinct") = 133, and 139 − 133 = 6,
+not the "two tools remain unexercised" originally stated here (which implied 137
+touched). The gate runner's independent anti-gaming pass caught this and it is recorded
+honestly rather than resolved past the evidence (PC-1): either X-3's 98-count includes
+some overlap with R-2's original 35 (meaning the true untouched set is larger than 2
+but the 133 "combined distinct" figure is still correct), or the "two remaining" list is
+incomplete. **X-3 named only two by identity** — `prashna_undertaking_get` (needs a
+horary/prashna-cast chart, none of the 4 charts qualify) and `mimamsa_outcome_record`
+(alias twin of `record_outcome`, not re-probed once the shared handler's 500 was
+confirmed) — without reconciling the count against 139−133. This wave does not have
+the evidence to name the remaining 0–4 tools with certainty; a follow-up pass should
+produce the exact set-difference (full 139-name list minus R-2's 35 minus X-3's 98,
+computed programmatically) rather than trusting either lane's manual tally.
 
 **The Bearer-key MCP face is NOT broken** (revising v1.0/PG-1's open `F-25v`). PG-1 could
 not authenticate the `Authorization: Bearer` face (401) and left root cause
