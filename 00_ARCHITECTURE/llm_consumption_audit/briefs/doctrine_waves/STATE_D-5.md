@@ -2,12 +2,12 @@
 artifact: STATE_D-5
 type: WAVE STATE LEDGER (protocol §6.1)
 wave: D-5 — Gochara-Chitra
-updated_at: 2026-07-19T15:35:00Z
+updated_at: 2026-07-19T18:35:00Z
 ---
 
 ```yaml
 wave: D-5
-lifecycle_step: 3  # IMPLEMENT ∥ VERIFY, G-1/G-2/G-3/G-4 merged, G-5 next (final lane)
+lifecycle_step: 6  # REBUILD in progress — all 5 lanes merged+deployed; a two-part live bug discovered, fix cycle 2 in flight
 brief_bound: true
 rollback_pin:
   amjis_web: c8801e17bcd28b503cbeeac16533cc713124a251
@@ -19,10 +19,20 @@ lanes:
   - {lane: G-1, branch: wave/D-5/G-1 (deleted, merged), status: merged, receipt_ref: "PR #621 (9a2ec77c), ACCEPT-WITH-FINDINGS, live-verified 80 rows/3 classes/0 citation violations. Worktree+branch cleaned up."}
   - {lane: G-2, branch: wave/D-5/G-2 (deleted, merged), status: merged, receipt_ref: "PR #622 (7b6d7f27), ACCEPT-WITH-FINDINGS, 3770 tests green. Sarvatobhadra classical grid population + live 3-specimen re-derivation carried as open findings to G-4/gate. Worktree+branch cleaned up."}
   - {lane: G-3, branch: wave/D-5/G-3 (deleted, merged), status: merged, receipt_ref: "PR #625 (1bdec728), ACCEPT-WITH-FINDINGS, 3853 tests green incl. live PERMISSION multi-system independent re-derivation. Both cross-lane findings fixed same-cycle (PR #624 G-2 dasha_data; own enrichment.py fix in #625). Worktree+branch cleaned up."}
-  - {lane: G-4, branch: wave/D-5/G-4 (deleted, merged), status: merged, receipt_ref: "PR #627 (095a2bc1), ACCEPT-WITH-FINDINGS, 3852 tests green. Shape-aware output (point/interval/chain) live-verified against real ontology data; peak_basis/DR-10 honesty independently confirmed (DIS.023 genuinely doesn't name a gochara-engine peak model); density_contract populated on all 3 new views. Worktree+branch cleaned up."}
-  - {lane: G-5, branch: wave/D-5/G-5, status: pending, receipt_ref: null}
-deploy: {done: false, sha: null}
-rebuild: {scope: pending, abhisek_build_id: pending}
+  - {lane: G-4, branch: wave/D-5/G-4 (deleted, merged), status: merged_fix_in_progress, receipt_ref: "PR #627 (095a2bc1), ACCEPT-WITH-FINDINGS at Phase-1 (small-scale live test, legitimately passed — not a REJECT). REBUILD-time re-open, attempt 2 of 3 (protocol §2.3): production-scale execution surfaced incident #1 (fixed, PR #631, independently re-verified live), whose own fix immediately surfaced incident #2 (see rebuild_incident_2) — both within this same re-open cycle, not two separate attempts. Fix #2 in progress on wave/D-5/fix-savepoint-rollback. If this does not resolve cleanly, the NEXT re-open would be attempt 3/3 before PARK."}
+  - {lane: G-5, branch: wave/D-5/G-5 (deleted, merged), status: merged, receipt_ref: "PR #629 (f1d8e339), ACCEPT-WITH-FINDINGS, 5841 tests green, both live filing directions (accept+reject) independently verified. DR-16 persistence gap carried (see carried_findings). Worktree+branch cleaned up."}
+deploy: {done: true, sha: "amjis_web=f1d8e339, amjis_mcp=095a2bc1, amjis_sidecar=095a2bc1, brahma_build_pipeline_job=14b82dae (post incident-#1 fix, live-SHA verified 2026-07-19T17:53Z)"}
+rebuild:
+  scope: "asset_set: [ka_gochara_resonance, ka_gochara_sweep], per BIND_D-5 §6 minimal-cascade ruling — no full-layer trigger identified"
+  abhisek_build_id: "29b8c805... (attempt 1, FAILED, incident #1) then 9d2f0a16-0d03-4391-8c2e-085ea0887ce3 (attempt 2, FAILED, incident #2) — ka_gochara_resonance itself completed clean BOTH times; only the sweep substep is affected"
+  status: blocked_on_fix
+rebuild_incident_1:
+  what: "Cloud Run job execution brahma-build-pipeline-job-kb4zr (started 2026-07-19T16:29:35Z): ka_gochara_sweep's kakshya_cell_crossing primitive hit 'current transaction is aborted' within ~2s of the substep starting. Root cause (live-diagnosed): _fetch_av_gate_rows's untyped NULL SQL placeholder → IndeterminateDatatype, poisoning the shared connection for every subsequent query in that substep."
+  disposition: "FIXED, PR #631 (14b82dae) — placeholder cast + safe_rollback() hardening added at 4 call boundaries in gochara_grammar/primitives.py. Independently re-verified live (exact original trigger reproduced, confirmed fixed) before merge."
+rebuild_incident_2:
+  what: "Re-dispatched rebuild (build_run 9d2f0a16..., job brahma-build-pipeline-job-lq8w4, 2026-07-19T18:12Z): ka_gochara_resonance completed clean again, but ka_gochara_sweep crashed differently this time — 'InvalidSavepointSpecification: savepoint \"writer_exec\" does not exist' at the orchestrator's own RELEASE SAVEPOINT call, then a secondary InFailedSqlTransaction trying to record the error. Root cause (conductor-diagnosed, pending agent verification): incident #1's own fix is the culprit — _dbutil.safe_rollback() calls a bare conn.rollback() (FULL transaction rollback), which is safe in G-3's standalone no-orchestrator context it was designed for, but destroys ALL savepoints — including the orchestrator's own per-substep SAVEPOINT writer_exec (FROZEN contract, asset_runner.py._drive_substeps) — when reached via gochara_grammar/primitives.py from WITHIN an orchestrator-driven G-4 substep. A violation of the FROZEN contract's 'writer never commits/rollbacks ctx.db_conn' rule, introduced indirectly by importing a helper across an execution-context boundary it wasn't designed for."
+  disposition: "Cloud Run execution completed cleanly at the process level (orchestrator handled the worker crash without hanging); build_runs row auto-marked failed correctly this time. asset_throughput reset to state=error with honest last_error. Proper fix (SAVEPOINT-scoped, not a bare rollback, safe in both G-3-standalone and G-4-orchestrator-driven contexts) dispatched to wave/D-5/fix-savepoint-rollback, explicitly briefed NOT to touch FROZEN asset_runner.py — any apparent orchestrator-core robustness gap (mark_asset_error not defensive against an already-aborted transaction) is to be reported for native review, not fixed in-lane."
+  counts_as: "Both incidents fall within G-4's REBUILD-time re-open attempt 2/3 (protocol §2.3) — a genuine, non-obvious production-scale interaction (FROZEN-contract-adjacent) that neither the small-scale Phase-1 live test nor incident #1's own live re-verification surfaced, since neither ran inside the orchestrator's actual SAVEPOINT lifecycle."
 gate: {run: false, green: [], red: []}
 first_actions:
   cr_113: closed  # orphan build_runs row reaped via /api/cockpit/watchdog, deployed connector
