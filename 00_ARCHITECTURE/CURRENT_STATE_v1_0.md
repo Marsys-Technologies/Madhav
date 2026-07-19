@@ -5470,6 +5470,44 @@ terminal disposition once the M-series macro-phase arc was superseded by the Doc
 | `F-020` | MCP System Audit finding: salience degeneracy (top-N signals identical scores, varga-saturated); `MCP_SYSTEM_AUDIT_FINDINGS_v1_0.md` status "OPEN — Wave 5 (native-design-gated)" | **KEEP-with-owner** | Genuinely still open but not orphaned: mechanically root-caused and already absorbed into the Doctrine-Waves campaign as `CR-82` (MSR tier-ceiling — "the mechanical root of the 95.7%-supporting mush"), routed to **D-1/§11** per `POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md` §I. Owner = the doctrine-waves campaign via CR-82's existing routing; not this lane's item to re-triage (bucket-7 MSR-internals work is explicitly D-1.6 `scope_ruling`-excluded). `MCP_SYSTEM_AUDIT_FINDINGS_v1_0.md` itself is outside this lane's `may_touch` and is not edited here — this row is the disposition record. |
 | `OPEN_ITEM.P1.1` | M4/M5-era CDLM gap: Mercury/Bhadra cell (`MSR.145`) cannot be anchored — CDLM has no planet-specific cells, only the 81-cell domain-pair structure; carried to "M5 CDLM expansion pass" | **KEEP-with-owner** | Verified still genuinely open (not superseded by any later fix): `025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md` is at v1.3 and its own `v1_3_changelog` field still states the identical unresolved condition verbatim ("MSR.145... cannot be anchored at this surgical pass; carried to M5 CDLM expansion" — that M5 expansion never ran). No doctrine-wave brief (D-1 through D-4) references `MSR.145`, `OPEN_ITEM.P1.1`, or a CDLM cell-structure change. This is an architecture-level question (adding a new cell TYPE to CDLM's structure, not a data fix) requiring a native/doctrine ruling, not a mechanical close. Owner recommendation: flag for the **D-2 Binder** (D-2 is the nearest wave already touching CDLM-adjacent structural matrix work — `BRIEF_D2.md`'s pañcadhā-maitrī compound-matrix item, CR-105) to triage at its open, or the next Macro Plan review trigger (`ONGOING_HYGIENE_POLICIES_v1_0.md` §I) if D-2 rules it out of scope. |
 
+### §2.3 — Paripraśna audit + diagnostic workstream (PG-1 → PG-2, 2026-07-19)
+
+A concurrent, read-only architecture/diagnostic workstream (separate from the
+Doctrine-Waves campaign spine above) ran two waves against
+`PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md` and the live serving/DB/infra surface. Both
+are CLOSED. This section is the you-are-here pointer PG-1 deferred (see below) and PG-2
+completed.
+
+- **PG-1 — Paripraśna Grounding Audit (CLOSED 2026-07-19, GATE GREEN).** 12 read-only
+  lanes, 98 findings (87 primary + 11 reconciliation), all ACCEPT. Produced architecture
+  v0.6 (16 in-place `[CORRECTED PG-1]` corrections + 15 forensic defects F-25h…F-25v),
+  `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md`, and `RETRIEVAL_SYSTEM_TRUTH_v1_0.md`.
+  Headline: the instrument has never persisted a served reading (`conversation_messages`
+  = 0); §J unproven; D-17's "3–4wk untouched-route shim" premise FALSE (~6–9wk); NO-LEAKAGE
+  DB-role separation 0% built (critical); Cloud SQL PITR disabled. Full lifecycle:
+  `00_ARCHITECTURE/pg1_audit/REPORT_PG-1.md`.
+- **PG-2 — Diagnostic wave (CLOSED 2026-07-19).** 6 lanes (5 diagnostic + 1 meta-audit),
+  44 findings, all ACCEPT. Closed the items PG-1 left undiagnosed: **F-25u `chart_facts`
+  divergence RESOLVED BENIGN** (per-ayanamsha partitioning: 138,519/chart = 5×~27,677 +
+  135 invariant; 27,554 was stale v1.0; zero dup fact_ids — `PG2-X1-*`); **T-9 chat engine
+  RESOLVED — it does NOT work**: `/api/chat/consult` 500s deterministically at
+  `bundle_hydrator.ts:25` on the retired `FORENSIC` floor asset (one-line fix; the first
+  real serving-path datum — `PG2-X2-0001`, critical); coverage now **133/139 (~96%)**
+  (`PG2-X3-*`); A-14 memoization ruling INVERTED (`PG2-X4-0006`); OT-11 fully costed, no
+  choice made (PC-8, `PG2-X5-*`); **PG-1's gate re-audited VALID** (`PG2-M1-*`). Produced
+  architecture v0.7, `PG2_DIAGNOSTIC_REPORT_v1_0.md`, and `RETRIEVAL_SYSTEM_TRUTH_v2_0.md`
+  (supersedes v1.0). Full findings:
+  `00_ARCHITECTURE/pg2_diagnostic/deliverables/pg2_findings.jsonl`.
+- **Concurrent-edit conflict — RESOLVED, recorded per the brief.** PG-1 left this
+  `CURRENT_STATE §2` pointer undone (`REPORT_PG-1.md` Process Deviations #4 / Native
+  disposition #3): its shared working tree carried a pre-existing uncommitted D-4a
+  conductor edit, and PG-1 declined to commit an unrelated session's in-flight work into
+  its history. That conflict **no longer persists**: PG-2 (Lane Z-2) writes this pointer
+  from an **isolated worktree cut from clean `origin/main` @ `4b69df8c`**, in which D-4a's
+  edit has already landed (`current_wave` = D-5). No uncommitted concurrent edit exists on
+  this file in this worktree (`git status` clean for `CURRENT_STATE_v1_0.md` at write
+  time), so the pointer is added safely and the deferred §C item is discharged.
+
 ```yaml
 current_state:
   # ------------------------------------------------------------------
