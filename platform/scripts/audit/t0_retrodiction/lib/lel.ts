@@ -37,6 +37,16 @@ export type LelEvent = {
   domain: string
   description: string
   event_type: string
+  // LEL schema v2 (D-4a Lane A-1, DR-13/DIS.026) — additive, optional here
+  // because the server may not yet serve these columns on every deployment
+  // and every pre-v2 row is implicitly shape='point'/date_confidence='exact'
+  // per the migration's own column defaults. Do not assume presence.
+  shape?: 'point' | 'interval' | 'chain'
+  date_confidence?: 'exact' | 'month_known' | 'year_only'
+  interval_start?: string
+  interval_end?: string
+  chain_parent_event_id?: string
+  milestone_label?: string
 }
 
 type LelQueryResponse = {

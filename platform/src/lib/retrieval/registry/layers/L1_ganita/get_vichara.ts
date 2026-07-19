@@ -32,6 +32,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { grahaCodeOf } from '@/lib/retrieval/address_resolver'
 
 const MAX_LIMIT = 500
 
@@ -189,11 +190,46 @@ export const getVicharaCapability: CapabilityDescriptor = {
       GROUP BY vichara_family`
 
     try {
-      const [rowsRes, countRes, familyCountRes] = await Promise.all([
+      let [rowsRes, countRes, familyCountRes] = await Promise.all([
         query<Record<string, unknown>>(rowsSql, [...params, limit, offset]),
         query<{ total: string }>(countSql, params),
         query<{ vichara_family: string; n: string }>(familyCountSql, params),
       ])
+
+      // D-2 finding §6.1 fix (leverage_index `subject=venus` false-empty, D-4a Lane A-1):
+      // chart_vichara.subject stores the 3-letter/graha CODE (e.g. 'VEN'), not the
+      // natural-language name. The UPPER(subject)=UPPER($n) filter above is CR-10-correct
+      // for code-vs-code case-insensitivity (Venus≡venus≡VENUS all resolve to the SAME
+      // literal string), but a caller passing the full name ("venus") never matches the
+      // stored code ("VEN") — a real 0-row miss disguised as an ambiguous empty_reason,
+      // not a genuine absence-of-data finding. Retry ONCE with the canonical graha code
+      // (shared `grahaCodeOf` resolver — same alias table every other L1/L2 surface uses,
+      // per the single-source mandate) whenever the raw subject filter produced zero rows
+      // and resolves to a DIFFERENT code than what was literally passed. Never silent: the
+      // resolved-alias retry is disclosed on the response via `subject_alias_resolved`.
+      let subjectAliasResolved: { input: string; resolved_code: string } | undefined
+      if (subjectRaw && Number(countRes.rows[0]?.total ?? 0) === 0) {
+        let resolvedCode: string | undefined
+        try {
+          resolvedCode = grahaCodeOf(subjectRaw)
+        } catch {
+          resolvedCode = undefined // not a recognized graha name/alias — leave the honest 0-row result as-is
+        }
+        if (resolvedCode && resolvedCode.toUpperCase() !== subjectRaw.toUpperCase()) {
+          const retryParams = params.map((v, i) => (i === params.length - 1 && subjectRaw ? resolvedCode : v))
+          const [rowsRetry, countRetry, familyCountRetry] = await Promise.all([
+            query<Record<string, unknown>>(rowsSql, [...retryParams, limit, offset]),
+            query<{ total: string }>(countSql, retryParams),
+            query<{ vichara_family: string; n: string }>(familyCountSql, retryParams),
+          ])
+          if (Number(countRetry.rows[0]?.total ?? 0) > 0) {
+            rowsRes = rowsRetry
+            countRes = countRetry
+            familyCountRes = familyCountRetry
+            subjectAliasResolved = { input: subjectRaw, resolved_code: resolvedCode }
+          }
+        }
+      }
 
       const total = Number(countRes.rows[0]?.total ?? 0)
       const rows = rowsRes.rows ?? []
@@ -230,7 +266,7 @@ export const getVicharaCapability: CapabilityDescriptor = {
       }
 
       const empty_reason = total === 0
-        ? `No chart_vichara rows for chart ${chart_id}${ayanamsha_id ? ` at ayanamsha '${ayanamsha_id}'` : ''}${family ? ` for family '${family}'` : ''}${domain ? ` for domain '${domain}'` : ''} — either ga_vichara has not been built for this chart yet, or these filters genuinely match nothing.`
+        ? `No chart_vichara rows for chart ${chart_id}${ayanamsha_id ? ` at ayanamsha '${ayanamsha_id}'` : ''}${family ? ` for family '${family}'` : ''}${domain ? ` for domain '${domain}'` : ''}${subjectRaw ? ` for subject '${subjectRaw}'` : ''} — either ga_vichara has not been built for this chart yet, or these filters genuinely match nothing. NOTE: chart_vichara.subject stores the graha CODE (e.g. 'VEN', 'MOON'), not the full name — a natural-language subject value is auto-resolved via the shared graha alias table when possible (see 'subject_alias_resolved' when that succeeds); if you still see this message with a subject filter set, the resolved/literal code genuinely has no rows for the other filters in play.`
         : undefined
 
       return {
@@ -242,6 +278,7 @@ export const getVicharaCapability: CapabilityDescriptor = {
           total_matching: total,
           more_available: total > offset + rows.length,
           filters: { ayanamsha_id, family, domain, subject: subjectRaw, limit, offset },
+          ...(subjectAliasResolved ? { subject_alias_resolved: subjectAliasResolved } : {}),
           ...(empty_reason ? { empty_reason } : {}),
           provenance: { tables: ['chart_vichara'], asset_id: 'ga_vichara' },
         },
