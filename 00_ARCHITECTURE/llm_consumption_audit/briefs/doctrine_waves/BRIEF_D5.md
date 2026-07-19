@@ -3,10 +3,10 @@ artifact: BRIEF_D5
 type: WAVE BRIEF (FROZEN — §B slots bind at wave open)
 wave: D-5 — Gochara-Chitra (the configuration-scanning temporal engine)
 version: 1.0
-status: FROZEN — cut from TEMPORAL_ENGINE_ARC_PLAN_v1_0.md §4 + SANKALPA_GOCHARA_CHITRA_v1_0.md,
-  bound against D-4a's SHIPPED reality (live-probed 2026-07-19, pre-D-5 readiness pass — see
-  §B slot values below, every one is a verified fact, not an assumption). Awaiting the native's
-  separate D-5 kickoff directive; this session does NOT open the wave.
+status: BOUND — wave OPENED 2026-07-19T08:31:47Z on native kickoff directive. Binder pass
+  (BIND_D-5.md) re-confirmed gate-zero + all §B slots live; CR-113 closed, CR-114 dispositioned
+  non-blocking. §B slot values below remain the FROZEN-at-freeze snapshot (2026-07-19, pre-D-5
+  readiness pass); BIND_D-5.md is the re-confirmation record.
 governing: CONDUCTOR_PROTOCOL.md · ESCALATION_POLICY_v1_0.md · ADJUDICATOR_CHARGE_v1_0.md ·
   TEMPORAL_ENGINE_ARC_PLAN_v1_0.md §4 (engineering decomposition) ·
   SANKALPA_GOCHARA_CHITRA_v1_0.md (vision/doctrine framing) · DIS.027/028/029 (DR-14/15/16,
