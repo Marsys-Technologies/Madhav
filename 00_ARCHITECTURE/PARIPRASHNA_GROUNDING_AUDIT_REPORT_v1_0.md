@@ -23,7 +23,8 @@ governing_inputs:
 
 The PG-1 wave ran 12 read-only lanes against `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`
 (v0.5) and the live tree/DB/infra. **87 findings, all verified ACCEPT** by the
-Opus verification floor (two lanes — R-3, Q-1 — required an attempt-2 correction,
+Opus verification floor <!-- [CORRECTED 2026-07-19 / PG-2 — PG2-M1-0001]: 87 → 98 post-addendum (87 primary + 11 G.1 reconciliation rows); see §3 correction block. -->
+ (two lanes — R-3, Q-1 — required an attempt-2 correction,
 recorded in §Provenance below). This report synthesizes them; the sibling artifact
 `RETRIEVAL_SYSTEM_TRUTH_v1_0.md` holds the current-state system description.
 
@@ -118,6 +119,19 @@ in §16.1, not a new defect.
 ---
 
 ## §3 — Findings by severity
+
+> **[CORRECTED 2026-07-19 / PG-2 — `PG2-M1-0001`]** Two counts in this section (and in
+> the frontmatter L6, `governing_inputs` L17, and body L25/L122) are **stale**. The
+> original numbers are left visible below (history is not rewritten); the corrected
+> figures are: **(1) findings count is 98, not 87** — the 87 primary-lane findings were
+> reconciled to 98 by the 11-row G.1 addendum (commit `75b42b5a`, 07:04, *after* this
+> report was sealed at `6336c218`, 06:56), a fact `REPORT_PG-1.md` L21 already discloses;
+> the cited `pg1_findings.jsonl` has 98 lines. **(2) critical count is 6, not 5** — the
+> "critical | 5" row below undercounts by one; six critical-severity findings exist
+> (`D3-0004, Q1-0001, Q1-0007, Q1-0012, C2-0001, C2-0008` — two JSON serializations
+> masked the sixth), and this section's own critical-row *examples* already enumerate all
+> six. Both are B.8 versioning-hygiene defects, independently verified by PG-2's M-1
+> meta-audit; **neither voids the GATE GREEN verdict** (M-1 topline `PG2-M1-0012`).
 
 Across all 87 findings (all ACCEPT):
 
