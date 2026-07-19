@@ -1,9 +1,9 @@
 ---
 artifact: PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md
 canonical_id: PARIPRASHNA_TARGET_ARCHITECTURE
-version: 0.5
+version: 0.6
 status: DRAFT — LIVING
-verified_against_tree: 2026-07-19 (full sweep, post-adversarial-review — see §0.5)
+verified_against_tree: 2026-07-19 (full sweep, post-adversarial-review + PG-1 grounding-audit integration — see §0.5, §16.7, §20)
 authored_by: Claude (Cowork) + Fable 5 sub-agents, in consultation with the native
 opened: 2026-07-19
 supersedes: none (new artifact)
@@ -113,7 +113,12 @@ written. Four counts were also wrong. See T-7.
    work depends on** before acting. This document is a design of record, not a
    substitute for looking.
 
-**Verified as of: 2026-07-19** (full sweep, post-adversarial-review).
+**Verified as of: 2026-07-19** (full sweep, post-adversarial-review; re-grounded
+against the working tree/DB/infra by the **PG-1 grounding-audit wave** — 87 findings,
+all verified ACCEPT by the Opus floor. PG-1 corrections are marked `[CORRECTED PG-1]`
+with the driving finding id; new forensic defects are appended in §16.7; the audit
+report is `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md` and the current-state system
+description is `RETRIEVAL_SYSTEM_TRUTH_v1_0.md`).
 
 ### §0.6 Standing relative to other governance artifacts
 
@@ -151,7 +156,7 @@ Decisions ruled by the native. Each is binding until explicitly revisited.
 | **D-13** | The streaming/render bar is **Claude Code and Gemini** — robustness and resilience of presentation. | 2026-07-19 | Qualified by §18/T-1: adopt their *choreography*, reject their *epistemic opacity*. |
 | **D-14** | Internal register (layer names, asset ids, `MSR`, `SIG.*`, table names) **must not appear in user-facing prose**. | 2026-07-19 | Architectural fix, not a prompt fix. Applies **universally — to every user including the native**. §13. |
 | **D-15** | **No audience tier. No depth parameter. Acharya-grade by default, always.** | 2026-07-19 | The legacy model had a tier structure; it was deliberately torn down and must not return. Extends §N.4 ("no audience tier — writers emit all rows; serve-time governs access") from the build layer to the serve layer. The tier idea smuggled in a false assumption: *that plain language means a lesser reading*. The opposite is true — a real acharya explains precisely in words the person can hold. Speaking plainly **is** the higher standard. Consequences: A-16 is struck; OT-9 closes; the engine signature loses `depth` and `tier`. §13.4. |
-| **D-17** | **Sequencing inverts: build the render bet first, as a shim over the existing engine. Capture starts week one.** | 2026-07-19 | Adopted from the adversarial review. v0.1–v0.4 scheduled four phases of invisible substrate work in front of the native's actual daily pain, and validated the architecture's most falsifiable bet last — the exact conditions under which a rebuild stalls and gets torn down a second time. P0' proves or kills the core bet in 3–4 weeks with a disposable shim, no monorepo, no store change, no planner work. Prediction capture moves from P6 to week one, because every month of delay loses calibration data forever on multi-year windows. **A-01 (monorepo) demoted** from P0 gate to optional — its justification was obsolete (§8.5). **OpenRouter and Tier C descoped** from the target. §19. |
+| **D-17** | **Sequencing inverts: build the render bet first, as a shim over the existing engine. Capture starts week one.** | 2026-07-19 | Adopted from the adversarial review. v0.1–v0.4 scheduled four phases of invisible substrate work in front of the native's actual daily pain, and validated the architecture's most falsifiable bet last — the exact conditions under which a rebuild stalls and gets torn down a second time. ~~P0' proves or kills the core bet in 3–4 weeks with a disposable shim, no monorepo, no store change, no planner work.~~ **[CORRECTED PG-1 — `PG1-C2-0001`/`PG1-C2-0008`, critical]** The "disposable shim over the existing engine, no planner work, **old route untouched**, 3–4 weeks" premise is **FALSE as scoped.** A pure translation shim can re-label the events that already exist but **cannot** emit `turn.open` *before the planner runs* — the one event §19.7's "work visible immediately" row (and the whole dead-air bet) depends on — because today no SSE stream exists until `runAdapterDispatch` at `route.ts:988`, *after* the planner (`:436`) and tool fetch (`:752`), and the two planner/bundle 422 bail-outs (`:447`, `:803`) are structurally incompatible with an already-open stream. Emitting `turn.open` early requires hoisting `createUIMessageStream`, moving planner+tool-fetch into the stream `execute` body, and converting both 422s to in-stream errors — **a reorder of the very route D-17 promises to leave untouched.** Four §12.3 events (`citation.define`, `block.commit`, `reasoning.open/close`, keyed `activity.upsert`) have no source and need NEW emission, and §19.7's "no `as any` in the writer path" row is violated at six existing sites. Honest estimate for the full §19.7 gate: **~6–9 weeks with a bounded route reorder**, not 3–4 weeks untouched. **Native's call (PC-2, unresolved — now OT-12):** (1) keep 3–4wk but descope P0' to the render bet only (accept `turn.open` ships *after* planning, defer the dead-air row — which does not prove the bet P0' exists to prove); or (2) keep the full gate at ~6–9wk with the route reorder. The render HALF is genuinely cheap (Streamdown already does it, `PG1-C2-0006`); the risk lives in the SSE/route half, not the render half. Prediction capture moves from P6 to week one, because every month of delay loses calibration data forever on multi-year windows. **A-01 (monorepo) demoted** from P0 gate to optional — its justification was obsolete (§8.5). **OpenRouter and Tier C descoped** from the target. §19, §19.7, OT-12. |
 | **D-18** | **Verification standing: current-state claims are re-verified at every version bump; corrections are made in place with the error visible.** | 2026-07-19 | v0.1–v0.4's §8.5 was materially false when written, along with four counts. This is the repo's own GA.1 failure mode applied to an architecture document. §0.5, T-7. |
 | **D-16** | **The session pin is renamed and restructured: it is a per-turn provenance stamp, not a session pin.** | 2026-07-19 | Native's challenge: §N.3 mandates delete-then-insert, so exactly one build of a chart exists in Postgres and there is no archive. **A pin therefore cannot pin** — it has no power to hold a conversation at an earlier build, because that build is gone. The construct is a *witness*, not a lock. Restructured accordingly: (a) renamed **provenance stamp**; (b) moved from mutable `mcp_sessions.state_json` to immutable per-turn `conversation_messages.metadata_json`; (c) drift is detected by comparing this turn's stamp to the previous turn's, needing no shared session state; (d) **copied into every prediction-ledger row at confirmation time, never referenced** — a ledger row is an immutable historical claim and must not point at mutable state; (e) removed from the engine's input signature — provenance comes **out** with the answer, since the engine reads current build state itself. Deletes a mutable shared-state construct and its §31.3 collision-mitigation complexity. §11.4. |
 
@@ -180,12 +185,12 @@ working architecture. They are open to challenge but are the current baseline.
 | A-35 | **The `audience_tier` residue is excised**, including the load-bearing prompt-template lookup that today produces different prose per tier. | §13.7 |
 | A-36 | **Emotional register is a design input**: pacing, calibrated framing, calm gaps, attributive remedy language. | §13.8, §13.9 |
 | A-02 | All 45 tool aliases are deleted; canonical naming is `layer_noun_verb`. `tool_name_bridge.ts` survives only for replaying persisted conversations. | §8.2 |
-| A-03 | Three registry projections: MCP-full, MCP-compact (~25–35 umbrellas + `marsys_drill`), Chat (planner-filtered per turn). | §8.3 |
+| A-03 | Three registry projections: MCP-full, MCP-compact (~25–35 umbrellas + `marsys_drill`), Chat (planner-filtered per turn). **[CORRECTED PG-1 — `PG1-R1-0001`/`-0002`/`-0003`, `PG1-R1-0005`]** Confirmed UNBUILT (server registers all tools unconditionally; `marsys_drill` in doc prose only). Sizing baseline corrected: the "one registry" is **119** `marsys://tool/*` URIs, served as **139** MCP tool names (alias layer), documented internally as a stale **120**, and audited at BIND against **113** — which is `CAPABILITY_MANIFEST.json`, a governance-artifact catalog, **not** an MCP registry (category error). The MCP-compact umbrella count must derive from 119, never 113/120. | §8.3 |
 | A-04 | A `mutation: true` capability class is introduced; sidecar-served tools are pulled into the registry. | §8.4 |
 | A-05 | `density_contract` becomes **mandatory** on every `CapabilityDescriptor`. | §8.6 |
-| A-06 | One planner **pipeline**, not three planners: scope → route → constrained LLM synthesis → vidhi validator emitting a `PlanReceipt`. CR-28 closes with one intent classifier. | §9 |
-| A-07 | **One agentic loop, two doors.** Extracted as a channel-agnostic service; MCP gets `prashna_ask`. | §6.3 |
-| A-08 | **Neutral/canonical message store**: `conversation_messages` + `message_parts` child rows. Replaces the AI-SDK `UIMessage` blob. | §11.1 |
+| A-06 | One planner **pipeline**, not three planners: scope → route → constrained LLM synthesis → vidhi validator emitting a `PlanReceipt`. CR-28 closes with one intent classifier. **[CORRECTED PG-1 — `PG1-R3-0001`/`-0005`/`-0006`]** Reality is **worse than "three planners": FOUR planner surfaces, two live-but-incompatible** (`PipelinePlan` on the web consult route vs `VidhiPlan` on MCP `plan_retrieval` — the identical question yields two non-interoperating plan objects), **two dead islands** (`retrieval/router/`, `lib/vidhi/compiler.ts`). **`PlanReceipt` is absent from code entirely** (docs-only, zero `.ts` hits) — its de-facto shipped analogue is the MCP `VidhiPlan` + `CompletenessReceipt`. The unification is **week-scale integration debt, not a contradiction** (§9.5, `PG1-R3-0007`): ~80% already exists as `VidhiPlan`; the real cost is a total `tool_name↔primitive_id` namespace map + wiring the web route through the vidhi compiler (coupled to the same route reorder C-2 priced). Do NOT treat A-06 as blocked. | §9, §9.5 |
+| A-07 | **One agentic loop, two doors.** Extracted as a channel-agnostic service; MCP gets `prashna_ask`. **[CORRECTED PG-1 — `PG1-R3-0002`]** HALF-BUILT: the loop IS a standalone module (`synthesis/agentic_loop.ts`) but its **only** live caller is the web dispatch (route-coupled), and **`prashna_ask` has ZERO source hits** across `platform/src` + `platform-mcp/src` (the apparent matches were the substring of the *unrelated* horary tool `prashna_undertaking_get`). So **"two doors" is really one door** (web); the channel-agnostic second door is unbuilt. §18/T-2's "D-05 safe only if `prashna_ask` ships" is currently unmet. | §6.3 |
+| A-08 | **Neutral/canonical message store**: `conversation_messages` + `message_parts` child rows. Replaces the AI-SDK `UIMessage` blob. **[CORRECTED PG-1 — `PG1-R3-0003`, `PG1-D1-0002`/`-0003`]** PARTIAL & mis-specified: `conversation_messages` exists but parts are a `parts_json` **blob column** (GIN-indexed), **not** normalized `message_parts` child rows, and `UIMessage` remains live across ~10 surfaces (not replaced). Critically, **every conversation table is empty (0 rows)** while the same DB holds 276,206 `chart_facts` — so the `parts_json` migration is a **green-field schema-hardening problem (add the version discriminator now, before the first row), NOT the "unverifiable salvage against a legacy corpus" F-25e frames.** There is no corpus to shape-infer. | §11.1 |
 | A-09 | Model plane: registry-as-data + live health plane + explicit Tier A/B/C + OpenRouter meta-provider + CachePlanner + reasoning-token accounting. | §10 |
 | A-10 | ~~Session pin promoted from MCP-only to all conversations.~~ **RESTRUCTURED by D-16 (2026-07-19).** Now: a **per-turn provenance stamp** recorded on every assistant turn in both channels, copied immutably into ledger rows. Not session state. | §11.4 |
 | A-11 | **The AI SDK transport is replaced** by a typed SSE event protocol with a purpose-built client reducer. | §12.2 |
@@ -196,7 +201,7 @@ working architecture. They are open to challenge but are the current baseline.
 | ~~A-16~~ | ~~Three disclosure tiers — reader / practitioner / audit.~~ **STRUCK by D-15 (2026-07-19).** Replaced by: one reading, one register, audit detail as an **affordance** rather than a mode. | §13.4 |
 | A-17 | Register enforcement is a **pre-commit server-side gate**, not a prompt instruction. | §13.5 |
 | A-18 | Reader-facing vocabulary lives in the **capability registry** as a `register` block; missing labels fail CI. | §13.6 |
-| A-19 | NO-LEAKAGE is enforced four ways: DB role grants, registry flag, out-of-process ledger writer, CI canary. | §14.6 |
+| A-19 | NO-LEAKAGE is enforced four ways: DB role grants, registry flag, out-of-process ledger writer, CI canary. **[CORRECTED PG-1 — `PG1-D3-0004`, critical; `PG1-C1-0011`]** Arm 1 (DB role grants) is **0% built, not partial**: none of §7.4's five designed roles (`role_web_serve`, `role_orchestrator`, `role_ledger_write`, `role_jobs`, `role_sidecar`) exist in the live DB; a **single `amjis_app` credential** — the same one the web app serves every request with — holds full CRUD on `mimamsa_predictions` (384-row ledger with outcome data) and `mimamsa_calibration`, the exact two write surfaces `role_web_serve` is designed to be denied. Repo-wide grep for the five role names: zero hits. Treat NO-LEAKAGE arm-1 as entirely unbuilt before any production reliance (see F-25q, §7.4). | §14.6 |
 | A-20 | Verification centres on a **streaming replay harness** with a zero-shift budget for settled content. | §17 |
 
 ---
@@ -217,6 +222,8 @@ default.
 | **OT-7** | **Assent to "one registry, many generated projections."** | Every downstream registry decision | The native's D-08 sentence admits two readings: "same surface everywhere" vs "best surface per channel/tier". | Explicit ruling needed. §8.3 assumes the latter. |
 | **OT-8** | **Fate of `ConsumeChatV2.tsx` (2,304 lines).** | §12 execution | (a) Rebuild the UI shell on canonical parts. (b) Refactor in place. | Not yet assessed as a component. Given A-11/A-12 change the client's entire data model, (a) is likely, but this must be assessed before it is asserted. |
 | **OT-10** | **MCP profile selection — who decides whether a query gets the engine or the raw retrieval plane?** | The entire MCP surface design | See §6.5. (a) Both tools exposed, steer via tool descriptions. (b) **Two connection profiles selected at connect time** (consultation vs practitioner). (c) One connection, scope-gated. (d) `prashna_ask` only. | **(b) with (c) as the enforcement mechanism.** Owned by the MCP workstream (see §0.5); ruled there, recorded here. |
+| **OT-11** | **Which prediction ledger is canonical for the NO-LEAKAGE design?** *(raised PG-1 — `PG1-D3-0003`, F-25p)* | §7.4 role design; NO-LEAKAGE arm 1; which table `role_ledger_write` gates | Two disjoint ledgers exist: (a) `mimamsa_predictions` (L5 build-time, 384 rows, referenced by `mimamsa_calibration`/`phala_anchors`); (b) `mcp_predictions` (chat-side detector, 0 rows). | Undecided — needs a ruling before §7.4 roles are built. Lean: `mimamsa_predictions` is the populated, referenced ledger; either merge `mcp_predictions` into it or document the split. |
+| **OT-12** | **P0' scope — render bet only, or the full §19.7 gate?** *(raised PG-1 — `PG1-C2-0001`/`-0008`, critical; the PC-2 call D-17 defers to the native)* | The entire P0' sequencing and its timeline honesty | (a) Keep 3–4 weeks, **descope** P0' to the render bet only — `turn.open` ships *after* planning, dead-air row deferred (does not prove the bet P0' exists to prove). (b) Keep the full §19.7 gate, **budget ~6–9 weeks** with a bounded `consult/route.ts` + dispatch reorder, dropping "old route untouched". | Native's call. What is NOT honest is claiming the full gate in 3–4 weeks with an untouched route. See D-17 correction, §19.7. |
 | ~~OT-9~~ | ~~Sanskrit exposure policy at reader tier.~~ **CLOSED by D-15 (2026-07-19).** With no tiers, the question dissolves: Sanskrit is used where it *is* the substance (a yoga's name), glossed inline, **for everyone**. "Śaśa Yoga — Saturn strongly placed in its own sign in an angle." A layperson learns something; a practitioner reads past the gloss. One text serves both. | | |
 
 ---
@@ -811,6 +818,20 @@ they decline.
  model_health (probe results)
 ```
 
+> **[CORRECTED PG-1 — `PG1-D3-0001`/`-0003`, F-25r/F-25p]** The diagram above is
+> **target-state**; several of its table names do not exist in the live DB and must
+> not be read as current. **Absent:** `brahma_mimamsa_prediction_ledger`,
+> `brahma_mimamsa_answer_quality`, `brahma_phala_anchors`, and `message_parts`
+> (parts are a `parts_json` blob column on `conversation_messages`, per A-08
+> correction). **The real live tables:** `mimamsa_predictions` (384 rows — the L5
+> orchestrator-built ledger `mimamsa_calibration` + `phala_anchors` actually
+> reference), `phala_anchors` (384), `mimamsa_qa_eval` (147, the answer-quality
+> analogue), `mimamsa_calibration` (0). **Two disjoint prediction ledgers exist**
+> with no shared id space: this `mimamsa_predictions` (build-time, populated) and
+> `mcp_predictions` (chat-side detector path, **0 rows**) — the "single ledger" the
+> diagram and §7.4 NO-LEAKAGE design assume does not physically exist; §7.4 must
+> name which table `role_ledger_write` gates.
+
 ### §7.2 Build-side invariants (inherited, unchanged)
 
 - **§N.2** — the orchestrator is FROZEN. New assets onboard by writing a
@@ -859,6 +880,23 @@ they decline.
 
 The hard invariant: **`life_events` must never feed prediction generation,
 only post-hoc calibration.** Four enforcement arms in §14.6.
+
+> **[CORRECTED PG-1 — `PG1-D3-0004`, critical; F-25q]** The five roles above are
+> **entirely target-state — 0% built, not partially built.** `pg_roles` on the live
+> DB shows exactly one application role, **`amjis_app`** (plus Cloud SQL system
+> roles); none of `role_web_serve`/`role_orchestrator`/`role_ledger_write`/`role_jobs`/
+> `role_sidecar` exist, and a repo-wide grep for those five strings returns zero
+> hits. `amjis_app` — the single credential `platform/src/lib/db/client.ts` uses for
+> **every** web-serving request, including the consult chat route — holds full CRUD
+> (SELECT/INSERT/UPDATE/DELETE/TRUNCATE) on `mimamsa_predictions` (the 384-row ledger
+> with outcome data) **and** `mimamsa_calibration`, the exact two write surfaces
+> `role_web_serve` is designed to be denied. **Today the serving credential can leak
+> outcome data into new predictions — the NO-LEAKAGE invariant has no DB-level
+> backstop.** Before any production reliance, either create the five roles + migrate
+> the web app off `amjis_app` for read paths, or downgrade this section from an
+> enforced invariant to an application-level convention. Also: §7.4 must name **which**
+> physical ledger table `role_ledger_write` gates — two disjoint ledgers exist
+> (`mimamsa_predictions` populated vs `mcp_predictions` empty; F-25p).
 
 ---
 
@@ -1112,6 +1150,27 @@ empty / dark with CR references; tool + args resolved against
 `capability_version`; and a subsumption relation so "does this plan satisfy
 that floor?" is decidable rather than argued. **If that type is hard to write,
 the unification is not ready** — and discovering that early is cheap.
+
+> **[CONFIRMED + SHARPENED PG-1 — `PG1-R3-0007`, the falsification exercise (PC-3)]**
+> The unified plan type was actually sketched and stress-tested this wave. **Verdict:
+> WEEK-SCALE INTEGRATION, NOT A CONTRADICTION** — and the claim "the common plan
+> algebra does not exist" is **~80% wrong**: it already exists, unrecognized, as the
+> MCP `VidhiPlan`. `completeness_receipt.ts`'s `uniqueFloorItems()` already collapses
+> `[...floor, ...machine_band]` into one deduped addressable set keyed by
+> `primitive_id`; served/empty/dark with OPEN/LOGGED `cr_row` is done; tool+args
+> resolve per `CompiledFloorItem.live_tool` + `compileContract(chart_id)`, versioned
+> by `VIDHI_CAPABILITY_VERSION`; a `subsumes` relation over `primitive_id`
+> set-containment is trivially decidable. The **real cost (5–8 days)** is three
+> non-fatal gaps: (1) a total `tool_name↔primitive_id` namespace map + its CI proof
+> — the web `PipelinePlan` keys on `tool_name` (R-alias names) while `VidhiPrimitive`
+> keys on bare `live_tool` names, an overlapping-but-distinct namespace; (2) promoting
+> the free-text `llm_extension_note` band-3 to addressable `PlanItem`s; (3) wiring the
+> web consult route through the already-built vidhi compiler to emit the unified plan
+> — **coupled to the same `consult/route.ts` reorder C-2 priced** (§19.7, D-17). The
+> only contradiction candidate ("a deterministic floor cannot contain a
+> non-deterministic LLM plan in one set") resolves: LLM items are additive-only and
+> `subsumes` ignores them, preserving floor determinism. **A-06 is integration debt,
+> not a design impossibility — do not treat it as blocked.**
 
 ### §9.6 The acharya floor as the B.11 enforcement point
 
@@ -2625,8 +2684,8 @@ Preserved because each names a trap the rebuild must not re-enter.
 | Item | v0.1–v0.4 said | Verified 2026-07-19 |
 |---|---|---|
 | Alias count | 45 | **55.** Three sources disagree: 55 actual (35 direct `server.tool` + 17 `regAlias` + 3 `globalAlias`), 47 in the file header (`register_p1_aliases.ts:16`), 45 in the `server.ts` census (`:493`). Names missing from the census include `ganita_ayurdaya_get`, `ganita_medical_get`, `ganita_vichara_get`, `ganita_yoga_firings_get`, `kala_priority_ranking_get`, `phala_predictive_anchors_get`, `ref_sign_medical_get`. |
-| Total tools | ~118 | **Census constant says 120** (`REGISTERED_TOOL_COUNT`, `server.ts:520`); **raw `server.tool(` count is 126.** The health endpoint reports the hardcoded 120. The gap is the alias undercount. **The census is hand-maintained and wrong in both directions — this is exactly what D-08's generated projections exist to eliminate.** |
-| Planners | 3 | **2 live, 2 dead** — see §16.5. |
+| Total tools | ~118 | ~~**Census constant says 120** (`REGISTERED_TOOL_COUNT`, `server.ts:520`); **raw `server.tool(` count is 126.**~~ **[CORRECTED PG-1 — `PG1-R1-0002`/`-0003`, F-25i]** The "126 raw count" itself undercounts — it missed the `regAlias()`/`globalAlias()` helper registrations. The **live tool-name surface is 139** (120 census + 5 `registry_bridge.ts` + 3 `register_p1_synthesis.ts` + 10 `register_p1_aliases.ts` + 1 `register_p2_dasha_lord.ts`, the last imported/called at `server.ts:364` but never in the running total), over **119 distinct registry URIs** (`platform/src/lib/retrieval/registry/`). The health endpoint reports the stale 120. **Four numbers, none interchangeable: 119 registry URIs · 139 served tool names · 120 stale census · 113 = `CAPABILITY_MANIFEST.json`, a governance-artifact catalog, not an MCP registry at all (`PG1-R1-0001` category error).** This is exactly what D-08's generated projections exist to eliminate. |
+| Planners | 3 | ~~**2 live, 2 dead**~~ **[CORRECTED PG-1 — `PG1-R3-0001`]** **4 planner surfaces: 2 live-but-incompatible** (`PipelinePlan` on web consult vs `VidhiPlan` on MCP `plan_retrieval` — the identical question produces two non-interoperating plan objects), **2 dead islands** (`retrieval/router/`, `lib/vidhi/compiler.ts`). See §16.5. |
 | `density_contract` coverage | 6 of ~118 | **Confirmed: 6.** `get_dasha_lord_capability.ts:148`, `get_vichara.ts:124`, `get_yoga_dosha.ts:68`, `get_yoga_firings.ts:61`, `register_d9_judgment.ts:415`, `L2_bodha/query_signals.ts:226`. Five of six are L1. |
 
 ### §16.5 The planner census, corrected
@@ -2638,10 +2697,10 @@ v0.1–v0.4 said "three unreconciled planners." The adversarial review said four
 |---|---|---|
 | Live agentic loop | `platform/src/lib/synthesis/agentic_loop` | **LIVE** — the real loop; 18+ test files import it |
 | `pipeline_planner` | `platform/src/lib/pipeline/pipeline_planner.ts` | **LIVE** — what the chat route calls |
-| D2 router | `platform/src/lib/retrieval/router/` | **LIVE** |
-| vidhi compiler | `platform/src/lib/vidhi/` | **LIVE** — behind `plan_retrieval` |
+| D2 router | `platform/src/lib/retrieval/router/` | ~~**LIVE**~~ **[CORRECTED PG-1 — `PG1-R3-0001`]** **DEAD ISLAND** — zero production importer (only its own test + barrel). |
+| vidhi compiler | `platform/src/lib/vidhi/` | ~~**LIVE** — behind `plan_retrieval`~~ **[CORRECTED PG-1 — `PG1-R3-0001`]** **DEAD ISLAND** — `platform/src/lib/vidhi/compiler.ts` has zero production importer. The LIVE vidhi planner is **`platform-mcp/src/resources/vidhi/plan_builder.ts` (`buildVidhiPlan`)** behind MCP `plan_retrieval` — a *different* module from this platform-side one, which is an unwired duplicate. |
 | `adaptive_planner.ts` | `platform/src/lib/retrieval/**adapters**/agentic_loop/` | **DEAD** — 3.6KB; exports `planNextAction`/`shouldStopEarly`; its only importers are `loop_engine.ts` and `reflection.ts`, both siblings in the same folder. **The entire 7-file folder is an unreferenced island.** |
-| `singlePassPipeline` | `platform/src/lib/pipelines/single_pass/` | **DEAD BRANCH** — `selector.ts` docstring: *"R11E loop flags permanently true (WS-0 2026-06-04): all 5 providers use the agentic path unconditionally."* `AGENTIC_PROVIDERS` covers all five adapters, so single_pass is returned only for an unknown adapter id. Structurally live, operationally unreachable. |
+| `singlePassPipeline` | `platform/src/lib/pipelines/single_pass/` | ~~**DEAD BRANCH** — operationally unreachable.~~ **[CORRECTED PG-1 — `PG1-R3-0004`, supersedes both this row AND C-3's "not dead, do not delete"]** Precise status: a **test-load-bearing structural scaffold NOT on the runtime path.** The module has exactly 2 production importers (both internal to `lib/pipelines/`: the barrel + `selector.ts`), the selector's own exports have **zero** production importers (the selector never runs live), and `singlePassPipeline` is an inert descriptor (`{kind, describe()}`, no `run()`). The **actual** runtime single-vs-agentic decision is made inline at `run_adapter_dispatch.ts:314` (`useAgenticLoop && loopConfig ? runAgenticLoop(...) : adapter.chat(...)`), onfinish hardcoded `pipelineKind:'agentic'` at `:494`. So the live single-pass CODE PATH is the inline `adapter.chat` branch, not the module. The arch doc is right the *selector* never reaches it; C-3 is right it is not *orphan-deletable* (barrel + tests break); neither was precise. If deleting: remove selector + single_pass + agentic descriptor + their tests together; the live path is unaffected. |
 
 **Trap for the rebuild:** there are **two folders named `agentic_loop`** —
 `lib/retrieval/adapters/agentic_loop/` (dead island, contains
@@ -2650,8 +2709,17 @@ about the loop or the planner must name the full path. This near-namesake
 collision produced the erroneous census in v0.1–v0.4 *and* in the adversarial
 review.
 
-Net: the unification is **3 live planning components → 1 pipeline**, plus
-**deletion of two dead islands**. Materially smaller than "four planners", but
+Net: ~~the unification is **3 live planning components → 1 pipeline**, plus
+**deletion of two dead islands**. Materially smaller than "four planners"~~ **[CORRECTED
+PG-1 — `PG1-R3-0001`/`-0004`/`-0007`]** The precise live-planning inventory is: the
+**live agentic loop** (`synthesis/agentic_loop`, execution not planning), the **web
+`pipeline_planner`** (emits `PipelinePlan`), and the **MCP `plan_builder`** (emits
+`VidhiPlan`) — the last two are the two genuinely-divergent live *planners*, plus the
+two dead islands above (`retrieval/router/`, `lib/vidhi/compiler.ts`) and the inert
+`single_pass` scaffold. The unification is therefore **reconciling the web
+`PipelinePlan` onto the MCP `VidhiPlan` shape** (which already carries floor + dark +
+`capability_version`), and R-3's falsification (§9.5, `PG1-R3-0007`) prices this at
+**week-scale integration, not a contradiction** — ~80% already exists as `VidhiPlan`.
 §9.6 records why it is still harder than it looks.
 
 ### §16.6 Capabilities that do not exist today
@@ -2675,6 +2743,36 @@ that v0.1–v0.4 assumed away.
 | Remedy register guardrail | **PARTIAL** | The *citation* gate exists — `citation_check.ts:91` `PRESCRIPTIVE_CLASSES = {'remedial','predictive'}`, hard-failing zero-citation prescriptive responses at `:129–135`. Prompt-side `CALIBRATION_LANGUAGE_GATE` bans "will happen"/"guaranteed"; `remedial.ts:35,47` require naming the traditional source and framing as mitigation. **But nothing enforces "the tradition prescribes X" vs "you should do X"** — no lint on second-person imperative, no classifier on remedy register. The line is a prompt instruction checked by no code. See §13.8. |
 | Mobile design | **PARTIAL** | Tailwind `md:` breakpoints only — no `sm:`/`lg:`/`xl:` tiering. Mobile drawer `ConsumeChatV2.tsx:1966`, sidebar toggle `:2056` (44px touch target), camera shortcut `:1224–1233`. **No `useMediaQuery`/`matchMedia`, no touch/swipe handlers, no virtual-keyboard handling.** A two-state desktop/mobile split, not a responsive system. |
 | Accessibility | **PARTIAL — better than assumed** | Genuinely present: message log landmark `ConsumeChatV2.tsx:1579–1583` (`role="log" aria-live="polite" aria-atomic="false"`), streaming markdown toggling `aria-live` only while streaming (`MarkdownContent.tsx:172–173`), SR-only announcer (`AssistantMessage.tsx:129`), `role="status"` across four components, `role="alert"` on validator bands, icons `aria-hidden`, buttons labelled. **Missing:** focus trap for modal/drawer, skip links, and any focus management beyond textarea `.focus()`. **This is an asset to preserve, not a gap to fill** — see §12.13. |
+
+### §16.7 New forensic defects — PG-1 grounding-audit wave (2026-07-19)
+
+Append-only, per §21 rule 3. Continues the F-number sequence from §16.1 (highest was
+F-25g). Each row is a NEW current-state defect surfaced by the PG-1 wave and not
+already carried above; the driving PG1 finding id is cited. Full detail:
+`PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md §2`.
+
+| # | Defect | Severity | Location / evidence | Finding |
+|---|---|---|---|---|
+| **F-25h** | Stale self-referential parity comment — `run_adapter_dispatch.ts:357` claims the adapter citation gate "mirrors the legacy gate at `route.ts:1373-1475`", but `consult/route.ts` is only 1030 lines; the range does not exist. The "mirrors legacy" framing throughout §16 may itself be stale — the adapter path may be the only citation gate left. | low | `run_adapter_dispatch.ts:357`; `consult/route.ts` (1030 lines) | `PG1-C1-0012` |
+| **F-25i** | Hand-maintained tool census wrong — `server.ts:522 REGISTERED_TOOL_COUNT = 120` (self-labelled "authoritative") undercounts 4 files; live surface is **139** tool names over **119** registry URIs; the health endpoint reports the stale 120. GA.1/B.8 drift class. Fix: compute from `server.registrationCount` at runtime. | high | `server.ts:522,364`; `registry_bridge.ts`; `register_p1_aliases.ts` | `PG1-R1-0002` |
+| **F-25j** | `drill_pointers`/`recover_via` degrade to the literal string `"unknown_tool"` on sidecar/alias-backed tools (`kala_windows_get` ×3, `phala_outlook_get` ×2), making the recovery pointer unusable ("call `unknown_tool` again"); registry-backed L1 tools resolve correctly. Tool-name-threading bug in the trim-report constructor for the alias path. | medium | `mcp:kala_windows_get`, `mcp:phala_outlook_get`; fallback string `register_p1_ganita.ts:148`, `register_p1_aliases.ts:181` | `PG1-R2-0001` |
+| **F-25k** | `phala_anchors_get` schema over-promises — `date_range` is `.optional()` in the tool JSON/Zod schema but **mandatory** at the sidecar (`/api/compute/phala/event_anchors` 422s "Field required"); the alias wrapper synthesizes no default. First-day hard error on documented usage. | medium | `register_p1_aliases.ts:1294-1297`; live 422 | `PG1-R2-0002` |
+| **F-25l** | `ref_dignity_reference_get` returns **400 `internal_error`** ("platform DB query failed: 400") on its flagship documented filter `planet=Saturn` — a broken code path on a non-exotic parameter, surfaced as a 500-class error instead of an honest empty. | high | `mcp:ref_dignity_reference_get` | `PG1-R2-0003` |
+| **F-25m** | Default legacy envelope leaves top-level `pagination.total` null even when `content.total` is known one level down (520/340/39 observed) — false "total unknown"; populated only on the v3 path. Fix: always promote `content.total`. | medium | `mcp:ganita_strength_get`/`ganita_condition_get`/`ganita_nakshatra_get` | `PG1-R2-0008` |
+| **F-25n** | Three KEYSTONE sidecar tools (`mimamsa_calibration_get`, `mimamsa_insight_get`, `phala_mitigation_get`) double-encode their payload as a JSON **string** one level deeper than every other tool; `phala_mitigation_get`'s is additionally truncated mid-JSON by the budget. Breaks uniform envelope parsing. (Confirms A-04's sidecar pull-in inventory from the wire shape.) | medium | `mcp:mimamsa_calibration_get`, `mcp:phala_mitigation_get` | `PG1-R2-0010` |
+| **F-25o** | Dead cost-accounting schema — `llm_usage_events`, `llm_provider_cost_reports`, `llm_cost_reconciliation` exist with the exact cost-attribution columns §14A.2 says are needed, and hold **0 rows each**, never wired into the request path. `query_trace_steps.latency_ms` is NULL on all 493+ rows, `step_type` is `'sql'` only. Cost/latency budgets in §14A.2/§17.4/§17.8 are design targets against **zero measured baseline**. Fix: wire the existing schema, don't design a new one. | medium (blocks §17.4/§17.8) | `db:llm_usage_events`, `db:query_trace_steps` | `PG1-D2-0001`/`-0002` |
+| **F-25p** | Two disjoint, unreconciled prediction ledgers with no shared id space — `mcp_predictions` (chat-side detector path, **0 rows**, id `PPL.CAL.*`) and `mimamsa_predictions` (L5 build-time, **384 rows**, the one `mimamsa_calibration`/`phala_anchors` reference). §7's diagram presents one ledger; the codebase built two. §7.4 NO-LEAKAGE cannot say which it gates. | medium | `calibration_producer.ts:61`; `assetClearSpec.ts:119`; `db:` counts | `PG1-D3-0003` |
+| **F-25q** | **NO-LEAKAGE role separation 0% built (critical).** None of §7.4's five roles exist; the single `amjis_app` credential the web app serves every request with holds full CRUD on the prediction ledger + calibration it is designed to be walled from. Repo-wide grep for the five role names: zero hits. See §7.4 correction. | critical | `db:pg_roles`, `db:role_table_grants`; `client.ts:58` | `PG1-D3-0004` |
+| **F-25r** | §7 pipeline-diagram table names do not exist live — `brahma_mimamsa_prediction_ledger`, `brahma_mimamsa_answer_quality`, `brahma_phala_anchors` return zero rows in `information_schema`. Real tables: `mimamsa_predictions`, `mimamsa_qa_eval`, `phala_anchors` (no `brahma_` prefix). Target-state mislabelled as current. See §7.1 correction. | medium | `db:information_schema.tables` | `PG1-D3-0001` |
+| **F-25s** | Build-side interpretive-data integrity defects — `bodha_discoveries` hypothesis rows carry an internal-varga citation mismatch (`aggregate_D108` row with `meaningfulness_basis: aggregate_d10`); `mimamsa_insight_units` verdict strings render grade→word incoherence (`denied` at a neutral grade 5.0/10, band `[0.35,0.65)`, prose "Conditional"). A build-time consistency assertion (verdict word × grade × band; varga citation) is missing before persistence. | medium | `db:bodha_discoveries`, `db:mimamsa_insight_units` | `PG1-Q1-0005`/`-0009` |
+| **F-25t** | Cloud SQL PITR **disabled** on prod `amjis-postgres` (`pointInTimeRecoveryEnabled=False`); daily backups exist (7 retained, 02:00) but **no PITR** and **no restore drill ever executed** against a scratch instance — worst-case RPO ~24h on the irreplaceable ledger/conversation tables, not the near-zero §14A.3 calls for. Resolves §16.6's "nobody knows" backup row to verified-and-insufficient. | high | `gcloud sql instances describe amjis-postgres` | `PG1-O1-0001`/`-0002` |
+| **F-25u** | `chart_facts` live row count diverges **+402%** from the sealed L1_GANITA_CLOSURE canonical (27,554 canonical vs **138,519** at BIND probe; **276,206** in later lane probes) — outside §8.7's ±1% tolerance, and the number is unstable across probes. Either legitimate post-closure enrichment or an idempotency/duplication defect; **undiagnosed** (PG-1 read-only). A sealed closure figure and the live table disagree by ~5×. | high | BIND B-5; `db:chart_facts` (`PG1-D1-0003`, `PG1-D3-0002`) | BIND B-5 |
+| **F-25v** | The Bearer-key MCP auth face returns **401** (`POST /mcp`, `Authorization: Bearer $MARSYS_MCP_KEY` → "Invalid or missing Bearer API key") while the `?api_key=` seat is live. Stale/rotated prod key or an auth regression — unverifiable root cause, confirmed symptom; blocked the R-2 Bearer-face sweep and the verifier's `mcp:` evidence replay. | medium | BIND B-3 | BIND B-3 |
+
+**Corroboration (not a new F-number):** `PG1-C2-0007` confirms the writer path is
+saturated with `as any` (six sites) and reasoning has no open/close lifecycle —
+this corroborates existing **F-02/F-03** and is the direct cause the §19.7 gate row
+"no `as any` in the writer path" cannot be met by a shim (see §19.7 correction).
 
 ---
 
@@ -2923,6 +3021,28 @@ evaporate — every past turn stays re-openable to its full plan/tool/gate
 record at audit tier. The record-keeping obligations here are stricter than
 either comparator's.
 
+### T-9 — The instrument has never produced a served reading; §J is unproven *(new PG-1)*
+
+*(raised by the PG-1 grounding audit — `PG1-Q1-0001`/`-0012`, critical.)* The entire
+conversation store is empty (`conversation_messages = 0`, `llm_call_log = 0`, every
+conversation-adjacent table 0 rows) while the same DB holds 276,206 `chart_facts`.
+**No user-facing reading has ever left this instrument and been persisted.** Two
+consequences the design must hold honestly: **(1)** the §J acharya-grade claim is, as
+of this audit, *entirely unvalidated by any live output* — it is aspirational until
+the serve-time synthesis path runs end-to-end and real readings are put in front of
+the bar; and **(2)** every current-state audit of the *serving* path in this wave
+(prediction detector firing, calibration write-through, envelope behaviour under real
+traffic) is an audit of an **unexercised** path, so "wired but 0 rows" cannot be read
+as "works" — it may equally be "never traffic'd" or "silently failing in a swallowing
+try/catch." The deeper tension Q-1 surfaced: the persisted interpretive proxies (L5
+verdicts, discoveries, remedies) **describe the instrument's own machinery — z-scores,
+salience, embedding distance, internal signal keys — in place of reading the chart.**
+The pipeline computes structure impeccably and stops one layer short of the reading.
+This is a *synthesis-layer* gap, not the (by-design) STRUCTURAL-mode calibration gap —
+and it is not resolved by any decision currently in §1. It must not be silently closed
+(§21 rule 4). Gate §J claims on a live eval of served prose, never on the structural
+scaffold.
+
 ---
 
 ## §19 — Sequencing (RESTRUCTURED v0.5 — shim-first)
@@ -3165,6 +3285,19 @@ shape — is designed *for* him, each with a one-paragraph ratification ask.
 The spike is a falsification instrument, so its pass condition is stated
 before it is built:
 
+> **[CORRECTED PG-1 — `PG1-C2-0001`/`-0007`/`-0008`, critical]** This gate is
+> **unsatisfiable by a translation shim over the untouched route** (D-17's scoping).
+> The **"Work is visible immediately | POST → `turn.open` < 300 ms"** row cannot be
+> met today: no SSE stream exists until `runAdapterDispatch` (`route.ts:988`), *after*
+> the planner (`:436`) and tool fetch (`:752`), and the two 422 bail-outs (`:447`,
+> `:803`) are structurally incompatible with an already-open stream. The **"no `as
+> any` anywhere in the writer path"** clause of the reasoning-lifecycle row is
+> violated at six existing sites (`run_adapter_dispatch.ts:294,325,329,334,354,573`).
+> Passing the full gate requires a bounded reorder of `consult/route.ts` + the
+> dispatch delta loop and ~6–9 weeks, **not** 3–4 weeks with an untouched route (see
+> D-17 correction, OT-12). The render rows (settled-content/caret/no-transmutation)
+> ARE cheaply achievable — Streamdown already implements them (`PG1-C2-0006`).
+
 | Assertion | Measured by |
 |---|---|
 | Settled content never moves | CLS contribution ≈ 0 above the volatile tail; per-block rect identity frame-over-frame (§17.2) |
@@ -3183,6 +3316,7 @@ before it is built:
 
 | Version | Date | Change |
 |---|---|---|
+| **0.6** | **2026-07-19** | **PG-1 grounding-audit integration (Lane Z-1 synthesis).** The independent 12-lane PG-1 wave re-grounded this document against the working tree, live DB, and infra — 87 findings, all verified ACCEPT by the Opus floor. Corrections made **in place with the original visible** (`[CORRECTED PG-1]` + finding id), never deleted, per §0.5/D-18. **Register corrections:** D-17's "3–4 week disposable shim, no planner work, old route untouched" premise struck as **FALSE as scoped** (`PG1-C2-0001`/`-0008`) — a shim cannot emit `turn.open` before the planner without a `consult/route.ts` reorder; full §19.7 gate is ~6–9wk (new fork **OT-12** for the native's PC-2 call). **§1.1 assumptions:** A-03 capability counts corrected (**119 registry URIs / 139 tool names / 120 stale census / 113 = wrong artifact**, a category error, `PG1-R1-0001..0003`); A-06 corrected (**4 planner surfaces, 2 live-divergent** `PipelinePlan`↔`VidhiPlan`, 2 dead islands; **`PlanReceipt` absent from code entirely**); A-07 corrected (**"two doors" is one door** — `prashna_ask` has ZERO source hits); A-08 corrected (parts are a `parts_json` **blob**, not child rows; store is **empty** so the migration is green-field schema-hardening, not salvage); A-19 corrected (**NO-LEAKAGE arm-1 is 0% built** — single `amjis_app` credential has full CRUD on ledger + calibration, critical). **§7.1/§7.4:** target-state table names (`brahma_*`) and the five NO-LEAKAGE roles do not exist live; two disjoint prediction ledgers (**OT-11**). **§9.5/§16.5:** the planner-unification is **confirmed week-scale integration, not a contradiction** (`PG1-R3-0007`, ~80% already in MCP `VidhiPlan`); `single_pass` precise status corrected (**test scaffold, not on the runtime path** — supersedes both the prior "dead branch" AND C-3's "not dead"); D2 router + platform `lib/vidhi/compiler.ts` corrected to **dead islands**. **§16.4 counts** corrected (139/119, not 126). **§19.7** annotated as unsatisfiable by an untouched-route shim. **NEW §16.7 — fifteen forensic defects F-25h…F-25v:** stale parity comment; stale tool census; `unknown_tool` drill fallback; `phala_anchors_get` 422 / `ref_dignity_reference_get` 400 (first-day hard errors); null-total legacy envelope; double-encoded KEYSTONE sidecars; dead cost-accounting schema (cost/latency **unmeasurable today**); two disjoint prediction ledgers; **NO-LEAKAGE roles 0% built (critical)**; `brahma_*` phantom tables; build-side grade/varga incoherence; **Cloud SQL PITR disabled + no restore drill**; **`chart_facts` +402% divergence from the sealed L1 closure**; **Bearer-key MCP 401**. **NEW T-9:** the instrument has never produced a served reading — §J is unproven and every serving-path audit is of an unexercised path. Sibling artifacts authored this wave: `RETRIEVAL_SYSTEM_TRUTH_v1_0.md` (current-state system description) and `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md` (full report: A1–A32 verdict table — 29/32 audited — the verbatim shim-feasibility=NO, Q-1 reading-quality, and R-3 falsification verdicts, and the prioritized immediate-fixes list led by wiring `codegen:check` into CI). |
 | **0.5** | **2026-07-19** | **Adversarial-review integration — the largest revision to date. Every finding from the independent Fable 5 review is implemented, plus a full re-verification sweep that found further errors the review had not caught.**<br><br>**CORRECTIONS (the document was wrong):** §8.5 rewritten — the envelope mirror **was already deleted and codegen'd** (`platform-mcp/src/generated/envelope.ts`, four codegen scripts in `package.json`); "the codegen lane never landed" was false; **A-01 monorepo demoted** from P0 gate to optional since its justification was obsolete; the repo's own §19 SINGLE-SOURCE CONTRACT GENERATION mandate and its brief-§6.2 STRANGLER discipline (*"no single PR regenerates the estate"*) are now quoted and honoured, replacing v0.1–v0.4's big-bang cutovers. **New gap surfaced by the correction: `codegen:check` exists and no CI workflow invokes it — contract drift is currently undetected** (now a P0' one-liner). §16 corrected counts: aliases 45 → **55** (three sources disagree: 55 actual / 47 header / 45 census); tools ~118 → **120 declared, 126 actual**; planners "three" → **3 live + 2 dead islands**, incl. the trap that **two folders are named `agentic_loop`**; F-12 corrected — `useScrollDiscipline` is **live and unflagged**, not dormant; F-15 split into four precise claims (2 genuinely dead, 1 transitively dead, 1 with type-only importers in a dead cluster).<br><br>**SEVEN NEW FORENSIC DEFECTS (F-25b…g):** a fully-built error classifier that **nothing imports**; a feedback endpoint that **validates auth, echoes the rating, and persists nothing** while the UI appears to work; **no rate limit or spend cap on chat and no middleware file to add one at**; `parts_json` with **no version discriminator**, making its own migration unverifiable; stream resume that is **snapshot-based with `last_event_seq` stored but never consumed** — no reconnection on a mid-session drop; and **`audience_tier` half-excised but still load-bearing in prompt-template lookup**, meaning the system today produces different prose per tier — a live D-15 violation.<br><br>**NEW §16.6 — capabilities that do not exist:** reconnection, rate limiting, blocking spend caps, backup/DR posture, prompt-injection defense, migration tooling, TTFT metrics, clarifying questions, disagreement capture, reader-facing signal text, remedy register guardrails. Mobile verified PARTIAL (`md:` only, no touch handlers); **accessibility verified better than assumed** — `role="log"`, `aria-live` toggled only while streaming, SR announcer — an asset to preserve rather than a gap to fill.<br><br>**DESIGN CHANGES:** **§12.4 segmentation moves server → client** (blank lines are legal inside loose lists; a server splitter recreates the mirror disease at a layer where drift renders wrong instead of failing to compile; and `block.commit` cannot be byte-final when the LLM restructures mid-thought). **§13.5 lint defanged** — fail-the-turn abolished, `\bL[0-5]\b` removed as a false-positive risk in health readings, and the **streaming contradiction stated honestly: the deltas already went out, so the leak does not persist but the reader saw it**. **§12.9.1 sentinel failure handling specified** (64B/400ms hold-back or the stream stalls forever; tolerant grammar; per-model hallucination counters). **§9.5 planner-unification realism** — the common plan algebra does not exist and *is* the work.<br><br>**NEW SECTIONS:** §6.6 the instrument must be able to ask (praśna śāstra is the art of the question and the surface named for *paripraśna* could not ask one) incl. the unresolved-window opening that converts compliance decay into a conversational moment; §11.5 cross-conversation memory with `prior_reading` as a citation kind that can never satisfy the acharya floor; §12.9.2 transport resilience; §12.10 failure UX; §12.11 mobile; §12.12 accessibility; §13.7 the `audience_tier` excision; §13.8 remedy register; §13.9 emotional register as design input; §14.6 minimum-n gating and the collect-only phase (**n=7 Brier is precision theater**); §14.7 designing for compliance decay; §14.8 capturing disagreement; §14.9 sycophancy drift; §14A security, cost governance and durability (**the conversation store and ledger are the only irreplaceable data and have no backup posture**); §17.8 production observability.<br><br>**§19 RESTRUCTURED shim-first (D-17):** P0' proves or kills the core bet in 3–4 weeks via a translation shim over the existing engine — no monorepo, no store change, no planner work, old route untouched — with capture starting week one. Multi-user authz demoted to a two-role stub; OpenRouter and Tier C descoped; always-on components cut 5 → 2. **§19.7 states the gate's pass conditions before it is built**, ending with the one that is not automatable: *does it feel like Claude Code?*<br><br>**NEW TENSIONS:** T-7 (this document's claims decay and did) and T-8 (**cheap honesty mechanisms become dishonest at low n** — B.10 forbids fabricating a computation; do not fabricate a precision either). **D-17, D-18 ruled; A-01 demoted; A-21…A-36 added.** |
 | 0.4 | 2026-07-19 | **Consolidation pass — captures everything discussed since v0.1 that had not yet been written down.** New **§0.4 Workstream split**: the design now runs in two parallel conversations with a shared decision register; the MCP channel has its own self-contained handoff (`briefs/MCP_CHANNEL_WORKSTREAM_HANDOFF_v1_0.md`); shared substrate belongs to neither and is redesigned unilaterally by neither; OT-2/5/6/7/10 are MCP-owned and their rulings flow back here. New **§6.4 Query lifecycle**: a 12-stage table proving there are **three paths, not two** — only auth, provenance and dispatch-to-envelope are common to all three; Paripraśna and `prashna_ask` are one architecture, raw-tools MCP is not ("we expose our retrieval plane; someone else's brain uses it"). New **§6.4.1**: two guarantees cannot cross to raw tools — **B.11 is unenforceable** there, and **D-14 is structurally undeliverable** because no prose crosses our boundary to lint; therefore the envelope is the only defense on that path, which retroactively justifies the doctrine work. New **§6.5 The engine boundary**: the engine is door-agnostic and outside both channels, with the design test *"the engine must never branch on which door it is serving"* and the corollary that it must be callable headlessly. New **§6.5.1 / OT-10**: there is one MCP connection, not two channels — `prashna_ask` is one tool among the raw tools, so **the client's model decides which quality floor applies**, a decision we do not control and never designed; noted explicitly as *not* an audience-tier question (D-15). **T-2 sharpened**: the two-class risk is about missing guarantees, not missing history, raising A-07 from a good idea to load-bearing. |
 | 0.3 | 2026-07-19 | **D-16 ruled: the session pin is a per-turn provenance stamp, not a session pin.** Native's challenge — §N.3's delete-then-insert means one build exists and nothing is archived, so a pin has no power to hold a conversation at an earlier build. Assessed honestly: the construct is a witness, not a lock, and earns its keep on three grounds (drift disclosure, audit provenance, and above all **calibration attribution** — without it the Brier score attributes error to the wrong technique version, making calibration "noise dressed as evidence"). Restructured: renamed provenance stamp; moved from mutable `mcp_sessions.state_json` to immutable per-turn `conversation_messages.metadata_json`; drift detected by comparing consecutive turns rather than via shared session state; **copied immutably into ledger rows**, never referenced; removed from the engine's input signature. **A-10 restructured.** §11.4 rewritten. Engine signature now `ask(chart_id, question) → {…, provenance}`. Known limitation recorded (not solved, at the native's direction): readings are not reproducible without build archives; two cheap partial mitigations noted for if that ever matters. Also noted: `now_context_date` was doing a different job from the version fields all along. |
@@ -3212,4 +3346,5 @@ before it is built:
    begins only when the architecture is ratified and a `CLAUDECODE_BRIEF` is
    issued with explicit `may_touch` / `must_not_touch` scope.
 
-*End of PARIPRASHNA_TARGET_ARCHITECTURE v0.1 (2026-07-19) — DRAFT, LIVING.*
+*End of PARIPRASHNA_TARGET_ARCHITECTURE v0.6 (2026-07-19) — DRAFT, LIVING. v0.6 =
+PG-1 grounding-audit integration (Lane Z-1); corrections in place per §0.5/D-18.*
