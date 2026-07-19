@@ -29,12 +29,14 @@
  */
 
 import 'server-only'
+import crypto from 'crypto'
 import { query } from '@/lib/db/client'
 import {
   getEventClassOntology,
   assertClaimShape,
   type ClaimShape,
   type TemporalShape,
+  type EventClassOntologyEntry,
 } from './event_ontology_shapes'
 
 // DR-13(d) confidence-scaled point tolerance — kept as a small local duplicate rather
@@ -107,6 +109,11 @@ export interface FileProspectivePredictionInput {
   configuration_signature?: string | null
   filed_by: string
   source_citation: string
+  /** REQUIRED when `generator_class === 'engine'` AND the event_class is
+   * adverse-valence (BRIEF_D5 §4, DR-16 — hard acceptance item). Ignored/optional
+   * for every other combination; `fileProspectivePrediction` rejects an adverse
+   * engine claim missing this. */
+  dr16_adverse_disclosure?: Dr16AdverseDisclosure
 }
 
 export interface ProspectiveLedgerRow {
@@ -137,6 +144,275 @@ export interface ProspectiveLedgerRow {
 export interface FileProspectivePredictionResult {
   row: ProspectiveLedgerRow
   governance: string
+  /** Present only for adverse-valence `generator_class='engine'` claims (BRIEF_D5 §4).
+   * Not a persisted DB column — `brahma_prospective_ledger` (migration 458) was frozen
+   * by D-4a's A-4 lane and G-5's may_touch does not include a new migration, so this
+   * property is validated at filing time (mechanically REJECTED if incomplete, see
+   * `assertDr16AdverseDisclosure`) and served back in this response — the "one served
+   * payload" DR-16 §4 requires — rather than stored as its own column. It reconstructs
+   * identically from the same inputs on any re-derivation, so nothing here is lost;
+   * this is a documented engineering judgment call, see the G-5 session report. */
+  dr16_disclosure?: Dr16AdverseDisclosure
+}
+
+// ── §D-5 Lane G-5 — engine claims, configuration_signature, DR-16 gate ─────────────
+//
+// BRIEF_D5.md §1 G-5 row + §4 (DR-16 honest-clarity gate on adverse serving) +
+// §10/§11. This module already carried `generator_class: 'engine'` and an optional
+// `configuration_signature` column (D-4a's A-4 pre-wired the column, migration 458,
+// confirmed nullable — see BRIEF_D5 §B.4). G-5 adds: (1) a deterministic, reproducible
+// `computeConfigurationSignature` derivation from a REAL `kala_gochara_windows` row
+// (G-4's served output) or a G-3 `IntensityResult`-shaped source, so an engine claim's
+// signature is never fabricated; (2) mechanical DR-16 five-property enforcement on
+// adverse-valence engine claims, mirroring G-3's `CalibrationDisclosureError` pattern
+// (models.py) — a hard REJECT, not a documented convention.
+
+/** The subset of a real `kala_gochara_windows` row (G-4) — or an `IntensityResult`
+ * (G-3, computed directly for a class G-4 hasn't swept yet) — `computeConfigurationSignature`
+ * needs. Every field here must come from a genuine engine computation; nothing here is
+ * free-form caller input. */
+export interface EngineConfigurationSource {
+  chart_id: string
+  event_class: string
+  temporal_shape: TemporalShape
+  window_start: string // ISO date
+  window_end: string // ISO date
+  peak_date: string // ISO date
+  /** DR-10 peak-basis provenance (e.g. 'gochara_lambda_e_v1') — mandatory per
+   * migration 460's own column discipline. */
+  peak_basis: string
+  /** G-2 ConfigurationSentence.to_dict()-shaped entries carrying `fact_ids` —
+   * the active configuration sentences at peak. Only `fact_ids` is read here. */
+  active_sentences: Array<{ fact_ids?: unknown[] }>
+  /** G-3 permission_detail.systems / G-4 contributing_systems — the DR-14
+   * independent timing systems judged active at peak. Only `system_id` is read here. */
+  contributing_systems: Array<{ system_id?: string }>
+}
+
+/**
+ * Deterministic, reproducible fingerprint of the EXACT engine configuration that
+ * produced a G-5 `generator_class='engine'` claim.
+ *
+ * Composition (engineering judgment, documented per BRIEF_D5's requirement — not a
+ * doctrine ruling): a SHA-256 content hash of the pipe-joined, sorted tuple of
+ *   `v1 | chart_id | event_class | temporal_shape | window_start | window_end |
+ *    peak_date | peak_basis | sorted(unique fact_ids from active_sentences) |
+ *    sorted(unique contributing system_ids)`
+ * prefixed with the human-legible `peak_basis` so a signature is recognizable as
+ * "which engine" produced it without decoding the hash. Sorting the fact_id / system_id
+ * sets makes the signature independent of array ORDER (two runs that assemble the same
+ * active-sentence pool in a different order still fingerprint identically — a
+ * reproducibility property this function is explicitly designed to hold), while still
+ * changing if the underlying configuration (which facts / which systems / which window)
+ * changes. This is genuinely DERIVED from the source, never fabricated: every input
+ * field traces to a real `kala_gochara_windows` row (G-4) or `IntensityResult` (G-3).
+ */
+export function computeConfigurationSignature(source: EngineConfigurationSource): string {
+  const factIds = Array.from(
+    new Set(
+      source.active_sentences
+        .flatMap((s) => (Array.isArray(s.fact_ids) ? s.fact_ids : []))
+        .map((f) => String(f))
+    )
+  ).sort()
+  const systemIds = Array.from(
+    new Set(
+      source.contributing_systems
+        .map((s) => (s.system_id != null ? String(s.system_id) : null))
+        .filter((s): s is string => s !== null)
+    )
+  ).sort()
+
+  const canonical = [
+    'v1',
+    source.chart_id,
+    source.event_class,
+    source.temporal_shape,
+    source.window_start,
+    source.window_end,
+    source.peak_date,
+    source.peak_basis,
+    factIds.join(','),
+    systemIds.join(','),
+  ].join('|')
+
+  const digest = crypto.createHash('sha256').update(canonical).digest('hex')
+  return `${source.peak_basis}:${digest}`
+}
+
+// ── DR-16 (DIS.029) — adverse-valence engine claim disclosure ─────────────────────
+
+/** Mirrors `gochara_intensity.valence._ADVERSE_MIXED_OVERRIDE` (Python, G-3) exactly —
+ * `psychological_arc` is 'mixed'-valence but is the wave brief's own named adverse
+ * specimen; kept as its own named set so the exception stays visible in review, same
+ * discipline as the Python original. */
+const ADVERSE_MIXED_OVERRIDE = new Set(['psychological_arc'])
+
+/** Sign decision mirrored from `gochara_intensity/valence.py` (G-3, the SAME rule,
+ * so a claim filed via this ledger and a window served via `kala_gochara_windows`
+ * never disagree on which classes are adverse). */
+export function isAdverseEventClass(ontology: Pick<EventClassOntologyEntry, 'event_class_id' | 'evidence_requirements'>): boolean {
+  return ontology.evidence_requirements.valence === 'loss' || ADVERSE_MIXED_OVERRIDE.has(ontology.event_class_id)
+}
+
+/** DR-16 property (2): "always probabilistic, never fatalistic ... no death-date,
+ * ruin-date, or catastrophe point-claims". A textual honesty check on the two
+ * free-text DR-16 fields — not a substitute for human judgment, but a mechanical
+ * floor that rejects the specific failure mode DR-16 names by name. */
+const FATALISTIC_PHRASE_PATTERNS: RegExp[] = [
+  /\bwill die\b/i,
+  /\bdeath date\b/i,
+  /\bdate of death\b/i,
+  /\bcertain(ly)? (to )?(die|lose|fail|happen)\b/i,
+  /\bguaranteed\b/i,
+  /\bscheduled (misfortune|death|ruin|doom)\b/i,
+  /\bdoom(ed)?\b/i,
+  /\bruin(ed|ation)?\b/i,
+  /\bfated\b/i,
+  /\binevitable\b/i,
+]
+
+function findFatalisticPhrase(text: string): string | null {
+  for (const re of FATALISTIC_PHRASE_PATTERNS) {
+    const m = text.match(re)
+    if (m) return m[0]
+  }
+  return null
+}
+
+/** DR-16's five co-required disclosure properties (BRIEF_D5 §4), carried in ONE
+ * served/filed payload — never split across calls, never served bare. */
+export interface Dr16AdverseDisclosure {
+  /** (1) Honest clarity: domain, window, mechanism stated clearly and specifically —
+   * no euphemism. */
+  honest_clarity: {
+    domain: string
+    window_description: string
+    mechanism: string
+  }
+  /** (2) Always probabilistic, never fatalistic: framed as elevated hazard for an
+   * event-CLASS, never a scheduled/certain misfortune. */
+  probabilistic_framing: {
+    hazard_statement: string
+  }
+  /** (4) Mitigation-paired: suppression analysis + a remedy-leverage pointer, in the
+   * SAME payload, never bare. `remedy_pointer` REFERENCES the existing remedy-lookup
+   * surface (`query_remedies` / `bodha_remedies_get`, `platform/src/lib/retrieval/
+   * registry/layers/L2_bodha/query_remedies.ts`) rather than inventing a new one. */
+  mitigation: {
+    suppression_analysis: Record<string, unknown>
+    remedy_pointer: {
+      instrument: string
+      params?: Record<string, unknown>
+      hint: string
+    }
+  }
+  /** (5) Confidence-honest: calibration_state/n_observations/control_delta disclosed
+   * alongside the claim — n_observations/control_delta are explicit `null` (not
+   * omitted) when honestly absent, per B.10 ("honestly absent, never omitted"). */
+  confidence_disclosure: {
+    calibration_state: 'structural_prior' | 'empirically_calibrated'
+    n_observations: number | null
+    control_delta: number | null
+  }
+}
+
+/** Raised when an adverse-valence `generator_class='engine'` claim is filed without
+ * ALL FIVE DR-16 properties present in one payload. Mirrors G-3's
+ * `CalibrationDisclosureError` (gochara_intensity/models.py) mechanical-enforcement
+ * pattern: DR-16 compliance is a code-level guarantee here, not a convention a caller
+ * must remember to honor (BRIEF_D5 §4: "a hard acceptance item, not a diagnostic"). */
+export class Dr16DisclosureError extends Error {}
+
+/**
+ * Throws `Dr16DisclosureError` unless `disclosure` carries all five DR-16 properties,
+ * each individually well-formed:
+ *   (1) honest_clarity.{domain,window_description,mechanism} all non-empty strings.
+ *   (2) probabilistic_framing.hazard_statement non-empty AND free of the fatalistic-
+ *       language patterns DR-16(2) names by name (no death/ruin/doom/certainty claims).
+ *   (3) falsifier-bearing — checked by the caller via the SAME mandatory `falsifier`
+ *       field every other ledger row requires (fileProspectivePrediction already
+ *       enforces `falsifier` is non-empty before this function runs); re-asserted here
+ *       so a caller invoking this function directly gets the same guarantee.
+ *   (4) mitigation.suppression_analysis (non-empty object) AND mitigation.remedy_pointer
+ *       (instrument + hint non-empty) both present — never one without the other.
+ *   (5) confidence_disclosure.calibration_state present and valid; n_observations and
+ *       control_delta are explicit keys (may be `null`, may not be `undefined`/absent).
+ */
+export function assertDr16AdverseDisclosure(
+  falsifier: string | undefined,
+  disclosure: Dr16AdverseDisclosure | null | undefined
+): void {
+  if (!disclosure) {
+    throw new Dr16DisclosureError(
+      'DR-16 violation: adverse-valence engine claim requires a dr16_adverse_disclosure payload ' +
+        'carrying all 5 properties (honest_clarity, probabilistic_framing, falsifier, mitigation, ' +
+        'confidence_disclosure) in the SAME filing — none was provided.'
+    )
+  }
+
+  // (1) honest clarity
+  const hc = disclosure.honest_clarity
+  if (!hc || !hc.domain?.trim() || !hc.window_description?.trim() || !hc.mechanism?.trim()) {
+    throw new Dr16DisclosureError(
+      'DR-16(1) violation: honest_clarity requires non-empty domain, window_description, and ' +
+        'mechanism — vagueness/euphemism/withholding is itself a disclosure failure (DR-16(1)).'
+    )
+  }
+
+  // (2) always probabilistic, never fatalistic
+  const pf = disclosure.probabilistic_framing
+  if (!pf || !pf.hazard_statement?.trim()) {
+    throw new Dr16DisclosureError(
+      'DR-16(2) violation: probabilistic_framing.hazard_statement is required — an adverse claim ' +
+        'must be framed as elevated hazard for an event-class, never left unstated.'
+    )
+  }
+  const hcHit = findFatalisticPhrase(hc.mechanism) ?? findFatalisticPhrase(hc.window_description)
+  const pfHit = findFatalisticPhrase(pf.hazard_statement)
+  const hit = pfHit ?? hcHit
+  if (hit) {
+    throw new Dr16DisclosureError(
+      `DR-16(2) violation: fatalistic language detected ('${hit}') — adverse claims are served as ` +
+        'elevated hazard for an event-CLASS, never as a certain/scheduled misfortune or a death/' +
+        'ruin/doom point-claim (DR-16(2)).'
+    )
+  }
+
+  // (3) falsifier-bearing — same mandatory field every ledger row already carries.
+  if (!falsifier || !falsifier.trim()) {
+    throw new Dr16DisclosureError(
+      'DR-16(3) violation: adverse claims enter the ledger like any other claim — falsifier is ' +
+        'mandatory (re-asserted here; also enforced globally by fileProspectivePrediction).'
+    )
+  }
+
+  // (4) mitigation-paired — suppression analysis AND remedy pointer, never one without the other.
+  const mit = disclosure.mitigation
+  const hasSuppression = !!mit?.suppression_analysis && Object.keys(mit.suppression_analysis).length > 0
+  const hasRemedy = !!mit?.remedy_pointer?.instrument?.trim() && !!mit?.remedy_pointer?.hint?.trim()
+  if (!hasSuppression || !hasRemedy) {
+    throw new Dr16DisclosureError(
+      'DR-16(4) violation: mitigation must carry BOTH a non-empty suppression_analysis AND a ' +
+        'remedy_pointer (instrument + hint) in the SAME payload — an adverse window is never served ' +
+        `bare. Missing: ${!hasSuppression ? 'suppression_analysis' : ''}${!hasSuppression && !hasRemedy ? ' and ' : ''}${!hasRemedy ? 'remedy_pointer' : ''}.`
+    )
+  }
+
+  // (5) confidence-honest — keys must be PRESENT (null is honest; undefined/absent is not).
+  const cd = disclosure.confidence_disclosure
+  if (!cd || !cd.calibration_state || !('n_observations' in cd) || !('control_delta' in cd)) {
+    throw new Dr16DisclosureError(
+      'DR-16(5) violation: confidence_disclosure requires calibration_state plus explicit ' +
+        "'n_observations' and 'control_delta' keys (null when honestly absent — never omitted)."
+    )
+  }
+  if (cd.calibration_state !== 'structural_prior' && cd.calibration_state !== 'empirically_calibrated') {
+    throw new Dr16DisclosureError(
+      `DR-16(5) violation: confidence_disclosure.calibration_state must be 'structural_prior' or ` +
+        `'empirically_calibrated', got '${cd.calibration_state}'.`
+    )
+  }
 }
 
 // ── Claim-shape -> DB row translation ───────────────────────────────────────────
@@ -212,6 +488,23 @@ export async function fileProspectivePrediction(
     )
   }
 
+  // ── D-5 Lane G-5 (BRIEF_D5 §1 G-5 / §10): configuration_signature is MANDATORY,
+  // non-null for every engine-generated claim — this is the hard "populated (non-null)"
+  // ledger requirement, enforced here rather than left to convention.
+  if (input.generator_class === 'engine' && !input.configuration_signature) {
+    throw new Error(
+      "fileProspectivePrediction: generator_class='engine' requires a non-null " +
+        'configuration_signature (BRIEF_D5 §10) — derive one with computeConfigurationSignature ' +
+        'from a real kala_gochara_windows row (G-4) or IntensityResult (G-3); never fabricate it.'
+    )
+  }
+
+  // ── DR-16 (DIS.029) §4 — hard acceptance gate on adverse-valence engine claims.
+  const isAdverse = input.generator_class === 'engine' && isAdverseEventClass(ontology)
+  if (isAdverse) {
+    assertDr16AdverseDisclosure(input.falsifier, input.dr16_adverse_disclosure)
+  }
+
   const claim = toClaimShape(input)
   // Throws with the precise ShapeViolation(s) on mismatch — e.g. a point-claim
   // against an interval-shaped class (major_gain, major_loss, ...) is rejected here
@@ -264,7 +557,11 @@ export async function fileProspectivePrediction(
 
   const row = rows[0]
   if (!row) throw new Error('fileProspectivePrediction: INSERT returned no row.')
-  return { row, governance: PROSPECTIVE_LEDGER_GOVERNANCE_TEXT }
+  return {
+    row,
+    governance: PROSPECTIVE_LEDGER_GOVERNANCE_TEXT,
+    ...(isAdverse ? { dr16_disclosure: input.dr16_adverse_disclosure } : {}),
+  }
 }
 
 function addOneDay(isoDate: string): string {

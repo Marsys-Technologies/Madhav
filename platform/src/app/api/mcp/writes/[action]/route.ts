@@ -576,6 +576,11 @@ export async function POST(request: Request, { params }: RouteParams) {
         configuration_signature: entry.configuration_signature ?? null,
         filed_by: userUid, // stamped from resolved principal — §11 provenance
         source_citation: entry.source_citation,
+        // D-5 Lane G-5 (BRIEF_D5 §4, DR-16): only meaningful for
+        // generator_class='engine' + adverse-valence event_class — fileProspectivePrediction
+        // itself enforces the hard 5-property gate; this route only threads the caller's
+        // payload through, it does not weaken or bypass the check.
+        dr16_adverse_disclosure: entry.dr16_adverse_disclosure,
       }
 
       const filed = await fileProspectivePrediction(input)
@@ -584,7 +589,11 @@ export async function POST(request: Request, { params }: RouteParams) {
           trace_id: traceId,
           audience_tier: audienceTier,
           epistemics,
-          result: { prediction: filed.row, governance: filed.governance },
+          result: {
+            prediction: filed.row,
+            governance: filed.governance,
+            ...(filed.dr16_disclosure ? { dr16_disclosure: filed.dr16_disclosure } : {}),
+          },
         })
       )
     } catch (err) {
