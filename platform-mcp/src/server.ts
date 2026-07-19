@@ -74,6 +74,7 @@ import { registerPhalaEventAnchorsTool } from './tools/phala_event_anchors.js'
 // Still served via sidecar until the registry primitive lands.
 import { registerHolisticBundleRetrievalTool } from './tools/retrieval/holistic_bundle.js'
 import { registerKalaTemporalRetrievalTool } from './tools/retrieval/kala_temporal.js'
+import { registerGocharaWindowsTools } from './tools/retrieval/register_gochara_windows.js'
 // KEYSTONE REQUEST: kala_temporal_bundle (KA-3-COMPOSITE: timeline/convergence/obstruction/snapshot)
 // has no registry primitive. REQUEST to retrieval fork: expose 'kala_temporal_bundle' capability.
 // Still served via sidecar until the registry primitive lands.
@@ -325,6 +326,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Registry path: holistic_bundle_chart_facts (retrieval/holistic_bundle.ts → callPlatformPrimitive).
   registerHolisticBundleRetrievalTool(server, () => principal)  // chart_facts via registry (L2 Bodha — chart-SCOPED; requires chart_id)
   registerKalaTemporalRetrievalTool(server, principal)    // L3 Kāla composite bundle (chart-SCOPED; CR-40/T-1: now registry-backed, not the dead sidecar path)
+  registerGocharaWindowsTools(server, principal)    // D-5 G-4: gochara activation/forecast/election-avoidance views over kala_gochara_windows (chart-SCOPED)
   // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
   registerRemedyTools(server, () => principal)
   // L4 Phala tools
