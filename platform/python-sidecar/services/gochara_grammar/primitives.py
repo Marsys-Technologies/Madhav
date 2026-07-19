@@ -69,6 +69,23 @@ from pipeline.transit_search import (
 )
 from panchang_engine.tara_bala import compute_tara_position, get_tara_detail
 
+# CONNECTION-HYGIENE HARDENING (found live at D-5 G-4 verification, 2026-07-19,
+# job brahma-build-pipeline-job-kb4zr): `_fetch_kakshya_boundaries`,
+# `_fetch_av_gate_rows`, `_fetch_vedha_rules`, and `_fetch_sade_sati_rows` each
+# already caught their own DB exception and degraded to an honest [] -- but on
+# a shared non-autocommit connection (as `ka_gochara_sweep` uses across many
+# primitive calls per grid point), a caught exception still leaves Postgres'
+# transaction in "aborted" state for every LATER query on that same `conn`,
+# including totally unrelated primitives with no bug of their own. The actual
+# incident's root cause was `_fetch_av_gate_rows`'s own bad SQL (an untyped
+# bare `%s IS NULL` placeholder -> `IndeterminateDatatype`, fixed below by
+# casting that placeholder too), but ANY future bad query in ANY of these
+# families would reproduce the same cascade without this. `safe_rollback` is
+# G-3's own connection-hygiene helper (`gochara_intensity._dbutil`); imported
+# here (not duplicated) and called at each of these four call-boundary except
+# blocks so a single bad/failed read never poisons the rest of the sweep.
+from services.gochara_intensity._dbutil import safe_rollback
+
 from .models import ConfigurationSentence, ResonanceTarget
 from . import citations as C
 
@@ -308,6 +325,7 @@ def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
         rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[kakshya_cell_crossing] chart_facts kakshya boundary read failed: %s", exc)
+        safe_rollback(conn)
         return []
     by_subject: dict[str, dict] = {}
     for row in rows:
@@ -388,13 +406,14 @@ def _fetch_av_gate_rows(conn, target_house: Optional[str]) -> list[dict]:
                    effect, classical_citation
               FROM bg_transit_av_gates
              WHERE gate_kind = 'sav_threshold'
-               AND (%s IS NULL OR house_from_moon = %s::int)
+               AND (%s::int IS NULL OR house_from_moon = %s::int)
             """,
             [target_house, target_house],
         )
         rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[av_threshold_state] bg_transit_av_gates read failed: %s", exc)
+        safe_rollback(conn)
         return []
     keys = ["gate_kind", "graha", "house_from_moon", "min_av_score", "min_sav_score", "effect", "classical_citation"]
     return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
@@ -468,13 +487,14 @@ def _fetch_vedha_rules(conn, primary_house: Optional[str]) -> list[dict]:
             SELECT graha, primary_house, vedha_house, phala, classical_citation
               FROM bg_transit_rules
              WHERE rule_type = 'vedha'
-               AND (%s IS NULL OR primary_house = %s::int)
+               AND (%s::int IS NULL OR primary_house = %s::int)
             """,
             [primary_house, primary_house],
         )
         rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[gochara_vedha_pair] bg_transit_rules read failed: %s", exc)
+        safe_rollback(conn)
         return []
     keys = ["graha", "primary_house", "vedha_house", "phala", "classical_citation"]
     return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
@@ -704,6 +724,7 @@ def _fetch_sade_sati_rows(conn, chart_id: str) -> list[dict]:
         rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[sade_sati_phase] chart_facts sade_sati read failed: %s", exc)
+        safe_rollback(conn)
         return []
     keys = ["fact_subject", "fact_key", "fact_value_text", "fact_value_num", "citation_human"]
     return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]

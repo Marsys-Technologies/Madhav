@@ -238,6 +238,117 @@ def test_primitive_6_av_threshold_state_fixture_gate():
     assert sentences[0].detail["bindu_count_resolved"] is False
 
 
+class _FakeCursor:
+    """Minimal stand-in for a psycopg cursor -- just needs .fetchall()."""
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+class _PoisonableConn:
+    """Reproduces, WITHOUT a real DB, the exact connection-hygiene hazard the
+    live D-5 G-4 incident hit (job brahma-build-pipeline-job-kb4zr,
+    2026-07-19T16:29:37Z): `av_threshold_state`'s `_fetch_av_gate_rows` issued
+    a genuinely bad query against `bg_transit_av_gates` (an untyped bare
+    `%s IS NULL` placeholder -> psycopg `IndeterminateDatatype`), which on a
+    real (non-autocommit) Postgres connection leaves the WHOLE transaction in
+    "aborted" state -- every later query on that same connection then fails
+    with the generic "current transaction is aborted, commands ignored until
+    end of transaction block", even for a totally unrelated, individually
+    correct query (`kakshya_cell_crossing`'s `chart_facts` read, in the real
+    incident).
+
+    This fake models that exact mechanic: `.execute()` on the `bg_transit_av_gates`
+    query always raises (the "root cause" query), which sets `poisoned=True`;
+    every subsequent `.execute()` call raises the generic aborted-transaction
+    error WHILE `poisoned` is still True; `.rollback()` clears it. This lets a
+    test assert, without any live DB, that the connection self-heals (the
+    fix's `safe_rollback` call inside each primitive's own except block) and a
+    later, unrelated primitive is NOT starved of its own honest DB read by an
+    earlier primitive's unrelated bug."""
+
+    def __init__(self):
+        self.poisoned = False
+        self.rollback_called = 0
+        self.autocommit = False
+
+    def execute(self, sql, params=None):
+        if self.poisoned:
+            raise RuntimeError(
+                "current transaction is aborted, commands ignored until end of transaction block"
+            )
+        if "bg_transit_av_gates" in sql:
+            self.poisoned = True
+            raise RuntimeError("could not determine data type of parameter $1")
+        if "ashtakavarga_kakshya_boundary" in sql:
+            # Real DB-backed boundary rows -- only reachable if this call was
+            # NOT starved by the earlier bg_transit_av_gates failure.
+            return _FakeCursor([
+                {"fact_subject": "Moon.0", "fact_key": "start_deg", "fact_value_text": None, "fact_value_num": 30.0},
+                {"fact_subject": "Moon.0", "fact_key": "lord", "fact_value_text": "Saturn", "fact_value_num": None},
+            ])
+        return _FakeCursor([])
+
+    def rollback(self):
+        self.rollback_called += 1
+        self.poisoned = False
+
+
+def test_bad_query_does_not_poison_subsequent_query_on_same_connection():
+    """Regression test for the D-5 G-4 live incident (job
+    brahma-build-pipeline-job-kb4zr, chart 482012f1, 2026-07-19T16:29:37Z):
+    `av_threshold_state`'s DB read genuinely fails (bad SQL against
+    `bg_transit_av_gates`) and must degrade to an honest [] AND self-heal the
+    shared connection (via `safe_rollback`) rather than leaving it poisoned
+    for whatever primitive runs next on the same `conn` -- exactly the shape
+    `ka_gochara_sweep.sweep` shares one connection across many primitive
+    calls per grid point."""
+    conn = _PoisonableConn()
+
+    av_target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="wealth", target_type="bhava",
+        target_ref="11", weight=0.75, classical_citation="TEST FIXTURE",
+        target_sign="Pisces",
+    )
+    start_jd, end_jd = _jd(2019, 1, 1), _jd(2023, 6, 1)
+
+    # 1) The bad query. Must degrade honestly (empty, not a crash) AND reset
+    #    the connection's transaction state -- not just log-and-return.
+    sentences = P.av_threshold_state(swe, CHART_ID, av_target, start_jd, end_jd, conn=conn)
+    assert sentences == []
+    assert conn.rollback_called == 1, (
+        "av_threshold_state's except block must call safe_rollback so a bad "
+        "query doesn't poison the connection for the next primitive."
+    )
+    assert conn.poisoned is False
+
+    # 2) A SUBSEQUENT, unrelated primitive on the SAME connection -- the exact
+    #    cascade the live incident hit (kakshya_cell_crossing's independently
+    #    correct chart_facts read failing only because of the EARLIER
+    #    av_threshold_state failure). If the connection were still poisoned,
+    #    this call's `conn.execute` would raise the generic aborted-transaction
+    #    error and the primitive would silently fall back to the uncited
+    #    equal-eighths fixture -- masking the fact that real DB data existed.
+    kakshya_target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="wealth", target_type="bhava",
+        target_ref="2", weight=0.6, classical_citation="TEST FIXTURE",
+        target_sign="Taurus",
+    )
+    kakshya_sentences = P.kakshya_cell_crossing(
+        swe, CHART_ID, kakshya_target, start_jd, end_jd, conn=conn, planets=["Moon"],
+    )
+    assert len(kakshya_sentences) >= 1
+    s = kakshya_sentences[0]
+    assert s.uncited_extension is False, (
+        "kakshya_cell_crossing should have reached its REAL chart_facts boundary "
+        "read on this call -- if it fell back to the uncited fixture, the "
+        "connection was still poisoned from the earlier av_threshold_state failure."
+    )
+    assert s.detail["source"] == "chart_facts.ashtakavarga_kakshya_boundary"
+
+
 def test_primitive_7_gochara_vedha_pair_cancellation_check():
     target = ResonanceTarget(
         chart_id=CHART_ID, event_class="career_advancement", target_type="bhava",
