@@ -1,6 +1,7 @@
 ```yaml
 wave: PG-1
-lifecycle_step: 4  # INTEGRATE complete, entering SYNTHESIZE
+lifecycle_step: 7  # CLOSE
+brief_status: COMPLETE
 brief_bound: true
 base_pin: 8f3ace3756c219a65fe8d3baee96606092a38913
 pg1_fork_point: 9c358819  # PG-1's own first-commit parent; see BIND_PG-1.md B-1 correction
@@ -19,9 +20,10 @@ lanes:
   - {lane: O-1, status: receipted, verdict: ACCEPT, commit: e290ebc9}
   - {lane: S-1, status: receipted, verdict: ACCEPT, commit: c6895ec0}
   - {lane: Q-1, status: receipted, verdict: ACCEPT, commit: 1714a9ac, note: "attempt 2 — chart-conflation corrected in PG1-Q1-0002/0004/0006"}
-  - {lane: Z-1, status: pending}
-integrate: {done: true, canonical_findings: "00_ARCHITECTURE/pg1_audit/deliverables/pg1_findings.jsonl", count: 87, dupes: 0}
-gate: {run: false, green: [], red: []}
+  - {lane: Z-1, status: receipted, verdict: ACCEPT, commit: 3ad8bd2a}
+integrate: {done: true, canonical_findings: "00_ARCHITECTURE/pg1_audit/deliverables/pg1_findings.jsonl", count: 98, dupes: 0, note: "87 lane findings + 11-row Z-1 reconciliation addendum for G.1"}
+gate: {run: true, mechanical: GREEN, independent_opus_gate_runner: GREEN, anti_gaming_pass: "one qualified call on G.4, disclosed not concealed, GREEN stands", green: ["G.1","G.2","G.3","G.4","G.5","G.6","G.7","G.8","G.9"], red: [], final_proof: PASS}
+close: {report: "00_ARCHITECTURE/pg1_audit/REPORT_PG-1.md", session_log_appended: true, current_state_updated: false, deferred_reason: "concurrent D-4a uncommitted edit in shared tree", worktrees_stranded: 0, branches_pending_merge: ["pg1/wave"]}
 concurrency_note: "D-4a mid-flight (BIND_D-4A.md OPEN, wave/D-4a/A-0 branch exists). Read-only, no conflict."
 process_deviations:
   - "Lanes ran in a shared working tree, not isolated git worktrees per §4 (efficiency tradeoff for a read-only, non-overlapping-paths wave). Caused one scope-warden false-positive (R-1/D-3 commit interleaving), resolved by Adjudicator ruling + conductor reconciliation, zero content impact."
