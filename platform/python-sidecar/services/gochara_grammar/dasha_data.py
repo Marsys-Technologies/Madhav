@@ -2,12 +2,18 @@
 gochara_grammar.dasha_data — defensive read-side access to `chart_dashas` for
 the dasha-coincidence composition operator (#6).
 
-7 dasha systems exist in `chart_dashas.system_id` per
-`pipeline/orchestrator/writers/ka_avadhi.py`'s `_DASHA_SYSTEMS`: vimshottari,
-yogini, ashtottari, chara, naisargika, mudda, kalachakra. `dasha_coincidence`
-composes across MULTIPLE of these (DR-14 plurality) -- NOT Vimśottarī-gated,
-per BRIEF_D5 §1 G-2 row and §10 promise-ledger row for G-2's composition
-operators.
+9 dasha systems exist LIVE in `chart_dashas.system_id` (confirmed by direct
+query against the canonical chart 482012f1-710e-4a25-994a-93821f5871aa and
+cross-checked against the full table): vimshottari, vimshottari_kp, yogini,
+ashtottari, chara_karaka, naisargika, mudda, kalachakra, narayana.
+
+NOTE: `pipeline/orchestrator/writers/ka_avadhi.py`'s `_DASHA_SYSTEMS` (7
+entries, using the stale id "chara" and missing "narayana"/"vimshottari_kp")
+is now OUT OF SYNC with live data -- that file is a separate lane's writer
+and is out of scope for this fix; flagged here so it isn't mistaken for the
+source of truth. `dasha_coincidence` composes across MULTIPLE of these
+(DR-14 plurality) -- NOT Vimśottarī-gated, per BRIEF_D5 §1 G-2 row and §10
+promise-ledger row for G-2's composition operators.
 """
 from __future__ import annotations
 
@@ -17,7 +23,10 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-DASHA_SYSTEMS = ("vimshottari", "yogini", "ashtottari", "chara", "naisargika", "mudda", "kalachakra")
+DASHA_SYSTEMS = (
+    "vimshottari", "vimshottari_kp", "yogini", "ashtottari",
+    "chara_karaka", "naisargika", "mudda", "kalachakra", "narayana",
+)
 
 
 def fetch_dasha_periods(
@@ -28,7 +37,7 @@ def fetch_dasha_periods(
     level_n: int = 1,
 ) -> list[dict]:
     """Read `chart_dashas` rows for chart_id across `systems` (defaults to
-    ALL 7 known systems -- the DR-14 plurality requirement). Returns [] on
+    ALL 9 known systems -- the DR-14 plurality requirement). Returns [] on
     any DB-shape surprise (honest empty, not a crash), same discipline as
     `resonance_map.fetch_resonance_targets`."""
     if conn is None:
