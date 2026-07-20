@@ -211,3 +211,40 @@ export async function countConcepts(): Promise<number> {
   const result = await query<{ count: string }>(`SELECT count(*)::text AS count FROM concept_ledger`)
   return parseInt(result.rows[0]?.count ?? '0', 10)
 }
+
+// ── W3-L8 (RETRIEVAL_PLANE_ELEVATION_PLAN §9.6-3/4, W-26): ledger_version ──────
+
+/**
+ * The single monotonic staleness signal for the concept ledger, mirroring the EXACT
+ * pattern `session_pin.ts#getLatestChartBuild` already uses for `build_id` (per-chart
+ * build_runs staleness) — a comparable value derived from the source-of-truth table's
+ * own state, never a separately-invented counter. `build_id` answers "has THIS CHART's
+ * data changed"; `ledger_version` answers "has the SERVING CATALOG (which concepts are
+ * SERVED/PLANNER_KNOWN/RETIRED/etc, independent of chart_id) changed" — the second axis
+ * the W-28 cache key (uri, chart_id, build_id, ledger_version, args, projection, format)
+ * needs, because a capability's lifecycle_state can change (e.g. RETIRED) without any
+ * chart ever being rebuilt.
+ *
+ * Derivation: `count || ':' || max(updated_at)` over the whole table — count alone would
+ * miss an UPDATE that changes a row's lifecycle_state without adding a row; max(updated_at)
+ * alone would miss the (degenerate but possible) case of a delete+insert landing on the
+ * exact same timestamp as a prior row. Together they're a cheap, honest fingerprint of
+ * "did anything in this ledger change" — not a cryptographic hash, not a claim of global
+ * uniqueness, just parity with the coarseness `build_id` already operates at (an opaque
+ * per-build identifier, not a content hash either).
+ *
+ * Returns null when the ledger is empty (migration 461: starts empty, W-25 harvest
+ * pipeline populates it in a later wave) — honest null per B.10, never a fabricated
+ * version for a ledger that has no rows yet. Every caller (pin resolution, envelope
+ * builder) must treat null as "no ledger signal available", exactly as they already
+ * treat a null build_id.
+ */
+export async function getLedgerVersion(): Promise<string | null> {
+  const result = await query<{ ledger_version: string | null }>(
+    `SELECT CASE WHEN count(*) = 0 THEN NULL
+                 ELSE count(*)::text || ':' || extract(epoch FROM max(updated_at))::text
+            END AS ledger_version
+       FROM concept_ledger`,
+  )
+  return result.rows[0]?.ledger_version ?? null
+}

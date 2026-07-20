@@ -105,8 +105,21 @@ export interface ChartHeader {
 
 // ── §10.4 / §12 D7 — timing (cheap; full server-timing telemetry is E-8, a separate lane) ──
 
+/**
+ * CACHE-SAFETY NOTE (W3-L8, W-28 envelope half): `computed_at` is CALL-TIME METADATA —
+ * it is `new Date().toISOString()` taken at the moment `buildRetrievalEnvelope` runs, so
+ * it legitimately differs between two calls even when every other field is byte-identical
+ * (same tool, same args, same build_id, same ledger_version). A response cache keyed on
+ * (uri, chart_id, build_id, ledger_version, args, projection, format) per W-28 MUST treat
+ * `computed_at` as excluded from the cached/compared "stable content" — it is metadata
+ * ABOUT the call, not content the call produced. `as_of_date` is content: it defaults to
+ * `computed_at`'s date, but a caller that passes it explicitly (the honest, cache-safe
+ * usage) gets a value that is stable for the whole day regardless of call time.
+ */
 export interface TimingBlock {
   as_of_date: string
+  /** CALL-TIME METADATA — excluded from the cache-safe "stable content" comparison. See
+   *  the cache-safety note above. */
   computed_at: string
 }
 
@@ -610,6 +623,17 @@ export interface V3Envelope extends Omit<LegacyEnvelope, 'envelope_version'> {
    *  serving, design §10.6/§31.3) populate this from the chart's latest complete
    *  `builds` row. Consistency invariant (E-4, extended): one response = one build_id. */
   build_id?: string | null
+  /** W3-L8 (RETRIEVAL_PLANE_ELEVATION_PLAN §9.6-3/4 + §9.7, W-26/W-28): the serving-catalog
+   *  staleness signal, orthogonal to `build_id` — see `session_pin.ts`'s `SessionPinValues.
+   *  ledger_version` doc and `concept_ledger/ledger.ts#getLedgerVersion` for the full
+   *  derivation. `build_id` says "this chart's data hasn't moved"; `ledger_version` says
+   *  "the concept ledger (which capabilities are SERVED/RETIRED/etc) hasn't moved" — the
+   *  second, independent axis the W-28 response-cache key needs
+   *  (uri, chart_id, build_id, ledger_version, args, projection, format). Undefined/null
+   *  when not supplied by the caller (honest null, never fabricated — B.10); this is a
+   *  STABLE, cacheable field — it does not change between calls unless the underlying
+   *  ledger state actually changes, so it is safe to include verbatim in a cache key. */
+  ledger_version?: string | null
 }
 
 export type RetrievalEnvelope = LegacyEnvelope | V3Envelope
@@ -634,6 +658,8 @@ export interface BuildRetrievalEnvelopeParams {
   drill_pointers?: DrillPointer[]
   judgment_flags?: JudgmentFlagEntry[]
   build_id?: string | null
+  /** W3-L8 — see `V3Envelope.ledger_version` doc. Passed through verbatim to the v3 envelope. */
+  ledger_version?: string | null
   /** R5.1 C1 — populated only by callers that ran this response's content through the
    *  response-budget trimmer (e.g. platform-mcp's response_budget.ts). Emitted under BOTH
    *  formats (additive on legacy too) since the trim is a channel-transport fact, not a
@@ -710,6 +736,7 @@ export function buildRetrievalEnvelope(
     drill_pointers: params.drill_pointers ?? [],
     judgment_flags: params.judgment_flags ?? [],
     build_id: params.build_id ?? null,
+    ledger_version: params.ledger_version ?? null,
   }
   return v3
 }

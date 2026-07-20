@@ -58,7 +58,10 @@ export interface McpSessionSummary {
   last_seen_at: string
 }
 
-/** Mirror of platform's SessionPinValues (session_pin.ts) — see doc comment above. */
+/** Mirror of platform's SessionPinValues (session_pin.ts) — see doc comment above.
+ *  W3-L8: added `ledger_version` (RETRIEVAL_PLANE_ELEVATION_PLAN §9.6-3/4, W-26) — the
+ *  concept-ledger staleness signal, orthogonal to `build_id`. Kept in sync by hand per the
+ *  precedent already documented above (this shape is not under the §19 codegen mandate). */
 export interface SessionPinValues {
   chart_id: string
   priors_version: string
@@ -66,6 +69,7 @@ export interface SessionPinValues {
   ranking_config: { mode: string }
   build_id: string | null
   build_status: string | null
+  ledger_version: string | null
   now_context_date: string
   pinned_at: string
 }
