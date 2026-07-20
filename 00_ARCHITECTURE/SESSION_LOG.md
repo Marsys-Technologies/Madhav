@@ -32334,25 +32334,15 @@ session_open:
   session_id: DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20
   cowork_thread_name: "Madhav — D-5 Gochara-Chitra (Conductor: open through halt)"
   agent_name: claude-sonnet-5
-  predecessor_session: pre-D-5 readiness pass (PR #618) — D-4a CLOSED, current_wave=D-5
-    INCOMING at session open
+  predecessor_session: "pre-D-5 readiness pass (PR #618) — D-4a CLOSED, current_wave=D-5 INCOMING at session open"
   role: >
     Conductor for BRIEF_D5.md v1.0 FROZEN end-to-end per CONDUCTOR_PROTOCOL.md +
     ESCALATION_POLICY_v1_0.md: Binder pass, 5 lanes (G-1..G-5) each in an isolated
     worktree with independent fresh-context Opus verification, integrate, deploy,
     rebuild, §G gate, close.
   declared_scope:
-    may_touch: [fresh worktree wave/D-5/conductor + per-lane worktrees wave/D-5/G-1..G-5
-      + fix branches, platform/python-sidecar/services/{gochara_grammar,
-      gochara_intensity,ka_gochara_resonance,ka_gochara_sweep}/**, platform/migrations/
-      459_*+460_*, platform-mcp/src/tools/retrieval/register_gochara_windows.ts +
-      server.ts (wiring only), platform/src/lib/lel/prospective_ledger.ts (extend),
-      platform/src/app/api/mcp/writes/[action]/route.ts (extend), STATE_D-5.md,
-      BIND_D-5.md, REPORT_D-5.md, CURRENT_STATE_v1_0.md (banner), SESSION_LOG.md
-      (append)]
-    must_not_touch: [FROZEN orchestrator core (pipeline/orchestrator/asset_runner.py,
-      writers/__init__.py), sealed LEL test split, prior gate surfaces (A-0..A-5),
-      raw LEL corpus, G-1..G-5's already-merged files from any OTHER lane once merged]
+    may_touch: "fresh worktree wave/D-5/conductor + per-lane worktrees wave/D-5/G-1..G-5 + fix branches; platform/python-sidecar/services/gochara_grammar, gochara_intensity, ka_gochara_resonance, ka_gochara_sweep (each **); platform/migrations/459_* + 460_*; platform-mcp/src/tools/retrieval/register_gochara_windows.ts + server.ts (wiring only); platform/src/lib/lel/prospective_ledger.ts (extend); platform/src/app/api/mcp/writes/[action]/route.ts (extend); STATE_D-5.md; BIND_D-5.md; REPORT_D-5.md; CURRENT_STATE_v1_0.md (banner); SESSION_LOG.md (append)"
+    must_not_touch: "FROZEN orchestrator core (pipeline/orchestrator/asset_runner.py, writers/__init__.py); sealed LEL test split; prior gate surfaces (A-0..A-5); raw LEL corpus; G-1..G-5's already-merged files from any OTHER lane once merged"
   red_team_due: false
 ```
 
