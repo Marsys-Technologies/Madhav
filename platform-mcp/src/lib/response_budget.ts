@@ -344,7 +344,7 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
     const existingFlags = (mutable[judgmentFlagsField] as JudgmentFlagEntry[] | undefined) ?? []
     mutable[judgmentFlagsField] = [
       ...existingFlags,
-      judgmentFlag('budget_exceeded_after_trim', `still over ${opts.maxKb}KB budget after full trim`),
+      judgmentFlag('budget_exceeded_after_trim', `${opts.maxKb}kb budget still exceeded after full trim.`),
     ]
   }
 

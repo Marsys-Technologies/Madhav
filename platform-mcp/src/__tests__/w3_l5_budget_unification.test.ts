@@ -210,13 +210,15 @@ describe('still_over_budget resolution (GT-45/W-5) — deleted from BudgetResult
       maxKb: 1,
       sections: [rowsSection as unknown as TrimmableSection<Record<string, unknown>>],
     })
-    const flags = budgeted['judgment_flags'] as string[] | undefined
+    // W3-L2's closed judgment_flags enum landed after this test was first written — a flag
+    // entry is now the structured {code, detail?} shape (or, for not-yet-migrated emitters,
+    // a bare legacy string). Check both shapes rather than assuming one.
+    const flags = budgeted['judgment_flags'] as Array<{ code: string; detail?: string } | string> | undefined
     expect(flags).toBeDefined()
-    expect(flags!.some(f => f.startsWith('budget_exceeded_after_trim'))).toBe(true)
-    // The old ad-hoc, maxKb-baked-in string is gone — replaced by the stable prefix a
-    // future closed judgment_flags enum (a parallel W3 lane) can match on regardless of
-    // which ceiling fired it.
-    expect(flags!.some(f => f.startsWith('response_still_over_'))).toBe(false)
+    const flagCode = (f: { code: string; detail?: string } | string) => (typeof f === 'string' ? f : f.code)
+    expect(flags!.some(f => flagCode(f) === 'budget_exceeded_after_trim')).toBe(true)
+    // The old ad-hoc, maxKb-baked-in string is gone — replaced by the stable closed-enum code.
+    expect(flags!.some(f => typeof f === 'string' && f.startsWith('response_still_over_'))).toBe(false)
   })
 
   it('does NOT emit the over-budget flag when trimming successfully closes the gap', () => {
@@ -233,7 +235,7 @@ describe('still_over_budget resolution (GT-45/W-5) — deleted from BudgetResult
       maxKb: 40,
       sections: [rowsSection as unknown as TrimmableSection<Record<string, unknown>>],
     })
-    const flags = (budgeted['judgment_flags'] as string[] | undefined) ?? []
-    expect(flags.some(f => f.startsWith('budget_exceeded_after_trim'))).toBe(false)
+    const flags = (budgeted['judgment_flags'] as Array<{ code: string } | string> | undefined) ?? []
+    expect(flags.some(f => (typeof f === 'string' ? f : f.code) === 'budget_exceeded_after_trim')).toBe(false)
   })
 })
