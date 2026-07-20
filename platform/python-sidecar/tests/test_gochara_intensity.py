@@ -144,6 +144,44 @@ def test_permission_zero_when_no_systems_active():
     assert detail["systems_active"] == []
 
 
+def test_permission_guru_shani_double_transit_fires_for_real_marriage_house():
+    """THE actual acceptance bar for the RED-D fix, at the level that
+    actually matters -- `compute_permission` itself, the real production
+    consumer named by the RED-D finding ('PERMISSION generator #9
+    guru_shani_double_transit ... shows as inactive'). target_ref='7'
+    (Libra, chart 482012f1's real 7th/marriage house), target_sign only (no
+    target_longitude_deg -- exactly `gochara_intensity.enrichment.
+    enrich_target`'s live output shape for a bhava target), t_jd pinned to
+    the real 2013-12-11 LEL marriage event date, default window_days=15.0
+    (the generator's own production default, deliberately NOT widened for
+    this test -- proving the fix works at the window width production
+    actually uses, not just a generously widened test window).
+
+    Before the RED-D fix: drishti_contact/degree_contact required
+    target_longitude_deg, permanently unreachable for a bhava target. Before
+    THIS follow-up fix: even with drishti_contact's rasi-drishti fallback,
+    this generator's own `if target.target_longitude_deg is None: continue`
+    guard skipped bhava targets before ever calling it, AND pure aspect+
+    aspect `double_transit` could not represent Saturn's occupation of
+    Libra (as opposed to aspecting it) regardless. All three gaps are fixed
+    together here."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="7", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Libra",
+    )
+    t_jd = _jd(2013, 12, 11)
+    permission, detail = compute_permission(
+        swe, None, CHART_ID, "marriage", [target], t_jd, dasha_periods=[],
+    )
+    gsdt = next(s for s in detail["systems"] if s["system_id"] == "guru_shani_double_transit")
+    assert gsdt["active"] is True
+    assert gsdt["detail"]["target_ref"] == "7"
+    assert gsdt["detail"]["operator"] == "double_transit_mixed"
+    assert "guru_shani_double_transit" in detail["systems_active"]
+    assert permission > 0.0
+
+
 def test_permission_dasha_system_ids_cover_live_verified_names():
     """DASHA_SYSTEM_IDS must use the LIVE chart_dashas.system_id vocabulary
     (chara_karaka/narayana), not G-2's dasha_data.DASHA_SYSTEMS default --

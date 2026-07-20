@@ -45,7 +45,12 @@ This module evaluates 12 independent generators at a given instant t:
      `primitives.degree_contact` restricted to those two grahas, composed
      via `composition.double_transit`'s own `is_guru_shani_double_transit`
      flag (the ONE double-transit pairing this codebase has a live cited
-     `bg_transit_rules` row for).
+     `bg_transit_rules` row for). RED-D follow-up (2026-07-20): ALSO
+     reuses `primitives.sign_occupation` + `composition.double_transit_
+     mixed` so one graha occupying the target house and the other
+     aspecting it (not both aspecting it) is detected too -- see this
+     module's guru-shani block comment and `double_transit_mixed`'s own
+     module comment for the citation judgment call this makes.
  11. av_threshold_state — reuses `primitives.av_threshold_state`
      (aṣṭakavarga-threshold transit gates from `bg_transit_av_gates`).
  12. planetary_return — reuses `primitives.planetary_return`, restricted to
@@ -272,21 +277,44 @@ def compute_permission(
                      "weight": SYSTEM_WEIGHTS["sade_sati"], "detail": sade_sati_detail})
 
     # 9: Guru-Sani double transit (Jupiter+Saturn only, per module docstring).
+    #
+    # RED-D follow-up CORRECTION (2026-07-20): the original guard below --
+    # `if target.target_longitude_deg is None: continue` -- skipped EVERY
+    # bhava/span target before ever calling drishti_contact/degree_contact,
+    # so even after those primitives gained their rasi-drishti fallback
+    # (target_sign-only reachability), this generator itself never reached
+    # a bhava target to exercise it. Fixed: a target now contributes
+    # `contact_sentences` whenever EITHER anchor is available (drishti_
+    # contact/degree_contact each honestly no-op internally for whichever
+    # anchor they don't have), and ADDITIONALLY contributes
+    # `occupation_sentences` (via the new `sign_occupation` primitive) for
+    # bhava/span targets, so `CO.double_transit_mixed` can pair one
+    # graha's occupation of the target house against the other graha's
+    # aspect onto it -- the native's own worked marriage-specimen
+    # configuration (transiting Saturn occupying natal Saturn's 7th house
+    # in Libra; transiting Jupiter's 5th special drishti onto that same
+    # Libra from Gemini), which pure aspect+aspect `CO.double_transit`
+    # structurally cannot represent (see composition.py's own comment on
+    # `double_transit_mixed`).
     gsdt_active = False
     gsdt_detail: dict = {}
     try:
         with savepoint_scope(conn, "guru_shani_double_transit"):
             contact_sentences = []
+            occupation_sentences = []
             for target in targets:
-                if target.target_longitude_deg is None:
-                    continue
-                contact_sentences += P.drishti_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
-                contact_sentences += P.degree_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+                if target.target_longitude_deg is not None or target.target_sign is not None:
+                    contact_sentences += P.drishti_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+                    contact_sentences += P.degree_contact(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+                if target.target_sign is not None:
+                    occupation_sentences += P.sign_occupation(swe, chart_id, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
             comps = CO.double_transit(contact_sentences, window_days=window_days)
+            comps += CO.double_transit_mixed(contact_sentences + occupation_sentences, window_days=window_days)
             for c in comps:
                 if c.detail.get("is_guru_shani_double_transit"):
                     gsdt_active = True
-                    gsdt_detail = {"target_ref": c.detail.get("target_ref"), "event_datetime_ist": c.event_datetime_ist}
+                    gsdt_detail = {"target_ref": c.detail.get("target_ref"), "event_datetime_ist": c.event_datetime_ist,
+                                    "operator": c.operator}
                     break
     except Exception as exc:  # noqa: BLE001
         logger.info("[permission] guru_shani_double_transit check failed: %s", exc)

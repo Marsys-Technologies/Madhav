@@ -26,6 +26,22 @@ PHALADEEPIKA_VEDHA_26 = "Phaladeepika Ch.26 — Gochara Vedha"
 # poorna_drishti / ardha_drishti / pada_drishti rows ("source_citation":"BPHS Ch.26").
 GRAHA_DRISHTI_BPHS_26 = "BPHS Ch.26 — Graha Drishti (planetary aspects: full/3-quarter/half/quarter by house distance)"
 
+# Same BPHS Ch.26 graha-drishti doctrine as GRAHA_DRISHTI_BPHS_26 above, but
+# naming the RASI DRISHTI (whole-sign aspect) rendering specifically -- BPHS
+# Ch.26's own base doctrine is sign-counted ("the planet aspects the Nth sign
+# from its own"), with degree-point contact (`GRAHA_DRISHTI_BPHS_26`'s
+# `SPECIAL_DRISHTI_DEG` usage) a finer refinement of the same rule for
+# point/graha-anchored targets. Distinguished here (D-5 RED-D fix,
+# 2026-07-20) so a reviewer can tell, from the citation string alone, which
+# geometry a `drishti_contact` sentence actually used -- a whole-sign span
+# (bhava target, no target_longitude_deg) vs. an exact-degree contact.
+GRAHA_DRISHTI_RASI_BPHS_26 = (
+    "BPHS Ch.26 — Graha Drishti, rasi drishti rendering (whole-sign special "
+    "aspect: planet aspects specific SIGNS counted from its own occupied "
+    "sign, not a degree point -- the base doctrine's natural application to "
+    "a bhava/span target)"
+)
+
 # Source: platform/python-sidecar/brahmagyan/l0_reference.py retrograde row
 # ("source_citation":"BPHS Ch.27" — "Apparent backward motion; gives cheshta bala.").
 VAKRA_RETROGRADE_BPHS_27 = "BPHS Ch.27 — Vakra (retrogression; cheshta bala)"
@@ -92,6 +108,7 @@ __all__ = [
     "GRAHA_GATI_BPHS_22",
     "PHALADEEPIKA_VEDHA_26",
     "GRAHA_DRISHTI_BPHS_26",
+    "GRAHA_DRISHTI_RASI_BPHS_26",
     "VAKRA_RETROGRADE_BPHS_27",
     "KAKSHYA_BPHS_66",
     "ASHTAKAVARGA_AV_GATES",
