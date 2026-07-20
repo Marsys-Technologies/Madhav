@@ -1548,3 +1548,71 @@ shape) → L2 (flags) → L4 (cursor) → L5 (budget) → L6 (density/verbosity)
 with L3 and L7 (mostly additive/greenfield, lower collision risk) integrated last against the
 merged base. Each lane ships with tests; the wave verifier is independent of every lane's
 implementer per brief §D.
+
+### W3 — Lane implementation + integration (2026-07-20)
+
+**All 8 lanes implemented independently in isolated worktrees, each opened its own PR
+against `main` (none merged individually, per plan):** L1 envelope+chart_header (#657),
+L2 flags closed enum (#659), L3 register/reading_contract/signal_reader_text (#654), L4
+cursor fingerprints (#653), L5 budget unification (#660 — one stall+respawn cycle, see
+below), L6 density_contract+verbosity (#658), L7 demand_ranking+timing+prediction (#655),
+L8 ledger_version+cache determinism (#656).
+
+**Failure-discipline record (brief §D "a stalled agent is respawned once with narrowed
+scope"):** L5's first attempt stalled (no progress 600s) mid-test-run; the respawn found
+substantial uncommitted, largely-correct work, rebased it onto `origin/main` (which had
+advanced to D-5's RED-C v4 merge mid-wave — confirmed zero unintended diff on the
+kala_*/gochara files this introduced), verified, and shipped it as #660. A separate
+"integrator" agent (opus, tasked with merging all 8 lanes) also stalled at 600s mid-merge,
+having cleanly landed lanes 1-2 and left one unresolved conflict; the conductor completed
+the remaining merges directly (7 more merge commits, 4 real conflicts requiring judgment —
+all "both sides are legitimate additive changes, keep both" — plus the recurring
+`generated/envelope.ts` mechanical-mirror conflict resolved by later regeneration, never
+by hand-picking a side).
+
+**One real architectural defect found and fixed during integration, not by any single
+lane:** L3's `register_block.ts` cross-imported `EpistemicGrade`/`DrillPointerType`/
+`PactStage` FROM `envelope.ts` — harmless in isolation, but the moment `envelope.ts`
+itself imported back from `register_block.ts` (to call `buildRegisterBlock` etc.), the
+codegen script's hard zero-import process-boundary guard (design §19 — `envelope.ts` must
+stay self-contained because `platform-mcp` cannot `import` across the process boundary)
+halted. Fixed by inlining `register_block.ts`'s content directly into `envelope.ts`
+(the exact fix pattern L4's cursor lane had already used for its own hash function,
+independently, for the same reason) and turning `register_block.ts` into a thin
+re-export shim so its 3 existing consumers needed no changes. Two smaller regressions
+from the conductor's own merge-conflict resolutions were caught by the test suite and
+fixed in the same pass (mismatched budget-flag detail wording; a pre-L2 test still
+assuming the bare-string judgment_flags shape).
+
+**Verification before opening the wave PR:** `platform` + `platform-mcp` both
+`tsc --noEmit` clean. `platform/src/lib/retrieval` full suite: 1327/1327 passed, 0
+regressions. `platform-mcp` full suite: 75 failed/550 passed — confirmed **byte-identical**
+against a fresh detached `origin/main` checkout (75/528 there) — zero regressions
+introduced by W3. `codegen:envelope --check` clean (regenerated fresh from the fully
+merged source, twice, after the register_block fix). `codegen:registry-shims` still halts
+on `getStrengthCapability.input_schema` — confirmed pre-existing on `origin/main`,
+unrelated to W3 (three independent lanes verified this before the conductor did a fourth
+time).
+
+**kala_*/gochara zero-diff check:** clean except one file, flagged explicitly rather than
+decided silently — `platform-mcp/src/tools/retrieval/kala_temporal.ts` gained a
+`budgetMcpContent()` wire-wrapper from lane 5's unclamped-tool migration (byte-clamp only,
+zero change to computed/served data or shape — the same generic plane-infrastructure
+change every other tool in that lane received). Lane 6 separately left
+`L3_kala/query_projections` on the generic `density_contract` default rather than the
+measured 55KB override `registry_bridge.ts` already carries for it, out of the same
+caution. Both need an explicit native ruling, not a conductor decision, per the kala
+freeze's spirit.
+
+**D-5 coexistence, live during this wave:** D-5 deployed twice while lanes were in
+flight — RED-C v4 (#650, merged 12:14) mid-lane-dispatch, RED-D (#651, merged 13:09)
+during integration. Neither PR was open when `impl/wave-3` was opened (both merged); the
+branch was rebased onto `origin/main` after each to stay current (zero conflicts both
+times — D-5's changes are entirely within `platform/python-sidecar/services/
+{ka_gochara_sweep,gochara_grammar,gochara_intensity}/` and one migration, none of which
+any W3 lane touches). **`impl/wave-3` (PR #661) is opened but explicitly held unmerged**
+— per the native's own W3 kickoff instruction, the wave does not merge/deploy until the
+native confirms D-5 is quiet, even though the mutex reads clear (no open D-5 PR) at the
+moment this entry is written; a `worktree-wave+D-5+conductor` branch is still live,
+suggesting D-5's own conductor session may still be re-running its §G gate against the
+RED-C/RED-D fixes.
