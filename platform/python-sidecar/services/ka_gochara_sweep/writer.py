@@ -127,7 +127,13 @@ _N_YEARS = _HORIZON_YEARS  # one substep per calendar year -- see module
 # before replanning every substep -- so chart 482012f1's already-committed
 # major_gain rows are genuinely re-derived under the new consolidation
 # logic, not silently skipped as "already built".
-_RESUME_VERSION = 5
+# Bumped 5 -> 6 (D-5 native disposition, 2026-07-20, gate_run_2 findings
+# 1/2 corrected serving semantics): point-class rows now serve one row per
+# LOCAL maximum within an active run (`shape_output._local_maxima`), not a
+# single global argmax per run -- an old point-class row committed under
+# v5 reflects the collapsed, superseded shape and must not be read as
+# already-correctly-completed by a resume.
+_RESUME_VERSION = 6
 
 
 def _substep_sort_key(step: SubStep, priority_years: set[tuple[str, int]]) -> tuple[int, str, int]:

@@ -109,6 +109,54 @@ def test_point_shape_no_activity_emits_no_rows():
     assert rows == []
 
 
+def test_point_shape_two_local_maxima_within_one_run_both_served():
+    """D-5 native disposition, gate_run_2 finding 2: a single active run
+    that never drops to zero (e.g. a dasha-driven system holding it open)
+    but genuinely crests TWICE -- once via one mechanism, once via another
+    -- must serve BOTH peaks, not collapse to the single global argmax.
+    Never drops to exactly 0.0 between the two humps (that would split it
+    into two separate runs, already covered by the disjoint-runs test)."""
+    series = [
+        _result("marriage", _jd(2013, 1, 5), 0.2),
+        _result("marriage", _jd(2013, 1, 6), 0.5),
+        _result("marriage", _jd(2013, 1, 7), 0.7),   # local max #1 (chara_karaka-class)
+        _result("marriage", _jd(2013, 1, 8), 0.3),
+        _result("marriage", _jd(2013, 6, 1), 0.1),   # trough, still active (>eps)
+        _result("marriage", _jd(2013, 12, 10), 0.3),
+        _result("marriage", _jd(2013, 12, 11), 0.9),  # local max #2 (double-transit-class)
+        _result("marriage", _jd(2013, 12, 12), 0.2),
+        _result("marriage", _jd(2013, 12, 13), 0.0),  # ends the run
+    ]
+    rows = SO.build_point_rows(swe, "marriage", series)
+    peak_dates = sorted(r["peak_date"].isoformat() for r in rows)
+    assert peak_dates == ["2013-01-07", "2013-12-11"], (
+        "both local maxima within the one continuous run must be served independently"
+    )
+    for row in rows:
+        assert row["window_start"] == row["window_end"] == row["peak_date"], "still never a span"
+    intensities = {r["peak_date"].isoformat(): r["raw_intensity"] for r in rows}
+    assert intensities["2013-01-07"] == pytest.approx(0.7)
+    assert intensities["2013-12-11"] == pytest.approx(0.9)
+
+
+def test_point_shape_flat_plateau_collapses_to_one_earliest_row():
+    """A tied flat top must report exactly ONE representative row (the
+    earliest day), matching `_peak_of`'s own tie-break convention -- not
+    one row per tied day (which would flood a genuinely flat plateau with
+    duplicate-magnitude noise rows)."""
+    series = [
+        _result("marriage", _jd(2013, 1, 5), 0.2),
+        _result("marriage", _jd(2013, 1, 6), 0.6),
+        _result("marriage", _jd(2013, 1, 7), 0.6),
+        _result("marriage", _jd(2013, 1, 8), 0.6),
+        _result("marriage", _jd(2013, 1, 9), 0.3),
+        _result("marriage", _jd(2013, 1, 10), 0.0),
+    ]
+    rows = SO.build_point_rows(swe, "marriage", series)
+    assert len(rows) == 1
+    assert rows[0]["peak_date"].isoformat() == "2013-01-06"
+
+
 # ── shape_output: interval ───────────────────────────────────────────────
 
 def test_interval_shape_never_degenerates_to_a_single_day():

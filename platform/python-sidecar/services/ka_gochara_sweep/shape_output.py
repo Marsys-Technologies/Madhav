@@ -151,6 +151,39 @@ def _peak_of(run: list):
     return max(run, key=lambda r: (abs(r.signed_lambda), -r.t_jd))
 
 
+def _local_maxima(run: list) -> list:
+    """Every local maximum of `|raw_lambda|` within one contiguous active
+    run (D-5 native disposition, 2026-07-20, DR-15/DR-17-compatible fix for
+    the "argmax-per-year collapse" defect): a point-shaped event_class was
+    serving only the single strongest day per active run, silently dropping
+    every other genuine local peak in a multi-modal signal (e.g. a
+    dasha-driven system holding a run open all year with its own peak, PLUS
+    a separately-timed transit mechanism cresting on a different day within
+    the same run) -- collapsing a legitimately multi-peaked density into one
+    argmax fabricates false single-peak precision, the same defect class as
+    RED-C's chunk-bounded windows (§N.6 lineage).
+
+    Standard local-maximum detection, no tunable knobs beyond `run` itself
+    (deliberately NOT specimen-tuned): day i is a local maximum iff its
+    magnitude is strictly greater than its left neighbor (or i is the run's
+    own first day) AND greater-or-equal to its right neighbor (or i is the
+    run's own last day). The >  / >= asymmetry means a flat-topped plateau
+    reports exactly ONE representative day -- its EARLIEST day, matching
+    `_peak_of`'s own tie-break convention -- not one row per tied day.
+    Every detected local max keeps its own full IntensityResult (so the
+    caller can attribute a distinct `contributing_systems`/mechanism to
+    each), never a single system's detail borrowed across peaks."""
+    n = len(run)
+    maxima = []
+    for i in range(n):
+        mag = abs(run[i].signed_lambda)
+        left_ok = i == 0 or mag > abs(run[i - 1].signed_lambda)
+        right_ok = i == n - 1 or mag >= abs(run[i + 1].signed_lambda)
+        if left_ok and right_ok:
+            maxima.append(run[i])
+    return maxima
+
+
 def _serialize_result(r) -> dict[str, Any]:
     """Common per-row fields derived from one IntensityResult, shared by
     all three shape builders."""
@@ -172,28 +205,36 @@ def build_point_rows(
     series: list,
     active_sentences_by_jd: Optional[dict] = None,
 ) -> list[dict]:
-    """Point-class (BRIEF_D5 §3): one row per detected activation peak,
-    `window_start == window_end == peak_date`. NEVER a span — a point-shaped
-    event_class must never assert more temporal precision loss/gain than a
-    single dated peak."""
+    """Point-class (BRIEF_D5 §3): one row per detected LOCAL activation
+    peak (D-5 native disposition, 2026-07-20 — DR-15/DR-17: multi-modal
+    densities are a legitimate served shape; collapsing a run to its single
+    global argmax was an arbitrary single-selection collapse. See
+    `_local_maxima`'s own docstring for the detection rule and rationale),
+    `window_start == window_end == peak_date` on EVERY row. NEVER a span —
+    a point-shaped event_class must never assert more temporal precision
+    loss/gain than a single dated peak, but a run legitimately carrying
+    several distinct local maxima (e.g. two differently-timed mechanisms
+    both crossing threshold within the same active stretch) now serves one
+    row per maximum, each independently attributed via its own
+    `contributing_systems`, not one row speaking for the whole run."""
     active_sentences_by_jd = active_sentences_by_jd or {}
     rows = []
     for run in _active_runs(series):
-        peak = _peak_of(run)
-        peak_date = _jd_to_date_ist(swe, peak.t_jd)
-        row = {
-            "event_class": event_class,
-            "temporal_shape": "point",
-            "window_start": peak_date,
-            "window_end": peak_date,
-            "peak_date": peak_date,
-            "milestone_id": None,
-            "is_irreversibility_milestone": False,
-            "active_sentences": active_sentences_by_jd.get(round(peak.t_jd, 3), []),
-            "peak_basis": PEAK_BASIS,
-        }
-        row.update(_serialize_result(peak))
-        rows.append(row)
+        for peak in _local_maxima(run):
+            peak_date = _jd_to_date_ist(swe, peak.t_jd)
+            row = {
+                "event_class": event_class,
+                "temporal_shape": "point",
+                "window_start": peak_date,
+                "window_end": peak_date,
+                "peak_date": peak_date,
+                "milestone_id": None,
+                "is_irreversibility_milestone": False,
+                "active_sentences": active_sentences_by_jd.get(round(peak.t_jd, 3), []),
+                "peak_basis": PEAK_BASIS,
+            }
+            row.update(_serialize_result(peak))
+            rows.append(row)
     return rows
 
 
