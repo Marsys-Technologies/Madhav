@@ -56,7 +56,8 @@
 import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
-import type { DrillPointer } from '../../envelope'
+import type { DrillPointer, JudgmentFlagEntry } from '../../envelope'
+import { judgmentFlag } from '../../envelope'
 
 // ── Classical dignity weighting for the CONFIRMATION stage (design §28.1's own weighting
 // discipline — deterministic, never an LLM judgment, never a fabricated probability;
@@ -189,7 +190,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
       return { content: { error: 'pact_query requires either `domain` or `bhava` (same as judgment_query).' }, is_error: true }
     }
 
-    const judgment_flags: string[] = []
+    const judgment_flags: JudgmentFlagEntry[] = []
     const fact_ids = new Set<string>()
     const stages: Array<Record<string, unknown>> = []
     const drill_pointers: DrillPointer[] = []
@@ -240,7 +241,10 @@ export const pactQueryCapability: CapabilityDescriptor = {
             chart_id, ayanamsha_id, as_of_date, about,
             pact_status: 'denied_at_promise',
             stages,
-            judgment_flags: [...((jq['judgment_flags'] as string[]) ?? []), 'PACT chain halted at PROMISE — see stages[0].reason. Stages 2-4 (CONFIRMATION/ACTIVATION/TRIGGER) NOT attempted (B.10: no fabrication past a denied promise).'],
+            judgment_flags: [
+              ...((jq['judgment_flags'] as JudgmentFlagEntry[]) ?? []),
+              judgmentFlag('pact_halted_at_promise', 'see stages[0].reason. Stages 2-4 (CONFIRMATION/ACTIVATION/TRIGGER) NOT attempted (B.10: no fabrication past a denied promise).'),
+            ],
             drill_pointers,
             fact_id_refs: Array.from(fact_ids),
           },
@@ -254,7 +258,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
       const vargaDignities: VargaDignityRow[] = []
       for (const { role, name } of grahasToConfirm) {
         const code = GRAHA_NAME_TO_CODE[name]
-        if (!code) { judgment_flags.push(`confirmation_graha_unrecognized: ${name}`); continue }
+        if (!code) { judgment_flags.push(judgmentFlag('confirmation_graha_unrecognized', name)); continue }
         const row = await gradeGrahaInVarga(chart_id, ayanamsha_id, operativeVarga, name, code, role)
         if (row.fact_id) fact_ids.add(row.fact_id)
         vargaDignities.push(row)
@@ -290,7 +294,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
             chart_id, ayanamsha_id, as_of_date, about,
             pact_status: 'denied_at_confirmation',
             stages,
-            judgment_flags: [...judgment_flags, 'PACT chain halted at CONFIRMATION — see stages[1].reason. Stages 3-4 (ACTIVATION/TRIGGER) NOT attempted.'],
+            judgment_flags: [...judgment_flags, judgmentFlag('pact_halted_at_confirmation', 'see stages[1].reason. Stages 3-4 (ACTIVATION/TRIGGER) NOT attempted.')],
             drill_pointers,
             fact_id_refs: Array.from(fact_ids),
           },
@@ -342,7 +346,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
             chart_id, ayanamsha_id, as_of_date, about,
             pact_status: 'denied_at_activation',
             stages,
-            judgment_flags: [...judgment_flags, 'PACT chain halted at ACTIVATION — see stages[2].reason. Stage 4 (TRIGGER) NOT attempted.'],
+            judgment_flags: [...judgment_flags, judgmentFlag('pact_halted_at_activation', 'see stages[2].reason. Stage 4 (TRIGGER) NOT attempted.')],
             drill_pointers,
             fact_id_refs: Array.from(fact_ids),
           },
@@ -415,7 +419,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
             chart_id, ayanamsha_id, as_of_date, about,
             pact_status: 'chain_incomplete_infra',
             stages,
-            judgment_flags: [...judgment_flags, 'PACT chain reached TRIGGER but the ephemeris sidecar was unreachable/empty — the chain is NOT complete despite all four stages being attempted (infra gap, not a classical denial).'],
+            judgment_flags: [...judgment_flags, judgmentFlag('pact_trigger_infra_incomplete', 'the ephemeris sidecar was unreachable/empty — the chain is NOT complete despite all four stages being attempted (infra gap, not a classical denial).')],
             drill_pointers,
             resolution_chains: jq['resolution_chains'],
             fact_id_refs: Array.from(fact_ids),

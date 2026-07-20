@@ -31,6 +31,7 @@
  *     `recover_via` instrument + explicit params (e.g. `max_signals`, `include`,
  *     `response_format:'legacy'`) — this file only governs what is DEFAULT-served.
  */
+import { judgmentFlag, type JudgmentFlagEntry } from '../generated/envelope.js'
 
 export interface TrimReportEntry {
   path: string
@@ -343,10 +344,10 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
   // budget" — that's a false alarm, not honesty.)
   const trueCeilingBytes = opts.maxKb * 1024
   if (estimateBytes(content) > trueCeilingBytes) {
-    const existingFlags = (mutable[judgmentFlagsField] as string[] | undefined) ?? []
+    const existingFlags = (mutable[judgmentFlagsField] as JudgmentFlagEntry[] | undefined) ?? []
     mutable[judgmentFlagsField] = [
       ...existingFlags,
-      `response_still_over_${opts.maxKb}kb_budget_after_full_trim`,
+      judgmentFlag('budget_exceeded_after_trim', `${opts.maxKb}kb budget still exceeded after full trim.`),
     ]
   }
 

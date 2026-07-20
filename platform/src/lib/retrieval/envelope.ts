@@ -266,6 +266,129 @@ export interface DrillPointer {
   pact_stage?: PactStage
 }
 
+// ── §10.3 / W3-L2 — closed judgment-flag vocabulary (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF
+// §E W3 item 2 "flags closed enum + d8/hollow-emitter migration", RETRIEVAL_PLANE_ELEVATION_PLAN
+// §"R-2 One Envelope" item 2, GT-46/GT-53) ─────────────────────────────────────
+//
+// PROBLEM THIS CLOSES: `judgment_flags` was a fully open `string[]` — any emitter could push
+// any free-text string, so a consumer had no closed vocabulary to branch on and no way to
+// distinguish a structured, machine-checkable disclosure from ad-hoc prose. This section is the
+// SINGLE SOURCE for the closed code vocabulary (`JUDGMENT_FLAG_CODES`/`JudgmentFlagCode`) plus
+// the structured entry shape every emitter in the codebase now targets.
+//
+// COMPAT (plan §"ship a compat shim during transition"): `JudgmentFlagEntry` additionally
+// accepts a bare `string` so a consumer reading the field defensively — or an emitter in a
+// parallel lane not yet migrated (e.g. session-pin drift's own `judgment_flags: string[]`,
+// which is a distinct subsystem outside this file's envelope-building path) — never hard-breaks.
+// New emitters should always push the structured `{code, detail?, severity?}` shape via the
+// `judgmentFlag()` builder below; `judgmentFlagsInclude`/`judgmentFlagText` let a consumer check/
+// render either shape without caring which one a given entry happens to be.
+export const JUDGMENT_FLAG_CODES = [
+  // ── generic row/page honesty (shared across many list-shaped tools) ──
+  'zero_rows_returned',
+  'zero_entity_profiles',
+  'response_size_truncated',
+  'partial_page_more_available',
+  'catalog_only_rows_present',
+  'system_facet_unrecognized',
+  'time_sensitive_low_confidence',
+  // ── L1 get_dasha_lord_capability / get_dashas ──
+  'unmapped_lord_graha',
+  'house_class_unresolved',
+  'ratification_unavailable',
+  // ── D9 judgment_query checklist legs ──
+  'karaka_unresolved',
+  'from_moon_resolution_failed',
+  'varga_confirmation_failed',
+  'yoga_firings_fetch_failed',
+  'bearing_yogas_empty',
+  'bearing_yogas_no_domain_match',
+  'yoga_signal_corroboration_fetch_failed',
+  'bearing_yogas_corroboration_caveat',
+  'notably_absent_not_checked',
+  'kala_activations_trimmed',
+  'kala_activations_single_cycle',
+  'timing_anchored_false',
+  'timing_anchored_forced_false',
+  'timing_hook_failed',
+  'afflictions_fetch_failed',
+  'afflictions_empty',
+  'afflictions_present',
+  // ── D8 assess_domain (folds the former {claim, requires_acharya_validation} object shape) ──
+  'domain_inference_requires_acharya_validation',
+  // ── D10 pact_query chain-honesty halts ──
+  'confirmation_graha_unrecognized',
+  'pact_halted_at_promise',
+  'pact_halted_at_confirmation',
+  'pact_halted_at_activation',
+  'pact_trigger_infra_incomplete',
+  // ── graha_portrait / get_chart_orientation / get_signals (registry_bridge.ts) ──
+  'partial_portrait_section_errors',
+  'no_parivartana_or_catalog_matches_for_graha',
+  'no_mahadasha_periods_for_graha',
+  // ── response_budget.ts finalizeMcpBudget hard-cap ──
+  'budget_exceeded_after_trim',
+  // ── session-pin drift (distinct subsystem, session_pin.ts) — included so a value it
+  // already emits (as a plain string, unconverted this wave) is always a VALID code, not
+  // an orphaned literal outside the closed vocabulary. ──
+  'chart_rebuilt_mid_session_pin_refreshed',
+  // ── coordination placeholders for parallel W3 lanes (do not rename — see brief) ──
+  'chart_header_unresolved', // W3-L1 (chart_header fail-loud)
+  'cursor_filter_mismatch', // W3-L4 (cursor-fingerprint)
+  // ── hollow-emitter honesty (register_p1_synthesis.ts / register_p1_reference.ts) ──
+  'hollow_envelope_no_data_rows',
+  'hollow_envelope_shape_not_evaluated',
+  // ── transitional catch-all for a bare string this migration cannot classify further ──
+  'legacy_unstructured_flag',
+] as const
+
+export type JudgmentFlagCode = typeof JUDGMENT_FLAG_CODES[number]
+
+/** Runtime membership check against the closed vocabulary above — the "registry-checked" half
+ *  of "closed, registry-checked flag-code enum" (tests assert every real emitter's code is a
+ *  member of this array, not just that the TS union compiles). */
+export function isJudgmentFlagCode(value: unknown): value is JudgmentFlagCode {
+  return typeof value === 'string' && (JUDGMENT_FLAG_CODES as readonly string[]).includes(value)
+}
+
+export interface JudgmentFlag {
+  code: JudgmentFlagCode
+  /** Free-text elaboration (the dynamic part of what used to be baked into a single
+   *  interpolated string — e.g. the caught error, the row count, the graha name). Optional:
+   *  a self-explanatory code (e.g. `zero_rows_returned`) needs none. */
+  detail?: string
+  severity?: 'info' | 'warning' | 'error'
+}
+
+/** Transitional compat shape (W3-L2 migration): every field TYPED as carrying
+ *  `JudgmentFlagEntry[]` tolerates a bare legacy string alongside the new structured shape —
+ *  see the module-doc note above for why this is deliberate, not a loose escape hatch. */
+export type JudgmentFlagEntry = JudgmentFlag | string
+
+/** The one constructor every migrated emitter in the codebase uses to push a flag — avoids
+ *  each call site hand-rolling the object literal (and mistyping a code past the closed
+ *  vocabulary, since TS rejects an out-of-union `code` argument here at the call site). */
+export function judgmentFlag(code: JudgmentFlagCode, detail?: string, severity?: JudgmentFlag['severity']): JudgmentFlag {
+  return { code, ...(detail !== undefined ? { detail } : {}), ...(severity !== undefined ? { severity } : {}) }
+}
+
+/** Defensive, either-shape accessor — true iff `flags` carries `code`, whether the matching
+ *  entry is the new `{code,...}` shape or a not-yet-migrated bare string equal to (or prefixed
+ *  `code: `, the pre-migration convention several emitters used) that code. Never throws on a
+ *  mixed array. */
+export function judgmentFlagsInclude(flags: JudgmentFlagEntry[] | null | undefined, code: JudgmentFlagCode): boolean {
+  if (!flags) return false
+  return flags.some(f => (typeof f === 'string' ? f === code || f.startsWith(`${code}:`) : f.code === code))
+}
+
+/** Render a flag entry (either shape) as a single human-readable string — never throws on
+ *  either shape. For a consumer that just wants prose (e.g. a legacy log line, or a caller
+ *  that has not yet adopted the structured shape). */
+export function judgmentFlagText(flag: JudgmentFlagEntry): string {
+  if (typeof flag === 'string') return flag
+  return flag.detail ? `${flag.code}: ${flag.detail}` : flag.code
+}
+
 // ── R5.1 C1 — MCP-consume response-budget trim report ─────────────────────────
 
 /**
@@ -299,7 +422,7 @@ export interface LegacyEnvelope {
   grounding: GroundingBlock
   pagination: PaginationBlock
   drill_pointers: DrillPointer[]
-  judgment_flags: string[]
+  judgment_flags: JudgmentFlagEntry[]
   insight_type: string | null
   query_class: string
   content: unknown
@@ -343,7 +466,7 @@ export interface BuildRetrievalEnvelopeParams {
   ranking_basis?: Record<string, unknown> | null
   grounding?: Partial<GroundingBlock>
   drill_pointers?: DrillPointer[]
-  judgment_flags?: string[]
+  judgment_flags?: JudgmentFlagEntry[]
   build_id?: string | null
   /** R5.1 C1 — populated only by callers that ran this response's content through the
    *  response-budget trimmer (e.g. platform-mcp's response_budget.ts). Emitted under BOTH
