@@ -53,6 +53,7 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
 |---|---|---|---|
 | 2026-07-19 19:12–19:34 | retrieval | W0 S-1..S-5 safety deploy (PR #633 → main `2f4b67e8` → amjis-mcp `amjis-mcp-00440-n29` + amjis-web `amjis-web-01031-rmj`, 100% traffic) | **RELEASED** 2026-07-19 19:5x, post live-verification |
 | 2026-07-20 (claimed pre-merge) | retrieval | W2 phase 1 deploy: descriptor migration + vidhi de-mirror + 6 dark-set items, incl. two NEW live sidecar routes (ephemeris compute, muhurta score) — requires python-sidecar + platform-mcp redeploy, not just platform/web. Pre-deploy check: D-5 is HALTED (§ D-5 STATUS REFRESH above); most recent `origin/main` activity is D-5's `gate_run_2` (docs-only push, `Build & Deploy Web/MCP/Sidecar` all skipped — confirmed no live D-5 code deploy in flight). Baseline re-snapshot: this campaign's last live probe was W0's `VERIFY_W0.md` (2026-07-19); a fresh post-deploy live probe of the two new sidecar routes substitutes for a full baseline re-snapshot here, since W1/W2 phase 1 added no regression-risk to the surfaces W0 already verified. | **RELEASED** 2026-07-20, post live-verification |
+| 2026-07-20 (claimed pre-merge) | retrieval | W3 deploy: PR #661 (`impl/wave-3` → `main`), full envelope/flags/register/cursor/budget/density/demand/cache surface. Pre-deploy check: D-5's RED-C (#650) and RED-D (#651) fixes both merged, no D-5 PR open (mutex reads clear); **native explicit confirmation received** (2026-07-20) that D-5 is quiet enough for a non-breaking deploy — the stale `worktree-wave+D-5+conductor` branch ruled not a blocker. Native rulings on the two flagged kala-adjacent touches: `kala_temporal.ts`'s budget wrapper stays (plane infrastructure, revert-on-objection — filed as a §I.5 note in `STATE_D-5.md`, PR #662); `L3_kala/query_projections`'s conservative density_contract stance approved, measured override deferred until the kala freeze lifts. Baseline re-snapshot: live-probed `get_cgm_subgraph(mode=convergence)` and `judgment_query(domain=wealth, response_format=v3)` against chart 482012f1 immediately before this deploy (the "before" half of the native's requested before/after diff) — see `VERIFY_W3.md` §2 for the full capture. Alias cutover + bootstrap flag-flip remain parked (unchanged ruling, does not follow from this go-ahead). | **RELEASED** 2026-07-20, post live-verification (see `VERIFY_W3.md`) |
 
 ### W2 PHASE 1 CLOSE (2026-07-20)
 
@@ -1548,3 +1549,100 @@ shape) → L2 (flags) → L4 (cursor) → L5 (budget) → L6 (density/verbosity)
 with L3 and L7 (mostly additive/greenfield, lower collision risk) integrated last against the
 merged base. Each lane ships with tests; the wave verifier is independent of every lane's
 implementer per brief §D.
+
+### W3 — Lane implementation + integration (2026-07-20)
+
+**All 8 lanes implemented independently in isolated worktrees, each opened its own PR
+against `main` (none merged individually, per plan):** L1 envelope+chart_header (#657),
+L2 flags closed enum (#659), L3 register/reading_contract/signal_reader_text (#654), L4
+cursor fingerprints (#653), L5 budget unification (#660 — one stall+respawn cycle, see
+below), L6 density_contract+verbosity (#658), L7 demand_ranking+timing+prediction (#655),
+L8 ledger_version+cache determinism (#656).
+
+**Failure-discipline record (brief §D "a stalled agent is respawned once with narrowed
+scope"):** L5's first attempt stalled (no progress 600s) mid-test-run; the respawn found
+substantial uncommitted, largely-correct work, rebased it onto `origin/main` (which had
+advanced to D-5's RED-C v4 merge mid-wave — confirmed zero unintended diff on the
+kala_*/gochara files this introduced), verified, and shipped it as #660. A separate
+"integrator" agent (opus, tasked with merging all 8 lanes) also stalled at 600s mid-merge,
+having cleanly landed lanes 1-2 and left one unresolved conflict; the conductor completed
+the remaining merges directly (7 more merge commits, 4 real conflicts requiring judgment —
+all "both sides are legitimate additive changes, keep both" — plus the recurring
+`generated/envelope.ts` mechanical-mirror conflict resolved by later regeneration, never
+by hand-picking a side).
+
+**One real architectural defect found and fixed during integration, not by any single
+lane:** L3's `register_block.ts` cross-imported `EpistemicGrade`/`DrillPointerType`/
+`PactStage` FROM `envelope.ts` — harmless in isolation, but the moment `envelope.ts`
+itself imported back from `register_block.ts` (to call `buildRegisterBlock` etc.), the
+codegen script's hard zero-import process-boundary guard (design §19 — `envelope.ts` must
+stay self-contained because `platform-mcp` cannot `import` across the process boundary)
+halted. Fixed by inlining `register_block.ts`'s content directly into `envelope.ts`
+(the exact fix pattern L4's cursor lane had already used for its own hash function,
+independently, for the same reason) and turning `register_block.ts` into a thin
+re-export shim so its 3 existing consumers needed no changes. Two smaller regressions
+from the conductor's own merge-conflict resolutions were caught by the test suite and
+fixed in the same pass (mismatched budget-flag detail wording; a pre-L2 test still
+assuming the bare-string judgment_flags shape).
+
+**Verification before opening the wave PR:** `platform` + `platform-mcp` both
+`tsc --noEmit` clean. `platform/src/lib/retrieval` full suite: 1327/1327 passed, 0
+regressions. `platform-mcp` full suite: 75 failed/550 passed — confirmed **byte-identical**
+against a fresh detached `origin/main` checkout (75/528 there) — zero regressions
+introduced by W3. `codegen:envelope --check` clean (regenerated fresh from the fully
+merged source, twice, after the register_block fix). `codegen:registry-shims` still halts
+on `getStrengthCapability.input_schema` — confirmed pre-existing on `origin/main`,
+unrelated to W3 (three independent lanes verified this before the conductor did a fourth
+time).
+
+**kala_*/gochara zero-diff check:** clean except one file, flagged explicitly rather than
+decided silently — `platform-mcp/src/tools/retrieval/kala_temporal.ts` gained a
+`budgetMcpContent()` wire-wrapper from lane 5's unclamped-tool migration (byte-clamp only,
+zero change to computed/served data or shape — the same generic plane-infrastructure
+change every other tool in that lane received). Lane 6 separately left
+`L3_kala/query_projections` on the generic `density_contract` default rather than the
+measured 55KB override `registry_bridge.ts` already carries for it, out of the same
+caution. Both need an explicit native ruling, not a conductor decision, per the kala
+freeze's spirit.
+
+**D-5 coexistence, live during this wave:** D-5 deployed twice while lanes were in
+flight — RED-C v4 (#650, merged 12:14) mid-lane-dispatch, RED-D (#651, merged 13:09)
+during integration. Neither PR was open when `impl/wave-3` was opened (both merged); the
+branch was rebased onto `origin/main` after each to stay current (zero conflicts both
+times — D-5's changes are entirely within `platform/python-sidecar/services/
+{ka_gochara_sweep,gochara_grammar,gochara_intensity}/` and one migration, none of which
+any W3 lane touches). **`impl/wave-3` (PR #661) is opened but explicitly held unmerged**
+— per the native's own W3 kickoff instruction, the wave does not merge/deploy until the
+native confirms D-5 is quiet, even though the mutex reads clear (no open D-5 PR) at the
+moment this entry is written; a `worktree-wave+D-5+conductor` branch is still live,
+suggesting D-5's own conductor session may still be re-running its §G gate against the
+RED-C/RED-D fixes.
+
+### W3 CLOSE (2026-07-20)
+
+Native go-ahead received (D-5 confirmed quiet: RED-C #650 and RED-D #651 both merged,
+mutex read clear; the two flagged kala-adjacent touches ruled acceptable — see §I.5 note
+in `STATE_D-5.md`, PR #662). Merged: PR #661 (`impl/wave-3` → `main`, merge commit
+`7f0ff1a0`), all 15 CI checks green. Deploy (triggered automatically on push): `Build &
+Deploy Web` + `Build & Deploy MCP` both succeeded; `Sidecar`/`Pipeline Job Image`
+correctly skipped (W3 touched zero python-sidecar files). Full live-verification record:
+`VERIFY_W3.md` — every named W3 deliverable (v3 envelope honesty, closed flag enum,
+register/reading_contract/signal_reader_text, cursor fingerprints, budget unification,
+density_contract, demand_ranking, ledger_version) confirmed on the deployed connector via
+a genuine before/after diff on `judgment_query(domain=wealth, response_format=v3)`, chart
+482012f1 — not inferred from source or unit tests alone. The native's specifically
+requested CGM convergence probe (`get_cgm_subgraph(mode=convergence)`) came back
+byte-identical before/after, which is itself an honest finding: that capability has no
+`response_format` param and cannot reach v3 today, and its `limit` request has no live
+effect (the real control, `top_k_hubs`, isn't exposed on this tool's MCP schema) —
+recorded as a residual, not silently substituted.
+
+**W3: CLOSED, V3 ACCEPT.** Residuals carried forward (full list in `VERIFY_W3.md` §7):
+`register_p1_ganita.ts`'s two unfixed silent chart_header sites; the session-pin
+`judgment_flags` subsystem outside L2's scope; `L3_kala/query_projections`'s generic
+density_contract default (native-approved to stay deferred pending the kala freeze
+lifting); no full 162-capability live sweep was performed (CI suite is the broad-surface
+evidence); no live `verbosity:concise` probe was run; `get_cgm_subgraph`'s v3/`limit` gap
+named for a future wave. **Alias cutover + bootstrap flag-flip remain parked** — the
+native's go-ahead for W3 explicitly did not extend to those W2-parked items. W4 (One
+Planner) is next, pending native go-ahead.

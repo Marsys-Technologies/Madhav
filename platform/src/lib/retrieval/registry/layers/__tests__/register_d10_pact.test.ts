@@ -77,8 +77,8 @@ describe('pact_query — Stage 1 PROMISE denial halts the chain (design §28.3)'
     const drillPointers = content['drill_pointers'] as Array<Record<string, unknown>>
     expect(drillPointers.some(p => p['pact_stage'] === 'promise')).toBe(true)
 
-    const flags = content['judgment_flags'] as string[]
-    expect(flags.some(f => f.includes('halted at PROMISE'))).toBe(true)
+    const flags = content['judgment_flags'] as Array<{ code: string } | string>
+    expect(flags.some(f => typeof f !== 'string' && f.code === 'pact_halted_at_promise')).toBe(true)
   })
 })
 
@@ -97,8 +97,8 @@ describe('pact_query — Stage 2 CONFIRMATION denial halts the chain', () => {
     expect(stages[1]!['stage']).toBe('CONFIRMATION')
     expect(stages[1]!['status']).toBe('denied')
 
-    const flags = content['judgment_flags'] as string[]
-    expect(flags.some(f => f.includes('halted at CONFIRMATION'))).toBe(true)
+    const flags = content['judgment_flags'] as Array<{ code: string } | string>
+    expect(flags.some(f => typeof f !== 'string' && f.code === 'pact_halted_at_confirmation')).toBe(true)
   })
 
   it('a missing D9 dignity row is reported "inconclusive", NOT fabricated as a denial (B.10)', async () => {

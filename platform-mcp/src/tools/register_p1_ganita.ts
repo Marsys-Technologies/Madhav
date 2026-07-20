@@ -22,10 +22,12 @@ import {
   resolveEnvelopeFormat,
   extractGroundingFromFactRows,
   buildEpistemicSummary,
+  judgmentFlag,
   type EnvelopeFormat,
   type ChartHeader,
   type DrillPointerType,
   type CoverageStamp,
+  type JudgmentFlagEntry,
 } from '../generated/envelope.js'
 import { applyAutoBudgetToEnvelope } from '../lib/response_budget.js'
 
@@ -107,7 +109,7 @@ function envelope(
     ranking_basis?: Record<string, unknown> | null
     grounding?: { fact_ids: string[]; citations: string[]; grounding_score: number | null }
     drill_pointers?: { instrument: string; hint: string; pointer_type?: DrillPointerType }[]
-    judgment_flags?: string[]
+    judgment_flags?: JudgmentFlagEntry[]
     as_of_date?: string
     epistemic?: ReturnType<typeof buildEpistemicSummary>
     coverage?: CoverageStamp | null
@@ -557,8 +559,8 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         // for the wiring + data-availability half of this fix) ──
         const rows = Array.isArray(merged['rows']) ? merged['rows'] as Record<string, unknown>[] : []
         const grounding = extractGroundingFromFactRows(rows)
-        const judgment_flags: string[] = []
-        if (rows.length === 0) judgment_flags.push('zero_rows_returned')
+        const judgment_flags: JudgmentFlagEntry[] = []
+        if (rows.length === 0) judgment_flags.push(judgmentFlag('zero_rows_returned'))
 
         const drill_pointers: { instrument: string; hint: string; pointer_type: DrillPointerType }[] = [
           { instrument: 'get_signals', hint: 'signal_type_class=yoga|dosha for salience-ranked cross-validation against L2 Bodha (SC-18: was previously mis-pointed at the non-existent MCP tool name "query_signals").', pointer_type: 'opposing_yoga' },
@@ -920,15 +922,16 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
 
         const grounding = extractGroundingFromFactRows(rows)
 
-        const judgment_flags: string[] = []
-        if (rows.length === 0) judgment_flags.push('zero_rows_returned')
-        if (total !== null && resolvedOffset + rows.length < total) judgment_flags.push('partial_page_more_available')
+        const judgment_flags: JudgmentFlagEntry[] = []
+        if (rows.length === 0) judgment_flags.push(judgmentFlag('zero_rows_returned'))
+        if (total !== null && resolvedOffset + rows.length < total) judgment_flags.push(judgmentFlag('partial_page_more_available'))
         if (catalogOnlyRows > 0) {
-          judgment_flags.push(
-            `catalog_only_rows_present: ${catalogOnlyRows} row(s) in this page are catalog_only/` +
+          judgment_flags.push(judgmentFlag(
+            'catalog_only_rows_present',
+            `${catalogOnlyRows} row(s) in this page are catalog_only/` +
             'requires_pass label matches (JL-004), not cross-verified confirmed firings — see ' +
             'verdict.catalog_only_rows_in_page and ganita_yoga_firings_get for confirmed detail.',
-          )
+          ))
         }
 
         const ranking_basis = {

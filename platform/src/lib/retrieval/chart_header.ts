@@ -10,28 +10,51 @@
  * ayanamsha, current_maha_antar. Sourced from chart_facts (graha_position,
  * fact_subject IN LAGNA/MOON/SUN) + charts (name) + chart_dashas (current
  * vimshottari Maha/Antar, level_n 1/2, containing as_of_date).
+ *
+ * W3-L1 (GT-47 / W-9) FAIL-LOUD CONTRACT: a resolution failure (DB error, etc.) still
+ * returns a header with null fields — the block remains a best-effort convenience, never
+ * a hard dependency that fails the calling instrument — but the failure is no longer
+ * SILENT. `fetchChartHeader` now returns `{ header, flags }`; `flags` carries the honesty
+ * flag string `'chart_header_unresolved'` whenever resolution threw, so every caller can
+ * fold it into its own `judgment_flags` array instead of serving null fields with no
+ * signal (B.10-adjacent: a caller must never be able to mistake "unresolved" for
+ * "genuinely has no data"). The flag name is intentionally plain-string (not yet part of
+ * a closed enum) — W3-L2 (flags-closed-enum migration) folds it in after this lane lands.
  */
 import { query } from '@/lib/db/client'
 import type { ChartHeader } from './envelope'
 import { DEFAULT_AYANAMSHA } from './registry/constants'
 
+/** W3-L1 honesty flag emitted when chart_header resolution fails. Stable string so the
+ *  forthcoming flags-closed-enum migration (W3-L2) can fold it in verbatim. */
+export const CHART_HEADER_UNRESOLVED_FLAG = 'chart_header_unresolved' as const
+
+export interface ChartHeaderResolution {
+  header: ChartHeader
+  /** Empty when resolution succeeded; contains CHART_HEADER_UNRESOLVED_FLAG when it did not. */
+  flags: string[]
+}
+
 const HEADER_CACHE_TTL_MS = 60_000
-const _headerCache = new Map<string, { data: ChartHeader; expiresAt: number }>()
+const _headerCache = new Map<string, { data: ChartHeaderResolution; expiresAt: number }>()
 
 function cacheKeyFor(chart_id: string, ayanamsha_id: string, as_of_date: string): string {
   return `chart_header::${chart_id}::${ayanamsha_id}::${as_of_date}`
 }
 
 /**
- * Fetch the ~40-token chart_header for a chart. Read-only; three cheap queries
- * (positions, dasha, name), 60s in-process cache (same locality caveat as the
- * general retrieval cache — see design §18: per-instance, not cross-process).
+ * Fetch the ~40-token chart_header for a chart PLUS the fail-loud resolution flags
+ * (W3-L1, GT-47 / W-9). Read-only; three cheap queries (positions, dasha, name), 60s
+ * in-process cache (same locality caveat as the general retrieval cache — see design
+ * §18: per-instance, not cross-process). This is the authoritative resolution path —
+ * `fetchChartHeader` below is a thin backward-compatible wrapper over it for callers
+ * that only need the header and don't (yet) propagate a flags channel.
  */
-export async function fetchChartHeader(
+export async function fetchChartHeaderResolution(
   chart_id: string,
   ayanamsha_id: string = DEFAULT_AYANAMSHA,
   as_of_date?: string,
-): Promise<ChartHeader> {
+): Promise<ChartHeaderResolution> {
   const asOf = as_of_date ?? new Date().toISOString().slice(0, 10)
   const ck = cacheKeyFor(chart_id, ayanamsha_id, asOf)
   const cached = _headerCache.get(ck)
@@ -47,6 +70,7 @@ export async function fetchChartHeader(
     ayanamsha: ayanamsha_id,
     current_maha_antar: null,
   }
+  let flags: string[] = []
 
   try {
     const [nameResult, positionResult, dashaResult] = await Promise.all([
@@ -89,9 +113,27 @@ export async function fetchChartHeader(
     header.current_maha_antar = maha && antar ? `${maha} MD / ${antar} AD` : (maha ? `${maha} MD` : null)
   } catch {
     // Frame-safety header is a best-effort convenience block, not a hard dependency —
-    // a failure here must never fail the instrument's own response. Fields stay null.
+    // a failure here must never fail the instrument's own response. Fields stay null,
+    // but (W3-L1) the failure is no longer silent: the honesty flag travels with the
+    // resolution so callers can fold it into their own judgment_flags.
+    flags = [CHART_HEADER_UNRESOLVED_FLAG]
   }
 
-  _headerCache.set(ck, { data: header, expiresAt: Date.now() + HEADER_CACHE_TTL_MS })
+  const resolution: ChartHeaderResolution = { header, flags }
+  _headerCache.set(ck, { data: resolution, expiresAt: Date.now() + HEADER_CACHE_TTL_MS })
+  return resolution
+}
+
+/**
+ * Backward-compatible wrapper over `fetchChartHeaderResolution` — returns just the
+ * header for callers that predate the flags channel. Prefer `fetchChartHeaderResolution`
+ * in any new/updated caller so a resolution failure is never silently swallowed again.
+ */
+export async function fetchChartHeader(
+  chart_id: string,
+  ayanamsha_id: string = DEFAULT_AYANAMSHA,
+  as_of_date?: string,
+): Promise<ChartHeader> {
+  const { header } = await fetchChartHeaderResolution(chart_id, ayanamsha_id, as_of_date)
   return header
 }

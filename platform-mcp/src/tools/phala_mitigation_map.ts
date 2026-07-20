@@ -34,6 +34,7 @@ import { z } from 'zod'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // ── Input schema ───────────────────────────────────────────────────────────────
 
@@ -305,7 +306,7 @@ export function registerMitigationMapTool(
       // F-016: wrap in MCP content array — handleMitigationMap returns a raw envelope,
       // but MCP tools must return { content: [{ type: 'text', text: string }] }
       const parsed = MitigationMapInputSchema.parse(args)
-      const result = await handleMitigationMap(parsed, principal)
+      const result = budgetMcpContent(await handleMitigationMap(parsed, principal), 'mitigation_map')
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
       }

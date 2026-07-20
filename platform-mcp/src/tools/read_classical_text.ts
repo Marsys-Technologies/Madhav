@@ -21,6 +21,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal, McpEnvelopeError } from '../types.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // ── Input schemas ─────────────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ export function registerReadClassicalText(
         if (status !== 200 || !envelope.ok) {
           return { content: [{ type: 'text' as const, text: JSON.stringify({ error: true, tool: 'read_classical_text', message: (envelope as McpEnvelopeError).error?.message ?? status }, null, 2) }], isError: true }
         }
-        return { content: [{ type: 'text' as const, text: JSON.stringify(envelope.result, null, 2) }] }
+        return { content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent(envelope.result, 'read_classical_text'), null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         return {
@@ -98,7 +99,7 @@ export function registerReadChapter(
         if (status !== 200 || !envelope.ok) {
           return { content: [{ type: 'text' as const, text: JSON.stringify({ error: true, tool: 'read_chapter', message: (envelope as McpEnvelopeError).error?.message ?? status }, null, 2) }], isError: true }
         }
-        return { content: [{ type: 'text' as const, text: JSON.stringify(envelope.result, null, 2) }] }
+        return { content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent(envelope.result, 'read_chapter'), null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         return {
@@ -126,7 +127,7 @@ export function registerListClassicalTexts(
         if (status !== 200 || !envelope.ok) {
           return { content: [{ type: 'text' as const, text: JSON.stringify({ error: true, tool: 'list_classical_texts', message: (envelope as McpEnvelopeError).error?.message ?? status }, null, 2) }], isError: true }
         }
-        return { content: [{ type: 'text' as const, text: JSON.stringify(envelope.result, null, 2) }] }
+        return { content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent(envelope.result, 'list_classical_texts'), null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         return {
@@ -154,7 +155,7 @@ export function registerFindVersesAbout(
         if (status !== 200 || !envelope.ok) {
           return { content: [{ type: 'text' as const, text: JSON.stringify({ error: true, tool: 'find_verses_about', message: (envelope as McpEnvelopeError).error?.message ?? status }, null, 2) }], isError: true }
         }
-        return { content: [{ type: 'text' as const, text: JSON.stringify(envelope.result, null, 2) }] }
+        return { content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent(envelope.result, 'find_verses_about'), null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         return {
@@ -183,7 +184,7 @@ export function registerSearchClassicalTexts(
         if (status !== 200 || !envelope.ok) {
           return { content: [{ type: 'text' as const, text: JSON.stringify({ error: true, tool: 'search_classical_texts', message: (envelope as McpEnvelopeError).error?.message ?? status }, null, 2) }], isError: true }
         }
-        return { content: [{ type: 'text' as const, text: JSON.stringify(envelope.result, null, 2) }] }
+        return { content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent(envelope.result, 'search_classical_texts'), null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         return {

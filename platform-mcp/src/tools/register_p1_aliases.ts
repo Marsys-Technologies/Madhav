@@ -19,7 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure, resolveChartFactsAyanamsha } from './registry_bridge.js'
-import { applyResponseBudget, autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 import { classifyScope } from './intent_scope_classifier.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
@@ -430,8 +430,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
             top_subjects_by_frequency: topSubjects,
             note: 'Small verdict over THIS response\'s own served rows (§N.6 (iii)) — not a re-query.',
           }
-          const budgeted = applyResponseBudget(inner, 25, [signalsSection()])
-          if (budgeted.trim_report) inner['trim_report'] = budgeted.trim_report
+          // W3-L5 (budget unification, W-8): migrated off bare applyResponseBudget onto the
+          // self-verifying finalizeMcpBudget entry point (this file's own dualOutput below
+          // applies a second, file-wide auto-detect pass at 40KB as a backstop — the two are
+          // not redundant: this narrower 25KB pre-trim on `inner` alone leaves headroom for
+          // verdict_summary computed just above).
+          finalizeMcpBudget(inner, { maxKb: 25, sections: [signalsSection()] })
         }
         return dualOutput(data)
       } catch (err) { return errOut('bodha_signals_get', String(err), { chart_id }) }
