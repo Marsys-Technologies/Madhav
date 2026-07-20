@@ -32327,6 +32327,74 @@ session_close:
 
 ---
 
+---
+
+## PG-2-CONDUCTOR-2026-07-19 — PG-2 Paripraśna Open-Question Diagnostic — Conductor Close
+
+**Note on log ordering**: PG-1's own SESSION_LOG close entry lives on branch `pg1/wave`
+(PR #613, still unmerged to `origin/main` at this wave's close) and is therefore absent
+from this worktree's copy of this file. It will appear above this entry once #613
+merges. This entry stands on its own regardless.
+
+```yaml
+session_open:
+  session_id: PG-2-CONDUCTOR-2026-07-19
+  wave: PG-2
+  reading_set: [CLAUDE.md, CONDUCTOR_PROTOCOL.md v1.4, ESCALATION_POLICY_v1_0.md v1.1,
+                ADJUDICATOR_CHARGE_v1_0.md v1.1, BRIEF_PG-2 v1.0, REPORT_PG-1.md,
+                PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md v0.6]
+  base_pin: origin/main @ 4b69df8c510fb3cfa42c9f00b57fcc378dd2f44a (fetched, per B-1 correction)
+```
+
+Autonomous diagnostic wave (§F2.1: read-only on source, diagnostic READ/INVOKE probes
+authorized, one fenced write per §F2.2) resolving every open question PG-1 left. 6
+lanes (X-1 through X-5, M-1) ran in **enforced isolated git worktrees**
+(`pg2/<lane>` at `Madhav-pg2-<lane>`, verified via `git worktree list` before dispatch
+— the hard gate this wave exists partly to demonstrate, after PG-1's shared-checkout
+deviation caused a real scope-warden false positive last wave), producing 44 evidenced
+findings, zero commit races, zero cross-lane scope violations. Both of the wave's
+central questions were answered from live probes: (a) `chart_facts`'s divergence is a
+benign per-ayanamsha-vs-all-ayanamsha scope mismatch (X-1, all 6 hypotheses driven to
+definitive conclusions, DB-verified); (b) the chat engine does **not** work — a live,
+Firebase-authenticated invocation against the native's own account and chart produced
+a deterministic HTTP 500 at bundle-hydration, root-caused to `bundle_hydrator.ts`
+hardcoding a retired `FORENSIC` floor asset deleted from the capability manifest in a
+prior teardown PR (X-2). Lane M-1 conducted an adversarial meta-audit of PG-1's own
+integrity and concluded **PG-1's gate result is VALID** — the 11-row G.1 addendum that
+turned PG-1's gate from RED to GREEN is genuine (independently proven via git
+commit-timestamp forward-causality, re-derived from scratch three times across this
+wave: by M-1, by this wave's own Phase-1 verifier, and by its gate runner) — while
+surfacing 6 correction-worthy defects in PG-1's sealed artifacts (a stale 87-vs-98
+finding count chief among them), applied as `[CORRECTED 2026-07-19 / PG-2]` blocks,
+originals preserved. Synthesis (Z-2) produced `PG2_DIAGNOSTIC_REPORT_v1_0.md`,
+`RETRIEVAL_SYSTEM_TRUTH_v2_0.md` (coverage now ~96%, first-ever real serving-path
+observation), and architecture v0.6→v0.7. The §G gate (11 assertions + falsifiable
+final proof) ran twice — mechanically, then independently by a fresh-context Opus
+gate runner performing its own adversarial anti-gaming pass — and closed GREEN on all
+11, after two conductor-level corrections (a coverage-arithmetic reconciliation gap,
+a missing governing-brief import) surfaced by the gate runner's own review. Full
+detail: `REPORT_PG-2.md`.
+
+```yaml
+session_close:
+  session_id: PG-2-CONDUCTOR-2026-07-19
+  wave: PG-2
+  close_criteria_met: true
+  verification: "6/6 lanes Opus-floor Phase-1 ACCEPT on first attempt (Z-2's transient API-error retry lost no committed work, protocol §6.4, not counted); §G gate GREEN on all 11 assertions incl. all 7 integrity assertions, confirmed by an independent fresh-context Opus gate runner + its own adversarial anti-gaming pass, with 2 post-review corrections applied and re-verified; final proof PASS (both central questions answered from probes this wave ran, quoted verbatim in REPORT_PG-2.md)"
+  deploy: "not applicable — PG-2 is read-only on product source with one authorized fenced write (X-2's chat probe: 2 conversation rows created against the native's own chart/account, ids recorded, kept not deleted per §F2.2); G.11 confirmed zero product-path touches across the entire wave"
+  product_code_writes_made: "none (§F2 absolute except the one fenced diagnostic write; G.11 verified clean)"
+  native_chart_touched: true
+  native_chart_touch_detail: "X-2's authorized fenced probe against chart 482012f1 (native's own): 2 conversation rows created (both engine-crash artifacts, HTTP 500 before any reading was produced), kept per fence rules, ids 14d96091-4038-461e-9a21-1e822bbe7555 and 3829624c-ff9f-4e19-96ba-4f10d87c03a0"
+  current_state_updated: true
+  register_dispositions_flipped: "none — PG-2 does not write to CR/DR registers (doctrine-waves territory, must_not_touch); OT-11 costed not resolved (native decision per PC-8); architecture v0.7 §16.8 appended"
+  followups: "highest-leverage single fix identified: bundle_hydrator.ts's hardcoded FLOOR_ASSET_IDS=['FORENSIC','CGM'] — drop 'FORENSIC' (deleted from CAPABILITY_MANIFEST.json in prior teardown PR #187) to unblock the entire chat engine; this is now recommended-fix #1, ahead of PG-1's original #1 (codegen:check CI-wiring). OT-11 ledger merge-vs-document decision pending native. Coverage-arithmetic gap (0-4 tools of unclear identity) needs a programmatic set-difference. PG-1's PR #613 remains unmerged — both waves' outputs need rebasing once it lands."
+  next_session_objective: "Native reviews REPORT_PG-2.md's disposition items (OT-11 decision, bundle_hydrator fix, coverage gap, PR #613 status) and the reprioritized recommended-fixes list. PG-2's own PR is opened per ESCALATION_POLICY §0 auto-proceed, held for human review pending PR #613's disposition (same reasoning PG-1's conductor applied to its own PR)."
+```
+
+*End of PG-2-CONDUCTOR-2026-07-19 entry — 2026-07-19.*
+
+---
+
 ## DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 — D-5 "Gochara-Chitra" HALTED (not closed)
 
 ```yaml

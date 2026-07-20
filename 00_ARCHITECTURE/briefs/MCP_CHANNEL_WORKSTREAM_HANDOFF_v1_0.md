@@ -643,4 +643,35 @@ tensions go to its §18. New defects append to its §16 (append-only).
 
 ---
 
-*End of MCP_CHANNEL_WORKSTREAM_HANDOFF v1.0 (2026-07-19).*
+
+
+## Appendix — PG-1 grounding-audit findings squarely for this workstream (2026-07-19)
+
+The PG-1 wave (see `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md`, `RETRIEVAL_SYSTEM_TRUTH_v1_0.md`)
+surfaced several items owned by this MCP channel workstream. Pointers only:
+
+- **`prashna_ask` does not exist** — `A-07` correction: grep across `platform/src` +
+  `platform-mcp/src` returns **ZERO** hits (the apparent matches were the substring of
+  the unrelated horary tool `prashna_undertaking_get`). "One agentic loop, two doors" is
+  currently **one door** (web); the channel-agnostic second door is unbuilt. §18/T-2's
+  "D-05 safe only if `prashna_ask` ships" is unmet. (`PG1-R3-0002`)
+- **OT-10 (MCP profile selection)** stands; two new forks were added to the parent §2 that
+  touch this channel: **OT-11** (which prediction ledger is canonical for NO-LEAKAGE —
+  `mimamsa_predictions` populated vs `mcp_predictions` empty; `PG1-D3-0003`) and **OT-12**
+  (P0' scope, `PG1-C2`).
+- **Capability count baseline for the compact projection:** **119** registry URIs / **139**
+  MCP tool names / **120** stale census — never 113 (`CAPABILITY_MANIFEST.json` is a
+  governance-artifact catalog, not the MCP registry; `PG1-R1-0001..0003`). The
+  MCP-compact "~25–35 umbrellas" count must derive from 119.
+- **Live MCP defects to fix before the compact projection ships:** `phala_anchors_get` 422
+  on optional `date_range` (F-25k), `ref_dignity_reference_get` 400 on `planet=Saturn`
+  (F-25l), `drill_pointers` → `"unknown_tool"` on sidecar/alias tools (F-25j), three
+  KEYSTONE sidecar tools double-encode their payload (F-25n, = the A-04 pull-in inventory),
+  and `judgment_flags`/`coverage.total` are **v3-gated** — the default legacy envelope
+  suppresses them (`PG1-R2-0007`/`-0008`).
+- **Bearer-key MCP auth face returns 401** (`POST /mcp` with `Authorization: Bearer`) while
+  the `?api_key=` seat is live — stale/rotated key or auth regression (F-25v, BIND B-3).
+
+---
+
+*End of MCP_CHANNEL_WORKSTREAM_HANDOFF v1.0 (2026-07-19) — PG-1 appendix added by Lane Z-1.*
