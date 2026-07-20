@@ -182,6 +182,42 @@ const BEARING_FIRST_URIS: ReadonlySet<CapabilityUri> = new Set([
   'marsys://tool/L-JUDGMENT/judgment_query',
 ])
 
+/**
+ * Plan §8 R-2 item 5 `demand_ranking.family_rank`/`rank_rationale` (W3 Lane L7):
+ * a WORKED EXAMPLE of static, family-relative sibling ordering on the L-DOMAIN
+ * `assess_*` family — the four life-domain judgment tools a planner must choose
+ * among when a question spans domains (or when surfacing the domain menu). The
+ * ranks encode a defensible *default* surfacing order among siblings BEFORE a
+ * question is known; question-conditioned `bearing_first` (when later wired) and
+ * the caller's actual domain intent both override this. Ranks are family-relative
+ * ordinals (1 = surface first among the assess_* siblings), NOT cross-family
+ * scores. Rationale: order by the breadth of life-consequence the domain most
+ * commonly anchors a reading around — career/livelihood and wealth are the two
+ * most-queried entry domains in a general "how is my chart" reading, marriage/
+ * relationship next, health as the domain a reading escalates INTO rather than
+ * opens with. This is a deliberate, auditable default, not a claim that one life
+ * domain matters more than another.
+ */
+const ASSESS_FAMILY_RANK: ReadonlyMap<CapabilityUri, { family_rank: number; rank_rationale: string }> =
+  new Map([
+    ['marsys://tool/L-DOMAIN/assess_career', {
+      family_rank: 1,
+      rank_rationale: 'Livelihood/karma-yoga is the most common entry domain for a general reading; surface first among assess_* siblings.',
+    }],
+    ['marsys://tool/L-DOMAIN/assess_wealth', {
+      family_rank: 2,
+      rank_rationale: 'Dhana/artha is the second most-queried entry domain and pairs tightly with career; second among assess_* siblings.',
+    }],
+    ['marsys://tool/L-DOMAIN/assess_marriage', {
+      family_rank: 3,
+      rank_rationale: 'Relationship/kalatra is a frequent but more specific ask; surfaced after the livelihood pair.',
+    }],
+    ['marsys://tool/L-DOMAIN/assess_health', {
+      family_rank: 4,
+      rank_rationale: 'Health/roga is typically a domain a reading escalates INTO from an adverse signal rather than opens with; last default among siblings.',
+    }],
+  ])
+
 // ── Field derivation ──────────────────────────────────────────────────────────
 
 function deriveAnnotations(cap: CapabilityDescriptor): NonNullable<CapabilityDescriptor['annotations']> {
@@ -256,7 +292,11 @@ function deriveCalibrationContextOnly(cap: CapabilityDescriptor): true | undefin
 function deriveDemandRanking(
   cap: CapabilityDescriptor
 ): NonNullable<CapabilityDescriptor['demand_ranking']> | undefined {
-  return BEARING_FIRST_URIS.has(cap.uri) ? { bearing_first: true } : undefined
+  const bearing = BEARING_FIRST_URIS.has(cap.uri) ? { bearing_first: true } : undefined
+  // W3 Lane L7 — static, family-relative sibling rank on the assess_* family (worked example).
+  const familyRank = ASSESS_FAMILY_RANK.get(cap.uri)
+  if (bearing === undefined && familyRank === undefined) return undefined
+  return { ...(bearing ?? {}), ...(familyRank ?? {}) }
 }
 
 // ── Apply (mutates in place, fills only undefined fields) ────────────────────
@@ -331,4 +371,5 @@ export const __backfillClassificationTables = {
   MUTATION_URIS,
   CALIBRATION_CONTEXT_ONLY_URIS,
   BEARING_FIRST_URIS,
+  ASSESS_FAMILY_RANK,
 }
