@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.2
+version: 3.5
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -846,9 +846,29 @@ services/gochara_*` code, which requires a fresh sidecar deploy to run live; the
 not assume the currently-stale sidecar image auto-picks up new G-lane sidecar code — recorded in
 BRIEF_D5.md §B.5.
 
+**CR-115 [OPEN, discovered PG-2 Lane X-5 (2026-07-19), carried to PF-1 §F1 Lane F-2, live
+schema-diffed]:** `platform/python-sidecar/brahmagyan/mimamsa/outcome.py` references
+`phala_anchors` columns absent from the live schema — it uses `id`, `confidence`,
+`prediction_state`, `outcome_note`, `outcome_recorded_at`, `updated_at`; the live table has
+`anchor_id`, `confidence_low`/`confidence_high`, `posterior`, `computed_at`. Consequence: the MCP
+`record_outcome` tool — the mechanism that closes the calibration loop and lets L5 leave
+STRUCTURAL mode — **would fail at runtime and has never been called.** A live hole in the L5
+calibration loop, not a cosmetic drift; recorded here rather than left silent inside a FROZEN
+brief. Two distinct sub-cases suspected (per PF-1 §F1 Lane F-2): `id`→`anchor_id` and
+`confidence`→`confidence_low/high` look like renames (fix the code); the three outcome-capture
+fields (`prediction_state`, `outcome_note`, `outcome_recorded_at`) look genuinely absent from the
+table (a real migration, not a code fix — do not migrate speculatively). Fix owned by PF-1's
+remaining scope (`CLAUDECODE_BRIEF_PF1_ENGINE_RESURRECTION_v1_0.md`, Lane F-2), kickoff after
+retrieval-campaign W4 closes, per the native's 2026-07-20 re-scope ruling. Full detail:
+`REPORT_PG-2.md`.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.4 (2026-07-19, pre-D-5 readiness pass,
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.5 (2026-07-20, stash-triage close-out session)
+— CR-115 added OPEN (record_outcome/phala_anchors schema drift, PG-2 Lane X-5; owned by PF-1's
+remaining scope per the native's PF-1/W4 re-scope ruling). Frontmatter `version` corrected 3.2 →
+3.5 (had drifted out of sync with this changelog's own tail, which already read v3.4 — a
+pre-existing B.8 desync, fixed in place, not introduced by this entry). v3.4 (2026-07-19, pre-D-5 readiness pass,
 conductor session) — CR-109/110/111 CLOSED (all three fixed + independently verified in D-4a
 Lane A-0, re-spot-checked live this session); CR-112 added and CLOSED (item #3 native
 correction, mis-quarantined in D-4a, fixed this session); CR-113/CR-114 added OPEN, carried to
