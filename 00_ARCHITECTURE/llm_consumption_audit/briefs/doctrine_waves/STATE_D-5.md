@@ -77,3 +77,34 @@ resolved_findings:
   - "G-3's enrichment.py graha fact_subject mismatch: FIXED in G-3's own PR #625."
 updated_at: 2026-07-20T01:15:00Z
 ```
+
+---
+
+## Cross-campaign note (retrieval campaign, per master brief §I.5 — append-only, not part of this wave's own state above)
+
+**2026-07-20, filed by the Retrieval Plane Elevation W3 conductor.** Per the coexistence
+policy's surface-ownership rule ("doctrine campaign owns `kala_*` serving semantics;
+retrieval owns the plane — registry, envelope, budget, edge; cross-needs are raised as
+notes in the other campaign's ledger"), recording one touch inside `kala_*`-owned surface
+that W3's budget-unification lane made, native-ruled acceptable:
+
+- **File:** `platform-mcp/src/tools/retrieval/kala_temporal.ts`
+- **Change:** added a `budgetMcpContent(result, TOOL_NAME)` wire-response byte-clamp
+  wrapper (the same generic response-budget migration ~23 other, non-kala, MCP tools
+  received in this wave) — the tool had zero response-budget wiring before. **Zero
+  change to computed/served kala data, shape, or serving semantics** — purely a
+  wire-size guard on the JSON already being returned.
+- **Native ruling (2026-07-20):** accepted — this is plane infrastructure (budget
+  discipline), not kala serving semantics, and the retrieval campaign owns the plane per
+  §I.5. **Revert-on-objection**: if a future D-5 session finds this wrapper interferes
+  with anything (unexpected trimming of a field a consumer depended on, etc.), revert
+  `impl/wave-3`'s change to this one file — it's a single, isolated, additive diff (see
+  PR #661, commit range for lane 5), not entangled with anything else in this file.
+- Also noted for the record: the density-contract lane (W3-L6) deliberately did NOT add
+  a measured `density_contract` override for `L3_kala/query_projections` (left it on the
+  generic tool-role default rather than the 55KB override `registry_bridge.ts` already
+  carries for it elsewhere) — staying conservative pending the kala freeze lifting. No
+  code change to this file resulted; recorded here only so the deferral is visible from
+  this ledger too.
+
+Retrieval campaign's own record of this ruling: `00_ARCHITECTURE/briefs/retrieval_impl/STATE.md` §"W3 — Lane implementation + integration".
