@@ -41,26 +41,35 @@ compute cost, so this writer does not waste substeps on them. As G-1's
 coverage grows for a chart, this writer's substep plan grows with it on the
 next build -- no code change required.
 
-Idempotency (§N.3): delete-then-insert scoped to (chart_id, event_class) --
-each event_class's OWN substeps clear only that event_class's rows before
-inserting, exactly once (in that event_class's FIRST year substep), so a
-resumed attempt that skips already-committed years never re-deletes them.
+Idempotency (§N.3): delete-then-insert, done ONCE per (chart_id,
+event_class) in `plan_substeps` (see DISPATCH ORDER note below) -- NOT
+per-substep. `run_substep` itself never deletes.
 
-CONTINUITY ACROSS YEAR SUBSTEPS (D-5 RED-C fix, 2026-07-20): closing every
-interval-shaped activation at each year substep's boundary, unconditionally,
-made the served window's edges an artifact of the chunking grain rather
-than a true signal-cessation point -- two live major_gain windows for chart
-482012f1 came out ~365 days wide, EXACTLY bounded by year-substep edges.
-`run_substep` now reads the PRIOR year substep's `build_substep_progress.
-carry_state` (migration 461, a nullable JSONB column on the existing
-migration-436 ledger) before sweeping, passes it to `sweep.
-sweep_event_class_chunk` as `open_run`, and persists whatever comes back as
-THIS year's `carry_state` -- so an activation still firing at a chunk
-boundary is carried forward and only closed on a CONFIRMED cessation (the
-next chunk's first grid day comes back inactive) or the ontology's
-`duration_prior.max_days` cap, never a bare, unverified chunk edge. See
-`shape_output.build_interval_rows` for the mechanism and `_RESUME_VERSION`'s
-bump-to-3 note below for how this invalidates pre-fix committed rows.
+DISPATCH ORDER IS NOT ASCENDING-YEAR (load-bearing, read before touching
+`plan_substeps`/`run_substep`): `steps` is reordered twice --
+specimen-priority promotion (below) moves individual years to the front,
+and (fixed 2026-07-20, D-5 RED-C) the STABLE sort that used to key on the
+raw `step.key` STRING sorted "…:year:10" before "…:year:9" lexically. Any
+substep-level logic in this writer MUST be correct under ARBITRARY
+dispatch order -- year 10 can run before year 9, and a specimen year can
+run before year 0. Two consequences, both fixed in the D-5 RED-C wave:
+  (1) the OLD per-substep "year_idx==0 clears this event_class's rows"
+      delete assumed year 0 runs first; under real dispatch order it could
+      fire AFTER sibling years already committed rows in the SAME build,
+      silently wiping them. REMOVED -- deletion now happens exactly once,
+      in `plan_substeps`, before ANY substep of a fresh/replanned build
+      runs (see `plan_substeps`' fresh-build branch), which is safe under
+      any subsequent dispatch order because nothing deletes again after it.
+  (2) a first RED-C fix attempt threaded "still open" carry state from one
+      substep's own call to what it ASSUMED was the immediately-following
+      chunk -- broken by the same out-of-order dispatch (a later-numbered
+      year could run first, read no carry, and silently truncate a window;
+      an earlier year's carry could then be produced but never consumed).
+      REPLACED by an ORDER-INDEPENDENT mechanism entirely inside
+      `sweep.sweep_event_class_chunk` (bounded, deterministic single-day
+      re-evaluation past a chunk's own boundary, not cross-substep state)
+      -- see that module's docstring. `run_substep` no longer passes or
+      persists any carry state.
 """
 from __future__ import annotations
 
@@ -68,7 +77,6 @@ import hashlib
 import json as _json
 import logging
 from datetime import date
-from typing import Optional
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
 from services.ka_gochara_sweep.sweep import sweep_event_class_chunk, DEFAULT_STEP_DAYS
@@ -90,19 +98,47 @@ _N_YEARS = _HORIZON_YEARS  # one substep per calendar year -- see module
 # (mirrors ka_sangam.py's _KA_SANGAM_RESUME_VERSION). Bumped 2 -> decade to
 # year re-chunk changes substep-key SEMANTICS (D-5 REBUILD fix 2026-07-20):
 # an old decade-keyed ledger must NOT be misread as a completed year.
-# Bumped 2 -> 3 (D-5 RED-C fix, 2026-07-20): pre-fix year substeps closed
-# EVERY interval-shaped run at the chunk boundary unconditionally, so any
-# `kala_gochara_windows` row (and the `build_substep_progress` rows that
-# marked those years "done") committed under v2 reflects the chunking-
-# artifact bug this fix removes -- a resumed build must NOT read those old
-# substeps as already-correctly-completed. The fingerprint change forces a
-# full replan-all (plan_substeps' `fps != {fingerprint}` branch), which
-# deletes ALL of this chart's `kala_gochara_windows` rows AND its
-# `build_substep_progress` rows before replanning every substep -- so the
-# two already-committed 365-day major_gain windows for chart 482012f1 are
-# genuinely re-derived under the new continuity-aware logic, not silently
-# skipped as "already built".
-_RESUME_VERSION = 3
+# Bumped 2 -> 3 (D-5 RED-C fix v1, 2026-07-20, SUPERSEDED): the first fix
+# attempt (cross-substep carry state, assumed ascending dispatch order) is
+# no longer what this writer does -- see v4 below.
+# Bumped 3 -> 4 (D-5 RED-C fix v2, 2026-07-20): the v1 carry mechanism was
+# rejected on independent verification (it silently assumed ascending-year
+# dispatch order, which this writer's real dispatch -- specimen-priority
+# reordering plus the now-fixed lexical sort bug -- does NOT honor) and
+# replaced by the order-independent boundary-rescan in sweep.py (no
+# cross-substep state at all). Any `kala_gochara_windows` row or
+# `build_substep_progress` row committed under v2 OR v3 reflects behavior
+# this fix removes (either the original unconditional-close bug, or the
+# order-dependent carry that could silently truncate/drop a window) -- a
+# resumed build must NOT read those old substeps as already-correctly-
+# completed. The fingerprint change forces a full replan-all
+# (plan_substeps' `fps != {fingerprint}` branch), which deletes ALL of this
+# chart's `kala_gochara_windows` rows AND its `build_substep_progress` rows
+# before replanning every substep -- so chart 482012f1's already-committed
+# major_gain rows are genuinely re-derived under the new order-independent
+# logic, not silently skipped as "already built".
+_RESUME_VERSION = 4
+
+
+def _substep_sort_key(step: SubStep, priority_years: set[tuple[str, int]]) -> tuple[int, str, int]:
+    """Dispatch-order sort key for `plan_substeps`' `steps` list -- pulled
+    out to a module-level function (not a `plan_substeps`-local closure) so
+    it is directly unit-testable without needing a DB connection.
+
+    NUMERIC year tiebreak (D-5 RED-C fix, 2026-07-20): sorting on the raw
+    `step.key` STRING here was a real, independent bug -- "…:year:10" sorts
+    lexically BEFORE "…:year:9" (string comparison, not numeric), so even
+    without specimen-priority promotion this writer's dispatch order was
+    never truly ascending-by-year. Every substep-level mechanism in this
+    writer must be correct under arbitrary dispatch order regardless (see
+    module docstring's DISPATCH ORDER note) -- this fix is still worth
+    making on its own, since a closer-to-intended dispatch order is
+    strictly better for resumability/observability even though correctness
+    no longer depends on it."""
+    ec_part, _, year_part = step.key.rpartition(':year:')
+    year_idx = int(year_part)
+    is_priority = (ec_part, year_idx) in priority_years
+    return (0 if is_priority else 1, ec_part, year_idx)
 
 
 @register('ka_gochara_sweep')
@@ -169,12 +205,7 @@ class KaGocharaSweepWriter(WriterBase):
         for _yr in (2013,):        # marriage double-transit specimen 2013-12-11
             _priority_years.add(("marriage", _yr - self._birth_year))
 
-        def _priority_key(step: SubStep) -> tuple[int, str]:
-            ec_part, _, year_part = step.key.rpartition(':year:')
-            is_priority = (ec_part, int(year_part)) in _priority_years
-            return (0 if is_priority else 1, step.key)
-
-        steps.sort(key=_priority_key)
+        steps.sort(key=lambda step: _substep_sort_key(step, _priority_years))
 
         # ── cross-attempt substep resumption (migration 436, ka_sangam pattern) ──
         self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
@@ -213,16 +244,15 @@ class KaGocharaSweepWriter(WriterBase):
         year_start = date(self._birth_year + year_idx, 1, 1)
         year_end = date(self._birth_year + year_idx + 1, 1, 1)
 
-        # Self-scoped delete (mirrors ka_sangam's "each substep clears only its own
-        # rows" discipline): the FIRST year substep for an event_class clears ALL
-        # of that event_class's prior rows once, so later years never re-delete
-        # already-committed sibling years on a resumed run.
-        if year_idx == 0 and not dry_run:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "DELETE FROM kala_gochara_windows WHERE chart_id = %s AND event_class = %s",
-                    (chart_id, event_class),
-                )
+        # NO per-substep delete here (D-5 RED-C fix, 2026-07-20 -- see module
+        # docstring's DISPATCH ORDER note point (1)). Deletion happens
+        # exactly ONCE per fresh/replanned build, in `plan_substeps`, before
+        # any substep runs -- safe under ANY subsequent dispatch order
+        # because nothing deletes again after it. The old "year_idx==0
+        # clears this event_class's rows" delete assumed year 0 dispatches
+        # first, which is false (specimen-priority reordering, and the
+        # since-fixed lexical sort bug), and could silently wipe out
+        # sibling years already committed earlier in the SAME build.
 
         horizon_start_jd = self._swe.julday(year_start.year, year_start.month, year_start.day, 0.0)
         horizon_end_jd = self._swe.julday(year_end.year, year_end.month, year_end.day, 0.0)
@@ -231,24 +261,10 @@ class KaGocharaSweepWriter(WriterBase):
             with conn.cursor() as _cur:
                 _cur.execute("SELECT 1")
 
-        # CONTINUITY CARRY (D-5 RED-C fix): an interval-shaped activation
-        # still open at the PRIOR year substep's last grid day was recorded
-        # there as `carry_state` (migration 461) -- read it back so this
-        # year's chunk can confirm (not assume) whether the signal kept
-        # firing across the boundary. `force_close` on the horizon's final
-        # year ensures a still-open activation is closed for real instead
-        # of carried into a substep that will never run.
-        open_run = None
-        if year_idx > 0 and not dry_run:
-            open_run = self._load_carry_state(conn, chart_id, f"{event_class}:year:{year_idx - 1}",
-                                               self._resume_fingerprint)
-        force_close = (year_idx == _N_YEARS - 1)
-
         try:
-            rows, carry_out = sweep_event_class_chunk(
+            rows = sweep_event_class_chunk(
                 self._swe, conn, chart_id, event_class,
                 horizon_start_jd, horizon_end_jd, step_days=DEFAULT_STEP_DAYS,
-                open_run=open_run, force_close=force_close,
             )
         except Exception as exc:
             logger.error("ka_gochara_sweep: sweep failed for %s year %d: %s", event_class, year_idx, exc)
@@ -259,7 +275,7 @@ class KaGocharaSweepWriter(WriterBase):
         if not dry_run:
             with conn.cursor() as cur:
                 rows_inserted = self._insert_rows(cur, chart_id, rows)
-            self._record_substep(conn, chart_id, step.key, rows_inserted, carry_out)
+            self._record_substep(conn, chart_id, step.key, rows_inserted)
 
         return WriterResult(asset_id='ka_gochara_sweep', rows_inserted=rows_inserted)
 
@@ -330,67 +346,18 @@ class KaGocharaSweepWriter(WriterBase):
             return None
         return {r['substep_key'] if isinstance(r, dict) else r[0] for r in rows}
 
-    def _record_substep(self, conn, chart_id: str, substep_key: str, rows: int,
-                         carry_state: Optional[dict] = None) -> None:
-        carry_json = self._serialize_carry_state(carry_state) if carry_state is not None else None
+    def _record_substep(self, conn, chart_id: str, substep_key: str, rows: int) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO build_substep_progress
-                       (chart_id, asset_id, substep_key, build_fingerprint, rows_written,
-                        carry_state, completed_at)
-                   VALUES (%s, 'ka_gochara_sweep', %s, %s, %s, %s::jsonb, now())
+                       (chart_id, asset_id, substep_key, build_fingerprint, rows_written, completed_at)
+                   VALUES (%s, 'ka_gochara_sweep', %s, %s, %s, now())
                    ON CONFLICT (chart_id, asset_id, substep_key)
                    DO UPDATE SET build_fingerprint = EXCLUDED.build_fingerprint,
                                  rows_written      = EXCLUDED.rows_written,
-                                 carry_state       = EXCLUDED.carry_state,
                                  completed_at      = EXCLUDED.completed_at""",
-                (chart_id, substep_key, self._resume_fingerprint, rows, carry_json),
+                (chart_id, substep_key, self._resume_fingerprint, rows),
             )
-
-    def _load_carry_state(self, conn, chart_id: str, substep_key: str, fingerprint: str) -> Optional[dict]:
-        """Read back the PRIOR year substep's continuity carry-state (D-5
-        RED-C fix). Returns None when there's nothing to carry (the common
-        case -- most years close every activation cleanly), when the prior
-        substep hasn't committed at all (e.g. this is a genuinely fresh
-        year_idx==0 plan, or an out-of-order dispatch), or when its
-        fingerprint doesn't match the current build (stale/replaced ledger
-        row -- never trust carry state from a different build)."""
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT carry_state, build_fingerprint FROM build_substep_progress "
-                "WHERE chart_id = %s AND asset_id = 'ka_gochara_sweep' AND substep_key = %s",
-                (chart_id, substep_key),
-            )
-            row = cur.fetchone()
-        if not row:
-            return None
-        carry_raw = row['carry_state'] if isinstance(row, dict) else row[0]
-        fp = row['build_fingerprint'] if isinstance(row, dict) else row[1]
-        if fp != fingerprint or carry_raw is None:
-            return None
-        return self._deserialize_carry_state(carry_raw)
-
-    @staticmethod
-    def _serialize_carry_state(carry: dict) -> str:
-        peak_row = dict(carry["peak_row"])
-        peak_row["peak_date"] = peak_row["peak_date"].isoformat()
-        payload = {
-            "true_start_date": carry["true_start_date"].isoformat(),
-            "last_active_date": carry["last_active_date"].isoformat(),
-            "peak_row": peak_row,
-        }
-        return _json.dumps(payload)
-
-    @staticmethod
-    def _deserialize_carry_state(raw) -> dict:
-        payload = raw if isinstance(raw, dict) else _json.loads(raw)
-        peak_row = dict(payload["peak_row"])
-        peak_row["peak_date"] = date.fromisoformat(peak_row["peak_date"])
-        return {
-            "true_start_date": date.fromisoformat(payload["true_start_date"]),
-            "last_active_date": date.fromisoformat(payload["last_active_date"]),
-            "peak_row": peak_row,
-        }
 
     @staticmethod
     def _insert_rows(cur, chart_id: str, rows: list[dict]) -> int:

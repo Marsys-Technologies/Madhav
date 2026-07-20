@@ -36,24 +36,72 @@ module does not itself refuse a large range, but the task brief is explicit
 that materializing the full 100-year horizon is the Cloud Run job's job,
 not this lane's local verification step.
 
-CONTINUITY ACROSS CHUNKS (D-5 RED-C fix, 2026-07-20): this module's chunk
-call is otherwise stateless (no memory of prior/future chunks), which is
-exactly what caused RED-C — an `interval`-shaped activation still firing at
-a chunk's last grid day was closed on the spot, so two live major_gain
-windows for chart 482012f1 each came out ~365 days wide, EXACTLY bounded by
-the writer's per-year substep chunking, an artifact of chunking rather than
-a true signal-cessation point. `sweep_event_class_chunk` now accepts an
-`open_run` carry-state dict (from the prior chunk) and returns `(rows,
-carry_out)` — `carry_out` is the SAME shape, to be persisted by the caller
-(writer.py, via `build_substep_progress.carry_state`, migration 461) and
-handed back in as `open_run` on the next chunk call for the same (chart_id,
-event_class). See `shape_output.build_interval_rows` for the actual
-confirm-before-close mechanism.
+CONTINUITY ACROSS CHUNKS, ORDER-INDEPENDENTLY (D-5 RED-C fix v2,
+2026-07-20): a chunk boundary must never silently double as a
+signal-cessation point. RED-C: `interval`-shaped activations still firing
+at a year-substep's last grid day were closed on the spot, unconditionally,
+so two live major_gain windows for chart 482012f1 each came out ~365 days
+wide, EXACTLY bounded by the writer's per-year substep chunking.
+
+A first fix attempt threaded mutable "still open" state from one chunk's
+call to the NEXT chunk's call (a cross-substep carry, persisted between
+dispatches). That was REJECTED on independent verification: `writer.py`
+does NOT dispatch year substeps in strict ascending order (a lexical
+substep-key sort bug plus specimen-priority reordering, D-5 GATE fix, both
+violate that assumption) — a "carry from the immediately prior chunk" is
+meaningless when "prior" isn't well-defined at dispatch time, and could
+silently drop a still-open window's tail if the wrong substep ran first.
+
+The fix here is ORDER-INDEPENDENT instead: `sweep_event_class_chunk`, for
+`interval`-shaped classes, checks whether ITS OWN chunk's first/last grid
+day is active, and if so, independently RE-EVALUATES the underlying
+lambda_e signal one day at a time PAST its own boundary (via `compute_lambda_e`,
+the same deterministic pure function `compute_lambda_e_series` uses
+internally) until it finds genuine inactivity or hits a bound (the
+event_class's own `duration_prior.max_days`, or `DEFAULT_BOUNDARY_SCAN_DAYS`
+when absent) — NOT by reading any other substep's output. The resulting
+EXTENDED series (this chunk's own days plus whatever cross-boundary days
+were needed) is then handed to `shape_output.build_interval_rows`, which is
+itself back to being fully stateless (see that module's docstring) and
+simply closes every run it finds.
+
+Cost: zero extra queries for the common case (a chunk whose own first/last
+grid day is inactive — most years, for most event_classes). Bounded to
+`max_days` (or the default bound) extra single-day evaluations only for a
+chunk that genuinely touches a boundary-crossing episode — the SAME order
+of magnitude as one extra chunk's worth of work, but incurred only when
+needed, not on every substep (see writer.py's own per-day cost accounting;
+comfortably inside the 1800s `writer_timeout_seconds` budget even added on
+top of a chunk's own ~365-day computation).
+
+ORDER-INDEPENDENCE / no double-serving: this makes ANY two chunks that
+touch the SAME real episode compute IDENTICAL results — `compute_lambda_e`
+is a pure function of (chart config, targets, dasha_periods, t_jd), and the
+scan is always anchored at a FIXED, well-defined calendar boundary (a
+year's own Jan-1/Dec-31), not at "wherever a scan happened to start" — so
+regardless of WHICH chunk runs first, both independently arrive at the same
+true_start/true_end/peak for the episode, hence the same
+(window_start, peak_date, milestone_id) natural key, hence the same
+`kala_gochara_windows` row — the second chunk's insert just UPSERTs the
+identical row via the existing `ON CONFLICT ... DO UPDATE` (writer.py
+`_insert_rows`), not a duplicate. This holds for ANY dispatch order:
+numeric, the (buggy) lexical order, or specimen-priority-shuffled.
+
+KNOWN LIMITATION (disclosed, not hidden): if a real activation genuinely
+outlives `2 * max_days` (or `2 * DEFAULT_BOUNDARY_SCAN_DAYS` when
+`max_days` is absent) — i.e. a signal so long-lived that a chunk deep
+inside it can no longer reach either true edge within its own bounded scan
+— different chunks may compute different max_days-capped segments of it.
+This is a residual edge case, not observed in this wave's live data (RED-C's
+actual major_gain episodes are a few hundred days, under the 365-day cap);
+even in that pathological case every served row is still a legitimately
+capped, non-artifact window (never wider than `max_days`, never bounded by
+a bare chunk edge) — the RED-C defect this fix targets.
 """
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from services.gochara_intensity import compute_lambda_e, compute_lambda_e_series
 from services.gochara_intensity import gather_configuration_sentences
@@ -63,11 +111,18 @@ from services.gochara_grammar import dasha_data as DD
 from services.gochara_intensity.enrichment import enrich_targets
 from services.gochara_intensity._dbutil import savepoint_scope
 
-from .shape_output import build_rows_for_event_class, build_interval_rows
+from .shape_output import build_rows_for_event_class, build_interval_rows, ACTIVATION_EPS
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_STEP_DAYS = 1.0  # daily grid, per BRIEF_D5 §6
+
+# Bound for the order-independent boundary-extension scan (see module
+# docstring) when an event_class's `duration_prior.max_days` is absent --
+# generous enough to find a genuine cessation for any realistically-shaped
+# interval episode, small enough to stay well inside the writer's
+# per-substep timeout budget even when triggered.
+DEFAULT_BOUNDARY_SCAN_DAYS = 400
 
 
 def fetch_ontology_meta(conn, event_class: str) -> dict[str, Any]:
@@ -162,6 +217,73 @@ def _gather_active_sentences_at(swe, conn, chart_id: str, targets, t_jd: float,
     ]
 
 
+def _extend_series_across_boundary(
+    swe, conn, chart_id: str, event_class: str, series: list, *,
+    targets, dasha_periods, shape: str, ayanamsha_id: str,
+    horizon_start_jd: float, horizon_end_jd: float, bound_days: int,
+) -> list:
+    """Order-independent boundary extension (D-5 RED-C fix v2, see module
+    docstring). If `series`' own first/last grid day is active, re-evaluate
+    the signal one day at a time PAST this chunk's own boundary (a pure,
+    deterministic single-day `compute_lambda_e` call — never reading
+    another substep's output) until genuine inactivity is found or
+    `bound_days` is exhausted. Returns a new, chronologically-ordered
+    series (unchanged when neither edge is active — the common case, zero
+    extra compute)."""
+    if not series:
+        return series
+    prefix: list = []
+    suffix: list = []
+
+    if series[0].raw_lambda > ACTIVATION_EPS:
+        jd = horizon_start_jd
+        for _ in range(bound_days):
+            jd -= 1.0
+            try:
+                with savepoint_scope(conn, "boundary_scan_backward"):
+                    result = compute_lambda_e(
+                        swe, conn, chart_id, event_class, jd,
+                        targets=targets, dasha_periods=dasha_periods, temporal_shape=shape,
+                        ayanamsha_id=ayanamsha_id,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.info("[ka_gochara_sweep] boundary backward-scan failed at jd=%s for %s: %s",
+                            jd, event_class, exc)
+                break
+            prefix.append(result)
+            if result.raw_lambda <= ACTIVATION_EPS:
+                break
+        prefix.reverse()  # was appended latest-first (jd decreasing); series wants chronological order
+
+    if series[-1].raw_lambda > ACTIVATION_EPS:
+        # `compute_lambda_e_series` loops `while t <= t_end_jd` (engine.py),
+        # so `horizon_end_jd` itself is ALREADY the series' last grid day
+        # (a genuine one-day overlap with the NEXT chunk's own
+        # horizon_start_jd, a pre-existing property of writer.py's chunk
+        # boundaries, not introduced here) -- start probing one day PAST it.
+        jd = horizon_end_jd
+        for _ in range(bound_days):
+            jd += 1.0
+            try:
+                with savepoint_scope(conn, "boundary_scan_forward"):
+                    result = compute_lambda_e(
+                        swe, conn, chart_id, event_class, jd,
+                        targets=targets, dasha_periods=dasha_periods, temporal_shape=shape,
+                        ayanamsha_id=ayanamsha_id,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.info("[ka_gochara_sweep] boundary forward-scan failed at jd=%s for %s: %s",
+                            jd, event_class, exc)
+                break
+            suffix.append(result)
+            if result.raw_lambda <= ACTIVATION_EPS:
+                break
+
+    if not prefix and not suffix:
+        return series
+    return prefix + list(series) + suffix
+
+
 def sweep_event_class_chunk(
     swe,
     conn,
@@ -171,26 +293,19 @@ def sweep_event_class_chunk(
     horizon_end_jd: float,
     step_days: float = DEFAULT_STEP_DAYS,
     ayanamsha_id: str = "lahiri_chitrapaksha",
-    open_run: Optional[dict] = None,
-    force_close: bool = False,
-) -> tuple[list[dict], Optional[dict]]:
+) -> list[dict]:
     """Compute one (chart_id, event_class) horizon chunk's served rows,
-    shape-dispatched per BRIEF_D5 §3. Returns `(rows, carry_out)`: `rows`
-    are `kala_gochara_windows`-ready row dicts (still missing `chart_id`/
-    `computed_at` — the writer adds those at insert time); `carry_out` is
-    non-None only for `interval`-shaped classes whose activation is still
-    open at THIS chunk's last grid day (see `shape_output.build_interval_rows`
-    — D-5 RED-C continuity fix). Honest empty list (not a crash) when G-1 has
-    no resonance-map targets for this chart/event_class -- PROMISE, and
+    shape-dispatched per BRIEF_D5 §3. Returns `kala_gochara_windows`-ready
+    row dicts (still missing `chart_id`/`computed_at` — the writer adds
+    those at insert time). Honest empty list (not a crash) when G-1 has no
+    resonance-map targets for this chart/event_class -- PROMISE, and
     therefore every lambda_e in the chunk, is a real 0.0.
 
-    `open_run` (optional): a carry-state dict from the IMMEDIATELY PRIOR
-    chunk (same chart_id/event_class, prior calendar year) describing an
-    activation that was still open when that chunk ended — passed straight
-    through to `build_interval_rows`; a no-op for point/chain shapes.
-    `force_close`: the writer passes True on the sweep horizon's final year
-    so a still-open activation is closed rather than carried into a substep
-    that will never run (see writer.py `run_substep`)."""
+    Stateless and order-independent — see module docstring. For
+    `interval`-shaped classes, a chunk whose own boundary is active gets its
+    `series` transparently extended (bounded, deterministic) before
+    `shape_output.build_interval_rows` sees it; the caller (writer.py) does
+    not need to pass or persist anything across chunks."""
     meta = fetch_ontology_meta(conn, event_class)
     shape = meta["temporal_shape"] or "point"
 
@@ -214,21 +329,18 @@ def sweep_event_class_chunk(
         # (this module's own second query pass, `_gather_active_sentences_at`
         # below, is independently savepoint-scoped -- see that function.)
         active_by_jd: dict[float, list] = {}
-        carry_out: Optional[dict] = None
-        if shape == "interval":
-            # Continuity-aware close (D-5 RED-C fix): a chunk boundary must
-            # never silently double as a signal-cessation assertion -- see
-            # build_interval_rows' own docstring for the confirm-before-close
-            # mechanism.
-            rows, carry_out = build_interval_rows(
-                swe, event_class, series, meta["duration_prior"],
-                open_run=open_run, force_close=force_close,
+        if shape == "interval" and targets:
+            max_days = (meta["duration_prior"] or {}).get("max_days")
+            bound_days = int(max_days) if max_days else DEFAULT_BOUNDARY_SCAN_DAYS
+            series = _extend_series_across_boundary(
+                swe, conn, chart_id, event_class, series,
+                targets=targets, dasha_periods=dasha_periods, shape=shape, ayanamsha_id=ayanamsha_id,
+                horizon_start_jd=horizon_start_jd, horizon_end_jd=horizon_end_jd, bound_days=bound_days,
             )
-        else:
-            rows = build_rows_for_event_class(
-                swe, event_class, shape, series=series,
-                duration_prior=meta["duration_prior"],
-            )
+        rows = build_rows_for_event_class(
+            swe, event_class, shape, series=series,
+            duration_prior=meta["duration_prior"],
+        )
         # Now that peak/episode dates are known, re-gather active_sentences
         # ONLY for those specific dates (bounded cost -- see module docstring).
         for row in rows:
@@ -237,14 +349,14 @@ def sweep_event_class_chunk(
             if key not in active_by_jd:
                 active_by_jd[key] = _gather_active_sentences_at(swe, conn, chart_id, targets, peak_jd)
             row["active_sentences"] = active_by_jd[key]
-        return rows, carry_out
+        return rows
 
     if shape == "chain":
         milestone_template = meta["milestone_template"] or []
         if not milestone_template:
             logger.info("[ka_gochara_sweep] chain-shaped event_class=%s has no milestone_template -- "
                         "honest empty chunk.", event_class)
-            return [], None
+            return []
         # Anchor: the strongest single-instant lambda_e across the horizon,
         # evaluated at the SAME daily grid as point/interval classes (this is
         # the one live query point/interval/chain all three share -- see
@@ -257,7 +369,7 @@ def sweep_event_class_chunk(
         )
         active_runs = [r for r in series if r.raw_lambda > 0.0]
         if not active_runs:
-            return [], None
+            return []
         anchor = max(active_runs, key=lambda r: (abs(r.signed_lambda), -r.t_jd))
         milestone_results: list[tuple[dict, Any]] = []
         for milestone in milestone_template:
@@ -278,7 +390,7 @@ def sweep_event_class_chunk(
         # iterates milestone_results in the same order it received them).
         for row, (_, result) in zip(rows, milestone_results):
             row["active_sentences"] = _gather_active_sentences_at(swe, conn, chart_id, targets, result.t_jd)
-        return rows, None
+        return rows
 
     raise ValueError(f"ka_gochara_sweep: unsupported temporal_shape {shape!r} for event_class={event_class!r}")
 

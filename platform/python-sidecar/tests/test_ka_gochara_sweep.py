@@ -8,6 +8,14 @@ conversion, no DB/network), mirroring `tests/test_gochara_grammar.py` and
 resumption tests exercise `KaGocharaSweepWriter`'s pure helper methods
 (`_compute_build_fingerprint`, `_load_completed_substeps`) against fake
 connection objects, same technique as `tests/test_ka_sangam_resumption.py`.
+The "sweep.py: order-independent continuity" section drives the REAL
+`sweep.sweep_event_class_chunk` (the production continuity mechanism, D-5
+RED-C fix v2) with its DB-touching dependencies replaced via `monkeypatch`
+(a deterministic synthetic activation calendar standing in for
+`compute_lambda_e`/`compute_lambda_e_series`) — still no live DB, but
+exercises the actual dispatch-order-independence property end to end,
+including OUT-OF-ORDER dispatch (a later year running before an earlier
+one), not just the pure `shape_output` layer.
 `@pytest.mark.integration` tests at the bottom hit the LIVE Cloud SQL proxy
 (127.0.0.1:5433) when reachable and are excluded by the mandated
 `-m "not integration"` pytest invocation.
@@ -19,6 +27,7 @@ from datetime import date, timedelta
 import swisseph as swe
 import pytest
 
+from pipeline.orchestrator.writers import SubStep
 from services.gochara_intensity.models import IntensityResult
 from services.ka_gochara_sweep import shape_output as SO
 from services.ka_gochara_sweep.writer import KaGocharaSweepWriter
@@ -108,8 +117,7 @@ def test_interval_shape_never_degenerates_to_a_single_day():
         _result("major_gain", _jd(2010, 7, 3), 0.3, valence="gain", shape="interval"),
     ]
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
-    rows, carry = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
-    assert carry is None, "a one-shot (force_close default True) call must never leave a dangling carry"
+    rows = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
     assert len(rows) == 1
     row = rows[0]
     assert row["temporal_shape"] == "interval"
@@ -136,8 +144,7 @@ def test_interval_shape_named_windfall_specimen_spans_not_points():
         d += 5.0  # coarse fixture grid, not the real daily sweep
     series = [_result("major_gain", jd, 0.4, valence="gain", shape="interval") for jd in days]
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
-    rows, carry = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
-    assert carry is None
+    rows = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
     assert len(rows) == 1
     row = rows[0]
     assert row["window_start"].isoformat() <= "2010-07-06"
@@ -147,8 +154,7 @@ def test_interval_shape_named_windfall_specimen_spans_not_points():
 
 def test_interval_shape_no_duration_prior_falls_back_honestly():
     series = [_result("career_setback", _jd(2015, 1, 1), 0.2, is_adverse=True, valence="loss", shape="interval")]
-    rows, carry = SO.build_interval_rows(swe, "career_setback", series, duration_prior=None)
-    assert carry is None
+    rows = SO.build_interval_rows(swe, "career_setback", series, duration_prior=None)
     assert len(rows) == 1
     span_days = (rows[0]["window_end"] - rows[0]["window_start"]).days
     assert span_days >= SO.FALLBACK_INTERVAL_DAYS - 1  # padding rounding tolerance
@@ -156,182 +162,16 @@ def test_interval_shape_no_duration_prior_falls_back_honestly():
     assert rows[0]["signed_intensity"] < 0
 
 
-# ── shape_output: interval continuity across chunk boundaries (D-5 RED-C) ──
-#
-# RED-C finding: `build_interval_rows` was called once per year-substep chunk
-# (writer.py) and closed EVERY still-active run at the chunk's last grid day
-# unconditionally -- an activation genuinely still firing across a Dec-31/
-# Jan-1 boundary got served as TWO separate ~365-day windows, each EXACTLY
-# bounded by the chunk edge, not by any real signal-cessation point or the
-# ontology's own `duration_prior.max_days`. These tests exercise the
-# continuity-carry fix (`open_run`/`force_close`/tuple return) directly,
-# mirroring writer.py's per-year `run_substep` loop closely enough to prove
-# the fix, without touching the DB.
-
-def _daily_series(event_class, start_jd, n_days, raw_lambda, shape="interval"):
-    return [_result(event_class, start_jd + i, raw_lambda, valence="gain", shape=shape) for i in range(n_days)]
-
-
-def _year_chunk_series(event_class, year, active_day_offsets, shape="interval"):
-    """One calendar year's worth of daily series (365 days, IST midnight
-    grid) -- `active_day_offsets` is the set of 0-indexed day offsets from
-    that year's Jan 1 that are active; every other day is inactive. Mirrors
-    writer.py's `run_substep` chunking exactly: one grid day per
-    (event_class, year) substep."""
-    start_jd = _jd(year, 1, 1)
-    return [
-        _result(event_class, start_jd + i, 0.3 if i in active_day_offsets else 0.0, valence="gain", shape=shape)
-        for i in range(365)
-    ]
-
-
-def test_interval_still_open_at_chunk_end_is_not_closed_on_the_spot():
-    """The core RED-C fix: force_close=False (writer.py's non-final-year
-    call) must NOT close a run that is still active at the chunk's last
-    grid day -- it must carry forward instead."""
-    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 1000}
-    chunk1 = _daily_series("major_gain", _jd(2010, 1, 1), 365, 0.3)  # active straight through
-    rows1, carry1 = SO.build_interval_rows(swe, "major_gain", chunk1, duration_prior, force_close=False)
-    assert rows1 == [], "a run still active at the chunk boundary must not be served as a closed window yet"
-    assert carry1 is not None
-    assert carry1["true_start_date"].isoformat() == "2010-01-01"
-    assert carry1["last_active_date"].isoformat() == "2010-12-31"
-
-
-def test_interval_continuity_merges_across_boundary_then_closes_on_confirmed_cessation():
-    """A carried-forward open run, once the NEXT chunk shows real inactivity,
-    closes as ONE window spanning both chunks -- window_start is the TRUE
-    origin (chunk 1), window_end is the TRUE end (well into chunk 2), never
-    truncated to the old chunk-boundary artifact (2010-12-31/2011-01-01)."""
-    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 1000}
-    chunk1 = _daily_series("major_gain", _jd(2010, 1, 1), 365, 0.3)
-    _rows1, carry1 = SO.build_interval_rows(swe, "major_gain", chunk1, duration_prior, force_close=False)
-
-    # Year 2: active for another 42 days, then genuinely stops (a long
-    # inactive cooldown follows WITHIN this same chunk, positively
-    # confirming the cessation rather than assuming one).
-    active_tail = _daily_series("major_gain", _jd(2011, 1, 1), 42, 0.3)
-    cooldown = _daily_series("major_gain", _jd(2011, 1, 1) + 42, 100, 0.0)
-    chunk2 = active_tail + cooldown
-    rows2, carry2 = SO.build_interval_rows(swe, "major_gain", chunk2, duration_prior,
-                                            open_run=carry1, force_close=False)
-
-    assert carry2 is None, "confirmed cessation must close the window for real, not re-carry it"
-    assert len(rows2) == 1
-    row = rows2[0]
-    assert row["window_start"].isoformat() == "2010-01-01"
-    assert row["window_end"] != date(2010, 12, 31), \
-        "window_end must reflect the TRUE cessation date, not the old chunk-boundary artifact"
-    total_span = (row["window_end"] - row["window_start"]).days
-    assert total_span > 365, "the merged window must reflect the full multi-chunk span"
-
-
-def test_interval_continuity_closes_at_max_days_cap_not_indefinitely():
-    """A signal that never shows confirmed cessation must still close --
-    exactly at the ontology's duration_prior.max_days cap, not carried
-    forward forever."""
+def test_interval_shape_never_wider_than_max_days_cap():
+    """D-5 RED-C fix: the original bug enforced NO ceiling at all on an
+    interval row's width. A single very-long detected run must be clipped
+    down to duration_prior.max_days, not served at its full raw length."""
+    series = [_result("major_gain", _jd(2010, 1, 1) + i, 0.3, valence="gain", shape="interval")
+              for i in range(500)]  # a 500-day-wide raw run
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 200}
-    # 201 active days -> the run's true span (day 0 to day 200) is exactly
-    # 200 days, meeting the cap (a 200-DAY series of daily points spans 199
-    # days between its first and last date; this is deliberately one day
-    # over so the span genuinely reaches max_days).
-    chunk = _daily_series("major_gain", _jd(2010, 1, 1), 201, 0.3)
-    rows, carry = SO.build_interval_rows(swe, "major_gain", chunk, duration_prior, force_close=False)
-    assert carry is None, "hitting max_days must close for real, not carry past the ontology's own cap"
+    rows = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
     assert len(rows) == 1
     assert (rows[0]["window_end"] - rows[0]["window_start"]).days <= 200
-
-
-def test_interval_continuity_force_close_on_final_horizon_year_never_drops_a_window():
-    """writer.py passes force_close=True on the sweep horizon's LAST year so
-    a still-open activation is served, not silently lost because there's no
-    further substep to confirm cessation."""
-    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 1000}
-    chunk = _daily_series("major_gain", _jd(2099, 1, 1), 365, 0.3)  # active straight through the final year
-    rows, carry = SO.build_interval_rows(swe, "major_gain", chunk, duration_prior, force_close=True)
-    assert carry is None
-    assert len(rows) == 1
-
-
-# ── gate assertion (native-mandated, D-5 RED-C): no served window boundary
-# may coincide with a chunk boundary absent duration_prior.max_days support ─
-
-def _chunk_boundary_dates(year: int) -> set:
-    return {date(year - 1, 12, 31), date(year, 1, 1), date(year, 12, 31), date(year + 1, 1, 1)}
-
-
-def _assert_no_uncapped_chunk_boundary_windows(rows: list[dict], duration_prior: dict, years: "list[int]"):
-    """The gate assertion itself: a served interval row's window_start/
-    window_end must never exactly equal a processed year's chunk edge
-    (Dec-31/Jan-1) UNLESS the window's own width is at the ontology's
-    duration_prior.max_days cap (a legitimate coincidence, not a chunking
-    artifact -- BRIEF_D5's own binding shape-precision discipline cuts both
-    ways: never MORE precision than the shape supports, and never LESS
-    discrimination than a bounded prior demands)."""
-    max_days = duration_prior.get("max_days")
-    boundary_dates = set()
-    for year in years:
-        boundary_dates |= _chunk_boundary_dates(year)
-    for row in rows:
-        width_days = (row["window_end"] - row["window_start"]).days
-        is_capped = max_days is not None and width_days >= max_days
-        for edge in (row["window_start"], row["window_end"]):
-            if edge in boundary_dates:
-                assert is_capped, (
-                    f"served window edge {edge.isoformat()} (width={width_days}d) coincides with a "
-                    f"year-chunk boundary but is NOT duration_prior.max_days-capped ({max_days}d) -- "
-                    "this is the RED-C chunking-artifact bug: a served boundary must never silently "
-                    "coincide with an internal chunking boundary when it isn't actually where the "
-                    "signal ended."
-                )
-
-
-def test_gate_no_served_window_boundary_coincides_with_chunk_edge_absent_signal_support():
-    """The RED-C gate assertion, driven through a multi-year synthetic sweep
-    (one `build_interval_rows` call per calendar year, carry threaded
-    through exactly like `run_substep` does) reproducing the shape of the
-    live finding: a signal firing continuously across ONE year boundary
-    (2010-07-01 -> 2011-03-01) then genuinely stopping."""
-    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
-    signal_start, signal_end = date(2010, 7, 1), date(2011, 3, 1)
-    years = [2010, 2011, 2012]
-
-    all_rows: list[dict] = []
-    carry = None
-    for idx, year in enumerate(years):
-        active = {i for i in range(365) if signal_start <= (date(year, 1, 1) + timedelta(days=i)) <= signal_end}
-        chunk = _year_chunk_series("major_gain", year, active)
-        rows, carry = SO.build_interval_rows(
-            swe, "major_gain", chunk, duration_prior, open_run=carry, force_close=(idx == len(years) - 1),
-        )
-        all_rows.extend(rows)
-
-    assert carry is None
-    assert len(all_rows) == 1, "one continuous episode must serve as ONE window, not one per chunk"
-    _assert_no_uncapped_chunk_boundary_windows(all_rows, duration_prior, years)
-
-
-def test_gate_assertion_is_not_vacuous_it_catches_the_old_broken_behavior():
-    """Sanity-check that the gate assertion above is a real regression check,
-    not trivially satisfied -- replay the SAME synthetic signal through the
-    OLD (pre-fix) per-chunk behavior (force_close=True on every chunk, no
-    carry threaded through -- exactly what `run_substep` did before this
-    fix) and confirm the assertion helper DOES flag it."""
-    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
-    signal_start, signal_end = date(2010, 7, 1), date(2011, 3, 1)
-    years = [2010, 2011, 2012]
-
-    old_behavior_rows: list[dict] = []
-    for year in years:
-        active = {i for i in range(365) if signal_start <= (date(year, 1, 1) + timedelta(days=i)) <= signal_end}
-        chunk = _year_chunk_series("major_gain", year, active)
-        # OLD behavior: force_close=True on EVERY chunk, no carry passed in
-        # or out -- each year's still-open run is closed on the spot.
-        rows, _carry = SO.build_interval_rows(swe, "major_gain", chunk, duration_prior, force_close=True)
-        old_behavior_rows.extend(rows)
-
-    with pytest.raises(AssertionError):
-        _assert_no_uncapped_chunk_boundary_windows(old_behavior_rows, duration_prior, years)
 
 
 # ── shape_output: chain ──────────────────────────────────────────────────
@@ -487,6 +327,224 @@ def test_plan_substeps_produces_year_granularity_not_decade():
     assert _N_YEARS == _HORIZON_YEARS == 100
 
 
+def test_substep_sort_key_orders_years_numerically_not_lexically():
+    """D-5 RED-C independent-verification finding: the stable sort in
+    `plan_substeps` used to key on the raw `step.key` STRING, so
+    "…:year:10" sorted lexically BEFORE "…:year:9" -- a real, independent
+    dispatch-order bug (on top of specimen-priority reordering) that a
+    carry-based continuity fix would have silently broken under. Drives the
+    real `_substep_sort_key` (not a reimplementation) directly."""
+    from services.ka_gochara_sweep.writer import _substep_sort_key
+
+    steps = [SubStep(key="major_gain:year:9", label="y9"), SubStep(key="major_gain:year:10", label="y10"),
+             SubStep(key="major_gain:year:2", label="y2"), SubStep(key="major_gain:year:100", label="y100")]
+    ordered = sorted(steps, key=lambda s: _substep_sort_key(s, priority_years=set()))
+    assert [s.key for s in ordered] == [
+        "major_gain:year:2", "major_gain:year:9", "major_gain:year:10", "major_gain:year:100",
+    ], "years must sort numerically (2, 9, 10, 100), not lexically (10, 100, 2, 9)"
+
+
+def test_substep_sort_key_still_promotes_priority_years_first():
+    """Regression guard: fixing the numeric tiebreak must not weaken
+    specimen-priority promotion (D-5 GATE fix) -- a priority year must still
+    sort ahead of ALL non-priority years, reachable within a handful of
+    dispatches, not require materializing a full numeric year-prefix."""
+    from services.ka_gochara_sweep.writer import _substep_sort_key
+
+    steps = [SubStep(key="major_gain:year:0", label="y0"), SubStep(key="major_gain:year:1", label="y1"),
+             SubStep(key="major_gain:year:60", label="y60"), SubStep(key="major_gain:year:61", label="y61")]
+    priority_years = {("major_gain", 60), ("major_gain", 61)}
+    ordered = sorted(steps, key=lambda s: _substep_sort_key(s, priority_years))
+    assert [s.key for s in ordered] == [
+        "major_gain:year:60", "major_gain:year:61", "major_gain:year:0", "major_gain:year:1",
+    ]
+
+
+# ── sweep.py: order-independent continuity (D-5 RED-C fix v2) ─────────────
+#
+# Independent verification REJECTED the first RED-C fix attempt (cross-
+# substep carry state): `plan_substeps` does not dispatch year substeps in
+# ascending order (specimen-priority reordering, plus the lexical-sort bug
+# above) -- year 10 can run before year 9, silently truncating a carried
+# window's tail. These tests drive the REAL `sweep.sweep_event_class_chunk`
+# (the actual production mechanism, not a reimplementation) with the DB
+# layer mocked out via monkeypatch, and explicitly exercise OUT-OF-ORDER
+# dispatch -- a later year running before an earlier one -- asserting the
+# served result is IDENTICAL regardless of order (no double-serving, no
+# dropped tail).
+
+def _build_activation_calendar(start: date, end: date, raw_lambda: float = 0.3) -> dict:
+    cal = {}
+    d = start
+    while d <= end:
+        cal[d.isoformat()] = raw_lambda
+        d += timedelta(days=1)
+    return cal
+
+
+def _make_fake_engine(activation: dict):
+    """Builds deterministic fake replacements for
+    `compute_lambda_e`/`compute_lambda_e_series` driven by a plain
+    date->raw_lambda dict -- a pure function of (event_class, jd) with NO
+    memory of prior calls, mirroring the real engine's own determinism
+    (same inputs, same output, regardless of call order/count)."""
+    def _lookup(jd: float) -> float:
+        y, m, d, _h = swe.revjul(jd + 5.5 / 24.0)
+        return activation.get(date(int(y), int(m), int(d)).isoformat(), 0.0)
+
+    def fake_compute_lambda_e(swe_mod, conn, chart_id, event_class, jd, **kwargs):
+        return _result(event_class, jd, _lookup(jd), valence="gain", shape="interval")
+
+    def fake_compute_lambda_e_series(swe_mod, conn, chart_id, event_class, t_start_jd, t_end_jd, step_days,
+                                      **kwargs):
+        results = []
+        t = t_start_jd
+        while t <= t_end_jd:  # matches engine.py's own `while t <= t_end_jd` inclusive loop
+            results.append(_result(event_class, t, _lookup(t), valence="gain", shape="interval"))
+            t += step_days
+        return results
+
+    return fake_compute_lambda_e, fake_compute_lambda_e_series
+
+
+def _patch_sweep_deps(monkeypatch, duration_prior: dict, activation: dict):
+    from services.ka_gochara_sweep import sweep as sweep_module
+
+    fake_e, fake_series = _make_fake_engine(activation)
+    monkeypatch.setattr(sweep_module, "fetch_ontology_meta", lambda conn, ec: {
+        "temporal_shape": "interval", "duration_prior": duration_prior,
+        "milestone_template": None, "irreversibility_milestone": None,
+    })
+    monkeypatch.setattr(sweep_module.RM, "fetch_resonance_targets", lambda conn, cid, ec: [object()])
+    monkeypatch.setattr(sweep_module, "enrich_targets",
+                         lambda conn, raw, ayanamsha_id="lahiri_chitrapaksha": raw)
+    monkeypatch.setattr(sweep_module.DD, "fetch_dasha_periods",
+                         lambda conn, cid, ayanamsha_id="lahiri_chitrapaksha": [])
+    monkeypatch.setattr(sweep_module, "compute_lambda_e_series", fake_series)
+    monkeypatch.setattr(sweep_module, "compute_lambda_e", fake_e)
+    monkeypatch.setattr(sweep_module, "gather_configuration_sentences", lambda *a, **kw: [])
+    return sweep_module
+
+
+def _year_chunk(sweep_module, event_class: str, year: int):
+    start_jd = _jd(year, 1, 1, h=0.0)
+    end_jd = _jd(year + 1, 1, 1, h=0.0)
+    return sweep_module.sweep_event_class_chunk(swe, None, CHART_ID, event_class, start_jd, end_jd, step_days=1.0)
+
+
+_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END = date(2010, 7, 1), date(2011, 3, 1)
+
+
+def test_sweep_chunk_resolves_full_episode_independently_of_sibling_year_ever_running(monkeypatch):
+    """The defining property of the order-independent fix: year 2011's OWN
+    chunk call, made WITHOUT year 2010's chunk ever having run (no shared
+    state exists for it to depend on), still resolves the FULL true episode
+    (backward across the Dec-31/Jan-1 boundary into 2010) via its own
+    bounded re-evaluation -- not a truncated tail."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
+    activation = _build_activation_calendar(_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END)
+    sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
+
+    rows = _year_chunk(sweep_module, "major_gain", 2011)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["window_start"].isoformat() <= "2010-07-06"
+    assert row["window_end"].isoformat() >= "2011-02-24"
+    assert row["window_start"] not in (date(2010, 12, 31), date(2011, 1, 1))
+    assert row["window_end"] not in (date(2010, 12, 31), date(2011, 1, 1))
+
+
+def test_sweep_chunk_out_of_order_dispatch_produces_identical_natural_key(monkeypatch):
+    """Reproduces the verifier's exact finding: a LATER year (2011)
+    dispatched BEFORE an EARLIER year (2010) that shares the same episode.
+    Both dispatch orders must converge on the identical served window --
+    the (window_start, window_end, peak_date, milestone_id) natural key the
+    DB's ON CONFLICT dedups on (writer.py `_insert_rows`) -- proving no
+    double-serving and no dropped tail under out-of-order dispatch."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
+    activation = _build_activation_calendar(_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END)
+    sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
+
+    def _key(rows):
+        assert len(rows) == 1
+        r = rows[0]
+        return (r["window_start"], r["window_end"], r["peak_date"], r["milestone_id"])
+
+    # Ascending order (the OLD assumed order).
+    key_2010_ascending = _key(_year_chunk(sweep_module, "major_gain", 2010))
+    key_2011_ascending = _key(_year_chunk(sweep_module, "major_gain", 2011))
+
+    # OUT OF ORDER: year 2011 dispatched BEFORE year 2010.
+    key_2011_first = _key(_year_chunk(sweep_module, "major_gain", 2011))
+    key_2010_second = _key(_year_chunk(sweep_module, "major_gain", 2010))
+
+    assert key_2010_ascending == key_2011_ascending == key_2011_first == key_2010_second, (
+        "the served window's natural key must be identical across EVERY call, in EVERY "
+        "dispatch order -- a carry-based mechanism keyed to 'the immediately prior substep' "
+        "would fail this under out-of-order dispatch (year 10 before year 9)"
+    )
+
+
+def test_sweep_chunk_gate_no_boundary_artifact_under_out_of_order_dispatch(monkeypatch):
+    """The RED-C gate assertion (native-mandated), driven through the REAL
+    `sweep_event_class_chunk` across three years in REVERSE dispatch order
+    (2012, then 2011, then 2010) -- no served window's start/end may
+    coincide with a year-chunk boundary (Dec-31/Jan-1) unless the window is
+    legitimately duration_prior.max_days-capped."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
+    activation = _build_activation_calendar(_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END)
+    sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
+
+    years = [2012, 2011, 2010]  # deliberately descending -- out of order
+    all_rows = []
+    for year in years:
+        all_rows.extend(_year_chunk(sweep_module, "major_gain", year))
+
+    max_days = duration_prior["max_days"]
+    boundary_dates = set()
+    for year in (2010, 2011, 2012):
+        boundary_dates |= {date(year, 1, 1), date(year, 12, 31)}
+    for row in all_rows:
+        width_days = (row["window_end"] - row["window_start"]).days
+        is_capped = width_days >= max_days
+        for edge in (row["window_start"], row["window_end"]):
+            if edge in boundary_dates:
+                assert is_capped, (
+                    f"served window edge {edge.isoformat()} (width={width_days}d) coincides with a "
+                    f"year-chunk boundary but is NOT max_days-capped ({max_days}d) -- the RED-C "
+                    "chunking-artifact bug"
+                )
+
+
+def test_sweep_chunk_gate_assertion_not_vacuous_without_boundary_extension(monkeypatch):
+    """Sanity-check that the gate assertion is a real regression check, not
+    trivially satisfied -- disable the order-independent boundary extension
+    (monkeypatch it to a no-op passthrough, i.e. exactly the ORIGINAL
+    unconditional-per-chunk-close bug this fix removes) and confirm the
+    RED-C chunking artifact (a served window edge landing exactly on Dec-31/
+    Jan-1, uncapped) reappears."""
+    from services.ka_gochara_sweep import sweep as sweep_module
+
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
+    activation = _build_activation_calendar(_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END)
+    sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
+    monkeypatch.setattr(sweep_module, "_extend_series_across_boundary",
+                         lambda swe_mod, conn, chart_id, ec, series, **kwargs: series)
+
+    rows_2010 = _year_chunk(sweep_module, "major_gain", 2010)
+    assert len(rows_2010) == 1
+    row = rows_2010[0]
+    width_days = (row["window_end"] - row["window_start"]).days
+    # Without the extension, 2010's chunk closes on the spot at its own
+    # last grid day -- `compute_lambda_e_series` (engine.py) loops
+    # inclusively through `horizon_end_jd` itself (2011-01-01, the NEXT
+    # year's own horizon_start_jd), so that's the exact RED-C artifact
+    # boundary here, not Dec-31 -- well short of the true ~2011-03-01 end,
+    # and short of the max_days cap too.
+    assert row["window_end"] == date(2011, 1, 1)
+    assert width_days < duration_prior["max_days"]
+
+
 # ── integration (live proxy, excluded by -m "not integration") ───────────
 
 LIVE_DSN = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
@@ -504,8 +562,7 @@ def test_live_sweep_small_window_marriage_specimen():
     try:
         start_jd = _jd(2013, 11, 15)
         end_jd = _jd(2013, 12, 31)
-        rows, carry = sweep_event_class_chunk(swe, conn, CHART_ID, "marriage", start_jd, end_jd, step_days=1.0)
-        assert carry is None  # marriage is point-shaped -- never carries
+        rows = sweep_event_class_chunk(swe, conn, CHART_ID, "marriage", start_jd, end_jd, step_days=1.0)
         assert isinstance(rows, list)
         for r in rows:
             assert r["temporal_shape"] == "point"
