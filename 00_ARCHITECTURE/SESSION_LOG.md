@@ -32611,3 +32611,122 @@ session_close:
 ```
 
 *End of DOCTRINE-WAVES-D-5-CLOSE-2026-07-20 entry — 2026-07-20/21.*
+
+---
+
+## PG2-MERGE-COORDINATION-2026-07-20 — PG-2 merge readiness, sync, merge, and cross-campaign handoff
+
+```yaml
+session_open:
+  session_id: PG2-MERGE-COORDINATION-2026-07-20
+  cowork_thread_name: "Madhav — PG-2 merge coordination + cross-campaign handoff"
+  agent_name: claude-sonnet-5
+  predecessor_session: PG-2-CONDUCTOR-2026-07-19 (wave conductor; closed GREEN 11/11, PR #620 opened but held)
+  role: >
+    Post-close verification and merge-coordination for the already-CLOSED PG-2 diagnostic
+    wave: diagnose why PR #620's gate showed a HIGH-severity regression, fix it, diagnose
+    and fix a stalled CI-attach condition, resolve a real 3-file merge conflict against a
+    fast-moving `origin/main` (including a genuine PG-1/PG-2 content-dependency chain in
+    `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`), merge PR #620 once green, and hand off two
+    cross-campaign notes to the retrieval campaign's W4 conductor.
+  declared_scope:
+    may_touch:
+      - "PR #620 / pg2/wave branch (schema fix + sync-merge commits only)"
+      - "00_ARCHITECTURE/briefs/retrieval_impl/STATE.md (cross-campaign note, this PR)"
+      - "SESSION_LOG.md (append-only, this entry)"
+      - "worktree/branch cleanup"
+    must_not_touch:
+      - "product source beyond what the sync-merge itself carries from already-reviewed upstream commits"
+      - "no repair of the bundle_hydrator.ts defect (assigned to W4, not fixed here)"
+      - "no edits to PG-1's still-open PR #613"
+  red_team_due: false
+```
+
+**Body.** PR #620 (PG-2, gate GREEN 11/11 at wave close) sat unmerged with 1/15 checks red
+(`schema_validator.py` exit 2, not the tolerated exit 3). Merge-preview diagnosis (onto a
+scratch worktree, no push) isolated the regression to exactly 2 HIGH-severity violations,
+both traced to PG-2's own `SESSION_LOG.md` entry: a `#` heading where the schema requires
+`## <session_id> — ...`, and a `session_open`/`session_close` session_id mismatch. 37 other
+violations were pre-existing staleness on `origin/main`, unrelated. Fixed (3-line change),
+verified locally (exit 2 → 3), pushed.
+
+The push then surfaced a second issue: zero GitHub Actions check-runs attached to the new
+commit for over 35 minutes. Two probes (native's own instruction): githubstatus.com showed
+the Actions component `operational` (an unrelated Copilot-model incident was inflating the
+page-level indicator); a canary `workflow_dispatch` on an unrelated read-only workflow
+queued and completed in seconds, proving runners were not throttled. Root cause: PR #620
+had gone `mergeable: CONFLICTING` against a fast-moving `origin/main` (D-5 and the W3
+retrieval-strategy wave had both advanced past PG-2's branch point) — the dirty merge
+state, not a platform stall, was blocking Actions' own check-suite from attaching.
+
+Resolved the conflict as a real merge (not rebase, branch already pushed/shared) across
+three files: `SESSION_LOG.md` (union of both sides in true chronological order — nothing
+dropped); `MCP_CHANNEL_WORKSTREAM_HANDOFF_v1_0.md` (main's content + PG-1's self-contained
+appendix re-applied, no PG-2-specific content in this file); `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`
+— this one surfaced a genuine dependency chain, not simple drift: `origin/main` was still
+at v0.5, having never received PG-1's v0.6 content at all (PG-1's PR #613 is itself still
+unmerged, and PG-2 built its v0.7 corrections directly on PG-1's v0.6). Verified via
+patch-replay (main's v0.5 + PG-1's delta + PG-2's delta reproduces PG-2's v0.7 byte-for-byte)
+before resolving with PG-2's full content, per the native's explicit ruling on this fork.
+`CURRENT_STATE_v1_0.md.last_session_id` resolved itself once the log was in correct
+chronological order — no separate edit needed. `schema_validator.py` exit 3 / `drift_detector.py`
+exit 3 post-merge, both tolerated-tier, zero HIGH/CRITICAL.
+
+`origin/main` advanced twice more during this process (D-5's own close-out commits,
+unrelated, zero-conflict auto-merges both times) — each re-synced before merge. PR #620
+merged (`--merge --auto`, matching this repo's wave-close convention: a real merge commit,
+not squash) at `5b57d49f`; `pg2/wave` branch and local worktree removed.
+
+**Cross-campaign handoff (PR #668, docs-only, this same commit range):** appended a note
+to the retrieval campaign's `00_ARCHITECTURE/briefs/retrieval_impl/STATE.md` for the W4
+conductor: (1) main has moved (PG-2's SESSION_LOG/CURRENT_STATE/PARIPRASHNA/MCP-handoff
+changes) — sync the W4 wave branch before the gate merge, given PG-2's own branch just
+demonstrated what happens when a wave sits unsynced too long; (2) the `bundle_hydrator.ts:25`
+stale-`FORENSIC` HTTP 500 on `/api/chat/consult` (PG-2's X-2 finding) is cross-campaign
+assigned to W4 — in-scope precondition for its floor-adoption verification work, evidence
+in `REPORT_PG-2.md`.
+
+**Content-provenance check (native-requested):** confirmed `origin/main` now carries the
+complete substantive content of PG-1's v0.6 architecture work (`PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`
+v0.7, `RETRIEVAL_SYSTEM_TRUTH_v1_0.md`, `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md`,
+`pg1_audit/REPORT_PG-1.md`), each further extended/corrected by PG-2 — main strictly has
+*more* than `pg1/wave`'s copies, not less, for every substantive doctrine file diffed.
+**What remains genuinely unmerged is PG-1's own process scaffolding only** — its lane
+state files, `pg1_findings_*.jsonl` shards, `gate_assertions.py`/`validate_findings.py`,
+`GATE_RESULT.md`, `STATE_PG-1.md`, `VERIFICATION_RECEIPTS.md`, and PG-1's own governing
+brief copy (`CLAUDECODE_BRIEF_PARIPRASHNA_GROUNDING_AUDIT_v1_0.md`) — none of which any
+downstream doctrine content depends on; these land only if/when PG-1's own PR #613 merges
+(a separate, native-owned decision, out of this session's scope).
+
+```yaml
+session_close:
+  session_id: PG2-MERGE-COORDINATION-2026-07-20
+  wave: PG-2 (post-close merge coordination)
+  close_criteria_met: true
+  verification: "PR #620 CI green 15/15 pre-merge (last sync commit 54e9c85f); post-merge
+    main CI (5b57d49f) and PR #668 CI verified green; schema_validator/drift_detector both
+    exit 3 (tolerated) locally on every sync step; PARIPRASHNA patch-replay verified
+    byte-identical before resolving the conflict"
+  deploy: "PR #620 merge triggered the standard main CI -> deploy pipeline (Web/MCP); no
+    manual deploy action taken this session"
+  product_code_writes_made: "none — this session's only writes were governance-doc fixes
+    (SESSION_LOG.md schema conformance), merge-conflict resolution (doc content only, no
+    platform/src or platform-mcp/src touched beyond what the reviewed upstream commits
+    already carried), and the cross-campaign ledger note"
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "none"
+  followups: "bundle_hydrator.ts:25 fix now formally cross-campaign-assigned to W4 (not
+    fixed here, per scope). PG-1's PR #613 remains open/unmerged — its process-scaffolding
+    files are the only content still exclusively there; no doctrine content is at risk.
+    W4 should sync with main before its own gate merge per the STATE.md note."
+  next_session_objective: "None pending from this session. PG-2 fully closed and merged.
+    W4 (retrieval campaign) proceeds independently on its own native go-ahead."
+```
+
+
+### Next session objective
+
+None pending from this session. PG-2 is fully closed and merged to main (5b57d49f); the retrieval campaign's W4 proceeds independently on its own native go-ahead, with the cross-campaign note in `00_ARCHITECTURE/briefs/retrieval_impl/STATE.md` as its entry point back into this session's findings.
+
+*End of PG2-MERGE-COORDINATION-2026-07-20 entry — 2026-07-20/21.*
