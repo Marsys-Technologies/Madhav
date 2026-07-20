@@ -28,6 +28,15 @@
  * until then 'v3' is strictly opt-in.
  */
 
+import {
+  buildRegisterBlock,
+  buildReadingContract,
+  collectSignalReaderText,
+  type RegisterEntry,
+} from './register_block'
+
+export type { RegisterEntry, RegisterTokenKind } from './register_block'
+
 // ── Format negotiation ────────────────────────────────────────────────────────
 
 export type EnvelopeFormat = 'legacy' | 'v3'
@@ -321,6 +330,28 @@ export interface V3Envelope extends LegacyEnvelope {
    *  serving, design §10.6/§31.3) populate this from the chart's latest complete
    *  `builds` row. Consistency invariant (E-4, extended): one response = one build_id. */
   build_id?: string | null
+
+  // ── W3-L3 "One Envelope" register block (plan §R-2 item 3; A-18) ─────────────
+  /**
+   * The REGISTER block — a machine-readable map from every internal token that ACTUALLY
+   * appears in this response (MSR signal-class codes, SIG.MSR.NNN ids, marsys:// drill
+   * URIs, judgment-flag codes, epistemic-grade tokens, PACT stages, pointer types) to a
+   * short plain-language label + its kind. Rides in the envelope so a careless-reading
+   * foreign LLM gets the label adjacent to the token (handoff §7.2). Built by
+   * buildRegisterBlock; response-scoped (never the whole glossary). Additive/optional. */
+  register?: RegisterEntry[]
+  /**
+   * The READING-CONTRACT header — ONE generated paragraph telling the consuming model how
+   * to read THIS response's grades/coverage/flags/register. Generated from the response's
+   * actual content shape (buildReadingContract), so a confirmed-grounded response and a
+   * sparse/floored one differ visibly (§N.6: density signaling is data, not narration). */
+  reading_contract?: string | null
+  /**
+   * DRAFT reader text for the MSR signal classes present in this response (one short
+   * paragraph per class explaining what the class means to a reading model). ⚠️ Generated
+   * DRAFT — flagged for native editorial polish post-campaign (master brief §E W3 item 3);
+   * the taxonomy/coverage is committed, the exact wording is not final acharya-grade prose. */
+  signal_reader_text?: Record<string, string>
 }
 
 export type RetrievalEnvelope = LegacyEnvelope | V3Envelope
@@ -350,6 +381,24 @@ export interface BuildRetrievalEnvelopeParams {
    *  formats (additive on legacy too) since the trim is a channel-transport fact, not a
    *  v3-only enrichment. */
   trim_report?: TrimReportEntry[] | null
+
+  // ── W3-L3 "One Envelope" register-block inputs (v3 only) ────────────────────
+  /** Injected flag-code → label map (W3-L2 coordination): lets the register block label any
+   *  judgment-flag code (e.g. a closed enum landing in a parallel lane) without hardcoding it. */
+  flag_labels?: Record<string, string>
+  /** Extra caller-supplied register entries appended verbatim (escape hatch for bespoke tokens). */
+  register_extra?: RegisterEntry[]
+  /** 0..1 verified-row fraction for this response (drives the reading_contract verification
+   *  sentence). Falls back to `epistemic.verified_fraction` when omitted. */
+  verified_fraction?: number | null
+  /** TRUE if this response contains catalog-only rows (single-pass label matches awaiting
+   *  cross-verification) — surfaces the §N.6 catalog-only caution in the reading_contract. */
+  has_catalog_only_rows?: boolean
+  /** TRUE if the serving capability declares a density_contract (drives the density sentence). */
+  has_density_contract?: boolean
+  /** Set false to suppress register/reading_contract/signal_reader_text generation on this v3
+   *  response (default true — they ride on every v3 response). */
+  emit_register_block?: boolean
 }
 
 /**
@@ -421,6 +470,40 @@ export function buildRetrievalEnvelope(
     judgment_flags: params.judgment_flags ?? [],
     build_id: params.build_id ?? null,
   }
+
+  // ── W3-L3 "One Envelope": register block + reading_contract + signal_reader_text ──
+  // Generated additively on every v3 response (unless explicitly suppressed). Everything is
+  // derived from THIS response's own assembled content/fields — nothing is fabricated (B.10).
+  if (params.emit_register_block !== false) {
+    const register = buildRegisterBlock({
+      content: v3.content,
+      epistemicGrade: v3.epistemic.grade,
+      judgmentFlags: v3.judgment_flags,
+      drillPointers: v3.drill_pointers,
+      flag_labels: params.flag_labels,
+      register_extra: params.register_extra,
+    })
+    v3.register = register
+
+    const registerKinds = Array.from(new Set(register.map(e => e.kind)))
+    const signalClassTokens = register.filter(e => e.kind === 'signal_class').map(e => e.token)
+
+    v3.reading_contract = buildReadingContract({
+      epistemicGrade: v3.epistemic.grade,
+      verifiedFraction: params.verified_fraction ?? v3.epistemic.verified_fraction,
+      groundingFactCount: v3.grounding.fact_ids.length,
+      coverage: v3.coverage ? { served: v3.coverage.served, total: v3.coverage.total } : null,
+      moreAvailable: v3.pagination.more_available,
+      judgmentFlags: v3.judgment_flags,
+      hasCatalogOnlyRows: params.has_catalog_only_rows,
+      hasDensityContract: params.has_density_contract,
+      registerKinds,
+    })
+
+    // Signal-reader text only for the signal classes actually present in this response.
+    v3.signal_reader_text = collectSignalReaderText(signalClassTokens)
+  }
+
   return v3
 }
 

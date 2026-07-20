@@ -262,6 +262,16 @@ interface CapabilityDescriptorBase {
   register?: {
     glossary?: Record<string, string>
     enforce_complete?: boolean
+    /**
+     * W3-L3 "One Envelope" (plan §R-2 item 3): static, capability-declared register entries in
+     * the GENERIC `{token, label, kind}` shape the envelope register block uses at serve time.
+     * Distinct from `glossary` (the W1 untyped token→label map): these carry a `kind` so a
+     * projection compiler / the envelope builder can merge them with the response-scoped
+     * runtime entries and treat signal vs flag vs drill_uri vs epistemic_grade tokens
+     * distinctly. Additive/optional — a capability that declares only `glossary` is unaffected.
+     * Type imported from the envelope register-block module (single source of the shape).
+     */
+    entries?: import('../register_block').RegisterEntry[]
   }
 
   /**
