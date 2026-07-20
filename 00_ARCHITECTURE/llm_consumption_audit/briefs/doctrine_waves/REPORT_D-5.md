@@ -2,9 +2,9 @@
 artifact: REPORT_D-5
 type: WAVE CLOSE REPORT (protocol §7 — "the D-1 lesson: a wave without a close report did not close")
 wave: D-5 — Gochara-Chitra
-status: BLOCKED — HALT-AND-REPORT (ESCALATION_POLICY §2; native's own D-5 kickoff directive: "a red on... specimens... is [a wave failure]", not gated around) — UPDATED after gate_run_2 (see §8)
+status: CLOSED — GREEN-WITH-PARTIALS (native disposition 2026-07-20, on gate_run_2 findings 1/2; pre-committed outcome — see §10)
 opened: 2026-07-19T08:31:47Z
-halted: 2026-07-20T05:11:00Z (~20.5 hours elapsed); reopened for materialization completion + gate_run_2 2026-07-20T00:36–01:15Z
+halted: 2026-07-20T05:11:00Z (~20.5 hours elapsed); reopened for materialization completion + gate_run_2 2026-07-20T00:36–01:15Z; resumed after accidental session close 2026-07-20T~17:00Z; closed 2026-07-20T~23:50Z
 conductor: Claude Code (Sonnet 5), fully autonomous per native directive
 governing: BRIEF_D5.md v1.0 FROZEN, BIND_D-5.md, CONDUCTOR_PROTOCOL.md, ESCALATION_POLICY_v1_0.md, ADJUDICATOR_CHARGE_v1_0.md
 ---
@@ -209,3 +209,109 @@ priority before more code changes are made.
    about the engine's current limits rather than a bug to chase.
 
 STATE_D-5.md's `gate_run_2` block carries the full evidence for both findings.
+
+## §10 — Session re-entry, RED-C/RED-D root-cause fixes, native disposition, final gate, CLOSE
+
+Re-entered per protocol §6.2 after an accidental mid-session close. Reconciled ledger vs reality
+first (git branch/worktree inventory, build_runs state) before any new work — no half-done work
+found; the two fix worktrees (`wave/D-5/fix-red-c`, `wave/D-5/fix-red-d`) had real, uncommitted/
+committed progress matching STATE_D-5.md's carried findings.
+
+**RED-C — root-cause fixed, PR #650 (`86a82ca5`, merged+deployed).** `shape_output.py`'s v4 design
+(each year-substep computes only its own strictly-bounded segment; `writer.py`'s
+`_consolidate_interval_segment` chains already-committed adjacent segments via
+`kala_gochara_windows.continuity_state`, migration 461 — order-independent by construction, no
+scan-distance dependency) was sound but had never been committed/tested. While authoring the test
+suite for it (before first commit), found a real bug in the design itself: the year-chunk grid is
+inclusive on both ends, so adjacent chunks' shared boundary day is the SAME calendar date, not
+date±1 — the neighbor-lookup used off-by-one adjacency, so real year-boundary segments would never
+actually merge in production. Fixed to exact-date-equality adjacency. 27/27 targeted tests, 3895/23
+(pre-existing unrelated `test_l0_remedy_corpus.py`) on the wider suite.
+
+**RED-D — already root-caused and fixed by the interrupted session, independently re-verified.**
+Saturn occupying natal Saturn's 7th house (Libra, resident since 2012-08-08) + Jupiter's 5th special
+aspect from Gemini onto Libra is genuinely BPHS Ch.26-valid, but `double_transit` required both legs
+to be aspect-shaped (Saturn's leg here is occupation). Fixed via a rasi-drishti fallback for
+bhava-target aspect detection plus a new `double_transit_mixed` composition operator pairing one
+occupation-shaped leg against one aspect-shaped leg. Independently re-verified two ways before
+trusting it: reran the 79-test suite myself (not just the commit message), and separately queried
+`swisseph` directly for the real 2013-12-11 sidereal positions to confirm the astronomy claim
+independent of the fix's own code. PR #651 (`d2d9555e`, merged+deployed).
+
+**Rebuild-timeout perf regression — found, fixed, PR #663 (`5ceedd75`, merged+deployed).**
+Dispatching the post-merge rebuild, the first specimen substep (previously fine pre-fix) exceeded
+`writer_timeout_seconds=1800` with zero rows committed. Diagnosed live: RED-D's fix correctly
+reaches more targets in `gochara_grammar/primitives.py`/`sarvatobhadra.py`, exposing pre-existing
+per-target "skipping" honest-degrade diagnostics logged at INFO inside `ka_gochara_sweep`'s hot
+per-grid-day loop (>1000 log lines/10s observed live). Fixed: log-level only (INFO→DEBUG, 14 call
+sites), zero behavior change, confirmed via re-dispatch (all 3 priority specimens committed within
+~15 minutes, vs. a full timeout with zero commits before the fix).
+
+**gate_run_2 findings 1/2 — native-dispositioned, PR #665 (`81a77f26`, merged+deployed).** The
+first post-fix rebuild's live data surfaced two genuinely new, deep questions (not restatements of
+RED-C/RED-D): (1) `major_gain`'s committed window (`continuity_state`: `left_active=right_active=
+true`) revealed the true signal is continuously elevated for well over two years — the 365-day cap,
+correctly enforced, was anchoring to a truncated `raw_start` and serving a pseudo-precise closed
+window; (2) the marriage specimen's served peak (2013-01-07, `chara_karaka`) was the single
+argmax of a year-long active run, silently dropping whatever the ~2013-12-11 mechanism contributes.
+Reported both to the native rather than fixing speculatively (third distinct issue this session —
+the native's own stated stop condition for this resumption). **Native disposition**: both ruled
+serving-honesty defects, in-scope, explicitly refusing calibration work or specimen-aware
+weighting. Fix 1: `register_gochara_windows.ts` derives `plateau_disclosure` (open-edge flags) from
+the already-persisted `continuity_state` on every interval row, across all three MCP tools — a
+structural cap is never served as a confirmed signal cessation. Fix 2: `shape_output.build_point_rows`
+serves one row per LOCAL maximum within a run (`_local_maxima`, standard peak detection, no
+specimen-tuned knobs — every genuine local max is emitted; row-count limiting is exactly what
+§N.6's existing response-budget mechanism already does generically), each independently attributed.
+Corrected specimen assertions, native-specified: interval-class scoring is OVERLAP (the windfall
+interval lies within the served plateau); point-class scoring is presence-of-true-date-peak-among-
+served-peaks, NOT rank-1. `_RESUME_VERSION` bumped 5→6. One final §G re-run explicitly authorized
+by name (not a re-litigation of prior reds — new, distinct, doctrine-derived defect classes).
+
+**Final rebuild + gate re-verification (build_run `ccb7f597`, job `brahma-build-pipeline-job-nld7d`,
+all 3 priority specimens committed).**
+
+- `major_gain` (interval): `window_start=2010-01-01, window_end=2011-01-01`,
+  `continuity_state={raw_start:2010-01-01, raw_end:2012-01-01, left_active:true, right_active:true}`.
+  **PASSES** the corrected OVERLAP assertion — `[2010-01-01, 2011-01-01]` overlaps the LEL windfall
+  specimen `[2010-07, 2011-03]` by ~6 months, and the served plateau_disclosure honestly flags both
+  edges open (not a confirmed closed span).
+- `marriage` (point): still only ONE served row (`2013-01-07`, `chara_karaka` active,
+  `guru_shani_double_transit` inactive on that day). The top-K local-maxima mechanism is correctly
+  implemented and unit-verified in isolation (two synthetic humps within one run both served,
+  independently attributed) — but the LIVE composite signal for this specific chart does not
+  produce a distinct local maximum near 2013-12-11 strong enough to register as a second served
+  peak, even though the underlying mechanism is now structurally reachable (RED-D) and the
+  ephemeris configuration is independently confirmed real. **STILL FAILS** the corrected
+  presence-among-peaks assertion. Root cause of *why* the composite lambda_e doesn't crest a second
+  time near the true date (suppression damping, PROMISE weighting, or a genuine "this specimen's
+  aggregate signal is weaker than the January configuration for this chart") is undiagnosed — per
+  the native's own pre-committed outcome for this exact case, this is NOT chased with a further fix
+  cycle in D-5.
+
+**Disposition (per native's pre-committed outcomes, explicitly anticipating this exact split
+result): D-5 closes GREEN-WITH-PARTIALS.** The major_gain specimen passes cleanly under corrected
+doctrine; the marriage specimen's residual (mechanism reachable + astronomically real, but not
+surfacing as a served local maximum for this chart) transfers to D-4b's Grand Bakeoff as a named
+calibration/residual item — registered below as the DR-17 type-specimen residual pair
+(`chara_karaka` vs `guru_shani_double_transit`, 2013). No further D-5 fix cycles occur.
+
+**Doctrine registered at close (native-ratified 2026-07-20, texts in
+`DR_14_15_16_TEMPORAL_DOCTRINE_v1_0.md`, arc-plan §12 binds both on D-4b):**
+- **DR-17 — Graded Manifestation Acceptance.** Likely-time doctrine (peak/sub_peak/elevated
+  right-in-kind, neutral=miss, contra=anti-hit double-weighted, tie-bands, percentile-of-
+  manifestation vs mirrored controls, residual mining + served `unmodeled_variance`). D-5 implements
+  NO DR-17 scoring itself (D-4b harness/calibration work) — the corrected D-5 specimen assertions
+  above are DR-17-compatible by construction (overlap = elevated grade; presence-among-peaks =
+  tie-band/sub-peak acceptance).
+- **DR-18 — Knowledge-Utilization Census.** D-4b harness item, no D-5 implementation.
+- Shared register entry (both gate_run_2 findings 1/2, one defect class): "serving-layer collapses
+  manufacturing false precision from honest signal" — siblings of RED-C's chunk-bounded windows
+  (§N.6 lineage).
+
+**Deploy (final, this session):** `amjis_web`/`amjis_mcp`/`amjis_sidecar`/`brahma_build_pipeline_job`
+all live-SHA-verified at `81a77f263a7d61c2ba2a8c57f5cf7605c35231df` (PR #665 merge commit).
+
+**`current_wave` advances D-5 → D-4b** (INCOMING — `BRIEF_D4B.md` fleshes and freezes at its own
+readiness pass, per its own frontmatter). Full worktree/branch cleanup performed at session close
+(§11/STATE_D-5.md final block).
