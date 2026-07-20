@@ -19,6 +19,8 @@
     "pipeline:msr-sql-test": "tsx src/scripts/test/msr_sql_smoke.ts",
     "audit:replay": "tsx scripts/audit/replay.ts",
     "audit:smoke": "tsx scripts/audit/smoke.ts",
+    "codegen:vidhi": "tsx scripts/generate_vidhi_registry_mirror.ts",
+    "codegen:vidhi:check": "tsx scripts/generate_vidhi_registry_mirror.ts --check",
     "tap:6-method-grep": "tsx scripts/audit/tap/tap6_method_grep.ts",
     "tap:pointer-validation": "tsx scripts/audit/tap/sc_pointer_validation.ts",
     "tap:mcp-smoke": "tsx scripts/audit/tap/mcp_tool_smoke.ts",

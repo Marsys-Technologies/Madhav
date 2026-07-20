@@ -67,8 +67,23 @@
  *      using the old vocabulary silently matched zero rows on live data). The
  *      `valence_filter` enum is corrected to the real vocabulary
  *      (`harmonious`|`antagonistic`|`neutral`); the D4-era terms are still accepted
- *      as input and normalized (`benefic`→`harmonious`, `malefic`→`antagonistic`,
- *      `mixed`→`neutral`) so no existing caller silently breaks.
+ *      as input and normalized (`benefic`->`harmonious`, `malefic`->`antagonistic`,
+ *      `mixed`->`neutral`) so no existing caller silently breaks.
+ *
+ * ── W2 dark-set wiring (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0, TABLE_CONCEPT_DISPOSITIONS_v2_0
+ * §8 "natural 5th mode on an existing, working tool") ──────────────────────────────────────────
+ *
+ *   5. `sub_graphs` mode — serves `bodha_cgm_sub_graphs` (10 rows on the live chart; was a
+ *      genuine SERVE gap, zero prior TS-registry route — confirmed by the W1 addendum re-scan
+ *      that widened the surface to include `platform-mcp/src/tools/`). Curated named subgraph
+ *      clusters (subgraph_type/subgraph_label, e.g. a classically-recognized planetary
+ *      combination), each carrying its own node_ids_array/edge_ids_array back into the already-
+ *      served `bodha_cgm_nodes`/`bodha_cgm_edges` tables -- same sibling relationship
+ *      `_convergenceMode` already has with `bodha_cgm_chart_topology_summary` (line ~820), just
+ *      promoted to its own mode instead of an embedded field, since sub_graphs is its own
+ *      first-class row set (not a single per-chart summary row). No new capability was added --
+ *      this is the wiring plan's own explicit recommendation (extend the existing tool, don't
+ *      build a 4th standalone one for the CGM plane).
  */
 
 import type { CapabilityDescriptor, ToolResult } from '../../types'
@@ -83,7 +98,7 @@ import { DEFAULT_AYANAMSHA } from '../../constants'
 
 // ── Mode type ─────────────────────────────────────────────────────────────────
 
-type TraversalMode = 'neighbors' | 'paths' | 'convergence' | 'contradictions'
+type TraversalMode = 'neighbors' | 'paths' | 'convergence' | 'contradictions' | 'sub_graphs'
 type TraversalDirection = 'directed' | 'both'
 
 /** D4-era valence terms, normalized to the real live-DB vocabulary (see header note). */
@@ -110,8 +125,9 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
 
   description: [
     'Traverse the Cosmological Graph Model (CGM) for a chart.',
-    'Four modes: neighbors (BFS from seed nodes), paths (shortest path between two nodes),',
-    'convergence (top-centrality hub nodes and their edges), contradictions (all contradiction pairs).',
+    'Five modes: neighbors (BFS from seed nodes), paths (shortest path between two nodes),',
+    'convergence (top-centrality hub nodes and their edges), contradictions (all contradiction pairs),',
+    'sub_graphs (curated named subgraph clusters, e.g. classically-recognized planetary combinations).',
     'Returns signal_id-keyed references for downstream hydration by the grounding spine.',
     'Nodes are drawn from bodha_cgm_nodes (centrality: pagerank/betweenness/hub_flag);',
     'edges from bodha_cgm_edges (relationship_basis, valence, cross-subsystem);',
@@ -144,10 +160,12 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
         'neighbors — BFS from seed_node_ids (default depth 1);',
         'paths — shortest path between from_node_id and to_node_id;',
         'convergence — top hub nodes by pagerank_score + their edges;',
-        'contradictions — all contradiction pairs for the chart.',
+        'contradictions — all contradiction pairs for the chart;',
+        'sub_graphs — curated named subgraph clusters (bodha_cgm_sub_graphs), each with its own',
+        'node_ids_array/edge_ids_array back into bodha_cgm_nodes/bodha_cgm_edges.',
         'Default: neighbors.',
       ].join(' '),
-      enum: ['neighbors', 'paths', 'convergence', 'contradictions'],
+      enum: ['neighbors', 'paths', 'convergence', 'contradictions', 'sub_graphs'],
       default: 'neighbors',
     },
     seed_node_ids: {
@@ -255,6 +273,13 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
         'Falls back to returning all nodes if embeddings not populated.',
       ].join(' '),
     },
+    subgraph_type: {
+      type: 'string',
+      description: [
+        'sub_graphs mode ONLY — optional filter on bodha_cgm_sub_graphs.subgraph_type',
+        '(e.g. a classically-recognized combination class). Omit for all subgraph types.',
+      ].join(' '),
+    },
   },
 
   llm_hints: {
@@ -301,6 +326,9 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
 
         case 'contradictions':
           return await _contradictionsMode(chart_id, ayanamsha_id)
+
+        case 'sub_graphs':
+          return await _subGraphsMode(chart_id, ayanamsha_id, args['subgraph_type'] as string | undefined)
 
         default:
           return {
@@ -936,6 +964,105 @@ async function _contradictionsMode(
         schema_version: 'mig_325',
         ayanamsha_id: ayanamshaId ?? null,
         note: 'signal_id_refs key into bodha_msr_signals for D3 grounding spine hydration',
+      },
+    },
+    is_error: false,
+  }
+}
+
+/**
+ * sub_graphs mode: curated named subgraph clusters for a chart (bodha_cgm_sub_graphs,
+ * W2 dark-set wiring — see header note). Each row already carries node_ids_array/
+ * edge_ids_array back into bodha_cgm_nodes/bodha_cgm_edges, so this mode additionally
+ * resolves the constituent node rows (not edges — edges can be fetched via neighbors/
+ * convergence mode using the returned node_ids as seeds) for immediate readability,
+ * same shape as _contradictionsMode's participant_signals enrichment.
+ */
+async function _subGraphsMode(
+  chartId: string,
+  ayanamshaId: string | undefined,
+  subgraphType: string | undefined
+): Promise<ToolResult> {
+  const conds: string[] = ['chart_id = $1']
+  const params: unknown[] = [chartId]
+  let pIdx = 2
+
+  if (ayanamshaId) {
+    conds.push(`ayanamsha_id = $${pIdx++}`)
+    params.push(ayanamshaId)
+  }
+  if (subgraphType) {
+    conds.push(`subgraph_type = $${pIdx++}`)
+    params.push(subgraphType)
+  }
+
+  const subgraphSql = `
+    SELECT
+      subgraph_id,
+      ayanamsha_id,
+      subgraph_type,
+      subgraph_label,
+      node_ids_array,
+      edge_ids_array,
+      subgraph_density,
+      subgraph_centroid_node_id,
+      representative_path_jsonb,
+      classical_archetype_match,
+      verification_pass_status,
+      citation_ref,
+      citation_human
+    FROM bodha_cgm_sub_graphs
+    WHERE ${conds.join(' AND ')}
+    ORDER BY subgraph_density DESC NULLS LAST
+  `
+
+  const subgraphResult = await query<Record<string, unknown>>(subgraphSql, params)
+
+  // Resolve the constituent node ids across all returned subgraphs into their
+  // bodha_cgm_nodes rows, so a caller gets readable node labels in one call
+  // instead of a resolve-then-lookup round trip (same convenience _contradictionsMode
+  // already gives for its participant_signals).
+  const allNodeIds = new Set<string>()
+  for (const row of subgraphResult.rows) {
+    const ids = (row['node_ids_array'] as string[] | null) ?? []
+    for (const id of ids) allNodeIds.add(id)
+  }
+
+  let memberNodes: unknown[] = []
+  if (allNodeIds.size > 0) {
+    const nodeIdArr = Array.from(allNodeIds)
+    const nodeConds = ['chart_id = $1']
+    const nodeParams: unknown[] = [chartId]
+    let ni = 2
+    if (ayanamshaId) {
+      nodeConds.push(`ayanamsha_id = $${ni++}`)
+      nodeParams.push(ayanamshaId)
+    }
+    const nodePhs = nodeIdArr.map(() => `$${ni++}`).join(', ')
+    nodeConds.push(`node_id IN (${nodePhs})`)
+    nodeParams.push(...nodeIdArr)
+
+    const nodeRes = await query<Record<string, unknown>>(
+      `SELECT node_id, node_type, node_subject, node_label_human, primary_domain
+       FROM bodha_cgm_nodes
+       WHERE ${nodeConds.join(' AND ')}`,
+      nodeParams
+    )
+    memberNodes = nodeRes.rows
+  }
+
+  return {
+    content: {
+      chart_id: chartId,
+      mode: 'sub_graphs',
+      sub_graphs: subgraphResult.rows,
+      sub_graph_count: subgraphResult.rows.length,
+      member_nodes: memberNodes,
+      provenance: {
+        tables: ['bodha_cgm_sub_graphs', 'bodha_cgm_nodes'],
+        schema_version: 'mig_325',
+        ayanamsha_id: ayanamshaId ?? null,
+        note: 'member_nodes resolves the union of every returned subgraph\'s node_ids_array against bodha_cgm_nodes for immediate readability.',
       },
     },
     is_error: false,

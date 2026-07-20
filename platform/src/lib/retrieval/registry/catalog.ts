@@ -21,6 +21,7 @@
 
 import type { CapabilityDescriptor } from './types'
 import { getAllCapabilities } from './index'
+import { applyDescriptorDefaults } from './descriptor_defaults'
 
 // ── Per-wave registration imports ─────────────────────────────────────────────
 // Each import executes the layer's index.ts which calls registerCapability() for
@@ -94,7 +95,22 @@ export function getCatalog(): CapabilityDescriptor[] {
   // Registration side-effects already fired via the imports above.
   // This function just returns the current state of the registry.
   _catalogLoaded = true
-  return getAllCapabilities()
+  const caps = getAllCapabilities()
+
+  // R-1.1 descriptor migration (W2 "One Catalog", plan R-1 item 1): backfill
+  // any of the nine W1-landed optional fields that are still `undefined` on
+  // a capability with a generator-derived default. Mutates the actual
+  // registered descriptor object in place (idempotent — only fills fields
+  // that are still undefined), so every consumer of getCatalog() — both the
+  // MCP and chat channels — sees the populated descriptor, not just this
+  // function's own return value. See descriptor_defaults.ts's module doc
+  // comment for why this is the correct application point (no single static
+  // manifest exists to rewrite instead).
+  for (const cap of caps) {
+    applyDescriptorDefaults(cap)
+  }
+
+  return caps
 }
 
 /**
