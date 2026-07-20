@@ -108,6 +108,39 @@ from . import citations as C
 
 logger = logging.getLogger(__name__)
 
+# PERF-TRIGGER-CACHE precedent (D-3), applied here (D-4b readiness pass,
+# 2026-07-21): `_fetch_av_gate_rows` and `_fetch_sade_sati_rows` are each
+# called from `gochara_intensity.permission.compute_permission` ONCE PER
+# GRID DAY (~365 times per year-substep) via `ka_gochara_sweep`'s daily
+# sweep, but both read data that is CONSTANT for the lifetime of one build
+# process: `bg_transit_av_gates` is a global L0 reference table (migration
+# 397, never chart-scoped, never written mid-build); `chart_facts`'
+# sade_sati_cycle/sade_sati_phase rows are chart-scoped but written once by
+# `ga_sade_sati_writer.py` upstream of this L3 writer and never mutated
+# during a ka_gochara_sweep run. Root-caused live (D-4b pre-readiness pass):
+# these two reads alone accounted for ~0.42s of every ~0.43s `compute_permission`
+# call (benchmarked against chart 482012f1's career_advancement targets;
+# see DIAG_GOCHARA_SWEEP_PERF_v1_0.md) -- ~150-250s of pure redundant network
+# roundtrips per 365-day year-substep, compounding across ~300 substeps.
+# Memoized here at module level, keyed by the exact same arguments that
+# already determine the query (target_house for the av-gate read;
+# chart_id for the sade-sati read) -- correctness-preserving because
+# neither underlying table changes within a build's lifetime, and a
+# fresh process (new deploy/dispatch) starts with an empty cache.
+_AV_GATE_ROWS_CACHE: dict[Optional[str], list[dict]] = {}
+_SADE_SATI_ROWS_CACHE: dict[str, list[dict]] = {}
+
+
+def clear_primitive_read_caches() -> None:
+    """Test/adversarial-verification hook: reset both memoization caches.
+    Also the correct call between independent chart builds sharing one long-
+    lived process (not needed today -- each Cloud Run dispatch is a fresh
+    process/cache -- but kept so a future in-process multi-chart batch mode
+    cannot silently read another chart's cached sade_sati rows)."""
+    _AV_GATE_ROWS_CACHE.clear()
+    _SADE_SATI_ROWS_CACHE.clear()
+
+
 # Every per-target "skipping" honest-degrade message below is `logger.debug`,
 # not `logger.info` (found live, D-5 RED-C/RED-D post-merge rebuild,
 # 2026-07-20): `ka_gochara_sweep`'s hot loop calls these primitives per grid
@@ -653,6 +686,8 @@ def kakshya_cell_crossing(
 def _fetch_av_gate_rows(conn, target_house: Optional[str]) -> list[dict]:
     if conn is None:
         return []
+    if target_house in _AV_GATE_ROWS_CACHE:
+        return _AV_GATE_ROWS_CACHE[target_house]
     try:
         with savepoint_scope(conn, "av_gate_rows"):
             cur = conn.execute(
@@ -667,10 +702,15 @@ def _fetch_av_gate_rows(conn, target_house: Optional[str]) -> list[dict]:
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
+        # NOT cached: a transient read failure must remain retryable on the
+        # next call (e.g. next grid day), never permanently frozen as "no
+        # gate rows" for the rest of this process's life.
         logger.info("[av_threshold_state] bg_transit_av_gates read failed: %s", exc)
         return []
     keys = ["gate_kind", "graha", "house_from_moon", "min_av_score", "min_sav_score", "effect", "classical_citation"]
-    return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
+    result = [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
+    _AV_GATE_ROWS_CACHE[target_house] = result
+    return result
 
 
 def av_threshold_state(
@@ -966,6 +1006,8 @@ def planetary_return(
 def _fetch_sade_sati_rows(conn, chart_id: str) -> list[dict]:
     if conn is None:
         return []
+    if chart_id in _SADE_SATI_ROWS_CACHE:
+        return _SADE_SATI_ROWS_CACHE[chart_id]
     try:
         with savepoint_scope(conn, "sade_sati_rows"):
             cur = conn.execute(
@@ -978,10 +1020,14 @@ def _fetch_sade_sati_rows(conn, chart_id: str) -> list[dict]:
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
+        # NOT cached -- see _fetch_av_gate_rows' identical comment: a
+        # transient failure must stay retryable, never permanently frozen.
         logger.info("[sade_sati_phase] chart_facts sade_sati read failed: %s", exc)
         return []
     keys = ["fact_subject", "fact_key", "fact_value_text", "fact_value_num", "citation_human"]
-    return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
+    result = [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
+    _SADE_SATI_ROWS_CACHE[chart_id] = result
+    return result
 
 
 def sade_sati_phase(
