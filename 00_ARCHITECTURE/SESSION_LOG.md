@@ -32196,6 +32196,67 @@ session_close:
 
 ---
 
+## PG-1-CONDUCTOR-2026-07-19 — PG-1 Paripraśna Grounding Audit — Conductor Close
+
+```yaml
+session_open:
+  session_id: PG-1-CONDUCTOR-2026-07-19
+  wave: PG-1
+  reading_set: [CLAUDE.md, CONDUCTOR_PROTOCOL.md v1.4, ESCALATION_POLICY_v1_0.md v1.1,
+                ADJUDICATOR_CHARGE_v1_0.md v1.1, BRIEF_PG-1 v2.0, PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md v0.5]
+  arch_doc_sha256_at_open: cf347c85cf13c88a6db6467fe2d11c38fde36a8047e7834541a6e7221cddc284
+```
+
+Autonomous read-only audit wave (§F2: zero product-code writes) of
+`PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md` (v0.5), the target-state design for the
+Paripraśna conversation layer. 12 investigate lanes (R-1/R-2/R-3, C-1/C-2/C-3,
+D-1/D-2/D-3, O-1, S-1, Q-1) ran per the brief's §F1.9 DAG against the live working
+tree, the deployed MCP connector, and the production DB (chart 482012f1, Abhisek),
+producing 87 evidenced findings. All 12 reached Opus-floor Phase-1 ACCEPT (2 via a
+corrected attempt-2 pass: R-3 fixed a wrong evidence line-citation; Q-1 corrected 3
+findings that had conflated two different charts' verdict rows as an intra-chart
+contradiction — the wave's most consequential correction, since Q-1 is the
+acharya-grade-quality headline lane). One scope-warden false positive (two lanes'
+commits raced into one git commit object, a byproduct of running lanes in a shared
+working tree rather than isolated worktrees for efficiency) was resolved by a
+fresh-context Opus Adjudicator ruling plus conductor reconciliation, at zero
+attempt-cost, after independently confirming zero cross-lane content violation.
+Synthesis (Lane Z-1) produced `RETRIEVAL_SYSTEM_TRUTH_v1_0.md` (the primary
+deliverable — observed system behaviour, the artifact Paripraśna gets designed
+against), `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md` (assumption verdicts,
+new defects, prioritized fixes), and `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md` → v0.6
+(16 in-place `[CORRECTED PG-1]` corrections, 15 new append-only forensic defects
+F-25h…F-25v). The §G gate (9 assertions + falsifiable final proof) ran twice —
+mechanically, then independently by a fresh-context Opus gate runner performing its
+own adversarial anti-gaming pass on itself — and closed **GREEN on all 9**, with one
+qualified integrity call (G.4, capability-coverage completeness) flagged transparently
+for native review rather than silently passed. Headline finding: the instrument has
+never produced a served, persisted reading (conversation store is empty); the
+deterministic proxy readings sampled fail the CLAUDE.md §J acharya bar on all 10
+samples; D-17's "3-4 week, no-engine-work" shim premise is false (route reorder
+required, ~6-9 weeks for the full gate); NO-LEAKAGE's DB-role separation is 0% built;
+Cloud SQL PITR is disabled. Full detail: `REPORT_PG-1.md`.
+
+```yaml
+session_close:
+  session_id: PG-1-CONDUCTOR-2026-07-19
+  wave: PG-1
+  close_criteria_met: true
+  verification: "12/12 lanes Opus-floor Phase-1 ACCEPT (2 via corrected attempt-2, independently re-verified); §G gate GREEN on all 9 assertions incl. all 5 integrity assertions, confirmed by an independent fresh-context Opus gate runner + its own adversarial anti-gaming pass; final proof PASS (P0' resolved to a binary with evidence, 7 assumptions moved from v0.5 verdicts)"
+  deploy: "not applicable — PG-1 is read-only on application code, zero deploys, §F2/G.9 confirmed zero product-path touches across the entire wave"
+  product_code_writes_made: "none (§F2 absolute; G.9 verified clean)"
+  native_chart_touched: false
+  current_state_updated: false
+  current_state_deferred_reason: "CURRENT_STATE_v1_0.md carries a pre-existing uncommitted edit from the concurrent D-4a conductor session in this shared working tree; PG-1 did not stage/commit it to avoid mixing an unrelated session's in-flight work into pg1/wave's history — see REPORT_PG-1.md Process Deviations #4"
+  register_dispositions_flipped: "none — PG-1 does not write to CR/DR registers (out of scope, doctrine-waves territory is must_not_touch); new OT-11/OT-12 forks and T-9 tension recorded directly in PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md v0.6 per Z-1"
+  followups: "recommended-immediate-fixes list in PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md §3 (codegen:check CI-wiring first); CURRENT_STATE update pending D-4a reconciliation; chart_facts row-count divergence (138,519/276,206/27,554 across probes) needs a dedicated diagnostic session before the next data-sizing-dependent wave; G.4's ~25% capability-coverage sample needs native disposition (accept the honest-disclosure reading, or commission a completion pass)"
+  next_session_objective: "Native reviews REPORT_PG-1.md's disposition items (G.4 qualified call, chart_facts divergence, CURRENT_STATE deferral) and the recommended-immediate-fixes list; PG-1's own PR is opened+merged per ESCALATION_POLICY §0 auto-proceed. Doctrine-Waves current_wave remains D-4a, untouched by this wave."
+```
+
+*End of PG-1-CONDUCTOR-2026-07-19 entry — 2026-07-19.*
+
+---
+
 ## RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19 — Retrieval Audit (parallel infrastructure track, NOT D-4) CLOSED
 
 ```yaml
