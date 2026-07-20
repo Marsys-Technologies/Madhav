@@ -8,7 +8,7 @@
  * for a has_substeps asset in the 'error' state downgrades the badge to 'partial'.
  */
 import { describe, it, expect } from 'vitest'
-import { deriveState } from '../route'
+import { deriveState } from '../deriveState'
 
 describe('deriveState — badge-honesty (partial vs error)', () => {
   it('reports error for a non-substep asset with an error, regardless of substep count arg', () => {
