@@ -25,7 +25,8 @@
  * worst contract violation" reasoning. See R5_RUN_LEDGER W1 dasha_query verifier finding.
  */
 import type { CapabilityDescriptor } from '../../types'
-import type { DrillPointer } from '../../../envelope'
+import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
+import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
@@ -421,11 +422,12 @@ export const getDashasCapability: CapabilityDescriptor = {
       }
       const projectedRows = enrichedRows.map(row => projectRow(row, projectFields))
 
-      const judgment_flags: string[] = []
+      const judgment_flags: JudgmentFlagEntry[] = []
       if (systemRequestedButUnknown) {
-        judgment_flags.push(
-          `system_facet_unrecognized: "${systemRequestedButUnknown}" is not one of ${KNOWN_SYSTEMS.join('|')} — filter NOT applied, all systems served.`
-        )
+        judgment_flags.push(judgmentFlag(
+          'system_facet_unrecognized',
+          `"${systemRequestedButUnknown}" is not one of ${KNOWN_SYSTEMS.join('|')} — filter NOT applied, all systems served.`
+        ))
       }
 
       // ── R5.3 B2 (Pratinidhi-R Q6-N-2 ruling): current-dasha narration ──

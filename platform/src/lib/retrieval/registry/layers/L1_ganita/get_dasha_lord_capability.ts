@@ -34,6 +34,8 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import type { JudgmentFlagEntry } from '../../../envelope'
+import { judgmentFlag } from '../../../envelope'
 
 // ── graha display-name <-> chart_facts/chart_vichara subject-code map ──────────────────
 // Mirrors ga_vichara_writer.py's PLANET_TO_SUBJECT (Python) — the SAME code vocabulary
@@ -200,12 +202,12 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
       const ratificationBySubject = new Map(ratificationRes.rows.map(r => [r.subject, r]))
 
       const rows: DashaLordRow[] = []
-      const judgment_flags: string[] = []
+      const judgment_flags: JudgmentFlagEntry[] = []
 
       for (const { lord_graha } of dashaLordsRes.rows) {
         const subject = GRAHA_TO_SUBJECT[lord_graha]
         if (!subject) {
-          judgment_flags.push(`unmapped_lord_graha: '${lord_graha}' has no known subject-code mapping — row skipped, not fabricated.`)
+          judgment_flags.push(judgmentFlag('unmapped_lord_graha', `'${lord_graha}' has no known subject-code mapping — row skipped, not fabricated.`))
           continue
         }
         const sb = shadbalaBySubject.get(subject)
@@ -244,15 +246,15 @@ export const getDashaLordCapabilityCapability: CapabilityDescriptor = {
         })
 
         if (house_class === null) {
-          judgment_flags.push(`house_class_unresolved: no chart_vichara valence_pass row found for ${lord_graha} (${subject}) — honest gap, not fabricated.`)
+          judgment_flags.push(judgmentFlag('house_class_unresolved', `no chart_vichara valence_pass row found for ${lord_graha} (${subject}) — honest gap, not fabricated.`))
         }
         if (ratification_factor === null) {
-          judgment_flags.push(`ratification_unavailable: ${lord_graha} (${subject}) is not a stored karaka for any domain in chart_vichara.varga_ratification — honest absence, not fabricated.`)
+          judgment_flags.push(judgmentFlag('ratification_unavailable', `${lord_graha} (${subject}) is not a stored karaka for any domain in chart_vichara.varga_ratification — honest absence, not fabricated.`))
         }
       }
 
       if (rows.length === 0) {
-        judgment_flags.push('zero_rows: no Vimśottarī level-1 MD lords found for this chart/ayanamsha — honest empty, not a query failure being hidden.')
+        judgment_flags.push(judgmentFlag('zero_rows_returned', 'no Vimśottarī level-1 MD lords found for this chart/ayanamsha — honest empty, not a query failure being hidden.'))
       }
 
       return {

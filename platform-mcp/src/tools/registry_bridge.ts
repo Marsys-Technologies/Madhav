@@ -46,12 +46,14 @@ import type { Principal } from '../types.js'
 import {
   buildRetrievalEnvelope,
   resolveEnvelopeFormat,
+  judgmentFlag,
   type EnvelopeFormat,
   type ChartHeader,
   type DrillPointerType,
   type CoverageStamp,
   type PactStage,
   type TrimReportEntry,
+  type JudgmentFlagEntry,
 } from '../generated/envelope.js'
 // R5.1 C1 (MCP-consume hardening): the shared, reusable response-size trimmer for the
 // three instruments whose full-detail payload (up to ~86KB) is unusable over a real MCP
@@ -260,7 +262,7 @@ function envelope(
     ranking_basis?: Record<string, unknown> | null
     grounding?: { fact_ids: string[]; citations: string[]; grounding_score: number | null }
     drill_pointers?: { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[]
-    judgment_flags?: string[]
+    judgment_flags?: JudgmentFlagEntry[]
     as_of_date?: string
     coverage?: CoverageStamp | null
     trim_report?: TrimReportEntry[] | null
@@ -443,7 +445,7 @@ function reconcileReceiptWithTrimReport(
 function enforceTimingAnchoredHonesty(
   receipt: Record<string, unknown>,
   servedContent: Record<string, unknown> | undefined,
-  judgmentFlags: string[],
+  judgmentFlags: JudgmentFlagEntry[],
 ): void {
   const timing = (servedContent?.['checklist'] as Record<string, unknown> | undefined)
     ?.['timing_hooks'] as Record<string, unknown> | undefined
@@ -461,12 +463,13 @@ function enforceTimingAnchoredHonesty(
     (typeof receipt['timing_anchored'] === 'string' && receipt['timing_anchored'] !== 'false')
   if (!servedTimingAnchored && priorAffirmative) {
     receipt['timing_anchored'] = false
-    judgmentFlags.push(
-      'timing_anchored_forced_false: the served timing_hooks (current/mahadasha_windows_by_graha/' +
+    judgmentFlags.push(judgmentFlag(
+      'timing_anchored_forced_false',
+      'the served timing_hooks (current/mahadasha_windows_by_graha/' +
       'kala_activations) are all empty on the wire — receipt.timing_anchored downgraded from an ' +
       'affirmative pre-trim/pre-serve value rather than shipping a "✓-with-empty-evidence" receipt ' +
       '(Gate Ś #10; CLAUDE.md §N.6 point 3 / B.10).',
-    )
+    ))
   }
 }
 
@@ -852,8 +855,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         }
         const grounding = { fact_ids: Array.from(groundingFactIds), citations, grounding_score: null }
 
-        const judgment_flags: string[] = []
-        if (entityProfiles.length === 0) judgment_flags.push('zero_entity_profiles')
+        const judgment_flags: JudgmentFlagEntry[] = []
+        if (entityProfiles.length === 0) judgment_flags.push(judgmentFlag('zero_entity_profiles'))
 
         // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
         // pre-existing {instrument, hint} shape. Neither pointer here is a named classical
@@ -1088,9 +1091,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           note: 'Counts are of SIGNALS SERVED IN THIS PAGE only — pass a higher limit/cursor for more.',
         }
 
-        const judgment_flags: string[] = []
-        if (returned_count === 0) judgment_flags.push('zero_rows_returned')
-        if (truncated) judgment_flags.push('response_size_truncated')
+        const judgment_flags: JudgmentFlagEntry[] = []
+        if (returned_count === 0) judgment_flags.push(judgmentFlag('zero_rows_returned'))
+        if (truncated) judgment_flags.push(judgmentFlag('response_size_truncated'))
 
         // Typed per design §28.4 (R5 W3 Phase B) — additive; see get_chart_orientation's
         // sibling comment above for why the orient-view pointer is 'other'. The graph
@@ -2076,7 +2079,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           note: 'Deterministic classical-checklist verdict + completeness receipt (design §28.6) — see `receipt` for which checklist items were actually checked this call.',
         }
 
-        const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
+        const judgment_flags = (inner['judgment_flags'] as JudgmentFlagEntry[]) ?? []
         const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType }[]) ?? []
 
         const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
@@ -2105,7 +2108,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         enforceTimingAnchoredHonesty(
           receipt,
           budgeted['content'] as Record<string, unknown> | undefined,
-          budgeted['judgment_flags'] as string[] | undefined ?? [],
+          budgeted['judgment_flags'] as JudgmentFlagEntry[] | undefined ?? [],
         )
         return dualOutputBudgeted(budgeted)
       } catch (err) {
@@ -2757,10 +2760,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           note: 'completeness uses the design §28.6 classical-units receipt vocabulary (✓ / zero_rows / error / not_requested) per section. narration is assembled from the sections already fetched by this same call (see grounding.fact_ids for the specific L1/L2 facts it cites) — never a new chart computation.',
         }
 
-        const judgment_flags: string[] = [...chartHeaderFlags]
-        if (errors && Object.keys(errors).length > 0) judgment_flags.push('partial_portrait_section_errors')
-        if (completeness['yogas'] === 'zero_rows') judgment_flags.push('no_parivartana_or_catalog_matches_for_graha')
-        if (completeness['dashas'] === 'zero_rows') judgment_flags.push('no_mahadasha_periods_for_graha')
+        const judgment_flags: JudgmentFlagEntry[] = [...chartHeaderFlags]
+        if (errors && Object.keys(errors).length > 0) judgment_flags.push(judgmentFlag('partial_portrait_section_errors'))
+        if (completeness['yogas'] === 'zero_rows') judgment_flags.push(judgmentFlag('no_parivartana_or_catalog_matches_for_graha'))
+        if (completeness['dashas'] === 'zero_rows') judgment_flags.push(judgmentFlag('no_mahadasha_periods_for_graha'))
 
         // Typed per design §28.4 (R5 W3 Phase B) — additive `pointer_type` alongside the
         // pre-existing {instrument, hint} shape.
@@ -2990,7 +2993,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             'as proof of a passed chain; always check pact_status.',
         }
 
-        const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
+        const judgment_flags = (inner['judgment_flags'] as JudgmentFlagEntry[]) ?? []
         const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[]) ?? []
 
         const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
