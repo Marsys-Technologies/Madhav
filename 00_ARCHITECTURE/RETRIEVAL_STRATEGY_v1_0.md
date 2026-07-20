@@ -1,8 +1,8 @@
 ---
 artifact: RETRIEVAL_STRATEGY_v1_0.md
 canonical_id: RETRIEVAL_STRATEGY
-version: 1.2
-status: CURRENT — §F gate ruling absorbed 2026-07-19/20
+version: 1.3
+status: CURRENT — §F gate ruling absorbed 2026-07-19/20; W1 addendum doc correction 2026-07-20
 authored_by: Claude (Cowork, Fable 5) 2026-07-19
 parent_documents:
   - 00_ARCHITECTURE/RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md (v1.2 absorbs §9)
@@ -18,6 +18,12 @@ purpose: >
   channel-variation capability set, the per-tool review rubric, and the
   data-plane coverage doctrine (grounded in the 2026-07-19 coverage census).
 changelog:
+  - v1.3 (2026-07-20, W1 addendum, §F gate ruling item 6): §5.2 corrected —
+    `chart_ayanamsha_reports` flagged as stale/aspirational naming (no such
+    table exists in the live DB); footnote added pointing to the actual
+    coverage (`chart_facts_query`'s `ayanamsha_id` filter) and to the
+    `DARK_SET_WIRING_PLAN_v1_0.md` finding. Doc-only correction, no
+    disposition or table semantics changed.
   - v1.2 (2026-07-19/20, §F human gate ruling, RS-2 authority exercised): §5.2
     disposition taxonomy amended — DARK abolished as a terminal state,
     replaced with SERVED-DIRECT / SERVED-VIA / OPERATIONAL / GATED / RETIRED,
@@ -365,9 +371,29 @@ session record; method: migration inventory × retrieval-source grep):
   time-targeted remedy slice! — `bodha_cdlm_{domain_rollups,
   evolution_gradients,pattern_clusters}`, `bodha_triangulation`,
   `bodha_cgm_sub_graphs`); (d) `kala_timeline`, `chart_panchanga`,
-  `chart_ayanamsha_reports`; (e) still-open register rows S-3
+  `chart_ayanamsha_reports`¹; (e) still-open register rows S-3
   (bhava_arudha), SC-2 (graha speed/retro/combustion), SC-3..5
   (ashtakavarga refinements), G-1 (CGM bhava edge-orphans).
+
+  ¹ **Correction (W1 addendum, 2026-07-20; §F gate ruling item 6; corrected 2026-07-20,
+  independent verification):** `chart_ayanamsha_reports` does not exist in the live DB —
+  confirmed against the W1b harvest's full live-table scan (zero match, no close variant).
+  It WAS a real, once-created table, not stale/aspirational naming: `platform/migrations/
+  _archive/130_chart_ayanamsha_reports.sql` created it (cross-ayanamsha divergence scoring),
+  and it was explicitly retired during the legacy teardown — listed in
+  `LEGACY_TEARDOWN_KILL_LIST_v1_0.md` / `LEGACY_TEARDOWN_CLOSE_v1_0.md` §4's build-orchestration
+  kill set and dropped via `infra/teardown/01_drop_tables.sql:142`
+  (`DROP TABLE IF EXISTS public.chart_ayanamsha_reports CASCADE`). This doc's dark-set mention
+  of it is simply stale — it references a table that no longer exists post-teardown, not one
+  that never existed. The closest live equivalents are `concordance_ayanamsha_flags` (2 rows) /
+  `concordance_ayanamsha_flags_staging` (0 rows) — neither is what this bullet meant. The
+  concept this bullet intended (per-ayanamsha divergence reporting) is otherwise already served
+  without a dedicated table: `chart_facts_query`'s `ayanamsha_id` filter
+  plus the 6 stored ayanamshas on `chart_facts` cover ayanamsha-scoped
+  fact lookup directly; no dedicated divergence-report surface exists or is
+  being wired. See `briefs/retrieval_impl/DARK_SET_WIRING_PLAN_v1_0.md`
+  (table-does-not-exist finding) and `briefs/retrieval_impl/RULINGS_ADOPTED.md`
+  §F gate ruling item 6 for the adopted disposition.
 - **Recently remediated, verify-don't-redo:** LCA-19/LCA-4 (18 of 23
   computed-but-unserved assets now served, 2026-07-13);
   `register_p1_ganita.ts` closed most of the old "NOT REACHABLE" L1 list.

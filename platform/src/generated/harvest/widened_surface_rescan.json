@@ -1,0 +1,1051 @@
+{
+  "generated_at": "2026-07-20T00:26:48.130Z",
+  "scan_dirs": [
+    "platform/src/lib/retrieval",
+    "platform-mcp/src/tools",
+    "platform-mcp/src/resources",
+    "platform/src/lib/tools",
+    "platform/src/app/api"
+  ],
+  "files_scanned": 514,
+  "tables_scanned": 77,
+  "tables_with_hits": 26,
+  "tables_with_zero_hits": [
+    "bg_avastha_schemes",
+    "bg_combustion_orbs",
+    "bg_graha_dik",
+    "bg_graha_naisargika_friendship",
+    "bg_medical_mappings",
+    "bg_motion_state_thresholds",
+    "bg_nakshatra_medical",
+    "bg_prashna_fructification_rules",
+    "bg_prashna_lagna_methods",
+    "bg_prashna_significators",
+    "bg_prashna_special_techniques",
+    "bg_prashna_tajik_yogas",
+    "bg_shashtiamsha_deities",
+    "bg_transit_av_gates",
+    "bg_transit_engine",
+    "bg_transit_moorti",
+    "bg_transit_vedha",
+    "bg_vastu_direction_remedials",
+    "bg_vastu_directions",
+    "bodha_cdlm_domain_rollups",
+    "bodha_cdlm_evolution_gradients",
+    "bodha_cdlm_pattern_clusters",
+    "bodha_cgm_sub_graphs",
+    "bodha_rm_chart_summary",
+    "bodha_rm_dasha_windowed_prescriptions",
+    "bodha_rm_dosha_remedy_bundles",
+    "bodha_rm_pattern_remedies",
+    "bodha_triangulation",
+    "brahma_class_priors",
+    "brahma_formula_constants",
+    "brahma_vichara_constants",
+    "chart_facts_history",
+    "chart_facts_supersedence",
+    "chart_panchanga_cache",
+    "ga_prashna_lagna",
+    "ganita_graha_sthana",
+    "kala_convergence_staging",
+    "mimamsa_anchor_adjustment",
+    "mimamsa_attribution",
+    "mimamsa_convergence_adjustment",
+    "mimamsa_discoveries",
+    "mimamsa_event_provenance",
+    "mimamsa_export_log",
+    "mimamsa_fact_adjustment",
+    "mimamsa_insight_embeddings",
+    "mimamsa_journal",
+    "mimamsa_load_bearing",
+    "mimamsa_manifestation_sets",
+    "mimamsa_pool_contributions",
+    "mimamsa_preferences",
+    "mimamsa_signal_adjustment"
+  ],
+  "results": {
+    "bg_avastha_schemes": [],
+    "bg_combustion_orbs": [],
+    "bg_dignity_reference": [
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 263,
+        "text": "// Fix: query the REAL structured table (bg_dignity_reference, 9 rows — one"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 275,
+        "text": "'bg_dignity_reference table (one row per graha) when `planet` is given. ' +"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 278,
+        "text": "planet:  z.string().optional().describe('Filter by planet name (e.g. sun, moon, mars) — matched case-insensitively against the structured bg_dignity_reference table.'),"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 290,
+        "text": "FROM bg_dignity_reference"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 297,
+        "text": "source: 'bg_dignity_reference',"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 316,
+        "text": "? `No structured bg_dignity_reference row for planet=\"${planet}\" — degraded to classical-text hybrid search.`"
+      }
+    ],
+    "bg_graha_dik": [],
+    "bg_graha_naisargika_friendship": [],
+    "bg_medical_mappings": [],
+    "bg_motion_state_thresholds": [],
+    "bg_nakshatra_medical": [],
+    "bg_prashna_fructification_rules": [],
+    "bg_prashna_lagna_methods": [],
+    "bg_prashna_significators": [],
+    "bg_prashna_special_techniques": [],
+    "bg_prashna_tajik_yogas": [],
+    "bg_shashtiamsha_deities": [],
+    "bg_transit_av_gates": [],
+    "bg_transit_engine": [],
+    "bg_transit_moorti": [],
+    "bg_transit_rules": [
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 14,
+        "text": "* ref_transit_rules_get     → bg_transit_rules table via platformQuery"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 409,
+        "text": "'Retrieve Gochara (planetary transit) rule definitions from L0 Brahmagyan (bg_transit_rules). ' +"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 423,
+        "text": "// bg_transit_rules (house_from_moon/quality/rule_text/av_threshold/source_text/"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_reference.ts",
+        "line": 436,
+        "text": "FROM bg_transit_rules"
+      },
+      {
+        "file": "platform/src/app/api/mcp/db/query/route.ts",
+        "line": 52,
+        "text": "'bg_transit_rules',"
+      }
+    ],
+    "bg_transit_vedha": [],
+    "bg_vastu_direction_remedials": [],
+    "bg_vastu_directions": [],
+    "bodha_anomalies": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 7,
+        "text": "*   - bodha_anomalies (bo_anveshana): rows covering detector types"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 24,
+        "text": "'and bodha_anomalies (quality anomalies surfaced during L2 build).',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 27,
+        "text": "'bodha_anomalies: rows covering detector types.',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 58,
+        "text": "description: 'Include bodha_anomalies rows (default: false).',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 137,
+        "text": "FROM bodha_anomalies"
+      }
+    ],
+    "bodha_cdlm_domain_rollups": [],
+    "bodha_cdlm_evolution_gradients": [],
+    "bodha_cdlm_pattern_clusters": [],
+    "bodha_cgm_chart_topology_summary": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 820,
+        "text": "FROM bodha_cgm_chart_topology_summary"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 842,
+        "text": "tables: ['bodha_cgm_nodes', 'bodha_cgm_edges', 'bodha_cgm_chart_topology_summary'],"
+      }
+    ],
+    "bodha_cgm_edges": [
+      {
+        "file": "platform/src/lib/retrieval/address_resolver.ts",
+        "line": 28,
+        "text": "* from the L2 Bodha `bodha_cgm_edges` 'dispositor' edge_type the design also mentions as a"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 8,
+        "text": "*   bodha_cgm_edges    — valenced edges (relationship_basis, valence, cross-subsystem)"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 58,
+        "text": "*   3. `min_strength` — floor on `bodha_cgm_edges.computed_strength` (numeric, mig 325),"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 63,
+        "text": "*      charts at W2 open — `SELECT DISTINCT valence FROM bodha_cgm_edges` on"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 117,
+        "text": "'edges from bodha_cgm_edges (relationship_basis, valence, cross-subsystem);',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 203,
+        "text": "'Strength floor on bodha_cgm_edges.computed_strength (0-1 range). Edges below this',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 224,
+        "text": "'Optional filter on edge_type values from bodha_cgm_edges.',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 233,
+        "text": "\"bodha_cgm_edges vocabulary). Legacy D4-era terms 'benefic'/'malefic'/'mixed' are still\","
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 529,
+        "text": "JOIN bodha_cgm_edges e"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 580,
+        "text": "tables: ['bodha_cgm_nodes', 'bodha_cgm_edges'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 696,
+        "text": "JOIN bodha_cgm_edges e"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 755,
+        "text": "tables: ['bodha_cgm_nodes', 'bodha_cgm_edges'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 842,
+        "text": "tables: ['bodha_cgm_nodes', 'bodha_cgm_edges', 'bodha_cgm_chart_topology_summary'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 973,
+        "text": "* Fetch edges from bodha_cgm_edges that connect any nodes in the given nodeIds list."
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 1041,
+        "text": "FROM bodha_cgm_edges e"
+      },
+      {
+        "file": "platform/src/lib/retrieval/synergy/orchestrator.ts",
+        "line": 365,
+        "text": "'relationship_basis is 100% NULL in current bodha_cgm_edges data. ' +"
+      },
+      {
+        "file": "platform-mcp/src/tools/registry_bridge.ts",
+        "line": 1577,
+        "text": "'Traverses the Causal Graph Model (CGM) for a chart — the bodha_cgm_nodes + bodha_cgm_edges graph built from L2 Bodha signals. Four modes: neighbors (BFS from seed node_ids), paths (shortest path betw"
+      }
+    ],
+    "bodha_cgm_nodes": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/traverse_chart_graph.test.ts",
+        "line": 15,
+        "text": "* [verify-against: prod] — rows in bodha_cgm_nodes/edges/contradictions require L2 build."
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/traverse_chart_graph.test.ts",
+        "line": 108,
+        "text": "// Old table was bodha_graph; new tables are bodha_cgm_nodes/edges"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
+        "line": 78,
+        "text": "* fact_subject or a bodha_cgm_nodes node_subject value. Matches bare code/name,"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 7,
+        "text": "*   bodha_cgm_nodes    — centrality scores, hub flags, node embeddings (VECTOR 768)"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 28,
+        "text": "*   bodha_cgm_nodes/edges schema. The old file is superseded (not deleted — Gate C:"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 33,
+        "text": "*   the semantic-entry path using bodha_cgm_nodes.node_embedding_vec."
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 46,
+        "text": "*      entity to its `bodha_cgm_nodes` row (node_type='graha'|'bhava', node_subject="
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 116,
+        "text": "'Nodes are drawn from bodha_cgm_nodes (centrality: pagerank/betweenness/hub_flag);',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 156,
+        "text": "'Seed node_ids (UUIDs from bodha_cgm_nodes) for neighbors/paths modes.',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 170,
+        "text": "'via the shared address resolver, then mapped to its bodha_cgm_nodes row. Lets the caller',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 254,
+        "text": "'Requires bodha_cgm_nodes.node_embedding_vec to be populated (bo_bimba writer, Vertex 768-dim).',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 320,
+        "text": "// ── §27.2 address-resolver bridge — maps a resolved entity to bodha_cgm_nodes row(s) ────────"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 325,
+        "text": "* bodha_cgm_nodes.node_id(s), plus the human-readable resolution chain for the"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 348,
+        "text": "`Address resolved to sign \"${entity.sign}\" with no house number — cannot map to a bodha_cgm_nodes row (bhava nodes are keyed by house number, not sign).`"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 360,
+        "text": "throw new AddressResolutionError(`Cannot map resolved entity kind \"${(entity as { kind: string }).kind}\" to a bodha_cgm_nodes row.`)"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 372,
+        "text": "`SELECT node_id FROM bodha_cgm_nodes WHERE ${conds.join(' AND ')} LIMIT ${subjects.length}`,"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 377,
+        "text": "`Address resolved to ${nodeType} \"${subjects.join(', ')}\" but no matching bodha_cgm_nodes row exists for chart ${chartId} (ayanamsha ${ayanamshaId ?? DEFAULT_AYANAMSHA}). Has L2 Bodha's CGM writer (bo"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 447,
+        "text": "`SELECT node_id FROM bodha_cgm_nodes"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 518,
+        "text": "FROM bodha_cgm_nodes"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 553,
+        "text": "FROM bodha_cgm_nodes n"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 580,
+        "text": "tables: ['bodha_cgm_nodes', 'bodha_cgm_edges'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 618,
+        "text": "error: 'about_from/about_to resolved to zero bodha_cgm_nodes rows — cannot traverse.',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 684,
+        "text": "FROM bodha_cgm_nodes"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 732,
+        "text": "FROM bodha_cgm_nodes"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 755,
+        "text": "tables: ['bodha_cgm_nodes', 'bodha_cgm_edges'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 804,
+        "text": "FROM bodha_cgm_nodes"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 842,
+        "text": "tables: ['bodha_cgm_nodes', 'bodha_cgm_edges', 'bodha_cgm_chart_topology_summary'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 948,
+        "text": "* Build base WHERE conditions for bodha_cgm_nodes, scoped to chart + optional filters."
+      },
+      {
+        "file": "platform-mcp/src/tools/registry_bridge.ts",
+        "line": 1577,
+        "text": "'Traverses the Causal Graph Model (CGM) for a chart — the bodha_cgm_nodes + bodha_cgm_edges graph built from L2 Bodha signals. Four modes: neighbors (BFS from seed node_ids), paths (shortest path betw"
+      },
+      {
+        "file": "platform-mcp/src/tools/registry_bridge.ts",
+        "line": 1584,
+        "text": "'Seed node UUIDs (from bodha_cgm_nodes) for neighbors/paths modes.'"
+      }
+    ],
+    "bodha_cgm_sub_graphs": [],
+    "bodha_contradictions": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 5,
+        "text": "*   - bodha_contradictions (bo_karanajala): populated — 1,034–1,100 rows per ayanamsha per chart"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 23,
+        "text": "'Sources: bodha_contradictions (formal yoga-vs-dosha tension pairs), bodha_discoveries (synthesis discoveries),',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 25,
+        "text": "'bodha_contradictions: populated — a moderate row count per ayanamsha per chart (built by bo_karanajala).',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 98,
+        "text": "FROM bodha_contradictions"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+        "line": 162,
+        "text": "? `bodha_contradictions: 0 rows for chart_id=${chart_id} ayanamsha_id=${ayanamsha_id}. Verify the chart has been built (bo_karanajala) and ayanamsha_id is correct.`"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 9,
+        "text": "*   bodha_contradictions — contradiction pairs keyed by signal_id"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 118,
+        "text": "'contradictions from bodha_contradictions (signal_a_id, signal_b_id, tension_class).',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 884,
+        "text": "FROM bodha_contradictions"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+        "line": 935,
+        "text": "tables: ['bodha_contradictions', 'bodha_msr_signals'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/__tests__/register_d8_verdict_skeleton.test.ts",
+        "line": 162,
+        "text": "it('marks contradiction_pairs empty as no_data (0 bodha_contradictions), not a trim', async () => {"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts",
+        "line": 257,
+        "text": "// Contradictions between signals/layers (bodha_contradictions — currently 0 rows)"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
+        "line": 28,
+        "text": "*   - Contradictions live: bodha_contradictions populated by bo_karanajala (1,034–1,100 rows/aya/chart)"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
+        "line": 251,
+        "text": "'bodha_contradictions: 0 rows for this chart/ayanamsha — verify chart has been built (bo_karanajala).',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
+        "line": 458,
+        "text": "source: 'bodha_contradictions (L2 bo_karanajala)',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
+        "line": 460,
+        "text": "? { empty_reason: 'bodha_contradictions: 0 rows for this chart/ayanamsha (bo_karanajala) — no_data, not a serving trim.' }"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
+        "line": 634,
+        "text": "'bodha_contradictions',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/synergy/orchestrator.ts",
+        "line": 437,
+        "text": "graceful_empty_note: 'query_contradictions capability not yet registered (D5 gap). bodha_contradictions=0 rows expected.',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/synergy/orchestrator.ts",
+        "line": 452,
+        "text": "// bodha_contradictions currently 0 rows — graceful-empty array"
+      },
+      {
+        "file": "platform/src/lib/retrieval/synergy/orchestrator.ts",
+        "line": 456,
+        "text": "graceful_empty_note: 'bodha_contradictions currently 0 rows — graceful-empty. bodha_discoveries has 1,505 rows ranked by novelty_score.',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/synthesis/__tests__/instrument.test.ts",
+        "line": 84,
+        "text": "return { contradiction_count: n, contradictions: [], note: n === 0 ? 'bodha_contradictions=0' : '' }"
+      },
+      {
+        "file": "platform/src/lib/retrieval/synthesis/instrument.ts",
+        "line": 189,
+        "text": "'Contradiction stage thin: bodha_contradictions=0 for this chart (documented LCA-6/WP-2.2 ' +"
+      }
+    ],
+    "bodha_convergence": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
+        "line": 314,
+        "text": "FROM bodha_convergence"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
+        "line": 466,
+        "text": "tables: ['vw_chart_digest', 'bodha_msr_signals', 'bodha_convergence'],"
+      }
+    ],
+    "bodha_rm_chart_summary": [],
+    "bodha_rm_dasha_windowed_prescriptions": [],
+    "bodha_rm_dosha_remedy_bundles": [],
+    "bodha_rm_pattern_remedies": [],
+    "bodha_signal_embeddings": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
+        "line": 392,
+        "text": "bodha_signal_embeddings:  ['marsys://tool/L2/get_signal_embeddings'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+        "line": 4,
+        "text": "* Queries bodha_msr_signals (66,738 rows) and bodha_signal_embeddings (66,738 rows, 100% embedded)."
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+        "line": 19,
+        "text": "* Semantic search path: bodha_signal_embeddings carries 768-dim vectors (Vertex). Semantic"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+        "line": 290,
+        "text": "'Requires bodha_signal_embeddings to be populated (100% populated for production charts).',"
+      }
+    ],
+    "bodha_triangulation": [],
+    "brahma_activity_ontology": [
+      {
+        "file": "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "line": 731,
+        "text": "// phala_anchors (fructification timing anchor), brahma_activity_ontology (rules)."
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "line": 807,
+        "text": "FROM brahma_activity_ontology"
+      },
+      {
+        "file": "platform/src/app/api/mcp/db/query/route.ts",
+        "line": 48,
+        "text": "'brahma_activity_ontology',"
+      }
+    ],
+    "brahma_class_priors": [],
+    "brahma_compendium_index": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
+        "line": 383,
+        "text": "brahma_compendium_index: ['marsys://tool/L0/query_classical_texts'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/parity_check.ts",
+        "line": 36,
+        "text": "//   - every brahma_compendium_index.text_id resolves in classical_texts"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/parity_check.ts",
+        "line": 37,
+        "text": "//   - every brahma_compendium_index.topic_id resolves in reference_topic_tags"
+      }
+    ],
+    "brahma_dasha_systems": [
+      {
+        "file": "platform/src/lib/retrieval/registry/parity_check.ts",
+        "line": 35,
+        "text": "//   - every brahma_dasha_systems.canonical_id appears in brahma_ontology (entity_class='dasha_system')"
+      }
+    ],
+    "brahma_event_ontology": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L4_phala/__tests__/posterior_provenance.test.ts",
+        "line": 67,
+        "text": "expect(String(prov.base_rate_source)).toContain('brahma_event_ontology')"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
+        "line": 140,
+        "text": "// JL-009 closed 2026-07-07: brahma_event_ontology.base_rate_by_age, row-normalized to"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
+        "line": 164,
+        "text": "base_rate_source: 'brahma_event_ontology.base_rate_by_age, row-normalized to sum 1.0 (JL-009 closed 2026-07-07), looked up for the age band containing this anchor’s predicted date (peak_date, else win"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts",
+        "line": 100,
+        "text": "// read from `brahma_event_ontology.base_rate` (NOT the age-banded `base_rate_by_age`"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts",
+        "line": 111,
+        "text": "source: 'brahma_event_ontology.base_rate (flat per-event-class prior; distinct from the age-banded base_rate_by_age vector L4 phala_anchors.posterior uses)',"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 350,
+        "text": "'Shape-aware (point/interval/chain, per brahma_event_ontology — BRIEF_D5 §3): an ' +"
+      },
+      {
+        "file": "platform/src/app/api/mcp/writes/[action]/route.ts",
+        "line": 434,
+        "text": "// Persist the event (validates event_class against brahma_event_ontology)."
+      },
+      {
+        "file": "platform/src/app/api/mcp/writes/__tests__/lel_event_record.test.ts",
+        "line": 147,
+        "text": "mockRecordLelEvent.mockRejectedValue(new Error(\"Unknown event class 'bogus': not present in brahma_event_ontology.\"))"
+      }
+    ],
+    "brahma_formula_constants": [],
+    "brahma_prospective_ledger": [
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 487,
+        "text": "checked_via: 'G-5 prospective-ledger outcome matching (brahma_prospective_ledger, ' +"
+      },
+      {
+        "file": "platform/src/app/api/mcp/writes/[action]/route.ts",
+        "line": 524,
+        "text": "// other sanctioned path into brahma_prospective_ledger. filed_by is stamped from"
+      }
+    ],
+    "brahma_vichara_constants": [],
+    "chart_facts_history": [],
+    "chart_facts_supersedence": [],
+    "chart_grants": [
+      {
+        "file": "platform/src/app/api/admin/charts/route.ts",
+        "line": 26,
+        "text": "LEFT JOIN chart_grants g ON g.chart_id = c.id"
+      },
+      {
+        "file": "platform/src/app/api/admin/users/[id]/chart-grants/route.ts",
+        "line": 36,
+        "text": "LEFT JOIN chart_grants g ON g.chart_id = c.id AND g.principal_id = $1"
+      },
+      {
+        "file": "platform/src/app/api/build/__tests__/build.integration.test.ts",
+        "line": 412,
+        "text": "`INSERT INTO chart_grants (chart_id, uid, permission)"
+      },
+      {
+        "file": "platform/src/app/api/build/__tests__/e2e.test.ts",
+        "line": 206,
+        "text": "if (/FROM chart_grants/.test(sql)) {"
+      },
+      {
+        "file": "platform/src/app/api/build/__tests__/start_route.test.ts",
+        "line": 93,
+        "text": "if (/FROM chart_grants/.test(sql))"
+      },
+      {
+        "file": "platform/src/app/api/build/__tests__/start_route.test.ts",
+        "line": 110,
+        "text": "if (/FROM chart_grants/.test(sql)) return Promise.resolve({ rows: [] })"
+      },
+      {
+        "file": "platform/src/app/api/build/start/__tests__/route.test.ts",
+        "line": 158,
+        "text": "if (/FROM chart_grants/.test(sql))"
+      },
+      {
+        "file": "platform/src/app/api/build/start/__tests__/route.test.ts",
+        "line": 175,
+        "text": "if (/FROM chart_grants/.test(sql)) return Promise.resolve({ rows: [] })"
+      },
+      {
+        "file": "platform/src/app/api/charts/[id]/route.ts",
+        "line": 82,
+        "text": "await query('DELETE FROM chart_grants WHERE chart_id = $1', [chartId])"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/grants/route.ts",
+        "line": 4,
+        "text": "* Super-admin only. Mutates chart_grants for one chart_id."
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/grants/route.ts",
+        "line": 12,
+        "text": "* The chart_grants schema (migration 081) enforces permission ∈ {'view'}"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/grants/route.ts",
+        "line": 49,
+        "text": "'SELECT id, chart_id, principal_id, permission, granted_by, granted_at FROM chart_grants WHERE chart_id=$1 ORDER BY granted_at DESC',"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/grants/route.ts",
+        "line": 83,
+        "text": "`INSERT INTO chart_grants (chart_id, principal_id, permission, granted_by)"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/grants/route.ts",
+        "line": 115,
+        "text": "'DELETE FROM chart_grants WHERE chart_id=$1 AND principal_id=$2 RETURNING id',"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 29,
+        "text": "LEFT JOIN chart_grants g ON g.chart_id = c.id AND g.principal_id = $2"
+      }
+    ],
+    "chart_panchanga": [
+      {
+        "file": "platform/src/lib/tools/brahma/l1/__tests__/query_panchanga.test.ts",
+        "line": 181,
+        "text": "expect(sql).toContain('chart_panchanga')"
+      },
+      {
+        "file": "platform/src/lib/tools/brahma/l1/query_panchanga.ts",
+        "line": 5,
+        "text": "* for a given chart_id from the chart_panchanga table."
+      },
+      {
+        "file": "platform/src/lib/tools/brahma/l1/query_panchanga.ts",
+        "line": 10,
+        "text": "*   - Source: chart_panchanga table (written by panchanga_writer.py)"
+      },
+      {
+        "file": "platform/src/lib/tools/brahma/l1/query_panchanga.ts",
+        "line": 119,
+        "text": "FROM chart_panchanga"
+      },
+      {
+        "file": "platform/src/lib/tools/brahma/l1/query_panchanga.ts",
+        "line": 165,
+        "text": "* @param chartId UUID of the chart (maps to chart_panchanga.chart_id)."
+      }
+    ],
+    "chart_panchanga_cache": [],
+    "ga_condition_composite": [
+      {
+        "file": "platform/src/app/api/cockpit/clear/execute/route.ts",
+        "line": 161,
+        "text": "// partial-clear inconsistency (e.g., ga_condition_composite cleared but"
+      }
+    ],
+    "ga_prashna_judgment": [
+      {
+        "file": "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "line": 730,
+        "text": "// Reads ga_prashna_judgment (prashna chart), phala_muhurta (election windows for domain),"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "line": 748,
+        "text": "// 1. Prashna judgment (from ga_prashna_judgment)"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "line": 750,
+        "text": "// gj.timing_indication/gj.classical_citations do not exist on ga_prashna_judgment —"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "line": 764,
+        "text": "FROM ga_prashna_judgment gj"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "line": 812,
+        "text": "// R-12 fix: ga_prashna_judgment carries no numeric verdict-strength column (only the"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "line": 819,
+        "text": "'ga_prashna_judgment has no verdict_strength (or equivalent numeric) column — ' +"
+      },
+      {
+        "file": "platform/src/app/api/mcp/db/query/route.ts",
+        "line": 45,
+        "text": "'ga_prashna_judgment',"
+      }
+    ],
+    "ga_prashna_lagna": [],
+    "ganita_dashas": [
+      {
+        "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+        "line": 652,
+        "text": "// get_dashas → ganita_dashas_get"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+        "line": 657,
+        "text": "regAlias(server, 'ganita_dashas_get',"
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+        "line": 1476,
+        "text": "// handler as ganita_dashas_get — one authoritative dasha surface, no divergent duplicate."
+      },
+      {
+        "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+        "line": 1478,
+        "text": "'L1 dasha periods, faceted by system/level/window (same as get_dashas / ganita_dashas_get). ' +"
+      },
+      {
+        "file": "platform-mcp/src/resources/vidhi/registry_data.ts",
+        "line": 167,
+        "text": "fallback_face: 'ganita_dashas_get',"
+      },
+      {
+        "file": "platform-mcp/src/resources/vidhi/registry_data.ts",
+        "line": 292,
+        "text": "fallback_face: 'ganita_dashas_get',"
+      }
+    ],
+    "ganita_graha_sthana": [],
+    "kala_activation_predicates": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
+        "line": 6,
+        "text": "*   - kala_activation_predicates (ka_yojaka): 66,738 rows — predicate conditions"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
+        "line": 28,
+        "text": "'Sources: kala_activation and kala_activation_predicates (both large, paginated per-chart row sets).',"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
+        "line": 268,
+        "text": "FROM kala_activation_predicates"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
+        "line": 413,
+        "text": "tables: ['kala_activation', 'kala_activation_predicates'],"
+      },
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
+        "line": 633,
+        "text": "'kala_activation_predicates',"
+      }
+    ],
+    "kala_convergence_staging": [],
+    "kala_gochara_windows": [
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 4,
+        "text": "* Three views over the ONE signed field `kala_gochara_windows` (G-4's standing"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 29,
+        "text": "* independently live-tested against the real `kala_gochara_windows` table"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 109,
+        "text": "'kala_gochara_windows (L3 Kāla, D-5 Lane G-4 ka_gochara_sweep writer) — ' +"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 162,
+        "text": "// Every row in `kala_gochara_windows` is a materialized, real-intensity"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 181,
+        "text": "label: 'kala_gochara_windows rows (materialized, firings-authoritative)',"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 206,
+        "text": "let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 232,
+        "text": "? 'no kala_gochara_windows row spans this date for this chart/event_class filter — an honest zero-activation result, not a fabricated one'"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 233,
+        "text": ": `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 243,
+        "text": "'What it does: Returns kala_gochara_windows rows ACTIVE on a given date (default today) ' +"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 298,
+        "text": "let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 334,
+        "text": "? 'no kala_gochara_windows rows overlap this date_range/filter combination — honest zero result. ' +"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 337,
+        "text": "'negative signal; check kala_gochara_windows build coverage before reading this as \"nothing happens\".'"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 338,
+        "text": ": `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 348,
+        "text": "'What it does: Returns kala_gochara_windows rows overlapping a forward-looking date range ' +"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 442,
+        "text": "let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 531,
+        "text": "label: 'adverse kala_gochara_windows rows with DR-16 payload',"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 551,
+        "text": "? 'no adverse (is_adverse=true) kala_gochara_windows rows overlap this date_range/filter -- ' +"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 553,
+        "text": ": `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)"
+      },
+      {
+        "file": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+        "line": 563,
+        "text": "'What it does: Returns ADVERSE (is_adverse=true) kala_gochara_windows rows overlapping a date ' +"
+      }
+    ],
+    "mimamsa_adjudication_log": [
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 64,
+        "text": "`INSERT INTO mimamsa_adjudication_log"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 331,
+        "text": "LEFT JOIN mimamsa_adjudication_log al ON al.prediction_id = pa.prediction_id"
+      }
+    ],
+    "mimamsa_anchor_adjustment": [],
+    "mimamsa_attribution": [],
+    "mimamsa_calibration_snapshot": [
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 229,
+        "text": "`UPDATE mimamsa_calibration_snapshot"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 236,
+        "text": "`UPDATE mimamsa_calibration_snapshot"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 369,
+        "text": "FROM mimamsa_calibration_snapshot"
+      }
+    ],
+    "mimamsa_convergence_adjustment": [],
+    "mimamsa_discoveries": [],
+    "mimamsa_event_provenance": [],
+    "mimamsa_export_log": [],
+    "mimamsa_fact_adjustment": [],
+    "mimamsa_insight_embeddings": [],
+    "mimamsa_journal": [],
+    "mimamsa_load_bearing": [],
+    "mimamsa_manifestation_sets": [],
+    "mimamsa_negative_controls": [
+      {
+        "file": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts",
+        "line": 27,
+        "text": "'the per-control battery itself lives in mimamsa_negative_controls (separate table).',"
+      }
+    ],
+    "mimamsa_pool_contributions": [],
+    "mimamsa_preferences": [],
+    "mimamsa_resonance_feedback": [
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 260,
+        "text": "// QUARANTINE: write ONLY to mimamsa_resonance_feedback — no join or FK to weight tables"
+      },
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 262,
+        "text": "`INSERT INTO mimamsa_resonance_feedback"
+      }
+    ],
+    "mimamsa_signal_adjustment": [],
+    "mimamsa_snapshot_cosign": [
+      {
+        "file": "platform/src/app/api/clients/[id]/learning/route.ts",
+        "line": 217,
+        "text": "`INSERT INTO mimamsa_snapshot_cosign"
+      }
+    ]
+  }
+}
