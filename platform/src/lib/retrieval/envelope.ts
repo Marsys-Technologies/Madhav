@@ -171,16 +171,26 @@ export interface PaginationBlock {
  *   - `total`         : the true family size the caller COUNTed under the SAME filters
  *                       (or null when genuinely uncomputable — B.10 forbids fabrication).
  *   - `more_available`: computed from (served, limit, offset, total) — never passed in.
- *   - `next_cursor`   : a WORKING opaque cursor (base64 `{offset}`) present exactly when
- *                       `more_available` is true; null otherwise. Decode with decodeCursor.
+ *   - `next_cursor`   : a WORKING opaque cursor (base64 `{offset[,fp]}`) present exactly when
+ *                       `more_available` is true; null otherwise. Decode with decodeCursor
+ *                       (offset-only, unchanged) or decodeCursorFull (offset + fingerprint,
+ *                       W3 — see checkCursorFingerprint below).
  *
  * `served` is the row count actually in THIS response (rows.length) — not `limit`.
+ *
+ * `filterFingerprint` (W3 — RETRIEVAL_PLANE_ELEVATION_PLAN §R-2 item 4, "cursors embed a
+ * filter/sort fingerprint hash") is OPTIONAL and ADDITIVE: omit it and the emitted cursor is
+ * byte-identical to the pre-W3 offset-only shape (no behavior change for existing callers).
+ * A caller that varies its own filters/sort between calls should pass
+ * `computeFilterFingerprint({...its own facet params})` here so a cursor minted under one
+ * filter set is detectably stale when replayed under a different one.
  */
 export function buildHonestPagination(params: {
   served: number
   limit: number
   offset?: number
   total: number | null
+  filterFingerprint?: string
 }): PaginationBlock {
   const offset = params.offset ?? 0
   const served = Math.max(0, params.served)
@@ -192,17 +202,32 @@ export function buildHonestPagination(params: {
     offset,
     limit: params.limit,
     total: params.total,
-    next_cursor: more_available ? encodeCursor(offset + served) : null,
+    next_cursor: more_available ? encodeCursor(offset + served, params.filterFingerprint) : null,
     more_available,
   }
 }
 
-/** Encode a next-page offset into an opaque, round-trippable cursor. */
-export function encodeCursor(nextOffset: number): string {
-  return Buffer.from(JSON.stringify({ offset: nextOffset }), 'utf8').toString('base64')
+/**
+ * Encode a next-page offset into an opaque, round-trippable cursor.
+ *
+ * `filterFingerprint` (W3, optional) is embedded alongside the offset so a later
+ * `checkCursorFingerprint` call can detect a stale replay under different filters/sort.
+ * Omitting it produces exactly the pre-W3 wire shape (`base64({"offset":N})`) — additive,
+ * never a breaking change for a caller that decodes with the original `decodeCursor`.
+ */
+export function encodeCursor(nextOffset: number, filterFingerprint?: string): string {
+  const payload: { offset: number; fp?: string } = { offset: nextOffset }
+  if (filterFingerprint) payload.fp = filterFingerprint
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64')
 }
 
-/** Decode a cursor produced by encodeCursor back to its offset; null if malformed. */
+/**
+ * Decode a cursor produced by encodeCursor back to its offset; null if malformed.
+ * Ignores any embedded fingerprint — unchanged signature/behavior from pre-W3 (existing
+ * consumers of this function are unaffected by the W3 cursor-fingerprint addition). A
+ * caller that needs the fingerprint (to detect a stale-filter replay) uses
+ * `decodeCursorFull` / `checkCursorFingerprint` instead.
+ */
 export function decodeCursor(cursor: string | null | undefined): number | null {
   if (!cursor) return null
   try {
@@ -211,6 +236,141 @@ export function decodeCursor(cursor: string | null | undefined): number | null {
   } catch {
     return null
   }
+}
+
+// ── W3 "One Envelope" — cursor filter/sort fingerprints ───────────────────────
+// RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF §E "W3" + RETRIEVAL_PLANE_ELEVATION_PLAN §R-2 item 4:
+// "cursors embed a filter/sort fingerprint hash; mismatched replay → explicit
+// `cursor_filter_mismatch` flag, not wrong pages." §1.2's finding: pre-W3, a cursor encoded
+// only `{offset}` — replaying it under a different filter/sort silently paginated the wrong
+// family (e.g. page-2 of a `domain=career` query, replayed with `domain=wealth`, returned
+// rows 10-20 of the WEALTH family mislabeled as a continuation).
+//
+// IMPORTANT: this file is codegen'd verbatim into platform-mcp (see the file's header note +
+// `generate_envelope.ts`'s AST guard, which HALTS on any `import`/`import =` declaration in
+// this source). The fingerprint hash below is therefore a small, dependency-free, pure-TS
+// function — NOT `crypto.createHash` — even though Node's `crypto` module is available
+// elsewhere in this codebase (`platform/src/lib/retrieval/cache.ts` uses sha256 for its own,
+// unrelated cache-key hash). This is not a security boundary — it only needs to be
+// deterministic and collision-resistant enough to catch a same-process replay under
+// different filters, not to resist an adversary.
+
+/**
+ * cyrb53 — Bryc's public-domain 53-bit non-cryptographic hash. Deterministic, good avalanche
+ * behavior, zero dependencies (required — see note above). Returns a fixed-width hex string.
+ */
+function cyrb53Hex(str: string, seed = 0): string {
+  let h1 = 0xdeadbeef ^ seed
+  let h2 = 0x41c6ce57 ^ seed
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i)
+    h1 = Math.imul(h1 ^ ch, 2654435761)
+    h2 = Math.imul(h2 ^ ch, 1597334677)
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  const combined = 4294967296 * (2097151 & h2) + (h1 >>> 0)
+  return combined.toString(16).padStart(14, '0')
+}
+
+/**
+ * Stable (key-sorted, recursive) JSON serialization — the SAME normalization discipline
+ * `cache.ts`'s `_stableStringify` uses for its cache keys, reimplemented here so this file
+ * stays import-free (see note above). Two filter objects that differ only in key insertion
+ * order, or that carry `undefined` values, serialize IDENTICALLY, so their fingerprints
+ * always agree.
+ */
+function stableStringifyForFingerprint(value: unknown): string {
+  if (value === undefined) return 'null'
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
+  if (Array.isArray(value)) return `[${value.map(stableStringifyForFingerprint).join(',')}]`
+  const obj = value as Record<string, unknown>
+  const keys = Object.keys(obj)
+    .filter(k => obj[k] !== undefined)
+    .sort()
+  return `{${keys.map(k => `${JSON.stringify(k)}:${stableStringifyForFingerprint(obj[k])}`).join(',')}}`
+}
+
+/**
+ * Compute a deterministic fingerprint of a paginated call's filter+sort parameters.
+ * Key order and `undefined` values never affect the result (stable-stringified first).
+ * A capability with genuinely no filters should still call this with `{}` (or omit the
+ * fingerprint entirely and rely on the offset-only cursor shape) — either is honest;
+ * what must never happen is silently treating a filter-bearing capability as filterless.
+ */
+export function computeFilterFingerprint(filters: Record<string, unknown>): string {
+  return cyrb53Hex(stableStringifyForFingerprint(filters))
+}
+
+/** A cursor's fully-decoded payload: offset plus whichever fingerprint (if any) it carries. */
+export interface DecodedCursor {
+  offset: number
+  /** null when the cursor pre-dates W3, or was minted by a filterless capability. */
+  filterFingerprint: string | null
+}
+
+/** Decode a cursor to its offset AND embedded fingerprint (if any); null if malformed. */
+export function decodeCursorFull(cursor: string | null | undefined): DecodedCursor | null {
+  if (!cursor) return null
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8')) as {
+      offset?: unknown
+      fp?: unknown
+    }
+    if (typeof parsed.offset !== 'number' || !Number.isFinite(parsed.offset)) return null
+    return {
+      offset: parsed.offset,
+      filterFingerprint: typeof parsed.fp === 'string' ? parsed.fp : null,
+    }
+  } catch {
+    return null
+  }
+}
+
+/** The reserved judgment_flags code (W3-L2's closed enum) for a detected cursor replay
+ *  under different filters/sort — use this literal, never a re-derived string. */
+export const CURSOR_FILTER_MISMATCH_FLAG = 'cursor_filter_mismatch' as const
+
+/** Result of checking a replayed cursor against the CURRENT call's filter fingerprint. */
+export interface CursorFingerprintCheck {
+  /**
+   * The offset a handler should actually use to build this page.
+   *   - no cursor supplied            → 0
+   *   - cursor matches / no fp to check → the cursor's own offset (real continuation)
+   *   - MISMATCH                       → 0 (never the stale offset — restarting the current
+   *                                       filter's family at page 1 is honest; silently
+   *                                       returning "page 2" of a DIFFERENT family is the
+   *                                       exact bug this mechanism exists to prevent)
+   */
+  offset: number
+  /** True iff a cursor was supplied whose embedded fingerprint disagrees with the current
+   *  call's filters/sort. The caller MUST add CURSOR_FILTER_MISMATCH_FLAG to its
+   *  judgment_flags (or equivalent) when this is true — never silently serve `offset`. */
+  mismatch: boolean
+  /** True iff no fingerprint was available to check (no cursor at all, a pre-W3 cursor, or
+   *  a filterless capability's cursor) — an honest "not applicable", distinct from a
+   *  confirmed match and from a confirmed mismatch. */
+  noFingerprint: boolean
+}
+
+/**
+ * The W3 replay-safety check. Call once per handler invocation with the caller-supplied
+ * `cursor` (may be undefined/null on a first call) and the CURRENT call's fingerprint
+ * (`computeFilterFingerprint` over this exact call's filter+sort args). Use the returned
+ * `offset` to build the page; when `mismatch` is true, surface `CURSOR_FILTER_MISMATCH_FLAG`
+ * instead of trusting the decoded offset.
+ */
+export function checkCursorFingerprint(
+  cursor: string | null | undefined,
+  currentFingerprint: string,
+): CursorFingerprintCheck {
+  const decoded = decodeCursorFull(cursor)
+  if (decoded === null) return { offset: 0, mismatch: false, noFingerprint: true }
+  if (decoded.filterFingerprint === null) return { offset: decoded.offset, mismatch: false, noFingerprint: true }
+  if (decoded.filterFingerprint !== currentFingerprint) {
+    return { offset: 0, mismatch: true, noFingerprint: false }
+  }
+  return { offset: decoded.offset, mismatch: false, noFingerprint: false }
 }
 
 /**
