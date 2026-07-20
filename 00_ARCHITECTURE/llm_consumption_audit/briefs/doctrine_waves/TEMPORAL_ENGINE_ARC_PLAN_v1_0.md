@@ -301,3 +301,21 @@ Calibration, learning, and scoring draw from exactly TWO user-data sources, for 
 Chat/consultation content is NEVER mined for training, calibration, or implicit prediction
 extraction. A prediction exists in the ledger because someone chose to file it, never because
 a conversation was parsed. This applies to the native and to every future user identically.
+
+## §12 — Likely-time acceptance + knowledge census (native-originated 2026-07-20; binds D-4b)
+
+Ratified additions after D-5's specimen findings (full texts: DR-17/DR-18 in
+DR_14_15_16_TEMPORAL_DOCTRINE_v1_0.md):
+- **DR-17 Graded Manifestation Acceptance:** peak/sub_peak/elevated all right-in-kind; neutral
+  = miss; contra = anti-hit (double-weighted against the model); tie-bands for within-
+  uncertainty peaks; percentile-of-manifestation vs mirrored control as the calibration curve;
+  residual mining of (manifested, skipped-peak) pairs → re-weighting + a served
+  `unmodeled_variance` humility term per event-class. The chara_karaka-vs-double-transit
+  marriage pair (2013-01-07 vs 2013-12-11) is the type-specimen residual pair.
+- **DR-18 Knowledge-Utilization Census:** standing audit of consumed vs computed-unconsumed vs
+  known-uncomputed factors; first run at D-4b bind; bakeoff admits factor families by measured
+  skill; TESTED-NO-SIGNAL recorded as negative knowledge.
+- **D-4b consequences:** B-1's bakeoff scores under DR-17 grades (controls mirrored); B-3's
+  calibration outputs include the percentile-of-manifestation distribution + unmodeled_variance
+  per class; the KUC backlog feeds candidate factor-families into the bakeoff's contender set.
+
