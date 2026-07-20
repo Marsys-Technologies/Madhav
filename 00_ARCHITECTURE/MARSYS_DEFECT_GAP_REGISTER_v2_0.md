@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.5
+version: 3.6
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -843,7 +843,7 @@ readiness pass, 2026-07-21): all three deployed services (`amjis-mcp`, `amjis-we
 ahead of the deployed SHAs are pure docs/governance/session-log/ops-script commits (confirmed via
 `git diff --stat` against `platform/src`, `platform-mcp`, `platform/python-sidecar` — empty diff).
 
-**CR-115 [CLOSED, this session — pre-D-4b readiness pass, 2026-07-21]:** `ka_gochara_sweep`'s
+**CR-116 [CLOSED, this session — pre-D-4b readiness pass, 2026-07-21]:** `ka_gochara_sweep`'s
 per-substep throughput defect (native-flagged: ~10min/substep vs the orchestrator's 1800s
 `writer_timeout_seconds` budget, blocking full materialization). Root-caused: two DB reads inside
 the per-day PERMISSION computation (`gochara_grammar/primitives.py`'s `_fetch_av_gate_rows` — a
@@ -863,7 +863,7 @@ full 300-substep materialization of `ka_gochara_sweep` for chart 482012f1 remain
 multi-dispatch-cycle operation; see this pass's own report for the live re-materialization
 evidence and remaining substep count.
 
-**CR-116 [CLOSED, this session — pre-D-4b readiness pass, 2026-07-21]:** cockpit badge-honesty
+**CR-117 [CLOSED, this session — pre-D-4b readiness pass, 2026-07-21]:** cockpit badge-honesty
 defect (native-flagged): the asset badge reported the same `error` state for a genuinely broken
 writer and a heavy (`has_substeps`) writer that had merely hit its own `writer_timeout_seconds`
 mid-materialization — a safely resumable situation, indistinguishable from a real defect at a
@@ -884,16 +884,39 @@ materialization is complete (100% of planned substeps committed) before treating
 as meaning what it claims to mean. Encoded as a binding, hard-prerequisite gate criterion in
 `BRIEF_D4B.md §0`, ahead of every other D-4b gate criterion — not merely a recommendation.
 
+**CR-115 [OPEN, discovered PG-2 Lane X-5 (2026-07-19), carried to PF-1 §F1 Lane F-2, live
+schema-diffed]:** `platform/python-sidecar/brahmagyan/mimamsa/outcome.py` references
+`phala_anchors` columns absent from the live schema — it uses `id`, `confidence`,
+`prediction_state`, `outcome_note`, `outcome_recorded_at`, `updated_at`; the live table has
+`anchor_id`, `confidence_low`/`confidence_high`, `posterior`, `computed_at`. Consequence: the MCP
+`record_outcome` tool — the mechanism that closes the calibration loop and lets L5 leave
+STRUCTURAL mode — **would fail at runtime and has never been called.** A live hole in the L5
+calibration loop, not a cosmetic drift; recorded here rather than left silent inside a FROZEN
+brief. Two distinct sub-cases suspected (per PF-1 §F1 Lane F-2): `id`→`anchor_id` and
+`confidence`→`confidence_low/high` look like renames (fix the code); the three outcome-capture
+fields (`prediction_state`, `outcome_note`, `outcome_recorded_at`) look genuinely absent from the
+table (a real migration, not a code fix — do not migrate speculatively). Fix owned by PF-1's
+remaining scope (`CLAUDECODE_BRIEF_PF1_ENGINE_RESURRECTION_v1_0.md`, Lane F-2), kickoff after
+retrieval-campaign W4 closes, per the native's 2026-07-20 re-scope ruling. Full detail:
+`REPORT_PG-2.md`.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.5 (2026-07-21, pre-D-4b readiness pass v3,
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.6 (2026-07-21, pre-D-4b readiness pass v3,
 conductor session) — CR-113 CLOSED (re-verified no orphaned build_runs rows exist); CR-114 CLOSED
-(re-verified all three deployed services code-current with origin/main); CR-115 added and CLOSED
+(re-verified all three deployed services code-current with origin/main); CR-116 added and CLOSED
 (ka_gochara_sweep throughput defect, root-caused + fixed via correctness-preserving memoization,
-PR #670 — residual noted: full materialization still pending, multi-dispatch-cycle); CR-116 added
+PR #670 — residual noted: full materialization still pending, multi-dispatch-cycle); CR-117 added
 and CLOSED (cockpit badge-honesty defect, new `partial` state, PR #671); NEW assertion class
 registered (materialization-completeness precedes gate/scoring, encoded in BRIEF_D4B.md §0).
-v3.4 (2026-07-19, pre-D-5 readiness pass,
+CR-116/117 numbered above CR-115 to avoid collision with v3.5's CR-115 (this changelog entry was
+authored concurrently with, and merged after, the v3.5 stash-triage entry below, which had already
+claimed CR-115 for an unrelated defect).
+v3.5 (2026-07-20, stash-triage close-out session)
+— CR-115 added OPEN (record_outcome/phala_anchors schema drift, PG-2 Lane X-5; owned by PF-1's
+remaining scope per the native's PF-1/W4 re-scope ruling). Frontmatter `version` corrected 3.2 →
+3.5 (had drifted out of sync with this changelog's own tail, which already read v3.4 — a
+pre-existing B.8 desync, fixed in place, not introduced by this entry). v3.4 (2026-07-19, pre-D-5 readiness pass,
 conductor session) — CR-109/110/111 CLOSED (all three fixed + independently verified in D-4a
 Lane A-0, re-spot-checked live this session); CR-112 added and CLOSED (item #3 native
 correction, mis-quarantined in D-4a, fixed this session); CR-113/CR-114 added OPEN, carried to

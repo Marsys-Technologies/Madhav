@@ -188,6 +188,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
       last_built_at: s?.last_built_at ?? null,
       actual_rows: overlay?.actual_rows ?? s?.actual_rows ?? null,
       build_state_stale: s?.build_state_stale ?? false,
+      substep_progress: s?.substep_progress,
     }
   }), [assets, stats, sseOverlay])
 

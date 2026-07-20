@@ -8,13 +8,15 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated' | 'service_ok'
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'not_migrated' | 'service_ok'
 
 interface AssetWithState extends AssetRow {
   state: AssetState
   last_built_at: string | null
   actual_rows: number | null
   build_state_stale?: boolean
+  // Badge-honesty (pre-D-4b readiness pass): populated only when state === 'partial'.
+  substep_progress?: { committed: number; total: number | null }
 }
 
 // ── Antique-gold palette (art constants — intentional literal values) ──────────
@@ -118,7 +120,10 @@ function fillFor(state: AssetState): string {
 
 function strokeFor(state: AssetState): string {
   if (state === 'dormant' || state === 'not_migrated') return 'rgba(107,78,24,0.5)'
-  if (state === 'stale')    return 'rgba(140,104,36,0.55)'
+  // 'partial': a resumable, in-progress materialization (real committed substeps exist),
+  // distinct from a genuinely broken 'error' — visually grouped with 'stale', never with
+  // 'lit'/'building' (badge-honesty, pre-D-4b readiness pass).
+  if (state === 'stale' || state === 'partial') return 'rgba(140,104,36,0.55)'
   if (state === 'building') return GOLD_NODE_MID
   if (state === 'lit')      return GOLD_ROOT_MID
   return GOLD_NODE_LIGHT
@@ -127,7 +132,7 @@ function strokeFor(state: AssetState): string {
 function edgeOpacityMultiplier(fromState: AssetState, toState: AssetState): number {
   if (fromState === 'dormant' || toState === 'dormant' || fromState === 'not_migrated' || toState === 'not_migrated') return 0
   if (fromState === 'building' || toState === 'building') return 0.45
-  if (fromState === 'stale' || toState === 'stale') return 0.32
+  if (fromState === 'stale' || toState === 'stale' || fromState === 'partial' || toState === 'partial') return 0.32
   return 1.0
 }
 

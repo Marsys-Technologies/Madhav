@@ -57,3 +57,50 @@ Governs every served inauspicious/adverse window, D-5 onward.
    claim; structural-prior adverse claims say so plainly.
 6. **Tiering:** disclosure tiers per MACRO_PLAN's Ethical Framework govern non-native consumers;
    for the native (research mode), full-detail serving is the default per (1).
+
+# DR-17 — Graded Manifestation Acceptance (Likely-Time Doctrine)
+*(native-originated 2026-07-20; formalized by Fable; binding on D-4b scoring/calibration design)*
+
+Predictions are probabilistic claims about a non-deterministic science; the model's computed
+intensity is a MARGINAL over an observed factor-subset, and unmodeled factors (astrological and
+otherwise) carry real marginal effect. Therefore:
+
+1. **Graded verdicts, not binary hits.** Every scored event receives a manifestation grade by
+   where it fell in the chart's own λ_e distribution: `peak` (top-decile local max) / `sub_peak`
+   (lower local max, mechanism-attributable) / `elevated` (above control baseline within a
+   charged span) / `neutral` / `contra` (suppressed or adverse-signed window). peak, sub_peak,
+   and elevated all count as right-in-kind. **neutral is a miss; contra is an ANTI-HIT weighted
+   against the model more heavily than a miss** — the acceptance flexibility exists ONLY above
+   the defensibility floor: the manifested time must be astrologically arguable (elevated +
+   attributable), never neutral, never contra-indicated.
+2. **Tie-bands:** peaks within the model's own uncertainty band are equivalent-rank — served as
+   co-candidates, scored interchangeably. Reality selecting a within-band #2 is not a model
+   error.
+3. **Percentile-of-manifestation is the calibration curve:** per event, record the λ-percentile
+   at which it manifested; skill = the distributional shift of these percentiles versus the
+   MIRRORED shuffled-birth control under IDENTICAL graded rules (no loosening without the
+   control loosening — DR-13(e) extended). The per-class distribution ("finance events: 40%
+   peak / 45% sub-peak / 15% elevated / 0% neutral") is itself the served prediction language.
+4. **Residual mining:** every sub-peak manifestation with a silent higher peak yields a
+   (manifested-window, skipped-peak) feature pair; pairs are collected and pattern-mined.
+   What they explain → re-weighting (calibration). What they cannot → a quantified per-class
+   `unmodeled_variance` term served with predictions as an honest humility bound. Unknown
+   factors thus enter the system first as measured magnitude, then as named factors as the
+   mining identifies them.
+5. **Guard:** grades and tie-bands are computed from the model's own pre-registered
+   uncertainty — never widened post-hoc to convert a specific red to green (that remains
+   gate-gaming, refused).
+
+# DR-18 — Knowledge-Utilization Census (KUC)
+*(native-originated 2026-07-20 — "are we using everything we already know?"; standing audit)*
+
+A standing census classifies every computed fact-category (L0–L3) and every encoded classical
+rule as: (a) consumed by the intensity engine · (b) consumed elsewhere only · (c) computed but
+never consumed · (d) doctrine-known but never computed. Deliverables: a coverage percentage per
+class, and a prioritized ingestion backlog ranked by classical weight × implementation cost.
+Known instances at ratification (from the registers): arudhas unranked (CR-61), D11 unconsulted
+for wealth (CR-62), special lagnas starved (CR-76), chara karakas dropped at L2 (CR-77), Tājaka
+computed-unused, aṣṭakavarga generator-role absent, KP half-built (CR-75). Factor families
+enter the engine through the bakeoff harness: skill-improving families earn weight;
+non-improving families are recorded as TESTED-NO-SIGNAL (negative knowledge, retained). First
+census runs at D-4b bind; thereafter per campaign close.
