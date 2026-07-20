@@ -1,7 +1,7 @@
 ---
 artifact: RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md
 canonical_id: RETRIEVAL_PLANE_ELEVATION_PLAN
-version: 1.3
+version: 1.4
 status: DRAFT — FOR NATIVE REVIEW
 authored_by: Claude (Cowork, Fable 5) 2026-07-19; amended by the retrieval-audit reconciliation pass (Claude, opus/high) 2026-07-19
 parent_documents:
@@ -17,6 +17,11 @@ purpose: >
   a three-agent code audit of registry, dispatch, envelope, budget, planner,
   and MCP edge conducted 2026-07-19.
 changelog:
+  - v1.4 (2026-07-20, W1 addendum, §F gate ruling item 6): §9.6-adjacent
+    dark-set list corrected — `chart_ayanamsha_reports` flagged as
+    stale/aspirational naming (no such table exists in the live DB);
+    footnote added pointing to the actual coverage. Doc-only correction,
+    no wiring semantics changed.
   - v1.3 (2026-07-19): six-lane retrieval-audit ground-truth register absorbed
     (`briefs/retrieval_audit/GROUND_TRUTH_REGISTER.md`, adjudicating every
     §1.1–§1.5 claim against file:line lane evidence). Corrected **13 stale
@@ -707,9 +712,23 @@ metadata lands, before/alongside R-2):
      `bodha_rm_dasha_windowed_prescriptions` (time-targeted remedies), CDLM
      rollup tiers (`domain_rollups`/`evolution_gradients`/`pattern_clusters`),
      `bodha_triangulation` + `bodha_cgm_sub_graphs`, the served portion of the
-     L0 `bg_*` catalog stratum, `chart_ayanamsha_reports`, and the four
+     L0 `bg_*` catalog stratum, `chart_ayanamsha_reports`¹, and the four
      substantive mimamsa read candidates (`signal_adjustment`,
      `manifestation_sets`, `discoveries`, `insight_embeddings`).
+
+     ¹ **Correction (W1 addendum, 2026-07-20; §F gate ruling item 6; corrected 2026-07-20,
+     independent verification):** no `chart_ayanamsha_reports` table exists in the live DB
+     (confirmed by the W1b harvest's full live-table scan) — but it WAS a real table, not
+     stale/aspirational naming: created by `platform/migrations/_archive/
+     130_chart_ayanamsha_reports.sql` and explicitly retired during the legacy teardown
+     (`LEGACY_TEARDOWN_KILL_LIST_v1_0.md` / `LEGACY_TEARDOWN_CLOSE_v1_0.md` §4;
+     `infra/teardown/01_drop_tables.sql:142` dropped it). This plan's mention is stale —
+     it references a table retired post-teardown, not one that never existed. Not a wire-up
+     candidate; nothing to wire. The concept (per-ayanamsha divergence reporting) is already
+     covered without a dedicated table by `chart_facts_query`'s
+     `ayanamsha_id` filter over `chart_facts`'s 6 stored ayanamshas. See
+     `RETRIEVAL_STRATEGY_v1_0.md` §5.2 footnote and
+     `briefs/retrieval_impl/DARK_SET_WIRING_PLAN_v1_0.md` for the finding.
 3. Close the open structural register rows in scope: G-1 (CGM bhava
    edge-orphans — breaks graph chains through houses), S-3 (bhava_arudha),
    SC-2 (graha speed/retro/combustion), SC-3..5 (ashtakavarga refinements).
