@@ -1466,3 +1466,85 @@ baseline) reported to the native separately; not duplicated here.
 alias cutover and the single-bootstrap flag flip-on stay off until the native confirms D-5 is
 quiet. No further W2 work is planned beyond that switch-over — W3 (One Envelope) is next,
 pending native go-ahead.
+
+## Wave log
+
+### W3 — One Envelope (OPENED 2026-07-20, native go-ahead received)
+
+**Doc-sync precondition (closed before W3 opened):** the master brief (v2.0) and plan v1.8 had
+been advancing only in a worktree reference copy — `main` was stuck at plan v1.4 and never had
+the brief committed at all, a gap this ledger's W1-close entry already flagged and left
+unactioned. Landed via PR #649 (`impl/wave-3` → `main`, merge commit `002c4eb6`), CI green
+14/14, docs-only, no deploy required.
+
+**Coexistence check re-run at open:** D-5 is **NOT quiet** — two fix PRs opened minutes before
+this entry, `#650` (RED-C v4: DB-driven interval segment consolidation) and `#651` (RED-D: mixed
+occupation+aspect double-transit fix for `guru_shani_double_transit`), both currently OPEN and
+expected to merge+deploy imminently. **Deploy mutex is NOT claimed this entry** — per brief §I.3
+("only one campaign merges-to-main/deploys in any given window") and the native's explicit W3
+instruction, no W3 merge-to-main/deploy happens until the native confirms D-5 quiet. Lane work
+proceeds in isolated worktrees/branches against `origin/main` and is CI-verified there; nothing
+lands on `main` until the mutex is re-checked clean immediately before that specific merge, and
+the §B baseline probes are re-snapshotted at that point per the coexistence rule (whichever
+campaign deploys last before the diff invalidates the older snapshot).
+
+**must_not_touch reaffirmed for this wave:** `kala_*` serving semantics stay frozen-as-found
+(brief §I.5, restated by the native for W3) — none of the 8 lanes below touch
+`platform-mcp/src/tools/*gochara*`, `*kala_*` handler internals, or any D-5-owned file; if a
+lane's honest-flags/budget/envelope migration would otherwise touch a `kala_*` handler's
+call site, that site is deferred to a named residual, not silently skipped.
+
+**Scope for this wave (brief §E W3 + plan §3 R-2, verbatim acceptance criteria):**
+1. v3 universal envelope + `chart_header` fail-loud (plan R-2.1, GT-47) — kills the two silent
+   catch→null paths (`envelope.ts`'s `chart_header.ts:90-93` inner swallow; ~5 `chart_header =
+   null` sites in `registry_bridge.ts`, more than the plan's "3" — recon found 816/1058/2043/
+   2696/2970); `envelope_version` stops lying at `'v1'` under v3.
+2. Flags closed enum + d8/hollow-emitter migration (R-2.2, GT-46/GT-53) — `judgment_flags`
+   becomes `{code, detail?, severity?}[]`, closed registry-checked enum; folds in
+   `register_p1_synthesis.ts:82`/`register_p1_reference.ts:87`'s static `[]` emitters and
+   `finalizeMcpBudget`'s injected budget-overflow string.
+3. Register block + `reading_contract` + `signal_reader_text` editorial pass (R-2.3 / C-3) —
+   greenfield: no `register` field exists on `CapabilityDescriptor` today (`types.ts:207` has
+   only `density_contract`); draft reader text generated per signal class, flagged for native
+   polish post-campaign per the brief's own C-3 framing.
+4. Cursor fingerprints (R-2.4) — greenfield: `PaginationBlock.next_cursor` is a bare
+   `string | null` today, no filter/sort fingerprint, no `cursor_filter_mismatch` flag.
+5. Budget unification (R-2.5, GT-45/GT-48) — the ~36-of-~115-tools unclamped surface across 15
+   registration files migrates onto `finalizeMcpBudget`; `still_over_budget` wired into the
+   closed enum or deleted (not merely surfaced); `result_clipper.ts`'s live caller
+   (`adapters/bulk_context/bundler.ts:10`, confirmed not orphaned) is preserved — evicted from
+   the MCP/retrieval-envelope path only, not deleted.
+6. `density_contract` to 100% (from today's 6-of-≈118, ~5%) + `verbosity: concise|detailed`
+   request knob, guarded per C-4 (never lets a hard-floor confirmed-finding section collapse).
+7. `demand_ranking` + timing hooks + prediction shape (plan §8 R-2 rows) — greenfield field,
+   does not exist anywhere in `types.ts`/`platform/src/lib/retrieval` today.
+8. Response cache, envelope half (W-28) — `ledger_version` added additive-only to envelope +
+   pin (does not exist today); cache-safe determinism (byte-stable output per `build_id`).
+
+**Verifier gate V3 (plan §3 R-2 gate + brief §E V3):** schema validation over live `tools/call`
+output for the full codegen-derived census; W4-style rubric battery re-run, no answer-quality
+regression; §N.6 density-layering checks; a trim-honesty adversarial pass. Live-probe diff
+against the W0 baseline (re-snapshotted per the coexistence rule above) is the native's
+requested comparable — same probe suite, before/after envelope shape.
+
+**Lane plan (parallel where files don't collide; conductor = this session):**
+
+| Lane | Scope | Isolation | Model/effort |
+|---|---|---|---|
+| W3-L1 | v3 + chart_header fail-loud | worktree `impl/w3-envelope` | sonnet-class, high |
+| W3-L2 | flags closed enum + d8/hollow-emitter migration | worktree `impl/w3-flags` | sonnet-class, high |
+| W3-L3 | register block + reading_contract + signal_reader_text | worktree `impl/w3-register` | fable/opus, high (design-heavy) |
+| W3-L4 | cursor fingerprints | worktree `impl/w3-cursor` | sonnet-class, high |
+| W3-L5 | budget unification (~36 unclamped tools) | worktree `impl/w3-budget` | sonnet-class, high |
+| W3-L6 | density_contract 100% + verbosity knob (C-4 guard) | worktree `impl/w3-density` | sonnet-class, high |
+| W3-L7 | demand_ranking + timing + prediction shape | worktree `impl/w3-demand` | fable/opus, high (design-heavy) |
+| W3-L8 | response cache envelope half (ledger_version) | worktree `impl/w3-cache` | sonnet-class, high |
+
+Lanes 1/2/4/5/6/8 all touch `envelope.ts`/`types.ts`/`response_budget.ts` and will be
+integrated sequentially into `impl/wave-3` (conductor-resolved merges) rather than merged
+independently in parallel, per brief §D's "sequential only where a shared file forces it" —
+they are *implemented* in parallel worktrees but *merged* in dependency order: L1 (envelope
+shape) → L2 (flags) → L4 (cursor) → L5 (budget) → L6 (density/verbosity) → L8 (cache/ledger),
+with L3 and L7 (mostly additive/greenfield, lower collision risk) integrated last against the
+merged base. Each lane ships with tests; the wave verifier is independent of every lane's
+implementer per brief §D.
