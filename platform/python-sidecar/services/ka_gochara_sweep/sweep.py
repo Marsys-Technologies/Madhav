@@ -57,51 +57,83 @@ The fix here is ORDER-INDEPENDENT instead: `sweep_event_class_chunk`, for
 day is active, and if so, independently RE-EVALUATES the underlying
 lambda_e signal one day at a time PAST its own boundary (via `compute_lambda_e`,
 the same deterministic pure function `compute_lambda_e_series` uses
-internally) until it finds genuine inactivity or hits a bound (the
-event_class's own `duration_prior.max_days`, or `DEFAULT_BOUNDARY_SCAN_DAYS`
-when absent) — NOT by reading any other substep's output. The resulting
-EXTENDED series (this chunk's own days plus whatever cross-boundary days
-were needed) is then handed to `shape_output.build_interval_rows`, which is
-itself back to being fully stateless (see that module's docstring) and
-simply closes every run it finds.
+internally) until it finds genuine inactivity or hits a bound — NOT by
+reading any other substep's output. The resulting EXTENDED series (this
+chunk's own days plus whatever cross-boundary days were needed) is then
+handed to `shape_output.build_interval_rows`, which is itself back to
+being fully stateless (see that module's docstring) and simply closes
+every run it finds.
+
+DISCOVERY BOUND vs. duration_prior.max_days — DELIBERATELY DECOUPLED (D-5
+RED-C fix v3, 2026-07-20 — second independent verification): a v2 attempt
+bounded the boundary-discovery scan itself by `duration_prior.max_days` --
+this looked reasonable ("why scan further than the cap could ever serve")
+but was WRONG and reintroduced a subtler order-dependence: an episode
+LONGER than `max_days` (517 days observed against a 365-day max_days in the
+verifier's reproduction) has a TRUE start that can be farther from a given
+chunk's own edge than `max_days` -- a chunk sitting deep inside such an
+episode (e.g. a year near the far end) would hit its scan bound short of
+the true start and compute a SHORTER, WRONGLY-ANCHORED window than a chunk
+sitting closer to that edge -- three different chunks, three different
+`(window_start, window_end, peak_date)` triples for the SAME real episode,
+one of which even lands its peak_date exactly on a chunk boundary (the
+RED-C artifact relocated, not eliminated). The discovery scan is now bound
+by `_BOUNDARY_SCAN_SAFETY_DAYS` (or a class-scaled multiple of it) --
+generous, safety-only, NOT tied to `max_days` at all -- so ANY chunk that
+touches the episode finds the SAME true_start/true_end regardless of its
+own position within the episode. `duration_prior.max_days` is applied
+SEPARATELY, as a pure post-hoc clip on the DISCOVERED true window, anchored
+to the discovered `true_start` (see `shape_output._widen_interval`) -- so
+every chunk that discovers the same true_start computes the identical
+clipped window too, independent of how far past the cap that chunk's own
+scan happened to reach.
 
 Cost: zero extra queries for the common case (a chunk whose own first/last
 grid day is inactive — most years, for most event_classes). Bounded to
-`max_days` (or the default bound) extra single-day evaluations only for a
-chunk that genuinely touches a boundary-crossing episode — the SAME order
-of magnitude as one extra chunk's worth of work, but incurred only when
-needed, not on every substep (see writer.py's own per-day cost accounting;
-comfortably inside the 1800s `writer_timeout_seconds` budget even added on
-top of a chunk's own ~365-day computation).
+`_BOUNDARY_SCAN_SAFETY_DAYS` (or a class-scaled multiple) extra single-day
+evaluations only for a chunk that genuinely touches a boundary-crossing
+episode — a real but bounded ONE-TIME cost per boundary-touching chunk
+(never a per-day-of-full-history cost), incurred only when needed, not on
+every substep. This is comfortably inside the 1800s `writer_timeout_seconds`
+budget for the default bound even added on top of a chunk's own ~365-day
+computation (see writer.py's own per-day cost accounting) — a chunk that
+needs to scan in BOTH directions at once (fully inside a very long episode)
+has less margin; if a future dispatch regresses on this, tighten
+`_BOUNDARY_SCAN_SAFETY_DAYS` or split the scan into its own substep rather
+than raising the writer timeout (mirrors writer.py's own "drop to
+per-quarter/per-month chunking rather than raising the timeout" precedent).
 
 ORDER-INDEPENDENCE / no double-serving: this makes ANY two chunks that
 touch the SAME real episode compute IDENTICAL results — `compute_lambda_e`
 is a pure function of (chart config, targets, dasha_periods, t_jd), and the
 scan is always anchored at a FIXED, well-defined calendar boundary (a
 year's own Jan-1/Dec-31), not at "wherever a scan happened to start" — so
-regardless of WHICH chunk runs first, both independently arrive at the same
-true_start/true_end/peak for the episode, hence the same
+regardless of WHICH chunk runs first, or WHERE within a long episode it
+sits, both independently arrive at the same true_start/true_end/peak (as
+long as the discovery bound is generous enough to actually reach the true
+edges — see DISCOVERY BOUND note above), hence the same
 (window_start, peak_date, milestone_id) natural key, hence the same
 `kala_gochara_windows` row — the second chunk's insert just UPSERTs the
 identical row via the existing `ON CONFLICT ... DO UPDATE` (writer.py
 `_insert_rows`), not a duplicate. This holds for ANY dispatch order:
-numeric, the (buggy) lexical order, or specimen-priority-shuffled.
+numeric, the (buggy, now-fixed) lexical order, or specimen-priority-shuffled.
 
 KNOWN LIMITATION (disclosed, not hidden): if a real activation genuinely
-outlives `2 * max_days` (or `2 * DEFAULT_BOUNDARY_SCAN_DAYS` when
-`max_days` is absent) — i.e. a signal so long-lived that a chunk deep
-inside it can no longer reach either true edge within its own bounded scan
-— different chunks may compute different max_days-capped segments of it.
-This is a residual edge case, not observed in this wave's live data (RED-C's
-actual major_gain episodes are a few hundred days, under the 365-day cap);
-even in that pathological case every served row is still a legitimately
+outlives the discovery bound itself (`_BOUNDARY_SCAN_SAFETY_DAYS`, several
+YEARS by default, scaled up further for large `max_days` classes) from BOTH
+directions relative to some chunk's own position, that chunk's scan can
+still fall short of a true edge. This is now a far more extreme,
+essentially pathological scenario than the v2 design's failure mode (which
+broke at ~2x a 365-day `max_days`, i.e. ~2 years) — not observed in this
+wave's live data (RED-C's actual major_gain episode is a few hundred days).
+Even in that residual case, every served row is still a legitimately
 capped, non-artifact window (never wider than `max_days`, never bounded by
 a bare chunk edge) — the RED-C defect this fix targets.
 """
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from services.gochara_intensity import compute_lambda_e, compute_lambda_e_series
 from services.gochara_intensity import gather_configuration_sentences
@@ -117,12 +149,29 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_STEP_DAYS = 1.0  # daily grid, per BRIEF_D5 §6
 
-# Bound for the order-independent boundary-extension scan (see module
-# docstring) when an event_class's `duration_prior.max_days` is absent --
-# generous enough to find a genuine cessation for any realistically-shaped
-# interval episode, small enough to stay well inside the writer's
-# per-substep timeout budget even when triggered.
-DEFAULT_BOUNDARY_SCAN_DAYS = 400
+# Safety-only bound for the order-independent boundary-DISCOVERY scan (see
+# module docstring's DISCOVERY BOUND note) -- deliberately NOT derived from
+# any event_class's `duration_prior.max_days` (that coupling was the v2
+# design's bug: an episode longer than max_days could put a chunk's own
+# position farther from the true edge than max_days itself). ~4.5 years --
+# generous relative to every interval-shaped event_class's max_days in this
+# wave (max_days=365 for major_gain; no other interval class currently
+# exceeds it), while staying well inside the writer's per-substep timeout
+# budget even when triggered from both directions at once (see module
+# docstring's Cost note).
+_BOUNDARY_SCAN_SAFETY_DAYS = 1500
+
+
+def _boundary_scan_bound_days(max_days: Optional[float]) -> int:
+    """The discovery-scan bound: `_BOUNDARY_SCAN_SAFETY_DAYS`, or 4x a
+    larger-than-usual `duration_prior.max_days` if that would exceed it --
+    scales the safety margin up for a future event_class with a
+    substantially longer declared cap, without coupling the bound TO
+    max_days the way v2 did (4x is headroom, not an assumption that the
+    true episode never exceeds max_days -- see module docstring)."""
+    if max_days:
+        return max(_BOUNDARY_SCAN_SAFETY_DAYS, int(max_days) * 4)
+    return _BOUNDARY_SCAN_SAFETY_DAYS
 
 
 def fetch_ontology_meta(conn, event_class: str) -> dict[str, Any]:
@@ -331,7 +380,12 @@ def sweep_event_class_chunk(
         active_by_jd: dict[float, list] = {}
         if shape == "interval" and targets:
             max_days = (meta["duration_prior"] or {}).get("max_days")
-            bound_days = int(max_days) if max_days else DEFAULT_BOUNDARY_SCAN_DAYS
+            # DECOUPLED from max_days (D-5 RED-C fix v3) -- the discovery
+            # scan must find the episode's TRUE edges regardless of how far
+            # they sit from any one chunk's own position, not just far
+            # enough to reach a max_days-wide slice. See module docstring's
+            # DISCOVERY BOUND note.
+            bound_days = _boundary_scan_bound_days(max_days)
             series = _extend_series_across_boundary(
                 swe, conn, chart_id, event_class, series,
                 targets=targets, dasha_periods=dasha_periods, shape=shape, ayanamsha_id=ayanamsha_id,

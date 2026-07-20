@@ -545,6 +545,61 @@ def test_sweep_chunk_gate_assertion_not_vacuous_without_boundary_extension(monke
     assert width_days < duration_prior["max_days"]
 
 
+def test_sweep_chunk_three_year_span_converges_regardless_of_which_chunk_runs_alone():
+    """D-5 RED-C fix v3: second independent verification's exact
+    counterexample. A 517-day episode (2010-10-01 -> 2012-03-01) is LONGER
+    than duration_prior.max_days (365) -- under the v2 design (discovery
+    scan bounded BY max_days), the 2012 chunk sits ~458 days from the true
+    2010-10-01 start, farther than its own 365-day scan could reach, so it
+    computed a SHORTER, differently-anchored window than the 2010 or 2011
+    chunks -- three different (window_start, window_end, peak_date) triples
+    for the same real episode, one with peak_date landing exactly on a
+    chunk boundary (the artifact relocated, not eliminated).
+
+    This drives EACH of the 2010/2011/2012 chunks completely ALONE (a fresh
+    monkeypatch setup per call, exactly mirroring three independent
+    Cloud Run dispatches that never share in-memory state) and asserts all
+    three converge on the IDENTICAL clipped window."""
+    from services.ka_gochara_sweep import sweep as sweep_module
+
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
+    episode_start, episode_end = date(2010, 10, 1), date(2012, 3, 1)
+    assert (episode_end - episode_start).days == 517 > duration_prior["max_days"], \
+        "the whole point of this test is an episode LONGER than max_days"
+    activation = _build_activation_calendar(episode_start, episode_end)
+
+    def _run_alone(monkeypatch, year):
+        sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
+        rows = _year_chunk(sweep_module, "major_gain", year)
+        assert len(rows) == 1
+        r = rows[0]
+        return (r["window_start"], r["window_end"], r["peak_date"], r["milestone_id"])
+
+    import _pytest.monkeypatch
+    with _pytest.monkeypatch.MonkeyPatch.context() as mp_2010:
+        key_2010 = _run_alone(mp_2010, 2010)
+    with _pytest.monkeypatch.MonkeyPatch.context() as mp_2011:
+        key_2011 = _run_alone(mp_2011, 2011)
+    with _pytest.monkeypatch.MonkeyPatch.context() as mp_2012:
+        key_2012 = _run_alone(mp_2012, 2012)
+
+    assert key_2010 == key_2011 == key_2012, (
+        f"three chunks touching the SAME 517-day episode (> max_days={duration_prior['max_days']}) "
+        f"must converge on the IDENTICAL clipped window regardless of which chunk ran, or how far "
+        f"from the true start it sits -- got 2010={key_2010}, 2011={key_2011}, 2012={key_2012}"
+    )
+    # The clip is anchored to the TRUE start (2010-10-01), not to wherever
+    # any one chunk's own scan happened to reach.
+    window_start, window_end, peak_date, _milestone_id = key_2010
+    assert window_start.isoformat() == "2010-10-01"
+    assert (window_end - window_start).days <= duration_prior["max_days"]
+    # And no boundary-artifact: peak_date must not land on a chunk edge
+    # (the verifier's "2012 alone" case put it exactly on one).
+    for year in (2010, 2011, 2012):
+        assert peak_date not in (date(year, 1, 1), date(year, 12, 31)), \
+            f"peak_date {peak_date} lands exactly on a year-chunk boundary -- the RED-C artifact relocated"
+
+
 # ── integration (live proxy, excluded by -m "not integration") ───────────
 
 LIVE_DSN = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"

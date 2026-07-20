@@ -192,14 +192,34 @@ def build_point_rows(
 
 def _widen_interval(start_date: date, end_date: date, min_days: float, typical_days: float,
                      max_days: Optional[float]) -> tuple[date, date]:
-    """Widen a raw detected [start_date, end_date] span up to at least
-    `min_days` (or `typical_days` when the raw span has no usable width),
-    then clip it back down if the result exceeds `duration_prior.max_days`
-    — a window's asserted width must never exceed the ontology's own
-    declared ceiling (D-5 RED-C fix: the original bug enforced no ceiling
-    at all). The cap clip is symmetric around the widened window's own
-    centre, not the peak, matching the widen step's own symmetry."""
+    """Widen/cap one detected [start_date, end_date] span, in two
+    DELIBERATELY SEPARATE, ORDER-DEPENDENT-SAFE steps (D-5 RED-C fix v3,
+    2026-07-20 — second independent verification):
+
+    1. CAP FIRST, anchored to the TRUE (unpadded) `start_date` --
+       `end_date = min(end_date, start_date + max_days)`. This must be
+       anchored to `start_date`, NEVER to a symmetric centre computed from
+       the padded/widened result — a centre-anchored clip depends on
+       whatever width THIS PARTICULAR invocation happened to detect, which
+       is exactly what broke order-independence for episodes wider than the
+       old (bounded-by-max_days) discovery scan: two chunks that
+       independently discover the SAME true `start_date` (see
+       `sweep.sweep_event_class_chunk`'s boundary-discovery scan, now
+       unbounded-by-max_days on its own) but see DIFFERENT (still-correct,
+       still-true) `end_date`s before capping would, under the old
+       centre-anchored clip, compute two DIFFERENT window rows for the same
+       real episode. Anchoring to `start_date` instead means: same
+       `start_date` in -> same clipped window out, regardless of how far
+       past the cap this particular call's own `end_date` reached.
+    2. WIDEN the (already-capped) span up to `min_days` (or `typical_days`
+       when it has no usable raw width) — but never back past `max_days`
+       (§1 already used the caller's true bounds; this step only pads a
+       span that is narrower than the disclosed minimum)."""
     raw_span_days = (end_date - start_date).days
+    if max_days is not None and raw_span_days > max_days:
+        end_date = start_date + timedelta(days=int(max_days))
+        raw_span_days = max_days
+
     target_days = max(min_days, raw_span_days if raw_span_days > 0 else typical_days)
     if max_days is not None:
         target_days = min(target_days, max_days)
@@ -210,11 +230,6 @@ def _widen_interval(start_date: date, end_date: date, min_days: float, typical_d
     # Never degenerate to a point — interval-shaped classes always span >=1 day.
     if end_date <= start_date:
         end_date = start_date + timedelta(days=max(1, int(min_days)))
-    if max_days is not None and (end_date - start_date).days > max_days:
-        centre = start_date + (end_date - start_date) / 2
-        half = timedelta(days=max_days / 2.0)
-        start_date = centre - half
-        end_date = centre + half
     return start_date, end_date
 
 
