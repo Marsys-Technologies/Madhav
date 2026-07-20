@@ -108,6 +108,17 @@ from . import citations as C
 
 logger = logging.getLogger(__name__)
 
+# Every per-target "skipping" honest-degrade message below is `logger.debug`,
+# not `logger.info` (found live, D-5 RED-C/RED-D post-merge rebuild,
+# 2026-07-20): `ka_gochara_sweep`'s hot loop calls these primitives per grid
+# day x per resonance-map target x per primitive family -- at INFO this
+# produced 100+ log lines/sec (a single 10s window captured >1000 lines) and
+# contributed to a real writer_timeout_seconds=1800 substep timeout on the
+# very first specimen substep, immediately after RED-D's permission.py fix
+# (generator #9) started legitimately reaching more targets that these
+# primitives correctly, honestly skip. Non-functional change (log level
+# only) -- every skip's return value and disclosed behavior is unchanged.
+
 ALL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
 CLASSICAL_SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 
@@ -182,7 +193,7 @@ def degree_contact(
     target.target_longitude_deg. See module docstring #1 for the
     uncited_extension rationale."""
     if target.target_longitude_deg is None:
-        logger.info("[degree_contact] target_ref=%s has no target_longitude_deg; skipping.", target.target_ref)
+        logger.debug("[degree_contact] target_ref=%s has no target_longitude_deg; skipping.", target.target_ref)
         return []
     sentences: list[ConfigurationSentence] = []
     for planet in (planets or ALL_GRAHAS):
@@ -247,7 +258,7 @@ def drishti_contact(
         return _drishti_contact_point(swe, chart_id, target, start_jd, end_jd, planets, orb_deg)
     if target.target_sign is not None:
         return _drishti_contact_rasi(swe, chart_id, target, start_jd, end_jd, planets)
-    logger.info("[drishti_contact] target_ref=%s has no target_longitude_deg or target_sign; skipping.", target.target_ref)
+    logger.debug("[drishti_contact] target_ref=%s has no target_longitude_deg or target_sign; skipping.", target.target_ref)
     return []
 
 
@@ -390,7 +401,7 @@ def sign_ingress(
 ) -> list[ConfigurationSentence]:
     """Planet entering target's sign (target.target_sign)."""
     if not target.target_sign:
-        logger.info("[sign_ingress] target_ref=%s has no target_sign; skipping.", target.target_ref)
+        logger.debug("[sign_ingress] target_ref=%s has no target_sign; skipping.", target.target_ref)
         return []
     sentences: list[ConfigurationSentence] = []
     for planet in (planets or ALL_GRAHAS):
@@ -451,7 +462,7 @@ def sign_occupation(
     function differs only in ALSO reporting the already-resident case,
     not in the underlying classical technique)."""
     if not target.target_sign:
-        logger.info("[sign_occupation] target_ref=%s has no target_sign; skipping.", target.target_ref)
+        logger.debug("[sign_occupation] target_ref=%s has no target_sign; skipping.", target.target_ref)
         return []
     sentences: list[ConfigurationSentence] = []
     for planet in (planets or ALL_GRAHAS):
@@ -512,7 +523,7 @@ def nakshatra_ingress_tara(
     (Nava Tara Chakra, reusing panchang_engine.tara_bala) attached when
     natal_moon_nakshatra_id is supplied."""
     if target.target_nakshatra_id is None:
-        logger.info("[nakshatra_ingress_tara] target_ref=%s has no target_nakshatra_id; skipping.", target.target_ref)
+        logger.debug("[nakshatra_ingress_tara] target_ref=%s has no target_nakshatra_id; skipping.", target.target_ref)
         return []
     boundary_lon = ((target.target_nakshatra_id - 1) % 27) * (360.0 / 27.0)
     sentences: list[ConfigurationSentence] = []
@@ -594,7 +605,7 @@ def kakshya_cell_crossing(
     Ch.66); falls back to an equal-eighths approximation with
     uncited_extension=True when unreachable."""
     if not target.target_sign:
-        logger.info("[kakshya_cell_crossing] target_ref=%s has no target_sign; skipping.", target.target_ref)
+        logger.debug("[kakshya_cell_crossing] target_ref=%s has no target_sign; skipping.", target.target_ref)
         return []
     sign_start = _sign_index(target.target_sign) * 30.0
     sentences: list[ConfigurationSentence] = []
@@ -684,7 +695,7 @@ def av_threshold_state(
     classical_citation}) when no DB connection is available -- an explicit,
     documented fixture path, mirroring `sade_sati_phase`'s fixture_phases."""
     if not target.target_sign or target.target_type != "bhava":
-        logger.info("[av_threshold_state] target_ref=%s not a bhava target with resolved sign; skipping.", target.target_ref)
+        logger.debug("[av_threshold_state] target_ref=%s not a bhava target with resolved sign; skipping.", target.target_ref)
         return []
     gate_rows = _fetch_av_gate_rows(conn, target.target_ref) if conn is not None else (fixture_gate_rows or [])
     if not gate_rows:
@@ -764,7 +775,7 @@ def gochara_vedha_pair(
     `bg_transit_rules` row shape ({graha, vedha_house, phala,
     classical_citation}) when no DB connection is available."""
     if not target.target_sign or target.target_type != "bhava":
-        logger.info("[gochara_vedha_pair] target_ref=%s not a bhava target with resolved sign; skipping.", target.target_ref)
+        logger.debug("[gochara_vedha_pair] target_ref=%s not a bhava target with resolved sign; skipping.", target.target_ref)
         return []
     vedha_rows = _fetch_vedha_rules(conn, target.target_ref) if conn is not None else (fixture_vedha_rows or [])
     if not vedha_rows:
@@ -774,7 +785,7 @@ def gochara_vedha_pair(
     try:
         primary_house_num = int(target.target_ref)
     except (TypeError, ValueError):
-        logger.info("[gochara_vedha_pair] target_ref=%r is not an integer house; skipping.", target.target_ref)
+        logger.debug("[gochara_vedha_pair] target_ref=%r is not an integer house; skipping.", target.target_ref)
         return []
 
     for rule in vedha_rows:
@@ -836,7 +847,7 @@ def station_retro_loop(
     degree -- a station intensifies/internalizes the planet's influence on
     whatever it is near (BPHS Ch.27, Vakra/cheshta bala)."""
     if target.target_longitude_deg is None:
-        logger.info("[station_retro_loop] target_ref=%s has no target_longitude_deg; skipping.", target.target_ref)
+        logger.debug("[station_retro_loop] target_ref=%s has no target_longitude_deg; skipping.", target.target_ref)
         return []
     sentences: list[ConfigurationSentence] = []
     for planet in (planets or [p for p in ALL_GRAHAS if p not in ("Sun", "Moon", "Rahu", "Ketu")]):
@@ -878,7 +889,7 @@ def eclipse_degree(
     """Solar/lunar eclipse-proximity degree (node-luminary conjunction, per
     find_eclipse_proximity_events) conjunct/opposing target's degree."""
     if target.target_longitude_deg is None:
-        logger.info("[eclipse_degree] target_ref=%s has no target_longitude_deg; skipping.", target.target_ref)
+        logger.debug("[eclipse_degree] target_ref=%s has no target_longitude_deg; skipping.", target.target_ref)
         return []
     pairs = node_luminary_pairs or [("Rahu", "Sun"), ("Rahu", "Moon"), ("Ketu", "Sun"), ("Ketu", "Moon")]
     sentences: list[ConfigurationSentence] = []
@@ -926,7 +937,7 @@ def planetary_return(
     planet's OWN natal position (target.natal_planet set, target.
     target_longitude_deg = that planet's natal longitude)."""
     if target.target_longitude_deg is None or not target.natal_planet:
-        logger.info("[planetary_return] target_ref=%s missing natal_planet/target_longitude_deg; skipping.", target.target_ref)
+        logger.debug("[planetary_return] target_ref=%s missing natal_planet/target_longitude_deg; skipping.", target.target_ref)
         return []
     events = find_return_events(swe, target.natal_planet, target.target_longitude_deg, orb_deg, start_jd, end_jd)
     sentences: list[ConfigurationSentence] = []

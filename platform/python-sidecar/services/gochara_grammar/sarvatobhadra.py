@@ -110,7 +110,14 @@ def _vedha_pairs_from_db(conn, nakshatra_id: int) -> Optional[int]:
         if row:
             return int(row[0] if not isinstance(row, dict) else row["nakshatra_2_id"])
     except Exception as exc:  # noqa: BLE001
-        logger.info(
+        # DEBUG not INFO (found live, D-5 RED-C/RED-D rebuild, 2026-07-20): this
+        # fires on EVERY grid-day call while no classical vedha-grid data exists
+        # live (G-2's own honest-carried gap, STATE_D-5.md carried_findings) --
+        # at INFO in `ka_gochara_sweep`'s 36,500-grid-day x multi-target hot loop
+        # this alone produced 100+ log lines/sec, contributing to a real
+        # writer_timeout_seconds=1800 substep timeout. Non-functional change
+        # (log level only) -- the honest-degrade behavior itself is unchanged.
+        logger.debug(
             "[sarvatobhadra] l1_sarvatobhadra_vedha unreachable/empty, falling back "
             "to algorithmic opposition rule: %s", exc,
         )
@@ -154,7 +161,9 @@ def find_sarvatobhadra_vedha_states(
     guess one.
     """
     if target.target_nakshatra_id is None:
-        logger.info(
+        # DEBUG not INFO -- see the l1_sarvatobhadra_vedha fallback note above;
+        # same hot-loop-volume rationale.
+        logger.debug(
             "[sarvatobhadra] target_ref=%s has no resolved target_nakshatra_id; "
             "skipping (honest empty result, not a crash).", target.target_ref,
         )
