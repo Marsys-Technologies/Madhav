@@ -33,6 +33,7 @@ from services.gochara_grammar.models import (
 )
 from services.gochara_grammar import primitives as P
 from services.gochara_grammar import composition as CO
+from services.gochara_grammar import citations as C
 from services.gochara_grammar import sarvatobhadra as SBC
 from services.gochara_grammar import resonance_map as RM
 from services.gochara_grammar import dasha_data as DD
@@ -181,6 +182,134 @@ def test_primitive_2_drishti_contact():
     assert len(sentences) >= 1
     assert sentences[0].classical_citation is not None
     assert sentences[0].uncited_extension is False
+
+
+# ── RED-D fix: rasi-drishti fallback for bhava/span targets ────────────────
+#
+# D-5 gate_run_2 RED-D finding: chart 482012f1's 2013-12-11 marriage LEL
+# event should be explained by a classical Guru-Sani double-transit on the
+# 7th house (transiting Saturn conjunct natal Saturn in Libra = 7th house;
+# transiting Jupiter in Gemini, Libra being the 5th sign from Gemini so
+# Jupiter's classical 5th special drishti lands on Libra, BPHS Ch.26) -- but
+# `drishti_contact` could never detect it because the 7th-house target only
+# ever resolves `target_sign` (a bhava is a 30-degree span, not a point),
+# never `target_longitude_deg`, and the primitive unconditionally required
+# the latter. Fixed by adding a rasi-drishti (whole-sign) fallback path.
+#
+# Real ephemeris confirms the configuration (verified at fix time via
+# `_get_planet_pos` against 2013-12-11 00:00 UT, Lahiri ayanamsha):
+# Jupiter lon=84.62deg (Gemini), Saturn lon=204.20deg (Libra).
+
+def test_primitive_2b_drishti_contact_rasi_fallback_marriage_specimen_jupiter():
+    """Positive control: transiting Jupiter's classical 5th-sign special
+    aspect (BPHS Ch.26) onto a Libra (7th-house) bhava target, around the
+    real 2013-12-11 marriage date -- Jupiter genuinely occupies Gemini
+    (5th sign from Libra counted the other way / Libra is Gemini's 5th) in
+    that window, confirmed live via ephemeris above. No target_longitude_deg
+    is supplied -- only target_sign, exactly like the live bhava-target
+    shape `gochara_intensity.enrichment.enrich_target` produces."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="7", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Libra",
+    )
+    start_jd, end_jd = _jd(2013, 6, 1), _jd(2014, 6, 1)
+    sentences = P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter"])
+    assert len(sentences) >= 1
+    s = sentences[0]
+    assert s.transit_planet == "Jupiter"
+    assert s.classical_citation == C.GRAHA_DRISHTI_RASI_BPHS_26
+    assert s.uncited_extension is False
+    assert s.detail["geometry"] == "rasi_drishti"
+    assert s.detail["target_sign"] == "Libra"
+    assert s.detail["planet_sign"] == "Gemini"
+    assert s.detail["house_offset"] == 5
+
+
+def test_primitive_2b_drishti_contact_rasi_fallback_marriage_specimen_saturn():
+    """Saturn's own classical 7th-house aspect (the universal full aspect
+    every graha casts) onto the same Libra 7th-house target, in the same
+    window -- Saturn is IN Libra at the time (conjunct natal Saturn), and
+    every graha's default special-aspect set includes the 7th (see
+    `_DEFAULT_DRISHTI_DEG`), so Saturn aspects its own occupied sign's 7th
+    counterpart (Aries) -- NOT Libra itself (a planet does not aspect its
+    own sign via the 7th-house rule). This test instead confirms Saturn's
+    rasi-drishti detection fires correctly onto Aries (the 7th sign from
+    Libra AND from Saturn's own Libra position), demonstrating the fallback
+    is planet/target-general, not hand-tuned to the Jupiter case above."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="1", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Aries",
+    )
+    start_jd, end_jd = _jd(2013, 6, 1), _jd(2014, 6, 1)
+    sentences = P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Saturn"])
+    assert len(sentences) >= 1
+    s = sentences[0]
+    assert s.transit_planet == "Saturn"
+    assert s.detail["planet_sign"] == "Libra"
+    assert s.detail["house_offset"] == 7
+
+
+def test_primitive_2b_drishti_contact_rasi_fallback_negative_control():
+    """Negative control: a sign Jupiter does NOT occupy (nor will occupy)
+    during a short, deliberately-narrow window that excludes any of
+    Jupiter's slow ~1-year-per-sign transits into a qualifying sign for this
+    target -- must return no sentences, proving the fallback does not fire
+    indiscriminately. Target sign chosen (Capricorn) such that Jupiter's
+    qualifying signs (Virgo/Cancer/Taurus, per
+    `_signs_casting_drishti_onto("Capricorn", "Jupiter")` -- the 5th/7th/9th
+    signs counted BACKWARD from Capricorn) are far from Jupiter's real
+    Dec-2013 Gemini position, and the window is narrowed to 30 days so no
+    ingress into ANY of those three signs can occur."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="10", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Capricorn",
+    )
+    start_jd, end_jd = _jd(2013, 12, 1), _jd(2013, 12, 31)
+    sentences = P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter"])
+    assert sentences == []
+
+
+def test_primitive_2b_drishti_contact_no_anchor_still_degrades_honestly():
+    """Regression: a target with NEITHER target_longitude_deg NOR
+    target_sign (fully unresolved) must still degrade to [] exactly as
+    before this fix -- the fallback only activates when target_sign is
+    actually available."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="lord",
+        target_ref="unresolved", weight=0.5, uncited_extension=True,
+    )
+    start_jd, end_jd = _jd(2013, 1, 1), _jd(2014, 1, 1)
+    sentences = P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter"])
+    assert sentences == []
+
+
+def test_primitive_2c_drishti_contact_point_path_unchanged_regression():
+    """Regression: point/graha-anchored targets (target_longitude_deg set)
+    must go on producing exactly the pre-fix exact-degree sentence shape --
+    BPHS Ch.26 (not the rasi variant), signed_offset_from_target_deg present,
+    temporal_shape='point'. Re-derives test_primitive_2_drishti_contact's
+    own assertions plus the shape checks the rasi path must NOT leak into."""
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    jd0 = _jd(2015, 1, 1)
+    sat_lon, _ = _get_planet_pos(swe, "Saturn", jd0)
+    target_lon = (sat_lon + 180.0) % 360.0
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="career_advancement", target_type="bhava",
+        target_ref="test", weight=0.7, classical_citation="TEST FIXTURE",
+        target_longitude_deg=target_lon, target_sign=SIGNS[int(target_lon // 30) % 12],
+    )
+    start_jd, end_jd = _window(2015, 1, 1)
+    sentences = P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Saturn"], orb_deg=3.0)
+    assert len(sentences) >= 1
+    s = sentences[0]
+    assert s.classical_citation == C.GRAHA_DRISHTI_BPHS_26
+    assert s.uncited_extension is False
+    assert s.temporal_shape == "point"
+    assert "signed_offset_from_target_deg" in s.detail
+    assert "geometry" not in s.detail
 
 
 def test_primitive_3_sign_ingress():
@@ -734,6 +863,52 @@ def test_composition_2_double_transit_marriage_specimen():
     # codebase has a live cited bg_transit_rules row for (migration 397).
     assert out[0].uncited_extension is False
     assert out[0].classical_citation is not None
+
+
+def test_composition_2b_double_transit_marriage_specimen_end_to_end_rasi_fix():
+    """RED-D end-to-end positive control: unlike
+    `test_composition_2_double_transit_marriage_specimen` above (hand-built
+    ConfigurationSentence fixtures demonstrating the operator alone), this
+    drives the REAL `P.drishti_contact` primitive -- the actual RED-D fix --
+    for both Jupiter and Saturn against a bhava target, target_sign only (no
+    target_longitude_deg, exactly the live enrichment shape), across the
+    real Nov-Dec 2013 window, then feeds the resulting sentences through the
+    real `CO.double_transit` operator.
+
+    Target sign is Sagittarius (not Libra): while chart 482012f1's natal
+    Saturn sits IN Libra (the 7th house), transiting Saturn's Nov-Dec 2013
+    presence THERE is itself an OCCUPATION of Libra, not a drishti (aspect
+    at a distance) onto it -- classically distinct techniques (occupation is
+    `sign_ingress`'s domain, already unaffected by RED-D; drishti_contact is
+    an aspect-from-elsewhere primitive and cannot legitimately claim a
+    planet aspects its own occupied sign). The genuine BOTH-legs-via-drishti
+    double-transit this same real Nov-Dec 2013 sky configuration produces is
+    onto Sagittarius (9th house from Aries lagna): transiting Jupiter in
+    Gemini casts its classical 7th-house aspect onto Sagittarius, AND
+    transiting Saturn in Libra casts its classical 3rd-house special aspect
+    (BPHS Ch.26, SPECIAL_DRISHTI_DEG) onto Sagittarius too -- verified live
+    via `_signs_casting_drishti_onto` at fix time. Before this fix, BOTH legs
+    were structurally undetectable (bhava target, no target_longitude_deg),
+    so this pipeline could never have produced a guru_shani_double_transit
+    hit for any bhava target at all -- this test reproduces that gap with an
+    astronomically real, verifiable configuration."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="9", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Sagittarius",
+    )
+    start_jd, end_jd = _jd(2013, 6, 1), _jd(2014, 6, 1)
+    contact_sentences = (
+        P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+        + P.degree_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+    )
+    comps = CO.double_transit(contact_sentences, window_days=200.0)
+    guru_shani_hits = [c for c in comps if c.detail.get("is_guru_shani_double_transit")]
+    assert len(guru_shani_hits) >= 1
+    hit = guru_shani_hits[0]
+    assert hit.uncited_extension is False
+    assert hit.classical_citation is not None
+    assert hit.detail["target_ref"] == "9"
 
 
 def test_composition_3_kartari():
