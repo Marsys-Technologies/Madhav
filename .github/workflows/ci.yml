@@ -372,6 +372,26 @@ jobs:
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/vidhi_codegen_parity.test.ts
+      - name: R-1 projection compiler — generate (chat/MCP/census/docs projections, additive-only)
+        # RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §3 R-1 item 2. DB-free (getCatalog() only
+        # enumerates already-registered descriptor objects; TOOL_CONTRACTS is a static
+        # in-memory array) — proves the generator runs clean against the live registry on
+        # every push, same as the vidhi/envelope generators above. Writes NEW generated
+        # artifacts under src/generated/projections/ + a comparison report under
+        # 00_ARCHITECTURE/briefs/retrieval_impl/ — nothing here is wired into any live-
+        # serving path (see the generator's own header comment).
+        run: npm run codegen:projections
+      - name: R-1 projection compiler parity/completeness gate
+        # Same source, tested directly (r5_codegen_parity discipline): imports the SAME
+        # pure builder functions the generator step above calls and asserts (1) every live
+        # capability is accounted for by the census/chat/MCP/docs projections with no drops
+        # or dupes, (2) every emitted entry is structurally valid (non-empty name/description,
+        # valid JSON-Schema input_schema, MCP-legal tool names), and (3) the comparison
+        # machinery vs. TOOL_CONTRACTS and the real registry_bridge.ts hand-written blocks is
+        # itself sound (mechanical-extractor tripwire against silent breakage). Divergence
+        # between generated and hand-written surfaces is EXPECTED and not itself a failure —
+        # see R1_PROJECTION_COMPILER_REPORT.md.
+        run: npx vitest run src/lib/retrieval/registry/__tests__/projection_compiler_parity.test.ts
 
   census-battery:
     # D-2 Lane V-0 (BRIEF_D2.md §F1 Lane V-0 / BIND_D-2.md §F1.7 ledger rows 1-5). Runs the
