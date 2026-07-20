@@ -20,6 +20,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // Ephemeris tools call the Python sidecar directly (brahmagyan/ephemeris_routes.py).
 // The sidecar exposes GET /brahmagyan/ephemeris/* endpoints.
@@ -67,7 +68,7 @@ export function registerQueryPlanetPositionTool(server: McpServer): void {
       try {
         const qs = new URLSearchParams({ date: input.date })
         if (input.planet) qs.set('planet', input.planet)
-        const result = await sidecarGet(`/brahmagyan/ephemeris/planet_position?${qs}`)
+        const result = budgetMcpContent(await sidecarGet(`/brahmagyan/ephemeris/planet_position?${qs}`), 'query_planet_position')
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
@@ -109,7 +110,7 @@ export function registerQueryPlanetTransitTool(server: McpServer): void {
           end_date: input.end_date,
         })
         if (input.sign_number !== undefined) qs.set('sign_number', String(input.sign_number))
-        const result = await sidecarGet(`/brahmagyan/ephemeris/planet_transit?${qs}`)
+        const result = budgetMcpContent(await sidecarGet(`/brahmagyan/ephemeris/planet_transit?${qs}`), 'query_planet_transit')
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
@@ -146,7 +147,7 @@ export function registerQueryAspectsAtTimeTool(server: McpServer): void {
           date: input.date,
           orb_degrees: String(input.orb_degrees ?? 1.0),
         })
-        const result = await sidecarGet(`/brahmagyan/ephemeris/aspects?${qs}`)
+        const result = budgetMcpContent(await sidecarGet(`/brahmagyan/ephemeris/aspects?${qs}`), 'query_aspects_at_time')
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
@@ -188,7 +189,7 @@ export function registerQueryRetrogradePeriodsTools(server: McpServer): void {
           start_date: input.start_date,
           end_date: input.end_date,
         })
-        const result = await sidecarGet(`/brahmagyan/ephemeris/retrograde_periods?${qs}`)
+        const result = budgetMcpContent(await sidecarGet(`/brahmagyan/ephemeris/retrograde_periods?${qs}`), 'query_retrograde_periods')
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
@@ -258,26 +259,23 @@ export function registerEphemerisCacheYearTool(server: McpServer): void {
         const offset = input.offset ?? 0
         const pagedRows = allRows.slice(offset, offset + limit)
 
-        const payload = {
-          ...result,
-          rows: pagedRows,
-          pagination: {
-            offset, limit,
-            total: allRows.length,
-            returned_count: pagedRows.length,
-            more_available: offset + pagedRows.length < allRows.length,
+        const payload = budgetMcpContent(
+          {
+            ...result,
+            rows: pagedRows,
+            pagination: {
+              offset, limit,
+              total: allRows.length,
+              returned_count: pagedRows.length,
+              more_available: offset + pagedRows.length < allRows.length,
+            },
+            window: { start: startDate, end: endDate, month_filter: input.month ?? null },
           },
-          window: { start: startDate, end: endDate, month_filter: input.month ?? null },
-        }
+          'ephemeris_cache_year',
+        )
 
-        const json = JSON.stringify(payload)
-        // Same dual-output size discipline as the rest of the estate (register_p1_ganita.ts's
-        // DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) — never ship an unbounded text blob even after paging.
-        const text = Buffer.byteLength(json, 'utf8') > 50_000
-          ? JSON.stringify({ ...payload, rows: '[omitted — see pagination; page is still large; lower `limit`]' })
-          : json
         return {
-          content: [{ type: 'text' as const, text }],
+          content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)

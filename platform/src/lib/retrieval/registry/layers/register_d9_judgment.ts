@@ -62,7 +62,8 @@ import {
   type ResolvedOccupants,
 } from '../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../constants'
-import type { DrillPointerType } from '../../envelope'
+import type { DrillPointerType, JudgmentFlagEntry } from '../../envelope'
+import { judgmentFlag } from '../../envelope'
 import { derivedHouses } from '@/lib/jyotish/bhavat_bhavam_map'
 
 // ── The Shastra Map (design §28.5) ───────────────────────────────────────────────
@@ -480,7 +481,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       }
     }
 
-    const judgment_flags: string[] = []
+    const judgment_flags: JudgmentFlagEntry[] = []
     const fact_ids = new Set<string>()
 
     try {
@@ -509,7 +510,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           g.fact_ids.forEach(f => fact_ids.add(f))
           karakaConditions.push(g)
         } catch (e) {
-          judgment_flags.push(`karaka_unresolved: ${karakaName} — ${String(e)}`)
+          judgment_flags.push(judgmentFlag('karaka_unresolved', `${karakaName} — ${String(e)}`))
         }
       }
 
@@ -530,7 +531,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         occupantsMoon.fact_ids.forEach(f => fact_ids.add(f))
         lordConditionMoon.fact_ids.forEach(f => fact_ids.add(f))
       } catch (e) {
-        judgment_flags.push(`from_moon_resolution_failed: ${String(e)}`)
+        judgment_flags.push(judgmentFlag('from_moon_resolution_failed', String(e)))
       }
 
       // ── Step 6: operative-varga confirmation (reuses get_divisionals — no parallel query) ──
@@ -558,7 +559,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           }
         }
       } catch (e) {
-        judgment_flags.push(`varga_confirmation_failed: ${String(e)}`)
+        judgment_flags.push(judgmentFlag('varga_confirmation_failed', String(e)))
       }
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
@@ -626,19 +627,21 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           yogaTerm = Math.min(yogaTermRaw, YOGA_TERM_CAP)
         }
       } catch (e) {
-        judgment_flags.push(`yoga_firings_fetch_failed: ${String(e)}`)
+        judgment_flags.push(judgmentFlag('yoga_firings_fetch_failed', String(e)))
       }
       if (bearingYogaFirings.length === 0) {
-        judgment_flags.push(
-          'bearing_yogas_empty: no fired rows returned from ga_yoga_firings (firings-authoritative) ' +
+        judgment_flags.push(judgmentFlag(
+          'bearing_yogas_empty',
+          'no fired rows returned from ga_yoga_firings (firings-authoritative) ' +
           'for this chart/ayanamsha — honest absence, not fabricated.',
-        )
+        ))
       } else if (!bearingYogaFirings.some(y => y['domain_match'] === true)) {
-        judgment_flags.push(
-          `bearing_yogas_no_domain_match: ${bearingYogaFirings.length} yoga(s) fired on this chart ` +
+        judgment_flags.push(judgmentFlag(
+          'bearing_yogas_no_domain_match',
+          `${bearingYogaFirings.length} yoga(s) fired on this chart ` +
           `but none name only this domain's bhāveśa/kāraka(s) (${[...domainActors].join(', ') || 'none resolved'}) ` +
           '— shown for context; none contributed to the verdict composite (verdict.yoga_term = 0).',
-        )
+        ))
       }
 
       // D-13 demotion (A3): MSR yoga signals are no longer the primary bearing_yogas source —
@@ -664,26 +667,28 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           }))
         }
       } catch (e) {
-        judgment_flags.push(`yoga_signal_corroboration_fetch_failed: ${String(e)}`)
+        judgment_flags.push(judgmentFlag('yoga_signal_corroboration_fetch_failed', String(e)))
       }
       if (yogaSignalsCorroboration.length > 0) {
-        judgment_flags.push(
-          'bearing_yogas_corroboration_caveat: bearing_yogas_corroboration (MSR yoga signals) are ' +
+        judgment_flags.push(judgmentFlag(
+          'bearing_yogas_corroboration_caveat',
+          'bearing_yogas_corroboration (MSR yoga signals) are ' +
           'requires_pass catalog label matches (single-pass evaluation against L1 facts) — not ' +
           'cross-verified confirmed firings. bearing_yogas above (ga_yoga_firings) is the primary, ' +
           'firings-authoritative source (A3/R-3); this corroboration is secondary context only (JL-004).',
-        )
+        ))
       }
       // A3/R-3: bhaṅga (cancellation) state on a FIRED, formed yoga is now consulted directly
       // (see the ga_yoga_firings mapping above — bhanga_active discounts a firing's contribution
       // to yogaTerm). What remains unbuilt is "notably-absent" near-miss detection — a yoga that
       // did NOT fire but came close — a distinct, still-absent data-plane addition (design §12 D3).
-      judgment_flags.push(
-        'notably_absent_not_checked: near-miss ("almost formed but for one leg") yoga detection ' +
+      judgment_flags.push(judgmentFlag(
+        'notably_absent_not_checked',
+        'near-miss ("almost formed but for one leg") yoga detection ' +
         'requires a data-plane addition (design §12 D3) not yet built for any chart — reported ' +
         'honestly, not fabricated. Bhaṅga (cancellation) state on FIRED yogas IS consulted above ' +
         '(ga_yoga_firings.bhanga_active discounts a firing\'s verdict contribution, A3/R-3).',
-      )
+      ))
 
       // ── Step 9: timing hooks (reuses get_dashas — no parallel dasha query) ──
       // CR-1/R-39/T-3: as_of_date (default today) now drives the "current" fetch instead
@@ -774,24 +779,26 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               .slice(0, 6)
             timing['kala_activations'] = trimmedActivations
             if (rawActivations.length > trimmedActivations.length) {
-              judgment_flags.push(
-                `kala_activations_trimmed: ${rawActivations.length} raw activation row(s) deduped by ` +
+              judgment_flags.push(judgmentFlag(
+                'kala_activations_trimmed',
+                `${rawActivations.length} raw activation row(s) deduped by ` +
                 `window to ${trimmedActivations.length} distinct window(s); per-row ` +
                 `activation_predicted_dates_jsonb / active_dasha_periods_jsonb dropped from this ` +
                 `envelope (§N.6 budget) — full predicted-date detail via the kala temporal-activation drill.`,
-              )
+              ))
             }
             // T-12/T-13 (honest-flags-only this wave): kala_activation windows are a single
             // transit/dasha cycle's worth of resolution, not a multi-cycle recurrence model
             // (the multi-cycle generator is D-3 scope) — disclose so a caller never reads
             // "no activation returned" as "this never recurs".
             if (Array.isArray(timing['kala_activations']) && (timing['kala_activations'] as unknown[]).length > 0) {
-              judgment_flags.push(
-                'kala_activations_single_cycle: the kala_activations timing hook reflects ONE ' +
+              judgment_flags.push(judgmentFlag(
+                'kala_activations_single_cycle',
+                'the kala_activations timing hook reflects ONE ' +
                 'resolved dasha/convergence window per signal, not an exhaustive multi-cycle ' +
                 'recurrence forecast (the multi-cycle generator is out of this wave\'s scope, D-3) ' +
                 '— treat as "at least one activation window exists", not "the only one ever".',
-              )
+              ))
             }
           }
         } catch {
@@ -812,14 +819,15 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         const hasActivationRows = Array.isArray(timing['kala_activations']) && (timing['kala_activations'] as unknown[]).length > 0
         timingAnchored = currentRows.length > 0 || hasWindowRows || hasActivationRows
         if (!timingAnchored) {
-          judgment_flags.push(
-            'timing_anchored_false: dasha fetches succeeded but returned zero rows for the ' +
+          judgment_flags.push(judgmentFlag(
+            'timing_anchored_false',
+            'dasha fetches succeeded but returned zero rows for the ' +
             'current period, every mahadasha window checked, and kala_activation — reported ' +
             'honestly as not-anchored rather than claiming success over an empty payload (CR-1/63 class).',
-          )
+          ))
         }
       } catch (e) {
-        judgment_flags.push(`timing_hook_failed: ${String(e)}`)
+        judgment_flags.push(judgmentFlag('timing_hook_failed', String(e)))
       }
 
       // ── Step 8: deterministic promise-register verdict (never an LLM judgment) ──
@@ -1004,23 +1012,25 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           valence: r.valence, citation_human: r.citation_human,
         }))
       } catch (e) {
-        judgment_flags.push(`afflictions_fetch_failed: ${String(e)}`)
+        judgment_flags.push(judgmentFlag('afflictions_fetch_failed', String(e)))
       }
       if (bearing_afflictions.length === 0 && affliction_mechanisms.length === 0) {
-        judgment_flags.push(
-          'afflictions_empty: no adverse-valence (malefic/mixed) signal or affliction mechanism ' +
+        judgment_flags.push(judgmentFlag(
+          'afflictions_empty',
+          'no adverse-valence (malefic/mixed) signal or affliction mechanism ' +
           'bears on this domain — reported honestly (DR-9 Part B partitioned serve; an honest ' +
           'empty threat layer, not an omission).',
-        )
+        ))
       } else {
-        judgment_flags.push(
-          `afflictions_present: ${bearing_afflictions.length} adverse signal(s) + ` +
+        judgment_flags.push(judgmentFlag(
+          'afflictions_present',
+          `${bearing_afflictions.length} adverse signal(s) + ` +
           `${affliction_mechanisms.length} affliction mechanism(s) served in the THREAT layer ` +
           '(DR-9 Part B, native-ratified). The verdict is a SIGNED composite; the supporting ' +
           '(bearing_yogas) and threatening (bearing_afflictions/affliction_mechanisms) layers are ' +
           'served SEPARATELY, each with its own §N.6 hardFloor — neither crowds out the other. A ' +
           'unified top-K would fill with the benefic yogas and hide the adverse content (D-16/G-04).',
-        )
+        ))
       }
 
       // Astrologically typed per design §28.4 ("the closed pointer vocabulary becomes

@@ -44,6 +44,7 @@ import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
 import { getOrCreateSession, persistActiveChartAndPin } from '../lib/session.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -149,17 +150,20 @@ export function registerChartSelectionTools(
         }
       }
 
-      const result = {
-        ok: true,
-        count: charts.length,
-        charts: charts.map((c) => ({
-          index: c.index,
-          chart_id: c.id,
-          display_name: c.display_name,
-        })),
-        usage_hint:
-          'Pass chart_id to chart-scoped tools, or use select_chart to validate a choice.',
-      }
+      const result = budgetMcpContent(
+        {
+          ok: true,
+          count: charts.length,
+          charts: charts.map((c) => ({
+            index: c.index,
+            chart_id: c.id,
+            display_name: c.display_name,
+          })),
+          usage_hint:
+            'Pass chart_id to chart-scoped tools, or use select_chart to validate a choice.',
+        },
+        'list_my_charts',
+      )
 
       return {
         content: [
@@ -268,11 +272,13 @@ export function registerChartSelectionTools(
         result['advisories'] = advisories
       }
 
+      const budgeted = budgetMcpContent(result, 'select_chart')
+
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify(budgeted, null, 2),
           },
         ],
       }

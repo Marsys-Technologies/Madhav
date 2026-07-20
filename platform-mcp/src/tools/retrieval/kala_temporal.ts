@@ -61,6 +61,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
 import { describeProxyFailure } from '../registry_bridge.js'
+import { budgetMcpContent } from '../../lib/response_budget.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -540,12 +541,13 @@ export function registerKalaTemporalRetrievalTool(server: McpServer, principal: 
         input.include_snapshot,
         principal
       )
+      const budgeted = budgetMcpContent(result, TOOL_NAME)
 
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify(budgeted, null, 2),
           },
         ],
       }

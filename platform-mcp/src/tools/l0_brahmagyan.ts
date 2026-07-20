@@ -19,6 +19,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { classifyScope } from './intent_scope_classifier.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // REMEDIATION D7: NATIVE_CHART_ID removed.
 // intent_classify is a global tool — it MUST NOT stamp a chart_id on every call.
@@ -88,7 +89,7 @@ export function registerResolveEntityTool(server: McpServer): void {
           signal: AbortSignal.timeout(10_000),
         })
         if (!res.ok) throw new Error(`resolve_entity failed: ${res.status}`)
-        const result = await res.json()
+        const result = budgetMcpContent(await res.json(), 'resolve_entity')
         return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -152,7 +153,7 @@ export function registerListEntitiesTool(server: McpServer): void {
           signal: AbortSignal.timeout(10_000),
         })
         if (!res.ok) throw new Error(`list_entities failed: ${res.status}`)
-        const result = await res.json()
+        const result = budgetMcpContent(await res.json(), 'list_entities')
         return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -178,7 +179,7 @@ export function registerAssetRegistryAllTool(server: McpServer): void {
     AssetRegistryAllInput.shape,
     async (_params) => {
       try {
-        const result = await callRegistryCapability('marsys://resource/asset-registry/all', {})
+        const result = budgetMcpContent(await callRegistryCapability('marsys://resource/asset-registry/all', {}), 'asset_registry_all')
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
@@ -206,7 +207,7 @@ export function registerAssetRegistryL0Tool(server: McpServer): void {
     AssetRegistryL0Input.shape,
     async (_params) => {
       try {
-        const result = await callRegistryCapability('marsys://resource/asset-registry/L0', {})
+        const result = budgetMcpContent(await callRegistryCapability('marsys://resource/asset-registry/L0', {}), 'asset_registry_l0')
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
@@ -245,7 +246,7 @@ export function registerIntentClassifyTool(server: McpServer): void {
     // classifier; the old rendered prompt is retained as fallback_prompt.
     async (params) => {
       const input = IntentClassifyInput.parse(params)
-      const result = classifyScope(input.query)
+      const result = budgetMcpContent(classifyScope(input.query), 'intent_classify')
       return {
         content: [
           { type: 'text' as const, text: JSON.stringify(result, null, 2) },

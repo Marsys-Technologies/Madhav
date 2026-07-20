@@ -89,7 +89,9 @@ describeIf('get_dasha_lord_capability — live DB', () => {
     // gap is disclosed via judgment_flags (never silently dropped).
     const rahu = rows.find(r => r['lord'] === 'Rahu')!
     expect(rahu['house_class']).toBeNull()
-    const judgment_flags = content['judgment_flags'] as string[]
-    expect(judgment_flags.some(f => f.includes('house_class_unresolved') && f.includes('Rahu'))).toBe(true)
+    const judgment_flags = content['judgment_flags'] as Array<{ code: string; detail?: string } | string>
+    expect(judgment_flags.some(f =>
+      typeof f !== 'string' && f.code === 'house_class_unresolved' && (f.detail ?? '').includes('Rahu')
+    )).toBe(true)
   })
 })

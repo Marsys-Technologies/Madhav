@@ -227,7 +227,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
     max_digest_bytes: 1_500_000, // existing H-12 size guard on this tool (see estimatedBytes check below)
     paginated: true,
     facets: ['domain', 'source_subsystem', 'paradigm', 'signal_type_class', 'min_salience', 'lel_enabled', 'projection', 'frame'],
-    empty_reason: false, // returns total_matching_filters/returned_count receipts; explicit empty_reason string not yet added
+    // W3 "One Envelope" (2026-07-20): was `false` with a "not yet added" note — the
+    // handler now sets `content.empty_reason` naming the active filter set whenever
+    // `signals.length === 0`, alongside the pre-existing returned_count/
+    // total_matching_filters receipts.
+    empty_reason: true,
   },
 
   required_inputs: ['chart_id'],
@@ -619,6 +623,21 @@ export const querySignalsCapability: CapabilityDescriptor = {
         total_matching_filters = null
       }
 
+      // W3 "One Envelope" (density_contract.empty_reason implementation, CLAUDE.md §N.6
+      // point 3 / B.10): `returned_count`/`total_matching_filters` already existed as
+      // receipts, but a zero-row page shipped no field naming WHY — this closes that gap
+      // by naming the actual active filter set whenever nothing survived it.
+      const empty_reason = signals.length === 0
+        ? `No bodha_msr_signals rows matched for chart ${chart_id}` +
+          (domain ? ` domain='${domain}'` : '') +
+          (source_subsystem ? ` source_subsystem='${source_subsystem}'` : '') +
+          (signal_type_class ? ` signal_type_class='${signal_type_class}'` : '') +
+          (paradigm ? ` paradigm='${paradigm}'` : '') +
+          (min_salience ? ` min_salience>=${min_salience}` : '') +
+          (lel_enabled ? ' lel_enabled=true (0 rows currently — no LEL signals ingested yet)' : '') +
+          '.'
+        : undefined
+
       const responseContent = {
         chart_id,
         frame,
@@ -627,6 +646,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         signals,
         returned_count: signals.length,
         total_matching_filters,
+        ...(empty_reason ? { empty_reason } : {}),
         truncated,
         ...(truncated_from !== undefined ? { truncated_from } : {}),
         ranking_basis,

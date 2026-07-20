@@ -12,6 +12,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { scan, fetchByIds, type ScanFetchConfig } from '../lib/scan_fetch.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -97,7 +98,10 @@ export function registerScanFetchTool(server: McpServer, principal: Principal): 
           if (ids.length === 0) {
             return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: false, error: 'fetch mode requires ids[] (get them from a mode="scan" call first)' }) }], isError: true }
           }
-          const result = fetchByIds(rows, ids, SIGNAL_SCAN)
+          // fetch mode's full rows are only bounded by the size of ids[] the caller passed
+          // (scan mode already self-limits via max_scan_bytes) — budgetMcpContent is the
+          // backstop for a caller that fetches a large id set.
+          const result = budgetMcpContent(fetchByIds(rows, ids, SIGNAL_SCAN), 'scan_fetch_signals')
           return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
         }
 

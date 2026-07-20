@@ -79,9 +79,19 @@ async function fetchWealthSignals(ctx: RunContext, maxPages = 10, pageSize = 10)
   return promise
 }
 
+// W3-L2: judgment_flags entries are now `{code, detail?, severity?}` (closed enum) OR — during
+// the transition, and for any not-yet-migrated emitter — a bare legacy string. This harness
+// calls the LIVE deployed connector over MCP, so it must tolerate either shape defensively,
+// never assume the pre-migration `string[]`.
+type JudgmentFlagEntryLike = { code: string; detail?: string } | string
+
+function judgmentFlagsIncludeCode(flags: JudgmentFlagEntryLike[], code: string): boolean {
+  return flags.some(f => (typeof f === 'string' ? f === code || f.startsWith(`${code}:`) : f.code === code))
+}
+
 function ganitaYogasV3Payload(content: unknown): {
   verdict: { pancha_mahapurusha?: { summary?: string } }
-  judgment_flags: string[]
+  judgment_flags: JudgmentFlagEntryLike[]
   coverage: { served?: number | null; total?: number | null } | null
   rows: Array<{ fact_category?: string }>
   total: number | null
@@ -89,7 +99,7 @@ function ganitaYogasV3Payload(content: unknown): {
 } {
   const top = content as {
     verdict?: { pancha_mahapurusha?: { summary?: string } }
-    judgment_flags?: string[]
+    judgment_flags?: JudgmentFlagEntryLike[]
     coverage?: { served?: number | null; total?: number | null }
     // D-1.5a wave gate finding (live post-deploy verification): this tool's response
     // shape is `content.rows`/`content.total`/`content.firings_pointer` (single-nested)
@@ -462,7 +472,7 @@ const k2_11: AssertionDef = {
 
     const { content } = await ctx.client.callTool('ganita_yogas_get', { chart_id: ctx.chartId, limit: 60, response_format: 'v3' })
     const { judgment_flags, coverage, rows } = ganitaYogasV3Payload(content)
-    const hasZeroFlagOnNonEmpty = rows.length > 0 && judgment_flags.includes('zero_rows_returned')
+    const hasZeroFlagOnNonEmpty = rows.length > 0 && judgmentFlagsIncludeCode(judgment_flags, 'zero_rows_returned')
     const servedMismatch = coverage?.served !== rows.length
 
     const problems: string[] = []

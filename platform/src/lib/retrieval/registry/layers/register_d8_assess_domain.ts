@@ -39,6 +39,7 @@ import { query } from '@/lib/db/client'
 import { deriveDefect001Note } from '../../provenance/freshness_notes'
 import { resolveAddress } from '../../address_resolver'
 import { SHASTRA_MAP } from './register_d9_judgment'
+import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 
 // Y-2 (D-1.6 Lane S-3, CRIT): assess_* domain-bearing yoga discount, mirroring
 // judgment_query's YOGA_BHANGA_DISCOUNT (register_d9_judgment.ts) semantics — a firing whose
@@ -598,32 +599,32 @@ async function runAssessDomain(
           signal_id_refs: signalRefs,
         },
         judgment_flags: [
-          {
-            claim: judgment_flag_note,
-            requires_acharya_validation: true,
-          },
+          judgmentFlag('domain_inference_requires_acharya_validation', judgment_flag_note, 'warning'),
           ...(bearingYogaFirings.length === 0
-            ? [{
-                claim: 'bearing_yoga_firings_empty: no fired rows returned from ga_yoga_firings ' +
+            ? [judgmentFlag(
+                'bearing_yogas_empty',
+                'no fired rows returned from ga_yoga_firings ' +
                   '(firings-authoritative) for this chart/ayanamsha — honest absence, not fabricated.',
-                requires_acharya_validation: false,
-              }]
+                'info',
+              )]
             : !bearingYogaFirings.some(y => y['domain_match'] === true)
-            ? [{
-                claim: `bearing_yoga_firings_no_domain_match: ${bearingYogaFirings.length} yoga(s) ` +
+            ? [judgmentFlag(
+                'bearing_yogas_no_domain_match',
+                `${bearingYogaFirings.length} yoga(s) ` +
                   `fired on this chart but none name only this domain's bhāveśa/kāraka(s) — shown ` +
                   'for context (Y-2, D-1.6/S-3).',
-                requires_acharya_validation: false,
-              }]
+                'info',
+              )]
             : []),
-          {
-            claim: 'bearing_yoga_firings (ga_yoga_firings) is the firings-authoritative source; ' +
+          judgmentFlag(
+            'catalog_only_rows_present',
+            'bearing_yoga_firings (ga_yoga_firings) is the firings-authoritative source; ' +
               'by_stage.yoga / verdict_skeleton.by_stage.yoga (bodha_msr_signals) are single-pass ' +
               'catalog-label matches (JL-004) and must never be read as confirmed findings ' +
               '(CLAUDE.md §N.6.1).',
-            requires_acharya_validation: false,
-          },
-        ],
+            'info',
+          ),
+        ] satisfies JudgmentFlagEntry[],
         provenance: {
           tables: [
             'bodha_msr_signals',

@@ -52,7 +52,7 @@ import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
 import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME, type HouseNumber } from '@/lib/retrieval/address_resolver'
-import { extractGroundingFromFactRows } from '../../envelope'
+import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 
 /** `about` facet resolution result for chart_facts_query — mirrors the shape the handler needs
  *  (fact_subject codes to feed into the whitelisted SQL below), backed by the canonical
@@ -1233,8 +1233,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         const label = rect?.confidence_label ?? 'no_rectification_run'
         const belowThreshold = label !== 'high' && label !== 'resolved'
         if (belowThreshold) {
-          const flags = Array.isArray(content['judgment_flags']) ? content['judgment_flags'] as string[] : []
-          flags.push('time_sensitive_low_confidence')
+          const flags = Array.isArray(content['judgment_flags']) ? content['judgment_flags'] as JudgmentFlagEntry[] : []
+          flags.push(judgmentFlag('time_sensitive_low_confidence', 'see time_sensitivity_note for the §31.4 ladder detail.'))
           content['judgment_flags'] = flags
           content['time_sensitivity_note'] = [
             `D60 (Shashtiamsha) lagna-dependent claims require sensitive_extreme birth-time`,

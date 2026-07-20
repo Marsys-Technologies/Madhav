@@ -9,7 +9,7 @@
  * Tool: marsys://tool/L1/get_chart_header
  */
 import type { CapabilityDescriptor } from '../../types'
-import { fetchChartHeader } from '../../../chart_header'
+import { fetchChartHeaderResolution } from '../../../chart_header'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 
 export const getChartHeaderCapability: CapabilityDescriptor = {
@@ -46,8 +46,13 @@ export const getChartHeaderCapability: CapabilityDescriptor = {
       if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
       const ayanamsha_id = (args.ayanamsha_id as string | undefined) ?? DEFAULT_AYANAMSHA
       const as_of_date = args.as_of_date as string | undefined
-      const header = await fetchChartHeader(chart_id, ayanamsha_id, as_of_date)
-      return { content: header, is_error: false }
+      // W3-L1 (GT-47 / W-9): resolve via the flags-carrying path so a DB-level failure
+      // (fields nulled, `flags` non-empty) is visible to the caller via `metadata.flags`
+      // instead of silently indistinguishable from "this chart genuinely has no header
+      // data". `is_error` stays false — the header is still best-effort content, never a
+      // hard failure of this capability call.
+      const { header, flags } = await fetchChartHeaderResolution(chart_id, ayanamsha_id, as_of_date)
+      return { content: header, is_error: false, ...(flags.length > 0 ? { metadata: { flags } } : {}) }
     } catch (err) {
       return { content: String(err), is_error: true }
     }

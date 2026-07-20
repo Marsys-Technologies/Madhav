@@ -37,7 +37,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
-import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // R5.2 A2 (punch #3, estate-wide budget sweep): phala_outlook's default call measured
 // 461KB on the native chart — the worst offender in the "234KB class" the brief names,
@@ -275,18 +275,23 @@ export function registerPhalaOutlookTool(server: McpServer, principal: Principal
           { minConfidence: input.min_confidence }
         )
 
-        const budgeted = applyResponseBudget(result, PHALA_OUTLOOK_BUDGET_KB, phalaOutlookSections())
-        if (budgeted.trim_report) {
-          budgeted.content.trim_report = budgeted.trim_report
-        }
+        // W3-L5 (budget unification, R-2 item 5 / W-8): migrated off the bare
+        // applyResponseBudget call — that mechanism measures the trim BEFORE attaching
+        // trim_report, so a response needing many trims could ship OVER budget once
+        // trim_report's own bytes were added back in (the exact gap finalizeMcpBudget's
+        // self-verifying re-measurement closes; see response_budget.ts's doc-comment).
+        const budgeted = finalizeMcpBudget(result as unknown as Record<string, unknown>, {
+          maxKb: PHALA_OUTLOOK_BUDGET_KB,
+          sections: phalaOutlookSections() as unknown as TrimmableSection<Record<string, unknown>>[],
+        })
 
         return {
           content: [
             {
               type: 'text' as const,
-              // Compact, not pretty-printed — applyResponseBudget measures compact bytes;
+              // Compact, not pretty-printed — the budget mechanism measures compact bytes;
               // pretty-printing after trimming would ship larger than the declared ceiling.
-              text: JSON.stringify(budgeted.content),
+              text: JSON.stringify(budgeted),
             },
           ],
         }
