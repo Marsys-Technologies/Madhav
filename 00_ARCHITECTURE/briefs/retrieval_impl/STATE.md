@@ -53,7 +53,7 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
 |---|---|---|---|
 | 2026-07-19 19:12–19:34 | retrieval | W0 S-1..S-5 safety deploy (PR #633 → main `2f4b67e8` → amjis-mcp `amjis-mcp-00440-n29` + amjis-web `amjis-web-01031-rmj`, 100% traffic) | **RELEASED** 2026-07-19 19:5x, post live-verification |
 | 2026-07-20 (claimed pre-merge) | retrieval | W2 phase 1 deploy: descriptor migration + vidhi de-mirror + 6 dark-set items, incl. two NEW live sidecar routes (ephemeris compute, muhurta score) — requires python-sidecar + platform-mcp redeploy, not just platform/web. Pre-deploy check: D-5 is HALTED (§ D-5 STATUS REFRESH above); most recent `origin/main` activity is D-5's `gate_run_2` (docs-only push, `Build & Deploy Web/MCP/Sidecar` all skipped — confirmed no live D-5 code deploy in flight). Baseline re-snapshot: this campaign's last live probe was W0's `VERIFY_W0.md` (2026-07-19); a fresh post-deploy live probe of the two new sidecar routes substitutes for a full baseline re-snapshot here, since W1/W2 phase 1 added no regression-risk to the surfaces W0 already verified. | **RELEASED** 2026-07-20, post live-verification |
-| 2026-07-20 (claimed pre-merge) | retrieval | W3 deploy: PR #661 (`impl/wave-3` → `main`), full envelope/flags/register/cursor/budget/density/demand/cache surface. Pre-deploy check: D-5's RED-C (#650) and RED-D (#651) fixes both merged, no D-5 PR open (mutex reads clear); **native explicit confirmation received** (2026-07-20) that D-5 is quiet enough for a non-breaking deploy — the stale `worktree-wave+D-5+conductor` branch ruled not a blocker. Native rulings on the two flagged kala-adjacent touches: `kala_temporal.ts`'s budget wrapper stays (plane infrastructure, revert-on-objection — filed as a §I.5 note in `STATE_D-5.md`, PR #662); `L3_kala/query_projections`'s conservative density_contract stance approved, measured override deferred until the kala freeze lifts. Baseline re-snapshot: live-probed `get_cgm_subgraph(mode=convergence)` and `judgment_query(domain=wealth, response_format=v3)` against chart 482012f1 immediately before this deploy (the "before" half of the native's requested before/after diff) — see `VERIFY_W3.md` §2 for the full capture. Alias cutover + bootstrap flag-flip remain parked (unchanged ruling, does not follow from this go-ahead). | pending post-deploy verification |
+| 2026-07-20 (claimed pre-merge) | retrieval | W3 deploy: PR #661 (`impl/wave-3` → `main`), full envelope/flags/register/cursor/budget/density/demand/cache surface. Pre-deploy check: D-5's RED-C (#650) and RED-D (#651) fixes both merged, no D-5 PR open (mutex reads clear); **native explicit confirmation received** (2026-07-20) that D-5 is quiet enough for a non-breaking deploy — the stale `worktree-wave+D-5+conductor` branch ruled not a blocker. Native rulings on the two flagged kala-adjacent touches: `kala_temporal.ts`'s budget wrapper stays (plane infrastructure, revert-on-objection — filed as a §I.5 note in `STATE_D-5.md`, PR #662); `L3_kala/query_projections`'s conservative density_contract stance approved, measured override deferred until the kala freeze lifts. Baseline re-snapshot: live-probed `get_cgm_subgraph(mode=convergence)` and `judgment_query(domain=wealth, response_format=v3)` against chart 482012f1 immediately before this deploy (the "before" half of the native's requested before/after diff) — see `VERIFY_W3.md` §2 for the full capture. Alias cutover + bootstrap flag-flip remain parked (unchanged ruling, does not follow from this go-ahead). | **RELEASED** 2026-07-20, post live-verification (see `VERIFY_W3.md`) |
 
 ### W2 PHASE 1 CLOSE (2026-07-20)
 
@@ -1617,3 +1617,32 @@ native confirms D-5 is quiet, even though the mutex reads clear (no open D-5 PR)
 moment this entry is written; a `worktree-wave+D-5+conductor` branch is still live,
 suggesting D-5's own conductor session may still be re-running its §G gate against the
 RED-C/RED-D fixes.
+
+### W3 CLOSE (2026-07-20)
+
+Native go-ahead received (D-5 confirmed quiet: RED-C #650 and RED-D #651 both merged,
+mutex read clear; the two flagged kala-adjacent touches ruled acceptable — see §I.5 note
+in `STATE_D-5.md`, PR #662). Merged: PR #661 (`impl/wave-3` → `main`, merge commit
+`7f0ff1a0`), all 15 CI checks green. Deploy (triggered automatically on push): `Build &
+Deploy Web` + `Build & Deploy MCP` both succeeded; `Sidecar`/`Pipeline Job Image`
+correctly skipped (W3 touched zero python-sidecar files). Full live-verification record:
+`VERIFY_W3.md` — every named W3 deliverable (v3 envelope honesty, closed flag enum,
+register/reading_contract/signal_reader_text, cursor fingerprints, budget unification,
+density_contract, demand_ranking, ledger_version) confirmed on the deployed connector via
+a genuine before/after diff on `judgment_query(domain=wealth, response_format=v3)`, chart
+482012f1 — not inferred from source or unit tests alone. The native's specifically
+requested CGM convergence probe (`get_cgm_subgraph(mode=convergence)`) came back
+byte-identical before/after, which is itself an honest finding: that capability has no
+`response_format` param and cannot reach v3 today, and its `limit` request has no live
+effect (the real control, `top_k_hubs`, isn't exposed on this tool's MCP schema) —
+recorded as a residual, not silently substituted.
+
+**W3: CLOSED, V3 ACCEPT.** Residuals carried forward (full list in `VERIFY_W3.md` §7):
+`register_p1_ganita.ts`'s two unfixed silent chart_header sites; the session-pin
+`judgment_flags` subsystem outside L2's scope; `L3_kala/query_projections`'s generic
+density_contract default (native-approved to stay deferred pending the kala freeze
+lifting); no full 162-capability live sweep was performed (CI suite is the broad-surface
+evidence); no live `verbosity:concise` probe was run; `get_cgm_subgraph`'s v3/`limit` gap
+named for a future wave. **Alias cutover + bootstrap flag-flip remain parked** — the
+native's go-ahead for W3 explicitly did not extend to those W2-parked items. W4 (One
+Planner) is next, pending native go-ahead.
