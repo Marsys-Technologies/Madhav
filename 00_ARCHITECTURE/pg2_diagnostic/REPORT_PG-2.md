@@ -189,6 +189,38 @@ handedly unblocks the wave's second-most-consequential open question), ahead of
 `codegen:check` CI-wiring (PG-1's original #1, still valid, now #2). Full list in
 `PG2_DIAGNOSTIC_REPORT_v1_0.md`.
 
+## Addendum (2026-07-20 / PG-2 post-close) — cross-campaign ownership + merge status
+
+**`bundle_hydrator.ts:25`'s hardcoded `FLOOR_ASSET_IDS=['FORENSIC','CGM']` fix is
+reassigned, not PG-2's to make.** PG-2 correctly stopped at diagnosis (§F2 read-only
+discipline). Native ruling (2026-07-20): this fix is now **owned by the retrieval
+campaign's W4 wave** — that workstream is already active in the consult-route area
+(`/api/chat/consult`) and needs a working chat engine to verify its floor-adoption
+work. No live W4-specific state file was reachable from this checkout to file the
+note directly into their ledger (the `ret/strategy-s1` worktree present is a closed
+prior audit, not an active W4 branch); the assignment is recorded here and in
+`CURRENT_STATE_v1_0.md` pending W4's own session picking it up.
+
+**Merge status verified 2026-07-20, NOT via PG-2 itself** (post-close, by the
+diagnostic bot that surfaced this branch's PR): a merge-preview of `pg2/wave` onto
+current `origin/main` plus a schema_validator diff against a main-only baseline found
+**37 pre-existing violations are pure staleness** (present on main regardless of this
+branch, exit=3-tolerated) and **exactly 2 HIGH-severity violations are genuine PG-2
+damage** — this entry's own `SESSION_LOG.md` heading used `#` instead of the schema's
+required `## <session_id> — ...` H2 form, and `session_open.session_id` disagreed
+with `session_close.session_id` (`PG-2-CONDUCTOR-2026-07-19` vs
+`PG-2-CONDUCTOR-CLOSE-2026-07-19`). Both are fixable in this entry alone (heading
+level + reconciling the two session_ids to one value) and were confirmed to clear the
+exit code back to `3` in the preview. A residual `CURRENT_STATE_v1_0.md.last_session_id`
+pointer conflict against D-5 remains — the concurrent-edit conflict this report's own
+§C anticipated — and needs resolving at actual merge time, not deferred again.
+
+**Merge coordination ruling (native, 2026-07-20):** PG-2 (PR #620) merges only when
+its own CI is fully green (the SESSION_LOG fix above + the CURRENT_STATE pointer
+reconciliation), **and only in a deploy-mutex window that does not interleave with
+the retrieval campaign's W4 wave-branch merge.** Standard one-wave-deploys-at-a-time
+rule applies across campaigns, not just within one.
+
 ## Rollback pin
 
 Not applicable — PG-2 is read-only on application source with one authorized fenced

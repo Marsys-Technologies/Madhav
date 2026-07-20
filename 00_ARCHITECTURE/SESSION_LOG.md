@@ -32196,7 +32196,7 @@ session_close:
 
 ---
 
-# PG-2 — Paripraśna Open-Question Diagnostic — Conductor Close (2026-07-19)
+## PG-2-CONDUCTOR-2026-07-19 — PG-2 Paripraśna Open-Question Diagnostic — Conductor Close
 
 **Note on log ordering**: PG-1's own SESSION_LOG close entry lives on branch `pg1/wave`
 (PR #613, still unmerged to `origin/main` at this wave's close) and is therefore absent
@@ -32244,7 +32244,7 @@ detail: `REPORT_PG-2.md`.
 
 ```yaml
 session_close:
-  session_id: PG-2-CONDUCTOR-CLOSE-2026-07-19
+  session_id: PG-2-CONDUCTOR-2026-07-19
   wave: PG-2
   close_criteria_met: true
   verification: "6/6 lanes Opus-floor Phase-1 ACCEPT on first attempt (Z-2's transient API-error retry lost no committed work, protocol §6.4, not counted); §G gate GREEN on all 11 assertions incl. all 7 integrity assertions, confirmed by an independent fresh-context Opus gate runner + its own adversarial anti-gaming pass, with 2 post-review corrections applied and re-verified; final proof PASS (both central questions answered from probes this wave ran, quoted verbatim in REPORT_PG-2.md)"
@@ -32258,4 +32258,4 @@ session_close:
   next_session_objective: "Native reviews REPORT_PG-2.md's disposition items (OT-11 decision, bundle_hydrator fix, coverage gap, PR #613 status) and the reprioritized recommended-fixes list. PG-2's own PR is opened per ESCALATION_POLICY §0 auto-proceed, held for human review pending PR #613's disposition (same reasoning PG-1's conductor applied to its own PR)."
 ```
 
-*End of PG-2-CONDUCTOR-CLOSE-2026-07-19 entry — 2026-07-19.*
+*End of PG-2-CONDUCTOR-2026-07-19 entry — 2026-07-19.*
