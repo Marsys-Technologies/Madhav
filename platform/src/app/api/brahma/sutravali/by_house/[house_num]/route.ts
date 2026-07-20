@@ -11,8 +11,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
-const INTERNAL_TOKEN = process.env.MCP_INTERNAL_TOKEN ?? ''
 const SIDECAR_URL = (process.env.PYTHON_SIDECAR_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 const SIDECAR_KEY = process.env.PYTHON_SIDECAR_API_KEY ?? ''
 
@@ -20,8 +20,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ house_num: string }> }
 ): Promise<NextResponse> {
-  const token = req.headers.get('x-mcp-internal-token') ?? ''
-  if (INTERNAL_TOKEN && token !== INTERNAL_TOKEN) {
+  if (!validateServiceToken(req)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 

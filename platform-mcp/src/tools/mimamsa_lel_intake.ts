@@ -36,6 +36,7 @@ import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
 import { callPlatformPrimitive } from '../client.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -285,35 +286,36 @@ export function registerMimamsaLelIntakeTool(server: McpServer, principal: Princ
         }
       }
 
+      const budgeted = budgetMcpContent(
+        {
+          ok: true,
+          events: payload.events,
+          total_count: payload.total_count,
+          count: payload.count,
+          filter_applied: payload.filters ?? {
+            domain: params.domain ?? null,
+            date_from: params.date_from ?? null,
+            date_to: params.date_to ?? null,
+            limit: params.limit ?? 100,
+          },
+          provenance_envelope: {
+            source: 'mimamsa.lel_intake',
+            asset: 'MI-5-1',
+            lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
+            total_events: payload.total_count,
+            no_leakage_note: 'life_events is calibration corpus only — must not feed prediction generation',
+            b3_compliant: true,
+            queried_at: new Date().toISOString(),
+          },
+        },
+        'lel_query',
+      )
+
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(
-              {
-                ok: true,
-                events: payload.events,
-                total_count: payload.total_count,
-                count: payload.count,
-                filter_applied: payload.filters ?? {
-                  domain: params.domain ?? null,
-                  date_from: params.date_from ?? null,
-                  date_to: params.date_to ?? null,
-                  limit: params.limit ?? 100,
-                },
-                provenance_envelope: {
-                  source: 'mimamsa.lel_intake',
-                  asset: 'MI-5-1',
-                  lel_version: 'LIFE_EVENT_LOG_v1_2.md v1.7',
-                  total_events: payload.total_count,
-                  no_leakage_note: 'life_events is calibration corpus only — must not feed prediction generation',
-                  b3_compliant: true,
-                  queried_at: new Date().toISOString(),
-                },
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify(budgeted, null, 2),
           },
         ],
       }

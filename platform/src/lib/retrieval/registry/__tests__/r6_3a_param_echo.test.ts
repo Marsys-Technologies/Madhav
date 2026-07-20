@@ -148,7 +148,9 @@ describe('R-27 fix — list_entities class vocabulary', () => {
   it('aliases entity_class="graha" to the stored "planet" value', async () => {
     await listEntitiesCapability.handler({ entity_class: 'graha' }, undefined)
     const [sql, params] = queryMock.mock.calls[0] as [string, unknown[]]
-    expect(sql).toMatch(/entity_class = \$2/)
+    // W3 (cursor filter/sort fingerprint) added an `offset` bind param ahead of the filter
+    // param — $1=limit, $2=offset, $3=entity_class (was $2 pre-W3, no offset param existed).
+    expect(sql).toMatch(/entity_class = \$3/)
     expect(params).toContain('planet')
   })
 

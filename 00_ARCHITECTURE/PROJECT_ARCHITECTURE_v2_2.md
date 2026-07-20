@@ -175,6 +175,8 @@ Every query, before producing its answer, must execute a mandatory cross-domain 
 
 A query-answer that skips L2.5 consultation is a procedural violation, equivalent to a red-team finding.
 
+**Proportionality carve-out (RS-4, native-authorized 2026-07-19; source: `RETRIEVAL_STRATEGY_v1_0.md` §3.6).** B.11 governs *interpretive* queries. A pinpointed *factual lookup* (single-fact retrieval at `depth: retrieval`) satisfies B.11 via the frame check its response already carries (chart_header + session pin), not a full L2.5 synthesis pass — with the mandatory escalation valve: if the requested fact participates in an active contradiction, firing yoga, or open prediction window, the response flags that in one line with a drill pointer. The valve is what keeps the carve-out inside B.11's spirit: no unrequested depth, no silence where depth is warranted.
+
 ### B.12 — Completeness Guarantee Refusal (NEW in v2.0)
 
 L2 analytical work refuses to interpret against incomplete L1 data. When a cell in the Completeness Guarantee Protocol audit is marked TBD, EXTERNAL_REQUIRED, or MISSING, any L2 work that would consume that cell explicitly flags the gap and waits for resolution. Interpretation shall not paper over a missing fact with "likely" or "probably" — it shall name the gap and pause.
@@ -885,7 +887,7 @@ Every artifact produced must pass this checklist:
 
 ### H.4 — Whole-Chart-Read Protocol (NEW v2.0)
 
-Every query answer must follow this protocol:
+Every **interpretive** query answer must follow this protocol. Pinpointed factual lookups follow the B.11 proportionality carve-out (RS-4, 2026-07-19) instead: frame check + escalation valve, skipping Phases 2–3.
 
 **Phase 1 — Query Intake**
 1. What is the primary domain of the query?
@@ -1183,6 +1185,12 @@ v2.2 §L is rewritten to a short steady-state pointer after Step 15 closes and `
 - Principle *intent* unchanged; only boundary references retitled. Per §B.8 versioning discipline, in-place amendment recorded here in lieu of a v2.3 bump because the canonical principles' meaning is preserved (only their referenced layer numbers updated to match the post-14F layer roster).
 - Authority: Phase 14F brief at `EXEC_BRIEF_PHASE_14F_L2_ARCHIVE_AND_GOVERNANCE_REFRESH_v1_0.md`.
 - Commit: `0812ecd` (14F atomic commit) + this changelog amendment commit.
+
+### 2026-07-19 — RS-4 amendment (B.11 proportionality carve-out; in-place, no version bump)
+
+- §B.11 — added the native-authorized proportionality carve-out: B.11 governs *interpretive* queries; pinpointed factual lookups (`depth: retrieval`) satisfy it via the frame check (chart_header + session pin) plus a mandatory escalation valve (one-line flag + drill pointer when the fact touches an active contradiction, firing yoga, or open prediction window). §H.4 preamble updated to match.
+- Principle intent preserved (no domain-siloed *interpretation*; the valve keeps material cross-domain context surfaced). Per the 14F precedent above, recorded as an in-place amendment.
+- Authority: native authorization 2026-07-19 (Cowork retrieval-strategy session); source doctrine `RETRIEVAL_STRATEGY_v1_0.md` §3.6; ruling id RS-4.
 
 ### 2026-05-30 — v2.3 amendment (Multi-Ayanamsha Build arc)
 

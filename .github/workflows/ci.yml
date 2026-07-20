@@ -79,6 +79,18 @@ jobs:
         # unmistakable in CI logs. Mutation-proven: removing a URI makes this step fail.
         run: npx vitest run src/lib/retrieval/registry/whitelist_resolution_invariant.test.ts
 
+      - name: GT-36 — parity_check bridge-failure invariant (RETRIEVAL_PLANE_ELEVATION_PLAN §1.5/§3 R-0.5)
+        # DURABLE GUARD. checkParity()/runParityCheck() previously had NO caller anywhere
+        # in CI (confirmed dead by repo-wide grep during S-4 investigation) and carried a
+        # bug where a failed MCP bridge import silently downgraded to an empty URI set,
+        # auto-passing whenever the Consume Chat registry was also empty. This step is now
+        # the live enforcement of the fixed invariant: a failed bridge import is ALWAYS a
+        # hard failure. Run as a dedicated, named gate for the same "unmistakable in CI
+        # logs" reason as WP-1.7 above. Does NOT hard-gate on pre-existing MCP_TOOL_TO_URI
+        # staleness (a separate, larger backlog — see parity_check.test.ts file header);
+        # it hard-gates only on the bridge module failing to load.
+        run: npx vitest run src/lib/retrieval/registry/parity_check.test.ts
+
   planner-regression:
     name: Planner Regression Gate
     runs-on: ubuntu-latest
@@ -352,6 +364,34 @@ jobs:
       - name: response_budget hardFloor regression test (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/response_budget_hard_floor.test.ts
+      - name: envelope codegen parity test (platform-mcp) — GT-9
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/r5_codegen_parity.test.ts
+      - name: vidhi registry codegen drift check (platform) — GT-56
+        run: npm run codegen:vidhi:check
+      - name: vidhi registry codegen parity test (platform-mcp) — GT-56
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/vidhi_codegen_parity.test.ts
+      - name: R-1 projection compiler — generate (chat/MCP/census/docs projections, additive-only)
+        # RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §3 R-1 item 2. DB-free (getCatalog() only
+        # enumerates already-registered descriptor objects; TOOL_CONTRACTS is a static
+        # in-memory array) — proves the generator runs clean against the live registry on
+        # every push, same as the vidhi/envelope generators above. Writes NEW generated
+        # artifacts under src/generated/projections/ + a comparison report under
+        # 00_ARCHITECTURE/briefs/retrieval_impl/ — nothing here is wired into any live-
+        # serving path (see the generator's own header comment).
+        run: npm run codegen:projections
+      - name: R-1 projection compiler parity/completeness gate
+        # Same source, tested directly (r5_codegen_parity discipline): imports the SAME
+        # pure builder functions the generator step above calls and asserts (1) every live
+        # capability is accounted for by the census/chat/MCP/docs projections with no drops
+        # or dupes, (2) every emitted entry is structurally valid (non-empty name/description,
+        # valid JSON-Schema input_schema, MCP-legal tool names), and (3) the comparison
+        # machinery vs. TOOL_CONTRACTS and the real registry_bridge.ts hand-written blocks is
+        # itself sound (mechanical-extractor tripwire against silent breakage). Divergence
+        # between generated and hand-written surfaces is EXPECTED and not itself a failure —
+        # see R1_PROJECTION_COMPILER_REPORT.md.
+        run: npx vitest run src/lib/retrieval/registry/__tests__/projection_compiler_parity.test.ts
 
   census-battery:
     # D-2 Lane V-0 (BRIEF_D2.md §F1 Lane V-0 / BIND_D-2.md §F1.7 ledger rows 1-5). Runs the

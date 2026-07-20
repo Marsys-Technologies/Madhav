@@ -33,7 +33,7 @@ export const getSadeSatiCapability: CapabilityDescriptor = {
     'downstream cross-references, Saturn retrograde subsets, ' +
     'and all related Saturn transit period types ' +
     '(Janma Shani, Anumukha Shani, Ardha-Ashtama Shani, Ashtama Shani, Dhaiya, Vishakha, Kantaka). ' +
-    'Covers 15 fact_categories (~8,800 rows for the native).',
+    'Covers 15 fact_categories (a large row set per chart).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },

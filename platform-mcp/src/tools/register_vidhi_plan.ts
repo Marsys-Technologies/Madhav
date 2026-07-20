@@ -17,18 +17,35 @@
  *
  * A NEW, self-contained file (own helpers, no shared imports from other register_*.ts) per
  * this lane's `may_touch` glob (`register_vidhi*.ts`) and the anti-collision discipline the
- * other register_*.ts files follow.
+ * other register_*.ts files follow. `lib/authz.ts` is a shared M0 helper (not a register_*.ts
+ * file), same import every other chart-scoped tool in this codebase uses — see S-3 fix below.
+ *
+ * S-3 (RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §1.5, GT-35): `plan_retrieval` used to compile a
+ * plan for ANY chart_id with zero authorize/entitle hits. Gated now via the same M0
+ * `remoteAuthorize` helper every other per-chart tool uses (e.g. phala_outlook.ts,
+ * mimamsa_lel_intake.ts, register_gochara_windows.ts) — checked BEFORE `buildVidhiPlan` runs.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { buildVidhiPlan } from '../resources/vidhi/plan_builder.js';
 import { notifyIfCapabilityStale } from '../resources/vidhi/capability_version.js';
+import { remoteAuthorize } from '../lib/authz.js';
+import type { Principal } from '../types.js';
+import { budgetMcpContent } from '../lib/response_budget.js';
 
 const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000;
 
+// W3-L5 (budget unification): route through the shared auto-detect budget mechanism
+// keyed off the `tool` field this file's handler stamps on every response.
 function dualOutput(data: unknown, isError = false) {
-  const structuredContent = { type: 'object' as const, object: data };
-  const json = JSON.stringify(data);
+  let finalData = data;
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+    const toolName = typeof obj['tool'] === 'string' ? obj['tool'] : 'unknown_tool';
+    finalData = budgetMcpContent(obj, toolName);
+  }
+  const structuredContent = { type: 'object' as const, object: finalData };
+  const json = JSON.stringify(finalData);
   const content =
     Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES
       ? [{ type: 'text' as const, text: '[large payload — see structuredContent]' }]
@@ -60,7 +77,7 @@ const observationSchema = z
   )
   .optional();
 
-export function registerVidhiPlanTool(server: McpServer): void {
+export function registerVidhiPlanTool(server: McpServer, principal: Principal): void {
   server.tool(
     'plan_retrieval',
     'Vidhi Engine (D-2): compile a retrieval PLAN for a chart question. Returns the resolved ' +
@@ -92,6 +109,20 @@ export function registerVidhiPlanTool(server: McpServer): void {
         .describe('Your cached capability_version. If stale, the response flags it and a tools/list_changed is emitted.'),
     },
     async (args) => {
+      // M0 entitlement gate (S-3) — checked BEFORE any plan compilation, same helper +
+      // same denial shape as every other per-chart tool (remoteAuthorize, lib/authz.ts).
+      const authorized = await remoteAuthorize(principal, args.chart_id);
+      if (!authorized) {
+        return dualOutput(
+          {
+            ok: false,
+            tool: 'plan_retrieval',
+            error: { class: 'entitlement_denied', message: 'AUTHZ_DENIED: not authorized to access this chart' },
+            chart_id: args.chart_id,
+          },
+          true,
+        );
+      }
       try {
         const plan = buildVidhiPlan({
           chart_id: args.chart_id,

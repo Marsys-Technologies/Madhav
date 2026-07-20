@@ -22,6 +22,7 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -197,22 +198,22 @@ export function registerHolisticBundleTool(
           },
         }
         const latency = Date.now() - t0
+        const budgetedError = budgetMcpContent(
+          {
+            ok: false,
+            tool: 'holistic_bundle',
+            brahma_unit: 'BO-2-8',
+            latency_ms: latency,
+            result: errorBundle,
+            error: message,
+          },
+          'holistic_bundle',
+        )
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(
-                {
-                  ok: false,
-                  tool: 'holistic_bundle',
-                  brahma_unit: 'BO-2-8',
-                  latency_ms: latency,
-                  result: errorBundle,
-                  error: message,
-                },
-                null,
-                2
-              ),
+              text: JSON.stringify(budgetedError, null, 2),
             },
           ],
         }
@@ -221,30 +222,31 @@ export function registerHolisticBundleTool(
       const latency = Date.now() - t0
       const envelope = bundle.provenance_envelope
 
+      const budgeted = budgetMcpContent(
+        {
+          ok: true,
+          tool: 'holistic_bundle',
+          brahma_unit: 'BO-2-8',
+          latency_ms: latency,
+          b11_floor_passed: envelope.b11_floor_passed,
+          summary: {
+            signal_count: envelope.signal_count,
+            graph_edge_count: envelope.graph_edge_count,
+            domain_link_count: envelope.domain_link_count,
+            resonance_count: envelope.resonance_count,
+            subsystems_ok: envelope.subsystems_ok,
+            subsystems_errored: envelope.subsystems_errored,
+          },
+          result: bundle,
+        },
+        'holistic_bundle',
+      )
+
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(
-              {
-                ok: true,
-                tool: 'holistic_bundle',
-                brahma_unit: 'BO-2-8',
-                latency_ms: latency,
-                b11_floor_passed: envelope.b11_floor_passed,
-                summary: {
-                  signal_count: envelope.signal_count,
-                  graph_edge_count: envelope.graph_edge_count,
-                  domain_link_count: envelope.domain_link_count,
-                  resonance_count: envelope.resonance_count,
-                  subsystems_ok: envelope.subsystems_ok,
-                  subsystems_errored: envelope.subsystems_errored,
-                },
-                result: bundle,
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify(budgeted, null, 2),
           },
         ],
       }

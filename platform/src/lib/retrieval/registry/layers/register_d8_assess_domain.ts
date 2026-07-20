@@ -39,6 +39,7 @@ import { query } from '@/lib/db/client'
 import { deriveDefect001Note } from '../../provenance/freshness_notes'
 import { resolveAddress } from '../../address_resolver'
 import { SHASTRA_MAP } from './register_d9_judgment'
+import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 
 // Y-2 (D-1.6 Lane S-3, CRIT): assess_* domain-bearing yoga discount, mirroring
 // judgment_query's YOGA_BHANGA_DISCOUNT (register_d9_judgment.ts) semantics — a firing whose
@@ -85,6 +86,20 @@ const ASSESS_DEFAULT_MAX_ACTIVATIONS = 10
 const ASSESS_MAX_ACTIVATIONS = 50
 const ASSESS_DEFAULT_MAX_PREDICATES = 10
 const ASSESS_MAX_PREDICATES = 50
+
+// Honest empty-reason for the temporal stage (never faked). The temporal stage empties because
+// of a KNOWN L3 kala_activation writer defect (R-45/R-40 shared root: ~99% of rows have NULL
+// activation_start/end) — a DATA-PLANE issue owned by WP-2.1, not a serving bug. Disclosed here
+// so a consumer knows the stage is pending, not genuinely quiet. (Item-0 R-45 triage,
+// AUDIT_STATE.md 2026-07-12.) No chart-specific row counts are embedded here — this string is
+// served to every caller regardless of chart context (GT-32/GT-54). Exported so its regression
+// protection (checkTextForNativeLeak scan, see register_d8_assess_domain.test.ts /
+// chart_agnostic_gate.test.ts) can import the REAL constant rather than a synthetic copy.
+export const TEMPORAL_EMPTY_REASON =
+  'kala_activation returned no dated windows in range. Known L3 writer defect (R-45/R-40 ' +
+  'shared root): ~99% of kala_activation rows have NULL activation_start/end for the ' +
+  'lahiri ayanamsha in this scan — PENDING WP-2.1 data-plane fix, not a serving trim. ' +
+  'Verify via kala_yoga_activation_get / query_temporal_activation.'
 
 /** Cap an array to `cap` entries, reporting the true total + truncation flag. Never
  *  fabricates a count — `total_count` is always `arr.length` of the REAL array received. */
@@ -415,17 +430,8 @@ async function runAssessDomain(
       // Non-fatal: bearing_yoga_firings degrades to empty; stageYoga (MSR catalog) still served.
     }
 
-    // Honest empty-reasons (never faked). The temporal stage empties because of a KNOWN
-    // L3 kala_activation writer defect (R-45/R-40 shared root: ~99% of rows have NULL
-    // activation_start/end; native chart 0/13,364 dated on lahiri) — a DATA-PLANE issue
-    // owned by WP-2.1, not a serving bug. Disclosed here so a consumer knows the stage is
-    // pending, not genuinely quiet. (Item-0 R-45 triage, AUDIT_STATE.md 2026-07-12.)
-    const TEMPORAL_EMPTY_REASON =
-      'kala_activation returned no dated windows in range. Known L3 writer defect (R-45/R-40 ' +
-      'shared root): ~99% of kala_activation rows have NULL activation_start/end (native chart ' +
-      '0/13,364 dated on lahiri) — PENDING WP-2.1 data-plane fix, not a serving trim. Verify via ' +
-      'kala_yoga_activation_get / query_temporal_activation.'
-
+    // Honest empty-reasons (never faked). See module-level TEMPORAL_EMPTY_REASON for the
+    // temporal-stage explanation (hoisted + exported for regression-protection testing).
     const stage_status: Record<string, Record<string, unknown>> = {
       // Y-2: stageYoga (bodha_msr_signals) is single-pass catalog-label corroboration only
       // (JL-004) — bearing_yoga_firings (ga_yoga_firings, above) is the firings-authoritative
@@ -593,32 +599,32 @@ async function runAssessDomain(
           signal_id_refs: signalRefs,
         },
         judgment_flags: [
-          {
-            claim: judgment_flag_note,
-            requires_acharya_validation: true,
-          },
+          judgmentFlag('domain_inference_requires_acharya_validation', judgment_flag_note, 'warning'),
           ...(bearingYogaFirings.length === 0
-            ? [{
-                claim: 'bearing_yoga_firings_empty: no fired rows returned from ga_yoga_firings ' +
+            ? [judgmentFlag(
+                'bearing_yogas_empty',
+                'no fired rows returned from ga_yoga_firings ' +
                   '(firings-authoritative) for this chart/ayanamsha — honest absence, not fabricated.',
-                requires_acharya_validation: false,
-              }]
+                'info',
+              )]
             : !bearingYogaFirings.some(y => y['domain_match'] === true)
-            ? [{
-                claim: `bearing_yoga_firings_no_domain_match: ${bearingYogaFirings.length} yoga(s) ` +
+            ? [judgmentFlag(
+                'bearing_yogas_no_domain_match',
+                `${bearingYogaFirings.length} yoga(s) ` +
                   `fired on this chart but none name only this domain's bhāveśa/kāraka(s) — shown ` +
                   'for context (Y-2, D-1.6/S-3).',
-                requires_acharya_validation: false,
-              }]
+                'info',
+              )]
             : []),
-          {
-            claim: 'bearing_yoga_firings (ga_yoga_firings) is the firings-authoritative source; ' +
+          judgmentFlag(
+            'catalog_only_rows_present',
+            'bearing_yoga_firings (ga_yoga_firings) is the firings-authoritative source; ' +
               'by_stage.yoga / verdict_skeleton.by_stage.yoga (bodha_msr_signals) are single-pass ' +
               'catalog-label matches (JL-004) and must never be read as confirmed findings ' +
               '(CLAUDE.md §N.6.1).',
-            requires_acharya_validation: false,
-          },
-        ],
+            'info',
+          ),
+        ] satisfies JudgmentFlagEntry[],
         provenance: {
           tables: [
             'bodha_msr_signals',

@@ -15,6 +15,40 @@ import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
 import { describeProxyFailure } from './registry_bridge.js'
 import { applyAutoBudgetToEnvelope } from '../lib/response_budget.js'
+import { judgmentFlag, type JudgmentFlagEntry } from '../generated/envelope.js'
+
+// W3-L2 (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF §E W3 item 2 "d8/hollow-emitter migration"):
+// this file's local `envelope()` is the documented "hollow envelope" precedent (envelope.ts's
+// own module doc calls it out by name) — every legacy field including `judgment_flags` was
+// hardcoded to null/[] with ZERO honest-gap machinery, even when the wrapped `content` was
+// itself empty. Computes a REAL (if minimal) disclosure from the content this call already
+// fetched — never a static placeholder, never a new query. Best-effort: walks only the
+// content's own top-level shape (arrays / a `total`/`returned` scalar), the same depth every
+// tool in this file already exposes to its caller.
+function deriveHollowEnvelopeFlags(content: unknown): JudgmentFlagEntry[] {
+  if (content === null || content === undefined) {
+    return [judgmentFlag('zero_rows_returned', 'no content returned for this call.')]
+  }
+  if (typeof content !== 'object' || Array.isArray(content)) {
+    // Scalar/array content — no named row-count field to inspect; still an honest statement
+    // that this legacy envelope shape never computes verdict/grounding/drill_pointers.
+    return [judgmentFlag('hollow_envelope_shape_not_evaluated', 'content is not a keyed object — no row-count field available to check.')]
+  }
+  const obj = content as Record<string, unknown>
+  const arrayFields = Object.entries(obj).filter(([, v]) => Array.isArray(v)) as Array<[string, unknown[]]>
+  if (arrayFields.length > 0) {
+    const allEmpty = arrayFields.every(([, v]) => v.length === 0)
+    if (allEmpty) {
+      return [judgmentFlag('hollow_envelope_no_data_rows', `every row-shaped field (${arrayFields.map(([k]) => k).join(', ')}) is empty for this call.`)]
+    }
+    return []
+  }
+  const total = obj['total'] ?? obj['returned']
+  if (total === 0) {
+    return [judgmentFlag('zero_rows_returned', 'total/returned=0 for this call.')]
+  }
+  return [judgmentFlag('hollow_envelope_shape_not_evaluated', 'no array-valued or total/returned field found on content — no honest-gap signal computable from this shape (never fabricated).')]
+}
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -79,7 +113,7 @@ function envelope(content: unknown, toolName: string, queryClass: string) {
     grounding: { fact_ids: [], citations: [], grounding_score: null },
     pagination: { offset: 0, limit: 0, total: null, next_cursor: null },
     drill_pointers: [],
-    judgment_flags: [],
+    judgment_flags: deriveHollowEnvelopeFlags(content),
     insight_type: null,
     query_class: queryClass,
     content,

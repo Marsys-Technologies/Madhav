@@ -52,7 +52,7 @@ import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
 import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME, type HouseNumber } from '@/lib/retrieval/address_resolver'
-import { extractGroundingFromFactRows } from '../../envelope'
+import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 
 /** `about` facet resolution result for chart_facts_query — mirrors the shape the handler needs
  *  (fact_subject codes to feed into the whitelisted SQL below), backed by the canonical
@@ -767,7 +767,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
   scope: 'per_chart',
 
   description: [
-    'Parametric EAV-crosstab lookup over the chart_facts table (27,554 rows per chart, single ayanamsha).',
+    'Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha).',
     'Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more.',
     'Default shape="pivoted": rows are grouped by fact_subject into ONE wide row per subject',
     '(e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows.',
@@ -782,7 +782,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
     'surya_siddhanta_classical, true_chitra, INVARIANT), shape, limit, offset.',
     'Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across',
     'the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit),',
-    'so a caller can page the full 5,566-subject set without silent truncation.',
+    'so a caller can page the full subject set without silent truncation.',
     'emits_references: every pivoted field carries its source fact_id for Bodha back-reference.',
     'Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state — ',
     'exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited ',
@@ -1233,8 +1233,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         const label = rect?.confidence_label ?? 'no_rectification_run'
         const belowThreshold = label !== 'high' && label !== 'resolved'
         if (belowThreshold) {
-          const flags = Array.isArray(content['judgment_flags']) ? content['judgment_flags'] as string[] : []
-          flags.push('time_sensitive_low_confidence')
+          const flags = Array.isArray(content['judgment_flags']) ? content['judgment_flags'] as JudgmentFlagEntry[] : []
+          flags.push(judgmentFlag('time_sensitive_low_confidence', 'see time_sensitivity_note for the §31.4 ladder detail.'))
           content['judgment_flags'] = flags
           content['time_sensitivity_note'] = [
             `D60 (Shashtiamsha) lagna-dependent claims require sensitive_extreme birth-time`,

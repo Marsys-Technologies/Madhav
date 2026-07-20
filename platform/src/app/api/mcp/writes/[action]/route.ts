@@ -50,6 +50,7 @@ import {
 import type { PredictionEntry, OutcomeEntry } from '@/lib/mcp/ppl_writer'
 import type { DisagreementEntry } from '@/lib/mcp/disagreement_writer'
 import type { LelEvent } from '@/lib/mcp/lel_event_writer'
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 export const maxDuration = 30
 
@@ -67,19 +68,6 @@ type WriteAction = (typeof ALLOWED_ACTIONS)[number]
 
 function isAllowedAction(action: string): action is WriteAction {
   return (ALLOWED_ACTIONS as readonly string[]).includes(action)
-}
-
-// ── Service-to-service token validation ───────────────────────────────────────
-
-function validateServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    if (process.env.NODE_ENV === 'development') return true
-    console.error('[mcp:writes] MCP_INTERNAL_TOKEN not set in production')
-    return false
-  }
-  return token === expected
 }
 
 // ── Route params ──────────────────────────────────────────────────────────────
@@ -576,6 +564,11 @@ export async function POST(request: Request, { params }: RouteParams) {
         configuration_signature: entry.configuration_signature ?? null,
         filed_by: userUid, // stamped from resolved principal — §11 provenance
         source_citation: entry.source_citation,
+        // D-5 Lane G-5 (BRIEF_D5 §4, DR-16): only meaningful for
+        // generator_class='engine' + adverse-valence event_class — fileProspectivePrediction
+        // itself enforces the hard 5-property gate; this route only threads the caller's
+        // payload through, it does not weaken or bypass the check.
+        dr16_adverse_disclosure: entry.dr16_adverse_disclosure,
       }
 
       const filed = await fileProspectivePrediction(input)
@@ -584,7 +577,11 @@ export async function POST(request: Request, { params }: RouteParams) {
           trace_id: traceId,
           audience_tier: audienceTier,
           epistemics,
-          result: { prediction: filed.row, governance: filed.governance },
+          result: {
+            prediction: filed.row,
+            governance: filed.governance,
+            ...(filed.dr16_disclosure ? { dr16_disclosure: filed.dr16_disclosure } : {}),
+          },
         })
       )
     } catch (err) {

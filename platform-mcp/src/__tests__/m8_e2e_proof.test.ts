@@ -395,7 +395,7 @@ describe('G8 — Resources (9) and prompts (3) registered', () => {
     const { registerPrompts } = await import('../prompts/index.js')
     const srv = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(srv as any)
+    registerPrompts(srv as any, makePrincipal())
     expect(srv._prompts.length).toBe(5)
   })
 
@@ -403,7 +403,7 @@ describe('G8 — Resources (9) and prompts (3) registered', () => {
     const { registerPrompts } = await import('../prompts/index.js')
     const srv = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(srv as any)
+    registerPrompts(srv as any, makePrincipal())
     expect(srv._prompts).toContain('orient_chart')
     expect(srv._prompts).toContain('assess_domain')
     expect(srv._prompts).toContain('find_active_yogas')

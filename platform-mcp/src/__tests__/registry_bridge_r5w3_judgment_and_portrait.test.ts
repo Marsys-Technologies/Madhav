@@ -237,8 +237,8 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
     const verdict = envelope['verdict'] as Record<string, unknown>
     const receipt = verdict['receipt'] as Record<string, unknown>
     expect(receipt['timing_anchored']).toBe(false)
-    const flags = envelope['judgment_flags'] as string[]
-    expect(flags.some(f => f.startsWith('timing_anchored_forced_false'))).toBe(true)
+    const flags = envelope['judgment_flags'] as Array<{ code: string } | string>
+    expect(flags.some(f => typeof f !== 'string' && f.code === 'timing_anchored_forced_false')).toBe(true)
   })
 
   it('leaves receipt.timing_anchored=true untouched when timing_hooks genuinely carry data', async () => {
@@ -271,8 +271,8 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
     const verdict = envelope['verdict'] as Record<string, unknown>
     const receipt = verdict['receipt'] as Record<string, unknown>
     expect(receipt['timing_anchored']).toBe(true)
-    const flags = envelope['judgment_flags'] as string[]
-    expect(flags.some(f => f.startsWith('timing_anchored_forced_false'))).toBe(false)
+    const flags = envelope['judgment_flags'] as Array<{ code: string } | string>
+    expect(flags.some(f => typeof f !== 'string' && f.code === 'timing_anchored_forced_false')).toBe(false)
   })
 })
 

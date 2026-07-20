@@ -53,19 +53,7 @@ import {
   listUserSessions,
   getOrRefreshSessionPin,
 } from '@/lib/mcp/sessions'
-
-// ── Token validation ──────────────────────────────────────────────────────────
-
-function validateServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    // In development without a secret configured, allow through.
-    if (process.env.NODE_ENV === 'development') return true
-    return false
-  }
-  return token === expected
-}
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 // ── GET — retrieve or create session ─────────────────────────────────────────
 

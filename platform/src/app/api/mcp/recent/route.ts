@@ -23,19 +23,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 import { buildEnvelope, buildErrorEnvelope, buildEpistemicsBlock } from '@/lib/mcp/epistemics'
-
-// ── Service-to-service token validation ─────────────────────────────────────
-
-function validateServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    if (process.env.NODE_ENV === 'development') return true
-    console.error('[mcp:recent] MCP_INTERNAL_TOKEN not set in production')
-    return false
-  }
-  return token === expected
-}
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 // ── Row shape for query results ──────────────────────────────────────────────
 

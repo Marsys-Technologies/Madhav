@@ -19,9 +19,16 @@ export const CHART_FACTS_CATEGORIES = [
   'arudha_pada',
   'ashtakavarga_anubindu',
   'ashtakavarga_bindu',
+  'ashtakavarga_bindu_per_varga',
+  'ashtakavarga_bindu_sign',
+  'ashtakavarga_ekadhipathya_shodhana',
+  'ashtakavarga_kakshya_boundary',
   'ashtakavarga_pinda_bhinna',
+  'ashtakavarga_pinda_raasi',
   'ashtakavarga_pinda_sarva',
+  'ashtakavarga_pinda_sarva_per_varga',
   'ashtakavarga_pinda_sodhita',
+  'ashtakavarga_trikona_shodhana',
   'ashtama_shani_period',
   'aspect_jaimini',
   'aspect_jaimini_per_varga',
@@ -31,6 +38,7 @@ export const CHART_FACTS_CATEGORIES = [
   'aspect_parashari_received',
   'aspect_tajik',
   'bhadra_flag',
+  'bhava_arudha',
   'bhava_bala_aspectual',
   'bhava_bala_directional',
   'bhava_bala_lord',
@@ -100,8 +108,10 @@ export const CHART_FACTS_CATEGORIES = [
   'janma_shani_period',
   'kala_sarpa_per_varga',
   'kantaka_shani_period',
+  'karaka_bhava_concordance',
   'karaka_chara_position',
   'karaka_house_lord_overlap_flag',
+  'karaka_web_per_varga',
   'karakamsa_position',
   'karakatva_strength_per_significance',
   'kp_cuspal_significators',
@@ -111,6 +121,7 @@ export const CHART_FACTS_CATEGORIES = [
   'lord_in_house_per_varga',
   'maharsi_specific_point',
   'midpoint',
+  'nakshatra_cross_ayanamsha',
   'nakshatra_pada_sensitive',
   'panchaka_flag',
   'panchanga_abhijit_muhurta',
@@ -181,6 +192,10 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   upagraha_position:                    ['marsys://tool/L1/get_positions'],
   aprakasha_position:                   ['marsys://tool/L1/get_positions'],
   karaka_chara_position:                ['marsys://tool/L1/get_karakas'],
+  // W2 structural-close SC-5 (serving-side only, no writer change): real, computed,
+  // previously-unserved category; opt-in via categories:["nakshatra_cross_ayanamsha"] on
+  // get_positions (not on the default page — see get_positions.ts header comment).
+  nakshatra_cross_ayanamsha:            ['marsys://tool/L1/get_positions'],
 
   // ── Strength / Shadbala ───────────────────────────────────────────────────
   graha_shadbala_cheshta:               ['marsys://tool/L1/get_strength'],
@@ -215,11 +230,22 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   graha_functional_class_per_ascendant:       ['marsys://tool/L1/get_dignity'],
 
   // ── Ashtakavarga ─────────────────────────────────────────────────────────
-  ashtakavarga_bindu:          ['marsys://tool/L1/get_ashtakavarga'],
-  ashtakavarga_anubindu:       ['marsys://tool/L1/get_ashtakavarga'],
-  ashtakavarga_pinda_bhinna:   ['marsys://tool/L1/get_ashtakavarga'],
-  ashtakavarga_pinda_sarva:    ['marsys://tool/L1/get_ashtakavarga'],
-  ashtakavarga_pinda_sodhita:  ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_bindu:                 ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_anubindu:              ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_pinda_bhinna:          ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_pinda_sarva:           ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_pinda_sodhita:         ['marsys://tool/L1/get_ashtakavarga'],
+  // W2 structural-close SC-4 (serving-side only, no writer change — see get_ashtakavarga.ts
+  // header comment): these are real, computed, previously-unserved refinement categories.
+  ashtakavarga_bindu_sign:            ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_pinda_raasi:           ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_trikona_shodhana:      ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_ekadhipathya_shodhana: ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_kakshya_boundary:      ['marsys://tool/L1/get_ashtakavarga'],
+  // opt-in only (not on the default page — large per-varga row sets), reachable via an
+  // explicit `categories` request; still genuinely served, per the coverage doctrine (§5.2).
+  ashtakavarga_bindu_per_varga:       ['marsys://tool/L1/get_ashtakavarga'],
+  ashtakavarga_pinda_sarva_per_varga: ['marsys://tool/L1/get_ashtakavarga'],
 
   // ── Bhava Bala / House Strength ───────────────────────────────────────────
   bhava_bala_aspectual:             ['marsys://tool/L1/get_bhava_bala'],
@@ -341,9 +367,16 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
 
   // ── Karakas / KP / Jaimini ───────────────────────────────────────────────
   arudha_pada:                   ['marsys://tool/L1/get_karakas'],
+  // W2 structural-close S-3 (serving-side only, no writer change — see get_karakas.ts header
+  // comment): computed by ga_sensitive_writer.py, previously zero serving route.
+  bhava_arudha:                  ['marsys://tool/L1/get_karakas'],
   karakamsa_position:            ['marsys://tool/L1/get_karakas'],
   swamsa_position:               ['marsys://tool/L1/get_karakas'],
   karaka_house_lord_overlap_flag:['marsys://tool/L1/get_karakas'],
+  // W2 structural-close SC-5 — opt-in only (large per-varga/per-house-pair row sets), reachable
+  // via an explicit `categories` request; still genuinely served, per the coverage doctrine (§5.2).
+  karaka_web_per_varga:          ['marsys://tool/L1/get_karakas'],
+  karaka_bhava_concordance:      ['marsys://tool/L1/get_karakas'],
   kp_cuspal_significators:       ['marsys://tool/L1/get_karakas'],
   kp_ruling_planets_natal:       ['marsys://tool/L1/get_karakas'],
   jaimini_tri_deva_role_per_graha:['marsys://tool/L1/get_karakas'],
@@ -380,7 +413,10 @@ export const NON_CHART_FACTS_COVERAGE: Record<string, string[]> = {
   brahma_yoga_catalog:     ['marsys://tool/L0/query_yoga_catalog'],
   brahma_dosha_catalog:    ['marsys://tool/L0/query_dosha_catalog'],
   brahma_remedy_corpus:    ['marsys://tool/L0/query_remedy_corpus'],
-  brahma_compendium_index: ['marsys://tool/L0/query_classical_texts'],
+  // Drift fix (W2b Batch 2, TABLE_CONCEPT_DISPOSITIONS_v2_0.md): this previously pointed at
+  // query_classical_texts, which queries classical_text_chunks — a DIFFERENT table. Corrected
+  // to the new dedicated capability wired for brahma_compendium_index itself.
+  brahma_compendium_index: ['marsys://tool/L0/query_compendium_index'],
 
   // L2 bodha tables (populated after Wave 4)
   bodha_signals:            ['marsys://tool/L2/get_msr_signals'],

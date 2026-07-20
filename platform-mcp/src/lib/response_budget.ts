@@ -31,6 +31,7 @@
  *     `recover_via` instrument + explicit params (e.g. `max_signals`, `include`,
  *     `response_format:'legacy'`) — this file only governs what is DEFAULT-served.
  */
+import { judgmentFlag, type JudgmentFlagEntry } from '../generated/envelope.js'
 
 export interface TrimReportEntry {
   path: string
@@ -74,13 +75,6 @@ export interface BudgetResult<T> {
   trimmed: boolean
   approx_bytes_before: number
   approx_bytes_after: number
-  /** R5.1 C1 hard-cap fix: true iff, even after every declared section was floored to 0
-   *  (past its normal minKeep — see HARD-CAP PASS below), the response is STILL over
-   *  `maxKb`. This must never be silently swallowed — a caller that sees this true knows
-   *  the response it is about to ship exceeds its stated ceiling despite every mechanical
-   *  lever this file has, and should surface that honestly (e.g. a judgment_flags entry)
-   *  rather than claim a clean trim. */
-  still_over_budget: boolean
 }
 
 /** Serialized-size estimate (UTF-8 bytes of JSON.stringify) — same measure the MCP wire
@@ -133,8 +127,13 @@ function shrinkSectionTo<T>(
  * documented, explicit degrade-further step, not a silent one: every section touched in
  * PASS 2 gets its own trim_report entry saying so). If content is STILL over budget after
  * PASS 2 — meaning the base, non-trimmable content alone exceeds the ceiling — this
- * function does NOT pretend otherwise: `still_over_budget: true` is set, and a final
- * trim_report entry records the honest residual gap instead of a silent pass-through.
+ * function does NOT pretend otherwise: a final `(whole response)` trim_report entry
+ * records the honest residual gap instead of a silent pass-through (W3-L5 budget
+ * unification, GT-45: the former `still_over_budget` boolean on this return value was
+ * dead output on every call path — nobody read it, `finalizeMcpBudget` below recomputes
+ * its own over-budget check independently rather than reading it — so it was removed
+ * rather than left "surfaced but unread"; the `(whole response)` trim_report entry is
+ * the one real, already-consumed honesty signal for this condition).
  */
 export function applyResponseBudget<T>(
   content: T,
@@ -144,7 +143,7 @@ export function applyResponseBudget<T>(
   const before = estimateBytes(content)
   const maxBytes = maxKb * 1024
   if (before <= maxBytes) {
-    return { content, trim_report: null, trimmed: false, approx_bytes_before: before, approx_bytes_after: before, still_over_budget: false }
+    return { content, trim_report: null, trimmed: false, approx_bytes_before: before, approx_bytes_after: before }
   }
 
   // ONE entry per path (R5.1 C1 fix — a live independent verifier caught the original
@@ -223,7 +222,6 @@ export function applyResponseBudget<T>(
     trimmed: trimReport !== null,
     approx_bytes_before: before,
     approx_bytes_after: afterSections,
-    still_over_budget: stillOverBudgetAfterSections,
   }
 }
 
@@ -343,10 +341,10 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
   // budget" — that's a false alarm, not honesty.)
   const trueCeilingBytes = opts.maxKb * 1024
   if (estimateBytes(content) > trueCeilingBytes) {
-    const existingFlags = (mutable[judgmentFlagsField] as string[] | undefined) ?? []
+    const existingFlags = (mutable[judgmentFlagsField] as JudgmentFlagEntry[] | undefined) ?? []
     mutable[judgmentFlagsField] = [
       ...existingFlags,
-      `response_still_over_${opts.maxKb}kb_budget_after_full_trim`,
+      judgmentFlag('budget_exceeded_after_trim', `${opts.maxKb}kb budget still exceeded after full trim.`),
     ]
   }
 
@@ -495,6 +493,25 @@ export function applyAutoBudgetToEnvelope(
     const existing = Array.isArray(envelopeObj['trim_report']) ? (envelopeObj['trim_report'] as TrimReportEntry[]) : []
     envelopeObj['trim_report'] = [...existing, ...result.trim_report]
   }
+}
+
+/**
+ * W3-L5 (budget unification, R-2 item 5 / W-8) — the single call every previously-
+ * unclamped MCP tool registration now makes before building its dual-output response.
+ * Thin composition of the two generic mechanisms this file already ships
+ * (`autoDetectTrimmableSections` + `finalizeMcpBudget`) — the exact pattern
+ * register_p1_aliases.ts's `dualOutput` already used for its own tools; this just gives
+ * every OTHER registration file (which had no budget wiring at all — the ~36-of-~115
+ * unclamped surface, GT-48) the same one-line call instead of hand-rolling it per file.
+ * A no-op (besides the cheap `estimateBytes` short-circuit) when `content` is already
+ * under budget, so calling it unconditionally is safe.
+ */
+export function budgetMcpContent<T>(content: T, toolName: string, maxKb = 40): T {
+  if (!content || typeof content !== 'object' || Array.isArray(content)) return content
+  const obj = content as Record<string, unknown>
+  const sections = autoDetectTrimmableSections(obj, toolName)
+  if (sections.length === 0) return content
+  return finalizeMcpBudget(obj, { maxKb, sections }) as unknown as T
 }
 
 function mergeTrimPointersIntoPointers(

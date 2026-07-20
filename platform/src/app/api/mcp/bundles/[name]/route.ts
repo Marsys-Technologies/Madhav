@@ -19,15 +19,9 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-
-const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 // ── Auth guard ─────────────────────────────────────────────────────────────────
-
-function validateInternalToken(req: NextRequest): boolean {
-  const token = req.headers.get('X-MCP-Internal-Token')
-  return !!token && token === MCP_INTERNAL_TOKEN
-}
 
 function extractPrincipal(req: NextRequest): {
   user_uid: string
@@ -55,7 +49,7 @@ export async function POST(
   { params }: { params: Promise<{ name: string }> }
 ): Promise<Response> {
   // Auth check
-  if (!validateInternalToken(req)) {
+  if (!validateServiceToken(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

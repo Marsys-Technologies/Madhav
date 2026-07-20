@@ -41,6 +41,7 @@ import { z } from 'zod'
 import { callPlatformPrimitive } from '../client.js'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // ── MCP response wrapping (T-7 fix) ─────────────────────────────────────────
 //
@@ -54,10 +55,14 @@ import { remoteAuthorize } from '../lib/authz.js'
 // kala_muhurta_get in register_p1_aliases.ts) — an object with no `content`
 // key is not a valid tool result, so the client silently rendered empty.
 // This was never an unreturned promise; it was a mis-shaped resolved one.
+// W3-L5 (budget unification): muhurta_finder's `windows` array (up to a 90-day scan of
+// 48-hour windows) previously shipped through this dualOutput with no response-budget
+// pass at all — part of the ~36-of-~115 unclamped surface (GT-48).
 function dualOutput(data: unknown): { structuredContent: { type: 'object'; object: unknown }; content: [{ type: 'text'; text: string }] } {
+  const budgeted = budgetMcpContent(data, 'muhurta_finder')
   return {
-    structuredContent: { type: 'object', object: data },
-    content: [{ type: 'text', text: JSON.stringify(data) }],
+    structuredContent: { type: 'object', object: budgeted },
+    content: [{ type: 'text', text: JSON.stringify(budgeted) }],
   }
 }
 

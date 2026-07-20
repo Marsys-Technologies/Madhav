@@ -14,7 +14,12 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-5   # INCOMING, not opened. D-4a "Measurement Foundry" CLOSED 2026-07-19 —
+current_wave: D-5   # INCOMING — BRIEF_D5.md v1.0 FROZEN 2026-07-19 (pre-D-5 readiness pass),
+  # awaiting the native's separate D-5 kickoff directive; not opened, not bound. Pre-D-5 pass
+  # also fixed CR-112 (item #3 native correction, mis-quarantined in D-4a) and closed
+  # CR-109/110/111 in the defect register (fixed in D-4a, re-verified live this pass); CR-113/
+  # CR-114 recorded as carried, named D-5 Binder disposition points (BRIEF_D5.md §B.5).
+  # D-4a "Measurement Foundry" CLOSED 2026-07-19 —
   # GATE GREEN 7/7 (BIND_D-4A.md §7, REPORT_D-4A.md). 6 lanes (A-0 serving-substrate repair,
   # A-1 shape-aware matcher + LEL v2 + native corrections, A-2 canonical event ontology,
   # A-3 controls + proper-scoring harness, A-4 prospective ledger, A-5 harness dry-run), all

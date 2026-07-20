@@ -1,0 +1,3605 @@
+{
+  "extractor": "E4 — signal-class inventory (bodha/kala/phala)",
+  "generated_at": "2026-07-19T20:35:29.939Z",
+  "plan_claim": "no signal-class registry exists for bodha/kala/phala",
+  "verdict": {
+    "summary": "PARTIALLY TRUE, PARTIALLY FALSE — confirmed empirically, not assumed. bodha_msr_signals.signal_type_class IS a real, populated, de facto signal-class column (a genuine, useful counter-finding to the plan's flat claim). But it is NOT shared/centralized: excluding the trivial `snapshot_type` build-metadata field (which every bodha_* writer table sets to the literal string 'static_natal' and is not a signal classification), cross-table value overlap between DIFFERENTLY-NAMED *_class/*_type columns is 15 pairs (mostly incidental — e.g. small numeric-string coincidences, or one genuine 2-value overlap between bodha_anomalies.anomaly_type and bodha_discoveries.discovery_class). No column is queried by more than one table's writer as a shared enum. So \"no UNIFIED cross-plane signal-class registry exists\" is the accurate, narrower version of the plan's claim.",
+    "msr_signal_type_class_is_the_closest_thing_to_a_registry": {
+      "table": "bodha_msr_signals",
+      "column": "signal_type_class",
+      "distinct_values": 19,
+      "top_values": [
+        {
+          "value": "composite_state",
+          "row_count": 73229
+        },
+        {
+          "value": "karaka_alignment",
+          "row_count": 11973
+        },
+        {
+          "value": "sade_sati",
+          "row_count": 5753
+        },
+        {
+          "value": "varga_pattern",
+          "row_count": 2555
+        },
+        {
+          "value": "panchanga",
+          "row_count": 1170
+        },
+        {
+          "value": "tradition_specific",
+          "row_count": 1009
+        },
+        {
+          "value": "annual",
+          "row_count": 621
+        },
+        {
+          "value": "parivartana",
+          "row_count": 408
+        },
+        {
+          "value": "configuration",
+          "row_count": 290
+        },
+        {
+          "value": "yoga",
+          "row_count": 140
+        }
+      ]
+    },
+    "cross_table_value_overlaps_found_total": 109,
+    "cross_table_value_overlaps_excluding_shared_snapshot_type_metadata": 15
+  },
+  "summary": {
+    "name_matching_columns_total": 114,
+    "candidate_enum_shaped_columns": 77,
+    "excluded_id_array_jsonb_count_columns": 37,
+    "tables_covered": [
+      "bodha_anomalies",
+      "bodha_cdlm_cells",
+      "bodha_cdlm_chart_summary",
+      "bodha_cdlm_domain_rollups",
+      "bodha_cdlm_evolution_gradients",
+      "bodha_cdlm_pattern_clusters",
+      "bodha_cgm_chart_topology_summary",
+      "bodha_cgm_edges",
+      "bodha_cgm_motifs",
+      "bodha_cgm_nodes",
+      "bodha_cgm_paths",
+      "bodha_cgm_sub_graphs",
+      "bodha_contradictions",
+      "bodha_convergence",
+      "bodha_discoveries",
+      "bodha_mechanisms",
+      "bodha_msr_signals",
+      "bodha_pratijna",
+      "bodha_question_lenses",
+      "bodha_rm_chart_summary",
+      "bodha_rm_dosha_remedy_bundles",
+      "bodha_rm_pattern_remedies",
+      "bodha_rm_remedy_prescriptions",
+      "bodha_rm_resonances",
+      "bodha_signal_embeddings",
+      "bodha_triangulation",
+      "kala_activation",
+      "kala_activation_predicates",
+      "kala_bhavishya",
+      "kala_convergence",
+      "kala_darshana",
+      "kala_gochara_windows",
+      "kala_jivana_parva",
+      "kala_obstruction",
+      "kala_taranga",
+      "phala_anchors",
+      "phala_mitigation",
+      "phala_muhurta",
+      "phala_phaladesa",
+      "phala_pramana",
+      "phala_sankrama",
+      "phala_sodhana"
+    ]
+  },
+  "excluded_columns": [
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "contradicting_signal_pairs_count",
+      "data_type": "integer"
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "contradicting_signal_pairs_jsonb",
+      "data_type": "jsonb"
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "shared_signal_count",
+      "data_type": "integer"
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "shared_signal_ids_array",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "shared_signals_by_tradition_jsonb",
+      "data_type": "jsonb"
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "shared_signals_high_convergence_count",
+      "data_type": "integer"
+    },
+    {
+      "table": "bodha_cdlm_pattern_clusters",
+      "column": "involved_signals_array",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "column": "underlying_msr_signal_ids_array",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_cgm_motifs",
+      "column": "classical_citation_id",
+      "data_type": "text"
+    },
+    {
+      "table": "bodha_cgm_nodes",
+      "column": "hub_edge_types_array",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_cgm_nodes",
+      "column": "msr_signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "bodha_contradictions",
+      "column": "signal_a_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "bodha_contradictions",
+      "column": "signal_b_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "bodha_convergence",
+      "column": "classical_sources_jsonb",
+      "data_type": "jsonb"
+    },
+    {
+      "table": "bodha_convergence",
+      "column": "top_signal_ids_array",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_discoveries",
+      "column": "novelty_class_id",
+      "data_type": "text"
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "classical_sources_array",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "classical_sources_jsonb",
+      "data_type": "jsonb"
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "constituent_signals_array",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "contradicts_signals_array",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "signal_type_id",
+      "data_type": "text"
+    },
+    {
+      "table": "bodha_pratijna",
+      "column": "contradicting_signal_ids",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_pratijna",
+      "column": "event_class_id",
+      "data_type": "text"
+    },
+    {
+      "table": "bodha_pratijna",
+      "column": "supporting_signal_ids",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "bodha_rm_dosha_remedy_bundles",
+      "column": "classical_sources_jsonb",
+      "data_type": "jsonb"
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "column": "classical_source_text_jsonb",
+      "data_type": "jsonb"
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "column": "classical_sources_jsonb",
+      "data_type": "jsonb"
+    },
+    {
+      "table": "bodha_signal_embeddings",
+      "column": "signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "bodha_triangulation",
+      "column": "signal_ids",
+      "data_type": "ARRAY"
+    },
+    {
+      "table": "kala_activation",
+      "column": "signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "kala_activation_predicates",
+      "column": "signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "kala_bhavishya",
+      "column": "signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "kala_convergence",
+      "column": "signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "kala_darshana",
+      "column": "signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "kala_obstruction",
+      "column": "signal_id",
+      "data_type": "uuid"
+    },
+    {
+      "table": "phala_anchors",
+      "column": "signal_id",
+      "data_type": "uuid"
+    }
+  ],
+  "class_inventories": [
+    {
+      "table": "bodha_anomalies",
+      "column": "anomaly_type",
+      "data_type": "text",
+      "distinct_count": 3,
+      "values_sample": [
+        {
+          "value": "distributional_anomaly",
+          "row_count": 4644
+        },
+        {
+          "value": "low_salience_high_consequence",
+          "row_count": 248
+        },
+        {
+          "value": "embedding_outlier",
+          "row_count": 62
+        }
+      ],
+      "total_rows_non_null": 4954
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "domain_relationship_class",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 150
+        }
+      ],
+      "total_rows_non_null": 150
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "shared_signal_max_salience",
+      "data_type": "numeric",
+      "distinct_count": 15,
+      "values_sample": [
+        {
+          "value": "0.68425",
+          "row_count": 40
+        },
+        {
+          "value": "2.76",
+          "row_count": 29
+        },
+        {
+          "value": "2.16108",
+          "row_count": 22
+        },
+        {
+          "value": "0.69",
+          "row_count": 20
+        },
+        {
+          "value": "0.60375",
+          "row_count": 10
+        },
+        {
+          "value": "2.08932",
+          "row_count": 6
+        },
+        {
+          "value": "2.346",
+          "row_count": 5
+        },
+        {
+          "value": "2.485242",
+          "row_count": 4
+        },
+        {
+          "value": "1.836918",
+          "row_count": 4
+        },
+        {
+          "value": "3.588",
+          "row_count": 4
+        },
+        {
+          "value": "2.52126",
+          "row_count": 2
+        },
+        {
+          "value": "3.312",
+          "row_count": 1
+        },
+        {
+          "value": "2.402718",
+          "row_count": 1
+        },
+        {
+          "value": "1.156578",
+          "row_count": 1
+        },
+        {
+          "value": "3.22",
+          "row_count": 1
+        }
+      ],
+      "total_rows_non_null": 150
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "shared_signal_salience_sum",
+      "data_type": "numeric",
+      "distinct_count": 112,
+      "values_sample": [
+        {
+          "value": "5.474",
+          "row_count": 8
+        },
+        {
+          "value": "4.78975",
+          "row_count": 8
+        },
+        {
+          "value": "23.55775",
+          "row_count": 4
+        },
+        {
+          "value": "24.656",
+          "row_count": 4
+        },
+        {
+          "value": "347.596094",
+          "row_count": 4
+        },
+        {
+          "value": "1.56975",
+          "row_count": 3
+        },
+        {
+          "value": "369.778011",
+          "row_count": 3
+        },
+        {
+          "value": "358.358511",
+          "row_count": 3
+        },
+        {
+          "value": "6.15825",
+          "row_count": 2
+        },
+        {
+          "value": "433.173344",
+          "row_count": 2
+        },
+        {
+          "value": "175.74751",
+          "row_count": 2
+        },
+        {
+          "value": "2.29425",
+          "row_count": 2
+        },
+        {
+          "value": "720.555376",
+          "row_count": 2
+        },
+        {
+          "value": "1.6905",
+          "row_count": 2
+        },
+        {
+          "value": "9.821",
+          "row_count": 2
+        },
+        {
+          "value": "9.2575",
+          "row_count": 2
+        },
+        {
+          "value": "4.1055",
+          "row_count": 2
+        },
+        {
+          "value": "346.740783",
+          "row_count": 1
+        },
+        {
+          "value": "358.321746",
+          "row_count": 1
+        },
+        {
+          "value": "9.66",
+          "row_count": 1
+        },
+        {
+          "value": "29.2376",
+          "row_count": 1
+        },
+        {
+          "value": "355.696406",
+          "row_count": 1
+        },
+        {
+          "value": "1499.033834",
+          "row_count": 1
+        },
+        {
+          "value": "930.063821",
+          "row_count": 1
+        },
+        {
+          "value": "8.25125",
+          "row_count": 1
+        }
+      ],
+      "total_rows_non_null": 63
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 150
+        }
+      ],
+      "total_rows_non_null": 150
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "unique_signals_col_domain",
+      "data_type": "integer",
+      "distinct_count": 44,
+      "values_sample": [
+        {
+          "value": "221",
+          "row_count": 12
+        },
+        {
+          "value": "338",
+          "row_count": 10
+        },
+        {
+          "value": "228",
+          "row_count": 8
+        },
+        {
+          "value": "1599",
+          "row_count": 5
+        },
+        {
+          "value": "1589",
+          "row_count": 5
+        },
+        {
+          "value": "334",
+          "row_count": 5
+        },
+        {
+          "value": "1596",
+          "row_count": 5
+        },
+        {
+          "value": "1593",
+          "row_count": 5
+        },
+        {
+          "value": "333",
+          "row_count": 5
+        },
+        {
+          "value": "336",
+          "row_count": 5
+        },
+        {
+          "value": "1594",
+          "row_count": 5
+        },
+        {
+          "value": "219",
+          "row_count": 4
+        },
+        {
+          "value": "224",
+          "row_count": 4
+        },
+        {
+          "value": "230",
+          "row_count": 4
+        },
+        {
+          "value": "226",
+          "row_count": 4
+        },
+        {
+          "value": "751",
+          "row_count": 4
+        },
+        {
+          "value": "218",
+          "row_count": 4
+        },
+        {
+          "value": "768",
+          "row_count": 4
+        },
+        {
+          "value": "3593",
+          "row_count": 3
+        },
+        {
+          "value": "3597",
+          "row_count": 3
+        },
+        {
+          "value": "3584",
+          "row_count": 3
+        },
+        {
+          "value": "3618",
+          "row_count": 3
+        },
+        {
+          "value": "3588",
+          "row_count": 3
+        },
+        {
+          "value": "3585",
+          "row_count": 3
+        },
+        {
+          "value": "3552",
+          "row_count": 3
+        }
+      ],
+      "total_rows_non_null": 119
+    },
+    {
+      "table": "bodha_cdlm_cells",
+      "column": "unique_signals_row_domain",
+      "data_type": "integer",
+      "distinct_count": 43,
+      "values_sample": [
+        {
+          "value": "8456",
+          "row_count": 10
+        },
+        {
+          "value": "3115",
+          "row_count": 10
+        },
+        {
+          "value": "751",
+          "row_count": 6
+        },
+        {
+          "value": "768",
+          "row_count": 6
+        },
+        {
+          "value": "8381",
+          "row_count": 5
+        },
+        {
+          "value": "3114",
+          "row_count": 5
+        },
+        {
+          "value": "8464",
+          "row_count": 5
+        },
+        {
+          "value": "8437",
+          "row_count": 5
+        },
+        {
+          "value": "3068",
+          "row_count": 5
+        },
+        {
+          "value": "3094",
+          "row_count": 5
+        },
+        {
+          "value": "6999",
+          "row_count": 4
+        },
+        {
+          "value": "7308",
+          "row_count": 4
+        },
+        {
+          "value": "7306",
+          "row_count": 4
+        },
+        {
+          "value": "6981",
+          "row_count": 4
+        },
+        {
+          "value": "7334",
+          "row_count": 4
+        },
+        {
+          "value": "7324",
+          "row_count": 4
+        },
+        {
+          "value": "6991",
+          "row_count": 4
+        },
+        {
+          "value": "7321",
+          "row_count": 4
+        },
+        {
+          "value": "6988",
+          "row_count": 4
+        },
+        {
+          "value": "6926",
+          "row_count": 4
+        },
+        {
+          "value": "221",
+          "row_count": 3
+        },
+        {
+          "value": "744",
+          "row_count": 3
+        },
+        {
+          "value": "767",
+          "row_count": 3
+        },
+        {
+          "value": "755",
+          "row_count": 3
+        },
+        {
+          "value": "765",
+          "row_count": 3
+        }
+      ],
+      "total_rows_non_null": 117
+    },
+    {
+      "table": "bodha_cdlm_chart_summary",
+      "column": "chart_typology_class",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "highly_connected",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_cdlm_chart_summary",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_cdlm_domain_rollups",
+      "column": "signal_count_for_domain",
+      "data_type": "integer",
+      "distinct_count": 55,
+      "values_sample": [
+        {
+          "value": "221",
+          "row_count": 3
+        },
+        {
+          "value": "637",
+          "row_count": 2
+        },
+        {
+          "value": "749",
+          "row_count": 2
+        },
+        {
+          "value": "228",
+          "row_count": 2
+        },
+        {
+          "value": "1593",
+          "row_count": 1
+        },
+        {
+          "value": "2201",
+          "row_count": 1
+        },
+        {
+          "value": "331",
+          "row_count": 1
+        },
+        {
+          "value": "2202",
+          "row_count": 1
+        },
+        {
+          "value": "3109",
+          "row_count": 1
+        },
+        {
+          "value": "1588",
+          "row_count": 1
+        },
+        {
+          "value": "635",
+          "row_count": 1
+        },
+        {
+          "value": "3085",
+          "row_count": 1
+        },
+        {
+          "value": "326",
+          "row_count": 1
+        },
+        {
+          "value": "3286",
+          "row_count": 1
+        },
+        {
+          "value": "3287",
+          "row_count": 1
+        },
+        {
+          "value": "3108",
+          "row_count": 1
+        },
+        {
+          "value": "3581",
+          "row_count": 1
+        },
+        {
+          "value": "3242",
+          "row_count": 1
+        },
+        {
+          "value": "745",
+          "row_count": 1
+        },
+        {
+          "value": "6995",
+          "row_count": 1
+        },
+        {
+          "value": "753",
+          "row_count": 1
+        },
+        {
+          "value": "8462",
+          "row_count": 1
+        },
+        {
+          "value": "6977",
+          "row_count": 1
+        },
+        {
+          "value": "1592",
+          "row_count": 1
+        },
+        {
+          "value": "8379",
+          "row_count": 1
+        }
+      ],
+      "total_rows_non_null": 30
+    },
+    {
+      "table": "bodha_cdlm_domain_rollups",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 60
+        }
+      ],
+      "total_rows_non_null": 60
+    },
+    {
+      "table": "bodha_cdlm_evolution_gradients",
+      "column": "evolution_class",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [],
+      "total_rows_non_null": 0
+    },
+    {
+      "table": "bodha_cdlm_pattern_clusters",
+      "column": "classical_archetype_match",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_cdlm_pattern_clusters",
+      "column": "pattern_marker_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "unclassified_linkage_cluster",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_cdlm_pattern_clusters",
+      "column": "predicted_outcome_class",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "mixed",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_cdlm_pattern_clusters",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_cgm_chart_topology_summary",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "column": "active_duration_class",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "natal_permanent",
+          "row_count": 1573
+        }
+      ],
+      "total_rows_non_null": 1573
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "column": "edge_type",
+      "data_type": "text",
+      "distinct_count": 10,
+      "values_sample": [
+        {
+          "value": "aspect",
+          "row_count": 720
+        },
+        {
+          "value": "argala",
+          "row_count": 222
+        },
+        {
+          "value": "bhava_aspect",
+          "row_count": 190
+        },
+        {
+          "value": "lordship",
+          "row_count": 120
+        },
+        {
+          "value": "arudha_house",
+          "row_count": 95
+        },
+        {
+          "value": "occupancy",
+          "row_count": 90
+        },
+        {
+          "value": "dispositor",
+          "row_count": 85
+        },
+        {
+          "value": "special_lagna_house",
+          "row_count": 35
+        },
+        {
+          "value": "dosha_domain",
+          "row_count": 12
+        },
+        {
+          "value": "yoga_member",
+          "row_count": 4
+        }
+      ],
+      "total_rows_non_null": 1573
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "column": "relationship_class",
+      "data_type": "text",
+      "distinct_count": 11,
+      "values_sample": [
+        {
+          "value": "aspect",
+          "row_count": 720
+        },
+        {
+          "value": "bhava_aspect",
+          "row_count": 190
+        },
+        {
+          "value": "argala_positive",
+          "row_count": 141
+        },
+        {
+          "value": "lordship",
+          "row_count": 120
+        },
+        {
+          "value": "arudha_house",
+          "row_count": 95
+        },
+        {
+          "value": "occupancy",
+          "row_count": 90
+        },
+        {
+          "value": "dispositor",
+          "row_count": 85
+        },
+        {
+          "value": "argala_virodha",
+          "row_count": 81
+        },
+        {
+          "value": "special_lagna_house",
+          "row_count": 35
+        },
+        {
+          "value": "antagonist",
+          "row_count": 12
+        },
+        {
+          "value": "membership",
+          "row_count": 4
+        }
+      ],
+      "total_rows_non_null": 1573
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "column": "semantic_path_class",
+      "data_type": "text",
+      "distinct_count": 8,
+      "values_sample": [
+        {
+          "value": "graha_graha",
+          "row_count": 720
+        },
+        {
+          "value": "graha_bhava",
+          "row_count": 400
+        },
+        {
+          "value": "argala_intervention",
+          "row_count": 222
+        },
+        {
+          "value": "arudha_placement",
+          "row_count": 95
+        },
+        {
+          "value": "sign_lordship",
+          "row_count": 85
+        },
+        {
+          "value": "special_lagna_placement",
+          "row_count": 35
+        },
+        {
+          "value": "dosha_impairment",
+          "row_count": 12
+        },
+        {
+          "value": "configuration_membership",
+          "row_count": 4
+        }
+      ],
+      "total_rows_non_null": 1573
+    },
+    {
+      "table": "bodha_cgm_edges",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 1573
+        }
+      ],
+      "total_rows_non_null": 1573
+    },
+    {
+      "table": "bodha_cgm_motifs",
+      "column": "motif_class",
+      "data_type": "text",
+      "distinct_count": 4,
+      "values_sample": [
+        {
+          "value": "mutual_aspect_triangle",
+          "row_count": 840
+        },
+        {
+          "value": "mutual_aspect",
+          "row_count": 360
+        },
+        {
+          "value": "parivartana_chain",
+          "row_count": 5
+        },
+        {
+          "value": "stellium",
+          "row_count": 1
+        }
+      ],
+      "total_rows_non_null": 1206
+    },
+    {
+      "table": "bodha_cgm_motifs",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 1206
+        }
+      ],
+      "total_rows_non_null": 1206
+    },
+    {
+      "table": "bodha_cgm_nodes",
+      "column": "node_type",
+      "data_type": "text",
+      "distinct_count": 7,
+      "values_sample": [
+        {
+          "value": "yoga",
+          "row_count": 130
+        },
+        {
+          "value": "bhava",
+          "row_count": 120
+        },
+        {
+          "value": "dosha",
+          "row_count": 109
+        },
+        {
+          "value": "arudha",
+          "row_count": 95
+        },
+        {
+          "value": "graha",
+          "row_count": 90
+        },
+        {
+          "value": "domain",
+          "row_count": 70
+        },
+        {
+          "value": "special_lagna",
+          "row_count": 35
+        }
+      ],
+      "total_rows_non_null": 649
+    },
+    {
+      "table": "bodha_cgm_nodes",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 649
+        }
+      ],
+      "total_rows_non_null": 649
+    },
+    {
+      "table": "bodha_cgm_paths",
+      "column": "path_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "dispositor_chain",
+          "row_count": 90
+        }
+      ],
+      "total_rows_non_null": 90
+    },
+    {
+      "table": "bodha_cgm_paths",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 90
+        }
+      ],
+      "total_rows_non_null": 90
+    },
+    {
+      "table": "bodha_cgm_sub_graphs",
+      "column": "classical_archetype_match",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_cgm_sub_graphs",
+      "column": "subgraph_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "connected_component",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_contradictions",
+      "column": "tension_class",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "domain_promise_vs_denial",
+          "row_count": 23
+        }
+      ],
+      "total_rows_non_null": 23
+    },
+    {
+      "table": "bodha_convergence",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 60
+        }
+      ],
+      "total_rows_non_null": 60
+    },
+    {
+      "table": "bodha_discoveries",
+      "column": "discovery_class",
+      "data_type": "text",
+      "distinct_count": 3,
+      "values_sample": [
+        {
+          "value": "distributional_anomaly",
+          "row_count": 2008
+        },
+        {
+          "value": "embedding_outlier",
+          "row_count": 138
+        },
+        {
+          "value": "latent_insight",
+          "row_count": 52
+        }
+      ],
+      "total_rows_non_null": 2198
+    },
+    {
+      "table": "bodha_discoveries",
+      "column": "novelty_class",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "instance_of_known_class",
+          "row_count": 2198
+        }
+      ],
+      "total_rows_non_null": 2198
+    },
+    {
+      "table": "bodha_mechanisms",
+      "column": "mechanism_class",
+      "data_type": "text",
+      "distinct_count": 4,
+      "values_sample": [
+        {
+          "value": "mutual_aspect_triangle",
+          "row_count": 420
+        },
+        {
+          "value": "mutual_aspect",
+          "row_count": 180
+        },
+        {
+          "value": "graha_bhava_affliction",
+          "row_count": 10
+        },
+        {
+          "value": "convergent_dispositor_chain",
+          "row_count": 5
+        }
+      ],
+      "total_rows_non_null": 615
+    },
+    {
+      "table": "bodha_mechanisms",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 615
+        }
+      ],
+      "total_rows_non_null": 615
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "active_duration_class",
+      "data_type": "text",
+      "distinct_count": 3,
+      "values_sample": [
+        {
+          "value": "natal_permanent",
+          "row_count": 90756
+        },
+        {
+          "value": "transit_period",
+          "row_count": 6383
+        },
+        {
+          "value": "birth_moment",
+          "row_count": 365
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "class_prior",
+      "data_type": "numeric",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "1.000000",
+          "row_count": 97504
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "fact_kind",
+      "data_type": "text",
+      "distinct_count": 6,
+      "values_sample": [
+        {
+          "value": "relationship",
+          "row_count": 47104
+        },
+        {
+          "value": "magnitude",
+          "row_count": 16486
+        },
+        {
+          "value": "configuration",
+          "row_count": 16047
+        },
+        {
+          "value": "position",
+          "row_count": 11119
+        },
+        {
+          "value": "time_window",
+          "row_count": 6383
+        },
+        {
+          "value": "birth_moment",
+          "row_count": 365
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "predicted_outcome_class",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 97504
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "relationship_classification",
+      "data_type": "text",
+      "distinct_count": 9,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 97354
+        },
+        {
+          "value": "standard",
+          "row_count": 45
+        },
+        {
+          "value": "contradicted",
+          "row_count": 35
+        },
+        {
+          "value": "special_lagna_placement",
+          "row_count": 20
+        },
+        {
+          "value": "partial_2frame",
+          "row_count": 10
+        },
+        {
+          "value": "al_conjunction",
+          "row_count": 10
+        },
+        {
+          "value": "dhana_axis_tenancy",
+          "row_count": 10
+        },
+        {
+          "value": "arudha_pada_tenancy",
+          "row_count": 10
+        },
+        {
+          "value": "vargottama_confirmed",
+          "row_count": 5
+        },
+        {
+          "value": "al_trikona",
+          "row_count": 5
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "salience_pctl_in_class",
+      "data_type": "numeric",
+      "distinct_count": 1789,
+      "values_sample": [
+        {
+          "value": "0.2855",
+          "row_count": 4843
+        },
+        {
+          "value": "0.1466",
+          "row_count": 2545
+        },
+        {
+          "value": "0.2858",
+          "row_count": 2420
+        },
+        {
+          "value": "0.2859",
+          "row_count": 2415
+        },
+        {
+          "value": "0.2827",
+          "row_count": 2401
+        },
+        {
+          "value": "0.2180",
+          "row_count": 2154
+        },
+        {
+          "value": "0.2179",
+          "row_count": 2149
+        },
+        {
+          "value": "0.2177",
+          "row_count": 2148
+        },
+        {
+          "value": "0.2285",
+          "row_count": 2137
+        },
+        {
+          "value": "0.2188",
+          "row_count": 2118
+        },
+        {
+          "value": "0.1463",
+          "row_count": 2020
+        },
+        {
+          "value": "0.0000",
+          "row_count": 1295
+        },
+        {
+          "value": "0.1390",
+          "row_count": 1115
+        },
+        {
+          "value": "0.3838",
+          "row_count": 1072
+        },
+        {
+          "value": "0.3419",
+          "row_count": 1070
+        },
+        {
+          "value": "0.9339",
+          "row_count": 973
+        },
+        {
+          "value": "0.8335",
+          "row_count": 729
+        },
+        {
+          "value": "0.1878",
+          "row_count": 726
+        },
+        {
+          "value": "0.0482",
+          "row_count": 606
+        },
+        {
+          "value": "0.3850",
+          "row_count": 541
+        },
+        {
+          "value": "0.3424",
+          "row_count": 540
+        },
+        {
+          "value": "0.3833",
+          "row_count": 536
+        },
+        {
+          "value": "0.3922",
+          "row_count": 536
+        },
+        {
+          "value": "0.3409",
+          "row_count": 535
+        },
+        {
+          "value": "0.3431",
+          "row_count": 535
+        }
+      ],
+      "total_rows_non_null": 38159
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "signal_headline_text",
+      "data_type": "text",
+      "distinct_count": 9095,
+      "values_sample": [
+        {
+          "value": "karaka bhava concordance: concordance value = enemy [ga_structural]",
+          "row_count": 2610
+        },
+        {
+          "value": "bhava significance link: lord aspects = kendra_link [ga_structural]",
+          "row_count": 2242
+        },
+        {
+          "value": "vargottama per varga: is vargottama = not_vargottama [ga_structural]",
+          "row_count": 2216
+        },
+        {
+          "value": "karaka bhava concordance: concordance value = concordant [ga_structural]",
+          "row_count": 2030
+        },
+        {
+          "value": "convergence count: total edges = 0 [ga_structural]",
+          "row_count": 1964
+        },
+        {
+          "value": "bhava significance link: lord aspects = dusthana_link [ga_structural]",
+          "row_count": 1915
+        },
+        {
+          "value": "karaka bhava concordance: concordance value = friendly [ga_structural]",
+          "row_count": 1740
+        },
+        {
+          "value": "bhava significance link: lord aspects = neutral_link [ga_structural]",
+          "row_count": 1694
+        },
+        {
+          "value": "karaka bhava concordance: concordance value = neutral [ga_structural]",
+          "row_count": 1450
+        },
+        {
+          "value": "graha dignity per varga: dignity state = neutral [ga_structural]",
+          "row_count": 1371
+        },
+        {
+          "value": "bhava significance link: lord placed = kendra_link [ga_structural]",
+          "row_count": 1118
+        },
+        {
+          "value": "bhava significance link: lord aspects = trikona_link [ga_structural]",
+          "row_count": 1109
+        },
+        {
+          "value": "bhava significance link: lord placed = dusthana_link [ga_structural]",
+          "row_count": 915
+        },
+        {
+          "value": "karaka bhava concordance: concordance value = friendly_reverse [ga_structural]",
+          "row_count": 870
+        },
+        {
+          "value": "bhava significance link: lord placed = neutral_link [ga_structural]",
+          "row_count": 829
+        },
+        {
+          "value": "graha centrality: degree centrality = 3 [ga_structural]",
+          "row_count": 643
+        },
+        {
+          "value": "conjunction per varga: orb deg = 0 [ga_structural]",
+          "row_count": 622
+        },
+        {
+          "value": "bhava significance link: lord placed = trikona_link [ga_structural]",
+          "row_count": 618
+        },
+        {
+          "value": "convergence count: total edges = 3 [ga_structural]",
+          "row_count": 564
+        },
+        {
+          "value": "convergence count: total edges = 2 [ga_structural]",
+          "row_count": 522
+        },
+        {
+          "value": "net argala per varga: net argala = 1 [ga_structural]",
+          "row_count": 520
+        },
+        {
+          "value": "sambandha grade: grade = 0.25 [ga_structural]",
+          "row_count": 495
+        },
+        {
+          "value": "graha centrality: degree centrality = 4 [ga_structural]",
+          "row_count": 489
+        },
+        {
+          "value": "net argala per varga: net argala = 0 [ga_structural]",
+          "row_count": 488
+        },
+        {
+          "value": "graha centrality: degree centrality = 2 [ga_structural]",
+          "row_count": 482
+        }
+      ],
+      "total_rows_non_null": 29516
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "signal_summary_text",
+      "data_type": "text",
+      "distinct_count": 35138,
+      "values_sample": [
+        {
+          "value": "category=karaka_bhava_concordance | key=concordance_value | value_text=friendly | bhava_lord=SUN | bhava_num=5 | bhava_sign=Leo | concordance=friendly | natural_karaka=JUP | significance=children | varga=D20",
+          "row_count": 10
+        },
+        {
+          "value": "category=nakshatra_dispositor | key=lord_chain | value_text=[\"Rahu\"] | graha=RAH_MEAN",
+          "row_count": 10
+        },
+        {
+          "value": "category=graha_nakshatra_join | key=nadi | value_text=Adi | graha=JUP",
+          "row_count": 10
+        },
+        {
+          "value": "category=ashtakavarga_pinda_sarva | key=total | value_num=337",
+          "row_count": 10
+        },
+        {
+          "value": "category=ashtakavarga_bindu_per_varga | key=D4 | value_num=7",
+          "row_count": 10
+        },
+        {
+          "value": "category=karaka_bhava_concordance | key=concordance_value | value_text=friendly | bhava_lord=MAR | bhava_num=1 | bhava_sign=Aries | concordance=friendly | natural_karaka=SUN | significance=self | varga=D50",
+          "row_count": 10
+        },
+        {
+          "value": "category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=MAR | bhava_num=8 | bhava_sign=Scorpio | concordance=enemy | natural_karaka=SAT | significance=longevity | varga=D5",
+          "row_count": 10
+        },
+        {
+          "value": "category=karaka_bhava_concordance | key=concordance_value | value_text=friendly | bhava_lord=SUN | bhava_num=5 | bhava_sign=Leo | concordance=friendly | natural_karaka=JUP | significance=children | varga=D2700",
+          "row_count": 10
+        },
+        {
+          "value": "category=graha_cheshta_bala_per_varga | key=D20 | value_text=floored: no_canonical_per_varga_method",
+          "row_count": 10
+        },
+        {
+          "value": "category=graha_avastha_deeptaadi_per_varga | key=D16 | value_text=dina",
+          "row_count": 10
+        },
+        {
+          "value": "category=contradiction_pair | key=opposed_argala_D11 | value_text=benefic_malefic_conflict | benefic_count=12 | benefic_sources=['argala_natal_matrix'] | family=argala | malefic_count=12 | malefic_sources=['virodha_argala_natal_matrix'] | target=D11_SIGN_11 | varga=D11",
+          "row_count": 10
+        },
+        {
+          "value": "category=virodha_argala_natal_matrix | key=from_sign_2_offset_5 | value_num=0",
+          "row_count": 10
+        },
+        {
+          "value": "category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=MAR | bhava_num=8 | bhava_sign=Scorpio | concordance=enemy | natural_karaka=SAT | significance=obstacles | varga=D2",
+          "row_count": 10
+        },
+        {
+          "value": "category=karaka_bhava_concordance | key=concordance_value | value_text=concordant | bhava_lord=VEN | bhava_num=7 | bhava_sign=Libra | concordance=concordant | natural_karaka=VEN | significance=kama | varga=D32",
+          "row_count": 10
+        },
+        {
+          "value": "category=ashtakavarga_bindu_per_varga | key=D4 | value_num=6",
+          "row_count": 10
+        },
+        {
+          "value": "category=graha_avastha_baladi_per_varga | key=D2700 | value_text=vriddha",
+          "row_count": 10
+        },
+        {
+          "value": "category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=MAR | bhava_num=8 | bhava_sign=Scorpio | concordance=enemy | natural_karaka=SAT | significance=obstacles | varga=D20",
+          "row_count": 10
+        },
+        {
+          "value": "category=sambandha_grade | key=grade | value_num=0.25 | conjunction_score=0.0 | exchange_score=0.0 | mutual_aspect_score=1.0 | reception_score=0.0 | varga=D40",
+          "row_count": 10
+        },
+        {
+          "value": "category=argala_natal_matrix | key=from_sign_6_offset_9 | value_num=0",
+          "row_count": 10
+        },
+        {
+          "value": "category=contradiction_pair | key=opposed_argala_D40 | value_text=benefic_malefic_conflict | benefic_count=12 | benefic_sources=['argala_natal_matrix'] | family=argala | malefic_count=12 | malefic_sources=['virodha_argala_natal_matrix'] | target=D40_SIGN_12 | varga=D40",
+          "row_count": 10
+        },
+        {
+          "value": "category=karaka_bhava_concordance | key=concordance_value | value_text=concordant | bhava_lord=JUP | bhava_num=9 | bhava_sign=Sagittarius | concordance=concordant | natural_karaka=JUP | significance=luck | varga=D20",
+          "row_count": 10
+        },
+        {
+          "value": "category=aspect_jaimini_per_varga | key=aggregate_D8 | value_text=108 aspect_jaimini_per_varga members rolled up (varga=D8) | value_num=108 | aggregated=True | member_count=108 | member_sample_keys=['on_Aquarius', 'on_Aries', 'on_Cancer', 'on_Capricorn', 'on_Gemini', 'on_Leo', 'on_Libra', 'on_Pisces'] | varga=D8 | wp=WP-2.4:flood_cap",
+          "row_count": 10
+        },
+        {
+          "value": "category=virodha_argala_natal_matrix | key=from_sign_12_offset_12 | value_num=1",
+          "row_count": 10
+        },
+        {
+          "value": "category=convergence_count | key=total_edges | value_num=0 | entity=house | house=1 | total_edges=0 | varga=D21",
+          "row_count": 10
+        },
+        {
+          "value": "category=graha_avastha_deeptaadi_per_varga | key=D8 | value_text=swastha",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 250
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "signal_tradition",
+      "data_type": "text",
+      "distinct_count": 6,
+      "values_sample": [
+        {
+          "value": "parashari",
+          "row_count": 82380
+        },
+        {
+          "value": "jaimini",
+          "row_count": 12458
+        },
+        {
+          "value": "kp",
+          "row_count": 1009
+        },
+        {
+          "value": "esoteric",
+          "row_count": 986
+        },
+        {
+          "value": "tajika",
+          "row_count": 651
+        },
+        {
+          "value": "lal_kitab",
+          "row_count": 20
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "signal_type_class",
+      "data_type": "text",
+      "distinct_count": 19,
+      "values_sample": [
+        {
+          "value": "composite_state",
+          "row_count": 73229
+        },
+        {
+          "value": "karaka_alignment",
+          "row_count": 11973
+        },
+        {
+          "value": "sade_sati",
+          "row_count": 5753
+        },
+        {
+          "value": "varga_pattern",
+          "row_count": 2555
+        },
+        {
+          "value": "panchanga",
+          "row_count": 1170
+        },
+        {
+          "value": "tradition_specific",
+          "row_count": 1009
+        },
+        {
+          "value": "annual",
+          "row_count": 621
+        },
+        {
+          "value": "parivartana",
+          "row_count": 408
+        },
+        {
+          "value": "configuration",
+          "row_count": 290
+        },
+        {
+          "value": "yoga",
+          "row_count": 140
+        },
+        {
+          "value": "dosha",
+          "row_count": 119
+        },
+        {
+          "value": "bhavat_bhavam_amplifier",
+          "row_count": 60
+        },
+        {
+          "value": "nakshatra_semantic",
+          "row_count": 45
+        },
+        {
+          "value": "sudarshana_agreement",
+          "row_count": 45
+        },
+        {
+          "value": "varga_ratification_divergence",
+          "row_count": 27
+        },
+        {
+          "value": "arudha",
+          "row_count": 25
+        },
+        {
+          "value": "special_lagna",
+          "row_count": 20
+        },
+        {
+          "value": "dhana_axis",
+          "row_count": 10
+        },
+        {
+          "value": "vargottama_amplification",
+          "row_count": 5
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "bodha_msr_signals",
+      "column": "signature_class",
+      "data_type": "text",
+      "distinct_count": 7,
+      "values_sample": [
+        {
+          "value": "general",
+          "row_count": 88338
+        },
+        {
+          "value": "temporal",
+          "row_count": 6374
+        },
+        {
+          "value": "planetary",
+          "row_count": 2732
+        },
+        {
+          "value": "jaimini_arudha",
+          "row_count": 25
+        },
+        {
+          "value": "upapada",
+          "row_count": 20
+        },
+        {
+          "value": "house_tenancy",
+          "row_count": 10
+        },
+        {
+          "value": "varga_confirmation",
+          "row_count": 5
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "bodha_question_lenses",
+      "column": "question_type",
+      "data_type": "text",
+      "distinct_count": 12,
+      "values_sample": [
+        {
+          "value": "siblings",
+          "row_count": 10
+        },
+        {
+          "value": "longevity",
+          "row_count": 10
+        },
+        {
+          "value": "health",
+          "row_count": 10
+        },
+        {
+          "value": "career",
+          "row_count": 10
+        },
+        {
+          "value": "marriage",
+          "row_count": 10
+        },
+        {
+          "value": "wealth",
+          "row_count": 10
+        },
+        {
+          "value": "property",
+          "row_count": 10
+        },
+        {
+          "value": "progeny",
+          "row_count": 10
+        },
+        {
+          "value": "character",
+          "row_count": 10
+        },
+        {
+          "value": "spirituality",
+          "row_count": 10
+        },
+        {
+          "value": "foreign_travel",
+          "row_count": 10
+        },
+        {
+          "value": "education",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 120
+    },
+    {
+      "table": "bodha_rm_chart_summary",
+      "column": "primary_dosha_class",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_rm_chart_summary",
+      "column": "recommended_intensity_class",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": "moderate",
+          "row_count": 5
+        },
+        {
+          "value": "sustained",
+          "row_count": 5
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_rm_chart_summary",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 10
+        }
+      ],
+      "total_rows_non_null": 10
+    },
+    {
+      "table": "bodha_rm_dosha_remedy_bundles",
+      "column": "dosha_class",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [],
+      "total_rows_non_null": 0
+    },
+    {
+      "table": "bodha_rm_pattern_remedies",
+      "column": "source_kind",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "resonance",
+          "row_count": 90
+        }
+      ],
+      "total_rows_non_null": 90
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "column": "classical_strength_rating",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": "0.90",
+          "row_count": 140
+        },
+        {
+          "value": "0.85",
+          "row_count": 130
+        }
+      ],
+      "total_rows_non_null": 270
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "column": "phase_sequence_class",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 270
+        }
+      ],
+      "total_rows_non_null": 270
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "column": "remedy_category",
+      "data_type": "text",
+      "distinct_count": 3,
+      "values_sample": [
+        {
+          "value": "mantra",
+          "row_count": 130
+        },
+        {
+          "value": "charity",
+          "row_count": 90
+        },
+        {
+          "value": "gemstone",
+          "row_count": 50
+        }
+      ],
+      "total_rows_non_null": 270
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "column": "ritual_complexity_class",
+      "data_type": "text",
+      "distinct_count": 3,
+      "values_sample": [
+        {
+          "value": "simple",
+          "row_count": 130
+        },
+        {
+          "value": "moderate",
+          "row_count": 90
+        },
+        {
+          "value": "complex",
+          "row_count": 50
+        }
+      ],
+      "total_rows_non_null": 270
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 270
+        }
+      ],
+      "total_rows_non_null": 270
+    },
+    {
+      "table": "bodha_rm_remedy_prescriptions",
+      "column": "targets_dosha_class",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 270
+        }
+      ],
+      "total_rows_non_null": 270
+    },
+    {
+      "table": "bodha_rm_resonances",
+      "column": "remedy_priority_class",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": "medium",
+          "row_count": 45
+        },
+        {
+          "value": "high",
+          "row_count": 45
+        }
+      ],
+      "total_rows_non_null": 90
+    },
+    {
+      "table": "bodha_rm_resonances",
+      "column": "snapshot_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "static_natal",
+          "row_count": 90
+        }
+      ],
+      "total_rows_non_null": 90
+    },
+    {
+      "table": "bodha_triangulation",
+      "column": "question_class",
+      "data_type": "text",
+      "distinct_count": 6,
+      "values_sample": [
+        {
+          "value": "career",
+          "row_count": 40
+        },
+        {
+          "value": "character",
+          "row_count": 40
+        },
+        {
+          "value": "relationship",
+          "row_count": 40
+        },
+        {
+          "value": "spirituality",
+          "row_count": 30
+        },
+        {
+          "value": "wealth",
+          "row_count": 30
+        },
+        {
+          "value": "health",
+          "row_count": 20
+        }
+      ],
+      "total_rows_non_null": 200
+    },
+    {
+      "table": "kala_activation",
+      "column": "signature_class",
+      "data_type": "text",
+      "distinct_count": 6,
+      "values_sample": [
+        {
+          "value": "SUBSYSTEM",
+          "row_count": 320502
+        },
+        {
+          "value": "DISPOSITOR_RELATIONAL",
+          "row_count": 52869
+        },
+        {
+          "value": "DIGNITY",
+          "row_count": 4264
+        },
+        {
+          "value": "CLASSIFY_RESIDUAL",
+          "row_count": 1686
+        },
+        {
+          "value": "DOSHA",
+          "row_count": 577
+        },
+        {
+          "value": "YOGA",
+          "row_count": 140
+        }
+      ],
+      "total_rows_non_null": 380038
+    },
+    {
+      "table": "kala_activation_predicates",
+      "column": "signature_class",
+      "data_type": "text",
+      "distinct_count": 6,
+      "values_sample": [
+        {
+          "value": "SUBSYSTEM",
+          "row_count": 83328
+        },
+        {
+          "value": "DISPOSITOR_RELATIONAL",
+          "row_count": 12381
+        },
+        {
+          "value": "DIGNITY",
+          "row_count": 1009
+        },
+        {
+          "value": "DOSHA",
+          "row_count": 409
+        },
+        {
+          "value": "CLASSIFY_RESIDUAL",
+          "row_count": 237
+        },
+        {
+          "value": "YOGA",
+          "row_count": 140
+        }
+      ],
+      "total_rows_non_null": 97504
+    },
+    {
+      "table": "kala_gochara_windows",
+      "column": "event_class",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": "marriage",
+          "row_count": 3
+        },
+        {
+          "value": "major_gain",
+          "row_count": 2
+        }
+      ],
+      "total_rows_non_null": 5
+    },
+    {
+      "table": "kala_jivana_parva",
+      "column": "dominant_signal_class",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 95
+        },
+        {
+          "value": "DISPOSITOR_RELATIONAL",
+          "row_count": 53
+        },
+        {
+          "value": "DIGNITY",
+          "row_count": 52
+        }
+      ],
+      "total_rows_non_null": 200
+    },
+    {
+      "table": "kala_obstruction",
+      "column": "obstruction_type",
+      "data_type": "text",
+      "distinct_count": 4,
+      "values_sample": [
+        {
+          "value": "malefic_transit",
+          "row_count": 711
+        },
+        {
+          "value": "combustion",
+          "row_count": 497
+        },
+        {
+          "value": "panchanga_obstruction",
+          "row_count": 143
+        },
+        {
+          "value": "gandanta",
+          "row_count": 38
+        }
+      ],
+      "total_rows_non_null": 1389
+    },
+    {
+      "table": "kala_taranga",
+      "column": "scope_kind",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": "domain",
+          "row_count": 79728
+        },
+        {
+          "value": "event_class",
+          "row_count": 79728
+        }
+      ],
+      "total_rows_non_null": 159456
+    },
+    {
+      "table": "phala_anchors",
+      "column": "event_type",
+      "data_type": "text",
+      "distinct_count": 8,
+      "values_sample": [
+        {
+          "value": "transition_convergence_event",
+          "row_count": 159
+        },
+        {
+          "value": "transition_bhavishya_event",
+          "row_count": 87
+        },
+        {
+          "value": "transition_discovery_event",
+          "row_count": 78
+        },
+        {
+          "value": "career_entry",
+          "row_count": 27
+        },
+        {
+          "value": "career_discovery_event",
+          "row_count": 24
+        },
+        {
+          "value": "spiritual_turn",
+          "row_count": 5
+        },
+        {
+          "value": "health_bhavishya_event",
+          "row_count": 3
+        },
+        {
+          "value": "relationship_discovery_event",
+          "row_count": 1
+        }
+      ],
+      "total_rows_non_null": 384
+    },
+    {
+      "table": "phala_mitigation",
+      "column": "classical_citation",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "Brihat Parashara Hora Shastra — Upaya chapter",
+          "row_count": 1389
+        }
+      ],
+      "total_rows_non_null": 1389
+    },
+    {
+      "table": "phala_muhurta",
+      "column": "action_class",
+      "data_type": "text",
+      "distinct_count": 4,
+      "values_sample": [
+        {
+          "value": "travel",
+          "row_count": 6
+        },
+        {
+          "value": "start_business",
+          "row_count": 5
+        },
+        {
+          "value": "medical",
+          "row_count": 2
+        },
+        {
+          "value": "marriage",
+          "row_count": 1
+        }
+      ],
+      "total_rows_non_null": 14
+    },
+    {
+      "table": "phala_muhurta",
+      "column": "classical_citation",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": "Muhūrta-Chintāmaṇi + Grahalaghava",
+          "row_count": 13
+        },
+        {
+          "value": "Muhurta-Chintamani ch.4",
+          "row_count": 1
+        }
+      ],
+      "total_rows_non_null": 14
+    },
+    {
+      "table": "phala_phaladesa",
+      "column": "evidence_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 7
+        },
+        {
+          "value": "pending_observation",
+          "row_count": 7
+        }
+      ],
+      "total_rows_non_null": 14
+    },
+    {
+      "table": "phala_pramana",
+      "column": "evidence_type",
+      "data_type": "text",
+      "distinct_count": 1,
+      "values_sample": [
+        {
+          "value": "pending_observation",
+          "row_count": 384
+        }
+      ],
+      "total_rows_non_null": 384
+    },
+    {
+      "table": "phala_sankrama",
+      "column": "relationship_type",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": "contagion",
+          "row_count": 1156
+        },
+        {
+          "value": "conflict",
+          "row_count": 174
+        }
+      ],
+      "total_rows_non_null": 1330
+    },
+    {
+      "table": "phala_sodhana",
+      "column": "anomaly_type",
+      "data_type": "text",
+      "distinct_count": 2,
+      "values_sample": [
+        {
+          "value": "falsifier_absent",
+          "row_count": 105
+        },
+        {
+          "value": "magnitude_drift",
+          "row_count": 17
+        }
+      ],
+      "total_rows_non_null": 122
+    },
+    {
+      "table": "phala_sodhana",
+      "column": "leakage_class",
+      "data_type": "text",
+      "distinct_count": 0,
+      "values_sample": [
+        {
+          "value": null,
+          "row_count": 122
+        }
+      ],
+      "total_rows_non_null": 122
+    }
+  ],
+  "cross_table_value_overlaps_all": [
+    {
+      "a": "bodha_anomalies.anomaly_type",
+      "b": "bodha_discoveries.discovery_class",
+      "same_column_name": false,
+      "shared_values": [
+        "distributional_anomaly",
+        "embedding_outlier"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_cdlm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_cdlm_domain_rollups.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_cgm_edges.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_cgm_motifs.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_cgm_nodes.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_cgm_paths.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.unique_signals_col_domain",
+      "b": "bodha_cdlm_domain_rollups.signal_count_for_domain",
+      "same_column_name": false,
+      "shared_values": [
+        "221",
+        "228",
+        "1593"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.unique_signals_row_domain",
+      "b": "bodha_cdlm_domain_rollups.signal_count_for_domain",
+      "same_column_name": false,
+      "shared_values": [
+        "221"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_cdlm_domain_rollups.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_cgm_edges.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_cgm_motifs.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_cgm_nodes.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_cgm_paths.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_chart_summary.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_cgm_edges.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_cgm_motifs.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_cgm_nodes.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_cgm_paths.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_domain_rollups.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_cgm_edges.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_cgm_motifs.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_cgm_nodes.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_cgm_paths.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_pattern_clusters.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_cgm_edges.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_cgm_motifs.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_cgm_nodes.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_cgm_paths.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_chart_topology_summary.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.active_duration_class",
+      "b": "bodha_msr_signals.active_duration_class",
+      "same_column_name": true,
+      "shared_values": [
+        "natal_permanent"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.semantic_path_class",
+      "b": "bodha_msr_signals.relationship_classification",
+      "same_column_name": false,
+      "shared_values": [
+        "special_lagna_placement"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.snapshot_type",
+      "b": "bodha_cgm_motifs.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.snapshot_type",
+      "b": "bodha_cgm_nodes.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.snapshot_type",
+      "b": "bodha_cgm_paths.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.motif_class",
+      "b": "bodha_mechanisms.mechanism_class",
+      "same_column_name": false,
+      "shared_values": [
+        "mutual_aspect_triangle",
+        "mutual_aspect"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.snapshot_type",
+      "b": "bodha_cgm_nodes.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.snapshot_type",
+      "b": "bodha_cgm_paths.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.node_type",
+      "b": "bodha_msr_signals.signal_type_class",
+      "same_column_name": false,
+      "shared_values": [
+        "yoga",
+        "dosha",
+        "arudha",
+        "special_lagna"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.node_type",
+      "b": "kala_taranga.scope_kind",
+      "same_column_name": false,
+      "shared_values": [
+        "domain"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.snapshot_type",
+      "b": "bodha_cgm_paths.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_paths.snapshot_type",
+      "b": "bodha_convergence.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_paths.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_paths.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_paths.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_cgm_paths.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_convergence.snapshot_type",
+      "b": "bodha_mechanisms.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_convergence.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_convergence.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_convergence.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_mechanisms.snapshot_type",
+      "b": "bodha_rm_chart_summary.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_mechanisms.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_mechanisms.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_msr_signals.fact_kind",
+      "b": "bodha_triangulation.question_class",
+      "same_column_name": false,
+      "shared_values": [
+        "relationship"
+      ]
+    },
+    {
+      "a": "bodha_question_lenses.question_type",
+      "b": "bodha_triangulation.question_class",
+      "same_column_name": false,
+      "shared_values": [
+        "health",
+        "career",
+        "wealth",
+        "character",
+        "spirituality"
+      ]
+    },
+    {
+      "a": "bodha_question_lenses.question_type",
+      "b": "kala_gochara_windows.event_class",
+      "same_column_name": false,
+      "shared_values": [
+        "marriage"
+      ]
+    },
+    {
+      "a": "bodha_question_lenses.question_type",
+      "b": "phala_muhurta.action_class",
+      "same_column_name": false,
+      "shared_values": [
+        "marriage"
+      ]
+    },
+    {
+      "a": "bodha_rm_chart_summary.recommended_intensity_class",
+      "b": "bodha_rm_remedy_prescriptions.ritual_complexity_class",
+      "same_column_name": false,
+      "shared_values": [
+        "moderate"
+      ]
+    },
+    {
+      "a": "bodha_rm_chart_summary.snapshot_type",
+      "b": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_rm_chart_summary.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "bodha_rm_remedy_prescriptions.snapshot_type",
+      "b": "bodha_rm_resonances.snapshot_type",
+      "same_column_name": true,
+      "shared_values": [
+        "static_natal"
+      ]
+    },
+    {
+      "a": "kala_activation.signature_class",
+      "b": "kala_activation_predicates.signature_class",
+      "same_column_name": true,
+      "shared_values": [
+        "SUBSYSTEM",
+        "DISPOSITOR_RELATIONAL",
+        "DIGNITY",
+        "CLASSIFY_RESIDUAL",
+        "DOSHA",
+        "YOGA"
+      ]
+    },
+    {
+      "a": "kala_activation.signature_class",
+      "b": "kala_jivana_parva.dominant_signal_class",
+      "same_column_name": false,
+      "shared_values": [
+        "DISPOSITOR_RELATIONAL",
+        "DIGNITY"
+      ]
+    },
+    {
+      "a": "kala_activation_predicates.signature_class",
+      "b": "kala_jivana_parva.dominant_signal_class",
+      "same_column_name": false,
+      "shared_values": [
+        "DISPOSITOR_RELATIONAL",
+        "DIGNITY"
+      ]
+    },
+    {
+      "a": "kala_gochara_windows.event_class",
+      "b": "phala_muhurta.action_class",
+      "same_column_name": false,
+      "shared_values": [
+        "marriage"
+      ]
+    },
+    {
+      "a": "phala_phaladesa.evidence_type",
+      "b": "phala_pramana.evidence_type",
+      "same_column_name": true,
+      "shared_values": [
+        "pending_observation"
+      ]
+    }
+  ],
+  "cross_table_value_overlaps_distinct_concept_only": [
+    {
+      "a": "bodha_anomalies.anomaly_type",
+      "b": "bodha_discoveries.discovery_class",
+      "same_column_name": false,
+      "shared_values": [
+        "distributional_anomaly",
+        "embedding_outlier"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.unique_signals_col_domain",
+      "b": "bodha_cdlm_domain_rollups.signal_count_for_domain",
+      "same_column_name": false,
+      "shared_values": [
+        "221",
+        "228",
+        "1593"
+      ]
+    },
+    {
+      "a": "bodha_cdlm_cells.unique_signals_row_domain",
+      "b": "bodha_cdlm_domain_rollups.signal_count_for_domain",
+      "same_column_name": false,
+      "shared_values": [
+        "221"
+      ]
+    },
+    {
+      "a": "bodha_cgm_edges.semantic_path_class",
+      "b": "bodha_msr_signals.relationship_classification",
+      "same_column_name": false,
+      "shared_values": [
+        "special_lagna_placement"
+      ]
+    },
+    {
+      "a": "bodha_cgm_motifs.motif_class",
+      "b": "bodha_mechanisms.mechanism_class",
+      "same_column_name": false,
+      "shared_values": [
+        "mutual_aspect_triangle",
+        "mutual_aspect"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.node_type",
+      "b": "bodha_msr_signals.signal_type_class",
+      "same_column_name": false,
+      "shared_values": [
+        "yoga",
+        "dosha",
+        "arudha",
+        "special_lagna"
+      ]
+    },
+    {
+      "a": "bodha_cgm_nodes.node_type",
+      "b": "kala_taranga.scope_kind",
+      "same_column_name": false,
+      "shared_values": [
+        "domain"
+      ]
+    },
+    {
+      "a": "bodha_msr_signals.fact_kind",
+      "b": "bodha_triangulation.question_class",
+      "same_column_name": false,
+      "shared_values": [
+        "relationship"
+      ]
+    },
+    {
+      "a": "bodha_question_lenses.question_type",
+      "b": "bodha_triangulation.question_class",
+      "same_column_name": false,
+      "shared_values": [
+        "health",
+        "career",
+        "wealth",
+        "character",
+        "spirituality"
+      ]
+    },
+    {
+      "a": "bodha_question_lenses.question_type",
+      "b": "kala_gochara_windows.event_class",
+      "same_column_name": false,
+      "shared_values": [
+        "marriage"
+      ]
+    },
+    {
+      "a": "bodha_question_lenses.question_type",
+      "b": "phala_muhurta.action_class",
+      "same_column_name": false,
+      "shared_values": [
+        "marriage"
+      ]
+    },
+    {
+      "a": "bodha_rm_chart_summary.recommended_intensity_class",
+      "b": "bodha_rm_remedy_prescriptions.ritual_complexity_class",
+      "same_column_name": false,
+      "shared_values": [
+        "moderate"
+      ]
+    },
+    {
+      "a": "kala_activation.signature_class",
+      "b": "kala_jivana_parva.dominant_signal_class",
+      "same_column_name": false,
+      "shared_values": [
+        "DISPOSITOR_RELATIONAL",
+        "DIGNITY"
+      ]
+    },
+    {
+      "a": "kala_activation_predicates.signature_class",
+      "b": "kala_jivana_parva.dominant_signal_class",
+      "same_column_name": false,
+      "shared_values": [
+        "DISPOSITOR_RELATIONAL",
+        "DIGNITY"
+      ]
+    },
+    {
+      "a": "kala_gochara_windows.event_class",
+      "b": "phala_muhurta.action_class",
+      "same_column_name": false,
+      "shared_values": [
+        "marriage"
+      ]
+    }
+  ]
+}

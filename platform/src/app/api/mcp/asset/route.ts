@@ -25,19 +25,7 @@ import { NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { buildEnvelope, buildErrorEnvelope, buildEpistemicsBlock } from '@/lib/mcp/epistemics'
-
-// ── Service-to-service token validation ─────────────────────────────────────
-
-function validateServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    if (process.env.NODE_ENV === 'development') return true
-    console.error('[mcp:asset] MCP_INTERNAL_TOKEN not set in production')
-    return false
-  }
-  return token === expected
-}
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 // ── Safe canonical_id → relative file path map ───────────────────────────────
 // Paths are relative to the repository root (the parent of platform/).

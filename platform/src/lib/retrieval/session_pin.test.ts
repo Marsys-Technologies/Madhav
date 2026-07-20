@@ -26,6 +26,7 @@ function makePin(overrides: Partial<SessionPinValues> = {}): SessionPinValues {
     ranking_config: { mode: 'composite_v1' },
     build_id: 'build-1',
     build_status: 'complete',
+    ledger_version: '3:1800000000',
     now_context_date: '2026-07-09',
     pinned_at: '2026-07-09T00:00:00.000Z',
     ...overrides,
@@ -67,6 +68,43 @@ describe('detectBuildDrift', () => {
     const current = asCurrent(makePin({ build_id: 'build-1' }))
     const result = detectBuildDrift(existing, current)
     expect(result.drift).toBe(true)
+  })
+
+  // W3-L8 (RETRIEVAL_PLANE_ELEVATION_PLAN §9.6-3/4, W-26): ledger_version is a SECOND,
+  // independent drift signal alongside build_id.
+  it('reports no drift when ledger_version is unchanged', () => {
+    const existing = makePin({ ledger_version: '3:1800000000' })
+    const current = asCurrent(makePin({ ledger_version: '3:1800000000', pinned_at: 'later' }))
+    const result = detectBuildDrift(existing, current)
+    expect(result.drift).toBe(false)
+    expect(result.judgment_flags).toEqual([])
+  })
+
+  it('detects drift and raises the exact judgment_flag when ledger_version changes but build_id does not', () => {
+    const existing = makePin({ build_id: 'build-1', ledger_version: '3:1800000000' })
+    const current = asCurrent(makePin({ build_id: 'build-1', ledger_version: '4:1800000600' }))
+    const result = detectBuildDrift(existing, current)
+    expect(result.drift).toBe(true)
+    expect(result.judgment_flags).toEqual(['concept_ledger_updated_mid_session_pin_refreshed'])
+  })
+
+  it('detects drift when the ledger had no rows before and now has some (null -> value)', () => {
+    const existing = makePin({ ledger_version: null })
+    const current = asCurrent(makePin({ ledger_version: '1:1800000000' }))
+    const result = detectBuildDrift(existing, current)
+    expect(result.drift).toBe(true)
+    expect(result.judgment_flags).toEqual(['concept_ledger_updated_mid_session_pin_refreshed'])
+  })
+
+  it('raises BOTH flags when build_id and ledger_version drift in the same resolution (signals collected, not short-circuited)', () => {
+    const existing = makePin({ build_id: 'build-1', ledger_version: '3:1800000000' })
+    const current = asCurrent(makePin({ build_id: 'build-2', ledger_version: '4:1800000600' }))
+    const result = detectBuildDrift(existing, current)
+    expect(result.drift).toBe(true)
+    expect(result.judgment_flags).toEqual([
+      'chart_rebuilt_mid_session_pin_refreshed',
+      'concept_ledger_updated_mid_session_pin_refreshed',
+    ])
   })
 })
 

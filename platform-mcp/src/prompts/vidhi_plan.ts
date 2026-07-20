@@ -10,11 +10,18 @@
  *
  * The primary plan surface (the `plan_retrieval` tool is the fallback). Registered from
  * prompts/index.ts alongside the existing guided prompts.
+ *
+ * S-3 (RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §1.5, GT-35): this prompt shares `plan_builder.ts`
+ * with `plan_retrieval` and had the identical zero-entitlement-check gap. Gated via the same M0
+ * `remoteAuthorize` helper (lib/authz.ts) every other chart-scoped tool in this codebase uses,
+ * checked BEFORE `buildVidhiPlan` runs.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { buildVidhiPlan } from '../resources/vidhi/plan_builder.js';
 import type { CompiledFloorItem } from '../resources/vidhi/types.js';
+import { remoteAuthorize } from '../lib/authz.js';
+import type { Principal } from '../types.js';
 
 function renderItem(item: CompiledFloorItem, i: number): string {
   const gap = item.known_gap ? `  [known_gap: ${item.known_gap} — DARK; account for it, do not silently skip]` : '';
@@ -25,7 +32,7 @@ function renderItem(item: CompiledFloorItem, i: number): string {
   );
 }
 
-export function registerVidhiPlanPrompt(server: McpServer): void {
+export function registerVidhiPlanPrompt(server: McpServer, principal: Principal): void {
   server.prompt(
     'vidhi_plan',
     'Compile and follow the Vidhi Engine retrieval plan for a chart question (D-2). Produces the ' +
@@ -49,7 +56,23 @@ export function registerVidhiPlanPrompt(server: McpServer): void {
         .optional()
         .describe('Explicit depth override (retrieval/structure/deepdive).'),
     },
-    ({ chart_id, question, intent, depth }) => {
+    async ({ chart_id, question, intent, depth }) => {
+      // M0 entitlement gate (S-3) — checked BEFORE any plan compilation, same helper +
+      // same denial wording as every other per-chart tool (remoteAuthorize, lib/authz.ts).
+      const authorized = await remoteAuthorize(principal, chart_id);
+      if (!authorized) {
+        return {
+          messages: [
+            {
+              role: 'user' as const,
+              content: {
+                type: 'text' as const,
+                text: `AUTHZ_DENIED: not authorized to access chart ${chart_id}. Do not call any tool for this chart_id — the caller lacks entitlement to it.`,
+              },
+            },
+          ],
+        };
+      }
       const plan = buildVidhiPlan({
         chart_id,
         question,

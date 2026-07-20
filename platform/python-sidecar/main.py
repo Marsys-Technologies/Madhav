@@ -86,6 +86,21 @@ app.include_router(sutravali_router.router, prefix="/api/brahma", dependencies=[
 from routers import transit_search as transit_search_router
 app.include_router(transit_search_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
 
+# W2 dark-set wiring — ka_graha_sancara (GT-50): live graha positions at an
+# arbitrary UTC instant. Retrieval call_ephemeris_at_t capability calls
+# /api/compute/ephemeris_at_t. See routers/ephemeris.py's compute_router
+# (separate from `ephemeris.router`, which stays mounted at /ephemeris above
+# for the birth-params natal-chart endpoint).
+app.include_router(ephemeris.compute_router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
+# W2 dark-set wiring — ka_muhurta_seva (DARK_SET_WIRING_PLAN_v1_0 §W2 scope):
+# raw per-datetime muhurta score (tithi/nakshatra/vara/yoga-based), distinct
+# from the already-served ph_muhurta electional finder (muhurta_finder /
+# kala_muhurta_get). Retrieval call_muhurta_score capability calls
+# /api/compute/muhurta_score.
+from routers import muhurta_score as muhurta_score_router
+app.include_router(muhurta_score_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
 # BRAHMA MI-5-3 — Mīmāṃsā L5 outcome scoring + calibration query + acceptance gate
 # Routes: POST /api/compute/mimamsa/record_outcome
 #         POST /api/compute/mimamsa/query_calibration

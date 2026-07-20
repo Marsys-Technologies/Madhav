@@ -62,7 +62,7 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
   it('calls server.prompt() for orient_chart', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     const names = server._registeredPrompts.map(p => p.name)
     expect(names).toContain('orient_chart')
   })
@@ -70,7 +70,7 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
   it('calls server.prompt() for assess_domain', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     const names = server._registeredPrompts.map(p => p.name)
     expect(names).toContain('assess_domain')
   })
@@ -78,7 +78,7 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
   it('calls server.prompt() for find_active_yogas', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     const names = server._registeredPrompts.map(p => p.name)
     expect(names).toContain('find_active_yogas')
   })
@@ -86,21 +86,21 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
   it('registers exactly 5 prompts (3 R5 + demand_side_chase WP-1.6 + vidhi_plan D-2 V-2)', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     expect(server._registeredPrompts).toHaveLength(5)
   })
 
   it('server.prompt() is called 5 times', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     expect(server.prompt).toHaveBeenCalledTimes(5)
   })
 
   it('registers the WP-1.6 demand_side_chase prompt', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     const names = server._registeredPrompts.map(p => p.name)
     expect(names).toContain('demand_side_chase')
   })
@@ -108,7 +108,7 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
   it('orient_chart description mentions B.11 Whole-Chart-Read', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     const p = server._registeredPrompts.find(p => p.name === 'orient_chart')
     expect(p?.description).toContain('B.11')
   })
@@ -116,7 +116,7 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
   it('assess_domain description mentions domain', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     const p = server._registeredPrompts.find(p => p.name === 'assess_domain')
     expect(p?.description?.toLowerCase()).toContain('domain')
   })
@@ -124,7 +124,7 @@ describe('M7.2 — registerPrompts() exposes all 3 guided-reading prompts', () =
   it('find_active_yogas description mentions yoga', () => {
     const server = makeMockServer()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
     const p = server._registeredPrompts.find(p => p.name === 'find_active_yogas')
     expect(p?.description?.toLowerCase()).toContain('yoga')
   })
@@ -142,7 +142,7 @@ describe('M7.2 — orient_chart prompt callback returns correct message shape', 
       resource: vi.fn(),
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
 
     expect(capturedCallback).not.toBeNull()
     const result = await capturedCallback!({ chart_id: SYNTHETIC_CHART_ID }) as { messages: Array<{ role: string; content: { type: string; text: string } }> }
@@ -161,7 +161,7 @@ describe('M7.2 — orient_chart prompt callback returns correct message shape', 
       resource: vi.fn(),
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerPrompts(server as any)
+    registerPrompts(server as any, makePrincipal())
 
     const result = await capturedCallback!({ chart_id: SYNTHETIC_CHART_ID }) as { messages: Array<{ content: { text: string } }> }
     expect(result.messages[0].content.text).toContain(SYNTHETIC_CHART_ID)

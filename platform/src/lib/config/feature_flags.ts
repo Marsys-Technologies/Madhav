@@ -138,6 +138,17 @@ export type FeatureFlag =
   // tier-conditioned house-rules, perf system, operator dashboard) vs the v1 path.
   // Env: MARSYS_FLAG_MCP_V3_ENABLED (server-side only — sidecar-scoped flag).
   | 'MCP_V3_ENABLED'
+  // Retrieval Plane Elevation, plan R-1 item 3 ("single bootstrap", W2b lane).
+  // When true, /api/retrieval/capability/route.ts's ensureBootstrapped() stops
+  // maintaining its own separate per-wave registration list and instead imports
+  // its registration list EXCLUSIVELY from registry/catalog.ts's getCatalog()
+  // (the same production consumption surface both MCP Layer-2 primitives and
+  // the chat channel already import). Default FALSE in every environment —
+  // flipping it on is a separate, future, explicitly-authorized breaking-release
+  // deploy, not part of this lane. When false, route.ts's dispatch behavior is
+  // byte-for-byte identical to its pre-flag behavior.
+  // Env: MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED.
+  | 'RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -223,6 +234,11 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // MCPT v3.1.0 — MCP v3.1 pure-MCP server. Default true — foundation sealed 2026-05-22.
   // Override via MARSYS_FLAG_MCP_V3_ENABLED=false to revert to v1 path (emergency only).
   MCP_V3_ENABLED: true,
+  // Retrieval Plane Elevation R-1 item 3 — single bootstrap. Default FALSE:
+  // route.ts keeps its own hand-maintained registration list until a future,
+  // separately-authorized breaking-release deploy flips this on.
+  // Override via MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=true.
+  RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

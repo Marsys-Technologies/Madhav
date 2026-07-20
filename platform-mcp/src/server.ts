@@ -74,6 +74,7 @@ import { registerPhalaEventAnchorsTool } from './tools/phala_event_anchors.js'
 // Still served via sidecar until the registry primitive lands.
 import { registerHolisticBundleRetrievalTool } from './tools/retrieval/holistic_bundle.js'
 import { registerKalaTemporalRetrievalTool } from './tools/retrieval/kala_temporal.js'
+import { registerGocharaWindowsTools } from './tools/retrieval/register_gochara_windows.js'
 // KEYSTONE REQUEST: kala_temporal_bundle (KA-3-COMPOSITE: timeline/convergence/obstruction/snapshot)
 // has no registry primitive. REQUEST to retrieval fork: expose 'kala_temporal_bundle' capability.
 // Still served via sidecar until the registry primitive lands.
@@ -325,6 +326,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // Registry path: holistic_bundle_chart_facts (retrieval/holistic_bundle.ts → callPlatformPrimitive).
   registerHolisticBundleRetrievalTool(server, () => principal)  // chart_facts via registry (L2 Bodha — chart-SCOPED; requires chart_id)
   registerKalaTemporalRetrievalTool(server, principal)    // L3 Kāla composite bundle (chart-SCOPED; CR-40/T-1: now registry-backed, not the dead sidecar path)
+  registerGocharaWindowsTools(server, principal)    // D-5 G-4: gochara activation/forecast/election-avoidance views over kala_gochara_windows (chart-SCOPED)
   // L0 Brahmagyan Remedy tools (Stream F — 7 capabilities)
   registerRemedyTools(server, () => principal)
   // L4 Phala tools
@@ -379,13 +381,15 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // guided-reading prompts (incl. demand_side_chase)
   // M0: principal passed for chart-snapshot gate
   registerResources(server, principal)
-  registerPrompts(server)
+  registerPrompts(server, principal)
 
   // D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (fallback path to a compiled plan;
   // primary path is the vidhi_plan prompt). Serves capability_version + tools/list_changed
   // staleness kill. Registered on this request-scoped server so the staleness notification
   // targets the caller's transport.
-  registerVidhiPlanTool(server)
+  // S-3: principal threaded through so the M0 entitlement gate (remoteAuthorize) can check
+  // the caller against the requested chart_id before compiling a plan (GT-35).
+  registerVidhiPlanTool(server, principal)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

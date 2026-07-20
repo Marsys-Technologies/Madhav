@@ -8,15 +8,13 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
-
-const INTERNAL_TOKEN = process.env.MCP_INTERNAL_TOKEN ?? ''
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ text_key: string }> }
 ): Promise<NextResponse> {
-  const token = req.headers.get('x-mcp-internal-token') ?? ''
-  if (!INTERNAL_TOKEN || token !== INTERNAL_TOKEN) {
+  if (!validateServiceToken(req)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 

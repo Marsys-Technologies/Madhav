@@ -156,4 +156,10 @@ Rebuild-era banner removed from §F. §C item #8 rebuild-era qualifier replaced 
 
 ---
 
+## v6.4 (2026-07-19) — RS-4 B.11 proportionality carve-out
+
+§I B.11 bullet amended per native authorization (Cowork retrieval-strategy session): B.11 scoped to interpretive queries; pinpointed factual lookups (`depth: retrieval`) satisfy it via frame check (chart_header + session pin) + escalation valve (one-line flag + drill pointer when the fact touches an active contradiction, firing yoga, or open prediction window). §D snapshot CLAUDE row 6.2 → 6.4 (stale-row correction). Mirrors in-place amendments to `PROJECT_ARCHITECTURE_v2_2.md` §B.11/§H.4 (changelog entry 2026-07-19). Doctrine source: `RETRIEVAL_STRATEGY_v1_0.md` §3.6. Ruling id RS-4.
+
+---
+
 *Full changelog preserved verbatim from CLAUDE.md v6.0 realignment (2026-06-12). All prior entries are historical audit trail — do not edit. For current CLAUDE.md version and last 2–3 inline entries, see `CLAUDE.md` frontmatter.*

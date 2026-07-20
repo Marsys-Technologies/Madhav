@@ -29,6 +29,13 @@ import { queryPratijnaCapability }         from './query_pratijna'
 import { queryQuestionLensesCapability }   from './query_question_lenses'
 import { queryRmPrescriptionsCapability }  from './query_rm_prescriptions'
 import { queryRmResonancesCapability }     from './query_rm_resonances'
+// W2b Batch 3 dark-set wiring (TABLE_CONCEPT_DISPOSITIONS_v2_0.md SERVE-gap set):
+// remaining Remedial Matrix siblings, previously written but never registered.
+import { queryRmChartSummaryCapability }             from './query_rm_chart_summary'
+import { queryRmDashaWindowedPrescriptionsCapability } from './query_rm_dasha_windowed_prescriptions'
+import { queryRmPatternRemediesCapability }          from './query_rm_pattern_remedies'
+import { queryRmDoshaRemedyBundlesCapability }       from './query_rm_dosha_remedy_bundles'
+import { queryTriangulationCapability }              from './query_triangulation'
 
 registerCapability(queryUcdCapability)
 registerCapability(traverseChartGraphCapability)
@@ -47,3 +54,8 @@ registerCapability(queryPratijnaCapability)
 registerCapability(queryQuestionLensesCapability)
 registerCapability(queryRmPrescriptionsCapability)
 registerCapability(queryRmResonancesCapability)
+registerCapability(queryRmChartSummaryCapability)
+registerCapability(queryRmDashaWindowedPrescriptionsCapability)
+registerCapability(queryRmPatternRemediesCapability)
+registerCapability(queryRmDoshaRemedyBundlesCapability)
+registerCapability(queryTriangulationCapability)

@@ -68,7 +68,11 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
   density_contract: {
     paginated: true,
     facets: ['type', 'categories', 'facet', 'all'],
-    empty_reason: false, // R5.3 total/pagination receipt exists; explicit empty_reason string not yet added on this tool
+    // W3 "One Envelope" (2026-07-20): was `false` with a "not yet added" note — the
+    // handler below now sets `content.empty_reason` whenever `total === 0`, naming the
+    // exact filter combination (categories/type/ayanamsha_id) that matched no rows,
+    // so an honest zero-row page is never indistinguishable from an unfiltered miss.
+    empty_reason: true,
   },
   async handler(args, _ctx) {
     try {
@@ -250,9 +254,21 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
         }
       }
 
+      // W3 "One Envelope" (density_contract.empty_reason implementation, CLAUDE.md §N.6
+      // point 3 / B.10): a genuinely-empty page must say WHY, not ship a silent `[]`.
+      // Named against the SAME whereClause the total/page queries above were drawn
+      // from, so this never drifts from what was actually filtered.
+      const empty_reason = total === 0
+        ? `No chart_facts rows match categories=[${categories.join(', ')}]` +
+          (args.type ? ` type='${String(args.type)}'` : '') +
+          (args.ayanamsha_id ? ` ayanamsha_id='${String(args.ayanamsha_id)}'` : '') +
+          ` for chart ${chartId}.`
+        : undefined
+
       return {
         content: {
           chart_id: chartId, categories, rows: result.rows ?? [], total,
+          ...(empty_reason ? { empty_reason } : {}),
           firings_pointer: firingsPointer,
           catalog_only_rows_in_page: catalogOnlyCount,
           dosha_label_gate: {

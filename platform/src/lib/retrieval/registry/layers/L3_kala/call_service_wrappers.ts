@@ -197,20 +197,42 @@ export const callEphemerisAtTCapability: CapabilityDescriptor = {
 
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
 
-    // ka_graha_sancara is a compute service (asset_registry target_table = null) — there is no
-    // ka_graha_sancara_snapshot table to query. Positions at an arbitrary datetime must be
-    // produced by the compute sidecar. No /api/compute endpoint is wired for arbitrary-time
-    // ephemeris yet (the existing /ephemeris router computes natal positions from birth params,
-    // not a general datetime_utc + ayanamsha contract), so fail loud rather than query a phantom
-    // table. See needs_decision: wire a /api/compute/ephemeris_at_t sidecar endpoint.
-    return {
-      content: {
-        error: 'call_ephemeris_at_t is not yet wired to a compute sidecar endpoint',
-        note: 'ka_graha_sancara is a compute service with no backing table; no /api/compute/ephemeris_at_t endpoint exists yet. This handler will return positions once the sidecar endpoint is added.',
-        datetime_utc,
-        ayanamsha_id,
-      },
-      is_error: true,
+    // W2 dark-set wiring (GT-50): ka_graha_sancara is a compute service (asset_registry
+    // target_table = null) — there is no ka_graha_sancara_snapshot table to query.
+    // Positions at an arbitrary datetime are produced live by the sidecar's
+    // /api/compute/ephemeris_at_t endpoint (routers/ephemeris.py's compute_router,
+    // swisseph-backed). Same fetch()/error-shape pattern as callTransitSearchCapability
+    // above, per DESIGN_KA_GRAHA_SANCARA_WIRING.md §3 item 4.
+    const sidecarUrl = process.env.PYTHON_SIDECAR_URL
+    const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+
+    if (!sidecarUrl) {
+      return { content: { error: 'PYTHON_SIDECAR_URL not configured — ephemeris_at_t unavailable' }, is_error: true }
+    }
+
+    try {
+      const resp = await fetch(`${sidecarUrl}/api/compute/ephemeris_at_t`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': sidecarKey },
+        body:    JSON.stringify({ datetime_utc, ayanamsha_id }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}))
+        return { content: { error: `Sidecar ${resp.status}`, detail: err }, is_error: true }
+      }
+      const data = await resp.json() as { datetime_utc: string; ayanamsha_id: string; jd: number; positions: unknown[] }
+      return {
+        content: {
+          datetime_utc: data.datetime_utc,
+          ayanamsha_id: data.ayanamsha_id,
+          jd:            data.jd,
+          positions:     data.positions,
+          count:         data.positions.length,
+        },
+        is_error: false,
+      }
+    } catch (err) {
+      return { content: { error: String(err), datetime_utc, ayanamsha_id }, is_error: true }
     }
   },
 }
@@ -360,9 +382,13 @@ export const callMuhurtaScoreCapability: CapabilityDescriptor = {
   name:  'call_muhurta_score',
 
   description: [
-    'Score an auspicious window for a specific datetime and purpose (ka_muhurta_seva service).',
-    'Global scope — not chart-specific at the service level.',
-    'Returns muhurta score components: tithi, nakshatra, yoga, karana, lagna fitness.',
+    'Score an auspicious window (raw muhurta quality) for a specific UTC datetime and event class',
+    '(ka_muhurta_seva service — reuses the same score_muhurat() scoring primitive the already-served',
+    'ph_muhurta/muhurta_finder electional finder calls internally for its panchanga_quality sub-score).',
+    'Global scope — no chart_id, no date-range search (use muhurta_finder/kala_muhurta_get for a',
+    'best-window search over a date range with dasha/transit sub-scores).',
+    'Returns the 0-100 score, 1-5 star rating, and the day panchang context (tithi, nakshatra, vara, yoga)',
+    'the score was derived from.',
   ].join(' '),
 
   scope: 'global',
@@ -381,12 +407,19 @@ export const callMuhurtaScoreCapability: CapabilityDescriptor = {
     },
     event_class: {
       type: 'string',
-      description: 'Purpose of the muhurta (marriage, travel, business, medical, education, ceremony).',
-      enum: ['marriage', 'travel', 'business', 'medical', 'education', 'ceremony'],
+      description: [
+        'Event class to score against (EVENTS_MVP vocabulary — the real vocabulary',
+        'score_muhurat() accepts). vivah=marriage, griha_pravesh=house-warming/new-home-entry,',
+        'vyapara=business start, yatra=journey/travel, property_purchase=property/vehicle purchase,',
+        'mantra_initiation=mantra diksha, upaya_ritual=remedial action (homa/dana/japa/puja/vrata),',
+        'sadhana_initiation=beginning a sustained spiritual practice. Required.',
+      ].join(' '),
+      enum: ['vivah', 'griha_pravesh', 'vyapara', 'yatra', 'property_purchase', 'mantra_initiation', 'upaya_ritual', 'sadhana_initiation'],
+      required: true,
     },
     ayanamsha_id: {
       type: 'string',
-      description: "Ayanamsha (default: 'lahiri_chitrapaksha').",
+      description: "Ayanamsha (default: 'lahiri_chitrapaksha'; only Lahiri is supported by the underlying panchang engine today).",
     },
   },
 
@@ -401,23 +434,40 @@ export const callMuhurtaScoreCapability: CapabilityDescriptor = {
       return { content: { error: 'datetime_utc is required' }, is_error: true }
     }
 
-    const event_class  = args['event_class'] as string | undefined
-    const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
+    const event_class = args['event_class'] as string
+    if (!event_class) {
+      return { content: { error: 'event_class is required' }, is_error: true }
+    }
 
-    // ka_muhurta_seva is a compute service (asset_registry target_table = null) — there is no
-    // ka_muhurta_scores table to query. Muhurta scoring for an arbitrary datetime must be
-    // produced by the compute sidecar. No /api/compute/muhurta_score endpoint is wired yet,
-    // so fail loud rather than query a phantom table.
-    // See needs_decision: wire a /api/compute/muhurta_score sidecar endpoint.
-    return {
-      content: {
-        error: 'call_muhurta_score is not yet wired to a compute sidecar endpoint',
-        note: 'ka_muhurta_seva is a compute service with no backing table; no /api/compute/muhurta_score endpoint exists yet. This handler will return muhurta scores once the sidecar endpoint is added.',
-        datetime_utc,
-        event_class,
-        ayanamsha_id,
-      },
-      is_error: true,
+    const ayanamsha_id = args['ayanamsha_id'] as string | undefined
+
+    // W2 dark-set wiring (§F gate ruling item 6, DARK_SET_WIRING_PLAN_v1_0): ka_muhurta_seva
+    // is a compute service (asset_registry target_table = null) — there is no
+    // ka_muhurta_scores table to query. Scored live by the sidecar's
+    // /api/compute/muhurta_score endpoint (routers/muhurta_score.py, wraps
+    // panchang_engine.muhurat.score_muhurat() — the same primitive ph_muhurta calls
+    // internally). Same fetch()/error-shape pattern as the other call_* wrappers.
+    const sidecarUrl = process.env.PYTHON_SIDECAR_URL
+    const sidecarKey = process.env.PYTHON_SIDECAR_API_KEY ?? ''
+
+    if (!sidecarUrl) {
+      return { content: { error: 'PYTHON_SIDECAR_URL not configured — muhurta_score unavailable' }, is_error: true }
+    }
+
+    try {
+      const resp = await fetch(`${sidecarUrl}/api/compute/muhurta_score`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': sidecarKey },
+        body:    JSON.stringify({ datetime_utc, event_class, ayanamsha_id }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}))
+        return { content: { error: `Sidecar ${resp.status}`, detail: err }, is_error: true }
+      }
+      const data = await resp.json() as Record<string, unknown>
+      return { content: data, is_error: false }
+    } catch (err) {
+      return { content: { error: String(err), datetime_utc, event_class, ayanamsha_id }, is_error: true }
     }
   },
 }
