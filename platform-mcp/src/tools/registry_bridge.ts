@@ -335,6 +335,39 @@ const MCP_RESPONSE_BUDGET_KB = {
   vector_search: 40,
 } as const
 
+// ── W3 "One Envelope" — verbosity knob (plan §7 item 6 / master brief §E W3) ──────────
+//
+// `verbosity: 'concise' | 'detailed'` is an ADDITIVE, optional request-level knob wired
+// onto every MCP_RESPONSE_BUDGET_KB-governed tool above. 'detailed' (or omitted) keeps
+// today's behavior byte-for-byte (base maxKb, unchanged). 'concise' tightens the ceiling
+// this specific call is trimmed against — the caller asking for a leaner page, not a
+// server-side policy change to every other caller's default.
+//
+// C-4 GUARD (CLAUDE.md §N.6 "Serving Density Principle" / response_budget.ts's
+// `TrimmableSection.hardFloor`): tightening `maxKb` must NEVER be allowed to reintroduce
+// the exact regression class the D-1.5a wave gate caught — a generic trim pass zeroing a
+// section that is genuinely populated with confirmed findings (judgment_query's
+// bearing_yogas/bearing_afflictions/affliction_mechanisms sections below all declare
+// `hardFloor: true`). This function does NOT touch that guarantee at all: `hardFloor`
+// is enforced inside `applyResponseBudget`'s PASS 2 regardless of what `maxKb` value is
+// passed in — a tighter `maxKb` only means PASS 2 (the hard-cap fallback) is reached
+// sooner, not that hardFloor sections are floored past their declared `minKeep`. See
+// `platform-mcp/src/__tests__/verbosity_hard_floor.test.ts` for a reproduction of the
+// exact D-1.5a scenario (a genuinely-populated bearing_yogas-shaped section) proving this
+// holds under a concise-tightened budget, not just the existing declared-budget case.
+const CONCISE_MIN_KB = 4
+export function resolveVerbosityMaxKb(baseKb: number, verbosity: 'concise' | 'detailed' | undefined): number {
+  if (verbosity !== 'concise') return baseKb
+  return Math.max(Math.round(baseKb * 0.5), CONCISE_MIN_KB)
+}
+const VERBOSITY_ZOD = z.enum(['concise', 'detailed']).optional().describe(
+  "Response-size knob (W3): 'concise' tightens this call's response-budget ceiling " +
+  "(response_budget.ts) to roughly half its normal size — trimmable/catalog-style " +
+  "sections shrink first; confirmed-finding sections marked hardFloor (e.g. judgment_" +
+  "query's bearing_yogas) never drop below their declared floor, concise or not. " +
+  "'detailed' (default if omitted) keeps the normal, wider ceiling."
+)
+
 /**
  * A trimmable section targeting `orientation_context.entity_profiles` — shared by every
  * B.11-orienting tool response (get_chart_orientation's own digest output, pre-fetched
@@ -1177,8 +1210,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       min_strength: z.number().min(0).max(1).optional().describe(
         'R5 W2: filter traversal/edges to computed_strength >= this floor.'
       ),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, seed_signal_ids, mode, depth, about, about_from, about_to, direction, min_strength }) => {
+    async ({ chart_id, seed_signal_ids, mode, depth, about, about_from, about_to, direction, min_strength, verbosity }) => {
       if (!chart_id) return errorOutput('traverse_graph', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before graph traversal (S1: parallelized)
@@ -1206,7 +1240,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // judgment_query (response_budget.ts) — generic array-section auto-detection plus
         // the self-verifying finalizeMcpBudget re-measure and string-truncation fallback.
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.traverse_graph, 'traverse_graph'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.traverse_graph, verbosity), 'traverse_graph'))
       } catch (err) {
         return errorOutput('traverse_graph', String(err), { chart_id })
       }
@@ -1325,8 +1359,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_projections: z.number().int().min(1).max(200).optional().describe(
         'Max projections to return (default: 20; was unbounded at 117KB+).'
       ),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, horizon_years, max_projections }) => {
+    async ({ chart_id, ayanamsha_id, domain, horizon_years, max_projections, verbosity }) => {
       if (!chart_id) return errorOutput('get_projections', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before predictive projection (S1: parallelized)
@@ -1357,7 +1392,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           projections_total: projections.length,
           projections_returned: boundedProjections.length,
         }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.get_projections, 'get_projections'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.get_projections, verbosity), 'get_projections'))
       } catch (err) {
         return errorOutput('get_projections', String(err), { chart_id })
       }
@@ -1480,8 +1515,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
       if (!chart_id) return errorOutput('assess_marriage', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1496,7 +1532,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_marriage, 'assess_marriage'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_marriage, verbosity), 'assess_marriage'))
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
       }
@@ -1512,8 +1548,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
       if (!chart_id) return errorOutput('assess_career', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1528,7 +1565,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_career, 'assess_career'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_career, verbosity), 'assess_career'))
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
       }
@@ -1544,8 +1581,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
       if (!chart_id) return errorOutput('assess_health', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1560,7 +1598,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_health, 'assess_health'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_health, verbosity), 'assess_health'))
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
       }
@@ -1576,8 +1614,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
       if (!chart_id) return errorOutput('assess_wealth', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1592,7 +1631,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.assess_wealth, 'assess_wealth'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_wealth, verbosity), 'assess_wealth'))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
       }
@@ -1671,8 +1710,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       min_strength: z.number().min(0).max(1).optional().describe(
         'R5 W2: filter traversal/edges to computed_strength >= this floor.'
       ),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id, about, about_from, about_to, direction, min_strength }) => {
+    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id, about, about_from, about_to, direction, min_strength, verbosity }) => {
       if (!chart_id) return errorOutput('get_cgm_subgraph', 'chart_id is required')
       try {
         // S1 fix: orientation + graph traversal parallelized (independent HTTP calls)
@@ -1701,7 +1741,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // D-1.6 S-5 (R-1/R-8/CR-49 residual): live probe measured 99.7KB default page — over
         // the 64KB Gate Ś ceiling. Same generic auto-budget mechanism as traverse_graph.
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, MCP_RESPONSE_BUDGET_KB.get_cgm_subgraph, 'get_cgm_subgraph'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.get_cgm_subgraph, verbosity), 'get_cgm_subgraph'))
       } catch (err) {
         return errorOutput('get_cgm_subgraph', String(err), { chart_id })
       }
@@ -1912,8 +1952,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals: z.number().int().min(1).max(50).optional().describe(
         'Max yoga/dosha signals to include in the bearing-yogas check (default: 15, max: 50).'
       ),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, bhava, response_format, max_signals }) => {
+    async ({ chart_id, ayanamsha_id, domain, bhava, response_format, max_signals, verbosity }) => {
       if (!chart_id) return errorOutput('judgment_query', 'chart_id is required')
       if (!domain && bhava === undefined) {
         return errorOutput('judgment_query', 'either `domain` or `bhava` is required')
@@ -2084,7 +2125,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'judgment_query') }
-          return dualOutputBudgeted(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.judgment_query, verbosity), judgmentSections))
         }
 
         // ── v3 population (design §10/§28.6) ──────────────────────────────────
@@ -2111,7 +2152,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
           }),
         }
-        const budgeted = applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.judgment_query, judgmentSections)
+        const budgeted = applyMcpBudget(v3Response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.judgment_query, verbosity), judgmentSections)
         // R-21 fix: `receipt.varga_confirmed`/`receipt.timing_anchored` were stamped from the
         // PRE-TRIM capability output (register_d9_judgment.ts) — reconcile against what
         // actually survived applyMcpBudget so e.g. varga_confirmed:"D10✓" is never served
@@ -2473,8 +2514,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       operative_vargas: z.array(z.string()).optional().describe('Which vargas to call out as "operative" in the dignity chain (default: D1, D9, D10, D60). The full dignity row set across ALL vargas is always included regardless of this list.'),
       include: z.array(z.enum(['position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'special_states', 'yogas', 'dashas', 'cgm_neighborhood'])).optional().describe('Subset of sections to compute (default: all). R-6 fix: functional_nature (served under the dignity call, now independently requestable) and special_states (alias for avasthas — the classical name for the baladi/jagrad/deepta/lajjitadi/sayanadi system) are now valid options; previously the former was unenumerated and the latter errored as invalid.'),
       response_format: z.enum(['legacy', 'v3']).optional().describe("Envelope shape: 'legacy' (default, unchanged — the raw portrait object) or 'v3' (adds populated verdict/grounding/drill_pointers/judgment_flags/chart_header per the R5 unified envelope)."),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format }) => {
+    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format, verbosity }) => {
       if (!chart_id) return errorOutput('graha_portrait', 'chart_id is required')
       if (!graha) return errorOutput('graha_portrait', 'graha is required')
       try {
@@ -2737,7 +2779,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'graha_portrait') }
-          return dualOutputBudgeted(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.graha_portrait, verbosity), portraitSections))
         }
 
         // ── v3 population ─────────────────────────────────────────────────
@@ -2798,7 +2840,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           orientation_context, orientation_ok,
           ...envelope(inner, 'graha_portrait', undefined, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }),
         }
-        const budgeted = applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.graha_portrait, portraitSections)
+        const budgeted = applyMcpBudget(v3Response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.graha_portrait, verbosity), portraitSections)
         // R-21 fix: `completeness` was stamped '✓'/'zero_rows'/'error' from the PRE-TRIM
         // capability output; reconcile against what actually survived applyMcpBudget so a
         // section trimmed all the way to 0 rows is never served with a stale '✓'.
@@ -2869,8 +2911,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals: z.number().int().min(1).max(50).optional().describe(
         'Forwarded to judgment_query for the PROMISE stage (default: 15, max: 50).'
       ),
+      verbosity: VERBOSITY_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, bhava, as_of_date, response_format, max_signals }) => {
+    async ({ chart_id, ayanamsha_id, domain, bhava, as_of_date, response_format, max_signals, verbosity }) => {
       if (!chart_id) return errorOutput('pact_query', 'chart_id is required')
       if (!domain && bhava === undefined) {
         return errorOutput('pact_query', 'either `domain` or `bhava` is required')
@@ -2943,7 +2986,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'pact_query') }
-          return dualOutputBudgeted(applyMcpBudget(legacyResponse, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.pact_query, verbosity), pactSections))
         }
 
         // ── v3 population ──────────────────────────────────────────────────
@@ -3026,7 +3069,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             as_of_date: resolvedAsOfDate,
           }),
         }
-        return dualOutputBudgeted(applyMcpBudget(v3Response, MCP_RESPONSE_BUDGET_KB.pact_query, pactSections))
+        return dualOutputBudgeted(applyMcpBudget(v3Response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.pact_query, verbosity), pactSections))
       } catch (err) {
         return errorOutput('pact_query', String(err), { chart_id })
       }
