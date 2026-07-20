@@ -1,7 +1,7 @@
 ---
 artifact: RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md
 canonical_id: RETRIEVAL_PLANE_ELEVATION_PLAN
-version: 1.4
+version: 1.8
 status: DRAFT — FOR NATIVE REVIEW
 authored_by: Claude (Cowork, Fable 5) 2026-07-19; amended by the retrieval-audit reconciliation pass (Claude, opus/high) 2026-07-19
 parent_documents:
@@ -17,11 +17,49 @@ purpose: >
   a three-agent code audit of registry, dispatch, envelope, budget, planner,
   and MCP edge conducted 2026-07-19.
 changelog:
-  - v1.4 (2026-07-20, W1 addendum, §F gate ruling item 6): §9.6-adjacent
-    dark-set list corrected — `chart_ayanamsha_reports` flagged as
-    stale/aspirational naming (no such table exists in the live DB);
-    footnote added pointing to the actual coverage. Doc-only correction,
-    no wiring semantics changed.
+  - v1.8 (2026-07-19): scale/concurrency/QoS architecture added (§9.7 +
+    W-28..W-31) per native question. Core doctrine: determinism makes
+    responses perfectly cacheable (immutable per build_id — the invalidation
+    signal already exists in pin drift detection); the Vidhi planner is
+    deterministic and precompilable (≈zero marginal latency/cost); quality
+    and UX are INVARIANTS under load — capacity absorbs pressure (cache,
+    queue, parallelism, tiering), quality is never thinned to go faster;
+    the battery runs at concurrency so the invariant is measured.
+  - v1.7 (2026-07-19): Fable-5 architecture pass on the asset↔retrieval
+    lifecycle. New §9.6 — the Concept Spine: a closed-loop design in which
+    inventory truth is EXTRACTED (harvest pipeline) or GENERATED (single
+    writable ledger, all other surfaces projections), never hand-authored;
+    concepts carry lifecycle states with gated transitions; drift is caught
+    at three horizons (merge / build / serve); new assets ship under a
+    CI-enforced commissioning contract. W-24..W-27 added as the execution
+    rows; W-20/W-22/W-23 re-anchored to §9.6 (design unchanged in intent,
+    mechanism made derivation-first to solve the backfill-scale and
+    perpetual-freshness problems the native flagged).
+  - v1.6 (2026-07-19): W-20 grounded in code by a provider-side audit. Finding:
+    the matrix's "declared" column has no source — no provider declares its
+    concepts structurally (writer output inventory lives only in count_sql
+    WHERE-strings + Python constants; bodha/kala/phala signal classes have NO
+    enumeration anywhere; chart_facts has THREE inconsistent enumerations —
+    CHART_FACTS_SCHEMA.json 147 vs coverage_matrix.ts 158 vs planner prose
+    "37"; asset_registry row count itself disagrees 39/92/106 across surfaces;
+    existing declared-vs-actual audits are soft/LOW). New rows W-22 (Provider
+    Concept Manifest — the declared side) and W-23 (enumeration reconciliation
+    + hard-gating of today's soft audits); W-20 amended to consume the
+    existing surfaces rather than invent parallel ones.
+  - v1.5 (2026-07-19): native requirement — total concept reachability made an
+    explicit, checked deliverable. New §9.4 rows W-20 (Concept Reachability
+    Matrix: every data-plane concept — table, fact_category, signal family,
+    service endpoint — mapped to serving capability + umbrella path ≤2 hops +
+    Vidhi primitive; compiled artifact, CI drill-crawl gate, consumed by the
+    planner compiler) and W-21 (fact_category-level census: L1 concepts are
+    categories inside chart_facts, so table-level coverage under-counts).
+  - v1.4 (2026-07-19): native adjudication session (Cowork). All six §8.5
+    Paripraśna contradictions RULED (C-1..C-6 dispositions in new §9);
+    F-R1/F-R7 absorbed; AMBIG-1..4 dispositioned; the R-0.5 safety patch is
+    NOT executed as a standalone hotfix per native decision — all safety
+    items tracked in §9.1 and executed at implementation. §9 is the
+    consolidated implementation-opening checklist; nothing is implemented
+    before the campaign opens.
   - v1.3 (2026-07-19): six-lane retrieval-audit ground-truth register absorbed
     (`briefs/retrieval_audit/GROUND_TRUTH_REGISTER.md`, adjudicating every
     §1.1–§1.5 claim against file:line lane evidence). Corrected **13 stale
@@ -712,23 +750,9 @@ metadata lands, before/alongside R-2):
      `bodha_rm_dasha_windowed_prescriptions` (time-targeted remedies), CDLM
      rollup tiers (`domain_rollups`/`evolution_gradients`/`pattern_clusters`),
      `bodha_triangulation` + `bodha_cgm_sub_graphs`, the served portion of the
-     L0 `bg_*` catalog stratum, `chart_ayanamsha_reports`¹, and the four
+     L0 `bg_*` catalog stratum, `chart_ayanamsha_reports`, and the four
      substantive mimamsa read candidates (`signal_adjustment`,
      `manifestation_sets`, `discoveries`, `insight_embeddings`).
-
-     ¹ **Correction (W1 addendum, 2026-07-20; §F gate ruling item 6; corrected 2026-07-20,
-     independent verification):** no `chart_ayanamsha_reports` table exists in the live DB
-     (confirmed by the W1b harvest's full live-table scan) — but it WAS a real table, not
-     stale/aspirational naming: created by `platform/migrations/_archive/
-     130_chart_ayanamsha_reports.sql` and explicitly retired during the legacy teardown
-     (`LEGACY_TEARDOWN_KILL_LIST_v1_0.md` / `LEGACY_TEARDOWN_CLOSE_v1_0.md` §4;
-     `infra/teardown/01_drop_tables.sql:142` dropped it). This plan's mention is stale —
-     it references a table retired post-teardown, not one that never existed. Not a wire-up
-     candidate; nothing to wire. The concept (per-ayanamsha divergence reporting) is already
-     covered without a dedicated table by `chart_facts_query`'s
-     `ayanamsha_id` filter over `chart_facts`'s 6 stored ayanamshas. See
-     `RETRIEVAL_STRATEGY_v1_0.md` §5.2 footnote and
-     `briefs/retrieval_impl/DARK_SET_WIRING_PLAN_v1_0.md` for the finding.
 3. Close the open structural register rows in scope: G-1 (CGM bhava
    edge-orphans — breaks graph chains through houses), S-3 (bhava_arudha),
    SC-2 (graha speed/retro/combustion), SC-3..5 (ashtakavarga refinements).
@@ -821,10 +845,97 @@ tool set + a CI canary. See `GROUND_TRUTH_REGISTER.md` Part C tail.)*
 
 ---
 
-*End of RETRIEVAL_PLANE_ELEVATION_PLAN v1.3 (2026-07-19 — ground-truth
-reconciliation absorbed from `GROUND_TRUTH_REGISTER.md`: §1 stale facts
-corrected, R-3.1 re-scoped to a decomposed scope tuple, six Paripraśna
-contradictions raised as §8.5 open rulings). Rulings it requires: OT-7,
-OT-10, OT-2, OT-5, OT-6, RC-1, RC-2, RC-3, RS-1, RS-2, RS-3, the six §8.5
-Paripraśna-alignment contradictions **C-1..C-6**, plus native assent to the
-§0 reframing and the R-0 §5 sequencing recommendation.*
+## §9 — Consolidated tracking register (v1.4 — the implementation-opening checklist)
+
+Native directive 2026-07-19: **no implementation now.** Every open item —
+including safety findings — is tracked here and executed inside the
+Retrieval Plane Elevation implementation campaign. This section is the
+campaign's opening checklist; R-0 begins by walking it.
+
+### §9.1 Safety items (deferred by explicit native decision — first work in R-0.5)
+
+| # | Item | Source | Lands in |
+|---|---|---|---|
+| S-1 | **Native PII in a served tool/resource description** — remove; extend the chart-agnostic gate to resource descriptions | GT-42 (Lane D) | R-0.5 → R-1.6 hygiene scan (elevated to first commit of implementation) |
+| S-2 | Fail-open dev-token pattern duplicated across **13 files** — fail-closed everywhere, single shared guard | GT-44 | R-0.5 (re-scoped from "one-liner") |
+| S-3 | Entitlement check on `plan_retrieval` / `vidhi_plan` | plan §1.5 (confirmed) | R-0.5 |
+| S-4 | `parity_check` — confirm live/dead status first, then hard-fail-on-import-failure or delete | GT-36 | R-0.5 |
+| S-5 | Native row counts + native-derived cardinalities in descriptions (11 instances / 8 files) + `empty_reason` strings + the 601,443 vs 536,471 discrepancy | GT-43, GT-F11 | R-1.6 |
+
+### §9.2 Paripraśna alignment rulings — RULED by native 2026-07-19
+
+| ID | Ruling | Disposition → plan change |
+|---|---|---|
+| C-1 | **ACCEPTED.** Drop `depth` from the `prashna_ask` contract (D-15); `scope_tuple` derives it | R-5.1 signature = `{chart_id, question, scope_tuple?, response_format}` |
+| C-2 | **ACCEPTED.** Excision of the live `audience_tier` stamp (`consult/route.ts:459,:616`) is an explicit PRECONDITION of R-3.2, coordinated with PARIPRASHNA P2′ under a single named owner | R-3.2 precondition row |
+| C-3 | **ACCEPTED.** Reader-facing signal prose (`signal_reader_text` editorial pass) added as a dependency-flagged R-2 row, bridged to PARIPRASHNA P5′; R-2.3 envelope honesty is incomplete without it | new R-2.7 |
+| C-4 | **KEEP-WITH-GUARD.** The `verbosity` knob survives with a hard D-15 guard: it may shorten evidence arrays ONLY — never remove floor items, verdict content, or dissent-quota rows. Guard text ships in the descriptor + CI check | §7.6 amended |
+| C-5 | **ACCEPTED.** Planner outcome set becomes `PlanReceipt | ClarificationRequest | fault` + pre-plan ledger check (A-29/§14.7) | R-3.1 |
+| C-6 | **ACCEPTED.** Thin `prashna_ask` spike (question → headless engine → synthesized answer; no transport polish) added as an R-3 EXIT-GATE item; full contract stays in R-5 | R-3 gate |
+| F-R1 | **ACCEPTED.** Headless-engine callability gets joint ownership: cross-cited deliverable in this plan (R-3 gate spike) and PARIPRASHNA §6.4.1; neither ships without the other signing | R-3/R-5 cross-cite |
+| F-R7 | **ACCEPTED.** NO-LEAKAGE arms 2 & 4: `calibration_context_only` flag on the descriptor (R-1.1), excluded from ALL projections and the `prashna_ask` tool set (R-4), + CI canary | R-1.1 / R-4 / battery |
+
+### §9.3 Ambiguity dispositions — RULED by native 2026-07-19
+
+| ID | Disposition |
+|---|---|
+| AMBIG-1/2 | No grep count is an invariant. The census is codegen/AST-derived (R-1.2d); until it lands, the live MCP tool count is treated as UNKNOWN ±30 and never cited as a fact. |
+| AMBIG-3 | The "4 retired aliases" claim is DELETED from R-1.4 (unverifiable; no retire ledger). R-1.4 scope = 55 live aliases + 6 DEFERRED, recounted by the census at execution. |
+| AMBIG-4 | **AUTHORIZED:** correct `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md` §6.1 (stale `depth` param + "session pin" naming) at source — a docs task at implementation open, so C-1/F-R4 are not re-inherited. |
+
+### §9.4 Audit-derived work items folded into phases (from GT-40..GT-56 + Part D)
+
+| # | Item | GT | Lands in |
+|---|---|---|---|
+| W-1 | Bootstrap divergence is LIVE for 6 capabilities (D6/MARO/synth: `getCatalog()` 118 vs `route.ts` 122) — single bootstrap closes it | GT-40 | R-1.3 |
+| W-2 | Alias cutover recount: **55 live** (not 41/45) + 6 DEFERRED | GT-F09 | R-1.4 |
+| W-3 | Projection compiler consumes the **6-row** served chat catalog (not the 76-row audit table) | GT-3 | R-1.2 |
+| W-4 | `registry_data.ts` twin copies ALREADY DRIFTED, no parity gate — codegen de-mirror is urgent, not preventive | GT-56 | R-1.5 |
+| W-5 | `still_over_budget` dead on EVERY path — enforce via the single finalize entry point | GT-45 | R-2.5 |
+| W-6 | Two handlers emit static hollow `judgment_flags: []` — fold into the closed-enum migration | GT-46 | R-2.2 |
+| W-7 | `finalizeMcpBudget` cross-cutting flag joins the flag enum | GT-53 | R-2.2 |
+| W-8 | ~36 unclamped tools migrate to the budget path; `result_clipper` has a LIVE bulk-context caller — preserve that consumer, evict from the MCP path only | GT-48, GT-17 | R-2.5 |
+| W-9 | Two silent chart_header-null paths made fail-loud | GT-47 | R-2.1 |
+| W-10 | R-3.1 re-scope stands: DECOMPOSED scope tuple (three orthogonal axes, `IntentClass` derived) — not a flat superset enum | GT-24 | R-3.1 |
+| W-11 | CR-55 tri-state resolved during cr_status re-derivation | GT-F20 | R-3.3 |
+| W-12 | `max_tools`: build the `tools/list` enforcement path; reuse the working bundle-fan-out enforcement; add `response_format` to `McpSurfaceSpec` or delete the dead read | GT-29, Lane D | R-4.1 |
+| W-13 | `listCapabilities` ignores FOUR filter fields (incl. `scope`) | GT-33 | R-4.4 |
+| W-14 | Census harness greps ALL THREE serving paths (avoids false-dark) | GT-51 | R-1.5 census |
+| W-15 | L0 inventory is ~39 tables; disposition split: `chart_panchanga`/`bg_dignity_reference`/`bg_sign_medical` are SERVED (correct the strategy §5.2 list); 5 `reference_*` = RETIRE; `kala_timeline` = one-line UNWIRE fix (dark-unwired, not dark-unbuilt) | GT-49..52 | R-1.5 |
+| W-16 | **`ka_graha_sancara` dark service blocks ALL date-parameterized queries** — highest-impact single coverage item | GT-50 | R-1.5 (top of dark-set priority) |
+| W-17 | Session-pin naming: rename to provenance stamp per D-16; drop mutable-session framing | GT-F28 | R-5.2 |
+| W-18 | DB row counts UNVERIFIABLE without DSN — implementation environment provisions a read-only DSN so the census can verify | Lane E | R-1.5 precondition |
+| W-19 | PARIPRASHNA §6.1 diagram fix (per AMBIG-4 authorization) | AMBIG-4 | R-0 docs task |
+| W-20 | **Concept Reachability Matrix** — build-time compiled artifact: every data-plane CONCEPT (table, `chart_facts` fact_category, signal family, service endpoint) × its serving capability × its umbrella drill-path (≤2 hops) × the Vidhi primitive that names it. Three-way guarantee: SERVED (coverage) + NAVIGABLE (drill crawl reaches it, zero dead ends) + PLANNER-KNOWN (a floor/primitive references it — kills the LCA-19 "served but planner-blind" failure mode). CI gate: automated drill-pointer crawl + matrix completeness check on every merge; planner compiler consumes the matrix as input | native directive 2026-07-19 | R-1.5 (build) · R-3 (planner consumption) · R-4 battery (crawl gate) |
+| W-21 | Census granularity = CONCEPT not table: enumerate `chart_facts` fact_categories (and signal-family / service-endpoint equivalents) as first-class census rows — table-level coverage under-counts L1 by design | native directive 2026-07-19 | R-1.5 census |
+| W-22 | **Provider Concept Manifest — the "declared" side W-20 needs and today lacks.** Every asset and service declares its concept inventory machine-readably: a structured `emits` declaration (jsonb on `asset_registry`, NOT a WriterBase change — the orchestrator contract stays FROZEN) listing the fact_categories / signal_type_classes / windows an asset owns (replacing count_sql-WHERE-string archaeology); a signal-class registry for the bodha/kala/phala plane (none exists — dead classes like `functional_lordship_link` persist unnoticed); service manifests completing `provides_apis`/`health_probe` for ALL sidecar routers (~12 routers, only 2 probed today) with the FastAPI route surface committed, not runtime-only. Existing surfaces are consumed, not duplicated: asset_registry, CHART_FACTS_SCHEMA.json, coverage_matrix.ts, vidhi registry, CAPABILITY_MANIFEST | provider audit 2026-07-19 | R-1 (registry columns) · R-1.5 (population + probes) |
+| W-24 | **Concept-ledger infrastructure** (§9.6-1): the single writable `concept_ledger` + projection generators for every downstream surface + the hardcoded-list lint | §9.6 | R-1 |
+| W-25 | **Harvest pipeline + adjudication queue** (§9.6-2): extractors E1–E4, cross-diff, exception queue as R-1.5's core deliverable — replaces hand-authored backfill of ~106 assets | §9.6 | R-1.5 |
+| W-26 | **Lifecycle states + three-horizon drift detection** (§9.6-3/4): transition predicates, post-build verifier (outside the FROZEN orchestrator), ledger_version in pin + envelope, dead-concept auto-queue | §9.6 | R-1.5 · R-2 (envelope field) · R-4 (probes) |
+| W-27 | **Asset commissioning contract** (§9.6-5): the CI-enforced Definition-of-Done bundle for every new/elevated asset | §9.6 | R-1 CI, binds all future layers |
+| W-28 | **Deterministic response cache + plan precompilation** (§9.7): envelope cache keyed on (uri, chart_id, build_id, ledger_version, args, projection, format), invalidated by build events; Vidhi floors precompiled per intent×depth, keyed by capability_version | §9.7 | R-2 (cache-safe envelopes) · R-3 (precompile) · R-4 (edge cache) |
+| W-29 | **Concurrency capacity**: funnel horizontal scale + chart_header N+1 batching; DB pooling/read replicas + per-tool query budgets; sidecar memoization + per-engine concurrency caps | §9.7 | R-4 · R-5.3 (load test widened to these four points) |
+| W-30 | **QoS + backpressure**: priority classes (interactive > background), per-principal fairness, prashna_ask job queue with backpressure (feeds the OT-2 ruling), and the honest-degradation rule — queue/refuse, never thin quality | §9.7 | R-4 · R-5 |
+| W-31 | **Quality-under-load proof**: SLOs per query class, per-query cost ledger, battery executed at concurrency in CI as a regression gate | §9.7 | R-4 battery · R-5.3 |
+| W-23 | **Enumeration reconciliation + hard gates.** Reconcile the three chart_facts category enumerations (SCHEMA.json 147 · coverage_matrix.ts 158 · planner spec "37" prose) into ONE generated source consumed by all three consumers; reconcile asset_registry row-count truth (39/92/106); upgrade today's soft audits to matrix gates — `check_a3_categories` declared-vs-populated from LOW/informational to hard, coverage_matrix R3 gate extended beyond chart_facts to the signal plane, handler facet lists (e.g. `AV_CATEGORIES`) generated from the manifest not hardcoded | provider audit 2026-07-19 | R-1.5 · R-4 CI |
+
+### §9.5 Standing rulings queue (unchanged, for R-0)
+
+OT-7 · OT-10 · OT-2 · OT-5 · OT-6 · RC-1 · RC-2 · RC-3 · RS-1 · RS-2 · RS-3
+(RS-4 already RULED + executed 2026-07-19; C-1..C-6 + F-R1/F-R7 + AMBIG-1..4
+now RULED per §9.2/§9.3.)
+
+---
+
+*End of RETRIEVAL_PLANE_ELEVATION_PLAN v1.8 (2026-07-19 — §9.7 scale/QoS
+doctrine + W-28..W-31. Prior v1.7: §9.6 Concept Spine
+architecture: derivation-first reconciliation + lifecycle states + three-
+horizon freshness + commissioning contract; W-24..W-27 added. Prior v1.6:
+W-20 grounded by the provider-side audit; W-22 Provider Concept Manifest +
+W-23 enumeration reconciliation added. Prior v1.5: reachability
+doctrine W-20/W-21 added per native directive. Prior v1.4: native
+adjudication: C-1..C-6, F-R1/F-R7, AMBIG-1..4 all RULED into §9; safety
+items tracked in §9.1 for execution at implementation open, per native
+decision no standalone hotfix. Remaining rulings for R-0: OT-7, OT-10,
+OT-2, OT-5, OT-6, RC-1, RC-2, RC-3, RS-1, RS-2, RS-3, plus assent to the
+§0 reframing and R-0 §5 sequencing.)*

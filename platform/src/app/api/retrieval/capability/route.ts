@@ -26,6 +26,7 @@ import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { buildEntitlementDenialEnvelope, buildErrorEnvelope } from '@/lib/mcp/epistemics'
 import { query } from '@/lib/db/client'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { configService } from '@/lib/config/index'
 
 // ── Per-call chart entitlement gate (R5.2 A1) ─────────────────────────────────
 //
@@ -91,6 +92,24 @@ let _bootstrapped = false
 async function ensureBootstrapped(): Promise<void> {
   if (_bootstrapped) return
   _bootstrapped = true
+
+  // Retrieval Plane Elevation, plan R-1 item 3 ("single bootstrap", W2b lane).
+  // Default OFF (RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false): falls through to the
+  // hand-maintained registration list below, unchanged from today's behavior.
+  // When ON: this route stops maintaining its own separate per-wave list and
+  // instead imports EXCLUSIVELY from registry/catalog.ts's getCatalog() — the
+  // same production consumption surface both the MCP Layer-2 primitives route
+  // and the chat channel already import (@/lib/retrieval/registry/catalog).
+  // Dynamically imported so the module (and its full L0–L5/D7–D10/synthesis
+  // import chain) is never pulled into this route's bundle or executed when
+  // the flag is off. Flipping this flag on in any deployed environment is a
+  // separate, future, explicitly-authorized breaking-release deploy — not
+  // this lane's job; it must stay off everywhere this lane touches.
+  if (configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')) {
+    const { getCatalog } = await import('@/lib/retrieval/registry/catalog')
+    getCatalog()
+    return
+  }
 
   // Synchronous registrations first
   registerRouterCapabilities()
