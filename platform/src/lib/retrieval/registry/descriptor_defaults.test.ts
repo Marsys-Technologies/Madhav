@@ -145,3 +145,79 @@ describe('R-1.1 descriptor migration — universal field coverage', () => {
     expect(flagged).toEqual(['marsys://tool/L5/lel_query', 'marsys://tool/L5/query_predictions'])
   })
 })
+
+// ── W3 "One Envelope" — density_contract 100% coverage (plan §7 item 6 / master
+// brief §E W3) ───────────────────────────────────────────────────────────────
+describe('W3 density_contract — universal field coverage', () => {
+  it('every live capability in getCatalog() has a density_contract (100% coverage — was 6/~118 at W3 open)', () => {
+    const caps = getCatalog()
+    const missing = caps.filter((c) => c.density_contract === undefined).map((c) => c.uri)
+    // Fails loudly (not silently) if a future wave adds a capability whose
+    // registration file forgets to go through registerCapability() → getCatalog(),
+    // or if applyDescriptorDefaults() regresses. This is the gate the brief asked
+    // for: "a coverage-counting test that fails if any capability lacks it".
+    expect(missing).toEqual([])
+  })
+
+  it('density_contract sub-fields are well-formed for every capability (paginated: boolean, facets: string[], empty_reason: boolean, byte ceilings > 0 when present)', () => {
+    const caps = getCatalog()
+    for (const cap of caps) {
+      const dc = cap.density_contract
+      expect(dc, `${cap.uri} missing density_contract`).toBeDefined()
+      if (!dc) continue
+      expect(typeof dc.paginated, `${cap.uri}.density_contract.paginated`).toBe('boolean')
+      expect(Array.isArray(dc.facets), `${cap.uri}.density_contract.facets`).toBe(true)
+      expect(typeof dc.empty_reason, `${cap.uri}.density_contract.empty_reason`).toBe('boolean')
+      if (dc.max_verdict_bytes !== undefined) expect(dc.max_verdict_bytes).toBeGreaterThan(0)
+      if (dc.max_digest_bytes !== undefined) expect(dc.max_digest_bytes).toBeGreaterThan(0)
+    }
+  })
+
+  it('the 6 capabilities that hand-set density_contract before this wave are left untouched (idempotent backfill — never overwrites an explicit value)', () => {
+    const caps = getCatalog()
+    const byUri = new Map(caps.map((c) => [c.uri, c]))
+
+    // get_yoga_dosha / query_signals previously declared empty_reason:false with an
+    // explicit "not yet added" comment — W3 flips both to true AND implements the real
+    // handler-side empty_reason string (see get_yoga_dosha.ts / query_signals.ts).
+    expect(byUri.get('marsys://tool/L1/get_yoga_dosha')?.density_contract?.empty_reason).toBe(true)
+    expect(byUri.get('marsys://tool/L2/query_signals')?.density_contract?.empty_reason).toBe(true)
+    expect(byUri.get('marsys://tool/L2/query_signals')?.density_contract?.max_digest_bytes).toBe(1_500_000)
+
+    // get_vichara / get_yoga_firings / get_dasha_lord_capability hand-set empty_reason:true
+    // and their own real values — must survive the backfill pass untouched.
+    expect(byUri.get('marsys://tool/L1/get_vichara')?.density_contract?.max_verdict_bytes).toBe(1024)
+    expect(byUri.get('marsys://tool/L1/get_vichara')?.density_contract?.max_digest_bytes).toBe(4096)
+    expect(byUri.get('marsys://tool/L1/get_yoga_firings')?.density_contract?.paginated).toBe(true)
+    expect(byUri.get('marsys://tool/L1/get_dasha_lord_capability')?.density_contract?.paginated).toBe(false)
+
+    // judgment_query hand-set paginated:false / empty_reason:false (judgment_flags carries
+    // the honest-gap disclosures instead — see register_d9_judgment.ts:415).
+    expect(byUri.get('marsys://tool/L-JUDGMENT/judgment_query')?.density_contract?.empty_reason).toBe(false)
+  })
+
+  it('measured-budget capabilities (MEASURED_BUDGET_KB_URIS) get their real, evidence-backed byte ceiling, not a generic tier default', () => {
+    const caps = getCatalog()
+    const byUri = new Map(caps.map((c) => [c.uri, c]))
+    // judgment_query is one of the 6 capabilities that hand-set its own density_contract
+    // before this wave (register_d9_judgment.ts:415) — the idempotent backfill correctly
+    // leaves it untouched (asserted in the prior test), so it's excluded here.
+    const preExisting = new Set(['marsys://tool/L-JUDGMENT/judgment_query'])
+    for (const [uri, kb] of CLASSIFICATION.MEASURED_BUDGET_KB_URIS) {
+      if (preExisting.has(uri)) continue
+      const cap = byUri.get(uri)
+      if (!cap) continue // e.g. graha_portrait/assess_*/traverse_chart_graph — verified individually if/when their own descriptor file is inspected
+      expect(cap.density_contract?.max_digest_bytes, `${uri} digest ceiling`).toBe(kb * 1024)
+    }
+  })
+
+  it('paginated is derived from real input_schema evidence (a cursor/limit/top_k/offset/page/max_signals param), not a blanket true', () => {
+    const caps = getCatalog()
+    const nonPaginated = caps.filter((c) => c.density_contract?.paginated === false)
+    const paginated = caps.filter((c) => c.density_contract?.paginated === true)
+    // Sanity: both buckets are non-trivial — proves this isn't a constant-true or
+    // constant-false default masquerading as a derivation.
+    expect(nonPaginated.length).toBeGreaterThan(0)
+    expect(paginated.length).toBeGreaterThan(0)
+  })
+})

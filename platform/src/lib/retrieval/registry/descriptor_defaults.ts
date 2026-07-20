@@ -54,6 +54,16 @@
  *     a token glossary; deciding a real per-family prompt override) that a
  *     mechanical generator cannot honestly produce without fabricating
  *     content. Left for a future, explicitly-scoped editorial wave.
+ *
+ * W3 "ONE ENVELOPE" ADDITION (2026-07-20, RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §7
+ * item 6 / master brief §E W3): `density_contract` (types.ts, added W1 Lane L1a as a
+ * §N.6-serving-density field, ~5% populated at W3 open — the 6 capabilities that hand-
+ * set it: get_vichara, get_yoga_dosha, get_dasha_lord_capability, get_yoga_firings,
+ * query_signals, judgment_query) is defaulted here the same way as the nine fields
+ * above: `deriveDensityContract()` below, evidence tables `MEASURED_BUDGET_KB_URIS` /
+ * `TOOL_ROLE_DIGEST_BYTES` / `STRUCTURAL_PARAM_NAMES` / `PAGINATION_PARAM_NAMES`. This
+ * brings live coverage from 6/~118 to 100% of `getCatalog()`'s output — see
+ * `descriptor_defaults.test.ts`'s `density_contract` block for the CI gate.
  */
 
 import type { CapabilityDescriptor, CapabilityUri } from './types'
@@ -182,6 +192,81 @@ const BEARING_FIRST_URIS: ReadonlySet<CapabilityUri> = new Set([
   'marsys://tool/L-JUDGMENT/judgment_query',
 ])
 
+/**
+ * W3 "One Envelope" (RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §7 item 6 / master brief
+ * §E W3 "density_contract 100% + verbosity knob WITH the C-4 guard"): capabilities whose
+ * real, MEASURED wire-response ceiling is already codified elsewhere in the estate —
+ * `platform-mcp/src/tools/registry_bridge.ts`'s `MCP_RESPONSE_BUDGET_KB` table (hand-
+ * tuned against live-connector byte measurements: judgment_query/graha_portrait 12KB,
+ * pact_query 8KB per R5.1 C1; assess_* 40KB, traverse_graph/get_cgm_subgraph/
+ * get_projections 55KB per D-1.6 Lane S-5/R6 3b-budgets) — NOT re-derived here, mirrored
+ * as evidence. `platform/src/lib/retrieval/registry` cannot import the separate
+ * `platform-mcp` package, so this table is the registry-side echo of that one; if the
+ * two ever drift, `registry_bridge.ts`'s table remains authoritative for the actual MCP
+ * wire ceiling (this only sets the registry's own advertised `density_contract`, a
+ * planning/introspection signal, not the trimmer's real budget).
+ * `max_digest_bytes` uses the measured KB (×1024); `max_verdict_bytes` is a quarter of
+ * that, matching the verdict-is-a-short-summary-of-the-digest relationship
+ * `get_vichara.ts`'s hand-set MAX_VERDICT_BYTES=1024 / MAX_DIGEST_BYTES=4096 (a 1:4
+ * ratio) already establishes as this estate's convention.
+ */
+const MEASURED_BUDGET_KB_URIS: ReadonlyMap<CapabilityUri, number> = new Map([
+  ['marsys://tool/L-JUDGMENT/judgment_query', 12],
+  ['marsys://tool/L2/graha_portrait', 12],
+  ['marsys://tool/L-PACT/pact_query', 8],
+  ['marsys://tool/L-DOMAIN/assess_marriage', 40],
+  ['marsys://tool/L-DOMAIN/assess_career', 40],
+  ['marsys://tool/L-DOMAIN/assess_health', 40],
+  ['marsys://tool/L-DOMAIN/assess_wealth', 40],
+  ['marsys://tool/L2/traverse_chart_graph', 55],
+  // NOTE: marsys://tool/L3/query_projections is ALSO measured at 55KB in
+  // registry_bridge.ts's MCP_RESPONSE_BUDGET_KB, but is deliberately OMITTED here —
+  // this wave's must_not_touch scope freezes kala_*/gochara serving semantics, and this
+  // stays conservative by leaving every L3_kala capability (including this one) on the
+  // generic tool_role-tiered default below rather than a hand-picked override. Flagged
+  // as a residual in the wave report: a future L3 session can add this specific
+  // override once the kala_* freeze lifts.
+])
+
+/**
+ * Tool-role-tiered verdict/digest byte defaults for every capability NOT in
+ * `MEASURED_BUDGET_KB_URIS` above. Tiers are keyed off `tool_role` (a real D1
+ * topology field every capability already carries — not a fresh classification
+ * invented for this wave) and follow the same order-of-magnitude reasoning the
+ * measured table above documents: terminal leaf/flat-fact lookups are smallest,
+ * graph/synthesizer/umbrella surfaces (multi-source, drill-pointer-bearing) are
+ * largest. `max_verdict_bytes` stays at the estate's 1:4 verdict:digest ratio
+ * (get_vichara.ts precedent) throughout.
+ */
+const TOOL_ROLE_DIGEST_BYTES: Record<string, number> = {
+  leaf: 4_096,
+  drill: 8_192,
+  umbrella: 16_384,
+  graph: 40_960,
+  hybrid_retrieval: 20_480,
+  temporal: 12_288,
+  quality: 4_096,
+  synthesizer: 40_960,
+}
+const DEFAULT_DIGEST_BYTES = 8_192
+
+/**
+ * Parameter names that are structural (pagination/identity/shape controls), never
+ * genuine content facets — excluded from the mechanical facet-derivation below so
+ * `chart_id`/`ayanamsha_id`/`cursor`/`response_format` etc. don't get miscounted as
+ * "filterable dimensions" the way a real facet (`domain`, `category`, `type`, ...) is.
+ */
+const STRUCTURAL_PARAM_NAMES: ReadonlySet<string> = new Set([
+  'chart_id', 'ayanamsha_id', 'response_format', 'verbosity', 'cursor', 'limit',
+  'offset', 'page', 'top_k', 'max_signals', 'include', 'format',
+])
+
+/** Real pagination-shaped param names — presence of any of these on `input_schema`
+ *  is the evidence `paginated: true` is derived from (not a guess per capability). */
+const PAGINATION_PARAM_NAMES: ReadonlySet<string> = new Set([
+  'cursor', 'limit', 'offset', 'page', 'top_k', 'max_signals',
+])
+
 // ── Field derivation ──────────────────────────────────────────────────────────
 
 function deriveAnnotations(cap: CapabilityDescriptor): NonNullable<CapabilityDescriptor['annotations']> {
@@ -259,6 +344,36 @@ function deriveDemandRanking(
   return BEARING_FIRST_URIS.has(cap.uri) ? { bearing_first: true } : undefined
 }
 
+/**
+ * W3 "One Envelope" — §N.6 density_contract derivation. See MEASURED_BUDGET_KB_URIS /
+ * TOOL_ROLE_DIGEST_BYTES / STRUCTURAL_PARAM_NAMES doc comments above for the evidence
+ * each sub-field is derived from. Only fills in for capabilities with `density_contract
+ * === undefined` (six capabilities — get_vichara, get_yoga_dosha, get_dasha_lord_
+ * capability, get_yoga_firings, query_signals, judgment_query — already hand-set their
+ * own real value in W-1/R5.3/R5.1-era work and are left untouched by construction, same
+ * as every other field in this module).
+ */
+function deriveDensityContract(cap: CapabilityDescriptor): NonNullable<CapabilityDescriptor['density_contract']> {
+  const measuredKb = MEASURED_BUDGET_KB_URIS.get(cap.uri)
+  const max_digest_bytes = measuredKb !== undefined
+    ? measuredKb * 1024
+    : (TOOL_ROLE_DIGEST_BYTES[cap.tool_role] ?? DEFAULT_DIGEST_BYTES)
+  const max_verdict_bytes = Math.round(max_digest_bytes / 4)
+
+  const paramNames = Object.keys(cap.input_schema ?? {})
+  const paginated = paramNames.some((p) => PAGINATION_PARAM_NAMES.has(p))
+  const facets = paramNames.filter((p) => !STRUCTURAL_PARAM_NAMES.has(p))
+
+  // orientation_digest / calibration archetypes are single-scalar whole-chart or
+  // quality summaries — they don't have a meaningful "zero rows" state distinct from
+  // "computation ran and produced a value" the way a filtered row-list does, so
+  // empty_reason is not applicable. Every row/list-shaped archetype defaults to true —
+  // an honestly-empty result must say why (B.10), never silently ship `[]`.
+  const empty_reason = cap.archetype !== 'orientation_digest' && cap.archetype !== 'calibration'
+
+  return { max_verdict_bytes, max_digest_bytes, paginated, facets, empty_reason }
+}
+
 // ── Apply (mutates in place, fills only undefined fields) ────────────────────
 
 export interface BackfillResult {
@@ -312,6 +427,10 @@ export function applyDescriptorDefaults(cap: CapabilityDescriptor): BackfillResu
       fields_set.push('demand_ranking')
     }
   }
+  if (cap.density_contract === undefined) {
+    cap.density_contract = deriveDensityContract(cap)
+    fields_set.push('density_contract')
+  }
   // register.glossary and family_overrides intentionally NOT defaulted — see module doc comment.
 
   return { uri: cap.uri, fields_set }
@@ -331,4 +450,5 @@ export const __backfillClassificationTables = {
   MUTATION_URIS,
   CALIBRATION_CONTEXT_ONLY_URIS,
   BEARING_FIRST_URIS,
+  MEASURED_BUDGET_KB_URIS,
 }
