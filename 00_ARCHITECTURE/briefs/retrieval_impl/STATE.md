@@ -566,3 +566,66 @@ gate (full detail in `NATIVE_REVIEW_PACKET_W1/SUMMARY.md`):
    serving opens") is foreclosed; its own fallback applies ("W2 absorbs the gochara tools in its
    migration"), but per §I.2's own text this is a native ruling, not a conductor decision — W2
    does not open until the native confirms this sequencing.
+
+### §F GATE RULING RECEIVED (2026-07-19/20) — APPROVED, W2 authorized
+
+Full ruling text: `RULINGS_ADOPTED.md` §F gate ruling. Summary: RS-2 authority exercised to
+amend the coverage doctrine itself (DARK/NEEDS-OWNER abolished, replaced by a five-state
+taxonomy — SERVED-DIRECT/SERVED-VIA/OPERATIONAL/GATED/RETIRED, default bias SERVE); the two
+mimamsa adjustment tables pre-ruled GATED; a W1 addendum required before W2 opens (full 77-table
+re-scan with `platform-mcp/src/tools/` included); D-5 §I.2 fallback confirmed (W2 absorbs the
+gochara tools, breaking-release deploys wait for D-5 quiet + deploy mutex + baseline re-snapshot,
+G-4 defects found in-flight go to the doctrine ledger not fixed here); 3 misc doc/scope items.
+
+### W1 ADDENDUM (2026-07-20) — CLOSED
+
+Executed per the ruling, before W2 opened: `RETRIEVAL_STRATEGY_v1_0.md` §5.2 amended in place
+(v1.0→v1.3, full changelog trail); all 77 former-dark tables re-scanned with the widened surface
+(`platform-mcp/src/tools/`, `platform-mcp/src/resources/`, `platform/src/lib/tools/`,
+`platform/src/app/api/` added) and resolved under the new taxonomy — **15 SERVED-DIRECT / 1
+SERVED-VIA / 13 OPERATIONAL / 4 GATED / 2 RETIRED / 42 genuine SERVE gaps** (zero unresolved
+state). Two of the native's own pre-rulings did NOT survive independent verification and were
+reported honestly rather than silently applied: the CGM-four false-dark expectation held 3/4 (not
+4/4 — `bodha_cgm_sub_graphs` has zero TS references anywhere); the blanket "embedding tables =
+SERVED-VIA(vector_search)" rule didn't hold for `mimamsa_insight_embeddings` (the alias hardcodes
+to `query_classical_texts` only). One verifier fix-cycle (2 narrow evidentiary overclaims,
+`chart_ayanamsha_reports`'s retirement history and a `ganita_dashas` writer-reachability claim,
+both corrected with independently-traced evidence, not just reworded). Misc items done:
+`ka_muhurta_seva` added to `DARK_SET_WIRING_PLAN_v1_0.md`'s W2 scope; dead `pyjhora_adapter`
+Dockerfile deleted (zero git history, no live reference). Merged PR #642 (merge commit
+`6d6c8017`), CI green, docs-only, no deploy required.
+
+**Full disposition table:** `TABLE_CONCEPT_DISPOSITIONS_v2_0.md` (v1 retained as historical
+record). **42-item SERVE-gap list is W2's dark-set lane input.**
+
+### D-5 STATUS REFRESH (2026-07-20, at W2 open) — HALTED, not INCOMING
+
+The committed `CURRENT_STATE_v1_0.md` banner this campaign originally read at open (§ Coexistence
+check above) said D-5 was "INCOMING." Live git history since has shown otherwise throughout this
+campaign's run: all 5 D-5 build lanes (G-1..G-5) merged and deployed with **zero regressions** in
+the full integrated suite. As of `45cf6b8c` (merged into this branch's history via the routine
+`git merge origin/main`), D-5 is now **HALTED — not closed, not INCOMING** (`REPORT_D-5.md`):
+the wave stopped short of closing because a live §G gate check found specimen data not yet
+reproducible against the deployed system — per the native's own D-5 kickoff framing this is
+escalated to the native rather than adjudicated around, and it is explicitly NOT a correctness
+regression in any lane's code (every defect found was a REBUILD/GATE wiring/scheduling gap).
+
+**Reading for this campaign's deploy-mutex ruling (item 5):** HALTED means no D-5 deploy is
+currently in flight — the doctrine campaign is paused pending native review, not actively
+shipping. This campaign treats that as "quiet enough to proceed with non-breaking W2 work" but
+NOT as a green light for W2's breaking-release items (alias cutover, single-bootstrap cutover)
+without re-checking mutex + re-snapshotting the baseline immediately before that specific deploy,
+per the ruling's own text — HALTED is not CLOSED, and D-5 could resume on native response at any
+time. Non-breaking W2 work (descriptor migration groundwork, dark-set wiring implementation,
+projection compiler) proceeds now; the breaking cutover is sequenced last within W2 and re-checks
+this status immediately before executing.
+
+## Wave log
+
+### W2 — One Catalog (OPENED 2026-07-20)
+
+Per master brief §E: descriptor migration of ALL capabilities to the extended contract,
+projection compiler, single bootstrap, alias cutover (breaking release — deferred per D-5
+sequencing above), codegen de-mirror, dark-set wiring per this addendum's 42-item SERVE-gap list
+(incl. `ka_graha_sancara`/GT-50 and `ka_muhurta_seva`), G-1/S-3/SC-2..5 structural closes
+(serving-side only). Lane plan to follow.
