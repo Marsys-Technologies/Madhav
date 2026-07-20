@@ -9,8 +9,12 @@ type AssetStat = {
   asset_id: string
   actual_rows: number | null
   error: string | null
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'service_ok'
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'not_migrated' | 'service_ok'
   last_built_at: string | null
+  // Badge-honesty (pre-D-4b readiness pass): real progress from the substep-resumption
+  // ledger, populated only when state === 'partial'. `total` is honestly null unless the
+  // asset declares a computable expected count — never fabricated.
+  substep_progress?: { committed: number; total: number | null }
 }
 
 type SampleData = {
@@ -48,6 +52,11 @@ function stateBadgeClass(state: AssetStat['state'] | undefined, loading: boolean
       return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
     case 'error':
       return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200'
+    // Distinct from 'error': a resumable, in-progress materialization (real committed
+    // substeps exist), not a broken writer. Amber-adjacent (blue) so it never reads as
+    // either "done" (lit) or "broken" (error) at a glance.
+    case 'partial':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
     case 'not_migrated':
       return 'bg-muted text-muted-foreground'
   }
@@ -56,7 +65,8 @@ function stateBadgeClass(state: AssetStat['state'] | undefined, loading: boolean
 function stateBadgeLabel(
   state: AssetStat['state'] | undefined,
   loading: boolean,
-  actualRows: number | null
+  actualRows: number | null,
+  substepProgress?: { committed: number; total: number | null }
 ): string {
   if (loading) return '…'
   if (!state) return '—'
@@ -71,6 +81,11 @@ function stateBadgeLabel(
       return 'stale'
     case 'error':
       return 'error'
+    case 'partial':
+      if (!substepProgress) return 'in progress'
+      return substepProgress.total != null
+        ? `${substepProgress.committed}/${substepProgress.total} — in progress, resumable`
+        : `${substepProgress.committed} substeps committed — in progress, resumable`
     case 'not_migrated':
       return 'not built'
     case 'service_ok':
@@ -90,6 +105,8 @@ function reconciliationDot(state: AssetStat['state'] | undefined, loading: boole
       return 'bg-amber-500'
     case 'error':
       return 'bg-red-500'
+    case 'partial':
+      return 'bg-blue-500'
     case 'not_migrated':
       return 'bg-muted-foreground/30'
   }
@@ -164,7 +181,7 @@ function AssetCard({
           <span
             className={`bt-label inline-flex items-center rounded px-2 py-0.5 text-xs ${stateBadgeClass(stat?.state, statsLoading)}`}
           >
-            {stateBadgeLabel(stat?.state, statsLoading, stat?.actual_rows ?? null)}
+            {stateBadgeLabel(stat?.state, statsLoading, stat?.actual_rows ?? null, stat?.substep_progress)}
           </span>
           <span className="text-muted-foreground text-xs">{open ? '▴' : '▾'}</span>
         </div>
@@ -431,7 +448,7 @@ export function AtlasView({
       const s = stats.get(a.asset_id)
       if (!s) { grey++; continue }
       if (s.state === 'lit' || s.state === 'service_ok') lit++
-      else if (s.state === 'dormant' || s.state === 'stale' || s.state === 'building') amber++
+      else if (s.state === 'dormant' || s.state === 'stale' || s.state === 'building' || s.state === 'partial') amber++
       else if (s.state === 'error') red++
       else grey++
     }

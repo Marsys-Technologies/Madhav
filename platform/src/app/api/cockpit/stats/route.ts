@@ -1,44 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { deriveState } from './deriveState'
+import type { AssetState } from './deriveState'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15 // seconds — Next.js route segment config
-
-type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'not_migrated' | 'service_ok'
-
-function deriveState(
-  asset: { is_active?: boolean; target_floor?: number | null; asset_type?: string | null; asset_kind?: string | null },
-  actualRows: number | null,
-  error: string | null,
-  throughputState: string | null
-): AssetState {
-  // Service assets have no count_sql/target_table by design — they are healthy
-  // when registered + CURRENT. They must never fall through to the data-asset
-  // dormant/error logic below. Check both asset_type (L1/L2 legacy) and
-  // asset_kind (L3+ canonical) so new-layer service registrations are caught.
-  if (asset.asset_type === 'service' || asset.asset_kind === 'service') return 'service_ok'
-  if (asset.is_active === false) return 'not_migrated'
-  if (error) return 'error'
-  // 'building' must precede the actualRows check: the fast-path sets actual_rows=rows_written
-  // which climbs from 0 during a build. Without this guard the bar would flip to 'lit' at the
-  // first committed batch even though the asset is still actively building.
-  if (throughputState === 'building') return 'building'
-  // §N.4: count_sql is authoritative for data presence. Rows present = lit,
-  // regardless of throughput state or target_floor. Floors are aspirational,
-  // NOT gates — an asset with rows > 0 and no active zero-row build is lit.
-  // An orphaned record or cascade-stale flag does NOT override real data confirmed by count_sql.
-  if (actualRows != null && actualRows > 0) return 'lit'
-  // §N.4: target_floor=0 declares that 0 rows IS the correct complete state for this asset
-  // (e.g. ga_prashna on natal charts — writer ran, evaluated, found no prashna question).
-  // When throughput confirms completion and 0 rows is by design, honour it as lit.
-  if (throughputState === 'lit' && actualRows === 0 && asset.target_floor === 0) return 'lit'
-  // No rows at all: fall back to throughput state for in-progress vs stale vs dormant.
-  // A writer that ran but produced 0 rows and target_floor > 0 (e.g. mi_jivanaghatana
-  // with no life_events) should show as 'dormant' not 'lit'.
-  if (throughputState === 'lit' && actualRows !== 0) return 'lit'
-  if (throughputState === 'stale') return 'stale'
-  return 'dormant'
-}
 
 export interface AssetStats {
   asset_id: string
@@ -52,7 +18,7 @@ export interface AssetStats {
   // undefined   = no error.
   error_class?: 'dataplane' | 'query'
   // Derived server-side; never null
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'not_migrated' | 'service_ok'
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'not_migrated' | 'service_ok'
   last_built_at: string | null
   // True when count_sql shows rows present but asset_throughput says stale/dormant/absent.
   // The bar shows lit-equivalent; this flag enables a "build-state stale" badge.
@@ -63,6 +29,11 @@ export interface AssetStats {
   // Service-asset health fields (populated for asset_type='service'; null for data assets)
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
   last_invoked_at: string | null
+  // Populated only when state === 'partial': real, honest progress sourced from the
+  // cross-attempt substep-resumption ledger (build_substep_progress). `total` is null
+  // unless the asset's own registry row declares a computable expected count — never
+  // fabricated (B.10). See deriveState's own comment for the badge-honesty rationale.
+  substep_progress?: { committed: number; total: number | null }
 }
 
 interface RegistryAsset {
@@ -77,6 +48,7 @@ interface RegistryAsset {
   health_probe: Record<string, unknown> | null
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
   last_invoked_at: string | null
+  has_substeps: boolean
 }
 
 type ThroughputEntry = { state: string; last_built_at: string | null; rows_written: number | null }
@@ -230,7 +202,8 @@ export async function GET(req: NextRequest) {
     // Load active assets that have count_sql
     const registryResult = await query<RegistryAsset>(`
       SELECT asset_id, count_sql, size_sql, scope, is_active, target_floor,
-             asset_type, asset_kind, health_probe, service_health, last_invoked_at
+             asset_type, asset_kind, health_probe, service_health, last_invoked_at,
+             COALESCE(has_substeps, false) AS has_substeps
       FROM asset_registry
       WHERE is_active = true
       ORDER BY asset_id
@@ -249,6 +222,23 @@ export async function GET(req: NextRequest) {
         [chartId]
       )
       for (const r of tpRows) throughputMap.set(r.asset_id, r)
+    }
+
+    // Badge-honesty (pre-D-4b readiness pass): committed-substep counts for every
+    // has_substeps asset, this chart — the evidence deriveState uses to distinguish
+    // a resumable partial materialization from a genuinely broken 'error'. Cheap: one
+    // GROUP BY query, only run when there's at least one has_substeps asset registered.
+    const substepCountMap = new Map<string, number>()
+    const hasSubstepAssetIds = assets.filter(a => a.has_substeps).map(a => a.asset_id)
+    if (chartId && hasSubstepAssetIds.length > 0) {
+      const { rows: substepRows } = await query<{ asset_id: string; committed: string }>(
+        `SELECT asset_id, COUNT(*) AS committed
+           FROM build_substep_progress
+          WHERE chart_id = $1 AND asset_id = ANY($2::text[])
+          GROUP BY asset_id`,
+        [chartId, hasSubstepAssetIds]
+      )
+      for (const r of substepRows) substepCountMap.set(r.asset_id, parseInt(r.committed, 10))
     }
 
     const rawStats = await fetchAllCounts(assets, chartId, throughputMap, liveMode)
@@ -272,7 +262,8 @@ export async function GET(req: NextRequest) {
         service_health: null,
         last_invoked_at: null,
       }
-      const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null)
+      const substepsCommitted = substepCountMap.get(asset.asset_id) ?? null
+      const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null, substepsCommitted)
       // build_state_stale: data is present (count_sql > 0) but asset_throughput says
       // stale/dormant/error/absent — signals the bar to badge "build-state stale".
       // Excludes 'building': an actively-building asset with committed substep rows is not stale.
@@ -283,6 +274,9 @@ export async function GET(req: NextRequest) {
         ...base,
         volume: base.actual_rows,
         state: derivedState,
+        substep_progress: derivedState === 'partial' && substepsCommitted != null
+          ? { committed: substepsCommitted, total: null }
+          : undefined,
         last_built_at: tp?.last_built_at ?? null,
         build_state_stale: buildStateStale,
         rows_written: (tp?.rows_written != null && derivedState === 'building')
