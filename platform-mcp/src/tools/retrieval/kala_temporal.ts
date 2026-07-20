@@ -61,6 +61,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
 import { describeProxyFailure } from '../registry_bridge.js'
+import { budgetMcpContent } from '../../lib/response_budget.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -101,18 +102,55 @@ async function callRegistryCapability(
   return { content: data.content, ok: data.ok, error: data.error }
 }
 
-/** Fetch a capability and pull out its `.rows` array. Never throws — a transport/proxy
+/** Fetch a capability and pull out its row array. Never throws — a transport/proxy
  *  failure or a malformed envelope both resolve to `{ rows: [], ok: false }` so the caller
- *  can distinguish "capability unreachable" from "capability reached, zero real rows". */
+ *  can distinguish "capability unreachable" from "capability reached, zero real rows".
+ *
+ *  CR-93/94 double-unwrap fix (same root cause already documented/fixed in
+ *  register_p1_ganita.ts's callRegistryCapability and register_p2_dasha_lord.ts's):
+ *  /api/retrieval/capability responds `{ ok: true, content: await capability.handler(args) }`,
+ *  and every CapabilityDescriptor handler (registry/types.ts contract) itself returns
+ *  `{ content: <realPayload>, is_error: boolean }`. So the `content` this function receives
+ *  from callRegistryCapability is really `{ content: { rows: [...], ... }, is_error: false }` —
+ *  one level deeper than a bare `.rows` read expects. Live-confirmed on chart 482012f1
+ *  (1,571 kala_avadhi rows / full vimshottari coverage 1949-2100): every fetchCapabilityRows
+ *  call in this file was reading `content.rows` (undefined) instead of
+ *  `content.content.rows`, so kala_temporal_bundle silently reported timeline_count: 0 for
+ *  every date range while still marking sidecar_available/ok as successful. Defensive: only
+ *  unwraps one level deeper when the shape actually matches the handler-result contract (has
+ *  an `is_error` key) — never mis-unwraps a legitimately content-shaped payload that happens
+ *  to lack that key.
+ *
+ *  CR-111 fix (D-4a Lane A-0): the double-unwrap above fixed `query_dasha_dossier` (whose
+ *  handler names its array field `rows` — see query_dasha_dossier.ts), but
+ *  `query_convergence_windows` names its field `convergence_windows` and
+ *  `query_obstruction_periods` names its field `obstructions` (neither is called `rows` —
+ *  see each capability's own `content: {...}` shape). A hardcoded `.rows` read therefore
+ *  always resolved to `undefined` → `[]` for those two capabilities specifically, while
+ *  `ok` stayed `true` (the round-trip genuinely succeeded) — so kala_temporal_bundle
+ *  reported honest-looking `convergence_count: 0` / `obstruction_count: 0` even when the
+ *  backing tables held real, dated rows for the exact requested range (live-confirmed:
+ *  chart 482012f1, kala_convergence holds 1,685 rows overlapping 2026-01-01..2027-12-31
+ *  incl. the 2027-10-20→11-01 TRIGGER-refined peak, yet the bundle served zero). Fix: an
+ *  explicit `fieldName` parameter — defaults to `'rows'` for existing callers (timeline,
+ *  MD/AD/PD dasha-dossier snapshot lookups), passed as `'convergence_windows'` /
+ *  `'obstructions'` for those two capabilities specifically. No change to any scoring,
+ *  weighting, or threshold — this is purely which JSON key gets read. */
 async function fetchCapabilityRows<T>(
   uri: string,
   args: Record<string, unknown>,
-  principal: Principal
+  principal: Principal,
+  fieldName: string = 'rows'
 ): Promise<{ rows: T[]; ok: boolean }> {
   try {
     const { content, ok } = await callRegistryCapability(uri, args, principal)
     if (!ok || !content || typeof content !== 'object') return { rows: [], ok: false }
-    const rows = (content as { rows?: unknown }).rows
+    const inner =
+      !Array.isArray(content) && 'is_error' in (content as Record<string, unknown>)
+        ? (content as { content?: unknown }).content
+        : content
+    if (!inner || typeof inner !== 'object') return { rows: [], ok: true }
+    const rows = (inner as Record<string, unknown>)[fieldName]
     return { rows: Array.isArray(rows) ? (rows as T[]) : [], ok: true }
   } catch {
     return { rows: [], ok: false }
@@ -243,12 +281,14 @@ export async function computeKalaTemporalBundle(
     fetchCapabilityRows<ConvergenceWindow>(
       'marsys://tool/L3/query_convergence_windows',
       { chart_id: chartId, date_from: start, date_to: end, top_k: 50 },
-      principal
+      principal,
+      'convergence_windows'
     ),
     fetchCapabilityRows<ObstructionEntry>(
       'marsys://tool/L3/query_obstruction_periods',
       { chart_id: chartId, limit: 50 },
-      principal
+      principal,
+      'obstructions'
     ),
   ])
 
@@ -501,12 +541,13 @@ export function registerKalaTemporalRetrievalTool(server: McpServer, principal: 
         input.include_snapshot,
         principal
       )
+      const budgeted = budgetMcpContent(result, TOOL_NAME)
 
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify(budgeted, null, 2),
           },
         ],
       }

@@ -37,6 +37,7 @@
 import 'server-only'
 import { query } from '@/lib/db/client'
 import { PRIORS_VERSION } from './ranking/priors_config'
+import { getLedgerVersion } from './concept_ledger/ledger'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -65,9 +66,19 @@ export interface SessionPinValues {
    *  (honest null, never fabricated — B.10). */
   build_id: string | null
   build_status: string | null
+  /** W3-L8 (RETRIEVAL_PLANE_ELEVATION_PLAN §9.6-3/4, W-26): the concept-ledger staleness
+   *  signal — see `concept_ledger/ledger.ts#getLedgerVersion`. Orthogonal to `build_id`:
+   *  build_id tracks THIS chart's data; ledger_version tracks the serving catalog itself
+   *  (a capability's lifecycle_state can change with no chart ever rebuilding). Null while
+   *  concept_ledger is empty (pre-W-25 harvest) — honest null, never fabricated (B.10). */
+  ledger_version: string | null
   /** dd-MMM-yyyy-adjacent ISO date, the "now_context timestamp" of §10.6, captured at pin time. */
   now_context_date: string
-  /** When this pin value (this exact build_id) was first captured or last refreshed. */
+  /** CALL-TIME METADATA (W3-L8 cache-safety note, mirrors envelope.ts's TimingBlock.computed_at):
+   *  when this pin value (this exact build_id + ledger_version) was first captured or last
+   *  refreshed. Excluded from any cache-safe "stable content" comparison — two resolutions
+   *  of the identical (build_id, ledger_version) pin will legitimately carry different
+   *  `pinned_at` values depending on call time. */
   pinned_at: string
 }
 
@@ -82,23 +93,31 @@ export interface SessionPinResolution {
 
 /**
  * Compare a previously-pinned value against freshly-computed current values.
- * The ONLY drift signal that matters here is build_id (§31.5): priors_version and
- * ranking_config are process-wide constants that only change on a deploy (§10.6's
- * "version bumps take effect at the NEXT session" — i.e. a new session naturally
- * picks up the new value; an in-flight session is not expected to react to those).
+ * Two independent drift signals matter here (W3-L8 widened this from build_id-only):
+ *   - build_id       (§31.5): THIS chart's data has been rebuilt.
+ *   - ledger_version (W-26):  the serving catalog (concept_ledger) has changed —
+ *     orthogonal to any chart rebuild (e.g. a capability's lifecycle_state flipped
+ *     to RETIRED). Both signals are collected (never short-circuited on the first
+ *     match) so a caller sees every reason the pin refreshed, not just one.
+ * priors_version and ranking_config are process-wide constants that only change on a
+ * deploy (§10.6's "version bumps take effect at the NEXT session" — i.e. a new session
+ * naturally picks up the new value; an in-flight session is not expected to react to
+ * those), so they are deliberately NOT drift signals here.
  */
 export function detectBuildDrift(
   existing: SessionPinValues | null,
   current: Omit<SessionPinValues, 'pinned_at'>,
 ): { drift: boolean; judgment_flags: string[] } {
   if (!existing) return { drift: false, judgment_flags: [] }
+
+  const judgment_flags: string[] = []
   if (existing.build_id !== current.build_id) {
-    return {
-      drift: true,
-      judgment_flags: ['chart_rebuilt_mid_session_pin_refreshed'],
-    }
+    judgment_flags.push('chart_rebuilt_mid_session_pin_refreshed')
   }
-  return { drift: false, judgment_flags: [] }
+  if (existing.ledger_version !== current.ledger_version) {
+    judgment_flags.push('concept_ledger_updated_mid_session_pin_refreshed')
+  }
+  return { drift: judgment_flags.length > 0, judgment_flags }
 }
 
 /** Read the (chart_id-namespaced) pin out of a session's state_json blob, if present. */
@@ -173,7 +192,10 @@ export async function getLatestChartBuild(chartId: string): Promise<{
 export async function computeCurrentPinValues(
   chartId: string,
 ): Promise<Omit<SessionPinValues, 'pinned_at'>> {
-  const build = await getLatestChartBuild(chartId)
+  const [build, ledger_version] = await Promise.all([
+    getLatestChartBuild(chartId),
+    getLedgerVersion(),
+  ])
   return {
     chart_id: chartId,
     priors_version: PRIORS_VERSION,
@@ -181,6 +203,7 @@ export async function computeCurrentPinValues(
     ranking_config: { mode: 'composite_v1' },
     build_id: build.build_id,
     build_status: build.status,
+    ledger_version,
     now_context_date: new Date().toISOString().slice(0, 10),
   }
 }

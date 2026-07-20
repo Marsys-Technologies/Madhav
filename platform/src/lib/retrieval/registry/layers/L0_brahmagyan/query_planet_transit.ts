@@ -21,7 +21,7 @@ export const queryPlanetTransitCapability: ToolCapability = {
     'Query a planet\'s transit series (daily longitude, sign, nakshatra) across a date window. ' +
     'Optionally filter by tropical sign number to find when a planet transits a specific sign. ' +
     'Use for transit windows, sign-entry/exit dates, and nakshatra progressions. ' +
-    'Max 5,000 rows returned. Data from ephemeris_daily (1900-2150).',
+    'Result set is capped and paginated. Data from ephemeris_daily (1900-2150).',
   input_schema: {
     type: 'object',
     properties: {

@@ -41,6 +41,7 @@ import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { getOrCreateSession, getSessionWithPin, listSessions } from '../lib/session.js'
 import { remoteAuthorize } from '../lib/authz.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // ── Tool registration ──────────────────────────────────────────────────────────
 
@@ -157,11 +158,12 @@ export function registerSessionTools(
             : 'No active chart. Use list_my_charts to see your entitled charts, then select_chart to choose one.',
       }
 
+      const budgeted = budgetMcpContent(result, 'recall_session')
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify(budgeted, null, 2),
           },
         ],
       }
@@ -216,11 +218,12 @@ export function registerSessionTools(
             : `Showing ${sessions.length} session(s). Use recall_session with session_key to resume a specific session.`,
       }
 
+      const budgeted = budgetMcpContent(result, 'list_my_sessions')
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
+            text: JSON.stringify(budgeted, null, 2),
           },
         ],
       }

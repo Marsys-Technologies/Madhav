@@ -10,6 +10,24 @@
  * instead of an unaddressable classical discipline. Reuses `resolveFrameReferenceSign` +
  * `houseCountedFrom` from address_resolver.ts (design §27.2's resolver) rather than
  * re-deriving frame math here — single-source mandate (design §19).
+ *
+ * W2 structural-close SC-2/SC-5 (RETRIEVAL_STRATEGY_v1_0.md §5.2 register rows, serving-side
+ * only — no writer change):
+ *   - SC-2 (graha speed/retro/combustion): retrograde_flag and combustion_state were ALREADY
+ *     served here (part of the default `graha_position` category, see description) — the
+ *     register's three named categories (graha_speed_state/graha_retrogression_state/
+ *     graha_combustion_state) are dead names a writer overlap-guard reserves but never
+ *     actually emits (verified live: zero rows for any of the three, any chart). The one
+ *     genuinely missing piece is a NUMERIC speed (degrees/day) for the natal moment —
+ *     chart_facts has no such value to serve (a real writer gap, out of this lane's scope).
+ *     It IS reachable today via a different, already-served capability: `query_planet_position`
+ *     (L0, ephemeris_daily-backed, date range 1900-01-01..2150-12-31) returns `speed_dps` and
+ *     `is_retrograde` for any date, including the chart's own birth date — a SERVED-VIA cross
+ *     reference, not a gap, per the coverage doctrine (§5.2).
+ *   - SC-5 (nakshatra_cross_ayanamsha unserved): real, computed, chart_facts-resident category
+ *     (per-graha 5-ayanamsha nakshatra-stability check) with zero prior serving route. Added to
+ *     the `categories` enum below (NOT the unconditional default, to preserve CR-50's default-
+ *     page discipline) — reachable via categories:["nakshatra_cross_ayanamsha"].
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
@@ -43,7 +61,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
     'Covers fact_categories: graha_position, upagraha_position, aprakasha_position. ' +
     'Optional `frame` facet (lagna default | chandra | surya | arudha | karakamsha) re-bases each ' +
     'row\'s house count onto that reference frame in-response (design §27.3) — e.g. frame:"chandra" ' +
-    'answers "what house is X in, from Moon" in one call, without a second lookup.',
+    'answers "what house is X in, from Moon" in one call, without a second lookup. ' +
+    'graha_position.retrograde_flag / graha_position.combustion_state ARE the served retrograde ' +
+    'and combustion state (already on the default page) — numeric speed (degrees/day) for the ' +
+    'chart\'s birth date is NOT stored here; fetch it via query_planet_position(date=<birth date>). ' +
+    'A further real category, nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-' +
+    'stability check), is available on request via categories:["nakshatra_cross_ayanamsha"] — ' +
+    'not on the default page.',
   input_schema: {
     chart_id: {
       type: 'string',
@@ -57,8 +81,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
     categories: {
       type: 'array',
       description: 'Optional EXPLICIT list of fact_categories to include — overrides the CR-50 default ' +
-        '(graha_position only) and `include_upagrahas` entirely when supplied.',
-      items: { type: 'string', enum: ['graha_position', 'upagraha_position', 'aprakasha_position'] },
+        '(graha_position only) and `include_upagrahas` entirely when supplied. Includes the SC-5 ' +
+        'opt-in category nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check, ' +
+        'not on the default page).',
+      items: {
+        type: 'string',
+        enum: ['graha_position', 'upagraha_position', 'aprakasha_position', 'nakshatra_cross_ayanamsha'],
+      },
     },
     include_upagrahas: {
       type: 'boolean',

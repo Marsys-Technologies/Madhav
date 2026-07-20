@@ -18,6 +18,16 @@ import { querySignalFamiliesCapability }     from './query_signal_families'
 import { queryManifestationGrammarCapability } from './query_manifestation_grammar'
 // WP-1.3(d) / F-L10-021: lel_query — the LEL intake serving surface (life_events table).
 import { queryLifeEventsCapability }         from './query_life_events'
+// W2b Batch 4 dark-set wiring (TABLE_CONCEPT_DISPOSITIONS_v2_0.md SERVE-gap set): 6
+// research/explainability L5 items, deliberately distinct from the GATED calibration-
+// overlay tables (mimamsa_fact_adjustment/mimamsa_signal_adjustment/
+// mimamsa_convergence_adjustment/mimamsa_anchor_adjustment) — see each file's header.
+import { queryAttributionCapability }        from './query_attribution'
+import { queryMimamsaDiscoveriesCapability } from './query_mimamsa_discoveries'
+import { queryInsightEmbeddingsCapability }  from './query_insight_embeddings'
+import { queryJournalCapability }            from './query_journal'
+import { queryLoadBearingCapability }        from './query_load_bearing'
+import { queryManifestationSetsCapability }  from './query_manifestation_sets'
 
 registerCapability(queryInsightsCapability)
 registerCapability(queryCalibrationCapability)
@@ -25,3 +35,9 @@ registerCapability(queryPredictionsCapability)
 registerCapability(querySignalFamiliesCapability)
 registerCapability(queryManifestationGrammarCapability)
 registerCapability(queryLifeEventsCapability)
+registerCapability(queryAttributionCapability)
+registerCapability(queryMimamsaDiscoveriesCapability)
+registerCapability(queryInsightEmbeddingsCapability)
+registerCapability(queryJournalCapability)
+registerCapability(queryLoadBearingCapability)
+registerCapability(queryManifestationSetsCapability)

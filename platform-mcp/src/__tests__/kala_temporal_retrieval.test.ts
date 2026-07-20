@@ -60,7 +60,20 @@ const DARSHANA_ROW = {
   obstruction_summary: { note: 'minor' }, narrative: { text: 'ok' },
 }
 
-/** Builds a fetch mock for /api/retrieval/capability that dispatches on the requested URI. */
+/**
+ * Builds a fetch mock for /api/retrieval/capability that dispatches on the requested URI.
+ *
+ * CR-93/94-shaped mock (fixed alongside the fetchCapabilityRows double-unwrap bug this file
+ * exists to catch): the real /api/retrieval/capability route responds
+ * `{ ok: true, content: await capability.handler(args) }`, and every CapabilityDescriptor
+ * handler (registry/types.ts contract) itself returns `{ content: <realPayload>, is_error }`.
+ * So the true wire shape is DOUBLE-wrapped: `{ ok: true, content: { content: { rows }, is_error:
+ * false } }` — not the single-wrapped `{ ok: true, content: { rows } }` this mock previously
+ * simulated. The single-wrapped mock let the double-unwrap bug in kala_temporal.ts ship
+ * undetected: the buggy `fetchCapabilityRows` read `content.rows` directly, which happened to
+ * exist on this too-shallow mock, so every test here passed against inverted/fabricated
+ * confirmation. Matching the real shape is what makes this suite an effective regression guard.
+ */
 function mockRegistryFetch(opts: { reachable: boolean }) {
   return vi.fn(async (_url: string, init?: RequestInit) => {
     if (!opts.reachable) {
@@ -82,9 +95,23 @@ function mockRegistryFetch(opts: { reachable: boolean }) {
     } else if (body.uri === 'marsys://tool/L3/query_temporal_view') {
       rows = [DARSHANA_ROW]
     }
+    // CR-111 fix (D-4a Lane A-0): each capability names its array field DIFFERENTLY —
+    // query_dasha_dossier/query_temporal_view use `rows`, but query_convergence_windows
+    // uses `convergence_windows` and query_obstruction_periods uses `obstructions` (see
+    // each capability's own `content: {...}` shape in layers/L3_kala/*.ts). This mock
+    // previously hardcoded every URI's response to a `{ rows }` shape, which is why the
+    // real fieldName-mismatch bug (fetchCapabilityRows always reading `.rows`) shipped
+    // undetected — the mock could never disagree with the buggy reader. Fixed to mirror
+    // each capability's REAL field name so this suite is an effective regression guard.
+    const fieldName =
+      body.uri === 'marsys://tool/L3/query_convergence_windows' ? 'convergence_windows' :
+      body.uri === 'marsys://tool/L3/query_obstruction_periods' ? 'obstructions' :
+      'rows'
     return {
       ok: true,
-      json: async () => ({ ok: true, content: { rows } }),
+      // Double-wrapped — matches the real /api/retrieval/capability + CapabilityDescriptor
+      // handler contract (see doc-comment above).
+      json: async () => ({ ok: true, content: { content: { [fieldName]: rows }, is_error: false } }),
       text: async () => '',
     } as Response
   })
@@ -208,6 +235,40 @@ describe('kala_temporal_bundle — provenance_envelope', () => {
     const withoutSnap = await getBundle(true, false)
     expect(withSnap.provenance_envelope.snapshot_included).toBe(true)
     expect(withoutSnap.provenance_envelope.snapshot_included).toBe(false)
+  })
+})
+
+// ── Tests: double-unwrap regression (the bug this file exists to catch) ──────
+
+describe('kala_temporal_bundle — double-content-unwrap regression', () => {
+  it('extracts rows from the real double-wrapped envelope shape ({ ok, content: { content: { rows }, is_error } })', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        content: { content: { rows: [TIMELINE_ROW] }, is_error: false },
+      }),
+      text: async () => '',
+    } as Response)))
+
+    const result = await computeKalaTemporalBundle(TEST_CHART_ID, DATE_RANGE, false, TEST_PRINCIPAL)
+    expect(result.timeline_excerpt).toHaveLength(1)
+    expect(result.timeline_excerpt[0].lord_graha).toBe('Mercury')
+    expect(result.provenance_envelope.timeline_count).toBe(1)
+  })
+
+  it('does not mistake a single-wrapped payload lacking `is_error` for the double-wrapped contract', async () => {
+    // A capability payload that legitimately has `rows` at the top level (no `is_error` key)
+    // must NOT be misread as needing a further unwrap — the fix is shape-defensive, not a
+    // blind "always go one level deeper".
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true, content: { rows: [TIMELINE_ROW] } }),
+      text: async () => '',
+    } as Response)))
+
+    const result = await computeKalaTemporalBundle(TEST_CHART_ID, DATE_RANGE, false, TEST_PRINCIPAL)
+    expect(result.timeline_excerpt).toHaveLength(1)
   })
 })
 

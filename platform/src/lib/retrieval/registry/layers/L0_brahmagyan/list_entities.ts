@@ -9,7 +9,12 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { buildHonestPagination } from '@/lib/retrieval/envelope'
+import {
+  buildHonestPagination,
+  computeFilterFingerprint,
+  checkCursorFingerprint,
+  CURSOR_FILTER_MISMATCH_FLAG,
+} from '@/lib/retrieval/envelope'
 
 // R-27 fix: brahma_ontology.entity_class stores 'planet'/'sign'/'house' (the l0_ontology.py
 // writer's vocabulary — verified against the seed source), not the Sanskrit terms 'graha'/
@@ -58,6 +63,16 @@ export const listEntitiesCapability: CapabilityDescriptor = {
       description: 'Maximum results to return (default 100, max 500).',
       default: 100,
     },
+    cursor: {
+      type: 'string',
+      description:
+        'Opaque pagination cursor from a previous response\'s `next_cursor` (W3 — ' +
+        'RETRIEVAL_PLANE_ELEVATION_PLAN §R-2 item 4). Embeds the offset to continue from AND ' +
+        'a fingerprint of the filters that produced it. Replaying a cursor with a DIFFERENT ' +
+        '`entity_class` than the call that minted it is detected: the response restarts at ' +
+        'offset 0 for the new filter and sets judgment_flags: ["cursor_filter_mismatch"] ' +
+        'instead of silently returning the wrong family\'s next page.',
+    },
   },
   required_inputs: [],
   scope: 'global',
@@ -98,18 +113,30 @@ export const listEntitiesCapability: CapabilityDescriptor = {
       }
 
       const resolvedClass = requestedClass ? (ENTITY_CLASS_ALIAS[requestedClass] ?? requestedClass) : undefined
-      const params: unknown[] = [limit]
+
+      // W3 (RETRIEVAL_PLANE_ELEVATION_PLAN §R-2 item 4 / master brief §E) — cursor filter/sort
+      // fingerprint. `entity_class` is this capability's only facet (there is no sort param),
+      // so the fingerprint is computed over exactly that. Replaying a cursor minted under a
+      // DIFFERENT entity_class must never silently splice into this call's (different) result
+      // family at the stale offset — checkCursorFingerprint resets to offset 0 and reports the
+      // mismatch instead.
+      const currentFingerprint = computeFilterFingerprint({ entity_class: resolvedClass ?? null })
+      const cursorArg = args.cursor as string | undefined
+      const cursorCheck = checkCursorFingerprint(cursorArg, currentFingerprint)
+      const offset = cursorCheck.offset
+
+      const params: unknown[] = [limit, offset]
 
       let sql =
         `SELECT canonical_id, entity_class, canonical_name_en, canonical_name_sa, synonyms
          FROM brahma_ontology`
 
       if (resolvedClass) {
-        sql += ` WHERE entity_class = $2`
+        sql += ` WHERE entity_class = $3`
         params.push(resolvedClass)
       }
 
-      sql += ` ORDER BY entity_class, canonical_name_en LIMIT $1`
+      sql += ` ORDER BY entity_class, canonical_name_en LIMIT $1 OFFSET $2`
 
       // WP-1.5 (LCA-18/LCA-8) receipt honesty: this tool previously set `total` to the SERVED
       // row count (capped at the LIMIT) — so a 652-entity ontology served 100 while reporting
@@ -128,7 +155,17 @@ export const listEntitiesCapability: CapabilityDescriptor = {
 
       const served = result.rows?.length ?? 0
       const total_entities = Number(countRes.rows[0]?.total ?? served)
-      const pagination = buildHonestPagination({ served, limit, offset: 0, total: total_entities })
+      const pagination = buildHonestPagination({
+        served,
+        limit,
+        offset,
+        total: total_entities,
+        filterFingerprint: currentFingerprint,
+      })
+
+      // W3 — an explicit flag, never a silently-wrong page: a mismatched cursor replay is
+      // reported here rather than trusted for the stale offset (already reset to 0 above).
+      const judgment_flags: string[] = cursorCheck.mismatch ? [CURSOR_FILTER_MISMATCH_FLAG] : []
 
       return {
         content: {
@@ -138,6 +175,16 @@ export const listEntitiesCapability: CapabilityDescriptor = {
           total: total_entities,
           more_available: pagination.more_available,
           next_cursor: pagination.next_cursor,
+          judgment_flags,
+          ...(cursorCheck.mismatch
+            ? {
+                cursor_filter_mismatch_note:
+                  'The supplied cursor was minted under a different entity_class filter than this ' +
+                  'call. Restarted at offset 0 for the CURRENT filter instead of returning the next ' +
+                  "page of the cursor's original (different) family. Re-issue the query without a " +
+                  'cursor, or use the cursor from a response that matches this call\'s entity_class.',
+              }
+            : {}),
           budget_note: pagination.more_available
             ? `Showing ${served} of ${total_entities} entities — raise \`limit\` (max 500) or narrow by entity_class to see the rest. No rows are silently dropped.`
             : undefined,

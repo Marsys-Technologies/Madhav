@@ -18,7 +18,13 @@
  *   T11 — clean per_chart capability → PASS
  *   T12 — clean global capability → PASS
  *   T13 — multiple violations on one capability → all reported
- *   T14 — ephemeris_cache_native_lifetime exemption (native description allowed) → PASS
+ *   T14 — ephemeris_cache_native_lifetime exemption REMOVED (GT-42): native PII in its
+ *        description now correctly FAILS RULE-3 like any other capability → FAIL
+ *   T15 — NATIVE_CARDINALITY_PATTERN (RULE-9) fires on a literal thousands-separated
+ *        figure in a description → FAIL
+ *   T16 — checkTextForNativeLeak() flags a native-chart-phrase + literal-count string
+ *        (the old TEMPORAL_EMPTY_REASON shape) → FAIL
+ *   T17 — full registry scan (post-remediation) returns ZERO RULE-9/RULE-9B violations
  */
 
 import { describe, it, expect } from 'vitest'
@@ -27,6 +33,7 @@ import {
   checkAllCapabilities,
   runChartAgnosticGate,
   scanMcpToolFileContent,
+  checkTextForNativeLeak,
   NATIVE_CHART_ID,
   PHANTOM_CHART_ID,
 } from './chart_agnostic_gate'
@@ -251,8 +258,10 @@ describe('chart_agnostic_gate', () => {
     expect(rules).toContain('RULE-3-NATIVE_IDENTIFIER_IN_DESCRIPTION')
   })
 
-  // T14 — ephemeris_cache_native_lifetime exemption
-  it('T14: ephemeris_cache_native_lifetime is exempt from native-identifier description check', () => {
+  // T14 — ephemeris_cache_native_lifetime exemption REMOVED (GT-42, 2026-07-19 audit).
+  // The prior deliberate carve-out for this URI was itself the reason the gate missed
+  // a full-PII leak in the resource's actual description. RULE-3 now applies uniformly.
+  it('T14: ephemeris_cache_native_lifetime is NOT exempt — native PII in its description FAILS RULE-3', () => {
     const cap: CapabilityDescriptor = {
       uri: 'marsys://resource/ephemeris-cache/native-lifetime',
       type: 'resource' as const,
@@ -268,8 +277,45 @@ describe('chart_agnostic_gate', () => {
       async handler() { return { content: {}, is_error: false } },
     }
     const violations = checkCapability(cap)
-    // RULE-3 should NOT fire for this URI
-    expect(violations.some(v => v.rule === 'RULE-3-NATIVE_IDENTIFIER_IN_DESCRIPTION')).toBe(false)
+    // RULE-3 must now fire for this URI too — no exemption survives GT-42.
+    expect(violations.some(v => v.rule === 'RULE-3-NATIVE_IDENTIFIER_IN_DESCRIPTION')).toBe(true)
+  })
+
+  // T15 — NATIVE_CARDINALITY_PATTERN (RULE-9) fires on a literal thousands-separated figure
+  it('T15: FAILS when a literal thousands-separated row count appears in description', () => {
+    const cap = makePerChart({
+      description: 'Contains 601,443 rows for the native across all systems, levels and ayanamshas.',
+    })
+    const violations = checkCapability(cap)
+    expect(violations.some(v => v.rule === 'RULE-9-NATIVE_CARDINALITY_IN_DESCRIPTION')).toBe(true)
+  })
+
+  it('T15b: PASSES when the same description is stripped of the literal figure', () => {
+    const cap = makePerChart({
+      description: 'Spans all systems, levels and ayanamshas as a large, paginated result set.',
+    })
+    const violations = checkCapability(cap)
+    expect(violations.some(v => v.rule === 'RULE-9-NATIVE_CARDINALITY_IN_DESCRIPTION')).toBe(false)
+  })
+
+  // T16 — checkTextForNativeLeak() flags a native-chart-phrase + literal-count string
+  // (the exact shape of the old TEMPORAL_EMPTY_REASON leak, GT-54).
+  it('T16: checkTextForNativeLeak flags a native-chart-phrase + literal-count empty_reason string', () => {
+    const leaky =
+      'kala_activation returned no dated windows in range. Known L3 writer defect: ~99% of ' +
+      'kala_activation rows have NULL activation_start/end (native chart 0/13,364 dated on lahiri).'
+    const violations = checkTextForNativeLeak(leaky, 'TEMPORAL_EMPTY_REASON')
+    const rules = violations.map(v => v.rule)
+    expect(rules).toContain('RULE-9-NATIVE_CARDINALITY_IN_DESCRIPTION')
+    expect(rules).toContain('RULE-9B-NATIVE_CHART_PHRASE_IN_DESCRIPTION')
+  })
+
+  it('T16b: checkTextForNativeLeak passes clean remediated empty_reason text', () => {
+    const clean =
+      'kala_activation returned no dated windows in range. Known L3 writer defect: ~99% of ' +
+      'kala_activation rows have NULL activation_start/end for the lahiri ayanamsha in this scan.'
+    const violations = checkTextForNativeLeak(clean, 'TEMPORAL_EMPTY_REASON')
+    expect(violations).toHaveLength(0)
   })
 
   // ── checkAllCapabilities tests ────────────────────────────────────────────────

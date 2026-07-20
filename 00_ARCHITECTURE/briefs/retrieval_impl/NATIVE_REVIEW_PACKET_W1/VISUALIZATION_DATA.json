@@ -1,0 +1,5608 @@
+{
+  "_meta": {
+    "generated_from": [
+      "platform/src/generated/census/concept_reachability_v1.json",
+      "platform/src/generated/census/tool_census_v1.json",
+      "platform/src/generated/harvest/adjudication_queue.json",
+      "platform/src/generated/harvest/e2_db_truth.json"
+    ],
+    "sampling_method": "NONE \u2014 full concept lattice (314 rows: 218 fact_category + 77 dark_table + 19 signal_class) and full tool census (118 capabilities) are included verbatim, not sampled. Edge extraction is a mechanical regex scan (marsys:// URI pattern) over each concept row's served_basis prose field \u2014 an honest, inspectable heuristic, not an AST/import-graph resolution; it will miss a serving relationship if the source prose does not literally name the tool URI.",
+    "true_totals": {
+      "concept_lattice_rows": 314,
+      "tool_nodes": 118,
+      "tool_topology_edges": 294
+    }
+  },
+  "concept_lattice": [
+    {
+      "layer": "L1",
+      "concept_id": "anumukha_shani_period",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aprakasha_position",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ardha_ashtama_shani_period",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "argala_natal_matrix",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "arudha_pada",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_bindu",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_bindu_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_bindu_sign",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_ekadhipathya_shodhana",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_kakshya_boundary",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_pinda_bhinna",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_pinda_raasi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_pinda_sarva",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_pinda_sarva_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_pinda_sodhita",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtakavarga_trikona_shodhana",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ashtama_shani_period",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aspect_jaimini",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aspect_jaimini_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aspect_matrix_summary",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aspect_parashari_given",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aspect_parashari_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aspect_parashari_received",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aspect_received_by_special_point",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "aspect_tajik",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ayurdaya",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhadra_flag",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_arudha",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_bala_aspectual",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_bala_directional",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_bala_lord",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_bala_occupant",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_bala_positional",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_bala_temporal",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_bala_total_extended",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_cusps",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhava_significance_link",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "bhrigu_nadi_point",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "chandra_bala_natal_baseline",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "chart_center_of_gravity",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "chart_cluster",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "combustion_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "combustion_relationship",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "composite_dispositor_strength",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "conjunction_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "conjunction_special_point",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "conjunction_within_orb",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "contradiction_pair",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "convergence_count",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "cusp_kp_lords",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "dhaiya_period",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "dispositor_chain_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "dispositor_tree",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "dosha_label",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "eclipse_proximity_natal",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_avayogi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_bhrigu_bindu",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_brahma",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_mrityu",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_pranapada_sphuta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_shiva",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_sphuta_fertility",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_sri_yantra_position",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_trikona_dasha_sphuta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_vishnu",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_yogi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "esoteric_point_yogi_system",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_baladi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_baladi_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_deepta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_deeptaadi_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_jagrad",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_jagradadi_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_lajjitadi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_lajjitadi_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_lifetime_exposure_summary",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_sayanadi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_avastha_sayanadi_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_centrality",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_cheshta_bala_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_composite_state_classification",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_dignity_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_dispositor_chain",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_drik_bala_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_effective_dignity_modified_by_aspects",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_functional_class_per_ascendant",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_gandanta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_in_house_composite_strength",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_ishta_phala",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_kala_bala_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_kashta_phala",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_kp_lords",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_nakshatra_join",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_pada_join",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_position",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_saptavargaja_bala_component",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_shadbala_cheshta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_shadbala_dig",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_shadbala_drik",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_shadbala_kala",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_shadbala_naisargika",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_shadbala_sthana",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_shadbala_total",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_sign_attributes",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_special_state_rollup",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_sthana_bala_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_tara_bala",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_tri_deva_role_strength",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_vargottama_amplification_factor",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_vimsopaka_dasavarga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_vimsopaka_saptavarga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_vimsopaka_shadvarga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_vimsopaka_shodasavarga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_yoga_karaka_flag",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_yuddha",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "graha_yuddha_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "house_bhava_bala_ratio",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "house_bhava_bala_subscore",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "house_bhava_bala_total",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "house_chalit",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "house_strength_classification_rollup",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "jaimini_tri_deva_role_per_graha",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "janma_shani_period",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "kala_sarpa_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "kantaka_shani_period",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "karaka_bhava_concordance",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "karaka_chara_position",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "karaka_house_lord_overlap_flag",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "karakamsa_position",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "karakatva_strength_per_significance",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "karaka_web_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "kendradhipati_dosha",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "kp_cuspal_significators",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "kp_ruling_planets_natal",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "lal_kitab_special_point",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "lord_aspects_lord_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "lord_in_house_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "maharsi_specific_point",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "midpoint",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_cogravity",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_conjunction",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_co_tenancy",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_cross_ayanamsha",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_dispositor",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_dispositor_chain",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_lord_relationship",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_pada_sensitive",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nakshatra_statistics",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "net_argala_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "nway_config_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchadha_maitri",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchaka_flag",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_abhijit_muhurta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_agni_vasa",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_brahma_muhurta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_calendrical",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_choghadiya_birth",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_disha_shul",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_durmuhurta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_godhuli_muhurta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_gulika_kalam",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_hora_birth",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_karana",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_krakaca",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_madhyahna_sandhya",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_nakshatra_moon",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_nakshatra_shoonya_rashi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_nishita_kala",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_panchaka_classification",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_pratah_sandhya",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_rahu_kalam",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_sashtighati",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_sayam_sandhya",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_solar_context",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_special_yoga_combinations",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_sun_moon_dynamics",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_tithi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_tithi_shoonya_rashi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_vara",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_varjyam",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_vijaya_muhurta",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_visha_ghati",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_yamaganda_kalam",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_yamakantaka",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "panchanga_yoga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "parivartana_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "pranic_strength_per_graha",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sade_sati_cancellation_check",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sade_sati_concurrent_dasha_overlay",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sade_sati_cycle",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sade_sati_downstream_cross_reference",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sade_sati_modifier_overlay",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sade_sati_phase",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sade_sati_phase_quarter",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sade_sati_saturn_retrograde_subset",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "saham_position",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sambandha_grade",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sandhi_flag",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "saturn_derived_point",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sensitive_degree_check",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sensitive_point_gulika_mandi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "significator_path",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "special_lagna",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "sun_derived_upagraha",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "swamsa_position",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "tajik_hadda_lord",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "tajik_triraashipathi",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "tajik_vargottama_specific",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "tara_bala",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "tara_bala_natal_baseline",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "upagraha_position",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "upapada_lagna",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "vargottama_per_varga",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "vimsopaka_bala_per_graha",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "virodha_argala_natal_matrix",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "virupa_drishti",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "vishakha_shani_period",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "yoga_label",
+      "concept_kind": "fact_category",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_avastha_schemes",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_combustion_orbs",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_dignity_reference",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_graha_dik",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_graha_naisargika_friendship",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_medical_mappings",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_motion_state_thresholds",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_nakshatra_medical",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_prashna_fructification_rules",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_prashna_lagna_methods",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_prashna_significators",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_prashna_special_techniques",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_prashna_tajik_yogas",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_shashtiamsha_deities",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_transit_av_gates",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_transit_engine",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_transit_moorti",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_transit_rules",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_transit_vedha",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_vastu_direction_remedials",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "bg_vastu_directions",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_anomalies",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_cdlm_domain_rollups",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_cdlm_evolution_gradients",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_cdlm_pattern_clusters",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_cgm_chart_topology_summary",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_cgm_edges",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_cgm_nodes",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_cgm_sub_graphs",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_contradictions",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_convergence",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_rm_chart_summary",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_rm_dasha_windowed_prescriptions",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_rm_dosha_remedy_bundles",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_rm_pattern_remedies",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_signal_embeddings",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_triangulation",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "brahma_activity_ontology",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "brahma_class_priors",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "brahma_compendium_index",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "brahma_dasha_systems",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "brahma_event_ontology",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "brahma_formula_constants",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "brahma_prospective_ledger",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L0",
+      "concept_id": "brahma_vichara_constants",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "chart_facts_history",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "chart_facts_supersedence",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "chart_grants",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "chart_panchanga",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "chart_panchanga_cache",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ga_condition_composite",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ga_prashna_judgment",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ga_prashna_lagna",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ganita_dashas",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": true
+    },
+    {
+      "layer": "L1",
+      "concept_id": "ganita_graha_sthana",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L3",
+      "concept_id": "kala_activation_predicates",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L3",
+      "concept_id": "kala_convergence_staging",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L3",
+      "concept_id": "kala_gochara_windows",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_adjudication_log",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_anchor_adjustment",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_attribution",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_calibration_snapshot",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_convergence_adjustment",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_discoveries",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_event_provenance",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_export_log",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_fact_adjustment",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_insight_embeddings",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_journal",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_load_bearing",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_manifestation_sets",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_negative_controls",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_pool_contributions",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_preferences",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_resonance_feedback",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_signal_adjustment",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "NEEDS-OWNER",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L5",
+      "concept_id": "mimamsa_snapshot_cosign",
+      "concept_kind": "dark_table",
+      "lifecycle_state": "INTERNAL-BY-DESIGN",
+      "served": false,
+      "navigable": "n/a",
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=composite_state",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=karaka_alignment",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=sade_sati",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=varga_pattern",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=panchanga",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=tradition_specific",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=annual",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=parivartana",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=configuration",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=yoga",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": true
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=dosha",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": true
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": true
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=nakshatra_semantic",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": true
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=sudarshana_agreement",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": true
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=varga_ratification_divergence",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": true
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=arudha",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": true
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=special_lagna",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": true
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=dhana_axis",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    },
+    {
+      "layer": "L2",
+      "concept_id": "bodha_msr_signals.signal_type_class=vargottama_amplification",
+      "concept_kind": "signal_class",
+      "lifecycle_state": "SERVED",
+      "served": true,
+      "navigable": true,
+      "planner_known": false
+    }
+  ],
+  "coverage_state_summary_by_layer": [
+    {
+      "layer": "L0",
+      "INTERNAL-BY-DESIGN": 14,
+      "SERVED": 1,
+      "NEEDS-OWNER": 14,
+      "total": 29
+    },
+    {
+      "layer": "L1",
+      "SERVED": 219,
+      "INTERNAL-BY-DESIGN": 3,
+      "NEEDS-OWNER": 6,
+      "total": 228
+    },
+    {
+      "layer": "L2",
+      "NEEDS-OWNER": 16,
+      "SERVED": 19,
+      "total": 35
+    },
+    {
+      "layer": "L3",
+      "NEEDS-OWNER": 2,
+      "INTERNAL-BY-DESIGN": 1,
+      "total": 3
+    },
+    {
+      "layer": "L5",
+      "INTERNAL-BY-DESIGN": 6,
+      "NEEDS-OWNER": 13,
+      "total": 19
+    }
+  ],
+  "tool_topology": {
+    "nodes": [
+      {
+        "id": "marsys://prompt/intent-classify",
+        "layer": "L0",
+        "type": "prompt",
+        "archetype": "orientation_digest",
+        "role": "umbrella",
+        "name": "intent_classify"
+      },
+      {
+        "id": "marsys://resource/asset-registry/all",
+        "layer": "L0",
+        "type": "resource",
+        "archetype": "orientation_digest",
+        "role": "umbrella",
+        "name": "asset_registry_all"
+      },
+      {
+        "id": "marsys://resource/asset-registry/L0",
+        "layer": "L0",
+        "type": "resource",
+        "archetype": "orientation_digest",
+        "role": "umbrella",
+        "name": "asset_registry_l0"
+      },
+      {
+        "id": "marsys://resource/ephemeris-cache/native-lifetime",
+        "layer": "L0",
+        "type": "undefined",
+        "archetype": "orientation_digest",
+        "role": "umbrella",
+        "name": "ephemeris_cache_native_lifetime"
+      },
+      {
+        "id": "marsys://resource/ephemeris-cache/year/{yyyy}",
+        "layer": "L0",
+        "type": "undefined",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "ephemeris_cache_year"
+      },
+      {
+        "id": "marsys://tool/channel/chat_dispatch",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "channel_chat_dispatch"
+      },
+      {
+        "id": "marsys://tool/channel/mcp_wiring",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "channel_mcp_wiring"
+      },
+      {
+        "id": "marsys://tool/L-DOMAIN/assess_career",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "assess_career"
+      },
+      {
+        "id": "marsys://tool/L-DOMAIN/assess_health",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "assess_health"
+      },
+      {
+        "id": "marsys://tool/L-DOMAIN/assess_marriage",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "assess_marriage"
+      },
+      {
+        "id": "marsys://tool/L-DOMAIN/assess_wealth",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "assess_wealth"
+      },
+      {
+        "id": "marsys://tool/L-JUDGMENT/judgment_query",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "judgment_query"
+      },
+      {
+        "id": "marsys://tool/L-PACT/pact_query",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "pact_query"
+      },
+      {
+        "id": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "yoga_activation_by_dasha"
+      },
+      {
+        "id": "marsys://tool/L0/find_verses_about",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "prose_citation",
+        "role": "hybrid_retrieval",
+        "name": "find_verses_about"
+      },
+      {
+        "id": "marsys://tool/L0/list_classical_texts",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "umbrella",
+        "name": "list_classical_texts"
+      },
+      {
+        "id": "marsys://tool/L0/list_entities",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "umbrella",
+        "name": "list_entities"
+      },
+      {
+        "id": "marsys://tool/L0/list_remedies_by_category",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "drill",
+        "name": "list_remedies_by_category"
+      },
+      {
+        "id": "marsys://tool/L0/list_sutravali_rules_by_text",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "prose_citation",
+        "role": "drill",
+        "name": "list_sutravali_rules_by_text"
+      },
+      {
+        "id": "marsys://tool/L0/query_aspects_at_time",
+        "layer": "L0",
+        "type": "undefined",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "query_aspects_at_time"
+      },
+      {
+        "id": "marsys://tool/L0/query_classical_texts",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "prose_citation",
+        "role": "hybrid_retrieval",
+        "name": "query_classical_texts"
+      },
+      {
+        "id": "marsys://tool/L0/query_dosha_catalog",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "query_dosha_catalog"
+      },
+      {
+        "id": "marsys://tool/L0/query_mantras",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "drill",
+        "name": "query_mantras"
+      },
+      {
+        "id": "marsys://tool/L0/query_planet_position",
+        "layer": "L0",
+        "type": "undefined",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "query_planet_position"
+      },
+      {
+        "id": "marsys://tool/L0/query_planet_transit",
+        "layer": "L0",
+        "type": "undefined",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "query_planet_transit"
+      },
+      {
+        "id": "marsys://tool/L0/query_remedies_by_planet",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "drill",
+        "name": "query_remedies_by_planet"
+      },
+      {
+        "id": "marsys://tool/L0/query_remedies_for_chart",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "drill",
+        "name": "query_remedies_for_chart"
+      },
+      {
+        "id": "marsys://tool/L0/query_remedy_corpus",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "prose_citation",
+        "role": "hybrid_retrieval",
+        "name": "query_remedy_corpus"
+      },
+      {
+        "id": "marsys://tool/L0/query_retrograde_periods",
+        "layer": "L0",
+        "type": "undefined",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "query_retrograde_periods"
+      },
+      {
+        "id": "marsys://tool/L0/query_sign_medical",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "query_sign_medical"
+      },
+      {
+        "id": "marsys://tool/L0/query_sutravali_rules",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "prose_citation",
+        "role": "hybrid_retrieval",
+        "name": "query_sutravali_rules"
+      },
+      {
+        "id": "marsys://tool/L0/query_sutravali_rules_for_planet",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "prose_citation",
+        "role": "drill",
+        "name": "query_sutravali_rules_for_planet"
+      },
+      {
+        "id": "marsys://tool/L0/query_tantric_remedies",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "drill",
+        "name": "query_tantric_remedies"
+      },
+      {
+        "id": "marsys://tool/L0/query_yoga_catalog",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "query_yoga_catalog"
+      },
+      {
+        "id": "marsys://tool/L0/read_chapter",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "prose_citation",
+        "role": "leaf",
+        "name": "read_chapter"
+      },
+      {
+        "id": "marsys://tool/L0/read_remedy",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "read_remedy"
+      },
+      {
+        "id": "marsys://tool/L0/read_sutravali_rule",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "read_sutravali_rule"
+      },
+      {
+        "id": "marsys://tool/L0/resolve_entity",
+        "layer": "L0",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "resolve_entity"
+      },
+      {
+        "id": "marsys://tool/L1/chart_facts_query",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "umbrella",
+        "name": "chart_facts_query"
+      },
+      {
+        "id": "marsys://tool/L1/chart_snapshot",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "chart_snapshot"
+      },
+      {
+        "id": "marsys://tool/L1/get_argala",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_argala"
+      },
+      {
+        "id": "marsys://tool/L1/get_ashtakavarga",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_ashtakavarga"
+      },
+      {
+        "id": "marsys://tool/L1/get_aspects",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_aspects"
+      },
+      {
+        "id": "marsys://tool/L1/get_av_transit_gating",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "leaf",
+        "name": "get_av_transit_gating"
+      },
+      {
+        "id": "marsys://tool/L1/get_avasthas",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_avasthas"
+      },
+      {
+        "id": "marsys://tool/L1/get_ayurdaya",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_ayurdaya"
+      },
+      {
+        "id": "marsys://tool/L1/get_bhava_bala",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_bhava_bala"
+      },
+      {
+        "id": "marsys://tool/L1/get_chart_header",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_chart_header"
+      },
+      {
+        "id": "marsys://tool/L1/get_dasha_lord_capability",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_dasha_lord_capability"
+      },
+      {
+        "id": "marsys://tool/L1/get_dashas",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_dashas"
+      },
+      {
+        "id": "marsys://tool/L1/get_dignity",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_dignity"
+      },
+      {
+        "id": "marsys://tool/L1/get_dispositors",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_dispositors"
+      },
+      {
+        "id": "marsys://tool/L1/get_divisionals",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_divisionals"
+      },
+      {
+        "id": "marsys://tool/L1/get_eclipse_flags",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_eclipse_flags"
+      },
+      {
+        "id": "marsys://tool/L1/get_graha_yuddha",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_graha_yuddha"
+      },
+      {
+        "id": "marsys://tool/L1/get_karakas",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_karakas"
+      },
+      {
+        "id": "marsys://tool/L1/get_medical_indications",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_medical_indications"
+      },
+      {
+        "id": "marsys://tool/L1/get_panchanga",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_panchanga"
+      },
+      {
+        "id": "marsys://tool/L1/get_positions",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_positions"
+      },
+      {
+        "id": "marsys://tool/L1/get_sade_sati",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_sade_sati"
+      },
+      {
+        "id": "marsys://tool/L1/get_sensitive_degrees",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_sensitive_degrees"
+      },
+      {
+        "id": "marsys://tool/L1/get_sensitive_points",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_sensitive_points"
+      },
+      {
+        "id": "marsys://tool/L1/get_strength",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_strength"
+      },
+      {
+        "id": "marsys://tool/L1/get_tajik",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_tajik"
+      },
+      {
+        "id": "marsys://tool/L1/get_tara_chandra_bala",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_tara_chandra_bala"
+      },
+      {
+        "id": "marsys://tool/L1/get_transit_anchors",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_transit_anchors"
+      },
+      {
+        "id": "marsys://tool/L1/get_vastu_directions",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_vastu_directions"
+      },
+      {
+        "id": "marsys://tool/L1/get_vichara",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_vichara"
+      },
+      {
+        "id": "marsys://tool/L1/get_yoga_dosha",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_yoga_dosha"
+      },
+      {
+        "id": "marsys://tool/L1/get_yoga_firings",
+        "layer": "L1",
+        "type": "tool",
+        "archetype": "flat_fact",
+        "role": "leaf",
+        "name": "get_yoga_firings"
+      },
+      {
+        "id": "marsys://tool/L2/classical_attribution_lookup",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "prose_citation",
+        "role": "leaf",
+        "name": "classical_attribution_lookup"
+      },
+      {
+        "id": "marsys://tool/L2/graha_portrait",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "cross_domain",
+        "role": "synthesizer",
+        "name": "graha_portrait"
+      },
+      {
+        "id": "marsys://tool/L2/query_cdlm_summary",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "cross_domain",
+        "role": "umbrella",
+        "name": "query_cdlm_summary"
+      },
+      {
+        "id": "marsys://tool/L2/query_cgm_motifs",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "graph_traversal",
+        "role": "graph",
+        "name": "query_cgm_motifs"
+      },
+      {
+        "id": "marsys://tool/L2/query_cgm_paths",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "graph_traversal",
+        "role": "graph",
+        "name": "query_cgm_paths"
+      },
+      {
+        "id": "marsys://tool/L2/query_chart_gestalt",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "orientation_digest",
+        "role": "umbrella",
+        "name": "query_chart_gestalt"
+      },
+      {
+        "id": "marsys://tool/L2/query_contradictions",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "cross_domain",
+        "role": "leaf",
+        "name": "query_contradictions"
+      },
+      {
+        "id": "marsys://tool/L2/query_discoveries",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "cross_domain",
+        "role": "umbrella",
+        "name": "query_discoveries"
+      },
+      {
+        "id": "marsys://tool/L2/query_domain_reading",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "query_domain_reading"
+      },
+      {
+        "id": "marsys://tool/L2/query_pratijna",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "leaf",
+        "name": "query_pratijna"
+      },
+      {
+        "id": "marsys://tool/L2/query_quality_scorecard",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_quality_scorecard"
+      },
+      {
+        "id": "marsys://tool/L2/query_question_lenses",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "cross_domain",
+        "role": "umbrella",
+        "name": "query_question_lenses"
+      },
+      {
+        "id": "marsys://tool/L2/query_remedies",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "query_remedies"
+      },
+      {
+        "id": "marsys://tool/L2/query_rm_prescriptions",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "leaf",
+        "name": "query_rm_prescriptions"
+      },
+      {
+        "id": "marsys://tool/L2/query_rm_resonances",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "leaf",
+        "name": "query_rm_resonances"
+      },
+      {
+        "id": "marsys://tool/L2/query_signals",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "query_signals"
+      },
+      {
+        "id": "marsys://tool/L2/query_ucd",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "orientation_digest",
+        "role": "umbrella",
+        "name": "query_ucd"
+      },
+      {
+        "id": "marsys://tool/L2/traverse_chart_graph",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "graph_traversal",
+        "role": "graph",
+        "name": "traverse_chart_graph"
+      },
+      {
+        "id": "marsys://tool/L3/call_dasha_eligibility",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "call_dasha_eligibility"
+      },
+      {
+        "id": "marsys://tool/L3/call_ephemeris_at_t",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "call_ephemeris_at_t"
+      },
+      {
+        "id": "marsys://tool/L3/call_muhurta_score",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "call_muhurta_score"
+      },
+      {
+        "id": "marsys://tool/L3/call_priority_ranking",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "call_priority_ranking"
+      },
+      {
+        "id": "marsys://tool/L3/call_transit_search",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "call_transit_search"
+      },
+      {
+        "id": "marsys://tool/L3/query_activation_waveform",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "query_activation_waveform"
+      },
+      {
+        "id": "marsys://tool/L3/query_convergence_windows",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "drill",
+        "name": "query_convergence_windows"
+      },
+      {
+        "id": "marsys://tool/L3/query_dasha_dossier",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "query_dasha_dossier"
+      },
+      {
+        "id": "marsys://tool/L3/query_life_arc",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "drill",
+        "name": "query_life_arc"
+      },
+      {
+        "id": "marsys://tool/L3/query_obstruction_periods",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "query_obstruction_periods"
+      },
+      {
+        "id": "marsys://tool/L3/query_projections",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "leaf",
+        "name": "query_projections"
+      },
+      {
+        "id": "marsys://tool/L3/query_temporal_activation",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "umbrella",
+        "name": "query_temporal_activation"
+      },
+      {
+        "id": "marsys://tool/L3/query_temporal_view",
+        "layer": "L3",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "query_temporal_view"
+      },
+      {
+        "id": "marsys://tool/L4/query_anomaly_flags",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_anomaly_flags"
+      },
+      {
+        "id": "marsys://tool/L4/query_auspicious_windows",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "leaf",
+        "name": "query_auspicious_windows"
+      },
+      {
+        "id": "marsys://tool/L4/query_cleansed_anchors",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_cleansed_anchors"
+      },
+      {
+        "id": "marsys://tool/L4/query_domain_result",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "drill",
+        "name": "query_domain_result"
+      },
+      {
+        "id": "marsys://tool/L4/query_falsifiers",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_falsifiers"
+      },
+      {
+        "id": "marsys://tool/L4/query_muhurat",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "temporal",
+        "role": "temporal",
+        "name": "query_muhurat"
+      },
+      {
+        "id": "marsys://tool/L4/query_predictive_anchors",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "umbrella",
+        "name": "query_predictive_anchors"
+      },
+      {
+        "id": "marsys://tool/L4/query_rectification",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_rectification"
+      },
+      {
+        "id": "marsys://tool/L4/query_remedy_program",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "rich_relational",
+        "role": "leaf",
+        "name": "query_remedy_program"
+      },
+      {
+        "id": "marsys://tool/L4/query_spillover_cascades",
+        "layer": "L4",
+        "type": "tool",
+        "archetype": "cross_domain",
+        "role": "leaf",
+        "name": "query_spillover_cascades"
+      },
+      {
+        "id": "marsys://tool/L5/lel_query",
+        "layer": "L5",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "lel_query"
+      },
+      {
+        "id": "marsys://tool/L5/query_calibration",
+        "layer": "L5",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_calibration"
+      },
+      {
+        "id": "marsys://tool/L5/query_insights",
+        "layer": "L5",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_insights"
+      },
+      {
+        "id": "marsys://tool/L5/query_manifestation_grammar",
+        "layer": "L5",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_manifestation_grammar"
+      },
+      {
+        "id": "marsys://tool/L5/query_predictions",
+        "layer": "L5",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_predictions"
+      },
+      {
+        "id": "marsys://tool/L5/query_signal_families",
+        "layer": "L5",
+        "type": "tool",
+        "archetype": "calibration",
+        "role": "quality",
+        "name": "query_signal_families"
+      },
+      {
+        "id": "marsys://tool/synthesis/compose_large_n",
+        "layer": "L2",
+        "type": "tool",
+        "archetype": "cross_domain",
+        "role": "synthesizer",
+        "name": "compose_large_n"
+      }
+    ],
+    "edges": [
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "anumukha_shani_period",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aprakasha_position",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ardha_ashtama_shani_period",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "argala_natal_matrix",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "arudha_pada",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_bindu",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_bindu_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_bindu_sign",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_ekadhipathya_shodhana",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_kakshya_boundary",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_pinda_bhinna",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_pinda_raasi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_pinda_sarva",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_pinda_sarva_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_pinda_sodhita",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtakavarga_trikona_shodhana",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ashtama_shani_period",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aspect_jaimini",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aspect_jaimini_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aspect_matrix_summary",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aspect_parashari_given",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aspect_parashari_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aspect_parashari_received",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aspect_received_by_special_point",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "aspect_tajik",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "ayurdaya",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhadra_flag",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_arudha",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_bala_aspectual",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_bala_directional",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_bala_lord",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_bala_occupant",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_bala_positional",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_bala_temporal",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_bala_total_extended",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_cusps",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhava_significance_link",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "bhrigu_nadi_point",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "chandra_bala_natal_baseline",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "chart_center_of_gravity",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "chart_cluster",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "combustion_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "combustion_relationship",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "composite_dispositor_strength",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "conjunction_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "conjunction_special_point",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "conjunction_within_orb",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "contradiction_pair",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "convergence_count",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "cusp_kp_lords",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "dhaiya_period",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "dispositor_chain_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "dispositor_tree",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "dosha_label",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "eclipse_proximity_natal",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_avayogi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_bhrigu_bindu",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_brahma",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_mrityu",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_pranapada_sphuta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_shiva",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_sphuta_fertility",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_sri_yantra_position",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_trikona_dasha_sphuta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_vishnu",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_yogi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "esoteric_point_yogi_system",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_baladi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_baladi_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_deepta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_deeptaadi_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_jagrad",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_jagradadi_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_lajjitadi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_lajjitadi_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_lifetime_exposure_summary",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_sayanadi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_avastha_sayanadi_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_centrality",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_cheshta_bala_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_composite_state_classification",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_dignity_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_dispositor_chain",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_drik_bala_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_effective_dignity_modified_by_aspects",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_functional_class_per_ascendant",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_gandanta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_in_house_composite_strength",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_ishta_phala",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_kala_bala_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_kashta_phala",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_kp_lords",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_nakshatra_join",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_pada_join",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_position",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_saptavargaja_bala_component",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_shadbala_cheshta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_shadbala_dig",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_shadbala_drik",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_shadbala_kala",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_shadbala_naisargika",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_shadbala_sthana",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_shadbala_total",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_sign_attributes",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_special_state_rollup",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_sthana_bala_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_tara_bala",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_tri_deva_role_strength",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_vargottama_amplification_factor",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_vimsopaka_dasavarga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_vimsopaka_saptavarga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_vimsopaka_shadvarga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_vimsopaka_shodasavarga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_yoga_karaka_flag",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_yuddha",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "graha_yuddha_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "house_bhava_bala_ratio",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "house_bhava_bala_subscore",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "house_bhava_bala_total",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "house_chalit",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "house_strength_classification_rollup",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "jaimini_tri_deva_role_per_graha",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "janma_shani_period",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "kala_sarpa_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "kantaka_shani_period",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "karaka_bhava_concordance",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "karaka_chara_position",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "karaka_house_lord_overlap_flag",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "karakamsa_position",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "karakatva_strength_per_significance",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "karaka_web_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "kendradhipati_dosha",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "kp_cuspal_significators",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "kp_ruling_planets_natal",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "lal_kitab_special_point",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "lord_aspects_lord_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "lord_in_house_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "maharsi_specific_point",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "midpoint",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_cogravity",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_conjunction",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_co_tenancy",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_cross_ayanamsha",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_dispositor",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_dispositor_chain",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_lord_relationship",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_pada_sensitive",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nakshatra_statistics",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "net_argala_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "nway_config_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchadha_maitri",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchaka_flag",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_abhijit_muhurta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_agni_vasa",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_brahma_muhurta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_calendrical",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_choghadiya_birth",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_disha_shul",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_durmuhurta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_godhuli_muhurta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_gulika_kalam",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_hora_birth",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_karana",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_krakaca",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_madhyahna_sandhya",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_nakshatra_moon",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_nakshatra_shoonya_rashi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_nishita_kala",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_panchaka_classification",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_pratah_sandhya",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_rahu_kalam",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_sashtighati",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_sayam_sandhya",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_solar_context",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_special_yoga_combinations",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_sun_moon_dynamics",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_tithi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_tithi_shoonya_rashi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_vara",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_varjyam",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_vijaya_muhurta",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_visha_ghati",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_yamaganda_kalam",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_yamakantaka",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "panchanga_yoga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "parivartana_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "pranic_strength_per_graha",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sade_sati_cancellation_check",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sade_sati_concurrent_dasha_overlay",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sade_sati_cycle",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sade_sati_downstream_cross_reference",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sade_sati_modifier_overlay",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sade_sati_phase",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sade_sati_phase_quarter",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sade_sati_saturn_retrograde_subset",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "saham_position",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sambandha_grade",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sandhi_flag",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "saturn_derived_point",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sensitive_degree_check",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sensitive_point_gulika_mandi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "significator_path",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "special_lagna",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "sun_derived_upagraha",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "swamsa_position",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "tajik_hadda_lord",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "tajik_triraashipathi",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "tajik_vargottama_specific",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "tara_bala",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "tara_bala_natal_baseline",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "upagraha_position",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "upapada_lagna",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "vargottama_per_varga",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "vimsopaka_bala_per_graha",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "virodha_argala_natal_matrix",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "virupa_drishti",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "vishakha_shani_period",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L1/chart_facts_query",
+        "to_concept": "yoga_label",
+        "concept_kind": "fact_category",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=composite_state",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=composite_state",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=composite_state",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=composite_state",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=karaka_alignment",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=karaka_alignment",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=karaka_alignment",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=karaka_alignment",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=sade_sati",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=sade_sati",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=sade_sati",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=sade_sati",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=varga_pattern",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=varga_pattern",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=varga_pattern",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=varga_pattern",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=panchanga",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=panchanga",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=panchanga",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=panchanga",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=tradition_specific",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=tradition_specific",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=tradition_specific",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=tradition_specific",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=annual",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=annual",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=annual",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=annual",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=parivartana",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=parivartana",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=parivartana",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=parivartana",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=configuration",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=configuration",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=configuration",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=configuration",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=yoga",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=yoga",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=yoga",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=yoga",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=dosha",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=dosha",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=dosha",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=dosha",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=bhavat_bhavam_amplifier",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=nakshatra_semantic",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=nakshatra_semantic",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=nakshatra_semantic",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=nakshatra_semantic",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=sudarshana_agreement",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=sudarshana_agreement",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=sudarshana_agreement",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=sudarshana_agreement",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=varga_ratification_divergence",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=varga_ratification_divergence",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=varga_ratification_divergence",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=varga_ratification_divergence",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=arudha",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=arudha",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=arudha",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=arudha",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=special_lagna",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=special_lagna",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=special_lagna",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=special_lagna",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=dhana_axis",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=dhana_axis",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=dhana_axis",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=dhana_axis",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-JUDGMENT/judgment_query",
+        "to_concept": "bodha_msr_signals.signal_type_class=vargottama_amplification",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L3/call_priority_ranking",
+        "to_concept": "bodha_msr_signals.signal_type_class=vargottama_amplification",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L2/query_signals",
+        "to_concept": "bodha_msr_signals.signal_type_class=vargottama_amplification",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      },
+      {
+        "from_tool": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "to_concept": "bodha_msr_signals.signal_type_class=vargottama_amplification",
+        "concept_kind": "signal_class",
+        "relation": "serves"
+      }
+    ]
+  },
+  "adjudication_queue_summary": {
+    "dark_count": 77,
+    "drift_count": 0,
+    "fact_category_gap_rows": 3,
+    "dark_by_layer": {
+      "L0": 29,
+      "L2": 16,
+      "L1": 10,
+      "L3": 3,
+      "L5": 19
+    },
+    "dark_by_proposed_disposition": {
+      "INTERNAL-BY-DESIGN": 25,
+      "NEEDS-OWNER": 52
+    }
+  }
+}

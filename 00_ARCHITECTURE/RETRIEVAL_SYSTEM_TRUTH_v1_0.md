@@ -368,4 +368,109 @@ R-3: `PG1-R3-0001` (4 planners), `-0004` (single_pass), `-0005` (PlanReceipt),
 `PG1-C3-0001..0006` (dead islands). BIND: B-3 (Bearer 401), B-5 (chart_facts
 divergence).
 
-*End of RETRIEVAL_SYSTEM_TRUTH v1.0 — PG-1 Lane Z-1 synthesis, 2026-07-19.*
+*End of PG-1 Lane Z-1 synthesis, 2026-07-19 — the section below is a PG-2 append,
+not a rewrite of the above.*
+
+---
+
+## §2b — X-3 Extended Coverage (PG-2)
+
+> Appended in place per the project's append-in-place-with-visible-original
+> discipline. R-2's original §1.2/§2 sections above are unmodified. This
+> section reports Lane X-3's mechanical breadth sweep of the ~104 tools R-2
+> did not exercise, plus the Bearer-key resolution and the two known-broken-tool
+> re-confirmations the PG-2 wave charged this lane with. Full findings:
+> `00_ARCHITECTURE/pg2_diagnostic/deliverables/pg2_findings_X-3.jsonl`
+> (`PG2-X3-0001`..`0010`). State summary: `00_ARCHITECTURE/pg2_diagnostic/state/PG2_LANE_X-3.md`.
+
+### §2b.1 Coverage: 133/139 (~96%) of the live tool-name surface now exercised
+
+X-3 executed 98 additional distinct `mcp__marsys-jis-direct__*` tool names against
+chart `482012f1` (Abhisek) beyond R-2's 35, largely with minimal params to survey
+breadth over depth per the lane's mechanical-breadth charge. Combined with R-2,
+133/139 tool names have now been called at least once live. Two remain
+genuinely unexercised: `prashna_undertaking_get` (needs a horary/prashna-cast
+chart — none of the 4 available charts qualify) and `mimamsa_outcome_record`
+(the alias twin of `record_outcome`, not independently re-probed once
+`record_outcome`'s underlying defect was confirmed — see §2b.3). Full
+per-tool list is in `PG2-X3-0010`.
+
+### §2b.2 Bearer-key 401 (F-25v): RESOLVED, not "genuinely broken auth"
+
+PG-1 could not authenticate the Bearer-token face at all and left root cause
+`unverifiable`. X-3 resolved it: a raw `curl -X POST /mcp` with
+`Authorization: Bearer <key>` against the live Cloud Run host
+(`amjis-mcp-938361928218.asia-south1.run.app` — the key/host pair found in the
+working `marsys-jis-direct` connector config, `~/.claude.json`) returned
+**HTTP 200 with the full 139-tool `tools/list`**, on both header-casing
+variants (`Bearer`/`bearer`) and against the older host cited in the repo's
+checked-in `.mcp.json` too. Deliberately re-running the identical call with a
+garbage key reproduced PG-1's exact error byte-for-byte:
+`{"error":"Unauthorized","message":"Invalid or missing Bearer API key"}` /
+401. **Conclusion: the Bearer face works correctly; PG-1's 401 was caused by a
+stale/wrong key value**, not a request-shape issue, not a host issue, and not
+a genuine server-side auth regression. The exact stale value PG-1 used could
+not be recovered — `scripts/setup_mcp_env.sh` is gitignored (holds a live
+secret) and does not exist in this isolated worktree (git worktrees do not
+share untracked files with the main checkout). See `PG2-X3-0001`.
+
+### §2b.3 Two known-broken tools: both CONFIRMED still broken, unchanged
+
+- **`phala_anchors_get`** — still 422s when `date_range` is omitted, reproducing
+  PG1-R2-0002 byte-for-byte: `sidecar /api/compute/phala/event_anchors failed
+  (422): {"detail":[{"type":"missing","loc":["body","date_range"],...}]}`.
+  (`PG2-X3-0002`)
+- **`ref_dignity_reference_get`** — still 400s on `planet=Saturn`, its own
+  documented flagship example, reproducing PG1-R2-0003 on **both** charts
+  tested (Abhisek and Abhinandan) — confirming the bug is chart-independent,
+  a pure code-path defect. (`PG2-X3-0003`)
+
+### §2b.4 New defects surfaced by the wider sweep
+
+1. **`catalog_assets_all`/`catalog_assets_list` also carry the `"unknown_tool"`
+   drill-pointer defect** PG1-R2-0001 found on `kala_windows_get`/
+   `phala_outlook_get` — extending that defect class to the asset-registry
+   alias family, suggesting it is systemic to a broader class of Phase-1
+   alias-registered tools rather than isolated to the 2-3 tools R-2 sampled.
+   (`PG2-X3-0004`)
+2. **`record_outcome` 500s on a non-existent `prediction_id`** instead of a
+   graceful 404 — an unguarded-lookup defect in the `mimamsa.outcome` sidecar.
+   Its documented alias `mimamsa_outcome_record` almost certainly shares it
+   (not independently re-probed). (`PG2-X3-0005`)
+3. **`holistic_bundle_chart_facts` silently delivers only 3/8 of its documented
+   sub-tool bundle** — `sub_tools_fired: [UCN, RM, CDLM]`,
+   `sub_tools_errored: [MSR, CGM, LEL, PANCHANG, DASHA]` — while the envelope's
+   top-level `type` still reads `"bundle.completed"`. A caller trusting this
+   "one-call whole-chart bundle" for B.11 whole-chart-read discipline is
+   silently missing 5 of 8 subsystems. (`PG2-X3-0006`)
+4. **v3-vs-legacy `judgment_flags` gating (PG1-R2-0007) reconfirmed on a second
+   chart** (Abhinandan) — the same `catalog_only_rows_present` flag is
+   present under `response_format=v3` and absent under legacy on
+   `ganita_yogas_get`, confirming this is systemic envelope behavior, not an
+   artifact of Abhisek's chart data. (`PG2-X3-0007`)
+5. **Several whole-chart-domain tools exceed the calling client's token ceiling
+   even after server-side trimming** — `assess_career/health/marriage/wealth`,
+   `get_temporal_windows`, `kala_temporal_bundle`, `get_domain_reading`, and
+   `ref_nakshatra_get` all produced payloads (92KB–289KB) too large for this
+   session's MCP client to receive in one call, even with narrow params
+   (`max_signals_per_lens=1`, `max_contradictions=1`). This suggests these
+   specific tools are either exempt from the `response_budget.ts` trimmer that
+   protects other whole-chart tools, or their trim ceiling is miscalibrated
+   against realistic client token limits. (`PG2-X3-0009`)
+
+### §2b.5 Chart-conflation check (second chart: Abhinandan, `1c826d5a`)
+
+A 12-tool representative subset (`ganita_chart_facts_get`, `chart_snapshot`,
+`get_dashas`, `ganita_yogas_get` ×2 legacy+v3, `get_chart_orientation`,
+`assess_career`, `phala_anchors_get`, `ref_dignity_reference_get`,
+`reading_notes_get`, `pact_query`, `judgment_query`) was run against
+`1c826d5a` immediately after ~90 calls against `482012f1` in the same MCP
+session. Every response correctly scoped to Abhinandan (different lagna
+degree, different running dasha — Saturn MD/Rahu AD vs. Mercury MD/Saturn AD,
+different yoga set, honest `has_notes:false` vs. Abhisek's populated
+reading-notes). No cross-chart leakage observed in this sample — the A2
+chart-agnostic gate (PG1-R2-0004) holds on a broader, non-sentinel-UUID
+sample too, though only 12/139 tools were checked on the second chart, not
+the full sweep. (`PG2-X3-0008`)
+
+*End of RETRIEVAL_SYSTEM_TRUTH — PG-2 Lane X-3 append, 2026-07-19.*

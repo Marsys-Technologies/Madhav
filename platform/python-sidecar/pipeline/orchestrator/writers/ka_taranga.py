@@ -34,6 +34,9 @@ from typing import Optional
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.taranga_kernel.kernel import GRAHA_DOMAINS as _GRAHA_DOMAINS
+from services.taranga_kernel.kernel import harmonic_mean as _harmonic_mean
+from services.taranga_kernel.kernel import month_range as _month_range
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +45,12 @@ FORMULA_VERSION = "ka_taranga_v1.0"
 _WAVEFORM_START = date(1950, 1, 1)
 _WAVEFORM_END   = date(2100, 12, 1)
 
-_GRAHA_DOMAINS: dict[str, list[str]] = {
-    "Sun":     ["dharma", "career"],
-    "Moon":    ["mind", "relationship", "health"],
-    "Mars":    ["career", "property", "health"],
-    "Mercury": ["education", "commerce", "wealth"],
-    "Jupiter": ["dharma", "wealth", "children", "education"],
-    "Venus":   ["relationship", "wealth", "creativity"],
-    "Saturn":  ["karma", "career", "longevity", "health"],
-    "Rahu":    ["karma", "foreign", "technology"],
-    "Ketu":    ["moksha", "spirituality"],
-}
+# _GRAHA_DOMAINS, _harmonic_mean, _month_range: shared kernel extraction
+# (wave/D-3/T-3) — moved to services.taranga_kernel.kernel so both this batch
+# writer AND a live on-demand caller (sibling lane T-2) use the IDENTICAL
+# activation-formula primitives. Re-imported under their original local names
+# here so every call site below is unchanged (byte-identical output — see
+# tests/l3/test_taranga_kernel_extraction.py).
 
 _INSERT_SQL = """
 INSERT INTO kala_taranga (
@@ -70,26 +68,6 @@ ON CONFLICT (chart_id, month, scope_kind, scope_id) DO UPDATE SET
 """
 
 _BATCH = 2000
-
-
-def _harmonic_mean(values: list[float]) -> float:
-    pos = [v for v in values if v > 0]
-    if not pos:
-        return 0.0
-    if len(pos) == 1:
-        return pos[0]
-    return len(pos) / sum(1.0 / v for v in pos)
-
-
-def _month_range(start: date, end: date):
-    """Yield first-of-month dates from start to end inclusive."""
-    cur = date(start.year, start.month, 1)
-    while cur <= end:
-        yield cur
-        if cur.month == 12:
-            cur = date(cur.year + 1, 1, 1)
-        else:
-            cur = date(cur.year, cur.month + 1, 1)
 
 
 @register("ka_taranga")

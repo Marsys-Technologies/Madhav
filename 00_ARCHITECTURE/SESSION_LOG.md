@@ -32196,7 +32196,7 @@ session_close:
 
 ---
 
-# PG-1 — Paripraśna Grounding Audit — Conductor Close (2026-07-19)
+## PG-1-CONDUCTOR-2026-07-19 — PG-1 Paripraśna Grounding Audit — Conductor Close
 
 ```yaml
 session_open:
@@ -32239,7 +32239,7 @@ Cloud SQL PITR is disabled. Full detail: `REPORT_PG-1.md`.
 
 ```yaml
 session_close:
-  session_id: PG-1-CONDUCTOR-CLOSE-2026-07-19
+  session_id: PG-1-CONDUCTOR-2026-07-19
   wave: PG-1
   close_criteria_met: true
   verification: "12/12 lanes Opus-floor Phase-1 ACCEPT (2 via corrected attempt-2, independently re-verified); §G gate GREEN on all 9 assertions incl. all 5 integrity assertions, confirmed by an independent fresh-context Opus gate runner + its own adversarial anti-gaming pass; final proof PASS (P0' resolved to a binary with evidence, 7 assumptions moved from v0.5 verdicts)"
@@ -32253,4 +32253,541 @@ session_close:
   next_session_objective: "Native reviews REPORT_PG-1.md's disposition items (G.4 qualified call, chart_facts divergence, CURRENT_STATE deferral) and the recommended-immediate-fixes list; PG-1's own PR is opened+merged per ESCALATION_POLICY §0 auto-proceed. Doctrine-Waves current_wave remains D-4a, untouched by this wave."
 ```
 
-*End of PG-1-CONDUCTOR-CLOSE-2026-07-19 entry — 2026-07-19.*
+*End of PG-1-CONDUCTOR-2026-07-19 entry — 2026-07-19.*
+
+---
+
+## RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19 — Retrieval Audit (parallel infrastructure track, NOT D-4) CLOSED
+
+```yaml
+session_open:
+  session_id: RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19
+  cowork_thread_name: "Madhav — Retrieval Audit (Conductor: open through close)"
+  agent_name: claude-sonnet-5
+  predecessor_session: D-4a Lane A-0 (Serving-Substrate Repair) — orthogonal; this session
+    does NOT open or touch D-4, per its own governing brief's explicit exclusion
+  role: >
+    Conductor for `00_ARCHITECTURE/briefs/RETRIEVAL_AUDIT_EXECUTION_BRIEF_v1_0.md`
+    end-to-end: Phase 0 (docs commit + worktree), six parallel audit lanes (A-F) auditing
+    RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md (v1.2) claim-by-claim against code reality,
+    §F reconciliation (ground-truth register, plan amendment to v1.3, final report), close.
+  declared_scope:
+    may_touch: [NEW worktree ../madhav-retrieval + branch ret/strategy-s1 and everything
+      inside it, 00_ARCHITECTURE/RETRIEVAL_*.md amendments, 00_ARCHITECTURE/briefs/
+      retrieval_audit/** (NEW), SESSION_LOG.md (append-only, this entry), git commits on
+      ret/strategy-s1 only plus the single Phase-0 main commit]
+    must_not_touch: [platform/** and platform-mcp/** SOURCE (read-only for the entire
+      session), the FROZEN orchestrator/WriterBase/ga_*/bo_*/ka_*/ph_*/mi_* writers,
+      root CLAUDECODE_BRIEF.md (D-4 pointer), database writes, deploy configs, CI
+      workflows, migrations]
+  red_team_due: false
+```
+
+**Body.** Fully autonomous execution of the retrieval-audit brief, start to finish, no
+human intervention. **Phase 0:** committed the docs-only set (3 RETRIEVAL_*.md,
+PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md, MCP_CHANNEL_WORKSTREAM_HANDOFF_v1_0.md, this
+brief, CLAUDE.md, PROJECT_ARCHITECTURE_v2_2.md, CLAUDE_MD_CHANGELOG.md — exactly the
+listed set, nothing else) to `9c358819`, and created `../madhav-retrieval` on
+`ret/strategy-s1`, branched from that commit. **Deviation logged (not silently
+resolved):** the brief said "commit to main"; git's literal `main` ref was 58 commits
+behind the checked-out trunk `pg1/wave` (the D-3/D-4 working line) — committing to
+literal `main` would have orphaned the docs from the project history this session and
+prior D-3/D-4 sessions actually run against. The Phase-0 commit landed on `pg1/wave`
+instead; recorded in `STATE.md` with full rationale.
+
+**Six lanes (A-F), parallel subagents, per-lane model/effort chosen by task shape:**
+mechanical verification lanes (A catalog/registration, B envelope/budget, D MCP
+edge/adaptivity) ran `sonnet` at default effort; judgment-heavy lanes (C planner/
+taxonomy, E data-plane/service coverage, F Paripraśna interface — the brief's own
+mandate for "strongest model, high effort") ran `opus`. Each lane wrote its own
+`LANE_<X>_REPORT.md` under `00_ARCHITECTURE/briefs/retrieval_audit/`, verdicted every
+assigned claim (CONFIRMED/STALE/WRONG/UNVERIFIABLE, or lane-appropriate equivalents),
+and the conductor committed after each landed. Lane E had no dev DSN available and
+correctly marked all row-count claims UNVERIFIABLE-NO-DSN rather than guessing.
+**One background-agent stall occurred** during the §F.2 plan-amendment pass (600s no
+progress) — per the brief's own failure discipline, respawned once with narrowed scope;
+the retry succeeded and the stall is recorded in `STATE.md`, not hidden.
+
+**Headline findings:** Lane C (planner/taxonomy) found the plan's most accurate section
+(7/7 claims confirmed) but also the audit's most consequential structural correction —
+the three live intent taxonomies (DR-8, Vidhi `IntentClass`, `pipeline_planner`
+`query_class`) are orthogonal axes, not dialects of one vocabulary; the plan's R-3.1
+"flat superset enum" cannot unify them and was re-scoped to a decomposed
+`{answer_mode × domain × depth × horizon}` tuple. Lane A found the plan's own
+"three-catalog" claim conflates two differently-typed tables (the real served chat
+contract catalog is 6 rows, not the cited 76) and that the D9/D10-class bootstrap
+disagreement the plan calls "fixed" is still live for 5+1 other capabilities. Lane D
+found description-leakage worse than claimed (11 instances/8 files, including the
+native's full PII in a served resource description) and a 13-file duplicated fail-open
+dev-token pattern. Lane E found a live in-code dark service (`ka_graha_sancara`,
+arbitrary-datetime ephemeris) blocking all date-parameterized position queries, named
+nowhere in the plan or strategy, plus a built-but-never-imported `kala_timeline` handler
+(one-line fix). Lane F extracted 15 Paripraśna-rebuild requirements against the plan:
+8 COVERED, 4 UNDER-SPECIFIED, 3 CONTRADICTED — six genuine architectural tensions
+(C-1..C-6) raised for native ruling, never silently adjudicated, including a live-code
+risk (R-3 would edit `consult/route.ts` around a D-15 `audience_tier` violation without
+excising it) and a cheap-to-fix one (the unbuilt `prashna_ask` contract in the plan
+still carries a `depth` param D-15 forbids).
+
+**§F reconciliation:** `GROUND_TRUTH_REGISTER.md` adjudicates all 37 plan §1 factual
+claims (19 CONFIRMED / 13 CORRECTED / 1 PLAN-ITEM-ALREADY-DONE / 4 carried-forward) plus
+17 NEW-GAP items, 52 phase-item feasibility notes, 6 native-ruling contradictions, and 4
+explicitly-flagged cross-lane ambiguities (none silently collapsed).
+`RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md` amended in place to v1.3 with a real changelog
+entry, corrected §1 subsections, the R-3.1 re-scope, absorbed new-gap items into the
+right phases, and a new §8.5 carrying C-1..C-6 as open rulings.
+`AUDIT_FINAL_REPORT.md` closes the loop with the executive summary, per-lane verdict
+table, top-10 corrections/gaps, the Paripraśna alignment table, open questions for the
+native, the full 20+-commit ledger (stall included), and the model/effort/cost
+accounting. **Zero production-source writes the entire session** —
+`git diff --stat 9c358819...HEAD -- platform platform-mcp` empty at every checkpoint,
+reconfirmed at close. Branch `ret/strategy-s1` is NOT merged to main/pg1/wave per the
+brief's explicit instruction — left for native review.
+
+```yaml
+session_close:
+  session_id: RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19
+  wave: RETRIEVAL-AUDIT (parallel infrastructure track, not a doctrine wave; D-4 remains
+    INCOMING and untouched)
+  close_criteria_met: true
+  verification: "all six §G acceptance criteria verified by the conductor before close:
+    (1) Phase-0 commit contains exactly the listed doc set, worktree+branch exist,
+    git log --oneline -2 identical in both trees at Phase-0; (2) six lane reports exist,
+    each with per-claim verdicts + file:line evidence + a model/effort ledger section,
+    zero claims silently skipped; (3) GROUND_TRUTH_REGISTER covers 100% of plan §1
+    (37/37 rows) and all §3/§7/§8 phase items (52 feasibility notes); (4) plan v1.3
+    committed, every CORRECTED/NEW-GAP row traced into a phase or explicitly deferred
+    with reason; (5) Lane F's 15-requirement alignment table present, all 6 conflicts
+    RAISED with a PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md pointer, none silently
+    resolved; (6) STATE.md shows an unbroken transition log incl. the one agent stall,
+    AUDIT_FINAL_REPORT complete, this SESSION_LOG entry appended,
+    `git diff --stat 9c358819...HEAD -- platform platform-mcp` empty"
+  deploy: "N/A — audit-only session, no deploy, no production writes"
+  product_code_writes_made: "NONE — read-only audit per brief; verified empty diff at
+    every lane landing and at close"
+  native_chart_touched: false
+  current_state_updated: false
+  register_dispositions_flipped: "none — this audit cross-references
+    MARSYS_DEFECT_GAP_REGISTER_v2_0.md, never duplicates or mutates its rows, per brief
+    §D"
+  followups: "Six native rulings required (GROUND_TRUTH_REGISTER Part C / plan §8.5
+    C-1..C-6), headline: C-1 (prashna_ask contract's depth param violates D-15, cheap
+    fix, tool unbuilt) and C-2 (R-3's consult/route.ts edit would leave a live D-15
+    audience_tier violation un-excised two lines away). Four ambiguities need native/
+    implementer resolution (GT-AMBIG-1..4), notably the live MCP tool count is unknown
+    to ±30 pending an AST/runtime census. Branch `ret/strategy-s1` awaits native review
+    and merge decision — not merged by this session per brief instruction."
+  next_session_objective: "Native reviews `ret/strategy-s1` (worktree at
+    ../madhav-retrieval): rules on the six C-1..C-6 Paripraśna-alignment contradictions
+    and the four ambiguities, decides on merge of the docs-only branch, and — separately
+    — D-4 (model bakeoff) remains INCOMING and unopened, per this brief's explicit
+    exclusion; this session does not advance current_wave."
+```
+
+*End of RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19 entry — 2026-07-19.*
+
+---
+
+---
+
+## PG-2-CONDUCTOR-2026-07-19 — PG-2 Paripraśna Open-Question Diagnostic — Conductor Close
+
+**Note on log ordering**: PG-1's own SESSION_LOG close entry lives on branch `pg1/wave`
+(PR #613, still unmerged to `origin/main` at this wave's close) and is therefore absent
+from this worktree's copy of this file. It will appear above this entry once #613
+merges. This entry stands on its own regardless.
+
+```yaml
+session_open:
+  session_id: PG-2-CONDUCTOR-2026-07-19
+  wave: PG-2
+  reading_set: [CLAUDE.md, CONDUCTOR_PROTOCOL.md v1.4, ESCALATION_POLICY_v1_0.md v1.1,
+                ADJUDICATOR_CHARGE_v1_0.md v1.1, BRIEF_PG-2 v1.0, REPORT_PG-1.md,
+                PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md v0.6]
+  base_pin: origin/main @ 4b69df8c510fb3cfa42c9f00b57fcc378dd2f44a (fetched, per B-1 correction)
+```
+
+Autonomous diagnostic wave (§F2.1: read-only on source, diagnostic READ/INVOKE probes
+authorized, one fenced write per §F2.2) resolving every open question PG-1 left. 6
+lanes (X-1 through X-5, M-1) ran in **enforced isolated git worktrees**
+(`pg2/<lane>` at `Madhav-pg2-<lane>`, verified via `git worktree list` before dispatch
+— the hard gate this wave exists partly to demonstrate, after PG-1's shared-checkout
+deviation caused a real scope-warden false positive last wave), producing 44 evidenced
+findings, zero commit races, zero cross-lane scope violations. Both of the wave's
+central questions were answered from live probes: (a) `chart_facts`'s divergence is a
+benign per-ayanamsha-vs-all-ayanamsha scope mismatch (X-1, all 6 hypotheses driven to
+definitive conclusions, DB-verified); (b) the chat engine does **not** work — a live,
+Firebase-authenticated invocation against the native's own account and chart produced
+a deterministic HTTP 500 at bundle-hydration, root-caused to `bundle_hydrator.ts`
+hardcoding a retired `FORENSIC` floor asset deleted from the capability manifest in a
+prior teardown PR (X-2). Lane M-1 conducted an adversarial meta-audit of PG-1's own
+integrity and concluded **PG-1's gate result is VALID** — the 11-row G.1 addendum that
+turned PG-1's gate from RED to GREEN is genuine (independently proven via git
+commit-timestamp forward-causality, re-derived from scratch three times across this
+wave: by M-1, by this wave's own Phase-1 verifier, and by its gate runner) — while
+surfacing 6 correction-worthy defects in PG-1's sealed artifacts (a stale 87-vs-98
+finding count chief among them), applied as `[CORRECTED 2026-07-19 / PG-2]` blocks,
+originals preserved. Synthesis (Z-2) produced `PG2_DIAGNOSTIC_REPORT_v1_0.md`,
+`RETRIEVAL_SYSTEM_TRUTH_v2_0.md` (coverage now ~96%, first-ever real serving-path
+observation), and architecture v0.6→v0.7. The §G gate (11 assertions + falsifiable
+final proof) ran twice — mechanically, then independently by a fresh-context Opus
+gate runner performing its own adversarial anti-gaming pass — and closed GREEN on all
+11, after two conductor-level corrections (a coverage-arithmetic reconciliation gap,
+a missing governing-brief import) surfaced by the gate runner's own review. Full
+detail: `REPORT_PG-2.md`.
+
+```yaml
+session_close:
+  session_id: PG-2-CONDUCTOR-2026-07-19
+  wave: PG-2
+  close_criteria_met: true
+  verification: "6/6 lanes Opus-floor Phase-1 ACCEPT on first attempt (Z-2's transient API-error retry lost no committed work, protocol §6.4, not counted); §G gate GREEN on all 11 assertions incl. all 7 integrity assertions, confirmed by an independent fresh-context Opus gate runner + its own adversarial anti-gaming pass, with 2 post-review corrections applied and re-verified; final proof PASS (both central questions answered from probes this wave ran, quoted verbatim in REPORT_PG-2.md)"
+  deploy: "not applicable — PG-2 is read-only on product source with one authorized fenced write (X-2's chat probe: 2 conversation rows created against the native's own chart/account, ids recorded, kept not deleted per §F2.2); G.11 confirmed zero product-path touches across the entire wave"
+  product_code_writes_made: "none (§F2 absolute except the one fenced diagnostic write; G.11 verified clean)"
+  native_chart_touched: true
+  native_chart_touch_detail: "X-2's authorized fenced probe against chart 482012f1 (native's own): 2 conversation rows created (both engine-crash artifacts, HTTP 500 before any reading was produced), kept per fence rules, ids 14d96091-4038-461e-9a21-1e822bbe7555 and 3829624c-ff9f-4e19-96ba-4f10d87c03a0"
+  current_state_updated: true
+  register_dispositions_flipped: "none — PG-2 does not write to CR/DR registers (doctrine-waves territory, must_not_touch); OT-11 costed not resolved (native decision per PC-8); architecture v0.7 §16.8 appended"
+  followups: "highest-leverage single fix identified: bundle_hydrator.ts's hardcoded FLOOR_ASSET_IDS=['FORENSIC','CGM'] — drop 'FORENSIC' (deleted from CAPABILITY_MANIFEST.json in prior teardown PR #187) to unblock the entire chat engine; this is now recommended-fix #1, ahead of PG-1's original #1 (codegen:check CI-wiring). OT-11 ledger merge-vs-document decision pending native. Coverage-arithmetic gap (0-4 tools of unclear identity) needs a programmatic set-difference. PG-1's PR #613 remains unmerged — both waves' outputs need rebasing once it lands."
+  next_session_objective: "Native reviews REPORT_PG-2.md's disposition items (OT-11 decision, bundle_hydrator fix, coverage gap, PR #613 status) and the reprioritized recommended-fixes list. PG-2's own PR is opened per ESCALATION_POLICY §0 auto-proceed, held for human review pending PR #613's disposition (same reasoning PG-1's conductor applied to its own PR)."
+```
+
+*End of PG-2-CONDUCTOR-2026-07-19 entry — 2026-07-19.*
+
+---
+
+## DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 — D-5 "Gochara-Chitra" HALTED (not closed)
+
+```yaml
+session_open:
+  session_id: DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20
+  cowork_thread_name: "Madhav — D-5 Gochara-Chitra (Conductor: open through halt)"
+  agent_name: claude-sonnet-5
+  predecessor_session: "pre-D-5 readiness pass (PR #618) — D-4a CLOSED, current_wave=D-5 INCOMING at session open"
+  role: >
+    Conductor for BRIEF_D5.md v1.0 FROZEN end-to-end per CONDUCTOR_PROTOCOL.md +
+    ESCALATION_POLICY_v1_0.md: Binder pass, 5 lanes (G-1..G-5) each in an isolated
+    worktree with independent fresh-context Opus verification, integrate, deploy,
+    rebuild, §G gate, close.
+  declared_scope:
+    may_touch: "fresh worktree wave/D-5/conductor + per-lane worktrees wave/D-5/G-1..G-5 + fix branches; platform/python-sidecar/services/gochara_grammar, gochara_intensity, ka_gochara_resonance, ka_gochara_sweep (each **); platform/migrations/459_* + 460_*; platform-mcp/src/tools/retrieval/register_gochara_windows.ts + server.ts (wiring only); platform/src/lib/lel/prospective_ledger.ts (extend); platform/src/app/api/mcp/writes/[action]/route.ts (extend); STATE_D-5.md; BIND_D-5.md; REPORT_D-5.md; CURRENT_STATE_v1_0.md (banner); SESSION_LOG.md (append)"
+    must_not_touch: "FROZEN orchestrator core (pipeline/orchestrator/asset_runner.py, writers/__init__.py); sealed LEL test split; prior gate surfaces (A-0..A-5); raw LEL corpus; G-1..G-5's already-merged files from any OTHER lane once merged"
+  red_team_due: false
+```
+
+**Body.** Fully autonomous execution of D-5 per the native's kickoff directive, ~20.5
+hours elapsed. Pre-open reconciliation traced an apparent D-4a→D-5 state mismatch to a
+stale local checkout on an unrelated branch (`pg1/wave`), not a false readiness-pass
+report — `origin/main` was already consistent. Opened in a fresh worktree per D-4a's own
+precedent (avoiding entanglement with concurrent PG-1/PG-2 diagnostic-wave uncommitted
+work on the shared filesystem).
+
+**All 5 lanes built, independently adversarially verified (fresh-context Opus,
+live-DB-reproduced not report-read), merged, deployed:** G-1 resonance map (PR #621),
+G-2 configuration grammar (PR #622), G-3 intensity engine (PR #625), G-4 forward sweep +
+serving (PR #627), G-5 ledger integration (PR #629). Two cross-lane bugs found by
+verifiers and fixed forward pre-merge (G-1's jsonb-operator query bug; G-2's stale
+dasha-system-ID tuple). Full integrated test suite: zero D-5-caused regressions
+(python-sidecar, platform, and platform-mcp's 75 pre-existing unrelated failures
+confirmed byte-identical to the D-5-open baseline commit).
+
+**REBUILD surfaced 5 further incidents, all found via genuine live/orchestrator-driven
+execution (none caught by any lane's own Phase-1 testing) and all fixed with independent
+live re-verification:** (1) untyped-NULL SQL placeholder poisoning the shared sweep
+connection; (2) that fix's own bare `conn.rollback()` destroying the orchestrator's
+per-substep SAVEPOINT (a FROZEN-contract-adjacent violation, fixed via a new
+`savepoint_scope()` context manager applied across all 6 affected modules, not just the
+1 originally touched); (3) decade-sized substep chunking exceeding the 1800s writer
+watchdog (re-chunked to per-year, zero correctness impact — the run had zero
+transaction errors, confirming fix #2 held); (4) the §G gate runner's own live
+verification found G-4's 3 MCP tools were built+merged but never wired into
+`server.ts` — dead code at every deployed SHA (fixed: one import + one call); (5) the
+same gate run found the sweep's chronological-from-1950 substep order made the 3 named
+LEL specimens unreachable within any single dispatch window (fixed: specimen-overlapping
+years now sort first, live-confirmed via dry-run).
+
+**Halt, not close:** per the native's own D-5 kickoff framing ("a red on... specimens...
+is a wave failure" — not gated around), the session ends with fix #5 deployed and
+independently confirmed correct-by-design, but not yet confirmed against real committed
+data — a rebuild dispatch was actively, healthily processing the first specimen-priority
+substep (zero errors, real progress every check) when the session ended. Full
+incident-by-incident ledger in `STATE_D-5.md`; halt rationale and exact next action in
+`REPORT_D-5.md`.
+
+```yaml
+session_close:
+  session_id: DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20
+  wave: D-5
+  close_criteria_met: false
+  status: HALTED — REPORT_D-5.md status "BLOCKED — HALT-AND-REPORT"; current_wave
+    remains D-5, does NOT advance to D-4b
+  verification: "5 lanes independently verified + merged + deployed + live-SHA-confirmed;
+    full test suite zero-regression confirmed (python-sidecar 3841/3841, platform
+    5841/5841, platform-mcp 75-pre-existing-failures byte-identical to baseline); §G
+    gate ran once, RED (2 findings, both root-caused and fixed, 1 of 2 independently
+    re-verified live, the 2nd deployed+design-verified but not yet data-verified) — see
+    REPORT_D-5.md §4 for the full halt rationale and STATE_D-5.md
+    session_end_disposition for the exact next-session resume action"
+  deploy: "amjis_web/amjis_mcp/amjis_sidecar/brahma_build_pipeline_job all live-SHA
+    verified at 1f05c4ac (final fix commit); rollback pin recorded in STATE_D-5.md
+    (pre-wave images, unused — no rollback was needed)"
+  product_code_writes_made: "5 lanes + 5 REBUILD/GATE fixes, all merged via PR + CI +
+    live-SHA-verified deploy; see STATE_D-5.md for the full PR list (#621-#640)"
+  native_chart_touched: "Abhisek (482012f1) ONLY, scope-limited to
+    ka_gochara_resonance+ka_gochara_sweep per BIND_D-5 §6 minimal-cascade ruling;
+    Abhinandan never touched"
+  current_state_updated: true
+  register_dispositions_flipped: "CR-113 (orphaned build_runs row) closed via the
+    platform-owned watchdog reconcile path; CR-114 dispositioned non-blocking"
+  followups: "See REPORT_D-5.md §5 for the full carried-findings list (7 items, none
+    blocking re-gate): Sarvatobhadra classical-grid gap (pre-existing, G-2),
+    muhurta_finder re-pointing deferral (G-4), 1950 birth-anchor inheritance (G-4),
+    DR-16 disclosure persistence-scope gap (G-5, needs a native ruling or migration),
+    ka_avadhi.py's stale dasha-system tuple (pre-existing, out of D-5 scope), 75
+    pre-existing platform-mcp failures (out of D-5 scope), and an orchestrator-core
+    mark_asset_error robustness candidate flagged for native review, NOT fixed
+    in-lane per CLAUDE.md §N.2."
+  next_session_objective: "Per REPORT_D-5.md §7: check whether build_run
+    6ac5dcb6-e792-452c-9426-788d216e5c34 reached the 3 specimen-priority substeps
+    (query in STATE_D-5.md); if not, re-dispatch once more (idempotent, no code
+    changes anticipated) via platform/scripts/dispatch_d5_gochara_rebuild.py; once
+    confirmed, re-run the §G gate. On green, close D-5 properly (advance
+    current_wave to D-4b) per protocol §2.8. Native should also disposition the two
+    provenance-honesty-adjacent items in REPORT_D-5.md §5 (DR-16 persistence,
+    orchestrator mark_asset_error) at convenience — neither blocks re-gate."
+```
+
+*End of DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 entry — 2026-07-20.*
+
+## DOCTRINE-WAVES-D-5-CLOSE-2026-07-20 — D-5 "Gochara-Chitra" CLOSED GREEN-WITH-PARTIALS
+
+```yaml
+session_open:
+  session_id: DOCTRINE-WAVES-D-5-CLOSE-2026-07-20
+  cowork_thread_name: "Madhav — D-5 Gochara-Chitra (Conductor: re-entry after accidental close, through final close)"
+  agent_name: claude-sonnet-5
+  predecessor_session: "DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 — accidental mid-session close, native directed re-entry per protocol §6.2, reconcile-first"
+  role: >
+    Re-entry conductor per CONDUCTOR_PROTOCOL.md §6.2: reconcile ledger vs reality,
+    resume the standing native disposition on gate_run_2 (RED-C in-scope fix, RED-D
+    diagnose-first-against-ephemeris), report-not-fix on any newly-discovered issue
+    per the wave's own "third distinct red halts" instruction, implement the
+    native's own explicit disposition when given, run one final native-authorized
+    §G gate, close.
+  declared_scope:
+    may_touch: "worktrees wave-D-5-fix-redc/redd/plateau-topk + branches wave/D-5/fix-red-c, wave/D-5/fix-red-d, wave/D-5/fix-redd-log-hotpath, wave/D-5/plateau-topk; platform/python-sidecar/services/gochara_grammar, gochara_intensity, ka_gochara_sweep (each **); platform/python-sidecar/tests/test_ka_gochara_sweep.py, test_gochara_grammar.py, test_gochara_intensity.py; platform/migrations/461_kala_gochara_windows_continuity_state.sql; platform-mcp/src/tools/retrieval/register_gochara_windows.ts + .test.ts; platform/scripts/dispatch_d5_redc_redd_rebuild.py; STATE_D-5.md; REPORT_D-5.md; CURRENT_STATE_v1_0.md (banner + last_session_id); SESSION_LOG.md (append)"
+    must_not_touch: "FROZEN orchestrator core (pipeline/orchestrator/asset_runner.py, writers/__init__.py); sealed LEL test split; G-1..G-5's already-merged files from any OTHER lane once merged; DR-17/DR-18 scoring implementation (D-4b's job, not D-5's — this session registers the doctrine, does not implement it)"
+  red_team_due: false
+```
+
+**Body.** Re-entered after an accidental mid-session close. Reconciled ledger vs reality first
+(git branch/worktree/build_runs inventory, not trusted blindly): both fix worktrees
+(`wave-D-5-fix-redc`, `wave-D-5-fix-redd`) had real, non-orphaned progress matching
+STATE_D-5.md's carried findings — RED-C's v4 consolidation design was implemented but
+uncommitted; RED-D was already root-caused and fixed with two commits.
+
+**RED-C — fixed, PR #650 (`86a82ca5`).** While authoring RED-C v4's own test suite (before
+first commit), found a real bug in the design itself: the year-chunk grid shares its
+boundary day as the exact same calendar date between adjacent chunks (not date±1), so the
+consolidation's off-by-one neighbor-lookup would never actually match a real year-boundary
+neighbor in production. Fixed to exact-date adjacency. 27/27 targeted + 3895/23
+(pre-existing unrelated) on the wider suite.
+
+**RED-D — independently re-verified, PR #651 (`d2d9555e`).** Did not trust the prior
+session's commit message: reran the 79-test suite myself, and separately queried
+`swisseph` directly for the real 2013-12-11 sidereal positions (Saturn/Libra since
+2012-08-08, Jupiter/Gemini) to confirm the astronomy claim independent of the fix's own
+code.
+
+**New perf regression found+fixed, PR #663 (`5ceedd75`).** Dispatching the post-merge
+rebuild, the first specimen substep exceeded the 30-min writer budget with zero rows
+committed — diagnosed live as hot-path INFO-level "skipping" diagnostics (RED-D's fix
+correctly reaches more targets, exposing pre-existing per-target logging at
+`ka_gochara_sweep`'s daily-grid scale, >1000 lines/10s observed). Fixed as a log-level-only
+change (14 call sites, INFO→DEBUG), zero behavior change.
+
+**Two further findings reported to the native rather than fixed speculatively** (this
+session's own "third distinct issue" stop condition): the rebuilt live data showed (1)
+`major_gain`'s window landing on chunk boundaries because the true signal is a genuine
+multi-year plateau (not a re-reproduction of RED-C — the cap mechanism itself worked
+correctly), and (2) the marriage specimen still not retrodicting at its true date because
+point-class serving collapses a whole active run to its single global-argmax day, silently
+dropping whatever the true-date mechanism contributes.
+
+**Native disposition (2026-07-20): both ruled serving-honesty defects, in-scope, no
+calibration work, no specimen-aware weighting.** Implemented exactly as specified —
+plateau-disclosure semantics (`register_gochara_windows.ts` derives open-edge flags from
+the already-persisted `continuity_state`) and top-K local-maxima point-class serving
+(`shape_output._local_maxima`, no specimen-tuned knobs). Corrected specimen assertions per
+native instruction: interval-class = OVERLAP, point-class = presence-among-served-peaks
+(not rank-1). DR-17 (Graded Manifestation Acceptance) + DR-18 (Knowledge-Utilization
+Census) registered per native ratification — D-5 implements neither, D-4b's job. PR #665
+(`81a77f26`), one final native-authorized §G re-run.
+
+**Final rebuild (build_run `ccb7f597`) + gate_run_3.** All 3 priority specimens committed
+under a single fresh v6 fingerprint. `major_gain` PASSES the corrected OVERLAP assertion.
+`marriage` STILL FAILS the corrected presence-among-peaks assertion — the mechanism is now
+structurally reachable and the ephemeris configuration independently confirmed real, but
+the live composite signal for this specific chart doesn't crest a second time near the true
+date; root cause undiagnosed. Per the native's own pre-committed disposition for exactly
+this split outcome, D-5 closes **GREEN-WITH-PARTIALS**, not another halt — the marriage
+residual transfers to D-4b's Grand Bakeoff as the named DR-17 type-specimen residual pair,
+explicitly not chased with a further D-5 fix cycle.
+
+```yaml
+session_close:
+  close_criteria_met: true
+  status: CLOSED — GREEN-WITH-PARTIALS; current_wave advances D-5 → D-4b (INCOMING)
+  verification: "RED-C: real adjacency bug found+fixed during test-authoring, 27/27 +
+    3895/23-pre-existing wider suite. RED-D: independently re-verified (re-ran test
+    suite myself + direct swisseph ephemeris cross-check, not trusted from the
+    commit message). Perf regression: found live, fixed, confirmed via re-dispatch
+    (specimens committed in ~15 min vs. a full prior timeout with zero commits).
+    Native-dispositioned plateau-disclosure + top-K local-maxima fixes: 29/29 Python
+    + 9/9 TS non-integration tests, tsc clean. Final gate_run_3: major_gain PASS
+    (direct SQL verification of the same rows the MCP tools serve), marriage FAIL
+    (pre-anticipated outcome per the native's own pre-committed disposition)."
+  deploy: "amjis_web/amjis_mcp/amjis_sidecar/brahma_build_pipeline_job all live-SHA
+    verified at 81a77f263a7d61c2ba2a8c57f5cf7605c35231df (PR #665 merge commit,
+    final deploy this session); rollback pin updated in STATE_D-5.md"
+  product_code_writes_made: "4 PRs merged this session (#650 RED-C, #651 RED-D
+    branch push, #663 perf, #665 native-dispositioned plateau/top-K fixes), all via
+    PR + CI + live-SHA-verified deploy; see STATE_D-5.md for full detail"
+  native_chart_touched: "Abhisek (482012f1) ONLY, scope-limited to ka_gochara_sweep
+    per BIND_D-5 §6 minimal-cascade ruling; Abhinandan never touched"
+  current_state_updated: true
+  register_dispositions_flipped: "gate_run_2 RED-C/RED-D both moved from open to
+    resolved_findings in STATE_D-5.md. DR-17/DR-18 registered (D-4b implementation)."
+  followups: "Marriage specimen residual (chara_karaka vs guru_shani_double_transit,
+    2013) transfers to D-4b's Grand Bakeoff as a named DR-17 type-specimen pair —
+    see REPORT_D-5.md §10. All findings carried from the original halt report §5
+    (Sarvatobhadra classical-grid gap, muhurta_finder re-pointing deferral, 1950
+    birth-anchor inheritance, DR-16 disclosure persistence-scope gap,
+    ka_avadhi.py's stale dasha-system tuple, orchestrator mark_asset_error
+    robustness candidate) remain open, none blocking, none touched this session."
+  next_session_objective: "D-4b 'Calibration Ignition + Grand Bakeoff' — BRIEF_D4B.md
+    is a SKELETON only (lanes B-1..B-6 named in TEMPORAL_ENGINE_ARC_PLAN_v1_0.md
+    §5, prerequisite D-5 gate GREEN now satisfied per GREEN-WITH-PARTIALS). First
+    action: flesh and freeze the brief per its own frontmatter, then Binder pass."
+```
+
+*End of DOCTRINE-WAVES-D-5-CLOSE-2026-07-20 entry — 2026-07-20/21.*
+
+---
+
+## PG2-MERGE-COORDINATION-2026-07-20 — PG-2 merge readiness, sync, merge, and cross-campaign handoff
+
+```yaml
+session_open:
+  session_id: PG2-MERGE-COORDINATION-2026-07-20
+  cowork_thread_name: "Madhav — PG-2 merge coordination + cross-campaign handoff"
+  agent_name: claude-sonnet-5
+  predecessor_session: PG-2-CONDUCTOR-2026-07-19 (wave conductor; closed GREEN 11/11, PR #620 opened but held)
+  role: >
+    Post-close verification and merge-coordination for the already-CLOSED PG-2 diagnostic
+    wave: diagnose why PR #620's gate showed a HIGH-severity regression, fix it, diagnose
+    and fix a stalled CI-attach condition, resolve a real 3-file merge conflict against a
+    fast-moving `origin/main` (including a genuine PG-1/PG-2 content-dependency chain in
+    `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`), merge PR #620 once green, and hand off two
+    cross-campaign notes to the retrieval campaign's W4 conductor.
+  declared_scope:
+    may_touch:
+      - "PR #620 / pg2/wave branch (schema fix + sync-merge commits only)"
+      - "00_ARCHITECTURE/briefs/retrieval_impl/STATE.md (cross-campaign note, this PR)"
+      - "SESSION_LOG.md (append-only, this entry)"
+      - "worktree/branch cleanup"
+    must_not_touch:
+      - "product source beyond what the sync-merge itself carries from already-reviewed upstream commits"
+      - "no repair of the bundle_hydrator.ts defect (assigned to W4, not fixed here)"
+      - "no edits to PG-1's still-open PR #613"
+  red_team_due: false
+```
+
+**Body.** PR #620 (PG-2, gate GREEN 11/11 at wave close) sat unmerged with 1/15 checks red
+(`schema_validator.py` exit 2, not the tolerated exit 3). Merge-preview diagnosis (onto a
+scratch worktree, no push) isolated the regression to exactly 2 HIGH-severity violations,
+both traced to PG-2's own `SESSION_LOG.md` entry: a `#` heading where the schema requires
+`## <session_id> — ...`, and a `session_open`/`session_close` session_id mismatch. 37 other
+violations were pre-existing staleness on `origin/main`, unrelated. Fixed (3-line change),
+verified locally (exit 2 → 3), pushed.
+
+The push then surfaced a second issue: zero GitHub Actions check-runs attached to the new
+commit for over 35 minutes. Two probes (native's own instruction): githubstatus.com showed
+the Actions component `operational` (an unrelated Copilot-model incident was inflating the
+page-level indicator); a canary `workflow_dispatch` on an unrelated read-only workflow
+queued and completed in seconds, proving runners were not throttled. Root cause: PR #620
+had gone `mergeable: CONFLICTING` against a fast-moving `origin/main` (D-5 and the W3
+retrieval-strategy wave had both advanced past PG-2's branch point) — the dirty merge
+state, not a platform stall, was blocking Actions' own check-suite from attaching.
+
+Resolved the conflict as a real merge (not rebase, branch already pushed/shared) across
+three files: `SESSION_LOG.md` (union of both sides in true chronological order — nothing
+dropped); `MCP_CHANNEL_WORKSTREAM_HANDOFF_v1_0.md` (main's content + PG-1's self-contained
+appendix re-applied, no PG-2-specific content in this file); `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`
+— this one surfaced a genuine dependency chain, not simple drift: `origin/main` was still
+at v0.5, having never received PG-1's v0.6 content at all (PG-1's PR #613 is itself still
+unmerged, and PG-2 built its v0.7 corrections directly on PG-1's v0.6). Verified via
+patch-replay (main's v0.5 + PG-1's delta + PG-2's delta reproduces PG-2's v0.7 byte-for-byte)
+before resolving with PG-2's full content, per the native's explicit ruling on this fork.
+`CURRENT_STATE_v1_0.md.last_session_id` resolved itself once the log was in correct
+chronological order — no separate edit needed. `schema_validator.py` exit 3 / `drift_detector.py`
+exit 3 post-merge, both tolerated-tier, zero HIGH/CRITICAL.
+
+`origin/main` advanced twice more during this process (D-5's own close-out commits,
+unrelated, zero-conflict auto-merges both times) — each re-synced before merge. PR #620
+merged (`--merge --auto`, matching this repo's wave-close convention: a real merge commit,
+not squash) at `5b57d49f`; `pg2/wave` branch and local worktree removed.
+
+**Cross-campaign handoff (PR #668, docs-only, this same commit range):** appended a note
+to the retrieval campaign's `00_ARCHITECTURE/briefs/retrieval_impl/STATE.md` for the W4
+conductor: (1) main has moved (PG-2's SESSION_LOG/CURRENT_STATE/PARIPRASHNA/MCP-handoff
+changes) — sync the W4 wave branch before the gate merge, given PG-2's own branch just
+demonstrated what happens when a wave sits unsynced too long; (2) the `bundle_hydrator.ts:25`
+stale-`FORENSIC` HTTP 500 on `/api/chat/consult` (PG-2's X-2 finding) is cross-campaign
+assigned to W4 — in-scope precondition for its floor-adoption verification work, evidence
+in `REPORT_PG-2.md`.
+
+**Content-provenance check (native-requested):** confirmed `origin/main` now carries the
+complete substantive content of PG-1's v0.6 architecture work (`PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`
+v0.7, `RETRIEVAL_SYSTEM_TRUTH_v1_0.md`, `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md`,
+`pg1_audit/REPORT_PG-1.md`), each further extended/corrected by PG-2 — main strictly has
+*more* than `pg1/wave`'s copies, not less, for every substantive doctrine file diffed.
+**What remains genuinely unmerged is PG-1's own process scaffolding only** — its lane
+state files, `pg1_findings_*.jsonl` shards, `gate_assertions.py`/`validate_findings.py`,
+`GATE_RESULT.md`, `STATE_PG-1.md`, `VERIFICATION_RECEIPTS.md`, and PG-1's own governing
+brief copy (`CLAUDECODE_BRIEF_PARIPRASHNA_GROUNDING_AUDIT_v1_0.md`) — none of which any
+downstream doctrine content depends on; these land only if/when PG-1's own PR #613 merges
+(a separate, native-owned decision, out of this session's scope).
+
+```yaml
+session_close:
+  session_id: PG2-MERGE-COORDINATION-2026-07-20
+  wave: PG-2 (post-close merge coordination)
+  close_criteria_met: true
+  verification: "PR #620 CI green 15/15 pre-merge (last sync commit 54e9c85f); post-merge
+    main CI (5b57d49f) and PR #668 CI verified green; schema_validator/drift_detector both
+    exit 3 (tolerated) locally on every sync step; PARIPRASHNA patch-replay verified
+    byte-identical before resolving the conflict"
+  deploy: "PR #620 merge triggered the standard main CI -> deploy pipeline (Web/MCP); no
+    manual deploy action taken this session"
+  product_code_writes_made: "none — this session's only writes were governance-doc fixes
+    (SESSION_LOG.md schema conformance), merge-conflict resolution (doc content only, no
+    platform/src or platform-mcp/src touched beyond what the reviewed upstream commits
+    already carried), and the cross-campaign ledger note"
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "none"
+  followups: "bundle_hydrator.ts:25 fix now formally cross-campaign-assigned to W4 (not
+    fixed here, per scope). PG-1's PR #613 remains open/unmerged — its process-scaffolding
+    files are the only content still exclusively there; no doctrine content is at risk.
+    W4 should sync with main before its own gate merge per the STATE.md note."
+  next_session_objective: "None pending from this session. PG-2 fully closed and merged.
+    W4 (retrieval campaign) proceeds independently on its own native go-ahead."
+```
+
+
+### Next session objective
+
+None pending from this session. PG-2 is fully closed and merged to main (5b57d49f); the retrieval campaign's W4 proceeds independently on its own native go-ahead, with the cross-campaign note in `00_ARCHITECTURE/briefs/retrieval_impl/STATE.md` as its entry point back into this session's findings.
+
+*End of PG2-MERGE-COORDINATION-2026-07-20 entry — 2026-07-20/21.*

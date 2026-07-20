@@ -22,9 +22,10 @@ export const queryContradictionsCapability: CapabilityDescriptor = {
     'Returns synthesis contradictions and discovery findings for a chart.',
     'Sources: bodha_contradictions (formal yoga-vs-dosha tension pairs), bodha_discoveries (synthesis discoveries),',
     'and bodha_anomalies (quality anomalies surfaced during L2 build).',
-    'bodha_contradictions: populated — 1,034–1,100 rows per ayanamsha per chart (built by bo_karanajala).',
+    'bodha_contradictions: populated — a moderate row count per ayanamsha per chart (built by bo_karanajala).',
     'bodha_discoveries: rows ranked by composite_discovery_rank (non_obviousness_score gated).',
     'bodha_anomalies: rows covering detector types.',
+    'Graceful-empty: when a chart/ayanamsha combination has no qualifying contradictions, discoveries, or anomalies, this returns 0 rows for that source rather than erroring — an honest empty state, not a fault.',
     'emits_references: returns signal_id pairs from contradiction pairs as reference list.',
   ].join(' '),
 

@@ -2,7 +2,15 @@
 artifact: RETRIEVAL_AUDIT_EXECUTION_BRIEF_v1_0.md
 canonical_id: RETRIEVAL_AUDIT_EXECUTION_BRIEF
 version: 1.0
-status: ACTIVE
+status: COMPLETE
+completed_on: 2026-07-19
+completion_note: >
+  All six §G acceptance criteria verified by the conductor before this flip (see
+  SESSION_LOG.md RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19 entry for the full
+  per-criterion verification and 00_ARCHITECTURE/briefs/retrieval_audit/AUDIT_FINAL_REPORT.md
+  for the substantive results). Branch ret/strategy-s1 (worktree ../madhav-retrieval) is NOT
+  merged to main/pg1/wave per §F.4 — left for native review. Six native rulings pending
+  (GROUND_TRUTH_REGISTER.md Part C / plan v1.3 §8.5, items C-1..C-6).
 type: CLAUDECODE_BRIEF (governing scope for one autonomous execution session)
 authored_by: Claude (Cowork, Fable 5) 2026-07-19, native-directed
 authority: >

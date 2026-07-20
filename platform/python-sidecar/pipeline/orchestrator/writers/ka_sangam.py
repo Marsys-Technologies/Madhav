@@ -26,6 +26,7 @@ from services.ka_sangam.engine import (
     independent_current_count,
     _date_to_jd,
     _NAK_NAME_TO_IDX,
+    _SIGN_NAME_TO_IDX,
     EnrichmentContext,
     NativeChartContext,
     derive_sade_sati_signs,
@@ -34,6 +35,78 @@ from services.ka_sangam.engine import (
 from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
+from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
+
+# ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
+# wave/D-3/ADMIT (receipted ACCEPT) found additive=0.2/suppressive=0.2 for
+# BOTH weight keys on each side scores best on the train split -- NOT
+# services.kala_trigger.trigger's own unratified 0.5/0.6 defaults. T-4
+# PERMISSION was admission-REJECTED (degrades train score) and is
+# deliberately NOT wired into this score anywhere in this file.
+TRIGGER_ADMITTED_ADDITIVE_WEIGHTS = {'guru_shani_double_transit': 0.2, 'saham_activation': 0.2}
+TRIGGER_ADMITTED_SUPPRESSIVE_WEIGHTS = {'malefic_transit_over_mechanism': 0.2, 'papa_kartari_sandwich': 0.2}
+
+
+def apply_trigger_suppression(windows: list[dict], *, chart_id: str, target_lon,
+                               gochara_service, vedha_rules, moon_sign_idx) -> list[dict]:
+    """
+    D-3 T-6: compose each window's convergence_score with T-5's TRIGGER
+    suppressive term (malefic-transit-over-mechanism + papa-kartari-sandwich)
+    via compose_with_ka_sangam, at the ADMITTED 0.2/0.2 weights above. This is
+    the headline TRIGGER deliverable per services/kala_trigger/trigger.py's
+    own module docstring: "the first place ... a current can push a score
+    DOWN below what the additive terms alone would produce" (CR-89).
+
+    Deliberately NOT applied in this pass (named follow-ups, T-6 claim):
+    guru_shani_double_transit / saham_activation additive currents (need
+    dasha_lord + saham_lord resolution — the day/night-birth Dhana Saham
+    formula lord lookup — out of this pass's scope) and the school_consensus
+    informational current (needs EnrichmentContext.school_consensus_by_domain,
+    a separate documented gap). PERMISSION (T-4) is never applied anywhere —
+    admission-REJECTED.
+
+    Safe no-op when gochara_service is None (mirrors every other U3 current's
+    None-guard in services.ka_sangam.engine) — a build without a live
+    gochara_service serves the pre-TRIGGER convergence_score unchanged, never
+    raises.
+    """
+    if gochara_service is None:
+        return windows
+    for w in windows:
+        try:
+            cf = w.get('constituent_factors') or {}
+            ws, we = w.get('window_start'), w.get('window_end')
+            if ws is None or we is None:
+                continue
+            w_jd_start = _date_to_jd(ws)
+            w_jd_end = _date_to_jd(we)
+            sign_name = cf.get('sign')
+            transit_sign = (_SIGN_NAME_TO_IDX[sign_name] + 1) if sign_name in _SIGN_NAME_TO_IDX else None
+            trig = compute_trigger_currents(
+                chart_id=chart_id,
+                mechanism_lon=target_lon,
+                target_lon=target_lon,
+                transit_sign_idx_1based=transit_sign,
+                moon_sign_idx_0based=moon_sign_idx,
+                w_jd_start=w_jd_start,
+                w_jd_end=w_jd_end,
+                gochara_service=gochara_service,
+                vedha_rules=vedha_rules,
+                vedha_planet=cf.get('planet'),
+                signature_class=cf.get('signature_class', 'UNKNOWN'),
+                additive_weights=TRIGGER_ADMITTED_ADDITIVE_WEIGHTS,
+                suppressive_weights=TRIGGER_ADMITTED_SUPPRESSIVE_WEIGHTS,
+            )
+            pre_score = float(w.get('convergence_score', 0.0) or 0.0)
+            new_score = compose_with_ka_sangam(pre_score, trig)
+            w['convergence_score'] = round(new_score, 4)
+            cf['convergence_score_pre_trigger'] = pre_score
+            cf['trigger_suppressive_applied'] = trig['suppressive']
+            cf['trigger_weights_used'] = trig['weights_used']
+            w['constituent_factors'] = cf
+        except Exception as exc:
+            logger.debug("ka_sangam: TRIGGER suppression skipped for a window: %s", exc)
+    return windows
 
 # CR-87 fix: the module-level _NATIVE_LOCATION constant (hardcoded to
 # Bhubaneswar, lat/lon of chart 482012f1) has been DELETED — not defaulted.
@@ -69,8 +142,83 @@ _LIFETIME_MAX_PREDICATES = 60   # raised from 24: broader lifetime evidence
 # Bump when substep SEMANTICS change (what a given substep_key computes/writes),
 # so any in-flight resume ledger from an older writer is treated as a different
 # build and replanned-all rather than resumed against stale semantics.
-_KA_SANGAM_RESUME_VERSION = 1
+_KA_SANGAM_RESUME_VERSION = 2
 _LIFETIME_MAX_ROWS = 40_000     # raised from 13k to match expanded predicate budget
+
+# D-3 FIX-PSEL (MEMO_D-3_1.md): per-signature-class quota reserved out of each
+# tier's predicate LIMIT, so a single high-volume class (SUBSYSTEM: ~85% of
+# kala_activation_predicates for a typical chart) cannot structurally win
+# every slot in a tied dignity_score ranking and starve DISPOSITOR_RELATIONAL/
+# DIGNITY/DOSHA/YOGA/CLASSIFY_RESIDUAL out of Mode A/B entirely (which is what
+# was observed for chart 482012f1: 100% Mode C, TRIGGER never exercised).
+# floor_per_class = max(_QUOTA_FLOOR_MIN, limit // (num_populated_classes *
+# _QUOTA_FLOOR_DIVISOR)) — reserves roughly 1/_QUOTA_FLOOR_DIVISOR of the
+# tier's budget, split evenly across every class that actually has
+# predicates, minimum _QUOTA_FLOOR_MIN slots each (capped by how many that
+# class has available). The rest of the budget still fills by the existing
+# dignity_score-ranked order across the whole remaining pool, so the highest-
+# signal predicates keep winning most of the budget — this is a floor, not a
+# forced even split.
+_QUOTA_FLOOR_DIVISOR = 2
+_QUOTA_FLOOR_MIN = 1
+
+
+def _select_top_predicates_with_class_quota(
+    candidates: list[dict],
+    limit: int,
+    *,
+    floor_divisor: int = _QUOTA_FLOOR_DIVISOR,
+    floor_min: int = _QUOTA_FLOOR_MIN,
+) -> list[dict]:
+    """Select up to `limit` predicates from `candidates`, guaranteeing every
+    POPULATED signature_class a minimum floor of slots before filling the
+    remainder by dignity_score rank across the whole pool.
+
+    Each candidate dict must carry:
+      - 'signature_class' (str)
+      - 'dignity_score'   (float or None; None sorts last)
+      - 'content_hash'    (str) — a stable, CONTENT-derived tiebreak (not an
+        insertion-order id/serial), so the selection is reproducible across
+        rebuilds of the same underlying signals but carries no bias toward
+        any particular class or insertion order (native-flagged trap).
+
+    Deterministic: same `candidates` (any input order) + same `limit` always
+    yields the same selected set in the same output order.
+    """
+    if limit <= 0 or not candidates:
+        return []
+
+    def _sort_key(row: dict) -> tuple:
+        score = row.get('dignity_score')
+        score = float(score) if score is not None else -1.0
+        return (-score, row.get('content_hash') or '')
+
+    by_class: dict[str, list[dict]] = {}
+    for row in candidates:
+        by_class.setdefault(row.get('signature_class') or 'UNKNOWN', []).append(row)
+    for cls_rows in by_class.values():
+        cls_rows.sort(key=_sort_key)
+
+    num_classes = len(by_class) or 1
+    floor_per_class = max(floor_min, limit // (num_classes * floor_divisor))
+
+    selected: list[dict] = []
+    selected_ids: set[int] = set()
+    # Deterministic class iteration order (sorted class name), so the quota
+    # pass itself never depends on dict/DB insertion order.
+    for cls in sorted(by_class.keys()):
+        for row in by_class[cls][:floor_per_class]:
+            selected.append(row)
+            selected_ids.add(id(row))
+
+    remaining_slots = limit - len(selected)
+    if remaining_slots > 0:
+        pool = [r for r in candidates if id(r) not in selected_ids]
+        pool.sort(key=_sort_key)
+        selected.extend(pool[:remaining_slots])
+
+    selected.sort(key=_sort_key)
+    return selected[:limit]
 
 
 @register('ka_sangam')
@@ -93,35 +241,75 @@ class KaSangamWriter(WriterBase):
         chart_id  = ctx.config['chart_id']
         self._chart_id = chart_id
 
-        # Load top predicates
+        # Load candidate predicates.
+        #
+        # D-3 FIX-PSEL (MEMO_D-3_1.md): the prior query was a single flat
+        # `ORDER BY dignity_score DESC NULLS LAST, p.id ASC LIMIT 200` across
+        # ALL signature classes. For chart 482012f1, 4,441 predicates tie at
+        # the exact maximum dignity_score (a genuine classical-dignity
+        # ceiling — see bo_laksana.py's DIGNITY_SCORE table, not a bug: see
+        # this lane's CLAIM for the full trace) and `p.id ASC` — an
+        # insertion-order tiebreak — deterministically favored SUBSYSTEM
+        # (systematically the lowest ids) for every one of those 200 slots.
+        # Result: Mode A/B (DISPOSITOR_RELATIONAL/DIGNITY/DOSHA/YOGA/
+        # CLASSIFY_RESIDUAL) never got selected at all — 100% Mode C, and
+        # TRIGGER (wired only into Mode A/B) could never fire on real data.
+        #
+        # Fix, two parts:
+        #  1. `p.id ASC` (insertion-order, reproducibility trap the native
+        #     flagged) → `content_hash ASC`, an md5 of predicate CONTENT
+        #     (signal_id + signature_class + dasha_eligibility_rule_jsonb).
+        #     Same underlying signals → same selection, but the tiebreak
+        #     itself carries no class/insertion bias.
+        #  2. Fetch a bounded *candidate pool* per signature_class (window
+        #     function, capped at `_MAX_PREDICATES` rows/class — the largest
+        #     either tier could ever need) instead of one global LIMIT, then
+        #     apply `_select_top_predicates_with_class_quota()` in Python to
+        #     pick each tier's final predicate list — see that function for
+        #     the quota reasoning. This guarantees every POPULATED class a
+        #     representation floor at BOTH the near (200) and lifetime (60)
+        #     limits, decided independently per tier.
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            # NOTE: dasha_eligibility_rule_jsonb->>'eligibility_score' is never
-            # populated by ka_yojaka/binder.py — the original ORDER BY on it was
-            # a no-op (all NULL, NULLS LAST → arbitrary DB order). Rank by
-            # bodha_msr_signals.dignity_score instead, which IS populated and is
-            # already used downstream (pd['dignity_score']) as the real per-signal
-            # strength signal — so the "top predicates" LIMIT is meaningful again.
             cur.execute(
                 """
-                SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
-                       p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
-                       p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb
-                FROM kala_activation_predicates p
-                LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
-                WHERE p.chart_id = %s
-                -- p.id is a STABLE tiebreaker: without it, ties in dignity_score
-                -- give arbitrary DB order, so 'lifetime:i' could refer to a
-                -- different predicate across resume attempts (silent skip/orphan).
-                -- With it, the substep→predicate mapping is deterministic for a
-                -- fixed predicate set — a hard prerequisite for correct resumption.
-                ORDER BY s.dignity_score DESC NULLS LAST, p.id ASC
-                LIMIT %s
+                WITH scored AS (
+                    SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
+                           p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
+                           p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb,
+                           s.dignity_score AS raw_dignity_score,
+                           md5(
+                               coalesce(p.signal_id::text, '') || '|' ||
+                               coalesce(p.signature_class, '') || '|' ||
+                               coalesce(p.dasha_eligibility_rule_jsonb::text, '')
+                           ) AS content_hash
+                    FROM kala_activation_predicates p
+                    LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
+                    WHERE p.chart_id = %s
+                ),
+                ranked AS (
+                    SELECT *,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY signature_class
+                               ORDER BY raw_dignity_score DESC NULLS LAST, content_hash ASC
+                           ) AS class_rank
+                    FROM scored
+                )
+                SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
+                       dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
+                       strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                       content_hash
+                FROM ranked
+                WHERE class_rank <= %s
                 """,
                 (chart_id, _MAX_PREDICATES),
             )
-            predicates = cur.fetchall()
+            candidates = cur.fetchall()
 
-        logger.info("ka_sangam: loaded %d predicates for chart %s", len(predicates), chart_id)
+        logger.info(
+            "ka_sangam: loaded %d candidate predicates (pre-quota-select) for chart %s",
+            len(candidates), chart_id,
+        )
+        predicates = candidates
 
         # Services
         self._dks = KaDashaKalaService(conn)
@@ -190,8 +378,15 @@ class KaSangamWriter(WriterBase):
                 hn = house_num_map.get(sid)
                 pd['dispositor_lord'] = house_lord_map.get(hn) if hn else None
 
-        self._pred_dicts = pred_dicts
-        self._lt_preds   = pred_dicts[:_LIFETIME_MAX_PREDICATES]
+        # D-3 FIX-PSEL: near and lifetime tiers each get their own
+        # independently quota-diversified selection out of the enriched
+        # candidate pool — NOT a slice of the near-tier's list (a slice
+        # would just re-inherit whatever class bias near-selection produced;
+        # independent selection lets both tiers get their own fair floor per
+        # populated class, matching the memo's "near LIMIT 200 / lifetime
+        # LIMIT 60" framing).
+        self._pred_dicts = _select_top_predicates_with_class_quota(pred_dicts, _MAX_PREDICATES)
+        self._lt_preds   = _select_top_predicates_with_class_quota(pred_dicts, _LIFETIME_MAX_PREDICATES)
 
         # Build U3 enrichment context (C7/C11/C12/C13 currents)
         self._enrichment_ctx = self._build_enrichment_context(conn, chart_id)
@@ -462,6 +657,12 @@ class KaSangamWriter(WriterBase):
                     keepalive()
                 continue
 
+            # D-3 T-6: target_lon feeds TRIGGER's mechanism_lon/target_lon below —
+            # same longitude mode_a_search/mode_b_sweep already scan against.
+            target_lon = float((pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg', 0.0))
+            moon_sign_idx = _SIGN_NAME_TO_IDX.get(native_ctx.moon_sign)
+            vedha_rules = (enrichment_context.vedha_rules if enrichment_context else None) or None
+
             try:
                 new_windows_a = mode_a_search(
                     predicate=pred_dict,
@@ -474,6 +675,14 @@ class KaSangamWriter(WriterBase):
                     janma_nakshatra_idx=native_ctx.janma_nakshatra_idx,
                     enrichment_context=enrichment_context,
                     native_location=native_ctx.location,
+                    moon_sign=native_ctx.moon_sign,  # CR-102 fix (T-6): correct house-from-Moon vedha frame
+                )
+                # D-3 T-6: TRIGGER suppressive term at the ADMITTED 0.2/0.2 weights
+                # (wave/D-3/ADMIT, receipted ACCEPT) — see apply_trigger_suppression docstring.
+                new_windows_a = apply_trigger_suppression(
+                    new_windows_a, chart_id=chart_id, target_lon=target_lon,
+                    gochara_service=gochara_service, vedha_rules=vedha_rules,
+                    moon_sign_idx=moon_sign_idx,
                 )
                 for w in new_windows_a:
                     w['primary_domain'] = primary_domain
@@ -494,6 +703,12 @@ class KaSangamWriter(WriterBase):
                     enrichment_context=enrichment_context,
                     muhurta_service=muhurta_service,
                     native_location=native_ctx.location,
+                    moon_sign=native_ctx.moon_sign,  # CR-102 fix (T-6): correct house-from-Moon vedha frame
+                )
+                new_windows_b = apply_trigger_suppression(
+                    new_windows_b, chart_id=chart_id, target_lon=target_lon,
+                    gochara_service=gochara_service, vedha_rules=vedha_rules,
+                    moon_sign_idx=moon_sign_idx,
                 )
                 for w in new_windows_b:
                     w['primary_domain'] = primary_domain

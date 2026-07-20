@@ -287,7 +287,12 @@ def test_writer_populates_real_dates_from_dasha_timeline_without_convergence():
     conn = _KalaConn(script, sink)
     result = KaKalasutraWriter().run(_Ctx(conn, chart_id))
 
-    assert result.rows_inserted == 1
+    # CR-109 fix (D-4a Lane A-0): the predicate matches 2 in-life periods (the
+    # current Saturn AD + the wider co-current Saturn MD) — the writer now emits
+    # one row PER matched period instead of collapsing to a single row. The AD
+    # (finer level, sorted first — same primary-selection order as before) is
+    # still sink[0], so every existing content assertion below is unchanged.
+    assert result.rows_inserted == 2
     row = sink[0]
     # tuple layout: (..., proximity, activation_start, activation_end, peak, ...)
     activation_start, activation_end, activation_peak = row[7], row[8], row[9]

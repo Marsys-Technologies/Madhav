@@ -28,7 +28,7 @@ export const queryActivationWaveformCapability: CapabilityDescriptor = {
 
   description: [
     'Retrieve the monthly activation waveform for a chart from kala_taranga (ka_taranga,',
-    '~79,728 rows/chart). mode="summary" (default) returns an aggregate: total months,',
+    'a large per-chart row set). mode="summary" (default) returns an aggregate: total months,',
     'date span, distinct scopes, and the top peak-activation months — a bounded payload,',
     'never the full waveform. mode="drill" returns at most 50 raw monthly rows and requires',
     'a scope filter (scope_kind or scope_id) plus optionally month_from/month_to. Filters:',

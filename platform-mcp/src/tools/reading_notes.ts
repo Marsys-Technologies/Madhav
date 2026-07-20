@@ -15,6 +15,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
@@ -66,8 +67,12 @@ export function registerReadingNotesTool(server: McpServer): void {
       const body = notes ?? `# Reading-Notes — ${chart_id}\n\n*No verified reading-notes are logged ` +
         `for this chart. Reading-notes accrue in POST_REMEDIATION_CONSUMPTION_REGISTER as a reading ` +
         `matures; none exist yet for ${chart_id}. Do not treat this absence as a chart defect.*`
+      const budgeted = budgetMcpContent(
+        { chart_id, has_notes: notes != null, reading_notes_markdown: body },
+        'reading_notes_get',
+      )
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ chart_id, has_notes: notes != null, reading_notes_markdown: body }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgeted) }],
       }
     }
   )

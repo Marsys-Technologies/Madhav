@@ -8,9 +8,13 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest'
-import { registerD8AssessDomainCapabilities, D8_CAPABILITY_URIS } from '../register_d8_assess_domain'
+import {
+  registerD8AssessDomainCapabilities,
+  D8_CAPABILITY_URIS,
+  TEMPORAL_EMPTY_REASON,
+} from '../register_d8_assess_domain'
 import { clearRegistry, getAllCapabilities, hasCapability } from '../../index'
-import { checkAllCapabilities } from '../../chart_agnostic_gate'
+import { checkAllCapabilities, checkTextForNativeLeak } from '../../chart_agnostic_gate'
 
 describe('D8 Assess-Domain — capability registration gate', () => {
   beforeAll(() => {
@@ -63,5 +67,14 @@ describe('D8 Assess-Domain — capability registration gate', () => {
         expect(cap.traversal_level, `${cap.uri} should be L-SIGNAL`).toBe('L-SIGNAL')
       }
     }
+  })
+
+  // Regression protection for the GT-32/GT-54 TEMPORAL_EMPTY_REASON leak: this imports the
+  // REAL exported constant from register_d8_assess_domain.ts (not a synthetic copy) and runs
+  // it through the real chart-agnostic-gate scanner. If a future edit reintroduces a
+  // native-derived cardinality literal or chart-phrase into this string, this test catches it.
+  it('TEMPORAL_EMPTY_REASON (real constant) has zero checkTextForNativeLeak violations', () => {
+    const violations = checkTextForNativeLeak(TEMPORAL_EMPTY_REASON, 'd8_temporal_empty_reason')
+    expect(violations, violations.map(v => `${v.rule}: ${v.detail ?? ''}`).join('\n')).toHaveLength(0)
   })
 })

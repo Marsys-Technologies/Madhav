@@ -119,24 +119,53 @@ class KaKalasutraWriter(WriterBase):
             if windows.activation_start is not None:
                 dated += 1
 
-            rows.append((
-                chart_id,
-                signal_id,
-                ayanamsha_id,
-                sig_class,
-                json.dumps(windows.active_dasha_periods),
-                json.dumps(windows.predicted_dates),
-                windows.proximity_score,
-                windows.activation_start.isoformat() if windows.activation_start else None,
-                windows.activation_end.isoformat() if windows.activation_end else None,
-                windows.activation_peak.isoformat() if windows.activation_peak else None,
-                conv.get('orb_strength'),
-                conv.get('convergence_score'),
-                f"ka_kalasutra:v1.0:signal={sig_id_str[:8]}:src={windows.resolution_source}",
-            ))
+            # CR-109 fix (D-4a Lane A-0): one row per matched in-life period
+            # (windows.period_windows), not one collapsed row per predicate. Every
+            # row carries the SAME full active_dasha_periods_jsonb / predicted_dates
+            # listing (unchanged — still the complete birth-forward context) but its
+            # OWN activation_start/end/peak, so a date-range query against
+            # kala_activation genuinely finds every period the dasha table holds,
+            # not just whichever one was elevated to "primary" at build time. When
+            # nothing resolves at all (period_windows empty), fall back to the
+            # single all-None row — identical to pre-fix behaviour.
+            period_entries = windows.period_windows or [{
+                'start': None, 'end': None, 'peak': None,
+                'proximity_score': windows.proximity_score,
+                'resolution_source': windows.resolution_source,
+            }]
+            for idx, pw in enumerate(period_entries):
+                rows.append((
+                    chart_id,
+                    signal_id,
+                    ayanamsha_id,
+                    sig_class,
+                    json.dumps(windows.active_dasha_periods),
+                    json.dumps(windows.predicted_dates),
+                    pw['proximity_score'],
+                    pw['start'].isoformat() if pw['start'] else None,
+                    pw['end'].isoformat() if pw['end'] else None,
+                    pw['peak'].isoformat() if pw['peak'] else None,
+                    conv.get('orb_strength'),
+                    conv.get('convergence_score'),
+                    f"ka_kalasutra:v1.0:signal={sig_id_str[:8]}:src={pw['resolution_source']}:period={idx}",
+                ))
 
+        rows_actually_inserted = 0
         if rows:
             with conn.cursor() as cur:
+                # CR-109 follow-up #2 (migration 455, per migration-guard finding on
+                # 455): activation_start/activation_end are DERIVED, CLIPPED values —
+                # a convergence-refined AD nested inside its own MD routinely clips to
+                # the EXACT SAME [peak-half, peak+half] window as its parent when the
+                # peak sits comfortably inside both periods (the typical case for a
+                # convergence-anchored signal, not a rare coincidence), so keying
+                # uniqueness on (start, end) can collide two genuinely DISTINCT period
+                # rows (different graha/level/proximity). source_citation instead
+                # embeds `period={idx}` — idx is this loop's own enumerate() position,
+                # so it is unique per row for a given (chart_id, signal_id,
+                # ayanamsha_id) BY CONSTRUCTION, independent of how any date clips.
+                # ON CONFLICT here is therefore a true no-op safety net (should never
+                # actually fire), not a silent-drop risk.
                 cur.executemany(
                     """INSERT INTO kala_activation (
                         chart_id, signal_id, ayanamsha_id, signature_class,
@@ -144,14 +173,24 @@ class KaKalasutraWriter(WriterBase):
                         dasha_activation_proximity_score,
                         activation_start, activation_end, activation_peak_date,
                         orb_strength, convergence_score, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (chart_id, signal_id, ayanamsha_id, source_citation)
+                    DO NOTHING""",
                     rows,
                 )
+                # rowcount after executemany reflects ACTUAL rows inserted (post any
+                # ON CONFLICT DO NOTHING skips) — not just len(rows) attempted, so a
+                # future silent collapse (however unlikely per the comment above)
+                # would be directly observable in this asset's build notes.
+                _rc = getattr(cur, 'rowcount', None)
+                rows_actually_inserted = _rc if isinstance(_rc, int) and _rc >= 0 else len(rows)
 
         return WriterResult(
             asset_id='ka_kalasutra',
-            rows_inserted=len(rows),
-            notes=f"{dated}/{len(rows)} activations dated",
+            rows_inserted=rows_actually_inserted,
+            notes=f"{dated}/{len(predicates)} predicates dated; {rows_actually_inserted}/{len(rows)} "
+                  f"period-window rows inserted "
+                  f"(CR-109: >=1 row per matched in-life dasha period, not one collapsed row/predicate)",
         )
 
 

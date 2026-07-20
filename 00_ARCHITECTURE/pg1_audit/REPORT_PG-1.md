@@ -19,7 +19,8 @@ tree, the deployed MCP connector, and the production database (chart
 (mostly in a shared working tree rather than isolated git worktrees — a conductor-level
 efficiency deviation from §4, discussed under Process Deviations below), producing 87
 evidenced findings, later reconciled to 98 with an 11-row addendum tying every A1–A32
-assumption to a machine-readable verdict. All 12 lanes reached Opus-floor Phase-1
+assumption to a machine-readable verdict. <!-- [CORRECTED 2026-07-19 / PG-2 — PG2-M1-0001]: this "87 → 98" disclosure is accurate; the sibling PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md was NOT updated to 98 and still asserts "87" in ≥4 places, plus a 5-vs-6 critical-count off-by-one — both corrected in place in that report's §3. Neither voids GATE GREEN (M-1 re-audit VALID, PG2-M1-0012). -->
+ All 12 lanes reached Opus-floor Phase-1
 ACCEPT (2 required a corrected attempt-2 pass). Synthesis (Z-1) produced the two
 mandated deliverables plus architecture v0.6 with 16 in-place `[CORRECTED PG-1]`
 corrections and 15 new forensic defects (F-25h…F-25v). The §G gate ran twice

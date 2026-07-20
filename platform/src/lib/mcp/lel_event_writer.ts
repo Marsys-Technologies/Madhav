@@ -84,6 +84,12 @@ export interface RecordLelEventArgs {
 
 export interface RecordLelEventResult {
   event_id: string
+  /**
+   * life_events.id (uuid PK) — added D-4a Lane A-4 so callers (the outcome-matching
+   * hook in prospective_ledger.ts) can reference the row as matched_event_id without
+   * a second lookup. Distinct from `event_id`, which is a text natural key.
+   */
+  id: string
   recorded_at: string
   /** true when a new row was inserted; false when an existing row was updated. */
   created: boolean
@@ -141,7 +147,7 @@ export async function recordLelEvent(
   //    recorded_at = now() — a REAL observation, NOT the pre_instrument sentinel.
   //    ON CONFLICT DO UPDATE refreshes mutable fields but NEVER recorded_at.
   //    (xmax = 0) distinguishes a fresh insert (created) from an update.
-  const { rows } = await query<{ event_id: string; recorded_at: string; created: boolean }>(
+  const { rows } = await query<{ id: string; event_id: string; recorded_at: string; created: boolean }>(
     `INSERT INTO life_events
         (chart_id, event_id, event_date, event_type, description,
          domain, outcome_observed, source_citation, recorded_at,
@@ -160,7 +166,7 @@ export async function recordLelEvent(
         source_section   = EXCLUDED.source_section,
         chart_state      = EXCLUDED.chart_state,
         provenance       = EXCLUDED.provenance
-     RETURNING event_id, recorded_at, (xmax = 0) AS created`,
+     RETURNING id, event_id, recorded_at, (xmax = 0) AS created`,
     [
       chartId,
       event_id,
@@ -181,6 +187,7 @@ export async function recordLelEvent(
   const result = rows[0]
   return {
     event_id: result?.event_id ?? event_id,
+    id: result?.id ?? event_id,
     recorded_at: result?.recorded_at ?? new Date().toISOString(),
     created: result?.created ?? true,
   }

@@ -4,6 +4,12 @@
  * Marks orphan build_runs as failed and stuck asset_throughput rows as error.
  * Emits Pub/Sub events so connected cockpits update immediately.
  *
+ * RR-fix (D-3) Part B: a heartbeat timeout alone is NOT proof of failure. Before
+ * the stuck-asset reaper below marks a 'building' row 'error', it probes the
+ * asset's actual data via asset_registry.count_sql — a slow-but-succeeding write
+ * (data landed, state-flip write itself raced a crash/connection drop) is rescued
+ * to 'lit' instead of blind-failed. See the stuck-asset block for detail.
+ *
  * ── Reaper thresholds (Orchestrator Convergence Phase 1 — confirmed, do NOT loosen) ──
  * These thresholds protect against genuine hangs and MUST hold. A long-running heavy
  * asset (e.g. ga_dashas, ~40 min) is kept visibly alive NOT by relaxing the reaper but
@@ -68,15 +74,101 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
      RETURNING id, chart_id`
   )
 
-  // 2. asset_throughput stuck building > 15 min
-  const stuckAssets = await query<{ chart_id: string; asset_id: string }>(
-    `UPDATE asset_throughput
-     SET state = 'error',
-         last_error = 'orphan-watchdog: writer never reported back'
-     WHERE state = 'building'
-       AND last_built_at < NOW() - INTERVAL '15 minutes'
-     RETURNING chart_id, asset_id`
+  // 2. asset_throughput stuck building > 15 min — RR-fix (D-3) Part B: before
+  //    blindly marking these as errored, probe each candidate's actual data via
+  //    asset_registry.count_sql, mirroring the orchestrator's data-presence-probe
+  //    pattern (_data_rows_present / _guard_state_write, commit b13640d1,
+  //    platform/python-sidecar/pipeline/orchestrator/asset_runner.py). A writer
+  //    whose data fully landed but whose own state-flip write raced a connection
+  //    drop / crash (last_built_at goes stale even though the work is done) must
+  //    not be misreported as a failure — a slow-but-succeeding write is not a
+  //    stuck write.
+  const stuckCandidates = await query<{
+    chart_id: string | null
+    asset_id: string
+    count_sql: string | null
+    target_floor: number | null
+  }>(
+    `SELECT at.chart_id, at.asset_id, ar.count_sql, ar.target_floor
+     FROM asset_throughput at
+     JOIN asset_registry ar ON ar.asset_id = at.asset_id
+     WHERE at.state = 'building'
+       AND at.last_built_at < NOW() - INTERVAL '15 minutes'`
   )
+
+  const rescued: { chart_id: string | null; asset_id: string; rows: number }[] = []
+  const trulyStuck: { chart_id: string | null; asset_id: string }[] = []
+
+  for (const c of stuckCandidates.rows) {
+    let actualRows: number | null = null
+    if (c.count_sql) {
+      try {
+        const countParams = /\$1/.test(c.count_sql) ? [c.chart_id] : []
+        const r = await query<{ count: string }>(c.count_sql, countParams)
+        actualRows = parseInt(r.rows[0]?.count ?? '0', 10)
+      } catch (err) {
+        console.error(
+          `[watchdog] presence probe failed for ${c.asset_id} (chart ${c.chart_id ?? 'NULL'}):`,
+          (err as Error).message
+        )
+        actualRows = null
+      }
+    }
+    // Same "zero_rows_is_complete" rule as the Python writer path (§N.4): rows
+    // present, OR target_floor=0 declaring 0 rows as the correct complete state.
+    const dataConfirmedComplete =
+      actualRows != null && (actualRows > 0 || c.target_floor === 0)
+    if (dataConfirmedComplete) {
+      rescued.push({ chart_id: c.chart_id, asset_id: c.asset_id, rows: actualRows ?? 0 })
+    } else {
+      trulyStuck.push({ chart_id: c.chart_id, asset_id: c.asset_id })
+    }
+  }
+
+  for (const r of rescued) {
+    await query(
+      `UPDATE asset_throughput
+       SET state = 'lit', rows_written = $3, last_error = NULL, last_built_at = NOW()
+       WHERE chart_id IS NOT DISTINCT FROM $1 AND asset_id = $2 AND state = 'building'`,
+      [r.chart_id, r.asset_id, r.rows]
+    )
+    await query(
+      `UPDATE build_run_assets bra
+       SET state = 'complete', ended_at = NOW()
+       FROM build_runs br
+       WHERE bra.run_id = br.id
+         AND br.chart_id IS NOT DISTINCT FROM $1
+         AND bra.asset_id = $2
+         AND bra.state = 'building'`,
+      [r.chart_id, r.asset_id]
+    )
+    console.warn(
+      `[watchdog] RESCUED stuck asset ${r.asset_id} (chart ${r.chart_id ?? 'NULL'}): ` +
+      `${r.rows} row(s) confirmed present via count_sql — marked 'lit' instead of blind-failing ` +
+      `a heartbeat timeout with no data-presence check.`
+    )
+    await publishEvent({
+      type: 'asset.state_change',
+      chart_id: r.chart_id,
+      asset_id: r.asset_id,
+      to_state: 'lit',
+      watchdog_rescue: true,
+    })
+  }
+
+  const stuckAssets =
+    trulyStuck.length > 0
+      ? await query<{ chart_id: string; asset_id: string }>(
+          `UPDATE asset_throughput
+           SET state = 'error',
+               last_error = 'orphan-watchdog: writer never reported back'
+           WHERE state = 'building'
+             AND last_built_at < NOW() - INTERVAL '15 minutes'
+             AND (${trulyStuck.map((_, i) => `(chart_id IS NOT DISTINCT FROM $${i * 2 + 1} AND asset_id = $${i * 2 + 2})`).join(' OR ')})
+           RETURNING chart_id, asset_id`,
+          trulyStuck.flatMap((c) => [c.chart_id, c.asset_id])
+        )
+      : { rows: [] as { chart_id: string; asset_id: string }[], rowCount: 0 }
 
   // M-5: Also surface the orphan error in build_run_assets so the UI can show it instead
   // of a blank "Failed" state when bra.error was never written by the writer.
@@ -143,6 +235,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({
     orphan_runs_failed: orphanRuns.rowCount ?? 0,
+    stuck_assets_rescued: rescued.length,
     stuck_assets_failed: stuckAssets.rowCount ?? 0,
     undispatched_runs_failed: undispatchedRuns.rowCount ?? 0,
     pruned_runs: pruned.rowCount ?? 0,

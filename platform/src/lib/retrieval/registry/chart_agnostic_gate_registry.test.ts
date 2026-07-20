@@ -205,3 +205,33 @@ describe('chart_agnostic_gate — registry integration', () => {
     expect(ALL_CAPABILITIES).toHaveLength(33)
   })
 })
+
+// ── Full-catalog end-to-end proof (GT-32/GT-43/GT-54 remediation, 2026-07-19) ──
+//
+// The suites above run the gate against a curated subset of imported capabilities.
+// This block instead loads the REAL, complete registered catalog via getCatalog()
+// (the same aggregator both the MCP and chat channels use — see catalog.ts) and
+// proves RULE-9/RULE-9B (native cardinality / "native chart" phrase leaks) fire
+// zero times across every capability actually served, post-remediation of the
+// get_dashas / register_d8_assess_domain / register_d7_channel / get_sade_sati /
+// get_sensitive_points / get_divisionals / get_argala / ephemeris_cache_year /
+// query_planet_transit / query_temporal_activation / query_activation_waveform /
+// query_convergence_windows / query_contradictions / query_signals leaks.
+
+describe('chart_agnostic_gate — full catalog (RULE-9/RULE-9B end-to-end)', () => {
+  it('Gate passes GREEN on the entire live catalog for RULE-9 (native cardinality) violations', async () => {
+    const { getCatalog } = await import('./catalog')
+    const fullCatalog = getCatalog()
+    expect(fullCatalog.length).toBeGreaterThan(0)
+
+    const violations = checkAllCapabilities(fullCatalog).filter(
+      v => v.rule === 'RULE-9-NATIVE_CARDINALITY_IN_DESCRIPTION' || v.rule === 'RULE-9B-NATIVE_CHART_PHRASE_IN_DESCRIPTION'
+    )
+    if (violations.length > 0) {
+      for (const v of violations) {
+        console.error(`VIOLATION: ${v.uri} — ${v.rule}: ${v.detail}`)
+      }
+    }
+    expect(violations).toHaveLength(0)
+  })
+})

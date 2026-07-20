@@ -40,32 +40,34 @@ import { logPrediction, recordOutcome } from '@/lib/mcp/ppl_writer'
 import { flagDisagreement } from '@/lib/mcp/disagreement_writer'
 import { recordLelEvent } from '@/lib/mcp/lel_event_writer'
 import { enqueueLelRecalibration } from '@/lib/build/recalibrationEnqueue'
+import {
+  fileProspectivePrediction,
+  listProspectivePredictions,
+  matchOpenPredictionsForLelEvent,
+  type FileProspectivePredictionInput,
+  type LifecycleStatus,
+} from '@/lib/lel/prospective_ledger'
 import type { PredictionEntry, OutcomeEntry } from '@/lib/mcp/ppl_writer'
 import type { DisagreementEntry } from '@/lib/mcp/disagreement_writer'
 import type { LelEvent } from '@/lib/mcp/lel_event_writer'
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 export const maxDuration = 30
 
 // ── Allowed actions ───────────────────────────────────────────────────────────
 
-const ALLOWED_ACTIONS = ['log_prediction', 'record_outcome', 'flag_disagreement', 'lel_event_record'] as const
+const ALLOWED_ACTIONS = [
+  'log_prediction',
+  'record_outcome',
+  'flag_disagreement',
+  'lel_event_record',
+  'prospective_ledger_file',
+  'prospective_ledger_list',
+] as const
 type WriteAction = (typeof ALLOWED_ACTIONS)[number]
 
 function isAllowedAction(action: string): action is WriteAction {
   return (ALLOWED_ACTIONS as readonly string[]).includes(action)
-}
-
-// ── Service-to-service token validation ───────────────────────────────────────
-
-function validateServiceToken(req: Request): boolean {
-  const token = req.headers.get('x-mcp-internal-token')
-  const expected = process.env.MCP_INTERNAL_TOKEN
-  if (!expected) {
-    if (process.env.NODE_ENV === 'development') return true
-    console.error('[mcp:writes] MCP_INTERNAL_TOKEN not set in production')
-    return false
-  }
-  return token === expected
 }
 
 // ── Route params ──────────────────────────────────────────────────────────────
@@ -153,7 +155,14 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   // M0 entitlement gate — authorize chart access when chart_id is supplied.
   const chartId = body['chart_id'] as string | undefined
-  if (chartId && (action === 'record_outcome' || action === 'log_prediction' || action === 'lel_event_record')) {
+  if (
+    chartId &&
+    (action === 'record_outcome' ||
+      action === 'log_prediction' ||
+      action === 'lel_event_record' ||
+      action === 'prospective_ledger_file' ||
+      action === 'prospective_ledger_list')
+  ) {
     const { authorizeChartAccess } = await import('@/lib/auth/authorizeChartAccess')
     const { resolveMcpPrincipalRole } = await import('@/lib/mcp/auth')
     const { query } = await import('@/lib/db/client')
@@ -177,6 +186,27 @@ export async function POST(request: Request, { params }: RouteParams) {
         buildEntitlementDenialEnvelope({
           chart_id: chartId, permission_required: 'all',
           remediation: 'lel_event_record requires write (all) permission for this chart.',
+        }),
+        { status: 401 }
+      )
+    }
+    // prospective_ledger_file is a filing (write) action — §11 "explicit filing only" is
+    // enforced at the DB layer (filing_method CHECK); this is the ordinary write-perm
+    // gate, same tier as lel_event_record.
+    if (action === 'prospective_ledger_file' && perm !== 'all') {
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({
+          chart_id: chartId, permission_required: 'all',
+          remediation: 'prospective_ledger_file requires write (all) permission for this chart.',
+        }),
+        { status: 401 }
+      )
+    }
+    if (action === 'prospective_ledger_list' && perm === 'deny') {
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({
+          chart_id: chartId, permission_required: 'view',
+          remediation: 'prospective_ledger_list requires view permission for this chart.',
         }),
         { status: 401 }
       )
@@ -445,6 +475,26 @@ export async function POST(request: Request, { params }: RouteParams) {
         recalibration = { enqueued: false, reason: 'enqueue_error' }
       }
 
+      // D-4a Lane A-4 outcome-matching hook — best-effort side effect, same discipline
+      // as the recalibration enqueue above: a failure here must NOT fail the save.
+      // Matches this newly-appended LEL event against this chart's OPEN prospective
+      // predictions in the same event_class (Lane A-1 tolerance reuse — see
+      // matchOpenPredictionsForLelEvent's doc comment in prospective_ledger.ts).
+      let prospective_ledger_matches: Record<string, unknown> = { matched_count: 0 }
+      try {
+        const matches = await matchOpenPredictionsForLelEvent({
+          chart_id: chartId,
+          life_event_id: saved.id,
+          event_class: event.event_class,
+          event_date: event.event_date,
+        })
+        prospective_ledger_matches = { matched_count: matches.length, matches }
+      } catch (matchErr) {
+        const msg = matchErr instanceof Error ? matchErr.message : String(matchErr)
+        console.error('[mcp:writes] lel_event_record prospective-ledger match error', msg)
+        prospective_ledger_matches = { matched_count: 0, reason: 'match_error' }
+      }
+
       return NextResponse.json(
         buildEnvelope({
           trace_id: traceId,
@@ -455,12 +505,122 @@ export async function POST(request: Request, { params }: RouteParams) {
             recorded_at: saved.recorded_at,
             created: saved.created,
             recalibration,
+            prospective_ledger_matches,
           },
         })
       )
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('[mcp:writes] lel_event_record error', msg)
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'orchestrator_error', message: msg }),
+        { status: 500 }
+      )
+    }
+  }
+
+  if (action === 'prospective_ledger_file') {
+    // D-4a Lane A-4. §11 governance: this is THE explicit-filing surface — there is no
+    // other sanctioned path into brahma_prospective_ledger. filed_by is stamped from
+    // the resolved principal (userUid), never trusted from the caller body, exactly
+    // like key_id elsewhere in this file — the filing provenance cannot be spoofed.
+    try {
+      if (!chartId) {
+        return NextResponse.json(
+          buildErrorEnvelope({ error_class: 'validation', message: 'chart_id is required for prospective_ledger_file' }),
+          { status: 400 }
+        )
+      }
+      const entry = body.entry as Partial<FileProspectivePredictionInput> | undefined
+      if (!entry || !entry.claim || !entry.event_class || !entry.claim_shape || !entry.model ||
+          !entry.formula_version || entry.confidence === undefined || !entry.falsifier || !entry.generator_class ||
+          !entry.source_citation) {
+        return NextResponse.json(
+          buildErrorEnvelope({
+            error_class: 'validation',
+            message:
+              'prospective_ledger_file requires body.entry: claim, event_class, claim_shape, model, ' +
+              'formula_version, confidence, falsifier, generator_class, source_citation ' +
+              '(+ point_date | window_start/window_end | milestones, per claim_shape).',
+          }),
+          { status: 400 }
+        )
+      }
+
+      const input: FileProspectivePredictionInput = {
+        chart_id: chartId,
+        claim: entry.claim,
+        event_class: entry.event_class,
+        claim_shape: entry.claim_shape,
+        point_date: entry.point_date,
+        window_start: entry.window_start,
+        window_end: entry.window_end,
+        milestones: entry.milestones,
+        model: entry.model,
+        formula_version: entry.formula_version,
+        confidence: entry.confidence,
+        falsifier: entry.falsifier,
+        generator_class: entry.generator_class,
+        configuration_signature: entry.configuration_signature ?? null,
+        filed_by: userUid, // stamped from resolved principal — §11 provenance
+        source_citation: entry.source_citation,
+        // D-5 Lane G-5 (BRIEF_D5 §4, DR-16): only meaningful for
+        // generator_class='engine' + adverse-valence event_class — fileProspectivePrediction
+        // itself enforces the hard 5-property gate; this route only threads the caller's
+        // payload through, it does not weaken or bypass the check.
+        dr16_adverse_disclosure: entry.dr16_adverse_disclosure,
+      }
+
+      const filed = await fileProspectivePrediction(input)
+      return NextResponse.json(
+        buildEnvelope({
+          trace_id: traceId,
+          audience_tier: audienceTier,
+          epistemics,
+          result: {
+            prediction: filed.row,
+            governance: filed.governance,
+            ...(filed.dr16_disclosure ? { dr16_disclosure: filed.dr16_disclosure } : {}),
+          },
+        })
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[mcp:writes] prospective_ledger_file error', msg)
+      return NextResponse.json(
+        buildErrorEnvelope({ error_class: 'validation', message: msg }),
+        { status: 400 }
+      )
+    }
+  }
+
+  if (action === 'prospective_ledger_list') {
+    try {
+      if (!chartId) {
+        return NextResponse.json(
+          buildErrorEnvelope({ error_class: 'validation', message: 'chart_id is required for prospective_ledger_list' }),
+          { status: 400 }
+        )
+      }
+      const status = typeof body.status === 'string' ? body.status : undefined
+      const eventClass = typeof body.event_class === 'string' ? body.event_class : undefined
+      const limit = typeof body.limit === 'number' ? body.limit : undefined
+      const listed = await listProspectivePredictions(chartId, {
+        status: status as LifecycleStatus | undefined,
+        eventClass,
+        limit,
+      })
+      return NextResponse.json(
+        buildEnvelope({
+          trace_id: traceId,
+          audience_tier: audienceTier,
+          epistemics,
+          result: { predictions: listed.rows, count: listed.rows.length, governance: listed.governance },
+        })
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[mcp:writes] prospective_ledger_list error', msg)
       return NextResponse.json(
         buildErrorEnvelope({ error_class: 'orchestrator_error', message: msg }),
         { status: 500 }

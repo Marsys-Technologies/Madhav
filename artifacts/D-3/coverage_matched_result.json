@@ -1,0 +1,35 @@
+{
+  "coverage_window": [
+    "2010-08-18",
+    "2032-07-01"
+  ],
+  "all_n": 40,
+  "covered_n": 29,
+  "dropped_n": 11,
+  "real_hit_rate_all": 0.175,
+  "real_hit_rate_covered": 0.1724137931034483,
+  "shuffled_mean_all": 0.33571428571428574,
+  "shuffled_mean_covered": 0.33004926108374383,
+  "shuffled_per_shift_all": [
+    0.55,
+    0.375,
+    0.225,
+    0.425,
+    0.15,
+    0.275,
+    0.35
+  ],
+  "shuffled_per_shift_covered": [
+    0.6551724137931034,
+    0.41379310344827586,
+    0.20689655172413793,
+    0.3448275862068966,
+    0.06896551724137931,
+    0.20689655172413793,
+    0.41379310344827586
+  ],
+  "control_gap_original": -0.16071428571428575,
+  "control_gap_coverage_matched": -0.15763546798029554,
+  "beats_control_original": false,
+  "beats_control_coverage_matched": false
+}

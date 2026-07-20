@@ -36,7 +36,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformBundle } from '../../client.js'
 import type { Principal, McpEnvelopeError } from '../../types.js'
-import { applyResponseBudget, type TrimmableSection } from '../../lib/response_budget.js'
+import { finalizeMcpBudget, type TrimmableSection } from '../../lib/response_budget.js'
 
 // R5.2 A2 (punch #3, estate-wide budget sweep): this tool's default call measured 544KB
 // on the native chart (worst offender in the estate) — envelope.bundle_entries carries the
@@ -180,21 +180,29 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
         // never hides a missing subsystem behind an ok envelope.
         const subErrors = collectBundleSubErrors(resultObj)
 
-        const budgeted = applyResponseBudget(resultObj, HOLISTIC_BUNDLE_BUDGET_KB, [bundleEntriesSection()])
-        if (budgeted.trim_report) {
-          budgeted.content['trim_report'] = budgeted.trim_report
-        }
-
+        // W3-L5 (budget unification, W-8): the sub_errors annotations below are now written
+        // BEFORE the budget pass runs (previously they were appended AFTER — an un-measured
+        // attachment, the exact gap finalizeMcpBudget's self-verifying re-measurement exists
+        // to close) so the final trim decision accounts for the true full content, not a
+        // pre-annotation snapshot of it.
         if (subErrors.length > 0) {
-          budgeted.content['status'] = 'PARTIAL_ERROR'
-          budgeted.content['b11_floor_passed'] = false
-          budgeted.content['sub_errors'] = subErrors
-          budgeted.content['sub_errors_note'] =
+          resultObj['status'] = 'PARTIAL_ERROR'
+          resultObj['b11_floor_passed'] = false
+          resultObj['sub_errors'] = subErrors
+          resultObj['sub_errors_note'] =
             `${subErrors.length} subsystem(s) failed inside the bundle. This is NOT a complete ` +
             'whole-chart read (B.11) — the failing subsystems are named in sub_errors; do not treat ' +
             'the served sections as exhaustive. Retry, or call the named subsystem tool directly.'
+        }
+
+        const budgeted = finalizeMcpBudget(resultObj, {
+          maxKb: HOLISTIC_BUNDLE_BUDGET_KB,
+          sections: [bundleEntriesSection()],
+        })
+
+        if (subErrors.length > 0) {
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify(budgeted.content) }],
+            content: [{ type: 'text' as const, text: JSON.stringify(budgeted) }],
             isError: true,
           }
         }
@@ -202,11 +210,11 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
         return {
           content: [{
             type: 'text' as const,
-            // Compact, not pretty-printed — applyResponseBudget measures compact bytes;
+            // Compact, not pretty-printed — the budget mechanism measures compact bytes;
             // indentation is exactly the kind of gap the C1 live-verifier already caught
             // once for other tools (a response that "should" be under budget by the
             // trimmer's own measurement but ships larger over the actual wire).
-            text: JSON.stringify(budgeted.content),
+            text: JSON.stringify(budgeted),
           }],
         }
       } catch (err) {

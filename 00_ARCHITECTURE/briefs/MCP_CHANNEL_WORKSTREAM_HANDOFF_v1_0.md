@@ -643,6 +643,8 @@ tensions go to its §18. New defects append to its §16 (append-only).
 
 ---
 
+
+
 ## Appendix — PG-1 grounding-audit findings squarely for this workstream (2026-07-19)
 
 The PG-1 wave (see `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md`, `RETRIEVAL_SYSTEM_TRUTH_v1_0.md`)

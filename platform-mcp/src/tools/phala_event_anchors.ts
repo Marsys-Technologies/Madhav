@@ -34,7 +34,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
-import { applyResponseBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -346,15 +346,16 @@ export function registerPhalaEventAnchorsTool(server: McpServer, principal: Prin
           },
         }
 
-        // R-1: budget/trim envelope, same shared mechanism every other fixed tool uses.
-        const budgeted = applyResponseBudget(content, 40, [anchorsSection()])
-        if (budgeted.trim_report) content['trim_report'] = budgeted.trim_report
+        // R-1 / W3-L5 (budget unification, W-8): migrated off bare applyResponseBudget onto
+        // the self-verifying finalizeMcpBudget entry point — measures the ACTUAL final
+        // object (trim_report included), not just the pre-attachment trim decision.
+        const budgeted = finalizeMcpBudget(content, { maxKb: 40, sections: [anchorsSection()] })
 
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(content, null, 2),
+              text: JSON.stringify(budgeted, null, 2),
             },
           ],
         }

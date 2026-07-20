@@ -30,18 +30,12 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getMcpSurfaceSpec } from '@/lib/retrieval/maro'
 import type { ModelFamily } from '@/lib/retrieval/maro'
-
-const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+import { validateServiceToken } from '@/lib/mcp/service_token'
 
 const VALID_FAMILIES: ModelFamily[] = ['anthropic', 'gemini', 'openai', 'deepseek', 'universal']
 
-function validateToken(req: NextRequest): boolean {
-  const token = req.headers.get('X-MCP-Internal-Token')
-  return !!token && token === MCP_INTERNAL_TOKEN
-}
-
 export async function GET(req: NextRequest): Promise<Response> {
-  if (!validateToken(req)) {
+  if (!validateServiceToken(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -65,7 +59,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
 // POST variant for callers that cannot easily set query params (e.g. some HTTP clients)
 export async function POST(req: NextRequest): Promise<Response> {
-  if (!validateToken(req)) {
+  if (!validateServiceToken(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

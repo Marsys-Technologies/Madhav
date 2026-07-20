@@ -25,7 +25,8 @@
  * worst contract violation" reasoning. See R5_RUN_LEDGER W1 dasha_query verifier finding.
  */
 import type { CapabilityDescriptor } from '../../types'
-import type { DrillPointer } from '../../../envelope'
+import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
+import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
@@ -120,7 +121,7 @@ export const getDashasCapability: CapabilityDescriptor = {
     'or all_levels=true for every level), and window (default now±5y when no date filter is ' +
     'given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). ' +
     'Use as_of_date to retrieve the dasha running on a specific date (e.g. today). ' +
-    'Contains 601,443 rows for the native across all systems, levels and ayanamshas — ' +
+    'Spans all systems, levels and ayanamshas as a large, paginated result set — ' +
     'never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. ' +
     'NOTE: unlike system/level/window, ayanamsha_id has NO server-side default — omitting it ' +
     'returns one row PER AYANAMSHA (5 rows). For the standard "current dasha" gate shape (one ' +
@@ -421,11 +422,12 @@ export const getDashasCapability: CapabilityDescriptor = {
       }
       const projectedRows = enrichedRows.map(row => projectRow(row, projectFields))
 
-      const judgment_flags: string[] = []
+      const judgment_flags: JudgmentFlagEntry[] = []
       if (systemRequestedButUnknown) {
-        judgment_flags.push(
-          `system_facet_unrecognized: "${systemRequestedButUnknown}" is not one of ${KNOWN_SYSTEMS.join('|')} — filter NOT applied, all systems served.`
-        )
+        judgment_flags.push(judgmentFlag(
+          'system_facet_unrecognized',
+          `"${systemRequestedButUnknown}" is not one of ${KNOWN_SYSTEMS.join('|')} — filter NOT applied, all systems served.`
+        ))
       }
 
       // ── R5.3 B2 (Pratinidhi-R Q6-N-2 ruling): current-dasha narration ──

@@ -183,7 +183,7 @@ exists so root exceptions are visible and time-bounded, not silently accreted.
 
 | File | Authorized by | Reason | Disposition |
 |---|---|---|---|
-| `NATIVE_DATE_TIGHTENING_QUESTIONNAIRE.md` | Native directive, 2026-07-18 (D-3 closeout + D-4 staging, item 4) | One-time native-facing handoff artifact (blind date-tightening questionnaire for D-4's LEL corpus); root placement makes it immediately visible to the native without navigating the doctrine_waves briefs tree. Canonical copy lives at `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/NATIVE_DATE_TIGHTENING_QUESTIONNAIRE.md` — the root copy is a delivery convenience, not a second source of truth. | Root copy to be removed once the native has retrieved/answered it (next session's hygiene sweep); canonical copy stays in the doctrine_waves folder permanently. |
+| ~~`NATIVE_DATE_TIGHTENING_QUESTIONNAIRE.md`~~ | Native directive, 2026-07-18 (D-3 closeout + D-4 staging, item 4) | One-time native-facing handoff artifact (blind date-tightening questionnaire for D-4's LEL corpus); root placement made it immediately visible to the native without navigating the doctrine_waves briefs tree. | **REMOVED 2026-07-19** (pre-D-5 readiness pass) — the native fully answered and returned the questionnaire (`NATIVE_DATE_TIGHTENING_RESPONSES_v1_0.md`, all items ingested across D-4a's Lane A-1 + the pre-D-5 item #3 correction fix); root copy served its one-time handoff purpose and was removed per its own disposition plan. Canonical copy remains permanently at `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/NATIVE_DATE_TIGHTENING_QUESTIONNAIRE.md`. |
 
 ---
 
