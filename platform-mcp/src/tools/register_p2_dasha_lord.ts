@@ -15,6 +15,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -50,9 +51,17 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
 
 const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 
+// W3-L5 (budget unification): route through the shared auto-detect budget mechanism
+// keyed off the `tool` field this file's handler stamps on every response.
 function dualOutput(data: unknown) {
-  const structuredContent = { type: 'object' as const, object: data }
-  const json = JSON.stringify(data)
+  let finalData = data
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const toolName = typeof obj['tool'] === 'string' ? obj['tool'] : 'unknown_tool'
+    finalData = budgetMcpContent(obj, toolName)
+  }
+  const structuredContent = { type: 'object' as const, object: finalData }
+  const json = JSON.stringify(finalData)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
     return { structuredContent, content: [{ type: 'text' as const, text: '[large payload — see structuredContent]' }] }
   }

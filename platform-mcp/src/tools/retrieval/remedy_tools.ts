@@ -18,6 +18,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { callPlatformPrimitive } from '../../client.js'
 import type { Principal, McpEnvelopeError } from '../../types.js'
+import { budgetMcpContent } from '../../lib/response_budget.js'
 
 // ── Registration helper ────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       }
       const rows = envelope.result as Record<string, unknown>[]
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ query_remedies: rows, count: rows.length }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_remedies: rows, count: rows.length }, 'query_remedies')) }],
       }
     },
   )
@@ -70,7 +71,7 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       }
       const rows = envelope.result as Record<string, unknown>[]
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ query_remedies_for_chart: rows, affliction, count: rows.length }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_remedies_for_chart: rows, affliction, count: rows.length }, 'query_remedies_for_chart')) }],
       }
     },
   )
@@ -97,7 +98,7 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       }
       const rows = envelope.result as Record<string, unknown>[]
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ list_remedies_by_category: rows, category, count: rows.length }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ list_remedies_by_category: rows, category, count: rows.length }, 'list_remedies_by_category')) }],
       }
     },
   )
@@ -121,7 +122,7 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       }
       const row = envelope.result as Record<string, unknown> | null
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ read_remedy: row ?? null, found: row !== null }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ read_remedy: row ?? null, found: row !== null }, 'read_remedy')) }],
       }
     },
   )
@@ -146,7 +147,7 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       }
       const rows = envelope.result as Record<string, unknown>[]
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ query_tantric_remedies: rows, count: rows.length }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_tantric_remedies: rows, count: rows.length }, 'query_tantric_remedies')) }],
       }
     },
   )
@@ -171,7 +172,7 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       }
       const rows = envelope.result as Record<string, unknown>[]
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ query_remedies_by_planet: rows, planet, count: rows.length }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_remedies_by_planet: rows, planet, count: rows.length }, 'query_remedies_by_planet')) }],
       }
     },
   )
@@ -195,7 +196,7 @@ export function registerRemedyTools(server: McpServer, getPrincipal: () => Princ
       }
       const rows = envelope.result as Record<string, unknown>[]
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ query_mantras: rows, planet: planet ?? 'all', count: rows.length }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(budgetMcpContent({ query_mantras: rows, planet: planet ?? 'all', count: rows.length }, 'query_mantras')) }],
       }
     },
   )

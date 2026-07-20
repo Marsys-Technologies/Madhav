@@ -31,6 +31,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { remoteAuthorize } from '../lib/authz.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 // ── Environment ────────────────────────────────────────────────────────────────
 
@@ -356,11 +357,12 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
           }
         )
 
+        const budgeted = budgetMcpContent(result, 'record_outcome')
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(budgeted, null, 2),
             },
           ],
         }
@@ -454,11 +456,12 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
           principal,
         )
 
+        const budgeted = budgetMcpContent(result, 'query_calibration')
         return {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(budgeted, null, 2),
             },
           ],
         }
