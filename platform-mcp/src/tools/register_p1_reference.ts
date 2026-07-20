@@ -21,6 +21,7 @@ import {
   buildTeachingError, reconcileVocabulary,
   YOGA_CATALOG_DOMAINS, YOGA_CATALOG_TRADITIONS, YOGA_DOMAIN_SYNONYMS,
 } from './errors_that_teach.js'
+import { budgetMcpContent } from '../lib/response_budget.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -95,9 +96,22 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 
 // S3 fix (R5 W0a perf lane): no pretty-print; text duplicate suppressed above
 // threshold (structuredContent already carries the full payload).
+//
+// W3-L5 (budget unification, R-2 item 5 / W-8): this file's 7 ref_* tools previously
+// shipped through this dualOutput with NO response-budget pass at all — part of the
+// ~36-of-~115 unclamped surface (GT-48). budgetMcpContent (response_budget.ts) applies
+// the same generic auto-detect + finalizeMcpBudget mechanism register_p1_aliases.ts's
+// dualOutput already uses, keyed off the `tool` field envelope() stamps on every
+// response here.
 function dualOutput(data: unknown) {
-  const structuredContent = { type: 'object' as const, object: data }
-  const json = JSON.stringify(data)
+  let finalData = data
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const toolName = typeof obj['tool'] === 'string' ? obj['tool'] : 'unknown_tool'
+    finalData = budgetMcpContent(obj, toolName)
+  }
+  const structuredContent = { type: 'object' as const, object: finalData }
+  const json = JSON.stringify(finalData)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
     return { structuredContent, content: [{ type: 'text' as const, text: '[large payload — see structuredContent]' }] }
   }

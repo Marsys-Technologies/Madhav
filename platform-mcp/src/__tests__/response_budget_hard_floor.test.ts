@@ -52,7 +52,10 @@ describe('applyResponseBudget hardFloor (D-1.5a gate finding)', () => {
     expect(result.content.checklist.bearing_yogas.length).toBeGreaterThanOrEqual(3)
     // Honest reporting: the response is still over budget (base content alone exceeds
     // it) — hardFloor protects the section's data, it does not pretend the ceiling was met.
-    expect(result.still_over_budget).toBe(true)
+    // (W3-L5: the dead `still_over_budget` boolean was removed from BudgetResult — GT-45,
+    // nobody read it on any real call path; the `(whole response)` trim_report entry below
+    // is the one real, already-consumed honesty signal for this condition.)
+    expect(result.trim_report?.some(e => e.path === '(whole response)')).toBe(true)
   })
 
   it('with hardFloor but response fits under budget: no trimming needed at all', () => {

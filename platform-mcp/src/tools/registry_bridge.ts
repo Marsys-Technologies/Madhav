@@ -312,6 +312,25 @@ const MCP_RESPONSE_BUDGET_KB = {
   traverse_graph: 55,
   get_cgm_subgraph: 55,
   get_projections: 55,
+  // W3-L5 (budget unification, R-2 item 5 / W-8): the remaining 15 registry_bridge.ts tools
+  // that previously called plain `dualOutput` with NO response-budget pass at all — part of
+  // the ~36-of-~115 unclamped surface (GT-48). 40KB matches the assess_* ceiling above: wide
+  // enough for genuinely useful default pages, still a real cut from unbounded.
+  get_chart_orientation: 40,
+  get_domain_reading: 40,
+  get_signals: 40,
+  get_positions: 40,
+  get_dashas: 40,
+  get_temporal_windows: 40,
+  get_classical_citation: 40,
+  get_remedies: 40,
+  get_chart_quality: 40,
+  list_assets: 40,
+  yoga_activation_by_dasha: 40,
+  query_chart_facts: 40,
+  chart_snapshot: 40,
+  get_graha_yuddha: 40,
+  vector_search: 40,
 } as const
 
 /**
@@ -755,7 +774,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         }
 
         if (format !== 'v3') {
-          return dualOutput(envelope(bounded, 'get_chart_orientation'))
+          return dualOutputBudgeted(applyMcpBudgetAuto(envelope(bounded, 'get_chart_orientation') as unknown as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_chart_orientation, 'get_chart_orientation'))
         }
 
         // ── v3 population (design §10/§E-6) ──────────────────────────────────
@@ -829,10 +848,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             : (typeof msrSignalCountRaw === 'string' && msrSignalCountRaw !== '' ? Number(msrSignalCountRaw) : null),
         }
 
-        return dualOutput(
+        return dualOutputBudgeted(applyMcpBudgetAuto(
           envelope(bounded, 'get_chart_orientation', undefined, 'v3',
-            { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags, coverage })
-        )
+            { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags, coverage }) as unknown as Record<string, unknown>,
+          MCP_RESPONSE_BUDGET_KB.get_chart_orientation, 'get_chart_orientation',
+        ))
       } catch (err) {
         return errorOutput('get_chart_orientation', String(err), { chart_id })
       }
@@ -925,7 +945,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             template_element_ids_jsonb: uniqueTemplateIds,
           }
         })
-        return dualOutput({
+        return dualOutputBudgeted(applyMcpBudgetAuto({
           orientation_context,
           orientation_ok,
           ...inner,
@@ -933,7 +953,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           lenses_total: lenses.length,
           lenses_returned: boundedLenses.length,
           token_safety_note: `Bounded to ${maxLenses} lenses × ${maxSig} signals. Pass max_lenses=12 + max_signals_per_lens=100 for full payload.`,
-        })
+        }, MCP_RESPONSE_BUDGET_KB.get_domain_reading, 'get_domain_reading'))
       } catch (err) {
         return errorOutput('get_domain_reading', String(err), { chart_id, domain })
       }
@@ -996,10 +1016,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
 
         if (format !== 'v3') {
-          return dualOutput({
+          return dualOutputBudgeted(applyMcpBudgetAuto({
             orientation_context, orientation_ok,
             ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: null }),
-          })
+          }, MCP_RESPONSE_BUDGET_KB.get_signals, 'get_signals'))
         }
 
         // ── v3 population (design §10/§E-6) ──────────────────────────────────
@@ -1068,11 +1088,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           total: totalMatchingFilters,
         }
 
-        return dualOutput({
+        return dualOutputBudgeted(applyMcpBudgetAuto({
           orientation_context, orientation_ok,
           ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: totalMatchingFilters },
             'v3', { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags, coverage }),
-        })
+        }, MCP_RESPONSE_BUDGET_KB.get_signals, 'get_signals'))
       } catch (err) {
         return errorOutput('get_signals', String(err), { chart_id })
       }
@@ -1165,7 +1185,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), planet, frame },
           chart_id, principal
         )
-        return dualOutput(data)
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_positions, 'get_positions'))
       } catch (err) {
         return errorOutput('get_positions', String(err), { chart_id })
       }
@@ -1204,7 +1224,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutput(data)
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_dashas, 'get_dashas'))
       } catch (err) {
         return errorOutput('get_dashas', String(err), { chart_id })
       }
@@ -1238,7 +1258,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, MCP_RESPONSE_BUDGET_KB.get_temporal_windows, 'get_temporal_windows'))
       } catch (err) {
         return errorOutput('get_temporal_windows', String(err), { chart_id })
       }
@@ -1313,7 +1333,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           'marsys://tool/L0/query_classical_texts',
           { query, text_ids, limit: limit ?? 5, cursor }, undefined, principal,
         )
-        return dualOutput(data)
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_classical_citation, 'get_classical_citation'))
       } catch (err) {
         return errorOutput('get_classical_citation', String(err))
       }
@@ -1341,7 +1361,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, MCP_RESPONSE_BUDGET_KB.get_remedies, 'get_remedies'))
       } catch (err) {
         return errorOutput('get_remedies', String(err), { chart_id })
       }
@@ -1367,7 +1387,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutput({ orientation_context, orientation_ok, ...data as Record<string, unknown> })
+        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, MCP_RESPONSE_BUDGET_KB.get_chart_quality, 'get_chart_quality'))
       } catch (err) {
         return errorOutput('get_chart_quality', String(err), { chart_id })
       }
@@ -1391,7 +1411,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           'marsys://resource/asset-registry/all',
           { layer, limit: limit ?? 81, cursor }, undefined, principal
         )
-        return dualOutput({ ...(data as Record<string, unknown>), pagination: { cursor, limit } })
+        return dualOutputBudgeted(applyMcpBudgetAuto({ ...(data as Record<string, unknown>), pagination: { cursor, limit } }, MCP_RESPONSE_BUDGET_KB.list_assets, 'list_assets'))
       } catch (err) {
         return errorOutput('list_assets', String(err))
       }
@@ -1562,7 +1582,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutput(data)
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.yoga_activation_by_dasha, 'yoga_activation_by_dasha'))
       } catch (err) {
         return errorOutput('yoga_activation_by_dasha', String(err), { chart_id })
       }
@@ -1707,7 +1727,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutput(data)
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.query_chart_facts, 'query_chart_facts'))
       } catch (err) {
         return errorOutput('query_chart_facts', String(err), { chart_id })
       }
@@ -1737,7 +1757,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutput(data)
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.chart_snapshot, 'chart_snapshot'))
       } catch (err) {
         return errorOutput('chart_snapshot', String(err), { chart_id })
       }
@@ -1766,7 +1786,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutput(data)
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_graha_yuddha, 'get_graha_yuddha'))
       } catch (err) {
         return errorOutput('get_graha_yuddha', String(err), { chart_id })
       }
@@ -1793,7 +1813,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           top_k: top_k ?? 10,
           ...(doc_type ? { doc_type } : {}),
         }, principal)
-        return dualOutput(unwrapDoubleEncodedToolBundleResults(data))
+        return dualOutputBudgeted(applyMcpBudgetAuto(unwrapDoubleEncodedToolBundleResults(data) as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.vector_search, 'vector_search'))
       } catch (err) {
         return errorOutput('vector_search', String(err))
       }
