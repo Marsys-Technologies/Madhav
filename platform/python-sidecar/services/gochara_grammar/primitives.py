@@ -415,6 +415,86 @@ def sign_ingress(
     return sentences
 
 
+# ── sign-occupation (RED-D mixed-leg addendum, not one of the 12 numbered
+# families) ──────────────────────────────────────────────────────────────
+
+def sign_occupation(
+    swe,
+    chart_id: str,
+    target: ResonanceTarget,
+    start_jd: float,
+    end_jd: float,
+    planets: Optional[list[str]] = None,
+) -> list[ConfigurationSentence]:
+    """CONTINUOUS occupation of target.target_sign by a transiting graha --
+    distinct from `sign_ingress` (#3 above), which only reports the INSTANT
+    of entry. Added at D-5 RED-D follow-up (2026-07-20) so
+    `composition.double_transit_mixed` has an occupation-shaped sentence to
+    pair against a drishti/degree-contact sentence: the native's own
+    worked example for chart 482012f1's 2013-12-11 marriage specimen is
+    ONE leg occupation (transiting Saturn sitting in Libra, conjunct natal
+    Saturn, IN the 7th house itself) and ONE leg aspect (transiting Jupiter
+    in Gemini casting its 5th special drishti onto Libra) -- `sign_ingress`
+    alone cannot represent the occupation leg here because Saturn had
+    already been resident in Libra since Nov 2011, well before this
+    window opens, so no ingress CROSSING falls inside any realistic query
+    window (the same class of gap `_drishti_contact_rasi` fixes for the
+    aspect side, addressed here for the occupation side via the identical
+    pattern: an ingress-event scan PLUS a `_get_planet_pos` sample at
+    `start_jd` to catch a planet already resident when the window opens,
+    disclosed via `detail['resident_at_window_start']`).
+
+    Same target-sign contract as `sign_ingress` (bhava/span targets, no
+    `target_longitude_deg` needed or used) and the SAME citation
+    (`GOCHARA_PHALA_BPHS_29` -- occupancy of a house by a transiting graha
+    IS the base Gochara Phala doctrine `sign_ingress` already cites; this
+    function differs only in ALSO reporting the already-resident case,
+    not in the underlying classical technique)."""
+    if not target.target_sign:
+        logger.info("[sign_occupation] target_ref=%s has no target_sign; skipping.", target.target_ref)
+        return []
+    sentences: list[ConfigurationSentence] = []
+    for planet in (planets or ALL_GRAHAS):
+        events = find_ingress_events(swe, planet, target.target_sign, start_jd, end_jd)
+        for ev in events:
+            sentences.append(ConfigurationSentence(
+                primitive="sign_occupation",
+                chart_id=chart_id,
+                event_class=target.event_class,
+                target_type=target.target_type,
+                target_ref=target.target_ref,
+                transit_planet=planet,
+                secondary_planet=None,
+                event_jd=ev.event_jd,
+                event_datetime_ist=ev.event_datetime_ist,
+                temporal_shape="interval",
+                fact_ids=[_fact_id("sign_occupation", chart_id, target.target_ref, planet, ev.event_jd)],
+                classical_citation=C.GOCHARA_PHALA_BPHS_29,
+                uncited_extension=False,
+                detail={"target_sign": target.target_sign, "resident_at_window_start": False},
+            ))
+        if not events:
+            lon0, _ = _get_planet_pos(swe, planet, start_jd)
+            if _sign_of_longitude(lon0) == target.target_sign:
+                sentences.append(ConfigurationSentence(
+                    primitive="sign_occupation",
+                    chart_id=chart_id,
+                    event_class=target.event_class,
+                    target_type=target.target_type,
+                    target_ref=target.target_ref,
+                    transit_planet=planet,
+                    secondary_planet=None,
+                    event_jd=start_jd,
+                    event_datetime_ist=_jd_to_ist_iso(swe, start_jd),
+                    temporal_shape="interval",
+                    fact_ids=[_fact_id("sign_occupation", chart_id, target.target_ref, planet, start_jd)],
+                    classical_citation=C.GOCHARA_PHALA_BPHS_29,
+                    uncited_extension=False,
+                    detail={"target_sign": target.target_sign, "resident_at_window_start": True},
+                ))
+    return sentences
+
+
 # ── #4 — nakshatra-ingress / tara-state ────────────────────────────────────
 
 def nakshatra_ingress_tara(
@@ -970,6 +1050,7 @@ __all__ = [
     "degree_contact",
     "drishti_contact",
     "sign_ingress",
+    "sign_occupation",
     "nakshatra_ingress_tara",
     "kakshya_cell_crossing",
     "av_threshold_state",

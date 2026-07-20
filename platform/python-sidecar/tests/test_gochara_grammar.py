@@ -324,6 +324,90 @@ def test_primitive_3_sign_ingress():
     assert all(s.classical_citation for s in sentences)
 
 
+# ── RED-D follow-up: sign_occupation (continuous residency, not just ingress)
+#
+# Coordinator-directed follow-up: the native's own worked marriage-specimen
+# example is ONE leg occupation (transiting Saturn sitting IN Libra, the
+# 7th house itself, since Nov 2011 -- well before any Nov-Dec 2013 query
+# window opens) and ONE leg aspect (transiting Jupiter's 5th special
+# drishti from Gemini onto that same Libra). `sign_ingress` alone cannot
+# represent the occupation leg here because it only reports the INSTANT of
+# entry, which predates any realistic query window -- verified below.
+
+def test_sign_ingress_confirms_instant_only_no_event_for_already_resident_planet():
+    """Verifies the premise before building on it: `sign_ingress` really is
+    instant-of-entry only. Saturn entered Libra ~2011-11 (real ephemeris,
+    confirmed at fix time); a window opened well after that ingress but
+    while Saturn is still resident produces NO sign_ingress sentence at
+    all, even though Saturn is genuinely occupying Libra throughout."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="7", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Libra",
+    )
+    start_jd, end_jd = _jd(2013, 6, 1), _jd(2014, 6, 1)
+    sentences = P.sign_ingress(swe, CHART_ID, target, start_jd, end_jd, planets=["Saturn"])
+    assert sentences == []
+
+
+def test_sign_occupation_detects_already_resident_planet():
+    """Positive control: `sign_occupation` DOES detect Saturn's continuous
+    Libra residency in the same window `sign_ingress` misses above."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="7", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Libra",
+    )
+    start_jd, end_jd = _jd(2013, 6, 1), _jd(2014, 6, 1)
+    sentences = P.sign_occupation(swe, CHART_ID, target, start_jd, end_jd, planets=["Saturn"])
+    assert len(sentences) == 1
+    s = sentences[0]
+    assert s.transit_planet == "Saturn"
+    assert s.classical_citation == C.GOCHARA_PHALA_BPHS_29
+    assert s.uncited_extension is False
+    assert s.detail["target_sign"] == "Libra"
+    assert s.detail["resident_at_window_start"] is True
+    assert s.event_jd == start_jd
+
+
+def test_sign_occupation_detects_genuine_mid_window_ingress():
+    """Regression/generality check: a planet genuinely ENTERING the target
+    sign mid-window is still reported via the normal ingress path (not just
+    the already-resident fallback), with resident_at_window_start=False."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="career_advancement", target_type="bhava",
+        target_ref="10", weight=0.8, classical_citation="TEST FIXTURE",
+        target_sign="Capricorn",
+    )
+    start_jd, end_jd = _jd(2018, 1, 1), _jd(2022, 1, 1)
+    sentences = P.sign_occupation(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+    assert len(sentences) >= 1
+    assert all(s.detail["resident_at_window_start"] is False for s in sentences)
+
+
+def test_sign_occupation_negative_control():
+    """Negative control: a sign never occupied by the planet in a narrow
+    window (mirrors the drishti-rasi negative control's logic)."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="4", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Cancer",
+    )
+    start_jd, end_jd = _jd(2013, 12, 1), _jd(2013, 12, 31)
+    sentences = P.sign_occupation(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter"])
+    assert sentences == []
+
+
+def test_sign_occupation_no_target_sign_degrades_honestly():
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="lord",
+        target_ref="unresolved", weight=0.5, uncited_extension=True,
+    )
+    start_jd, end_jd = _jd(2013, 1, 1), _jd(2014, 1, 1)
+    sentences = P.sign_occupation(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter"])
+    assert sentences == []
+
+
 def test_primitive_4_nakshatra_ingress_tara():
     target = _target_at_planet_position("Moon", 2020, 3, 1)
     start_jd, end_jd = _jd(2020, 1, 1), _jd(2020, 6, 1)
@@ -909,6 +993,46 @@ def test_composition_2b_double_transit_marriage_specimen_end_to_end_rasi_fix():
     assert hit.uncited_extension is False
     assert hit.classical_citation is not None
     assert hit.detail["target_ref"] == "9"
+
+
+def test_composition_2c_double_transit_mixed_marriage_specimen_real_libra_house():
+    """THE actual acceptance bar (coordinator follow-up, 2026-07-20): the
+    REAL marriage house (Libra, target_ref='7') across the real Nov-Dec
+    2013 window, target_sign only -- no target_longitude_deg, exactly the
+    live enrichment shape. Unlike `test_composition_2b` above (which had to
+    stand in with Sagittarius because pure aspect+aspect `double_transit`
+    structurally cannot represent Saturn's OCCUPATION of Libra), this drives
+    the real `sign_occupation` (Saturn's leg) + `drishti_contact` (Jupiter's
+    leg) primitives through the new `CO.double_transit_mixed` operator and
+    confirms guru_shani_double_transit fires for target_ref='7' itself --
+    the native's own worked example, not a substitute."""
+    target = ResonanceTarget(
+        chart_id=CHART_ID, event_class="marriage", target_type="bhava",
+        target_ref="7", weight=0.9, classical_citation="TEST FIXTURE",
+        target_sign="Libra",
+    )
+    start_jd, end_jd = _jd(2013, 6, 1), _jd(2014, 6, 1)
+    aspect_sentences = (
+        P.drishti_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+        + P.degree_contact(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+    )
+    occupation_sentences = P.sign_occupation(swe, CHART_ID, target, start_jd, end_jd, planets=["Jupiter", "Saturn"])
+    comps = CO.double_transit_mixed(aspect_sentences + occupation_sentences, window_days=200.0)
+    guru_shani_hits = [c for c in comps if c.detail.get("is_guru_shani_double_transit")]
+    assert len(guru_shani_hits) >= 1
+    hit = guru_shani_hits[0]
+    assert hit.operator == "double_transit_mixed"
+    assert hit.uncited_extension is False
+    assert hit.classical_citation is not None
+    assert hit.detail["target_ref"] == "7"
+    assert hit.detail["occupying_planet"] == "Saturn"
+    assert hit.detail["aspecting_planet"] == "Jupiter"
+
+    # Regression: pure double_transit (aspect+aspect only) still finds
+    # NOTHING on this exact target -- proving double_transit_mixed is a
+    # genuinely additive capability, not a duplicate of the existing path.
+    pure_aspect_comps = CO.double_transit(aspect_sentences, window_days=200.0)
+    assert not any(c.detail.get("is_guru_shani_double_transit") for c in pure_aspect_comps)
 
 
 def test_composition_3_kartari():
