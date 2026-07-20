@@ -22,6 +22,10 @@ provenance comments) rather than a newly authored one:
      codebase-attested citation names "exact degree contact" as its own
      technique).
   2. drishti_contact          -> BPHS Ch.26 (Graha Drishti; l0_reference.py).
+     RED-D fix (D-5 gate_run_2, 2026-07-20): for span/bhava targets (no
+     target_longitude_deg), degrades to the rasi drishti (whole-sign)
+     rendering of the SAME BPHS Ch.26 doctrine rather than skipping --
+     see `drishti_contact`'s own docstring and `GRAHA_DRISHTI_RASI_BPHS_26`.
   3. sign_ingress              -> BPHS Ch.29 (Gochara Phala; the base classical
      sign-transit-result technique).
   4. nakshatra_ingress_tara    -> Muhurta Chintamani/BPHS/Jataka Parijata Tara
@@ -66,6 +70,7 @@ from pipeline.transit_search import (
     find_return_events,
     _get_planet_pos,
     _shortest_arc_diff,
+    _jd_to_ist_iso,
 )
 from panchang_engine.tara_bala import compute_tara_position, get_tara_detail
 
@@ -118,6 +123,27 @@ _DEFAULT_DRISHTI_DEG = [180.0]  # every other graha: 7th-house aspect only
 
 def _sign_index(sign_name: str) -> int:
     return SIGNS.index(sign_name)
+
+
+def _drishti_house_offsets(planet: str) -> list[int]:
+    """SPECIAL_DRISHTI_DEG's degree offsets, restated as whole-sign house
+    offsets (offset_houses=1 -> same house/sign, matching `_offset_sign`'s
+    own convention) -- e.g. Jupiter's [120.0, 180.0, 240.0] (5th/7th/9th
+    degree aspects) becomes [5, 7, 9]. Every SPECIAL_DRISHTI_DEG entry is
+    already an exact multiple of 30deg, so this conversion is exact, not an
+    approximation."""
+    degs = SPECIAL_DRISHTI_DEG.get(planet, _DEFAULT_DRISHTI_DEG)
+    return sorted({int(round(d / 30.0)) + 1 for d in degs})
+
+
+def _signs_casting_drishti_onto(target_sign: str, planet: str) -> list[str]:
+    """Signs `planet` must occupy to cast one of its classical special
+    aspects (rasi drishti, whole-sign) onto target_sign -- the inverse of
+    `_offset_sign`: for each house offset N, the sign N houses BEHIND
+    target_sign is a sign whose occupant aspects target_sign via that Nth
+    special aspect."""
+    target_idx = _sign_index(target_sign)
+    return [SIGNS[(target_idx - (offset - 1)) % 12] for offset in _drishti_house_offsets(planet)]
 
 
 def _offset_sign(sign_name: str, offset_houses: int) -> str:
@@ -195,12 +221,47 @@ def drishti_contact(
     planets: Optional[list[str]] = None,
     orb_deg: float = 3.0,
 ) -> list[ConfigurationSentence]:
-    """Classical graha drishti (BPHS Ch.26) from a transiting graha onto
-    target.target_longitude_deg -- reuses find_aspect_events with each
-    graha's classical special-aspect degree set."""
-    if target.target_longitude_deg is None:
-        logger.info("[drishti_contact] target_ref=%s has no target_longitude_deg; skipping.", target.target_ref)
-        return []
+    """Classical graha drishti (BPHS Ch.26) from a transiting graha onto the
+    target. Dispatches on which natal anchor `target` carries:
+
+    - `target.target_longitude_deg` present (point/graha-anchored targets,
+      e.g. karaka/dasha_lord_portfolio) -> exact-degree special-aspect
+      contact via `find_aspect_events` (unchanged, original behavior).
+    - `target.target_longitude_deg` is None but `target.target_sign` is
+      present (span/bhava targets, e.g. the 7th-house marriage target) ->
+      RASI DRISHTI (whole-sign special aspect) fallback: a bhava is a
+      30-degree span, not a point, so forcing an arbitrary single degree
+      (e.g. a house cusp) inside that span to stand in for "the house" would
+      be an invented convention with no classical basis; BPHS Ch.26's own
+      base doctrine is sign-counted ("aspects the Nth sign from its own"),
+      making rasi drishti the MORE classically faithful mechanism here, not
+      a workaround. See `_signs_casting_drishti_onto`. RED-D root cause
+      (D-5 gate_run_2): this fallback did not previously exist, so a bhava
+      target's special aspect could structurally never be detected even
+      when the configuration was genuinely present (e.g. transiting Jupiter
+      in Gemini casting its 5th-house special aspect onto natal Saturn's
+      7th house in Libra, Nov-Dec 2013).
+    - neither anchor present -> honest empty degrade (unchanged).
+    """
+    if target.target_longitude_deg is not None:
+        return _drishti_contact_point(swe, chart_id, target, start_jd, end_jd, planets, orb_deg)
+    if target.target_sign is not None:
+        return _drishti_contact_rasi(swe, chart_id, target, start_jd, end_jd, planets)
+    logger.info("[drishti_contact] target_ref=%s has no target_longitude_deg or target_sign; skipping.", target.target_ref)
+    return []
+
+
+def _drishti_contact_point(
+    swe,
+    chart_id: str,
+    target: ResonanceTarget,
+    start_jd: float,
+    end_jd: float,
+    planets: Optional[list[str]],
+    orb_deg: float,
+) -> list[ConfigurationSentence]:
+    """Original drishti_contact body, unchanged -- exact-degree special-aspect
+    contact against target.target_longitude_deg via find_aspect_events."""
     sentences: list[ConfigurationSentence] = []
     for planet in (planets or ALL_GRAHAS):
         aspect_degrees = SPECIAL_DRISHTI_DEG.get(planet, _DEFAULT_DRISHTI_DEG)
@@ -224,6 +285,96 @@ def drishti_contact(
                         "exact_longitude_deg": ev.exact_longitude_deg,
                         "signed_offset_from_target_deg": round(_shortest_arc_diff(ev.exact_longitude_deg, target.target_longitude_deg), 4)},
             ))
+    return sentences
+
+
+def _rasi_drishti_sentence(
+    chart_id: str, target: ResonanceTarget, planet: str, aspecting_sign: str,
+    house_offset: int, event_jd: float, event_datetime_ist: str, resident_at_window_start: bool,
+) -> ConfigurationSentence:
+    return ConfigurationSentence(
+        primitive="drishti_contact",
+        chart_id=chart_id,
+        event_class=target.event_class,
+        target_type=target.target_type,
+        target_ref=target.target_ref,
+        transit_planet=planet,
+        secondary_planet=None,
+        event_jd=event_jd,
+        event_datetime_ist=event_datetime_ist,
+        temporal_shape="interval",
+        fact_ids=[_fact_id("drishti_contact_rasi", chart_id, target.target_ref, planet, event_jd)],
+        classical_citation=C.GRAHA_DRISHTI_RASI_BPHS_26,
+        uncited_extension=False,
+        detail={
+            "geometry": "rasi_drishti",
+            "planet_sign": aspecting_sign,
+            "target_sign": target.target_sign,
+            "house_offset": house_offset,
+            "resident_at_window_start": resident_at_window_start,
+        },
+    )
+
+
+def _drishti_contact_rasi(
+    swe,
+    chart_id: str,
+    target: ResonanceTarget,
+    start_jd: float,
+    end_jd: float,
+    planets: Optional[list[str]],
+) -> list[ConfigurationSentence]:
+    """Rasi-drishti (whole-sign special aspect) fallback for span/bhava
+    targets -- see `drishti_contact`'s docstring for the classical rationale.
+    For each candidate planet, finds every sign this planet must occupy to
+    cast one of its own classical special aspects onto target.target_sign
+    (`_signs_casting_drishti_onto`), then scans for ingress into each of
+    those signs (`find_ingress_events`, the same primitive `sign_ingress`
+    already uses for bhava targets) -- the ingress moment marks the start of
+    the aspect's whole-sign-duration activity, mirroring `sign_ingress`'s own
+    point-event convention for the same span-target class.
+
+    A whole-sign aspect is inherently interval-shaped, not point-shaped: a
+    slow planet (Saturn ~2.5yr/sign) can already be resident in a qualifying
+    sign for months or years before a query window opens -- exactly the
+    RED-D failure mode this fix targets (natal Saturn's own 7th-house
+    target, chart 482012f1: transiting Saturn had been sitting in Libra
+    since Nov 2011, so a query window opened mid-2013 contains NO ingress
+    CROSSING at all, even though the aspect was continuously active
+    throughout). `find_ingress_events` only reports crossings, so a
+    planet already resident at `start_jd` would otherwise be silently
+    invisible to this primitive regardless of window width. This function
+    additionally samples the planet's position at `start_jd`
+    (`_get_planet_pos`, already used elsewhere in this module) and, if it is
+    already in a qualifying sign with no crossing captured in-window,
+    emits one sentence anchored at `start_jd` with
+    `detail['resident_at_window_start']=True` -- honestly disclosing that
+    the exact ingress moment predates this call's search range, rather than
+    fabricating a precise-looking event_jd for it (B.10).
+
+    No `target_longitude_deg` is invented or required anywhere in this path
+    -- strictly additive: this function only runs from the branch in
+    `drishti_contact` that `_drishti_contact_point` cannot reach
+    (target_longitude_deg is None), so point/graha-anchored callers are
+    completely unaffected."""
+    sentences: list[ConfigurationSentence] = []
+    for planet in (planets or ALL_GRAHAS):
+        house_offsets = _drishti_house_offsets(planet)
+        aspecting_signs = _signs_casting_drishti_onto(target.target_sign, planet)
+        for house_offset, aspecting_sign in zip(house_offsets, aspecting_signs):
+            events = find_ingress_events(swe, planet, aspecting_sign, start_jd, end_jd)
+            for ev in events:
+                sentences.append(_rasi_drishti_sentence(
+                    chart_id, target, planet, aspecting_sign, house_offset,
+                    ev.event_jd, ev.event_datetime_ist, resident_at_window_start=False,
+                ))
+            if not events:
+                lon0, _ = _get_planet_pos(swe, planet, start_jd)
+                if _sign_of_longitude(lon0) == aspecting_sign:
+                    sentences.append(_rasi_drishti_sentence(
+                        chart_id, target, planet, aspecting_sign, house_offset,
+                        start_jd, _jd_to_ist_iso(swe, start_jd), resident_at_window_start=True,
+                    ))
     return sentences
 
 
@@ -261,6 +412,86 @@ def sign_ingress(
                 uncited_extension=False,
                 detail={"target_sign": target.target_sign},
             ))
+    return sentences
+
+
+# ── sign-occupation (RED-D mixed-leg addendum, not one of the 12 numbered
+# families) ──────────────────────────────────────────────────────────────
+
+def sign_occupation(
+    swe,
+    chart_id: str,
+    target: ResonanceTarget,
+    start_jd: float,
+    end_jd: float,
+    planets: Optional[list[str]] = None,
+) -> list[ConfigurationSentence]:
+    """CONTINUOUS occupation of target.target_sign by a transiting graha --
+    distinct from `sign_ingress` (#3 above), which only reports the INSTANT
+    of entry. Added at D-5 RED-D follow-up (2026-07-20) so
+    `composition.double_transit_mixed` has an occupation-shaped sentence to
+    pair against a drishti/degree-contact sentence: the native's own
+    worked example for chart 482012f1's 2013-12-11 marriage specimen is
+    ONE leg occupation (transiting Saturn sitting in Libra, conjunct natal
+    Saturn, IN the 7th house itself) and ONE leg aspect (transiting Jupiter
+    in Gemini casting its 5th special drishti onto Libra) -- `sign_ingress`
+    alone cannot represent the occupation leg here because Saturn had
+    already been resident in Libra since Nov 2011, well before this
+    window opens, so no ingress CROSSING falls inside any realistic query
+    window (the same class of gap `_drishti_contact_rasi` fixes for the
+    aspect side, addressed here for the occupation side via the identical
+    pattern: an ingress-event scan PLUS a `_get_planet_pos` sample at
+    `start_jd` to catch a planet already resident when the window opens,
+    disclosed via `detail['resident_at_window_start']`).
+
+    Same target-sign contract as `sign_ingress` (bhava/span targets, no
+    `target_longitude_deg` needed or used) and the SAME citation
+    (`GOCHARA_PHALA_BPHS_29` -- occupancy of a house by a transiting graha
+    IS the base Gochara Phala doctrine `sign_ingress` already cites; this
+    function differs only in ALSO reporting the already-resident case,
+    not in the underlying classical technique)."""
+    if not target.target_sign:
+        logger.info("[sign_occupation] target_ref=%s has no target_sign; skipping.", target.target_ref)
+        return []
+    sentences: list[ConfigurationSentence] = []
+    for planet in (planets or ALL_GRAHAS):
+        events = find_ingress_events(swe, planet, target.target_sign, start_jd, end_jd)
+        for ev in events:
+            sentences.append(ConfigurationSentence(
+                primitive="sign_occupation",
+                chart_id=chart_id,
+                event_class=target.event_class,
+                target_type=target.target_type,
+                target_ref=target.target_ref,
+                transit_planet=planet,
+                secondary_planet=None,
+                event_jd=ev.event_jd,
+                event_datetime_ist=ev.event_datetime_ist,
+                temporal_shape="interval",
+                fact_ids=[_fact_id("sign_occupation", chart_id, target.target_ref, planet, ev.event_jd)],
+                classical_citation=C.GOCHARA_PHALA_BPHS_29,
+                uncited_extension=False,
+                detail={"target_sign": target.target_sign, "resident_at_window_start": False},
+            ))
+        if not events:
+            lon0, _ = _get_planet_pos(swe, planet, start_jd)
+            if _sign_of_longitude(lon0) == target.target_sign:
+                sentences.append(ConfigurationSentence(
+                    primitive="sign_occupation",
+                    chart_id=chart_id,
+                    event_class=target.event_class,
+                    target_type=target.target_type,
+                    target_ref=target.target_ref,
+                    transit_planet=planet,
+                    secondary_planet=None,
+                    event_jd=start_jd,
+                    event_datetime_ist=_jd_to_ist_iso(swe, start_jd),
+                    temporal_shape="interval",
+                    fact_ids=[_fact_id("sign_occupation", chart_id, target.target_ref, planet, start_jd)],
+                    classical_citation=C.GOCHARA_PHALA_BPHS_29,
+                    uncited_extension=False,
+                    detail={"target_sign": target.target_sign, "resident_at_window_start": True},
+                ))
     return sentences
 
 
@@ -819,6 +1050,7 @@ __all__ = [
     "degree_contact",
     "drishti_contact",
     "sign_ingress",
+    "sign_occupation",
     "nakshatra_ingress_tara",
     "kakshya_cell_crossing",
     "av_threshold_state",
