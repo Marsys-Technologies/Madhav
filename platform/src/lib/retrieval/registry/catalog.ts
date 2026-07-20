@@ -22,6 +22,9 @@
 import type { CapabilityDescriptor } from './types'
 import { getAllCapabilities } from './index'
 import { applyDescriptorDefaults } from './descriptor_defaults'
+import { registerMaroCapabilities } from './layers/dprofiles_registration'
+import { registerD6SynergyCapabilities } from './layers/register_d6_synergy'
+import { registerRouterCapabilities } from './layers/router_registration'
 
 // ── Per-wave registration imports ─────────────────────────────────────────────
 // Each import executes the layer's index.ts which calls registerCapability() for
@@ -53,9 +56,6 @@ import './layers/L4_phala/index'
 // L5 Mīmāṃsā (query_insights, query_calibration — STUBBED-PENDING-DATA)
 import './layers/L5_mimamsa/index'
 
-// Router registration (D2)
-import './layers/router_registration'
-
 // D7 channel capabilities: chart_facts_query, vector_search, cgm_graph_walk (F-032)
 import './layers/register_d7_channel'
 
@@ -78,6 +78,33 @@ import './layers/register_d10_pact'
 // aggregation (intent → pre-aggregated plan → map-reduce over families → narrative +
 // derivation ledger). The consumer the L2 pre-computation (gestalt/CDLM/CGM) never had.
 import '../synthesis/index'
+
+// Router registration (D2) + D-PROFILES (MARO) + D6 synergy (plan R-1 item 3,
+// "single bootstrap" completeness fix, W2b lane): all three are ordinary
+// exported functions (not side-effect-on-import modules like the layer
+// indexes above) — importing their file alone, as this module previously did
+// for router_registration, does NOT call them and does NOT register anything.
+//
+// GT-40 named 6 divergent capabilities between this file and
+// /api/retrieval/capability/route.ts's own separate bootstrap list: 5 forward
+// (maro/orchestrate, maro/mcp_surface, resource/maro/profiles, synergy/pipeline,
+// synergy/cross_layer) + 1 reverse (synth_compose_large_n, already correctly
+// present here). Re-verifying that finding for this fix surfaced a 7th, since-
+// GT-40 divergence in the same failure class: `marsys://tool/router/route`
+// (router_registration.ts's registerRouterCapabilities()) was ALSO a bare,
+// non-calling `import './layers/router_registration'` here — a real gap this
+// file's own getCatalog() had, caught mechanically by this lane's completeness
+// test (single_bootstrap_flag.test.ts's flag=false-vs-flag=true URI diff),
+// not by re-reading the stale GT-40 list.
+//
+// All three calls below target the same registerCapability() Map as every
+// other registration in this file — idempotent, additive only (these
+// capabilities were already live and dispatchable via route.ts; this only
+// makes them visible through the getCatalog()-based surfaces too, e.g.
+// /api/mcp/primitives/[tool] and the chat channel's lib/contract).
+registerRouterCapabilities()
+registerMaroCapabilities()
+registerD6SynergyCapabilities()
 
 // ── getCatalog ────────────────────────────────────────────────────────────────
 

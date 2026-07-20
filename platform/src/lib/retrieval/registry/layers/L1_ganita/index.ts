@@ -42,6 +42,10 @@ import { getDashaLordCapabilityCapability } from './get_dasha_lord_capability'
 // Doctrine Campaign D-3 (Kāla Taraṅga), Lane T-1: sign-keyed Aṣṭakavarga transit-gating
 // (SAV/BAV damp/amplify per sign) + dated kakṣyā sub-windows for a transiting planet.
 import { getAvTransitGatingCapability }     from './get_av_transit_gating'
+// W2b Batch 3 dark-set wiring (TABLE_CONCEPT_DISPOSITIONS_v2_0.md): unified planetary-condition
+// rollup + prashna-lagna serving.
+import { getConditionCompositeCapability }  from './get_condition_composite'
+import { getPrashnaLagnaCapability }        from './get_prashna_lagna'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -74,3 +78,5 @@ registerCapability(getSensitiveDegreesCapability)
 registerCapability(getVicharaCapability)
 registerCapability(getDashaLordCapabilityCapability)
 registerCapability(getAvTransitGatingCapability)
+registerCapability(getConditionCompositeCapability)
+registerCapability(getPrashnaLagnaCapability)
