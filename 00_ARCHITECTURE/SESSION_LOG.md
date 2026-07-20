@@ -32324,3 +32324,108 @@ session_close:
 ```
 
 *End of RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19 entry — 2026-07-19.*
+
+---
+
+## DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 — D-5 "Gochara-Chitra" HALTED (not closed)
+
+```yaml
+session_open:
+  session_id: DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20
+  cowork_thread_name: "Madhav — D-5 Gochara-Chitra (Conductor: open through halt)"
+  agent_name: claude-sonnet-5
+  predecessor_session: "pre-D-5 readiness pass (PR #618) — D-4a CLOSED, current_wave=D-5 INCOMING at session open"
+  role: >
+    Conductor for BRIEF_D5.md v1.0 FROZEN end-to-end per CONDUCTOR_PROTOCOL.md +
+    ESCALATION_POLICY_v1_0.md: Binder pass, 5 lanes (G-1..G-5) each in an isolated
+    worktree with independent fresh-context Opus verification, integrate, deploy,
+    rebuild, §G gate, close.
+  declared_scope:
+    may_touch: "fresh worktree wave/D-5/conductor + per-lane worktrees wave/D-5/G-1..G-5 + fix branches; platform/python-sidecar/services/gochara_grammar, gochara_intensity, ka_gochara_resonance, ka_gochara_sweep (each **); platform/migrations/459_* + 460_*; platform-mcp/src/tools/retrieval/register_gochara_windows.ts + server.ts (wiring only); platform/src/lib/lel/prospective_ledger.ts (extend); platform/src/app/api/mcp/writes/[action]/route.ts (extend); STATE_D-5.md; BIND_D-5.md; REPORT_D-5.md; CURRENT_STATE_v1_0.md (banner); SESSION_LOG.md (append)"
+    must_not_touch: "FROZEN orchestrator core (pipeline/orchestrator/asset_runner.py, writers/__init__.py); sealed LEL test split; prior gate surfaces (A-0..A-5); raw LEL corpus; G-1..G-5's already-merged files from any OTHER lane once merged"
+  red_team_due: false
+```
+
+**Body.** Fully autonomous execution of D-5 per the native's kickoff directive, ~20.5
+hours elapsed. Pre-open reconciliation traced an apparent D-4a→D-5 state mismatch to a
+stale local checkout on an unrelated branch (`pg1/wave`), not a false readiness-pass
+report — `origin/main` was already consistent. Opened in a fresh worktree per D-4a's own
+precedent (avoiding entanglement with concurrent PG-1/PG-2 diagnostic-wave uncommitted
+work on the shared filesystem).
+
+**All 5 lanes built, independently adversarially verified (fresh-context Opus,
+live-DB-reproduced not report-read), merged, deployed:** G-1 resonance map (PR #621),
+G-2 configuration grammar (PR #622), G-3 intensity engine (PR #625), G-4 forward sweep +
+serving (PR #627), G-5 ledger integration (PR #629). Two cross-lane bugs found by
+verifiers and fixed forward pre-merge (G-1's jsonb-operator query bug; G-2's stale
+dasha-system-ID tuple). Full integrated test suite: zero D-5-caused regressions
+(python-sidecar, platform, and platform-mcp's 75 pre-existing unrelated failures
+confirmed byte-identical to the D-5-open baseline commit).
+
+**REBUILD surfaced 5 further incidents, all found via genuine live/orchestrator-driven
+execution (none caught by any lane's own Phase-1 testing) and all fixed with independent
+live re-verification:** (1) untyped-NULL SQL placeholder poisoning the shared sweep
+connection; (2) that fix's own bare `conn.rollback()` destroying the orchestrator's
+per-substep SAVEPOINT (a FROZEN-contract-adjacent violation, fixed via a new
+`savepoint_scope()` context manager applied across all 6 affected modules, not just the
+1 originally touched); (3) decade-sized substep chunking exceeding the 1800s writer
+watchdog (re-chunked to per-year, zero correctness impact — the run had zero
+transaction errors, confirming fix #2 held); (4) the §G gate runner's own live
+verification found G-4's 3 MCP tools were built+merged but never wired into
+`server.ts` — dead code at every deployed SHA (fixed: one import + one call); (5) the
+same gate run found the sweep's chronological-from-1950 substep order made the 3 named
+LEL specimens unreachable within any single dispatch window (fixed: specimen-overlapping
+years now sort first, live-confirmed via dry-run).
+
+**Halt, not close:** per the native's own D-5 kickoff framing ("a red on... specimens...
+is a wave failure" — not gated around), the session ends with fix #5 deployed and
+independently confirmed correct-by-design, but not yet confirmed against real committed
+data — a rebuild dispatch was actively, healthily processing the first specimen-priority
+substep (zero errors, real progress every check) when the session ended. Full
+incident-by-incident ledger in `STATE_D-5.md`; halt rationale and exact next action in
+`REPORT_D-5.md`.
+
+```yaml
+session_close:
+  session_id: DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20
+  wave: D-5
+  close_criteria_met: false
+  status: HALTED — REPORT_D-5.md status "BLOCKED — HALT-AND-REPORT"; current_wave
+    remains D-5, does NOT advance to D-4b
+  verification: "5 lanes independently verified + merged + deployed + live-SHA-confirmed;
+    full test suite zero-regression confirmed (python-sidecar 3841/3841, platform
+    5841/5841, platform-mcp 75-pre-existing-failures byte-identical to baseline); §G
+    gate ran once, RED (2 findings, both root-caused and fixed, 1 of 2 independently
+    re-verified live, the 2nd deployed+design-verified but not yet data-verified) — see
+    REPORT_D-5.md §4 for the full halt rationale and STATE_D-5.md
+    session_end_disposition for the exact next-session resume action"
+  deploy: "amjis_web/amjis_mcp/amjis_sidecar/brahma_build_pipeline_job all live-SHA
+    verified at 1f05c4ac (final fix commit); rollback pin recorded in STATE_D-5.md
+    (pre-wave images, unused — no rollback was needed)"
+  product_code_writes_made: "5 lanes + 5 REBUILD/GATE fixes, all merged via PR + CI +
+    live-SHA-verified deploy; see STATE_D-5.md for the full PR list (#621-#640)"
+  native_chart_touched: "Abhisek (482012f1) ONLY, scope-limited to
+    ka_gochara_resonance+ka_gochara_sweep per BIND_D-5 §6 minimal-cascade ruling;
+    Abhinandan never touched"
+  current_state_updated: true
+  register_dispositions_flipped: "CR-113 (orphaned build_runs row) closed via the
+    platform-owned watchdog reconcile path; CR-114 dispositioned non-blocking"
+  followups: "See REPORT_D-5.md §5 for the full carried-findings list (7 items, none
+    blocking re-gate): Sarvatobhadra classical-grid gap (pre-existing, G-2),
+    muhurta_finder re-pointing deferral (G-4), 1950 birth-anchor inheritance (G-4),
+    DR-16 disclosure persistence-scope gap (G-5, needs a native ruling or migration),
+    ka_avadhi.py's stale dasha-system tuple (pre-existing, out of D-5 scope), 75
+    pre-existing platform-mcp failures (out of D-5 scope), and an orchestrator-core
+    mark_asset_error robustness candidate flagged for native review, NOT fixed
+    in-lane per CLAUDE.md §N.2."
+  next_session_objective: "Per REPORT_D-5.md §7: check whether build_run
+    6ac5dcb6-e792-452c-9426-788d216e5c34 reached the 3 specimen-priority substeps
+    (query in STATE_D-5.md); if not, re-dispatch once more (idempotent, no code
+    changes anticipated) via platform/scripts/dispatch_d5_gochara_rebuild.py; once
+    confirmed, re-run the §G gate. On green, close D-5 properly (advance
+    current_wave to D-4b) per protocol §2.8. Native should also disposition the two
+    provenance-honesty-adjacent items in REPORT_D-5.md §5 (DR-16 persistence,
+    orchestrator mark_asset_error) at convenience — neither blocks re-gate."
+```
+
+*End of DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 entry — 2026-07-20.*
