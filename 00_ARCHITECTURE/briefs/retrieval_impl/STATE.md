@@ -1646,3 +1646,29 @@ evidence); no live `verbosity:concise` probe was run; `get_cgm_subgraph`'s v3/`l
 named for a future wave. **Alias cutover + bootstrap flag-flip remain parked** — the
 native's go-ahead for W3 explicitly did not extend to those W2-parked items. W4 (One
 Planner) is next, pending native go-ahead.
+
+### Cross-campaign note — PG-2 merged to main (2026-07-20)
+
+For the W4 conductor, from the PG-2 diagnostic wave (separate campaign; `00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_PG2_DIAGNOSTIC_v1_0.md`):
+
+1. **Main has moved.** PR #620 (PG-2) merged at `5b57d49f`, bringing in: `SESSION_LOG.md`
+   additions (RETRIEVAL-AUDIT-CLOSE, PG-2's own entry, D-5-HALT/D-5-CLOSE, in
+   chronological order), `CURRENT_STATE_v1_0.md` §2 pointer updates, and corrections to
+   `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md` (→ v0.7) and
+   `00_ARCHITECTURE/briefs/MCP_CHANNEL_WORKSTREAM_HANDOFF_v1_0.md`. **Sync the W4 wave
+   branch with `origin/main` at the next natural checkpoint, before the gate merge** —
+   PG-2's own branch sat unsynced long enough that its PR briefly lost the ability to even
+   attach a GitHub Actions check-suite (a real, reproduced failure mode, not theoretical);
+   worth avoiding on a wave this central.
+
+2. **Cross-campaign defect assigned to W4:** `platform/src/lib/bundle/bundle_hydrator.ts:25`
+   hardcodes `FLOOR_ASSET_IDS = ['FORENSIC','CGM']` and throws because `FORENSIC` was
+   deleted from `CAPABILITY_MANIFEST.json` in PR #187 (Legacy Teardown) and never removed
+   from this list. Live-confirmed (two authenticated invocations against the native's own
+   chart, byte-identical, steady-state): `/api/chat/consult` returns a deterministic
+   **HTTP 500** at bundle-hydration, before any planning or streaming begins — the same
+   failure class as the earlier LCA-2 regression, one layer downstream. **In-scope for W4**
+   because a working consult route is a precondition for verifying W4's floor-adoption
+   work end-to-end; PG-2 diagnosed but did not fix it (read-only-on-source discipline).
+   One-line fix (drop `'FORENSIC'` from the array). Full evidence: `REPORT_PG-2.md`
+   ("Both central questions, answered from probes this wave ran", part (b)).
