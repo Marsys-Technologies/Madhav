@@ -32730,3 +32730,50 @@ session_close:
 None pending from this session. PG-2 is fully closed and merged to main (5b57d49f); the retrieval campaign's W4 proceeds independently on its own native go-ahead, with the cross-campaign note in `00_ARCHITECTURE/briefs/retrieval_impl/STATE.md` as its entry point back into this session's findings.
 
 *End of PG2-MERGE-COORDINATION-2026-07-20 entry — 2026-07-20/21.*
+
+---
+
+## Pre-D-4b Readiness Pass v3 (2026-07-21)
+
+Native directive: execute the full pre-D-4b readiness checklist (A.0 hard prerequisite, A.0-bis, A, B, C, D, E), report with evidence, pause before opening D-4b. Fully autonomous, verifier-gated fixes.
+
+**A.0 (hard prerequisite, materialization + throughput):** Merged the prior session's diagnostic memo (PR 669) as the first action. Reconstructed the full ka_gochara_sweep build_runs/build_substep_progress ledger across all 10 dispatch attempts since 2026-07-19 — confirmed only 3 of ~300 planned substeps had ever committed before this pass. Root-caused the per-substep throughput defect live: two DB reads inside the per-day PERMISSION computation (av-gate rows, a global reference table; sade-sati rows, a build-lifetime-static chart_facts read) were re-issued on every one of ~365 grid-day calls per year-substep. Fixed via correctness-preserving memoization (measured ~600x speedup on the affected calls); verified with an adversarial cache-poisoning probe and a determinism proof (two independent re-derivations of the same window produce byte-identical output); full non-integration test suite green (189/189). Merged as PR 670. Root-caused and fixed a second defect: the cockpit badge showed the same "error" state for a genuinely broken writer and a resumable partial materialization — added a distinct partial state sourced from the substep ledger, wired through both cockpit UI surfaces, 6/6 new unit tests green; a first push broke the Next.js production build (route.ts export-shape rule) and was corrected same-session (extracted the logic to a sibling module) before merging as PR 671. Dispatched further materialization cycles (Cloud Run); full 300-substep materialization was NOT completed this session (still in progress at session end — this is genuinely a multi-dispatch-cycle operation given real per-day ephemeris cost, not a residual defect). Registered CR-115 (throughput defect, CLOSED), CR-116 (badge-honesty defect, CLOSED), re-verified CR-113/CR-114 CLOSED, and a new standing assertion class (materialization-completeness precedes gate/scoring) encoded as BRIEF_D4B.md's own §0 gate criterion.
+
+**A.0-bis:** Re-examined the marriage-specimen residual on the partially-improved (not fully materialized) data: guru_shani_double_transit is now active at peaks bracketing 2013-12-11, contradicting D-5's own gate_run_3 FAIL verdict — but this is recorded as OPEN-RESIDUAL, IMPROVED, NOT YET CERTIFIED (not RESOLVED-BY-MATERIALIZATION) since full materialization is still pending. Addendum written, D-5's own gate disposition left unchanged.
+
+**A (D-5 handoff verification):** MCP wiring for the 3 gochara tools confirmed live at origin/main HEAD; all three deployed services (amjis-web/mcp/sidecar) confirmed code-current with origin/main (the only commits ahead are docs/governance-only); prospective ledger confirmed live with configuration_signature populated (2 of 7 rows for chart 482012f1); worktrees/branches hygiene pass (removed a stale, fully-merged D-4a branch; cleaned up this session's own scratch worktrees).
+
+**B:** BRIEF_D4B.md fleshed and FROZEN v1.0 from ARC PLAN §5 + BRIEF_D4 v2.0 lane texts, with a new §0 materialization-completeness gate.
+
+**C:** DR_17_18_MANIFESTATION_CENSUS_DOCTRINE_v1_0.md authored — DR-17 (Graded Manifestation Acceptance) harness spec (grade scale, anti-hit constant proposal, tie-band harness-refusal guard, residual-pair schema) and the first DR-18 (Knowledge-Utilization Census), scoped to the Gochara subsystem this pass had time to audit.
+
+**D:** D4B_PREREGISTRATION_PACKET_DRAFT_v1_0.md staged (drafted only, not committed, no scoring run dispatched) — real LEL event set (58 EVT entries), DR-13 shapes, thresholds, tie-bands, top-K/anti-hit constants.
+
+**E (hygiene):** Fixed a three-surface consistency defect found live — CLAUDECODE_BRIEF.md's current_wave field still read D-5 while CURRENT_STATE_v1_0.md already showed D-4b (INCOMING); corrected with the same wave-history entry pattern the file already uses. Register (MARSYS_DEFECT_GAP_REGISTER) synced to v3.5. Noted (not caused by this session): the main working-directory git checkout was found in a detached-HEAD state after a concurrent automated process (a separate PG-1/PG-2 bot session) merged and cleaned up its own branch — working tree was clean, no data at risk; left as detached HEAD at origin/main since the original local branch no longer existed and main's own worktree slot was occupied elsewhere.
+
+```yaml
+session_close:
+  session_id: PRE-D4B-READINESS-PASS-V3-2026-07-21
+  wave: pre-D-4b readiness pass (not a wave open)
+  close_criteria_met: true
+  verification: "PR 670 (perf fix) merged to main; PR 671 (badge-honesty fix) pushed, CI in
+    flight at session end; 189/189 non-integration pytest green; 6/6 new TS unit tests green;
+    tsc --noEmit clean; adversarial cache-poisoning probe + determinism proof both passed live"
+  deploy: "PR 670 merged and deployed via standard CI to deploy.yml pipeline; PR 671 pending
+    CI at session end, not yet merged"
+  product_code_writes_made: "primitives.py memoization fix (PR 670); cockpit stats route +
+    deriveState extraction + AtlasView/LiveDependencyGraph/DataAssetsView badge wiring (PR 671)"
+  native_chart_touched: true
+  current_state_updated: false
+  register_dispositions_flipped: "CR-113 CLOSED (re-verified); CR-114 CLOSED (re-verified);
+    CR-115 opened and CLOSED (throughput defect); CR-116 opened and CLOSED (badge-honesty
+    defect); new materialization-completeness-precedes-gate-scoring assertion class registered"
+  followups: "ka_gochara_sweep full 300-substep materialization still incomplete -- needs
+    further Cloud Run dispatch cycles before D-4b's own BRIEF_D4B section 0 gate can pass.
+    PR 671 needs its CI to finish and be merged. Marriage-specimen residual needs re-check
+    on fully materialized data before being struck from the inherited-items list."
+  next_session_objective: "D-4b's own native kickoff, OR a dedicated materialization session
+    to finish ka_gochara_sweep's remaining substeps before D-4b opens."
+```
+
+*End of Pre-D-4b Readiness Pass v3 entry — 2026-07-21.*
