@@ -8,7 +8,7 @@
  * Core shape (CapabilityDescriptor + chart-agnostic gate fields) is FROZEN.
  * New optional fields may only be added via a versioned amendment that bumps
  * the amendment_version below and documents the change.
- * amendment_version: 2 (R-1.1 descriptor extension, 2026-07-20 — see D1_AMENDMENTS)
+ * amendment_version: 3 (W3 L7 demand_ranking.family_rank/rank_rationale, 2026-07-20 — see D1_AMENDMENTS)
  *
  * AMENDMENT PROCEDURE:
  * 1. Add the new OPTIONAL field to CapabilityDescriptor (never remove or rename required fields).
@@ -328,10 +328,30 @@ interface CapabilityDescriptorBase {
    * demoted to tiebreaker)"). `static_salience` is a FALLBACK tiebreaker only —
    * never the primary sort key once bearing-first ordering is wired (a later
    * wave); this field just reserves the shape.
+   *
+   * W3 Lane L7 extension (plan §8 R-2 item 5, amendment_version 3): the two
+   * fields below make the ranking hook *concrete* for a planner / projection
+   * compiler that must order SIBLING capabilities within one family (e.g. the
+   * four `assess_*` domain-judgment tools) before a question is even known —
+   * the static, family-relative priority that `static_salience`'s global 0..1
+   * scalar cannot express. `family_rank` is a 1-based ordinal *within a family*
+   * (rank 1 = surface first among siblings); it is NOT a cross-family score and
+   * two capabilities in different families may both be rank 1. `rank_rationale`
+   * is a short, machine-loggable justification for the assigned rank so the
+   * choice is auditable (B.3 spirit) rather than a bare magic number. Ordering
+   * precedence, once all fields are wired: (1) question-conditioned
+   * `bearing_first`, then (2) `family_rank` ascending, then (3) `static_salience`
+   * descending as the final tiebreaker.
    */
   demand_ranking?: {
     bearing_first?: boolean
     static_salience?: number
+    /** 1-based priority ordinal AMONG SIBLINGS in the same capability family
+     *  (1 = surface first). Family-relative, not a cross-family score. */
+    family_rank?: number
+    /** Short, auditable justification for the assigned `family_rank`
+     *  (why this sibling ranks where it does). */
+    rank_rationale?: string
   }
 
   /**
@@ -591,5 +611,20 @@ export const D1_AMENDMENTS: Array<{
       'calibration_context_only lands the §8.5 F-R7 NO-LEAKAGE flag. TYPE-ONLY this ' +
       'wave — populating these across the ~118-capability estate is a later wave ' +
       '(W2), not this one.',
+  },
+  {
+    version: 3,
+    date: '2026-07-20',
+    field: 'demand_ranking.family_rank, demand_ranking.rank_rationale',
+    description:
+      'Retrieval Plane Elevation W3 Lane L7 — RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md ' +
+      '§8 R-2 item 5 concretization. The W1 (v2) demand_ranking shape only carried ' +
+      'bearing_first (question-conditioned) + static_salience (global 0..1 fallback). ' +
+      'This amendment adds two OPTIONAL sub-fields that make the "order sibling ' +
+      'capabilities within one family" use case expressible: family_rank (1-based ' +
+      'ordinal WITHIN a family, family-relative not cross-family) and rank_rationale ' +
+      '(auditable justification for the rank). Both OPTIONAL, additive; no existing ' +
+      'descriptor requires changes. Populated as a worked example on the L-DOMAIN ' +
+      'assess_* family (assess_wealth/career/health/marriage) in descriptor_defaults.ts.',
   },
 ]
