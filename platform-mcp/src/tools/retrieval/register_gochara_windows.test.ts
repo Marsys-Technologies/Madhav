@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   dominantGraha,
+  derivePlateauDisclosure,
   computeGocharaActivation,
   computeGocharaForecast,
   computeGocharaElectionAvoidance,
@@ -38,9 +39,54 @@ function makeRow(overrides: Partial<GocharaWindowRow> = {}): GocharaWindowRow {
     calibration_state: 'structural_prior',
     source: 'live',
     computed_at: '2026-07-19T00:00:00Z',
+    continuity_state: null,
+    plateau_disclosure: null,
     ...overrides,
   }
 }
+
+describe('derivePlateauDisclosure', () => {
+  it('is null for a point-shaped row (no continuity_state concept applies)', () => {
+    expect(derivePlateauDisclosure(makeRow({ temporal_shape: 'point' }))).toBeNull()
+  })
+
+  it('is null for an interval row with no continuity_state (nothing to disclose)', () => {
+    expect(derivePlateauDisclosure(makeRow({ temporal_shape: 'interval', continuity_state: null }))).toBeNull()
+  })
+
+  it('is null when neither edge is open (a genuinely closed, fully-resolved span)', () => {
+    const row = makeRow({
+      temporal_shape: 'interval',
+      continuity_state: { raw_start: '2010-07-01', raw_end: '2011-03-01', left_active: false, right_active: false },
+    })
+    expect(derivePlateauDisclosure(row)).toBeNull()
+  })
+
+  it('flags window_start_open when left_active — the D-5 native-disposition finding-1 case', () => {
+    const row = makeRow({
+      temporal_shape: 'interval',
+      window_start: '2010-01-01',
+      window_end: '2011-01-01',
+      continuity_state: { raw_start: '2010-01-01', raw_end: '2012-01-01', left_active: true, right_active: true },
+    })
+    const disclosure = derivePlateauDisclosure(row)
+    expect(disclosure).not.toBeNull()
+    expect(disclosure?.window_start_open).toBe(true)
+    expect(disclosure?.window_end_open).toBe(true)
+    expect(disclosure?.note).toContain('2010-01-01')
+    expect(disclosure?.note).toContain('2011-01-01')
+  })
+
+  it('flags only the open edge when the other is genuinely closed', () => {
+    const row = makeRow({
+      temporal_shape: 'interval',
+      continuity_state: { raw_start: '2010-07-01', raw_end: '2011-03-01', left_active: false, right_active: true },
+    })
+    const disclosure = derivePlateauDisclosure(row)
+    expect(disclosure?.window_start_open).toBe(false)
+    expect(disclosure?.window_end_open).toBe(true)
+  })
+})
 
 describe('dominantGraha', () => {
   it('returns null when no systems are active', () => {

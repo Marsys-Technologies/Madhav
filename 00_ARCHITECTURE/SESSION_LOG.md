@@ -32497,3 +32497,117 @@ session_close:
 ```
 
 *End of DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 entry — 2026-07-20.*
+
+## DOCTRINE-WAVES-D-5-CLOSE-2026-07-20 — D-5 "Gochara-Chitra" CLOSED GREEN-WITH-PARTIALS
+
+```yaml
+session_open:
+  session_id: DOCTRINE-WAVES-D-5-CLOSE-2026-07-20
+  cowork_thread_name: "Madhav — D-5 Gochara-Chitra (Conductor: re-entry after accidental close, through final close)"
+  agent_name: claude-sonnet-5
+  predecessor_session: "DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20 — accidental mid-session close, native directed re-entry per protocol §6.2, reconcile-first"
+  role: >
+    Re-entry conductor per CONDUCTOR_PROTOCOL.md §6.2: reconcile ledger vs reality,
+    resume the standing native disposition on gate_run_2 (RED-C in-scope fix, RED-D
+    diagnose-first-against-ephemeris), report-not-fix on any newly-discovered issue
+    per the wave's own "third distinct red halts" instruction, implement the
+    native's own explicit disposition when given, run one final native-authorized
+    §G gate, close.
+  declared_scope:
+    may_touch: "worktrees wave-D-5-fix-redc/redd/plateau-topk + branches wave/D-5/fix-red-c, wave/D-5/fix-red-d, wave/D-5/fix-redd-log-hotpath, wave/D-5/plateau-topk; platform/python-sidecar/services/gochara_grammar, gochara_intensity, ka_gochara_sweep (each **); platform/python-sidecar/tests/test_ka_gochara_sweep.py, test_gochara_grammar.py, test_gochara_intensity.py; platform/migrations/461_kala_gochara_windows_continuity_state.sql; platform-mcp/src/tools/retrieval/register_gochara_windows.ts + .test.ts; platform/scripts/dispatch_d5_redc_redd_rebuild.py; STATE_D-5.md; REPORT_D-5.md; CURRENT_STATE_v1_0.md (banner + last_session_id); SESSION_LOG.md (append)"
+    must_not_touch: "FROZEN orchestrator core (pipeline/orchestrator/asset_runner.py, writers/__init__.py); sealed LEL test split; G-1..G-5's already-merged files from any OTHER lane once merged; DR-17/DR-18 scoring implementation (D-4b's job, not D-5's — this session registers the doctrine, does not implement it)"
+  red_team_due: false
+```
+
+**Body.** Re-entered after an accidental mid-session close. Reconciled ledger vs reality first
+(git branch/worktree/build_runs inventory, not trusted blindly): both fix worktrees
+(`wave-D-5-fix-redc`, `wave-D-5-fix-redd`) had real, non-orphaned progress matching
+STATE_D-5.md's carried findings — RED-C's v4 consolidation design was implemented but
+uncommitted; RED-D was already root-caused and fixed with two commits.
+
+**RED-C — fixed, PR #650 (`86a82ca5`).** While authoring RED-C v4's own test suite (before
+first commit), found a real bug in the design itself: the year-chunk grid shares its
+boundary day as the exact same calendar date between adjacent chunks (not date±1), so the
+consolidation's off-by-one neighbor-lookup would never actually match a real year-boundary
+neighbor in production. Fixed to exact-date adjacency. 27/27 targeted + 3895/23
+(pre-existing unrelated) on the wider suite.
+
+**RED-D — independently re-verified, PR #651 (`d2d9555e`).** Did not trust the prior
+session's commit message: reran the 79-test suite myself, and separately queried
+`swisseph` directly for the real 2013-12-11 sidereal positions (Saturn/Libra since
+2012-08-08, Jupiter/Gemini) to confirm the astronomy claim independent of the fix's own
+code.
+
+**New perf regression found+fixed, PR #663 (`5ceedd75`).** Dispatching the post-merge
+rebuild, the first specimen substep exceeded the 30-min writer budget with zero rows
+committed — diagnosed live as hot-path INFO-level "skipping" diagnostics (RED-D's fix
+correctly reaches more targets, exposing pre-existing per-target logging at
+`ka_gochara_sweep`'s daily-grid scale, >1000 lines/10s observed). Fixed as a log-level-only
+change (14 call sites, INFO→DEBUG), zero behavior change.
+
+**Two further findings reported to the native rather than fixed speculatively** (this
+session's own "third distinct issue" stop condition): the rebuilt live data showed (1)
+`major_gain`'s window landing on chunk boundaries because the true signal is a genuine
+multi-year plateau (not a re-reproduction of RED-C — the cap mechanism itself worked
+correctly), and (2) the marriage specimen still not retrodicting at its true date because
+point-class serving collapses a whole active run to its single global-argmax day, silently
+dropping whatever the true-date mechanism contributes.
+
+**Native disposition (2026-07-20): both ruled serving-honesty defects, in-scope, no
+calibration work, no specimen-aware weighting.** Implemented exactly as specified —
+plateau-disclosure semantics (`register_gochara_windows.ts` derives open-edge flags from
+the already-persisted `continuity_state`) and top-K local-maxima point-class serving
+(`shape_output._local_maxima`, no specimen-tuned knobs). Corrected specimen assertions per
+native instruction: interval-class = OVERLAP, point-class = presence-among-served-peaks
+(not rank-1). DR-17 (Graded Manifestation Acceptance) + DR-18 (Knowledge-Utilization
+Census) registered per native ratification — D-5 implements neither, D-4b's job. PR #665
+(`81a77f26`), one final native-authorized §G re-run.
+
+**Final rebuild (build_run `ccb7f597`) + gate_run_3.** All 3 priority specimens committed
+under a single fresh v6 fingerprint. `major_gain` PASSES the corrected OVERLAP assertion.
+`marriage` STILL FAILS the corrected presence-among-peaks assertion — the mechanism is now
+structurally reachable and the ephemeris configuration independently confirmed real, but
+the live composite signal for this specific chart doesn't crest a second time near the true
+date; root cause undiagnosed. Per the native's own pre-committed disposition for exactly
+this split outcome, D-5 closes **GREEN-WITH-PARTIALS**, not another halt — the marriage
+residual transfers to D-4b's Grand Bakeoff as the named DR-17 type-specimen residual pair,
+explicitly not chased with a further D-5 fix cycle.
+
+```yaml
+session_close:
+  close_criteria_met: true
+  status: CLOSED — GREEN-WITH-PARTIALS; current_wave advances D-5 → D-4b (INCOMING)
+  verification: "RED-C: real adjacency bug found+fixed during test-authoring, 27/27 +
+    3895/23-pre-existing wider suite. RED-D: independently re-verified (re-ran test
+    suite myself + direct swisseph ephemeris cross-check, not trusted from the
+    commit message). Perf regression: found live, fixed, confirmed via re-dispatch
+    (specimens committed in ~15 min vs. a full prior timeout with zero commits).
+    Native-dispositioned plateau-disclosure + top-K local-maxima fixes: 29/29 Python
+    + 9/9 TS non-integration tests, tsc clean. Final gate_run_3: major_gain PASS
+    (direct SQL verification of the same rows the MCP tools serve), marriage FAIL
+    (pre-anticipated outcome per the native's own pre-committed disposition)."
+  deploy: "amjis_web/amjis_mcp/amjis_sidecar/brahma_build_pipeline_job all live-SHA
+    verified at 81a77f263a7d61c2ba2a8c57f5cf7605c35231df (PR #665 merge commit,
+    final deploy this session); rollback pin updated in STATE_D-5.md"
+  product_code_writes_made: "4 PRs merged this session (#650 RED-C, #651 RED-D
+    branch push, #663 perf, #665 native-dispositioned plateau/top-K fixes), all via
+    PR + CI + live-SHA-verified deploy; see STATE_D-5.md for full detail"
+  native_chart_touched: "Abhisek (482012f1) ONLY, scope-limited to ka_gochara_sweep
+    per BIND_D-5 §6 minimal-cascade ruling; Abhinandan never touched"
+  current_state_updated: true
+  register_dispositions_flipped: "gate_run_2 RED-C/RED-D both moved from open to
+    resolved_findings in STATE_D-5.md. DR-17/DR-18 registered (D-4b implementation)."
+  followups: "Marriage specimen residual (chara_karaka vs guru_shani_double_transit,
+    2013) transfers to D-4b's Grand Bakeoff as a named DR-17 type-specimen pair —
+    see REPORT_D-5.md §10. All findings carried from the original halt report §5
+    (Sarvatobhadra classical-grid gap, muhurta_finder re-pointing deferral, 1950
+    birth-anchor inheritance, DR-16 disclosure persistence-scope gap,
+    ka_avadhi.py's stale dasha-system tuple, orchestrator mark_asset_error
+    robustness candidate) remain open, none blocking, none touched this session."
+  next_session_objective: "D-4b 'Calibration Ignition + Grand Bakeoff' — BRIEF_D4B.md
+    is a SKELETON only (lanes B-1..B-6 named in TEMPORAL_ENGINE_ARC_PLAN_v1_0.md
+    §5, prerequisite D-5 gate GREEN now satisfied per GREEN-WITH-PARTIALS). First
+    action: flesh and freeze the brief per its own frontmatter, then Binder pass."
+```
+
+*End of DOCTRINE-WAVES-D-5-CLOSE-2026-07-20 entry — 2026-07-20/21.*
