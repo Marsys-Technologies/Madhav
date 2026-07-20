@@ -1,16 +1,49 @@
 ---
 artifact: DESIGN_KA_GRAHA_SANCARA_WIRING
 canonical_id: DESIGN_KA_GRAHA_SANCARA_WIRING
-version: 1.0
-status: DESIGN — NOT IMPLEMENTED
-wave: W1 Lane L1c (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0 / RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0)
+version: 1.1
+status: IMPLEMENTED — W2 (2026-07-20). See "W2 IMPLEMENTATION NOTE" below; the design
+  text beneath it (§1-5) is retained verbatim as the historical proposal this
+  implementation followed.
+wave: W1 Lane L1c (design) / W2 dark-set wiring lane (implementation, 2026-07-20)
 ---
 
 # DESIGN NOTE — wiring `ka_graha_sancara` (GT-50)
 
-**This is a design proposal only. No wiring is implemented in this wave.** Per the
+## W2 IMPLEMENTATION NOTE (2026-07-20)
+
+**Implemented as designed, with one deferred item.** `POST /api/compute/ephemeris_at_t`
+landed in `routers/ephemeris.py`'s `compute_router` (mounted in `main.py` at
+`/api/compute`) exactly per §3 items 1-3, 5 below — reuses `_position_from_lon`/
+`PLANETS`/`SIGNS`/`NAKSHATRAS` as-is, no second swisseph integration, unrecognized
+`ayanamsha_id` fails loud (422). §3 item 4's TS wrapper change landed in
+`call_service_wrappers.ts` (`callEphemerisAtTCapability.handler`), mirroring
+`callTransitSearchCapability`'s fetch pattern. §3 item 6's test-suite update: the
+existing `d5_l3_capabilities.test.ts` descriptor assertions were left as-is (still
+true — scope/tool_role/etc. didn't change), and a new dedicated real-compute test
+suite was added instead of weakening or replacing that file:
+`platform/python-sidecar/tests/l3/test_ephemeris_at_t_sidecar_route.py` (6 tests,
+direct in-process calls, no mocks) + `platform/src/lib/retrieval/registry/layers/
+L3_kala/__tests__/w2_dark_set_wiring.test.ts` (TS wiring-seam tests, mocked fetch).
+
+**§4's open questions — resolution:** (1) `/ephemeris` was NOT refactored to share a
+route with `/ephemeris_at_t` — a genuinely separate `compute_router`/route was added
+instead (still reusing the same helper functions at the Python level, just not the
+same FastAPI route/request model) — this avoided touching `/ephemeris`'s live natal
+contract at all, a more conservative choice than the design note's "recommend
+shared-helper" framing, made because `/ephemeris`'s current callers were not
+re-audited this pass (the design note's own caveat). (2) `ka_muhurta_seva` WAS
+co-wired in the same W2 pass (see `DARK_SET_WIRING_PLAN_v1_0.md`'s W2 wiring log) —
+as a fully independent new route/service (`muhurta_score.py`), not reusing
+`ephemeris_at_t` as an input (muhurta scoring needs day-grain panchang angas, not
+graha longitudes directly).
+
+---
+
+**Below: the original W1 design proposal, retained verbatim for audit trail.** Per the
 master brief's sequencing ("DESIGNED in W1, wired in W2"), the actual sidecar endpoint
-and TS handler rewrite are out of scope for W1 Lane L1c.
+and TS handler rewrite were out of scope for W1 Lane L1c — that gap is now closed by
+the W2 implementation above.
 
 ## 1. Current state (as of this wave)
 

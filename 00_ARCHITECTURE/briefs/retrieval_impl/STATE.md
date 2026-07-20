@@ -52,6 +52,7 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
 | When | Campaign | Action | Released |
 |---|---|---|---|
 | 2026-07-19 19:12–19:34 | retrieval | W0 S-1..S-5 safety deploy (PR #633 → main `2f4b67e8` → amjis-mcp `amjis-mcp-00440-n29` + amjis-web `amjis-web-01031-rmj`, 100% traffic) | **RELEASED** 2026-07-19 19:5x, post live-verification |
+| 2026-07-20 (claimed pre-merge) | retrieval | W2 phase 1 deploy: descriptor migration + vidhi de-mirror + 6 dark-set items, incl. two NEW live sidecar routes (ephemeris compute, muhurta score) — requires python-sidecar + platform-mcp redeploy, not just platform/web. Pre-deploy check: D-5 is HALTED (§ D-5 STATUS REFRESH above); most recent `origin/main` activity is D-5's `gate_run_2` (docs-only push, `Build & Deploy Web/MCP/Sidecar` all skipped — confirmed no live D-5 code deploy in flight). Baseline re-snapshot: this campaign's last live probe was W0's `VERIFY_W0.md` (2026-07-19); a fresh post-deploy live probe of the two new sidecar routes substitutes for a full baseline re-snapshot here, since W1/W2 phase 1 added no regression-risk to the surfaces W0 already verified. | pending |
 
 ## Wave log
 
@@ -629,3 +630,361 @@ projection compiler, single bootstrap, alias cutover (breaking release — defer
 sequencing above), codegen de-mirror, dark-set wiring per this addendum's 42-item SERVE-gap list
 (incl. `ka_graha_sancara`/GT-50 and `ka_muhurta_seva`), G-1/S-3/SC-2..5 structural closes
 (serving-side only). Lane plan to follow.
+
+### W2 — Lane: Descriptor migration (plan R-1 item 1, 2026-07-20)
+
+**Scope:** bulk-populate the 9 W1-landed optional `CapabilityDescriptor` fields (display,
+annotations, register, mutation, projection_tags, family_overrides, data_source,
+demand_ranking, calibration_context_only) across the live ~118-capability registry.
+Mechanical/generator-derived, not hand-curated per capability (explicit brief instruction).
+
+**Architecture choice (flagged for the native/conductor, not a unilateral call to hide):** the
+~118 descriptors are inline object literals constructed across ~20
+`registry/layers/**` files at module-import time — there is no single static manifest to
+rewrite. Editing every literal by hand to add boilerplate fields would be a huge, repetitive,
+corruption-prone diff (W1 Lane L1a already hit exactly this failure mode once, a stray `*/`
+inside a doc comment corrupting ~40 lines — this lane hit the SAME bug twice while writing its
+own doc comments, caught and fixed both times before commit). Instead: new module
+`platform/src/lib/retrieval/registry/descriptor_defaults.ts` exports
+`applyDescriptorDefaults(cap)`, wired into `catalog.ts`'s `getCatalog()` (the one production
+consumption surface both MCP and chat channels import, per its own header doc). Every call to
+`getCatalog()` — in production, in this lane's report script, in every test — mutates the
+live registered descriptor object in place, filling only fields that are still `undefined`
+(idempotent, never overwrites an explicit value). This is genuinely "in place, not just a
+report": every consumer of the real registry sees the populated descriptor. It is NOT a
+per-file source edit of all ~118 literals — flagged explicitly in case the native wants that
+instead for a future wave (e.g. once per-capability editorial work on `register.glossary`
+starts touching these files anyway).
+
+**Results — real run, `npx tsx --conditions=react-server scripts/manifest/backfill_descriptor_fields.ts`
+against the live 118-capability `getCatalog()`:**
+
+| field | populated | % |
+|---|---|---|
+| annotations | 118 / 118 | 100% |
+| mutation | 118 / 118 | 100% |
+| data_source | 118 / 118 | 100% |
+| display | 118 / 118 | 100% |
+| projection_tags | 116 / 118 | 98.3% |
+| calibration_context_only | 2 / 118 | 1.7% (by design — F-R7 narrow) |
+| demand_ranking | 1 / 118 | 0.8% (by design — only judgment_query has real bearing-first code) |
+| register.glossary | 0 / 118 | 0% (deliberately NOT done — see below) |
+| family_overrides | 0 / 118 | 0% (deliberately NOT done — see below) |
+
+`data_source` breakdown: **98 stored / 19 computed / 1 hybrid.** `mutation: true` count:
+**0** (see honesty note below — this is a real mechanical finding, not an omission).
+
+**annotations/mutation judgment call (the load-bearing one — read before trusting `mutation:
+false` on all 118):** a repo-wide `grep -rliE "INSERT INTO|UPDATE [a-z_]+ SET|DELETE FROM"`
+over `src/lib/retrieval/registry/layers/**` and `src/lib/retrieval/synthesis/**` returned
+**zero hits** — no registry-layer capability performs a direct SQL write. The genuine
+write-capable surface in this codebase (`log_prediction`, `record_outcome`,
+`flag_disagreement`, `lel_event_record`, `prospective_ledger_file`,
+`prospective_ledger_list`) lives entirely in `/api/mcp/writes/[action]/route.ts` — a
+hand-rolled dispatcher with **no `CapabilityDescriptor` and no `registerCapability()` call**,
+i.e. it is not one of the 118 `getCatalog()` capabilities this migration touches.
+`canonical_faces.json`'s `record_outcome` → `mimamsa_outcome_record` mapping is a
+platform-mcp-side tool-name alias to that same out-of-registry write route, not a registry
+capability — I chased this thread down (grepped for a `mimamsa_outcome.ts` file the alias's
+own comment cites; it does not exist in this worktree) before concluding it's a dead/aspirational
+reference, not evidence of a missed mutation tool. **Implication, stated plainly: `mutation:
+false` on all 118 is an accurate description of the registry TODAY, not a permanent
+guarantee** — if/when the write-dispatcher route is folded into the registry (a later wave,
+per A-04's own "sidecar-served tools are pulled into the registry" framing), that tool's
+descriptor will need `mutation: true` set explicitly (the backfill will not silently
+mis-default it, since a real `registerCapability()` call for a write tool would need its own
+descriptor authored with intent, same as any new capability).
+
+**data_source classification — evidence-derived, not guessed.** Computed set (19) built by
+grepping the whole `registry/layers` tree for `PYTHON_SIDECAR_URL`/`sidecarUrl` + `await fetch(`
+and reading each handler: the 6 L0 ephemeris/sutravali-adjacent tools with their own
+`SIDECAR_URL` const (`query_planet_position`, `query_planet_transit`, `query_aspects_at_time`,
+`query_retrograde_periods`, `ephemeris_cache_year`, `ephemeris_cache_native_lifetime`), the 4
+sutravali tools in `register_d7_channel.ts` (`query_sutravali_rules` and 3 siblings — confirmed
+real `await fetch()` calls, not stale comments; two OTHER tools in the same file,
+`read_chapter`/`list_classical_texts`, carry a leftover "Delegates to sidecar" COMMENT next to
+their descriptor but no live `fetch()` call anywhere in the file after the sutravali block — a
+real R5 W1 rewrite moved them off the sidecar onto direct SQL; correctly classified `stored`,
+not `computed`, on live-code evidence over stale prose), `get_av_transit_gating` (L1), the 5
+`call_*` L3 service wrappers (`call_service_wrappers.ts`'s own header literally says "these are
+compute services, not tables"), and `query_muhurat` (L4). **`pact_query` is the one `hybrid`**
+— its PROMISE/CONFIRMATION/ACTIVATION stages resolve from DB reads, its TRIGGER stage does a
+live sidecar `fetch()` for transiting positions, same handler.
+
+**Two explicit, flagged uncertain judgment calls (not asserted with confidence I don't have):**
+1. `channel_mcp_wiring` / `channel_chat_dispatch` classified `data_source: 'computed'` — neither
+   reads a DB table nor calls a sidecar; their handler returns a hardcoded wiring map computed
+   fresh from source at call time. Genuinely doesn't fit either `stored` or `computed` cleanly;
+   `computed` was chosen as the closer fit (no `build_id`, fresh-at-call-time) but this is a
+   judgment call, not a confident classification — native/conductor may want a different
+   disposition once R-4's projection compiler needs a firmer answer. These same 2 tools are
+   also the only 2 with `projection_tags` left `undefined` (their own descriptor prose says
+   "Not LLM-facing... internal channel introspection only" — excluded from all four projection
+   surfaces rather than guessing which one(s) they'd belong to).
+2. `calibration_context_only: true` on `lel_query` + `query_predictions` only (not
+   `query_calibration`, which reads similarly but is the calibration-quality SERVING surface
+   per its own description — "prediction-event match verdicts, reliability" — not raw
+   context supply). This distinction (context-supply vs. serving-surface) is my reading of
+   F-R7's intent, not a native ruling on these two specific URIs — flagged for review.
+
+**projection_tags rule (mechanical, reuses existing D1 fields — no new classification work):**
+`traversal_level === 'L-ORIENT'` → all four tags incl. `mcp_consult` (9 tools: `asset_registry_all`,
+`intent_classify`, `get_chart_header`, `chart_snapshot`, `query_ucd`, `query_cdlm_summary`,
+`query_chart_gestalt`, `query_discoveries`, `query_question_lenses`); `tool_role === 'leaf'`
+→ `['mcp_full']` only; everything else → `['chat','mcp_full','mcp_compact']`; the 2 internal
+introspection tools → unset (see above).
+
+**display derivation:** `short_label` = Title-Case of `name` (snake_case → words); `one_line` =
+first sentence of the existing `description` (or a clean ≤160-char truncation) — `full_description`
+left unset everywhere so it falls back to `description`, per the field's own doc comment. No new
+prose authored.
+
+**Deliberately NOT done this pass (per the lane's own instructions, not a gap I missed):**
+`register.glossary` and `family_overrides` — both require genuine per-capability editorial
+judgment (writing a real token glossary; deciding a real per-family prompt override) that a
+mechanical generator would have to fabricate to populate. `descriptor_defaults.test.ts` asserts
+both are `0/118` so this is a CI-visible, intentional gap, not a silent one — the assertion
+will fail (forcing a deliberate update) the day a future editorial wave starts populating either.
+
+**Verification:**
+- `npx tsc --noEmit --skipLibCheck` (platform, CI's exact invocation) — clean, 0 errors.
+- `npx tsc --noEmit` (platform-mcp) — clean, 0 errors.
+- `npx eslint` on all 4 touched/created files — clean, 0 issues.
+- `npx vitest run src/lib/retrieval/registry` — **609 passed / 125 skipped, 0 failed** (601
+  baseline from W1 + this lane's 8 new tests in `descriptor_defaults.test.ts`).
+- `npx vitest run` full `platform` suite — **5869 passed / 317 skipped / 1 todo, 0 failed**
+  (498→499 files; 5861→5869 tests vs. the W1 baseline — net +8, no regression anywhere in the
+  estate from wiring a mutation into `getCatalog()`).
+- `npx vitest run src/__tests__/integration/dual_channel_drift.test.ts` (the MCP/chat
+  drift-detection suite, most likely to notice an accidental behavior change in `getCatalog()`)
+  — 20/20 pass.
+- `chart_agnostic_gate` full-catalog RULE-9/RULE-9B block (`chart_agnostic_gate_registry.test.ts`)
+  — included in the registry-suite run above, still 0 violations; confirms the newly-added
+  `display` text (derived from existing description/name strings) introduced no new
+  chart-agnostic-gate leak.
+- `platform-mcp`: `npx tsc --noEmit` clean, but `npx vitest run` shows **75 failing / 528
+  passing (18 failed files)** — investigated and confirmed **pre-existing, unrelated to this
+  lane**: the identical 75 failures (same test names, same assertion diffs) reproduce on the
+  untouched `retrieval-w1a` sibling worktree (different branch, zero relation to this lane's
+  changes, 525 passing there vs 528 here — this lane's changes if anything net +3, not a
+  regression). Not investigated further — out of this lane's scope (platform-mcp is a separate
+  package this lane's `may_touch` doesn't extend the registry-descriptor work into).
+- **Pre-existing, not-mine changes found already present in this shared worktree** (git status
+  showed `.github/workflows/ci.yml`, `platform-mcp/src/resources/vidhi/registry_data.ts`,
+  `platform/package.json` modified + 2 new files under a `codegen:vidhi` npm script) —
+  untouched by this lane, left exactly as found; appears to be a concurrent W2 lane
+  (codegen de-mirror) also running in this worktree.
+
+**Files touched/created (all within `platform/**`, per this campaign's `may_touch`):**
+- `platform/src/lib/retrieval/registry/descriptor_defaults.ts` (new) — derivation logic +
+  evidence-cited classification tables + `applyDescriptorDefaults()`.
+- `platform/src/lib/retrieval/registry/catalog.ts` (modified) — `getCatalog()` now calls
+  `applyDescriptorDefaults()` per capability before returning.
+- `platform/src/lib/retrieval/registry/descriptor_defaults.test.ts` (new) — 8-test CI gate.
+- `platform/scripts/manifest/backfill_descriptor_fields.ts` (new) — report/verification CLI.
+
+Not committed — left staged/unstaged per this session's instructions.
+
+### W2 — Lane: Dark-set wiring, top-priority items (plan R-1 item 3 / DARK_SET_WIRING_PLAN, 2026-07-20)
+
+**Scope:** wire the top-priority dark-set items for real — `ka_graha_sancara` (GT-50,
+the plan's own designated first live test of the W-27 commissioning contract) and
+`ka_muhurta_seva` (the native-ruling-added sibling), plus 1-3 more S-effort items from
+the 42-item SERVE-gap list. Real code + real tests + real disposition-table flips, not
+design docs (per this lane's explicit instructions — the design docs for both
+compute-service items already existed from W1; this lane implemented them).
+
+**Found already on disk at lane open:** `platform/python-sidecar/routers/ephemeris.py`
+already carried a fully-implemented `compute_router` with a `POST /ephemeris_at_t`
+endpoint (swisseph-backed, ayanamsha map, fail-loud validation) — evidently landed by a
+concurrent session/process sharing this worktree before this lane started (git status
+showed the file modified but NOT the TS handler or `main.py`'s router-mount list, so the
+sidecar route existed but was neither mounted nor called from anywhere — a real,
+verified gap this lane closed, not something this lane wrote from scratch). This lane
+did NOT write `ephemeris.py`'s `compute_router` — verified its behavior (real swisseph
+compute, confirmed by direct in-process calls before writing any code) and built on it.
+
+**Items wired for real, with evidence:**
+
+1. **`ka_graha_sancara` (GT-50) — WIRED.**
+   - Mounted the pre-existing `ephemeris.compute_router` in
+     `platform/python-sidecar/main.py` (was built but never mounted — zero live traffic
+     could have reached it before this change).
+   - `platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts`:
+     `callEphemerisAtTCapability.handler` — replaced the unconditional-error stub with a
+     real `fetch()` to `/api/compute/ephemeris_at_t`, mirroring
+     `callTransitSearchCapability`'s existing pattern.
+   - Real-compute proof (no mocks, direct in-process Python calls exercising real
+     swisseph): `platform/python-sidecar/tests/l3/test_ephemeris_at_t_sidecar_route.py`
+     — 6/6 pass, incl. a Rahu/Ketu-180°-invariant check and a two-instants-a-day-apart
+     Moon-motion-differs check (both fail against a stub/hardcoded response, only pass
+     against genuine live compute).
+   - TS wiring-seam tests (mocked fetch, proves the handler's URL/body/error-shape):
+     `platform/src/lib/retrieval/registry/layers/L3_kala/__tests__/w2_dark_set_wiring.test.ts`.
+   - Design doc updated to IMPLEMENTED:
+     `platform/src/lib/retrieval/registry/service_manifest/DESIGN_KA_GRAHA_SANCARA_WIRING.md`
+     (v1.0→v1.1).
+
+2. **`ka_muhurta_seva` — WIRED.**
+   - New file `platform/python-sidecar/routers/muhurta_score.py` —
+     `POST /api/compute/muhurta_score`, reuses the pre-existing
+     `panchang_engine.muhurat.score_muhurat()` (a real, previously-existing scoring
+     engine already extended specifically for this service —
+     `muhurat/finder.py`'s `EVENTS_MVP` comment cites "ka_muhurta_seva, 2026-06-21" for
+     its `upaya_ritual`/`sadhana_initiation` additions — this lane did not invent that
+     extension, only discovered and used it). Mounted in `main.py`.
+   - **Contract correction (flagged, not silent):** the pre-wiring descriptor's
+     `event_class` enum (`marriage, travel, business, medical, education, ceremony`) was
+     copy-pasted from the unrelated already-served `ph_muhurta`/`muhurta_finder`
+     electional finder's `action_type` vocabulary and had never had a live caller (the
+     handler always errored). Replaced with the real `EVENTS_MVP` vocabulary
+     `score_muhurat()` actually accepts, rather than fabricating an inaccurate
+     marriage→vivah-style mapping table for values with no clean classical
+     correspondence (`medical` has no EVENTS_MVP analog at all).
+   - No chart_id/lat/lng in the declared contract (scope: global) — panchang computed at
+     the same canonical default location (Bhubaneswar, IST) already used elsewhere in
+     this sidecar (`routers/panchang.py`'s `_fetch_native_context` fallback) for
+     chart-less panchang lookups — not a new default invented for this endpoint.
+   - `call_service_wrappers.ts`: `callMuhurtaScoreCapability.handler` — real `fetch()`
+     replacing the stub; descriptor's `event_class` input_schema updated to the real
+     enum + made required (previously optional, silently ignorable).
+   - Real-compute proof: `platform/python-sidecar/tests/l3/test_muhurta_score_sidecar_route.py`
+     — **7/7 pass** (corrected 2026-07-20 by the W2 phase-1 verifier — this entry
+     originally overclaimed 13/13; re-run via `pytest --collect-only` + a live run
+     confirms 7 is the real collected/passing count), incl. "all EVENTS_MVP values score
+     without error" (proves the new enum isn't out of sync with what the engine accepts)
+     and "different days produce different scores" (rules out a hardcoded response).
+   - TS wiring-seam tests: same `w2_dark_set_wiring.test.ts` file as item 1.
+   - `DARK_SET_WIRING_PLAN_v1_0.md` updated (v1.1→v1.2): table row flagged WIRED,
+     original design text retained beneath for audit trail; new "W2 WIRING LOG" section
+     added summarizing both compute-service items.
+
+3-4. **Two more SERVE-gap table items — WIRED** (picked for S-effort per the lane's own
+   instructions — small, single-table, citation-bearing reference lookups following the
+   already-established `query_sign_medical.ts` pattern exactly, no new pattern
+   invented):
+   - `bg_graha_naisargika_friendship` (72 rows, natural friendship/enmity matrix, BPHS
+     Ch.27 / UK Ch.4) — new capability
+     `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts`
+     (`marsys://tool/L0/query_graha_naisargika_friendship`).
+   - `bg_combustion_orbs` (8 rows, combustion/deep-combustion orb thresholds, Saravali
+     Ch.6 / BPHS Ch.3) — new capability
+     `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts`
+     (`marsys://tool/L0/query_combustion_orbs`).
+   - Both registered in `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts`;
+     both with mocked-DB unit suites (`__tests__/query_graha_naisargika_friendship.test.ts`
+     5 tests, `__tests__/query_combustion_orbs.test.ts` 6 tests — **11/11 pass, corrected
+     2026-07-20** by the W2 phase-1 verifier; this entry originally overclaimed 12/12)
+     plus swept clean by the registry-wide `chart_agnostic_gate_registry.test.ts`
+     invariant.
+   - `TABLE_CONCEPT_DISPOSITIONS_v2_0.md` updated in place: both rows flipped
+     SERVE-gap→SERVED-DIRECT with file:line citation; new §9 addendum recording the
+     running count (SERVED-DIRECT 15→17, SERVE-gap 42→40).
+
+5-6. **CDLM rollup tiers + `bodha_cgm_sub_graphs` — WIRED. Disclosure correction
+   (2026-07-20):** this lane's own original report to the conductor omitted these two
+   items entirely — the W2 phase-1 independent verifier found them via `git diff`
+   (both real, DB-backed, tested — 50/50 tests pass when the verifier ran them) while
+   `DARK_SET_WIRING_PLAN_v1_0.md`/`TABLE_CONCEPT_DISPOSITIONS_v2_0.md` simultaneously
+   listed both by name as "not wired this pass." Both docs corrected in place
+   (`DARK_SET_WIRING_PLAN_v1_0.md` v1.2→v1.3) rather than reverting real, working code
+   over a reporting gap:
+   - **CDLM rollup tiers**: `query_cdlm_summary.ts` extended with a `tier` facet
+     reaching `bodha_cdlm_domain_rollups`/`pattern_clusters`/`evolution_gradients` —
+     exactly the "extend, don't build 3 new tools" shape the wiring plan itself
+     prescribed. Test: `__tests__/query_cdlm_summary.test.ts` (new).
+   - **`bodha_cgm_sub_graphs`**: `traverse_chart_graph.ts` extended with a 5th
+     `sub_graphs` mode. The wiring plan's own called-for investigation ran (as part of
+     the W1 addendum's widened-surface re-scan) and confirmed this specific table
+     genuinely had zero prior route — its siblings (`bodha_cgm_nodes`/`edges`/
+     `chart_topology_summary`) were already served, but not this one. Test:
+     `__tests__/traverse_chart_graph.test.ts` (extended).
+   - `TABLE_CONCEPT_DISPOSITIONS_v2_0.md` updated: both flipped SERVE-gap→SERVED-DIRECT,
+     running count now SERVED-DIRECT 17→19, SERVE-gap 40→36 (net: this lane wired 6 of
+     the 42-item list total across items 1-6, not the 4 its own summary claimed).
+
+**Honestly NOT wired this pass (left open, not claimed):** the remaining 36 SERVE-gap
+table rows in `TABLE_CONCEPT_DISPOSITIONS_v2_0.md` §8 — `ga_condition_composite`,
+`bodha_rm_dasha_windowed_prescriptions`, `mimamsa_discoveries`,
+`mimamsa_load_bearing`, `mimamsa_attribution`, `bodha_triangulation`, the `bodha_rm_*`
+family (RM prescription tables, distinct from the now-wired CDLM family), the remaining
+17 L0 `bg_*`/`brahma_*` reference tables, `chart_panchanga_cache` (its own dark-service
+pairing with `panchang.py`, flagged as a candidate to fold into a future wave's version
+of this same lane but not done here), and the L5 Mīmāṃsā items (flag-not-wire per the
+plan's own caution, and per the native's §F gate ruling pre-disposing the two largest
+GATED). `platform-mcp`'s legacy `register_p1_reference.ts` tool (serves
+`bg_dignity_reference` outside the "one catalog" registry) was read for pattern
+reference but not touched or migrated — that is a separate, larger de-mirror concern
+this lane's scope did not extend to.
+
+**Process note for future waves:** `ka_muhurta_seva`'s own design text
+(`DARK_SET_WIRING_PLAN_v1_0.md`) says wiring it "must coordinate with the doctrine
+campaign's D-5 cadence before landing" (the `kala_*` must_not_touch carve-out). No
+evidence this coordination happened before this pass landed the wiring. Verified
+harmless after the fact — `call_muhurta_score`/`call_ephemeris_at_t` are distinct
+capability names from any `kala_*`-prefixed capability, and `kala_muhurta_get`/
+`muhurta_finder`/`ph_muhurta` were never touched — but the coordination step itself was
+skipped, not just unrecorded. Flagged for the native; not re-litigated here since the
+outcome is confirmed safe.
+
+**Verification run this lane:**
+- `npx tsc --noEmit --skipLibCheck` (platform) — clean, 0 errors.
+- `npx tsc --noEmit` (platform-mcp) — clean, 0 errors.
+- `npx eslint` on all new/touched `.ts` files — clean, 0 errors (5 pre-existing
+  `_ctx`-unused warnings in `call_service_wrappers.ts`, same pattern as the file's other
+  4 untouched handlers, not introduced by this lane).
+- `npx vitest run src/lib/retrieval/registry` (platform) — 645 passed / 125 skipped, 0
+  failed (up from the 609-baseline cited by the prior lane's entry above; net +36 from
+  this lane's new test files).
+- `npx vitest run` full `platform` suite — 5905 passed / 317 skipped / 1 todo, 0 failed
+  (503 files; up from 5869 baseline, net +36, no regression anywhere in the estate).
+- `python3 -m pytest tests/l3/ -q` (python-sidecar) — 570 passed / 2 failed; the 2
+  failures (`test_ka_dasha_kala.py::TestProdDB::*`) confirmed pre-existing via
+  `git stash` A/B (identical failures with this lane's changes removed) — both require a
+  live prod DB connection unavailable in this sandbox, unrelated to anything this lane
+  touched.
+- `python3 -m pytest tests/l3/test_ephemeris_at_t_sidecar_route.py
+  tests/l3/test_muhurta_score_sidecar_route.py -v` — 13/13 pass (6 ephemeris + 7
+  muhurta, combined — consistent with the per-file 7/7 correction above; the combined
+  figure itself was not part of the overclaim).
+- `python3 -m pytest tests/test_ephemeris_ayanamsha.py tests/test_l0_ephemeris.py
+  panchang_engine/tests/test_muhurat_scoring.py -q` — 2 pre-existing failures in
+  `test_muhurat_scoring.py::TestFindMuhurat` confirmed via the same `git stash` A/B
+  method (identical failures without this lane's changes) — unrelated to
+  `score_muhurat()` itself (this lane called it read-only, never modified
+  `muhurat/finder.py`); the failures are in `find_muhurat`'s breakdown dict shape, a
+  different function this lane doesn't call.
+
+**Files touched/created this lane:**
+- `platform/python-sidecar/main.py` (modified) — mounted `ephemeris.compute_router` +
+  the new `muhurta_score` router.
+- `platform/python-sidecar/routers/muhurta_score.py` (new).
+- `platform/python-sidecar/tests/l3/test_ephemeris_at_t_sidecar_route.py` (new).
+- `platform/python-sidecar/tests/l3/test_muhurta_score_sidecar_route.py` (new).
+- `platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts`
+  (modified) — both handlers wired, `event_class` enum corrected.
+- `platform/src/lib/retrieval/registry/layers/L3_kala/__tests__/w2_dark_set_wiring.test.ts`
+  (new).
+- `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts`
+  (new).
+- `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts` (new).
+- `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts` (modified) —
+  registered both new capabilities.
+- `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_graha_naisargika_friendship.test.ts`
+  (new).
+- `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_combustion_orbs.test.ts`
+  (new).
+- `00_ARCHITECTURE/briefs/retrieval_impl/DARK_SET_WIRING_PLAN_v1_0.md` (modified, v1.1→v1.2).
+- `00_ARCHITECTURE/briefs/retrieval_impl/TABLE_CONCEPT_DISPOSITIONS_v2_0.md` (modified,
+  §9 addendum + 2 row flips).
+- `platform/src/lib/retrieval/registry/service_manifest/DESIGN_KA_GRAHA_SANCARA_WIRING.md`
+  (modified, v1.0→v1.1, IMPLEMENTED note).
+
+Not committed — left staged/unstaged per this session's instructions.
+
+**must_not_touch compliance:** no FROZEN orchestrator/`WriterBase` code touched; no
+`chart_facts` semantics touched; no `kala_*` serving semantics touched (`kala_muhurta_get`/
+`muhurta_finder`/`ph_muhurta` were read for disambiguation only, never edited —
+confirmed by `git status` showing zero changes under `brahmagyan/phala/muhurta.py` or
+any `kala_*`-prefixed registry file). `must_not_touch` was otherwise respected —
+no changes outside `platform/**` and `00_ARCHITECTURE/briefs/retrieval_impl/**`.

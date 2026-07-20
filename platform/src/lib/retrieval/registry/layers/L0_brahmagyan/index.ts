@@ -29,6 +29,11 @@ import { ephemerisCacheYearCapability } from './ephemeris_cache_year'
 import { ephemerisCacheNativeLifetimeCapability } from './ephemeris_cache_native_lifetime'
 // W4-loop-1 (E-6): rāśi→medical reference (bg_sign_medical)
 import { querySignMedicalCapability } from './query_sign_medical'
+// W2 dark-set wiring: naisargika friendship + combustion-orb reference tables
+// (TABLE_CONCEPT_DISPOSITIONS_v2_0.md SERVE-gap set, same migration file as the
+// already-served-elsewhere bg_dignity_reference)
+import { queryGrahaNaisargikaFriendshipCapability } from './query_graha_naisargika_friendship'
+import { queryCombustionOrbsCapability } from './query_combustion_orbs'
 
 export const L0_CAPABILITIES = [
   // Stream A: foundation + ontology
@@ -51,6 +56,9 @@ export const L0_CAPABILITIES = [
   ephemerisCacheNativeLifetimeCapability,
   // W4-loop-1 (E-6): rāśi→medical reference
   querySignMedicalCapability,
+  // W2 dark-set wiring: naisargika friendship + combustion-orb reference
+  queryGrahaNaisargikaFriendshipCapability,
+  queryCombustionOrbsCapability,
 ] as const
 
 export function registerL0Capabilities(): void {
@@ -87,4 +95,7 @@ export {
   queryRetrogradePeriodsCapability,
   ephemerisCacheYearCapability,
   ephemerisCacheNativeLifetimeCapability,
+  querySignMedicalCapability,
+  queryGrahaNaisargikaFriendshipCapability,
+  queryCombustionOrbsCapability,
 }

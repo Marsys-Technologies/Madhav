@@ -196,10 +196,10 @@ RETIRED reason; or "no route found anywhere — genuine SERVE gap, W2 dark-set i
 | Table | Rows | Disposition | Evidence |
 |---|---:|---|---|
 | `bg_avastha_schemes` | 35 | **SERVE gap** | Real classical reference table (5 avastha schemes, `determination_rule`, `classical_citation` columns — `platform/migrations/250_bg_dignity_reference.sql:239-256`), same migration file as the now-served `bg_dignity_reference`. `ganita_condition_get`'s `avasthas` facet (`get_avasthas.ts:59-68`) reads COMPUTED avastha-per-planet from `chart_facts`, not this reference/rules table — the rules/citations content itself is unserved. Zero references anywhere in `register_p1_reference.ts` (the file that DOES serve its sibling `bg_dignity_reference`). |
-| `bg_combustion_orbs` | 8 | **SERVE gap** | Same migration file as `bg_dignity_reference`; real classical content (combustion + deep-combustion orb thresholds per graha, `BPHS`/`JP`/`PD`/`UK`/`SS` citations). Zero serving route found anywhere. |
+| `bg_combustion_orbs` | 8 | **SERVED-DIRECT (W2 wired)** | Same migration file as `bg_dignity_reference`; real classical content (combustion + deep-combustion orb thresholds per graha, `BPHS`/`JP`/`PD`/`UK`/`SS` citations). Wired this W2 dark-set wiring pass: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts` (new capability, `marsys://tool/L0/query_combustion_orbs`), registered `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts`. Test: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_combustion_orbs.test.ts` (6/6 pass). |
 | `bg_dignity_reference` | 9 | **SERVED-DIRECT** (carried from v1) | `platform-mcp/src/tools/register_p1_reference.ts:290` (`FROM bg_dignity_reference`) — `ref_dignity_reference_get` |
 | `bg_graha_dik` | 9 | **SERVE gap** | Dig-bala (directional strength) reference table, own migration (`304_bg_graha_dik.sql`). Zero hits anywhere, including python-sidecar routers. |
-| `bg_graha_naisargika_friendship` | 72 | **SERVE gap** | Natural friendship/enmity matrix, real classical content with `classical_citation` column (`250_bg_dignity_reference.sql:134-143`). Zero serving route. |
+| `bg_graha_naisargika_friendship` | 72 | **SERVED-DIRECT (W2 wired)** | Natural friendship/enmity matrix, real classical content with `classical_citation` column (`250_bg_dignity_reference.sql:134-143`). Wired this W2 dark-set wiring pass: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts` (new capability, `marsys://tool/L0/query_graha_naisargika_friendship`), registered `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts`. Test: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_graha_naisargika_friendship.test.ts` (6/6 pass). |
 | `bg_medical_mappings` | 21 | **SERVE gap** | Own migration (`276_bg_medical_mappings.sql`); real reference content (planet↔body-part/ailment mappings per classical medical astrology). Zero serving route. |
 | `bg_motion_state_thresholds` | 27 | **SERVE gap** | Same migration file as `bg_dignity_reference`; retrograde/direct/stationary speed thresholds per graha, cited. Zero serving route. |
 | `bg_nakshatra_medical` | 27 | **SERVE gap** | Own migration (`277_bg_nakshatra_medical.sql`). Zero serving route. |
@@ -340,10 +340,65 @@ Lower-confidence / judgment-call (flag for W2 triage, not auto-wire): `brahma_cl
 
 ---
 
-*End of TABLE_CONCEPT_DISPOSITIONS v2.0. Predecessor `TABLE_CONCEPT_DISPOSITIONS_v1_0.md`
-retained in place as historical record per governance hygiene policy — its DARK/
-INTERNAL-BY-DESIGN/NEEDS-OWNER labels are superseded here, not deleted. Source evidence:
-`platform/src/generated/harvest/adjudication_queue.json` (L1b, table list + row counts),
-`platform/src/generated/harvest/widened_surface_rescan.json` (this addendum's mechanical
-hit-detection layer), plus hand-verified migration DDL / writer source citations inline above
-for every disposition this document assigns.*
+## 9. W2 addendum (2026-07-20) — first two SERVE-gap flips, real wiring
+
+W2's dark-set wiring lane picked its top-2 S-effort candidates from §8 and wired them for
+real this pass (see `DARK_SET_WIRING_PLAN_v1_0.md`'s W2 wiring log for the fuller picture,
+including the two compute-service items `ka_graha_sancara`/`ka_muhurta_seva`, which are not
+rows in this table — they're compute services, not DB tables, and were always tracked in
+`DARK_SET_WIRING_PLAN_v1_0.md` instead of here):
+
+- **`bg_combustion_orbs`** (row above, §4) flipped **SERVE gap → SERVED-DIRECT**.
+- **`bg_graha_naisargika_friendship`** (row above, §2) flipped **SERVE gap → SERVED-DIRECT**.
+
+Both wired as new `CapabilityDescriptor`s in `platform/src/lib/retrieval/registry/layers/
+L0_brahmagyan/` (`query_combustion_orbs.ts`, `query_graha_naisargika_friendship.ts`),
+registered in that layer's `index.ts`, each with a dedicated mocked-DB unit test suite (6
+tests each, all passing) plus swept by the registry-wide `chart_agnostic_gate_registry.test.ts`
+invariant. Both follow the existing `query_sign_medical.ts` single-table reference-lookup
+pattern exactly (no new pattern introduced).
+
+**Running §7 table count after this addendum: SERVED-DIRECT 17 (was 15) / genuine SERVE-gap
+40 (was 42).** The other 40 SERVE-gap rows in §8 are unchanged and remain open — this pass
+did not attempt the higher-effort items (`ga_condition_composite`, the `bodha_*` items, the
+remaining 17 L0 `bg_*`/`brahma_*` reference tables, the `mimamsa_*` research-value items).
+See `DARK_SET_WIRING_PLAN_v1_0.md` for the honest still-open list.
+
+## 10. W2 addendum, part 2 (2026-07-20) — disclosure correction: 3 more flips
+
+The same W2 dark-set wiring lane also wired `bodha_cdlm_domain_rollups`,
+`bodha_cdlm_pattern_clusters`, `bodha_cdlm_evolution_gradients`, and `bodha_cgm_sub_graphs` —
+but its own report to the conductor never mentioned these four, and this document (§2/§4 above)
+simultaneously still listed `bodha_cgm_sub_graphs` as a confirmed genuine gap with no note that
+it had been closed. The W2 phase-1 independent verifier caught the discrepancy via `git diff`
+(all four real, DB-backed, tested — 50/50 relevant tests pass under independent re-run).
+Corrected here rather than left standing:
+
+- **`bodha_cdlm_domain_rollups`** (§4/line 238) flipped **SERVE gap → SERVED-DIRECT** — via
+  `query_cdlm_summary.ts`'s new `tier` facet. `platform/src/lib/retrieval/registry/layers/
+  L2_bodha/query_cdlm_summary.ts`.
+- **`bodha_cdlm_pattern_clusters`** (§4/line 240) flipped **SERVE gap → SERVED-DIRECT** — same
+  facet, same file.
+- **`bodha_cdlm_evolution_gradients`** (§4/line 239) flipped **SERVE gap → SERVED-DIRECT** — same
+  facet, same file. (0 rows on the live chart today — served, but currently empty; the tool
+  reports this honestly via its existing empty-state discipline, not a new gap.)
+- **`bodha_cgm_sub_graphs`** (§2/§4, the "refutes the native's expectation" row above) flipped
+  **SERVE gap → SERVED-DIRECT** — via `traverse_chart_graph.ts`'s new `sub_graphs` mode. The §2
+  finding that it was genuinely un-served (not a false-dark, unlike its 3 siblings) still stands
+  as the correct evidence-based READ at the time it was written — it has since been closed by
+  real wiring, not retroactively reclassified as having been wrong.
+
+**Running §7 table count after this correction: SERVED-DIRECT 19 (was 17) / genuine SERVE-gap
+36 (was 40).** §8's "high-value" list should be read with these four struck through — they are
+no longer open items.
+
+---
+
+*End of TABLE_CONCEPT_DISPOSITIONS v2.0 (+ W2 addenda §9-10). Predecessor
+`TABLE_CONCEPT_DISPOSITIONS_v1_0.md` retained in place as historical record per governance
+hygiene policy — its DARK/INTERNAL-BY-DESIGN/NEEDS-OWNER labels are superseded here, not
+deleted. Source evidence: `platform/src/generated/harvest/adjudication_queue.json` (L1b, table
+list + row counts), `platform/src/generated/harvest/widened_surface_rescan.json` (this
+addendum's mechanical hit-detection layer), plus hand-verified migration DDL / writer source
+citations inline above for every disposition this document assigns. §9's two flips are hand-
+verified against real landed code (file:line + passing test run), not regenerated.*

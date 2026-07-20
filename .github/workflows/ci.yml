@@ -367,6 +367,11 @@ jobs:
       - name: envelope codegen parity test (platform-mcp) — GT-9
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/r5_codegen_parity.test.ts
+      - name: vidhi registry codegen drift check (platform) — GT-56
+        run: npm run codegen:vidhi:check
+      - name: vidhi registry codegen parity test (platform-mcp) — GT-56
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/vidhi_codegen_parity.test.ts
 
   census-battery:
     # D-2 Lane V-0 (BRIEF_D2.md §F1 Lane V-0 / BIND_D-2.md §F1.7 ledger rows 1-5). Runs the

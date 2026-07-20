@@ -102,6 +102,14 @@ describe('traverse_chart_graph — D4 capability descriptor', () => {
     )
   })
 
+  it('supports the W2 sub_graphs mode (bodha_cgm_sub_graphs dark-set wiring)', () => {
+    const modeSchema = traverseChartGraphCapability.input_schema?.['mode']
+    expect((modeSchema as unknown as Record<string, unknown>)?.['enum']).toEqual(
+      expect.arrayContaining(['sub_graphs'])
+    )
+    expect(traverseChartGraphCapability.input_schema?.['subgraph_type']).toBeDefined()
+  })
+
   it('does NOT reference the old bodha_graph table (pre-mig 325 schema)', () => {
     const descStr = traverseChartGraphCapability.description
     const nameStr = traverseChartGraphCapability.name
@@ -180,6 +188,81 @@ describe('traverse_chart_graph — handler contract', () => {
     const content = result.content as Record<string, unknown>
     expect(content['hub_nodes']).toEqual([])
     expect(content['hub_count']).toBe(0)
+  })
+
+  it('sub_graphs mode: empty DB → empty sub_graphs array, not error', async () => {
+    vi.mocked(mockQuery).mockResolvedValue({ rows: [] } as never)
+
+    const result = await traverseChartGraphCapability.handler(
+      { chart_id: CHART_A, mode: 'sub_graphs' },
+      undefined
+    )
+
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    expect(content['chart_id']).toBe(CHART_A)
+    expect(content['sub_graphs']).toEqual([])
+    expect(content['sub_graph_count']).toBe(0)
+    expect(content['member_nodes']).toEqual([])
+  })
+
+  it('sub_graphs mode: populated DB → resolves member_nodes from node_ids_array', async () => {
+    vi.mocked(mockQuery).mockReset()
+    // First call: the bodha_cgm_sub_graphs SELECT
+    vi.mocked(mockQuery).mockResolvedValueOnce({
+      rows: [
+        {
+          subgraph_id: 'sg-1',
+          ayanamsha_id: 'LAHIRI',
+          subgraph_type: 'raja_yoga_cluster',
+          subgraph_label: 'test cluster',
+          node_ids_array: ['node-1', 'node-2'],
+          edge_ids_array: ['edge-1'],
+          subgraph_density: 0.8,
+        },
+      ],
+    } as never)
+    // Second call: the bodha_cgm_nodes member resolution
+    vi.mocked(mockQuery).mockResolvedValueOnce({
+      rows: [
+        { node_id: 'node-1', node_type: 'graha', node_subject: 'Jupiter' },
+        { node_id: 'node-2', node_type: 'bhava', node_subject: '10' },
+      ],
+    } as never)
+
+    const result = await traverseChartGraphCapability.handler(
+      { chart_id: CHART_A, mode: 'sub_graphs', subgraph_type: 'raja_yoga_cluster' },
+      undefined
+    )
+
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    expect(content['sub_graph_count']).toBe(1)
+    expect(content['member_nodes']).toHaveLength(2)
+    const prov = content['provenance'] as Record<string, unknown>
+    expect(prov['tables']).toEqual(['bodha_cgm_sub_graphs', 'bodha_cgm_nodes'])
+
+    // subgraph_type filter must reach the SQL params
+    const firstCallParams = vi.mocked(mockQuery).mock.calls[0]?.[1] as unknown[]
+    expect(firstCallParams).toContain('raja_yoga_cluster')
+  })
+
+  it('sub_graphs mode: native chart UUID never appears in any query param', async () => {
+    vi.mocked(mockQuery).mockReset()
+    vi.mocked(mockQuery).mockResolvedValue({ rows: [] } as never)
+
+    await traverseChartGraphCapability.handler(
+      { chart_id: CHART_A, mode: 'sub_graphs' },
+      undefined
+    )
+
+    const calls = vi.mocked(mockQuery).mock.calls
+    for (const [sql, params] of calls) {
+      expect(String(sql)).not.toContain(NATIVE_CHART_ID)
+      for (const p of (params as unknown[]) ?? []) {
+        expect(String(p)).not.toContain(NATIVE_CHART_ID)
+      }
+    }
   })
 
   it('paths mode: requires 2 seed_node_ids', async () => {
