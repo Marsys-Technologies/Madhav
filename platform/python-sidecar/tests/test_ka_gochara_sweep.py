@@ -8,14 +8,17 @@ conversion, no DB/network), mirroring `tests/test_gochara_grammar.py` and
 resumption tests exercise `KaGocharaSweepWriter`'s pure helper methods
 (`_compute_build_fingerprint`, `_load_completed_substeps`) against fake
 connection objects, same technique as `tests/test_ka_sangam_resumption.py`.
-The "sweep.py: order-independent continuity" section drives the REAL
-`sweep.sweep_event_class_chunk` (the production continuity mechanism, D-5
-RED-C fix v2) with its DB-touching dependencies replaced via `monkeypatch`
-(a deterministic synthetic activation calendar standing in for
-`compute_lambda_e`/`compute_lambda_e_series`) — still no live DB, but
-exercises the actual dispatch-order-independence property end to end,
-including OUT-OF-ORDER dispatch (a later year running before an earlier
-one), not just the pure `shape_output` layer.
+The "writer.py: DB-driven segment consolidation" section drives the REAL
+`KaGocharaSweepWriter._consolidate_interval_segment` /
+`_find_adjacent_interval_row` / `_insert_rows` (the production D-5 RED-C
+fix v4 mechanism) against `_FakeKalaWindowsDB`, a small in-memory fake for
+the specific SQL shapes those methods issue against `kala_gochara_windows`
+(SELECT ... FOR UPDATE neighbor lookup, DELETE ... WHERE id, INSERT ... ON
+CONFLICT ... DO UPDATE) — still no live DB, but exercises the actual
+persisted-state-driven consolidation end to end, including OUT-OF-ORDER and
+SHUFFLED multi-year dispatch, with NO scan-distance dependency at any
+episode length (unlike three earlier, rejected fix attempts — see
+`sweep.py`'s module docstring for that history).
 `@pytest.mark.integration` tests at the bottom hit the LIVE Cloud SQL proxy
 (127.0.0.1:5433) when reachable and are excluded by the mandated
 `-m "not integration"` pytest invocation.
@@ -435,12 +438,133 @@ def _year_chunk(sweep_module, event_class: str, year: int):
 _SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END = date(2010, 7, 1), date(2011, 3, 1)
 
 
-def test_sweep_chunk_resolves_full_episode_independently_of_sibling_year_ever_running(monkeypatch):
-    """The defining property of the order-independent fix: year 2011's OWN
-    chunk call, made WITHOUT year 2010's chunk ever having run (no shared
-    state exists for it to depend on), still resolves the FULL true episode
-    (backward across the Dec-31/Jan-1 boundary into 2010) via its own
-    bounded re-evaluation -- not a truncated tail."""
+# ── writer.py: DB-driven segment consolidation (D-5 RED-C fix v4) ─────────
+#
+# `sweep_event_class_chunk` no longer resolves a cross-boundary episode
+# itself (see module docstring's v4 section) -- it returns RAW SEGMENTS
+# strictly bounded to their own chunk, and `writer.py`'s
+# `_consolidate_interval_segment` chains them via already-committed DB
+# state. `_FakeKalaWindowsDB` below is a small in-memory fake for the
+# exact SQL shapes that method issues (SELECT ... FOR UPDATE neighbor
+# lookup, DELETE ... WHERE id, INSERT ... ON CONFLICT ... DO UPDATE) so
+# these tests drive the REAL production consolidation code end-to-end
+# without a live DB.
+
+class _FakeKalaWindowsDB:
+    def __init__(self):
+        self.rows: dict[int, dict] = {}
+        self._next_id = 1
+
+    def cursor(self):
+        return _FakeKalaWindowsCursor(self)
+
+
+class _FakeKalaWindowsConn:
+    def __init__(self, db=None):
+        self.db = db if db is not None else _FakeKalaWindowsDB()
+
+    def cursor(self):
+        return self.db.cursor()
+
+
+class _FakeKalaWindowsCursor:
+    def __init__(self, db: "_FakeKalaWindowsDB"):
+        self.db = db
+        self._result = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
+
+    def execute(self, sql, params=()):
+        import json as _json
+
+        sql_norm = " ".join(sql.split())
+        if sql_norm.startswith("SELECT id, continuity_state"):
+            chart_id, event_class, adjacent_date = params
+            flag_name = "left_active" if "'left_active'" in sql else "right_active"
+            date_field = "raw_start" if "'raw_start'" in sql else "raw_end"
+            match = None
+            for row_id, row in self.db.rows.items():
+                cs = row["continuity_state"]
+                if (row["chart_id"] == chart_id and row["event_class"] == event_class
+                        and row["temporal_shape"] == "interval"
+                        and bool(cs.get(flag_name)) is True
+                        and cs.get(date_field) == adjacent_date.isoformat()):
+                    match = (row_id, row)
+                    break
+            self._result = None if match is None else dict(match[1], id=match[0])
+        elif sql_norm.startswith("DELETE FROM kala_gochara_windows"):
+            (row_id,) = params
+            self.db.rows.pop(row_id, None)
+            self._result = None
+        elif sql_norm.startswith("INSERT INTO kala_gochara_windows"):
+            (chart_id, event_class, temporal_shape,
+             window_start, window_end, peak_date,
+             milestone_id, _is_irrev,
+             signed_intensity, raw_intensity, valence, is_adverse,
+             active_sentences, contributing_systems, suppression_state,
+             peak_basis, calibration_state, source, continuity_state) = params
+            natural_key = (chart_id, event_class, window_start, peak_date, milestone_id or '')
+            existing_id = next(
+                (rid for rid, r in self.db.rows.items()
+                 if (r["chart_id"], r["event_class"], r["window_start"], r["peak_date"],
+                     r.get("milestone_id") or '') == natural_key),
+                None,
+            )
+            row_id = existing_id if existing_id is not None else self.db._next_id
+            if existing_id is None:
+                self.db._next_id += 1
+            self.db.rows[row_id] = {
+                "chart_id": chart_id, "event_class": event_class, "temporal_shape": temporal_shape,
+                "window_start": window_start, "window_end": window_end, "peak_date": peak_date,
+                "milestone_id": milestone_id,
+                "signed_intensity": signed_intensity, "raw_intensity": raw_intensity,
+                "valence": valence, "is_adverse": is_adverse,
+                "active_sentences": active_sentences, "contributing_systems": contributing_systems,
+                "suppression_state": suppression_state, "peak_basis": peak_basis,
+                "calibration_state": calibration_state, "source": source,
+                "continuity_state": (_json.loads(continuity_state)
+                                      if isinstance(continuity_state, str) else continuity_state),
+            }
+            self._result = None
+        else:
+            raise AssertionError(f"_FakeKalaWindowsDB: unhandled SQL: {sql_norm[:120]!r}")
+
+    def fetchone(self):
+        return self._result
+
+    def fetchall(self):
+        return [self._result] if self._result else []
+
+
+def _consolidate_and_insert(writer, conn, event_class, segments):
+    """Mirrors `run_substep`'s own interval-shape dispatch: consolidate
+    each raw segment against whatever is already committed, then insert."""
+    for segment in segments:
+        final_row = writer._consolidate_interval_segment(conn, CHART_ID, event_class, segment)
+        with conn.cursor() as cur:
+            KaGocharaSweepWriter._insert_rows(cur, CHART_ID, [final_row])
+
+
+def _committed_keys(db: _FakeKalaWindowsDB, event_class: str):
+    return sorted(
+        (r["window_start"], r["window_end"], r["peak_date"], r["milestone_id"])
+        for r in db.rows.values() if r["event_class"] == event_class
+    )
+
+
+def test_sweep_chunk_returns_raw_segment_strictly_bounded_to_own_chunk(monkeypatch):
+    """D-5 RED-C fix v4's defining property at the sweep-chunk level: a
+    single year's chunk call NEVER resolves the full cross-boundary
+    episode itself anymore -- it returns a RAW segment clipped to its OWN
+    chunk (year 2011), flagged `left_active` (the episode was already
+    running at 2011's own first grid day) so the DB-driven consolidation
+    step (writer.py) knows to look for an already-committed left neighbor.
+    No `window_start`/`window_end` key exists yet -- those are only
+    produced by `finalize_interval_segment`, downstream of consolidation."""
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
     activation = _build_activation_calendar(_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END)
     sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
@@ -448,63 +572,69 @@ def test_sweep_chunk_resolves_full_episode_independently_of_sibling_year_ever_ru
     rows = _year_chunk(sweep_module, "major_gain", 2011)
     assert len(rows) == 1
     row = rows[0]
-    assert row["window_start"].isoformat() <= "2010-07-06"
-    assert row["window_end"].isoformat() >= "2011-02-24"
-    assert row["window_start"] not in (date(2010, 12, 31), date(2011, 1, 1))
-    assert row["window_end"] not in (date(2010, 12, 31), date(2011, 1, 1))
+    assert row["raw_start"] == date(2011, 1, 1), "clipped to the chunk's own first grid day"
+    assert row["raw_end"] < date(2012, 1, 1), "clipped to inside the chunk -- episode ends 2011-03-01"
+    assert row["left_active"] is True, "episode was already running at the chunk's own start"
+    assert row["right_active"] is False, "episode genuinely ends inside this chunk"
+    assert "window_start" not in row, "a raw segment is not yet a finalized served row"
 
 
-def test_sweep_chunk_out_of_order_dispatch_produces_identical_natural_key(monkeypatch):
+def test_consolidation_out_of_order_dispatch_converges_to_identical_window(monkeypatch):
     """Reproduces the verifier's exact finding: a LATER year (2011)
-    dispatched BEFORE an EARLIER year (2010) that shares the same episode.
-    Both dispatch orders must converge on the identical served window --
-    the (window_start, window_end, peak_date, milestone_id) natural key the
-    DB's ON CONFLICT dedups on (writer.py `_insert_rows`) -- proving no
-    double-serving and no dropped tail under out-of-order dispatch."""
+    consolidated+committed BEFORE an EARLIER year (2010) that shares the
+    same episode. Both dispatch orders must converge on the identical
+    final served window via the DB-driven neighbor lookup -- no
+    double-serving, no dropped tail, under out-of-order dispatch."""
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
     activation = _build_activation_calendar(_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END)
-    sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
-
-    def _key(rows):
-        assert len(rows) == 1
-        r = rows[0]
-        return (r["window_start"], r["window_end"], r["peak_date"], r["milestone_id"])
+    writer = KaGocharaSweepWriter()
 
     # Ascending order (the OLD assumed order).
-    key_2010_ascending = _key(_year_chunk(sweep_module, "major_gain", 2010))
-    key_2011_ascending = _key(_year_chunk(sweep_module, "major_gain", 2011))
+    sweep_ascending = _patch_sweep_deps(monkeypatch, duration_prior, activation)
+    conn_ascending = _FakeKalaWindowsConn()
+    _consolidate_and_insert(writer, conn_ascending, "major_gain",
+                             _year_chunk(sweep_ascending, "major_gain", 2010))
+    _consolidate_and_insert(writer, conn_ascending, "major_gain",
+                             _year_chunk(sweep_ascending, "major_gain", 2011))
 
-    # OUT OF ORDER: year 2011 dispatched BEFORE year 2010.
-    key_2011_first = _key(_year_chunk(sweep_module, "major_gain", 2011))
-    key_2010_second = _key(_year_chunk(sweep_module, "major_gain", 2010))
+    # OUT OF ORDER: year 2011 consolidated+committed BEFORE year 2010.
+    sweep_out_of_order = _patch_sweep_deps(monkeypatch, duration_prior, activation)
+    conn_out_of_order = _FakeKalaWindowsConn()
+    _consolidate_and_insert(writer, conn_out_of_order, "major_gain",
+                             _year_chunk(sweep_out_of_order, "major_gain", 2011))
+    _consolidate_and_insert(writer, conn_out_of_order, "major_gain",
+                             _year_chunk(sweep_out_of_order, "major_gain", 2010))
 
-    assert key_2010_ascending == key_2011_ascending == key_2011_first == key_2010_second, (
-        "the served window's natural key must be identical across EVERY call, in EVERY "
-        "dispatch order -- a carry-based mechanism keyed to 'the immediately prior substep' "
-        "would fail this under out-of-order dispatch (year 10 before year 9)"
+    keys_ascending = _committed_keys(conn_ascending.db, "major_gain")
+    keys_out_of_order = _committed_keys(conn_out_of_order.db, "major_gain")
+    assert len(keys_ascending) == 1, "the two year-segments must merge into ONE served row"
+    assert keys_ascending == keys_out_of_order, (
+        "the final committed window must be identical regardless of dispatch order -- a "
+        "carry-based mechanism keyed to 'the immediately prior substep' would fail this"
     )
 
 
-def test_sweep_chunk_gate_no_boundary_artifact_under_out_of_order_dispatch(monkeypatch):
+def test_consolidation_gate_no_boundary_artifact_under_out_of_order_dispatch(monkeypatch):
     """The RED-C gate assertion (native-mandated), driven through the REAL
-    `sweep_event_class_chunk` across three years in REVERSE dispatch order
-    (2012, then 2011, then 2010) -- no served window's start/end may
-    coincide with a year-chunk boundary (Dec-31/Jan-1) unless the window is
-    legitimately duration_prior.max_days-capped."""
+    `sweep_event_class_chunk` + `_consolidate_interval_segment` across
+    three years in REVERSE dispatch order (2012, then 2011, then 2010) --
+    no FINAL committed window's start/end may coincide with a year-chunk
+    boundary (Dec-31/Jan-1) unless the window is legitimately
+    duration_prior.max_days-capped."""
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
     activation = _build_activation_calendar(_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END)
     sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
+    writer = KaGocharaSweepWriter()
+    conn = _FakeKalaWindowsConn()
 
-    years = [2012, 2011, 2010]  # deliberately descending -- out of order
-    all_rows = []
-    for year in years:
-        all_rows.extend(_year_chunk(sweep_module, "major_gain", year))
+    for year in (2012, 2011, 2010):  # deliberately descending -- out of order
+        _consolidate_and_insert(writer, conn, "major_gain",
+                                 _year_chunk(sweep_module, "major_gain", year))
 
     max_days = duration_prior["max_days"]
-    boundary_dates = set()
-    for year in (2010, 2011, 2012):
-        boundary_dates |= {date(year, 1, 1), date(year, 12, 31)}
-    for row in all_rows:
+    boundary_dates = {date(y, 1, 1) for y in (2010, 2011, 2012, 2013)} | \
+                      {date(y, 12, 31) for y in (2010, 2011, 2012)}
+    for row in conn.db.rows.values():
         width_days = (row["window_end"] - row["window_start"]).days
         is_capped = width_days >= max_days
         for edge in (row["window_start"], row["window_end"]):
@@ -516,85 +646,72 @@ def test_sweep_chunk_gate_no_boundary_artifact_under_out_of_order_dispatch(monke
                 )
 
 
-def test_sweep_chunk_gate_assertion_not_vacuous_without_boundary_extension(monkeypatch):
-    """Sanity-check that the gate assertion is a real regression check, not
-    trivially satisfied -- disable the order-independent boundary extension
-    (monkeypatch it to a no-op passthrough, i.e. exactly the ORIGINAL
-    unconditional-per-chunk-close bug this fix removes) and confirm the
-    RED-C chunking artifact (a served window edge landing exactly on Dec-31/
-    Jan-1, uncapped) reappears."""
-    from services.ka_gochara_sweep import sweep as sweep_module
-
+def test_consolidation_assertion_not_vacuous_without_consolidation(monkeypatch):
+    """Sanity-check that the gate assertion above is a real regression
+    check, not trivially satisfied -- finalize 2010's raw segment DIRECTLY
+    (skip `_consolidate_interval_segment`'s DB neighbor lookup entirely,
+    i.e. exactly what a chunk-scoped call produces on its own, pre-v4)
+    and confirm the RED-C chunking artifact (a served window edge landing
+    exactly on the chunk's own last grid day, uncapped, well short of the
+    true ~2011-03-01 end) reappears."""
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
     activation = _build_activation_calendar(_SPECIMEN_ACTIVE_START, _SPECIMEN_ACTIVE_END)
     sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
-    monkeypatch.setattr(sweep_module, "_extend_series_across_boundary",
-                         lambda swe_mod, conn, chart_id, ec, series, **kwargs: series)
 
-    rows_2010 = _year_chunk(sweep_module, "major_gain", 2010)
-    assert len(rows_2010) == 1
-    row = rows_2010[0]
+    segments_2010 = _year_chunk(sweep_module, "major_gain", 2010)
+    assert len(segments_2010) == 1
+    segment = segments_2010[0]
+    assert segment["right_active"] is True, "the episode is still running at 2010's own last grid day"
+
+    row = SO.finalize_interval_segment("major_gain", segment["raw_start"], segment["raw_end"],
+                                        segment, duration_prior)
     width_days = (row["window_end"] - row["window_start"]).days
-    # Without the extension, 2010's chunk closes on the spot at its own
-    # last grid day -- `compute_lambda_e_series` (engine.py) loops
-    # inclusively through `horizon_end_jd` itself (2011-01-01, the NEXT
-    # year's own horizon_start_jd), so that's the exact RED-C artifact
-    # boundary here, not Dec-31 -- well short of the true ~2011-03-01 end,
-    # and short of the max_days cap too.
+    # `compute_lambda_e_series` (engine.py) loops inclusively through
+    # `horizon_end_jd` itself (2011-01-01, the NEXT year's own
+    # horizon_start_jd), so that's the exact RED-C artifact boundary here.
     assert row["window_end"] == date(2011, 1, 1)
     assert width_days < duration_prior["max_days"]
 
 
-def test_sweep_chunk_three_year_span_converges_regardless_of_which_chunk_runs_alone():
+def test_consolidation_three_year_span_converges_regardless_of_dispatch_order(monkeypatch):
     """D-5 RED-C fix v3: second independent verification's exact
     counterexample. A 517-day episode (2010-10-01 -> 2012-03-01) is LONGER
-    than duration_prior.max_days (365) -- under the v2 design (discovery
-    scan bounded BY max_days), the 2012 chunk sits ~458 days from the true
-    2010-10-01 start, farther than its own 365-day scan could reach, so it
-    computed a SHORTER, differently-anchored window than the 2010 or 2011
-    chunks -- three different (window_start, window_end, peak_date) triples
-    for the same real episode, one with peak_date landing exactly on a
-    chunk boundary (the artifact relocated, not eliminated).
-
-    This drives EACH of the 2010/2011/2012 chunks completely ALONE (a fresh
-    monkeypatch setup per call, exactly mirroring three independent
-    Cloud Run dispatches that never share in-memory state) and asserts all
-    three converge on the IDENTICAL clipped window."""
-    from services.ka_gochara_sweep import sweep as sweep_module
-
+    than duration_prior.max_days (365) -- under the v2/v3 designs (a
+    bounded cross-boundary scan), a chunk far from the true start could
+    exhaust its scan budget short of it, computing a wrongly-anchored
+    window. Under v4, EACH of the 2010/2011/2012 chunks computes only its
+    own strictly-bounded segment; the DB-driven consolidation converges
+    them to the SAME clipped window regardless of which order they're
+    committed in -- ascending, descending, and shuffled."""
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
     episode_start, episode_end = date(2010, 10, 1), date(2012, 3, 1)
     assert (episode_end - episode_start).days == 517 > duration_prior["max_days"], \
         "the whole point of this test is an episode LONGER than max_days"
     activation = _build_activation_calendar(episode_start, episode_end)
+    writer = KaGocharaSweepWriter()
 
-    def _run_alone(monkeypatch, year):
+    dispatch_orders = [(2010, 2011, 2012), (2012, 2011, 2010), (2011, 2010, 2012)]
+    all_keys = []
+    for order in dispatch_orders:
         sweep_module = _patch_sweep_deps(monkeypatch, duration_prior, activation)
-        rows = _year_chunk(sweep_module, "major_gain", year)
-        assert len(rows) == 1
-        r = rows[0]
-        return (r["window_start"], r["window_end"], r["peak_date"], r["milestone_id"])
+        conn = _FakeKalaWindowsConn()
+        for year in order:
+            _consolidate_and_insert(writer, conn, "major_gain",
+                                     _year_chunk(sweep_module, "major_gain", year))
+        keys = _committed_keys(conn.db, "major_gain")
+        assert len(keys) == 1, f"dispatch order {order} must converge to ONE served row, got {keys}"
+        all_keys.append(keys[0])
 
-    import _pytest.monkeypatch
-    with _pytest.monkeypatch.MonkeyPatch.context() as mp_2010:
-        key_2010 = _run_alone(mp_2010, 2010)
-    with _pytest.monkeypatch.MonkeyPatch.context() as mp_2011:
-        key_2011 = _run_alone(mp_2011, 2011)
-    with _pytest.monkeypatch.MonkeyPatch.context() as mp_2012:
-        key_2012 = _run_alone(mp_2012, 2012)
-
-    assert key_2010 == key_2011 == key_2012, (
+    assert len(set(all_keys)) == 1, (
         f"three chunks touching the SAME 517-day episode (> max_days={duration_prior['max_days']}) "
-        f"must converge on the IDENTICAL clipped window regardless of which chunk ran, or how far "
-        f"from the true start it sits -- got 2010={key_2010}, 2011={key_2011}, 2012={key_2012}"
+        f"must converge on the IDENTICAL clipped window regardless of dispatch order -- got {all_keys}"
     )
+    window_start, window_end, peak_date, _milestone_id = all_keys[0]
     # The clip is anchored to the TRUE start (2010-10-01), not to wherever
     # any one chunk's own scan happened to reach.
-    window_start, window_end, peak_date, _milestone_id = key_2010
     assert window_start.isoformat() == "2010-10-01"
     assert (window_end - window_start).days <= duration_prior["max_days"]
-    # And no boundary-artifact: peak_date must not land on a chunk edge
-    # (the verifier's "2012 alone" case put it exactly on one).
+    # And no boundary-artifact: peak_date must not land on a chunk edge.
     for year in (2010, 2011, 2012):
         assert peak_date not in (date(year, 1, 1), date(year, 12, 31)), \
             f"peak_date {peak_date} lands exactly on a year-chunk boundary -- the RED-C artifact relocated"

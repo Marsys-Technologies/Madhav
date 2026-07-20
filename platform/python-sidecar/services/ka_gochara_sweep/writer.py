@@ -60,16 +60,21 @@ run before year 0. Two consequences, both fixed in the D-5 RED-C wave:
       in `plan_substeps`, before ANY substep of a fresh/replanned build
       runs (see `plan_substeps`' fresh-build branch), which is safe under
       any subsequent dispatch order because nothing deletes again after it.
-  (2) a first RED-C fix attempt threaded "still open" carry state from one
-      substep's own call to what it ASSUMED was the immediately-following
-      chunk -- broken by the same out-of-order dispatch (a later-numbered
-      year could run first, read no carry, and silently truncate a window;
-      an earlier year's carry could then be produced but never consumed).
-      REPLACED by an ORDER-INDEPENDENT mechanism entirely inside
-      `sweep.sweep_event_class_chunk` (bounded, deterministic single-day
-      re-evaluation past a chunk's own boundary, not cross-substep state)
-      -- see that module's docstring. `run_substep` no longer passes or
-      persists any carry state.
+  (2) three successive attempts at cross-chunk INTERVAL-shape continuity
+      (a cross-substep runtime "carry"; a bounded cross-boundary re-scan;
+      a bigger bounded re-scan) were all REJECTED on independent
+      verification for assuming something about a chunk's OWN position or
+      dispatch order that doesn't hold at any scale. The CURRENT mechanism
+      (D-5 RED-C fix v4) needs no such assumption at all: `run_substep`
+      computes each year's segment STRICTLY within its own chunk (via
+      `sweep.sweep_event_class_chunk`, zero cross-boundary compute), then
+      `_consolidate_interval_segment` (below) chains it with whatever
+      ADJACENT segment is ALREADY COMMITTED in the database -- found by
+      exact calendar-date lookup on `kala_gochara_windows.continuity_state`
+      (migration 461), never by a runtime scan or an assumption about which
+      substep ran before this one. See `sweep.py`'s module docstring for
+      the full mechanism and why it has no scan-distance dependency at any
+      episode length.
 """
 from __future__ import annotations
 
@@ -77,9 +82,11 @@ import hashlib
 import json as _json
 import logging
 from datetime import date
+from typing import Optional
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
 from services.ka_gochara_sweep.sweep import sweep_event_class_chunk, DEFAULT_STEP_DAYS
+from services.ka_gochara_sweep.shape_output import finalize_interval_segment
 
 logger = logging.getLogger(__name__)
 
@@ -101,23 +108,26 @@ _N_YEARS = _HORIZON_YEARS  # one substep per calendar year -- see module
 # Bumped 2 -> 3 (D-5 RED-C fix v1, 2026-07-20, SUPERSEDED): the first fix
 # attempt (cross-substep carry state, assumed ascending dispatch order) is
 # no longer what this writer does -- see v4 below.
-# Bumped 3 -> 4 (D-5 RED-C fix v2, 2026-07-20): the v1 carry mechanism was
-# rejected on independent verification (it silently assumed ascending-year
-# dispatch order, which this writer's real dispatch -- specimen-priority
-# reordering plus the now-fixed lexical sort bug -- does NOT honor) and
-# replaced by the order-independent boundary-rescan in sweep.py (no
-# cross-substep state at all). Any `kala_gochara_windows` row or
-# `build_substep_progress` row committed under v2 OR v3 reflects behavior
-# this fix removes (either the original unconditional-close bug, or the
-# order-dependent carry that could silently truncate/drop a window) -- a
+# Bumped 3 -> 4 (D-5 RED-C fix v2/v3, 2026-07-20, SUPERSEDED): a
+# cross-boundary re-scan mechanism (bounded first by max_days, then by a
+# larger safety-only constant) -- both later rejected, see v5 below.
+# Bumped 4 -> 5 (D-5 RED-C fix v4, 2026-07-20, THIRD independent
+# verification): replaced ALL scan-based cross-chunk continuity with
+# DB-driven segment consolidation (`_consolidate_interval_segment`) --
+# `kala_gochara_windows` rows now carry a `continuity_state` column
+# (migration 461) that v2/v3-era rows never had, and the served
+# window_start/window_end for a boundary-touching episode is computed
+# entirely differently now (chained via committed neighbors, not a
+# same-call re-scan). Any row or `build_substep_progress` entry committed
+# under v2/v3/v4-numbered-as-v2 reflects behavior this fix removes -- a
 # resumed build must NOT read those old substeps as already-correctly-
 # completed. The fingerprint change forces a full replan-all
 # (plan_substeps' `fps != {fingerprint}` branch), which deletes ALL of this
 # chart's `kala_gochara_windows` rows AND its `build_substep_progress` rows
 # before replanning every substep -- so chart 482012f1's already-committed
-# major_gain rows are genuinely re-derived under the new order-independent
+# major_gain rows are genuinely re-derived under the new consolidation
 # logic, not silently skipped as "already built".
-_RESUME_VERSION = 4
+_RESUME_VERSION = 5
 
 
 def _substep_sort_key(step: SubStep, priority_years: set[tuple[str, int]]) -> tuple[int, str, int]:
@@ -273,11 +283,163 @@ class KaGocharaSweepWriter(WriterBase):
 
         rows_inserted = 0
         if not dry_run:
-            with conn.cursor() as cur:
-                rows_inserted = self._insert_rows(cur, chart_id, rows)
+            if rows and rows[0].get('temporal_shape') == 'interval':
+                # D-5 RED-C fix v4: `rows` here are RAW SEGMENTS (see
+                # sweep.sweep_event_class_chunk's docstring), not final
+                # served rows -- each one is chained with whatever
+                # ALREADY-COMMITTED adjacent segment exists in the DB
+                # (never a runtime scan or dispatch-order assumption)
+                # before being finalized and inserted.
+                final_rows = [
+                    self._consolidate_interval_segment(conn, chart_id, event_class, segment)
+                    for segment in rows
+                ]
+                with conn.cursor() as cur:
+                    rows_inserted = self._insert_rows(cur, chart_id, final_rows)
+            else:
+                with conn.cursor() as cur:
+                    rows_inserted = self._insert_rows(cur, chart_id, rows)
             self._record_substep(conn, chart_id, step.key, rows_inserted)
 
         return WriterResult(asset_id='ka_gochara_sweep', rows_inserted=rows_inserted)
+
+    # ── interval segment consolidation (D-5 RED-C fix v4) ──────────────────
+
+    def _consolidate_interval_segment(self, conn, chart_id: str, event_class: str, segment: dict) -> dict:
+        """DB-driven, order-independent consolidation: chains `segment`
+        (one year-substep's own strictly-bounded raw activation span, from
+        `shape_output.build_interval_segments`) with any ALREADY-COMMITTED
+        adjacent segment for this (chart_id, event_class), found by EXACT
+        calendar-date adjacency on `kala_gochara_windows.continuity_state`
+        (migration 461) -- never by a runtime scan or an assumption about
+        which substep ran before this one. See sweep.py's module docstring
+        for the full mechanism, the order-independence argument, and why it
+        has no scan-distance dependency at any episode length.
+
+        A segment can chain a LEFT neighbor AND a RIGHT neighbor in one
+        call (a fully-active "middle" year of a longer episode) -- each via
+        a single O(1) indexed lookup, never a scan. The consumed neighbor
+        row(s) are deleted; ONE new row is inserted for the (possibly
+        newly-merged) span (delete-then-reinsert, §N.3).
+
+        ADJACENCY IS SAME-CALENDAR-DAY, NOT OFF-BY-ONE (fixed 2026-07-20,
+        found during this fix's own test-authoring, before first commit):
+        `writer.run_substep` builds each year's `horizon_start_jd`/
+        `horizon_end_jd` back-to-back (year N's `horizon_end_jd` IS year
+        N+1's `horizon_start_jd`), and `compute_lambda_e_series` loops
+        INCLUSIVELY through its own `t_end_jd` (engine.py, unrelated
+        must_not_touch module) -- so the shared boundary day (e.g.
+        Jan-1-of-year-N+1) is evaluated by BOTH chunks and can appear as
+        BOTH year N's `raw_end` AND year N+1's `raw_start`, as the SAME
+        date, not date+1/date-1. An off-by-one adjacent_date (the original
+        version of this method) never matches a real year-boundary
+        neighbor, so two segments sharing a real episode across a year
+        boundary silently never merge -- the exact defect this fix exists
+        to remove, just relocated one level down. Neighbor lookup below
+        therefore searches on EXACT date equality."""
+        raw_start: date = segment["raw_start"]
+        raw_end: date = segment["raw_end"]
+        left_active = bool(segment["left_active"])
+        right_active = bool(segment["right_active"])
+        peak_row = segment
+        duration_prior = segment.get("duration_prior")
+
+        if left_active:
+            neighbor = self._find_adjacent_interval_row(
+                conn, chart_id, event_class,
+                flag_name="right_active", date_field="raw_end", adjacent_date=raw_start,
+            )
+            if neighbor is not None:
+                raw_start = neighbor["raw_start"]
+                left_active = neighbor["left_active"]
+                peak_row = self._stronger_peak(peak_row, neighbor)
+                self._delete_interval_row(conn, neighbor["id"])
+
+        if right_active:
+            neighbor = self._find_adjacent_interval_row(
+                conn, chart_id, event_class,
+                flag_name="left_active", date_field="raw_start", adjacent_date=raw_end,
+            )
+            if neighbor is not None:
+                raw_end = neighbor["raw_end"]
+                right_active = neighbor["right_active"]
+                peak_row = self._stronger_peak(peak_row, neighbor)
+                self._delete_interval_row(conn, neighbor["id"])
+
+        row = finalize_interval_segment(event_class, raw_start, raw_end, peak_row, duration_prior)
+        row["continuity_state"] = {
+            "left_active": left_active,
+            "right_active": right_active,
+            "raw_start": raw_start.isoformat(),
+            "raw_end": raw_end.isoformat(),
+        }
+        return row
+
+    @staticmethod
+    def _find_adjacent_interval_row(conn, chart_id: str, event_class: str, *,
+                                     flag_name: str, date_field: str, adjacent_date: date) -> Optional[dict]:
+        """One indexed lookup for an already-committed neighbor segment --
+        `flag_name`/`date_field` are literal column-path names this module
+        controls (never user input), safe to interpolate. `FOR UPDATE`
+        defensively serializes concurrent consolidation attempts on the
+        same neighbor row (belt-and-suspenders; substeps are not expected
+        to run truly concurrently against the same event_class today, but
+        this makes the query safe regardless)."""
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""SELECT id, continuity_state,
+                           signed_intensity, raw_intensity, valence, is_adverse,
+                           contributing_systems, suppression_state, calibration_state, source,
+                           peak_date, active_sentences, peak_basis
+                    FROM kala_gochara_windows
+                    WHERE chart_id = %s AND event_class = %s AND temporal_shape = 'interval'
+                      AND (continuity_state ->> '{flag_name}')::boolean IS TRUE
+                      AND (continuity_state ->> '{date_field}')::date = %s
+                    FOR UPDATE""",
+                (chart_id, event_class, adjacent_date),
+            )
+            row = cur.fetchone()
+        if not row:
+            return None
+        if isinstance(row, dict):
+            neighbor = dict(row)
+        else:
+            cols = ["id", "continuity_state", "signed_intensity", "raw_intensity", "valence", "is_adverse",
+                    "contributing_systems", "suppression_state", "calibration_state", "source",
+                    "peak_date", "active_sentences", "peak_basis"]
+            neighbor = dict(zip(cols, row))
+        cs = neighbor["continuity_state"]
+        cs = cs if isinstance(cs, dict) else _json.loads(cs)
+        neighbor["raw_start"] = date.fromisoformat(cs["raw_start"])
+        neighbor["raw_end"] = date.fromisoformat(cs["raw_end"])
+        neighbor["left_active"] = bool(cs["left_active"])
+        neighbor["right_active"] = bool(cs["right_active"])
+        for jsonb_field in ("contributing_systems", "suppression_state", "active_sentences"):
+            v = neighbor.get(jsonb_field)
+            if isinstance(v, str):
+                neighbor[jsonb_field] = _json.loads(v)
+        return neighbor
+
+    @staticmethod
+    def _stronger_peak(a: dict, b: dict) -> dict:
+        """Deterministic regardless of merge order/argument position: on an
+        EXACT magnitude tie, prefer the earlier `peak_date` -- matching
+        `shape_output._peak_of`'s own within-segment tie-break convention
+        -- so a chain's final peak never depends on which of two equal-
+        strength segments happened to be passed as `a` vs `b` in this
+        particular merge call (real lambda_e values essentially never tie
+        exactly, but synthetic/degenerate data can, and consolidation must
+        be order-independent even then)."""
+        a_mag = abs(a.get("raw_intensity") or 0.0)
+        b_mag = abs(b.get("raw_intensity") or 0.0)
+        if a_mag != b_mag:
+            return a if a_mag > b_mag else b
+        return a if a["peak_date"] <= b["peak_date"] else b
+
+    @staticmethod
+    def _delete_interval_row(conn, row_id) -> None:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM kala_gochara_windows WHERE id = %s", (row_id,))
 
     # ── helpers ──────────────────────────────────────────────────────────
 
@@ -377,6 +539,11 @@ class KaGocharaSweepWriter(WriterBase):
 
         n = 0
         for row in rows:
+            # `continuity_state` (migration 461, D-5 RED-C fix v4): interval-
+            # shape-only, NULL for point/chain rows (`row.get(...)` is None
+            # for those -- see shape_output's point/chain builders, which
+            # never set this key).
+            continuity_state = row.get('continuity_state')
             cur.execute(
                 """
                 INSERT INTO kala_gochara_windows (
@@ -385,14 +552,14 @@ class KaGocharaSweepWriter(WriterBase):
                     milestone_id, is_irreversibility_milestone,
                     signed_intensity, raw_intensity, valence, is_adverse,
                     active_sentences, contributing_systems, suppression_state,
-                    peak_basis, calibration_state, source
+                    peak_basis, calibration_state, source, continuity_state
                 ) VALUES (
                     %s, %s, %s,
                     %s, %s, %s,
                     %s, %s,
                     %s, %s, %s, %s,
                     %s::jsonb, %s::jsonb, %s::jsonb,
-                    %s, %s, %s
+                    %s, %s, %s, %s::jsonb
                 )
                 ON CONFLICT (chart_id, event_class, window_start, peak_date, COALESCE(milestone_id, ''))
                 DO UPDATE SET
@@ -402,6 +569,7 @@ class KaGocharaSweepWriter(WriterBase):
                     active_sentences = EXCLUDED.active_sentences,
                     contributing_systems = EXCLUDED.contributing_systems,
                     suppression_state = EXCLUDED.suppression_state,
+                    continuity_state = EXCLUDED.continuity_state,
                     computed_at = now()
                 """,
                 (
@@ -415,6 +583,7 @@ class KaGocharaSweepWriter(WriterBase):
                     row.get('peak_basis', 'gochara_lambda_e_v1'),
                     row.get('calibration_state', 'structural_prior'),
                     row.get('source', 'live'),
+                    _dumps(continuity_state) if continuity_state is not None else None,
                 ),
             )
             n += 1

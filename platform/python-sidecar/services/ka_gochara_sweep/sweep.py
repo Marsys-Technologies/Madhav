@@ -36,104 +36,84 @@ module does not itself refuse a large range, but the task brief is explicit
 that materializing the full 100-year horizon is the Cloud Run job's job,
 not this lane's local verification step.
 
-CONTINUITY ACROSS CHUNKS, ORDER-INDEPENDENTLY (D-5 RED-C fix v2,
-2026-07-20): a chunk boundary must never silently double as a
-signal-cessation point. RED-C: `interval`-shaped activations still firing
-at a year-substep's last grid day were closed on the spot, unconditionally,
-so two live major_gain windows for chart 482012f1 each came out ~365 days
-wide, EXACTLY bounded by the writer's per-year substep chunking.
+CONTINUITY ACROSS CHUNKS, ORDER-INDEPENDENTLY, v1-v3 (SUPERSEDED, see v4
+below): a chunk boundary must never silently double as a signal-cessation
+point. RED-C: `interval`-shaped activations still firing at a year-substep's
+last grid day were closed on the spot, unconditionally, so two live
+major_gain windows for chart 482012f1 each came out ~365 days wide, EXACTLY
+bounded by the writer's per-year substep chunking.
 
-A first fix attempt threaded mutable "still open" state from one chunk's
-call to the NEXT chunk's call (a cross-substep carry, persisted between
-dispatches). That was REJECTED on independent verification: `writer.py`
-does NOT dispatch year substeps in strict ascending order (a lexical
-substep-key sort bug plus specimen-priority reordering, D-5 GATE fix, both
-violate that assumption) — a "carry from the immediately prior chunk" is
-meaningless when "prior" isn't well-defined at dispatch time, and could
-silently drop a still-open window's tail if the wrong substep ran first.
+Three prior fix attempts, all REJECTED on independent verification:
+  v1 - a cross-substep runtime "carry" (mutable "still open" state threaded
+       from one chunk's call to what it ASSUMED was the next). Broken by
+       `writer.py`'s real dispatch order (a lexical substep-key sort bug
+       plus specimen-priority reordering both violate strict ascending-year
+       dispatch) -- a "carry from the immediately prior chunk" is
+       meaningless when "prior" isn't well-defined at dispatch time.
+  v2 - this module independently RE-EVALUATING the signal one day at a time
+       PAST a chunk's own boundary (via `compute_lambda_e`) until finding
+       genuine inactivity or a bound tied to `duration_prior.max_days`.
+       Order-independent in principle, but the scan bound coupling to
+       max_days was itself the bug (see v3).
+  v3 - decoupled the scan bound from max_days (a large, safety-only
+       constant instead) and anchored the max_days clip to the discovered
+       true_start rather than a computed centre. Still relied on a BOUNDED
+       scan, though -- a chunk sitting far enough from an episode's true
+       edge (deep inside a multi-year episode) could still exhaust even a
+       generous bound short of the true edge, computing a wrongly-anchored
+       window; independent verification reproduced this with a ~5.5-year
+       (2007-day) episode, and flagged that a multi-thousand-day scan for a
+       chunk deep inside a long episode also risks approaching
+       `writer_timeout_seconds` -- the exact problem that motivated this
+       wave's decade->year re-chunk in the first place (see writer.py's own
+       CHUNK GRANULARITY note).
 
-The fix here is ORDER-INDEPENDENT instead: `sweep_event_class_chunk`, for
-`interval`-shaped classes, checks whether ITS OWN chunk's first/last grid
-day is active, and if so, independently RE-EVALUATES the underlying
-lambda_e signal one day at a time PAST its own boundary (via `compute_lambda_e`,
-the same deterministic pure function `compute_lambda_e_series` uses
-internally) until it finds genuine inactivity or hits a bound — NOT by
-reading any other substep's output. The resulting EXTENDED series (this
-chunk's own days plus whatever cross-boundary days were needed) is then
-handed to `shape_output.build_interval_rows`, which is itself back to
-being fully stateless (see that module's docstring) and simply closes
-every run it finds.
+CONTINUITY ACROSS CHUNKS, ORDER-INDEPENDENTLY, v4 (D-5 RED-C fix,
+2026-07-20, THIRD independent verification -- CURRENT): stop scanning
+across chunk boundaries at all. Each year-substep computes ONLY its own
+STRICTLY chunk-bounded segment (`shape_output.build_interval_segments` --
+zero cross-boundary compute, ~365 evaluations max, NO scan-distance risk at
+ANY episode length, however long). Each segment records two cheap booleans
+-- was it active at its OWN leftmost grid day, was it active at its OWN
+rightmost grid day (`left_active`/`right_active`) -- plus its raw
+(unwidened) `raw_start`/`raw_end`.
 
-DISCOVERY BOUND vs. duration_prior.max_days — DELIBERATELY DECOUPLED (D-5
-RED-C fix v3, 2026-07-20 — second independent verification): a v2 attempt
-bounded the boundary-discovery scan itself by `duration_prior.max_days` --
-this looked reasonable ("why scan further than the cap could ever serve")
-but was WRONG and reintroduced a subtler order-dependence: an episode
-LONGER than `max_days` (517 days observed against a 365-day max_days in the
-verifier's reproduction) has a TRUE start that can be farther from a given
-chunk's own edge than `max_days` -- a chunk sitting deep inside such an
-episode (e.g. a year near the far end) would hit its scan bound short of
-the true start and compute a SHORTER, WRONGLY-ANCHORED window than a chunk
-sitting closer to that edge -- three different chunks, three different
-`(window_start, window_end, peak_date)` triples for the SAME real episode,
-one of which even lands its peak_date exactly on a chunk boundary (the
-RED-C artifact relocated, not eliminated). The discovery scan is now bound
-by `_BOUNDARY_SCAN_SAFETY_DAYS` (or a class-scaled multiple of it) --
-generous, safety-only, NOT tied to `max_days` at all -- so ANY chunk that
-touches the episode finds the SAME true_start/true_end regardless of its
-own position within the episode. `duration_prior.max_days` is applied
-SEPARATELY, as a pure post-hoc clip on the DISCOVERED true window, anchored
-to the discovered `true_start` (see `shape_output._widen_interval`) -- so
-every chunk that discovers the same true_start computes the identical
-clipped window too, independent of how far past the cap that chunk's own
-scan happened to reach.
+A SEPARATE, idempotent, DB-DRIVEN consolidation step (writer.py
+`_consolidate_interval_segment`) chains a new segment with an ALREADY-
+COMMITTED adjacent segment for the same (chart_id, event_class) by looking
+up `kala_gochara_windows.continuity_state` (migration 461) -- exact
+calendar-date adjacency (`raw_end + 1 day == raw_start`) on PERSISTED
+state, never a runtime scan or a dispatch-order assumption. Merging deletes
+the consumed neighbor row(s) and inserts ONE new row for the merged span
+(delete-then-reinsert, the SAME idempotency pattern already used elsewhere
+in this codebase, per §N.3), with `duration_prior.max_days` applied as a
+post-hoc clip on the merged span (reusing `shape_output._widen_interval`'s
+v3 true-start-anchored clip, still correct and needed here).
 
-Cost: zero extra queries for the common case (a chunk whose own first/last
-grid day is inactive — most years, for most event_classes). Bounded to
-`_BOUNDARY_SCAN_SAFETY_DAYS` (or a class-scaled multiple) extra single-day
-evaluations only for a chunk that genuinely touches a boundary-crossing
-episode — a real but bounded ONE-TIME cost per boundary-touching chunk
-(never a per-day-of-full-history cost), incurred only when needed, not on
-every substep. This is comfortably inside the 1800s `writer_timeout_seconds`
-budget for the default bound even added on top of a chunk's own ~365-day
-computation (see writer.py's own per-day cost accounting) — a chunk that
-needs to scan in BOTH directions at once (fully inside a very long episode)
-has less margin; if a future dispatch regresses on this, tighten
-`_BOUNDARY_SCAN_SAFETY_DAYS` or split the scan into its own substep rather
-than raising the writer timeout (mirrors writer.py's own "drop to
-per-quarter/per-month chunking rather than raising the timeout" precedent).
-
-ORDER-INDEPENDENCE / no double-serving: this makes ANY two chunks that
-touch the SAME real episode compute IDENTICAL results — `compute_lambda_e`
-is a pure function of (chart config, targets, dasha_periods, t_jd), and the
-scan is always anchored at a FIXED, well-defined calendar boundary (a
-year's own Jan-1/Dec-31), not at "wherever a scan happened to start" — so
-regardless of WHICH chunk runs first, or WHERE within a long episode it
-sits, both independently arrive at the same true_start/true_end/peak (as
-long as the discovery bound is generous enough to actually reach the true
-edges — see DISCOVERY BOUND note above), hence the same
-(window_start, peak_date, milestone_id) natural key, hence the same
-`kala_gochara_windows` row — the second chunk's insert just UPSERTs the
-identical row via the existing `ON CONFLICT ... DO UPDATE` (writer.py
-`_insert_rows`), not a duplicate. This holds for ANY dispatch order:
-numeric, the (buggy, now-fixed) lexical order, or specimen-priority-shuffled.
-
-KNOWN LIMITATION (disclosed, not hidden): if a real activation genuinely
-outlives the discovery bound itself (`_BOUNDARY_SCAN_SAFETY_DAYS`, several
-YEARS by default, scaled up further for large `max_days` classes) from BOTH
-directions relative to some chunk's own position, that chunk's scan can
-still fall short of a true edge. This is now a far more extreme,
-essentially pathological scenario than the v2 design's failure mode (which
-broke at ~2x a 365-day `max_days`, i.e. ~2 years) — not observed in this
-wave's live data (RED-C's actual major_gain episode is a few hundred days).
-Even in that residual case, every served row is still a legitimately
-capped, non-artifact window (never wider than `max_days`, never bounded by
-a bare chunk edge) — the RED-C defect this fix targets.
+WHY THIS HAS NO SCAN-DISTANCE DEPENDENCE, AT ANY EPISODE LENGTH: merge cost
+is proportional to the number of ALREADY-COMMITTED adjacent segments (0, 1,
+or 2 -- a segment can chain a left neighbor AND a right neighbor in one
+step), each found via a single indexed DB lookup, never to how far a signal
+extends in calendar time. A 10-year episode costs exactly the same PER-YEAR
+consolidation work as a 10-day one -- one bounded local computation plus at
+most two O(1) neighbor lookups, every time, regardless of episode length.
+This also means correctness is invariant to dispatch order BY
+CONSTRUCTION: a new segment always searches BOTH directions against
+whatever is CURRENTLY in the database (not "what ran before me" in any
+runtime sense), and the invariant "no two date-adjacent
+flag-matching rows exist unmerged in the DB" is maintained after every
+single consolidation, so at most one neighbor can ever be found on each
+side (a longer chain was already collapsed into one row by an earlier
+consolidation, in whatever order that happened). It also converges
+correctly ACROSS separate dispatches/attempts, not just within one -- a
+segment committed in an earlier partial build gets picked up and merged the
+moment its neighbor's substep finally runs, in a LATER dispatch, with no
+special-casing needed.
 """
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from services.gochara_intensity import compute_lambda_e, compute_lambda_e_series
 from services.gochara_intensity import gather_configuration_sentences
@@ -143,35 +123,11 @@ from services.gochara_grammar import dasha_data as DD
 from services.gochara_intensity.enrichment import enrich_targets
 from services.gochara_intensity._dbutil import savepoint_scope
 
-from .shape_output import build_rows_for_event_class, build_interval_rows, ACTIVATION_EPS
+from .shape_output import build_rows_for_event_class, build_interval_segments
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_STEP_DAYS = 1.0  # daily grid, per BRIEF_D5 §6
-
-# Safety-only bound for the order-independent boundary-DISCOVERY scan (see
-# module docstring's DISCOVERY BOUND note) -- deliberately NOT derived from
-# any event_class's `duration_prior.max_days` (that coupling was the v2
-# design's bug: an episode longer than max_days could put a chunk's own
-# position farther from the true edge than max_days itself). ~4.5 years --
-# generous relative to every interval-shaped event_class's max_days in this
-# wave (max_days=365 for major_gain; no other interval class currently
-# exceeds it), while staying well inside the writer's per-substep timeout
-# budget even when triggered from both directions at once (see module
-# docstring's Cost note).
-_BOUNDARY_SCAN_SAFETY_DAYS = 1500
-
-
-def _boundary_scan_bound_days(max_days: Optional[float]) -> int:
-    """The discovery-scan bound: `_BOUNDARY_SCAN_SAFETY_DAYS`, or 4x a
-    larger-than-usual `duration_prior.max_days` if that would exceed it --
-    scales the safety margin up for a future event_class with a
-    substantially longer declared cap, without coupling the bound TO
-    max_days the way v2 did (4x is headroom, not an assumption that the
-    true episode never exceeds max_days -- see module docstring)."""
-    if max_days:
-        return max(_BOUNDARY_SCAN_SAFETY_DAYS, int(max_days) * 4)
-    return _BOUNDARY_SCAN_SAFETY_DAYS
 
 
 def fetch_ontology_meta(conn, event_class: str) -> dict[str, Any]:
@@ -266,73 +222,6 @@ def _gather_active_sentences_at(swe, conn, chart_id: str, targets, t_jd: float,
     ]
 
 
-def _extend_series_across_boundary(
-    swe, conn, chart_id: str, event_class: str, series: list, *,
-    targets, dasha_periods, shape: str, ayanamsha_id: str,
-    horizon_start_jd: float, horizon_end_jd: float, bound_days: int,
-) -> list:
-    """Order-independent boundary extension (D-5 RED-C fix v2, see module
-    docstring). If `series`' own first/last grid day is active, re-evaluate
-    the signal one day at a time PAST this chunk's own boundary (a pure,
-    deterministic single-day `compute_lambda_e` call — never reading
-    another substep's output) until genuine inactivity is found or
-    `bound_days` is exhausted. Returns a new, chronologically-ordered
-    series (unchanged when neither edge is active — the common case, zero
-    extra compute)."""
-    if not series:
-        return series
-    prefix: list = []
-    suffix: list = []
-
-    if series[0].raw_lambda > ACTIVATION_EPS:
-        jd = horizon_start_jd
-        for _ in range(bound_days):
-            jd -= 1.0
-            try:
-                with savepoint_scope(conn, "boundary_scan_backward"):
-                    result = compute_lambda_e(
-                        swe, conn, chart_id, event_class, jd,
-                        targets=targets, dasha_periods=dasha_periods, temporal_shape=shape,
-                        ayanamsha_id=ayanamsha_id,
-                    )
-            except Exception as exc:  # noqa: BLE001
-                logger.info("[ka_gochara_sweep] boundary backward-scan failed at jd=%s for %s: %s",
-                            jd, event_class, exc)
-                break
-            prefix.append(result)
-            if result.raw_lambda <= ACTIVATION_EPS:
-                break
-        prefix.reverse()  # was appended latest-first (jd decreasing); series wants chronological order
-
-    if series[-1].raw_lambda > ACTIVATION_EPS:
-        # `compute_lambda_e_series` loops `while t <= t_end_jd` (engine.py),
-        # so `horizon_end_jd` itself is ALREADY the series' last grid day
-        # (a genuine one-day overlap with the NEXT chunk's own
-        # horizon_start_jd, a pre-existing property of writer.py's chunk
-        # boundaries, not introduced here) -- start probing one day PAST it.
-        jd = horizon_end_jd
-        for _ in range(bound_days):
-            jd += 1.0
-            try:
-                with savepoint_scope(conn, "boundary_scan_forward"):
-                    result = compute_lambda_e(
-                        swe, conn, chart_id, event_class, jd,
-                        targets=targets, dasha_periods=dasha_periods, temporal_shape=shape,
-                        ayanamsha_id=ayanamsha_id,
-                    )
-            except Exception as exc:  # noqa: BLE001
-                logger.info("[ka_gochara_sweep] boundary forward-scan failed at jd=%s for %s: %s",
-                            jd, event_class, exc)
-                break
-            suffix.append(result)
-            if result.raw_lambda <= ACTIVATION_EPS:
-                break
-
-    if not prefix and not suffix:
-        return series
-    return prefix + list(series) + suffix
-
-
 def sweep_event_class_chunk(
     swe,
     conn,
@@ -344,17 +233,21 @@ def sweep_event_class_chunk(
     ayanamsha_id: str = "lahiri_chitrapaksha",
 ) -> list[dict]:
     """Compute one (chart_id, event_class) horizon chunk's served rows,
-    shape-dispatched per BRIEF_D5 §3. Returns `kala_gochara_windows`-ready
-    row dicts (still missing `chart_id`/`computed_at` — the writer adds
-    those at insert time). Honest empty list (not a crash) when G-1 has no
-    resonance-map targets for this chart/event_class -- PROMISE, and
-    therefore every lambda_e in the chunk, is a real 0.0.
+    shape-dispatched per BRIEF_D5 §3. For `point`/`chain` shapes, returns
+    `kala_gochara_windows`-ready row dicts (still missing `chart_id`/
+    `computed_at` — the writer adds those at insert time). For `interval`
+    shape, returns RAW SEGMENT dicts (D-5 RED-C fix v4 — see module
+    docstring) — `temporal_shape=='interval'`, `raw_start`/`raw_end`/
+    `left_active`/`right_active`, and `duration_prior` embedded (so the
+    caller doesn't need a second ontology fetch) — NOT yet windowed/
+    widened/capped; `writer.py`'s DB-driven consolidation
+    (`_consolidate_interval_segment`) turns each into a final served row.
+    Honest empty list (not a crash) when G-1 has no resonance-map targets
+    for this chart/event_class -- PROMISE, and therefore every lambda_e in
+    the chunk, is a real 0.0.
 
-    Stateless and order-independent — see module docstring. For
-    `interval`-shaped classes, a chunk whose own boundary is active gets its
-    `series` transparently extended (bounded, deterministic) before
-    `shape_output.build_interval_rows` sees it; the caller (writer.py) does
-    not need to pass or persist anything across chunks."""
+    STRICTLY bounded to `series`' own chunk — NO cross-boundary compute of
+    any kind, at any episode length (see module docstring)."""
     meta = fetch_ontology_meta(conn, event_class)
     shape = meta["temporal_shape"] or "point"
 
@@ -378,23 +271,15 @@ def sweep_event_class_chunk(
         # (this module's own second query pass, `_gather_active_sentences_at`
         # below, is independently savepoint-scoped -- see that function.)
         active_by_jd: dict[float, list] = {}
-        if shape == "interval" and targets:
-            max_days = (meta["duration_prior"] or {}).get("max_days")
-            # DECOUPLED from max_days (D-5 RED-C fix v3) -- the discovery
-            # scan must find the episode's TRUE edges regardless of how far
-            # they sit from any one chunk's own position, not just far
-            # enough to reach a max_days-wide slice. See module docstring's
-            # DISCOVERY BOUND note.
-            bound_days = _boundary_scan_bound_days(max_days)
-            series = _extend_series_across_boundary(
-                swe, conn, chart_id, event_class, series,
-                targets=targets, dasha_periods=dasha_periods, shape=shape, ayanamsha_id=ayanamsha_id,
-                horizon_start_jd=horizon_start_jd, horizon_end_jd=horizon_end_jd, bound_days=bound_days,
+        if shape == "interval":
+            rows = build_interval_segments(swe, event_class, series)
+            for row in rows:
+                row["duration_prior"] = meta["duration_prior"]
+        else:
+            rows = build_rows_for_event_class(
+                swe, event_class, shape, series=series,
+                duration_prior=meta["duration_prior"],
             )
-        rows = build_rows_for_event_class(
-            swe, event_class, shape, series=series,
-            duration_prior=meta["duration_prior"],
-        )
         # Now that peak/episode dates are known, re-gather active_sentences
         # ONLY for those specific dates (bounded cost -- see module docstring).
         for row in rows:
