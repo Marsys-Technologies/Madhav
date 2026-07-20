@@ -45,12 +45,30 @@ Idempotency (§N.3): delete-then-insert scoped to (chart_id, event_class) --
 each event_class's OWN substeps clear only that event_class's rows before
 inserting, exactly once (in that event_class's FIRST year substep), so a
 resumed attempt that skips already-committed years never re-deletes them.
+
+CONTINUITY ACROSS YEAR SUBSTEPS (D-5 RED-C fix, 2026-07-20): closing every
+interval-shaped activation at each year substep's boundary, unconditionally,
+made the served window's edges an artifact of the chunking grain rather
+than a true signal-cessation point -- two live major_gain windows for chart
+482012f1 came out ~365 days wide, EXACTLY bounded by year-substep edges.
+`run_substep` now reads the PRIOR year substep's `build_substep_progress.
+carry_state` (migration 461, a nullable JSONB column on the existing
+migration-436 ledger) before sweeping, passes it to `sweep.
+sweep_event_class_chunk` as `open_run`, and persists whatever comes back as
+THIS year's `carry_state` -- so an activation still firing at a chunk
+boundary is carried forward and only closed on a CONFIRMED cessation (the
+next chunk's first grid day comes back inactive) or the ontology's
+`duration_prior.max_days` cap, never a bare, unverified chunk edge. See
+`shape_output.build_interval_rows` for the mechanism and `_RESUME_VERSION`'s
+bump-to-3 note below for how this invalidates pre-fix committed rows.
 """
 from __future__ import annotations
 
 import hashlib
+import json as _json
 import logging
 from datetime import date
+from typing import Optional
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
 from services.ka_gochara_sweep.sweep import sweep_event_class_chunk, DEFAULT_STEP_DAYS
@@ -72,7 +90,19 @@ _N_YEARS = _HORIZON_YEARS  # one substep per calendar year -- see module
 # (mirrors ka_sangam.py's _KA_SANGAM_RESUME_VERSION). Bumped 2 -> decade to
 # year re-chunk changes substep-key SEMANTICS (D-5 REBUILD fix 2026-07-20):
 # an old decade-keyed ledger must NOT be misread as a completed year.
-_RESUME_VERSION = 2
+# Bumped 2 -> 3 (D-5 RED-C fix, 2026-07-20): pre-fix year substeps closed
+# EVERY interval-shaped run at the chunk boundary unconditionally, so any
+# `kala_gochara_windows` row (and the `build_substep_progress` rows that
+# marked those years "done") committed under v2 reflects the chunking-
+# artifact bug this fix removes -- a resumed build must NOT read those old
+# substeps as already-correctly-completed. The fingerprint change forces a
+# full replan-all (plan_substeps' `fps != {fingerprint}` branch), which
+# deletes ALL of this chart's `kala_gochara_windows` rows AND its
+# `build_substep_progress` rows before replanning every substep -- so the
+# two already-committed 365-day major_gain windows for chart 482012f1 are
+# genuinely re-derived under the new continuity-aware logic, not silently
+# skipped as "already built".
+_RESUME_VERSION = 3
 
 
 @register('ka_gochara_sweep')
@@ -201,10 +231,24 @@ class KaGocharaSweepWriter(WriterBase):
             with conn.cursor() as _cur:
                 _cur.execute("SELECT 1")
 
+        # CONTINUITY CARRY (D-5 RED-C fix): an interval-shaped activation
+        # still open at the PRIOR year substep's last grid day was recorded
+        # there as `carry_state` (migration 461) -- read it back so this
+        # year's chunk can confirm (not assume) whether the signal kept
+        # firing across the boundary. `force_close` on the horizon's final
+        # year ensures a still-open activation is closed for real instead
+        # of carried into a substep that will never run.
+        open_run = None
+        if year_idx > 0 and not dry_run:
+            open_run = self._load_carry_state(conn, chart_id, f"{event_class}:year:{year_idx - 1}",
+                                               self._resume_fingerprint)
+        force_close = (year_idx == _N_YEARS - 1)
+
         try:
-            rows = sweep_event_class_chunk(
+            rows, carry_out = sweep_event_class_chunk(
                 self._swe, conn, chart_id, event_class,
                 horizon_start_jd, horizon_end_jd, step_days=DEFAULT_STEP_DAYS,
+                open_run=open_run, force_close=force_close,
             )
         except Exception as exc:
             logger.error("ka_gochara_sweep: sweep failed for %s year %d: %s", event_class, year_idx, exc)
@@ -215,7 +259,7 @@ class KaGocharaSweepWriter(WriterBase):
         if not dry_run:
             with conn.cursor() as cur:
                 rows_inserted = self._insert_rows(cur, chart_id, rows)
-            self._record_substep(conn, chart_id, step.key, rows_inserted)
+            self._record_substep(conn, chart_id, step.key, rows_inserted, carry_out)
 
         return WriterResult(asset_id='ka_gochara_sweep', rows_inserted=rows_inserted)
 
@@ -286,23 +330,70 @@ class KaGocharaSweepWriter(WriterBase):
             return None
         return {r['substep_key'] if isinstance(r, dict) else r[0] for r in rows}
 
-    def _record_substep(self, conn, chart_id: str, substep_key: str, rows: int) -> None:
+    def _record_substep(self, conn, chart_id: str, substep_key: str, rows: int,
+                         carry_state: Optional[dict] = None) -> None:
+        carry_json = self._serialize_carry_state(carry_state) if carry_state is not None else None
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO build_substep_progress
-                       (chart_id, asset_id, substep_key, build_fingerprint, rows_written, completed_at)
-                   VALUES (%s, 'ka_gochara_sweep', %s, %s, %s, now())
+                       (chart_id, asset_id, substep_key, build_fingerprint, rows_written,
+                        carry_state, completed_at)
+                   VALUES (%s, 'ka_gochara_sweep', %s, %s, %s, %s::jsonb, now())
                    ON CONFLICT (chart_id, asset_id, substep_key)
                    DO UPDATE SET build_fingerprint = EXCLUDED.build_fingerprint,
                                  rows_written      = EXCLUDED.rows_written,
+                                 carry_state       = EXCLUDED.carry_state,
                                  completed_at      = EXCLUDED.completed_at""",
-                (chart_id, substep_key, self._resume_fingerprint, rows),
+                (chart_id, substep_key, self._resume_fingerprint, rows, carry_json),
             )
+
+    def _load_carry_state(self, conn, chart_id: str, substep_key: str, fingerprint: str) -> Optional[dict]:
+        """Read back the PRIOR year substep's continuity carry-state (D-5
+        RED-C fix). Returns None when there's nothing to carry (the common
+        case -- most years close every activation cleanly), when the prior
+        substep hasn't committed at all (e.g. this is a genuinely fresh
+        year_idx==0 plan, or an out-of-order dispatch), or when its
+        fingerprint doesn't match the current build (stale/replaced ledger
+        row -- never trust carry state from a different build)."""
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT carry_state, build_fingerprint FROM build_substep_progress "
+                "WHERE chart_id = %s AND asset_id = 'ka_gochara_sweep' AND substep_key = %s",
+                (chart_id, substep_key),
+            )
+            row = cur.fetchone()
+        if not row:
+            return None
+        carry_raw = row['carry_state'] if isinstance(row, dict) else row[0]
+        fp = row['build_fingerprint'] if isinstance(row, dict) else row[1]
+        if fp != fingerprint or carry_raw is None:
+            return None
+        return self._deserialize_carry_state(carry_raw)
+
+    @staticmethod
+    def _serialize_carry_state(carry: dict) -> str:
+        peak_row = dict(carry["peak_row"])
+        peak_row["peak_date"] = peak_row["peak_date"].isoformat()
+        payload = {
+            "true_start_date": carry["true_start_date"].isoformat(),
+            "last_active_date": carry["last_active_date"].isoformat(),
+            "peak_row": peak_row,
+        }
+        return _json.dumps(payload)
+
+    @staticmethod
+    def _deserialize_carry_state(raw) -> dict:
+        payload = raw if isinstance(raw, dict) else _json.loads(raw)
+        peak_row = dict(payload["peak_row"])
+        peak_row["peak_date"] = date.fromisoformat(peak_row["peak_date"])
+        return {
+            "true_start_date": date.fromisoformat(payload["true_start_date"]),
+            "last_active_date": date.fromisoformat(payload["last_active_date"]),
+            "peak_row": peak_row,
+        }
 
     @staticmethod
     def _insert_rows(cur, chart_id: str, rows: list[dict]) -> int:
-        import json as _json
-
         def _json_default(o):
             # Some upstream detail dicts (dasha periods, permission_detail
             # 'systems' entries) carry raw date/datetime objects from DB

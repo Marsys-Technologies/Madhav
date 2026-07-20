@@ -14,6 +14,8 @@ connection objects, same technique as `tests/test_ka_sangam_resumption.py`.
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import swisseph as swe
 import pytest
 
@@ -106,7 +108,8 @@ def test_interval_shape_never_degenerates_to_a_single_day():
         _result("major_gain", _jd(2010, 7, 3), 0.3, valence="gain", shape="interval"),
     ]
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
-    rows = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
+    rows, carry = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
+    assert carry is None, "a one-shot (force_close default True) call must never leave a dangling carry"
     assert len(rows) == 1
     row = rows[0]
     assert row["temporal_shape"] == "interval"
@@ -133,7 +136,8 @@ def test_interval_shape_named_windfall_specimen_spans_not_points():
         d += 5.0  # coarse fixture grid, not the real daily sweep
     series = [_result("major_gain", jd, 0.4, valence="gain", shape="interval") for jd in days]
     duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
-    rows = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
+    rows, carry = SO.build_interval_rows(swe, "major_gain", series, duration_prior)
+    assert carry is None
     assert len(rows) == 1
     row = rows[0]
     assert row["window_start"].isoformat() <= "2010-07-06"
@@ -143,12 +147,191 @@ def test_interval_shape_named_windfall_specimen_spans_not_points():
 
 def test_interval_shape_no_duration_prior_falls_back_honestly():
     series = [_result("career_setback", _jd(2015, 1, 1), 0.2, is_adverse=True, valence="loss", shape="interval")]
-    rows = SO.build_interval_rows(swe, "career_setback", series, duration_prior=None)
+    rows, carry = SO.build_interval_rows(swe, "career_setback", series, duration_prior=None)
+    assert carry is None
     assert len(rows) == 1
     span_days = (rows[0]["window_end"] - rows[0]["window_start"]).days
     assert span_days >= SO.FALLBACK_INTERVAL_DAYS - 1  # padding rounding tolerance
     assert rows[0]["is_adverse"] is True
     assert rows[0]["signed_intensity"] < 0
+
+
+# ── shape_output: interval continuity across chunk boundaries (D-5 RED-C) ──
+#
+# RED-C finding: `build_interval_rows` was called once per year-substep chunk
+# (writer.py) and closed EVERY still-active run at the chunk's last grid day
+# unconditionally -- an activation genuinely still firing across a Dec-31/
+# Jan-1 boundary got served as TWO separate ~365-day windows, each EXACTLY
+# bounded by the chunk edge, not by any real signal-cessation point or the
+# ontology's own `duration_prior.max_days`. These tests exercise the
+# continuity-carry fix (`open_run`/`force_close`/tuple return) directly,
+# mirroring writer.py's per-year `run_substep` loop closely enough to prove
+# the fix, without touching the DB.
+
+def _daily_series(event_class, start_jd, n_days, raw_lambda, shape="interval"):
+    return [_result(event_class, start_jd + i, raw_lambda, valence="gain", shape=shape) for i in range(n_days)]
+
+
+def _year_chunk_series(event_class, year, active_day_offsets, shape="interval"):
+    """One calendar year's worth of daily series (365 days, IST midnight
+    grid) -- `active_day_offsets` is the set of 0-indexed day offsets from
+    that year's Jan 1 that are active; every other day is inactive. Mirrors
+    writer.py's `run_substep` chunking exactly: one grid day per
+    (event_class, year) substep."""
+    start_jd = _jd(year, 1, 1)
+    return [
+        _result(event_class, start_jd + i, 0.3 if i in active_day_offsets else 0.0, valence="gain", shape=shape)
+        for i in range(365)
+    ]
+
+
+def test_interval_still_open_at_chunk_end_is_not_closed_on_the_spot():
+    """The core RED-C fix: force_close=False (writer.py's non-final-year
+    call) must NOT close a run that is still active at the chunk's last
+    grid day -- it must carry forward instead."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 1000}
+    chunk1 = _daily_series("major_gain", _jd(2010, 1, 1), 365, 0.3)  # active straight through
+    rows1, carry1 = SO.build_interval_rows(swe, "major_gain", chunk1, duration_prior, force_close=False)
+    assert rows1 == [], "a run still active at the chunk boundary must not be served as a closed window yet"
+    assert carry1 is not None
+    assert carry1["true_start_date"].isoformat() == "2010-01-01"
+    assert carry1["last_active_date"].isoformat() == "2010-12-31"
+
+
+def test_interval_continuity_merges_across_boundary_then_closes_on_confirmed_cessation():
+    """A carried-forward open run, once the NEXT chunk shows real inactivity,
+    closes as ONE window spanning both chunks -- window_start is the TRUE
+    origin (chunk 1), window_end is the TRUE end (well into chunk 2), never
+    truncated to the old chunk-boundary artifact (2010-12-31/2011-01-01)."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 1000}
+    chunk1 = _daily_series("major_gain", _jd(2010, 1, 1), 365, 0.3)
+    _rows1, carry1 = SO.build_interval_rows(swe, "major_gain", chunk1, duration_prior, force_close=False)
+
+    # Year 2: active for another 42 days, then genuinely stops (a long
+    # inactive cooldown follows WITHIN this same chunk, positively
+    # confirming the cessation rather than assuming one).
+    active_tail = _daily_series("major_gain", _jd(2011, 1, 1), 42, 0.3)
+    cooldown = _daily_series("major_gain", _jd(2011, 1, 1) + 42, 100, 0.0)
+    chunk2 = active_tail + cooldown
+    rows2, carry2 = SO.build_interval_rows(swe, "major_gain", chunk2, duration_prior,
+                                            open_run=carry1, force_close=False)
+
+    assert carry2 is None, "confirmed cessation must close the window for real, not re-carry it"
+    assert len(rows2) == 1
+    row = rows2[0]
+    assert row["window_start"].isoformat() == "2010-01-01"
+    assert row["window_end"] != date(2010, 12, 31), \
+        "window_end must reflect the TRUE cessation date, not the old chunk-boundary artifact"
+    total_span = (row["window_end"] - row["window_start"]).days
+    assert total_span > 365, "the merged window must reflect the full multi-chunk span"
+
+
+def test_interval_continuity_closes_at_max_days_cap_not_indefinitely():
+    """A signal that never shows confirmed cessation must still close --
+    exactly at the ontology's duration_prior.max_days cap, not carried
+    forward forever."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 200}
+    # 201 active days -> the run's true span (day 0 to day 200) is exactly
+    # 200 days, meeting the cap (a 200-DAY series of daily points spans 199
+    # days between its first and last date; this is deliberately one day
+    # over so the span genuinely reaches max_days).
+    chunk = _daily_series("major_gain", _jd(2010, 1, 1), 201, 0.3)
+    rows, carry = SO.build_interval_rows(swe, "major_gain", chunk, duration_prior, force_close=False)
+    assert carry is None, "hitting max_days must close for real, not carry past the ontology's own cap"
+    assert len(rows) == 1
+    assert (rows[0]["window_end"] - rows[0]["window_start"]).days <= 200
+
+
+def test_interval_continuity_force_close_on_final_horizon_year_never_drops_a_window():
+    """writer.py passes force_close=True on the sweep horizon's LAST year so
+    a still-open activation is served, not silently lost because there's no
+    further substep to confirm cessation."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 1000}
+    chunk = _daily_series("major_gain", _jd(2099, 1, 1), 365, 0.3)  # active straight through the final year
+    rows, carry = SO.build_interval_rows(swe, "major_gain", chunk, duration_prior, force_close=True)
+    assert carry is None
+    assert len(rows) == 1
+
+
+# ── gate assertion (native-mandated, D-5 RED-C): no served window boundary
+# may coincide with a chunk boundary absent duration_prior.max_days support ─
+
+def _chunk_boundary_dates(year: int) -> set:
+    return {date(year - 1, 12, 31), date(year, 1, 1), date(year, 12, 31), date(year + 1, 1, 1)}
+
+
+def _assert_no_uncapped_chunk_boundary_windows(rows: list[dict], duration_prior: dict, years: "list[int]"):
+    """The gate assertion itself: a served interval row's window_start/
+    window_end must never exactly equal a processed year's chunk edge
+    (Dec-31/Jan-1) UNLESS the window's own width is at the ontology's
+    duration_prior.max_days cap (a legitimate coincidence, not a chunking
+    artifact -- BRIEF_D5's own binding shape-precision discipline cuts both
+    ways: never MORE precision than the shape supports, and never LESS
+    discrimination than a bounded prior demands)."""
+    max_days = duration_prior.get("max_days")
+    boundary_dates = set()
+    for year in years:
+        boundary_dates |= _chunk_boundary_dates(year)
+    for row in rows:
+        width_days = (row["window_end"] - row["window_start"]).days
+        is_capped = max_days is not None and width_days >= max_days
+        for edge in (row["window_start"], row["window_end"]):
+            if edge in boundary_dates:
+                assert is_capped, (
+                    f"served window edge {edge.isoformat()} (width={width_days}d) coincides with a "
+                    f"year-chunk boundary but is NOT duration_prior.max_days-capped ({max_days}d) -- "
+                    "this is the RED-C chunking-artifact bug: a served boundary must never silently "
+                    "coincide with an internal chunking boundary when it isn't actually where the "
+                    "signal ended."
+                )
+
+
+def test_gate_no_served_window_boundary_coincides_with_chunk_edge_absent_signal_support():
+    """The RED-C gate assertion, driven through a multi-year synthetic sweep
+    (one `build_interval_rows` call per calendar year, carry threaded
+    through exactly like `run_substep` does) reproducing the shape of the
+    live finding: a signal firing continuously across ONE year boundary
+    (2010-07-01 -> 2011-03-01) then genuinely stopping."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
+    signal_start, signal_end = date(2010, 7, 1), date(2011, 3, 1)
+    years = [2010, 2011, 2012]
+
+    all_rows: list[dict] = []
+    carry = None
+    for idx, year in enumerate(years):
+        active = {i for i in range(365) if signal_start <= (date(year, 1, 1) + timedelta(days=i)) <= signal_end}
+        chunk = _year_chunk_series("major_gain", year, active)
+        rows, carry = SO.build_interval_rows(
+            swe, "major_gain", chunk, duration_prior, open_run=carry, force_close=(idx == len(years) - 1),
+        )
+        all_rows.extend(rows)
+
+    assert carry is None
+    assert len(all_rows) == 1, "one continuous episode must serve as ONE window, not one per chunk"
+    _assert_no_uncapped_chunk_boundary_windows(all_rows, duration_prior, years)
+
+
+def test_gate_assertion_is_not_vacuous_it_catches_the_old_broken_behavior():
+    """Sanity-check that the gate assertion above is a real regression check,
+    not trivially satisfied -- replay the SAME synthetic signal through the
+    OLD (pre-fix) per-chunk behavior (force_close=True on every chunk, no
+    carry threaded through -- exactly what `run_substep` did before this
+    fix) and confirm the assertion helper DOES flag it."""
+    duration_prior = {"min_days": 14, "typical_days": 90, "max_days": 365}
+    signal_start, signal_end = date(2010, 7, 1), date(2011, 3, 1)
+    years = [2010, 2011, 2012]
+
+    old_behavior_rows: list[dict] = []
+    for year in years:
+        active = {i for i in range(365) if signal_start <= (date(year, 1, 1) + timedelta(days=i)) <= signal_end}
+        chunk = _year_chunk_series("major_gain", year, active)
+        # OLD behavior: force_close=True on EVERY chunk, no carry passed in
+        # or out -- each year's still-open run is closed on the spot.
+        rows, _carry = SO.build_interval_rows(swe, "major_gain", chunk, duration_prior, force_close=True)
+        old_behavior_rows.extend(rows)
+
+    with pytest.raises(AssertionError):
+        _assert_no_uncapped_chunk_boundary_windows(old_behavior_rows, duration_prior, years)
 
 
 # ── shape_output: chain ──────────────────────────────────────────────────
@@ -321,7 +504,8 @@ def test_live_sweep_small_window_marriage_specimen():
     try:
         start_jd = _jd(2013, 11, 15)
         end_jd = _jd(2013, 12, 31)
-        rows = sweep_event_class_chunk(swe, conn, CHART_ID, "marriage", start_jd, end_jd, step_days=1.0)
+        rows, carry = sweep_event_class_chunk(swe, conn, CHART_ID, "marriage", start_jd, end_jd, step_days=1.0)
+        assert carry is None  # marriage is point-shaped -- never carries
         assert isinstance(rows, list)
         for r in rows:
             assert r["temporal_shape"] == "point"

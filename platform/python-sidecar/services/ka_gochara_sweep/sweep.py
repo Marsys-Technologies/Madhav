@@ -35,6 +35,20 @@ A caller doing LOCAL testing should pass a small `horizon_start_jd`/
 module does not itself refuse a large range, but the task brief is explicit
 that materializing the full 100-year horizon is the Cloud Run job's job,
 not this lane's local verification step.
+
+CONTINUITY ACROSS CHUNKS (D-5 RED-C fix, 2026-07-20): this module's chunk
+call is otherwise stateless (no memory of prior/future chunks), which is
+exactly what caused RED-C — an `interval`-shaped activation still firing at
+a chunk's last grid day was closed on the spot, so two live major_gain
+windows for chart 482012f1 each came out ~365 days wide, EXACTLY bounded by
+the writer's per-year substep chunking, an artifact of chunking rather than
+a true signal-cessation point. `sweep_event_class_chunk` now accepts an
+`open_run` carry-state dict (from the prior chunk) and returns `(rows,
+carry_out)` — `carry_out` is the SAME shape, to be persisted by the caller
+(writer.py, via `build_substep_progress.carry_state`, migration 461) and
+handed back in as `open_run` on the next chunk call for the same (chart_id,
+event_class). See `shape_output.build_interval_rows` for the actual
+confirm-before-close mechanism.
 """
 from __future__ import annotations
 
@@ -49,7 +63,7 @@ from services.gochara_grammar import dasha_data as DD
 from services.gochara_intensity.enrichment import enrich_targets
 from services.gochara_intensity._dbutil import savepoint_scope
 
-from .shape_output import build_rows_for_event_class
+from .shape_output import build_rows_for_event_class, build_interval_rows
 
 logger = logging.getLogger(__name__)
 
@@ -157,13 +171,26 @@ def sweep_event_class_chunk(
     horizon_end_jd: float,
     step_days: float = DEFAULT_STEP_DAYS,
     ayanamsha_id: str = "lahiri_chitrapaksha",
-) -> list[dict]:
+    open_run: Optional[dict] = None,
+    force_close: bool = False,
+) -> tuple[list[dict], Optional[dict]]:
     """Compute one (chart_id, event_class) horizon chunk's served rows,
-    shape-dispatched per BRIEF_D5 §3. Returns `kala_gochara_windows`-ready
-    row dicts (still missing `chart_id`/`computed_at` — the writer adds
-    those at insert time). Honest empty list (not a crash) when G-1 has no
-    resonance-map targets for this chart/event_class -- PROMISE, and
-    therefore every lambda_e in the chunk, is a real 0.0."""
+    shape-dispatched per BRIEF_D5 §3. Returns `(rows, carry_out)`: `rows`
+    are `kala_gochara_windows`-ready row dicts (still missing `chart_id`/
+    `computed_at` — the writer adds those at insert time); `carry_out` is
+    non-None only for `interval`-shaped classes whose activation is still
+    open at THIS chunk's last grid day (see `shape_output.build_interval_rows`
+    — D-5 RED-C continuity fix). Honest empty list (not a crash) when G-1 has
+    no resonance-map targets for this chart/event_class -- PROMISE, and
+    therefore every lambda_e in the chunk, is a real 0.0.
+
+    `open_run` (optional): a carry-state dict from the IMMEDIATELY PRIOR
+    chunk (same chart_id/event_class, prior calendar year) describing an
+    activation that was still open when that chunk ended — passed straight
+    through to `build_interval_rows`; a no-op for point/chain shapes.
+    `force_close`: the writer passes True on the sweep horizon's final year
+    so a still-open activation is closed rather than carried into a substep
+    that will never run (see writer.py `run_substep`)."""
     meta = fetch_ontology_meta(conn, event_class)
     shape = meta["temporal_shape"] or "point"
 
@@ -187,10 +214,21 @@ def sweep_event_class_chunk(
         # (this module's own second query pass, `_gather_active_sentences_at`
         # below, is independently savepoint-scoped -- see that function.)
         active_by_jd: dict[float, list] = {}
-        rows = build_rows_for_event_class(
-            swe, event_class, shape, series=series,
-            duration_prior=meta["duration_prior"],
-        )
+        carry_out: Optional[dict] = None
+        if shape == "interval":
+            # Continuity-aware close (D-5 RED-C fix): a chunk boundary must
+            # never silently double as a signal-cessation assertion -- see
+            # build_interval_rows' own docstring for the confirm-before-close
+            # mechanism.
+            rows, carry_out = build_interval_rows(
+                swe, event_class, series, meta["duration_prior"],
+                open_run=open_run, force_close=force_close,
+            )
+        else:
+            rows = build_rows_for_event_class(
+                swe, event_class, shape, series=series,
+                duration_prior=meta["duration_prior"],
+            )
         # Now that peak/episode dates are known, re-gather active_sentences
         # ONLY for those specific dates (bounded cost -- see module docstring).
         for row in rows:
@@ -199,14 +237,14 @@ def sweep_event_class_chunk(
             if key not in active_by_jd:
                 active_by_jd[key] = _gather_active_sentences_at(swe, conn, chart_id, targets, peak_jd)
             row["active_sentences"] = active_by_jd[key]
-        return rows
+        return rows, carry_out
 
     if shape == "chain":
         milestone_template = meta["milestone_template"] or []
         if not milestone_template:
             logger.info("[ka_gochara_sweep] chain-shaped event_class=%s has no milestone_template -- "
                         "honest empty chunk.", event_class)
-            return []
+            return [], None
         # Anchor: the strongest single-instant lambda_e across the horizon,
         # evaluated at the SAME daily grid as point/interval classes (this is
         # the one live query point/interval/chain all three share -- see
@@ -219,7 +257,7 @@ def sweep_event_class_chunk(
         )
         active_runs = [r for r in series if r.raw_lambda > 0.0]
         if not active_runs:
-            return []
+            return [], None
         anchor = max(active_runs, key=lambda r: (abs(r.signed_lambda), -r.t_jd))
         milestone_results: list[tuple[dict, Any]] = []
         for milestone in milestone_template:
@@ -240,7 +278,7 @@ def sweep_event_class_chunk(
         # iterates milestone_results in the same order it received them).
         for row, (_, result) in zip(rows, milestone_results):
             row["active_sentences"] = _gather_active_sentences_at(swe, conn, chart_id, targets, result.t_jd)
-        return rows
+        return rows, None
 
     raise ValueError(f"ka_gochara_sweep: unsupported temporal_shape {shape!r} for event_class={event_class!r}")
 
