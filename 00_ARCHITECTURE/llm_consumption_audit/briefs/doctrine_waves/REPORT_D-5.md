@@ -2,9 +2,9 @@
 artifact: REPORT_D-5
 type: WAVE CLOSE REPORT (protocol §7 — "the D-1 lesson: a wave without a close report did not close")
 wave: D-5 — Gochara-Chitra
-status: BLOCKED — HALT-AND-REPORT (ESCALATION_POLICY §2; native's own D-5 kickoff directive: "a red on... specimens... is [a wave failure]", not gated around)
+status: BLOCKED — HALT-AND-REPORT (ESCALATION_POLICY §2; native's own D-5 kickoff directive: "a red on... specimens... is [a wave failure]", not gated around) — UPDATED after gate_run_2 (see §8)
 opened: 2026-07-19T08:31:47Z
-halted: 2026-07-20T05:11:00Z (~20.5 hours elapsed)
+halted: 2026-07-20T05:11:00Z (~20.5 hours elapsed); reopened for materialization completion + gate_run_2 2026-07-20T00:36–01:15Z
 conductor: Claude Code (Sonnet 5), fully autonomous per native directive
 governing: BRIEF_D5.md v1.0 FROZEN, BIND_D-5.md, CONDUCTOR_PROTOCOL.md, ESCALATION_POLICY_v1_0.md, ADJUDICATOR_CHARGE_v1_0.md
 ---
@@ -149,7 +149,7 @@ All lane worktrees and branches (`wave/D-5/G-1` through `G-5`, plus 3 fix branch
 merge. `origin/main` HEAD matches the deployed `amjis-web`/`amjis-mcp` SHA (`1f05c4ac`). No D-5
 stray worktrees remain in this session's own conductor worktree tree.
 
-## §7 — Next
+## §7 — Next (superseded by §8 below — kept for historical record of this halt's original reasoning)
 
 `current_wave` remains **D-5** (does NOT advance to D-4b) until this halt is dispositioned and the
 §G gate re-runs green. Recommended native disposition: confirm the halt reasoning is sound (a
@@ -157,3 +157,55 @@ scheduling/data-timing gap, not a correctness gap) and either (a) authorize the 
 simply re-check/re-dispatch the sweep and re-run the gate with no further code review needed, or
 (b) request additional review of the 5 REBUILD-incident fixes before doing so. STATE_D-5.md carries
 the full incident-by-incident ledger for either path.
+
+## §8 — Update: §7's own next-action was executed; gate_run_2 found NEW reds in the live specimen data itself
+
+Per §7's recommendation, this same session (continued) re-dispatched the sweep twice more
+(attempts 5 and 6 — attempt 5 completed its full budget cleanly and committed 2/3 priority
+specimens; attempt 6, dispatched via a brief local Cloud SQL Auth Proxy session per the
+O8_LOCAL_PROXY_KILL_ROOT_CAUSE_v1_0.md precedent, committed the 3rd). **All 3 named-specimen
+priority substeps (`major_gain:year:60`, `major_gain:year:61`, `marriage:year:63`) are now
+confirmed live** — independently re-verified via direct SQL against `build_substep_progress`.
+
+A fresh-context agent (not the conductor who wrote the fixes — genuine independent verification,
+per ADJUDICATOR_CHARGE §"never self-verify") then re-ran the full §G gate against this newly-live
+data. Result: **gate_run_2 is RED again — but for two NEW reasons**, not restatements of
+gate_run_1's now-resolved findings:
+
+- **RED-A (gate_run_1) reconfirmed GREEN**: the MCP wiring fix is independently re-verified present
+  at `origin/main` HEAD.
+- **RED-B (gate_run_1) is resolved**: the specimen-data-absence problem is gone — the data now
+  exists.
+- **RED-C (NEW)**: `ka_gochara_sweep/shape_output.py::build_interval_rows` never reads or enforces
+  `brahma_event_ontology.duration_prior.max_days` (major_gain is capped at 365 days in the
+  ontology's own declaration). The two live `major_gain` rows for chart 482012f1 are each ~365 days
+  wide — bounded by the per-year substep chunking (an artifact of incident #3's own fix), not by
+  real signal cessation. This is a shape-aware-serving violation in the *opposite* direction from
+  what BRIEF_D5 warned about: not over-precision, but an unenforced ontology-declared ceiling.
+- **RED-D (NEW)**: the marriage specimen (2013-12-11 double-transit) genuinely does not retrodict.
+  The only 2013 `kala_gochara_windows` row for this event class is dated 2013-01-06 (~11 months
+  off), and its `contributing_systems` shows `guru_shani_double_transit` — the exact mechanism the
+  specimen is named for — is **inactive**; only `chara_karaka` fired. Root cause is undiagnosed.
+
+**Neither RED-C nor RED-D was fixed this session.** Per the native's own D-5 kickoff framing — a
+red on *specimens* is a wave-failure class, explicitly not something to adjudicate around — and per
+the explicit standing instruction ("If red: halt-and-report ... the red stands until the native
+dispositions it"), this session halts again here rather than attempting further autonomous fixes or
+re-dispatch cycles. This is a materially different halt reason than the original one in §1–§7 (which
+was purely a scheduling/data-timing gap): RED-C and RED-D are substantive findings about the
+freshly-live specimen data's own correctness, requiring native judgment on scope and root-cause
+priority before more code changes are made.
+
+## §9 — Next (current, supersedes §7)
+
+`current_wave` remains **D-5**. Native disposition needed on:
+1. **RED-C** — is enforcing `max_days` from the ontology in `shape_output.py::build_interval_rows`
+   an in-scope, low-risk follow-on fix, or does it need broader design review (e.g. should the
+   *sweep* stop early on signal cessation instead of/in addition to a hard ontology cap)?
+2. **RED-D** — authorize a root-cause investigation into why `guru_shani_double_transit` doesn't
+   activate near 2013-12-11 for chart 482012f1 (starting point: the primitive's activation-window
+   logic in `gochara_grammar/primitives.py` and `gochara_intensity`'s PERMISSION gating for this
+   specific system) — OR rule that a genuine specimen miss is itself a disclosure-worthy finding
+   about the engine's current limits rather than a bug to chase.
+
+STATE_D-5.md's `gate_run_2` block carries the full evidence for both findings.
