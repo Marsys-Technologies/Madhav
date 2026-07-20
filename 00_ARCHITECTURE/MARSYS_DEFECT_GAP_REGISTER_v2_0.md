@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.5
+version: 3.6
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -827,24 +827,62 @@ milestone rows (items #6/#10/#14/#15). Independently Opus-verified live (ACCEPT-
 2 cosmetic-only findings: a 1-day-off provenance date field, no explicit event_class FK column
 on `life_events` — neither blocks acceptance).
 
-**CR-113 [OPEN, carried to D-5, discovered pre-D-5 readiness pass 2026-07-19, live-verified]:**
-orphaned `build_runs` row `372b5cfa-9aa6-45b7-b72f-dcb813e57f7b` (`state='running'`,
-`ended_at=NULL`, `action='rebuild'`, chart 482012f1, `created_at` 2026-07-18T12:36 — ties to a
-failed Cloud Run job execution `brahma-build-pipeline-job-lj545`). First flagged by D-4a's Lane
-A-0 as out-of-scope; still stuck, unresolved, as of this pre-D-5 pass. D-5's G-4 lane (the only
-lane expected to trigger a chart rebuild, for the `ka_gochara_sweep` asset) should sweep/
-reconcile this row before trusting a clean `build_runs` table state — flagged in BRIEF_D5.md
-§B.5 as a Binder disposition item, not silently carried forward again.
+**CR-113 [CLOSED, verified 2026-07-20 D-5 open + independently re-verified 2026-07-21 pre-D-4b
+readiness pass]:** orphaned `build_runs` row `372b5cfa-9aa6-45b7-b72f-dcb813e57f7b`
+(`state='running'`, `ended_at=NULL`, `action='rebuild'`, chart 482012f1) — reaped via
+`/api/cockpit/watchdog` at D-5 open (BIND_D-5.md `first_actions.cr_113: closed`). Independently
+re-confirmed this session via direct query (`SELECT ... FROM build_runs WHERE state NOT IN
+('completed','failed','stopped')` returns zero rows) — no new orphaned rows exist as of this
+pass.
 
-**CR-114 [OPEN, carried to D-5, discovered pre-D-5 readiness pass 2026-07-19, live-verified,
-DEGRADED not FAIL]:** `amjis-mcp` and `amjis-sidecar`/`brahma-build-pipeline-job` (shared image)
-are deployed 10 and 7 commits behind `origin/main` HEAD respectively, last synced at D-4a's
-A-0/A-0-fix merges (PRs #608/#610). Confirmed the gap contains zero `platform-mcp/`/
-`python-sidecar/` source changes (pure docs/migrations/TypeScript-app-layer commits in the gap)
-— inert today. Flagged because D-5's G-2/G-3 lanes will add real `platform/python-sidecar/
-services/gochara_*` code, which requires a fresh sidecar deploy to run live; the D-5 Binder must
-not assume the currently-stale sidecar image auto-picks up new G-lane sidecar code — recorded in
-BRIEF_D5.md §B.5.
+**CR-114 [CLOSED — dispositioned non-blocking at D-5 open, verified still holding]:**
+`amjis-mcp`/`amjis-sidecar` image staleness relative to `origin/main` — resolved by D-5's own
+deploys (multiple PRs landed + redeployed through the wave). Re-verified this session (pre-D-4b
+readiness pass, 2026-07-21): all three deployed services (`amjis-mcp`, `amjis-web`,
+`amjis-sidecar`) are code-current with `origin/main` HEAD — the only commits `origin/main` carries
+ahead of the deployed SHAs are pure docs/governance/session-log/ops-script commits (confirmed via
+`git diff --stat` against `platform/src`, `platform-mcp`, `platform/python-sidecar` — empty diff).
+
+**CR-116 [CLOSED, this session — pre-D-4b readiness pass, 2026-07-21]:** `ka_gochara_sweep`'s
+per-substep throughput defect (native-flagged: ~10min/substep vs the orchestrator's 1800s
+`writer_timeout_seconds` budget, blocking full materialization). Root-caused: two DB reads inside
+the per-day PERMISSION computation (`gochara_grammar/primitives.py`'s `_fetch_av_gate_rows` — a
+global L0 reference-table read — and `_fetch_sade_sati_rows` — a chart-scoped but
+build-lifetime-static `chart_facts` read) are re-issued on every one of ~365 grid-day calls per
+year-substep, despite both tables being unchanged for a build's entire lifetime. Fixed via
+correctness-preserving memoization (module-level cache, keyed by the same arguments that already
+determine the query; a read FAILURE is never cached, only success, so a transient error stays
+retryable). Measured ~600x speedup on the affected calls (chart 482012f1, career_advancement
+targets). Verified: adversarial cache-poisoning probe (a sentinel value planted in the cache is
+returned verbatim instead of hitting the DB — proves the cache path is genuinely consulted, not
+bypassed); determinism proof (two independent in-process re-derivations of the same 30-day window,
+cache cleared between runs, produce byte-identical output); full non-integration test suite
+189/189 green. PR #670. **Residual, NOT closed by this fix:** the underlying real ephemeris-search
+cost per grid day is untouched by this cache (it only removed the two redundant static reads) —
+full 300-substep materialization of `ka_gochara_sweep` for chart 482012f1 remains a
+multi-dispatch-cycle operation; see this pass's own report for the live re-materialization
+evidence and remaining substep count.
+
+**CR-117 [CLOSED, this session — pre-D-4b readiness pass, 2026-07-21]:** cockpit badge-honesty
+defect (native-flagged): the asset badge reported the same `error` state for a genuinely broken
+writer and a heavy (`has_substeps`) writer that had merely hit its own `writer_timeout_seconds`
+mid-materialization — a safely resumable situation, indistinguishable from a real defect at a
+glance. Fixed: `deriveState` (`platform/src/app/api/cockpit/stats/route.ts`) now checks
+`build_substep_progress` for `has_substeps` assets in the `error` state — a committed-substep
+count > 0 downgrades the badge to a new, distinct `partial` state carrying honest progress
+(committed count; `total` left null unless a future asset populates a computable expected-volume
+formula — never fabricated per B.10). Wired through both cockpit UI surfaces. Verified: 6/6 new
+`deriveState` unit tests; full project `tsc --noEmit` clean. PR #671.
+
+**NEW ASSERTION CLASS registered (this session, not a numbered CR — a standing gate-discipline
+rule):** materialization-completeness precedes gate/scoring. D-5's own marriage-specimen verdict
+(gate_run_3) was rendered against a `ka_gochara_sweep` that had committed roughly 1% of its
+planned substep coverage (3 of ~300, all specimen-priority substeps dispatched first) — defensible
+for a targeted specimen spot-check, but this pattern generalizes badly: any future wave whose gate
+scores against a HEAVY (`has_substeps`) writer's output must first assert that writer's
+materialization is complete (100% of planned substeps committed) before treating a scoring verdict
+as meaning what it claims to mean. Encoded as a binding, hard-prerequisite gate criterion in
+`BRIEF_D4B.md §0`, ahead of every other D-4b gate criterion — not merely a recommendation.
 
 **CR-115 [OPEN, discovered PG-2 Lane X-5 (2026-07-19), carried to PF-1 §F1 Lane F-2, live
 schema-diffed]:** `platform/python-sidecar/brahmagyan/mimamsa/outcome.py` references
@@ -864,7 +902,17 @@ retrieval-campaign W4 closes, per the native's 2026-07-20 re-scope ruling. Full 
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.5 (2026-07-20, stash-triage close-out session)
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.6 (2026-07-21, pre-D-4b readiness pass v3,
+conductor session) — CR-113 CLOSED (re-verified no orphaned build_runs rows exist); CR-114 CLOSED
+(re-verified all three deployed services code-current with origin/main); CR-116 added and CLOSED
+(ka_gochara_sweep throughput defect, root-caused + fixed via correctness-preserving memoization,
+PR #670 — residual noted: full materialization still pending, multi-dispatch-cycle); CR-117 added
+and CLOSED (cockpit badge-honesty defect, new `partial` state, PR #671); NEW assertion class
+registered (materialization-completeness precedes gate/scoring, encoded in BRIEF_D4B.md §0).
+CR-116/117 numbered above CR-115 to avoid collision with v3.5's CR-115 (this changelog entry was
+authored concurrently with, and merged after, the v3.5 stash-triage entry below, which had already
+claimed CR-115 for an unrelated defect).
+v3.5 (2026-07-20, stash-triage close-out session)
 — CR-115 added OPEN (record_outcome/phala_anchors schema drift, PG-2 Lane X-5; owned by PF-1's
 remaining scope per the native's PF-1/W4 re-scope ruling). Frontmatter `version` corrected 3.2 →
 3.5 (had drifted out of sync with this changelog's own tail, which already read v3.4 — a

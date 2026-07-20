@@ -14,7 +14,32 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-5   # INCOMING — BRIEF_D5.md v1.0 FROZEN 2026-07-19 (pre-D-5 readiness pass),
+current_wave: D-4b   # INCOMING — BRIEF_D4B.md v1.0 FROZEN 2026-07-21 (pre-D-4b readiness pass v3),
+  # awaiting the native's separate D-4b kickoff directive; not opened, not bound.
+  # D-5 "Gochara-Chitra" CLOSED 2026-07-20 GREEN-WITH-PARTIALS: all 5 lanes (G-1..G-5) built,
+  # adversarially verified, merged, deployed; 5 REBUILD-time incidents found+fixed via live/
+  # orchestrator-driven execution (none a data-quality regression); gate_run_2's RED-C
+  # (max_days cap unenforced) + RED-D (marriage mechanism inactive) root-caused and fixed
+  # (PRs #650/#651); a NEW post-merge perf regression (hot-path INFO-logging) found+fixed
+  # (PR #663); native-dispositioned gate_run_2 findings 1/2 (plateau-disclosure + top-K
+  # local-maxima serving) implemented (PR #665); DR-17 (Graded Manifestation Acceptance) +
+  # DR-18 (Knowledge-Utilization Census) registered. Final gate_run_3: major_gain PASSES the
+  # corrected OVERLAP assertion; marriage specimen residual carried to D-4b (named DR-17
+  # type-specimen pair) per the native's own pre-committed split-outcome disposition. Full
+  # record: STATE_D-5.md, REPORT_D-5.md.
+  # Pre-D-4b readiness pass v3 (2026-07-21, this pass): merged the prior session's
+  # DIAG_GOCHARA_SWEEP_STALE_v1_0.md diagnostic memo; root-caused ka_gochara_sweep's real
+  # per-substep throughput defect (uncached per-day re-reads of two chart/L0-static reference
+  # tables, `_fetch_av_gate_rows`/`_fetch_sade_sati_rows` — fixed via correctness-preserving
+  # memoization, ~600x measured speedup on the affected calls, adversarial cache-poisoning
+  # probe + determinism proof both passed, full non-integration test suite green); fleshed +
+  # FROZE BRIEF_D4B.md v1.0 (was skeleton) from ARC PLAN §5 + BRIEF_D4 v2.0 lane texts;
+  # authored DR_17_18_MANIFESTATION_CENSUS_DOCTRINE_v1_0.md (harness spec + first Gochara-
+  # subsystem KUC census) and a staged (not committed) D4B_PREREGISTRATION_PACKET_DRAFT_v1_0.md.
+  # Full record: this pass's own readiness-pass report (see SESSION_LOG entry) +
+  # BRIEF_D4B.md + DR_17_18_MANIFESTATION_CENSUS_DOCTRINE_v1_0.md.
+  # --- prior wave history below ---
+  # D-5 "Gochara-Chitra" — BRIEF_D5.md v1.0 FROZEN 2026-07-19 (pre-D-5 readiness pass),
   # awaiting the native's separate D-5 kickoff directive; not opened, not bound. Pre-D-5 pass
   # also fixed CR-112 (item #3 native correction, mis-quarantined in D-4a) and closed
   # CR-109/110/111 in the defect register (fixed in D-4a, re-verified live this pass); CR-113/
