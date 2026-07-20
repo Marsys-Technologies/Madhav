@@ -52,7 +52,27 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
 | When | Campaign | Action | Released |
 |---|---|---|---|
 | 2026-07-19 19:12–19:34 | retrieval | W0 S-1..S-5 safety deploy (PR #633 → main `2f4b67e8` → amjis-mcp `amjis-mcp-00440-n29` + amjis-web `amjis-web-01031-rmj`, 100% traffic) | **RELEASED** 2026-07-19 19:5x, post live-verification |
-| 2026-07-20 (claimed pre-merge) | retrieval | W2 phase 1 deploy: descriptor migration + vidhi de-mirror + 6 dark-set items, incl. two NEW live sidecar routes (ephemeris compute, muhurta score) — requires python-sidecar + platform-mcp redeploy, not just platform/web. Pre-deploy check: D-5 is HALTED (§ D-5 STATUS REFRESH above); most recent `origin/main` activity is D-5's `gate_run_2` (docs-only push, `Build & Deploy Web/MCP/Sidecar` all skipped — confirmed no live D-5 code deploy in flight). Baseline re-snapshot: this campaign's last live probe was W0's `VERIFY_W0.md` (2026-07-19); a fresh post-deploy live probe of the two new sidecar routes substitutes for a full baseline re-snapshot here, since W1/W2 phase 1 added no regression-risk to the surfaces W0 already verified. | pending |
+| 2026-07-20 (claimed pre-merge) | retrieval | W2 phase 1 deploy: descriptor migration + vidhi de-mirror + 6 dark-set items, incl. two NEW live sidecar routes (ephemeris compute, muhurta score) — requires python-sidecar + platform-mcp redeploy, not just platform/web. Pre-deploy check: D-5 is HALTED (§ D-5 STATUS REFRESH above); most recent `origin/main` activity is D-5's `gate_run_2` (docs-only push, `Build & Deploy Web/MCP/Sidecar` all skipped — confirmed no live D-5 code deploy in flight). Baseline re-snapshot: this campaign's last live probe was W0's `VERIFY_W0.md` (2026-07-19); a fresh post-deploy live probe of the two new sidecar routes substitutes for a full baseline re-snapshot here, since W1/W2 phase 1 added no regression-risk to the surfaces W0 already verified. | **RELEASED** 2026-07-20, post live-verification |
+
+### W2 PHASE 1 CLOSE (2026-07-20)
+
+Merged: PR #645 (`impl/wave-2` → `main`, merge commit `d2cc080c`), all CI checks green. Deploy
+(run `29720602529`): `Build & Deploy Sidecar` success, `Build & Deploy MCP` success,
+`Build & Deploy Web` success — all three services redeployed as required. Live-verified
+directly against the deployed `amjis-sidecar` Cloud Run service (bypassing the MCP tool-name
+layer, which does not expose `call_ephemeris_at_t`/`call_muhurta_score` under those literal
+names on this connector — same pattern already noted in `VERIFY_W0.md` for
+`ephemeris_cache_native_lifetime`):
+- `POST /api/compute/ephemeris_at_t` → real computed positions for all 9 bodies at
+  2026-07-20T12:00:00Z; Rahu/Ketu exactly 180° apart (307.324°/127.324°), a live-compute
+  invariant a stub or hardcoded response could not satisfy.
+- `POST /api/compute/muhurta_score` → real score (64.0/3-star) + panchang context (Shukla
+  Saptami, Hasta, Somavara, Shiva) for the same instant, `vivah` event class.
+
+**W2 phase 1: CLOSED.** Descriptor migration (120/120 universal fields), vidhi codegen
+de-mirror, and 6 dark-set items are live in production. Remaining W2 scope (projection
+compiler, single bootstrap, alias cutover [breaking — stays deferred pending D-5 quiet], the
+other 36 SERVE-gap items, G-1/S-3/SC-2..5 structural closes) is future work within this wave.
 
 ## Wave log
 
