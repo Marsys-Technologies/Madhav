@@ -309,7 +309,13 @@ export interface LegacyEnvelope {
   trim_report: TrimReportEntry[] | null
 }
 
-export interface V3Envelope extends LegacyEnvelope {
+export interface V3Envelope extends Omit<LegacyEnvelope, 'envelope_version'> {
+  /** Honest per-format value (W3-L1, GT-47/W-9) — 'v3' here, never the legacy 'v1' literal.
+   *  Distinct from `response_format` (which already carried the correct value): this field
+   *  had been hardcoded to 'v1' on every response, v3 included, since the W0b envelope
+   *  landed — a caller reading `envelope_version` alone (rather than `response_format`)
+   *  was silently lied to about which shape it actually received. */
+  envelope_version: 'v3'
   response_format: 'v3'
   chart_header: ChartHeader | null
   epistemic: EpistemicSummary
@@ -400,6 +406,7 @@ export function buildRetrievalEnvelope(
   const nowIso = new Date().toISOString()
   const v3: V3Envelope = {
     ...legacy,
+    envelope_version: 'v3',
     response_format: 'v3',
     chart_header: params.chart_header ?? null,
     epistemic:

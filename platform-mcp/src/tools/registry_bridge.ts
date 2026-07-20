@@ -631,6 +631,63 @@ async function callRegistryCapability(
   return data.content
 }
 
+// ── chart_header resolution (W3-L1, GT-47 / W-9 — fail-loud, not silent-null) ────────
+//
+// W3-L1 honesty flag emitted whenever chart_header resolution fails or comes back
+// error-shaped. Stable string, mirrors platform/src/lib/retrieval/chart_header.ts's
+// CHART_HEADER_UNRESOLVED_FLAG (this process cannot import that file directly — see
+// envelope.ts's PROCESS-BOUNDARY NOTE — so the flag string is independently declared
+// here, kept byte-identical). The forthcoming flags-closed-enum migration (W3-L2)
+// folds this string into its enum verbatim.
+export const CHART_HEADER_UNRESOLVED_FLAG = 'chart_header_unresolved'
+
+/**
+ * Resolve the chart_header block for a v3 envelope, honestly.
+ *
+ * Fixes TWO distinct failure modes that both used to go silent:
+ *   1. The `marsys://tool/L1/get_chart_header` capability call itself throwing
+ *      (network error, entitlement denial, etc.) — every call site previously caught
+ *      this and set `chart_header = null` with no signal.
+ *   2. `callRegistryCapability` returning the capability's raw ToolResult
+ *      (`{ content: ChartHeader, is_error: boolean }`) UNCAST — every call site was
+ *      assigning that whole wrapper object to `chart_header` via `as ChartHeader`
+ *      instead of unwrapping `.content` (the same unwrap `get_signals`/`get_domain_reading`
+ *      already do via `wrapper['content']`). Live-verified: a real v3 `get_chart_orientation`
+ *      call was serving `chart_header: { content: {...the real header...}, is_error: false }`
+ *      — every consumer reading `chart_header.lagna_sign` etc. got `undefined` even though
+ *      the header had resolved successfully underneath the wrapper.
+ * Both failure modes now return the SAME honest shape: `chart_header: null` PLUS the
+ * `chart_header_unresolved` flag, so a caller can never mistake "unresolved" for
+ * "genuinely has no data" (never a silent null — B.10-adjacent).
+ */
+export async function resolveChartHeader(
+  chart_id: string,
+  ayanamsha_id: string | undefined,
+  principal: Principal,
+): Promise<{ chart_header: ChartHeader | null; flags: string[] }> {
+  try {
+    const raw = await callRegistryCapability(
+      'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id }, chart_id, principal,
+    ) as Record<string, unknown> | null
+    const isError = Boolean(raw?.['is_error'])
+    const inner = (raw?.['content'] as ChartHeader | null | undefined) ?? null
+    // The L1 capability (get_chart_header.ts) surfaces a DB-level resolution failure via
+    // `metadata.flags` even when `is_error` stays false (the header remains best-effort
+    // content) — propagate that flag rather than treating a nulled-fields header as silently
+    // fine.
+    const metadataFlags = (raw?.['metadata'] as Record<string, unknown> | undefined)?.['flags']
+    const upstreamFlags = Array.isArray(metadataFlags)
+      ? metadataFlags.filter((f): f is string => typeof f === 'string')
+      : []
+    if (isError || !inner) {
+      return { chart_header: null, flags: [CHART_HEADER_UNRESOLVED_FLAG] }
+    }
+    return { chart_header: inner, flags: upstreamFlags }
+  } catch {
+    return { chart_header: null, flags: [CHART_HEADER_UNRESOLVED_FLAG] }
+  }
+}
+
 // ── B.11 orient-before-domain enforcement ─────────────────────────────────────
 
 /**
@@ -807,14 +864,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           { instrument: 'get_domain_reading', hint: 'domain-conditioned reading for a specific life domain.', pointer_type: 'other' },
         ]
 
-        let chart_header: ChartHeader | null = null
-        try {
-          chart_header = await callRegistryCapability(
-            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id, principal
-          ) as ChartHeader
-        } catch {
-          chart_header = null
-        }
+        const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
+        judgment_flags.push(...chartHeaderFlags)
 
         // D5 coverage receipt: digest.msr_signal_count is a chart-wide aggregate already
         // computed by vw_chart_digest (query_ucd.ts) — no extra query needed. `served` is
@@ -1049,14 +1100,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           { instrument: 'get_cgm_subgraph', hint: 'traverse causal context from these signal_ids.', pointer_type: 'dispositor_chain' },
         ]
 
-        let chart_header: ChartHeader | null = null
-        try {
-          chart_header = await callRegistryCapability(
-            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id, principal
-          ) as ChartHeader
-        } catch {
-          chart_header = null // frame-safety header is best-effort; never fails the instrument
-        }
+        const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
+        judgment_flags.push(...chartHeaderFlags)
 
         const filterLabel = [
           domain ? `domain=${domain}` : null,
@@ -2034,14 +2079,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
         const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType }[]) ?? []
 
-        let chart_header: ChartHeader | null = null
-        try {
-          chart_header = await callRegistryCapability(
-            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id, principal
-          ) as ChartHeader
-        } catch {
-          chart_header = null
-        }
+        const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
+        judgment_flags.push(...chartHeaderFlags)
 
         const v3Response = {
           orientation_context, orientation_ok,
@@ -2687,14 +2726,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const positionRows = ((inner['position'] as Record<string, unknown> | undefined)?.['rows'] as Record<string, unknown>[] | undefined) ?? []
         const fact_ids = Array.from(new Set(positionRows.map(r => r['fact_id']).filter((v): v is string => typeof v === 'string')))
 
-        let chart_header: ChartHeader | null = null
-        try {
-          chart_header = await callRegistryCapability(
-            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id, principal,
-          ) as ChartHeader
-        } catch {
-          chart_header = null
-        }
+        const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
 
         // Pratinidhi-R ruling (R5.3 B2): the narration MUST be built from `inner` —
         // the UNTRIMMED capability output — BEFORE applyMcpBudget runs below, so it can
@@ -2725,7 +2757,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           note: 'completeness uses the design §28.6 classical-units receipt vocabulary (✓ / zero_rows / error / not_requested) per section. narration is assembled from the sections already fetched by this same call (see grounding.fact_ids for the specific L1/L2 facts it cites) — never a new chart computation.',
         }
 
-        const judgment_flags: string[] = []
+        const judgment_flags: string[] = [...chartHeaderFlags]
         if (errors && Object.keys(errors).length > 0) judgment_flags.push('partial_portrait_section_errors')
         if (completeness['yogas'] === 'zero_rows') judgment_flags.push('no_parivartana_or_catalog_matches_for_graha')
         if (completeness['dashas'] === 'zero_rows') judgment_flags.push('no_mahadasha_periods_for_graha')
@@ -2961,14 +2993,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const judgment_flags = (inner['judgment_flags'] as string[]) ?? []
         const drill_pointers = (inner['drill_pointers'] as { instrument: string; hint: string; pointer_type?: DrillPointerType; pact_stage?: PactStage }[]) ?? []
 
-        let chart_header: ChartHeader | null = null
-        try {
-          chart_header = await callRegistryCapability(
-            'marsys://tool/L1/get_chart_header', { chart_id, ayanamsha_id: resolvedAyanamsha }, chart_id, principal
-          ) as ChartHeader
-        } catch {
-          chart_header = null
-        }
+        const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
+        judgment_flags.push(...chartHeaderFlags)
 
         const v3Response = {
           orientation_context, orientation_ok,
