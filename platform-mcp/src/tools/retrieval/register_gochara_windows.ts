@@ -82,6 +82,13 @@ function getPool(): Pool {
 
 // ── Shared row shape ──────────────────────────────────────────────────────────
 
+export interface GocharaContinuityState {
+  raw_start: string
+  raw_end: string
+  left_active: boolean
+  right_active: boolean
+}
+
 export interface GocharaWindowRow {
   id: number
   chart_id: string
@@ -103,6 +110,44 @@ export interface GocharaWindowRow {
   calibration_state: string
   source: 'live' | 'fixture'
   computed_at: string
+  continuity_state: GocharaContinuityState | null
+  plateau_disclosure: {
+    window_start_open: boolean
+    window_end_open: boolean
+    note: string
+  } | null
+}
+
+// D-5 native disposition (2026-07-20, gate_run_2 finding 1): "the cap never
+// fabricates a closed window from a truncated anchor." `window_start`/
+// `window_end` on an interval-shaped row can be a structural cap
+// (ka_gochara_sweep's duration_prior.max_days ceiling, migration 461's
+// `continuity_state`), not a genuine signal-cessation boundary. A caller
+// reading only window_start/window_end cannot tell "the signal really
+// ended here" from "we simply haven't merged the next adjacent
+// already-committed segment yet, or the plateau is structurally capped
+// mid-signal" -- `left_active`/`right_active` are the writer's own honest
+// record of which. This derives a disclosure object from the SAME
+// `continuity_state` the writer persists, so the served bound is never
+// presented as more definitive than the instrument actually knows.
+export function derivePlateauDisclosure(row: GocharaWindowRow): GocharaWindowRow['plateau_disclosure'] {
+  const cs = row.continuity_state
+  if (row.temporal_shape !== 'interval' || !cs) return null
+  const windowStartOpen = cs.left_active
+  const windowEndOpen = cs.right_active
+  if (!windowStartOpen && !windowEndOpen) return null
+  const parts: string[] = []
+  if (windowStartOpen) parts.push(`elevated since ≤${row.window_start} (true onset unresolved -- earlier adjacent history not yet merged)`)
+  if (windowEndOpen) parts.push(`still elevated past ${row.window_end} (served end is a structural cap or not-yet-merged boundary, not a confirmed signal cessation)`)
+  return {
+    window_start_open: windowStartOpen,
+    window_end_open: windowEndOpen,
+    note: parts.join('; '),
+  }
+}
+
+function withPlateauDisclosure(rows: GocharaWindowRow[]): GocharaWindowRow[] {
+  return rows.map((row) => ({ ...row, plateau_disclosure: derivePlateauDisclosure(row) }))
 }
 
 const SOURCE_CITATION =
@@ -121,7 +166,7 @@ const ROW_COLUMNS = `
   valence, is_adverse,
   active_sentences, contributing_systems, suppression_state,
   peak_basis, calibration_state, source,
-  computed_at
+  computed_at, continuity_state
 `
 
 async function queryRows(sql: string, params: unknown[]): Promise<{ rows: GocharaWindowRow[]; ok: boolean; error?: string }> {
@@ -211,7 +256,8 @@ export async function computeGocharaActivation(
   }
   sql += ' ORDER BY signed_intensity DESC'
 
-  const { rows, ok, error } = await queryRows(sql, params)
+  const { rows: rawRows, ok, error } = await queryRows(sql, params)
+  const rows = withPlateauDisclosure(rawRows)
   const content: { windows: GocharaWindowRow[] } = { windows: rows }
   const budgeted = applyResponseBudget(content, 20, windowsSection(5))
 
@@ -308,7 +354,8 @@ export async function computeGocharaForecast(
   params.push(limit)
   sql += ` ORDER BY window_start ASC, signed_intensity DESC LIMIT $${params.length}`
 
-  const { rows, ok, error } = await queryRows(sql, params)
+  const { rows: rawRows, ok, error } = await queryRows(sql, params)
+  const rows = withPlateauDisclosure(rawRows)
   const content: { windows: GocharaWindowRow[] } = { windows: rows }
   const budgeted = applyResponseBudget(content, 40, windowsSection(10))
 
@@ -454,6 +501,7 @@ export async function computeGocharaElectionAvoidance(
     rows.map(async (row) => {
       const planet = dominantGraha(row)
       const mitigation = await fetchMitigation(planet)
+      const plateauDisclosure = derivePlateauDisclosure(row)
       return {
         event_class: row.event_class,
         temporal_shape: row.temporal_shape,
@@ -464,12 +512,16 @@ export async function computeGocharaElectionAvoidance(
         signed_intensity: row.signed_intensity,
         raw_intensity: row.raw_intensity,
         valence: row.valence,
-        // 1. honest clarity
+        plateau_disclosure: plateauDisclosure,
+        // 1. honest clarity (D-5 native disposition, 2026-07-20: never state a
+        // capped/truncated bound as if it were a confirmed closure — see
+        // `derivePlateauDisclosure`)
         clarity_statement:
           `Elevated adverse-valence configuration for '${row.event_class}' ` +
           `(${row.temporal_shape}-shaped) over ${row.window_start}..${row.window_end}, ` +
           `raw magnitude ${row.raw_intensity.toFixed(4)}. This is a probabilistic signal from a ` +
-          `structural-prior model, not a certainty and not a fatalistic prediction.`,
+          `structural-prior model, not a certainty and not a fatalistic prediction.` +
+          (plateauDisclosure ? ` PLATEAU NOTICE: ${plateauDisclosure.note}.` : ''),
         // 2. probabilistic, never fatalistic
         framing: {
           probabilistic: true,
