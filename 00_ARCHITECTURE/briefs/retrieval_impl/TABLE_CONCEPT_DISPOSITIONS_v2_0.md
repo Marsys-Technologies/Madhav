@@ -195,61 +195,61 @@ RETIRED reason; or "no route found anywhere — genuine SERVE gap, W2 dark-set i
 
 | Table | Rows | Disposition | Evidence |
 |---|---:|---|---|
-| `bg_avastha_schemes` | 35 | **SERVE gap** | Real classical reference table (5 avastha schemes, `determination_rule`, `classical_citation` columns — `platform/migrations/250_bg_dignity_reference.sql:239-256`), same migration file as the now-served `bg_dignity_reference`. `ganita_condition_get`'s `avasthas` facet (`get_avasthas.ts:59-68`) reads COMPUTED avastha-per-planet from `chart_facts`, not this reference/rules table — the rules/citations content itself is unserved. Zero references anywhere in `register_p1_reference.ts` (the file that DOES serve its sibling `bg_dignity_reference`). |
+| `bg_avastha_schemes` | 35 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts:63` (`FROM bg_avastha_schemes`) — `query_avastha_schemes`. Test: `__tests__/query_avastha_schemes.test.ts`. |
 | `bg_combustion_orbs` | 8 | **SERVED-DIRECT (W2 wired)** | Same migration file as `bg_dignity_reference`; real classical content (combustion + deep-combustion orb thresholds per graha, `BPHS`/`JP`/`PD`/`UK`/`SS` citations). Wired this W2 dark-set wiring pass: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts` (new capability, `marsys://tool/L0/query_combustion_orbs`), registered `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts`. Test: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_combustion_orbs.test.ts` (6/6 pass). |
 | `bg_dignity_reference` | 9 | **SERVED-DIRECT** (carried from v1) | `platform-mcp/src/tools/register_p1_reference.ts:290` (`FROM bg_dignity_reference`) — `ref_dignity_reference_get` |
-| `bg_graha_dik` | 9 | **SERVE gap** | Dig-bala (directional strength) reference table, own migration (`304_bg_graha_dik.sql`). Zero hits anywhere, including python-sidecar routers. |
+| `bg_graha_dik` | 9 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts:55` (`FROM bg_graha_dik`) — `query_graha_dik`. Test: `__tests__/query_graha_dik.test.ts`. |
 | `bg_graha_naisargika_friendship` | 72 | **SERVED-DIRECT (W2 wired)** | Natural friendship/enmity matrix, real classical content with `classical_citation` column (`250_bg_dignity_reference.sql:134-143`). Wired this W2 dark-set wiring pass: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts` (new capability, `marsys://tool/L0/query_graha_naisargika_friendship`), registered `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts`. Test: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_graha_naisargika_friendship.test.ts` (6/6 pass). |
-| `bg_medical_mappings` | 21 | **SERVE gap** | Own migration (`276_bg_medical_mappings.sql`); real reference content (planet↔body-part/ailment mappings per classical medical astrology). Zero serving route. |
-| `bg_motion_state_thresholds` | 27 | **SERVE gap** | Same migration file as `bg_dignity_reference`; retrograde/direct/stationary speed thresholds per graha, cited. Zero serving route. |
-| `bg_nakshatra_medical` | 27 | **SERVE gap** | Own migration (`277_bg_nakshatra_medical.sql`). Zero serving route. |
-| `bg_prashna_fructification_rules` | 5 | **SERVE gap** | `261_bg_prashna_rules_schema.sql`. Zero serving route (prashna synthesis tool `prashna_undertaking_get` reads `ga_prashna_judgment`/`brahma_activity_ontology`, not this table). |
-| `bg_prashna_lagna_methods` | 5 | **SERVE gap** | Same migration. Zero serving route. |
-| `bg_prashna_significators` | 12 | **SERVE gap** | Same migration. Zero serving route. |
-| `bg_prashna_special_techniques` | 3 | **SERVE gap** | Same migration. Zero serving route. |
-| `bg_prashna_tajik_yogas` | 16 | **SERVE gap** | Same migration. Zero serving route. |
-| `bg_shashtiamsha_deities` | 60 | **SERVE gap** | `430_bg_shashtiamsha_deities.sql` (D60 divisional-chart deities). Zero serving route. |
-| `bg_transit_av_gates` | 8 | **SERVE gap** | `397_bg_transit_av_gates.sql` — Ashtakavarga kakshya/SAV gate thresholds, `classical_citation` column, comment states "Transit service reads this table on demand to gate convergence window scoring" — i.e. it likely informs the already-served `kala_gochara_windows` output as internal scoring logic, but its own rows/citations are not independently retrievable by the caller. Not classified SERVED-VIA because no served capability exposes this table's actual rows (the taxonomy's SERVED-VIA bar requires CI-verified per-concept cover in `concept_ledger`, which is still empty). |
-| `bg_transit_engine` | 9 | **SERVE gap** | `266_bg_transit_tables.sql` §1 — per-graha average daily motion/period data, BPHS-cited. Zero serving route (its migration sibling `bg_transit_rules` IS served, this one isn't). |
-| `bg_transit_moorti` | 27 | **SERVE gap** | `401_bg_transit_moorti.sql`. Zero serving route. |
+| `bg_medical_mappings` | 21 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:58` (`FROM bg_medical_mappings`) — `query_medical_mappings`. Test: `__tests__/query_medical_mappings.test.ts`. |
+| `bg_motion_state_thresholds` | 27 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts:64` (`FROM bg_motion_state_thresholds`) — `query_motion_state_thresholds`. Test: `__tests__/query_motion_state_thresholds.test.ts`. |
+| `bg_nakshatra_medical` | 27 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:56` (`FROM bg_nakshatra_medical`) — `query_nakshatra_medical`. Test: `__tests__/query_nakshatra_medical.test.ts`. |
+| `bg_prashna_fructification_rules` | 5 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts:57` (`FROM bg_prashna_fructification_rules`) — `query_prashna_fructification_rules`. Test: `__tests__/query_prashna_fructification_rules.test.ts`. |
+| `bg_prashna_lagna_methods` | 5 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts:58` (`FROM bg_prashna_lagna_methods`) — `query_prashna_lagna_methods`. Test: `__tests__/query_prashna_lagna_methods.test.ts`. |
+| `bg_prashna_significators` | 12 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts:54` (`FROM bg_prashna_significators`) — `query_prashna_significators`. Test: `__tests__/query_prashna_significators.test.ts`. |
+| `bg_prashna_special_techniques` | 3 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts:53` (`FROM bg_prashna_special_techniques`) — `query_prashna_special_techniques`. Test: `__tests__/query_prashna_special_techniques.test.ts`. |
+| `bg_prashna_tajik_yogas` | 16 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59` (`FROM bg_prashna_tajik_yogas`) — `query_prashna_tajik_yogas`. Test: `__tests__/query_prashna_tajik_yogas.test.ts`. |
+| `bg_shashtiamsha_deities` | 60 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts:64` (`FROM bg_shashtiamsha_deities`) — `query_shashtiamsha_deities`. Test: `__tests__/query_shashtiamsha_deities.test.ts`. |
+| `bg_transit_av_gates` | 8 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts:70` (`FROM bg_transit_av_gates`) — `query_transit_av_gates`, a NEW independent read-only reference path; does not touch, wrap, or modify `kala_gochara_windows`/`register_gochara_windows.ts`/`query_temporal_activation.ts`, which remain frozen-as-found per this campaign's D-5 hard constraint (kala_* internal-scoring use of this table is unaffected). Test: `__tests__/query_transit_av_gates.test.ts`. |
+| `bg_transit_engine` | 9 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:60` (`FROM bg_transit_engine`) — `query_transit_engine`. Test: `__tests__/query_transit_engine.test.ts`. |
+| `bg_transit_moorti` | 27 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts:68` (`FROM bg_transit_moorti`) — `query_transit_moorti`. Test: `__tests__/query_transit_moorti.test.ts`. |
 | `bg_transit_rules` | 57 | **SERVED-DIRECT** (not previously in the 77's "corrected" set, but confirmed served this addendum) | `platform-mcp/src/tools/register_p1_reference.ts:436` (`FROM bg_transit_rules`) — `ref_transit_rules_get` |
-| `bg_transit_vedha` | 33 | **SERVE gap** — **+ governance anomaly** | Real live table (confirmed via E2 DB-truth extraction), but **no `CREATE TABLE` for it exists anywhere in this repo's migration history** (`platform/supabase/migrations/`, `platform/migrations/`, including `_archive/` and `_pre_squash_schema_snapshot.psql`) — flagged for the conductor as a separate provenance gap, independent of its SERVE-gap disposition. |
-| `bg_vastu_direction_remedials` | 24 | **SERVE gap** | `284_bg_vastu_directions.sql`. Zero serving route. |
-| `bg_vastu_directions` | 8 | **SERVE gap** | Same migration. Zero serving route. |
+| `bg_transit_vedha` | 33 | **SERVED-DIRECT (W2b wired)** — **governance anomaly still open** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts:75` (`FROM bg_transit_vedha`) — `query_transit_vedha`, wired directly against the live table per this pass's instruction (the missing-migration anomaly is a governance/provenance gap, not a blocker to serving). **Anomaly NOT fixed, still flagged for the conductor:** no `CREATE TABLE bg_transit_vedha` exists anywhere in this repo's migration history (`platform/supabase/migrations/`, `platform/migrations/`, `_archive/`, `_pre_squash_schema_snapshot.psql`) — confirmed again this pass, unchanged from the W1 addendum's finding. Test: `__tests__/query_transit_vedha.test.ts`. |
+| `bg_vastu_direction_remedials` | 24 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts:59` (`FROM bg_vastu_direction_remedials`) — `query_vastu_direction_remedials`. Test: `__tests__/query_vastu_direction_remedials.test.ts`. |
+| `bg_vastu_directions` | 8 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:63` (`FROM bg_vastu_directions`) — `query_vastu_directions`. Test: `__tests__/query_vastu_directions.test.ts`. |
 
 ### L0 — Brahmagyan (`brahma_*`, 8 tables)
 
 | Table | Rows | Disposition | Evidence |
 |---|---:|---|---|
 | `brahma_activity_ontology` | 12 | **SERVED-DIRECT** | `platform-mcp/src/tools/register_p1_synthesis.ts:807` (`FROM brahma_activity_ontology`) — `prashna_undertaking_get` |
-| `brahma_class_priors` | 164 | **SERVE gap** (borderline) | `387_brahma_class_priors.sql` — versioned graha×domain salience-prior weights, read by `composite_ranker.ts` "at query time" per its own migration comment (an internal ranking-computation input, not independently retrievable). Flagged as a case where reasonable readers might instead argue OPERATIONAL ("internal computation config"); the taxonomy's OPERATIONAL bucket is narrowly scoped to bookkeeping/journal/export/cosign/embedding-infra and doesn't cleanly cover "tunable ranking weights," so this addendum defaults to SERVE gap per the ruling's own bias, flagged for W2 to confirm. |
-| `brahma_compendium_index` | 9538 | **SERVE gap** — **+ drift finding** | Classical-text index/table-of-contents structure (`text_id`/`topic_id` linking, per `parity_check.ts:36-37`'s design comment). `coverage_matrix.ts:383` **claims** `brahma_compendium_index` is covered by `marsys://tool/L0/query_classical_texts`, but `query_classical_texts.ts` actually queries `classical_text_chunks` (a different table) — verified, zero `FROM brahma_compendium_index` anywhere. This coverage_matrix.ts entry is a stale/incorrect assertion (a coverage-map drift defect, distinct from this table's own disposition) — flagged separately for whoever owns `coverage_matrix.ts` accuracy. |
-| `brahma_dasha_systems` | 18 | **SERVE gap** | `176_l0_phase_alpha_new_content_tables.sql:31` — real classical dasha-system definitions (`computation_pseudocode`, `classical_citations`, `school`). Only reference anywhere is a design-comment in `parity_check.ts:35` (a proposed, not live, parity rule). Zero real serving route. |
+| `brahma_class_priors` | 164 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:70` (`FROM brahma_class_priors`) — `query_class_priors`. The W1-addendum borderline judgment call (SERVE-gap vs. OPERATIONAL) is resolved by wiring it as a citable reference surface distinct from `composite_ranker.ts`'s internal at-query-time read — the same posture already taken for `bg_transit_av_gates`. Test: `__tests__/query_class_priors.test.ts`. |
+| `brahma_compendium_index` | 9538 | **SERVED-DIRECT (W2b wired)** — **drift bug also fixed** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79` (`FROM brahma_compendium_index`) — `query_compendium_index`. The `coverage_matrix.ts:383` drift (claimed coverage via `query_classical_texts`, which actually queries the different `classical_text_chunks` table) is corrected in the same pass as the direct byproduct of closing this gap — `coverage_matrix.ts`'s `brahma_compendium_index` entry now points at the new `query_compendium_index` capability. Test: `__tests__/query_compendium_index.test.ts`. |
+| `brahma_dasha_systems` | 18 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:64` (`FROM brahma_dasha_systems`) — `query_dasha_systems`. Test: `__tests__/query_dasha_systems.test.ts`. |
 | `brahma_event_ontology` | 27 | **SERVED-VIA (partial)** — flagged, not full coverage | Read at write-time for event-class validation (`platform/src/lib/lel/event_ontology_shapes.ts:205`, `lel_event_writer.ts:122` — outside the widened surface but reachable from `app/api/mcp/writes/[action]/route.ts`). Also cited as `base_rate_source` provenance in `query_predictive_anchors.ts:164` (L4 `phala_predictive_anchors_get`) — the `base_rate_by_age` VALUE is surfaced through that capability's output with citation. But the full row content (`temporal_shape`, `duration_prior`, `milestone_template`, `evidence_requirements`, `kill_switch_criteria`) has no dedicated retrieval capability. Recommend W2 add a proper `ref_event_ontology_get` for full coverage; until then this is a narrow, partial SERVED-VIA, not full concept coverage. |
-| `brahma_formula_constants` | 18 | **SERVE gap** (borderline, same reasoning as `brahma_class_priors`) | `389_brahma_formula_constants.sql` — mixed CLASSICAL/NATIVE_JUDGMENT/ENGINEERING constants registry. One confirmed live reader: `platform/src/lib/build/recalibrationEnqueue.ts:90` reads the `mimamsa_recalibration_debounce_seconds` row — an internal scheduling-timing lookup, unrelated to the table's CLASSICAL-tagged rows. The classical content itself is not independently retrievable. |
+| `brahma_formula_constants` | 18 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:66` (`FROM brahma_formula_constants`) — `query_formula_constants`, wired as a citable reference surface (same borderline resolution as `brahma_class_priors` above); `recalibrationEnqueue.ts`'s unrelated internal scheduling read of one ENGINEERING-tagged row is untouched. Test: `__tests__/query_formula_constants.test.ts`. |
 | `brahma_prospective_ledger` | 7 | **SERVED-DIRECT** | `platform/src/app/api/mcp/writes/[action]/route.ts` — `prospective_ledger_list` action (real read/list path, permission-gated `view`), backed by `platform/src/lib/lel/prospective_ledger.ts:628,703` (`FROM brahma_prospective_ledger`). Caught only by a full-repo check beyond the 5-directory literal surface — the file living the query is outside the 5 named directories, but its caller (the route) is inside `platform/src/app/api/`, which is in scope. |
-| `brahma_vichara_constants` | 7 | **SERVE gap** (borderline, same reasoning as the other two constants tables) | `platform/migrations/435_ga_vichara.sql:83` — "registry data, not literals" (ratification_step, ratification_clamp), DOCTRINE_CAMPAIGN_DESIGN-cited. Zero live TS reader found. |
+| `brahma_vichara_constants` | 7 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts:57` (`FROM brahma_vichara_constants`) — `query_vichara_constants` (same borderline resolution as its two sibling constants tables above). Test: `__tests__/query_vichara_constants.test.ts`. |
 
 ### L2 — Bodha (`bodha_*`, 16 tables)
 
 | Table | Rows | Disposition | Evidence |
 |---|---:|---|---|
 | `bodha_anomalies` | 4954 | **SERVED-DIRECT** | `platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:137` (`FROM bodha_anomalies`, `include_anomalies` flag) — `query_contradictions` |
-| `bodha_cdlm_domain_rollups` | 60 | **SERVE gap** | `226_bodha_spec_tables.sql`. Already named a "reading-impact priority" dark item in `RETRIEVAL_STRATEGY_v1_0.md` §5.3 itself. Zero serving route. |
-| `bodha_cdlm_evolution_gradients` | 0 | **SERVE gap** | Same migration file; same §5.3 priority-item citation. Zero serving route, currently 0 rows on native chart. |
-| `bodha_cdlm_pattern_clusters` | 10 | **SERVE gap** | Same migration file; same §5.3 citation. Zero serving route. |
+| `bodha_cdlm_domain_rollups` | 60 | **SERVED-DIRECT** (§6 row corrected to match §10's addendum — see below) | `query_cdlm_summary.ts`'s `tier` facet. See §10. |
+| `bodha_cdlm_evolution_gradients` | 0 | **SERVED-DIRECT** (§6 row corrected to match §10's addendum — see below) | Same facet, same file. 0 rows on the live chart — served, honestly reported empty. See §10. |
+| `bodha_cdlm_pattern_clusters` | 10 | **SERVED-DIRECT** (§6 row corrected to match §10's addendum — see below) | Same facet, same file. See §10. |
 | `bodha_cgm_chart_topology_summary` | 10 | **SERVED-DIRECT** | `traverse_chart_graph.ts:820` (`FROM bodha_cgm_chart_topology_summary`) — CGM tool `topology` mode |
 | `bodha_cgm_edges` | 1573 | **SERVED-DIRECT** | `traverse_chart_graph.ts:529,696,1041` |
 | `bodha_cgm_nodes` | 649 | **SERVED-DIRECT** | `traverse_chart_graph.ts:447,518,553,684,732,804` |
-| `bodha_cgm_sub_graphs` | 10 | **SERVE gap** — **refutes the native's expectation** | See §2. Zero references anywhere in the TS codebase; only migration DDL + Python writer. |
+| `bodha_cgm_sub_graphs` | 10 | **SERVED-DIRECT** (§6 row corrected to match §10's addendum — see below) | Via `traverse_chart_graph.ts`'s `sub_graphs` mode. See §2 for the original refutes-the-native's-expectation finding (still correct as the read at the time) and §10 for the subsequent wiring. |
 | `bodha_contradictions` | 23 | **SERVED-DIRECT** | `query_contradictions.ts:98` (`FROM bodha_contradictions`) — `query_contradictions`; also read by `traverse_chart_graph.ts:884` (`contradictions` mode of the CGM tool) |
 | `bodha_convergence` | 60 | **SERVED-DIRECT** | `platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:314` (`FROM bodha_convergence`) |
-| `bodha_rm_chart_summary` | 10 | **SERVE gap** | `226_bodha_spec_tables.sql`. Zero serving route. |
-| `bodha_rm_dasha_windowed_prescriptions` | 0 | **SERVE gap** | Same migration. Explicitly named the single highest reading-impact dark item in `RETRIEVAL_STRATEGY_v1_0.md` §5.2 itself ("the time-targeted remedy slice!"). Zero serving route, 0 rows on native chart. |
-| `bodha_rm_dosha_remedy_bundles` | 0 | **SERVE gap** | Same migration. Zero serving route, 0 rows on native chart. |
-| `bodha_rm_pattern_remedies` | 90 | **SERVE gap** | Same migration. Zero serving route. |
+| `bodha_rm_chart_summary` | 10 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:80` (`FROM bodha_rm_chart_summary`) — `query_rm_chart_summary`. Test: `__tests__/query_rm_chart_summary.test.ts`. |
+| `bodha_rm_dasha_windowed_prescriptions` | 0 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts:94` (`FROM bodha_rm_dasha_windowed_prescriptions`) — `query_rm_dasha_windowed_prescriptions`. B.10 check performed before wiring: the table + its writer contract exist for real (FK to `bodha_rm_remedy_prescriptions`, which has 270 live rows) and are simply not yet populated for this chart — a genuine, not-yet-populated concept, not a fabrication; served with honest `empty_reason` discipline, live the moment the writer populates it. Test: `__tests__/query_rm_dasha_windowed_prescriptions.test.ts`. |
+| `bodha_rm_dosha_remedy_bundles` | 0 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts:88` (`FROM bodha_rm_dosha_remedy_bundles`) — `query_rm_dosha_remedy_bundles`. Same B.10 empty-table honesty discipline as its dasha-windowed sibling above (0 rows on the native chart currently; served with `empty_reason`, not a fabrication). Test: `__tests__/query_rm_dosha_remedy_bundles.test.ts`. |
+| `bodha_rm_pattern_remedies` | 90 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts:73` (`FROM bodha_rm_pattern_remedies`) — `query_rm_pattern_remedies`. Test: `__tests__/query_rm_pattern_remedies.test.ts`. |
 | `bodha_signal_embeddings` | 85997 | **SERVED-DIRECT** | `platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts` (semantic-search mode; "Requires bodha_signal_embeddings to be populated", line 290). NOTE: NOT served via the generic `vector_search` alias (see `mimamsa_insight_embeddings` row below for why that distinction matters) — served via `query_signals`'s own dedicated semantic path. |
-| `bodha_triangulation` | 200 | **SERVE gap** | `392_bodha_triangulation.sql`, own dedicated migration. Named a §5.2 dark-set priority item. Zero serving route. |
+| `bodha_triangulation` | 200 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts:84` (`FROM bodha_triangulation`) — `query_triangulation`. Standalone-vs-facet decision (per `DARK_SET_WIRING_PLAN_v1_0.md`'s own note): checked the FK shape first — `signal_ids` is a bare `UUID[]` with NO foreign-key constraint to `bodha_discoveries`/`bodha_msr_signals` (confirmed via migration 392's DDL), so this is wired as a standalone leaf tool, not a facet. Test: `__tests__/query_triangulation.test.ts`. |
 
 ### L1 — Gaṇita (`chart_*` / `ga_*` / `ganita_*`, 10 tables)
 
@@ -259,10 +259,10 @@ RETIRED reason; or "no route found anywhere — genuine SERVE gap, W2 dark-set i
 | `chart_facts_supersedence` | 0 | **OPERATIONAL** | Build-transition audit trail ("Records build transitions: old_build → new_build for same logical fact", same migration file, line 95). |
 | `chart_grants` | 9 | **OPERATIONAL** | Access-control/permission table (`chart_grants` schema, migration 081) — read/written throughout `platform/src/app/api/clients/`, `admin/`, `charts/`, `build/` routes for chart-sharing permissions. No astrological concept. |
 | `chart_panchanga` | 0 | **SERVED-DIRECT** (carried from v1) | `platform/src/lib/tools/brahma/l1/query_panchanga.ts:119` (`FROM chart_panchanga`) |
-| `chart_panchanga_cache` | 0 | **SERVE gap** (not OPERATIONAL, despite the `_cache` suffix) | Per-date panchanga cache (`081_l0fr_schema.sql:60`) — a genuinely distinct concept from `chart_panchanga` (natal-only): date-parameterized panchanga lookups. Zero read/write route anywhere, including python-sidecar. Notably, a REAL date-parameterized panchanga compute service DOES exist (`platform/python-sidecar/routers/panchang.py` — `/panchanga`, `/panchanga/refresh`, `/panchanga/range` endpoints) but is not wired into `call_service_wrappers.ts` (zero references) — the same "dark service" shape already named for `ka_graha_sancara`/`ka_muhurta_seva` (GT-50). Recommend folding this table + its backing service into the same W2 dark-service-wiring lane as those two. |
-| `ga_condition_composite` | 90 | **SERVE gap** | `251_ga_condition_composite.sql` — a real, substantive, actively-built unified planetary-condition rollup (dignity composite, avasthas, motion/combustion state, friendship, graha yuddha, unified 0-1 condition score, dasha-trajectory refs — 45 rows/chart×2 ayanamshas). Only references anywhere in TS are cockpit cache-clear admin tooling (`assetClearSpec.ts`), not a serving route. `ganita_condition_get`'s three facets (dignity/avasthas/karakas) all read `chart_facts` directly, not this composite rollup. Real, substantive gap — likely a valuable, higher-priority W2 wiring target given its richness. |
+| `chart_panchanga_cache` | 0 | **SERVED-DIRECT (W2b wired)** — **via the real backing compute service, not the literal table** | B.10 finding this pass: `chart_panchanga_cache` itself has ZERO writer anywhere in the repo (exhaustive grep — no INSERT, no reference outside its own DDL); `panchang.py`'s own docstring says its per-chart cache design was superseded by the different, global `panchanga_daily` table (already served elsewhere). Wiring a capability against the literal dead table would always return nothing. Instead wired the real underlying compute service: `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts` — `call_panchanga_service`, calling `panchang.py`'s `/api/compute/panchanga` + `/api/compute/panchanga/range` endpoints (Swiss-Ephemeris, engine-direct), the same "compute service, not a dead table" shape as `ka_graha_sancara`. Deliberately placed in L0, not L3_kala (hard constraint). Test: `__tests__/call_panchanga_service.test.ts`. |
+| `ga_condition_composite` | 90 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:82` (`FROM ga_condition_composite`) — `get_condition_composite`, exposing the full rollup (dignity composite, avasthas, motion/combustion, friendship, graha yuddha, condition_score, dasha-trajectory windows). Test: `__tests__/get_condition_composite.test.ts`. |
 | `ga_prashna_judgment` | 5 | **SERVED-DIRECT** | `platform-mcp/src/tools/register_p1_synthesis.ts:764` (`FROM ga_prashna_judgment gj`) — `prashna_undertaking_get` |
-| `ga_prashna_lagna` | 5 | **SERVE gap** | `289_ga_prashna_lagna.sql` — real content (prashna-lagna per method, `classical_citation` column). Zero references anywhere in the TS codebase, including comments. |
+| `ga_prashna_lagna` | 5 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts:74` (`FROM ga_prashna_lagna`) — `get_prashna_lagna`. Test: `__tests__/get_prashna_lagna.test.ts`. |
 | `ganita_dashas` | 0 | **RETIRED** | See §5. |
 | `ganita_graha_sthana` | 0 | **RETIRED** | See §5. |
 
@@ -280,17 +280,17 @@ RETIRED reason; or "no route found anywhere — genuine SERVE gap, W2 dark-set i
 |---|---:|---|---|
 | `mimamsa_adjudication_log` | 0 | **OPERATIONAL** | Write path of the native's portal outcome-adjudication loop (BA-P7B, `platform/src/app/api/clients/[id]/learning/route.ts:64` INSERT, :331 LEFT JOIN) — journal/audit-log for the learning-loop backend, not an LLM-retrieval concept. |
 | `mimamsa_anchor_adjustment` | 384 | **GATED** (this addendum's doctrine-extension) | See §3. |
-| `mimamsa_attribution` | 0 | **SERVE gap** | `351_mimamsa_pariksha.sql:6` — per-signal credit/blame attribution for matched predictions (`credit_blame`, `dimension` ∈ timing/magnitude/domain/falsifier/manifestation). No `leakage_status` column (schema-distinct from the GATED overlay tables) — a genuine explainability concept with no serving route. |
+| `mimamsa_attribution` | 0 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts:75` (`FROM mimamsa_attribution`) — `query_attribution`. Confirmed schema-distinct from the GATED overlay tables (no `leakage_status` column) — not extended to GATED. Test: `__tests__/query_attribution.test.ts`. |
 | `mimamsa_calibration_snapshot` | 0 | **OPERATIONAL** | Read/written only inside the portal learning-loop backend (`learning/route.ts:229,236,369` — UPDATE + admin-UI SELECT for the cosign flow), never by any MCP/retrieval capability. |
 | `mimamsa_convergence_adjustment` | 1000 | **GATED** (this addendum's doctrine-extension) | See §3. |
-| `mimamsa_discoveries` | 45 | **SERVE gap** | `351_mimamsa_pariksha.sql` — `discovery_class` ∈ emergent_law/contradiction_dominance/temporal_rhythm/residual_candidate, `statement` text, `evidence_refs`. Distinct from the already-served L2 `bodha_discoveries` (confirmed by reading `register_p1_synthesis.ts:665-671`'s `discResult` query, which is `FROM bodha_discoveries`, not `mimamsa_discoveries` — do not conflate the two). High research-value, zero serving route — directly relevant to CLAUDE.md §A's "research tool for astrology as a discipline" goal. |
+| `mimamsa_discoveries` | 45 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts:78` (`FROM mimamsa_discoveries`) — `query_mimamsa_discoveries`, named distinctly (not `query_discoveries`) and documented in its own header to avoid conflation with the already-served L2 `bodha_discoveries`. Test: `__tests__/query_mimamsa_discoveries.test.ts`. |
 | `mimamsa_event_provenance` | 57 | **OPERATIONAL** | `345_mimamsa_jivanaghatana.sql` — "evidence vault" for held-out validation-set bookkeeping (`held_out`, `admissible_clean`, `admissibility_reason`, `partition_seed_version`) — scientific-methodology/QA infrastructure for the calibration system's internal validity, not user-facing astrological content. |
 | `mimamsa_export_log` | 0 | **OPERATIONAL** | "mi_vistara — export-integrity ledger" (`355_mimamsa_vistara.sql:1`). Pure export bookkeeping. |
 | `mimamsa_fact_adjustment` | 121100 | **GATED** (pre-ruled by native) | See §3, §4. |
-| `mimamsa_insight_embeddings` | 0 | **SERVE gap — flags a discrepancy with the native's own pre-ruling** | `353_mimamsa_darshana.sql:42` — 768-dim insight embeddings, ivfflat index. The native's ruling pre-classified "Embedding tables = SERVED-VIA (vector_search)" as a blanket rule. Checked against real code: `vector_search` resolves (`tool_name_bridge.ts:78`) to `marsys://tool/L0/query_classical_texts` **only** — a classical-texts corpus search, hardcoded to a different table, not a generic embedding-search alias. It does not and cannot reach `mimamsa_insight_embeddings`. (Compare `bodha_signal_embeddings`, which genuinely IS served — but via its own dedicated semantic-search code path in `query_signals.ts`, not via `vector_search`.) Reported honestly as a genuine gap rather than silently applying the blanket rule, per the task's explicit instruction that a wrong disposition is worse than an honest escalation. |
-| `mimamsa_journal` | 0 | **SERVE gap** | `354_mimamsa_seva_abhilekha.sql:17` — native Q&A journal (`prompt_shown`, `native_answer`, `resulting_event_id`). Zero references anywhere in `mimamsa_outcome.ts`/`mimamsa_lel_intake.ts` (the natural homes) or anywhere else; only reference in the whole repo is cockpit cache-clear tooling. |
-| `mimamsa_load_bearing` | 10 | **SERVE gap** (deliberately NOT extended to GATED) | `350_mimamsa_adhilepa.sql:95` — "which signal_id is load_bearing/supporting/redundant for conclusion_id" with a `sensitivity` score. Written by the same `mi_adhilepa.py` writer as the GATED overlay tables, but its own schema carries no `leakage_status`/`applies_to_reading` columns — it is explanatory/interpretability metadata, not raw calibration-multiplier internals. A genuine, valuable "why does this conclusion hold" concept with no serving route — recommend distinguishing it from its GATED siblings in W2, not lumping it in. |
-| `mimamsa_manifestation_sets` | 384 | **SERVE gap** | `347_mimamsa_bhavisya.sql:36` — which channel/domain a frozen prediction manifested through, with `citation_ref`. Zero serving route (not read by `query_predictions.ts` or any outcome tool checked). |
+| `mimamsa_insight_embeddings` | 0 | **SERVED-DIRECT (W2b wired)** — **genuine new path, not the `vector_search` alias** | `platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts:93` (`FROM mimamsa_insight_embeddings`) — `query_insight_embeddings`. Confirms and closes the W1-addendum finding that the native's blanket "embedding tables = SERVED-VIA(vector_search)" pre-ruling does not hold here (`vector_search` resolves only to `query_classical_texts`, a different hardcoded table). Two real, non-fabricated modes: `mode=lookup` (embedding provenance, never the raw vector) and `mode=nearest` (pgvector `<=>` cosine-distance search between two already-computed embeddings — no live text-embedding-at-query-time call exists anywhere in this codebase, so an arbitrary-text-embed mode was deliberately not built, per B.10). 0 rows on the native chart currently (sibling `mimamsa_insight_units` also unpopulated) — served with honest `empty_reason`, not a fabrication. Test: `__tests__/query_insight_embeddings.test.ts`. |
+| `mimamsa_journal` | 0 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts:71` (`FROM mimamsa_journal`) — `query_journal`. Test: `__tests__/query_journal.test.ts`. |
+| `mimamsa_load_bearing` | 10 | **SERVED-DIRECT (W2b wired)** — deliberately NOT GATED, distinguished from its siblings as recommended | `platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts:75` (`FROM mimamsa_load_bearing`) — `query_load_bearing`, wired distinctly from the GATED `mi_adhilepa.py` overlay siblings per its schema-difference (no `leakage_status`/`applies_to_reading`). Test: `__tests__/query_load_bearing.test.ts`. |
+| `mimamsa_manifestation_sets` | 384 | **SERVED-DIRECT (W2b wired)** | `platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts:79` (`FROM mimamsa_manifestation_sets`) — `query_manifestation_sets`. Test: `__tests__/query_manifestation_sets.test.ts`. |
 | `mimamsa_negative_controls` | 4 | **OPERATIONAL** | `346_mimamsa_kula.sql:36` — QA test-harness table (`known_false_basis`, `expected_score`, `last_harness_score`, `last_harness_status` ∈ pass/FAIL) — internal calibration-system self-test infrastructure, not astrological content. |
 | `mimamsa_pool_contributions` | 0 | **OPERATIONAL** | `425_ba_lel_r2_2_step6_pool_contributions.sql` — explicitly documented as "capture-only for now... Nothing reads this table to serve pooled values while the flag is off" (own migration comment) — a feature-flagged, not-yet-activated capture buffer, declared not-served by design rather than an accidental gap. |
 | `mimamsa_preferences` | 0 | **OPERATIONAL** | `354_mimamsa_seva_abhilekha.sql:6` — per-user UI saved-state (`saved_state`, `channel_id`). No astrological concept. |
@@ -394,7 +394,100 @@ no longer open items.
 
 ---
 
-*End of TABLE_CONCEPT_DISPOSITIONS v2.0 (+ W2 addenda §9-10). Predecessor
+## 11. W2b addendum (2026-07-20) — closure of the remaining 36-item SERVE-gap set
+
+The W2b lane (`impl/wave-2b`, batch-wiring pass over this document's §8 list) wired all 36
+remaining genuine SERVE-gap rows carried forward from §9/§10 above. Per-batch breakdown (all
+real `CapabilityDescriptor` code + real mocked-DB unit tests + this row-level disposition
+flip, no design docs substituted for implementation):
+
+- **Batch 1 — 17 L0 `bg_*` classical reference tables** (the single largest coherent gap §8
+  identified): `bg_avastha_schemes`, `bg_graha_dik`, `bg_medical_mappings`,
+  `bg_motion_state_thresholds`, `bg_nakshatra_medical`, `bg_prashna_fructification_rules`,
+  `bg_prashna_lagna_methods`, `bg_prashna_significators`, `bg_prashna_special_techniques`,
+  `bg_prashna_tajik_yogas`, `bg_shashtiamsha_deities`, `bg_transit_av_gates`,
+  `bg_transit_engine`, `bg_transit_moorti`, `bg_transit_vedha`,
+  `bg_vastu_direction_remedials`, `bg_vastu_directions` — all wired, all 17/17. All follow the
+  established `query_sign_medical.ts`/`query_combustion_orbs.ts`/
+  `query_graha_naisargika_friendship.ts` single-table citation-bearing reference-lookup shape
+  mechanically, no new pattern invented. `bg_transit_av_gates` wired as an independent
+  read-only reference path that does not touch, wrap, or modify `kala_gochara_windows`'s own
+  internal use of the same table (must_not_touch respected). `bg_transit_vedha`'s missing-
+  migration-DDL governance anomaly is wired-around, not fixed (still flagged, unchanged).
+- **Batch 2 — 5 borderline constants/config tables**: `brahma_class_priors`,
+  `brahma_compendium_index`, `brahma_dasha_systems`, `brahma_formula_constants`,
+  `brahma_vichara_constants` — all wired, 5/5, same pattern. `brahma_compendium_index`'s
+  wiring also fixed the `coverage_matrix.ts:383` drift bug this document itself flagged (was
+  pointing at `query_classical_texts`, which queries a different table) — a trivial, direct
+  byproduct of closing this exact gap, not a separate fix.
+- **Batch 3 — 8 substantive L1/L2 items**: `ga_condition_composite` (the unified
+  planetary-condition rollup, highest single-item value per §8), `ga_prashna_lagna`,
+  `bodha_triangulation` (FK-shape checked first — no FK to `bodha_discoveries`/
+  `bodha_msr_signals`, wired standalone per the plan's own fallback), `bodha_rm_chart_summary`,
+  `bodha_rm_dasha_windowed_prescriptions` (0 rows — B.10-checked before wiring: real writer
+  contract + FK to a 270-row live table, genuine not-yet-populated concept, not a fabrication),
+  `bodha_rm_dosha_remedy_bundles` (same 0-row caution, same conclusion),
+  `bodha_rm_pattern_remedies`, `chart_panchanga_cache` (wired via the real backing
+  `panchang.py` compute service, not the literal table — B.10 finding this pass: the literal
+  table has zero writers anywhere in the repo and would always return nothing if queried
+  directly) — all wired, 8/8.
+- **Batch 4 — 6 L5 Mīmāṃsā research/explainability items**, deliberately distinct from the
+  GATED calibration-overlay siblings: `mimamsa_attribution`, `mimamsa_discoveries` (confirmed
+  distinct from L2 `bodha_discoveries`, not conflated), `mimamsa_insight_embeddings` (a
+  genuinely NEW serving path — confirmed the native's blanket "embeddings = SERVED-VIA
+  (vector_search)" pre-ruling does not hold here, `vector_search` only reaches
+  `query_classical_texts`; two non-fabricated modes, no live text-embedding-at-query-time call
+  exists anywhere in this codebase so an arbitrary-embed mode was deliberately not built),
+  `mimamsa_journal`, `mimamsa_load_bearing` (confirmed schema-distinct from its GATED siblings,
+  no `leakage_status`/`applies_to_reading` columns — not extended to GATED, per §3/§4's own
+  caution), `mimamsa_manifestation_sets` — all wired, 6/6. `mimamsa_fact_adjustment` /
+  `mimamsa_signal_adjustment` / `mimamsa_convergence_adjustment` / `mimamsa_anchor_adjustment`
+  (GATED, §3) were correctly left untouched.
+
+**Also fixed as part of this pass (real bugs found while landing this batch, not silently
+worked around):**
+1. A `*/`-inside-comment premature-block-comment-close bug in `call_panchanga_service.ts`
+   (literal "kala_*/gochara" text) — the exact same failure class this campaign's own
+   descriptor-migration lane hit twice before (STATE.md, W2 descriptor migration lane entry).
+   Cascaded into ~30 TS1xxx syntax errors across the file; fixed by rewording, no semantic
+   change.
+2. `cost_class: 'moderate'` in two files (`call_panchanga_service.ts`,
+   `query_insight_embeddings.ts`) — not a valid value of the `'cheap' | 'medium' | 'expensive'`
+   union (`types.ts:391`); corrected to `'medium'`.
+3. `call_panchanga_service.ts` had no test file at all — added
+   `__tests__/call_panchanga_service.test.ts` (9 tests: mode=single/range dispatch, optional
+   chart_id native_context hydration, required-field validation, sidecar-error surfacing,
+   unknown-mode rejection, descriptor shape).
+4. Four rows in §6 above (`bodha_cdlm_domain_rollups`, `bodha_cdlm_evolution_gradients`,
+   `bodha_cdlm_pattern_clusters`, `bodha_cgm_sub_graphs`) were still marked "SERVE gap" in the
+   table despite §10's own addendum text already documenting them as wired — a stale-row bug
+   from the prior lane's pass, not introduced here. Corrected in place (pointing at §10) while
+   fixing this document for this pass's own 36 flips.
+
+**Verification (re-run after the two bugfixes above, real commands, real output):**
+- `npx tsc --noEmit --skipLibCheck` (platform) — clean, 0 errors.
+- `npx tsc --noEmit` (platform-mcp) — clean, 0 errors.
+- `npx eslint` on all touched/created files — 0 errors (4 pre-existing `_ctx`-unused warnings
+  in 4 files this lane did not touch, left as found — a concurrent session's work in this
+  shared worktree).
+- `npx vitest run src/lib/retrieval/registry` — **890 passed / 125 skipped, 0 failed**.
+- `npx vitest run` full `platform` suite — **6172 passed / 317 skipped / 1 todo, 0 failed**
+  (574 files) — no regression anywhere in the estate.
+- `platform-mcp`: `npx tsc --noEmit` clean; `npx vitest run` shows 75 failing / 528 passing
+  (18 failed files) — confirmed pre-existing and unrelated (zero platform-mcp files touched
+  by this lane; this is the same baseline STATE.md's W2-phase-1 lane already documented and
+  investigated).
+
+**Running total after this addendum: SERVED-DIRECT 55 (was 19) / genuine SERVE-gap 0 (was
+36).** All 36 items in §8's list are closed. The only remaining un-served tables in the
+original 77-table W1b/W1-addendum universe are the deliberately-excluded classes: OPERATIONAL
+(13), GATED (4), RETIRED (2), and SERVED-VIA (1, `brahma_event_ontology`, still partial/narrow
+per its own row — full coverage recommended as a future `ref_event_ontology_get`, not part of
+this lane's scope).
+
+---
+
+*End of TABLE_CONCEPT_DISPOSITIONS v2.0 (+ W2 addenda §9-10, W2b addendum §11). Predecessor
 `TABLE_CONCEPT_DISPOSITIONS_v1_0.md` retained in place as historical record per governance
 hygiene policy — its DARK/INTERNAL-BY-DESIGN/NEEDS-OWNER labels are superseded here, not
 deleted. Source evidence: `platform/src/generated/harvest/adjudication_queue.json` (L1b, table
