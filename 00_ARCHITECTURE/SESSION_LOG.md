@@ -32794,7 +32794,34 @@ None pending from this session. PG-2 is fully closed and merged to main (5b57d49
 
 ---
 
-## Pre-D-4b Readiness Pass v3 (2026-07-21)
+## PRE-D4B-READINESS-PASS-V3-2026-07-21 — Pre-D-4b Readiness Pass v3
+
+```yaml
+session_open:
+  session_id: PRE-D4B-READINESS-PASS-V3-2026-07-21
+  cowork_thread_name: "Madhav — Pre-D-4b readiness pass v3"
+  agent_name: claude-sonnet-5
+  predecessor_session: DOCTRINE-WAVES-D-5-CLOSE-2026-07-20
+  role: >
+    Native-directed pre-D-4b readiness checklist (A.0 hard prerequisite, A.0-bis, A, B, C,
+    D, E), fully autonomous, verifier-gated fixes, pausing before D-4b itself opens.
+  declared_scope:
+    may_touch:
+      - "ka_gochara_sweep primitives fetch functions + gochara permission computation (perf fix)"
+      - "Cockpit stats route + AtlasView/LiveDependencyGraph/DataAssetsView badge wiring"
+      - "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/BRIEF_D4B.md (flesh + freeze)"
+      - "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/DR_17_18_MANIFESTATION_CENSUS_DOCTRINE_v1_0.md (author)"
+      - "D4B_PREREGISTRATION_PACKET_DRAFT_v1_0.md (draft only, not committed)"
+      - "CLAUDECODE_BRIEF.md (current_wave field sync)"
+      - "MARSYS_DEFECT_GAP_REGISTER (register sync)"
+      - "SESSION_LOG.md (append-only, this entry)"
+      - "worktree/branch hygiene"
+    must_not_touch:
+      - "any B-1..B-6 D-4b lane work (gated on D-4b's own Binder pass)"
+      - "scoring/backfill/gate assertions against ka_gochara_sweep before materialization completeness is asserted"
+      - "D-5's own gate verdict (read-only reference; not retroactively edited)"
+  red_team_due: false
+```
 
 Native directive: execute the full pre-D-4b readiness checklist (A.0 hard prerequisite, A.0-bis, A, B, C, D, E), report with evidence, pause before opening D-4b. Fully autonomous, verifier-gated fixes.
 
