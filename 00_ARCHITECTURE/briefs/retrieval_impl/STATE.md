@@ -1435,3 +1435,34 @@ suite shows 0 regressions. Judged non-breaking (additive registry-introspection 
 only, not a new dispatch path) and approved to ship in this non-breaking phase; flagged here
 for explicit visibility rather than left as a footnote in a sub-agent's own report, per the
 verifier's request.
+
+### W2 PHASE 2 CLOSE (2026-07-20)
+
+Merged: PR #647 (`impl/wave-2b` → `main`, merge commit `d331f253`), all CI checks green
+(large 102-file diff — Build Check/Governance Gates/Unit Tests each ran 6-9 minutes).
+Deploy (run `29732946369`): `Build & Deploy Web` success; MCP/Sidecar/Pipeline all correctly
+skipped (this phase touched only `platform/src` registry code — confirmed the live dispatch
+architecture is `platform-mcp` → HTTP → `platform`'s `/api/retrieval/capability` route, so a
+web-only deploy is sufficient; no platform-mcp source was touched, no redeploy needed there).
+
+**Live-verified directly against the deployed capability route** (bypassing the MCP
+tool-name layer again, same as W2 phase 1 — this connector doesn't expose most
+registry-level capabilities under distinct MCP tool names):
+- `marsys://tool/L1/get_condition_composite` (the `ga_condition_composite` wiring) —
+  resolved correctly, reached real entitlement enforcement (`entitlement_denied`, honest
+  fail-closed denial for the service token's own principal — proves the capability is
+  registered and reachable, not a 404).
+- `marsys://tool/L0/query_avastha_schemes` — `ok:true`, real classical avastha-scheme rows
+  with citations (`JP Ch.7`, `PD Ch.4`), confirming genuine live serving, not a stub.
+- Negative control: a nonexistent URI correctly returns a distinct `"Unknown capability URI"`
+  error shape — confirms the two hits above are real resolutions, not a catch-all.
+
+**W2 (both phases): CLOSED.** Disposition table: **SERVED-DIRECT 55 / SERVE-gap 0** — every
+concept this campaign's harvest found now has a terminal, evidenced disposition. Full W2-close
+checkpoint (the two §F pre-rulings that didn't survive verification, live-probe diff vs the W0
+baseline) reported to the native separately; not duplicated here.
+
+**Remaining, explicitly deferred per the native's §F-gate-ruling sequencing:** the breaking
+alias cutover and the single-bootstrap flag flip-on stay off until the native confirms D-5 is
+quiet. No further W2 work is planned beyond that switch-over — W3 (One Envelope) is next,
+pending native go-ahead.
