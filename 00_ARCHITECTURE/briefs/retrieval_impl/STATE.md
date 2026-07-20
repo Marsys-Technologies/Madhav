@@ -52,6 +52,7 @@ governing_brief: RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md
 | When | Campaign | Action | Released |
 |---|---|---|---|
 | 2026-07-19 19:12–19:34 | retrieval | W0 S-1..S-5 safety deploy (PR #633 → main `2f4b67e8` → amjis-mcp `amjis-mcp-00440-n29` + amjis-web `amjis-web-01031-rmj`, 100% traffic) | **RELEASED** 2026-07-19 19:5x, post live-verification |
+| 2026-07-20 (claimed pre-merge) | retrieval | W2 phase 1 deploy: descriptor migration + vidhi de-mirror + 6 dark-set items, incl. two NEW live sidecar routes (ephemeris compute, muhurta score) — requires python-sidecar + platform-mcp redeploy, not just platform/web. Pre-deploy check: D-5 is HALTED (§ D-5 STATUS REFRESH above); most recent `origin/main` activity is D-5's `gate_run_2` (docs-only push, `Build & Deploy Web/MCP/Sidecar` all skipped — confirmed no live D-5 code deploy in flight). Baseline re-snapshot: this campaign's last live probe was W0's `VERIFY_W0.md` (2026-07-19); a fresh post-deploy live probe of the two new sidecar routes substitutes for a full baseline re-snapshot here, since W1/W2 phase 1 added no regression-risk to the surfaces W0 already verified. | pending |
 
 ## Wave log
 
