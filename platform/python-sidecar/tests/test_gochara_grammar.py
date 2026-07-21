@@ -1122,3 +1122,98 @@ def test_citation_invariant_holds_across_all_primitives_and_compositions():
     for c in composed:
         assert bool(c.classical_citation) != bool(c.uncited_extension) or bool(c.uncited_extension)
         assert bool(c.classical_citation) or bool(c.uncited_extension)
+
+
+class _CountingConn:
+    """Minimal fake conn for the D-4b readiness-pass perf fix: counts real
+    `execute()` calls per query so a test can prove a second call with the
+    SAME cache key is a cache hit (zero additional queries), a call with a
+    DIFFERENT key is NOT starved by the other key's cached result, and a
+    failed query is never cached (stays retryable)."""
+
+    def __init__(self, kakshya_rows=None, vedha_rows=None, fail_kakshya=False, fail_vedha=False):
+        self.kakshya_rows = kakshya_rows if kakshya_rows is not None else []
+        self.vedha_rows = vedha_rows if vedha_rows is not None else []
+        self.fail_kakshya = fail_kakshya
+        self.fail_vedha = fail_vedha
+        self.kakshya_queries = 0
+        self.vedha_queries = 0
+        self.autocommit = False
+
+    def execute(self, sql, params=None):
+        s = sql if isinstance(sql, str) else str(sql)
+        stripped = s.strip()
+        if stripped.startswith("SAVEPOINT ") or stripped.startswith("RELEASE SAVEPOINT ") \
+                or stripped.startswith("ROLLBACK TO SAVEPOINT "):
+            return _FakeCursor([])
+        if "ashtakavarga_kakshya_boundary" in s:
+            self.kakshya_queries += 1
+            if self.fail_kakshya:
+                raise RuntimeError("simulated transient failure")
+            return _FakeCursor(self.kakshya_rows)
+        if "bg_transit_rules" in s:
+            self.vedha_queries += 1
+            if self.fail_vedha:
+                raise RuntimeError("simulated transient failure")
+            return _FakeCursor(self.vedha_rows)
+        return _FakeCursor([])
+
+    def rollback(self):
+        pass
+
+
+def test_kakshya_boundaries_and_vedha_rules_are_memoized_per_key():
+    """D-4b readiness-pass perf fix: `_fetch_kakshya_boundaries` and
+    `_fetch_vedha_rules` are called once per (target, grid-day) by
+    `gather_configuration_sentences`'s 365-day-per-substep sweep (same
+    call shape PR #670 already fixed for `_fetch_av_gate_rows`/
+    `_fetch_sade_sati_rows` in this same module) -- proves the SAME cache
+    key is a hit (no repeat query), a DIFFERENT key still issues its own
+    query (no cross-key starvation), and clearing the cache re-enables a
+    fresh query."""
+    P.clear_primitive_read_caches()
+    conn = _CountingConn(
+        kakshya_rows=[
+            {"fact_subject": "Moon.0", "fact_key": "start_deg", "fact_value_text": None, "fact_value_num": 30.0},
+            {"fact_subject": "Moon.0", "fact_key": "lord", "fact_value_text": "Saturn", "fact_value_num": None},
+        ],
+        vedha_rows=[{"graha": "saturn", "primary_house": 4, "vedha_house": 10,
+                     "phala": "x", "classical_citation": "TEST"}],
+    )
+
+    first = P._fetch_kakshya_boundaries(conn, CHART_ID, "Moon")
+    second = P._fetch_kakshya_boundaries(conn, CHART_ID, "Moon")
+    assert first == second
+    assert conn.kakshya_queries == 1, "second call with the SAME (chart_id, planet) key must be a cache hit"
+
+    P._fetch_kakshya_boundaries(conn, CHART_ID, "Saturn")
+    assert conn.kakshya_queries == 2, "a call with a DIFFERENT planet key must issue its own query, not reuse Moon's"
+
+    v_first = P._fetch_vedha_rules(conn, "4")
+    v_second = P._fetch_vedha_rules(conn, "4")
+    assert v_first == v_second
+    assert conn.vedha_queries == 1, "second call with the SAME primary_house key must be a cache hit"
+
+    v_third = P._fetch_vedha_rules(conn, "7")
+    assert conn.vedha_queries == 2, "a call with a DIFFERENT primary_house key must issue its own query"
+
+    P.clear_primitive_read_caches()
+    P._fetch_kakshya_boundaries(conn, CHART_ID, "Moon")
+    assert conn.kakshya_queries == 3, "clear_primitive_read_caches() must re-enable a fresh query for a previously-cached key"
+
+
+def test_kakshya_and_vedha_read_failures_are_never_cached():
+    """A transient read failure must remain retryable on the NEXT call (e.g.
+    the next grid day) -- never permanently frozen as an empty result for
+    the rest of this process's life (same discipline as the pre-existing
+    av-gate/sade-sati caches)."""
+    P.clear_primitive_read_caches()
+    conn = _CountingConn(fail_kakshya=True, fail_vedha=True)
+
+    assert P._fetch_kakshya_boundaries(conn, CHART_ID, "Moon") == []
+    assert P._fetch_kakshya_boundaries(conn, CHART_ID, "Moon") == []
+    assert conn.kakshya_queries == 2, "a failed read must retry on the next call, not be cached as empty"
+
+    assert P._fetch_vedha_rules(conn, "4") == []
+    assert P._fetch_vedha_rules(conn, "4") == []
+    assert conn.vedha_queries == 2, "a failed read must retry on the next call, not be cached as empty"

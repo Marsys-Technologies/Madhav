@@ -130,15 +130,29 @@ logger = logging.getLogger(__name__)
 _AV_GATE_ROWS_CACHE: dict[Optional[str], list[dict]] = {}
 _SADE_SATI_ROWS_CACHE: dict[str, list[dict]] = {}
 
+# Same PERF-TRIGGER-CACHE discipline (D-4b readiness pass, 2026-07-21): these
+# two `needs_conn=True` primitives are called once per (target, grid-day) by
+# `gather_configuration_sentences`'s 365-day-per-substep sweep, same as the
+# two reads above -- `_fetch_kakshya_boundaries` reads a per-chart, per-planet
+# `ashtakavarga_kakshya_boundary` fact set (static for a chart's build
+# lifetime, same argument as `_SADE_SATI_ROWS_CACHE`); `_fetch_vedha_rules`
+# reads `bg_transit_rules` (a GLOBAL reference table, same argument as
+# `_AV_GATE_ROWS_CACHE`). Keyed by the exact arguments that already determine
+# the query, for the same reason.
+_KAKSHYA_BOUNDARIES_CACHE: dict[tuple[str, str], list[dict]] = {}
+_VEDHA_RULES_CACHE: dict[Optional[str], list[dict]] = {}
+
 
 def clear_primitive_read_caches() -> None:
-    """Test/adversarial-verification hook: reset both memoization caches.
+    """Test/adversarial-verification hook: reset all four memoization caches.
     Also the correct call between independent chart builds sharing one long-
     lived process (not needed today -- each Cloud Run dispatch is a fresh
     process/cache -- but kept so a future in-process multi-chart batch mode
-    cannot silently read another chart's cached sade_sati rows)."""
+    cannot silently read another chart's cached sade_sati/kakshya rows)."""
     _AV_GATE_ROWS_CACHE.clear()
     _SADE_SATI_ROWS_CACHE.clear()
+    _KAKSHYA_BOUNDARIES_CACHE.clear()
+    _VEDHA_RULES_CACHE.clear()
 
 
 # Every per-target "skipping" honest-degrade message below is `logger.debug`,
@@ -599,6 +613,9 @@ def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
     ga_strength_writer.py (fact_category='ashtakavarga_kakshya_boundary',
     fact_subject=f'{planet}.<kakshya_index>', fact_key in
     {'lord','start_deg','end_deg'}). Defensive -- [] on any failure."""
+    cache_key = (chart_id, planet)
+    if cache_key in _KAKSHYA_BOUNDARIES_CACHE:
+        return _KAKSHYA_BOUNDARIES_CACHE[cache_key]
     try:
         with savepoint_scope(conn, "kakshya_boundaries"):
             cur = conn.execute(
@@ -612,6 +629,9 @@ def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
+        # NOT cached: a transient read failure must remain retryable on the
+        # next call (e.g. next grid day), never permanently frozen as "no
+        # boundary rows" for the rest of this process's life.
         logger.info("[kakshya_cell_crossing] chart_facts kakshya boundary read failed: %s", exc)
         return []
     by_subject: dict[str, dict] = {}
@@ -619,7 +639,9 @@ def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
         d = row if isinstance(row, dict) else dict(zip(
             ["fact_subject", "fact_key", "fact_value_text", "fact_value_num"], row))
         by_subject.setdefault(d["fact_subject"], {})[d["fact_key"]] = d.get("fact_value_text") or d.get("fact_value_num")
-    return list(by_subject.values())
+    result = list(by_subject.values())
+    _KAKSHYA_BOUNDARIES_CACHE[cache_key] = result
+    return result
 
 
 def kakshya_cell_crossing(
@@ -775,6 +797,8 @@ def av_threshold_state(
 def _fetch_vedha_rules(conn, primary_house: Optional[str]) -> list[dict]:
     if conn is None:
         return []
+    if primary_house in _VEDHA_RULES_CACHE:
+        return _VEDHA_RULES_CACHE[primary_house]
     try:
         with savepoint_scope(conn, "vedha_rules"):
             cur = conn.execute(
@@ -788,10 +812,15 @@ def _fetch_vedha_rules(conn, primary_house: Optional[str]) -> list[dict]:
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
+        # NOT cached: a transient read failure must remain retryable on the
+        # next call (e.g. next grid day), never permanently frozen as "no
+        # vedha rules" for the rest of this process's life.
         logger.info("[gochara_vedha_pair] bg_transit_rules read failed: %s", exc)
         return []
     keys = ["graha", "primary_house", "vedha_house", "phala", "classical_citation"]
-    return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
+    result = [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
+    _VEDHA_RULES_CACHE[primary_house] = result
+    return result
 
 
 def gochara_vedha_pair(
