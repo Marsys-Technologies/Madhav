@@ -108,6 +108,17 @@ vi.mock('@/lib/bundle/bundle_hydrator', () => ({
 
 vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
   getToolByName: vi.fn((name: string) => ({ name })),
+  // W6 Part D: consult/route.ts now calls filterLeakedCapabilities(), which
+  // resolves each tool name via resolveToolUri(). Returning undefined here
+  // (name unresolved) makes the filter fail-open — no tool is stripped —
+  // preserving this suite's prior tool_calls-are-untouched behavior.
+  resolveToolUri: vi.fn(() => undefined),
+}))
+vi.mock('@/lib/retrieval/registry', () => ({
+  getCapability: vi.fn(() => undefined),
+}))
+vi.mock('@/lib/retrieval/registry/catalog', () => ({
+  getCatalog: vi.fn(() => []),
 }))
 
 vi.mock('@/lib/cache/index', () => ({

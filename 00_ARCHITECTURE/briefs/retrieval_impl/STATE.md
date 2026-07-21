@@ -2381,3 +2381,104 @@ load-generation harness against the deployed connector across the four
 §9.7 pressure points; (b) periodically re-check D-4b's live state
 (`git branch -a` / `gh pr list`, same evidence class used throughout this
 close) and un-pause `impl/w5-breaking` the moment it's genuinely quiet.
+
+### W6 — module-placement correction (Tasks 2b/5/6 redesign, 2026-07-22)
+
+**Why:** Tasks 2/2b (`CostCapTracker`/`resolveCostCapsForEntitlement`) and
+Task 5 (`filterLeakedCapabilities`) were originally built inside
+`platform-mcp/src/lib/` on the assumption that prashna_ask's engine
+tool-call loop would run in the MCP server process. Investigation for
+Task 4 (the prashna_ask↔engine bridge) found this assumption wrong:
+`platform-mcp` and `platform` are separate Cloud Run deployables with no
+shared import path; `callPipelinePlanner`/`compileFloorForPlan` (the FROZEN
+engine) and the tool-call loop that actually needs cost-cap tracking and
+NO-LEAKAGE enforcement all run inside `platform`'s process, driven today by
+`/api/chat/consult/route.ts` — never inside `platform-mcp`. A filter or
+tracker living only in `platform-mcp` would be advisory, not enforcing:
+nothing stops the engine from assembling an unfiltered/unbounded tool set
+across the HTTP boundary. Native-ratified: enforcement must live where the
+loop actually executes.
+
+**What changed (this session, five parts):**
+1. Ported `filterLeakedCapabilities` to `platform/src/lib/pipeline/
+   no_leakage_filter.ts`, now importing the REAL `CapabilityDescriptor` type
+   and the live registry (`getCapability`/`getCatalog`/`resolveToolUri`)
+   directly — same deployable as the registry, no more local structural
+   mirror type. Deleted the `platform-mcp` attempt + its test.
+2. Ported `CostCapTracker`/`resolveCostCapsForEntitlement`/
+   `DEFAULT_COST_CAPS`/`COST_CAP_OVERRIDES_BY_ENTITLEMENT` to
+   `platform/src/lib/pipeline/cost_caps.ts`, unchanged logic. Confirmed the
+   real platform-side entitlement vocabulary: `authorizeChartAccess.ts`'s
+   own `Principal.role` is `'guest' | 'super_admin'` — independently
+   declared from `platform-mcp`'s `Principal` but literally identical, and
+   it's what `resolveMcpPrincipalRole()` (used by every `/api/mcp/*` route)
+   resolves. Deleted the `platform-mcp` attempt + its test.
+3. Built `POST /api/mcp/prashna_ask` — the new internal, service-to-service
+   route platform-mcp will call to actually run the engine. Auth reuses the
+   SAME two-layer pattern every other `/api/mcp/*` route uses
+   (`validateServiceToken` shared secret + `X-MCP-User`/`X-MCP-Key-Id`
+   resolved-principal headers) — the caller's OIDC bearer token is verified
+   by Cloud Run's own IAM gate at the infrastructure layer, not application
+   code; `lib/auth/oidc.ts`'s `verifyOidcToken` is a different, currently-
+   unused mechanism for a different caller (Cloud Scheduler) and was NOT
+   reused here. Engine invocation sequence copies `/api/chat/consult/
+   route.ts`'s real sequence exactly. Dispatches tools SEQUENTIALLY (not
+   the consult route's `Promise.all`) so `CostCapTracker.checkAndRecordCall()`
+   can gate each dispatch and stop cleanly mid-loop with an honest partial
+   result (never silently truncated).
+4. Retrofitted `/api/chat/consult/route.ts` (the pre-existing Paripraśna/
+   consult door) with the same `filterLeakedCapabilities` call, applied to
+   its fully-composed `toolsAuthorized` before tool-fetch — this route
+   previously applied no such filtering. NO-LEAKAGE is engine-side doctrine,
+   not channel-specific — both doors now carry it.
+5. Added a LIVE/runtime NO-LEAKAGE canary (`no_leakage_runtime_canary.test.ts`
+   + `no_leakage_runtime_canary_consult.test.ts`), distinct from
+   `projection_compiler_parity.test.ts`'s static F-R7 codegen check: drives
+   the REAL filter against the REAL production catalog through both doors'
+   actual tool-authorization sequence for a fixture "compromised planner"
+   plan, confirming the real F-R7-flagged `marsys://tool/L5/lel_query`
+   never reaches dispatch through either door.
+
+**Narrowed scope note for the next task (the prashna_ask↔platform-mcp
+bridge):** with the engine call, NO-LEAKAGE, and cost caps now living in
+`platform` behind `/api/mcp/prashna_ask`, `platform-mcp`'s role in the
+prashna_ask design narrows to: (a) the job registry (`job_registry.ts`,
+already built, Task 1) for async job-handle bookkeeping; (b) one HTTP call
+from the MCP tool handler to `POST /api/mcp/prashna_ask` (mirroring
+`client.ts`'s existing `callPlatformPrimitive` pattern); (c) relaying
+progress notifications back to the MCP caller as the job runs. Building
+that bridge (the job-handle wrapper around this session's synchronous
+route) is explicitly a LATER task, not started here — this note exists so
+that task doesn't have to re-derive the boundary from scratch.
+
+Verification this session: `npx tsc --noEmit` clean (both packages); full
+`platform` suite green (583 files / 6553 passed / 317 skipped / 1 todo, 0
+failed); `platform-mcp`'s remaining suite unaffected (confirmed via
+before/after comparison — same 75 pre-existing, unrelated failures both
+before and after the two file deletions).
+
+### W6 — Task 11 (session-semantics rename + diagram fix)
+
+**W-19 (PARIPRASHNA §6.1 diagram fix) — DONE.** `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`
+bumped 0.7 → 0.8 (§20 changelog entry added). §6.1's diagram corrected at
+source: the `prashna_ask` box no longer lists the stale `depth` param
+(struck by D-15) and the AGENTIC LOOP box now reads "provenance stamp"
+instead of "session pin ... pinned for ALL conversations" (struck/
+restructured by D-16). This was pre-authorized via AMBIG-4 as a docs-only
+task, independent of the broader C-1/F-R4 rulings.
+
+**W-17 (session-semantics rename, GT-F28) — NOT executed, carried to §H
+residuals.** Investigated before touching anything: GT-F28 in
+`briefs/retrieval_audit/GROUND_TRUTH_REGISTER.md` (line 186) is explicitly
+marked **NEEDS-RULING**, and no ratification for it was found anywhere in
+`RULINGS_ADOPTED.md` or any wave brief — unlike W-19, which the master
+brief marks "(authorized)" and AMBIG-4 confirms in writing. Executing an
+unratified rename across ~13 load-bearing files (`session_pin.ts`,
+`envelope.ts`, MCP session tools, ledger versioning) this late in the
+campaign was judged unjustified blast radius for a cosmetic gain, and the
+naming rides on the D-16 restructure the doctrine/Paripraśna workstream
+owns — not a call for the retrieval campaign to make unilaterally mid-seal.
+**Residual for §H:** internal-only rename (zero behavior/contract/UX
+change), needs an explicit native ruling coordinated with the
+session-semantics decision before execution; does not block campaign
+COMPLETE since no shipped behavior depends on the name.
