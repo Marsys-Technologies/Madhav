@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.7
+version: 3.8
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -914,9 +914,27 @@ repro with verbose tracing enabled. Native ruling (2026-07-20): **out of W4 scop
 here with evidence, to be picked up by whichever of W5 (adaptive-serving/budget work) or PF-1
 (teardown-orphan sweep) reaches it first.
 
+**UPDATE (2026-07-21, post-W4-deploy live-probe, chart 1c826d5a via the deployed connector,
+merge commit `a1ed172b`):** the same fast-fail pattern reproduced on **three** tools in one
+request, not just `msr_sql` — `{"name":"msr_sql","status":"error","ms":6}`,
+`{"name":"get_yoga_firings","status":"error","ms":5}`,
+`{"name":"cgm_graph_walk","status":"error","ms":4}` — all erroring in single-digit milliseconds
+in the same tool_fetch stage, while a fourth tool in the same request (`vector_search`) ran
+normally and returned real data (`ok_count:1`, `ms:6065`). Widens this defect: it is not
+`msr_sql`-specific, and notably `get_yoga_firings`/`cgm_graph_walk` are two of the four
+web-executable MCP↔retrieval bridge mappings W4's floor-adoption work depends on
+(`LIVE_TOOL_TO_RETRIEVAL` in `compiled_floor_adapter.ts`) — so this defect directly reduces how
+much of the newly-compiled floor can actually serve data today, on top of the already-documented
+namespace-gap limitation. Still did not block the overall response (graceful degradation held).
+Still out of W4 scope per the same native ruling; recorded here rather than silently left as a
+narrower finding than the evidence now supports.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.7 (2026-07-21, W4 conductor session) — CR-118
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.8 (2026-07-21, W4 post-deploy live-probe) —
+CR-118 updated: the fast-fail tool-error pattern reproduces on 3 tools (msr_sql,
+get_yoga_firings, cgm_graph_walk), not just msr_sql, and 2 of the 3 are floor-adoption's own
+web-bridge tools — widens the defect's scope, still out of W4, still deferred to W5/PF-1. v3.7 (2026-07-21, W4 conductor session) — CR-118
 added OPEN (msr_sql mid-stream tool error, live-probed during the bundle_hydrator fix
 verification; out-of-scope for W4 per native ruling, deferred to W5/PF-1). v3.6 (2026-07-21, pre-D-4b readiness pass v3,
 conductor session) — CR-113 CLOSED (re-verified no orphaned build_runs rows exist); CR-114 CLOSED

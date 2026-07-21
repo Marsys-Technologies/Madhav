@@ -1672,3 +1672,82 @@ For the W4 conductor, from the PG-2 diagnostic wave (separate campaign; `00_ARCH
    work end-to-end; PG-2 diagnosed but did not fix it (read-only-on-source discipline).
    One-line fix (drop `'FORENSIC'` from the array). Full evidence: `REPORT_PG-2.md`
    ("Both central questions, answered from probes this wave ran", part (b)).
+
+### W4 CLOSE (2026-07-21)
+
+**Precondition first:** the PG-2-assigned `bundle_hydrator.ts` fix merged and deployed
+independently (PR #677, `fb793e18`), live-verified against production chart `482012f1`
+before any W4 feature work began (first probe hit an unrelated pre-existing planner
+non-JSON issue — HTTP 422 — second probe returned a real, chart-grounded HTTP 200
+synthesis). C-2 (audience_tier excision) landed as its own PR (#680, `bfe9cf10`) per the
+Paripraśna-workstream labeling requirement, ahead of the main wave PR.
+
+**Sequential core** (`impl/wave-4`, merged PR #682 → `a1ed172b`): scope_tuple
+classification (web port of the MCP `intent_scope_classifier`) attached to every plan →
+a 3-way planner outcome contract (`PlanReceipt | ClarificationRequest |
+PlannerFaultResult`, replacing throw-on-non-JSON with one repair-retry then a typed
+fault — this ALSO fixed the same 422-leaking-internals bug the precondition probe
+surfaced, folded into this lane per native instruction rather than deferred) →
+`compileContract` wired into `consult/route.ts`, deleting the hardcoded B.11 floor
+injection → completeness receipts + a ≤2000-token orientation front-door, both new on
+the web channel. **Honest caveat, carried through to production**: only ~10% of query
+classes get a genuinely-compiled floor today (an MCP↔web tool-namespace gap — only 4 of
+~23 distinct MCP tool names have a web-executable equivalent); predictive/holistic
+classes still run on the pre-W4 hardcoded logic, preserved as explicitly-named,
+disclosed guarantee functions, not silently dropped. `channel_note` on every
+completeness receipt surfaces this so a small `served` count is never misread as full
+floor coverage.
+
+**Parallel lanes** (all merged into the same PR after independent verification): floor
+completeness campaign (career/health/marriage floors now carry all 11 §B0.4 mandatory
+tags — pure wiring, zero fabricated tool references); CR-55 resolved CLOSED-WITH-RESIDUAL
+(live Postgres-verified: Venus is genuinely weakest by shadbala; the serving layer
+already overrides a stale `vw_chart_digest` view) plus 2 other stale `cr_status.ts`
+entries (CR-54, CR-59) found and fixed in the same spot-check; floor precompilation
+cache (W-28, content-hash-keyed, 48-entry warm cache) shipped as a verified, inert
+drop-in — not yet wired to a call site; `prashna_ask` headless spike (C-6/F-R1) proved
+the boundary via a boundary-mocked integration test on chart `1c826d5a` (honestly not
+live E2E — no sandbox DB/API credentials for a bare-function run; the underlying engine
+behavior was independently confirmed live via the deployed consult route instead, see
+below).
+
+**V4 gate: ACCEPT** (fresh-context holistic reviewer, after every individual lane's own
+ACCEPT) — scope-tuple round-trip verified for all 12 classifier intents (zero throws,
+zero silent `general_synthesis` collapse — the fallback is a documented, non-empty
+floor, not a masked failure), B.11-by-construction confirmed (no hidden hardcoding
+survives outside the disclosed guarantee functions), completeness receipts confirmed
+wired to real per-tool execution outcomes (not stubbed), full suite green (6378 passed,
+0 failed), `tsc`/`codegen:vidhi:check` clean, kala/gochara semantics confirmed untouched
+by diff.
+
+**Live-probe re-verification against the deployed connector, post-merge (`a1ed172b`),
+chart `1c826d5a`:**
+- The exact question that reproducibly 422'd 3/3 times pre-merge (a Jupiter-placement
+  question with no clear domain intent) now returns a clean HTTP 200 with a proper
+  `data-clarification` SSE event — the C-5 ClarificationRequest outcome, working live in
+  production for the first time.
+- A career-assessment question returned a full HTTP 200 synthesis (~51s wall):
+  `data-orientation` fired early (790/2000 tokens, unenforced/no trims needed,
+  `weakest_graha: "Jupiter"` explicitly citing "CR-55 fix" in its own payload — live
+  proof that resolution is deployed and being served); `data-completeness` fired at
+  stream end, honestly reporting the floor as mostly `empty` with `web_namespace_gap`
+  reasons (career floor grew from the completeness campaign, and the namespace gap
+  applies to essentially all of the new items — truthfully surfaced, not hidden).
+  4 tool calls made (well within the ≤10-umbrella-call target); stage timings:
+  classify 4.6s, compose_bundle 0.05s, tool_fetch 6.1s, synthesis 38.7s.
+- **New finding, recorded not fixed (CR-118 updated):** of the 4 tools called, 3 errored
+  in single-digit milliseconds (`msr_sql`, `get_yoga_firings`, `cgm_graph_walk`) while
+  `vector_search` succeeded normally (6065ms, real data). This widens CR-118 beyond
+  `msr_sql` alone — notably 2 of the 3 fast-failing tools are floor-adoption's own
+  web-bridge mappings, so this defect currently further limits how much of the compiled
+  floor can serve data. Did not block the response (graceful degradation held). Still
+  out of W4 scope per the native's standing ruling; deferred to W5/PF-1.
+- No regression observed relative to the W0/W3 baseline probes on the dimensions
+  re-checked (envelope shape, chart_header presence, orientation/digest content).
+
+**W4: CLOSED, V4 ACCEPT.** Parked, not flipped by this wave: alias cutover and the
+single-bootstrap flag — both queue for the front of W5, pending the native's explicit
+D-5-quiet confirmation (same standing instruction carried from W3). CR-118 (tool
+fast-fail pattern, widened) and the MCP↔web namespace gap (floor-adoption coverage) are
+the two carried, named residuals for W5/PF-1. W5 (Adaptive Serving + Scale) is next,
+not opened by this session.
