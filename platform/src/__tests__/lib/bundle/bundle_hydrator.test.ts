@@ -63,18 +63,33 @@ beforeEach(() => {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('hydrateBundle', () => {
-  it('enforces FORENSIC + CGM floor when asset_bundle is empty', async () => {
-    const manifest = makeManifest([FORENSIC, CGM])
+  it('enforces CGM floor when asset_bundle is empty', async () => {
+    const manifest = makeManifest([CGM])
     mockReadFile.mockImplementation(async (p: string) => `content-of:${p}`)
 
     const plan = makePlan([])
     const bundle = await hydrateBundle(plan, manifest)
 
     expect(bundle.floor_enforced).toBe(true)
-    expect(bundle.assets.map(a => a.asset_id).sort()).toEqual(['CGM', 'FORENSIC'])
-    expect(mockReadFile).toHaveBeenCalledTimes(2)
-    expect(mockReadFile).toHaveBeenCalledWith('L1/facts/FORENSIC.md')
+    expect(bundle.assets.map(a => a.asset_id)).toEqual(['CGM'])
+    expect(mockReadFile).toHaveBeenCalledTimes(1)
     expect(mockReadFile).toHaveBeenCalledWith('L2_5/CGM.md')
+  })
+
+  it('does not throw when FORENSIC is absent from the manifest (post-teardown reality; regression guard for the 2026-07-19/20 production HTTP 500)', async () => {
+    // FORENSIC was deleted from CAPABILITY_MANIFEST.json in PR #187; this manifest
+    // reflects that real state — no FORENSIC entry at all. Prior to the fix,
+    // FLOOR_ASSET_IDS still listed 'FORENSIC', so this exact shape threw
+    // `bundle_hydrator: floor asset 'FORENSIC' not found in manifest` on every
+    // hydrateBundle() call, which is what PG-2 Lane X-2 found live.
+    const manifest = makeManifest([CGM, UCN])
+    mockReadFile.mockImplementation(async (p: string) => `content-of:${p}`)
+
+    const plan = makePlan([])
+    const bundle = await hydrateBundle(plan, manifest)
+
+    expect(bundle.floor_enforced).toBe(true)
+    expect(bundle.assets.map(a => a.asset_id)).toEqual(['CGM'])
   })
 
   it('skips unknown asset_id with a warning, no throw', async () => {
