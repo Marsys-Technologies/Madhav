@@ -38,6 +38,9 @@ import {
   buildMcpToolRegistrations,
   buildMcpNonToolRegistrations,
   buildDocsResourceCatalog,
+  buildAllFamilyToolDefs,
+  findFamilyNameCollisions,
+  MODEL_FAMILIES,
   resolveType,
 } from './projection_builders'
 import { extractRegistryBridgeToolsFromDisk, REGISTRY_BRIDGE_PATH } from './extract_registry_bridge_tools'
@@ -141,6 +144,39 @@ function main(): void {
       unmapped: canonicalFaceUnmapped.length,
       entries: canonicalFaceBridge,
     },
+  })
+
+  // (f) W5 L1 — per-family tool-def projection: MCP annotations already ride
+  // inline on (a)/(b) above (`annotations` field, added this lane). This 6th
+  // artifact is the `family_overrides` + `input_examples`/`search_result`
+  // emission the brief's W5 standing scope line names — merges any declared
+  // `cap.family_overrides[family]` onto the base chat-tool-def shape, per
+  // model family (anthropic/gemini/openai/deepseek). Currently 0/118 live
+  // capabilities declare a real override (W2's deliberate, documented
+  // non-population — editorial judgment, not this campaign's job to
+  // fabricate) so every family's projection is mechanically IDENTICAL to the
+  // base chat projection today. That is the CORRECT, expected output of a
+  // real merge-with-no-overrides-present, not a bug — the mechanism is real
+  // and tested (see `family_projection.test.ts`); population is a future
+  // editorial wave's job, same disposition W2 already recorded.
+  const familyToolDefs = buildAllFamilyToolDefs(caps)
+  const familyCollisions = Object.fromEntries(
+    MODEL_FAMILIES.map((f) => [f, findFamilyNameCollisions(familyToolDefs[f])]),
+  )
+  const familyOverrideCounts = Object.fromEntries(
+    MODEL_FAMILIES.map((f) => [f, familyToolDefs[f].filter((d) => d.has_override).length]),
+  )
+  writeJson('family_tool_defs.generated.json', {
+    generated_at: generatedAt,
+    generator: 'generate_projections.ts',
+    source:
+      'getCatalog() capabilities with type=tool AND projection_tags includes "chat", merged with ' +
+      'cap.family_overrides[family] per model family (types.ts FamilyOverrideSpec)',
+    families: MODEL_FAMILIES,
+    total_per_family: Object.fromEntries(MODEL_FAMILIES.map((f) => [f, familyToolDefs[f].length])),
+    overrides_declared_per_family: familyOverrideCounts,
+    name_collisions_per_family: familyCollisions,
+    tool_defs: familyToolDefs,
   })
 
   // ── Comparison (a): generated chat defs vs the real served TOOL_CONTRACTS ──
@@ -344,7 +380,40 @@ this generated bridge before falling back to its small hand-curated map, raising
 Vidhi floor-primitive mappability from 4/${liveToolNames.length} toward
 ${liveToolMapped.length}/${liveToolNames.length} without hand-editing that file.
 
-## 6. Honesty notes / what's NOT done this lane
+## 6. (f) Per-family tool-def projection (W5 lane L3 — annotations + family_overrides + input_examples/search_result emissions)
+
+\`family_tool_defs.generated.json\` — the base chat tool-def projection (§1 above),
+merged per model family (${MODEL_FAMILIES.join('/')}) with any declared
+\`cap.family_overrides[family]\` (types.ts \`FamilyOverrideSpec\`:
+\`description_override\`/\`name_override\`/\`strict_schema\`/\`input_examples\`/
+\`search_result_content_block\`). Every emitted tool def also now carries an
+\`annotations\` block in the REAL MCP \`ToolAnnotations\` wire shape
+(\`readOnlyHint\`/\`destructiveHint\`/\`idempotentHint\`/\`openWorldHint\`/\`title\`,
+verified against this repo's installed \`@modelcontextprotocol/sdk\` — not guessed) —
+the same \`annotations\` addition also lands on (a) chat tool defs and (b) MCP tool
+registrations above, additively alongside their pre-existing \`read_only\`/
+\`destructive\` fields.
+
+Overrides declared per family today: ${MODEL_FAMILIES.map((f) => `**${f}**=${familyOverrideCounts[f]}`).join(', ')}
+(0 across the board — W2's descriptor-migration lane deliberately left
+\`family_overrides\` at 0/118, "requires genuine per-capability editorial judgment
+[...] left for a future, explicitly-scoped editorial wave" — that ruling stands;
+this lane builds the EMISSION mechanism the override merge needs, not the editorial
+content). Every family's projection is therefore mechanically identical to the base
+chat projection today — the CORRECT output of a real merge with no overrides
+present, not a gap in this lane. Name collisions per family (would only appear once
+\`name_override\` population starts): ${MODEL_FAMILIES.map((f) => `**${f}**=${familyCollisions[f].length}`).join(', ')}.
+
+**Wiring status:** additive only, same as every other projection here — nothing in
+this artifact is consumed by \`getCatalog()\`, the chat pipeline's MARO adapter, or
+any live \`server.tool()\` call. The day an editorial wave populates a real
+\`family_overrides\` entry on any capability, this generator picks it up on its next
+run with zero code changes (verified in \`family_projection.test.ts\` via test-local
+mock overrides exercising every merge path: \`description_override\`, \`name_override\`,
+\`strict_schema\`'s additionalProperties:false/all-required transform,
+\`input_examples\` pass-through, \`search_result_content_block\`).
+
+## 7. Honesty notes / what's NOT done this lane
 
 - Plan item 2c ("the vidhi primitive rows' tool bindings") is **not** covered by this
   generator — it is the separately-landed \`codegen:vidhi\`/\`codegen:vidhi:check\` lane

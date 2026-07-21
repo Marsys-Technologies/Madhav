@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-21T14:39:09.125Z",
+  "generated_at": "2026-07-21T15:22:00.416Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"mcp_full\"",
   "total": 154,
@@ -33,7 +33,14 @@
       },
       "uri": "marsys://tool/L-DOMAIN/assess_career",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Assess Career",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "assess_health",
@@ -64,7 +71,14 @@
       },
       "uri": "marsys://tool/L-DOMAIN/assess_health",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Assess Health",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "assess_marriage",
@@ -95,7 +109,14 @@
       },
       "uri": "marsys://tool/L-DOMAIN/assess_marriage",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Assess Marriage",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "assess_wealth",
@@ -126,7 +147,14 @@
       },
       "uri": "marsys://tool/L-DOMAIN/assess_wealth",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Assess Wealth",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "call_dasha_eligibility",
@@ -161,7 +189,14 @@
       },
       "uri": "marsys://tool/L3/call_dasha_eligibility",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Call Dasha Eligibility",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "call_ephemeris_at_t",
@@ -181,7 +216,14 @@
       },
       "uri": "marsys://tool/L3/call_ephemeris_at_t",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Call Ephemeris At T",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "call_muhurta_score",
@@ -215,7 +257,14 @@
       },
       "uri": "marsys://tool/L3/call_muhurta_score",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Call Muhurta Score",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "call_panchanga_service",
@@ -263,7 +312,14 @@
       },
       "uri": "marsys://tool/L0/call_panchanga_service",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Call Panchanga Service",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "call_priority_ranking",
@@ -298,7 +354,14 @@
       },
       "uri": "marsys://tool/L3/call_priority_ranking",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Call Priority Ranking",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "call_transit_search",
@@ -383,7 +446,14 @@
       },
       "uri": "marsys://tool/L3/call_transit_search",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Call Transit Search",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "chart_facts_query",
@@ -458,7 +528,14 @@
       },
       "uri": "marsys://tool/L1/chart_facts_query",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Chart Facts Query",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "chart_snapshot",
@@ -485,7 +562,14 @@
       },
       "uri": "marsys://tool/L1/chart_snapshot",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Chart Snapshot",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "classical_attribution_lookup",
@@ -532,7 +616,14 @@
       },
       "uri": "marsys://tool/L2/classical_attribution_lookup",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Classical Attribution Lookup",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "compose_large_n",
@@ -567,7 +658,14 @@
       },
       "uri": "marsys://tool/synthesis/compose_large_n",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Compose Large N",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "find_verses_about",
@@ -597,7 +695,14 @@
       },
       "uri": "marsys://tool/L0/find_verses_about",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Find Verses About",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_argala",
@@ -636,7 +741,14 @@
       },
       "uri": "marsys://tool/L1/get_argala",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Argala",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_ashtakavarga",
@@ -674,7 +786,14 @@
       },
       "uri": "marsys://tool/L1/get_ashtakavarga",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Ashtakavarga",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_aspects",
@@ -721,7 +840,14 @@
       },
       "uri": "marsys://tool/L1/get_aspects",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Aspects",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_av_transit_gating",
@@ -780,7 +906,14 @@
       },
       "uri": "marsys://tool/L1/get_av_transit_gating",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Av Transit Gating",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_avasthas",
@@ -818,7 +951,14 @@
       },
       "uri": "marsys://tool/L1/get_avasthas",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Avasthas",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_ayurdaya",
@@ -849,7 +989,14 @@
       },
       "uri": "marsys://tool/L1/get_ayurdaya",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Ayurdaya",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_bhava_bala",
@@ -891,7 +1038,14 @@
       },
       "uri": "marsys://tool/L1/get_bhava_bala",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Bhava Bala",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_chart_header",
@@ -918,7 +1072,14 @@
       },
       "uri": "marsys://tool/L1/get_chart_header",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Chart Header",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_condition_composite",
@@ -949,7 +1110,14 @@
       },
       "uri": "marsys://tool/L1/get_condition_composite",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Condition Composite",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_dasha_lord_capability",
@@ -972,7 +1140,14 @@
       },
       "uri": "marsys://tool/L1/get_dasha_lord_capability",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Dasha Lord Capability",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_dashas",
@@ -1051,7 +1226,14 @@
       },
       "uri": "marsys://tool/L1/get_dashas",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Dashas",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_dignity",
@@ -1093,7 +1275,14 @@
       },
       "uri": "marsys://tool/L1/get_dignity",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Dignity",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_dispositors",
@@ -1131,7 +1320,14 @@
       },
       "uri": "marsys://tool/L1/get_dispositors",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Dispositors",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_divisionals",
@@ -1170,7 +1366,14 @@
       },
       "uri": "marsys://tool/L1/get_divisionals",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Divisionals",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_eclipse_flags",
@@ -1197,7 +1400,14 @@
       },
       "uri": "marsys://tool/L1/get_eclipse_flags",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Eclipse Flags",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_graha_yuddha",
@@ -1220,7 +1430,14 @@
       },
       "uri": "marsys://tool/L1/get_graha_yuddha",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Graha Yuddha",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_karakas",
@@ -1266,7 +1483,14 @@
       },
       "uri": "marsys://tool/L1/get_karakas",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Karakas",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_medical_indications",
@@ -1301,7 +1525,14 @@
       },
       "uri": "marsys://tool/L1/get_medical_indications",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Medical Indications",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_panchanga",
@@ -1353,7 +1584,14 @@
       },
       "uri": "marsys://tool/L1/get_panchanga",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Panchanga",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_positions",
@@ -1420,7 +1658,14 @@
       },
       "uri": "marsys://tool/L1/get_positions",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Positions",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_prashna_lagna",
@@ -1455,7 +1700,14 @@
       },
       "uri": "marsys://tool/L1/get_prashna_lagna",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Prashna Lagna",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_sade_sati",
@@ -1493,7 +1745,14 @@
       },
       "uri": "marsys://tool/L1/get_sade_sati",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Sade Sati",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_sensitive_degrees",
@@ -1528,7 +1787,14 @@
       },
       "uri": "marsys://tool/L1/get_sensitive_degrees",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Sensitive Degrees",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_sensitive_points",
@@ -1578,7 +1844,14 @@
       },
       "uri": "marsys://tool/L1/get_sensitive_points",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Sensitive Points",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_strength",
@@ -1632,7 +1905,14 @@
       },
       "uri": "marsys://tool/L1/get_strength",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Strength",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_tajik",
@@ -1681,7 +1961,14 @@
       },
       "uri": "marsys://tool/L1/get_tajik",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Tajik",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_tara_chandra_bala",
@@ -1712,7 +1999,14 @@
       },
       "uri": "marsys://tool/L1/get_tara_chandra_bala",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Tara Chandra Bala",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_transit_anchors",
@@ -1747,7 +2041,14 @@
       },
       "uri": "marsys://tool/L1/get_transit_anchors",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Transit Anchors",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_vastu_directions",
@@ -1786,7 +2087,14 @@
       },
       "uri": "marsys://tool/L1/get_vastu_directions",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Vastu Directions",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_vichara",
@@ -1843,7 +2151,14 @@
       },
       "uri": "marsys://tool/L1/get_vichara",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Vichara",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_yoga_dosha",
@@ -1898,7 +2213,14 @@
       },
       "uri": "marsys://tool/L1/get_yoga_dosha",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Yoga Dosha",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "get_yoga_firings",
@@ -1945,7 +2267,14 @@
       },
       "uri": "marsys://tool/L1/get_yoga_firings",
       "layer": "L1",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Yoga Firings",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "graha_portrait",
@@ -1998,7 +2327,14 @@
       },
       "uri": "marsys://tool/L2/graha_portrait",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Graha Portrait",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "judgment_query",
@@ -2045,7 +2381,14 @@
       },
       "uri": "marsys://tool/L-JUDGMENT/judgment_query",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Judgment Query",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "lel_query",
@@ -2088,7 +2431,14 @@
       },
       "uri": "marsys://tool/L5/lel_query",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Lel Query",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "list_classical_texts",
@@ -2099,7 +2449,14 @@
       },
       "uri": "marsys://tool/L0/list_classical_texts",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "List Classical Texts",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "list_entities",
@@ -2142,7 +2499,14 @@
       },
       "uri": "marsys://tool/L0/list_entities",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "List Entities",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "list_remedies_by_category",
@@ -2173,7 +2537,14 @@
       },
       "uri": "marsys://tool/L0/list_remedies_by_category",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "List Remedies By Category",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "list_sutravali_rules_by_text",
@@ -2200,7 +2571,14 @@
       },
       "uri": "marsys://tool/L0/list_sutravali_rules_by_text",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "List Sutravali Rules By Text",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "maro_mcp_surface",
@@ -2216,7 +2594,14 @@
       },
       "uri": "marsys://tool/maro/mcp_surface",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Maro Mcp Surface",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "maro_orchestrate",
@@ -2260,7 +2645,14 @@
       },
       "uri": "marsys://tool/maro/orchestrate",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Maro Orchestrate",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "pact_query",
@@ -2307,7 +2699,14 @@
       },
       "uri": "marsys://tool/L-PACT/pact_query",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Pact Query",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_activation_waveform",
@@ -2354,7 +2753,14 @@
       },
       "uri": "marsys://tool/L3/query_activation_waveform",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Activation Waveform",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_anomaly_flags",
@@ -2377,7 +2783,14 @@
       },
       "uri": "marsys://tool/L4/query_anomaly_flags",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Anomaly Flags",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_aspects_at_time",
@@ -2393,7 +2806,14 @@
       },
       "uri": "marsys://tool/L0/query_aspects_at_time",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Aspects At Time",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_attribution",
@@ -2435,7 +2855,14 @@
       },
       "uri": "marsys://tool/L5/query_attribution",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Attribution",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_auspicious_windows",
@@ -2466,7 +2893,14 @@
       },
       "uri": "marsys://tool/L4/query_auspicious_windows",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Auspicious Windows",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_avastha_schemes",
@@ -2486,7 +2920,14 @@
       },
       "uri": "marsys://tool/L0/query_avastha_schemes",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Avastha Schemes",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_calibration",
@@ -2513,7 +2954,14 @@
       },
       "uri": "marsys://tool/L5/query_calibration",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Calibration",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_cdlm_summary",
@@ -2555,7 +3003,14 @@
       },
       "uri": "marsys://tool/L2/query_cdlm_summary",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Cdlm Summary",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_cgm_motifs",
@@ -2586,7 +3041,14 @@
       },
       "uri": "marsys://tool/L2/query_cgm_motifs",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Cgm Motifs",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_cgm_paths",
@@ -2621,7 +3083,14 @@
       },
       "uri": "marsys://tool/L2/query_cgm_paths",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Cgm Paths",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_chart_gestalt",
@@ -2648,7 +3117,14 @@
       },
       "uri": "marsys://tool/L2/query_chart_gestalt",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Chart Gestalt",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_class_priors",
@@ -2672,7 +3148,14 @@
       },
       "uri": "marsys://tool/L0/query_class_priors",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Class Priors",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_classical_texts",
@@ -2716,7 +3199,14 @@
       },
       "uri": "marsys://tool/L0/query_classical_texts",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Classical Texts",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_cleansed_anchors",
@@ -2739,7 +3229,14 @@
       },
       "uri": "marsys://tool/L4/query_cleansed_anchors",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Cleansed Anchors",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_combustion_orbs",
@@ -2755,7 +3252,14 @@
       },
       "uri": "marsys://tool/L0/query_combustion_orbs",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Combustion Orbs",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_compendium_index",
@@ -2783,7 +3287,14 @@
       },
       "uri": "marsys://tool/L0/query_compendium_index",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Compendium Index",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_contradictions",
@@ -2822,7 +3333,14 @@
       },
       "uri": "marsys://tool/L2/query_contradictions",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Contradictions",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_convergence_windows",
@@ -2861,7 +3379,14 @@
       },
       "uri": "marsys://tool/L3/query_convergence_windows",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Convergence Windows",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_dasha_dossier",
@@ -2908,7 +3433,14 @@
       },
       "uri": "marsys://tool/L3/query_dasha_dossier",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Dasha Dossier",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_dasha_systems",
@@ -2928,7 +3460,14 @@
       },
       "uri": "marsys://tool/L0/query_dasha_systems",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Dasha Systems",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_discoveries",
@@ -2963,7 +3502,14 @@
       },
       "uri": "marsys://tool/L2/query_discoveries",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Discoveries",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_domain_reading",
@@ -3025,7 +3571,14 @@
       },
       "uri": "marsys://tool/L2/query_domain_reading",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Domain Reading",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_domain_result",
@@ -3057,7 +3610,14 @@
       },
       "uri": "marsys://tool/L4/query_domain_result",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Domain Result",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_dosha_catalog",
@@ -3089,7 +3649,14 @@
       },
       "uri": "marsys://tool/L0/query_dosha_catalog",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Dosha Catalog",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_falsifiers",
@@ -3108,7 +3675,14 @@
       },
       "uri": "marsys://tool/L4/query_falsifiers",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Falsifiers",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_formula_constants",
@@ -3128,7 +3702,14 @@
       },
       "uri": "marsys://tool/L0/query_formula_constants",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Formula Constants",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_graha_dik",
@@ -3144,7 +3725,14 @@
       },
       "uri": "marsys://tool/L0/query_graha_dik",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Graha Dik",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_graha_naisargika_friendship",
@@ -3173,7 +3761,14 @@
       },
       "uri": "marsys://tool/L0/query_graha_naisargika_friendship",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Graha Naisargika Friendship",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_insight_embeddings",
@@ -3212,7 +3807,14 @@
       },
       "uri": "marsys://tool/L5/query_insight_embeddings",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Insight Embeddings",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_insights",
@@ -3251,7 +3853,14 @@
       },
       "uri": "marsys://tool/L5/query_insights",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Insights",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_journal",
@@ -3282,7 +3891,14 @@
       },
       "uri": "marsys://tool/L5/query_journal",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Journal",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_life_arc",
@@ -3347,7 +3963,14 @@
       },
       "uri": "marsys://tool/L3/query_life_arc",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Life Arc",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_load_bearing",
@@ -3383,7 +4006,14 @@
       },
       "uri": "marsys://tool/L5/query_load_bearing",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Load Bearing",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_manifestation_grammar",
@@ -3418,7 +4048,14 @@
       },
       "uri": "marsys://tool/L5/query_manifestation_grammar",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Manifestation Grammar",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_manifestation_sets",
@@ -3453,7 +4090,14 @@
       },
       "uri": "marsys://tool/L5/query_manifestation_sets",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Manifestation Sets",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_mantras",
@@ -3469,7 +4113,14 @@
       },
       "uri": "marsys://tool/L0/query_mantras",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Mantras",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_medical_mappings",
@@ -3485,7 +4136,14 @@
       },
       "uri": "marsys://tool/L0/query_medical_mappings",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Medical Mappings",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_mimamsa_discoveries",
@@ -3527,7 +4185,14 @@
       },
       "uri": "marsys://tool/L5/query_mimamsa_discoveries",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Mimamsa Discoveries",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_motion_state_thresholds",
@@ -3547,7 +4212,14 @@
       },
       "uri": "marsys://tool/L0/query_motion_state_thresholds",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Motion State Thresholds",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_muhurat",
@@ -3593,7 +4265,14 @@
       },
       "uri": "marsys://tool/L4/query_muhurat",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Muhurat",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_nakshatra_medical",
@@ -3613,7 +4292,14 @@
       },
       "uri": "marsys://tool/L0/query_nakshatra_medical",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Nakshatra Medical",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_obstruction_periods",
@@ -3648,7 +4334,14 @@
       },
       "uri": "marsys://tool/L3/query_obstruction_periods",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Obstruction Periods",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_planet_position",
@@ -3664,7 +4357,14 @@
       },
       "uri": "marsys://tool/L0/query_planet_position",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Planet Position",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_planet_transit",
@@ -3680,7 +4380,14 @@
       },
       "uri": "marsys://tool/L0/query_planet_transit",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Planet Transit",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_prashna_fructification_rules",
@@ -3700,7 +4407,14 @@
       },
       "uri": "marsys://tool/L0/query_prashna_fructification_rules",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Prashna Fructification Rules",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_prashna_lagna_methods",
@@ -3720,7 +4434,14 @@
       },
       "uri": "marsys://tool/L0/query_prashna_lagna_methods",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Prashna Lagna Methods",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_prashna_significators",
@@ -3736,7 +4457,14 @@
       },
       "uri": "marsys://tool/L0/query_prashna_significators",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Prashna Significators",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_prashna_special_techniques",
@@ -3752,7 +4480,14 @@
       },
       "uri": "marsys://tool/L0/query_prashna_special_techniques",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Prashna Special Techniques",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_prashna_tajik_yogas",
@@ -3772,7 +4507,14 @@
       },
       "uri": "marsys://tool/L0/query_prashna_tajik_yogas",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Prashna Tajik Yogas",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_pratijna",
@@ -3811,7 +4553,14 @@
       },
       "uri": "marsys://tool/L2/query_pratijna",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Pratijna",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_predictions",
@@ -3848,7 +4597,14 @@
       },
       "uri": "marsys://tool/L5/query_predictions",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Predictions",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_predictive_anchors",
@@ -3887,7 +4643,14 @@
       },
       "uri": "marsys://tool/L4/query_predictive_anchors",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Predictive Anchors",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_projections",
@@ -3927,7 +4690,14 @@
       },
       "uri": "marsys://tool/L3/query_projections",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Projections",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_quality_scorecard",
@@ -3950,7 +4720,14 @@
       },
       "uri": "marsys://tool/L2/query_quality_scorecard",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Quality Scorecard",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_question_lenses",
@@ -3985,7 +4762,14 @@
       },
       "uri": "marsys://tool/L2/query_question_lenses",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Question Lenses",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_rectification",
@@ -4016,7 +4800,14 @@
       },
       "uri": "marsys://tool/L4/query_rectification",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Rectification",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_remedies",
@@ -4075,7 +4866,14 @@
       },
       "uri": "marsys://tool/L2/query_remedies",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Remedies",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_remedies_by_planet",
@@ -4094,7 +4892,14 @@
       },
       "uri": "marsys://tool/L0/query_remedies_by_planet",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Remedies By Planet",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_remedies_for_chart",
@@ -4121,7 +4926,14 @@
       },
       "uri": "marsys://tool/L0/query_remedies_for_chart",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Remedies For Chart",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_remedy_corpus",
@@ -4169,7 +4981,14 @@
       },
       "uri": "marsys://tool/L0/query_remedy_corpus",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Remedy Corpus",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_remedy_program",
@@ -4200,7 +5019,14 @@
       },
       "uri": "marsys://tool/L4/query_remedy_program",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Remedy Program",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_retrograde_periods",
@@ -4216,7 +5042,14 @@
       },
       "uri": "marsys://tool/L0/query_retrograde_periods",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Retrograde Periods",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_rm_chart_summary",
@@ -4247,7 +5080,14 @@
       },
       "uri": "marsys://tool/L2/query_rm_chart_summary",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Rm Chart Summary",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_rm_dasha_windowed_prescriptions",
@@ -4286,7 +5126,14 @@
       },
       "uri": "marsys://tool/L2/query_rm_dasha_windowed_prescriptions",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Rm Dasha Windowed Prescriptions",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_rm_dosha_remedy_bundles",
@@ -4321,7 +5168,14 @@
       },
       "uri": "marsys://tool/L2/query_rm_dosha_remedy_bundles",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Rm Dosha Remedy Bundles",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_rm_pattern_remedies",
@@ -4352,7 +5206,14 @@
       },
       "uri": "marsys://tool/L2/query_rm_pattern_remedies",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Rm Pattern Remedies",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_rm_prescriptions",
@@ -4395,7 +5256,14 @@
       },
       "uri": "marsys://tool/L2/query_rm_prescriptions",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Rm Prescriptions",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_rm_resonances",
@@ -4430,7 +5298,14 @@
       },
       "uri": "marsys://tool/L2/query_rm_resonances",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Rm Resonances",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_shashtiamsha_deities",
@@ -4450,7 +5325,14 @@
       },
       "uri": "marsys://tool/L0/query_shashtiamsha_deities",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Shashtiamsha Deities",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_sign_medical",
@@ -4470,7 +5352,14 @@
       },
       "uri": "marsys://tool/L0/query_sign_medical",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Sign Medical",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_signal_families",
@@ -4498,7 +5387,14 @@
       },
       "uri": "marsys://tool/L5/query_signal_families",
       "layer": "L5",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Signal Families",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_signals",
@@ -4579,7 +5475,14 @@
       },
       "uri": "marsys://tool/L2/query_signals",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Signals",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_spillover_cascades",
@@ -4606,7 +5509,14 @@
       },
       "uri": "marsys://tool/L4/query_spillover_cascades",
       "layer": "L4",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Spillover Cascades",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_sutravali_rules",
@@ -4638,7 +5548,14 @@
       },
       "uri": "marsys://tool/L0/query_sutravali_rules",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Sutravali Rules",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_sutravali_rules_for_planet",
@@ -4665,7 +5582,14 @@
       },
       "uri": "marsys://tool/L0/query_sutravali_rules_for_planet",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Sutravali Rules For Planet",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_tantric_remedies",
@@ -4685,7 +5609,14 @@
       },
       "uri": "marsys://tool/L0/query_tantric_remedies",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Tantric Remedies",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_temporal_activation",
@@ -4739,7 +5670,14 @@
       },
       "uri": "marsys://tool/L3/query_temporal_activation",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Temporal Activation",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_temporal_view",
@@ -4782,7 +5720,14 @@
       },
       "uri": "marsys://tool/L3/query_temporal_view",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Temporal View",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_transit_av_gates",
@@ -4802,7 +5747,14 @@
       },
       "uri": "marsys://tool/L0/query_transit_av_gates",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Transit Av Gates",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_transit_engine",
@@ -4818,7 +5770,14 @@
       },
       "uri": "marsys://tool/L0/query_transit_engine",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Transit Engine",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_transit_moorti",
@@ -4838,7 +5797,14 @@
       },
       "uri": "marsys://tool/L0/query_transit_moorti",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Transit Moorti",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_transit_vedha",
@@ -4858,7 +5824,14 @@
       },
       "uri": "marsys://tool/L0/query_transit_vedha",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Transit Vedha",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_triangulation",
@@ -4899,7 +5872,14 @@
       },
       "uri": "marsys://tool/L2/query_triangulation",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Triangulation",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_ucd",
@@ -4947,7 +5927,14 @@
       },
       "uri": "marsys://tool/L2/query_ucd",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Ucd",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_vastu_direction_remedials",
@@ -4967,7 +5954,14 @@
       },
       "uri": "marsys://tool/L0/query_vastu_direction_remedials",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Vastu Direction Remedials",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_vastu_directions",
@@ -4987,7 +5981,14 @@
       },
       "uri": "marsys://tool/L0/query_vastu_directions",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Vastu Directions",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_vichara_constants",
@@ -5003,7 +6004,14 @@
       },
       "uri": "marsys://tool/L0/query_vichara_constants",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Vichara Constants",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "query_yoga_catalog",
@@ -5035,7 +6043,14 @@
       },
       "uri": "marsys://tool/L0/query_yoga_catalog",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Yoga Catalog",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "read_chapter",
@@ -5059,7 +6074,14 @@
       },
       "uri": "marsys://tool/L0/read_chapter",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Read Chapter",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "read_remedy",
@@ -5078,7 +6100,14 @@
       },
       "uri": "marsys://tool/L0/read_remedy",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Read Remedy",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "read_sutravali_rule",
@@ -5097,7 +6126,14 @@
       },
       "uri": "marsys://tool/L0/read_sutravali_rule",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Read Sutravali Rule",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "resolve_entity",
@@ -5116,7 +6152,14 @@
       },
       "uri": "marsys://tool/L0/resolve_entity",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Resolve Entity",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "route",
@@ -5152,7 +6195,14 @@
       },
       "uri": "marsys://tool/router/route",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Route",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "synergy_cross_layer",
@@ -5179,7 +6229,14 @@
       },
       "uri": "marsys://tool/synergy/cross_layer",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Synergy Cross Layer",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "synergy_pipeline",
@@ -5211,7 +6268,14 @@
       },
       "uri": "marsys://tool/synergy/pipeline",
       "layer": "L0",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Synergy Pipeline",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "traverse_chart_graph",
@@ -5327,7 +6391,14 @@
       },
       "uri": "marsys://tool/L2/traverse_chart_graph",
       "layer": "L2",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Traverse Chart Graph",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     },
     {
       "tool_name": "yoga_activation_by_dasha",
@@ -5374,7 +6445,14 @@
       },
       "uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
       "layer": "L3",
-      "name_valid": true
+      "name_valid": true,
+      "annotations": {
+        "title": "Yoga Activation By Dasha",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
     }
   ],
   "excluded_non_tool_mcp_tagged": {

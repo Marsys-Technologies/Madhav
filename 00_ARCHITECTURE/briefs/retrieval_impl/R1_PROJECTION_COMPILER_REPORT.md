@@ -3,7 +3,7 @@ artifact: R1_PROJECTION_COMPILER_REPORT.md
 canonical_id: R1_PROJECTION_COMPILER_REPORT
 version: 1.0
 status: GENERATED — regenerate via `npx tsx --conditions=react-server scripts/manifest/generate_projections.ts`
-generated_at: 2026-07-21T14:39:09.125Z
+generated_at: 2026-07-21T15:22:00.416Z
 generator: platform/scripts/manifest/generate_projections.ts
 ---
 
@@ -140,7 +140,40 @@ this generated bridge before falling back to its small hand-curated map, raising
 Vidhi floor-primitive mappability from 4/23 toward
 11/23 without hand-editing that file.
 
-## 6. Honesty notes / what's NOT done this lane
+## 6. (f) Per-family tool-def projection (W5 lane L3 — annotations + family_overrides + input_examples/search_result emissions)
+
+`family_tool_defs.generated.json` — the base chat tool-def projection (§1 above),
+merged per model family (anthropic/gemini/openai/deepseek) with any declared
+`cap.family_overrides[family]` (types.ts `FamilyOverrideSpec`:
+`description_override`/`name_override`/`strict_schema`/`input_examples`/
+`search_result_content_block`). Every emitted tool def also now carries an
+`annotations` block in the REAL MCP `ToolAnnotations` wire shape
+(`readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint`/`title`,
+verified against this repo's installed `@modelcontextprotocol/sdk` — not guessed) —
+the same `annotations` addition also lands on (a) chat tool defs and (b) MCP tool
+registrations above, additively alongside their pre-existing `read_only`/
+`destructive` fields.
+
+Overrides declared per family today: **anthropic**=0, **gemini**=0, **openai**=0, **deepseek**=0
+(0 across the board — W2's descriptor-migration lane deliberately left
+`family_overrides` at 0/118, "requires genuine per-capability editorial judgment
+[...] left for a future, explicitly-scoped editorial wave" — that ruling stands;
+this lane builds the EMISSION mechanism the override merge needs, not the editorial
+content). Every family's projection is therefore mechanically identical to the base
+chat projection today — the CORRECT output of a real merge with no overrides
+present, not a gap in this lane. Name collisions per family (would only appear once
+`name_override` population starts): **anthropic**=0, **gemini**=0, **openai**=0, **deepseek**=0.
+
+**Wiring status:** additive only, same as every other projection here — nothing in
+this artifact is consumed by `getCatalog()`, the chat pipeline's MARO adapter, or
+any live `server.tool()` call. The day an editorial wave populates a real
+`family_overrides` entry on any capability, this generator picks it up on its next
+run with zero code changes (verified in `family_projection.test.ts` via test-local
+mock overrides exercising every merge path: `description_override`, `name_override`,
+`strict_schema`'s additionalProperties:false/all-required transform,
+`input_examples` pass-through, `search_result_content_block`).
+
+## 7. Honesty notes / what's NOT done this lane
 
 - Plan item 2c ("the vidhi primitive rows' tool bindings") is **not** covered by this
   generator — it is the separately-landed `codegen:vidhi`/`codegen:vidhi:check` lane

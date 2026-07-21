@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-21T14:39:09.125Z",
+  "generated_at": "2026-07-21T15:22:00.416Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
@@ -57,7 +57,7 @@
       "calibration_context_only": false,
       "bearing_first": false,
       "required_inputs": [],
-      "input_param_count": 3,
+      "input_param_count": 8,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -91,7 +91,7 @@
       "calibration_context_only": false,
       "bearing_first": false,
       "required_inputs": [],
-      "input_param_count": 2,
+      "input_param_count": 7,
       "projection_tags": [
         "chat",
         "mcp_full",
