@@ -86,3 +86,27 @@ export const DEFAULT_COST_CAPS: CostCapConfig = {
   maxCalls: 10,
   maxWallClockMs: 120_000,
 };
+
+/**
+ * Per-entitlement cost-cap resolution (ratified doctrine: both caps must be
+ * configurable per entitlement, not a single global default).
+ *
+ * Tier names are the exact `Principal.role` vocabulary from
+ * `platform-mcp/src/types.ts` — 'guest' | 'super_admin'. Do not invent new
+ * tier names here; if a new tier is ever needed, add it to `Principal.role`
+ * first and mirror it here.
+ *
+ * 'guest' gets `DEFAULT_COST_CAPS` (the base full-loop entitlement tier).
+ * 'super_admin' gets a higher allowance — operators/admins run diagnostic
+ * and multi-pass sessions that legitimately need more sub-calls and more
+ * wall-clock headroom than a guest-tier caller.
+ */
+export function resolveCostCapsForEntitlement(entitlement: string): CostCapConfig {
+  const overrides: Record<string, CostCapConfig> = {
+    super_admin: {
+      maxCalls: 25,
+      maxWallClockMs: 300_000,
+    },
+  };
+  return overrides[entitlement] ?? DEFAULT_COST_CAPS;
+}

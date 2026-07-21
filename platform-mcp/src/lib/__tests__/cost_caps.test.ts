@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CostCapTracker } from '../cost_caps';
+import { CostCapTracker, resolveCostCapsForEntitlement, DEFAULT_COST_CAPS } from '../cost_caps';
 
 describe('CostCapTracker', () => {
   it('allows calls under both caps', () => {
@@ -33,5 +33,20 @@ describe('CostCapTracker', () => {
     tracker.checkAndRecordCall();
     const result = tracker.checkAndRecordCall();
     expect(result.judgmentFlag).toBe('cost_cap_call_count_exceeded');
+  });
+});
+
+describe('resolveCostCapsForEntitlement', () => {
+  it('returns the default caps for the base full-loop entitlement tier', () => {
+    expect(resolveCostCapsForEntitlement('guest')).toEqual(DEFAULT_COST_CAPS);
+  });
+
+  it('returns a distinct cap set for a higher entitlement tier', () => {
+    const caps = resolveCostCapsForEntitlement('super_admin');
+    expect(caps).not.toEqual(DEFAULT_COST_CAPS);
+  });
+
+  it('falls back to defaults for an unrecognized entitlement string', () => {
+    expect(resolveCostCapsForEntitlement('not_a_real_tier')).toEqual(DEFAULT_COST_CAPS);
   });
 });
