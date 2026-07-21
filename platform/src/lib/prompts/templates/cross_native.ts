@@ -16,7 +16,6 @@ export const template: PromptTemplate = {
   template_id: 'cross_native_super_admin_single_model_v1',
   version: '2.0',
   query_class: 'cross_native',
-  audience_tier: 'super_admin',
   strategy: 'single_model',
   body: `Cross-native comparison is not yet implemented. This is a Phase 7 deliverable.`,
   style_suffixes: { ...STYLE_SUFFIXES },

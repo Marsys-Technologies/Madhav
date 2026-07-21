@@ -503,7 +503,9 @@ export async function POST(request: Request) {
   // Stamp route-controlled fields — never LLM output
   plan.query_plan_id = preAllocatedQueryId
   plan.query_text = queryText
-  plan.audience_tier = isSuperAdmin ? 'super_admin' : 'client'
+  // audience_tier excised (C-2, tier_excision / DG1 ruling): it never
+  // differentiated behavior. Disclosure is stamped separately as
+  // `audienceTier` → audit `disclosure_tier` further down.
   plan.manifest_fingerprint = manifest.fingerprint
   plan.schema_version = '2.0'
   plan.planning_model_id = plannerModelId
@@ -613,11 +615,6 @@ export async function POST(request: Request) {
       | 'multi_school_triangulation'
     domains: string[]
     forward_looking: boolean
-    audience_tier:
-      | 'super_admin'
-      | 'acharya_reviewer'
-      | 'client'
-      | 'public_redacted'
     tools_authorized: string[]
     history_mode: 'synthesized' | 'research'
     panel_mode: boolean
@@ -642,7 +639,6 @@ export async function POST(request: Request) {
     query_class: plan.query_class,
     domains: plan.domains ?? [],
     forward_looking: plan.forward_looking ?? false,
-    audience_tier: plan.audience_tier ?? (isSuperAdmin ? 'super_admin' : 'client'),
     tools_authorized: toolsAuthorized,
     history_mode: plan.history_mode ?? 'synthesized',
     panel_mode: plan.panel_mode ?? false,

@@ -39,7 +39,6 @@ function makeInput(overrides: Partial<Checkpoint55Input> = {}): Checkpoint55Inpu
       query_class: 'cross_domain',
       domains: ['career', 'relationships'],
       forward_looking: false,
-      audience_tier: 'super_admin',
       tools_authorized: ['msr_sql', 'pattern_register'],
       history_mode: 'synthesized',
       panel_mode: false,

@@ -14,7 +14,6 @@ export const template: PromptTemplate = {
   template_id: 'predictive_super_admin_single_model_v1',
   version: '3.1',
   query_class: 'predictive',
-  audience_tier: 'super_admin',
   strategy: 'single_model',
   body: `${buildOpeningBlock()}
 

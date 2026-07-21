@@ -13,7 +13,6 @@ export const template: PromptTemplate = {
   template_id: 'factual_super_admin_single_model_v1',
   version: '2.1',
   query_class: 'factual',
-  audience_tier: 'super_admin',
   strategy: 'single_model',
   body: `${buildOpeningBlock()}
 

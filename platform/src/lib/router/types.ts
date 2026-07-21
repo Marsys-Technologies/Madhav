@@ -19,11 +19,9 @@ export interface QueryPlan {
     | 'multi_school_triangulation'
   domains: string[]
   forward_looking: boolean
-  audience_tier:
-    | 'super_admin'
-    | 'acharya_reviewer'
-    | 'client'
-    | 'public_redacted'
+  // audience_tier excised (C-2, tier_excision / DG1 ruling): no downstream
+  // consumer reads query_plan.audience_tier. Panel synthesis reads the
+  // separate SynthesisRequest.audience_tier instead.
   tools_authorized: string[]
   history_mode: 'synthesized' | 'research'
   panel_mode: boolean
@@ -166,7 +164,6 @@ export interface PlanContext {
   chart_context: ChartContext
   /** ISO date — the planner uses this for any temporal reasoning, never `new Date()` inside the prompt. */
   current_date: string
-  audience_tier: QueryPlan['audience_tier']
   manifest_fingerprint: string
   /** The user-selected synthesis model; planner resolves its worker family from this. */
   synthesis_model_id: string
