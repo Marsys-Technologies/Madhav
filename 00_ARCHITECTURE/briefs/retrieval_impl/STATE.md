@@ -1958,4 +1958,66 @@ committed to each worktree before the drop) and were resumed in place rather
 than restarted from scratch, per the standing respawn discipline. L4
 (tool-search metadata) still in flight.
 
-Lane dispatch continues next entry (L2–L7, L9–L10 + V5 gate).
+### W5 — Lane L3 integration note: real 3-way merge (2026-07-21)
+
+L1 and L3 both independently extended `generate_projections.ts` from the same
+pre-L1 base (L3's worktree was dispatched in parallel, before L1 landed on
+`impl/wave-5`) — a straight `git apply` conflicted. Resolved via
+`git merge-file` 3-way merge against the true common ancestor (commit
+`707fb5a9`, the state right after L0 landed), combining both lanes' new
+numbered report sections rather than picking one side, then regenerating all
+6 projections fresh from the merged source (`npm run codegen:projections`)
+rather than trusting either lane's stale `.generated.json` snapshot. Verified
+clean after: `tsc --noEmit`, full scoped suite.
+
+**L3: CLOSED.** Landed on `impl/wave-5` (PR #684, `0aee586a`).
+
+### W5 — Lane L4: tool-search metadata (2026-07-21)
+
+**Investigation:** no keyword/free-text index exists anywhere over the
+~163-capability catalog — `list_assets` in `registry_bridge.ts` turned out to
+be a red herring (it enumerates the unrelated cockpit `asset_registry` table,
+not the retrieval registry). `CapabilityDescriptor` already carries everything
+a keyword index needs (name, description, `display.short_label`/`one_line`,
+layer, archetype, tool_role, projection_tags) — a missing-index gap, not a
+metadata-shape gap.
+
+**Built:** `tool_search.ts` (`buildToolSearchIndex`/`searchToolIndex` — pure,
+deterministic keyword/substring match over tokenized descriptor fields, scored
+name > keyword > description; no fabricated metadata, every field traces to a
+real descriptor property). Wired two ways: a 7th generated projection
+(`tool_search_index.generated.json`, via the same compiler) for census/CI
+visibility, and a live `marsys://tool/L0/tool_search` capability calling the
+same functions against the live `getCatalog()` on every request — bridged onto
+MCP as a new `tool_search` tool (`registry_bridge.ts`) — zero drift between the
+generated snapshot and what's actually served. Scope explicit: exact/substring
+keyword match, not fuzzy/semantic search (would need a `vector_search`-style
+corpus, named as a follow-up, not silently implied as done).
+
+**Integration required a real 3-way merge across THREE lanes** (L1, L3, L8 had
+all already landed touching `generate_projections.ts`/
+`projection_compiler_parity.test.ts`/`registry_bridge.ts` from the same
+pre-integration base L4 was dispatched from): merged each via `git merge-file`
+against the `707fb5a9` common ancestor, combined all three lanes' independent
+report sections/describe blocks (never picked one side over another), and
+regenerated all 7 projections fresh. One dropped closing brace from the manual
+merge (the `family_tool_defs` `writeJson` call) was caught immediately by
+esbuild's parse error on the first regen attempt and fixed before proceeding —
+recorded here rather than glossed over, since a silent brace-drop would have
+been a real, shippable bug.
+
+**Verified:** `tsc --noEmit` clean both packages.
+`platform/src/lib/retrieval/registry` + `src/lib/pipeline`: 1022/1147 passed
+(125 skipped), 0 failed. `platform-mcp` `m8_e2e_proof` + touched tool suites:
+88/95 passed (7 skipped), 0 failed — 2 pre-existing hardcoded tool-count
+assertions (57→58, 25→26) updated since `tool_search` is a genuine new
+registered tool, not a regression.
+
+**L4: CLOSED.** Landed on `impl/wave-5` (PR #684, `741a836f`).
+
+**Still in flight:** L2 (per-family projections) hit the same transient API
+connection error L3 did and was resumed in place. `impl/wave-5` now carries
+L0, L1, L3, L4, L8 — five of eleven lanes landed, all held unmerged pending
+the D-4b mutex.
+
+Lane dispatch continues next entry (L2, L5–L7, L9–L10 + V5 gate).
