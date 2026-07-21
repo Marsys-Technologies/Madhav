@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.8
+version: 3.9
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -914,6 +914,23 @@ repro with verbose tracing enabled. Native ruling (2026-07-20): **out of W4 scop
 here with evidence, to be picked up by whichever of W5 (adaptive-serving/budget work) or PF-1
 (teardown-orphan sweep) reaches it first.
 
+**CR-119 [OPEN — DRIFT FINDING, discovered this session, 2026-07-21, formal-D-4b-open recording
+pass on `wave/D-4b/open`]:** commit `ae9457d2` ("docs(current-state): cross-campaign note for D-4b
+conductor") asserted, inside `CURRENT_STATE_v1_0.md`'s §2 cross-campaign note, that "D-4b was
+confirmed actively executing (live gochara-perf branches, concurrent `worktree-agent-*` sessions,
+checked via `git branch -a`/`gh pr list`, not a stale ledger read)" as the justification for
+withholding the `impl/w5-breaking` rename cutover. This session independently re-ran both cited
+commands (`git branch -a`, `gh pr list`) and found **zero** `wave/D-4b/*` branches or open PRs at
+the time — directly contradicting the commit's claim. Consequence: the claim that motivated
+withholding `impl/w5-breaking` was unsubstantiated at the moment it was written; the underlying
+withholding decision may still be correct for other reasons (D-4b was genuinely FROZEN, not open,
+per `BRIEF_D4B.md`'s own status at that time — so "no D-4b agent swarm was live" was in fact the
+truer state), but the note's own stated evidence for it does not hold up. **Annotated, not
+reverted** — commit `ae9457d2` stands in git history; this row is the correction record.
+Disposition: informational drift finding for whichever session next reconciles
+`RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md §I.6`'s D-4b-quiet re-check gate — the re-check
+should not treat the original commit's live-branch claim as verified evidence of anything.
+
 **UPDATE (2026-07-21, post-W4-deploy live-probe, chart 1c826d5a via the deployed connector,
 merge commit `a1ed172b`):** the same fast-fail pattern reproduced on **three** tools in one
 request, not just `msr_sql` — `{"name":"msr_sql","status":"error","ms":6}`,
@@ -931,7 +948,10 @@ narrower finding than the evidence now supports.
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.8 (2026-07-21, W4 post-deploy live-probe) —
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.9 (2026-07-21, D-4b formal-open recording
+session, `wave/D-4b/open`) — CR-119 added OPEN (drift finding: commit `ae9457d2`'s
+"D-4b confirmed actively executing" claim independently disproven via `git branch -a`/`gh pr list`
+showing zero `wave/D-4b/*` branches or PRs at the time; annotated, not reverted). v3.8 (2026-07-21, W4 post-deploy live-probe) —
 CR-118 updated: the fast-fail tool-error pattern reproduces on 3 tools (msr_sql,
 get_yoga_firings, cgm_graph_walk), not just msr_sql, and 2 of the 3 are floor-adoption's own
 web-bridge tools — widens the defect's scope, still out of W4, still deferred to W5/PF-1. v3.7 (2026-07-21, W4 conductor session) — CR-118

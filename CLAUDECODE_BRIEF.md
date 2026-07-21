@@ -14,8 +14,10 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-4b   # INCOMING — BRIEF_D4B.md v1.0 FROZEN 2026-07-21 (pre-D-4b readiness pass v3),
-  # awaiting the native's separate D-4b kickoff directive; not opened, not bound.
+current_wave: D-4b (OPEN)   # Formally opened 2026-07-21 via wave/D-4b/open — see BRIEF_D4B.md
+  # status. Native kickoff via Cowork, §0 event-driven-scoring reconciliation applied.
+  # BRIEF_D4B.md v1.0 FROZEN 2026-07-21 (pre-D-4b readiness pass v3); native kickoff directive
+  # now recorded (this commit) — opened, bound.
   # D-5 "Gochara-Chitra" CLOSED 2026-07-20 GREEN-WITH-PARTIALS: all 5 lanes (G-1..G-5) built,
   # adversarially verified, merged, deployed; 5 REBUILD-time incidents found+fixed via live/
   # orchestrator-driven execution (none a data-quality regression); gate_run_2's RED-C
