@@ -113,6 +113,26 @@ INSERT INTO bodha_rm_remedy_prescriptions (
 ON CONFLICT DO NOTHING
 """
 
+# ── B-4 (BRIEF_D4B §1): bodha_rm_dasha_windowed_prescriptions ───────────────
+# A13 Table 3 — designed 2026 in migration 226 but never populated (writer
+# comment: "needs L3 dasha-window data unavailable at static-natal L2").
+# B-4 populates it directly from L1 chart_dashas (no L3 dependency needed for
+# a Mahadasha-level window) — the schedulable remedy-program surface.
+
+_WINDOWED_INSERT = """
+INSERT INTO bodha_rm_dasha_windowed_prescriptions (
+  window_prescription_id, chart_id, ayanamsha_id, build_id, base_prescription_id,
+  dasha_system, dasha_level, dasha_lord, window_start_iso, window_end_iso,
+  window_intensity_multiplier, schedule_jsonb, phase_within_window,
+  verification_pass_status, citation_ref, citation_human, computed_at
+) VALUES (
+  %(window_prescription_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s, %(base_prescription_id)s,
+  %(dasha_system)s, %(dasha_level)s, %(dasha_lord)s, %(window_start_iso)s, %(window_end_iso)s,
+  %(window_intensity_multiplier)s, %(schedule_jsonb)s::jsonb, %(phase_within_window)s,
+  %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
+)
+"""
+
 _BATCH_SIZE = 50
 
 # ── WP-2.2 / LCA-5: RM sibling rollup tables (previously empty shells) ──────────
@@ -489,6 +509,141 @@ def _fetch_msr_dosha_sigs_by_graha(conn: Any, chart_id: str, aya: str) -> dict[s
             if type_id and type_id not in out[graha]:
                 out[graha].append(type_id)
     return out
+
+
+def _fetch_leverage_weights(conn: Any) -> dict[str, Any]:
+    """brahma_vichara_constants.leverage_weights — the SAME registry ga_vichara
+    reads (design §11: "registry data, not literals"). Read here so B-4's
+    fresh dasha-runway re-derivation (below) uses the identical runway_base/
+    scale/duration_norm/start_horizon/lookforward curve, not new invented
+    constants."""
+    rows = conn.execute(
+        "SELECT value_jsonb FROM brahma_vichara_constants WHERE constant_key = %s",
+        ["leverage_weights"],
+    ).fetchall()
+    if not rows:
+        return {}
+    r0 = rows[0]
+    val = r0[0] if isinstance(r0, (tuple, list)) else r0.get("value_jsonb")
+    if isinstance(val, str):
+        val = json.loads(val)
+    return val or {}
+
+
+def _fetch_wealth_leverage_index(conn: Any, chart_id: str, aya: str) -> list[dict]:
+    """L1 ga_vichara leverage_index, domain='wealth' — READ from chart_vichara,
+    never recomputed (§N.5). Ranked DESC: highest leverage_index = the graha
+    most structurally on the hook for wealth (lordship/karakatva/occupancy/
+    yoga participation) relative to its own capability — i.e. the "weakest
+    load-bearing graha" BRIEF_D4B §1 B-4 names."""
+    rows = conn.execute(
+        """SELECT id AS vichara_row_id, subject, value_num, constituent_fact_ids
+           FROM chart_vichara
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND vichara_family = 'leverage_index' AND domain = 'wealth'
+             AND value_num IS NOT NULL AND value_num > 0
+           ORDER BY value_num DESC""",
+        [chart_id, aya],
+    ).fetchall()
+    keys = ["vichara_row_id", "subject", "value_num", "constituent_fact_ids"]
+    return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
+
+
+# LEL sealed test split (ESCALATION_POLICY_v1_0.md §4): gate-runner/anti-gaming
+# territory ONLY may read events on/after this date. This literal must never be
+# parameterized or widened by a caller.
+_SADHANA_EMBARGO_DATE = "2020-01-01"
+
+
+def _fetch_sadhana_milestones(conn: Any, chart_id: str) -> list[dict]:
+    """LEL sadhana / spiritual-arc milestones strictly BEFORE the sealed test
+    split. Read-only against life_events (calibration corpus; append-only,
+    never written here — §3 must_not_touch: raw LEL event data). Not
+    ayanamsha-scoped (life events are sidereal-system-independent)."""
+    rows = conn.execute(
+        """SELECT event_id, event_date, domain, source_citation
+           FROM life_events
+           WHERE chart_id = %s AND event_type = 'spiritual'
+             AND event_date < DATE %s
+           ORDER BY event_date""",
+        [chart_id, _SADHANA_EMBARGO_DATE],
+    ).fetchall()
+    keys = ["event_id", "event_date", "domain", "source_citation"]
+    return [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
+
+
+def _fetch_dasha_runway_fresh(conn: Any, chart_id: str, aya: str, planet: str,
+                               now: datetime, weights: dict[str, Any]) -> dict | None:
+    """Fresh, correct dasha-runway re-derivation for `planet`'s next-or-current
+    Vimshottari Mahadasha, read directly from L1 chart_dashas.
+
+    Mirrors ga_vichara_writer.py's own `_dasha_runway()` curve exactly, using
+    the SAME brahma_vichara_constants.leverage_weights registry values (no
+    new constants invented) — but does NOT reuse chart_vichara.leverage_index's
+    own embedded runway sub-field for `planet`.
+
+    WHY: a live cross-check during B-4 authoring (2026-07-22) found that
+    field, for chart 482012f1/VEN/wealth (leverage_index=3.9375, same build
+    b84c3797), reads years_to_start=0 / md_duration_years=20 — implying
+    Venus's Mahadasha is already running. The SAME build's own chart_dashas
+    (level_n=1, lord_graha='Venus') instead shows the next/only Venus MD
+    starting 2034-08-18 — ~8.08 years out from that build's computed_at, not
+    0. This is a genuine discrepancy inside ga_vichara's own leverage_index
+    dasha-runway sub-computation (root cause not diagnosed here — not a B-4
+    may_touch file per BRIEF_D4B §3; flagged to the Binder as its own named
+    finding). B-4's own join therefore re-derives this factor independently
+    and correctly rather than propagate a value already shown to be wrong.
+    """
+    rows = conn.execute(
+        """SELECT dasha_row_id, start_iso, end_iso, duration_days
+           FROM chart_dashas
+           WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = 'vimshottari'
+             AND level_n = 1 AND lord_graha = %s
+           ORDER BY start_iso""",
+        [chart_id, aya, planet],
+    ).fetchall()
+    keys = ["dasha_row_id", "start_iso", "end_iso", "duration_days"]
+    md_rows = [dict(zip(keys, r)) if not isinstance(r, dict) else r for r in rows]
+
+    lookforward_years = float(weights.get("runway_lookforward_years", 30))
+    base = float(weights.get("runway_base", 1.0))
+    scale = float(weights.get("runway_scale", 0.5))
+    dur_norm = float(weights.get("runway_duration_norm_years", 20))
+    start_horizon = float(weights.get("runway_start_horizon_years", 15))
+
+    best: dict[str, Any] | None = None
+    for r in md_rows:
+        start, end = r.get("start_iso"), r.get("end_iso")
+        if start is None or end is None:
+            continue
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        if end < now:
+            continue  # already elapsed
+        s_years = max(0.0, (start - now).days / 365.25)
+        if s_years > lookforward_years:
+            continue
+        if best is None or s_years < best["years_to_start"]:
+            duration_days = r.get("duration_days")
+            y_years = (float(duration_days) / 365.25 if duration_days is not None
+                       else (end - start).days / 365.25)
+            best = {
+                "dasha_row_id": r.get("dasha_row_id"),
+                "years_to_start": round(s_years, 3),
+                "md_duration_years": round(y_years, 3),
+                "start_iso": start,
+                "end_iso": end,
+                "currently_running": start <= now,
+            }
+
+    if best is None:
+        return None
+    weight = base + scale * (best["md_duration_years"] / dur_norm) * max(
+        0.0, 1 - best["years_to_start"] / start_horizon)
+    best["runway_weight"] = round(weight, 6)
+    return best
 
 
 def _fetch_remedies_for_graha(conn: Any, planet: str, limit: int = 5) -> list[dict]:
@@ -909,6 +1064,135 @@ def _build_pattern_remedies(chart_id: str, aya: str, build_id: str,
     return rows
 
 
+# ── B-4 (BRIEF_D4B §1) remedy-leverage join builder ─────────────────────────
+
+_MAX_LEVERAGE_TARGETS = 3  # top-N wealth-leverage grahas per ayanamsha
+
+
+def _build_remedy_leverage_windows(
+    chart_id: str, aya: str, build_id: str, conn: Any, now: datetime,
+    prescriptions: list[dict], sadhana_events: list[dict],
+    leverage_weights: dict[str, Any], compute_now: str,
+) -> list[dict]:
+    """B-4: leverage_index (weakest load-bearing graha, wealth domain) x
+    sadhana history (LEL spiritual arc, pre-embargo) x dasha runway
+    (intervention window = years BEFORE the weak lord's MD opens).
+
+    Writes one bodha_rm_dasha_windowed_prescriptions row per top wealth-
+    leverage graha that has both (a) an existing prescription this same
+    writer just built (base_prescription_id FK) and (b) a resolvable next/
+    current Mahadasha in chart_dashas. Honestly skips (logs, does not
+    fabricate) a graha missing either.
+    """
+    from bodha_writers.formulas import RemedyLeverageJoinInputs, remedy_leverage_join_v1
+
+    leverage_rows = _fetch_wealth_leverage_index(conn, chart_id, aya)[:_MAX_LEVERAGE_TARGETS]
+    if not leverage_rows:
+        logger.info("[bo_upaya B-4] no positive wealth leverage_index rows for %s/%s "
+                    "— no schedulable remedy window built this ayanamsha", chart_id, aya)
+        return []
+
+    sadhana_count = len(sadhana_events)
+    sadhana_event_ids = [str(e["event_id"]) for e in sadhana_events]
+
+    prescriptions_by_graha: dict[str, list[dict]] = defaultdict(list)
+    for p in prescriptions:
+        prescriptions_by_graha[p["target_graha"]].append(p)
+
+    windows: list[dict] = []
+    for lev in leverage_rows:
+        subj = str(lev["subject"])
+        planet = _SUBJECT_TO_PLANET.get(subj)
+        if planet is None:
+            logger.warning("[bo_upaya B-4] leverage_index subject '%s' has no known "
+                           "graha mapping — skipped", subj)
+            continue
+
+        candidate_prescs = prescriptions_by_graha.get(planet, [])
+        if not candidate_prescs:
+            logger.warning("[bo_upaya B-4] no bodha_rm_remedy_prescriptions row for "
+                           "%s (wealth leverage_index=%.4f) — no base_prescription_id "
+                           "available, schedulable window skipped honestly (not fabricated)",
+                           planet, float(lev["value_num"]))
+            continue
+        base_presc = max(candidate_prescs, key=lambda p: p.get("resonance_match_score") or 0.0)
+
+        runway = _fetch_dasha_runway_fresh(conn, chart_id, aya, planet, now, leverage_weights)
+        if runway is None:
+            logger.warning("[bo_upaya B-4] no resolvable next/current Mahadasha for %s "
+                           "within the runway_lookforward_years window — schedulable "
+                           "window skipped honestly (not fabricated)", planet)
+            continue
+
+        join_result = remedy_leverage_join_v1(RemedyLeverageJoinInputs(
+            leverage_index_value=float(lev["value_num"]),
+            sadhana_milestone_count=sadhana_count,
+            dasha_runway_weight=runway["runway_weight"],
+        ))
+
+        if runway["currently_running"]:
+            window_start, window_end = now, runway["end_iso"]
+            phase = "active_md_direct_intervention"
+        else:
+            window_start, window_end = now, runway["start_iso"]
+            phase = "pre_md_preparation_window"
+
+        windows.append({
+            "window_prescription_id": str(uuid.uuid4()),
+            "chart_id": chart_id,
+            "ayanamsha_id": aya,
+            "build_id": build_id,
+            "base_prescription_id": base_presc["prescription_id"],
+            "dasha_system": "vimshottari",
+            "dasha_level": "maha",
+            "dasha_lord": planet,
+            "window_start_iso": window_start,
+            "window_end_iso": window_end,
+            "window_intensity_multiplier": join_result["remedy_leverage_score"],
+            "schedule_jsonb": json.dumps({
+                "join_formula_version": join_result["remedy_leverage_join_formula_version"],
+                "weakest_load_bearing_graha": planet,
+                "leverage_index": {
+                    "value": float(lev["value_num"]),
+                    "domain": "wealth",
+                    "vichara_row_id": lev["vichara_row_id"],
+                    "constituent_fact_ids": lev.get("constituent_fact_ids") or [],
+                    "source": "chart_vichara (ga_vichara L1 leverage_index, referenced not recomputed, §N.5)",
+                },
+                "sadhana_history": {
+                    "factor": join_result["sadhana_history_factor"],
+                    "pre_embargo_milestone_count": sadhana_count,
+                    "milestone_event_ids": sadhana_event_ids,
+                    "embargo_date": _SADHANA_EMBARGO_DATE,
+                    "source": "life_events (LEL calibration corpus, event_type='spiritual', strictly pre-embargo)",
+                },
+                "dasha_runway": {
+                    "years_before_md_open": runway["years_to_start"],
+                    "md_duration_years": runway["md_duration_years"],
+                    "runway_weight": runway["runway_weight"],
+                    "currently_running": runway["currently_running"],
+                    "dasha_row_id": str(runway["dasha_row_id"]),
+                    "source": "chart_dashas (L1, fresh live re-derivation)",
+                    "note": ("chart_vichara.leverage_index's own embedded runway sub-field "
+                             "for this graha/domain is NOT reused here — see "
+                             "_fetch_dasha_runway_fresh docstring for the live discrepancy "
+                             "found during B-4 authoring (2026-07-22)."),
+                },
+                "remedy_leverage_score": join_result["remedy_leverage_score"],
+            }),
+            "phase_within_window": phase,
+            "verification_pass_status": "documented_approximation",
+            "citation_ref": f"bo_upaya/remedy_leverage_join/{planet}/wealth",
+            "citation_human": (f"B-4 remedy-leverage join: {planet} wealth leverage_index="
+                               f"{float(lev['value_num']):.4f} x sadhana_history_factor="
+                               f"{join_result['sadhana_history_factor']:.4f} x dasha_runway_weight="
+                               f"{runway['runway_weight']:.4f} = {join_result['remedy_leverage_score']:.4f}"),
+            "computed_at": compute_now,
+        })
+
+    return windows
+
+
 @register("bo_upaya")
 class BoUpayaWriter(WriterBase):
     """bo_upaya: Remediation Map — resonances + prescriptions grounded to G27 corpus."""
@@ -917,26 +1201,34 @@ class BoUpayaWriter(WriterBase):
     def run(self, ctx: ContextSpec) -> WriterResult:
         from bodha_writers._idempotency import (
             replace_prior_rm_resonances, replace_prior_rm_prescriptions,
+            replace_prior_rm_dasha_windowed,
         )
 
         chart_id = ctx.config["chart_id"]
         build_id = ctx.build_id
         conn     = ctx.db_conn
-        now      = datetime.now(timezone.utc).isoformat()
+        now_dt   = datetime.now(timezone.utc)
+        now      = now_dt.isoformat()
         total_res = 0
         total_presc = 0
         total_summary = 0
         total_bundles = 0
         total_patterns = 0
+        total_windowed = 0
 
         # WP-2.2 / LCA-5 idempotency for the sibling rollup tables (chart-scoped
-        # delete-then-insert per §N.3). dasha_windowed_prescriptions is intentionally
-        # NOT populated — its window_start/end_iso + dasha_lord are NOT NULL and need
-        # L3 dasha-window data unavailable at static-natal L2 (flagged §7.3 deferred).
+        # delete-then-insert per §N.3).
         with conn.cursor() as cur:
             cur.execute("DELETE FROM bodha_rm_chart_summary WHERE chart_id = %s", [chart_id])
             cur.execute("DELETE FROM bodha_rm_dosha_remedy_bundles WHERE chart_id = %s", [chart_id])
             cur.execute("DELETE FROM bodha_rm_pattern_remedies WHERE chart_id = %s", [chart_id])
+
+        # B-4 (BRIEF_D4B §1): registry weights + sadhana history are chart-scoped,
+        # not per-ayanamsha — fetch once, reuse across the CANONICAL_AYAS loop.
+        leverage_weights = _fetch_leverage_weights(conn)
+        sadhana_events = _fetch_sadhana_milestones(conn, chart_id)
+        logger.info("[bo_upaya B-4] %d pre-embargo (< %s) LEL sadhana milestones for chart=%s",
+                    len(sadhana_events), _SADHANA_EMBARGO_DATE, chart_id)
 
         for aya in CANONICAL_AYAS:
             if ctx.dry_run:
@@ -947,6 +1239,9 @@ class BoUpayaWriter(WriterBase):
                 chart_id, aya, build_id, conn, now
             )
 
+            # B-4's windowed rows FK-reference bodha_rm_remedy_prescriptions —
+            # delete them BEFORE the prescriptions they reference are replaced.
+            replace_prior_rm_dasha_windowed(conn, chart_id, aya)
             replace_prior_rm_prescriptions(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)
 
@@ -955,6 +1250,19 @@ class BoUpayaWriter(WriterBase):
                         aya, len(resonances), len(prescriptions))
             total_res   += _batch_insert(conn, clean_res, _RESONANCE_INSERT)
             total_presc += _batch_insert(conn, prescriptions, _PRESCRIPTION_INSERT)
+
+            # ── B-4: remedy-leverage join (needs the just-built prescriptions'
+            # in-memory prescription_id values, same pattern as the RM rollups
+            # below) ──────────────────────────────────────────────────────────
+            windows = _build_remedy_leverage_windows(
+                chart_id, aya, build_id, conn, now_dt, prescriptions,
+                sadhana_events, leverage_weights, now,
+            )
+            if windows:
+                with conn.cursor() as cur:
+                    for w in windows:
+                        cur.execute(_WINDOWED_INSERT, w)
+                total_windowed += len(windows)
 
             # ── RM sibling rollups (deterministic aggregation of the above) ──────
             if prescriptions:
@@ -981,9 +1289,12 @@ class BoUpayaWriter(WriterBase):
             )
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=total_res + total_presc + total_summary + total_bundles + total_patterns,
+            rows_inserted=(total_res + total_presc + total_summary + total_bundles
+                           + total_patterns + total_windowed),
             notes=(f"resonances={total_res} prescriptions={total_presc} "
                    f"rm_chart_summary={total_summary} dosha_bundles={total_bundles} "
                    f"pattern_remedies={total_patterns} "
-                   f"(dasha_windowed_prescriptions deferred §7.3 — needs L3 dasha windows)"),
+                   f"dasha_windowed_prescriptions={total_windowed} "
+                   f"(B-4 remedy-leverage join: wealth leverage_index x sadhana history "
+                   f"[{len(sadhana_events)} pre-embargo milestones] x fresh dasha runway)"),
         )
