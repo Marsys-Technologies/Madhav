@@ -5,26 +5,29 @@
 // Proves BOTH states of the RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED feature flag on
 // /api/retrieval/capability/route.ts:
 //
-//   flag=true (DEFAULT as of the W5 "D-5 unpark" breaking release, 2026-07-21)
+//   flag=true (forced ON via MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=
+//     true — code-complete and fully tested, PAUSED as the production default
+//     pending D-4b quiet per master brief §I.6; see impl/w5-breaking)
 //     — route.ts imports its registration list EXCLUSIVELY from
 //     registry/catalog.ts's getCatalog(). After the W2b lane's catalog.ts
 //     completeness fix (registerRouterCapabilities()/registerMaroCapabilities()/
 //     registerD6SynergyCapabilities() now also fire from catalog.ts), the
 //     single-bootstrap catalog is a superset of everything route.ts ever
-//     hand-registered, PLUS the reverse gap (synth_compose_large_n).
+//     hand-registered, PLUS the reverse gap (synth_compose_large_n,
+//     marsys://tool/L-SPINE/query_spine_bundle).
 //
-//   flag=false (forced OFF via MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=
-//     false — emergency-rollback path only, no longer the production default)
+//   flag=false (DEFAULT — the paused/current-production state, 2026-07-21)
 //     — route.ts keeps its own hand-maintained per-wave registration list.
 //     Byte-for-byte the same dispatch behavior the legacy path always had,
-//     INCLUDING the pre-existing, documented gap: capabilities registered only
-//     via registry/catalog.ts's import chain (currently just
-//     `marsys://tool/synthesis/compose_large_n`) are NOT reachable here.
+//     INCLUDING the documented gap: capabilities registered only via
+//     registry/catalog.ts's import chain (currently
+//     `marsys://tool/synthesis/compose_large_n` and
+//     `marsys://tool/L-SPINE/query_spine_bundle`) are NOT reachable here.
 //
-// The flag defaults TRUE in feature_flags.ts DEFAULT_FLAGS as of the D-5
-// unpark cutover — see the "defaults on" describe block below. The legacy
-// path stays fully exercised via the explicit env override so a rollback is
-// never shipping an untested code path.
+// The flag defaults FALSE in feature_flags.ts DEFAULT_FLAGS — paused, not
+// abandoned; see the "defaults" describe block below, which proves the
+// flip-to-true path still works via explicit override, so the eventual
+// production flip is a one-line, pre-verified change, never an untested one.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
@@ -62,26 +65,30 @@ afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
 })
 
-describe('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED — defaults on (D-5 unpark, 2026-07-21)', () => {
-  it('DEFAULT_FLAGS carries the flag as true', async () => {
+describe('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED — paused at false, flip pre-verified (2026-07-21)', () => {
+  it('DEFAULT_FLAGS carries the flag as false (paused, not abandoned — see feature_flags.ts doc comment)', async () => {
     const { DEFAULT_FLAGS } = await import('@/lib/config/feature_flags')
-    expect(DEFAULT_FLAGS.RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED).toBe(true)
+    expect(DEFAULT_FLAGS.RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED).toBe(false)
   })
 
-  it('configService.getFlag reads true with no env override present', async () => {
+  it('configService.getFlag reads false with no env override present', async () => {
     delete process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED
-    const { configService } = await import('@/lib/config/index')
-    expect(configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')).toBe(true)
-  })
-
-  it('configService.getFlag reads false when explicitly forced off via env', async () => {
-    process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED = 'false'
     const { configService } = await import('@/lib/config/index')
     expect(configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')).toBe(false)
   })
+
+  it('configService.getFlag reads true when explicitly forced on via env (the flip stays live-verified while paused)', async () => {
+    process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED = 'true'
+    const { configService } = await import('@/lib/config/index')
+    expect(configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')).toBe(true)
+  })
 })
 
-describe('flag=true (default, no override needed) — single bootstrap exclusively from catalog.ts', () => {
+describe('flag=true (forced on via override) — single bootstrap exclusively from catalog.ts', () => {
+  beforeEach(() => {
+    process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED = 'true'
+  })
+
   for (const uri of HAND_REGISTERED_GLOBAL_PROBE_URIS) {
     it(`still dispatches ${uri} (present via catalog.ts after the completeness fix)`, async () => {
       const { POST } = await import('../route')
@@ -108,6 +115,19 @@ describe('flag=true (default, no override needed) — single bootstrap exclusive
     }
   })
 
+  it('serves query_spine_bundle — W5 L5\'s new capability, registered only via catalog.ts', async () => {
+    const { POST } = await import('../route')
+    const res = await POST(
+      makeReq({ uri: 'marsys://tool/L-SPINE/query_spine_bundle', args: {} })
+    )
+    expect(res.status).not.toBe(404)
+    const json = await res.json()
+    if (res.status !== 200) {
+      const message = JSON.stringify(json)
+      expect(message).not.toMatch(/Unknown capability URI/)
+    }
+  })
+
   it('unknown URI still 404s (single-bootstrap path preserves the not-found behavior)', async () => {
     const { POST } = await import('../route')
     const res = await POST(makeReq({ uri: 'marsys://tool/does/not/exist', args: {} }))
@@ -115,7 +135,7 @@ describe('flag=true (default, no override needed) — single bootstrap exclusive
   })
 })
 
-describe('flag=false (forced off via explicit env override) — legacy hand-maintained path stays reachable', () => {
+describe('flag=false (forced via explicit env override — also the current default) — legacy hand-maintained path stays reachable', () => {
   beforeEach(() => {
     process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED = 'false'
   })
@@ -141,6 +161,17 @@ describe('flag=false (forced off via explicit env override) — legacy hand-main
     expect(json.error).toContain('Unknown capability URI')
   })
 
+  it('does NOT serve query_spine_bundle — W5 L5\'s capability is dormant under the paused default until the flip', async () => {
+    const { POST } = await import('../route')
+    const res = await POST(
+      makeReq({ uri: 'marsys://tool/L-SPINE/query_spine_bundle', args: {} })
+    )
+    expect(res.status).toBe(404)
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toContain('Unknown capability URI')
+  })
+
   it('unknown URI still 404s exactly as the legacy path always did (no change to the not-found path)', async () => {
     const { POST } = await import('../route')
     const res = await POST(makeReq({ uri: 'marsys://tool/does/not/exist', args: {} }))
@@ -148,8 +179,8 @@ describe('flag=false (forced off via explicit env override) — legacy hand-main
   })
 })
 
-describe('flag=true (default) vs flag=false (forced off) — mechanical completeness diff (no missing, no duplicated)', () => {
-  it('the default (flag=true) registered URI set is a strict superset of the legacy (flag=false) set, with the exact known GT-40 divergence', async () => {
+describe('flag=true (forced on) vs flag=false (default) — mechanical completeness diff (no missing, no duplicated)', () => {
+  it('the single-bootstrap (flag=true) registered URI set is a strict superset of the legacy default (flag=false) set, with the exact known GT-40 divergence', async () => {
     // ── Pass 1: flag=false (forced off) — bootstrap route.ts's hand-maintained
     // list, snapshot the registry.
     vi.resetModules()
@@ -162,11 +193,12 @@ describe('flag=true (default) vs flag=false (forced off) — mechanical complete
     const { listCapabilityUris: listFalse } = await import('@/lib/retrieval/registry')
     const falseUris = listFalse()
 
-    // ── Pass 2: flag=true (default, no override) — bootstrap exclusively from
-    // catalog.ts, snapshot the registry.
+    // ── Pass 2: flag=true (forced on via override — paused as the default,
+    // see feature_flags.ts) — bootstrap exclusively from catalog.ts, snapshot
+    // the registry.
     vi.resetModules()
     process.env.MCP_INTERNAL_TOKEN = 'test-token'
-    delete process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED
+    process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED = 'true'
     {
       const { POST } = await import('../route')
       await POST(makeReq({ uri: 'marsys://tool/maro/mcp_surface', args: {} }))
@@ -180,16 +212,16 @@ describe('flag=true (default) vs flag=false (forced off) — mechanical complete
     expect(new Set(trueUris).size).toBe(trueUris.length)
 
     // No missing: every URI the legacy path served (flag=false) is still served
-    // under the new default (flag=true) — mechanically diffed, not hand-listed.
+    // under single bootstrap (flag=true, forced on) — mechanically diffed, not hand-listed.
     const trueSet = new Set(trueUris)
     const missingUnderSingleBootstrap = falseUris.filter((uri) => !trueSet.has(uri))
     expect(
       missingUnderSingleBootstrap,
-      `URIs served under the legacy path (flag=false) but MISSING under the new default (flag=true):\n${missingUnderSingleBootstrap.join('\n')}`
+      `URIs served under the legacy path (flag=false) but MISSING under single bootstrap (flag=true, forced on):\n${missingUnderSingleBootstrap.join('\n')}`
     ).toHaveLength(0)
 
     // No duplicated capability EITHER direction: the only URIs present under
-    // the new default (flag=true) but absent under the legacy path (flag=false)
+    // single bootstrap (flag=true, forced on) but absent under the legacy path (flag=false)
     // are the known reverse-gap set — a full symmetric mechanical diff, not a
     // spot check. This set is EXPECTED TO GROW over time now that
     // single-bootstrap is the production default (W5 L0): new capabilities
