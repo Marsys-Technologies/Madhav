@@ -3,7 +3,7 @@ artifact: R1_PROJECTION_COMPILER_REPORT.md
 canonical_id: R1_PROJECTION_COMPILER_REPORT
 version: 1.0
 status: GENERATED — regenerate via `npx tsx --conditions=react-server scripts/manifest/generate_projections.ts`
-generated_at: 2026-07-20T09:25:46.274Z
+generated_at: 2026-07-21T14:39:09.125Z
 generator: platform/scripts/manifest/generate_projections.ts
 ---
 
@@ -71,8 +71,8 @@ Real hand-written `server.tool(...)` blocks extracted from
 
 **Reachability cross-check** (does a registry capability have ANY route through the current
 hand-written 25, by literal `marsys://` URI reference in that tool's body — not by name):
-**24 / 162** catalog URIs are referenced somewhere in
-`registry_bridge.ts`; **138 / 162** are not referenced
+**23 / 162** catalog URIs are referenced somewhere in
+`registry_bridge.ts`; **139 / 162** are not referenced
 by literal URI anywhere in that file (they may still be reachable via a different bridge file,
 a resource loader, or not yet individually exposed on MCP at all — this scan is scoped to
 `registry_bridge.ts` only, per this lane's (b) sub-item; a full-surface reachability
@@ -113,7 +113,34 @@ STUB in the sense that it is generated as a static JSON artifact here, not wired
 is a live-serving-path change, explicitly out of this additive-only lane's scope per the
 task's own instruction — "new code paths gated behind an explicit flag that defaults OFF").
 
-## 5. Honesty notes / what's NOT done this lane
+## 5. (e) Web↔MCP tool-name bridge (W5 L1)
+
+`web_tool_bridge.generated.json` — resolves the Vidhi floor compiler's
+`live_tool` namespace (23 distinct names across
+`registry_data.ts`) plus the full `canonical_faces.json` list
+(95 names) to registry URIs, by chaining
+`getCatalog()` capability names + `canonical_faces.json`'s `deprecated_aliases`
++ `tool_name_bridge.ts`'s existing hand-curated maps (not re-authored — chained).
+
+- Vidhi `live_tool` bridge: **11 / 23** resolve to a
+  registry URI (before this lane's generated projection, `compiled_floor_adapter.ts`'s
+  hand-curated `LIVE_TOOL_TO_RETRIEVAL` mapped only **4 / 23**).
+  Unmapped: bodha_remedies_get, bodha_remedies_search, bodha_signals_get, ganita_condition_get, ganita_dasha_lord_capability_get, ganita_nakshatra_get, ganita_sensitive_degrees_get, ganita_strength_get, ganita_structural_get, kala_temporal_bundle, kala_windows_get, ref_doshas_get.
+- `canonical_faces.json` bridge (broader census): **39 / 95**
+  resolve to a registry URI. 56 remain unmapped — see
+  `web_tool_bridge.generated.json`'s `canonical_faces_bridge.entries` for the
+  full per-name resolution_kind/via chain (not inlined here, too long).
+
+**Wiring status:** `tool_name_bridge.ts`'s `resolveToolUri()` now falls back to
+this generated projection (`resolveGeneratedToolUri`) for any name not already
+in its hand-curated `TOOL_NAME_TO_URI`, and resolves literal registry URIs
+directly (the CR-118 fast-fail fix — see that file's `isCapabilityUri` doc
+comment). `compiled_floor_adapter.ts`'s `LIVE_TOOL_TO_RETRIEVAL` now consults
+this generated bridge before falling back to its small hand-curated map, raising
+Vidhi floor-primitive mappability from 4/23 toward
+11/23 without hand-editing that file.
+
+## 6. Honesty notes / what's NOT done this lane
 
 - Plan item 2c ("the vidhi primitive rows' tool bindings") is **not** covered by this
   generator — it is the separately-landed `codegen:vidhi`/`codegen:vidhi:check` lane

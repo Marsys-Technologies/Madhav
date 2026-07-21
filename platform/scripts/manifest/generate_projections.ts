@@ -41,6 +41,10 @@ import {
   resolveType,
 } from './projection_builders'
 import { extractRegistryBridgeToolsFromDisk, REGISTRY_BRIDGE_PATH } from './extract_registry_bridge_tools'
+import { resolveWebToolBridge, type CanonicalFacesData } from './web_tool_bridge_builder'
+import { TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL } from '../../src/lib/retrieval/registry/tool_name_bridge'
+import canonicalFacesRaw from '../../src/lib/retrieval/registry/canonical_faces.json'
+import { VIDHI_PRIMITIVES } from '../../src/lib/vidhi/registry_data'
 
 const OUT_DIR = join(__dirname, '..', '..', 'src', 'generated', 'projections')
 const REPORT_PATH = join(
@@ -97,6 +101,47 @@ function main(): void {
   // (d) docs resource stub — marsys://resource/catalog shape
   const docsCatalog = buildDocsResourceCatalog(caps, generatedAt)
   writeJson('docs_resource_catalog.generated.json', docsCatalog)
+
+  // (e) W5 L1 — web↔MCP tool-name bridge. Resolves every distinct Vidhi floor-
+  // compiler `live_tool` name (the MCP-native namespace `compiled_floor_adapter.ts`
+  // had to hand-map, 4/23 before this lane) PLUS the full `canonical_faces.json`
+  // list (broader coverage census) to a registry URI, by chaining getCatalog()
+  // names + canonical_faces.json's deprecated_aliases + tool_name_bridge.ts's
+  // existing hand-curated maps. See web_tool_bridge_builder.ts header for the
+  // full resolution-order rationale.
+  const canonicalFaces = canonicalFacesRaw as unknown as CanonicalFacesData
+  const liveToolNames = [...new Set(VIDHI_PRIMITIVES.map((p) => p.live_tool))].sort()
+  const liveToolBridge = resolveWebToolBridge(liveToolNames, caps, TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL, canonicalFaces)
+  const canonicalFaceBridge = resolveWebToolBridge(
+    canonicalFaces.canonical_faces,
+    caps,
+    TOOL_NAME_TO_URI,
+    MCP_TO_RETRIEVAL_TOOL,
+    canonicalFaces,
+  )
+  const liveToolMapped = liveToolBridge.filter((e) => e.uri !== null)
+  const liveToolUnmapped = liveToolBridge.filter((e) => e.uri === null)
+  const canonicalFaceMapped = canonicalFaceBridge.filter((e) => e.uri !== null)
+  const canonicalFaceUnmapped = canonicalFaceBridge.filter((e) => e.uri === null)
+  writeJson('web_tool_bridge.generated.json', {
+    generated_at: generatedAt,
+    generator: 'generate_projections.ts',
+    source:
+      'getCatalog() capability names + canonical_faces.json deprecated_aliases + ' +
+      'tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)',
+    vidhi_live_tool_bridge: {
+      total: liveToolBridge.length,
+      mapped: liveToolMapped.length,
+      unmapped: liveToolUnmapped.length,
+      entries: liveToolBridge,
+    },
+    canonical_faces_bridge: {
+      total: canonicalFaceBridge.length,
+      mapped: canonicalFaceMapped.length,
+      unmapped: canonicalFaceUnmapped.length,
+      entries: canonicalFaceBridge,
+    },
+  })
 
   // ── Comparison (a): generated chat defs vs the real served TOOL_CONTRACTS ──
   const contractNames = new Set(CONTRACT_CATALOG.map((c) => c.canonical_name))
@@ -272,7 +317,34 @@ STUB in the sense that it is generated as a static JSON artifact here, not wired
 is a live-serving-path change, explicitly out of this additive-only lane's scope per the
 task's own instruction — "new code paths gated behind an explicit flag that defaults OFF").
 
-## 5. Honesty notes / what's NOT done this lane
+## 5. (e) Web↔MCP tool-name bridge (W5 L1)
+
+\`web_tool_bridge.generated.json\` — resolves the Vidhi floor compiler's
+\`live_tool\` namespace (${liveToolNames.length} distinct names across
+\`registry_data.ts\`) plus the full \`canonical_faces.json\` list
+(${canonicalFaces.canonical_faces.length} names) to registry URIs, by chaining
+\`getCatalog()\` capability names + \`canonical_faces.json\`'s \`deprecated_aliases\`
++ \`tool_name_bridge.ts\`'s existing hand-curated maps (not re-authored — chained).
+
+- Vidhi \`live_tool\` bridge: **${liveToolMapped.length} / ${liveToolBridge.length}** resolve to a
+  registry URI (before this lane's generated projection, \`compiled_floor_adapter.ts\`'s
+  hand-curated \`LIVE_TOOL_TO_RETRIEVAL\` mapped only **4 / ${liveToolNames.length}**).
+  Unmapped: ${liveToolUnmapped.length ? liveToolUnmapped.map((e) => e.name).join(', ') : '(none)'}.
+- \`canonical_faces.json\` bridge (broader census): **${canonicalFaceMapped.length} / ${canonicalFaceBridge.length}**
+  resolve to a registry URI. ${canonicalFaceUnmapped.length} remain unmapped — see
+  \`web_tool_bridge.generated.json\`'s \`canonical_faces_bridge.entries\` for the
+  full per-name resolution_kind/via chain (not inlined here, too long).
+
+**Wiring status:** \`tool_name_bridge.ts\`'s \`resolveToolUri()\` now falls back to
+this generated projection (\`resolveGeneratedToolUri\`) for any name not already
+in its hand-curated \`TOOL_NAME_TO_URI\`, and resolves literal registry URIs
+directly (the CR-118 fast-fail fix — see that file's \`isCapabilityUri\` doc
+comment). \`compiled_floor_adapter.ts\`'s \`LIVE_TOOL_TO_RETRIEVAL\` now consults
+this generated bridge before falling back to its small hand-curated map, raising
+Vidhi floor-primitive mappability from 4/${liveToolNames.length} toward
+${liveToolMapped.length}/${liveToolNames.length} without hand-editing that file.
+
+## 6. Honesty notes / what's NOT done this lane
 
 - Plan item 2c ("the vidhi primitive rows' tool bindings") is **not** covered by this
   generator — it is the separately-landed \`codegen:vidhi\`/\`codegen:vidhi:check\` lane

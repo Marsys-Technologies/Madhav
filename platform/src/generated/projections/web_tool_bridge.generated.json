@@ -1,0 +1,809 @@
+{
+  "generated_at": "2026-07-21T14:39:09.125Z",
+  "generator": "generate_projections.ts",
+  "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
+  "vidhi_live_tool_bridge": {
+    "total": 23,
+    "mapped": 11,
+    "unmapped": 12,
+    "entries": [
+      {
+        "name": "bodha_discoveries_get",
+        "uri": "marsys://tool/L2/query_discoveries",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "query_discoveries"
+        ]
+      },
+      {
+        "name": "bodha_remedies_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "bodha_remedies_search",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "bodha_signals_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_chart_facts_get",
+        "uri": "marsys://tool/L1/chart_facts_query",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_chart_facts",
+          "chart_facts_query"
+        ]
+      },
+      {
+        "name": "ganita_condition_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_dasha_lord_capability_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_dasha_periods_get",
+        "uri": "marsys://tool/L1/get_dashas",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_dasha_periods"
+        ]
+      },
+      {
+        "name": "ganita_nakshatra_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_positions_get",
+        "uri": "marsys://tool/L1/get_positions",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "get_positions"
+        ]
+      },
+      {
+        "name": "ganita_sensitive_degrees_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_special_lagnas_get",
+        "uri": "marsys://tool/L1/get_sensitive_points",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_special_lagnas"
+        ]
+      },
+      {
+        "name": "ganita_strength_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_structural_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_yoga_firings_get",
+        "uri": "marsys://tool/L1/get_yoga_firings",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "get_yoga_firings"
+        ]
+      },
+      {
+        "name": "get_cgm_subgraph",
+        "uri": "marsys://tool/L2/traverse_chart_graph",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "cgm_graph_walk"
+        ]
+      },
+      {
+        "name": "kala_muhurta_get",
+        "uri": "marsys://tool/L4/query_muhurat",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "muhurta_finder",
+          "query_muhurat"
+        ]
+      },
+      {
+        "name": "kala_temporal_bundle",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_windows_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_yoga_activation_get",
+        "uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "yoga_activation_by_dasha"
+        ]
+      },
+      {
+        "name": "lel_query",
+        "uri": "marsys://tool/L5/lel_query",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "mimamsa_calibration_get",
+        "uri": "marsys://tool/L5/query_calibration",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_calibration"
+        ]
+      },
+      {
+        "name": "ref_doshas_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      }
+    ]
+  },
+  "canonical_faces_bridge": {
+    "total": 95,
+    "mapped": 39,
+    "unmapped": 56,
+    "entries": [
+      {
+        "name": "assess_career",
+        "uri": "marsys://tool/L-DOMAIN/assess_career",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "assess_health",
+        "uri": "marsys://tool/L-DOMAIN/assess_health",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "assess_marriage",
+        "uri": "marsys://tool/L-DOMAIN/assess_marriage",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "assess_wealth",
+        "uri": "marsys://tool/L-DOMAIN/assess_wealth",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "bodha_chart_digest_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "bodha_discoveries_get",
+        "uri": "marsys://tool/L2/query_discoveries",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "query_discoveries"
+        ]
+      },
+      {
+        "name": "bodha_domain_reading_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "bodha_graph_subgraph_get",
+        "uri": "marsys://tool/L2/traverse_chart_graph",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "get_cgm_subgraph",
+          "cgm_graph_walk"
+        ]
+      },
+      {
+        "name": "bodha_graph_traverse_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "bodha_quality_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "bodha_remedies_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "bodha_signals_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "catalog_assets_all",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "catalog_assets_l0",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "catalog_assets_list",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "chart_snapshot",
+        "uri": "marsys://tool/L1/chart_snapshot",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "ganita_ayurdaya_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_chart_facts_get",
+        "uri": "marsys://tool/L1/chart_facts_query",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_chart_facts",
+          "chart_facts_query"
+        ]
+      },
+      {
+        "name": "ganita_condition_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_dasha_lord_capability_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_dasha_periods_get",
+        "uri": "marsys://tool/L1/get_dashas",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_dasha_periods"
+        ]
+      },
+      {
+        "name": "ganita_dashas_get",
+        "uri": "marsys://tool/L1/get_dashas",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "get_dashas"
+        ]
+      },
+      {
+        "name": "ganita_medical_get",
+        "uri": "marsys://tool/L1/get_medical_indications",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "get_medical_indications"
+        ]
+      },
+      {
+        "name": "ganita_nakshatra_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_natal_positions_compute",
+        "uri": "marsys://tool/L1/get_positions",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "compute_natal_positions"
+        ]
+      },
+      {
+        "name": "ganita_positions_get",
+        "uri": "marsys://tool/L1/get_positions",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "get_positions"
+        ]
+      },
+      {
+        "name": "ganita_sade_sati_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_sensitive_degrees_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_special_lagnas_get",
+        "uri": "marsys://tool/L1/get_sensitive_points",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_special_lagnas"
+        ]
+      },
+      {
+        "name": "ganita_strength_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_structural_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_tajaka_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_transit_anchors_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_vastu_get",
+        "uri": "marsys://tool/L1/get_vastu_directions",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "get_vastu_directions"
+        ]
+      },
+      {
+        "name": "ganita_vichara_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_yoga_firings_get",
+        "uri": "marsys://tool/L1/get_yoga_firings",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "get_yoga_firings"
+        ]
+      },
+      {
+        "name": "ganita_yogas_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "get_graha_yuddha",
+        "uri": "marsys://tool/L1/get_graha_yuddha",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "graha_portrait",
+        "uri": "marsys://tool/L2/graha_portrait",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "holistic_bundle_chart_facts",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "intent_classify",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "judgment_query",
+        "uri": "marsys://tool/L-JUDGMENT/judgment_query",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "kala_life_arc_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_muhurta_get",
+        "uri": "marsys://tool/L4/query_muhurat",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "muhurta_finder",
+          "query_muhurat"
+        ]
+      },
+      {
+        "name": "kala_priority_ranking_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_projections_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_temporal_bundle",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_windows_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_yoga_activation_get",
+        "uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "yoga_activation_by_dasha"
+        ]
+      },
+      {
+        "name": "list_entities",
+        "uri": "marsys://tool/L0/list_entities",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "list_my_charts",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "list_my_sessions",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "mimamsa_calibration_get",
+        "uri": "marsys://tool/L5/query_calibration",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_calibration"
+        ]
+      },
+      {
+        "name": "mimamsa_insight_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "mimamsa_lel_query",
+        "uri": "marsys://tool/L5/lel_query",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "lel_query"
+        ]
+      },
+      {
+        "name": "mimamsa_outcome_record",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "pact_query",
+        "uri": "marsys://tool/L-PACT/pact_query",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "phala_anchors_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "phala_mitigation_get",
+        "uri": "marsys://tool/L4/query_remedy_program",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "mitigation_map",
+          "query_remedy_program"
+        ]
+      },
+      {
+        "name": "phala_outlook_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "phala_predictive_anchors_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "phala_rectification_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "plan_retrieval",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "prashna_undertaking_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "reading_notes_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "recall_session",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_aspects_at_time_get",
+        "uri": "marsys://tool/L0/query_aspects_at_time",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_aspects_at_time"
+        ]
+      },
+      {
+        "name": "ref_classical_citation_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_dasha_systems_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_dignity_reference_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_doshas_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_entities_list",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_entity_resolve",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_ephemeris_year_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_mantras_get",
+        "uri": "marsys://tool/L0/query_mantras",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_mantras"
+        ]
+      },
+      {
+        "name": "ref_nakshatra_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_planet_position_get",
+        "uri": "marsys://tool/L0/query_planet_position",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_planet_position"
+        ]
+      },
+      {
+        "name": "ref_planet_transit_get",
+        "uri": "marsys://tool/L0/query_planet_transit",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_planet_transit"
+        ]
+      },
+      {
+        "name": "ref_remedies_by_category_list",
+        "uri": "marsys://tool/L0/list_remedies_by_category",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "list_remedies_by_category"
+        ]
+      },
+      {
+        "name": "ref_remedies_by_planet_get",
+        "uri": "marsys://tool/L0/query_remedies_by_planet",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_remedies_by_planet"
+        ]
+      },
+      {
+        "name": "ref_remedies_chart_get",
+        "uri": "marsys://tool/L0/query_remedies_for_chart",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_remedies_for_chart"
+        ]
+      },
+      {
+        "name": "ref_remedies_get",
+        "uri": "marsys://tool/L0/query_remedy_corpus",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_remedies"
+        ]
+      },
+      {
+        "name": "ref_remedy_get",
+        "uri": "marsys://tool/L0/read_remedy",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "read_remedy"
+        ]
+      },
+      {
+        "name": "ref_retrograde_periods_get",
+        "uri": "marsys://tool/L0/query_retrograde_periods",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_retrograde_periods"
+        ]
+      },
+      {
+        "name": "ref_rules_search",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_sign_medical_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_tantric_remedies_get",
+        "uri": "marsys://tool/L0/query_tantric_remedies",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "query_tantric_remedies"
+        ]
+      },
+      {
+        "name": "ref_transit_rules_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ref_vector_search",
+        "uri": "marsys://tool/L0/query_classical_texts",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "vector_search"
+        ]
+      },
+      {
+        "name": "ref_yogas_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "resolve_entity",
+        "uri": "marsys://tool/L0/resolve_entity",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "scan_fetch_signals",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "select_chart",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "synth_chart_brief_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "synth_tail_divergence_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      }
+    ]
+  }
+}

@@ -8,12 +8,14 @@ import {
   compileFloorForPlan,
   ensureB11WholeChartReadFloor,
   ensureDashaContextFloor,
+  resolveLiveTool,
   LIVE_TOOL_TO_RETRIEVAL,
   L2_5_TOOLS,
 } from '@/lib/pipeline/compiled_floor_adapter'
 import type { ScopeTuple as ClassifierScopeTuple } from '@/lib/vidhi/scope_classifier'
 import type { PipelinePlan, QueryClass } from '@/lib/pipeline/types'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import { VIDHI_PRIMITIVES } from '@/lib/vidhi/registry_data'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 
@@ -106,6 +108,29 @@ describe('LIVE_TOOL_TO_RETRIEVAL bridge integrity', () => {
   it('every mapped retrieval name resolves via getToolByName (no no-op tool names)', () => {
     for (const retrievalName of Object.values(LIVE_TOOL_TO_RETRIEVAL)) {
       expect(getToolByName(retrievalName), `retrieval tool "${retrievalName}" must resolve`).toBeDefined()
+    }
+  })
+})
+
+describe('resolveLiveTool — W5 L1 generated-bridge fallback widens floor-primitive coverage', () => {
+  it('resolves strictly more of the 23 distinct Vidhi live_tool names than the pre-W5 hand map alone', () => {
+    const liveToolNames = [...new Set(VIDHI_PRIMITIVES.map((p) => p.live_tool))]
+    const handMapOnly = liveToolNames.filter((n) => LIVE_TOOL_TO_RETRIEVAL[n] !== undefined)
+    const withGeneratedFallback = liveToolNames.filter((n) => resolveLiveTool(n) !== undefined)
+    // Pre-W5 baseline was exactly 4/23 (W4 close measurement, STATE.md). Asserted
+    // as a floor (not the literal hand-map size) so this doesn't rot if the hand
+    // map itself grows later — the point is the GENERATED layer adds coverage on
+    // top, not that the hand map stays frozen at 4.
+    expect(handMapOnly.length).toBeGreaterThanOrEqual(4)
+    expect(withGeneratedFallback.length).toBeGreaterThan(handMapOnly.length)
+  })
+
+  it('every name resolveLiveTool maps is actually executable via getToolByName', () => {
+    const liveToolNames = [...new Set(VIDHI_PRIMITIVES.map((p) => p.live_tool))]
+    for (const n of liveToolNames) {
+      const resolved = resolveLiveTool(n)
+      if (resolved === undefined) continue
+      expect(getToolByName(resolved), `live_tool "${n}" -> "${resolved}" must resolve`).toBeDefined()
     }
   })
 })

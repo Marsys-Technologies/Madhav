@@ -45,6 +45,10 @@ import {
   extractRegistryBridgeTools,
   extractRegistryBridgeToolsFromDisk,
 } from '../../../../../scripts/manifest/extract_registry_bridge_tools'
+import { resolveWebToolBridge, type CanonicalFacesData } from '../../../../../scripts/manifest/web_tool_bridge_builder'
+import { TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL, getToolByName } from '../tool_name_bridge'
+import canonicalFacesRaw from '../canonical_faces.json'
+import { VIDHI_PRIMITIVES } from '../../../vidhi/registry_data'
 
 // ── 1. Machine census — completeness over the full live catalog ─────────────
 
@@ -243,6 +247,54 @@ describe('R-1 projection compiler — (d) docs resource stub (marsys://resource/
     expect(doc.capabilities.length).toBe(caps.length)
     const uris = new Set(doc.capabilities.map((c) => c.uri))
     expect(uris.size).toBe(caps.length)
+  })
+})
+
+// ── 4b. Web↔MCP tool-name bridge (W5 L1) ────────────────────────────────────
+
+describe('R-1 projection compiler — (e) web↔MCP tool-name bridge', () => {
+  const canonicalFaces = canonicalFacesRaw as unknown as CanonicalFacesData
+
+  it('resolves every distinct Vidhi live_tool name deterministically, and every resolved URI is a real live capability', () => {
+    const caps = getCatalog()
+    const liveToolNames = [...new Set(VIDHI_PRIMITIVES.map((p) => p.live_tool))].sort()
+    const entries = resolveWebToolBridge(liveToolNames, caps, TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL, canonicalFaces)
+    expect(entries.length).toBe(liveToolNames.length)
+
+    const catalogUris = new Set(caps.map((c) => c.uri))
+    const mapped = entries.filter((e) => e.uri !== null)
+    for (const e of mapped) {
+      expect(catalogUris.has(e.uri as string), `${e.name} resolved to a URI not in the live catalog: ${e.uri}`).toBe(true)
+    }
+
+    // Real, measured improvement over the pre-W5 hand-curated LIVE_TOOL_TO_RETRIEVAL
+    // (4/23) — asserted as a floor, not an exact count, so this doesn't rot as the
+    // catalog/canonical_faces.json evolve. If this ever regresses below 4 the
+    // generated bridge is doing WORSE than the map it's meant to widen — a real bug.
+    expect(mapped.length).toBeGreaterThan(4)
+
+    // Deterministic — same inputs, same output (no randomness/ordering nondeterminism).
+    const again = resolveWebToolBridge(liveToolNames, caps, TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL, canonicalFaces)
+    expect(JSON.stringify(again)).toBe(JSON.stringify(entries))
+  })
+
+  it('every mapped live_tool resolves to something getToolByName() can actually execute (URI-shaped names now supported)', () => {
+    const caps = getCatalog()
+    const liveToolNames = [...new Set(VIDHI_PRIMITIVES.map((p) => p.live_tool))].sort()
+    const entries = resolveWebToolBridge(liveToolNames, caps, TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL, canonicalFaces)
+    for (const e of entries.filter((x) => x.uri !== null)) {
+      expect(getToolByName(e.uri as string), `bridge resolved ${e.name} -> ${e.uri} but getToolByName() rejects it`).toBeDefined()
+    }
+  })
+
+  it('canonical_faces.json bridge: unmapped entries are reported honestly, never silently dropped', () => {
+    const caps = getCatalog()
+    const entries = resolveWebToolBridge(canonicalFaces.canonical_faces, caps, TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL, canonicalFaces)
+    expect(entries.length).toBe(canonicalFaces.canonical_faces.length)
+    for (const e of entries) {
+      if (e.uri === null) expect(e.resolution_kind).toBe('unmapped')
+      else expect(e.resolution_kind).not.toBe('unmapped')
+    }
   })
 })
 

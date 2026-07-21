@@ -1830,4 +1830,86 @@ assumption baked into amendment 2 above:**
   `worktree-agent-*` / `fix|feat/gochara-*` branch** — all D-4b-owned while that wave is
   active.
 
-Lane dispatch begins next entry.
+### W5 — Lane L0: D-5 unpark (2026-07-21)
+
+Flipped `RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED` default to `true` in `feature_flags.ts` —
+the breaking-release alias cutover, parked since W2 pending D-5 quiet. Re-verified the
+`catalog.ts`/`route.ts` bootstrap divergence (GT-40's 6 forward + 1 reverse items, plus
+the 7th `marsys://tool/router/route` silent-no-op found during W2) is still zero beyond
+the one accepted deliberate reverse item (`marsys://tool/synthesis/compose_large_n`) —
+neither file had moved since W2's fix landed. Legacy dual-list path remains fully
+reachable via explicit `MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false` override,
+proven by an updated `single_bootstrap_flag.test.ts`. The "list_changed" question in the
+plan item's "55+6, one breaking release, list_changed" description resolved to **not
+applicable**: the MCP tool surface exposed to clients is governed by a separate static
+whitelist (`tool_name_bridge.ts`'s `SURGICAL_TOOLS`) and a separate content-hash version
+(`capability_version.ts`), neither touched by which bootstrap path `route.ts` uses — no
+MCP `list_changed` notification is needed for this cutover.
+
+**Verified:** `platform/src/lib/retrieval` + `platform/src/app/api/retrieval` full
+suite 1347/1347 passed, 0 regressions. `tsc --noEmit` clean. One respawn cycle (stalled
+600s mid-run, likely the full-suite invocation; resumed with scope narrowed to the
+touched paths only — real work was already committed to the worktree, not lost).
+
+Landed on `impl/wave-5` (PR #684, `707fb5a9`) — **held unmerged**, mutex not claimed
+(D-4b still active per the coexistence check above).
+
+### W5 — Lane L1: generated MCP↔web tool bridge (2026-07-21)
+
+**Investigation, tracing an actual request** (`consult/route.ts` →
+`compileFloorForPlan` → `compiled_floor_adapter.ts` → `getToolByName` →
+`tool_name_bridge.ts`): the "hand-made bridge" the brief named is really **three**
+separate hand-maintained layers, not one — `tool_name_bridge.ts`'s `TOOL_NAME_TO_URI`
+(~89 legacy-name→URI entries, the actual dispatcher for every `plan.tool_calls` entry);
+`compiled_floor_adapter.ts`'s `LIVE_TOOL_TO_RETRIEVAL` (only **4 of 23** Vidhi
+`live_tool` names mapped — the real ~10%-floor-adoption bottleneck the W4 close named);
+and `canonical_faces.json`'s `deprecated_aliases` (D-2 Lane V-3, never chained to the
+other two). Confirmed the "23" by counting distinct `live_tool` values in
+`registry_data.ts`.
+
+**Root cause of the CR-118/`msr_sql` fast-fail, found live, not previously covered by
+any test:** `compiled_floor_adapter.ts`'s B.11 whole-chart-read floor injects literal
+registry URIs as `tool_name` (e.g. `marsys://tool/L2/query_signals`), but
+`TOOL_NAME_TO_URI`'s keys are names, never URIs — `getToolByName()` silently returned
+`undefined`, and `consult/route.ts`'s tool-fetch loop (`if (!t) return null`) dropped
+the tool with no error, no trace event. This is why `msr_sql` (and, per the W4 close
+finding, 2 of 3 fast-failing tools) never actually executed when injected via the
+floor path.
+
+**Built, as a 5th output of the existing W2 projection compiler (not a second,
+parallel one):** `web_tool_bridge_builder.ts` chains `getCatalog()` names +
+`canonical_faces.json` + the existing hand maps into a new generated artifact,
+`web_tool_bridge.generated.json` (emitted by `generate_projections.ts`, extended in
+place), consumed via a thin accessor (`generated_web_tool_bridge.ts`). `tool_name_bridge.ts`'s
+`resolveToolUri()` now resolves literal `marsys://` URIs directly (the CR-118 fix) and
+falls back to the generated bridge for any name outside the hand-curated map — kept as
+a documented hybrid rather than deleted outright, since the hand entries encode real
+migration history not recoverable from the catalog alone.
+`compiled_floor_adapter.ts` gained `resolveLiveTool()` (hand map → generated-bridge
+fallback), **raising Vidhi floor-primitive mappability from 4/23 to 11/23 uniformly
+across every family** (career/wealth/health/marriage/panoramic/general) — the fix lives
+in the shared compiler path, not a career-specific patch.
+
+**Honest residual, not silently closed:** 12 of 23 `live_tool` names remain genuinely
+unmapped — no retrieval-registry equivalent exists yet (e.g. `ganita_structural_get`,
+`bodha_signals_get`) — recorded per-name in the generated JSON with
+`resolution_kind: 'unmapped'`. Closing the remainder needs either new retrieval-registry
+capabilities or more curated aliases — named as a W5 follow-up lane, not claimed done.
+Also flagged, not fixed: the real MCP-side registration surface turned out to be spread
+across `register_p1_*.ts`/`register_p2_*.ts` files, not `platform-mcp/src/tools/
+registry_bridge.ts`'s 25 hand-written blocks as initially suspected — worth a look by
+whoever owns MCP-side registration count next.
+
+**Verified** (fresh integration onto `impl/wave-5`, re-run after merge, not just
+trusted from the worktree report): `tsc --noEmit --skipLibCheck` clean;
+`platform/src/lib/pipeline` + `platform/src/lib/retrieval/registry` 980/1105 passed
+(125 skipped), 0 failed. The lane's own worktree report additionally verified the full
+`platform` suite (563 files/6388 tests passed, 0 failed) against a fresh detached
+`main` baseline (562/6379, 0 failed — diff is exactly the new tests) and confirmed
+`platform-mcp`'s pre-existing 18-file/75-test failures are byte-identical on `main`,
+i.e. not introduced by this lane.
+
+Landed on `impl/wave-5` (commit pending, this entry) — held unmerged alongside L0,
+same mutex disposition.
+
+Lane dispatch continues next entry (L2–L10 + V5 gate).
