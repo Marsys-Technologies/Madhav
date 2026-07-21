@@ -2092,4 +2092,66 @@ unmerged pending the D-4b mutex. Remaining: L5 (spine bundles), L6 (funnel
 batching/pooling), L7 (QoS/fairness/job queue), L9 (verdict-first streaming),
 L10 (battery baselines), then the V5 gate itself.
 
-Lane dispatch continues next entry (L5–L7, L9–L10 + V5 gate).
+### W5 — Lanes L7, L9, L10 (2026-07-21)
+
+**L7 — QoS priority classes + fairness dispatch queue.** No queueing/
+concurrency-limiting mechanism existed anywhere; the only multi-tool dispatch
+path (`consult/route.ts`'s `Promise.all` fan-out) was unbounded. Axis
+decision, documented in the module's own banner: rejected L2's
+mcp_profile (full/compact/consult) axis for QoS priority — plan §9.7 W-30
+names the real axis "interactive > background" (request-shape: is a human
+waiting synchronously right now), orthogonal to caller entitlement; a
+consult-scope OAuth caller can be a live interactive user. Built
+`platform/src/lib/retrieval/qos/dispatch_queue.ts`: bounded concurrency, two
+priority lanes via weighted round-robin plus a hard anti-starvation
+force-promotion bound, per-principal fair-share dequeuing, and a
+`QueueSaturatedError` refuse-path (queue/refuse, never thin quality). Wired
+into `consult/route.ts` as `priorityClass:'interactive'`, keyed by `user.uid`
+— bounds/fair-shares capacity across concurrent requests from different
+users, the real contention scenario; single-request behavior unchanged.
+`prashna_ask`'s own job-handle contract confirmed W6 scope, not built here —
+consistent with L2's own independent conclusion. 10 new tests under
+simulated concurrent load. **L7: CLOSED.** PR #684, `ca5d4875`.
+
+**L9 — Verdict-first streaming + time-to-first-verdict SLO.** Investigation
+found this partially already existed: `buildChartOrientation` runs
+concurrently with the planner/tool-fetch, and `data-orientation` already
+fired at stream start. Two real gaps closed: no stage-timing metric measured
+*when* it fired; and if `buildChartOrientation` threw, the event was
+silently skipped entirely (a genuine coverage gap for that request class,
+not hypothetical). Added `first_verdict` stage + `TIME_TO_FIRST_VERDICT_SLO_MS`
+(p50 12s / p95 20s, justified against the W4 baseline: ~10.75s pre-synthesis
+vs. 38.7s synthesis). `run_adapter_dispatch.ts`'s new
+`buildFirstVerdictEmission()` always emits `data-orientation` (a degraded
+fallback block when orientation is null, never silently omitted) and a
+`data-stage first_verdict` event with real elapsed ms. Merge-resolved cleanly
+against L7 (both touched `consult/route.ts`, disjoint regions, zero
+conflicts via `git merge-file`). 10 new tests. **L9: CLOSED.** PR #684,
+`1aafd72f`.
+
+**L10 — Multi-family battery/baseline harness + concurrency runs.** Extended
+the existing `planner_smoke_runner.ts` rubric-battery pattern to the
+deterministic W4 router (no LLM credentials needed, CI-safe);
+applied `BASELINE_PROBES.md`'s capture-now/diff-later methodology via a
+stable-stringify + sha256 fingerprint of the compiled Vidhi contract. Family
+list (wealth/career/health/marriage/panoramic/general) confirmed from
+`registry_data.ts`'s `VIDHI_INTENT_FLOORS`. Built
+`platform/tests/eval/w5_battery/` (30 hand-verified NL queries, 5/family) and
+**ran it now**: full 60/60 (30 queries × 2 charts — canonical `482012f1` +
+SAFE `1c826d5a`) — 100% routing accuracy sequential and concurrent (N=8),
+zero chart-isolation violations (the LCA-17-shaped cross-chart leak check),
+zero readback diffs. **Honest finding, quantified per-family for the first
+time:** health/marriage floors currently have 0% web-executable primitives —
+the MCP↔web namespace gap L1 partially closed (4/23→11/23 uniformly) remains
+fully open for those two families specifically. Baseline artifacts:
+`W5_BATTERY_BASELINE_v1_0.md` + `w5_battery_baseline_raw.json`, explicitly
+naming what's still needed for the true final V5-gate run (re-run after
+L5/L6 land, a real staging/prod load test, CI wiring). **L10: CLOSED.**
+PR #684, `74eb3528`.
+
+**Nine of eleven lanes now landed** (L0, L1, L2, L3, L4, L7, L8, L9, L10),
+all held unmerged pending the D-4b mutex. Remaining: L5 (spine bundles), L6
+(funnel batching/pooling), then the final V5 gate re-run against everything
+integrated.
+
+Lane dispatch continues next entry (L5–L6 + V5 gate).
