@@ -115,6 +115,8 @@ import { registerPrompts } from './prompts/index.js'
 import { registerVidhiPlanTool } from './tools/register_vidhi_plan.js'
 // W6 — prashna_ask: job-handle-first full-loop engine call (Task 7)
 import { registerPrashnaAskTool } from './tools/register_prashna_ask.js'
+// W6 Part 3 — prashna_status: poll a prashna_ask job's progress/final result
+import { registerPrashnaStatusTool } from './tools/register_prashna_status.js'
 
 const app = express()
 app.use(express.json())
@@ -348,6 +350,14 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // handler" design.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerPrashnaAskTool(server as any, principal, mcpProfile)
+  // W6 Part 3 — prashna_status is registered alongside prashna_ask, BEFORE the
+  // profile gate, for the same reason: it is not part of the retrieval-registry
+  // catalog the generated MCP_SURFACE_PROFILES manifest is built from, so
+  // registering it after the gate would silently block it for 'compact' too.
+  // Polling is harmless for every profile (including 'consult', which could
+  // never have produced a job_id in the first place — it just gets the honest
+  // "unknown or expired job_id" error), so no handler-level profile gate here.
+  registerPrashnaStatusTool(server as unknown as import('./tools/register_prashna_status.js').PrashnaStatusRegisteringServer)
 
   const profileGate = applyProfileGate(server as unknown as ToolRegisteringServer, mcpProfile)
 
@@ -572,7 +582,8 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // D-2 Lane V-2 — +1 plan_retrieval (Vidhi Engine meta-tool):                  +1
 // D-2 Lane V-3 — +2 scan_fetch_signals, reading_notes_get:                    +2
 // W6 Task 7 — +1 prashna_ask (job-handle-first full-loop engine call):        +1
-const REGISTERED_TOOL_COUNT = 121
+// W6 Part 3 — +1 prashna_status (poll a prashna_ask job's progress/result):   +1
+const REGISTERED_TOOL_COUNT = 122
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
