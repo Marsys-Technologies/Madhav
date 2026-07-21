@@ -289,6 +289,43 @@ export async function POST(request: Request) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      try {
+        await runDispatchLoop(controller)
+      } catch (err) {
+        // Anything unexpected in the loop body (a non-serializable value in
+        // toolResults, an emitProgress/JSON.stringify failure, etc.) must not
+        // surface to the client as a bare stream-read exception with no
+        // trace_id/chart_id to correlate it against. Emit a structured error
+        // line — same NDJSON framing as `progress`/`final` — then close.
+        console.error('[mcp:prashna_ask] stream body failed', err instanceof Error ? err.message : String(err))
+        try {
+          controller.enqueue(
+            encoder.encode(
+              JSON.stringify({
+                event: 'error',
+                trace_id: queryId,
+                chart_id: chartId,
+                message: err instanceof Error ? err.message : String(err),
+              }) + '\n',
+            ),
+          )
+          // Close normally so the reader actually receives the error line above.
+          // ReadableStreamDefaultController.error() clears the internal queue —
+          // calling it AFTER a successful enqueue would discard that chunk
+          // before any reader consumes it, defeating the whole point of
+          // reporting a structured error. controller.error() is reserved
+          // below for the case where we couldn't even enqueue the error line.
+          controller.close()
+        } catch {
+          controller.error(err)
+        }
+        return
+      }
+      controller.close()
+    },
+  })
+
+  async function runDispatchLoop(controller: ReadableStreamDefaultController<Uint8Array>): Promise<void> {
       const toolResults: Array<{ tool_name: string; bundle: import('@/lib/retrieval/shared_types').ToolBundle }> = []
       const toolEventLog: ToolDispatchOutcome[] = []
       const judgmentFlags: string[] = []
@@ -375,9 +412,7 @@ export async function POST(request: Request) {
       }
 
       controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...finalBody }) + '\n'))
-      controller.close()
-    },
-  })
+  }
 
   return new Response(stream, {
     status: 200,

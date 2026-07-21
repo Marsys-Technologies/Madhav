@@ -152,6 +152,18 @@ describe('callPrashnaAskEngine', () => {
     expect(result).toEqual(planResponse)
   })
 
+  it('resolves an "event":"error" line as a bridge error envelope, not a fake final payload', async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([
+        JSON.stringify({ event: 'progress', tools_dispatched_count: 1, cap_ceiling: { maxCalls: 10, maxWallClockMs: 120_000 }, elapsed_ms: 10, last_tool: 'chart_facts_query' }),
+        JSON.stringify({ event: 'error', trace_id: 't1', chart_id: 'c1', message: 'registry lookup exploded' }),
+      ])
+    )
+    const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
+    expect(result.ok).toBe(false)
+    expect((result as { error: { message: string } }).error.message).toContain('registry lookup exploded')
+  })
+
   it('does not require onProgress — a caller that omits it sees unchanged behavior', async () => {
     const planResponse = { ok: true, trace_id: 't9', chart_id: 'c1', outcome: 'plan' }
     mockFetch.mockResolvedValueOnce(

@@ -279,3 +279,25 @@ describe('POST /api/mcp/prashna_ask — NO-LEAKAGE', () => {
     expect(mockGetToolByName).not.toHaveBeenCalledWith('marsys://tool/L5/lel_query')
   })
 })
+
+describe('POST /api/mcp/prashna_ask — stream error handling', () => {
+  it('emits a structured error event with trace_id/chart_id instead of a bare exception when the dispatch loop throws unexpectedly', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    // getToolByName itself throwing (not returning undefined) is not wrapped by
+    // the existing per-tool try/catch (which only guards tool.retrieve()) — it
+    // propagates out of the dispatch loop, exercising the stream-level catch.
+    mockGetToolByName.mockImplementation(() => {
+      throw new Error('registry lookup exploded')
+    })
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+    expect(res.status).toBe(200) // headers already sent by the time the body streams
+    const lines = await readNdjson(res)
+    const errorLine = lines.find((l) => l.event === 'error')
+    expect(errorLine).toBeDefined()
+    expect(errorLine!.trace_id).toBeTruthy()
+    expect(errorLine!.chart_id).toBe(CHART)
+    expect(errorLine!.message).toContain('registry lookup exploded')
+    // No 'final' line — the loop errored before reaching it.
+    expect(lines.some((l) => l.event === 'final')).toBe(false)
+  })
+})

@@ -246,6 +246,17 @@ export async function callPrashnaAskEngine(
       final = rest as unknown as PrashnaAskEngineResponse
       return
     }
+    if (parsed['event'] === 'error') {
+      // The route's dispatch loop threw unexpectedly and closed the stream
+      // with a structured error line instead of a `final` payload. This must
+      // resolve as a bridge error, not be mistaken for a genuine engine
+      // response — `parsed` here is `{event, trace_id, chart_id, message}`,
+      // not a `PrashnaAskEngineResponse` shape.
+      final = buildBridgeErrorEnvelope(
+        `Engine stream error: ${typeof parsed['message'] === 'string' ? parsed['message'] : 'unknown error'}`
+      )
+      return
+    }
     // No `event` discriminator at all — one of the route's non-streamed
     // early-return paths (400/401/clarification_needed/fault), which return a
     // single plain JSON object body, not NDJSON.
