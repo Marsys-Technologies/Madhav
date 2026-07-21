@@ -553,12 +553,22 @@ const CAREER_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'divisional_facts', order: 4, band: 'acharya_floor', args_override: { varga: 'D10' } },
   { primitive_id: 'divisional_facts', order: 5, band: 'acharya_floor', args_override: { varga: 'D9' } },
   { primitive_id: 'varga_ratification', order: 6, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D10'] } },
-  { primitive_id: 'dhana_yoga_scan', order: 7, band: 'acharya_floor', args_override: { domain: 'career', family: 'raja' } },
-  { primitive_id: 'nakshatra_semantics', order: 8, band: 'acharya_floor' },
-  { primitive_id: 'mechanism_read', order: 9, band: 'acharya_floor' },
-  { primitive_id: 'dasha_spine_lord_capability', order: 10, band: 'machine_band' },
-  { primitive_id: 'taranga_curve', order: 11, band: 'machine_band', args_override: { domain: 'career' } },
-  { primitive_id: 'intervention_synthesis', order: 12, band: 'machine_band' },
+  // §B0.4 mandatory-surface floor-completeness additions (RETRIEVAL_PLANE_ELEVATION_PLAN §R-3.3):
+  // brings career to the full §B0.4 tag set held by the flagship wealth floor.
+  { primitive_id: 'chalit_cusp_read', order: 7, band: 'acharya_floor' },
+  { primitive_id: 'bhava_bala_scan', order: 8, band: 'acharya_floor' },
+  { primitive_id: 'ashtakavarga_scan', order: 9, band: 'acharya_floor' },
+  { primitive_id: 'sensitive_degree_check', order: 10, band: 'acharya_floor' },
+  { primitive_id: 'karakamsa_read', order: 11, band: 'acharya_floor' },
+  { primitive_id: 'kp_cusp_sublord_read', order: 12, band: 'acharya_floor' },
+  { primitive_id: 'sudarshana_agreement_check', order: 13, band: 'acharya_floor' },
+  { primitive_id: 'bhavat_bhavam_check', order: 14, band: 'acharya_floor' },
+  { primitive_id: 'dhana_yoga_scan', order: 15, band: 'acharya_floor', args_override: { domain: 'career', family: 'raja' } },
+  { primitive_id: 'nakshatra_semantics', order: 16, band: 'acharya_floor' },
+  { primitive_id: 'mechanism_read', order: 17, band: 'acharya_floor' },
+  { primitive_id: 'dasha_spine_lord_capability', order: 18, band: 'machine_band' },
+  { primitive_id: 'taranga_curve', order: 19, band: 'machine_band', args_override: { domain: 'career' } },
+  { primitive_id: 'intervention_synthesis', order: 20, band: 'machine_band' },
 ];
 
 const HEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
@@ -569,9 +579,20 @@ const HEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'sensitive_degree_check', order: 5, band: 'acharya_floor' },
   { primitive_id: 'divisional_facts', order: 6, band: 'acharya_floor', args_override: { varga: 'D6' } },
   { primitive_id: 'dosha_scan', order: 7, band: 'acharya_floor' },
-  { primitive_id: 'dasha_spine_lord_capability', order: 8, band: 'machine_band' },
-  { primitive_id: 'taranga_curve', order: 9, band: 'machine_band', args_override: { domain: 'health' } },
-  { primitive_id: 'remedy_scan', order: 10, band: 'machine_band', args_override: { domain: 'health' } },
+  // §B0.4 mandatory-surface floor-completeness additions (RETRIEVAL_PLANE_ELEVATION_PLAN §R-3.3):
+  // brings health to the full §B0.4 tag set held by the flagship wealth floor.
+  // varga_ratification carries the varga_ratification_divergence tag; D1/D6/D9 for roga vs. stamina delivery.
+  { primitive_id: 'varga_ratification', order: 8, band: 'acharya_floor', args_override: { vargas: ['D1', 'D6', 'D9'] } },
+  { primitive_id: 'chalit_cusp_read', order: 9, band: 'acharya_floor' },
+  { primitive_id: 'bhava_bala_scan', order: 10, band: 'acharya_floor' },
+  { primitive_id: 'ashtakavarga_scan', order: 11, band: 'acharya_floor' },
+  { primitive_id: 'karakamsa_read', order: 12, band: 'acharya_floor' },
+  { primitive_id: 'kp_cusp_sublord_read', order: 13, band: 'acharya_floor' },
+  { primitive_id: 'sudarshana_agreement_check', order: 14, band: 'acharya_floor' },
+  { primitive_id: 'bhavat_bhavam_check', order: 15, band: 'acharya_floor' },
+  { primitive_id: 'dasha_spine_lord_capability', order: 16, band: 'machine_band' },
+  { primitive_id: 'taranga_curve', order: 17, band: 'machine_band', args_override: { domain: 'health' } },
+  { primitive_id: 'remedy_scan', order: 18, band: 'machine_band', args_override: { domain: 'health' } },
 ];
 
 const MARRIAGE_DEEPDIVE_ITEMS: readonly FloorItem[] = [
@@ -582,8 +603,17 @@ const MARRIAGE_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'varga_ratification', order: 5, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9'] } },
   { primitive_id: 'dosha_scan', order: 6, band: 'acharya_floor' },
   { primitive_id: 'karakamsa_read', order: 7, band: 'acharya_floor' },
-  { primitive_id: 'dasha_spine_lord_capability', order: 8, band: 'machine_band' },
-  { primitive_id: 'remedy_scan', order: 9, band: 'machine_band', args_override: { domain: 'marriage' } },
+  // §B0.4 mandatory-surface floor-completeness additions (RETRIEVAL_PLANE_ELEVATION_PLAN §R-3.3):
+  // brings marriage to the full §B0.4 tag set held by the flagship wealth floor.
+  { primitive_id: 'chalit_cusp_read', order: 8, band: 'acharya_floor' },
+  { primitive_id: 'bhava_bala_scan', order: 9, band: 'acharya_floor' },
+  { primitive_id: 'ashtakavarga_scan', order: 10, band: 'acharya_floor' },
+  { primitive_id: 'sensitive_degree_check', order: 11, band: 'acharya_floor' },
+  { primitive_id: 'kp_cusp_sublord_read', order: 12, band: 'acharya_floor' },
+  { primitive_id: 'sudarshana_agreement_check', order: 13, band: 'acharya_floor' },
+  { primitive_id: 'bhavat_bhavam_check', order: 14, band: 'acharya_floor' },
+  { primitive_id: 'dasha_spine_lord_capability', order: 15, band: 'machine_band' },
+  { primitive_id: 'remedy_scan', order: 16, band: 'machine_band', args_override: { domain: 'marriage' } },
 ];
 
 /** Narrow, structure-depth — "show me my D1" canonical example (design §3 §8). */
