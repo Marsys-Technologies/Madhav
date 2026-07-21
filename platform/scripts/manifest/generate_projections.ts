@@ -14,6 +14,16 @@
  * `codegen:vidhi`/`codegen:vidhi:check` — confirmed present in this worktree's
  * git status at lane open, a concurrent W2 lane's work) — NOT duplicated here.
  *
+ * (e) W5 Lane L4 addition ("tool-search metadata", standing W5 scope line):
+ * `tool_search_index.generated.json` — a normalized search-field set (name,
+ * description, family/domain tags, keywords) for EVERY live capability, no
+ * projection_tags filter (unlike a/b above, search must cover the whole
+ * catalog, not just chat/MCP-tagged subsets). Derivation lives in
+ * `src/lib/retrieval/registry/tool_search.ts` (not here) so the LIVE
+ * `tool_search` MCP tool (`layers/L0_brahmagyan/tool_search.ts`, bridged in
+ * `registry_bridge.ts`) shares the exact same function — this JSON artifact is
+ * a static snapshot for census/CI/docs use, not itself read at serve time.
+ *
  * Every artifact this script writes is a NEW generated file alongside the
  * existing hand-written surfaces (TOOL_CONTRACTS, registry_bridge.ts) — it
  * does not modify, import from, or get imported by either live-serving path.
@@ -41,6 +51,7 @@ import {
   buildAllFamilyToolDefs,
   findFamilyNameCollisions,
   MODEL_FAMILIES,
+  buildToolSearchIndex,
   resolveType,
 } from './projection_builders'
 import { extractRegistryBridgeToolsFromDisk, REGISTRY_BRIDGE_PATH } from './extract_registry_bridge_tools'
@@ -177,6 +188,20 @@ function main(): void {
     overrides_declared_per_family: familyOverrideCounts,
     name_collisions_per_family: familyCollisions,
     tool_defs: familyToolDefs,
+  })
+
+  // (g) W5 Lane L4 — tool-search metadata: normalized search fields for every
+  // live capability (uri/name/description/family/keywords), the same index the
+  // live `tool_search` capability (layers/L0_brahmagyan/tool_search.ts) builds
+  // from getCatalog() at request time. Generated here purely for census/CI/docs
+  // visibility — this JSON artifact is not itself read at serve time.
+  const toolSearchIndex = buildToolSearchIndex(caps)
+  writeJson('tool_search_index.generated.json', {
+    generated_at: generatedAt,
+    generator: 'generate_projections.ts',
+    source: 'getCatalog() capabilities — ALL capabilities, no projection_tags filter (search covers the full catalog)',
+    total: toolSearchIndex.length,
+    entries: toolSearchIndex,
   })
 
   // ── Comparison (a): generated chat defs vs the real served TOOL_CONTRACTS ──
@@ -413,7 +438,28 @@ mock overrides exercising every merge path: \`description_override\`, \`name_ove
 \`strict_schema\`'s additionalProperties:false/all-required transform,
 \`input_examples\` pass-through, \`search_result_content_block\`).
 
-## 7. Honesty notes / what's NOT done this lane
+## 7. (g) W5 Lane L4 — tool-search index (\`tool_search_index.generated.json\`)
+
+**${toolSearchIndex.length}** entries — one per live capability, no filtering. Each entry
+carries \`uri\`/\`name\`/\`type\`/\`layer\`/\`scope\`/\`family\` (the descriptor's own
+\`archetype\`)/\`tool_role\`/\`short_label\`/\`one_line\`/\`description\`/\`keywords\` (a deduped,
+sorted, tokenized set derived from name+description+display+layer+archetype+tool_role+
+traversal_level+projection_tags — no field invented, everything traces to a real descriptor
+property per B.10's "don't fabricate" discipline applied to metadata, not just numbers).
+
+Live-served counterpart: \`marsys://tool/L0/tool_search\`, bridged onto MCP as the
+\`tool_search\` tool (\`registry_bridge.ts\`) — same \`buildToolSearchIndex\`/\`searchToolIndex\`
+functions, called against the LIVE \`getCatalog()\` on every request (not this static
+snapshot), so a stale generated JSON can never diverge from what a caller actually gets back.
+
+**Scope of "search" (explicit, not a silent limitation):** case-insensitive keyword/substring
+match over tokenized fields, scored (name match > keyword match > description substring).
+NOT fuzzy matching, NOT semantic/embedding search (that would be a \`vector_search\`-style
+corpus build — materially heavier, out of scope for this lane's first cut). A query with zero
+token overlap against every entry returns an honest \`total_matches: 0\`, never a fabricated
+best-effort guess.
+
+## 8. Honesty notes / what's NOT done this lane
 
 - Plan item 2c ("the vidhi primitive rows' tool bindings") is **not** covered by this
   generator — it is the separately-landed \`codegen:vidhi\`/\`codegen:vidhi:check\` lane

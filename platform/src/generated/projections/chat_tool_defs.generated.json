@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-21T15:22:00.416Z",
+  "generated_at": "2026-07-21T15:24:52.617Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"chat\"",
-  "total": 76,
+  "total": 77,
   "tool_defs": [
     {
       "name": "assess_career",
@@ -3284,6 +3284,34 @@
       "destructive": false,
       "annotations": {
         "title": "Synergy Pipeline",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tool_search",
+      "description": "Keyword search over the full MARSYS tool/resource/prompt catalog (~120 capabilities across L0-L5). Returns matching tool names, descriptions, and layer/domain tags — NOT the full catalog. Use this before assuming a needed capability does not exist, or when the exact tool name is unknown (e.g. query=\"dasha activation\", \"muhurta\", \"yoga firings\", \"remedies\"). Case-insensitive keyword/substring match across name, description, layer, and domain tags — not fuzzy or semantic search; a query with zero token overlap against every catalog entry returns an honest empty result, not a fabricated best-effort guess.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Keyword(s) describing the capability you need (e.g. \"dasha\", \"muhurta timing\", \"remedy for saturn\")."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max matching tools to return (default 20, max 100)."
+          }
+        }
+      },
+      "uri": "marsys://tool/L0/tool_search",
+      "layer": "L0",
+      "read_only": true,
+      "destructive": false,
+      "annotations": {
+        "title": "Tool search",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,

@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-21T15:22:00.416Z",
+  "generated_at": "2026-07-21T15:24:52.617Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 162,
+  "total": 163,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -2073,6 +2073,39 @@
       ],
       "short_label": "Resolve Entity",
       "one_line": "Resolve a Jyotish entity name (Sanskrit or English) to its canonical form.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L0/tool_search",
+      "type": "tool",
+      "layer": "L0",
+      "name": "tool_search",
+      "scope": "global",
+      "archetype": "orientation_digest",
+      "traversal_level": "L-ORIENT",
+      "tool_role": "umbrella",
+      "data_source": "computed",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [],
+      "input_param_count": 2,
+      "projection_tags": [
+        "mcp_full",
+        "mcp_consult",
+        "chat"
+      ],
+      "short_label": "Tool search",
+      "one_line": "Keyword search over the full MARSYS tool/resource/prompt catalog.",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -5431,7 +5464,7 @@
   ],
   "summary": {
     "by_layer": {
-      "L0": 62,
+      "L0": 63,
       "L2": 30,
       "L3": 14,
       "L1": 34,
@@ -5441,14 +5474,14 @@
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 156
+      "tool": 157
     },
     "by_scope": {
-      "global": 66,
+      "global": 67,
       "per_chart": 96
     },
     "by_archetype": {
-      "orientation_digest": 10,
+      "orientation_digest": 11,
       "flat_fact": 73,
       "calibration": 19,
       "rich_relational": 20,
@@ -5458,7 +5491,7 @@
       "graph_traversal": 3
     },
     "by_tool_role": {
-      "umbrella": 18,
+      "umbrella": 19,
       "leaf": 81,
       "quality": 19,
       "drill": 19,
@@ -5469,14 +5502,14 @@
     },
     "by_data_source": {
       "stored": 142,
-      "computed": 19,
+      "computed": 20,
       "hybrid": 1
     },
     "by_projection_tag": {
-      "chat": 81,
-      "mcp_full": 160,
+      "chat": 82,
+      "mcp_full": 161,
       "mcp_compact": 81,
-      "mcp_consult": 13
+      "mcp_consult": 14
     },
     "no_projection_tags": [
       "marsys://tool/channel/chat_dispatch",

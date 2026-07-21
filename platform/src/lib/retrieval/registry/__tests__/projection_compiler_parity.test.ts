@@ -37,6 +37,8 @@ import {
   buildMcpToolRegistrations,
   buildMcpNonToolRegistrations,
   buildDocsResourceCatalog,
+  buildToolSearchIndex,
+  searchToolIndex,
   resolveType,
   toJsonSchema,
   MCP_NAME_PATTERN,
@@ -298,7 +300,86 @@ describe('R-1 projection compiler — (e) web↔MCP tool-name bridge', () => {
   })
 })
 
-// ── 5. Shared helper unit coverage ───────────────────────────────────────────
+// ── 6. Shared helper unit coverage ───────────────────────────────────────────
+
+// ── 6. (f) W5 Lane L4 — tool-search index + search ───────────────────────────
+
+describe('R-1 projection compiler — (f) tool-search index (W5 Lane L4)', () => {
+  it('index covers every live getCatalog() capability, 1:1, no drops or dupes (no projection_tags filter)', () => {
+    const caps = getCatalog()
+    const index = buildToolSearchIndex(caps)
+    expect(index.length).toBe(caps.length)
+    const uris = new Set(index.map((e) => e.uri))
+    expect(uris.size).toBe(caps.length)
+    for (const cap of caps) {
+      expect(uris.has(cap.uri), `missing tool-search index entry for ${cap.uri}`).toBe(true)
+    }
+  })
+
+  it('every index entry has a non-empty name, description, and at least one keyword', () => {
+    const caps = getCatalog()
+    const index = buildToolSearchIndex(caps)
+    for (const entry of index) {
+      expect(entry.name.length, `empty name for ${entry.uri}`).toBeGreaterThan(0)
+      expect(entry.description.length, `empty description for ${entry.uri}`).toBeGreaterThan(0)
+      expect(entry.keywords.length, `no keywords derived for ${entry.uri}`).toBeGreaterThan(0)
+      // keywords are deduped
+      expect(new Set(entry.keywords).size).toBe(entry.keywords.length)
+    }
+  })
+
+  it('a representative keyword search ("dasha") returns the expected relevant subset and excludes irrelevant tools', () => {
+    const caps = getCatalog()
+    const index = buildToolSearchIndex(caps)
+    const result = searchToolIndex(index, 'dasha', 50)
+
+    expect(result.total_matches).toBeGreaterThan(0)
+    const names = new Set(result.results.map((r) => r.name))
+    // The registry's real, known dasha-family capabilities must appear.
+    const expectedSomeOf = ['get_dashas', 'ganita_dashas_get', 'ganita_dasha_periods_get']
+    const foundAny = expectedSomeOf.some((n) => names.has(n))
+    expect(foundAny, `expected at least one of ${expectedSomeOf.join(', ')} in dasha search results`).toBe(true)
+
+    // Irrelevant, unambiguously non-dasha capabilities must NOT appear.
+    const irrelevant = ['query_vastu_directions', 'ephemeris_cache_year']
+    for (const n of irrelevant) {
+      expect(names.has(n), `unexpected irrelevant match "${n}" in dasha search results`).toBe(false)
+    }
+  })
+
+  it('a second representative search ("muhurta") is disjoint from an unrelated query ("vastu")', () => {
+    const caps = getCatalog()
+    const index = buildToolSearchIndex(caps)
+    const muhurta = searchToolIndex(index, 'muhurta', 50)
+    const vastu = searchToolIndex(index, 'vastu', 50)
+    expect(muhurta.total_matches).toBeGreaterThan(0)
+    expect(vastu.total_matches).toBeGreaterThan(0)
+    const muhurtaUris = new Set(muhurta.results.map((r) => r.uri))
+    const vastuUris = new Set(vastu.results.map((r) => r.uri))
+    const overlap = [...muhurtaUris].filter((u) => vastuUris.has(u))
+    expect(overlap).toEqual([])
+  })
+
+  it('an honest empty result for a query with zero token overlap (never a fabricated best-effort guess)', () => {
+    const caps = getCatalog()
+    const index = buildToolSearchIndex(caps)
+    const result = searchToolIndex(index, 'zzznonexistentqueryxyz123', 20)
+    expect(result.total_matches).toBe(0)
+    expect(result.results).toEqual([])
+  })
+
+  it('results are capped at the requested limit and sorted by descending score', () => {
+    const caps = getCatalog()
+    const index = buildToolSearchIndex(caps)
+    const result = searchToolIndex(index, 'chart', 3)
+    expect(result.results.length).toBeLessThanOrEqual(3)
+    for (let i = 1; i < result.results.length; i++) {
+      expect(result.results[i - 1]!.score).toBeGreaterThanOrEqual(result.results[i]!.score)
+    }
+  })
+})
+
+// ── 7. Shared helper unit coverage ───────────────────────────────────────────
 
 describe('R-1 projection compiler — toJsonSchema()', () => {
   it('wraps a ParameterSchema map into a valid object-typed JSON Schema, no fabricated bounds', () => {

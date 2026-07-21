@@ -1,8 +1,8 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-07-21T15:22:00.416Z",
-  "total": 162,
+  "generated_at": "2026-07-21T15:24:52.617Z",
+  "total": 163,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -954,6 +954,22 @@
       "tool_role": "leaf",
       "projection_tags": [
         "mcp_full"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L0/tool_search",
+      "type": "tool",
+      "layer": "L0",
+      "name": "tool_search",
+      "short_label": "Tool search",
+      "one_line": "Keyword search over the full MARSYS tool/resource/prompt catalog.",
+      "scope": "global",
+      "archetype": "orientation_digest",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "mcp_full",
+        "mcp_consult",
+        "chat"
       ]
     },
     {
@@ -2446,7 +2462,7 @@
   ],
   "summary": {
     "by_layer": {
-      "L0": 62,
+      "L0": 63,
       "L2": 30,
       "L3": 14,
       "L1": 34,
@@ -2456,7 +2472,7 @@
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 156
+      "tool": 157
     }
   }
 }

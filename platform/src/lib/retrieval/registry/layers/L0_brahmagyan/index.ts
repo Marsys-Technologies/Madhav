@@ -66,6 +66,8 @@ import { queryVicharaConstantsCapability } from './query_vichara_constants'
 // the real underlying compute service instead, same "compute service, not a dead table"
 // shape as ka_graha_sancara). Deliberately placed in L0, not L3_kala — hard constraint.
 import { callPanchangaServiceCapability } from './call_panchanga_service'
+// W5 Lane L4: tool-search metadata — keyword search over the full ~120-capability catalog
+import { toolSearchCapability } from './tool_search'
 
 export const L0_CAPABILITIES = [
   // Stream A: foundation + ontology
@@ -116,6 +118,8 @@ export const L0_CAPABILITIES = [
   queryFormulaConstantsCapability,
   queryVicharaConstantsCapability,
   callPanchangaServiceCapability,
+  // W5 Lane L4: tool-search metadata
+  toolSearchCapability,
 ] as const
 
 export function registerL0Capabilities(): void {
@@ -177,4 +181,5 @@ export {
   queryDashaSystemsCapability,
   queryFormulaConstantsCapability,
   queryVicharaConstantsCapability,
+  toolSearchCapability,
 }

@@ -41,6 +41,22 @@ import type {
   InputSchema,
   ParameterSchema,
 } from '../../src/lib/retrieval/registry/types'
+// W5 Lane L4 ("tool-search metadata"): the search-index derivation lives in
+// src/lib (not here) because the LIVE `tool_search` capability
+// (layers/L0_brahmagyan/tool_search.ts) needs it too, and the live serving
+// path must never reach into scripts/ (this is the same directional rule the
+// module doc above states for getCatalog()/CONTRACT_CATALOG — scripts/ imports
+// FROM src/lib, never the reverse). Re-exported here so both the CLI generator
+// below and the CI parity test have one import path for all five projections.
+export {
+  buildToolSearchIndex,
+  buildToolSearchIndexEntry,
+  searchToolIndex,
+  tokenize as toolSearchTokenize,
+  type ToolSearchIndexEntry,
+  type ToolSearchMatch,
+  type ToolSearchResult,
+} from '../../src/lib/retrieval/registry/tool_search'
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 

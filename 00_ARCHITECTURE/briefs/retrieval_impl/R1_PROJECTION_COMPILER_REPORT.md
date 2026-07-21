@@ -3,7 +3,7 @@ artifact: R1_PROJECTION_COMPILER_REPORT.md
 canonical_id: R1_PROJECTION_COMPILER_REPORT
 version: 1.0
 status: GENERATED — regenerate via `npx tsx --conditions=react-server scripts/manifest/generate_projections.ts`
-generated_at: 2026-07-21T15:22:00.416Z
+generated_at: 2026-07-21T15:24:52.617Z
 generator: platform/scripts/manifest/generate_projections.ts
 ---
 
@@ -14,9 +14,9 @@ regenerated, not hand-maintained — see the generator's own header comment for 
 
 ## 0. Live catalog snapshot
 
-`getCatalog()` returned **162** live capabilities at generation time.
+`getCatalog()` returned **163** live capabilities at generation time.
 
-By resolved type: **tool**=156, **resource**=5, **prompt**=1.
+By resolved type: **tool**=157, **resource**=5, **prompt**=1.
 
 (6 of these resolve `type` via a `primitive_type` fallback — a real, pre-existing
 registry inconsistency this generator tolerates rather than papers over; see
@@ -25,7 +25,7 @@ registry inconsistency this generator tolerates rather than papers over; see
 ## 1. (a) Chat tool-def projection vs. the real served chat contract catalog
 
 Generated chat projection (type=tool + `projection_tags` includes `chat`):
-**76** tool defs.
+**77** tool defs.
 
 Real served chat contract catalog (`TOOL_CONTRACTS`, `platform/src/lib/contract/registry.ts`):
 **5** entries. (The plan's GT-3 citation says 6; this worktree's live
@@ -35,13 +35,13 @@ Real served chat contract catalog (`TOOL_CONTRACTS`, `platform/src/lib/contract/
 - Only in `TOOL_CONTRACTS` (not reachable via the generated chat projection today):
   read_chapter, read_classical_text, search_classical_texts
 - Only in the generated projection (new capabilities `TOOL_CONTRACTS` never covered):
-  74 names — see `comparison_report.generated.json`
+  75 names — see `comparison_report.generated.json`
   `chat_projection.only_in_generated` for the full list (too long to inline).
 
 **Reading:** `TOOL_CONTRACTS` is a hand-authored 5-classical-text-tool surface that predates
 the registry (`lib/retrieve/index.ts`'s own header: "DEPRECATED as of D7... 17+ active
 callers... still depend on it"). The generated projection draws from the registry's
-76 chat-tagged capabilities instead — a near-complete disjoint set by name,
+77 chat-tagged capabilities instead — a near-complete disjoint set by name,
 because they were never the same catalog. This is the exact triplication the plan's R-1
 opening line names ("kill the triplication") — the projection compiler does not resolve it
 by itself (that is item 3, One Bootstrap, and item 4, Alias cutover — explicitly out of this
@@ -51,28 +51,28 @@ first time.
 ## 2. (b) MCP tool-registration projection vs. the ~25 hand-written `server.tool` blocks
 
 Generated MCP projection (type=tool + `projection_tags` includes `mcp_full`):
-**154** tool registrations (+ 6 mcp-tagged
+**155** tool registrations (+ 6 mcp-tagged
 resources/prompts that would need `server.resource()`/`server.prompt()`, not
 `server.tool()` — listed separately, not folded in).
 
 Real hand-written `server.tool(...)` blocks extracted from
 `platform-mcp/src/tools/registry_bridge.ts` (mechanical text scan, not hand-counted):
-**25** blocks.
+**26** blocks.
 
-- Name overlap: 12 → assess_career, assess_health, assess_marriage, assess_wealth, chart_snapshot, get_dashas, get_graha_yuddha, get_positions, graha_portrait, judgment_query, pact_query, yoga_activation_by_dasha
+- Name overlap: 13 → assess_career, assess_health, assess_marriage, assess_wealth, chart_snapshot, get_dashas, get_graha_yuddha, get_positions, graha_portrait, judgment_query, pact_query, tool_search, yoga_activation_by_dasha
 - Only in `registry_bridge.ts` (workflow-shaped consolidated names with no 1:1 registry
   capability of the same name): get_cgm_subgraph, get_chart_orientation, get_chart_quality, get_classical_citation, get_domain_reading, get_projections, get_remedies, get_signals, get_temporal_windows, list_assets, query_chart_facts, traverse_graph, vector_search
 - Only in the generated projection: 142 names (the granular
   registry capability set the hand-written file does not expose under its own name —
   see `comparison_report.generated.json` for the full list).
-- 7 of the 25 hand-written blocks use the
+- 7 of the 26 hand-written blocks use the
   SDK's 3-arg overload (name, schema, handler) with **no top-level description literal**:
   traverse_graph, get_positions, get_projections, get_classical_citation, get_remedies, get_chart_quality, list_assets.
 
 **Reachability cross-check** (does a registry capability have ANY route through the current
 hand-written 25, by literal `marsys://` URI reference in that tool's body — not by name):
-**23 / 162** catalog URIs are referenced somewhere in
-`registry_bridge.ts`; **139 / 162** are not referenced
+**24 / 163** catalog URIs are referenced somewhere in
+`registry_bridge.ts`; **139 / 163** are not referenced
 by literal URI anywhere in that file (they may still be reachable via a different bridge file,
 a resource loader, or not yet individually exposed on MCP at all — this scan is scoped to
 `registry_bridge.ts` only, per this lane's (b) sub-item; a full-surface reachability
@@ -81,8 +81,8 @@ cross-check across every MCP bridge file is a larger census, not this generator'
 
 **Reading:** the plan's own framing ("replacing the ~25 hand-written server.tool blocks...
 with a loop over compiled defs — handlers stay hand-written; surfaces are generated") implies
-a MUCH larger generated MCP surface (near-1:1 with the registry, 154 tools) than
-today's curated 25-tool consolidation. The hand-written file fans multiple
+a MUCH larger generated MCP surface (near-1:1 with the registry, 155 tools) than
+today's curated 26-tool consolidation. The hand-written file fans multiple
 registry capabilities into single workflow-shaped tools (e.g. `get_chart_orientation` wraps
 `marsys://tool/L2/query_ucd` plus a `get_chart_header` follow-up call) and adds real business
 logic (response-format bounding, v3 envelope population, budget trimming) inside the handler —
@@ -91,7 +91,7 @@ gap; it does not propose collapsing the two (see §4, out of scope this lane).
 
 ## 3. (c) Machine census
 
-`machine_census.generated.json` — **162** entries, every field the registry
+`machine_census.generated.json` — **163** entries, every field the registry
 declares (uri/type/layer/name/scope/archetype/traversal_level/tool_role/data_source/
 mutation/emits_references/lel_capable/calibration_context_only/bearing_first/
 required_inputs/projection_tags/display/annotations + presence flags for
@@ -173,7 +173,28 @@ mock overrides exercising every merge path: `description_override`, `name_overri
 `strict_schema`'s additionalProperties:false/all-required transform,
 `input_examples` pass-through, `search_result_content_block`).
 
-## 7. Honesty notes / what's NOT done this lane
+## 7. (g) W5 Lane L4 — tool-search index (`tool_search_index.generated.json`)
+
+**163** entries — one per live capability, no filtering. Each entry
+carries `uri`/`name`/`type`/`layer`/`scope`/`family` (the descriptor's own
+`archetype`)/`tool_role`/`short_label`/`one_line`/`description`/`keywords` (a deduped,
+sorted, tokenized set derived from name+description+display+layer+archetype+tool_role+
+traversal_level+projection_tags — no field invented, everything traces to a real descriptor
+property per B.10's "don't fabricate" discipline applied to metadata, not just numbers).
+
+Live-served counterpart: `marsys://tool/L0/tool_search`, bridged onto MCP as the
+`tool_search` tool (`registry_bridge.ts`) — same `buildToolSearchIndex`/`searchToolIndex`
+functions, called against the LIVE `getCatalog()` on every request (not this static
+snapshot), so a stale generated JSON can never diverge from what a caller actually gets back.
+
+**Scope of "search" (explicit, not a silent limitation):** case-insensitive keyword/substring
+match over tokenized fields, scored (name match > keyword match > description substring).
+NOT fuzzy matching, NOT semantic/embedding search (that would be a `vector_search`-style
+corpus build — materially heavier, out of scope for this lane's first cut). A query with zero
+token overlap against every entry returns an honest `total_matches: 0`, never a fabricated
+best-effort guess.
+
+## 8. Honesty notes / what's NOT done this lane
 
 - Plan item 2c ("the vidhi primitive rows' tool bindings") is **not** covered by this
   generator — it is the separately-landed `codegen:vidhi`/`codegen:vidhi:check` lane
