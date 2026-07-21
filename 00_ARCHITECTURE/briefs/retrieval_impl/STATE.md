@@ -2154,4 +2154,53 @@ all held unmerged pending the D-4b mutex. Remaining: L5 (spine bundles), L6
 (funnel batching/pooling), then the final V5 gate re-run against everything
 integrated.
 
-Lane dispatch continues next entry (L5–L6 + V5 gate).
+### W5 — Lane L6: sidecar/DB capability-dispatch cache (2026-07-21)
+
+**Investigation, all four sub-items of the brief's standing scope line
+checked against real evidence, not assumed:**
+1. Web consult funnel N+1 — already fine. `consult/route.ts`'s `tool_fetch`
+   loop already uses `Promise.all` + a two-tier cache; the W4-close
+   `tool_fetch 6.1s` figure for 4 tool calls is the MAX of the four tools'
+   latencies (one real 6065ms call, three fast-fails), not their sum —
+   proof it's wall-clock-bound by the slowest tool, not serialized.
+2. DB pooling — already fine (`db/client.ts` runs a proper shared `pg.Pool`,
+   max 10, keepalive, idle eviction, retry-once). Read replica — genuinely
+   absent (exhaustive grep), correctly left unbuilt: infra provisioning is
+   outside a code-only lane's authority, named as a residual not fabricated
+   as unwired dead code.
+3. **Sidecar memoization/caps — the real, unaddressed gap.**
+   `/api/retrieval/capability/route.ts` (the dispatcher the live
+   marsys-jis-direct connector actually uses, proxying every MCP capability
+   call including sidecar/DB hits) called `capability.handler(safeArgs)`
+   directly with zero caching.
+
+**Built:** `capability_dispatch_cache.ts` — two-tier cache (FIFO-capped
+in-process coalescing at 500 entries + shared Redis `mcp-capability`
+surface, 60s TTL), opt-in via the pre-existing but previously-unread
+`llm_hints.agentic.cacheable` descriptor field. **Real bug caught mid-
+implementation:** the entitlement gate resolves `chart_id` from either the
+request body or the `X-MCP-Chart-Id` header; a naive cache key from
+`safeArgs` alone would collide across two different charts when chart_id
+arrives only via header — fixed by folding the header-resolved chart_id
+into the cache key, verified as a genuine catch by temporarily reverting
+just that fix and confirming the regression test fails (1 call instead of
+2) before restoring it.
+
+Merge-resolved against L0 (both touched `capability/route.ts` from the same
+pre-integration base, true ancestor `794740e2`) via `git merge-file` — zero
+conflicts, auto-merged.
+
+**Verified:** `tsc --noEmit` clean. `src/lib/cache` + `src/app/api/retrieval`:
+84/84 + 19/19 passed, 0 failed.
+
+**Residual, named not built:** read-replica provisioning; per-tool query
+timeout budgets on individual L0_brahmagyan sidecar handlers (judged
+lower-leverage than the central dispatcher fix, and higher shared-file
+collision risk with the other concurrent W5 lanes).
+
+**L6: CLOSED.** Landed on `impl/wave-5` (PR #684, `ff99a8ff`).
+
+**Ten of eleven lanes now landed** (L0–L4, L6–L10), all held unmerged
+pending the D-4b mutex. Only L5 (spine bundles) remains in flight.
+
+Lane dispatch continues next entry (L5 + V5 gate).
