@@ -1,0 +1,299 @@
+/**
+ * scope_classifier.ts — WEB-SIDE port of the DETERMINISTIC scope-tuple classifier.
+ *
+ * Faithful port of `platform-mcp/src/tools/intent_scope_classifier.ts` (D-2 Lane V-3,
+ * CR-28 / DISAGREEMENT_REGISTER DIS.021 / DR-8). The MCP file lives inside a registered
+ * tool-handler wrapper; this module exposes the SAME deterministic rule/pattern-matching
+ * logic as a plain function so the web consult path (`pipeline_planner.ts`) can classify a
+ * query without going through the MCP channel.
+ *
+ * WHAT IS IDENTICAL to the MCP source (do not diverge — this is a port, not a redesign):
+ *   - the INTENTS / DOMAINS vocabulary + Width/Depth/Horizon/Intervention/Entitlement unions
+ *   - the ScopeTuple shape { intent, domains, width, depth, horizon, intervention, entitlement }
+ *   - every INTENT_RULES / DOMAIN_RULES regex + ordering
+ *   - the confidence formula and the `fallback_recommended` low-confidence signal
+ *   - the verbatim INTENT_CLASSIFY_TEMPLATE retained as `fallback_prompt`
+ *
+ * WHAT DIFFERS (adaptation only):
+ *   - exported as a plain `classifyScope()` function, not a `@register`ed tool handler
+ *   - the ScopeTuple is additionally expressed as a Zod schema (`ScopeTupleSchema`) so it can
+ *     be attached to `PipelinePlanSchema` and validated at the planner boundary.
+ *
+ * NOTE ON THE NAME COLLISION: `platform/src/lib/vidhi/types.ts` already exports a DIFFERENT
+ * `ScopeTuple` (the Vidhi *compiler's* tuple: IntentClass / ScopeWidth / intervention:boolean).
+ * That one is a distinct concept; the two intentionally do NOT share a definition. This file is
+ * therefore NOT re-exported from `vidhi/index.ts` (which barrels `./types`) to avoid a duplicate
+ * `ScopeTuple` identifier — import it directly from `@/lib/vidhi/scope_classifier`.
+ */
+
+import { z } from 'zod'
+
+// ── Scope-tuple vocabulary (the classifier's contract) ────────────────────────
+
+/** The eight primary intents (superset of the pre-redesign INTENTS list). */
+export const INTENTS = [
+  'dasha_timing',
+  'transit_analysis',
+  'yoga_identification',
+  'planet_strength',
+  'house_analysis',
+  'remedy_lookup',
+  'panchanga',
+  'classical_rule',
+  'chart_overview',
+  'prediction_calibration',
+  'domain_assessment',
+  'unknown',
+] as const
+export type Intent = (typeof INTENTS)[number]
+
+export const DOMAINS = [
+  'wealth', 'career', 'marriage', 'health', 'children', 'education',
+  'spirituality', 'litigation', 'property', 'travel', 'general',
+] as const
+export type Domain = (typeof DOMAINS)[number]
+
+export const WIDTHS = ['narrow', 'standard', 'broad'] as const
+export type Width = (typeof WIDTHS)[number]
+export const DEPTHS = ['shallow', 'standard', 'deep'] as const
+export type Depth = (typeof DEPTHS)[number]
+export const HORIZONS = ['past', 'present', 'near', 'far', 'atemporal'] as const
+export type Horizon = (typeof HORIZONS)[number]
+export const INTERVENTIONS = ['none', 'remedy', 'muhurta', 'mitigation'] as const
+export type Intervention = (typeof INTERVENTIONS)[number]
+export const ENTITLEMENTS = ['reference', 'native', 'restricted'] as const
+export type Entitlement = (typeof ENTITLEMENTS)[number]
+
+/**
+ * Zod schema for the classifier's scope tuple. `PipelinePlanSchema.scope_tuple` uses this so
+ * the tuple that `callPipelinePlanner` attaches to a plan is machine-validated at the boundary.
+ */
+export const ScopeTupleSchema = z.object({
+  intent: z.enum(INTENTS),
+  domains: z.array(z.enum(DOMAINS)),
+  width: z.enum(WIDTHS),
+  depth: z.enum(DEPTHS),
+  horizon: z.enum(HORIZONS),
+  intervention: z.enum(INTERVENTIONS),
+  entitlement: z.enum(ENTITLEMENTS),
+})
+
+export type ScopeTuple = z.infer<typeof ScopeTupleSchema>
+
+export interface ScopeClassification {
+  scope_tuple: ScopeTuple
+  confidence: number // 0.0–1.0
+  method: 'deterministic_rules'
+  matched_rules: string[]
+  fallback_prompt: string
+  fallback_recommended: boolean
+  usage: string
+}
+
+// ── Rendered prompt (retained verbatim as the fallback escape hatch) ───────────
+// EXACT template the pre-DR-8 tool returned. DR-8 mandates it be retained.
+
+export const INTENT_CLASSIFY_TEMPLATE = `You are a Jyotish query classifier. Your job is to identify the PRIMARY intent of a query about a birth chart.
+
+INTENTS (pick exactly ONE):
+- dasha_timing: questions about planetary periods, sub-periods, Vimshottari or Jaimini dashas
+- transit_analysis: current planetary transits, Gochar, upcoming transits
+- yoga_identification: identifying chart yogas (Raj Yoga, Dhana Yoga, etc.)
+- planet_strength: graha bala, Shadbala, dignity, debilitation, exaltation
+- house_analysis: bhava analysis, house lords, house strength
+- remedy_lookup: upayas, mantras, gemstones, rituals, remedies
+- panchanga: tithi, vara, nakshatra, yoga, karana, muhurta
+- classical_rule: looking up a specific classical text rule or sutra
+- chart_overview: general chart reading, lagna analysis, overall summary
+- prediction_calibration: evaluating or calibrating a specific prediction
+- unknown: none of the above
+
+QUERY:
+{{query}}
+
+Respond with ONLY valid JSON:
+{"primary_intent": "<intent>", "confidence": <0.0-1.0>, "reasoning": "<one sentence>"}`
+
+export function renderFallbackPrompt(query: string): string {
+  return INTENT_CLASSIFY_TEMPLATE.replace('{{query}}', query)
+}
+
+// ── Rule tables ───────────────────────────────────────────────────────────────
+// Each rule is [label, regex]. A match appends its label to matched_rules (audit trail).
+
+type Rule = readonly [string, RegExp]
+
+const INTENT_RULES: ReadonlyArray<readonly [Intent, ReadonlyArray<Rule>]> = [
+  ['remedy_lookup', [
+    ['remedy:upaya', /\b(remed(y|ies|ial)|upaya|upāya|mantra|gemstone|gem stone|ratna|yantra|tantra|puja|pūjā|ritual|donation|dāna|daan|propitiat)/i],
+    ['remedy:what-do', /\bwhat (should|can|do) i (do|wear|chant|perform)\b/i],
+  ]],
+  ['dasha_timing', [
+    ['dasha:period', /\b(dasha|daśā|dasa|mahadasha|mahādaśā|antardasha|antardaśā|bhukti|pratyantar|vimshottari|viṃśottarī|jaimini dasha|chara dasha|narayana dasha|planetary period|sub-?period)\b/i],
+    ['dasha:running', /\b(current|running|which|what) (dasha|daśā|period|mahadasha)\b/i],
+  ]],
+  ['transit_analysis', [
+    ['transit:gochar', /\b(transit|gochar|gochara|sade sati|saḍe sati|sadesati|kantaka|ashtama shani|current planetary position|where is (saturn|jupiter|rahu|ketu|mars) (now|transiting))\b/i],
+  ]],
+  ['yoga_identification', [
+    ['yoga:catalog', /\b(yoga|yogas|raja ?yoga|dhana ?yoga|gaja ?kesari|pancha ?mahapurusha|neecha ?bhanga|kemadruma|combinations?)\b/i],
+  ]],
+  ['planet_strength', [
+    ['strength:bala', /\b(shadbala|ṣaḍbala|graha ?bala|bala|strength|dignity|exalt|debilit|neecha|uccha|combust|retrograde|vargottama|ashtakavarga|bindu)\b/i],
+  ]],
+  ['house_analysis', [
+    ['house:bhava', /\b(house|bhava|bhāva|\b\d{1,2}(st|nd|rd|th) house\b|house lord|bhavesha|lord of the|cusp)\b/i],
+  ]],
+  ['panchanga', [
+    ['panchanga:element', /\b(tithi|vara|vāra|nakshatra|nakṣatra|karana|karaṇa|panchanga|pañcāṅga|muhurta|muhūrta|choghadiya|hora)\b/i],
+  ]],
+  ['classical_rule', [
+    ['classical:sutra', /\b(bphs|parashara|parāśara|jaimini sutra|brihat|sutra|sūtra|shloka|śloka|classical (rule|text|reference)|what does (the )?(text|scripture|shastra) say)\b/i],
+  ]],
+  ['prediction_calibration', [
+    ['calibration:score', /\b(calibrat|prediction (was|is)?\s*(correct|accurate|accuracy|right|wrong)|(was|were) my.*prediction|did (it|the prediction) (come true|happen)|track record|hit rate|outcome (record|log)|falsif)\b/i],
+  ]],
+  ['domain_assessment', [
+    ['assess:domain', /\b(assess|assessment|prospects?|outlook|analy[sz]e my|reading (for|on) (my )?(career|wealth|marriage|health|finance|money|job|relationship|business))\b/i],
+  ]],
+  ['chart_overview', [
+    ['overview:general', /\b(overall|whole chart|entire chart|general reading|full reading|chart summary|read my chart|tell me about my (chart|horoscope|kundli)|lagna analysis|ascendant)\b/i],
+  ]],
+]
+
+const DOMAIN_RULES: ReadonlyArray<readonly [Domain, RegExp]> = [
+  ['wealth', /\b(wealth|money|finance|financial|riches|dhana|income|savings|prosperity|affluen|net worth|gains?)\b/i],
+  ['career', /\b(career|job|profession|work|business|occupation|employ|promotion|karma bhava|10th house|vocation|livelihood)\b/i],
+  ['marriage', /\b(marriage|marry|spouse|wife|husband|partner|relationship|love|romance|7th house|kalatra|divorce|union)\b/i],
+  ['health', /\b(health|disease|illness|body|medical|ailment|roga|longevity|ayurdaya|vitality|sickness|surgery)\b/i],
+  ['children', /\b(child|children|progeny|santana|santāna|pregnan|conceive|5th house|putra|offspring)\b/i],
+  ['education', /\b(education|study|studies|learning|degree|academic|vidya|knowledge|exam|scholar)\b/i],
+  ['spirituality', /\b(spiritual|moksha|mokṣa|liberation|dharma|guru|sadhana|meditation|12th house|renunciation|sannyasa)\b/i],
+  ['litigation', /\b(litigation|lawsuit|court|legal|dispute|enemy|enemies|6th house|conflict|debt|loan)\b/i],
+  ['property', /\b(property|house|home|real estate|land|vehicle|4th house|assets?|conveyance)\b/i],
+  ['travel', /\b(travel|foreign|abroad|relocation|journey|migration|overseas|pilgrimage)\b/i],
+]
+
+const WIDTH_BROAD = /\b(overall|whole|entire|complete|comprehensive|full|everything|all aspects|holistic|360|big picture|life reading)\b/i
+const WIDTH_NARROW = /\b(just|only|specific|exactly|single|one thing|precisely|quick fact)\b/i
+
+const DEPTH_DEEP = /\b(deep ?dive|detailed|in depth|in-depth|thorough|acharya|ācārya|exhaustive|granular|elaborate|comprehensive analysis)\b/i
+const DEPTH_SHALLOW = /\b(quick|brief|summary|short|tldr|tl;dr|in a nutshell|one line|glance|snapshot)\b/i
+
+const HORIZON_PAST = /\b(was|were|did|had|born|childhood|past|previously|history|already happened|last year|years ago)\b/i
+const HORIZON_PRESENT = /\b(now|current|currently|present|today|at the moment|these days|right now|this (month|week|year))\b/i
+const HORIZON_NEAR = /\b(next (month|year|week)|coming (months?|years?|weeks?)|soon|upcoming|near future|shortly|when will|this year)\b/i
+const HORIZON_FAR = /\b(long term|long-term|eventually|later life|old age|far future|decades?|lifetime|by \d{4}|in \d+ years)\b/i
+
+const INTERVENTION_MUHURTA = /\b(muhurta|muhūrta|auspicious (time|date|day)|best time|when (should|to) (start|begin|marry|launch|travel)|good time for|electional)\b/i
+const INTERVENTION_MITIGATION = /\b(mitigat|reduce|lessen|protect against|ward off|counteract|neutrali[sz]e|shanti|śānti)\b/i
+const INTERVENTION_REMEDY = /\b(remed(y|ies|ial)|upaya|upāya|mantra|gemstone|ratna|yantra|donation|puja|pūjā|what (should|can) i (do|wear|chant))\b/i
+
+const REFERENCE_INTENTS: ReadonlySet<Intent> = new Set(['classical_rule', 'panchanga'])
+
+// ── Classifier ────────────────────────────────────────────────────────────────
+
+/**
+ * Deterministically classify a query into a scope tuple.
+ * Pure function: identical input → identical output (compiler-safe per DR-8).
+ */
+export function classifyScope(rawQuery: string): ScopeClassification {
+  const query = (rawQuery ?? '').trim()
+  const matched: string[] = []
+  const fallback_prompt = renderFallbackPrompt(query)
+
+  if (!query) {
+    return {
+      scope_tuple: {
+        intent: 'unknown', domains: ['general'], width: 'standard', depth: 'standard',
+        horizon: 'atemporal', intervention: 'none', entitlement: 'native',
+      },
+      confidence: 0,
+      method: 'deterministic_rules',
+      matched_rules: [],
+      fallback_prompt,
+      fallback_recommended: true,
+      usage: 'Empty query — no deterministic classification possible. Use fallback_prompt with an LLM.',
+    }
+  }
+
+  // 1. Intent — first intent-family whose any rule fires (ordered by specificity above).
+  let intent: Intent = 'unknown'
+  for (const [candidate, rules] of INTENT_RULES) {
+    const hit = rules.find(([, re]) => re.test(query))
+    if (hit) {
+      intent = candidate
+      matched.push(`intent:${candidate}<-${hit[0]}`)
+      break
+    }
+  }
+
+  // 2. Domains — ALL matching (multi-value). Empty → ['general'].
+  const domains: Domain[] = []
+  for (const [dom, re] of DOMAIN_RULES) {
+    if (re.test(query)) {
+      domains.push(dom)
+      matched.push(`domain:${dom}`)
+    }
+  }
+  if (domains.length === 0) domains.push('general')
+
+  // 3. Width
+  let width: Width = 'standard'
+  if (WIDTH_BROAD.test(query)) { width = 'broad'; matched.push('width:broad') }
+  else if (WIDTH_NARROW.test(query)) { width = 'narrow'; matched.push('width:narrow') }
+  else if (domains.length >= 3) { width = 'broad'; matched.push('width:broad<-multi_domain') }
+
+  // 4. Depth
+  let depth: Depth = 'standard'
+  if (DEPTH_DEEP.test(query)) { depth = 'deep'; matched.push('depth:deep') }
+  else if (DEPTH_SHALLOW.test(query)) { depth = 'shallow'; matched.push('depth:shallow') }
+
+  // 5. Horizon (present/near/far/past/atemporal). Precedence: explicit future > present > past.
+  let horizon: Horizon = 'atemporal'
+  if (HORIZON_NEAR.test(query)) { horizon = 'near'; matched.push('horizon:near') }
+  else if (HORIZON_FAR.test(query)) { horizon = 'far'; matched.push('horizon:far') }
+  else if (HORIZON_PRESENT.test(query)) { horizon = 'present'; matched.push('horizon:present') }
+  else if (HORIZON_PAST.test(query)) { horizon = 'past'; matched.push('horizon:past') }
+  else if (intent === 'dasha_timing' || intent === 'transit_analysis' || intent === 'prediction_calibration') {
+    horizon = 'present'; matched.push('horizon:present<-timing_intent')
+  }
+
+  // 6. Intervention
+  let intervention: Intervention = 'none'
+  if (INTERVENTION_MUHURTA.test(query)) { intervention = 'muhurta'; matched.push('intervention:muhurta') }
+  else if (INTERVENTION_REMEDY.test(query)) { intervention = 'remedy'; matched.push('intervention:remedy') }
+  else if (INTERVENTION_MITIGATION.test(query)) { intervention = 'mitigation'; matched.push('intervention:mitigation') }
+
+  // 7. Entitlement — best-effort disclosure tier. Reference/panchanga = public reference data;
+  //    everything chart-specific defaults to native (the query is chart-agnostic, so this is a
+  //    hint the compiler refines against the actual principal, never an authorization decision).
+  const entitlement: Entitlement = REFERENCE_INTENTS.has(intent) ? 'reference' : 'native'
+  matched.push(`entitlement:${entitlement}`)
+
+  // Confidence: intent match is the dominant term; corroborating dimensions add smaller weight.
+  const intentMatched = intent !== 'unknown'
+  const domainMatched = !(domains.length === 1 && domains[0] === 'general')
+  let confidence = 0
+  if (intentMatched) confidence += 0.6
+  if (domainMatched) confidence += 0.2
+  if (intervention !== 'none') confidence += 0.1
+  if (horizon !== 'atemporal') confidence += 0.1
+  confidence = Math.min(1, Math.round(confidence * 100) / 100)
+
+  const fallback_recommended = !intentMatched || confidence < 0.5
+
+  return {
+    scope_tuple: { intent, domains, width, depth, horizon, intervention, entitlement },
+    confidence,
+    method: 'deterministic_rules',
+    matched_rules: matched,
+    fallback_prompt,
+    fallback_recommended,
+    usage: fallback_recommended
+      ? 'Low-confidence / unmatched intent — the scope_tuple is a best-effort default. ' +
+        'Pass fallback_prompt to an LLM for a stronger classification, then correct the scope_tuple.'
+      : 'Deterministic classification. V-2 echoes scope_tuple verbatim for user correction before execution. ' +
+        'fallback_prompt is retained but not recommended for this query.',
+  }
+}

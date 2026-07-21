@@ -25,6 +25,9 @@
 
 import { z } from 'zod'
 import type { JSONSchema7 } from 'json-schema'
+import { ScopeTupleSchema } from '@/lib/vidhi/scope_classifier'
+
+export { ScopeTupleSchema, type ScopeTuple } from '@/lib/vidhi/scope_classifier'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // §1. Query class enum — unified 8-class taxonomy
@@ -176,6 +179,15 @@ export const PipelinePlanSchema = z.object({
 
   /** [PLANNER OUTPUT] ≤20-word neutral gloss of what the native is asking. HARD-REQUIRED. */
   query_intent_summary: z.string().min(1).max(200),
+
+  // ── Scope tuple ────────────────────────────────────────────────────────────
+  //
+  // [DETERMINISTIC — NOT LLM OUTPUT] The deterministic scope-tuple classification
+  // of the incoming query, produced by `classifyScope()` (@/lib/vidhi/scope_classifier)
+  // and attached to the plan by `callPipelinePlanner` AFTER the LLM call. The planner
+  // LLM never emits this — it is optional here so the LLM's raw output still parses
+  // (the field is stamped on post-parse, exactly like the [ROUTE STAMP] fields below).
+  scope_tuple: ScopeTupleSchema.optional(),
 
   // ── Synthesis corpus ──────────────────────────────────────────────────────
 
@@ -453,4 +465,70 @@ export class PipelinePlannerError extends Error {
     this.name = 'PipelinePlannerError'
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §7. Planner outcome contract — the 3-way discriminated union
+// (W4 "One Planner" core step 2).
+//
+//   The planner call USED to have two effective outcomes: a `PipelinePlan`
+//   (success) or a thrown `PipelinePlannerError` (which route.ts turned into a
+//   raw, leaky `HTTP 422 {"error":"planner_failed", ...}`). This union replaces
+//   that with three EXPLICIT, TYPED outcomes so `callPipelinePlanner` never
+//   throws for an expected failure and route.ts branches on a discriminant:
+//
+//     'plan'                → PlanReceipt          (proceed as before)
+//     'clarification_needed' → ClarificationRequest (ask the user a question)
+//     'fault'               → PlannerFaultResult    (clean typed error response)
+//
+//   The intended names come from the design docs, which specify the outcome set
+//   as `PlanReceipt | ClarificationRequest | fault`
+//   (RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §C-5;
+//    PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md §744). `PlanReceipt` was previously
+//   docs-only ("absent from code entirely" — RETRIEVAL_SYSTEM_TRUTH_v2_0.md);
+//   this is its first code definition.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The successful outcome: a validated `PipelinePlan` (carrying its deterministic
+ * `scope_tuple`) wrapped with the `outcome: 'plan'` discriminant. Wrapping (rather
+ * than adding `outcome` to `PipelinePlanSchema` itself) keeps every downstream
+ * consumer of `PipelinePlan` — bundle_hydrator, budget_arbiter, the adapter
+ * dispatch shim — unchanged; route.ts unwraps `.plan` and proceeds exactly as
+ * it did before.
+ */
+export interface PlanReceipt {
+  outcome: 'plan'
+  plan: PipelinePlan
+}
+
+/**
+ * The clarification outcome: the deterministic scope classifier could not
+ * confidently classify the query (its `fallback_recommended` signal fired), so
+ * rather than silently guessing a plan the planner asks the user a clarifying
+ * question. `missing_scope_dims` names the scope dimensions that came back
+ * unknown/default; `suggested_options` offers concrete choices the UI can render.
+ */
+export interface ClarificationRequest {
+  outcome: 'clarification_needed'
+  question: string
+  missing_scope_dims?: string[]
+  suggested_options?: string[]
+}
+
+/**
+ * The fault outcome: a NORMAL, TYPED return value — never a thrown exception.
+ * Emitted when the LLM planner produced unparseable/invalid output that survived
+ * one structured repair-retry, or when the provider call itself failed after the
+ * retry budget was exhausted. `retryable` tells route.ts whether the same request,
+ * repeated unchanged, could succeed (true for transient provider faults; false for
+ * a model that keeps returning malformed output).
+ */
+export interface PlannerFaultResult {
+  outcome: 'fault'
+  reason: string
+  retryable: boolean
+}
+
+/** The 3-way outcome `callPipelinePlanner` returns. */
+export type PlannerOutcome = PlanReceipt | ClarificationRequest | PlannerFaultResult
 

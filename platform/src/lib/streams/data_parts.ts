@@ -230,9 +230,25 @@ export const CapabilityPathPartSchema = z.object({
 
 export type CapabilityPathPart = z.infer<typeof CapabilityPathPartSchema>
 
+// ── Clarification part (W4 "One Planner" — ClarificationRequest outcome) ────
+// Emitted by route.ts when the deterministic scope classifier could not
+// confidently classify the query, so the planner asks the user a clarifying
+// question instead of guessing a plan. The UI renders `question` (and optional
+// `suggested_options`) as a prompt for the user to refine their request.
+
+export const ClarificationPartSchema = z.object({
+  type: z.literal('clarification'),
+  question: z.string().min(1),
+  missing_scope_dims: z.array(z.string()).optional(),
+  suggested_options: z.array(z.string()).optional(),
+})
+
+export type ClarificationPart = z.infer<typeof ClarificationPartSchema>
+
 // ── Union ─────────────────────────────────────────────────────────────────
 
 export const DataPartSchema = z.discriminatedUnion('type', [
+  ClarificationPartSchema,
   StagePartSchema,
   ToolPartSchema,
   CostPartSchema,
@@ -329,5 +345,10 @@ export const truncatedPart = (reason: string): TruncatedPart => ({
 
 export const contextUsagePart = (args: Omit<ContextUsagePart, 'type'>): ContextUsagePart => ({
   type: 'context_usage',
+  ...args,
+})
+
+export const clarificationPart = (args: Omit<ClarificationPart, 'type'>): ClarificationPart => ({
+  type: 'clarification',
   ...args,
 })

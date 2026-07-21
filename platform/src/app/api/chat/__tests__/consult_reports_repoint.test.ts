@@ -79,6 +79,8 @@ vi.mock('@/lib/bundle/manifest_reader', () => ({
 
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({
   PlannerFault: class PlannerFault extends Error {},
+  // W4: callPipelinePlanner now returns a 3-way PlannerOutcome. The success
+  // variant is a PlanReceipt `{ outcome: 'plan', plan }` — route.ts unwraps `.plan`.
   callPipelinePlanner: vi.fn(async (queryText: string) => {
     const q = String(queryText).toLowerCase()
     const query_class =
@@ -88,11 +90,14 @@ vi.mock('@/lib/pipeline/pipeline_planner', () => ({
           ? 'holistic'
           : 'interpretive'
     return {
-      query_class,
-      domains: ['career'],
-      forward_looking: query_class === 'predictive',
-      // includes an L2.5 tool (msr_sql) so the B.11 floor is already satisfied.
-      tool_calls: [{ tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'test' }],
+      outcome: 'plan' as const,
+      plan: {
+        query_class,
+        domains: ['career'],
+        forward_looking: query_class === 'predictive',
+        // includes an L2.5 tool (msr_sql) so the B.11 floor is already satisfied.
+        tool_calls: [{ tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'test' }],
+      },
     }
   }),
 }))

@@ -7,7 +7,7 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart, clarificationPart } from '@/lib/streams/data_parts'
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
@@ -69,7 +69,7 @@ import { buildAdapterMessages, buildAdapterChatRequest } from '@/lib/providers/a
 import { runAgenticLoop, LOOP_CONFIG_BY_PROVIDER } from '@/lib/synthesis/agentic_loop'
 import { executeMCPTool } from '@/lib/synthesis/mcp_tool_executor'
 import { buildCacheCreatePayload, GEMINI_CACHE_MIN_TOKENS } from '@/lib/providers/google/cached_content'
-import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
+import { callPipelinePlanner as runPlanner } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
@@ -90,7 +90,7 @@ import type { TraceStep, TraceChunkItem, TraceDataSummary, TracePayload, TraceQu
 // D7 migration: ToolBundle/ToolBundleResult types sourced from lib/retrieve/types
 // (canonical location until lib/retrieve is retired in Step 4).
 import type { ToolBundle, ToolBundleResult } from '@/lib/retrieval/shared_types'
-import { res } from '@/lib/errors'
+import { res, errorResponse } from '@/lib/errors'
 import {
   writeLlmCallLog,
   writeQueryPlanLog,
@@ -431,26 +431,54 @@ export async function POST(request: Request) {
   }
 
   const plannerStartedAt = Date.now()
-  let plan: PipelinePlan
-  try {
-    plan = await runPlanner(
-      queryText,
-      plannerHistory,
-      plannerModelId,
-      chartId,
-      emit,
-      preAllocatedQueryId,
-      plannerFallbackModelId,
-    )
-  } catch (err) {
-    if (err instanceof PlannerFault) {
-      return NextResponse.json(
-        { error: 'planner_failed', message: err.message },
-        { status: 422 },
-      )
-    }
-    throw err
+  // W4 "One Planner": the planner now returns a 3-way typed outcome
+  // (plan | clarification_needed | fault) and NEVER throws for an expected
+  // failure. Each outcome is rendered through a clean, typed response path —
+  // the old raw `HTTP 422 {"error":"planner_failed", ...}` leak is gone.
+  const plannerOutcome = await runPlanner(
+    queryText,
+    plannerHistory,
+    plannerModelId,
+    chartId,
+    emit,
+    preAllocatedQueryId,
+    plannerFallbackModelId,
+  )
+
+  if (plannerOutcome.outcome === 'clarification_needed') {
+    // Genuinely ambiguous query — stream a clarification the client renders as a
+    // question, via the same UIMessage-stream SSE surface the rest of the chat
+    // uses (data-clarification custom part). No plan is built; no LLM synthesis runs.
+    const clarStream = createUIMessageStream({
+      execute: ({ writer }) => {
+        writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
+        writer.write({
+          type: 'data-clarification',
+          data: clarificationPart({
+            question: plannerOutcome.question,
+            missing_scope_dims: plannerOutcome.missing_scope_dims,
+            suggested_options: plannerOutcome.suggested_options,
+          }),
+        } as never)
+        writer.write({ type: 'finish', finishReason: 'stop' } as never)
+      },
+    })
+    return createUIMessageStreamResponse({ stream: clarStream })
   }
+
+  if (plannerOutcome.outcome === 'fault') {
+    // Typed, honest planner fault. Log the real reason server-side; the client
+    // sees a clean canonical error envelope (NEVER the raw internal parse error).
+    console.error('[consume:v2] planner fault:', plannerOutcome.reason, 'retryable=', plannerOutcome.retryable)
+    return plannerOutcome.retryable
+      // Transient (provider) fault — the same request may succeed on retry.
+      ? errorResponse('SYSTEM_LLM_ERROR', 'The planner service is temporarily unavailable. Please retry.', 503, { retry: true })
+      // The model could not produce a valid plan even after a repair-retry —
+      // repeating won't help; the caller should rephrase.
+      : res.validationFailed('The planner could not produce a valid plan for this request. Please rephrase and try again.')
+  }
+
+  const plan: PipelinePlan = plannerOutcome.plan
   const plannerLatencyMs = Date.now() - plannerStartedAt
 
   // Stamp route-controlled fields — never LLM output
