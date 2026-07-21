@@ -77,6 +77,7 @@ import {
   ensureB11WholeChartReadFloor,
   ensureDashaContextFloor,
 } from '@/lib/pipeline/compiled_floor_adapter'
+import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
 import { buildWebCompletenessReceipt, type WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
 import { buildChartOrientation, type ChartOrientation } from '@/lib/retrieval/orientation'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
@@ -596,6 +597,19 @@ export async function POST(request: Request) {
   // Vimshottari dasha sequence so synthesis can anchor phase-based predictions to
   // correct dates (data lives in chart_facts.dasha_vimshottari).
   ensureDashaContextFloor(plan, toolsAuthorized)
+
+  // NO-LEAKAGE enforcement (doctrine ruling F-R7; "both doors" requirement — see
+  // no_leakage_filter.ts's header). Applied to the FULLY composed toolsAuthorized
+  // (planner-selected tools + compiled floor + B.11/dasha guarantees above) BEFORE
+  // any tool actually dispatches below. This route previously applied no such
+  // filtering — the prashna_ask route (/api/mcp/prashna_ask) gets the identical
+  // filter applied to the identical toolsAuthorized shape; NO-LEAKAGE is engine-side
+  // doctrine, not a channel-specific feature, so both doors must get it.
+  const noLeakageFiltered = filterLeakedCapabilities(toolsAuthorized)
+  if (noLeakageFiltered.length !== toolsAuthorized.length) {
+    plan.tool_calls = plan.tool_calls.filter((tc) => noLeakageFiltered.includes(tc.tool_name))
+    toolsAuthorized.splice(0, toolsAuthorized.length, ...noLeakageFiltered)
+  }
 
   // Adapter: PipelinePlan → legacy-shaped object for retrieval tools,
   // validators, audit, the orchestrator. Carries plan.tool_calls as an extra
