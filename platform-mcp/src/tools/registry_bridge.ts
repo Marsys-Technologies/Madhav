@@ -1480,19 +1480,27 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── list_assets (asset catalog) ───────────────────────────────────────────
   // marsys://resource/asset-registry/all
   // Global scope — no chart_id required
+  // W5 L8 ("listCapabilities filters" / W-13): added asset_type/catalog_status/scope/
+  // is_active/has_writer filters, forwarded to the same asset_registry_all.ts handler
+  // that already implements them (AND-combined; all optional, backward compatible).
   server.tool(
     'list_assets',
     {
       layer: z.string().optional().describe('Filter by layer: L0, L1, L2, L3, L4, L5'),
+      asset_type: z.enum(['data', 'service']).optional().describe('Filter by asset_type: data or service'),
+      catalog_status: z.enum(['CURRENT', 'DRAFT']).optional().describe('Filter by catalog_status: CURRENT or DRAFT'),
+      scope: z.enum(['global', 'per_chart']).optional().describe('Filter by scope: global or per_chart'),
+      is_active: z.boolean().optional().describe('Filter to active (true) or inactive (false) assets'),
+      has_writer: z.boolean().optional().describe('Filter to assets with (true) or without (false) a registered writer'),
       limit: z.number().int().min(1).max(200).optional().describe('Max assets (default: 81)'),
       cursor: z.string().optional().describe('Pagination cursor'),
     },
-    async ({ layer, limit, cursor }) => {
+    async ({ layer, asset_type, catalog_status, scope, is_active, has_writer, limit, cursor }) => {
       try {
         // list_assets → platform cockpit registry (direct HTTP; no @/ import possible)
         const data = await callRegistryCapability(
           'marsys://resource/asset-registry/all',
-          { layer, limit: limit ?? 81, cursor }, undefined, principal
+          { layer, asset_type, catalog_status, scope, is_active, has_writer, limit: limit ?? 81, cursor }, undefined, principal
         )
         return dualOutputBudgeted(applyMcpBudgetAuto({ ...(data as Record<string, unknown>), pagination: { cursor, limit } }, MCP_RESPONSE_BUDGET_KB.list_assets, 'list_assets'))
       } catch (err) {

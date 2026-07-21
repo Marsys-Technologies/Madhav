@@ -818,14 +818,26 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }, principal)
 
   // list_assets → catalog_assets_list
+  // W5 L8 ("listCapabilities filters" / W-13): same additional filters as list_assets
+  // (registry_bridge.ts) and asset_registry_all.ts's own handler — asset_type,
+  // catalog_status, scope, is_active, has_writer. All optional, AND-combined.
   server.tool(
     'catalog_assets_list',
     '[Phase-1 alias] List all registered retrieval assets (same as list_assets).',
-    { layer: z.string().optional().describe('Filter by layer (L0, L1, L2, etc.)'), ...GlobalBase },
-    async ({ layer, limit, offset }) => {
+    {
+      layer: z.string().optional().describe('Filter by layer (L0, L1, L2, etc.)'),
+      asset_type: z.enum(['data', 'service']).optional().describe('Filter by asset_type: data or service'),
+      catalog_status: z.enum(['CURRENT', 'DRAFT']).optional().describe('Filter by catalog_status: CURRENT or DRAFT'),
+      scope: z.enum(['global', 'per_chart']).optional().describe('Filter by scope: global or per_chart'),
+      is_active: z.boolean().optional().describe('Filter to active (true) or inactive (false) assets'),
+      has_writer: z.boolean().optional().describe('Filter to assets with (true) or without (false) a registered writer'),
+      ...GlobalBase,
+    },
+    async ({ layer, asset_type, catalog_status, scope, is_active, has_writer, limit, offset }) => {
       try {
         const data = await callRegistryCap('marsys://resource/asset-registry/all', {
-          layer, limit: limit ?? 200, offset: offset ?? 0,
+          layer, asset_type, catalog_status, scope, is_active, has_writer,
+          limit: limit ?? 200, offset: offset ?? 0,
         }, principal)
         return dualOutput(data)
       } catch (err) { return errOut('catalog_assets_list', String(err)) }
@@ -1102,13 +1114,25 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'marsys://tool/L0/list_entities',
     { entity_class: z.string().optional().describe('Filter by class (graha/nakshatra/rashi/etc.)') }, principal)
 
+  // W5 L8 ("listCapabilities filters" / W-13): same additional filters as
+  // catalog_assets_list/list_assets, forwarded to the same underlying resource handler.
   server.tool(
     'catalog_assets_all',
-    '[Phase-1 alias] Full asset registry (same as asset_registry_all). Global scope.',
-    { ...GlobalBase },
-    async ({ limit, offset }) => {
+    '[Phase-1 alias] Full asset registry (same as asset_registry_all). Global scope. ' +
+    'Optional filters: layer, asset_type, catalog_status, scope, is_active, has_writer.',
+    {
+      layer: z.string().optional().describe('Filter by layer (L0, L1, L2, etc.)'),
+      asset_type: z.enum(['data', 'service']).optional().describe('Filter by asset_type: data or service'),
+      catalog_status: z.enum(['CURRENT', 'DRAFT']).optional().describe('Filter by catalog_status: CURRENT or DRAFT'),
+      scope: z.enum(['global', 'per_chart']).optional().describe('Filter by scope: global or per_chart'),
+      is_active: z.boolean().optional().describe('Filter to active (true) or inactive (false) assets'),
+      has_writer: z.boolean().optional().describe('Filter to assets with (true) or without (false) a registered writer'),
+      ...GlobalBase,
+    },
+    async ({ layer, asset_type, catalog_status, scope, is_active, has_writer, limit, offset }) => {
       try {
         const data = await callRegistryCap('marsys://resource/asset-registry/all', {
+          layer, asset_type, catalog_status, scope, is_active, has_writer,
           limit: limit ?? 200, offset: offset ?? 0,
         }, principal)
         return dualOutput(data)
@@ -1118,11 +1142,20 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   server.tool(
     'catalog_assets_l0',
-    '[Phase-1 alias] L0 Brahmagyan asset registry (same as asset_registry_l0).',
-    { ...GlobalBase },
-    async ({ limit, offset }) => {
+    '[Phase-1 alias] L0 Brahmagyan asset registry (same as asset_registry_l0). ' +
+    'Optional filters: asset_type, catalog_status, scope, is_active, has_writer.',
+    {
+      asset_type: z.enum(['data', 'service']).optional().describe('Filter by asset_type: data or service'),
+      catalog_status: z.enum(['CURRENT', 'DRAFT']).optional().describe('Filter by catalog_status: CURRENT or DRAFT'),
+      scope: z.enum(['global', 'per_chart']).optional().describe('Filter by scope: global or per_chart'),
+      is_active: z.boolean().optional().describe('Filter to active (true) or inactive (false) assets'),
+      has_writer: z.boolean().optional().describe('Filter to assets with (true) or without (false) a registered writer'),
+      ...GlobalBase,
+    },
+    async ({ asset_type, catalog_status, scope, is_active, has_writer, limit, offset }) => {
       try {
         const data = await callRegistryCap('marsys://resource/asset-registry/L0', {
+          asset_type, catalog_status, scope, is_active, has_writer,
           limit: limit ?? 100, offset: offset ?? 0,
         }, principal)
         return dualOutput(data)
