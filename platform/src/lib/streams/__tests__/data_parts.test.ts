@@ -19,6 +19,7 @@ import {
   observabilityPart,
   citationGatePart,
   persistencePart,
+  TIME_TO_FIRST_VERDICT_SLO_MS,
   type StagePart,
   type ToolPart,
 } from '../data_parts'
@@ -68,13 +69,33 @@ describe('StagePartSchema', () => {
   it('accepts all valid stage names', () => {
     const stages: StagePart['stage'][] = [
       'classify', 'compose_bundle', 'plan_per_tool', 'tool_fetch',
-      'synthesis', 'audit', 'panel:member:1', 'panel:member:2',
+      'first_verdict', 'synthesis', 'audit', 'panel:member:1', 'panel:member:2',
       'panel:member:3', 'panel:adjudicator',
     ]
     for (const stage of stages) {
       const result = StagePartSchema.safeParse({ type: 'stage', stage, status: 'done' })
       expect(result.success, `stage ${stage} should be valid`).toBe(true)
     }
+  })
+})
+
+// ── first_verdict stage (W5 L9 — verdict-first streaming) ─────────────────
+
+describe('first_verdict stage + TIME_TO_FIRST_VERDICT_SLO_MS', () => {
+  it('stagePart builds a valid first_verdict done part with an ms sample', () => {
+    const part = stagePart('first_verdict', 'done', 10_750)
+    expect(StagePartSchema.safeParse(part).success).toBe(true)
+    expect(part.stage).toBe('first_verdict')
+    expect(part.ms).toBe(10_750)
+  })
+
+  it('SLO target is a real, ordered numeric target (p50 < p95), not a placeholder', () => {
+    expect(typeof TIME_TO_FIRST_VERDICT_SLO_MS.p50).toBe('number')
+    expect(typeof TIME_TO_FIRST_VERDICT_SLO_MS.p95).toBe('number')
+    expect(TIME_TO_FIRST_VERDICT_SLO_MS.p50).toBeLessThan(TIME_TO_FIRST_VERDICT_SLO_MS.p95)
+    // Both sit well under the measured 38.7s synthesis stage / ~51s total wall-clock (W4 close) —
+    // the whole point of streaming the verdict layer before synthesis completes.
+    expect(TIME_TO_FIRST_VERDICT_SLO_MS.p95).toBeLessThan(38_700)
   })
 })
 

@@ -33,6 +33,8 @@ import { handleToken } from './oauth/token.js'
 import { handleOAuthDiscovery, handleOpenIDConfiguration } from './oauth/discovery.js'
 import { validateAccessToken } from './oauth/token_store.js'
 import { registerOAuthClient, validateOAuthClient } from './oauth/oauth_platform_client.js'
+// W5 L2: per-family MCP surface profiles (full/compact≤20/consult), OAuth-scope-gated.
+import { resolveMcpProfile, applyProfileGate, type ToolRegisteringServer } from './lib/mcp_profile.js'
 // R5 W0a punch-list (#8, 401 headers): every 401 this server returns for a
 // client-facing Bearer/OAuth auth failure must carry a WWW-Authenticate
 // challenge per RFC 6750 §3 (bare 401s with no challenge header are non-
@@ -200,6 +202,13 @@ app.post('/mcp', async (req: Request, res: Response) => {
 
   let principal: Principal | null = await validateMcpKeyFromHeader(authHeader)
 
+  // W5 L2: authKind + OAuth scopes drive the served MCP surface profile (full/compact/
+  // consult) — see resolveMcpProfile()'s doc comment. Bearer-key auth (this branch) is
+  // this server's own first-party trusted credential → always 'full', set below once
+  // authKind is known for certain (after the OAuth branch, which can also set principal).
+  let authKind: 'bearer_key' | 'oauth' | null = principal ? 'bearer_key' : null
+  let oauthScopes: string[] | undefined
+
   // M5: also accept OAuth access tokens (DB-backed; survives restart + multi-instance).
   if (!principal && authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice('Bearer '.length)
@@ -223,6 +232,12 @@ app.post('/mcp', async (req: Request, res: Response) => {
         key_id: 'oauth:' + token.slice(0, 8),
         role: 'guest',
       } satisfies Principal
+      authKind = 'oauth'
+      // W5 L2: thread the token's granted scopes through to profile resolution — previously
+      // discarded here entirely (OT-10's "OAuth scope selects the projection" ruling had no
+      // implementation before this lane; every OAuth caller silently got the same unfiltered
+      // full tool surface as a first-party Bearer key).
+      oauthScopes = oauthRecord.scopes
     }
   }
 
@@ -308,6 +323,16 @@ app.post('/mcp', async (req: Request, res: Response) => {
     name: 'marsys-jis',
     version: '1.0.0',
   })
+
+  // W5 L2: resolve + apply the per-family MCP surface profile (full/compact≤20/consult)
+  // BEFORE any register*Tools() call below runs. `applyProfileGate` monkeypatches this
+  // request-scoped server's `.tool()` method in place so every existing registration
+  // call site (unconditional before this lane) is transparently scoped — see
+  // `lib/mcp_profile.ts`'s header for why this is safe-by-construction, not by convention.
+  // authKind is always set by this point: the 401 return above already guarantees
+  // `principal` (and therefore authKind) is non-null on every path that reaches here.
+  const mcpProfile = resolveMcpProfile({ authKind: authKind as 'bearer_key' | 'oauth', oauthScopes })
+  const profileGate = applyProfileGate(server as unknown as ToolRegisteringServer, mcpProfile)
 
   // L0 Brahmagyan tools (L0FR Stream A pattern-validation capabilities)
   registerL0BrahmagyanTools(server)
@@ -411,13 +436,19 @@ app.post('/mcp', async (req: Request, res: Response) => {
     rpcMethod === 'tools/call' && typeof rpcBody?.params?.name === 'string'
       ? rpcBody.params.name
       : rpcMethod
+  // W5 L2: fold the resolved profile + any blocked-registration count into the message
+  // (rather than widening the shared LogEntry shape for one lane's field) — observability
+  // for "which profile served this request" and "did the gate actually block anything."
   log({
     level: 'info',
     request_id: requestId,
     user_uid: principal.user_uid,
     key_id: principal.key_id,
     tool: mcpMethod,
-    message: 'MCP request dispatched',
+    message:
+      `MCP request dispatched (mcp_profile=${mcpProfile}` +
+      (profileGate.blockedAttempts.length > 0 ? `, gate_blocked=${profileGate.blockedAttempts.length}` : '') +
+      ')',
   })
 
   try {

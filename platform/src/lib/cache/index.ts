@@ -23,3 +23,10 @@ export type {
   CacheMetricsEvent,
 } from './shared_cache'
 export { callPipelinePlannerCached } from './planner_cache'
+
+// W5 L6 — MCP capability dispatcher memoization
+export {
+  getOrComputeCapability,
+  CAPABILITY_CACHE_TTL_SECONDS,
+  MAX_INFLIGHT_ENTRIES,
+} from './capability_dispatch_cache'

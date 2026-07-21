@@ -1751,3 +1751,568 @@ D-5-quiet confirmation (same standing instruction carried from W3). CR-118 (tool
 fast-fail pattern, widened) and the MCP↔web namespace gap (floor-adoption coverage) are
 the two carried, named residuals for W5/PF-1. W5 (Adaptive Serving + Scale) is next,
 not opened by this session.
+
+## W5 OPEN (2026-07-21) — Adaptive Serving + Scale
+
+**Scope amendments from the native, ratifying/redirecting the W5 standing scope (brief
+§E W5) before lane dispatch:**
+
+1. **MCP↔web namespace bridge is W5's first-class core item, not a side lane.** The web
+   channel's hand-made tool bridge becomes a *generated projection of the compiled
+   catalog*, the same way every other served surface is generated — this is the
+   mechanism that takes floor adoption from ~10% (career-only, measured at W4 close) to
+   100% across all families. CR-118's fast-fail mappings and the `msr_sql` defect are
+   fixed *by regenerating the bridge*, not by hand-patching the existing hand-made one —
+   a hand-patch would be scoped-in-place work this wave explicitly supersedes.
+2. **D-5 alias cutover + single-bootstrap flag-flip are UNPARKED**, confirmed quiet
+   (`STATE_D-5.md` lifecycle_step 8 — CLOSE + CLEANUP, gate_run_3 GREEN-WITH-PARTIALS,
+   `current_wave` advances to D-4b), and run FIRST in this wave as the breaking-release
+   window.
+3. **Verdict-first streaming joins W5's UX scope.** W4's close measurement (above) makes
+   this concrete: synthesis (38.7s) is effectively the whole perceived-latency budget.
+   Stream the verdict/orientation layer (brief §9.7) while synthesis completes, and
+   redefine the time-to-first-verdict SLO as a stage-timing metric (target TBD from the
+   §9.7 pressure-point baselines) fit to the single-request web architecture — the plan's
+   original ≤3-calls-to-first-verdict framing doesn't map onto this architecture (also
+   noted at W4 close).
+
+**Coexistence check (brief §I, at wave open) — RE-RUN, result differs from the D-5
+assumption baked into amendment 2 above:**
+
+- `STATE_D-5.md`: D-5 lifecycle_step 8, CLOSE + CLEANUP, gate_run_3 (final,
+  native-authorized re-run) GREEN-WITH-PARTIALS. **D-5 itself is quiet — confirmed.**
+- **D-4b is NOT quiet — it is actively executing.** Evidence, this session: a live
+  `wave/pre-D-4b-readiness` branch; 4 gochara-perf branches (`fix/gochara-kakshya-vedha-
+  perf-cache`, `fix/gochara-perm-perf-cache`, `fix/gochara-skip-redundant-savepoint`,
+  `fix/gochara-sweep-writer-timeout-budget`) plus `feat/gochara-sweep-priority-ordering`
+  already merged to main (PR #681, `1b835b5d`, "B-1-usefulness priority ordering for
+  sweep dispatch — native directive"); two live `worktree-agent-*` branches (other
+  concurrent sessions currently active against this same repo); two **uncommitted**
+  working-tree files consistent with in-flight D-4b readiness work —
+  `platform/supabase/migrations/462_writer_timeout_ka_gochara_sweep.sql` (raises
+  `ka_gochara_sweep` writer_timeout_seconds 1800→21600, evidenced against 11 failed
+  production dispatch attempts) and
+  `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/GOCHARA_SWEEP_2_0_DESIGN_v1_0.md`.
+  `BRIEF_D4B.md` itself is still a v0.1 SKELETON ("Do NOT bind or execute from this
+  skeleton") — the readiness/perf work is running ahead of the formal brief binding.
+  Neither uncommitted file belongs to this campaign; left untouched.
+- **Mutex disposition (per the standing W3/D-5 precedent — only one campaign
+  merges-to-main/deploys in a given window):** mutex is **NOT claimed** by W5 this
+  entry. W5 work proceeds in isolated worktrees against `origin/main`, CI-verified
+  there; no W5 branch merges to `main` — and in particular, amendment 2's breaking-
+  release deploy (alias cutover + bootstrap flag-flip) does **not** fire — until the
+  mutex is re-checked clean immediately before that specific merge. Given D-4b's
+  currently-active branches all sit under `platform/python-sidecar/services/
+  {ka_gochara_sweep,...}` + one migration (the same disjoint footprint W3 already
+  verified against D-5), W5's own lanes (platform/platform-mcp, non-gochara migrations)
+  are not expected to conflict on merge — but the *deploy window* itself is still
+  serialized per the mutex rule, so W5 merges queue behind whatever D-4b has in flight
+  at merge time.
+- **Probe baseline:** re-snapshotted now (pre-W5) per amendment 2's instruction, before
+  any W5 work lands, and will be re-snapshotted again immediately after the D-5
+  unpark deploy and again at W5 close, so each deploy's before/after diff is a genuine
+  comparable rather than one stale baseline stretched across multiple releases.
+
+**Scope declaration for this wave:**
+
+- **may_touch:** `platform/**`, `platform-mcp/**` (incl. new generated-bridge codegen
+  for the web channel), `platform/supabase/migrations/**` (surgical only, §N.4,
+  non-`ka_gochara_sweep`/non-D-4b tables), `00_ARCHITECTURE/RETRIEVAL_*.md`,
+  `00_ARCHITECTURE/briefs/retrieval_impl/**`, `CURRENT_STATE_v1_0.md`, `SESSION_LOG.md`,
+  git branches/worktrees `impl/w5-<lane>` → `impl/wave-5` → `main`.
+- **must_not_touch:** everything under the standing must_not_touch (brief scope, restated
+  at every wave: FROZEN orchestrator/WriterBase contract + all layer writer build logic;
+  root `CLAUDECODE_BRIEF.md` + doctrine-wave briefs/ledgers, read-only; `chart_facts`
+  semantics/LEL content; Paripraśna UI/streaming internals beyond the §9.7 verdict-first
+  seam named in amendment 3) — **plus, for this wave specifically: any
+  `platform/python-sidecar/services/{ka_gochara_sweep,gochara_grammar,
+  gochara_intensity}/` file, migration 462, and any `wave/pre-D-4b-readiness` /
+  `worktree-agent-*` / `fix|feat/gochara-*` branch** — all D-4b-owned while that wave is
+  active.
+
+### W5 — Lane L0: D-5 unpark (2026-07-21)
+
+Flipped `RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED` default to `true` in `feature_flags.ts` —
+the breaking-release alias cutover, parked since W2 pending D-5 quiet. Re-verified the
+`catalog.ts`/`route.ts` bootstrap divergence (GT-40's 6 forward + 1 reverse items, plus
+the 7th `marsys://tool/router/route` silent-no-op found during W2) is still zero beyond
+the one accepted deliberate reverse item (`marsys://tool/synthesis/compose_large_n`) —
+neither file had moved since W2's fix landed. Legacy dual-list path remains fully
+reachable via explicit `MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false` override,
+proven by an updated `single_bootstrap_flag.test.ts`. The "list_changed" question in the
+plan item's "55+6, one breaking release, list_changed" description resolved to **not
+applicable**: the MCP tool surface exposed to clients is governed by a separate static
+whitelist (`tool_name_bridge.ts`'s `SURGICAL_TOOLS`) and a separate content-hash version
+(`capability_version.ts`), neither touched by which bootstrap path `route.ts` uses — no
+MCP `list_changed` notification is needed for this cutover.
+
+**Verified:** `platform/src/lib/retrieval` + `platform/src/app/api/retrieval` full
+suite 1347/1347 passed, 0 regressions. `tsc --noEmit` clean. One respawn cycle (stalled
+600s mid-run, likely the full-suite invocation; resumed with scope narrowed to the
+touched paths only — real work was already committed to the worktree, not lost).
+
+Landed on `impl/wave-5` (PR #684, `707fb5a9`) — **held unmerged**, mutex not claimed
+(D-4b still active per the coexistence check above).
+
+### W5 — Lane L1: generated MCP↔web tool bridge (2026-07-21)
+
+**Investigation, tracing an actual request** (`consult/route.ts` →
+`compileFloorForPlan` → `compiled_floor_adapter.ts` → `getToolByName` →
+`tool_name_bridge.ts`): the "hand-made bridge" the brief named is really **three**
+separate hand-maintained layers, not one — `tool_name_bridge.ts`'s `TOOL_NAME_TO_URI`
+(~89 legacy-name→URI entries, the actual dispatcher for every `plan.tool_calls` entry);
+`compiled_floor_adapter.ts`'s `LIVE_TOOL_TO_RETRIEVAL` (only **4 of 23** Vidhi
+`live_tool` names mapped — the real ~10%-floor-adoption bottleneck the W4 close named);
+and `canonical_faces.json`'s `deprecated_aliases` (D-2 Lane V-3, never chained to the
+other two). Confirmed the "23" by counting distinct `live_tool` values in
+`registry_data.ts`.
+
+**Root cause of the CR-118/`msr_sql` fast-fail, found live, not previously covered by
+any test:** `compiled_floor_adapter.ts`'s B.11 whole-chart-read floor injects literal
+registry URIs as `tool_name` (e.g. `marsys://tool/L2/query_signals`), but
+`TOOL_NAME_TO_URI`'s keys are names, never URIs — `getToolByName()` silently returned
+`undefined`, and `consult/route.ts`'s tool-fetch loop (`if (!t) return null`) dropped
+the tool with no error, no trace event. This is why `msr_sql` (and, per the W4 close
+finding, 2 of 3 fast-failing tools) never actually executed when injected via the
+floor path.
+
+**Built, as a 5th output of the existing W2 projection compiler (not a second,
+parallel one):** `web_tool_bridge_builder.ts` chains `getCatalog()` names +
+`canonical_faces.json` + the existing hand maps into a new generated artifact,
+`web_tool_bridge.generated.json` (emitted by `generate_projections.ts`, extended in
+place), consumed via a thin accessor (`generated_web_tool_bridge.ts`). `tool_name_bridge.ts`'s
+`resolveToolUri()` now resolves literal `marsys://` URIs directly (the CR-118 fix) and
+falls back to the generated bridge for any name outside the hand-curated map — kept as
+a documented hybrid rather than deleted outright, since the hand entries encode real
+migration history not recoverable from the catalog alone.
+`compiled_floor_adapter.ts` gained `resolveLiveTool()` (hand map → generated-bridge
+fallback), **raising Vidhi floor-primitive mappability from 4/23 to 11/23 uniformly
+across every family** (career/wealth/health/marriage/panoramic/general) — the fix lives
+in the shared compiler path, not a career-specific patch.
+
+**Honest residual, not silently closed:** 12 of 23 `live_tool` names remain genuinely
+unmapped — no retrieval-registry equivalent exists yet (e.g. `ganita_structural_get`,
+`bodha_signals_get`) — recorded per-name in the generated JSON with
+`resolution_kind: 'unmapped'`. Closing the remainder needs either new retrieval-registry
+capabilities or more curated aliases — named as a W5 follow-up lane, not claimed done.
+Also flagged, not fixed: the real MCP-side registration surface turned out to be spread
+across `register_p1_*.ts`/`register_p2_*.ts` files, not `platform-mcp/src/tools/
+registry_bridge.ts`'s 25 hand-written blocks as initially suspected — worth a look by
+whoever owns MCP-side registration count next.
+
+**Verified** (fresh integration onto `impl/wave-5`, re-run after merge, not just
+trusted from the worktree report): `tsc --noEmit --skipLibCheck` clean;
+`platform/src/lib/pipeline` + `platform/src/lib/retrieval/registry` 980/1105 passed
+(125 skipped), 0 failed. The lane's own worktree report additionally verified the full
+`platform` suite (563 files/6388 tests passed, 0 failed) against a fresh detached
+`main` baseline (562/6379, 0 failed — diff is exactly the new tests) and confirmed
+`platform-mcp`'s pre-existing 18-file/75-test failures are byte-identical on `main`,
+i.e. not introduced by this lane.
+
+Landed on `impl/wave-5` (commit pending, this entry) — held unmerged alongside L0,
+same mutex disposition.
+
+### W5 — Lane L8: listCapabilities filters (2026-07-21)
+
+**Investigation found two catalog-shaped surfaces**, not one: the internal
+`CapabilityDescriptor` registry (`getCatalog()`/`listCapabilities()` in
+`registry/index.ts`, ~118 entries, already richly filterable via
+`CapabilityFilter` — `type`/`layer`/`name_prefix`/`scope`/`archetype`/
+`traversal_level`/`tool_role` — but with no MCP-exposed serving path, consumed
+only internally by adapters/router/eval harness) vs. the `asset_registry` DB
+table (~92-row build-asset DAG) served via 5 near-identical MCP tools
+(`list_assets`, `catalog_assets_list`, `catalog_assets_all`,
+`catalog_assets_l0`, `asset_registry_l0`) — **the only listCapabilities-shaped
+surface actually reachable by an end user today**, previously filterable only
+by `layer`. Judgment call: extended the reachable DB-backed surface rather
+than building a new tool around the already-filterable internal registry.
+
+Added `asset_type` (data|service), `catalog_status` (CURRENT|DRAFT), `scope`
+(global|per_chart), `is_active`, `has_writer` filters (AND-combined with the
+existing `layer` filter) to `asset_registry_all.ts`/`asset_registry_l0.ts`,
+wired through `registry_bridge.ts` (`list_assets`) and
+`register_p1_aliases.ts` (`catalog_assets_list`/`all`/`l0`). Also fixed a gap
+where `asset_type`/`catalog_status`/`has_writer` were DB columns never
+selected into the response — filtering on them is now verifiable, not silently
+accepted-and-ignored.
+
+**Verified:** 12 new tests (each filter dimension + a combined 6-filter case +
+a no-filter backward-compat case), `R-18 param no-op audit` PASS (confirms
+params genuinely wired, not dropped). `tsc --noEmit` clean both packages.
+`platform/src/lib/retrieval/registry` 931/1056 passed (125 skipped), 0 failed.
+`platform-mcp`'s pre-existing 75-failed/555-passed baseline confirmed
+unchanged via stash comparison (not introduced by this lane).
+
+**Residual, named not built:** the internal `listCapabilities()`/
+`CapabilityFilter` surface was left untouched — already filterable, but has
+no end-user serving path; exposing the full ~118-entry `CapabilityDescriptor`
+catalog (vs. the asset_registry DAG) would need a new MCP tool, named as a
+follow-up if a future wave wants it.
+
+Landed on `impl/wave-5` (PR #684, `a8bb24e9`) — held unmerged alongside L0/L1,
+same mutex disposition.
+
+**L2 (per-family projections) and L3 (annotations + family_overrides) both hit
+a transient API connection error mid-run** (not a stall — real work already
+committed to each worktree before the drop) and were resumed in place rather
+than restarted from scratch, per the standing respawn discipline. L4
+(tool-search metadata) still in flight.
+
+### W5 — Lane L3 integration note: real 3-way merge (2026-07-21)
+
+L1 and L3 both independently extended `generate_projections.ts` from the same
+pre-L1 base (L3's worktree was dispatched in parallel, before L1 landed on
+`impl/wave-5`) — a straight `git apply` conflicted. Resolved via
+`git merge-file` 3-way merge against the true common ancestor (commit
+`707fb5a9`, the state right after L0 landed), combining both lanes' new
+numbered report sections rather than picking one side, then regenerating all
+6 projections fresh from the merged source (`npm run codegen:projections`)
+rather than trusting either lane's stale `.generated.json` snapshot. Verified
+clean after: `tsc --noEmit`, full scoped suite.
+
+**L3: CLOSED.** Landed on `impl/wave-5` (PR #684, `0aee586a`).
+
+### W5 — Lane L4: tool-search metadata (2026-07-21)
+
+**Investigation:** no keyword/free-text index exists anywhere over the
+~163-capability catalog — `list_assets` in `registry_bridge.ts` turned out to
+be a red herring (it enumerates the unrelated cockpit `asset_registry` table,
+not the retrieval registry). `CapabilityDescriptor` already carries everything
+a keyword index needs (name, description, `display.short_label`/`one_line`,
+layer, archetype, tool_role, projection_tags) — a missing-index gap, not a
+metadata-shape gap.
+
+**Built:** `tool_search.ts` (`buildToolSearchIndex`/`searchToolIndex` — pure,
+deterministic keyword/substring match over tokenized descriptor fields, scored
+name > keyword > description; no fabricated metadata, every field traces to a
+real descriptor property). Wired two ways: a 7th generated projection
+(`tool_search_index.generated.json`, via the same compiler) for census/CI
+visibility, and a live `marsys://tool/L0/tool_search` capability calling the
+same functions against the live `getCatalog()` on every request — bridged onto
+MCP as a new `tool_search` tool (`registry_bridge.ts`) — zero drift between the
+generated snapshot and what's actually served. Scope explicit: exact/substring
+keyword match, not fuzzy/semantic search (would need a `vector_search`-style
+corpus, named as a follow-up, not silently implied as done).
+
+**Integration required a real 3-way merge across THREE lanes** (L1, L3, L8 had
+all already landed touching `generate_projections.ts`/
+`projection_compiler_parity.test.ts`/`registry_bridge.ts` from the same
+pre-integration base L4 was dispatched from): merged each via `git merge-file`
+against the `707fb5a9` common ancestor, combined all three lanes' independent
+report sections/describe blocks (never picked one side over another), and
+regenerated all 7 projections fresh. One dropped closing brace from the manual
+merge (the `family_tool_defs` `writeJson` call) was caught immediately by
+esbuild's parse error on the first regen attempt and fixed before proceeding —
+recorded here rather than glossed over, since a silent brace-drop would have
+been a real, shippable bug.
+
+**Verified:** `tsc --noEmit` clean both packages.
+`platform/src/lib/retrieval/registry` + `src/lib/pipeline`: 1022/1147 passed
+(125 skipped), 0 failed. `platform-mcp` `m8_e2e_proof` + touched tool suites:
+88/95 passed (7 skipped), 0 failed — 2 pre-existing hardcoded tool-count
+assertions (57→58, 25→26) updated since `tool_search` is a genuine new
+registered tool, not a regression.
+
+**L4: CLOSED.** Landed on `impl/wave-5` (PR #684, `741a836f`).
+
+**Still in flight:** L2 (per-family projections) hit the same transient API
+connection error L3 did and was resumed in place. `impl/wave-5` now carries
+L0, L1, L3, L4, L8 — five of eleven lanes landed, all held unmerged pending
+the D-4b mutex.
+
+### W5 — Lane L2: per-family MCP surface profiles (2026-07-21)
+
+**Scope correction, found by reading the plan directly rather than assuming:**
+"family" in the compact/consult profile spec (`RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md`
+§R-4, `RETRIEVAL_PLAN_INDUSTRY_CONSULT_v1_0.md` §3.1) means **client/vendor
+family** (Claude vs. non-Claude MCP connectors — RC-1/RC-3/OT-10), not the
+astrology domain families (career/wealth/health/marriage) L3's
+`family_overrides` axis uses — naming overlap only, no actual conflict between
+the two lanes.
+
+**Built**, as an 8th projection (`mcp_surface_profiles.generated.json` +
+`platform-mcp/src/generated/mcp_surface_profiles.generated.ts` mirror, same
+de-mirror precedent as `envelope.ts`/`registry_shims.ts`): **full** (163,
+uncapped), **compact** (≤20 per RC-1, ranked by `demand_ranking`, overflow
+tools honestly reported via `overflow_tool_names`, never dropped), **consult**
+(7 orienting tools). F-R7 (`calibration_context_only`) excluded from all
+three. **Real registry gap found and worked around, not silently fixed at
+source:** the mechanical L-ORIENT tagging rule was sweeping internal
+orchestration meta-tools (`maro_orchestrate`, `synergy_pipeline`, etc. — each
+self-documented "not LLM-facing") into the consult set; excluded via an
+auditable filter in the builder, flagged for whoever owns
+`dprofiles_registration.ts` next.
+
+**OAuth-scope-gated serving:** `platform-mcp/src/lib/mcp_profile.ts` resolves
+a profile from the caller's OAuth scope (Bearer/first-party → full; unscoped
+or unrecognized OAuth grant → safe-default **consult**) and
+`applyProfileGate()` monkeypatches `McpServer.tool()` so every existing
+registration call site in `server.ts` is transparently scoped — zero
+per-file changes across ~20 registration modules. New `mcp:profile:full/
+compact/consult` scopes added to `oauth/authorize.ts`/`oauth/discovery.ts`.
+
+**V5-gate proof — the "consult profile cannot reach raw tools" requirement
+the wave's final gate checks — built here, adversarially, not just
+structurally:** the consult/full subset invariant is computed by the builder
+and re-verified in tests; a direct probe attempts real full-only tool names
+under consult and asserts none leak in; the known internal meta-tools are
+confirmed absent from every profile, consult least of all.
+
+**Integration required a THIRD 3-way merge cycle** — `generate_projections.ts`
+and `projection_compiler_parity.test.ts` had already been independently
+extended by L1+L3+L4 from the same pre-integration base L2 was dispatched
+from. The mechanical `git merge-file` pass mis-sliced a stray leftover comment
+line from the L4 merge and truncated the tool-search describe block in the
+test file — caught before committing (not after), fixed directly by hand
+rather than trusting the mechanical merge blindly. Also caught a real
+cross-lane type gap on the first `tsc` run: L2's builder reuses the
+tool-registration function L3 had extended with an `annotations` field, which
+the generated TS mirror's `McpSurfaceProfileToolEntry` interface didn't
+declare — added as optional, regenerated, re-verified clean.
+
+**Verified:** `tsc --noEmit` clean both packages.
+`platform/src/lib/retrieval/registry` + `src/lib/pipeline`: 1029/1154 passed
+(125 skipped), 0 failed. `platform-mcp`: `mcp_profile.test.ts` 16/16,
+`m8_e2e_proof` 39/39 (4 skipped); full suite 18 failed/75 tests — confirmed
+identical to the documented pre-existing baseline (unchanged since L1's
+entry), 0 new regressions.
+
+**Residuals, named not built:** `marsys_drill` (the plan's named
+compact-profile dispatcher) doesn't exist in the catalog — not fabricated;
+`drill_children` already gives overflow tools the same reachability
+guarantee. The other four pre-existing projections don't yet apply the F-R7
+filter this builder enforces — a future tightening pass. `prashna_ask` (plan:
+"MCP-consult = `prashna_ask` + ~5 orienting tools") is W6 scope — consult is
+the 7 orienting tools only until then.
+
+**L2: CLOSED.** Landed on `impl/wave-5` (PR #684, `685015ae`).
+
+**Six of eleven lanes now landed** (L0, L1, L2, L3, L4, L8), all held
+unmerged pending the D-4b mutex. Remaining: L5 (spine bundles), L6 (funnel
+batching/pooling), L7 (QoS/fairness/job queue), L9 (verdict-first streaming),
+L10 (battery baselines), then the V5 gate itself.
+
+### W5 — Lanes L7, L9, L10 (2026-07-21)
+
+**L7 — QoS priority classes + fairness dispatch queue.** No queueing/
+concurrency-limiting mechanism existed anywhere; the only multi-tool dispatch
+path (`consult/route.ts`'s `Promise.all` fan-out) was unbounded. Axis
+decision, documented in the module's own banner: rejected L2's
+mcp_profile (full/compact/consult) axis for QoS priority — plan §9.7 W-30
+names the real axis "interactive > background" (request-shape: is a human
+waiting synchronously right now), orthogonal to caller entitlement; a
+consult-scope OAuth caller can be a live interactive user. Built
+`platform/src/lib/retrieval/qos/dispatch_queue.ts`: bounded concurrency, two
+priority lanes via weighted round-robin plus a hard anti-starvation
+force-promotion bound, per-principal fair-share dequeuing, and a
+`QueueSaturatedError` refuse-path (queue/refuse, never thin quality). Wired
+into `consult/route.ts` as `priorityClass:'interactive'`, keyed by `user.uid`
+— bounds/fair-shares capacity across concurrent requests from different
+users, the real contention scenario; single-request behavior unchanged.
+`prashna_ask`'s own job-handle contract confirmed W6 scope, not built here —
+consistent with L2's own independent conclusion. 10 new tests under
+simulated concurrent load. **L7: CLOSED.** PR #684, `ca5d4875`.
+
+**L9 — Verdict-first streaming + time-to-first-verdict SLO.** Investigation
+found this partially already existed: `buildChartOrientation` runs
+concurrently with the planner/tool-fetch, and `data-orientation` already
+fired at stream start. Two real gaps closed: no stage-timing metric measured
+*when* it fired; and if `buildChartOrientation` threw, the event was
+silently skipped entirely (a genuine coverage gap for that request class,
+not hypothetical). Added `first_verdict` stage + `TIME_TO_FIRST_VERDICT_SLO_MS`
+(p50 12s / p95 20s, justified against the W4 baseline: ~10.75s pre-synthesis
+vs. 38.7s synthesis). `run_adapter_dispatch.ts`'s new
+`buildFirstVerdictEmission()` always emits `data-orientation` (a degraded
+fallback block when orientation is null, never silently omitted) and a
+`data-stage first_verdict` event with real elapsed ms. Merge-resolved cleanly
+against L7 (both touched `consult/route.ts`, disjoint regions, zero
+conflicts via `git merge-file`). 10 new tests. **L9: CLOSED.** PR #684,
+`1aafd72f`.
+
+**L10 — Multi-family battery/baseline harness + concurrency runs.** Extended
+the existing `planner_smoke_runner.ts` rubric-battery pattern to the
+deterministic W4 router (no LLM credentials needed, CI-safe);
+applied `BASELINE_PROBES.md`'s capture-now/diff-later methodology via a
+stable-stringify + sha256 fingerprint of the compiled Vidhi contract. Family
+list (wealth/career/health/marriage/panoramic/general) confirmed from
+`registry_data.ts`'s `VIDHI_INTENT_FLOORS`. Built
+`platform/tests/eval/w5_battery/` (30 hand-verified NL queries, 5/family) and
+**ran it now**: full 60/60 (30 queries × 2 charts — canonical `482012f1` +
+SAFE `1c826d5a`) — 100% routing accuracy sequential and concurrent (N=8),
+zero chart-isolation violations (the LCA-17-shaped cross-chart leak check),
+zero readback diffs. **Honest finding, quantified per-family for the first
+time:** health/marriage floors currently have 0% web-executable primitives —
+the MCP↔web namespace gap L1 partially closed (4/23→11/23 uniformly) remains
+fully open for those two families specifically. Baseline artifacts:
+`W5_BATTERY_BASELINE_v1_0.md` + `w5_battery_baseline_raw.json`, explicitly
+naming what's still needed for the true final V5-gate run (re-run after
+L5/L6 land, a real staging/prod load test, CI wiring). **L10: CLOSED.**
+PR #684, `74eb3528`.
+
+**Nine of eleven lanes now landed** (L0, L1, L2, L3, L4, L7, L8, L9, L10),
+all held unmerged pending the D-4b mutex. Remaining: L5 (spine bundles), L6
+(funnel batching/pooling), then the final V5 gate re-run against everything
+integrated.
+
+### W5 — Lane L6: sidecar/DB capability-dispatch cache (2026-07-21)
+
+**Investigation, all four sub-items of the brief's standing scope line
+checked against real evidence, not assumed:**
+1. Web consult funnel N+1 — already fine. `consult/route.ts`'s `tool_fetch`
+   loop already uses `Promise.all` + a two-tier cache; the W4-close
+   `tool_fetch 6.1s` figure for 4 tool calls is the MAX of the four tools'
+   latencies (one real 6065ms call, three fast-fails), not their sum —
+   proof it's wall-clock-bound by the slowest tool, not serialized.
+2. DB pooling — already fine (`db/client.ts` runs a proper shared `pg.Pool`,
+   max 10, keepalive, idle eviction, retry-once). Read replica — genuinely
+   absent (exhaustive grep), correctly left unbuilt: infra provisioning is
+   outside a code-only lane's authority, named as a residual not fabricated
+   as unwired dead code.
+3. **Sidecar memoization/caps — the real, unaddressed gap.**
+   `/api/retrieval/capability/route.ts` (the dispatcher the live
+   marsys-jis-direct connector actually uses, proxying every MCP capability
+   call including sidecar/DB hits) called `capability.handler(safeArgs)`
+   directly with zero caching.
+
+**Built:** `capability_dispatch_cache.ts` — two-tier cache (FIFO-capped
+in-process coalescing at 500 entries + shared Redis `mcp-capability`
+surface, 60s TTL), opt-in via the pre-existing but previously-unread
+`llm_hints.agentic.cacheable` descriptor field. **Real bug caught mid-
+implementation:** the entitlement gate resolves `chart_id` from either the
+request body or the `X-MCP-Chart-Id` header; a naive cache key from
+`safeArgs` alone would collide across two different charts when chart_id
+arrives only via header — fixed by folding the header-resolved chart_id
+into the cache key, verified as a genuine catch by temporarily reverting
+just that fix and confirming the regression test fails (1 call instead of
+2) before restoring it.
+
+Merge-resolved against L0 (both touched `capability/route.ts` from the same
+pre-integration base, true ancestor `794740e2`) via `git merge-file` — zero
+conflicts, auto-merged.
+
+**Verified:** `tsc --noEmit` clean. `src/lib/cache` + `src/app/api/retrieval`:
+84/84 + 19/19 passed, 0 failed.
+
+**Residual, named not built:** read-replica provisioning; per-tool query
+timeout budgets on individual L0_brahmagyan sidecar handlers (judged
+lower-leverage than the central dispatcher fix, and higher shared-file
+collision risk with the other concurrent W5 lanes).
+
+**L6: CLOSED.** Landed on `impl/wave-5` (PR #684, `ff99a8ff`).
+
+**Ten of eleven lanes now landed** (L0–L4, L6–L10), all held unmerged
+pending the D-4b mutex. Only L5 (spine bundles) remains in flight.
+
+### W5 — Lane L5: spine bundles as post-build materialized views (2026-07-21)
+
+**"Spine bundle" defined verbatim**, found by grep rather than assumed:
+`RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md` §8 item 11 +
+`RETRIEVAL_STRATEGY_v1_0.md` §S-5/§5.1 — the pre-joined chain
+`bodha_msr_signals` (L2 signal) → `kala_activation` (L3 windows) →
+`phala_anchors` (L4 anchors) → `mimamsa_calibration` (L5 calibration), served
+per `(chart_id, ayanamsha_id, domain)` as one capability instead of 3–5
+manual calls — "only one real cross-layer join exists today
+[`bodha_msr_signals`↔`kala_activation`]; the LLM hand-stitches everything
+else." Two false leads ruled out and documented: `grounding/*.ts`'s
+"grounding spine" (unrelated L1 `chart_facts` resolver) and `bundle/*.ts`'s
+"bundle" (W4's static markdown/asset-content bundle, not a cross-layer join).
+
+**Built:** `compute_spine_bundle.ts` (the join, as a composition of 4
+existing independently-tested capabilities, not a fifth parallel SQL path —
+pure/deterministic, which is what makes byte-consistency provable) +
+`materialize.ts` (post-build hook route mirroring the existing `refresh-mv`
+pattern, plus a lazy fallback baked into every read for when the hook is
+unwired). Storage: migration 463, a plain per-chart table (existing MVs in
+this codebase are global/full-refresh, don't fit a per-chart scope) using
+the §N.3 delete-then-insert pattern; `migration-guard` reviewed PASS (one
+WARN — missing `charts(id)` FK — fixed). New capability
+`marsys://tool/L-SPINE/query_spine_bundle` discloses its own `source`
+(`materialized`/`fresh_materialized`/`fresh_recomputed_stale`) on every
+response — never silently presented as cached. Greenfield mechanism, scoped
+down to a single joined table rather than a general-purpose join framework.
+
+**Verified:** 15 new tests (join correctness, byte-consistency between
+materialized-then-read and a fresh compute, staleness-triggers-recompute, a
+real wall-clock measurement — 5.3× speedup, 16 round-trips/92.0ms fresh vs.
+2 round-trips/17.5ms materialized). `tsc --noEmit` clean.
+`src/lib/retrieval/spine` + `registry` + `src/app/api/admin`: 1015/1140
+passed (125 skipped), 0 failed.
+
+**Residual:** the post-build hook isn't wired to an actual build-completion
+caller yet (no webhook/cron infra to attach to beyond the watchdog's polling
+cadence) — the lazy fallback makes this non-blocking for correctness.
+
+**L5: CLOSED.** Landed on `impl/wave-5` (PR #684, `641d71d9`).
+
+## ALL ELEVEN LANES LANDED (2026-07-21)
+
+L0–L10 all landed on `impl/wave-5`. Full-integration verification pass run
+immediately after: `tsc --noEmit` clean both packages;
+`platform` full suite **6526/6844 passed** (317 skipped, 1 todo), 0 failed
+after one real cross-lane fix (L0's `single_bootstrap_flag.test.ts` asserted
+an exact single-item divergence set that L5's new spine capability
+legitimately grew to two — fixed by updating the assertion, not loosening
+it, commit `0794ea0b`); `platform-mcp` 18 failed/75 tests, confirmed
+identical to the documented pre-existing baseline throughout this wave, 0
+new regressions.
+
+### V5 gate — status
+
+Per brief §E V5 ("per-family tools/list conforms in CI; battery scores
+recorded as the regression baseline; load test passes the four §9.7
+pressure points; consult profile provably cannot reach raw tools"):
+
+1. **Per-family tools/list conformance** — **satisfied, correction to an
+   earlier note in this entry:** L2's adversarial test suite
+   (`projection_compiler_parity.test.ts` §7 "(g) MCP surface profiles")
+   passes as part of the full-suite run above: compact ≤20, full uncapped
+   and larger than compact, overflow honestly reported, F-R7 exclusion
+   holds. This file is ALREADY a mandatory, dedicated CI gate step — "R-1
+   projection compiler parity/completeness gate" in the `Density Census
+   (§N.6)` job (`.github/workflows/ci.yml` lines 375–394), wired since
+   W2/W3 and confirmed still running (and green) on PR #684. An earlier
+   version of this entry incorrectly claimed this wasn't CI-wired; checked
+   the actual workflow file rather than assuming, and it is.
+2. **Battery scores recorded as the regression baseline** — L10's harness
+   re-run against the fully-integrated state (`W5_BATTERY_BASELINE_v1_0.md`
+   §8): 60/60 routing accuracy, 0 isolation violations, 0 readback diffs,
+   **GATE: PASS**. Real, measured improvement over L10's original
+   pre-integration baseline — every family's `avg_mapped_fraction` rose;
+   health/marriage went from 0% (completely unreached) to 26.7%/28.6%.
+3. **Load test across the four §9.7 pressure points** (W-28 cache hit-rate
+   under real traffic, W-29 concurrency capacity, W-30 QoS/backpressure
+   under contention, W-31 SLO-per-query-class) — **NOT satisfied by this
+   session.** L10's battery concurrency pass exercises correctness/isolation
+   of the synchronous in-process compile path, not the full funnel→sidecar→
+   DB round trip under genuine concurrent production load. A real
+   staging/prod load test requires a deployed connector, which itself
+   requires this wave to clear the D-4b mutex and deploy first (see below)
+   — named as the standing next step, not silently skipped.
+4. **Consult profile provably cannot reach raw tools** — **satisfied.**
+   L2's adversarial test (`projection_compiler_parity.test.ts` §7, "CONSULT
+   PROFILE PROVABLY CANNOT REACH RAW/FULL-ONLY TOOLS (V5 gate)") verifies
+   the structural subset invariant, probes real full-only tool names against
+   consult, and confirms known internal meta-tools are absent from every
+   profile — passing in the full-suite run above.
+
+**Honest overall V5 disposition (corrected): 3/4 criteria fully closed
+(per-family tools/list CI conformance, battery baseline, consult-cannot-
+reach-raw), 1/4 open (the genuine four-point load test, which needs a
+deployed connector).** This wave does not claim V5 complete —
+the remaining work is real, named, and sequenced behind the mutex-gated
+deploy, not glossed over.
+
+### Deploy status
+
+`impl/wave-5` (PR #684) carries all 11 lanes, fully verified locally, still
+**held unmerged** — the D-4b mutex has not been re-checked clean since the
+coexistence check at wave open (D-4b was actively executing: live gochara-
+perf branches, migration 462 since merged to `main`, concurrent
+`worktree-agent-*` sessions). Per the standing protocol (same one W3 used
+against D-5): merge/deploy waits for an explicit D-4b-quiet confirmation,
+re-checked immediately before that specific merge, with the probe baseline
+re-snapshotted before and after per the native's own instruction at wave
+open. This is the one item this session cannot close unilaterally — it
+requires either D-4b's own conductor confirming quiet, or the native's
+explicit go-ahead, matching every prior wave's coexistence discipline in
+this campaign.

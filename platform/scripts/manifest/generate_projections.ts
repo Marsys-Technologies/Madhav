@@ -14,6 +14,16 @@
  * `codegen:vidhi`/`codegen:vidhi:check` — confirmed present in this worktree's
  * git status at lane open, a concurrent W2 lane's work) — NOT duplicated here.
  *
+ * (e) W5 Lane L4 addition ("tool-search metadata", standing W5 scope line):
+ * `tool_search_index.generated.json` — a normalized search-field set (name,
+ * description, family/domain tags, keywords) for EVERY live capability, no
+ * projection_tags filter (unlike a/b above, search must cover the whole
+ * catalog, not just chat/MCP-tagged subsets). Derivation lives in
+ * `src/lib/retrieval/registry/tool_search.ts` (not here) so the LIVE
+ * `tool_search` MCP tool (`layers/L0_brahmagyan/tool_search.ts`, bridged in
+ * `registry_bridge.ts`) shares the exact same function — this JSON artifact is
+ * a static snapshot for census/CI/docs use, not itself read at serve time.
+ *
  * Every artifact this script writes is a NEW generated file alongside the
  * existing hand-written surfaces (TOOL_CONTRACTS, registry_bridge.ts) — it
  * does not modify, import from, or get imported by either live-serving path.
@@ -38,14 +48,34 @@ import {
   buildMcpToolRegistrations,
   buildMcpNonToolRegistrations,
   buildDocsResourceCatalog,
+  buildAllFamilyToolDefs,
+  findFamilyNameCollisions,
+  MODEL_FAMILIES,
+  buildToolSearchIndex,
   resolveType,
 } from './projection_builders'
 import { extractRegistryBridgeToolsFromDisk, REGISTRY_BRIDGE_PATH } from './extract_registry_bridge_tools'
+import { resolveWebToolBridge, type CanonicalFacesData } from './web_tool_bridge_builder'
+import { buildMcpSurfaceProfiles, consultIsSubsetOfFull, COMPACT_MAX_TOOLS } from './mcp_surface_profile_builder'
+import { TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL } from '../../src/lib/retrieval/registry/tool_name_bridge'
+import canonicalFacesRaw from '../../src/lib/retrieval/registry/canonical_faces.json'
+import { VIDHI_PRIMITIVES } from '../../src/lib/vidhi/registry_data'
 
 const OUT_DIR = join(__dirname, '..', '..', 'src', 'generated', 'projections')
 const REPORT_PATH = join(
   __dirname, '..', '..', '..', '00_ARCHITECTURE', 'briefs', 'retrieval_impl',
   'R1_PROJECTION_COMPILER_REPORT.md',
+)
+// W5 L2: platform-mcp is a separate NodeNext ESM package with no path-mapped import
+// back into `platform/` (same process-boundary constraint `generate_envelope.ts` /
+// `generate_vidhi_registry_mirror.ts` document) — a raw JSON import would need a
+// per-import `with { type: 'json' }` assertion this codebase does not use anywhere
+// else. Mirroring the profiles as a plain generated TS data module (same directory,
+// `platform-mcp/src/generated/`, alongside `envelope.ts`/`registry_shims.ts`) avoids
+// that and matches the established de-mirror precedent: ONE generation step, TWO
+// committed artifacts, never hand-synced.
+const MCP_PROFILES_MIRROR_PATH = join(
+  __dirname, '..', '..', '..', 'platform-mcp', 'src', 'generated', 'mcp_surface_profiles.generated.ts',
 )
 
 function writeJson(name: string, data: unknown): void {
@@ -97,6 +127,164 @@ function main(): void {
   // (d) docs resource stub — marsys://resource/catalog shape
   const docsCatalog = buildDocsResourceCatalog(caps, generatedAt)
   writeJson('docs_resource_catalog.generated.json', docsCatalog)
+
+  // (e) W5 L1 — web↔MCP tool-name bridge. Resolves every distinct Vidhi floor-
+  // compiler `live_tool` name (the MCP-native namespace `compiled_floor_adapter.ts`
+  // had to hand-map, 4/23 before this lane) PLUS the full `canonical_faces.json`
+  // list (broader coverage census) to a registry URI, by chaining getCatalog()
+  // names + canonical_faces.json's deprecated_aliases + tool_name_bridge.ts's
+  // existing hand-curated maps. See web_tool_bridge_builder.ts header for the
+  // full resolution-order rationale.
+  const canonicalFaces = canonicalFacesRaw as unknown as CanonicalFacesData
+  const liveToolNames = [...new Set(VIDHI_PRIMITIVES.map((p) => p.live_tool))].sort()
+  const liveToolBridge = resolveWebToolBridge(liveToolNames, caps, TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL, canonicalFaces)
+  const canonicalFaceBridge = resolveWebToolBridge(
+    canonicalFaces.canonical_faces,
+    caps,
+    TOOL_NAME_TO_URI,
+    MCP_TO_RETRIEVAL_TOOL,
+    canonicalFaces,
+  )
+  const liveToolMapped = liveToolBridge.filter((e) => e.uri !== null)
+  const liveToolUnmapped = liveToolBridge.filter((e) => e.uri === null)
+  const canonicalFaceMapped = canonicalFaceBridge.filter((e) => e.uri !== null)
+  const canonicalFaceUnmapped = canonicalFaceBridge.filter((e) => e.uri === null)
+  writeJson('web_tool_bridge.generated.json', {
+    generated_at: generatedAt,
+    generator: 'generate_projections.ts',
+    source:
+      'getCatalog() capability names + canonical_faces.json deprecated_aliases + ' +
+      'tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)',
+    vidhi_live_tool_bridge: {
+      total: liveToolBridge.length,
+      mapped: liveToolMapped.length,
+      unmapped: liveToolUnmapped.length,
+      entries: liveToolBridge,
+    },
+    canonical_faces_bridge: {
+      total: canonicalFaceBridge.length,
+      mapped: canonicalFaceMapped.length,
+      unmapped: canonicalFaceUnmapped.length,
+      entries: canonicalFaceBridge,
+    },
+  })
+
+  // (f) W5 L1 — per-family tool-def projection: MCP annotations already ride
+  // inline on (a)/(b) above (`annotations` field, added this lane). This 6th
+  // artifact is the `family_overrides` + `input_examples`/`search_result`
+  // emission the brief's W5 standing scope line names — merges any declared
+  // `cap.family_overrides[family]` onto the base chat-tool-def shape, per
+  // model family (anthropic/gemini/openai/deepseek). Currently 0/118 live
+  // capabilities declare a real override (W2's deliberate, documented
+  // non-population — editorial judgment, not this campaign's job to
+  // fabricate) so every family's projection is mechanically IDENTICAL to the
+  // base chat projection today. That is the CORRECT, expected output of a
+  // real merge-with-no-overrides-present, not a bug — the mechanism is real
+  // and tested (see `family_projection.test.ts`); population is a future
+  // editorial wave's job, same disposition W2 already recorded.
+  const familyToolDefs = buildAllFamilyToolDefs(caps)
+  const familyCollisions = Object.fromEntries(
+    MODEL_FAMILIES.map((f) => [f, findFamilyNameCollisions(familyToolDefs[f])]),
+  )
+  const familyOverrideCounts = Object.fromEntries(
+    MODEL_FAMILIES.map((f) => [f, familyToolDefs[f].filter((d) => d.has_override).length]),
+  )
+  writeJson('family_tool_defs.generated.json', {
+    generated_at: generatedAt,
+    generator: 'generate_projections.ts',
+    source:
+      'getCatalog() capabilities with type=tool AND projection_tags includes "chat", merged with ' +
+      'cap.family_overrides[family] per model family (types.ts FamilyOverrideSpec)',
+    families: MODEL_FAMILIES,
+    total_per_family: Object.fromEntries(MODEL_FAMILIES.map((f) => [f, familyToolDefs[f].length])),
+    overrides_declared_per_family: familyOverrideCounts,
+    name_collisions_per_family: familyCollisions,
+    tool_defs: familyToolDefs,
+  })
+
+  // (g) W5 Lane L4 — tool-search metadata: normalized search fields for every
+  // live capability (uri/name/description/family/keywords), the same index the
+  // live `tool_search` capability (layers/L0_brahmagyan/tool_search.ts) builds
+  // from getCatalog() at request time. Generated here purely for census/CI/docs
+  // visibility — this JSON artifact is not itself read at serve time.
+  const toolSearchIndex = buildToolSearchIndex(caps)
+  writeJson('tool_search_index.generated.json', {
+    generated_at: generatedAt,
+    generator: 'generate_projections.ts',
+    source: 'getCatalog() capabilities — ALL capabilities, no projection_tags filter (search covers the full catalog)',
+    total: toolSearchIndex.length,
+    entries: toolSearchIndex,
+  })
+
+  // (h) W5 L2 — per-family MCP surface profiles: full / compact≤20 / consult.
+  // "family" here means CLIENT/VENDOR family (Claude vs. non-Claude MCP connectors —
+  // RC-1/RC-3 rulings), NOT an astrology domain — see mcp_surface_profile_builder.ts's
+  // header for the full derivation. Profile selection at serve time is OAuth-scope-gated
+  // (platform-mcp/src/lib/mcp_profile.ts), wired this same lane.
+  const mcpSurfaceProfiles = buildMcpSurfaceProfiles(caps)
+  const consultSubsetOfFull = consultIsSubsetOfFull(mcpSurfaceProfiles)
+  writeJson('mcp_surface_profiles.generated.json', {
+    generated_at: generatedAt,
+    generator: 'generate_projections.ts',
+    source:
+      'getCatalog() capabilities filtered by projection_tags (mcp_full/mcp_compact/mcp_consult), ' +
+      'ranked by demand_ranking (bearing_first, family_rank, static_salience) for the compact cap',
+    compact_max_tools: COMPACT_MAX_TOOLS,
+    invariant_consult_subset_of_full: consultSubsetOfFull,
+    profiles: mcpSurfaceProfiles,
+  })
+  // Mirror to platform-mcp as a plain generated TS data module (see MCP_PROFILES_MIRROR_PATH
+  // doc comment above for why this is a TS mirror, not a JSON import, across that process
+  // boundary). Committed alongside envelope.ts/registry_shims.ts under the same generated/ dir.
+  const mcpProfilesMirrorSource = `/**
+ * mcp_surface_profiles.generated.ts — GENERATED, DO NOT HAND-EDIT.
+ * ====================================================================
+ * Generated by \`platform/scripts/manifest/generate_projections.ts\` (W5 L2) from the live
+ * retrieval registry (\`getCatalog()\`) via \`platform/scripts/manifest/mcp_surface_profile_builder.ts\`.
+ * Regenerate: \`npx tsx --conditions=react-server scripts/manifest/generate_projections.ts\`
+ * (run from \`platform/\`). Byte-identical sibling of
+ * \`platform/src/generated/projections/mcp_surface_profiles.generated.json\` — this file exists
+ * ONLY because platform-mcp is a separate NodeNext ESM package with no import path back into
+ * \`platform/\` (same constraint \`envelope.ts\`/\`registry_shims.ts\` in this directory document).
+ * Never hand-edit; never import the JSON sibling from platform-mcp code.
+ *
+ * generated_at: ${generatedAt}
+ */
+
+export type McpProfileName = 'full' | 'compact' | 'consult'
+
+export interface McpSurfaceProfileToolEntry {
+  tool_name: string
+  description: string
+  input_schema: Record<string, unknown>
+  uri: string
+  layer: string
+  name_valid: boolean
+  annotations?: Record<string, unknown>
+}
+
+export interface McpSurfaceProfileData {
+  profile: McpProfileName
+  max_tools: number | null
+  total: number
+  tool_names: string[]
+  tools: McpSurfaceProfileToolEntry[]
+  overflow_tool_names: string[]
+  excluded_calibration_context_only: string[]
+  excluded_not_llm_facing: string[]
+}
+
+export const COMPACT_MAX_TOOLS = ${COMPACT_MAX_TOOLS} as const
+
+export const MCP_SURFACE_PROFILES: {
+  full: McpSurfaceProfileData
+  compact: McpSurfaceProfileData
+  consult: McpSurfaceProfileData
+} = ${JSON.stringify(mcpSurfaceProfiles, null, 2)} as const
+`
+  mkdirSync(dirname(MCP_PROFILES_MIRROR_PATH), { recursive: true })
+  writeFileSync(MCP_PROFILES_MIRROR_PATH, mcpProfilesMirrorSource, 'utf-8')
+  console.log(`[generate_projections] wrote ${MCP_PROFILES_MIRROR_PATH}`)
 
   // ── Comparison (a): generated chat defs vs the real served TOOL_CONTRACTS ──
   const contractNames = new Set(CONTRACT_CATALOG.map((c) => c.canonical_name))
@@ -272,7 +460,131 @@ STUB in the sense that it is generated as a static JSON artifact here, not wired
 is a live-serving-path change, explicitly out of this additive-only lane's scope per the
 task's own instruction — "new code paths gated behind an explicit flag that defaults OFF").
 
-## 5. Honesty notes / what's NOT done this lane
+## 5. (e) Web↔MCP tool-name bridge (W5 L1)
+
+\`web_tool_bridge.generated.json\` — resolves the Vidhi floor compiler's
+\`live_tool\` namespace (${liveToolNames.length} distinct names across
+\`registry_data.ts\`) plus the full \`canonical_faces.json\` list
+(${canonicalFaces.canonical_faces.length} names) to registry URIs, by chaining
+\`getCatalog()\` capability names + \`canonical_faces.json\`'s \`deprecated_aliases\`
++ \`tool_name_bridge.ts\`'s existing hand-curated maps (not re-authored — chained).
+
+- Vidhi \`live_tool\` bridge: **${liveToolMapped.length} / ${liveToolBridge.length}** resolve to a
+  registry URI (before this lane's generated projection, \`compiled_floor_adapter.ts\`'s
+  hand-curated \`LIVE_TOOL_TO_RETRIEVAL\` mapped only **4 / ${liveToolNames.length}**).
+  Unmapped: ${liveToolUnmapped.length ? liveToolUnmapped.map((e) => e.name).join(', ') : '(none)'}.
+- \`canonical_faces.json\` bridge (broader census): **${canonicalFaceMapped.length} / ${canonicalFaceBridge.length}**
+  resolve to a registry URI. ${canonicalFaceUnmapped.length} remain unmapped — see
+  \`web_tool_bridge.generated.json\`'s \`canonical_faces_bridge.entries\` for the
+  full per-name resolution_kind/via chain (not inlined here, too long).
+
+**Wiring status:** \`tool_name_bridge.ts\`'s \`resolveToolUri()\` now falls back to
+this generated projection (\`resolveGeneratedToolUri\`) for any name not already
+in its hand-curated \`TOOL_NAME_TO_URI\`, and resolves literal registry URIs
+directly (the CR-118 fast-fail fix — see that file's \`isCapabilityUri\` doc
+comment). \`compiled_floor_adapter.ts\`'s \`LIVE_TOOL_TO_RETRIEVAL\` now consults
+this generated bridge before falling back to its small hand-curated map, raising
+Vidhi floor-primitive mappability from 4/${liveToolNames.length} toward
+${liveToolMapped.length}/${liveToolNames.length} without hand-editing that file.
+
+## 6. (f) Per-family tool-def projection (W5 lane L3 — annotations + family_overrides + input_examples/search_result emissions)
+
+\`family_tool_defs.generated.json\` — the base chat tool-def projection (§1 above),
+merged per model family (${MODEL_FAMILIES.join('/')}) with any declared
+\`cap.family_overrides[family]\` (types.ts \`FamilyOverrideSpec\`:
+\`description_override\`/\`name_override\`/\`strict_schema\`/\`input_examples\`/
+\`search_result_content_block\`). Every emitted tool def also now carries an
+\`annotations\` block in the REAL MCP \`ToolAnnotations\` wire shape
+(\`readOnlyHint\`/\`destructiveHint\`/\`idempotentHint\`/\`openWorldHint\`/\`title\`,
+verified against this repo's installed \`@modelcontextprotocol/sdk\` — not guessed) —
+the same \`annotations\` addition also lands on (a) chat tool defs and (b) MCP tool
+registrations above, additively alongside their pre-existing \`read_only\`/
+\`destructive\` fields.
+
+Overrides declared per family today: ${MODEL_FAMILIES.map((f) => `**${f}**=${familyOverrideCounts[f]}`).join(', ')}
+(0 across the board — W2's descriptor-migration lane deliberately left
+\`family_overrides\` at 0/118, "requires genuine per-capability editorial judgment
+[...] left for a future, explicitly-scoped editorial wave" — that ruling stands;
+this lane builds the EMISSION mechanism the override merge needs, not the editorial
+content). Every family's projection is therefore mechanically identical to the base
+chat projection today — the CORRECT output of a real merge with no overrides
+present, not a gap in this lane. Name collisions per family (would only appear once
+\`name_override\` population starts): ${MODEL_FAMILIES.map((f) => `**${f}**=${familyCollisions[f].length}`).join(', ')}.
+
+**Wiring status:** additive only, same as every other projection here — nothing in
+this artifact is consumed by \`getCatalog()\`, the chat pipeline's MARO adapter, or
+any live \`server.tool()\` call. The day an editorial wave populates a real
+\`family_overrides\` entry on any capability, this generator picks it up on its next
+run with zero code changes (verified in \`family_projection.test.ts\` via test-local
+mock overrides exercising every merge path: \`description_override\`, \`name_override\`,
+\`strict_schema\`'s additionalProperties:false/all-required transform,
+\`input_examples\` pass-through, \`search_result_content_block\`).
+
+## 7. (g) W5 Lane L4 — tool-search index (\`tool_search_index.generated.json\`)
+
+**${toolSearchIndex.length}** entries — one per live capability, no filtering. Each entry
+carries \`uri\`/\`name\`/\`type\`/\`layer\`/\`scope\`/\`family\` (the descriptor's own
+\`archetype\`)/\`tool_role\`/\`short_label\`/\`one_line\`/\`description\`/\`keywords\` (a deduped,
+sorted, tokenized set derived from name+description+display+layer+archetype+tool_role+
+traversal_level+projection_tags — no field invented, everything traces to a real descriptor
+property per B.10's "don't fabricate" discipline applied to metadata, not just numbers).
+
+Live-served counterpart: \`marsys://tool/L0/tool_search\`, bridged onto MCP as the
+\`tool_search\` tool (\`registry_bridge.ts\`) — same \`buildToolSearchIndex\`/\`searchToolIndex\`
+functions, called against the LIVE \`getCatalog()\` on every request (not this static
+snapshot), so a stale generated JSON can never diverge from what a caller actually gets back.
+
+**Scope of "search" (explicit, not a silent limitation):** case-insensitive keyword/substring
+match over tokenized fields, scored (name match > keyword match > description substring).
+NOT fuzzy matching, NOT semantic/embedding search (that would be a \`vector_search\`-style
+corpus build — materially heavier, out of scope for this lane's first cut). A query with zero
+token overlap against every entry returns an honest \`total_matches: 0\`, never a fabricated
+best-effort guess.
+
+## 8. (h) MCP surface profiles — full / compact≤${COMPACT_MAX_TOOLS} / consult (W5 L2)
+
+Plan §R-4 item 1/2 + ruling RC-1/RC-3: "Profile selection = entitlement (OT-10 b+c):
+OAuth scope / connect URL selects the projection; a plain guest cannot reach raw tools."
+\`mcp_surface_profiles.generated.json\` builds the three named profiles as a 6th output of
+this same compiler (not a parallel one), reusing \`buildMcpToolRegistration\` for per-tool
+shape:
+
+- **full**: **${mcpSurfaceProfiles.full.total}** \`mcp_full\`-tagged tools, uncapped.
+- **compact**: **${mcpSurfaceProfiles.compact.total} / ${COMPACT_MAX_TOOLS}** (capped per RC-1;
+  ${mcpSurfaceProfiles.compact.overflow_tool_names.length} eligible \`mcp_compact\`-tagged tools
+  did not make the cap — reachable via \`full\` or a surfaced sibling's \`drill_children\`, listed
+  in \`overflow_tool_names\`, never silently dropped).
+- **consult**: **${mcpSurfaceProfiles.consult.total}** \`mcp_consult\`-tagged (L-ORIENT) tools —
+  the restricted "safe by default" set (plan §6.5). Verified by construction (not just
+  asserted): every consult tool name is also a full tool name
+  (\`invariant_consult_subset_of_full\`: **${consultSubsetOfFull}**) — consult can never surface
+  a name absent from full.
+
+F-R7 (NO-LEAKAGE) enforcement: \`calibration_context_only\` capabilities are excluded from all
+three profiles here. Full: ${mcpSurfaceProfiles.full.excluded_calibration_context_only.join(', ') || '(none)'}
+excluded. Compact: ${mcpSurfaceProfiles.compact.excluded_calibration_context_only.join(', ') || '(none)'}
+excluded.
+
+**Wiring status:** \`platform-mcp/src/lib/mcp_profile.ts\` (this same lane) reads the generated
+TS mirror (\`platform-mcp/src/generated/mcp_surface_profiles.generated.ts\`) to resolve a
+profile from the caller's OAuth scope and gate \`server.tool()\` registration in
+\`platform-mcp/src/server.ts\` accordingly — see that file's own doc comments for the
+scope-to-profile mapping and the safe-default (unscoped/legacy OAuth token → consult).
+
+**Honest residuals, not silently closed:**
+- \`marsys_drill\` (the plan's named compact-profile dispatcher tool) does not exist in the
+  catalog — not fabricated here; the existing \`drill_children\` field already gives overflow
+  tools the same reachability guarantee. A literal dispatcher tool is a possible future wave,
+  not built this lane.
+- The OTHER four projections this compiler already emits (chat/mcp_full/mcp_compact/docs
+  census above) do not yet apply the F-R7 calibration_context_only filter this profile builder
+  enforces — flagged for a future tightening pass, not fixed here (out of this lane's scope,
+  touches files this lane did not open to rewrite).
+- \`prashna_ask\` (plan: "MCP-consult = \`prashna_ask\` + ~5 orienting tools") is W6 scope, not
+  yet built — the consult profile here is the ${mcpSurfaceProfiles.consult.total} orienting
+  tools only; \`prashna_ask\` joins the consult set when W6 lands it.
+
+## 9. Honesty notes / what's NOT done this lane
 
 - Plan item 2c ("the vidhi primitive rows' tool bindings") is **not** covered by this
   generator — it is the separately-landed \`codegen:vidhi\`/\`codegen:vidhi:check\` lane

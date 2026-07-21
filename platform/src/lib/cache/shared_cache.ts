@@ -28,7 +28,7 @@ import 'server-only'
 import crypto from 'crypto'
 import { getRedis } from './redis_client'
 
-export type SharedCacheSurface = 'retrieval-bundle' | 'planner' | 'vertex-embed' | 'active-charts' | 'runtime-config'
+export type SharedCacheSurface = 'retrieval-bundle' | 'planner' | 'vertex-embed' | 'active-charts' | 'runtime-config' | 'mcp-capability'
 
 export interface CacheMetricsEvent {
   surface: SharedCacheSurface
@@ -184,8 +184,10 @@ export async function invalidateNamespace(surface: SharedCacheSurface): Promise<
 }
 
 /**
- * Per-chart invalidation hook. Today: invalidates retrieval-bundle + planner
- * surfaces (the two that key on chart_id). When chart_id materially changes
+ * Per-chart invalidation hook. Today: invalidates retrieval-bundle + planner +
+ * mcp-capability surfaces (the ones that key on chart_id — mcp-capability
+ * added W5/L6: the capability dispatcher cache keys on `args` which includes
+ * `chart_id` for per_chart capabilities). When chart_id materially changes
  * (rare — only on chart re-resolution / kundali rebuild), call this.
  *
  * Implementation deliberately wipes the entire surface rather than walking
@@ -197,5 +199,6 @@ export async function invalidateChart(_chartId: string): Promise<void> {
   await Promise.all([
     invalidateNamespace('retrieval-bundle'),
     invalidateNamespace('planner'),
+    invalidateNamespace('mcp-capability'),
   ])
 }

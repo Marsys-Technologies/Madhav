@@ -21,6 +21,32 @@ import { getCapability } from './index'
 import type { CapabilityDescriptor, CapabilityUri } from './types'
 import type { ToolBundle, ToolBundleResult } from '@/lib/retrieval/shared_types'
 import crypto from 'crypto'
+import { resolveGeneratedToolUri } from './generated_web_tool_bridge'
+
+/**
+ * W5 L1 (CR-118 fast-fail fix): a `toolName` that is ALREADY a registry URI
+ * (starts with `marsys://`) resolves directly via `getCapability()`, bypassing
+ * `TOOL_NAME_TO_URI` entirely.
+ *
+ * Real bug this fixes: `compiled_floor_adapter.ts`'s `ensureB11WholeChartReadFloor`
+ * (and its `prashna_ask_spike.ts` twin) push literal registry URIs as `tool_name`
+ * — e.g. `'marsys://tool/L2/query_signals'` — under the assumption that a registry
+ * URI is a valid, self-resolving tool identifier. It never was: `TOOL_NAME_TO_URI`
+ * only maps legacy *names* (keys) to URIs (values); a URI was never a key, so
+ * `getToolByName('marsys://tool/L2/query_signals')` silently returned `undefined`
+ * and consult/route.ts's tool-fetch loop (`if (!t) return null`) dropped the tool
+ * with NO error and NO result — the B.11 whole-chart-read floor's own MSR-signals
+ * tool (the exact capability `msr_sql` already resolves correctly under its OWN
+ * name) never actually executed when injected via this path. This is the
+ * `msr_sql` web-channel defect named in the W5 brief, and one instance of the
+ * CR-118 fast-fail class. Fixed structurally (any URI-shaped identifier now
+ * resolves) rather than by renaming the two call sites — future callers that
+ * push a registry URI directly (the generated web-tool bridge below does this
+ * routinely) get correct behaviour for free.
+ */
+function isCapabilityUri(toolName: string): boolean {
+  return toolName.startsWith('marsys://')
+}
 
 // ── Tool-name → URI map ───────────────────────────────────────────────────────
 
@@ -289,7 +315,7 @@ export function getToolByName(toolName: string): {
   version: string
   retrieve(plan: Record<string, unknown>, params?: Record<string, unknown>): Promise<ToolBundle>
 } | undefined {
-  const uri = TOOL_NAME_TO_URI[toolName]
+  const uri = resolveToolUri(toolName)
   if (!uri) return undefined
 
   const cap: CapabilityDescriptor | undefined = getCapability(uri)
@@ -337,17 +363,34 @@ export function getToolByName(toolName: string): {
  * Replaces `getTool(name) !== undefined` checks.
  */
 export function hasToolByName(toolName: string): boolean {
-  const uri = TOOL_NAME_TO_URI[toolName]
+  const uri = resolveToolUri(toolName)
   if (!uri) return false
   return getCapability(uri) !== undefined
 }
 
 /**
- * Resolve a legacy tool name to its registry URI.
- * Used by the MCP primitives route (replaces MCP_TO_RETRIEVAL_TOOL lookup chain).
+ * Resolve a tool name to its registry URI.
+ *
+ * Resolution order (W5 L1 — generated-projection bridge cutover):
+ *   1. `toolName` is already a registry URI (`marsys://...`) → resolved directly
+ *      (CR-118 fast-fail fix — see `isCapabilityUri` doc comment above).
+ *   2. `toolName` is a hand-curated legacy alias in `TOOL_NAME_TO_URI` — these
+ *      encode real migration history (D7 retirement, WP-1.x fixes, R6
+ *      0b-deadtools) that cannot be mechanically re-derived from the catalog,
+ *      so they take precedence over the generated projection.
+ *   3. Fall back to `resolveGeneratedToolUri()` — the BUILD-TIME GENERATED
+ *      projection (`platform/scripts/manifest/generate_projections.ts` →
+ *      `web_tool_bridge.generated.json`) sourced from `getCatalog()` (every
+ *      live capability's own `.name`) plus `canonical_faces.json`'s
+ *      `deprecated_aliases`. This is what widens coverage as the catalog grows
+ *      without hand-editing this file — the mechanism the W5 brief calls for
+ *      ("the web channel's tool bridge becomes a generated projection of the
+ *      compiled catalog... this is the mechanism that takes floor adoption
+ *      from ~10%... to 100%").
  */
 export function resolveToolUri(toolName: string): CapabilityUri | undefined {
-  return TOOL_NAME_TO_URI[toolName]
+  if (isCapabilityUri(toolName)) return toolName
+  return TOOL_NAME_TO_URI[toolName] ?? resolveGeneratedToolUri(toolName)
 }
 
 // ── MCP Surgical Whitelist ────────────────────────────────────────────────────

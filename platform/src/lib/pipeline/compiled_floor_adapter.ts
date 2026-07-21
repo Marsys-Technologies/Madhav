@@ -38,6 +38,7 @@ import type { PipelinePlan, ToolCallItem } from './types'
 import type { ScopeTuple as ClassifierScopeTuple } from '@/lib/vidhi/scope_classifier'
 import type { IntentClass, ScopeDepth, ScopeTuple as CompilerScopeTuple } from '@/lib/vidhi/types'
 import { compileContract, defaultRegistry } from '@/lib/vidhi/compiler'
+import { resolveGeneratedToolUri } from '@/lib/retrieval/registry/generated_web_tool_bridge'
 
 // ── L2.5 whole-chart-read tool names (B.11) ─────────────────────────────────────
 // Kept identical to consult/route.ts's prior inline list. Old names (`msr_sql`,
@@ -124,11 +125,37 @@ export function classifierTupleToCompilerTuple(tuple: ClassifierScopeTuple): Com
 // intentionally absent — they are reported as unmappedPrimitives, not pushed as
 // no-op tool names. (Known gap: the compiler's floor is MCP-native; the web
 // retrieval path covers only this subset. See the file header + W4 step-3 report.)
+//
+// W5 L1: this hand-curated map is now consulted SECOND — `resolveLiveTool()` below
+// tries the GENERATED web-tool bridge first (`web_tool_bridge.generated.json`,
+// built by `generate_projections.ts` from the live catalog + `canonical_faces.json`
+// + `tool_name_bridge.ts`'s existing aliases). The generated bridge resolves
+// 11/23 of Vidhi's distinct `live_tool` names today (up from this map's 4/23) —
+// see `R1_PROJECTION_COMPILER_REPORT.md` §5 for the exact count and the still-
+// unmapped names. Retained here (rather than deleted) as: (a) a documented,
+// tested fallback for any name the generated bridge cannot yet resolve, and
+// (b) the resolved value here is a retrieval-tool NAME (legacy namespace),
+// whereas the generated bridge resolves straight to a registry URI — both are
+// valid `tool_name` values now that `tool_name_bridge.ts`'s `resolveToolUri()`
+// accepts literal registry URIs directly (the CR-118 fast-fail fix).
 export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
   get_cgm_subgraph: 'cgm_graph_walk', // mechanism_read → L2 CGM subgraph walk (an L2.5 tool)
   lel_query: 'lel_query', // lel_retrodiction → L5 life-event log
   ganita_yoga_firings_get: 'get_yoga_firings', // dhana_yoga_scan / nbry_scan → L1 yoga firings
   bodha_discoveries_get: 'query_discoveries', // contradiction_scan → L2 discoveries
+}
+
+/**
+ * Resolve a Vidhi `live_tool` name to a web-executable `tool_name` (either a
+ * legacy retrieval-tool name or a registry URI — both are valid `getToolByName()`
+ * inputs, see `tool_name_bridge.ts`'s `resolveToolUri()`).
+ *
+ * Order: the small hand-curated `LIVE_TOOL_TO_RETRIEVAL` map first (documented,
+ * test-guarded exceptions), then the generated projection (widens coverage
+ * automatically as the catalog/canonical_faces.json grow — no hand-edit needed).
+ */
+export function resolveLiveTool(liveTool: string): string | undefined {
+  return LIVE_TOOL_TO_RETRIEVAL[liveTool] ?? resolveGeneratedToolUri(liveTool)
 }
 
 const BAND_BUDGET = { acharya_floor: 600, machine_band: 400 } as const
@@ -176,7 +203,7 @@ export function compileFloorForPlan(tuple: ClassifierScopeTuple, chartId: string
   const seen = new Set<string>()
 
   for (const item of [...contract.floor, ...contract.machine_band]) {
-    const retrievalName = LIVE_TOOL_TO_RETRIEVAL[item.live_tool]
+    const retrievalName = resolveLiveTool(item.live_tool)
     if (!retrievalName) {
       unmappedPrimitives.push(item.primitive_id)
       continue

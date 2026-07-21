@@ -307,6 +307,35 @@ Native-approved parallelism policy (2026-07-19):
    `kala_*` serving semantics; retrieval owns the plane (registry,
    envelope, budget, edge, planner). Cross-needs are raised as notes in
    the other campaign's ledger, never edited directly.
+6. **Breaking-release hold, independent of the deploy mutex (native ruling,
+   2026-07-21, W5).** A breaking rename or bootstrap-source cutover (e.g.
+   W5 L0's `RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED` default flip — legacy tool
+   names stop being served the moment it lands) must NEVER deploy while
+   another campaign has a live agent swarm actively executing against the
+   deployed connector, even if that campaign's own file footprint is
+   disjoint and §I.3's deploy mutex reads clear. The risk isn't a merge
+   conflict — it's that the OTHER campaign's live agents may be calling
+   the legacy names on the running connector at the exact moment the
+   rename takes effect, with no way for those agents to know the rename
+   happened mid-flight. This is a strictly narrower, additional gate on
+   top of §I.3: §I.3 governs when code may merge/deploy; this item governs
+   when a SPECIFIC KIND of already-merged, already-deployable change may
+   actually take effect in production. Concretely: the additive nine-tenths
+   of a wave carrying a breaking piece MAY split and deploy under §I.3's
+   normal mutex rules (per-lane, file-disjoint) the moment the mutex is
+   free — the breaking piece itself waits, separately, for an explicit
+   confirmation that the other campaign has no live agents currently
+   executing (not just "no open PR" — a running swarm can exist without an
+   open PR). Precedent: W5's D-5-unpark lane (alias cutover + single-
+   bootstrap default) was built, tested, and ready while D-4b was actively
+   executing (live gochara-perf branches + concurrent `worktree-agent-*`
+   sessions, confirmed via `git branch -a` / `gh pr list`, not assumed);
+   it was split onto a held branch (`impl/w5-breaking`) and paused at its
+   feature-flag default (back to `false`, fully tested either way) while
+   the other ten, non-breaking lanes deployed. Re-check via the same
+   evidence class (live branches + open PRs, not a stale STATE.md read)
+   immediately before un-pausing.
 
 *End of RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF v1.0 (§I coexistence policy
-added 2026-07-19). One kickoff, one human gate, verified done.*
+added 2026-07-19; §I.6 breaking-release hold added 2026-07-21). One
+kickoff, one human gate, verified done.*

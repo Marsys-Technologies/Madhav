@@ -143,10 +143,22 @@ export type FeatureFlag =
   // maintaining its own separate per-wave registration list and instead imports
   // its registration list EXCLUSIVELY from registry/catalog.ts's getCatalog()
   // (the same production consumption surface both MCP Layer-2 primitives and
-  // the chat channel already import). Default FALSE in every environment —
-  // flipping it on is a separate, future, explicitly-authorized breaking-release
-  // deploy, not part of this lane. When false, route.ts's dispatch behavior is
-  // byte-for-byte identical to its pre-flag behavior.
+  // the chat channel already import). PAUSED at default FALSE (2026-07-21,
+  // W5 conductor, per native ruling): the D-5 quiet gate was met (STATE_D-5.md
+  // lifecycle_step 8) and the GT-40 divergence re-verified zero (beyond the one
+  // deliberate reverse item, synth_compose_large_n — see
+  // single_bootstrap_flag.test.ts's mechanical flag=false-vs-flag=true URI
+  // diff), so this flip is code-complete and fully tested — but D-4b (an
+  // unrelated concurrent campaign) is still actively executing its own live
+  // agent swarm against the deployed connector, and master brief §I.6 forbids
+  // any breaking rename/bootstrap-source change from deploying while another
+  // campaign's agents may be calling legacy names on it. This is the SAME flip
+  // 707fb5a9 shipped and then paused, not a fresh decision — see
+  // STATE.md's "W5 — breaking-release split" entry and impl/w5-breaking
+  // (holds the flip-forward, ready to reapply the moment D-4b confirms quiet).
+  // Set MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=true in env to force the
+  // new single-bootstrap path early (verification/staging use only, per this
+  // note — not a production override without the D-4b-quiet check).
   // Env: MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED.
   | 'RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED'
 
@@ -234,10 +246,10 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // MCPT v3.1.0 — MCP v3.1 pure-MCP server. Default true — foundation sealed 2026-05-22.
   // Override via MARSYS_FLAG_MCP_V3_ENABLED=false to revert to v1 path (emergency only).
   MCP_V3_ENABLED: true,
-  // Retrieval Plane Elevation R-1 item 3 — single bootstrap. Default FALSE:
-  // route.ts keeps its own hand-maintained registration list until a future,
-  // separately-authorized breaking-release deploy flips this on.
-  // Override via MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=true.
+  // Retrieval Plane Elevation R-1 item 3 — single bootstrap. PAUSED at FALSE
+  // (2026-07-21) — code-complete and fully tested, flip held on impl/w5-breaking
+  // pending D-4b quiet per master brief §I.6. See the FeatureFlag union's doc
+  // comment above for the full rationale.
   RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: false,
 }
 

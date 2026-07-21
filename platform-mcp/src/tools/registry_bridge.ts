@@ -333,6 +333,10 @@ const MCP_RESPONSE_BUDGET_KB = {
   chart_snapshot: 40,
   get_graha_yuddha: 40,
   vector_search: 40,
+  // W5 Lane L4 (tool-search metadata): a search-result page over ~120 catalog
+  // entries is small (name/description/keywords per hit, capped at 100 hits) —
+  // 24KB comfortably covers a full 100-result page without ever needing a trim.
+  tool_search: 24,
 } as const
 
 // ── W3 "One Envelope" — verbosity knob (plan §7 item 6 / master brief §E W3) ──────────
@@ -1480,23 +1484,64 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // ── list_assets (asset catalog) ───────────────────────────────────────────
   // marsys://resource/asset-registry/all
   // Global scope — no chart_id required
+  // W5 L8 ("listCapabilities filters" / W-13): added asset_type/catalog_status/scope/
+  // is_active/has_writer filters, forwarded to the same asset_registry_all.ts handler
+  // that already implements them (AND-combined; all optional, backward compatible).
   server.tool(
     'list_assets',
     {
       layer: z.string().optional().describe('Filter by layer: L0, L1, L2, L3, L4, L5'),
+      asset_type: z.enum(['data', 'service']).optional().describe('Filter by asset_type: data or service'),
+      catalog_status: z.enum(['CURRENT', 'DRAFT']).optional().describe('Filter by catalog_status: CURRENT or DRAFT'),
+      scope: z.enum(['global', 'per_chart']).optional().describe('Filter by scope: global or per_chart'),
+      is_active: z.boolean().optional().describe('Filter to active (true) or inactive (false) assets'),
+      has_writer: z.boolean().optional().describe('Filter to assets with (true) or without (false) a registered writer'),
       limit: z.number().int().min(1).max(200).optional().describe('Max assets (default: 81)'),
       cursor: z.string().optional().describe('Pagination cursor'),
     },
-    async ({ layer, limit, cursor }) => {
+    async ({ layer, asset_type, catalog_status, scope, is_active, has_writer, limit, cursor }) => {
       try {
         // list_assets → platform cockpit registry (direct HTTP; no @/ import possible)
         const data = await callRegistryCapability(
           'marsys://resource/asset-registry/all',
-          { layer, limit: limit ?? 81, cursor }, undefined, principal
+          { layer, asset_type, catalog_status, scope, is_active, has_writer, limit: limit ?? 81, cursor }, undefined, principal
         )
         return dualOutputBudgeted(applyMcpBudgetAuto({ ...(data as Record<string, unknown>), pagination: { cursor, limit } }, MCP_RESPONSE_BUDGET_KB.list_assets, 'list_assets'))
       } catch (err) {
         return errorOutput('list_assets', String(err))
+      }
+    }
+  )
+
+  // ── tool_search (W5 Lane L4 — "tool-search metadata") ────────────────────
+  // marsys://tool/L0/tool_search — global scope, no chart_id required.
+  // Keyword search over the FULL ~120-capability catalog (name/description/
+  // layer/domain-tag/keyword match), so a caller can discover a capability by
+  // describing what it needs instead of already knowing the exact tool name.
+  // See platform/src/lib/retrieval/registry/tool_search.ts for the shared
+  // derivation this delegates to (same function backs the generated
+  // tool_search_index.generated.json census artifact — zero drift).
+  server.tool(
+    'tool_search',
+    'Keyword search over the full MARSYS tool/resource/prompt catalog (~120 capabilities ' +
+      'across L0-L5). Returns matching tool names, descriptions, and layer/domain tags — NOT ' +
+      'the full catalog. Use this before assuming a needed capability does not exist, or when ' +
+      'the exact tool name is unknown (e.g. query="dasha activation", "muhurta", "yoga ' +
+      'firings", "remedies"). Case-insensitive keyword/substring match — not fuzzy or semantic ' +
+      'search; a query with no overlap returns an honest empty result, never a fabricated guess.',
+    {
+      query: z.string().describe('Keyword(s) describing the capability you need (e.g. "dasha", "muhurta timing", "remedy for saturn").'),
+      limit: z.number().int().min(1).max(100).optional().describe('Max matching tools to return (default 20, max 100).'),
+    },
+    async ({ query, limit }) => {
+      if (!query || !query.trim()) return errorOutput('tool_search', 'query is required')
+      try {
+        const data = await callRegistryCapability(
+          'marsys://tool/L0/tool_search', { query, limit }, undefined, principal
+        )
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.tool_search, 'tool_search'))
+      } catch (err) {
+        return errorOutput('tool_search', String(err), { query })
       }
     }
   )

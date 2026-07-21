@@ -41,6 +41,22 @@ import type {
   InputSchema,
   ParameterSchema,
 } from '../../src/lib/retrieval/registry/types'
+// W5 Lane L4 ("tool-search metadata"): the search-index derivation lives in
+// src/lib (not here) because the LIVE `tool_search` capability
+// (layers/L0_brahmagyan/tool_search.ts) needs it too, and the live serving
+// path must never reach into scripts/ (this is the same directional rule the
+// module doc above states for getCatalog()/CONTRACT_CATALOG — scripts/ imports
+// FROM src/lib, never the reverse). Re-exported here so both the CLI generator
+// below and the CI parity test have one import path for all five projections.
+export {
+  buildToolSearchIndex,
+  buildToolSearchIndexEntry,
+  searchToolIndex,
+  tokenize as toolSearchTokenize,
+  type ToolSearchIndexEntry,
+  type ToolSearchMatch,
+  type ToolSearchResult,
+} from '../../src/lib/retrieval/registry/tool_search'
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -98,6 +114,168 @@ export function toJsonSchema(input?: InputSchema, required?: string[]): Record<s
 
 function hasTag(cap: CapabilityDescriptor, tag: 'chat' | 'mcp_full' | 'mcp_compact' | 'mcp_consult'): boolean {
   return (cap.projection_tags ?? []).includes(tag)
+}
+
+// ── MCP-spec tool annotations (W5 lane L3) ───────────────────────────────────
+// RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md §E W5 standing scope: "annotations
+// + family_overrides + input_examples/search_result emissions". Field names below
+// are the REAL MCP SDK `ToolAnnotations` shape (verified against this repo's
+// installed `@modelcontextprotocol/sdk@1.29.0` `ToolAnnotationsSchema` —
+// `title`/`readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` — not
+// guessed). Derived from the REAL `cap.annotations` field (types.ts, populated
+// 118/118 by the W2 descriptor-migration backfill per STATE.md) — this lane does
+// not invent a second annotation classification, it projects the existing one
+// into the wire-protocol shape no generated surface emitted before this lane
+// (the pre-existing `read_only`/`destructive` ad-hoc fields on ChatToolDef/
+// McpToolRegistration used the registry's OWN field names, not the MCP spec's
+// Hint-suffixed ones a real `server.tool(..., annotations, ...)` call needs).
+
+export interface McpToolAnnotations {
+  title?: string
+  readOnlyHint?: boolean
+  destructiveHint?: boolean
+  idempotentHint?: boolean
+  openWorldHint?: boolean
+}
+
+/**
+ * Project `cap.annotations` (+ `cap.display.short_label` as the optional
+ * spec `title` hint) into the real MCP `ToolAnnotations` shape. Omits a key
+ * entirely when the source field is undefined — MCP annotations are optional
+ * hints; emitting `false` where the registry has never classified the
+ * capability would fabricate a claim ("this is definitely not destructive")
+ * the registry never made. Since W2 backfilled `annotations` on all 118 live
+ * capabilities, this is non-empty for the overwhelming majority in practice.
+ */
+export function buildMcpAnnotations(cap: CapabilityDescriptor): McpToolAnnotations {
+  const a = cap.annotations
+  const out: McpToolAnnotations = {}
+  if (cap.display?.short_label) out.title = cap.display.short_label
+  if (a?.read_only !== undefined) out.readOnlyHint = a.read_only
+  if (a?.destructive !== undefined) out.destructiveHint = a.destructive
+  if (a?.idempotent !== undefined) out.idempotentHint = a.idempotent
+  if (a?.open_world !== undefined) out.openWorldHint = a.open_world
+  return out
+}
+
+// ── Per-family serving overrides (`family_overrides`) + input_examples/
+// search_result emissions (W5 lane L3) ───────────────────────────────────────
+// types.ts's `family_overrides` field (R-1.1, amendment_version 2) is 0/118
+// populated on the live registry — deliberately, per the W2 descriptor-
+// migration lane's own note ("both require genuine per-capability editorial
+// judgment... left for a future, explicitly-scoped editorial wave"). That
+// ruling stands; this lane does NOT author editorial override content. What
+// this lane DOES build is the EMISSION mechanism the brief's W5 standing scope
+// line asks for: a pure function that, for a given model family, merges any
+// declared `family_overrides[family]` onto the base descriptor and emits the
+// resulting per-family tool-def shape — so the day an editorial wave populates
+// `description_override`/`name_override`/`strict_schema`/`input_examples`/
+// `search_result_content_block` on any capability, the served per-family
+// projection picks it up with zero code changes. Verified against the REAL
+// live registry (currently 0 overrides — every family's projection is
+// mechanically identical to the base chat projection today, which is the
+// CORRECT and expected output, not a bug) plus unit tests that construct
+// real (test-local) override objects to exercise every merge path.
+
+export type ModelFamily = 'anthropic' | 'gemini' | 'openai' | 'deepseek'
+
+export const MODEL_FAMILIES: readonly ModelFamily[] = ['anthropic', 'gemini', 'openai', 'deepseek']
+
+export interface FamilyToolDef {
+  family: ModelFamily
+  /** `name_override` applied if declared, else the base capability name. */
+  name: string
+  /** `description_override` applied if declared, else the base description. */
+  description: string
+  /** Base `input_schema`, with the OpenAI strict-mode transform applied iff `strict_schema` is set. */
+  input_schema: Record<string, unknown>
+  uri: string
+  layer: string
+  annotations: McpToolAnnotations
+  /** True iff this family's override declares `strict_schema: true`. */
+  strict_schema: boolean
+  /** Few-shot `input_examples`, verbatim from the override, or null if none declared. */
+  input_examples: Array<Record<string, unknown>> | null
+  /** True iff this family's override opts into MCP `search_result` content-block framing. */
+  search_result_content_block: boolean
+  /** True iff `cap.family_overrides?.[family]` is declared at all (any field). */
+  has_override: boolean
+  name_overridden: boolean
+  description_overridden: boolean
+}
+
+/**
+ * OpenAI structured-output strict-mode transform (per `FamilyOverrideSpec.
+ * strict_schema`'s own doc comment: "additionalProperties:false, all-required").
+ * A mechanical JSON-Schema transform derived from the schema's OWN declared
+ * properties — it does not invent constraints or content, it tightens an
+ * already-real schema per OpenAI's documented strict-mode contract.
+ */
+export function applyStrictSchemaTransform(schema: Record<string, unknown>): Record<string, unknown> {
+  const properties = (schema['properties'] ?? {}) as Record<string, unknown>
+  return {
+    ...schema,
+    properties,
+    additionalProperties: false,
+    required: Object.keys(properties),
+  }
+}
+
+export function buildFamilyToolDef(cap: CapabilityDescriptor, family: ModelFamily): FamilyToolDef {
+  const override = cap.family_overrides?.[family]
+  const baseDescription = cap.display?.full_description ?? cap.description
+  const description = override?.description_override ?? baseDescription
+  const name = override?.name_override ?? cap.name
+  const strict = override?.strict_schema === true
+  let inputSchema = toJsonSchema(cap.input_schema, cap.required_inputs)
+  if (strict) inputSchema = applyStrictSchemaTransform(inputSchema)
+  return {
+    family,
+    name,
+    description,
+    input_schema: inputSchema,
+    uri: cap.uri,
+    layer: cap.layer,
+    annotations: buildMcpAnnotations(cap),
+    strict_schema: strict,
+    input_examples: override?.input_examples ?? null,
+    search_result_content_block: override?.search_result_content_block === true,
+    has_override: override !== undefined,
+    name_overridden: override?.name_override !== undefined,
+    description_overridden: override?.description_override !== undefined,
+  }
+}
+
+/** Same population as (a) chat tool defs (type=tool + `chat` projection_tag) — family
+ * overrides are an LLM function-calling concern, the same surface `family_overrides`'
+ * own doc comment cites ("MARO reads these to shape... per model family"). */
+export function buildFamilyToolDefs(caps: CapabilityDescriptor[], family: ModelFamily): FamilyToolDef[] {
+  return caps
+    .filter((c) => resolveType(c) === 'tool' && hasTag(c, 'chat'))
+    .map((c) => buildFamilyToolDef(c, family))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export function buildAllFamilyToolDefs(caps: CapabilityDescriptor[]): Record<ModelFamily, FamilyToolDef[]> {
+  const out = {} as Record<ModelFamily, FamilyToolDef[]>
+  for (const family of MODEL_FAMILIES) out[family] = buildFamilyToolDefs(caps, family)
+  return out
+}
+
+/**
+ * Honest collision report: if a future editorial wave sets `name_override` on
+ * two capabilities to the same string for one family, that family's tool-def
+ * set would no longer have unique names (an MCP/function-calling requirement).
+ * Reports collisions rather than silently de-duping or crashing — mirrors this
+ * codebase's "honest report, not narrowed to hide false positives" convention.
+ */
+export function findFamilyNameCollisions(defs: FamilyToolDef[]): string[] {
+  const counts = new Map<string, number>()
+  for (const d of defs) counts.set(d.name, (counts.get(d.name) ?? 0) + 1)
+  return [...counts.entries()]
+    .filter(([, n]) => n > 1)
+    .map(([name]) => name)
+    .sort()
 }
 
 // ── (c) Machine census — every capability, every declared field ─────────────
@@ -232,6 +410,14 @@ export interface ChatToolDef {
   layer: string
   read_only: boolean | null
   destructive: boolean | null
+  /**
+   * MCP-spec-shaped tool annotations (W5 lane L3 — see `buildMcpAnnotations()`
+   * above). Additive alongside the pre-existing `read_only`/`destructive`
+   * fields (kept for backward compat with existing consumers); this is the
+   * first emission of the full readOnlyHint/destructiveHint/idempotentHint/
+   * openWorldHint shape a real MCP client's approval flow reads.
+   */
+  annotations: McpToolAnnotations
 }
 
 export function buildChatToolDef(cap: CapabilityDescriptor): ChatToolDef {
@@ -243,6 +429,7 @@ export function buildChatToolDef(cap: CapabilityDescriptor): ChatToolDef {
     layer: cap.layer,
     read_only: cap.annotations?.read_only ?? null,
     destructive: cap.annotations?.destructive ?? null,
+    annotations: buildMcpAnnotations(cap),
   }
 }
 
@@ -268,6 +455,8 @@ export interface McpToolRegistration {
   uri: string
   layer: string
   name_valid: boolean
+  /** MCP-spec-shaped tool annotations (W5 lane L3) — see `buildMcpAnnotations()`. */
+  annotations: McpToolAnnotations
 }
 
 export function buildMcpToolRegistration(cap: CapabilityDescriptor): McpToolRegistration {
@@ -278,6 +467,7 @@ export function buildMcpToolRegistration(cap: CapabilityDescriptor): McpToolRegi
     uri: cap.uri,
     layer: cap.layer,
     name_valid: MCP_NAME_PATTERN.test(cap.name),
+    annotations: buildMcpAnnotations(cap),
   }
 }
 

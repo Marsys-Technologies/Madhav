@@ -27,6 +27,7 @@ import { buildEntitlementDenialEnvelope, buildErrorEnvelope } from '@/lib/mcp/ep
 import { query } from '@/lib/db/client'
 import { validateServiceToken } from '@/lib/mcp/service_token'
 import { configService } from '@/lib/config/index'
+import { getOrComputeCapability } from '@/lib/cache/capability_dispatch_cache'
 
 // ── Per-call chart entitlement gate (R5.2 A1) ─────────────────────────────────
 //
@@ -93,18 +94,17 @@ async function ensureBootstrapped(): Promise<void> {
   if (_bootstrapped) return
   _bootstrapped = true
 
-  // Retrieval Plane Elevation, plan R-1 item 3 ("single bootstrap", W2b lane).
-  // Default OFF (RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false): falls through to the
-  // hand-maintained registration list below, unchanged from today's behavior.
-  // When ON: this route stops maintaining its own separate per-wave list and
-  // instead imports EXCLUSIVELY from registry/catalog.ts's getCatalog() — the
-  // same production consumption surface both the MCP Layer-2 primitives route
-  // and the chat channel already import (@/lib/retrieval/registry/catalog).
+  // Retrieval Plane Elevation, plan R-1 item 3 ("single bootstrap"). Default ON
+  // as of the W5 "D-5 unpark" breaking release (2026-07-21): this route now
+  // stops maintaining its own separate per-wave list by default and instead
+  // imports EXCLUSIVELY from registry/catalog.ts's getCatalog() — the same
+  // production consumption surface both the MCP Layer-2 primitives route and
+  // the chat channel already import (@/lib/retrieval/registry/catalog).
   // Dynamically imported so the module (and its full L0–L5/D7–D10/synthesis
   // import chain) is never pulled into this route's bundle or executed when
-  // the flag is off. Flipping this flag on in any deployed environment is a
-  // separate, future, explicitly-authorized breaking-release deploy — not
-  // this lane's job; it must stay off everywhere this lane touches.
+  // the flag is forced off. Set
+  // MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false to force the legacy
+  // hand-maintained path below (emergency rollback only).
   if (configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')) {
     const { getCatalog } = await import('@/lib/retrieval/registry/catalog')
     getCatalog()
@@ -192,12 +192,22 @@ export async function POST(request: Request) {
 
   const safeArgs = (args && typeof args === 'object') ? args : {}
 
+  // Resolved for the entitlement gate below AND (W5 L6) folded into the cache
+  // key for per_chart capabilities — chart_id can arrive via the request body
+  // OR the X-MCP-Chart-Id header (see the CHART_REQUIRED remediation message
+  // below, which documents both as valid). A cache key built from `safeArgs`
+  // alone would miss the header-only case entirely, letting two calls for
+  // DIFFERENT charts collide on the same cache key whenever chart_id is only
+  // ever supplied via the header — a real cross-chart cache-collision bug
+  // this lane's own new caching would otherwise introduce.
+  const headerChartId = request.headers.get('x-mcp-chart-id')
+
   // R5.2 A1 — per-call chart entitlement gate. Runs for every per_chart capability,
   // regardless of which of the ~35 call sites across platform-mcp reached this route.
   if (capability.scope === 'per_chart') {
     const chartId =
       (typeof safeArgs['chart_id'] === 'string' ? (safeArgs['chart_id'] as string) : undefined) ??
-      request.headers.get('x-mcp-chart-id') ??
+      headerChartId ??
       null
     const userUid = request.headers.get('x-mcp-user')
 
@@ -230,7 +240,25 @@ export async function POST(request: Request) {
   }
 
   try {
-    const content = await capability.handler(safeArgs)
+    // W5 L6 — memoize the handler call when the capability self-declares
+    // llm_hints.agentic.cacheable === true (99 descriptors already carry this
+    // field; this route is the first consumer of it). Everything else
+    // (the default) dispatches exactly as before — a direct, uncached call.
+    const cacheable = capability.llm_hints?.agentic?.cacheable === true
+    // Cache-key args: safeArgs plus the header-resolved chart_id folded in
+    // for per_chart capabilities (see the comment above headerChartId) —
+    // does NOT change what the handler itself receives (still safeArgs,
+    // unchanged from pre-lane behavior).
+    const cacheKeyArgs =
+      capability.scope === 'per_chart' && headerChartId && typeof safeArgs['chart_id'] !== 'string'
+        ? { ...safeArgs, chart_id: headerChartId }
+        : safeArgs
+    const content = await getOrComputeCapability(
+      uri,
+      cacheKeyArgs,
+      cacheable,
+      () => capability.handler(safeArgs),
+    )
     return NextResponse.json({ ok: true, content })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
