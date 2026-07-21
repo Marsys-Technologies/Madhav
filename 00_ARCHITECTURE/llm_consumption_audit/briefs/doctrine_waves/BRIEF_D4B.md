@@ -3,9 +3,8 @@ artifact: BRIEF_D4B
 type: WAVE BRIEF (FROZEN — fleshed per pre-D-4b readiness pass; §B binds fresh at D-4b open)
 wave: D-4b — Calibration Ignition + Grand Bakeoff (campaign close)
 version: 1.0
-status: FROZEN — awaiting native kickoff directive. Do not open D-4b lanes from this session;
-  this pass authors and freezes the brief only (native's explicit constraint: "no D-4b lane
-  code, no bakeoff scoring, no backfill").
+status: OPENED — native kickoff via Cowork 2026-07-21, formally recorded this commit; predecessor
+  halt report (HALTED-PENDING-FORMAL-OPEN, prior session same date) incorporated.
 prerequisite: D-5 gate GREEN-WITH-PARTIALS (native-accepted close disposition, STATE_D-5.md
   gate_run_3) + A.0's materialization-completeness gate (this brief's own §0, NEW) satisfied
   at D-4b open — re-verified fresh at open, not assumed from this pass's snapshot.
@@ -36,6 +35,31 @@ If this is not 100% at D-4b open, the Binder does not proceed to §B — it re-d
 gap in the open session's log. **This is the NEW assertion class this readiness pass registers**
 (see the pass's own report): materialization-completeness precedes gate/scoring, always, for any
 future heavy-writer asset a wave's empirical claims depend on — not just this one.
+
+### §0 RECONCILIATION (2026-07-21, native ruling via Cowork, formally recorded this commit)
+
+The full-materialization gate above is **SUPERSEDED** by an event-driven scoring model — the
+original hard-gate reasoning is retained above verbatim for its history, not deleted, but it no
+longer binds B-1 as written.
+
+- **B-1 scores via on-demand `curve(chart, event_class, [t1,t2])` computation** over each LEL
+  event's window plus grade buffers (per DR-17's grade scale) — NOT full-horizon materialization
+  of `ka_gochara_sweep`'s birth→birth+100y sweep. Controls are computed identically over their
+  shifted windows (DR-15(c) mirroring preserved).
+- **Percentile basis:** a pre-registered, seeded, stratified day-sample (~500–1,000 days/class
+  across the scoring span), mirrored identically to controls — not a full-span census.
+- **§0's binding assertion becomes:** "every requested range computed successfully, zero silent
+  gaps, any curve failure fails the run loudly" — replacing "100% of the sweep materialized" as
+  the gate criterion checked before B-1 proceeds.
+- **Retro-materialization is CANCELLED.** The forward span 2026–2055 continues to
+  background-materialize, but it gates ONLY B-6's serving assertions (campaign-close serving
+  claims) — it does NOT gate B-1's scoring, which is event-driven per the above.
+- **Prior dispatched rebuild status:** the previously-dispatched rebuild
+  (`build_run c9d722d5-2a06-4f4a-a4a2-18009894fe11` / Cloud Run execution
+  `brahma-build-pipeline-job-n68qz`) counts as legitimate progress toward the forward-span/serving
+  goal (feeds B-6), but **B-1 does not need to wait on it.** Whoever next checks materialization
+  status must re-query live, assume nothing carried over from this record — this reconciliation
+  records the ruling, not a live-verified snapshot.
 
 ## §1 — Lanes (verbatim from ARC PLAN §5, cross-referenced to BRIEF_D4 v2.0 source lanes)
 

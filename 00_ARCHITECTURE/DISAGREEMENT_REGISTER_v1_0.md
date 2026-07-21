@@ -1674,3 +1674,38 @@ finding_entry:
     Framework for non-native consumers, full-detail default for the native.
   consumed_by: [A-4 (adverse claims in the prospective ledger), D-5 (adverse-window serving surface)]
 ```
+
+## DIS.030 (doctrine-waves campaign ref: DR-19) — An open is a repo state, not a message — RATIFIED
+
+*Numbering note: DIS.030 follows DIS.029 in this register's own sequence; DR-17/DR-18 (native-
+ratified IN SUBSTANCE per `DR_17_18_MANIFESTATION_CENSUS_DOCTRINE_v1_0.md`) have not yet received
+their own DIS.0NN rows here as of this entry — DR-19 is registered ahead of them because it is the
+doctrine this session is ratifying; DR-17/18's formal DIS rows remain open work for a future
+session, not silently skipped.*
+
+```yaml
+finding_entry:
+  logged_by: "D-4b formal-open recording session, wave/D-4b/open, 2026-07-21"
+  dr_id: DIS.030
+  campaign_ref: DR-19
+  question: >
+    Two independent D-4b subagents (B-4, B-5) were dispatched against a working branch belonging
+    to a different, concurrently-active campaign (the Retrieval Plane Elevation campaign's
+    `impl/wave-5`) while `BRIEF_D4B.md` still read `status: FROZEN — awaiting native kickoff
+    directive`. Both correctly refused to execute lane work rather than proceeding on the strength
+    of an out-of-band instruction. This surfaced a gap: nothing in the governing doctrine had
+    previously stated, as a binding rule, what a lane agent's first check must be before starting
+    work, or that a mismatch between the brief's recorded status and the branch's campaign
+    identity is an automatic refuse-and-report rather than a proceed-and-flag.
+  status: RATIFIED (native, 2026-07-21, Cowork D-4b formal-open session)
+  ratified_text: >
+    DR-19 — An open is a repo state, not a message. Every lane agent's first check, before any
+    work: the governing brief's recorded status on the CURRENT branch, and branch-campaign
+    identity (does this branch belong to the campaign whose lane is being executed). A mismatch
+    between either check and the work being requested is an automatic refuse-and-report, never a
+    proceed-and-flag. Registered 2026-07-21, precedent: two independent D-4b subagents (B-4, B-5)
+    correctly refused execution when BRIEF_D4B.md still read FROZEN and the working branch
+    belonged to a different, concurrently-active campaign.
+  consumed_by: [Every future lane agent's session-open handshake; CONDUCTOR_PROTOCOL.md's
+    dispatch discipline]
+```
