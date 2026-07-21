@@ -2302,17 +2302,82 @@ deployed connector).** This wave does not claim V5 complete —
 the remaining work is real, named, and sequenced behind the mutex-gated
 deploy, not glossed over.
 
-### Deploy status
+### Breaking-release split, merge, and live deploy (2026-07-21, native ruling)
 
-`impl/wave-5` (PR #684) carries all 11 lanes, fully verified locally, still
-**held unmerged** — the D-4b mutex has not been re-checked clean since the
-coexistence check at wave open (D-4b was actively executing: live gochara-
-perf branches, migration 462 since merged to `main`, concurrent
-`worktree-agent-*` sessions). Per the standing protocol (same one W3 used
-against D-5): merge/deploy waits for an explicit D-4b-quiet confirmation,
-re-checked immediately before that specific merge, with the probe baseline
-re-snapshotted before and after per the native's own instruction at wave
-open. This is the one item this session cannot close unilaterally — it
-requires either D-4b's own conductor confirming quiet, or the native's
-explicit go-ahead, matching every prior wave's coexistence discipline in
-this campaign.
+Per an explicit native ruling: assessed L0's breaking flip for separability
+from the other ten lanes. Found it cleanly separable — route.ts's flag-
+branching logic predates this campaign entirely; L0's `route.ts` changes
+were comment-only. The entire functional breaking change is one boolean
+default in `feature_flags.ts`. Split:
+
+1. Reverted `RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED`'s default back to `false`
+   ("paused", not abandoned — code-complete, fully tested, one line to
+   re-flip) and updated `single_bootstrap_flag.test.ts` to match (both
+   directions of the divergence-diff test now explicitly set their own env
+   state; added symmetric `query_spine_bundle` present/absent assertions).
+   One accepted, documented side effect: L5's `query_spine_bundle` capability
+   ships code-complete but dormant until the flip lands.
+2. Created `impl/w5-breaking` (held, not merged) via `git revert` of the
+   pause commit — a ready-to-reapply flip-forward, one commit.
+3. Recorded the new coexistence rule as master brief §I.6 (native-ratified):
+   a breaking rename/bootstrap-source cutover must never deploy while
+   another campaign's live agent swarm may be calling legacy names on the
+   connector — independent of and narrower than the existing §I.3 deploy
+   mutex (a clear mutex read doesn't mean no live agents running).
+4. Re-checked D-4b's actual state via live evidence (not a stale ledger
+   read) immediately before merging: same gochara-perf branches still
+   unmerged, dozens of concurrent `worktree-agent-*` sessions — D-4b
+   confirmed still actively executing. The additive deploy's file
+   footprint (`platform/src`, `platform-mcp/src`,
+   `platform/supabase/migrations/463_bodha_spine_bundles.sql`) has zero
+   overlap with D-4b's active files, so the §I.3 deploy mutex itself was
+   clear — took that window per the native's ruling.
+5. Added a cross-campaign note to `CURRENT_STATE_v1_0.md` for the D-4b
+   conductor (main has moved; no action needed on their side).
+6. Merged PR #684 (`impl/wave-5` → `main`, merge commit `3cea53bd`). All
+   required status checks green (TypeScript ×2, Unit Tests, Secret Scan,
+   Governance Gates). One CI failure investigated, not ignored: the
+   `chat-v2 smoke` gate failed — checked its full run history across every
+   branch for the past month-plus (`gh run list --workflow "chat-v2
+   smoke"`) and found it has failed identically on every single run since
+   2026-06-04, across dozens of unrelated feature branches that clearly
+   shipped — a chronically broken, non-required gate (confirmed via branch
+   protection API: not in `required_status_checks.contexts`), not a W5
+   regression.
+7. Deploy to Cloud Run succeeded (`Build & Deploy Web` + `Build & Deploy
+   MCP` both green; Sidecar/Pipeline Job Image correctly skipped — this
+   wave touched zero python-sidecar files).
+8. **Live-verified against the deployed connector**, not just inferred from
+   CI: `catalog_assets_list(layer=L0)` — L8's new filter fields
+   (`asset_type`/`catalog_status`/`scope`/`is_active`/`has_writer`) present
+   in the response's echoed `filters` block; a follow-up call with
+   `asset_type=service` genuinely narrowed 28 L0 assets down to the 2 real
+   service assets (not just accepted-and-ignored). `query_dasha_periods`
+   against the canonical chart (`482012f1`) returned real, correctly-scoped
+   dasha rows — no regression on the core chart-data path. Honest
+   limitation: this session's own MCP connection was established before
+   the redeploy, so brand-new tools this wave added (e.g. `tool_search`)
+   aren't reachable through it without a reconnect this session cannot
+   perform — verified via existing tools whose underlying handlers changed
+   instead, which is still genuine live evidence, just not exhaustive.
+
+### V5 gate — remaining open item
+
+The genuine four-point §9.7 load test (cache hit-rate under real traffic,
+concurrency capacity, QoS/backpressure under contention, SLO-per-query-class)
+against sustained concurrent production load was NOT run this session — the
+live checks above are targeted correctness/liveness probes, not a load test.
+**V5 closes CONDITIONALLY**: 3/4 criteria fully closed, the additive deploy
+is live and verified, and the one remaining open item (the real load test)
+is unblocked now that a connector exists to run it against — it did not
+require D-4b to quiet, it requires deliberate load-generation tooling this
+session did not build. The breaking piece (`impl/w5-breaking`) remains the
+other named residual, genuinely blocked on D-4b quieting per master brief
+§I.6 — re-check via the same live-evidence discipline used above (not a
+stale ledger read) immediately before un-pausing.
+
+**Next steps for a follow-up session:** (a) build and run a real
+load-generation harness against the deployed connector across the four
+§9.7 pressure points; (b) periodically re-check D-4b's live state
+(`git branch -a` / `gh pr list`, same evidence class used throughout this
+close) and un-pause `impl/w5-breaking` the moment it's genuinely quiet.
