@@ -1044,6 +1044,7 @@ export async function POST(request: Request) {
   // `lib/pipelines/shared/run_adapter_dispatch.ts`. The route is a thin
   // selector: auth + chart resolution + planner-context + dispatch().
   return await runAdapterDispatch({
+    requestStartedAt: setupStart,
     userUid: user.uid,
     finalConversationId,
     chartId,

@@ -38,7 +38,8 @@ import {
   orientationPart,
 } from '@/lib/streams/data_parts'
 import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
-import type { ChartOrientation } from '@/lib/retrieval/orientation'
+import { ORIENTATION_TOKEN_BUDGET, type ChartOrientation } from '@/lib/retrieval/orientation'
+import { DEFAULT_AYANAMSHA } from '@/lib/retrieval/registry/constants'
 import { configService } from '@/lib/config/index'
 
 import type { StackId } from '@/lib/providers/dispatcher'
@@ -84,6 +85,16 @@ import { runOnFinishWriteThrough } from './onfinish_writethrough'
 // ---------------------------------------------------------------------------
 
 export interface RunAdapterDispatchCtx {
+  /**
+   * W5 L9 — verdict-first streaming: wall-clock `Date.now()` captured at the
+   * very top of the consult route handler (`setupStart`). Used to compute the
+   * time-to-first-verdict stage-timing metric (see
+   * `TIME_TO_FIRST_VERDICT_SLO_MS` in `@/lib/streams/data_parts`) the instant
+   * the `data-orientation` SSE event is written, before any synthesis text
+   * streams.
+   */
+  requestStartedAt: number
+
   /** Auth + addressing */
   userUid: string
   finalConversationId: string
@@ -163,11 +174,77 @@ export interface RunAdapterDispatchCtx {
 }
 
 // ---------------------------------------------------------------------------
+// W5 L9 — verdict-first streaming: pure, unit-testable emission builder
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the two SSE data-part payloads the adapter-dispatch stream writes
+ * FIRST — before any synthesis text-delta — to satisfy the verdict-first
+ * streaming contract (STATE.md W5 OPEN amendment 3):
+ *
+ *   1. `data-orientation` — the verdict/orientation layer itself. Emitted
+ *      UNCONDITIONALLY: when `buildChartOrientation` failed outright
+ *      (`orientation` is null/undefined — distinct from the in-band
+ *      `degraded` flag orientation.ts already sets for a partial query_ucd
+ *      failure), a minimal degraded fallback block is built instead of
+ *      omitting the event, so no dispatched query silently loses
+ *      verdict-first coverage.
+ *   2. `data-stage` (`first_verdict`, `done`, ms) — the time-to-first-verdict
+ *      stage-timing sample: wall-clock ms from `requestStartedAt` (captured
+ *      at route-handler entry) to `nowMs` (the instant this function runs,
+ *      i.e. the instant the SSE writer is about to flush the event above).
+ *      See `TIME_TO_FIRST_VERDICT_SLO_MS` in `@/lib/streams/data_parts` for
+ *      the target this metric is measured against.
+ *
+ * Pure function (no I/O, no `Date.now()` call — `nowMs` is passed in) so it
+ * can be unit-tested deterministically without mocking the adapter/stream
+ * machinery below.
+ */
+export function buildFirstVerdictEmission(
+  orientation: ChartOrientation | null | undefined,
+  chartId: string,
+  requestStartedAt: number,
+  nowMs: number,
+): {
+  orientationEvent: { type: 'data-orientation'; data: ReturnType<typeof orientationPart> }
+  stageEvent: { type: 'data-stage'; data: ReturnType<typeof stagePart> }
+  timeToFirstVerdictMs: number
+} {
+  const orientationForStream = orientation ?? {
+    chart_id: chartId,
+    ayanamsha_id: DEFAULT_AYANAMSHA,
+    degraded: true,
+    budget: { limit_tokens: ORIENTATION_TOKEN_BUDGET, estimated_tokens: 0, enforced: false, trims: ['orientation_build_unavailable'] },
+  }
+  const timeToFirstVerdictMs = Math.max(0, nowMs - requestStartedAt)
+  return {
+    orientationEvent: {
+      type: 'data-orientation',
+      data: orientationPart({
+        chart_id: orientationForStream.chart_id,
+        ayanamsha_id: orientationForStream.ayanamsha_id,
+        degraded: orientationForStream.degraded,
+        budget: orientationForStream.budget,
+        orientation: (orientation
+          ?? { chart_id: orientationForStream.chart_id, degraded: true, header_flags: ['orientation_build_unavailable'] }
+        ) as unknown as Record<string, unknown>,
+      }),
+    },
+    stageEvent: {
+      type: 'data-stage',
+      data: stagePart('first_verdict', 'done', timeToFirstVerdictMs),
+    },
+    timeToFirstVerdictMs,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
 
 export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Response> {
   const {
+    requestStartedAt,
     userUid,
     finalConversationId,
     chartId,
@@ -313,20 +390,20 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
     execute: async ({ writer }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       writer.write({ type: 'start', messageId: adapterMsgId } as any)
-      // W4 core step 5 — S-1 orientation front-door: emit ONCE near the start so the client
-      // has the chart frame + category/drill map before synthesis text streams.
-      if (orientation) {
-        writer.write({
-          type: 'data-orientation',
-          data: orientationPart({
-            chart_id: orientation.chart_id,
-            ayanamsha_id: orientation.ayanamsha_id,
-            degraded: orientation.degraded,
-            budget: orientation.budget,
-            orientation: orientation as unknown as Record<string, unknown>,
-          }),
-        })
-      }
+      // W4 core step 5 / W5 L9 — S-1 orientation front-door: emit ONCE near the start, before any
+      // synthesis text-delta, so the client has the verdict/orientation layer while synthesis is
+      // still running. W5 L9 strengthens this from "emit when the build succeeded" to "emit
+      // unconditionally" (see buildFirstVerdictEmission above) — closing the prior gap where an
+      // outright `buildChartOrientation` failure silently dropped both the orientation event AND
+      // any time-to-first-verdict signal for that request.
+      const firstVerdict = buildFirstVerdictEmission(orientation, chartId, requestStartedAt, Date.now())
+      writer.write(firstVerdict.orientationEvent)
+      // W5 L9 — time-to-first-verdict SLO sample (see TIME_TO_FIRST_VERDICT_SLO_MS in
+      // @/lib/streams/data_parts): wall-clock ms from request-handler entry to the instant the
+      // verdict/orientation layer above was written into the stream — i.e. BEFORE any
+      // `synthesis` text-delta, not after synthesis completes. Emitted unconditionally (same
+      // guarantee as the orientation event above) so the SLO has 100% query-class coverage.
+      writer.write(firstVerdict.stageEvent)
       writer.write({ type: 'data-stage', data: stagePart('classify', 'done', plannerLatencyMs) })
       writer.write({ type: 'data-stage', data: stagePart('compose_bundle', 'done', composeBundleMs) })
       for (const evt of toolEventLog) {

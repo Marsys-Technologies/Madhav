@@ -18,6 +18,12 @@ export const StageNameSchema = z.enum([
   'compose_bundle',
   'plan_per_tool',
   'tool_fetch',
+  // W5 L9 — verdict-first streaming: the request-start → first-verdict-byte
+  // stage-timing metric (see TIME_TO_FIRST_VERDICT_SLO_MS below). Emitted
+  // unconditionally (degraded or not) the instant the data-orientation SSE
+  // event is written — i.e. BEFORE the `synthesis` stage's text starts
+  // streaming, not after it completes.
+  'first_verdict',
   'synthesis',
   'audit',
   'panel:member:1',
@@ -332,6 +338,40 @@ export const DataPartSchema = z.discriminatedUnion('type', [
 ])
 
 export type DataPart = z.infer<typeof DataPartSchema>
+
+// ── Time-to-first-verdict SLO (W5 L9 — verdict-first streaming) ────────────
+//
+// Defined as a stage-timing metric fit to the single-request web architecture
+// (the plan's original "≤3 calls to first verdict" framing does not map onto
+// one HTTP request/response stream — see STATE.md W5 OPEN amendment 3).
+//
+// Metric: wall-clock ms from route-handler entry (`setupStart` in
+// consult/route.ts) to the moment the `data-orientation` SSE event — the
+// verdict/orientation layer — is written into the response stream. Captured
+// server-side as the `first_verdict` `data-stage` event's `ms` field,
+// unconditionally (even when orientation degrades to header+inventory-only,
+// or fails outright) so the SLO has 100% query-class coverage, not just the
+// classes with a fully-populated orientation block.
+//
+// Target derived from the W4-close measured baseline (chart `1c826d5a`,
+// career-assessment probe, ~51s total wall-clock):
+//   classify 4.6s + compose_bundle 0.05s + tool_fetch 6.1s ≈ 10.75s
+// — all of which run BEFORE the adapter stream even opens (route.ts awaits
+// planner + tool-fetch + orientation synchronously before calling
+// runAdapterDispatch). The first_verdict write happens at the very start of
+// that stream's `execute()`, before any synthesis text-delta — so
+// time-to-first-verdict ≈ the pre-synthesis stage sum plus the (unmeasured
+// today) auth/chart-resolution + bundle-compile overhead ahead of `classify`.
+// p50 target sits just above the measured 10.75s pre-synthesis sum with
+// headroom for that unmeasured prefix; p95 gives room for planner/tool-fetch
+// tail latency without letting the SLO drift toward the 38.7s synthesis
+// stage it exists to front-run.
+export const TIME_TO_FIRST_VERDICT_SLO_MS = {
+  /** p50 target — just above the measured 10.75s pre-synthesis stage sum. */
+  p50: 12_000,
+  /** p95 target — tail-latency headroom, still well under the 38.7s synthesis stage alone. */
+  p95: 20_000,
+} as const
 
 // ── Helper constructors ───────────────────────────────────────────────────
 
