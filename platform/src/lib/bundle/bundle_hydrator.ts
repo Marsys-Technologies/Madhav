@@ -3,9 +3,18 @@
  * document content for the synthesis context window.
  *
  * Replaces rule_composer.ts + composition_rules.ts (deleted Phase 4).
- * Floor assets FORENSIC and CGM are enforced even when absent from the
- * planner-produced asset_bundle. A non-floor asset that fails to load is
- * skipped with a warning. A floor asset that fails to load throws (fatal).
+ * Floor asset CGM is enforced even when absent from the planner-produced
+ * asset_bundle. A non-floor asset that fails to load is skipped with a
+ * warning. A floor asset that fails to load throws (fatal).
+ *
+ * FORENSIC was removed from FLOOR_ASSET_IDS 2026-07-21 (W4 precondition
+ * fix): FORENSIC was deleted from CAPABILITY_MANIFEST.json in PR #187
+ * (Legacy Teardown) but never removed from this list, so every hydrateBundle
+ * call unconditionally threw before any planning or streaming began —
+ * PG-2 Lane X-2 root-caused this live against the deployed consult path
+ * (REPORT_PG-2.md). No test exercised the real post-teardown manifest state,
+ * which is why this survived undetected; see the regression test guarding
+ * against it.
  *
  * Returns a HydratedBundle that satisfies the Bundle interface consumed by
  * synthesize() — its mandatory_context is BundleEntry[], so downstream
@@ -22,7 +31,7 @@ import type {
 } from './types'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 
-const FLOOR_ASSET_IDS: readonly string[] = ['FORENSIC', 'CGM']
+const FLOOR_ASSET_IDS: readonly string[] = ['CGM']
 
 export interface HydratedAsset {
   asset_id: string
