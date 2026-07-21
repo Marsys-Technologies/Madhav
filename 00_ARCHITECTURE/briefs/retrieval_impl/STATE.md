@@ -2262,12 +2262,17 @@ Per brief §E V5 ("per-family tools/list conforms in CI; battery scores
 recorded as the regression baseline; load test passes the four §9.7
 pressure points; consult profile provably cannot reach raw tools"):
 
-1. **Per-family tools/list conformance** — L2's adversarial test suite
+1. **Per-family tools/list conformance** — **satisfied, correction to an
+   earlier note in this entry:** L2's adversarial test suite
    (`projection_compiler_parity.test.ts` §7 "(g) MCP surface profiles")
    passes as part of the full-suite run above: compact ≤20, full uncapped
    and larger than compact, overflow honestly reported, F-R7 exclusion
-   holds. **Not yet CI-wired as a dedicated named gate step** — currently
-   passes as part of the general suite, not a distinguished CI check.
+   holds. This file is ALREADY a mandatory, dedicated CI gate step — "R-1
+   projection compiler parity/completeness gate" in the `Density Census
+   (§N.6)` job (`.github/workflows/ci.yml` lines 375–394), wired since
+   W2/W3 and confirmed still running (and green) on PR #684. An earlier
+   version of this entry incorrectly claimed this wasn't CI-wired; checked
+   the actual workflow file rather than assuming, and it is.
 2. **Battery scores recorded as the regression baseline** — L10's harness
    re-run against the fully-integrated state (`W5_BATTERY_BASELINE_v1_0.md`
    §8): 60/60 routing accuracy, 0 isolation violations, 0 readback diffs,
@@ -2290,10 +2295,10 @@ pressure points; consult profile provably cannot reach raw tools"):
    consult, and confirms known internal meta-tools are absent from every
    profile — passing in the full-suite run above.
 
-**Honest overall V5 disposition: 2/4 criteria fully closed (battery
-baseline, consult-cannot-reach-raw), 1/4 partially closed (per-family
-conformance passes but isn't a dedicated CI gate), 1/4 open (the genuine
-load test, blocked on deploy).** This wave does not claim V5 complete —
+**Honest overall V5 disposition (corrected): 3/4 criteria fully closed
+(per-family tools/list CI conformance, battery baseline, consult-cannot-
+reach-raw), 1/4 open (the genuine four-point load test, which needs a
+deployed connector).** This wave does not claim V5 complete —
 the remaining work is real, named, and sequenced behind the mutex-gated
 deploy, not glossed over.
 
