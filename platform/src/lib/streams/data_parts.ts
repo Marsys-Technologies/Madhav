@@ -230,9 +230,89 @@ export const CapabilityPathPartSchema = z.object({
 
 export type CapabilityPathPart = z.infer<typeof CapabilityPathPartSchema>
 
+// ── Clarification part (W4 "One Planner" — ClarificationRequest outcome) ────
+// Emitted by route.ts when the deterministic scope classifier could not
+// confidently classify the query, so the planner asks the user a clarifying
+// question instead of guessing a plan. The UI renders `question` (and optional
+// `suggested_options`) as a prompt for the user to refine their request.
+
+export const ClarificationPartSchema = z.object({
+  type: z.literal('clarification'),
+  question: z.string().min(1),
+  missing_scope_dims: z.array(z.string()).optional(),
+  suggested_options: z.array(z.string()).optional(),
+})
+
+export type ClarificationPart = z.infer<typeof ClarificationPartSchema>
+
+// ── Completeness part (W4 "One Planner" — completeness receipt on web channel) ──
+// Emitted by route.ts / run_adapter_dispatch near the END of the stream, after the
+// floor tools have executed. Carries the served/empty/dark completeness receipt for
+// the compiled B.11 floor (per floor_item_id), plus a channel_note that honestly
+// states how many floor items had NO web-executable retrieval tool (the MCP↔web
+// namespace gap). The UI can render coverage + surface the dark/empty items.
+
+export const CompletenessServedItemSchema = z.object({
+  floor_item_id: z.string(),
+  source: z.string(),
+})
+export const CompletenessEmptyItemSchema = z.object({
+  floor_item_id: z.string(),
+  empty_reason: z.string(),
+})
+export const CompletenessDarkItemSchema = z.object({
+  floor_item_id: z.string(),
+  cr_row: z.string(),
+  note: z.string().optional(),
+})
+
+export const CompletenessPartSchema = z.object({
+  type: z.literal('completeness'),
+  channel: z.literal('web'),
+  served: z.array(CompletenessServedItemSchema),
+  empty: z.array(CompletenessEmptyItemSchema),
+  dark: z.array(CompletenessDarkItemSchema),
+  coverage: z.object({
+    floor_item_total: z.number().int().nonnegative(),
+    served: z.number().int().nonnegative(),
+    empty: z.number().int().nonnegative(),
+    dark: z.number().int().nonnegative(),
+  }),
+  channel_note: z.string(),
+})
+
+export type CompletenessPart = z.infer<typeof CompletenessPartSchema>
+
+// ── Orientation part (W4 "One Planner" — S-1 orientation front-door on web channel) ──
+// Emitted ONCE near the START of the stream. Carries the ≤2000-token orientation block
+// (chart frame + structural facts + notable findings + dasha context + category/drill map).
+// Kept intentionally loose (passthrough of the ChartOrientation shape) — the block is
+// budget-enforced upstream (buildChartOrientation) and delivery metadata for the client.
+
+export const OrientationPartSchema = z.object({
+  type: z.literal('orientation'),
+  chart_id: z.string(),
+  ayanamsha_id: z.string(),
+  degraded: z.boolean(),
+  budget: z.object({
+    limit_tokens: z.number().int().positive(),
+    estimated_tokens: z.number().int().nonnegative(),
+    enforced: z.boolean(),
+    trims: z.array(z.string()),
+  }),
+  // The full orientation payload (header/structural_facts/notable_findings/…). Passed
+  // through as-is; not re-validated field-by-field here (built + bounded upstream).
+  orientation: z.record(z.string(), z.unknown()),
+})
+
+export type OrientationPart = z.infer<typeof OrientationPartSchema>
+
 // ── Union ─────────────────────────────────────────────────────────────────
 
 export const DataPartSchema = z.discriminatedUnion('type', [
+  CompletenessPartSchema,
+  OrientationPartSchema,
+  ClarificationPartSchema,
   StagePartSchema,
   ToolPartSchema,
   CostPartSchema,
@@ -329,5 +409,20 @@ export const truncatedPart = (reason: string): TruncatedPart => ({
 
 export const contextUsagePart = (args: Omit<ContextUsagePart, 'type'>): ContextUsagePart => ({
   type: 'context_usage',
+  ...args,
+})
+
+export const clarificationPart = (args: Omit<ClarificationPart, 'type'>): ClarificationPart => ({
+  type: 'clarification',
+  ...args,
+})
+
+export const completenessPart = (args: Omit<CompletenessPart, 'type'>): CompletenessPart => ({
+  type: 'completeness',
+  ...args,
+})
+
+export const orientationPart = (args: Omit<OrientationPart, 'type'>): OrientationPart => ({
+  type: 'orientation',
   ...args,
 })

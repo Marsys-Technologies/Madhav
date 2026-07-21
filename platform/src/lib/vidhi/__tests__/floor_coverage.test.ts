@@ -85,6 +85,41 @@ describe('vidhi floors — coverage (D-2 Lane V-1 deliverable 2 + §F1.7 anti-va
     }
   });
 
+  // Floor-completeness campaign (RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §R-3.3): the three
+  // domain deepdive floors — like the flagship wealth floor — must each carry the FULL §B0.4
+  // mandatory-surface tag set. A tag is "covered by a domain floor" iff at least one primitive
+  // that carries the tag is a floor_item of that floor. (The generic anywhere-coverage test
+  // above only asserts one floor system-wide carries each tag; this asserts per-domain parity.)
+  const FULL_TAG_DOMAINS: readonly IntentClass[] = ['career_deepdive', 'health_deepdive', 'marriage_deepdive'];
+
+  function tagCarriers(): Map<string, string[]> {
+    const m = new Map<string, string[]>();
+    for (const p of VIDHI_PRIMITIVES) {
+      for (const tag of p.mandatory_tags) m.set(tag, [...(m.get(tag) ?? []), p.primitive_id]);
+    }
+    return m;
+  }
+
+  it('the flagship wealth_deepdive floor carries every §B0.4 mandatory tag (regression baseline)', () => {
+    const consumed = primitivesConsumedBy('wealth_deepdive');
+    const carriers = tagCarriers();
+    for (const tag of MANDATORY_SURFACE_TAGS) {
+      const covered = (carriers.get(tag) ?? []).some((id) => consumed.has(id));
+      expect(covered, `floor(wealth_deepdive) does not carry §B0.4 mandatory tag "${tag}"`).toBe(true);
+    }
+  });
+
+  it('career/health/marriage floors each carry EVERY §B0.4 mandatory tag (floor-completeness campaign)', () => {
+    const carriers = tagCarriers();
+    for (const domain of FULL_TAG_DOMAINS) {
+      const consumed = primitivesConsumedBy(domain);
+      for (const tag of MANDATORY_SURFACE_TAGS) {
+        const covered = (carriers.get(tag) ?? []).some((id) => consumed.has(id));
+        expect(covered, `floor(${domain}) does not carry §B0.4 mandatory tag "${tag}"`).toBe(true);
+      }
+    }
+  });
+
   it('all four CR-27 improvisation instances are each prevented by at least one floor item', () => {
     const preventedAnywhere = new Set<string>();
     for (const floor of VIDHI_INTENT_FLOORS) {

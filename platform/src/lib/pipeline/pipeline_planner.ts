@@ -7,13 +7,23 @@
  *   3. The PlannerContext window (≤600 tokens) from planner_context_builder.
  *   4. The native's query and chart id (the planner is per-native).
  *
- * Emits a single `PipelinePlan` JSON object (validated via PipelinePlanSchema)
- * that lists the asset bundle, retrieval tool calls, and synthesis guidance
- * the downstream pipeline executes.
+ * Emits a `PlannerOutcome` — the 3-way discriminated union (W4 "One Planner"):
+ *   'plan'                → PlanReceipt          (a validated PipelinePlan + scope_tuple)
+ *   'clarification_needed' → ClarificationRequest (the query was too ambiguous to plan)
+ *   'fault'               → PlannerFaultResult    (a typed, honest error — never a throw)
  *
- * Failure mode: any provider error or schema-validation failure is surfaced
- * as `PipelinePlannerError`. The route caller (consume/route.ts) catches it
- * and returns HTTP 422 — there is no silent fallback in the new pipeline.
+ * The plan lists the asset bundle, retrieval tool calls, and synthesis guidance
+ * the downstream pipeline executes. Every incoming query is first run through the
+ * DETERMINISTIC scope-tuple classifier (`classifyScope`); low-confidence queries
+ * short-circuit to a clarification (no LLM cost), and the resulting `scope_tuple`
+ * is attached to a successful plan.
+ *
+ * Failure mode: the planner NEVER throws for an expected failure. Unparseable /
+ * schema-invalid LLM output gets exactly ONE structured repair-retry; if that
+ * also fails it is returned as `{ outcome: 'fault', retryable: false }`. Provider
+ * errors that exhaust the retry budget return `{ outcome: 'fault', retryable: true }`.
+ * route.ts branches on the outcome and renders a clean typed response for each —
+ * there is no longer a raw HTTP 422 with an internal error message leaking out.
  */
 
 import { readFileSync } from 'node:fs'
@@ -22,9 +32,11 @@ import { runAdapter } from '@/lib/adapters'
 import {
   PipelinePlanSchema,
   PipelinePlanInputJsonSchema,
-  PipelinePlannerError,
   type PipelinePlan,
+  type PlannerOutcome,
+  type ClarificationRequest,
 } from './types'
+import { classifyScope, type ScopeClassification, type ScopeTuple } from '@/lib/vidhi/scope_classifier'
 import {
   compressManifest,
   compressedManifestToString,
@@ -262,6 +274,75 @@ function extractFirstJsonObject(text: string): string {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Parse-attempt helper — used for both the primary LLM output and the single
+// repair-retry output. Never throws; returns a discriminated result so the
+// caller can decide whether to repair (first failure) or fault (second failure).
+// ────────────────────────────────────────────────────────────────────────────
+
+type ParseAttempt =
+  | { ok: true; data: PipelinePlan; rawArgs: unknown }
+  | { ok: false; reason: string }
+
+function tryBuildPlan(rawText: string): ParseAttempt {
+  if (!rawText || !rawText.trim()) {
+    return { ok: false, reason: 'LLM planner returned no text output' }
+  }
+  // Strip optional ```json ... ``` fences and extract the first balanced JSON object.
+  // Some LLMs (including sonnet-4.x) append explanatory text after the closing }
+  // which causes "Unexpected non-whitespace character after JSON at position N".
+  const fenceStripped = rawText.replace(/^```(?:json)?\s*/im, '').replace(/\s*```\s*$/m, '').trim()
+  const jsonText = extractFirstJsonObject(fenceStripped)
+  let rawArgs: unknown
+  try {
+    rawArgs = JSON.parse(jsonText)
+  } catch (parseErr) {
+    return { ok: false, reason: `LLM planner returned non-JSON text output: ${String(parseErr)}` }
+  }
+  const parsed = PipelinePlanSchema.safeParse(rawArgs)
+  if (!parsed.success) {
+    return { ok: false, reason: `LLM planner returned schema-invalid output: ${parsed.error.message}` }
+  }
+  return { ok: true, data: parsed.data, rawArgs }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Clarification builder — turns the deterministic classifier's low-confidence
+// signal into a user-facing ClarificationRequest. NOTE: the classifier's
+// `fallback_prompt` is an LLM-classification PROMPT (the full INTENT_CLASSIFY
+// template), not something a user should read — so we synthesize a concise,
+// user-facing question here and use the tuple's unknown/default dimensions to
+// populate `missing_scope_dims`. (Judgment call documented in the W4 report.)
+// ────────────────────────────────────────────────────────────────────────────
+
+function buildClarificationFromScope(classification: ScopeClassification): ClarificationRequest {
+  const t = classification.scope_tuple
+  const missing_scope_dims: string[] = []
+  if (t.intent === 'unknown') missing_scope_dims.push('intent')
+  if (t.domains.length === 1 && t.domains[0] === 'general') missing_scope_dims.push('domain')
+
+  const question =
+    'I want to make sure I read the right part of the chart. Could you clarify what ' +
+    "you'd like to know — a specific life area (career, wealth, marriage, health, " +
+    'children, education, spirituality), the timing of events, a remedy, or an overall ' +
+    'chart reading?'
+
+  return {
+    outcome: 'clarification_needed',
+    question,
+    missing_scope_dims,
+    suggested_options: [
+      'Career & profession',
+      'Wealth & finances',
+      'Marriage & relationships',
+      'Health',
+      'Timing of a specific event',
+      'Remedies',
+      'Overall chart reading',
+    ],
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Public entrypoint
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -273,7 +354,39 @@ export async function callPipelinePlanner(
   emitTrace?: (event: TraceEvent) => void,
   queryId?: string,
   fallbackModelId?: string,
-): Promise<PipelinePlan> {
+): Promise<PlannerOutcome> {
+  // ── Step 1: deterministic scope classification (BEFORE the LLM call) ────────
+  // W4 core step 1. Runs on the raw incoming query text. A low-confidence /
+  // unmatched classification (the classifier's own `fallback_recommended` signal)
+  // short-circuits to a ClarificationRequest so genuinely ambiguous queries ask a
+  // question instead of silently guessing a plan — and we skip the LLM cost.
+  const classification = classifyScope(query)
+  const scopeTuple: ScopeTuple = classification.scope_tuple
+  if (classification.fallback_recommended) {
+    emitTrace?.({
+      event: 'step_done',
+      query_id: queryId ?? nativeId,
+      step: {
+        query_id: queryId ?? nativeId,
+        step_seq: 0,
+        step_name: 'scope_clarification',
+        step_type: 'deterministic',
+        status: 'done',
+        started_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        latency_ms: 0,
+        data_summary: {
+          result: scopeTuple.intent,
+          query_class: scopeTuple.intent,
+          planning_confidence: classification.confidence,
+          reason: 'fallback_recommended',
+        },
+        payload: { prompt_preview: classification.matched_rules.join(', ') },
+      },
+    })
+    return buildClarificationFromScope(classification)
+  }
+
   const manifest = loadManifest()
   const compressed = compressManifest(manifest)
   const compressedManifestStr = compressedManifestToString(compressed)
@@ -397,10 +510,14 @@ export async function callPipelinePlanner(
           },
         })
       }
-      throw new PipelinePlannerError(
-        `LLM planner call failed: ${err instanceof Error ? err.message : String(err)}`,
-        err,
-      )
+      // W4 fault contract: a provider error that exhausted the retry budget is a
+      // TYPED fault return, not a throw. Provider errors are transient in class, so
+      // retryable:true — the caller may retry or degrade.
+      return {
+        outcome: 'fault',
+        reason: `LLM planner call failed: ${err instanceof Error ? err.message : String(err)}`,
+        retryable: true,
+      }
     }
   }
   if (!interaction) {
@@ -440,10 +557,11 @@ export async function callPipelinePlanner(
         },
       })
     }
-    throw new PipelinePlannerError(
-      `LLM planner call failed: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
-      lastErr,
-    )
+    return {
+      outcome: 'fault',
+      reason: `LLM planner call failed: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
+      retryable: true,
+    }
   }
   const latency_ms = Date.now() - start
 
@@ -516,54 +634,114 @@ export async function callPipelinePlanner(
   }
 
   const rawText = interaction!.finalText ?? ''
-  if (!rawText.trim()) {
-    const errMsg = `LLM planner returned no text output (finishReason=${interaction!.finishReason})`
-    emitTrace?.({
-      event: 'step_error',
-      query_id: stepQueryId,
-      step: {
-        query_id: stepQueryId,
-        step_seq: 0,
-        step_name: 'llm_planner',
-        step_type: 'llm',
-        status: 'error',
-        started_at: plannerStepStart,
-        completed_at: new Date().toISOString(),
-        latency_ms: Date.now() - plannerStartMs,
-        data_summary: { model: activeModelId, planner_active: false, error_reason: errMsg },
-        payload: { error_message: errMsg },
-      },
-    })
-    throw new PipelinePlannerError(errMsg)
-  }
-  // Strip optional ```json ... ``` fences and extract the first balanced JSON object.
-  // Some LLMs (including sonnet-4.x) append explanatory text after the closing }
-  // which causes "Unexpected non-whitespace character after JSON at position N".
-  const fenceStripped = rawText.replace(/^```(?:json)?\s*/im, '').replace(/\s*```\s*$/m, '').trim()
-  const jsonText = extractFirstJsonObject(fenceStripped)
+
+  // ── Parse + validate, with exactly ONE structured repair-retry ──────────────
+  // W4 core step 2 / the live HTTP-422 bug fix. When the LLM returns non-JSON or
+  // schema-invalid output, we re-issue the SAME client/model call once with the
+  // model's own bad output attached and an explicit corrective instruction to
+  // return ONLY valid JSON matching the schema. If the repair ALSO fails, we
+  // return a TYPED `fault` — never a throw — so route.ts renders a clean,
+  // honest error instead of a raw 422 leaking the internal parse error.
+  const primaryAttempt = tryBuildPlan(rawText)
+  let okData: PipelinePlan
   let rawPlannerArgs: unknown
-  try {
-    rawPlannerArgs = JSON.parse(jsonText)
-  } catch (parseErr) {
-    const errMsg = `LLM planner returned non-JSON text output: ${String(parseErr)}`
+  if (primaryAttempt.ok) {
+    okData = primaryAttempt.data
+    rawPlannerArgs = primaryAttempt.rawArgs
+  } else {
+    console.warn(
+      '[pipeline_planner] primary planner output unparseable — attempting ONE repair-retry.' +
+      ' reason=%s model=%s query_id=%s',
+      primaryAttempt.reason, activeModelId, queryId ?? 'unknown',
+    )
     emitTrace?.({
-      event: 'step_error',
+      event: 'step_start',
       query_id: stepQueryId,
       step: {
         query_id: stepQueryId,
         step_seq: 0,
-        step_name: 'llm_planner',
+        step_name: 'llm_planner_repair',
         step_type: 'llm',
-        status: 'error',
-        started_at: plannerStepStart,
-        completed_at: new Date().toISOString(),
-        latency_ms: Date.now() - plannerStartMs,
-        data_summary: { model: activeModelId, planner_active: false, error_reason: errMsg },
-        payload: { error_message: errMsg },
+        status: 'running',
+        started_at: new Date().toISOString(),
+        data_summary: { model: activeModelId, reason: primaryAttempt.reason },
+        payload: {},
       },
     })
-    throw new PipelinePlannerError(errMsg, parseErr)
+
+    const REPAIR_INSTRUCTION =
+      'Your previous response was not valid JSON matching the required planner schema ' +
+      `(${primaryAttempt.reason}). Return ONLY a single valid JSON object matching the ` +
+      'planner schema — no prose, no markdown code fences, and nothing before or after ' +
+      'the JSON object.'
+
+    let repairInteraction: Awaited<ReturnType<typeof runAdapter>> | undefined
+    try {
+      repairInteraction = await runAdapter({
+        callType: 'planner_fast',
+        modelOverride: { modelId: activeModelId },
+        systemPrompt: getSystemPrompt(),
+        messages: [
+          ...(detectM9Query(query) ? buildM9FewShotMessages(compressedManifestStr) : []),
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: rawText || '(empty response)' },
+          { role: 'user', content: REPAIR_INSTRUCTION },
+        ],
+        temperature: 0,
+        disableSdkRetry: true,
+        reasoning: 'disable',
+        responseSchema: PipelinePlanInputJsonSchema,
+      })
+    } catch (repairErr) {
+      const reason = `LLM planner repair-retry call failed: ${repairErr instanceof Error ? repairErr.message : String(repairErr)}`
+      emitTrace?.({
+        event: 'step_error',
+        query_id: stepQueryId,
+        step: {
+          query_id: stepQueryId,
+          step_seq: 0,
+          step_name: 'llm_planner_repair',
+          step_type: 'llm',
+          status: 'error',
+          started_at: plannerStepStart,
+          completed_at: new Date().toISOString(),
+          latency_ms: Date.now() - plannerStartMs,
+          data_summary: { model: activeModelId, planner_active: false, error_reason: reason },
+          payload: { error_message: reason },
+        },
+      })
+      // The repair CALL itself failed (provider error) — transient class → retryable.
+      return { outcome: 'fault', reason, retryable: true }
+    }
+
+    const repairAttempt = tryBuildPlan(repairInteraction.finalText ?? '')
+    if (!repairAttempt.ok) {
+      const reason = `LLM planner returned unparseable output after one repair-retry: ${repairAttempt.reason}`
+      emitTrace?.({
+        event: 'step_error',
+        query_id: stepQueryId,
+        step: {
+          query_id: stepQueryId,
+          step_seq: 0,
+          step_name: 'llm_planner_repair',
+          step_type: 'llm',
+          status: 'error',
+          started_at: plannerStepStart,
+          completed_at: new Date().toISOString(),
+          latency_ms: Date.now() - plannerStartMs,
+          data_summary: { model: activeModelId, planner_active: false, error_reason: reason },
+          payload: { error_message: reason },
+        },
+      })
+      // The model keeps returning malformed output — repeating won't help → NOT retryable.
+      return { outcome: 'fault', reason, retryable: false }
+    }
+    okData = repairAttempt.data
+    rawPlannerArgs = repairAttempt.rawArgs
   }
+
+  const parsed = { data: okData }
+
   // Detect soft-optional string fields that the LLM returned as null (before coercion).
   // PipelinePlanSchema coerces null → undefined for these fields so parsing succeeds,
   // but we capture the original null here for audit emission below.
@@ -574,28 +752,6 @@ export async function callPipelinePlanner(
     for (const field of SOFT_OPTIONAL_STRING_FIELDS) {
       if (raw[field] === null) coercedFields.add(field)
     }
-  }
-
-  const parsed = PipelinePlanSchema.safeParse(rawPlannerArgs)
-  if (!parsed.success) {
-    const errMsg = `LLM planner returned schema-invalid output: ${parsed.error.message}`
-    emitTrace?.({
-      event: 'step_error',
-      query_id: stepQueryId,
-      step: {
-        query_id: stepQueryId,
-        step_seq: 0,
-        step_name: 'llm_planner',
-        step_type: 'llm',
-        status: 'error',
-        started_at: plannerStepStart,
-        completed_at: new Date().toISOString(),
-        latency_ms: Date.now() - plannerStartMs,
-        data_summary: { model: activeModelId, planner_active: false, error_reason: errMsg },
-        payload: { error_message: errMsg },
-      },
-    })
-    throw new PipelinePlannerError(errMsg, parsed.error)
   }
 
   // Emit audit trace for any soft-optional null coercions so they appear in
@@ -723,7 +879,10 @@ export async function callPipelinePlanner(
     )
   }
 
-  return parsed.data
+  // Attach the deterministic scope tuple (W4 core step 1) and return the
+  // successful 'plan' variant of the PlannerOutcome union.
+  parsed.data.scope_tuple = scopeTuple
+  return { outcome: 'plan', plan: parsed.data }
 }
 
 // Exported for tests only.

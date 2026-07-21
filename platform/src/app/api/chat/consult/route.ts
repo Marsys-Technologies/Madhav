@@ -7,7 +7,7 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart, clarificationPart } from '@/lib/streams/data_parts'
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
@@ -69,9 +69,16 @@ import { buildAdapterMessages, buildAdapterChatRequest } from '@/lib/providers/a
 import { runAgenticLoop, LOOP_CONFIG_BY_PROVIDER } from '@/lib/synthesis/agentic_loop'
 import { executeMCPTool } from '@/lib/synthesis/mcp_tool_executor'
 import { buildCacheCreatePayload, GEMINI_CACHE_MIN_TOKENS } from '@/lib/providers/google/cached_content'
-import { callPipelinePlanner as runPlanner, PlannerFault } from '@/lib/pipeline/pipeline_planner'
+import { callPipelinePlanner as runPlanner } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
+import {
+  compileFloorForPlan,
+  ensureB11WholeChartReadFloor,
+  ensureDashaContextFloor,
+} from '@/lib/pipeline/compiled_floor_adapter'
+import { buildWebCompletenessReceipt, type WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
+import { buildChartOrientation, type ChartOrientation } from '@/lib/retrieval/orientation'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
 // D7 Step 4: getTool() replaced with registry-backed getToolByName(); tool_catalogue RETIRED
 // DO NOT restore lib/retrieve imports — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.1
@@ -90,7 +97,7 @@ import type { TraceStep, TraceChunkItem, TraceDataSummary, TracePayload, TraceQu
 // D7 migration: ToolBundle/ToolBundleResult types sourced from lib/retrieve/types
 // (canonical location until lib/retrieve is retired in Step 4).
 import type { ToolBundle, ToolBundleResult } from '@/lib/retrieval/shared_types'
-import { res } from '@/lib/errors'
+import { res, errorResponse } from '@/lib/errors'
 import {
   writeLlmCallLog,
   writeQueryPlanLog,
@@ -400,6 +407,18 @@ export async function POST(request: Request) {
 
   const manifest = await loadManifest('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', '00_ARCHITECTURE/manifest_overrides.yaml')
 
+  // ── W4 core step 5 — S-1 orientation front-door ────────────────────────────
+  // Kick off the ≤2000-token orientation block (chart frame + structural facts +
+  // notable gestalt findings + dasha context + category/drill map) EARLY, concurrently
+  // with the planner + tool-fetch latency. Non-throwing (degrades to header+inventory on
+  // any failure). Awaited just before adapter dispatch and delivered as a data-orientation
+  // SSE event near the start of the stream. See @/lib/retrieval/orientation.
+  const orientationPromise: Promise<ChartOrientation | null> = buildChartOrientation(chartId)
+    .catch((err: unknown) => {
+      console.error('[consume:v2] orientation build failed (non-fatal):', err)
+      return null
+    })
+
   // ── Single-path LLM-first planner ─────────────────────────────────────────
   // No flag guard. No circuit breaker. No fallback. The planner produces
   // the single PipelinePlan that drives every downstream stage.
@@ -431,26 +450,54 @@ export async function POST(request: Request) {
   }
 
   const plannerStartedAt = Date.now()
-  let plan: PipelinePlan
-  try {
-    plan = await runPlanner(
-      queryText,
-      plannerHistory,
-      plannerModelId,
-      chartId,
-      emit,
-      preAllocatedQueryId,
-      plannerFallbackModelId,
-    )
-  } catch (err) {
-    if (err instanceof PlannerFault) {
-      return NextResponse.json(
-        { error: 'planner_failed', message: err.message },
-        { status: 422 },
-      )
-    }
-    throw err
+  // W4 "One Planner": the planner now returns a 3-way typed outcome
+  // (plan | clarification_needed | fault) and NEVER throws for an expected
+  // failure. Each outcome is rendered through a clean, typed response path —
+  // the old raw `HTTP 422 {"error":"planner_failed", ...}` leak is gone.
+  const plannerOutcome = await runPlanner(
+    queryText,
+    plannerHistory,
+    plannerModelId,
+    chartId,
+    emit,
+    preAllocatedQueryId,
+    plannerFallbackModelId,
+  )
+
+  if (plannerOutcome.outcome === 'clarification_needed') {
+    // Genuinely ambiguous query — stream a clarification the client renders as a
+    // question, via the same UIMessage-stream SSE surface the rest of the chat
+    // uses (data-clarification custom part). No plan is built; no LLM synthesis runs.
+    const clarStream = createUIMessageStream({
+      execute: ({ writer }) => {
+        writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
+        writer.write({
+          type: 'data-clarification',
+          data: clarificationPart({
+            question: plannerOutcome.question,
+            missing_scope_dims: plannerOutcome.missing_scope_dims,
+            suggested_options: plannerOutcome.suggested_options,
+          }),
+        } as never)
+        writer.write({ type: 'finish', finishReason: 'stop' } as never)
+      },
+    })
+    return createUIMessageStreamResponse({ stream: clarStream })
   }
+
+  if (plannerOutcome.outcome === 'fault') {
+    // Typed, honest planner fault. Log the real reason server-side; the client
+    // sees a clean canonical error envelope (NEVER the raw internal parse error).
+    console.error('[consume:v2] planner fault:', plannerOutcome.reason, 'retryable=', plannerOutcome.retryable)
+    return plannerOutcome.retryable
+      // Transient (provider) fault — the same request may succeed on retry.
+      ? errorResponse('SYSTEM_LLM_ERROR', 'The planner service is temporarily unavailable. Please retry.', 503, { retry: true })
+      // The model could not produce a valid plan even after a repair-retry —
+      // repeating won't help; the caller should rephrase.
+      : res.validationFailed('The planner could not produce a valid plan for this request. Please rephrase and try again.')
+  }
+
+  const plan: PipelinePlan = plannerOutcome.plan
   const plannerLatencyMs = Date.now() - plannerStartedAt
 
   // Stamp route-controlled fields — never LLM output
@@ -512,60 +559,42 @@ export async function POST(request: Request) {
   // Derive toolsAuthorized from plan.tool_calls.
   const toolsAuthorized = Array.from(new Set(plan.tool_calls.map(tc => tc.tool_name)))
 
-  // B.11 Whole-Chart-Read enforcement — at least one L2.5 tool required.
-  // D7 NOTE: Old names 'msr_sql' / 'cgm_graph_walk' are kept here for backward
-  // compat with the existing lib/retrieve execution path (getTool() still resolves them).
-  // The registry execution path (getCapability) is tried first; lib/retrieve is fallback.
-  // Remapping: msr_sql → marsys://tool/L2/query_signals
-  //            cgm_graph_walk → marsys://tool/L2/traverse_chart_graph
-  const L2_5_TOOLS = ['msr_sql', 'query_msr_aggregate', 'pattern_register',
-    'resonance_register', 'cluster_atlas', 'contradiction_register', 'cgm_graph_walk',
-    // D7: registry-URI aliases for the same tools
-    'marsys://tool/L2/query_signals', 'marsys://tool/L2/traverse_chart_graph']
-  if (!toolsAuthorized.some(t => L2_5_TOOLS.includes(t))) {
-    // Predictive class: cgm_graph_walk is banned (R14c); pattern_register is
-    // required (R7a). Inject msr_sql + vector_search + pattern_register so the
-    // synthesis model receives the domain narrative it needs.
-    if (plan.query_class === 'predictive') {
-      const domainSearchQuery = (plan.domains ?? []).length > 0
-        ? (plan.domains ?? []).join(' ')
-        : 'relationships family marriage children'
-      plan.tool_calls.push(
-        // D7: prefer registry URI; lib/retrieve 'msr_sql' is the fallback
-        { tool_name: 'marsys://tool/L2/query_signals', params: { forward_looking: true }, token_budget: 600, priority: 1 as const, reason: 'B.11 predictive floor: signal foundation (registry)' },
-        { tool_name: 'vector_search', params: { query_text: domainSearchQuery, doc_type: ['domain_report'], top_k: 6 }, token_budget: 500, priority: 1 as const, reason: 'B.11 predictive floor: domain narrative' },
-        { tool_name: 'pattern_register', params: { forward_looking: true }, token_budget: 400, priority: 2 as const, reason: 'B.11 predictive floor: R7a requirement' },
-      )
-      toolsAuthorized.push('marsys://tool/L2/query_signals', 'vector_search', 'pattern_register')
-    } else {
-      plan.tool_calls.push(
-        // D7: prefer registry URIs; lib/retrieve names are the fallback
-        { tool_name: 'marsys://tool/L2/query_signals', params: {}, token_budget: 600, priority: 1 as const, reason: 'B.11 floor enforcement (registry)' },
-        { tool_name: 'marsys://tool/L2/traverse_chart_graph', params: {}, token_budget: 400, priority: 2 as const, reason: 'B.11 floor enforcement (registry)' },
-      )
-      toolsAuthorized.push('marsys://tool/L2/query_signals', 'marsys://tool/L2/traverse_chart_graph')
+  // ── W4 core step 3 — floor adoption ────────────────────────────────────────
+  // The B.11 floor is now COMPILED from the plan's deterministic scope_tuple via
+  // the Vidhi compiler (compileFloorForPlan), replacing the former hardcoded
+  // literal tool lists. The compiled floor's retrieval-executable tools are pushed
+  // first (they vary by intent class); the two invariants the compiler does not
+  // express in web-executable form — the B.11 whole-chart-read floor (≥1 L2.5
+  // tool, incl. the predictive special-casing) and the dasha context floor — are
+  // then enforced as orthogonal, idempotent guarantees. See
+  // @/lib/pipeline/compiled_floor_adapter for the classifier→compiler tuple mapping
+  // and the MCP-live_tool→retrieval-name bridge.
+  //
+  // NOTE (documented gap, W4 step-3 report): the compiler's floor is MCP-native, so
+  // only a small subset of floor primitives currently map to web-executable retrieval
+  // tools. The B.11 + dasha guarantees below preserve production behavior regardless.
+  if (plan.scope_tuple) {
+    const compiledFloor = compileFloorForPlan(plan.scope_tuple, chartId)
+    for (const tc of compiledFloor.toolCalls) {
+      if (!toolsAuthorized.includes(tc.tool_name)) {
+        plan.tool_calls.push(tc)
+        toolsAuthorized.push(tc.tool_name)
+      }
     }
   }
+  // else: no scope_tuple on the plan (defensive — callPipelinePlanner always attaches
+  // one for a resolved plan). Fall through to the guarantees below, which reproduce
+  // the legacy hardcoded floor exactly — a safe, maximally-conservative default.
 
-  // Dasha context floor: predictive and holistic queries always need the
-  // canonical Vimshottari dasha sequence so synthesis can anchor phase-based
-  // predictions to correct dates (data lives in chart_facts.dasha_vimshottari).
-  if (
-    (plan.query_class === 'predictive' || plan.query_class === 'holistic') &&
-    !toolsAuthorized.includes('chart_facts_query')
-  ) {
-    plan.tool_calls.push({
-      tool_name: 'chart_facts_query',
-      // limit:50 required — there are 50 AD records (V.001–V.050). Default limit:20
-      // only covers through Mercury-Mars AD (ends 2020), cutting off the current
-      // Mercury-Saturn AD and all future Ketu MD + Venus MD periods.
-      params: { category: 'dasha_vimshottari', limit: 50 },
-      token_budget: 600,
-      priority: 1 as const,
-      reason: 'dasha context floor: synthesis requires canonical MD/AD sequence for phase-anchored predictions',
-    })
-    toolsAuthorized.push('chart_facts_query')
-  }
+  // B.11 Whole-Chart-Read enforcement — at least one L2.5 tool required. Idempotent:
+  // no-ops if the compiled floor already yielded an L2.5 tool (e.g. mechanism_read →
+  // cgm_graph_walk). Preserves the predictive-class special-casing.
+  ensureB11WholeChartReadFloor(plan, toolsAuthorized)
+
+  // Dasha context floor: predictive and holistic queries always need the canonical
+  // Vimshottari dasha sequence so synthesis can anchor phase-based predictions to
+  // correct dates (data lives in chart_facts.dasha_vimshottari).
+  ensureDashaContextFloor(plan, toolsAuthorized)
 
   // Adapter: PipelinePlan → legacy-shaped object for retrieval tools,
   // validators, audit, the orchestrator. Carries plan.tool_calls as an extra
@@ -793,6 +822,26 @@ export async function POST(request: Request) {
   const validToolResults = toolResults.filter((r: ToolBundle | null): r is ToolBundle => r !== null)
   const toolFetchMs = Date.now() - toolFetchWallStart
 
+  // ── W4 core step 4 — completeness receipt (web channel) ────────────────────
+  // Now that the floor tools have actually executed, emit a TRUTHFUL served/empty/dark
+  // receipt for the compiled B.11 floor, mapping each floor primitive to its real
+  // per-tool outcome (toolEventLog). Most floor items are dark/empty today because
+  // only a small subset of MCP floor primitives map to web-executable retrieval tools
+  // (the MCP↔web namespace gap) — the receipt's channel_note states that honestly.
+  // Delivered as a data-completeness SSE event near the end of the stream.
+  let completenessReceipt: WebCompletenessReceipt | null = null
+  if (plan.scope_tuple) {
+    completenessReceipt = buildWebCompletenessReceipt(
+      plan.scope_tuple,
+      chartId,
+      toolEventLog.map(e => ({ name: e.name, status: e.status, ok_count: e.ok_count })),
+    )
+  }
+
+  // Await the orientation front-door (kicked off at request open, overlapping planner +
+  // tool-fetch latency). Null on failure — the dispatch path simply omits the event.
+  const orientation = await orientationPromise
+
   const bundleValidations = await runAll(bundle, 'bundle', { query_plan: queryPlan, bundle, manifest_fingerprint: manifest.fingerprint })
   const bundleSummary = summarize(bundleValidations)
   if (bundleSummary.overall === 'fail' && configService.getFlag('VALIDATOR_FAILURE_HALT')) {
@@ -1010,6 +1059,8 @@ export async function POST(request: Request) {
     pendingStreamWriter,
     fetchMsrSnippets,
     dataReadinessNote,
+    orientation,
+    completenessReceipt,
   })
   // (formerly route.ts L899–1319: STACK_TO_ADAPTER mapping → adapter chat
   // request assembly → Gemini cache → createUIMessageStream → B.11 citation

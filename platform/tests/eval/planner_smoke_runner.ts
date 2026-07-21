@@ -293,8 +293,12 @@ async function main(): Promise<void> {
   // Lazy import: pulls server-only deps (resolver) only at CLI runtime.
   const { callPipelinePlanner } = await import('@/lib/pipeline/pipeline_planner')
 
-  const plannerFn: PlannerFn = (query, history, modelIdArg, chartIdArg) =>
-    callPipelinePlanner(query, history, modelIdArg, chartIdArg)
+  // W4: unwrap the 3-way PlannerOutcome to the plan shape PlannerFn expects;
+  // non-'plan' outcomes (clarification/fault) score as an empty plan for eval.
+  const plannerFn: PlannerFn = async (query, history, modelIdArg, chartIdArg) => {
+    const outcome = await callPipelinePlanner(query, history, modelIdArg, chartIdArg)
+    return outcome.outcome === 'plan' ? outcome.plan : { tool_calls: [] }
+  }
 
   const goldenSet = loadGoldenSet()
   const { results, aggregate } = await runSmoke(goldenSet, plannerFn, modelId, chartId)

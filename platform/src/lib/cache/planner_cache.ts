@@ -28,7 +28,7 @@
  */
 
 import 'server-only'
-import type { PipelinePlan } from '@/lib/pipeline/types'
+import type { PlannerOutcome, PlanReceipt } from '@/lib/pipeline/types'
 import type { TraceEvent } from '@/lib/trace/types'
 import { callPipelinePlanner } from '@/lib/pipeline/pipeline_planner'
 import { buildKey, cacheGet, cacheSet } from './shared_cache'
@@ -43,7 +43,7 @@ export async function callPipelinePlannerCached(
   emitTrace?: (event: TraceEvent) => void,
   queryId?: string,
   fallbackModelId?: string,
-): Promise<PipelinePlan> {
+): Promise<PlannerOutcome> {
   const key = buildKey('planner', {
     query: query.trim(),
     history: conversationHistory.map((m) => `${m.role}:${m.content}`).join('\n'),
@@ -51,7 +51,9 @@ export async function callPipelinePlannerCached(
     native_id: nativeId,
   })
 
-  const cached = await cacheGet<PipelinePlan>('planner', key)
+  // W4: only the happy-path 'plan' outcome is cached (see EXCLUDES note above);
+  // clarification/fault outcomes are cheap and situational, never memoised.
+  const cached = await cacheGet<PlanReceipt>('planner', key)
   if (cached) {
     if (emitTrace && queryId) {
       const ts = new Date().toISOString()
@@ -82,6 +84,8 @@ export async function callPipelinePlannerCached(
     queryId,
     fallbackModelId,
   )
-  void cacheSet('planner', key, fresh, { ttlSeconds: PLANNER_CACHE_TTL_SECONDS })
+  if (fresh.outcome === 'plan') {
+    void cacheSet('planner', key, fresh, { ttlSeconds: PLANNER_CACHE_TTL_SECONDS })
+  }
   return fresh
 }

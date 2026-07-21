@@ -160,12 +160,14 @@ async function main(): Promise<void> {
     let error: string | null = null
 
     try {
-      const result = (await callPipelinePlanner(
+      const outcome = await callPipelinePlanner(
         entry.query,
         [],
         MODEL_ID,
         CHART_ID
-      )) as PlannerResult
+      )
+      // W4: only the happy-path 'plan' outcome carries tool_calls.
+      const result = (outcome.outcome === 'plan' ? outcome.plan : { tool_calls: [] }) as PlannerResult
       predicted = (result.tool_calls ?? []).map(c => c.tool_name)
     } catch (err) {
       error = err instanceof Error ? err.message : String(err)

@@ -101,7 +101,9 @@ async function runCompare(opts: { dryRun: boolean }): Promise<CompareReport> {
     let plannerSide: SideResult | null = null
     if (!opts.dryRun && callPipelinePlanner) {
       try {
-        const plan = await callPipelinePlanner(entry.query, [], modelId, chartId)
+        const outcome = await callPipelinePlanner(entry.query, [], modelId, chartId)
+        // W4: planner returns a 3-way outcome; eval only scores the happy-path plan.
+        const plan = outcome.outcome === 'plan' ? outcome.plan : { tool_calls: [] as Array<{ tool_name: string }> }
         plannerSide = {
           side: 'planner',
           predicted_tools: plan.tool_calls.map(tc => tc.tool_name),

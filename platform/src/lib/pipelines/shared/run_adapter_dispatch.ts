@@ -34,7 +34,11 @@ import type { ModelMessage, UIMessage } from 'ai'
 import {
   stagePart,
   observabilityPart,
+  completenessPart,
+  orientationPart,
 } from '@/lib/streams/data_parts'
+import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
+import type { ChartOrientation } from '@/lib/retrieval/orientation'
 import { configService } from '@/lib/config/index'
 
 import type { StackId } from '@/lib/providers/dispatcher'
@@ -141,6 +145,21 @@ export interface RunAdapterDispatchCtx {
    * Format: pre-composed NOTE string ready for concatenation.
    */
   dataReadinessNote?: string
+
+  /**
+   * W4 core step 5 — S-1 orientation front-door block (≤2000 tokens). Built by the route
+   * (buildChartOrientation) and emitted ONCE as a data-orientation SSE event near the START
+   * of the stream. Null/undefined when the orientation build failed — the event is then omitted.
+   */
+  orientation?: ChartOrientation | null
+
+  /**
+   * W4 core step 4 — completeness receipt for the compiled B.11 floor (served/empty/dark per
+   * floor item, honest about the MCP↔web namespace gap). Built by the route
+   * (buildWebCompletenessReceipt) after the floor tools executed, emitted as a data-completeness
+   * SSE event near the END of the stream. Null when the plan carried no scope_tuple / compile failed.
+   */
+  completenessReceipt?: WebCompletenessReceipt | null
 }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +196,8 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
     pendingStreamWriter,
     fetchMsrSnippets,
     dataReadinessNote,
+    orientation,
+    completenessReceipt,
   } = ctx
 
   const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
@@ -292,6 +313,20 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
     execute: async ({ writer }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       writer.write({ type: 'start', messageId: adapterMsgId } as any)
+      // W4 core step 5 — S-1 orientation front-door: emit ONCE near the start so the client
+      // has the chart frame + category/drill map before synthesis text streams.
+      if (orientation) {
+        writer.write({
+          type: 'data-orientation',
+          data: orientationPart({
+            chart_id: orientation.chart_id,
+            ayanamsha_id: orientation.ayanamsha_id,
+            degraded: orientation.degraded,
+            budget: orientation.budget,
+            orientation: orientation as unknown as Record<string, unknown>,
+          }),
+        })
+      }
       writer.write({ type: 'data-stage', data: stagePart('classify', 'done', plannerLatencyMs) })
       writer.write({ type: 'data-stage', data: stagePart('compose_bundle', 'done', composeBundleMs) })
       for (const evt of toolEventLog) {
@@ -569,6 +604,22 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
             },
           },
         )
+      }
+      // W4 core step 4 — completeness receipt: emit near the end, after the floor tools ran
+      // and synthesis finished, so the client can render served/empty/dark coverage for the
+      // compiled B.11 floor (honest about the MCP↔web namespace gap via channel_note).
+      if (completenessReceipt) {
+        writer.write({
+          type: 'data-completeness',
+          data: completenessPart({
+            channel: completenessReceipt.channel,
+            served: completenessReceipt.served.map(s => ({ floor_item_id: s.floor_item_id, source: s.source })),
+            empty: completenessReceipt.empty.map(e => ({ floor_item_id: e.floor_item_id, empty_reason: e.empty_reason })),
+            dark: completenessReceipt.dark.map(d => ({ floor_item_id: d.floor_item_id, cr_row: d.cr_row, ...(d.note ? { note: d.note } : {}) })),
+            coverage: completenessReceipt.coverage,
+            channel_note: completenessReceipt.channel_note,
+          }),
+        })
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       writer.write({ type: 'finish', finishReason: 'stop' } as any)

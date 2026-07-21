@@ -1,0 +1,274 @@
+/**
+ * compiled_floor_adapter.ts — W4 "One Planner", sequential core step 3 (floor adoption).
+ *
+ * Bridges the deterministic Vidhi *compiler* (`compileContract`, @/lib/vidhi/compiler)
+ * to the consult route's tool-execution path. It replaces the hardcoded literal
+ * "B.11 floor" tool lists that used to live inline in consult/route.ts.
+ *
+ * ── The two-namespace problem this file solves ──────────────────────────────────
+ *
+ * There are TWO distinct `ScopeTuple` shapes in the tree:
+ *   1. the CLASSIFIER's tuple (@/lib/vidhi/scope_classifier) — attached to a
+ *      PipelinePlan as `plan.scope_tuple` by `callPipelinePlanner`;
+ *   2. the COMPILER's tuple (@/lib/vidhi/types) — what `compileContract` accepts.
+ * They are deliberately different concepts (see the scope_classifier.ts header note).
+ * `classifierTupleToCompilerTuple` is the mandatory, deterministic, total mapping
+ * between them.
+ *
+ * Also: `compileContract` emits `live_tool` names in the LIVE MCP connector namespace
+ * (`ganita_structural_get`, `bodha_signals_get`, …) — the compiler was authored for
+ * the MCP channel (see compiler.ts / registry_data.ts headers). The consult route
+ * executes retrieval-REGISTRY tool names via `getToolByName()`. Only the subset of
+ * compiled primitives whose `live_tool` has a resolvable retrieval-registry equivalent
+ * can execute on the web consult path; `LIVE_TOOL_TO_RETRIEVAL` is that (small,
+ * explicit, test-guarded) map. Primitives with no equivalent are reported as
+ * `unmappedPrimitives` rather than pushed as no-op tool names that would produce empty
+ * trace steps. This is a known architecture gap documented in the W4 step-3 report.
+ *
+ * Two invariants the compiler does NOT express in web-executable form are preserved
+ * here as explicit, orthogonal guarantees, byte-faithful to consult/route.ts's prior
+ * inline logic:
+ *   - `ensureB11WholeChartReadFloor` — the B.11 Whole-Chart-Read floor (≥1 L2.5 tool),
+ *     including the predictive-class special-casing (vector_search + pattern_register);
+ *   - `ensureDashaContextFloor` — the canonical Vimshottari dasha context floor for
+ *     predictive/holistic query classes.
+ */
+
+import type { PipelinePlan, ToolCallItem } from './types'
+import type { ScopeTuple as ClassifierScopeTuple } from '@/lib/vidhi/scope_classifier'
+import type { IntentClass, ScopeDepth, ScopeTuple as CompilerScopeTuple } from '@/lib/vidhi/types'
+import { compileContract, defaultRegistry } from '@/lib/vidhi/compiler'
+
+// ── L2.5 whole-chart-read tool names (B.11) ─────────────────────────────────────
+// Kept identical to consult/route.ts's prior inline list. Old names (`msr_sql`,
+// `cgm_graph_walk`) are retained alongside the D7 registry-URI aliases for backward
+// compat with the lib/retrieve execution path.
+export const L2_5_TOOLS: readonly string[] = [
+  'msr_sql',
+  'query_msr_aggregate',
+  'pattern_register',
+  'resonance_register',
+  'cluster_atlas',
+  'contradiction_register',
+  'cgm_graph_walk',
+  'marsys://tool/L2/query_signals',
+  'marsys://tool/L2/traverse_chart_graph',
+]
+
+// ── classifier tuple → compiler tuple ───────────────────────────────────────────
+
+const DOMAIN_DEEPDIVE: Readonly<Record<string, IntentClass>> = {
+  wealth: 'wealth_deepdive',
+  career: 'career_deepdive',
+  health: 'health_deepdive',
+  marriage: 'marriage_deepdive',
+}
+
+/**
+ * Map the classifier's intent + domains + width/depth into one of the compiler's
+ * eight registered `IntentClass` floor families. Deterministic and TOTAL — every
+ * classifier tuple maps to a registered floor, so `compileContract` never throws on
+ * an unregistered intent.
+ *
+ * Precedence (first match wins):
+ *   1. breadth (broad width OR ≥3 domains)  → panoramic_breadth
+ *   2. a domain-specific deepdive floor      → <domain>_deepdive
+ *   3. explicit chart overview               → structure_read
+ *   4. shallow / single-fact                 → retrieval_only
+ *   5. otherwise                             → general_synthesis
+ */
+export function classifierIntentToCompilerIntent(tuple: ClassifierScopeTuple): IntentClass {
+  if (tuple.width === 'broad' || tuple.domains.length >= 3) return 'panoramic_breadth'
+  for (const d of tuple.domains) {
+    const floor = DOMAIN_DEEPDIVE[d]
+    if (floor) return floor
+  }
+  if (tuple.intent === 'chart_overview') return 'structure_read'
+  if (tuple.depth === 'shallow') return 'retrieval_only'
+  return 'general_synthesis'
+}
+
+const DEPTH_MAP: Readonly<Record<ClassifierScopeTuple['depth'], ScopeDepth>> = {
+  shallow: 'retrieval',
+  standard: 'structure',
+  deep: 'deepdive',
+}
+
+/**
+ * Total, deterministic mapping from the classifier's `ScopeTuple` to the compiler's
+ * `ScopeTuple`. `width`, `horizon`, and `entitlement` are cosmetic on the compiler
+ * side (only `intent`, `depth`, and `intervention` change the compiled contract —
+ * see compiler.ts) but are mapped faithfully for auditability.
+ */
+export function classifierTupleToCompilerTuple(tuple: ClassifierScopeTuple): CompilerScopeTuple {
+  return {
+    intent: classifierIntentToCompilerIntent(tuple),
+    domains: [...tuple.domains],
+    width: tuple.width === 'broad' ? 'panoramic' : tuple.width === 'narrow' ? 'narrow' : 'standard',
+    depth: DEPTH_MAP[tuple.depth],
+    horizon:
+      tuple.horizon === 'far' ? 'multi_year' : tuple.horizon === 'present' || tuple.horizon === 'near' ? 'current' : 'natal',
+    intervention: tuple.intervention !== 'none',
+    entitlement:
+      tuple.entitlement === 'reference' ? 'public_disclosed' : tuple.entitlement === 'restricted' ? 'research' : 'native',
+  }
+}
+
+// ── compiler live_tool (MCP namespace) → retrieval-registry tool name ────────────
+//
+// Only the compiled primitives whose live_tool has a resolvable retrieval-registry
+// equivalent can execute on the web consult path. Every value here MUST resolve via
+// getToolByName() — asserted by compiled_floor_adapter.test.ts against the bridge.
+// The MANY floor primitives whose live_tool has NO retrieval equivalent
+// (ganita_structural_get / ganita_condition_get / bodha_signals_get / …) are
+// intentionally absent — they are reported as unmappedPrimitives, not pushed as
+// no-op tool names. (Known gap: the compiler's floor is MCP-native; the web
+// retrieval path covers only this subset. See the file header + W4 step-3 report.)
+export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
+  get_cgm_subgraph: 'cgm_graph_walk', // mechanism_read → L2 CGM subgraph walk (an L2.5 tool)
+  lel_query: 'lel_query', // lel_retrodiction → L5 life-event log
+  ganita_yoga_firings_get: 'get_yoga_firings', // dhana_yoga_scan / nbry_scan → L1 yoga firings
+  bodha_discoveries_get: 'query_discoveries', // contradiction_scan → L2 discoveries
+}
+
+const BAND_BUDGET = { acharya_floor: 600, machine_band: 400 } as const
+const BAND_PRIORITY = { acharya_floor: 1, machine_band: 2 } as const
+
+export interface CompiledFloorResult {
+  /** The compiler IntentClass the plan's scope_tuple resolved to. */
+  compilerIntent: IntentClass
+  /** Retrieval-executable tool_calls derived from the compiled floor (dedup-ready). */
+  toolCalls: ToolCallItem[]
+  /** primitive_ids whose live_tool mapped to a retrieval-executable tool. */
+  mappedPrimitives: string[]
+  /** primitive_ids whose live_tool has no retrieval equivalent (MCP-native only). */
+  unmappedPrimitives: string[]
+  /** True if compileContract threw and this result is an empty (safe) fallback. */
+  compileFailed: boolean
+}
+
+/**
+ * Compile the B.11 floor for a plan's classifier scope_tuple and adapt it into
+ * retrieval-executable `ToolCallItem`s. TOTAL: never throws out to the caller — if
+ * `compileContract` throws (registry-completeness bug), returns an empty result with
+ * `compileFailed: true` so the route's B.11 invariant guarantee still runs. This is
+ * deliberate: force-injecting a floor that might not compile must degrade safely, not
+ * crash the request.
+ */
+export function compileFloorForPlan(tuple: ClassifierScopeTuple, chartId: string): CompiledFloorResult {
+  const compilerTuple = classifierTupleToCompilerTuple(tuple)
+  let contract
+  try {
+    contract = compileContract(compilerTuple, defaultRegistry(), chartId)
+  } catch {
+    return {
+      compilerIntent: compilerTuple.intent,
+      toolCalls: [],
+      mappedPrimitives: [],
+      unmappedPrimitives: [],
+      compileFailed: true,
+    }
+  }
+
+  const toolCalls: ToolCallItem[] = []
+  const mappedPrimitives: string[] = []
+  const unmappedPrimitives: string[] = []
+  const seen = new Set<string>()
+
+  for (const item of [...contract.floor, ...contract.machine_band]) {
+    const retrievalName = LIVE_TOOL_TO_RETRIEVAL[item.live_tool]
+    if (!retrievalName) {
+      unmappedPrimitives.push(item.primitive_id)
+      continue
+    }
+    mappedPrimitives.push(item.primitive_id)
+    if (seen.has(retrievalName)) continue // one tool_call per distinct retrieval tool
+    seen.add(retrievalName)
+    // Strip the compiler-filled chart_id; the route injects chart_id from plan.
+    const { chart_id: _chartId, ...params } = item.tool_args as Record<string, unknown>
+    toolCalls.push({
+      tool_name: retrievalName,
+      params,
+      token_budget: BAND_BUDGET[item.band],
+      priority: BAND_PRIORITY[item.band],
+      reason: `vidhi floor(${contract.scope_tuple.intent}): ${item.primitive_id}`,
+    })
+  }
+
+  return {
+    compilerIntent: compilerTuple.intent,
+    toolCalls,
+    mappedPrimitives,
+    unmappedPrimitives,
+    compileFailed: false,
+  }
+}
+
+// ── B.11 whole-chart-read invariant + dasha context floor (preserved guarantees) ─
+//
+// These reproduce consult/route.ts's prior inline behavior EXACTLY (registry-URI tool
+// names, predictive special-casing, dasha limit:50). They run as guarantees after the
+// compiled floor is adopted, and as the sole floor when no scope_tuple is present. Each
+// is idempotent: it no-ops when its invariant is already satisfied.
+
+export interface FloorGuaranteeResult {
+  b11Injected: boolean
+  dashaInjected: boolean
+}
+
+/**
+ * Guarantee ≥1 L2.5 whole-chart-read tool on the plan (B.11 / PROJECT_ARCHITECTURE
+ * §H.4). No-ops if the plan's authorized tools already include an L2.5 tool (e.g. the
+ * compiled floor mapped `mechanism_read` → `cgm_graph_walk`). Mutates `plan.tool_calls`
+ * and `toolsAuthorized` in place; returns whether it injected.
+ */
+export function ensureB11WholeChartReadFloor(plan: PipelinePlan, toolsAuthorized: string[]): boolean {
+  if (toolsAuthorized.some((t) => L2_5_TOOLS.includes(t))) return false
+
+  if (plan.query_class === 'predictive') {
+    // Predictive class: cgm_graph_walk is banned (R14c); pattern_register is required
+    // (R7a). Inject msr_sql + vector_search + pattern_register so the synthesis model
+    // receives the domain narrative it needs.
+    const domainSearchQuery =
+      (plan.domains ?? []).length > 0 ? (plan.domains ?? []).join(' ') : 'relationships family marriage children'
+    plan.tool_calls.push(
+      { tool_name: 'marsys://tool/L2/query_signals', params: { forward_looking: true }, token_budget: 600, priority: 1, reason: 'B.11 predictive floor: signal foundation (registry)' },
+      { tool_name: 'vector_search', params: { query_text: domainSearchQuery, doc_type: ['domain_report'], top_k: 6 }, token_budget: 500, priority: 1, reason: 'B.11 predictive floor: domain narrative' },
+      { tool_name: 'pattern_register', params: { forward_looking: true }, token_budget: 400, priority: 2, reason: 'B.11 predictive floor: R7a requirement' },
+    )
+    toolsAuthorized.push('marsys://tool/L2/query_signals', 'vector_search', 'pattern_register')
+  } else {
+    plan.tool_calls.push(
+      { tool_name: 'marsys://tool/L2/query_signals', params: {}, token_budget: 600, priority: 1, reason: 'B.11 floor enforcement (registry)' },
+      { tool_name: 'marsys://tool/L2/traverse_chart_graph', params: {}, token_budget: 400, priority: 2, reason: 'B.11 floor enforcement (registry)' },
+    )
+    toolsAuthorized.push('marsys://tool/L2/query_signals', 'marsys://tool/L2/traverse_chart_graph')
+  }
+  return true
+}
+
+/**
+ * Guarantee the canonical Vimshottari dasha context floor for predictive/holistic
+ * query classes (data lives in chart_facts.dasha_vimshottari). No-ops otherwise or if
+ * `chart_facts_query` is already authorized. Mutates in place; returns whether injected.
+ */
+export function ensureDashaContextFloor(plan: PipelinePlan, toolsAuthorized: string[]): boolean {
+  if (
+    (plan.query_class === 'predictive' || plan.query_class === 'holistic') &&
+    !toolsAuthorized.includes('chart_facts_query')
+  ) {
+    plan.tool_calls.push({
+      tool_name: 'chart_facts_query',
+      // limit:50 required — there are 50 AD records (V.001–V.050). Default limit:20
+      // only covers through Mercury-Mars AD (ends 2020), cutting off the current
+      // Mercury-Saturn AD and all future Ketu MD + Venus MD periods.
+      params: { category: 'dasha_vimshottari', limit: 50 },
+      token_budget: 600,
+      priority: 1,
+      reason: 'dasha context floor: synthesis requires canonical MD/AD sequence for phase-anchored predictions',
+    })
+    toolsAuthorized.push('chart_facts_query')
+    return true
+  }
+  return false
+}
