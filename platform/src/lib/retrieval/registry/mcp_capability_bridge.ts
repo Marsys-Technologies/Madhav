@@ -92,6 +92,8 @@ const MCP_TOOL_TO_URI: Record<string, CapabilityUri> = {
   // ── L5 Mīmāṃsā capabilities ───────────────────────────────────────────────
   'lel_query':                         'marsys://tool/L5/lel_query',
   'mimamsa_outcome':                   'marsys://tool/L5/mimamsa_outcome',
+  // DOCTRINE-WAVES D-4b Lane B-5 (= BRIEF_D4.md v2.0 Lane C-6): mechanism_retrodiction
+  'mechanism_retrodiction_get':        'marsys://tool/L5/mechanism_retrodiction_get',
   // L0 Remedy tools (Stream F)
   'query_remedies_tool':               'marsys://tool/L0/query_remedies_tool',
   // ── Asset catalog (all layers) ─────────────────────────────────────────────
