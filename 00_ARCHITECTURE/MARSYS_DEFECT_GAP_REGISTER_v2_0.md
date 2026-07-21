@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.9
+version: 3.10
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -946,9 +946,63 @@ namespace-gap limitation. Still did not block the overall response (graceful deg
 Still out of W4 scope per the same native ruling; recorded here rather than silently left as a
 narrower finding than the evidence now supports.
 
+**CR-120 [NOT-EVALUABLE — coverage gap, not a retirement, recorded D-4b permission-bridge lane
+(`wave/D-4b/permission-bridge`), 2026-07-22]:** B-1's Grand Bakeoff (`BRIEF_D4B.md §1 B-1`) names
+`midpoint-triangle` (the deprecated arithmetic-midpoint incumbent, 0.6/1.0/0.4 envelope) as a
+contender every other model must beat. Its `TemporalCurveModel` adapter
+(`model_interface.ts`'s `midpointTriangleModel()`) remains an explicit
+`NotImplementedModelError` stub — no midpoint-triangle substrate has ever been wired into the
+a3_scoring_harness (confirmed live by `B1_BAKEOFF_STATUS_v1_0.md §3`, re-confirmed this lane via
+the new `roster_bind.ts` bind-time assertion, which throws loudly and by name if
+`midpoint_triangle` is ever included in the ACTIVE roster). **NOT-EVALUABLE, not retired, not
+deprecated by this row** — the model is not deleted from doctrine and no code representing it is
+removed; `midpointTriangleModel()` stays in `model_interface.ts` exactly as-is, throwing its own
+named error rather than being silently dropped. **Disposition (native ruling, this session):**
+midpoint-triangle's role as the bakeoff's mandatory baseline-every-model-must-beat passes to the
+mirrored shuffled-birth negative controls already built and gated in the harness
+(`curve_controls.ts`'s `shuffledBirthControlCurve`, DR-15(b)/(c), exercised identically for every
+real contender via `harness.ts`'s `runMirroredScoringHarness`) — "losing a deprecated incumbent
+costs little" since the shuffled-birth control already supplies a real, non-fabricated,
+doctrine-ratified baseline every contender is scored against. Re-evaluation path (should a real
+midpoint-triangle substrate ever be wired in): write the adapter against the FROZEN
+`TemporalCurveModel` contract (`model_interface.ts`), pass this lane's `roster_bind.ts` bind-time
+assertion, and B-1's Binder decides whether to re-admit it as a scored contender alongside (not
+instead of) the shuffled-birth control baseline. No target wave assigned — this is a standing
+open item, not a scheduled candidate (unlike CR-121 below).
+
+**CR-121 [NOT-EVALUABLE — coverage gap, not a retirement, recorded D-4b permission-bridge lane
+(`wave/D-4b/permission-bridge`), 2026-07-22]:** `transit-kernel` (D-3's kernel, BRIEF_D4B.md §1
+B-1: "run on the C-0-repaired serving surface — its D-3 RED per-event table is its standing
+baseline entry, not a fresh cold-start") also remains an explicit `NotImplementedModelError` stub
+in `model_interface.ts` (`transitKernelModel()`) — confirmed live by `B1_BAKEOFF_STATUS_v1_0.md
+§3` and re-confirmed this lane via `roster_bind.ts`. **transit-kernel's D-3 RED gate result
+(`REPORT_D-3.md`: both named-mechanism checks miss top-decile 81%/67% of threshold; blind battery
+17.5% vs 50% floor; scores worse than shuffled-birth control by -16.1pp, coverage-matched -15.8pp)
+REMAINS its last recorded result — labeled explicitly
+NOT-RE-EVALUATED-ON-REPAIRED-SUBSTRATE.** The D-3 RED run predates every C-0/RED-C/RED-D repair
+this campaign has since made to the serving surface it depends on (per-substep throughput
+memoization, AV-gate/sade-sati caching, the RED-C max_days-cap fix, the RED-D marriage-mechanism
+activation fix) — its RED verdict was never re-run against the repaired substrate, so it is
+neither reconfirmed nor overturned by anything in D-4a/D-5/D-4b to date; treating the old RED as
+still-currently-true or as silently stale would both be dishonest, hence this row states plainly
+which it is: a stale-but-not-superseded prior result. **Registered as a named D-6-era candidate
+item** — per this session's native ruling, a "2.0 sweep engine" planned for the D-6 era is
+understood to subsume transit-kernel's underlying physics (no committed design artifact for it
+exists yet on this branch as of this row's writing — the next session scoping D-6 should confirm
+whether a `GOCHARA_SWEEP_2_0_DESIGN` artifact has since landed and cite it here), so
+transit-kernel's real re-evaluation is deferred to whenever that engine lands rather than re-run
+piecemeal against the current interim substrate.
+**NOT-EVALUABLE, not retired, not deprecated by this row** — no transit-kernel code or doctrine
+reference is removed; `transitKernelModel()` stays exactly as-is in `model_interface.ts`.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.9 (2026-07-21, D-4b formal-open recording
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.10 (2026-07-22, D-4b permission-bridge lane,
+`wave/D-4b/permission-bridge`) — CR-120 and CR-121 added NOT-EVALUABLE (coverage gap, not a
+retirement): midpoint-triangle's mandatory-baseline role in B-1's bakeoff passes to the mirrored
+shuffled-birth controls (native ruling, this session); transit-kernel's D-3 RED result stands as
+NOT-RE-EVALUATED-ON-REPAIRED-SUBSTRATE, its re-evaluation registered as a named D-6-era candidate
+item once the 2.0 sweep engine subsumes its physics. Neither model's code/doctrine is removed. v3.9 (2026-07-21, D-4b formal-open recording
 session, `wave/D-4b/open`) — CR-119 added OPEN (drift finding: commit `ae9457d2`'s
 "D-4b confirmed actively executing" claim independently disproven via `git branch -a`/`gh pr list`
 showing zero `wave/D-4b/*` branches or PRs at the time; annotated, not reverted). v3.8 (2026-07-21, W4 post-deploy live-probe) —

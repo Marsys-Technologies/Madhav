@@ -113,6 +113,14 @@ app.include_router(mimamsa_outcome_router, prefix="/api/compute", dependencies=[
 from routers import taranga as taranga_router
 app.include_router(taranga_router.router, prefix="/api/compute/taranga", dependencies=[Depends(verify_api_key)])
 
+# D-4b permission-bridge lane (wave/D-4b/permission-bridge) — read-only curve-servable
+# wrap of the EXISTING gochara_intensity.permission.compute_permission()'s per-system
+# decomposition (12 PERMISSION generators), for the a3_scoring_harness B-1 bakeoff bridge.
+# Does not modify compute_permission's internal computation. Route: POST
+# /api/compute/permission_curve.
+from routers import permission_curve as permission_curve_router
+app.include_router(permission_curve_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
 # BRAHMA L2 Bodha — holistic bundle (bo_2-8; filename uses hyphen, import via importlib)
 # Route: POST /api/compute/brahma/holistic_bundle
 import importlib as _importlib
