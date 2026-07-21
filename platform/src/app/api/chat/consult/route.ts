@@ -72,6 +72,11 @@ import { buildCacheCreatePayload, GEMINI_CACHE_MIN_TOKENS } from '@/lib/provider
 import { callPipelinePlanner as runPlanner } from '@/lib/pipeline/pipeline_planner'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
+import {
+  compileFloorForPlan,
+  ensureB11WholeChartReadFloor,
+  ensureDashaContextFloor,
+} from '@/lib/pipeline/compiled_floor_adapter'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
 // D7 Step 4: getTool() replaced with registry-backed getToolByName(); tool_catalogue RETIRED
 // DO NOT restore lib/retrieve imports — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.1
@@ -538,60 +543,42 @@ export async function POST(request: Request) {
   // Derive toolsAuthorized from plan.tool_calls.
   const toolsAuthorized = Array.from(new Set(plan.tool_calls.map(tc => tc.tool_name)))
 
-  // B.11 Whole-Chart-Read enforcement — at least one L2.5 tool required.
-  // D7 NOTE: Old names 'msr_sql' / 'cgm_graph_walk' are kept here for backward
-  // compat with the existing lib/retrieve execution path (getTool() still resolves them).
-  // The registry execution path (getCapability) is tried first; lib/retrieve is fallback.
-  // Remapping: msr_sql → marsys://tool/L2/query_signals
-  //            cgm_graph_walk → marsys://tool/L2/traverse_chart_graph
-  const L2_5_TOOLS = ['msr_sql', 'query_msr_aggregate', 'pattern_register',
-    'resonance_register', 'cluster_atlas', 'contradiction_register', 'cgm_graph_walk',
-    // D7: registry-URI aliases for the same tools
-    'marsys://tool/L2/query_signals', 'marsys://tool/L2/traverse_chart_graph']
-  if (!toolsAuthorized.some(t => L2_5_TOOLS.includes(t))) {
-    // Predictive class: cgm_graph_walk is banned (R14c); pattern_register is
-    // required (R7a). Inject msr_sql + vector_search + pattern_register so the
-    // synthesis model receives the domain narrative it needs.
-    if (plan.query_class === 'predictive') {
-      const domainSearchQuery = (plan.domains ?? []).length > 0
-        ? (plan.domains ?? []).join(' ')
-        : 'relationships family marriage children'
-      plan.tool_calls.push(
-        // D7: prefer registry URI; lib/retrieve 'msr_sql' is the fallback
-        { tool_name: 'marsys://tool/L2/query_signals', params: { forward_looking: true }, token_budget: 600, priority: 1 as const, reason: 'B.11 predictive floor: signal foundation (registry)' },
-        { tool_name: 'vector_search', params: { query_text: domainSearchQuery, doc_type: ['domain_report'], top_k: 6 }, token_budget: 500, priority: 1 as const, reason: 'B.11 predictive floor: domain narrative' },
-        { tool_name: 'pattern_register', params: { forward_looking: true }, token_budget: 400, priority: 2 as const, reason: 'B.11 predictive floor: R7a requirement' },
-      )
-      toolsAuthorized.push('marsys://tool/L2/query_signals', 'vector_search', 'pattern_register')
-    } else {
-      plan.tool_calls.push(
-        // D7: prefer registry URIs; lib/retrieve names are the fallback
-        { tool_name: 'marsys://tool/L2/query_signals', params: {}, token_budget: 600, priority: 1 as const, reason: 'B.11 floor enforcement (registry)' },
-        { tool_name: 'marsys://tool/L2/traverse_chart_graph', params: {}, token_budget: 400, priority: 2 as const, reason: 'B.11 floor enforcement (registry)' },
-      )
-      toolsAuthorized.push('marsys://tool/L2/query_signals', 'marsys://tool/L2/traverse_chart_graph')
+  // ── W4 core step 3 — floor adoption ────────────────────────────────────────
+  // The B.11 floor is now COMPILED from the plan's deterministic scope_tuple via
+  // the Vidhi compiler (compileFloorForPlan), replacing the former hardcoded
+  // literal tool lists. The compiled floor's retrieval-executable tools are pushed
+  // first (they vary by intent class); the two invariants the compiler does not
+  // express in web-executable form — the B.11 whole-chart-read floor (≥1 L2.5
+  // tool, incl. the predictive special-casing) and the dasha context floor — are
+  // then enforced as orthogonal, idempotent guarantees. See
+  // @/lib/pipeline/compiled_floor_adapter for the classifier→compiler tuple mapping
+  // and the MCP-live_tool→retrieval-name bridge.
+  //
+  // NOTE (documented gap, W4 step-3 report): the compiler's floor is MCP-native, so
+  // only a small subset of floor primitives currently map to web-executable retrieval
+  // tools. The B.11 + dasha guarantees below preserve production behavior regardless.
+  if (plan.scope_tuple) {
+    const compiledFloor = compileFloorForPlan(plan.scope_tuple, chartId)
+    for (const tc of compiledFloor.toolCalls) {
+      if (!toolsAuthorized.includes(tc.tool_name)) {
+        plan.tool_calls.push(tc)
+        toolsAuthorized.push(tc.tool_name)
+      }
     }
   }
+  // else: no scope_tuple on the plan (defensive — callPipelinePlanner always attaches
+  // one for a resolved plan). Fall through to the guarantees below, which reproduce
+  // the legacy hardcoded floor exactly — a safe, maximally-conservative default.
 
-  // Dasha context floor: predictive and holistic queries always need the
-  // canonical Vimshottari dasha sequence so synthesis can anchor phase-based
-  // predictions to correct dates (data lives in chart_facts.dasha_vimshottari).
-  if (
-    (plan.query_class === 'predictive' || plan.query_class === 'holistic') &&
-    !toolsAuthorized.includes('chart_facts_query')
-  ) {
-    plan.tool_calls.push({
-      tool_name: 'chart_facts_query',
-      // limit:50 required — there are 50 AD records (V.001–V.050). Default limit:20
-      // only covers through Mercury-Mars AD (ends 2020), cutting off the current
-      // Mercury-Saturn AD and all future Ketu MD + Venus MD periods.
-      params: { category: 'dasha_vimshottari', limit: 50 },
-      token_budget: 600,
-      priority: 1 as const,
-      reason: 'dasha context floor: synthesis requires canonical MD/AD sequence for phase-anchored predictions',
-    })
-    toolsAuthorized.push('chart_facts_query')
-  }
+  // B.11 Whole-Chart-Read enforcement — at least one L2.5 tool required. Idempotent:
+  // no-ops if the compiled floor already yielded an L2.5 tool (e.g. mechanism_read →
+  // cgm_graph_walk). Preserves the predictive-class special-casing.
+  ensureB11WholeChartReadFloor(plan, toolsAuthorized)
+
+  // Dasha context floor: predictive and holistic queries always need the canonical
+  // Vimshottari dasha sequence so synthesis can anchor phase-based predictions to
+  // correct dates (data lives in chart_facts.dasha_vimshottari).
+  ensureDashaContextFloor(plan, toolsAuthorized)
 
   // Adapter: PipelinePlan → legacy-shaped object for retrieval tools,
   // validators, audit, the orchestrator. Carries plan.tool_calls as an extra

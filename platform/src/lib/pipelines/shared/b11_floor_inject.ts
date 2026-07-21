@@ -2,12 +2,20 @@
  * b11_floor_inject — shared stage: inject the B.11 holistic-read floor into
  * a PipelinePlan's tool_calls when the planner did not already include one.
  *
- * Extracted verbatim from consult/route.ts lines 472–516 (B.11 Whole-Chart-Read
- * enforcement + Dasha context floor). Behaviour MUST be byte-identical so the
- * golden-transcript AC.3 holds.
+ * @deprecated (W4 step 3 — floor adoption, 2026-07). SUPERSEDED. The consult route no
+ * longer force-injects a hardcoded literal B.11 floor: it now COMPILES the floor from
+ * the plan's deterministic scope_tuple via the Vidhi compiler and enforces the B.11 +
+ * dasha invariants through `ensureB11WholeChartReadFloor` / `ensureDashaContextFloor`
+ * in `@/lib/pipeline/compiled_floor_adapter`. This helper was an extracted copy of
+ * route.ts's OLD inline logic and has NO production caller (only its own unit test).
+ * It also drifted from route.ts (this copy emits legacy `msr_sql`/`cgm_graph_walk`
+ * names; route.ts emitted the D7 registry-URI aliases). Retained, not deleted, so the
+ * pipelines barrel export + existing test keep compiling; do NOT wire it into any new
+ * path — use `compiled_floor_adapter` instead. Safe to remove once the G5b pipeline
+ * seam lands and this barrel export is confirmed unused.
  *
- * The route.ts inline path remains the legacy code path (default until G5b);
- * the new pipelines call THIS helper, which is the same code factored out.
+ * Original note: extracted verbatim from consult/route.ts (B.11 Whole-Chart-Read
+ * enforcement + Dasha context floor).
  */
 
 import type { PipelinePlan } from '@/lib/pipeline/types'
