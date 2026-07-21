@@ -14,10 +14,31 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-4b (OPEN)   # Formally opened 2026-07-21 via wave/D-4b/open — see BRIEF_D4B.md
-  # status. Native kickoff via Cowork, §0 event-driven-scoring reconciliation applied.
-  # BRIEF_D4B.md v1.0 FROZEN 2026-07-21 (pre-D-4b readiness pass v3); native kickoff directive
-  # now recorded (this commit) — opened, bound.
+current_wave: D-4b (OPEN — NOT CAMPAIGN-CLOSED; B-6 close pass ran GATED mode, honest partial
+  # status below; wave stays OPEN pending the exact blockers named)   # Formally opened 2026-07-21
+  # via wave/D-4b/open — see BRIEF_D4B.md status. Native kickoff via Cowork, §0 event-driven-
+  # scoring reconciliation applied. BRIEF_D4B.md v1.0 FROZEN 2026-07-21 (pre-D-4b readiness pass
+  # v3); native kickoff directive recorded — opened, bound.
+  # B-6 campaign-close pass (2026-07-22, wave/D-4b/B6-close, mode=GATED — explicitly NOT a full
+  # close): B-1 Grand Bakeoff BLOCKED-ON-DEFECT (not champion, not no-winner — real 14-contender
+  # live scoring ran end-to-end, 434 calls zero errors, but 2 newly-discovered defects block a
+  # trustworthy result: (a) gochara_resonance_map event_class mapping gap degrades all 12
+  # PERMISSION contenders to fallback behavior; (b) curve_controls.ts circularShiftCurve() doesn't
+  # re-sort after date wraparound, corrupting CRPS for every contender's control side — see
+  # PR #694, B1_NARROWED_STATUS_v1_0.md). B-2/B-3 correctly SKIPPED (hard-gated on B-1's
+  # adjudication receipt per BRIEF_D4B §1, never dispatched). B-4 (remedy-leverage join) and B-5
+  # (mechanism_retrodiction) MERGED clean (PRs #689/#688). A-5 gate-record correction (verdict (b)
+  # GATE-RECORD-INTEGRITY-FINDING, PR #692 investigation) LANDED this pass — REPORT_D-4A.md §10.
+  # Live materialization check this pass: `ka_gochara_sweep` for 482012f1 at 165/300 substeps
+  # (55%), `asset_throughput.state='error'`, `last_error`: upstream 21600s (6h) writer timeout hit
+  # before the sweep completed (build_run c9d722d5) — this gates ONLY B-6's own serving assertions
+  # per BRIEF_D4B §0 RECONCILIATION, not B-1's event-driven scoring. **Exact blocker for wave close:
+  # B-1's two defects (both named above, both have a concrete fix direction on record) must be
+  # fixed and B-1 re-run to a certified champion/no-winner disposition before B-2/B-3 can even be
+  # dispatched — B-6 does not fabricate a champion to unblock this.** Next action: a small,
+  # reviewable `curve_controls.ts` date-sort fix + an A-2 event_class-to-resonance-map mapping
+  # lane, then a fresh B-1 re-run over the full 56/54-event set (sealed split reserved for
+  # gate-runner/anti-gaming-verifier only). Full record: REPORT_D4B.md, STATE_D4B.md.
   # D-5 "Gochara-Chitra" CLOSED 2026-07-20 GREEN-WITH-PARTIALS: all 5 lanes (G-1..G-5) built,
   # adversarially verified, merged, deployed; 5 REBUILD-time incidents found+fixed via live/
   # orchestrator-driven execution (none a data-quality regression); gate_run_2's RED-C

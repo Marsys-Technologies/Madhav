@@ -74,7 +74,7 @@ All rows from BIND_D-4A.md §5 — CLOSED:
 | 2 | Matcher | PASS |
 | 3 | Ontology published + consumed | PASS |
 | 4 | Controls real, mirroring enforced | PASS |
-| 5 | Dry-run complete | PASS |
+| 5 | Dry-run complete | PASS — scope-corrected 2026-07-22, see §10 |
 | 6 | Ledger live | PASS (one verification-method limitation — §11 wire-response not exercised via authenticated HTTP in this non-interactive session; substance independently confirmed via source-trace + DB CHECK constraint) |
 | 7 | Findings dispositioned + anti-gaming + no new regression | PASS |
 
@@ -147,3 +147,40 @@ responsibility, left for a future cleanup pass rather than deleted unilaterally)
 
 `current_wave` → D-5 "Gochara-Chitra" (INCOMING). Per CLAUDECODE_BRIEF.md's native_directives,
 D-5 opens on the native's own kickoff directive — this session does not open it.
+
+## §10 — Correction (2026-07-22, wave/D-4b/a5-reconciliation lane, landed by wave/D-4b/B6-close)
+
+**What this corrects.** §3's gate-result table originally marked criterion 5 ("Dry-run complete")
+as a bare `PASS` with no qualification. `BRIEF_D4A.md` §G item 5's literal acceptance text reads:
+"Dry-run complete: 3 models scored end-to-end, per-event tables committed, header carries the
+DR-12-deferral disclaimer." Only 1 of the 3 pre-registered model contenders — `pratyantar_lord` —
+was actually scored; `midpoint_triangle` and `transit_kernel` both throw
+`NotImplementedModelError` and have never had a working `curve()` implementation anywhere in this
+repository's history (verified via `git log --follow` / `git log -S` on `model_interface.ts` and
+`curve.ts`: both single-commit creation, already stubbed/complete at that commit; zero prior or
+later commit adds a real implementation for either). This was never hidden — this report's own §2
+(A-5 promise-ledger line) and §6, `artifacts/D-4a/A-5/RESULTS_v1_0.md` §1, and `BIND_D-4A.md` §5e
+all stated the 1-of-3 fact plainly at the time of close. The gap this correction closes is
+narrower: unlike gate item 7, which received an explicit Binder ruling in `BIND_D-4A.md` §2
+reconciling its literal text against what actually ran, item 5 got no equivalent ruling — so its
+one-line `PASS` in the summary table, read in isolation from the surrounding narrative, overstated
+what the dry-run delivered.
+
+**Disposition.** The wave's overall GATE GREEN 7/7 status is not reversed by this correction — the
+underlying substance (doctrinal guardrail clean, B.10-compliant honest-gap reporting, DR-12
+adjudication correctly deferred to D-4b) was real and was accurately narrated elsewhere in this
+same report and in `BIND_D-4A.md`. The correction is a precision fix to the top-line gate table
+(§3, row 5) so a reader consulting only that table is not misled, plus this explanatory record.
+`midpoint_triangle`/`transit_kernel` remain open engineering gaps, tracked in §6 above and in
+D-4b's own B-1 lane (`bakeoff_results/B1_BAKEOFF_STATUS_v1_0.md`, which independently confirmed
+the identical 1-real-model finding while auditing B-1's larger 5-contender requirement, and whose
+successor `bakeoff_results/B1_NARROWED_STATUS_v1_0.md` real-scale run confirms the same single
+servable contender plus two newly-discovered scoring-harness defects — see `REPORT_D4B.md` §B-1).
+
+**Investigated by:** `wave/D-4b/a5-reconciliation` lane (PR #692). Full evidence trail:
+`D4A_A5_GATE_RECONCILIATION_v1_0.md` (this campaign's doctrine_waves directory) — ruled out
+PLUMBING-DRIFT with hard evidence (both `model_interface.ts` and `curve.ts` have exactly one
+commit in their entire `--follow` history, already stubbed/complete at creation); verdict (b)
+GATE-RECORD-INTEGRITY-FINDING, narrowly scoped to this table cell. Landed by `wave/D-4b/B6-close`
+(campaign close) per the orchestrating session's routing instruction, citing the investigation
+verbatim rather than re-deriving it.
