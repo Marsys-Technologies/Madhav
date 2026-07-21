@@ -79,6 +79,13 @@ import './layers/register_d10_pact'
 // derivation ledger). The consumer the L2 pre-computation (gestalt/CDLM/CGM) never had.
 import '../synthesis/index'
 
+// W5 Lane L5 (RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF §E W5 / RETRIEVAL_PLANE_ELEVATION_PLAN
+// §8 item 11): query_spine_bundle — the pre-joined signal→activation→anchor→calibration
+// "spine bundle", served from a post-build materialized view (platform/src/lib/retrieval/
+// spine/*). Cross-layer, single-file capability — same registration pattern as
+// register_d8_assess_domain.ts / register_d9_judgment.ts / register_d10_pact.ts above.
+import './layers/register_spine_bundle'
+
 // Router registration (D2) + D-PROFILES (MARO) + D6 synergy (plan R-1 item 3,
 // "single bootstrap" completeness fix, W2b lane): all three are ordinary
 // exported functions (not side-effect-on-import modules like the layer
