@@ -27,7 +27,6 @@ function makePlan(overrides: Partial<QueryPlan> = {}): QueryPlan {
     query_class: 'interpretive',
     domains: ['career'],
     forward_looking: false,
-    audience_tier: 'super_admin',
     tools_authorized: ['msr_sql', 'vector_search'],
     history_mode: 'synthesized',
     panel_mode: false,

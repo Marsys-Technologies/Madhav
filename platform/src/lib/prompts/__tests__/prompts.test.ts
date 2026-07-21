@@ -20,7 +20,6 @@ const MINIMAL_TEMPLATE: PromptTemplate = {
   template_id: 'test_template',
   version: '1.0',
   query_class: 'factual',
-  audience_tier: 'super_admin',
   strategy: 'single_model',
   body: 'Hello {{chart_name}}, born {{birth_date}}.',
   style_suffixes: {
@@ -91,7 +90,7 @@ describe('renderTemplate', () => {
   })
 
   it('includes the placeholder name in the error message', () => {
-    const tmpl = getDefaultRegistry().get('factual', 'super_admin', 'single_model')
+    const tmpl = getDefaultRegistry().get('factual', 'single_model')
     expect(() => renderTemplate(tmpl, {}, 'acharya')).toThrow('chart_name')
   })
 })
@@ -129,58 +128,31 @@ describe('PromptRegistry', () => {
   describe('get() — direct lookup', () => {
     it.each(ALL_QUERY_CLASSES)('returns a template for query_class "%s"', (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       expect(tmpl.query_class).toBe(qc)
-      expect(tmpl.audience_tier).toBe('super_admin')
       expect(tmpl.strategy).toBe('single_model')
     })
   })
 
-  describe('get() — acharya_reviewer fallback', () => {
-    it.each(ALL_QUERY_CLASSES)(
-      'falls back to super_admin template for acharya_reviewer (%s)',
-      (qc) => {
-        const registry = getDefaultRegistry()
-        const fallback = registry.get(qc, 'acharya_reviewer', 'single_model')
-        // The returned template should be the super_admin one (no acharya_reviewer
-        // templates are registered in Phase 3)
-        expect(fallback.query_class).toBe(qc)
-        expect(fallback.audience_tier).toBe('super_admin')
-      },
-    )
-  })
-
-  describe('get() — client fallback', () => {
-    it.each(ALL_QUERY_CLASSES)(
-      'falls back to super_admin template for client tier (%s)',
-      (qc) => {
-        const registry = getDefaultRegistry()
-        const fallback = registry.get(qc, 'client', 'single_model')
-        // No client-specific templates in Phase 3 — falls back to super_admin
-        expect(fallback.query_class).toBe(qc)
-        expect(fallback.audience_tier).toBe('super_admin')
-      },
-    )
-  })
-
   describe('get() — missing combination throws', () => {
-    it('throws for a completely unregistered combination', () => {
+    it('throws for an unregistered strategy', () => {
       const registry = getDefaultRegistry()
-      expect(() => registry.get('factual', 'public_redacted', 'single_model')).toThrow(
+      // Only single_model templates are registered; panel has none.
+      expect(() => registry.get('factual', 'panel')).toThrow(
         /no template found/,
       )
     })
 
-    it('error message includes the query_class and audience_tier', () => {
+    it('error message includes the query_class and strategy', () => {
       const registry = getDefaultRegistry()
       let message = ''
       try {
-        registry.get('predictive', 'client', 'panel')
+        registry.get('predictive', 'panel')
       } catch (e) {
         message = (e as Error).message
       }
       expect(message).toContain('predictive')
-      expect(message).toContain('client')
+      expect(message).toContain('panel')
     })
   })
 
@@ -193,14 +165,13 @@ describe('PromptRegistry', () => {
         template_id: 'factual_super_admin_single_model_override',
         version: '99.0',
         query_class: 'factual',
-        audience_tier: 'super_admin',
         strategy: 'single_model',
         body: 'Override body.',
         style_suffixes: { acharya: '', brief: '', client: '' },
         required_placeholders: [],
       }
       registry.register(override)
-      const retrieved = registry.get('factual', 'super_admin', 'single_model')
+      const retrieved = registry.get('factual', 'single_model')
       expect(retrieved.version).toBe('99.0')
     })
   })
@@ -226,7 +197,7 @@ describe('Template body integrity', () => {
     'template "%s": all required_placeholders appear in the body',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
 
       // cross_native is a Phase 7 stub with a hardcoded message body and
       // empty required_placeholders — skip the body-contains check for it.
@@ -248,7 +219,7 @@ describe('Template body integrity', () => {
     'template "%s": renderTemplate succeeds with all required variables supplied',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       expect(() => renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')).not.toThrow()
     },
   )
@@ -275,7 +246,7 @@ describe('Contradiction-framing rubric in shared preamble', () => {
     'template "%s" rendered output includes the L3.5 Contradiction Register reference',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('L3.5 Contradiction Register')
     },
@@ -285,7 +256,7 @@ describe('Contradiction-framing rubric in shared preamble', () => {
     'template "%s" rendered output enforces "surface, do not synthesize away"',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       // (a) Surface, do not synthesize away.
       expect(rendered).toContain('surface each contradiction explicitly')
@@ -297,7 +268,7 @@ describe('Contradiction-framing rubric in shared preamble', () => {
     'template "%s" rendered output enforces contradiction_id citation (B.3)',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       // (b) Cite the contradiction_id for each contradiction surfaced.
       expect(rendered).toContain('contradiction_id')
@@ -310,7 +281,7 @@ describe('Contradiction-framing rubric in shared preamble', () => {
     'template "%s" rendered output prohibits fabricated L1 resolution (B.1)',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       // (c) Layer-separation: surface resolution_options if present;
       //     do not invent a resolution.
@@ -327,7 +298,7 @@ describe('Contradiction-framing rubric in shared preamble', () => {
     // class-specific tail), the example string would appear more than once.
     const registry = getDefaultRegistry()
     for (const qc of ACTIVE_QUERY_CLASSES) {
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       const occurrences = rendered.split('[timing_conflict] (CON.007)').length - 1
       expect(occurrences).toBe(1)
@@ -336,7 +307,7 @@ describe('Contradiction-framing rubric in shared preamble', () => {
 
   it('renders the worked CON.<id> example so the model has a citation pattern', () => {
     const registry = getDefaultRegistry()
-    const tmpl = registry.get('discovery', 'super_admin', 'single_model')
+    const tmpl = registry.get('discovery', 'single_model')
     const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
     // The canonical example anchors the model on the exact citation form.
     expect(rendered).toContain('[timing_conflict] (CON.007)')
@@ -345,7 +316,7 @@ describe('Contradiction-framing rubric in shared preamble', () => {
 
   it('rubric is dormant when no contradiction-register chunks present (instruction is conditional)', () => {
     const registry = getDefaultRegistry()
-    const tmpl = registry.get('factual', 'super_admin', 'single_model')
+    const tmpl = registry.get('factual', 'single_model')
     const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
     // The rubric must explicitly instruct that absence of contradictions
     // means the rubric does not fire — guards against over-application
@@ -357,7 +328,7 @@ describe('Contradiction-framing rubric in shared preamble', () => {
 
   it('cross_native stub is unaffected (does not inherit buildOpeningBlock)', () => {
     const registry = getDefaultRegistry()
-    const tmpl = registry.get('cross_native', 'super_admin', 'single_model')
+    const tmpl = registry.get('cross_native', 'single_model')
     const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
     expect(rendered).not.toContain('L3.5 Contradiction Register')
     // The stub body remains the unimplemented marker.
@@ -381,7 +352,7 @@ describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
     'template "%s": DASHA DISCIPLINE GATE is present in rendered output',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('DASHA DISCIPLINE GATE')
     },
@@ -391,7 +362,7 @@ describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
     'template "%s": gate mandates DSH.V.NNN citation format',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('DSH.V.')
       expect(rendered).toContain('DSH.V.NNN')
@@ -402,7 +373,7 @@ describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
     'template "%s": gate forbids extrapolation from generic Vimshottari knowledge',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('Extrapolating')
       expect(rendered).toContain('generic Vimshottari knowledge')
@@ -414,7 +385,7 @@ describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
     'template "%s": gate emits EXTERNAL_COMPUTATION_REQUIRED for missing rows',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('EXTERNAL_COMPUTATION_REQUIRED: dasha_vimshottari row')
       expect(rendered).toContain('refetch via query_dasha_periods')
@@ -425,7 +396,7 @@ describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
     'template "%s": gate references query_dasha_periods tool',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('query_dasha_periods')
     },
@@ -435,7 +406,7 @@ describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
     'template "%s": DASHA DISCIPLINE GATE appears exactly once (no double-injection)',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       const occurrences = rendered.split('DASHA DISCIPLINE GATE').length - 1
       expect(occurrences).toBe(1)
@@ -446,7 +417,7 @@ describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
     'template "%s": DASHA DISCIPLINE GATE is NOT present (out of mandate scope)',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).not.toContain('DASHA DISCIPLINE GATE')
     },
@@ -454,7 +425,7 @@ describe('F025 — DASHA DISCIPLINE GATE (§5B)', () => {
 
   it('cross_native stub does not carry the dasha gate (Phase 7 stub isolation)', () => {
     const registry = getDefaultRegistry()
-    const tmpl = registry.get('cross_native', 'super_admin', 'single_model')
+    const tmpl = registry.get('cross_native', 'single_model')
     const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
     expect(rendered).not.toContain('DASHA DISCIPLINE GATE')
   })
@@ -481,7 +452,7 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
     'AC.7 template "%s": PRESCRIPTIVE_CITATION_GATE (→ citation format) is present',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('CITATION GATE')
       // Eval checks for (→ ...) format — verify the gate instructs this format
@@ -495,7 +466,7 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
     'AC.8 template "%s": all five L2.5 layer acronyms (MSR, UCN, CDLM, CGM, RM) are present',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('MSR')
       expect(rendered).toContain('UCN')
@@ -511,7 +482,7 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
     'AC.8 template "%s": B11 gate names Unified Chart Narrative and Causal Graph Model',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('Unified Chart Narrative')
       expect(rendered).toContain('Causal Graph Model')
@@ -524,7 +495,7 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
     'AC.3 template "%s": CALIBRATION_LANGUAGE_GATE is present with probabilistic language instruction',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('CALIBRATION GATE')
       expect(rendered).toContain('suggests')
@@ -540,7 +511,7 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
     'AC.9 template "%s": version is 2.0+',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       expect(parseFloat(tmpl.version)).toBeGreaterThanOrEqual(2.0)
     },
   )
@@ -550,7 +521,7 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
     'Citation format: template "%s" uses (→ FORENSIC.<id>) format in shared preamble',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       // New format from updated CITATION_DISCIPLINE
       expect(rendered).toContain('(→ FORENSIC.<id>)')
@@ -563,7 +534,7 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
     'B.10 template "%s": NO_FABRICATION gate requires inline (→ FORENSIC.<id>) for degree values',
     (qc) => {
       const registry = getDefaultRegistry()
-      const tmpl = registry.get(qc, 'super_admin', 'single_model')
+      const tmpl = registry.get(qc, 'single_model')
       const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
       expect(rendered).toContain('[EXTERNAL_COMPUTATION_REQUIRED')
       expect(rendered).toContain('B.10 audit')
@@ -573,7 +544,7 @@ describe('Synthesis integration gates — GANGA-P3-R4-S1', () => {
   // cross_native stub remains isolated from the new gates
   it('cross_native stub does not carry synthesis gates (Phase 7 stub integrity)', () => {
     const registry = getDefaultRegistry()
-    const tmpl = registry.get('cross_native', 'super_admin', 'single_model')
+    const tmpl = registry.get('cross_native', 'single_model')
     const rendered = renderTemplate(tmpl, SAMPLE_VARIABLES, 'acharya')
     expect(rendered).not.toContain('CITATION GATE')
     expect(rendered).not.toContain('CALIBRATION GATE')
@@ -622,7 +593,7 @@ describe('CTX-GAP-S1: QUERY_INDEPENDENCE_GATE', () => {
 describe('Synthesis templates — multi_school_triangulation + classical_grounding', () => {
   it('multi_school_triangulation template registers and renders cleanly', () => {
     const registry = getDefaultRegistry()
-    const t = registry.get('multi_school_triangulation', 'super_admin', 'single_model')
+    const t = registry.get('multi_school_triangulation', 'single_model')
     expect(t).toBeDefined()
     expect(t.body).toContain('MULTI_SCHOOL_TRIANGULATION')
     expect(t.body).toContain('school_signal_coverage')
@@ -632,7 +603,7 @@ describe('Synthesis templates — multi_school_triangulation + classical_groundi
 
   it('classical_grounding template registers and renders cleanly', () => {
     const registry = getDefaultRegistry()
-    const t = registry.get('classical_grounding', 'super_admin', 'single_model')
+    const t = registry.get('classical_grounding', 'single_model')
     expect(t).toBeDefined()
     expect(t.body).toContain('CLASSICAL_GROUNDING')
     expect(t.body).toContain('classical_attributions')
@@ -646,7 +617,7 @@ describe('Synthesis templates — multi_school_triangulation + classical_groundi
 
   it('registry throws when looking up an UNKNOWN class (regression — must still fail loud)', () => {
     const registry = getDefaultRegistry()
-    expect(() => registry.get('unknown_class' as any, 'super_admin', 'single_model'))
+    expect(() => registry.get('unknown_class' as any, 'single_model'))
       .toThrow(/no template found/)
   })
 })
