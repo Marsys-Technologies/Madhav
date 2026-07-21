@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.6
+version: 3.7
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -900,9 +900,25 @@ remaining scope (`CLAUDECODE_BRIEF_PF1_ENGINE_RESURRECTION_v1_0.md`, Lane F-2), 
 retrieval-campaign W4 closes, per the native's 2026-07-20 re-scope ruling. Full detail:
 `REPORT_PG-2.md`.
 
+**CR-118 [OPEN, discovered W4 precondition-verification live probe (2026-07-21), chart 482012f1,
+via the deployed `/api/chat/consult` route post-`bundle_hydrator.ts` fix]:** the `msr_sql` tool
+call errors mid-stream during live synthesis — SSE event
+`{"type":"tool","name":"msr_sql","status":"error","ms":4,"ok_count":0,"err_count":1}`, a ~4ms
+failure suggesting an immediate validation/dispatch error rather than a slow query or timeout.
+Did not block the overall response (synthesis completed successfully around it, HTTP 200,
+grounded CGM/UCN-cited answer delivered) — a graceful-degradation case, not a user-facing outage.
+`gcloud logging` swept for `msr_sql` in the surrounding 20-minute window on `amjis-web` returned
+no matching structured log entries — root cause undiagnosed beyond the SSE evidence above; a
+proper diagnosis needs either richer server-side error logging on this tool's dispatch path or a
+repro with verbose tracing enabled. Native ruling (2026-07-20): **out of W4 scope** — recorded
+here with evidence, to be picked up by whichever of W5 (adaptive-serving/budget work) or PF-1
+(teardown-orphan sweep) reaches it first.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.6 (2026-07-21, pre-D-4b readiness pass v3,
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.7 (2026-07-21, W4 conductor session) — CR-118
+added OPEN (msr_sql mid-stream tool error, live-probed during the bundle_hydrator fix
+verification; out-of-scope for W4 per native ruling, deferred to W5/PF-1). v3.6 (2026-07-21, pre-D-4b readiness pass v3,
 conductor session) — CR-113 CLOSED (re-verified no orphaned build_runs rows exist); CR-114 CLOSED
 (re-verified all three deployed services code-current with origin/main); CR-116 added and CLOSED
 (ka_gochara_sweep throughput defect, root-caused + fixed via correctness-preserving memoization,
