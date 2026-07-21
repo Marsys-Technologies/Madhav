@@ -1912,4 +1912,50 @@ i.e. not introduced by this lane.
 Landed on `impl/wave-5` (commit pending, this entry) — held unmerged alongside L0,
 same mutex disposition.
 
-Lane dispatch continues next entry (L2–L10 + V5 gate).
+### W5 — Lane L8: listCapabilities filters (2026-07-21)
+
+**Investigation found two catalog-shaped surfaces**, not one: the internal
+`CapabilityDescriptor` registry (`getCatalog()`/`listCapabilities()` in
+`registry/index.ts`, ~118 entries, already richly filterable via
+`CapabilityFilter` — `type`/`layer`/`name_prefix`/`scope`/`archetype`/
+`traversal_level`/`tool_role` — but with no MCP-exposed serving path, consumed
+only internally by adapters/router/eval harness) vs. the `asset_registry` DB
+table (~92-row build-asset DAG) served via 5 near-identical MCP tools
+(`list_assets`, `catalog_assets_list`, `catalog_assets_all`,
+`catalog_assets_l0`, `asset_registry_l0`) — **the only listCapabilities-shaped
+surface actually reachable by an end user today**, previously filterable only
+by `layer`. Judgment call: extended the reachable DB-backed surface rather
+than building a new tool around the already-filterable internal registry.
+
+Added `asset_type` (data|service), `catalog_status` (CURRENT|DRAFT), `scope`
+(global|per_chart), `is_active`, `has_writer` filters (AND-combined with the
+existing `layer` filter) to `asset_registry_all.ts`/`asset_registry_l0.ts`,
+wired through `registry_bridge.ts` (`list_assets`) and
+`register_p1_aliases.ts` (`catalog_assets_list`/`all`/`l0`). Also fixed a gap
+where `asset_type`/`catalog_status`/`has_writer` were DB columns never
+selected into the response — filtering on them is now verifiable, not silently
+accepted-and-ignored.
+
+**Verified:** 12 new tests (each filter dimension + a combined 6-filter case +
+a no-filter backward-compat case), `R-18 param no-op audit` PASS (confirms
+params genuinely wired, not dropped). `tsc --noEmit` clean both packages.
+`platform/src/lib/retrieval/registry` 931/1056 passed (125 skipped), 0 failed.
+`platform-mcp`'s pre-existing 75-failed/555-passed baseline confirmed
+unchanged via stash comparison (not introduced by this lane).
+
+**Residual, named not built:** the internal `listCapabilities()`/
+`CapabilityFilter` surface was left untouched — already filterable, but has
+no end-user serving path; exposing the full ~118-entry `CapabilityDescriptor`
+catalog (vs. the asset_registry DAG) would need a new MCP tool, named as a
+follow-up if a future wave wants it.
+
+Landed on `impl/wave-5` (PR #684, `a8bb24e9`) — held unmerged alongside L0/L1,
+same mutex disposition.
+
+**L2 (per-family projections) and L3 (annotations + family_overrides) both hit
+a transient API connection error mid-run** (not a stall — real work already
+committed to each worktree before the drop) and were resumed in place rather
+than restarted from scratch, per the standing respawn discipline. L4
+(tool-search metadata) still in flight.
+
+Lane dispatch continues next entry (L2–L7, L9–L10 + V5 gate).
