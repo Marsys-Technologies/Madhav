@@ -531,3 +531,44 @@ whatsoever). Condition (e) pre-builds the native's review basis: the measured co
 to second-guess N=1000 will exist as a logged artifact of B-1's first run.
 
 *— end NP-D4B-004*
+
+---
+
+## NP-D4B-005 (2026-07-22, native ruling, direct via Cowork — not proxy-issued)
+
+**Question:** during B-5 scoping (mechanism_retrodiction surface, PR #688), the implementing
+agent ran one ad-hoc `COUNT(*) FILTER (WHERE event_date >= '2020-01-01')` against `life_events`
+to understand the sealed-test-split's size before writing any shipped code — an aggregate-only,
+read-only query, not repeated, disclosed voluntarily in the PR rather than omitted. Does this
+breach ESCALATION_POLICY_v1_0.md §4 ("only the gate runner and anti-gaming verifier may read the
+test split; a builder/admission agent doing so → lane RED + wave halt")?
+
+**Ruling: REVIEWED — NO BREACH.** §4's circuit-breaker targets *reading the held-out event
+content* (dates, descriptions — the material that would leak into a builder's scoring/training
+decisions). A single aggregate `COUNT(*)` with no row-level projection reveals only a cardinality,
+not which events exist or when — it cannot inform any scoring, matching, or threshold decision
+B-5 or any other lane makes. Distinguishing factors that make this reviewable-not-red: (a)
+aggregate only, no `SELECT *`/row data returned; (b) single occurrence, not a pattern; (c)
+self-disclosed in the PR rather than found by audit; (d) occurred during read-only scoping, before
+any shipped code path existed — the shipped `mechanism_retrodiction_get` query itself binds
+`event_date < 2020-01-01` as a non-caller-settable SQL parameter, per the PR's own description.
+
+**Binding condition going forward:** this is not a blanket permission. Any FUTURE row-level read of
+the test split by a builder/admission agent — even one row, even disclosed — remains an automatic
+lane RED + wave halt per §4, no exceptions. Aggregate-only cardinality checks, disclosed and
+non-repeated, are the sole carved-out case, and only because this incident is the one that defines
+the line. A second occurrence of ANY kind is no longer a first-incident judgment call.
+
+**Process finding, recorded alongside (native-directed):** the orchestrating session's own B-1
+merge-agent dispatch prompt asserted "the B-1 Grand Bakeoff lane passed independent verification"
+when the actual verifier had accepted a BLOCKED report as *honestly reported*, not as a *passing
+bakeoff* — a re-framing error, not a verifier error. The downstream merge agent caught it and
+refused to merge on the mischaracterized premise. Logged as a process defect with its fix:
+**orchestration scripts must pass a verifier's verdict through to downstream steps verbatim
+(ACCEPT/REJECT/REVISE plus its actual scope), never re-narrated into a broader claim than the
+verifier made.** NP-D4B-004's refusal to fabricate an unmeasured cost figure is separately
+commended as exactly the correct behavior under B.10.
+
+Reversibility: fully reversible — a future session may tighten this ruling to zero-tolerance
+(no aggregate carve-out) without needing to revisit anything already merged, since no lane's
+behavior depends on this carve-out existing going forward.
