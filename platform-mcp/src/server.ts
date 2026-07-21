@@ -113,6 +113,8 @@ import { registerResources } from './resources/index.js'
 import { registerPrompts } from './prompts/index.js'
 // D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (+ capability-version staleness kill)
 import { registerVidhiPlanTool } from './tools/register_vidhi_plan.js'
+// W6 — prashna_ask: job-handle-first full-loop engine call (Task 7)
+import { registerPrashnaAskTool } from './tools/register_prashna_ask.js'
 
 const app = express()
 app.use(express.json())
@@ -332,6 +334,21 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // authKind is always set by this point: the 401 return above already guarantees
   // `principal` (and therefore authKind) is non-null on every path that reaches here.
   const mcpProfile = resolveMcpProfile({ authKind: authKind as 'bearer_key' | 'oauth', oauthScopes })
+
+  // W6 Task 7 — prashna_ask is registered BEFORE applyProfileGate patches
+  // server.tool(). It is not part of the retrieval-registry catalog the
+  // generated MCP_SURFACE_PROFILES manifest is built from (mcp_profile.ts /
+  // src/generated/mcp_surface_profiles.generated.ts, DO-NOT-HAND-EDIT), so the
+  // manifest's compact/consult tool_names lists have no entry for it at all —
+  // registering it AFTER the gate would silently block it for 'compact' too,
+  // not just 'consult' (the requirement is: 'full' and 'compact' MAY call
+  // prashna_ask; only 'consult' may not). The tool implements its OWN
+  // handler-level entitlement check against the already-resolved `mcpProfile`
+  // instead, matching the task's explicit "reject with a clear error inside the
+  // handler" design.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerPrashnaAskTool(server as any, principal, mcpProfile)
+
   const profileGate = applyProfileGate(server as unknown as ToolRegisteringServer, mcpProfile)
 
   // L0 Brahmagyan tools (L0FR Stream A pattern-validation capabilities)
@@ -554,7 +571,8 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // ── TOTAL (WP-1.3(i) recount 2026-07-12: −4 apex_*_assess retired): ───        117
 // D-2 Lane V-2 — +1 plan_retrieval (Vidhi Engine meta-tool):                  +1
 // D-2 Lane V-3 — +2 scan_fetch_signals, reading_notes_get:                    +2
-const REGISTERED_TOOL_COUNT = 120
+// W6 Task 7 — +1 prashna_ask (job-handle-first full-loop engine call):        +1
+const REGISTERED_TOOL_COUNT = 121
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
