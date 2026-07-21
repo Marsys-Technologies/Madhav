@@ -136,7 +136,34 @@ _N_YEARS = _HORIZON_YEARS  # one substep per calendar year -- see module
 _RESUME_VERSION = 6
 
 
-def _substep_sort_key(step: SubStep, priority_years: set[tuple[str, int]]) -> tuple[int, str, int]:
+# D-4b materialization-time optimization (native directive, 2026-07-21): the
+# scoring span is birth_year -> latest LEL event + a 1-year buffer. Verified
+# live against chart 482012f1 (`life_events` table, excluding the
+# TEST-FIXTURE synthetic row): latest real event 2026-04-16, birth 1984-02-05
+# -> scoring span end year 2027 (year_idx 43). Beyond this, B-1's own event
+# set has no LEL anchors to score against -- those years only matter for
+# B-6's full-span gate, never for B-1's scoring-span domain-completeness
+# assertion (BRIEF_D4B §0's own domain-scoped disposition).
+_SCORING_SPAN_END_YEAR = 2027
+
+# All 3 of this chart's currently-populated gochara_resonance_map event
+# classes correspond to a categorized LEL specimen in the D4B pre-
+# registration packet (§1: career, major_gain/windfall, marriage) -- so
+# there is currently no "populated but not pre-registered" class for this
+# chart. Kept as an explicit, named set (not "all discovered classes") so a
+# FUTURE chart/event_class that IS populated but has no scored LEL category
+# correctly falls into the lower-priority tier below, rather than silently
+# inheriting priority it hasn't earned.
+_PRE_REGISTERED_EVENT_CLASSES = frozenset({"career_advancement", "major_gain", "marriage"})
+
+
+def _substep_sort_key(
+    step: SubStep,
+    priority_years: set[tuple[str, int]],
+    birth_year: int,
+    scoring_span_end_year: int = _SCORING_SPAN_END_YEAR,
+    pre_registered_classes: frozenset[str] = _PRE_REGISTERED_EVENT_CLASSES,
+) -> tuple[int, str, int]:
     """Dispatch-order sort key for `plan_substeps`' `steps` list -- pulled
     out to a module-level function (not a `plan_substeps`-local closure) so
     it is directly unit-testable without needing a DB connection.
@@ -150,11 +177,37 @@ def _substep_sort_key(step: SubStep, priority_years: set[tuple[str, int]]) -> tu
     module docstring's DISPATCH ORDER note) -- this fix is still worth
     making on its own, since a closer-to-intended dispatch order is
     strictly better for resumability/observability even though correctness
-    no longer depends on it."""
+    no longer depends on it.
+
+    B-1-USEFULNESS PRIORITY (D-4b materialization-time optimization,
+    2026-07-21, native directive): pure scheduling, zero change to substep
+    semantics/keys/idempotency (resumption still keys off
+    `{event_class}:year:{year_idx}`). Four tiers, ascending:
+      0 -- named specimen years (existing set: windfall 2010/2011, marriage
+           2013) -- unchanged from the D-5 gate fix this extends.
+      1 -- remaining SCORING-SPAN years (birth_year..scoring_span_end_year)
+           for event_classes IN the pre-registered set -- this is where
+           BRIEF_D4B §0's scoring-span domain-completeness assertion lives,
+           so B-1 unblocks as soon as this tier alone is done.
+      2 -- remaining scoring-span years for event_classes NOT in the
+           pre-registered set (currently empty for chart 482012f1; kept
+           general for a future chart/class with no scored LEL category).
+      3 -- FORWARD-span years (scoring_span_end_year+1..birth_year+99) --
+           gates only B-6's full-span disposition, never B-1."""
     ec_part, _, year_part = step.key.rpartition(':year:')
     year_idx = int(year_part)
-    is_priority = (ec_part, year_idx) in priority_years
-    return (0 if is_priority else 1, ec_part, year_idx)
+    if (ec_part, year_idx) in priority_years:
+        tier = 0
+    else:
+        calendar_year = birth_year + year_idx
+        in_scoring_span = calendar_year <= scoring_span_end_year
+        if in_scoring_span and ec_part in pre_registered_classes:
+            tier = 1
+        elif in_scoring_span:
+            tier = 2
+        else:
+            tier = 3
+    return (tier, ec_part, year_idx)
 
 
 @register('ka_gochara_sweep')
@@ -221,7 +274,7 @@ class KaGocharaSweepWriter(WriterBase):
         for _yr in (2013,):        # marriage double-transit specimen 2013-12-11
             _priority_years.add(("marriage", _yr - self._birth_year))
 
-        steps.sort(key=lambda step: _substep_sort_key(step, _priority_years))
+        steps.sort(key=lambda step: _substep_sort_key(step, _priority_years, self._birth_year))
 
         # ── cross-attempt substep resumption (migration 436, ka_sangam pattern) ──
         self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
