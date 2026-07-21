@@ -44,6 +44,21 @@ import 'server-only'
 
 import { callPipelinePlanner } from './pipeline_planner'
 import type { PipelinePlan } from './types'
+
+/** Thrown when the planner spike hits a `clarification_needed` or `fault`
+ * outcome (W4's 3-way planner-outcome contract). The spike proves the
+ * "question → synthesized answer" boundary for the success path only —
+ * per its own scope ("no transport polish"), non-plan outcomes are surfaced
+ * as a typed error rather than a second answer shape. */
+export class PrashnaAskSpikeOutcomeError extends Error {
+  constructor(
+    public readonly outcome: 'clarification_needed' | 'fault',
+    public readonly detail: string,
+  ) {
+    super(`prashnaAskSpike: planner returned '${outcome}' outcome, not a plan: ${detail}`)
+    this.name = 'PrashnaAskSpikeOutcomeError'
+  }
+}
 import { arbitrateBudgets } from './budget_arbiter'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
 import { loadManifest } from '@/lib/bundle/manifest_reader'
@@ -139,7 +154,7 @@ export async function prashnaAskSpike(
 
   // ── Stage 1 — real LLM planner ─────────────────────────────────────────────
   const plannerStart = Date.now()
-  const plan: PipelinePlan = await callPipelinePlanner(
+  const plannerOutcome = await callPipelinePlanner(
     question,
     [], // headless: no conversation history
     plannerModelId,
@@ -147,6 +162,17 @@ export async function prashnaAskSpike(
     // no emitTrace, no queryId → no trace/DB-log side effects fired by the planner
   )
   const planner_latency_ms = Date.now() - plannerStart
+
+  // W4's 3-way outcome contract: plan | clarification_needed | fault.
+  // The spike proves the success-path boundary; non-plan outcomes are a
+  // typed error, not a second answer shape (see PrashnaAskSpikeOutcomeError).
+  if (plannerOutcome.outcome === 'clarification_needed') {
+    throw new PrashnaAskSpikeOutcomeError('clarification_needed', plannerOutcome.question)
+  }
+  if (plannerOutcome.outcome === 'fault') {
+    throw new PrashnaAskSpikeOutcomeError('fault', plannerOutcome.reason)
+  }
+  const plan: PipelinePlan = plannerOutcome.plan
 
   // Route-controlled stamps (never LLM output).
   plan.query_plan_id = crypto.randomUUID()

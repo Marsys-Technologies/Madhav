@@ -148,8 +148,18 @@ describe('prashnaAskSpike — W4 headless boundary proof (C-6/F-R1)', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('turns a question + chartId into a real synthesized, chart-grounded answer', async () => {
+    // NOTE: phrased to confidently match the real scope_tuple classifier's
+    // 'domain_assessment' intent pattern (`reading (for|on) (my )?career`) —
+    // a W4-integration finding: the classifier faithfully ports the MCP
+    // version's keyword rules, which do not match every reasonable phrasing
+    // (an earlier, more open-ended wording of this question triggered a
+    // genuine `clarification_needed` outcome instead of a plan; that's
+    // correct, accepted classifier-coverage behavior, not a bug — see the
+    // scope_tuple classifier's own judgment-call notes). This wording keeps
+    // the same semantic intent while landing inside the classifier's
+    // covered pattern set.
     const result = await prashnaAskSpike(
-      'What are the dominant life themes in this chart, and how should the native approach career?',
+      'Give me a holistic reading on my career and the dominant life themes in this chart.',
       ABHINANDAN_CHART_ID,
       { stack: 'gemini' },
     )
