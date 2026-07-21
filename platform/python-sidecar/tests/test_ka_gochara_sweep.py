@@ -389,7 +389,7 @@ def test_substep_sort_key_orders_years_numerically_not_lexically():
 
     steps = [SubStep(key="major_gain:year:9", label="y9"), SubStep(key="major_gain:year:10", label="y10"),
              SubStep(key="major_gain:year:2", label="y2"), SubStep(key="major_gain:year:100", label="y100")]
-    ordered = sorted(steps, key=lambda s: _substep_sort_key(s, priority_years=set()))
+    ordered = sorted(steps, key=lambda s: _substep_sort_key(s, priority_years=set(), birth_year=1984))
     assert [s.key for s in ordered] == [
         "major_gain:year:2", "major_gain:year:9", "major_gain:year:10", "major_gain:year:100",
     ], "years must sort numerically (2, 9, 10, 100), not lexically (10, 100, 2, 9)"
@@ -405,9 +405,45 @@ def test_substep_sort_key_still_promotes_priority_years_first():
     steps = [SubStep(key="major_gain:year:0", label="y0"), SubStep(key="major_gain:year:1", label="y1"),
              SubStep(key="major_gain:year:60", label="y60"), SubStep(key="major_gain:year:61", label="y61")]
     priority_years = {("major_gain", 60), ("major_gain", 61)}
-    ordered = sorted(steps, key=lambda s: _substep_sort_key(s, priority_years))
+    ordered = sorted(steps, key=lambda s: _substep_sort_key(s, priority_years, birth_year=1984))
     assert [s.key for s in ordered] == [
         "major_gain:year:60", "major_gain:year:61", "major_gain:year:0", "major_gain:year:1",
+    ]
+
+
+def test_substep_sort_key_scoring_span_before_forward_span():
+    """D-4b materialization-time optimization (native directive, 2026-07-21):
+    scoring-span years (birth_year..scoring_span_end_year) for pre-registered
+    event_classes must dispatch before forward-span years, regardless of
+    numeric year value -- this is what lets BRIEF_D4B §0's scoring-span
+    domain-completeness assertion fire long before the full 100-year sweep
+    finishes."""
+    from services.ka_gochara_sweep.writer import _substep_sort_key
+
+    birth_year = 1984
+    # year:0 (1984, in-scoring-span) vs year:90 (2074, forward-span) --
+    # forward-span's much-larger raw year number must NOT let it sort first.
+    steps = [SubStep(key="major_gain:year:90", label="y90"), SubStep(key="major_gain:year:0", label="y0")]
+    ordered = sorted(steps, key=lambda s: _substep_sort_key(s, priority_years=set(), birth_year=birth_year))
+    assert [s.key for s in ordered] == ["major_gain:year:0", "major_gain:year:90"]
+
+
+def test_substep_sort_key_non_pre_registered_class_sorts_between_scoring_and_forward_span():
+    """A populated event_class with no scored LEL category (tier 2) must
+    still beat ALL forward-span substeps (tier 3, any class) but lose to
+    pre-registered classes' scoring-span substeps (tier 1) -- verifies the
+    tier ordering itself (1 < 2 < 3), not just the pre-registered/not split."""
+    from services.ka_gochara_sweep.writer import _substep_sort_key
+
+    birth_year = 1984
+    steps = [
+        SubStep(key="career_advancement:year:95", label="forward, pre-registered"),  # tier 3
+        SubStep(key="some_unscored_class:year:5", label="scoring-span, NOT pre-registered"),  # tier 2
+        SubStep(key="major_gain:year:5", label="scoring-span, pre-registered"),  # tier 1
+    ]
+    ordered = sorted(steps, key=lambda s: _substep_sort_key(s, priority_years=set(), birth_year=birth_year))
+    assert [s.key for s in ordered] == [
+        "major_gain:year:5", "some_unscored_class:year:5", "career_advancement:year:95",
     ]
 
 
