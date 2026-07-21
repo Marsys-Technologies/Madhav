@@ -2203,4 +2203,111 @@ collision risk with the other concurrent W5 lanes).
 **Ten of eleven lanes now landed** (L0–L4, L6–L10), all held unmerged
 pending the D-4b mutex. Only L5 (spine bundles) remains in flight.
 
-Lane dispatch continues next entry (L5 + V5 gate).
+### W5 — Lane L5: spine bundles as post-build materialized views (2026-07-21)
+
+**"Spine bundle" defined verbatim**, found by grep rather than assumed:
+`RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md` §8 item 11 +
+`RETRIEVAL_STRATEGY_v1_0.md` §S-5/§5.1 — the pre-joined chain
+`bodha_msr_signals` (L2 signal) → `kala_activation` (L3 windows) →
+`phala_anchors` (L4 anchors) → `mimamsa_calibration` (L5 calibration), served
+per `(chart_id, ayanamsha_id, domain)` as one capability instead of 3–5
+manual calls — "only one real cross-layer join exists today
+[`bodha_msr_signals`↔`kala_activation`]; the LLM hand-stitches everything
+else." Two false leads ruled out and documented: `grounding/*.ts`'s
+"grounding spine" (unrelated L1 `chart_facts` resolver) and `bundle/*.ts`'s
+"bundle" (W4's static markdown/asset-content bundle, not a cross-layer join).
+
+**Built:** `compute_spine_bundle.ts` (the join, as a composition of 4
+existing independently-tested capabilities, not a fifth parallel SQL path —
+pure/deterministic, which is what makes byte-consistency provable) +
+`materialize.ts` (post-build hook route mirroring the existing `refresh-mv`
+pattern, plus a lazy fallback baked into every read for when the hook is
+unwired). Storage: migration 463, a plain per-chart table (existing MVs in
+this codebase are global/full-refresh, don't fit a per-chart scope) using
+the §N.3 delete-then-insert pattern; `migration-guard` reviewed PASS (one
+WARN — missing `charts(id)` FK — fixed). New capability
+`marsys://tool/L-SPINE/query_spine_bundle` discloses its own `source`
+(`materialized`/`fresh_materialized`/`fresh_recomputed_stale`) on every
+response — never silently presented as cached. Greenfield mechanism, scoped
+down to a single joined table rather than a general-purpose join framework.
+
+**Verified:** 15 new tests (join correctness, byte-consistency between
+materialized-then-read and a fresh compute, staleness-triggers-recompute, a
+real wall-clock measurement — 5.3× speedup, 16 round-trips/92.0ms fresh vs.
+2 round-trips/17.5ms materialized). `tsc --noEmit` clean.
+`src/lib/retrieval/spine` + `registry` + `src/app/api/admin`: 1015/1140
+passed (125 skipped), 0 failed.
+
+**Residual:** the post-build hook isn't wired to an actual build-completion
+caller yet (no webhook/cron infra to attach to beyond the watchdog's polling
+cadence) — the lazy fallback makes this non-blocking for correctness.
+
+**L5: CLOSED.** Landed on `impl/wave-5` (PR #684, `641d71d9`).
+
+## ALL ELEVEN LANES LANDED (2026-07-21)
+
+L0–L10 all landed on `impl/wave-5`. Full-integration verification pass run
+immediately after: `tsc --noEmit` clean both packages;
+`platform` full suite **6526/6844 passed** (317 skipped, 1 todo), 0 failed
+after one real cross-lane fix (L0's `single_bootstrap_flag.test.ts` asserted
+an exact single-item divergence set that L5's new spine capability
+legitimately grew to two — fixed by updating the assertion, not loosening
+it, commit `0794ea0b`); `platform-mcp` 18 failed/75 tests, confirmed
+identical to the documented pre-existing baseline throughout this wave, 0
+new regressions.
+
+### V5 gate — status
+
+Per brief §E V5 ("per-family tools/list conforms in CI; battery scores
+recorded as the regression baseline; load test passes the four §9.7
+pressure points; consult profile provably cannot reach raw tools"):
+
+1. **Per-family tools/list conformance** — L2's adversarial test suite
+   (`projection_compiler_parity.test.ts` §7 "(g) MCP surface profiles")
+   passes as part of the full-suite run above: compact ≤20, full uncapped
+   and larger than compact, overflow honestly reported, F-R7 exclusion
+   holds. **Not yet CI-wired as a dedicated named gate step** — currently
+   passes as part of the general suite, not a distinguished CI check.
+2. **Battery scores recorded as the regression baseline** — L10's harness
+   re-run against the fully-integrated state (`W5_BATTERY_BASELINE_v1_0.md`
+   §8): 60/60 routing accuracy, 0 isolation violations, 0 readback diffs,
+   **GATE: PASS**. Real, measured improvement over L10's original
+   pre-integration baseline — every family's `avg_mapped_fraction` rose;
+   health/marriage went from 0% (completely unreached) to 26.7%/28.6%.
+3. **Load test across the four §9.7 pressure points** (W-28 cache hit-rate
+   under real traffic, W-29 concurrency capacity, W-30 QoS/backpressure
+   under contention, W-31 SLO-per-query-class) — **NOT satisfied by this
+   session.** L10's battery concurrency pass exercises correctness/isolation
+   of the synchronous in-process compile path, not the full funnel→sidecar→
+   DB round trip under genuine concurrent production load. A real
+   staging/prod load test requires a deployed connector, which itself
+   requires this wave to clear the D-4b mutex and deploy first (see below)
+   — named as the standing next step, not silently skipped.
+4. **Consult profile provably cannot reach raw tools** — **satisfied.**
+   L2's adversarial test (`projection_compiler_parity.test.ts` §7, "CONSULT
+   PROFILE PROVABLY CANNOT REACH RAW/FULL-ONLY TOOLS (V5 gate)") verifies
+   the structural subset invariant, probes real full-only tool names against
+   consult, and confirms known internal meta-tools are absent from every
+   profile — passing in the full-suite run above.
+
+**Honest overall V5 disposition: 2/4 criteria fully closed (battery
+baseline, consult-cannot-reach-raw), 1/4 partially closed (per-family
+conformance passes but isn't a dedicated CI gate), 1/4 open (the genuine
+load test, blocked on deploy).** This wave does not claim V5 complete —
+the remaining work is real, named, and sequenced behind the mutex-gated
+deploy, not glossed over.
+
+### Deploy status
+
+`impl/wave-5` (PR #684) carries all 11 lanes, fully verified locally, still
+**held unmerged** — the D-4b mutex has not been re-checked clean since the
+coexistence check at wave open (D-4b was actively executing: live gochara-
+perf branches, migration 462 since merged to `main`, concurrent
+`worktree-agent-*` sessions). Per the standing protocol (same one W3 used
+against D-5): merge/deploy waits for an explicit D-4b-quiet confirmation,
+re-checked immediately before that specific merge, with the probe baseline
+re-snapshotted before and after per the native's own instruction at wave
+open. This is the one item this session cannot close unilaterally — it
+requires either D-4b's own conductor confirming quiet, or the native's
+explicit go-ahead, matching every prior wave's coexistence discipline in
+this campaign.

@@ -188,6 +188,63 @@ npx vitest run tests/eval/w5_battery/lib.test.ts   # 38 tests, unit-level regres
 npx tsc --noEmit -p tsconfig.json                   # clean on this lane's diff
 ```
 
+## §8 — Re-run against the fully-integrated wave (2026-07-21, conductor, post-L5 close)
+
+All 11 lanes (L0–L10) are now landed on `impl/wave-5`. Per §6 item 1, re-ran
+the exact same harness against the fully-integrated state:
+
+| Metric | Sequential | Concurrent (N=8) |
+|---|---|---|
+| Combos run | 60 | 60 |
+| Wall time | 15.71 ms | 11.09 ms |
+| Routing accuracy (overall) | **100.0%** (60/60) | 100.0% (60/60) |
+| Compile failures | 0 | 0 |
+| Chart-isolation violations | — | **0** |
+| Readback diffs vs sequential | — | **0** |
+
+Per-family (sequential; identical on concurrent):
+
+| family | routing_accuracy | avg_mapped_fraction (this run) | avg_mapped_fraction (§4, pre-integration) |
+|---|---|---|---|
+| career | 100.0% | 41.2% | 11.8% |
+| general | 100.0% | 33.3% | 33.3% |
+| health | 100.0% | **26.7%** | **0.0%** |
+| marriage | 100.0% | **28.6%** | **0.0%** |
+| panoramic | 100.0% | 40.0% | 20.0% |
+| wealth | 100.0% | 42.9% | 14.3% |
+
+**Real, measured improvement — not asserted, read directly off two runs of
+the same harness against two different commits.** Every family's
+`avg_mapped_fraction` rose; health and marriage — flagged in §5.2 as
+completely unreached (0% web-executable primitives) at L10's original
+baseline — now have real coverage (26.7%/28.6%). This is L5's spine-bundle
+capability plus the cumulative effect of L1/L2/L3/L4/L8's generated-bridge
+and per-family-projection work landing together; no single lane claims
+sole credit, and this harness doesn't attribute the improvement to one lane
+over another — it only confirms the wave's combined effect is real and
+positive.
+
+**GATE: PASS** (routing_accuracy ≥ 0.90, zero isolation violations, zero
+readback diffs, zero compile failures) — same criteria as §4, re-verified
+against the integrated state.
+
+**One real cross-lane defect found and fixed via this integration, not by
+the battery itself:** the full `platform` suite run immediately before this
+battery re-run (576 files, 6526/6844 tests, 0 failed) surfaced that L0's
+`single_bootstrap_flag.test.ts` asserted an exact single-item bootstrap-
+divergence set that L5's new `query_spine_bundle` capability (registered
+only in the modern `catalog.ts` path) legitimately grew to two items — fixed
+by updating the assertion to the correct two-item set with both items'
+provenance documented (see `impl/wave-5` commit `0794ea0b`), not by loosening
+the check to tolerate drift silently.
+
+**§6 items not yet closed by this re-run** (unchanged from the original
+baseline, restated for clarity): item 2 (a genuine production/staging load
+test against the four §9.7 pressure points) still requires a deployed
+connector, out of scope for a pre-merge local run; item 4 (CI wiring of
+`run_battery.ts`'s exit code) still not done. Both are named V5-gate
+open items, not silently considered satisfied by this re-run.
+
 ---
 *End of W5_BATTERY_BASELINE v1.0 — first baseline, 60/60 combos, GATE PASS on this
 lane's own criteria. Not the final V5-gate run (§6).*
