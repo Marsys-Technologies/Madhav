@@ -17,6 +17,11 @@ Spec references:
                              required before bo_sangati brief is authored)
   centrality_formula_v1   — Campaign §13.1 (new; native sign-off required before
                              bo_karanajala brief is authored)
+  remedy_leverage_join_v1 — Doctrine Wave D-4b, BRIEF_D4B.md §1 Lane B-4
+                             (Remedy-leverage join = v2.0 Lane C-5): leverage_index
+                             (L1 ga_vichara, referenced not recomputed) x sadhana
+                             history (LEL life_events, pre-embargo only) x dasha
+                             runway (fresh L1 chart_dashas re-derivation).
 """
 from __future__ import annotations
 
@@ -34,6 +39,7 @@ VERSION_RESONANCE_FORMULA = "v1.0"
 VERSION_RESONANCE_MATCH_FORMULA = "v1.0"
 VERSION_CONVERGENCE_FORMULA = "v1.0"
 VERSION_CENTRALITY_FORMULA = "v1.0"
+VERSION_REMEDY_LEVERAGE_JOIN_FORMULA = "v1.0"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -583,4 +589,61 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
         # v1 compat keys — callers that stored these column names still work
         "house_weight_multiplier":           round(house_wt, 6),
         "ashtakavarga_support_multiplier":   round(av_mult, 6),
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Doctrine Wave D-4b, BRIEF_D4B.md §1 Lane B-4  remedy_leverage_join_v1
+# bo_upaya populated from: leverage_index (weakest load-bearing graha) x
+# existing sadhana history (LEL spiritual arc) x dasha runway (intervention
+# window = years BEFORE the weak lord's Mahadasha opens).
+# ──────────────────────────────────────────────────────────────────────────────
+
+@dataclass
+class RemedyLeverageJoinInputs:
+    # L1 ga_vichara leverage_index value for the target graha x domain —
+    # READ from chart_vichara, never recomputed here (§N.5).
+    leverage_index_value: float = 0.0
+    # Count of pre-embargo (event_date < 2020-01-01, ESCALATION_POLICY §4
+    # sealed test split) LEL life_events rows with event_type='spiritual' for
+    # this chart — the native's demonstrated sadhana/devata-adoption track
+    # record. NOT graha-specific (a sustained personal practice supports
+    # adherence to any prescribed remedy, not only ones targeting the graha
+    # the practice happened to invoke).
+    sadhana_milestone_count: int = 0
+    # Bounded dasha-runway weight for the target graha's next/current
+    # Vimshottari Mahadasha, using the SAME registry-sourced curve as
+    # ga_vichara_writer.py's own _dasha_runway() (brahma_vichara_constants.
+    # leverage_weights: runway_base/scale/duration_norm/start_horizon) —
+    # recomputed fresh from live chart_dashas by the caller, not read back
+    # from chart_vichara.leverage_index's own embedded runway sub-field.
+    dasha_runway_weight: float = 1.0
+
+
+def remedy_leverage_join_v1(j: RemedyLeverageJoinInputs) -> dict[str, float]:
+    """BRIEF_D4B §1 Lane B-4 — the remedy-leverage join.
+
+    sadhana_history_factor: each distinct pre-embargo sustained-practice
+    milestone (Shani sadhana initiation, a devata adoption, a spiritual-arc
+    transmission event, ...) adds a bounded amplification on the theory that
+    a chart with a demonstrated multi-year sadhana track record is more
+    likely to sustain a NEW prescribed remedy program than one with none on
+    record. Capped at 5 milestones (diminishing evidentiary value beyond
+    that, and to keep the multiplier bounded like every other formula in
+    this module). Zero milestones on record -> factor=1.0 (neutral; absence
+    of a recorded milestone is not evidence the native lacks a practice —
+    B.10 forbids penalizing on an absence).
+
+    remedy_leverage_score is the plain product of all three named factors —
+    this is the join itself, not a re-derivation of any one factor.
+    """
+    n = min(max(j.sadhana_milestone_count, 0), 5)
+    sadhana_history_factor = 1.0 + 0.15 * n
+    remedy_leverage_score = (
+        j.leverage_index_value * sadhana_history_factor * j.dasha_runway_weight
+    )
+    return {
+        "sadhana_history_factor": round(sadhana_history_factor, 6),
+        "remedy_leverage_score": round(remedy_leverage_score, 6),
+        "remedy_leverage_join_formula_version": VERSION_REMEDY_LEVERAGE_JOIN_FORMULA,
     }

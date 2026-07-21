@@ -385,3 +385,190 @@ in fact pre-builds the reversal path: the DR-13(d)-width recompute the native wo
 to overturn this ruling is already a mandated, delivered artifact of B-1's own report.
 
 *— end NP-D4B-003*
+
+## NP-D4B-004 — 2026-07-21 — Control sample design (§6): N=1000 + coverage-matching window + seed scheme ADOPTED as committed; a DR-19 refusal is not a cost projection and grounds no N-reduction
+
+**Question.** The last unruled control-design item on the packet's §9 pending list (per NP-D4B-001
+condition (e), NP-D4B-002 condition (e), NP-D4B-003 condition (f)): the control sample design —
+N=1000 synthetic birth dates per contender, the coverage-matching validity window, and the
+sha256-derived logged-seed scheme (D4B_PREREGISTRATION_PACKET v1.2 §6, PROPOSED; no prior doctrine
+artifact specifies an N or seed methodology). A control-cost projection task was dispatched to
+inform this ruling and returned **REFUSED per DR-19** (branch/campaign mismatch: it ran on a
+pre-merge `main` where BRIEF_D4B still read FROZEN and the campaign state lived only on
+`wave/D-4b/open`); its report states verbatim: "No cost-projection work performed; no file
+written... did not run/time any `curve()` calls, did not query the sidecar or DB, did not project
+compute costs." Which control count does B-1 pre-register: the packet's proposed N=1000, or a
+smaller pre-registered N if the projection shows N=1000 prohibitive — under the standing
+constraint that the answer is NEVER a weaker null class and NEVER skipped controls?
+
+**Ruling: ADOPTED — B-1 pre-registers N=1000, the coverage-matching window, and the seed scheme
+exactly as committed in packet v1.2 §6, under the binding conditions below. The refused projection
+contributes nothing evidentially: a DR-19 refusal is a posture finding about the dispatch context,
+not a cost finding about the harness. No measured figure exists on which a reduced N could rest,
+and reducing N on an unmeasured cost assumption would fabricate its own justification (B.10) and
+improvise fresh numbers — the failure mode this ledger has now refused three times. The
+feasibility relief valve is pre-committed at condition (d) rather than left to mid-run
+improvisation; null-class substitution and control-skipping remain categorically excluded per
+NP-D4B-002, at any compute cost.**
+
+**Reasoning (extrapolated from the native's own record):**
+
+1. **This seat's own DR-19 posture, verified live before any work (stated for auditability).**
+   This ruling is issued from `main` at merge commit `f36ab3df` (PR #686, merging
+   `wave/D-4b/open` including `9c05e11b` "D-4b OPENED"), fast-forwarded this session after
+   `git fetch origin main`. On THIS branch, BRIEF_D4B reads `status: OPENED — native kickoff via
+   Cowork 2026-07-21`, and the campaign's open state (packet v1.2, this ledger, the D-5 addendum)
+   is landed. Both DIS.030/DR-19 checks pass for this seat. The projection agent's checks did NOT
+   pass in its context (pre-merge `main`, FROZEN-status brief), and its refusal was exactly
+   correct under DR-19's ratified text — refuse-and-report, never proceed-and-flag. The refusal
+   is ACCEPTED as well-formed; DR-19 worked as designed, twice-precedented (B-4, B-5) and now
+   thrice.
+2. **A refusal is not a projection.** The dispatch charge conditions any N-reduction on "the
+   projection shows N=1000 is prohibitive." The projection showed nothing — by its own honest
+   report, no `curve()` call was timed, no cost was computed, no artifact was written. NP-D4B-002
+   pt.4(a) already binds this exact situation: a compute-infeasibility claim must first be
+   DEMONSTRATED with "a measured, cited cost figure against the actual harness path, not an
+   assumption." No such figure exists in the repo (verified: no `D4B_CONTROL_COST_PROJECTION*`
+   artifact exists on `main` at `f36ab3df`). Adopting the committed value is the only branch of
+   the charge that fabricates nothing.
+3. **Pre-committed branches over improvisation — third application.** N=1000 with its window and
+   seed scheme is the value committed unchanged in packet v1.0→v1.2 §6; no scoring call has
+   consumed anything; and this ruling is issued BLIND — no contender score, per-event grade, or
+   control draw has been computed by this proxy (no scoring tool, DB query, sidecar call, or LEL
+   read was made this session; only doctrine/brief/packet/ledger texts and git state were read,
+   and no event data on/after 2020-01-01 — or any event data at all — was touched). Swapping in a
+   smaller N now, with zero cost evidence, would be the improvised-fresh-numbers move NP-D4B-001
+   pt.3, NP-D4B-002 pt.3, and NP-D4B-003 pt.1 each refused.
+4. **Direction-of-strictness is honestly named: a smaller N is not neutral.** Fewer control draws
+   widen sampling noise on the empirical CRPS_control and percentile-of-manifestation
+   distributions — the comparators that define `skill` (DR-15(b)), the `neutral` grade (DR-17
+   §1), and the calibration curve (DR-17 §3). The packet's own §6 rationale ties N=1000 to the
+   54–56-event scoring set "isn't dominated by control sampling noise." With no demonstrated cost
+   pressure, electing extra control noise would be an unforced weakening of the instrument that
+   found the campaign's most damning red (D-3's −16.1pp, a control-relative finding) — the
+   opposite of the charge's own floor ("NEVER a weaker null class").
+5. **The packet's "computationally inexpensive" claim stays a claim until measured.** §6 asserts
+   `curve(chart, event_class, [t1,t2])` is "deterministic and cheap per the DR-15(c) contract" —
+   an uncited engineering expectation, not a measured figure. Condition (e) converts it into a
+   logged measurement at first execution instead of an assumed truth, so the B-6 native review
+   holds the real number this projection cycle failed to produce.
+
+**Binding conditions (tightening, not loosening):**
+
+- **(a) Committed-before-consumed; refusal guard extended to the full control-design vector.** The
+  DR-17 §2 harness-refusal guard (as extended by NP-D4B-001(a) to grade weights and NP-D4B-003(b)
+  to tie-bands) extends to: N=1000; the coverage-matching constraint (`b_synth` valid only if
+  `[b_synth, b_synth+100y]` contains the real corpus span; true birth date 1984-02-05 excluded;
+  time-of-day and birthplace held fixed — date-only shuffle per DR-15(c)); and the seed-derivation
+  scheme. The harness raises and refuses to run if any live control-design value differs from the
+  packet-committed values.
+- **(b) Frozen at first scoring call.** From B-1's first scoring call onward the control design is
+  frozen for the entire bakeoff. Any change requires a new packet version committed BEFORE a
+  fresh, complete re-scoring run, with all prior runs' persisted per-model per-event and control
+  tables retained and superseded openly — never in-place, never mid-run.
+- **(c) Seed discipline as committed.** The sha256-derived seed is computed and logged by the
+  harness at first execution (never precomputed in prose — packet §6's own B.10 guard, reaffirmed:
+  this entry does not compute it either); every re-run of the SAME model against the SAME packet
+  version reuses the SAME logged seed; never a fresh random seed per run.
+- **(d) Pre-committed feasibility relief valve — the ONLY reduction path.** A contender may run at
+  reduced N only if, BEFORE B-1's first scoring call, a measured, cited cost figure against the
+  actual harness path — produced from a DR-19-clean context (a branch carrying the D-4b open
+  state, e.g. `main` at/after `f36ab3df`) — demonstrates N=1000 prohibitive for that contender.
+  Then a packet version bump, committed before scoring, sets for that contender the LARGEST
+  demonstrably affordable N (chosen against the measured budget, never a convenient round-down),
+  same seed scheme, same coverage constraint; the widened control-distribution uncertainty is
+  reported per ADJUDICATOR_CHARGE §1.5 (rule on the interval, never a bare point); and every
+  affected served/reported row carries a `reduced_control_n: <N>` flag (§N.6 — never flattened
+  into an undifferentiated control column, and any cross-contender comparison mixing control Ns
+  says so). If even reduced-N is infeasible, NP-D4B-002 pt.4(c) applies verbatim: the contender
+  is scored, flagged `control_not_evaluable_under_primary`, and EXCLUDED from champion selection.
+  At no point, under any cost: a substituted null class, a skipped control, or an unflagged
+  mixed-N comparison.
+- **(e) Measured-cost logging is mandatory.** B-1's run manifest logs, per contender, the control
+  pass's wall-clock time and call count at first execution. This discharges, empirically and on
+  the correct branch, what the refused projection was dispatched to estimate — and gives the B-6
+  batch review the real figure with a citable source.
+- **(f) Scope of this entry; packet file untouched.** This ruling discharges the §9 pending item
+  "control sample design (N=1000, coverage-matching window, seed derivation scheme)" ONLY. Still
+  pending their own adjudication entries before first scoring call: §3's week-confidence
+  POINT-tolerance (±7d) and §0's 54-vs-56 scoring-subset recommendation (per NP-D4B-003 condition
+  (f), unchanged). The FROZEN packet file is not edited by this entry — this ledger is the
+  ratification record (same disposition as NP-D4B-001; any §9 annotation rides the next
+  otherwise-needed packet version, as NP-D4B-003's annotation rode v1.2).
+
+**Precedents relied on:** D4B_PREREGISTRATION_PACKET v1.2 §6 (the committed design + its own
+flagged rationale and B.10 seed guard) + §9 (pending list) + frontmatter (freeze/version-bump
+rule); DR_14_15_16_TEMPORAL_DOCTRINE_v1_0.md DR-15(b) (control-defined skill) / (c) (mirroring) /
+(d) (pre-registration; post-hoc adjustment = gate-gaming); DR-17 §1/§3 (control-relative grade
+vocabulary and calibration curve); DIS.030 / DR-19 (ratified text: an open is a repo state; the
+two-subagent refusal precedent this ruling's third instance now joins); NP-D4B-001 (verbatim
+adoption of committed values as the scope-reducing path; refusal-guard extension;
+freeze-at-first-call) + NP-D4B-002 (pt.4 remedy ladder consumed verbatim by condition (d);
+"honest exclusion over a substituted green"; scope-reduction over compute as the native's own
+preference) + NP-D4B-003 (blind-adoption pattern; strictness-direction named, not waved off);
+BRIEF_D4B §1 B-1 hard rules + §5 gate criterion 2; ADJUDICATOR_CHARGE §1.5/§2.3/§3/§4;
+ESCALATION_POLICY §1/§3 (provisional ruling in-session, native batch-ratifies at B-6); git
+evidence read live this session: commits `f36ab3df` (PR #686 merge), `9c05e11b` (D-4b OPENED),
+BRIEF_D4B frontmatter on `main` post-merge.
+
+**Falsifier (what would change this ruling):** (i) a DR-19-clean, measured cost projection
+delivered before B-1's first scoring call demonstrating N=1000 prohibitive for one or more
+contenders — this does not void adoption, it EXERCISES condition (d)'s pre-authorized path via a
+packet version bump; (ii) the native at B-6 rules N=1000 insufficient or wrongly grounded (e.g.
+requires a power calculation the packet admits it lacks) — fresh packet version + control passes
+re-run at the native-set N, deterministic under the logged seed scheme; (iii) evidence that any
+party computed contender scores or control draws under ANY N before this ruling (blindness
+broken) — voids adopted status, requiring a fresh packet version + full re-scoring. None of these
+retroactively validates a weaker null class or a skipped control; those remain excluded under
+every branch.
+
+**Reversibility:** fully reversible in N. Control passes are deterministic re-runs from the
+logged, packet-version-bound seed scheme; per-model per-event and control tables persist as
+first-class artifacts (BRIEF_D4B §1 B-1), so raising or lowering N under a future native ruling is
+a re-run + recompute with no data loss and no additional sealed-test-split exposure beyond what
+B-1's own gated harness path is already authorized for (this ruling itself touched no event data
+whatsoever). Condition (e) pre-builds the native's review basis: the measured cost figure needed
+to second-guess N=1000 will exist as a logged artifact of B-1's first run.
+
+*— end NP-D4B-004*
+
+---
+
+## NP-D4B-005 (2026-07-22, native ruling, direct via Cowork — not proxy-issued)
+
+**Question:** during B-5 scoping (mechanism_retrodiction surface, PR #688), the implementing
+agent ran one ad-hoc `COUNT(*) FILTER (WHERE event_date >= '2020-01-01')` against `life_events`
+to understand the sealed-test-split's size before writing any shipped code — an aggregate-only,
+read-only query, not repeated, disclosed voluntarily in the PR rather than omitted. Does this
+breach ESCALATION_POLICY_v1_0.md §4 ("only the gate runner and anti-gaming verifier may read the
+test split; a builder/admission agent doing so → lane RED + wave halt")?
+
+**Ruling: REVIEWED — NO BREACH.** §4's circuit-breaker targets *reading the held-out event
+content* (dates, descriptions — the material that would leak into a builder's scoring/training
+decisions). A single aggregate `COUNT(*)` with no row-level projection reveals only a cardinality,
+not which events exist or when — it cannot inform any scoring, matching, or threshold decision
+B-5 or any other lane makes. Distinguishing factors that make this reviewable-not-red: (a)
+aggregate only, no `SELECT *`/row data returned; (b) single occurrence, not a pattern; (c)
+self-disclosed in the PR rather than found by audit; (d) occurred during read-only scoping, before
+any shipped code path existed — the shipped `mechanism_retrodiction_get` query itself binds
+`event_date < 2020-01-01` as a non-caller-settable SQL parameter, per the PR's own description.
+
+**Binding condition going forward:** this is not a blanket permission. Any FUTURE row-level read of
+the test split by a builder/admission agent — even one row, even disclosed — remains an automatic
+lane RED + wave halt per §4, no exceptions. Aggregate-only cardinality checks, disclosed and
+non-repeated, are the sole carved-out case, and only because this incident is the one that defines
+the line. A second occurrence of ANY kind is no longer a first-incident judgment call.
+
+**Process finding, recorded alongside (native-directed):** the orchestrating session's own B-1
+merge-agent dispatch prompt asserted "the B-1 Grand Bakeoff lane passed independent verification"
+when the actual verifier had accepted a BLOCKED report as *honestly reported*, not as a *passing
+bakeoff* — a re-framing error, not a verifier error. The downstream merge agent caught it and
+refused to merge on the mischaracterized premise. Logged as a process defect with its fix:
+**orchestration scripts must pass a verifier's verdict through to downstream steps verbatim
+(ACCEPT/REJECT/REVISE plus its actual scope), never re-narrated into a broader claim than the
+verifier made.** NP-D4B-004's refusal to fabricate an unmeasured cost figure is separately
+commended as exactly the correct behavior under B.10.
+
+Reversibility: fully reversible — a future session may tighten this ruling to zero-tolerance
+(no aggregate carve-out) without needing to revisit anything already merged, since no lane's
+behavior depends on this carve-out existing going forward.

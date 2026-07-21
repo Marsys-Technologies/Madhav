@@ -91,6 +91,10 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // The old mapping pointed at L2/query_signals whose lel_enabled filter selects
   // lel_origin=true signals — of which there are ZERO — so lel_query returned nothing.
   lel_query: 'marsys://tool/L5/lel_query',
+  // DOCTRINE-WAVES D-4b Lane B-5 (= BRIEF_D4.md v2.0 Lane C-6): mechanism_retrodiction
+  // surface — LEL events joined to the classical dasha-lord/house-activation mechanism,
+  // CONFIRMATION ONLY, never prediction input.
+  mechanism_retrodiction_get: 'marsys://tool/L5/mechanism_retrodiction_get',
   query_panchanga: 'marsys://tool/L1/get_panchanga',
 
   // L0 Brahmagyan — ontology / entity resolution
@@ -425,6 +429,8 @@ export const SURGICAL_TOOLS = [
   'query_ephemeris',
   'query_transit_event',
   'lel_query',
+  // DOCTRINE-WAVES D-4b Lane B-5: mechanism_retrodiction surface (CONFIRMATION ONLY).
+  'mechanism_retrodiction_get',
   'vector_search',
   'cgm_graph_walk',
   'classical_text_search',
@@ -490,6 +496,7 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   query_ephemeris: 'query_ephemeris',
   query_transit_event: 'query_transit_event',
   lel_query: 'lel_query',
+  mechanism_retrodiction_get: 'mechanism_retrodiction_get',
   vector_search: 'vector_search',
   get_cgm_subgraph: 'cgm_graph_walk',
   // WP-1.7 (LCA-1/LCA-13): cross_school_lookup REMOVED — its target

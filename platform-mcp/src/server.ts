@@ -62,6 +62,9 @@ import { registerPhalaOutlookTool } from './tools/phala_outlook.js'
 import { registerMuhurtaFinder } from './tools/muhurta_finder.js'
 // KEYSTONE (M6+M7): mimamsa_lel_intake migrated to callPlatformPrimitive('lel_query').
 import { registerMimamsaLelIntakeTool } from './tools/mimamsa_lel_intake.js'
+// DOCTRINE-WAVES D-4b Lane B-5 (= BRIEF_D4.md v2.0 Lane C-6): mechanism_retrodiction
+// surface — CONFIRMATION ONLY, never prediction input.
+import { registerMechanismRetrodictionTool } from './tools/mechanism_retrodiction.js'
 import { registerMimamsaOutcomeTool } from './tools/mimamsa_outcome.js'
 // KEYSTONE REQUEST: mimamsa_outcome (record_outcome / mimamsa_calibration) has no registry primitive.
 // REQUEST to retrieval fork: expose 'record_outcome' capability in tool_name_bridge.
@@ -391,6 +394,9 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // L5 Mīmāṃsā tools
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerMimamsaLelIntakeTool(server as any, principal)
+  // DOCTRINE-WAVES D-4b Lane B-5: mechanism_retrodiction surface (CONFIRMATION ONLY).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  registerMechanismRetrodictionTool(server as any, principal)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registerMimamsaOutcomeTool(server as any, principal)
 

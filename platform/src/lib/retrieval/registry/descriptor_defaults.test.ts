@@ -142,7 +142,15 @@ describe('R-1.1 descriptor migration — universal field coverage', () => {
   it('calibration_context_only is applied narrowly (F-R7: single-digit, not over-applied)', () => {
     const caps = getCatalog()
     const flagged = caps.filter((c) => c.calibration_context_only === true).map((c) => c.uri).sort()
-    expect(flagged).toEqual(['marsys://tool/L5/lel_query', 'marsys://tool/L5/query_predictions'])
+    // DOCTRINE-WAVES D-4b Lane B-5: mechanism_retrodiction_get added — another raw
+    // outcome-ledger read (life_events) whose role is calibration-context SUPPLY, not
+    // a calibration-quality SURFACE (explicitly set on the descriptor itself, not via
+    // the CALIBRATION_CONTEXT_ONLY_URIS default-fill list — see query_mechanism_retrodiction.ts).
+    expect(flagged).toEqual([
+      'marsys://tool/L5/lel_query',
+      'marsys://tool/L5/mechanism_retrodiction_get',
+      'marsys://tool/L5/query_predictions',
+    ])
   })
 })
 
