@@ -2456,3 +2456,29 @@ Verification this session: `npx tsc --noEmit` clean (both packages); full
 failed); `platform-mcp`'s remaining suite unaffected (confirmed via
 before/after comparison — same 75 pre-existing, unrelated failures both
 before and after the two file deletions).
+
+### W6 — Task 11 (session-semantics rename + diagram fix)
+
+**W-19 (PARIPRASHNA §6.1 diagram fix) — DONE.** `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`
+bumped 0.7 → 0.8 (§20 changelog entry added). §6.1's diagram corrected at
+source: the `prashna_ask` box no longer lists the stale `depth` param
+(struck by D-15) and the AGENTIC LOOP box now reads "provenance stamp"
+instead of "session pin ... pinned for ALL conversations" (struck/
+restructured by D-16). This was pre-authorized via AMBIG-4 as a docs-only
+task, independent of the broader C-1/F-R4 rulings.
+
+**W-17 (session-semantics rename, GT-F28) — NOT executed, carried to §H
+residuals.** Investigated before touching anything: GT-F28 in
+`briefs/retrieval_audit/GROUND_TRUTH_REGISTER.md` (line 186) is explicitly
+marked **NEEDS-RULING**, and no ratification for it was found anywhere in
+`RULINGS_ADOPTED.md` or any wave brief — unlike W-19, which the master
+brief marks "(authorized)" and AMBIG-4 confirms in writing. Executing an
+unratified rename across ~13 load-bearing files (`session_pin.ts`,
+`envelope.ts`, MCP session tools, ledger versioning) this late in the
+campaign was judged unjustified blast radius for a cosmetic gain, and the
+naming rides on the D-16 restructure the doctrine/Paripraśna workstream
+owns — not a call for the retrieval campaign to make unilaterally mid-seal.
+**Residual for §H:** internal-only rename (zero behavior/contract/UX
+change), needs an explicit native ruling coordinated with the
+session-semantics decision before execution; does not block campaign
+COMPLETE since no shipped behavior depends on the name.
