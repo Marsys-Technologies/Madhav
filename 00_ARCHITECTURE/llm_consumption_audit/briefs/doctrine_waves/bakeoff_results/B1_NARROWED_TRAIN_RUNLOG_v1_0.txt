@@ -1,0 +1,66 @@
+[b1_driver] running assertRosterBindable() probe...
+[b1_driver] BIND-TIME ASSERTION PASSED for 14 contenders: [{"modelId":"pratyantar_lord","pointCount":31},{"modelId":"vimshottari","pointCount":31},{"modelId":"yogini","pointCount":31},{"modelId":"ashtottari","pointCount":31},{"modelId":"chara_karaka","pointCount":31},{"modelId":"naisargika","pointCount":31},{"modelId":"mudda","pointCount":31},{"modelId":"kalachakra","pointCount":31},{"modelId":"narayana","pointCount":31},{"modelId":"sade_sati","pointCount":31},{"modelId":"guru_shani_double_transit","pointCount":31},{"modelId":"av_threshold","pointCount":31},{"modelId":"planetary_return","pointCount":31},{"modelId":"hierarchical_ensemble","pointCount":31}]
+[b1_driver] event 1/31 EVT.1995.XX.XX.01.onset (health) range=1995-02-01..1995-11-28
+[b1_driver]   bound 13 base contenders in 1481ms
+[b1_driver] event 2/31 EVT.2002.XX.XX.01 (psychological) range=2001-01-02..2004-10-29
+[b1_driver]   bound 13 base contenders in 6012ms
+[b1_driver] event 3/31 EVT.1998.02.16.01 (relationship) range=1997-12-18..1998-04-17
+[b1_driver]   bound 13 base contenders in 811ms
+[b1_driver] event 4/31 EVT.2000.XX.XX.01 (education) range=2000-03-03..2001-03-01
+[b1_driver]   bound 13 base contenders in 1611ms
+[b1_driver] event 5/31 EVT.2001.03.XX.01 (education) range=2000-12-15..2001-06-13
+[b1_driver]   bound 13 base contenders in 958ms
+[b1_driver] event 6/31 EVT.2003.06.XX.01 (education) range=2003-03-17..2003-09-13
+[b1_driver]   bound 13 base contenders in 960ms
+[b1_driver] event 7/31 EVT.2004.01.XX.01 (relationship) range=2003-10-17..2004-04-14
+[b1_driver]   bound 13 base contenders in 1006ms
+[b1_driver] event 8/31 EVT.2004.XX.XX.02 (education) range=2004-01-17..2004-11-12
+[b1_driver]   bound 13 base contenders in 1407ms
+[b1_driver] event 9/31 EVT.2007.06.XX.01 (health) range=2007-03-17..2007-09-13
+[b1_driver]   bound 13 base contenders in 1019ms
+[b1_driver] event 10/31 EVT.2007.XX.XX.03.onset (health) range=2007-03-17..2007-09-13
+[b1_driver]   bound 13 base contenders in 1034ms
+[b1_driver] event 11/31 EVT.2007.06.XX.02 (education) range=2007-03-17..2007-09-13
+[b1_driver]   bound 13 base contenders in 1069ms
+[b1_driver] event 12/31 EVT.2007.06.10.01 (career) range=2007-04-11..2007-08-09
+[b1_driver]   bound 13 base contenders in 763ms
+[b1_driver] event 13/31 EVT.2008.06.09.01 (career) range=2008-04-10..2008-08-08
+[b1_driver]   bound 13 base contenders in 794ms
+[b1_driver] event 14/31 EVT.2009.06.XX.01 (loss) range=2009-04-01..2009-09-28
+[b1_driver]   bound 13 base contenders in 996ms
+[b1_driver] event 15/31 EVT.1998.XX.XX.02 (spiritual) range=1998-02-01..1998-11-28
+[b1_driver]   bound 13 base contenders in 1439ms
+[b1_driver] event 16/31 EVT.2010.XX.XX.01 (finance) range=2010-04-02..2011-06-29
+[b1_driver]   bound 13 base contenders in 2016ms
+[b1_driver] event 17/31 EVT.2010.12.XX.01 (travel) range=2010-09-16..2011-03-15
+[b1_driver]   bound 13 base contenders in 1011ms
+[b1_driver] event 18/31 EVT.2011.01.XX.01 (education) range=2010-10-17..2011-04-15
+[b1_driver]   bound 13 base contenders in 997ms
+[b1_driver] event 19/31 EVT.2011.06.XX.01 (education) range=2011-03-17..2011-09-13
+[b1_driver]   bound 13 base contenders in 984ms
+[b1_driver] event 20/31 EVT.2012.09.XX.01 (creative) range=2012-06-17..2012-12-14
+[b1_driver]   bound 13 base contenders in 1049ms
+[b1_driver] event 21/31 EVT.2012.XX.XX.02 (education) range=2012-01-03..2012-10-29
+[b1_driver]   bound 13 base contenders in 1513ms
+[b1_driver] event 22/31 EVT.2012.10.XX.01 (relationship) range=2012-07-17..2013-01-13
+[b1_driver]   bound 13 base contenders in 1083ms
+[b1_driver] event 23/31 EVT.2013.03.XX.01 (education) range=2012-12-15..2013-06-13
+[b1_driver]   bound 13 base contenders in 1055ms
+[b1_driver] event 24/31 EVT.2013.05.XX.01 (career) range=2013-02-14..2013-08-13
+[b1_driver]   bound 13 base contenders in 1004ms
+[b1_driver] event 25/31 EVT.2013.XX.XX.01 (family) range=2013-02-01..2013-11-28
+[b1_driver]   bound 13 base contenders in 1519ms
+[b1_driver] event 26/31 EVT.2013.12.11.01 (family) range=2013-10-12..2014-02-09
+[b1_driver]   bound 13 base contenders in 780ms
+[b1_driver] event 27/31 EVT.1993.XX.XX.01 (creative) range=1993-02-01..1993-11-28
+[b1_driver]   bound 13 base contenders in 1379ms
+[b1_driver] event 28/31 EVT.2016.XX.XX.01 (career) range=2016-02-02..2016-11-28
+[b1_driver]   bound 13 base contenders in 1525ms
+[b1_driver] event 29/31 EVT.2017.03.XX.01 (career) range=2016-12-15..2017-06-13
+[b1_driver]   bound 13 base contenders in 1026ms
+[b1_driver] event 30/31 EVT.2018.11.28.01 (loss) range=2018-09-29..2019-01-27
+[b1_driver]   bound 13 base contenders in 757ms
+[b1_driver] event 31/31 EVT.2019.05.XX.01 (residential+travel) range=2019-02-14..2019-08-13
+[b1_driver]   bound 13 base contenders in 1004ms
+[b1_driver] DONE. Wrote /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/cb8619fb-b398-41cc-a7e7-6cc6c9eafb53/scratchpad/b1_results_raw.json
+EXIT_CODE:0
