@@ -85,6 +85,7 @@ import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { buildChatToolsFromNames } from '@/lib/retrieval/registry/schema_utils'
 import { createToolCache, executeWithCache } from '@/lib/cache/index'
+import { getSharedQosDispatchQueue } from '@/lib/retrieval/qos/dispatch_queue'
 import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
@@ -774,7 +775,19 @@ export async function POST(request: Request) {
       if (!t) return null
       const toolStart = Date.now()
       try {
-        const result = await executeWithCache(t, queryPlan, cache, plannerParamsMap.get(toolName))
+        // W5 L7 (QoS priority classes + fairness): every live tool-fetch dispatch
+        // goes through the process-wide QoS queue as 'interactive' priority (the
+        // safe default — a human is waiting on this stream right now), keyed by
+        // user.uid for the per-principal fairness guarantee. This does not change
+        // behavior for a single in-flight request (default concurrency comfortably
+        // exceeds any one request's own tool count) — it bounds and fair-shares
+        // capacity ACROSS concurrent requests from different users. See
+        // platform/src/lib/retrieval/qos/dispatch_queue.ts for the full design.
+        const result = await getSharedQosDispatchQueue().submit({
+          principalId: user.uid,
+          priorityClass: 'interactive',
+          run: () => executeWithCache(t, queryPlan, cache, plannerParamsMap.get(toolName)),
+        })
         emit({
           event: 'step_done',
           query_id: queryId,
