@@ -276,6 +276,12 @@ export async function POST(request: Request) {
 
   for (let i = 0; i < dispatchableTools.length; i++) {
     const toolName = dispatchableTools[i]
+
+    // Resolve BEFORE checking the cap — an unresolved tool name is not a real
+    // dispatch attempt and must not consume a call-count slot from the budget.
+    const tool = getToolByName(toolName)
+    if (!tool) continue // unresolved name — nothing to dispatch, not a cap event
+
     const check = tracker.checkAndRecordCall()
     if (check.stopped) {
       costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
@@ -283,9 +289,6 @@ export async function POST(request: Request) {
       unservedTools = dispatchableTools.slice(i)
       break
     }
-
-    const tool = getToolByName(toolName)
-    if (!tool) continue // unresolved name — nothing to dispatch, not a cap event
 
     const toolStart = Date.now()
     try {
