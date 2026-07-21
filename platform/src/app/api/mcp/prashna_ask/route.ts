@@ -256,6 +256,7 @@ export async function POST(request: Request) {
   const judgmentFlags: string[] = []
   let costCapTripped: { reason: string; judgmentFlag: string } | null = null
   let unservedTools: string[] = []
+  const unresolvedTools: string[] = []
 
   // Plan object handed to getToolByName().retrieve() — that wrapper reads
   // plan['chart_id'] directly (tool_name_bridge.ts's getToolByName) to build the
@@ -280,7 +281,14 @@ export async function POST(request: Request) {
     // Resolve BEFORE checking the cap — an unresolved tool name is not a real
     // dispatch attempt and must not consume a call-count slot from the budget.
     const tool = getToolByName(toolName)
-    if (!tool) continue // unresolved name — nothing to dispatch, not a cap event
+    if (!tool) {
+      // Unresolved name — not a cap event, but it IS a planned tool that never
+      // ran, so it must be disclosed. Silently dropping it here would violate
+      // this route's own "never presented as complete when something planned
+      // didn't run" invariant just as surely as a cost-cap trip would.
+      unresolvedTools.push(toolName)
+      continue
+    }
 
     const check = tracker.checkAndRecordCall()
     if (check.stopped) {
@@ -304,8 +312,11 @@ export async function POST(request: Request) {
   if (leakedTools.length > 0) {
     judgmentFlags.push('no_leakage_capabilities_stripped')
   }
+  if (unresolvedTools.length > 0) {
+    judgmentFlags.push('planned_tools_unresolved')
+  }
 
-  const isPartial = costCapTripped !== null
+  const isPartial = costCapTripped !== null || unresolvedTools.length > 0
 
   return NextResponse.json({
     ok: true,
@@ -318,6 +329,7 @@ export async function POST(request: Request) {
       status: isPartial ? 'partial' : 'complete',
       tools_dispatched: toolEventLog,
       unserved_tools: unservedTools,
+      unresolved_tools: unresolvedTools,
       stripped_leaked_capabilities: leakedTools,
       cap_tripped: costCapTripped?.reason ?? null,
     },

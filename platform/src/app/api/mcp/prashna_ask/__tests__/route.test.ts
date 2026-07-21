@@ -194,6 +194,41 @@ describe('POST /api/mcp/prashna_ask — cost cap enforcement', () => {
   })
 })
 
+describe('POST /api/mcp/prashna_ask — unresolved planner tool names', () => {
+  it('discloses a planned-but-unresolved tool name rather than silently completing', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(
+      planOutcome(['chart_facts_query', 'a_hallucinated_tool_name']),
+    )
+    mockGetToolByName.mockImplementation((name: string) => {
+      if (name === 'a_hallucinated_tool_name') return undefined
+      return {
+        name,
+        version: '1.0',
+        retrieve: vi.fn().mockResolvedValue({
+          tool_bundle_id: 'b1',
+          tool_name: name,
+          tool_version: '1.0',
+          invocation_params: {},
+          results: [{ id: '1' }],
+          served_from_cache: false,
+          latency_ms: 1,
+          result_hash: 'sha256:x',
+          schema_version: '1.0',
+        }),
+      }
+    })
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+    const body = await res.json()
+    expect(body.completeness.status).toBe('partial')
+    expect(body.completeness.unresolved_tools).toContain('a_hallucinated_tool_name')
+    expect(body.judgment_flags).toContain('planned_tools_unresolved')
+    // The unresolved name must not have consumed a cost-cap call slot or
+    // blocked the tool that DID resolve from running.
+    expect(body.results.map((r: { tool_name: string }) => r.tool_name)).toContain('chart_facts_query')
+    expect(body.completeness.cap_tripped).toBeNull()
+  })
+})
+
 describe('POST /api/mcp/prashna_ask — NO-LEAKAGE', () => {
   it('never dispatches a calibration_context_only-flagged capability even when the planner authorized it', async () => {
     mockCallPipelinePlanner.mockResolvedValue(

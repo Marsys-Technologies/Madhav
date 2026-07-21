@@ -607,6 +607,16 @@ export async function POST(request: Request) {
   // doctrine, not a channel-specific feature, so both doors must get it.
   const noLeakageFiltered = filterLeakedCapabilities(toolsAuthorized)
   if (noLeakageFiltered.length !== toolsAuthorized.length) {
+    const stripped = toolsAuthorized.filter((t) => !noLeakageFiltered.includes(t))
+    // Observable disclosure of the strip: this route's downstream envelope
+    // does not yet have a judgment_flags aggregation point at this call site
+    // (unlike /api/mcp/prashna_ask, which surfaces `no_leakage_capabilities_
+    // stripped` directly in its response). Logging here at minimum makes the
+    // strip visible in traces rather than silent — full response-envelope
+    // disclosure for this route is a named follow-up, not done here, since
+    // wiring a new flags field through this route's synthesis/envelope layer
+    // is a larger change than this fix's scope.
+    console.warn('[consume:v2] NO-LEAKAGE stripped capabilities from toolsAuthorized:', stripped)
     plan.tool_calls = plan.tool_calls.filter((tc) => noLeakageFiltered.includes(tc.tool_name))
     toolsAuthorized.splice(0, toolsAuthorized.length, ...noLeakageFiltered)
   }
