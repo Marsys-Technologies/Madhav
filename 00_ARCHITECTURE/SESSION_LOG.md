@@ -32867,3 +32867,145 @@ session_close:
 ```
 
 *End of Pre-D-4b Readiness Pass v3 entry — 2026-07-21.*
+
+---
+
+## W4-ONE-PLANNER-CLOSE-2026-07-21 — W4 "One Planner" (R-3) CLOSED, V4 ACCEPT
+
+```yaml
+session_open:
+  session_id: W4-ONE-PLANNER-CLOSE-2026-07-21
+  cowork_thread_name: "Madhav — W4 One Planner (Conductor: precondition through close)"
+  agent_name: claude-sonnet-5
+  predecessor_session: PG2-MERGE-COORDINATION-2026-07-20 (bundle_hydrator.ts precondition
+    fix assigned to W4, cross-campaign, per REPORT_PG-2.md)
+  role: >
+    Conductor for W4 "One Planner" per RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md §E:
+    the bundle_hydrator precondition fix, the sequential core (scope_tuple,
+    ClarificationRequest/fault, floor adoption via compileContract, completeness
+    receipts, orientation front-door), four parallel lanes (floor completeness, CR-55,
+    floor precompilation, prashna_ask spike), a V4 adversarial gate, merge, deploy, and
+    live-probe re-verification.
+  declared_scope:
+    may_touch:
+      - "platform/src/lib/bundle/bundle_hydrator.ts + its test (precondition)"
+      - "platform/src/app/api/chat/consult/route.ts, platform/src/lib/pipeline/**"
+      - "platform/src/lib/vidhi/** (scope_classifier, completeness_receipt, floor_cache)"
+      - "platform/src/lib/prompts/**, platform/src/lib/schemas/*.schema.json (C-2 excision)"
+      - "00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md (CR-115/118 entries)"
+      - "00_ARCHITECTURE/briefs/retrieval_impl/STATE.md, SESSION_LOG.md (append-only)"
+    must_not_touch:
+      - "platform/python-sidecar/**kala**, **gochara** (kala/gochara semantics frozen-as-found)"
+      - "the doctrine-waves campaign's own files/branches"
+      - "W5/W6 scope (adaptive serving, prashna_ask full contract) — spike only, no build-ahead"
+  red_team_due: false
+```
+
+**Body.** Fully autonomous execution per the native's W4 close-out directive. **Precondition**
+first: `bundle_hydrator.ts`'s stale `FLOOR_ASSET_IDS=['FORENSIC','CGM']` fix (PR #677,
+`fb793e18`) — deployed and live-verified against production chart 482012f1 before any W4
+feature work began, independently adversarially verified (the verifier proved the
+regression test genuinely fails against the pre-fix source, not just passes against the new
+one). C-2 (audience_tier excision) landed as its own PR (#680, `bfe9cf10`), confirmed
+genuinely vestigial except one real, deliberately-untouched panel/adjudicator consumer;
+strengthened rather than weakened a red-team test (RT-08) in the process; caught and fixed
+a stale test fixture CI itself flagged (`query_plan` schema strict-validation).
+
+**Sequential core** (branch `impl/wave-4`, PR #682, merge `a1ed172b`): three implementer
+passes, each followed by an independent fresh-context adversarial verifier (all ACCEPT) —
+(1) scope_tuple classification + a 3-way planner outcome contract (`PlanReceipt |
+ClarificationRequest | PlannerFaultResult`) that folds in a real production fix (LLM
+non-JSON output previously surfaced as a raw, internals-leaking HTTP 422; now one
+structured repair-retry then a typed fault, per explicit native instruction to fold the fix
+into the C-5 outcome-contract lane rather than defer it); (2) `compileContract` wired into
+the live consult route, deleting the hardcoded B.11 floor injection — verifier found and
+disclosed a genuine architecture gap (MCP↔web tool-namespace mismatch; only 4 of ~23
+distinct tool names have a web-executable equivalent), so "floor arrives compiled" is
+honestly ~10% real today or, put positively, was implemented safely, with the FULL
+pre-existing production behavior preserved as explicitly-named guarantee functions rather
+than degraded; (3) completeness receipts + a ≤2000-token orientation front-door, both new
+on the web channel, ported faithfully from the already-live MCP-channel implementations.
+
+**Four parallel lanes**, each independently verified before merge: floor completeness
+(career/health/marriage floors now carry all 11 §B0.4 mandatory tags, zero fabricated tool
+references); CR-55 resolved CLOSED-WITH-RESIDUAL via a live Postgres query (Venus
+genuinely weakest by shadbala; a stale view is already overridden at serving time) plus 2
+more stale `cr_status.ts` entries found in the same pass; floor precompilation cache
+(content-hash-keyed, 48 entries, verified inert drop-in); `prashna_ask` headless spike
+(boundary-mocked integration test on chart 1c826d5a, honestly disclosed as not live E2E).
+One real cross-lane integration bug surfaced by the full-suite run after merging all lanes
+(prashna_ask_spike didn't know about the new 3-way outcome contract) — fixed and
+re-verified before proceeding. CI itself caught a second real gap (the vidhi MCP-mirror
+codegen check, stale after the floor-completeness campaign) — regenerated and fixed.
+
+**V4 gate: ACCEPT** — fresh-context holistic reviewer, independent of every per-lane
+verifier: scope-tuple round-trip confirmed for all 12 classifier intents (zero throws,
+the feared silent `general_synthesis` collapse provably dead — it is a documented,
+non-empty fallback floor, never a masked failure); B.11-by-construction confirmed (no
+hidden hardcoding survives outside the disclosed guarantee functions); completeness
+receipts confirmed wired to real per-tool execution outcomes; full suite green (6378
+passed / 0 failed); kala/gochara semantics confirmed untouched by diff.
+
+**Merge + deploy:** deploy mutex checked clear (no other wave's PR open) before merging;
+PR #682 → `a1ed172b`, live-SHA confirmed on `amjis-web`. **Live-probe re-verification
+against the deployed connector, chart 1c826d5a:** the exact question that reproducibly
+422'd 3/3 times pre-merge now returns a clean `data-clarification` HTTP 200 — the C-5
+outcome working live for the first time; a career-assessment question returned a full
+synthesis (~51s, 4 tool calls — within the ≤10-umbrella-call target) with
+`data-orientation` (790/2000 tokens, `weakest_graha:"Jupiter"` explicitly citing the CR-55
+fix — live proof it's deployed and serving) and `data-completeness` (honestly mostly
+`empty`/`web_namespace_gap`, per the disclosed architecture gap) both firing correctly.
+**New residual found live, recorded not fixed**: 3 of 4 tools called (`msr_sql`,
+`get_yoga_firings`, `cgm_graph_walk`) fast-failed in single-digit ms while `vector_search`
+succeeded normally — widens CR-118 beyond `msr_sql` alone (CR-118 updated with full
+evidence in the defect register); 2 of the 3 are floor-adoption's own web-bridge mappings,
+so this further limits compiled-floor coverage today. Did not block the response
+(graceful degradation held). Out of W4 scope per the native's standing ruling.
+
+```yaml
+session_close:
+  session_id: W4-ONE-PLANNER-CLOSE-2026-07-21
+  wave: W4
+  close_criteria_met: true
+  verification: "Precondition (PR #677) + C-2 (PR #680) + sequential core/4 parallel lanes
+    (PR #682) each independently adversarially verified ACCEPT before integration; one
+    cross-lane bug (prashna_ask_spike outcome-contract mismatch) and one CI-caught gap
+    (vidhi codegen mirror drift) found and fixed post-merge-of-lanes, re-verified; V4
+    holistic gate ACCEPT (scope-tuple round-trip all 12 intents, B.11-by-construction,
+    completeness receipts live-wired, full suite 6378/0 failed, kala/gochara untouched by
+    diff); live-probe re-verification against the deployed connector confirmed the
+    ClarificationRequest fix, the compiled-floor honesty, and the CR-55 fix all serving
+    correctly in production"
+  deploy: "amjis-web live-SHA confirmed at a1ed172bcd5aa0609c16abbb91750b683547628a
+    (merge commit); Deploy to Cloud Run + CI — Ganga Quality Gate + TAP CI all green
+    post-merge; deploy mutex checked clear before merge (no other open wave PR)"
+  product_code_writes_made: "PRs #677 (bundle_hydrator precondition), #680 (C-2 audience_tier
+    excision), #682 (W4 sequential core + 4 parallel lanes), all merged + deployed"
+  native_chart_touched: true
+  native_chart_touch_detail: "Live-probe re-verification against chart 1c826d5a (2 questions)
+    and earlier precondition verification against 482012f1 (2 questions) — read-only
+    consult-route invocations, no chart data mutated; conversation rows created are the
+    intended artifact of exercising the real serving path, per the same fence discipline
+    PG-2 established (max questions per probe, ids not needed to be tracked further since
+    this is now normal production traffic, not a diagnostic fence)"
+  current_state_updated: true
+  register_dispositions_flipped: "CR-115 (record_outcome/phala_anchors schema drift) and
+    CR-55/CR-54/CR-59 (cr_status.ts re-derivation) already recorded in prior sessions;
+    CR-118 added this wave (msr_sql tool error) and updated post-deploy (widened to 3
+    tools, 2 of which are floor-adoption's own web-bridge mappings)"
+  followups: "Parked, not flipped: alias cutover + single-bootstrap flag, queued for the
+    front of W5 pending the native's explicit D-5-quiet confirmation (carried from W3).
+    CR-118 (tool fast-fail pattern) and the MCP↔web namespace gap (floor-adoption
+    coverage, currently ~10% real) are the two carried, named residuals for W5/PF-1.
+    PF-1's own remaining scope (teardown-orphan sweep, outcome.py/phala_anchors) is
+    unaffected by this wave and still awaits kickoff after W4 (now satisfied)."
+  next_session_objective: "W5 (Adaptive Serving + Scale, R-4) — NOT opened by this session
+    per the native's explicit 'stop before W5' instruction. Native go-ahead required."
+```
+
+
+### Next session objective
+
+W5 (Adaptive Serving + Scale, R-4) is next per the retrieval campaign's own wave sequence, but this session does NOT open it — the native's explicit close-out instruction was to stop before W5. Native go-ahead required to proceed; the two carried residuals (CR-118's widened tool fast-fail pattern, and the MCP↔web namespace gap limiting compiled-floor coverage) are named entry points for whichever of W5 or PF-1 picks them up first.
+
+*End of W4-ONE-PLANNER-CLOSE-2026-07-21 entry — 2026-07-21.*
