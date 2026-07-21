@@ -124,7 +124,13 @@ describe('W6 Part E — NO-LEAKAGE runtime canary — door 2 (prashna_ask route,
 
     const resp = await POST(req)
     expect(resp.status).toBe(200)
-    const body = await resp.json()
+    // W6 Part 1: the route now streams NDJSON (progress lines + one final
+    // line) instead of a single JSON blob — read the full body and take the
+    // last line (the `"event":"final"` payload, same shape as before).
+    const text = await resp.text()
+    const lines = text.trim().split('\n').filter((l) => l.length > 0).map((l) => JSON.parse(l))
+    const body = lines[lines.length - 1]
+    expect(body.event).toBe('final')
 
     expect(body.completeness.stripped_leaked_capabilities).toContain(LEAKED_TOOL)
     expect(body.results.map((r: { tool_name: string }) => r.tool_name)).not.toContain(LEAKED_TOOL)
