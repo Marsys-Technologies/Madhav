@@ -250,14 +250,23 @@ export async function POST(request: Request) {
     plan.tool_calls.map((tc) => [tc.tool_name, tc.params]),
   )
 
-  // ── Sequential, cost-cap-gated tool dispatch ─────────────────────────────────
-  const toolResults: Array<{ tool_name: string; bundle: import('@/lib/retrieval/shared_types').ToolBundle }> = []
-  const toolEventLog: ToolDispatchOutcome[] = []
-  const judgmentFlags: string[] = []
-  let costCapTripped: { reason: string; judgmentFlag: string } | null = null
-  let unservedTools: string[] = []
-  const unresolvedTools: string[] = []
-
+  // ── Sequential, cost-cap-gated tool dispatch — STREAMED (W6 Part 1) ─────────
+  //
+  // The dispatch loop below is unchanged in what it computes and enforces
+  // (same cap checks, same NO-LEAKAGE-filtered tool list, same per-tool
+  // try/catch) — the only change is that instead of accumulating everything
+  // silently and returning one NextResponse.json blob at the very end, the
+  // loop body now lives inside a ReadableStream's `start()` and emits one
+  // NDJSON progress line per completed dispatch iteration, ending with a
+  // single `{"event":"final", ...}` line carrying the EXACT SAME body shape
+  // this route returned before this change (verify against route.test.ts).
+  //
+  // Progress is emitted AFTER each iteration completes (not before) — a
+  // caller polling prashna_status wants to know what has ALREADY happened
+  // (which tool just finished, how many are done), not merely that dispatch
+  // is about to attempt one. This also means the emitted `tools_dispatched_count`
+  // is always accurate against `toolEventLog` at the moment of emission.
+  //
   // Plan object handed to getToolByName().retrieve() — that wrapper reads
   // plan['chart_id'] directly (tool_name_bridge.ts's getToolByName) to build the
   // per_chart handler args, exactly like /api/mcp/primitives/[tool]/route.ts's
@@ -275,65 +284,103 @@ export async function POST(request: Request) {
     chart_id: chartId,
   }
 
-  for (let i = 0; i < dispatchableTools.length; i++) {
-    const toolName = dispatchableTools[i]
+  const encoder = new TextEncoder()
+  const dispatchLoopStart = Date.now()
 
-    // Resolve BEFORE checking the cap — an unresolved tool name is not a real
-    // dispatch attempt and must not consume a call-count slot from the budget.
-    const tool = getToolByName(toolName)
-    if (!tool) {
-      // Unresolved name — not a cap event, but it IS a planned tool that never
-      // ran, so it must be disclosed. Silently dropping it here would violate
-      // this route's own "never presented as complete when something planned
-      // didn't run" invariant just as surely as a cost-cap trip would.
-      unresolvedTools.push(toolName)
-      continue
-    }
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const toolResults: Array<{ tool_name: string; bundle: import('@/lib/retrieval/shared_types').ToolBundle }> = []
+      const toolEventLog: ToolDispatchOutcome[] = []
+      const judgmentFlags: string[] = []
+      let costCapTripped: { reason: string; judgmentFlag: string } | null = null
+      let unservedTools: string[] = []
+      const unresolvedTools: string[] = []
 
-    const check = tracker.checkAndRecordCall()
-    if (check.stopped) {
-      costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
-      judgmentFlags.push(check.judgmentFlag ?? 'cost_cap_exceeded')
-      unservedTools = dispatchableTools.slice(i)
-      break
-    }
+      const emitProgress = (lastTool: string): void => {
+        controller.enqueue(
+          encoder.encode(
+            JSON.stringify({
+              event: 'progress',
+              tools_dispatched_count: toolEventLog.length,
+              cap_ceiling: { maxCalls: costCaps.maxCalls, maxWallClockMs: costCaps.maxWallClockMs },
+              elapsed_ms: Date.now() - dispatchLoopStart,
+              last_tool: lastTool,
+            }) + '\n',
+          ),
+        )
+      }
 
-    const toolStart = Date.now()
-    try {
-      const bundle = await tool.retrieve(queryPlanLike, paramsByTool.get(toolName))
-      toolResults.push({ tool_name: toolName, bundle })
-      toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, latency_ms: Date.now() - toolStart })
-    } catch (err) {
-      toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, latency_ms: Date.now() - toolStart })
-      console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
-    }
-  }
+      for (let i = 0; i < dispatchableTools.length; i++) {
+        const toolName = dispatchableTools[i]
 
-  if (leakedTools.length > 0) {
-    judgmentFlags.push('no_leakage_capabilities_stripped')
-  }
-  if (unresolvedTools.length > 0) {
-    judgmentFlags.push('planned_tools_unresolved')
-  }
+        // Resolve BEFORE checking the cap — an unresolved tool name is not a real
+        // dispatch attempt and must not consume a call-count slot from the budget.
+        const tool = getToolByName(toolName)
+        if (!tool) {
+          // Unresolved name — not a cap event, but it IS a planned tool that never
+          // ran, so it must be disclosed. Silently dropping it here would violate
+          // this route's own "never presented as complete when something planned
+          // didn't run" invariant just as surely as a cost-cap trip would.
+          unresolvedTools.push(toolName)
+          continue
+        }
 
-  const isPartial = costCapTripped !== null || unresolvedTools.length > 0
+        const check = tracker.checkAndRecordCall()
+        if (check.stopped) {
+          costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
+          judgmentFlags.push(check.judgmentFlag ?? 'cost_cap_exceeded')
+          unservedTools = dispatchableTools.slice(i)
+          break
+        }
 
-  return NextResponse.json({
-    ok: true,
-    trace_id: queryId,
-    chart_id: chartId,
-    outcome: 'plan',
-    query_class: plan.query_class,
-    query_intent_summary: plan.query_intent_summary,
-    completeness: {
-      status: isPartial ? 'partial' : 'complete',
-      tools_dispatched: toolEventLog,
-      unserved_tools: unservedTools,
-      unresolved_tools: unresolvedTools,
-      stripped_leaked_capabilities: leakedTools,
-      cap_tripped: costCapTripped?.reason ?? null,
+        const toolStart = Date.now()
+        try {
+          const bundle = await tool.retrieve(queryPlanLike, paramsByTool.get(toolName))
+          toolResults.push({ tool_name: toolName, bundle })
+          toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, latency_ms: Date.now() - toolStart })
+        } catch (err) {
+          toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, latency_ms: Date.now() - toolStart })
+          console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
+        }
+
+        emitProgress(toolName)
+      }
+
+      if (leakedTools.length > 0) {
+        judgmentFlags.push('no_leakage_capabilities_stripped')
+      }
+      if (unresolvedTools.length > 0) {
+        judgmentFlags.push('planned_tools_unresolved')
+      }
+
+      const isPartial = costCapTripped !== null || unresolvedTools.length > 0
+
+      const finalBody = {
+        ok: true,
+        trace_id: queryId,
+        chart_id: chartId,
+        outcome: 'plan',
+        query_class: plan.query_class,
+        query_intent_summary: plan.query_intent_summary,
+        completeness: {
+          status: isPartial ? 'partial' : 'complete',
+          tools_dispatched: toolEventLog,
+          unserved_tools: unservedTools,
+          unresolved_tools: unresolvedTools,
+          stripped_leaked_capabilities: leakedTools,
+          cap_tripped: costCapTripped?.reason ?? null,
+        },
+        judgment_flags: judgmentFlags,
+        results: toolResults,
+      }
+
+      controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...finalBody }) + '\n'))
+      controller.close()
     },
-    judgment_flags: judgmentFlags,
-    results: toolResults,
+  })
+
+  return new Response(stream, {
+    status: 200,
+    headers: { 'Content-Type': 'application/x-ndjson' },
   })
 }

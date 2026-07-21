@@ -12,6 +12,15 @@
  *      judgment_flags entry and an unserved_tools list.
  *   5. A leaked (calibration_context_only) capability never appears in what gets
  *      dispatched, even though the planner "authorized" it.
+ *
+ * Streaming (W6 Part 1): the success path (`outcome: 'plan'`) now returns an
+ * NDJSON-streamed `Response` (one `{"event":"progress",...}` line per completed
+ * tool-dispatch iteration, ending with one `{"event":"final",...}` line) instead
+ * of a single `NextResponse.json(...)` blob. `readNdjson()` below reads the full
+ * body and splits it into parsed lines; the LAST line's payload (minus the
+ * `event` discriminator) must match exactly what the old single-blob assertions
+ * already checked. The early-return paths (400/401/clarification_needed/fault)
+ * are unchanged — still a single JSON response, asserted via `res.json()`.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -59,6 +68,15 @@ function makeReq(body: object, headers: Record<string, string> = {}): Request {
     },
     body: JSON.stringify(body),
   })
+}
+
+async function readNdjson(res: Response): Promise<Array<Record<string, unknown>>> {
+  const text = await res.text()
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line))
 }
 
 function planOutcome(toolNames: string[]) {
@@ -143,11 +161,23 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
     const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
     expect(res.status).toBe(200)
-    const body = await res.json()
+    expect(res.headers.get('content-type')).toContain('application/x-ndjson')
+
+    const lines = await readNdjson(res)
+    const progressLines = lines.filter((l) => l.event === 'progress')
+    const finalLines = lines.filter((l) => l.event === 'final')
+
+    // Interim progress: at least one line appears before the final line for a
+    // multi-tool request (streamed incrementally, not one blob).
+    expect(progressLines.length).toBeGreaterThan(0)
+    expect(finalLines.length).toBe(1)
+    expect(lines[lines.length - 1].event).toBe('final')
+
+    const body = finalLines[0]
     expect(body.ok).toBe(true)
-    expect(body.completeness.status).toBe('complete')
-    expect(body.completeness.cap_tripped).toBeNull()
-    expect(body.results.map((r: { tool_name: string }) => r.tool_name)).toEqual(['chart_facts_query', 'get_positions'])
+    expect((body.completeness as { status: string }).status).toBe('complete')
+    expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBeNull()
+    expect((body.results as Array<{ tool_name: string }>).map((r) => r.tool_name)).toEqual(['chart_facts_query', 'get_positions'])
     expect(mockGetToolByName).toHaveBeenCalledTimes(2)
   })
 
@@ -185,12 +215,14 @@ describe('POST /api/mcp/prashna_ask — cost cap enforcement', () => {
 
     const res = await POST_WITH_LOW_CAP(makeReq({ chart_id: CHART, question: 'deep dive' }))
     expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body.completeness.status).toBe('partial')
-    expect(body.completeness.cap_tripped).toBe('call_count_cap')
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+    expect(body.event).toBe('final')
+    expect((body.completeness as { status: string }).status).toBe('partial')
+    expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBe('call_count_cap')
     expect(body.judgment_flags).toContain('cost_cap_call_count_exceeded')
-    expect(body.completeness.unserved_tools.length).toBeGreaterThan(0)
-    expect(body.results.length).toBe(1)
+    expect((body.completeness as { unserved_tools: unknown[] }).unserved_tools.length).toBeGreaterThan(0)
+    expect((body.results as unknown[]).length).toBe(1)
   })
 })
 
@@ -218,14 +250,16 @@ describe('POST /api/mcp/prashna_ask — unresolved planner tool names', () => {
       }
     })
     const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
-    const body = await res.json()
-    expect(body.completeness.status).toBe('partial')
-    expect(body.completeness.unresolved_tools).toContain('a_hallucinated_tool_name')
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+    expect(body.event).toBe('final')
+    expect((body.completeness as { status: string }).status).toBe('partial')
+    expect((body.completeness as { unresolved_tools: unknown[] }).unresolved_tools).toContain('a_hallucinated_tool_name')
     expect(body.judgment_flags).toContain('planned_tools_unresolved')
     // The unresolved name must not have consumed a cost-cap call slot or
     // blocked the tool that DID resolve from running.
-    expect(body.results.map((r: { tool_name: string }) => r.tool_name)).toContain('chart_facts_query')
-    expect(body.completeness.cap_tripped).toBeNull()
+    expect((body.results as Array<{ tool_name: string }>).map((r) => r.tool_name)).toContain('chart_facts_query')
+    expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBeNull()
   })
 })
 
@@ -235,9 +269,11 @@ describe('POST /api/mcp/prashna_ask — NO-LEAKAGE', () => {
       planOutcome(['marsys://tool/L5/lel_query', 'chart_facts_query']),
     )
     const res = await POST(makeReq({ chart_id: CHART, question: 'what happened in my life' }))
-    const body = await res.json()
-    expect(body.completeness.stripped_leaked_capabilities).toContain('marsys://tool/L5/lel_query')
-    expect(body.results.map((r: { tool_name: string }) => r.tool_name)).not.toContain('marsys://tool/L5/lel_query')
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+    expect(body.event).toBe('final')
+    expect((body.completeness as { stripped_leaked_capabilities: unknown[] }).stripped_leaked_capabilities).toContain('marsys://tool/L5/lel_query')
+    expect((body.results as Array<{ tool_name: string }>).map((r) => r.tool_name)).not.toContain('marsys://tool/L5/lel_query')
     expect(body.judgment_flags).toContain('no_leakage_capabilities_stripped')
     // getToolByName must never have been called for the leaked tool.
     expect(mockGetToolByName).not.toHaveBeenCalledWith('marsys://tool/L5/lel_query')
