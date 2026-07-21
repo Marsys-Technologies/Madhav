@@ -190,13 +190,26 @@ describe('flag=true (default) vs flag=false (forced off) — mechanical complete
 
     // No duplicated capability EITHER direction: the only URIs present under
     // the new default (flag=true) but absent under the legacy path (flag=false)
-    // are exactly the known reverse gap (synth_compose_large_n) — a full
-    // symmetric mechanical diff, not a spot check. (Re-verified live immediately
-    // before the D-5 unpark flip: FALSE_ONLY=[] / TRUE_ONLY=['marsys://tool/
-    // synthesis/compose_large_n'].)
+    // are the known reverse-gap set — a full symmetric mechanical diff, not a
+    // spot check. This set is EXPECTED TO GROW over time now that
+    // single-bootstrap is the production default (W5 L0): new capabilities
+    // registered in catalog.ts going forward are not backported to the
+    // legacy route.ts dual-list, which is a deprecated fallback path only
+    // reachable via an explicit env override. Each addition here must be a
+    // deliberately reviewed, real capability — never an accidental omission
+    // from catalog.ts — so this asserts an exact known set (updated per
+    // addition) rather than "at least" or "any", to keep the growth visible
+    // and reviewed at merge time.
+    //   - 'marsys://tool/synthesis/compose_large_n' — the original reverse
+    //     gap, present since before the D-5 unpark flip.
+    //   - 'marsys://tool/L-SPINE/query_spine_bundle' — W5 L5's new spine-
+    //     bundle capability, registered only in catalog.ts (the modern path).
     const falseSet = new Set(falseUris)
     const trueOnly = trueUris.filter((uri) => !falseSet.has(uri))
-    expect(trueOnly).toEqual(['marsys://tool/synthesis/compose_large_n'])
+    expect(trueOnly.sort()).toEqual([
+      'marsys://tool/L-SPINE/query_spine_bundle',
+      'marsys://tool/synthesis/compose_large_n',
+    ])
 
     // The forward-divergent items (5 GT-40 originals + 1 newly-found —
     // marsys://tool/router/route was ALSO unreachable via catalog.ts before the
