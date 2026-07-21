@@ -77,6 +77,8 @@ import {
   ensureB11WholeChartReadFloor,
   ensureDashaContextFloor,
 } from '@/lib/pipeline/compiled_floor_adapter'
+import { buildWebCompletenessReceipt, type WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
+import { buildChartOrientation, type ChartOrientation } from '@/lib/retrieval/orientation'
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
 // D7 Step 4: getTool() replaced with registry-backed getToolByName(); tool_catalogue RETIRED
 // DO NOT restore lib/retrieve imports — see RETRIEVAL_D7_CALLER_MAP_v1_0.md §2.1
@@ -404,6 +406,18 @@ export async function POST(request: Request) {
     : []
 
   const manifest = await loadManifest('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', '00_ARCHITECTURE/manifest_overrides.yaml')
+
+  // ── W4 core step 5 — S-1 orientation front-door ────────────────────────────
+  // Kick off the ≤2000-token orientation block (chart frame + structural facts +
+  // notable gestalt findings + dasha context + category/drill map) EARLY, concurrently
+  // with the planner + tool-fetch latency. Non-throwing (degrades to header+inventory on
+  // any failure). Awaited just before adapter dispatch and delivered as a data-orientation
+  // SSE event near the start of the stream. See @/lib/retrieval/orientation.
+  const orientationPromise: Promise<ChartOrientation | null> = buildChartOrientation(chartId)
+    .catch((err: unknown) => {
+      console.error('[consume:v2] orientation build failed (non-fatal):', err)
+      return null
+    })
 
   // ── Single-path LLM-first planner ─────────────────────────────────────────
   // No flag guard. No circuit breaker. No fallback. The planner produces
@@ -812,6 +826,26 @@ export async function POST(request: Request) {
   const validToolResults = toolResults.filter((r: ToolBundle | null): r is ToolBundle => r !== null)
   const toolFetchMs = Date.now() - toolFetchWallStart
 
+  // ── W4 core step 4 — completeness receipt (web channel) ────────────────────
+  // Now that the floor tools have actually executed, emit a TRUTHFUL served/empty/dark
+  // receipt for the compiled B.11 floor, mapping each floor primitive to its real
+  // per-tool outcome (toolEventLog). Most floor items are dark/empty today because
+  // only a small subset of MCP floor primitives map to web-executable retrieval tools
+  // (the MCP↔web namespace gap) — the receipt's channel_note states that honestly.
+  // Delivered as a data-completeness SSE event near the end of the stream.
+  let completenessReceipt: WebCompletenessReceipt | null = null
+  if (plan.scope_tuple) {
+    completenessReceipt = buildWebCompletenessReceipt(
+      plan.scope_tuple,
+      chartId,
+      toolEventLog.map(e => ({ name: e.name, status: e.status, ok_count: e.ok_count })),
+    )
+  }
+
+  // Await the orientation front-door (kicked off at request open, overlapping planner +
+  // tool-fetch latency). Null on failure — the dispatch path simply omits the event.
+  const orientation = await orientationPromise
+
   const bundleValidations = await runAll(bundle, 'bundle', { query_plan: queryPlan, bundle, manifest_fingerprint: manifest.fingerprint })
   const bundleSummary = summarize(bundleValidations)
   if (bundleSummary.overall === 'fail' && configService.getFlag('VALIDATOR_FAILURE_HALT')) {
@@ -1029,6 +1063,8 @@ export async function POST(request: Request) {
     pendingStreamWriter,
     fetchMsrSnippets,
     dataReadinessNote,
+    orientation,
+    completenessReceipt,
   })
   // (formerly route.ts L899–1319: STACK_TO_ADAPTER mapping → adapter chat
   // request assembly → Gemini cache → createUIMessageStream → B.11 citation
