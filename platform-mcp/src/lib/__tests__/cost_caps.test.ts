@@ -43,7 +43,7 @@ describe('resolveCostCapsForEntitlement', () => {
 
   it('returns a distinct cap set for a higher entitlement tier', () => {
     const caps = resolveCostCapsForEntitlement('super_admin');
-    expect(caps).not.toEqual(DEFAULT_COST_CAPS);
+    expect(caps).toEqual({ maxCalls: 25, maxWallClockMs: 300_000 });
   });
 
   it('falls back to defaults for an unrecognized entitlement string', () => {

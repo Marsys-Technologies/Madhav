@@ -1,3 +1,5 @@
+import type { Principal } from '../types.js';
+
 /**
  * cost_caps.ts — Dual cost-cap tracker (call-count + wall-clock), fail-honest.
  *
@@ -88,6 +90,23 @@ export const DEFAULT_COST_CAPS: CostCapConfig = {
 };
 
 /**
+ * Per-tier cap overrides, keyed by the exact `Principal.role` vocabulary
+ * from `platform-mcp/src/types.ts`. Hoisted to module scope so it isn't
+ * reallocated on every `resolveCostCapsForEntitlement` call.
+ *
+ * 'super_admin' figures (25 calls / 300s) are a provisional 2.5x allowance
+ * for operator diagnostic/multi-pass sessions — NOT empirically calibrated
+ * like `DEFAULT_COST_CAPS` (which cites a measured W4 worst case). Revisit
+ * once real super_admin prashna_ask usage data exists.
+ */
+const COST_CAP_OVERRIDES_BY_ENTITLEMENT: Partial<Record<Principal['role'], CostCapConfig>> = {
+  super_admin: {
+    maxCalls: 25,
+    maxWallClockMs: 300_000,
+  },
+};
+
+/**
  * Per-entitlement cost-cap resolution (ratified doctrine: both caps must be
  * configurable per entitlement, not a single global default).
  *
@@ -97,16 +116,15 @@ export const DEFAULT_COST_CAPS: CostCapConfig = {
  * first and mirror it here.
  *
  * 'guest' gets `DEFAULT_COST_CAPS` (the base full-loop entitlement tier).
- * 'super_admin' gets a higher allowance — operators/admins run diagnostic
- * and multi-pass sessions that legitimately need more sub-calls and more
- * wall-clock headroom than a guest-tier caller.
+ * 'super_admin' gets a higher allowance — see the override table's comment.
+ *
+ * Accepts `Principal['role'] | string` — the literal union gives callers
+ * compile-time checking for the real tier vocabulary, while the wider
+ * `string` fallback (falling back to `DEFAULT_COST_CAPS` for anything
+ * unrecognized) is intentional defense-in-depth, not a typing gap.
  */
-export function resolveCostCapsForEntitlement(entitlement: string): CostCapConfig {
-  const overrides: Record<string, CostCapConfig> = {
-    super_admin: {
-      maxCalls: 25,
-      maxWallClockMs: 300_000,
-    },
-  };
-  return overrides[entitlement] ?? DEFAULT_COST_CAPS;
+export function resolveCostCapsForEntitlement(
+  entitlement: Principal['role'] | (string & {})
+): CostCapConfig {
+  return COST_CAP_OVERRIDES_BY_ENTITLEMENT[entitlement as Principal['role']] ?? DEFAULT_COST_CAPS;
 }
