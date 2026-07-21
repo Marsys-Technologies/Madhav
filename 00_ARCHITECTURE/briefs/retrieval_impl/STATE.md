@@ -1751,3 +1751,83 @@ D-5-quiet confirmation (same standing instruction carried from W3). CR-118 (tool
 fast-fail pattern, widened) and the MCP↔web namespace gap (floor-adoption coverage) are
 the two carried, named residuals for W5/PF-1. W5 (Adaptive Serving + Scale) is next,
 not opened by this session.
+
+## W5 OPEN (2026-07-21) — Adaptive Serving + Scale
+
+**Scope amendments from the native, ratifying/redirecting the W5 standing scope (brief
+§E W5) before lane dispatch:**
+
+1. **MCP↔web namespace bridge is W5's first-class core item, not a side lane.** The web
+   channel's hand-made tool bridge becomes a *generated projection of the compiled
+   catalog*, the same way every other served surface is generated — this is the
+   mechanism that takes floor adoption from ~10% (career-only, measured at W4 close) to
+   100% across all families. CR-118's fast-fail mappings and the `msr_sql` defect are
+   fixed *by regenerating the bridge*, not by hand-patching the existing hand-made one —
+   a hand-patch would be scoped-in-place work this wave explicitly supersedes.
+2. **D-5 alias cutover + single-bootstrap flag-flip are UNPARKED**, confirmed quiet
+   (`STATE_D-5.md` lifecycle_step 8 — CLOSE + CLEANUP, gate_run_3 GREEN-WITH-PARTIALS,
+   `current_wave` advances to D-4b), and run FIRST in this wave as the breaking-release
+   window.
+3. **Verdict-first streaming joins W5's UX scope.** W4's close measurement (above) makes
+   this concrete: synthesis (38.7s) is effectively the whole perceived-latency budget.
+   Stream the verdict/orientation layer (brief §9.7) while synthesis completes, and
+   redefine the time-to-first-verdict SLO as a stage-timing metric (target TBD from the
+   §9.7 pressure-point baselines) fit to the single-request web architecture — the plan's
+   original ≤3-calls-to-first-verdict framing doesn't map onto this architecture (also
+   noted at W4 close).
+
+**Coexistence check (brief §I, at wave open) — RE-RUN, result differs from the D-5
+assumption baked into amendment 2 above:**
+
+- `STATE_D-5.md`: D-5 lifecycle_step 8, CLOSE + CLEANUP, gate_run_3 (final,
+  native-authorized re-run) GREEN-WITH-PARTIALS. **D-5 itself is quiet — confirmed.**
+- **D-4b is NOT quiet — it is actively executing.** Evidence, this session: a live
+  `wave/pre-D-4b-readiness` branch; 4 gochara-perf branches (`fix/gochara-kakshya-vedha-
+  perf-cache`, `fix/gochara-perm-perf-cache`, `fix/gochara-skip-redundant-savepoint`,
+  `fix/gochara-sweep-writer-timeout-budget`) plus `feat/gochara-sweep-priority-ordering`
+  already merged to main (PR #681, `1b835b5d`, "B-1-usefulness priority ordering for
+  sweep dispatch — native directive"); two live `worktree-agent-*` branches (other
+  concurrent sessions currently active against this same repo); two **uncommitted**
+  working-tree files consistent with in-flight D-4b readiness work —
+  `platform/supabase/migrations/462_writer_timeout_ka_gochara_sweep.sql` (raises
+  `ka_gochara_sweep` writer_timeout_seconds 1800→21600, evidenced against 11 failed
+  production dispatch attempts) and
+  `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/GOCHARA_SWEEP_2_0_DESIGN_v1_0.md`.
+  `BRIEF_D4B.md` itself is still a v0.1 SKELETON ("Do NOT bind or execute from this
+  skeleton") — the readiness/perf work is running ahead of the formal brief binding.
+  Neither uncommitted file belongs to this campaign; left untouched.
+- **Mutex disposition (per the standing W3/D-5 precedent — only one campaign
+  merges-to-main/deploys in a given window):** mutex is **NOT claimed** by W5 this
+  entry. W5 work proceeds in isolated worktrees against `origin/main`, CI-verified
+  there; no W5 branch merges to `main` — and in particular, amendment 2's breaking-
+  release deploy (alias cutover + bootstrap flag-flip) does **not** fire — until the
+  mutex is re-checked clean immediately before that specific merge. Given D-4b's
+  currently-active branches all sit under `platform/python-sidecar/services/
+  {ka_gochara_sweep,...}` + one migration (the same disjoint footprint W3 already
+  verified against D-5), W5's own lanes (platform/platform-mcp, non-gochara migrations)
+  are not expected to conflict on merge — but the *deploy window* itself is still
+  serialized per the mutex rule, so W5 merges queue behind whatever D-4b has in flight
+  at merge time.
+- **Probe baseline:** re-snapshotted now (pre-W5) per amendment 2's instruction, before
+  any W5 work lands, and will be re-snapshotted again immediately after the D-5
+  unpark deploy and again at W5 close, so each deploy's before/after diff is a genuine
+  comparable rather than one stale baseline stretched across multiple releases.
+
+**Scope declaration for this wave:**
+
+- **may_touch:** `platform/**`, `platform-mcp/**` (incl. new generated-bridge codegen
+  for the web channel), `platform/supabase/migrations/**` (surgical only, §N.4,
+  non-`ka_gochara_sweep`/non-D-4b tables), `00_ARCHITECTURE/RETRIEVAL_*.md`,
+  `00_ARCHITECTURE/briefs/retrieval_impl/**`, `CURRENT_STATE_v1_0.md`, `SESSION_LOG.md`,
+  git branches/worktrees `impl/w5-<lane>` → `impl/wave-5` → `main`.
+- **must_not_touch:** everything under the standing must_not_touch (brief scope, restated
+  at every wave: FROZEN orchestrator/WriterBase contract + all layer writer build logic;
+  root `CLAUDECODE_BRIEF.md` + doctrine-wave briefs/ledgers, read-only; `chart_facts`
+  semantics/LEL content; Paripraśna UI/streaming internals beyond the §9.7 verdict-first
+  seam named in amendment 3) — **plus, for this wave specifically: any
+  `platform/python-sidecar/services/{ka_gochara_sweep,gochara_grammar,
+  gochara_intensity}/` file, migration 462, and any `wave/pre-D-4b-readiness` /
+  `worktree-agent-*` / `fix|feat/gochara-*` branch** — all D-4b-owned while that wave is
+  active.
+
+Lane dispatch begins next entry.

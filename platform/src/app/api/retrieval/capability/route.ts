@@ -93,18 +93,17 @@ async function ensureBootstrapped(): Promise<void> {
   if (_bootstrapped) return
   _bootstrapped = true
 
-  // Retrieval Plane Elevation, plan R-1 item 3 ("single bootstrap", W2b lane).
-  // Default OFF (RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false): falls through to the
-  // hand-maintained registration list below, unchanged from today's behavior.
-  // When ON: this route stops maintaining its own separate per-wave list and
-  // instead imports EXCLUSIVELY from registry/catalog.ts's getCatalog() — the
-  // same production consumption surface both the MCP Layer-2 primitives route
-  // and the chat channel already import (@/lib/retrieval/registry/catalog).
+  // Retrieval Plane Elevation, plan R-1 item 3 ("single bootstrap"). Default ON
+  // as of the W5 "D-5 unpark" breaking release (2026-07-21): this route now
+  // stops maintaining its own separate per-wave list by default and instead
+  // imports EXCLUSIVELY from registry/catalog.ts's getCatalog() — the same
+  // production consumption surface both the MCP Layer-2 primitives route and
+  // the chat channel already import (@/lib/retrieval/registry/catalog).
   // Dynamically imported so the module (and its full L0–L5/D7–D10/synthesis
   // import chain) is never pulled into this route's bundle or executed when
-  // the flag is off. Flipping this flag on in any deployed environment is a
-  // separate, future, explicitly-authorized breaking-release deploy — not
-  // this lane's job; it must stay off everywhere this lane touches.
+  // the flag is forced off. Set
+  // MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false to force the legacy
+  // hand-maintained path below (emergency rollback only).
   if (configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')) {
     const { getCatalog } = await import('@/lib/retrieval/registry/catalog')
     getCatalog()

@@ -143,10 +143,17 @@ export type FeatureFlag =
   // maintaining its own separate per-wave registration list and instead imports
   // its registration list EXCLUSIVELY from registry/catalog.ts's getCatalog()
   // (the same production consumption surface both MCP Layer-2 primitives and
-  // the chat channel already import). Default FALSE in every environment —
-  // flipping it on is a separate, future, explicitly-authorized breaking-release
-  // deploy, not part of this lane. When false, route.ts's dispatch behavior is
-  // byte-for-byte identical to its pre-flag behavior.
+  // the chat channel already import). Default TRUE as of the W5 "D-5 unpark"
+  // breaking release (2026-07-21): D-5 confirmed quiet (STATE_D-5.md lifecycle_step
+  // 8, CLOSE+CLEANUP, gate_run_3 GREEN-WITH-PARTIALS); the GT-40 divergence (5
+  // forward + 1 reverse + the router/route 7th finding) was re-verified zero
+  // (beyond the one deliberate reverse item, synth_compose_large_n) via
+  // single_bootstrap_flag.test.ts's mechanical flag=false-vs-flag=true URI diff
+  // immediately before this flip. Set
+  // MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false in env to force the
+  // legacy hand-maintained bootstrap path (emergency rollback only — kept fully
+  // exercised by this lane's tests via that override, but no longer the
+  // production default).
   // Env: MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED.
   | 'RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED'
 
@@ -234,11 +241,12 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // MCPT v3.1.0 — MCP v3.1 pure-MCP server. Default true — foundation sealed 2026-05-22.
   // Override via MARSYS_FLAG_MCP_V3_ENABLED=false to revert to v1 path (emergency only).
   MCP_V3_ENABLED: true,
-  // Retrieval Plane Elevation R-1 item 3 — single bootstrap. Default FALSE:
-  // route.ts keeps its own hand-maintained registration list until a future,
-  // separately-authorized breaking-release deploy flips this on.
-  // Override via MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=true.
-  RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: false,
+  // Retrieval Plane Elevation R-1 item 3 — single bootstrap. Default TRUE as of
+  // the W5 "D-5 unpark" breaking release (2026-07-21) — route.ts now bootstraps
+  // exclusively from registry/catalog.ts's getCatalog() in production.
+  // Override via MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false to force
+  // the legacy hand-maintained bootstrap path (emergency rollback only).
+  RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: true,
 }
 
 // Numeric config keys (read via configService.getValue)
