@@ -10,6 +10,12 @@ export type QueryClass =
   | 'classical_grounding'
   | 'multi_school_triangulation'
 
+/**
+ * @deprecated for prompt-template keying (C-2 tier_excision): templates are no
+ * longer keyed by audience tier. Retained because the panel synthesis path
+ * (SynthesisRequest.audience_tier → adjudicator/member prompt rendering) still
+ * consumes it.
+ */
 export type AudienceTier = 'super_admin' | 'acharya_reviewer' | 'client' | 'public_redacted'
 
 export type SynthesisStrategy = 'single_model' | 'panel'
@@ -20,7 +26,6 @@ export interface PromptTemplate {
   template_id: string
   version: string
   query_class: QueryClass
-  audience_tier: AudienceTier
   strategy: SynthesisStrategy
   body: string
   style_suffixes: {

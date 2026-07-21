@@ -38,7 +38,6 @@ function makeQueryPlan(overrides: Partial<QueryPlan> = {}): QueryPlan {
     query_class: 'factual',
     domains: ['planets'],
     forward_looking: false,
-    audience_tier: 'super_admin',
     tools_authorized: ['msr_sql', 'vector_search'],
     history_mode: 'synthesized',
     panel_mode: false,

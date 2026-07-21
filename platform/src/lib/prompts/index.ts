@@ -4,18 +4,13 @@
  * Versioned prompt templates per query class, enabling M5 calibration to swap
  * in learned prompts without touching the Synthesis Orchestrator (Stream D).
  *
- * AUDIENCE TIER FALLBACK POLICY
- * ------------------------------
- * Phase 3 only registers `super_admin` × `single_model` templates.
- * When `get()` is called with `audience_tier: 'acharya_reviewer'` and no
- * explicit acharya_reviewer template is registered, it falls back to the
- * super_admin template for the same (query_class, strategy) combination.
- * Callers that need the methodology-disclosure preamble for the acharya_reviewer
- * audience should apply ACHARYA_REVIEWER_PREAMBLE from ./templates/shared
- * to the rendered output, or register a dedicated acharya_reviewer template.
+ * Templates are keyed by (query_class, strategy). `audience_tier` was excised
+ * (C-2, tier_excision doctrine / DG1 ruling): the field never differentiated
+ * template content — only `single_model` templates are registered and audience
+ * adaptation is handled by the style suffix — so it is no longer part of the key.
  */
 
-import type { QueryClass, AudienceTier, SynthesisStrategy, PromptTemplate } from './types'
+import type { QueryClass, SynthesisStrategy, PromptTemplate } from './types'
 import { template as factualTemplate } from './templates/factual'
 import { template as interpretiveTemplate } from './templates/interpretive'
 import { template as predictiveTemplate } from './templates/predictive'
@@ -32,17 +27,12 @@ export { renderTemplate } from './types'
 
 export interface PromptRegistry {
   /**
-   * Look up a template by (query_class, audience_tier, strategy).
+   * Look up a template by (query_class, strategy).
    *
-   * Falls back to the super_admin template when the audience_tier is
-   * 'acharya_reviewer' and no explicit acharya_reviewer template is
-   * registered for this combination.
-   *
-   * Throws if no template is found even after fallback.
+   * Throws if no template is found.
    */
   get(
     query_class: QueryClass,
-    audience_tier: AudienceTier,
     strategy: SynthesisStrategy,
   ): PromptTemplate
 
@@ -55,41 +45,27 @@ export interface PromptRegistry {
 
 function makeKey(
   query_class: QueryClass,
-  audience_tier: AudienceTier,
   strategy: SynthesisStrategy,
 ): string {
-  return `${query_class}::${audience_tier}::${strategy}`
+  return `${query_class}::${strategy}`
 }
 
 class PromptRegistryImpl implements PromptRegistry {
   private readonly store = new Map<string, PromptTemplate>()
 
   register(template: PromptTemplate): void {
-    this.store.set(makeKey(template.query_class, template.audience_tier, template.strategy), template)
+    this.store.set(makeKey(template.query_class, template.strategy), template)
   }
 
   get(
     query_class: QueryClass,
-    audience_tier: AudienceTier,
     strategy: SynthesisStrategy,
   ): PromptTemplate {
-    // Direct lookup
-    const direct = this.store.get(makeKey(query_class, audience_tier, strategy))
+    const direct = this.store.get(makeKey(query_class, strategy))
     if (direct !== undefined) return direct
 
-    // Fallback: acharya_reviewer and client → super_admin
-    // Phase 3 only registers super_admin templates; client-specific templates
-    // are deferred to a later phase. Style suffix handles audience adaptation.
-    if (audience_tier === 'acharya_reviewer' || audience_tier === 'client') {
-      const fallback = this.store.get(makeKey(query_class, 'super_admin', strategy))
-      if (fallback !== undefined) return fallback
-    }
-
     throw new Error(
-      `PromptRegistry: no template found for (query_class="${query_class}", audience_tier="${audience_tier}", strategy="${strategy}")` +
-        (audience_tier === 'acharya_reviewer' || audience_tier === 'client'
-          ? ' — fallback to super_admin also failed'
-          : ''),
+      `PromptRegistry: no template found for (query_class="${query_class}", strategy="${strategy}")`,
     )
   }
 

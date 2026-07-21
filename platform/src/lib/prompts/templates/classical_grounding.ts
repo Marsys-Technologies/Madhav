@@ -12,7 +12,6 @@ export const template: PromptTemplate = {
   template_id: 'classical_grounding_super_admin_single_model_v1',
   version: '1.0',
   query_class: 'classical_grounding',
-  audience_tier: 'super_admin',
   strategy: 'single_model',
   body: `${buildOpeningBlock()}
 

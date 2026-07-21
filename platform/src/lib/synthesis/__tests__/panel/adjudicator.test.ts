@@ -44,7 +44,6 @@ const fakeSynthesisRequest: SynthesisRequest = {
     query_text: 'What does my 7th house indicate?',
     domains: ['relationship'],
     forward_looking: false,
-    audience_tier: 'super_admin',
     history_mode: 'synthesized',
     panel_mode: true,
     expected_output_shape: 'three_interpretation',

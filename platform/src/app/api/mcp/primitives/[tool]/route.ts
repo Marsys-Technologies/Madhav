@@ -213,7 +213,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     query_class: 'holistic',
     domains: [],
     forward_looking: false,
-    audience_tier: audienceTier,
     tools_authorized: [retrievalToolName],
     history_mode: 'synthesized',
     panel_mode: false,
@@ -233,12 +232,11 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   // Execute the retrieval tool via registry bridge.
-  // D7: audience_tier stripped from plan before passing to registry handler (DG1 ruling).
-  const { audience_tier: _stripped, ...planWithoutTier } = queryPlan
-  void _stripped // intentionally stripped
+  // C-2 (tier_excision / DG1 ruling): audience_tier no longer exists on the
+  // query plan — the registry is universal-access, so there is nothing to strip.
   let toolResult: unknown
   try {
-    const rawResult = await tool.retrieve(planWithoutTier as Record<string, unknown>, toolParams)
+    const rawResult = await tool.retrieve(queryPlan as unknown as Record<string, unknown>, toolParams)
     toolResult = rawResult
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

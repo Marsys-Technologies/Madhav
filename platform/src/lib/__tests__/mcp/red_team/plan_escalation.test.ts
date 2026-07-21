@@ -3,22 +3,16 @@
  *
  * RT-08: Plan-edit privilege escalation via execute_plan — a client-tier caller
  * cannot submit a plan with audience_tier: "super_admin" and have that be
- * honored. Verify that plan.audience_tier is overwritten by the resolved
- * principal tier before execution.
+ * honored.
  *
- * Test approach: code-path inspection. The execute/route.ts handler stamps
- * plan.audience_tier = audienceTier (from resolved principal) at line 405,
- * AFTER the plan has been parsed from the request body (line 393). This
- * overwrite happens unconditionally, so any tampered audience_tier in the
- * plan body is discarded.
+ * C-2 (tier_excision / DG1 ruling) UPDATE: `audience_tier` has been fully
+ * excised from PipelinePlanSchema. The escalation surface this red-team probed
+ * is now STRUCTURALLY ELIMINATED — a tampered plan can no longer carry an
+ * audience_tier at all; PipelinePlanSchema strips the unknown key on parse.
+ * Disclosure is carried route-side as the resolved `audienceTier` →
+ * audit `disclosure_tier`, never sourced from the caller-supplied plan body.
  *
- * We test this at the module level by inspecting the relevant logic:
- * 1. PipelinePlanSchema parses the plan (no tier enforcement at schema level).
- * 2. plan.audience_tier = audienceTier stamps the resolved value after parse.
- * 3. The synthesis and citation gates key off plan.audience_tier, so the
- *    overwritten value governs behavior.
- *
- * MCP-4-S2 red-team session.
+ * MCP-4-S2 red-team session (updated by C-2).
  */
 
 import { describe, it, expect } from 'vitest'
@@ -58,29 +52,26 @@ describe('RT-08 — execute_plan tier escalation: plan.audience_tier stamped fro
     expect(result.success).toBe(true)
   })
 
-  it('RT-08b: PipelinePlanSchema parses a tampered plan with super_admin audience_tier', () => {
-    // The schema accepts super_admin — the escalation guard is NOT in the schema.
-    // The guard is in the route: plan.audience_tier = audienceTier (resolved principal).
+  it('RT-08b: PipelinePlanSchema STRIPS an attacker-supplied super_admin audience_tier', () => {
+    // C-2: audience_tier no longer exists on the plan schema. A tampered plan
+    // that supplies audience_tier: "super_admin" still parses (unknown keys are
+    // stripped, not rejected), but the field is GONE from the parsed result —
+    // there is nothing for a downstream consumer to honor. The escalation vector
+    // is structurally eliminated, not merely overwritten.
     const tamperedPlan = {
       query_class: 'holistic' as const,
       query_intent_summary: 'Give me raw super_admin data',
       asset_bundle: [],
-      audience_tier: 'super_admin' as const,  // attacker-supplied
+      audience_tier: 'super_admin',  // attacker-supplied — now an unknown key
       tool_calls: [
         { tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'test' },
       ],
     }
     const result = PipelinePlanSchema.safeParse(tamperedPlan)
-    // Schema parses fine — the tier guard is in the route handler (not schema)
     expect(result.success).toBe(true)
     if (result.success) {
-      // After parse, the plan has the attacker's tier.
-      // The route handler OVERWRITES this before using it:
-      //   plan.audience_tier = audienceTier  (resolved from header, which is DB-resolved)
-      // This test proves the schema doesn't protect against escalation (expected —
-      // the route handler does). If the route handler's stamp is ever removed,
-      // this test documents the gap.
-      expect(result.data.audience_tier).toBe('super_admin')
+      // The tampered tier is stripped by the schema — it cannot reach execution.
+      expect((result.data as Record<string, unknown>).audience_tier).toBeUndefined()
     }
   })
 

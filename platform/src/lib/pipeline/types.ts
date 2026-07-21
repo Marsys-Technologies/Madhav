@@ -17,7 +17,7 @@
  * Separation of concerns:
  *   Fields marked [PLANNER OUTPUT] are emitted by the planning LLM.
  *   Fields marked [ROUTE STAMP] are injected by route.ts after the LLM call.
- *   The LLM never sets audience_tier, query_plan_id, or manifest_fingerprint.
+ *   The LLM never sets query_plan_id or manifest_fingerprint.
  *
  * Phase 1 deliverable. Downstream wiring (pipeline_planner.ts rename,
  * bundle_hydrator.ts, route.ts rewrite) follows in Phases 2–3.
@@ -299,16 +299,9 @@ export const PipelinePlanSchema = z.object({
   /** [ROUTE STAMP] The original query text. */
   query_text: z.string().optional(),
 
-  /**
-   * [ROUTE STAMP] Access tier from the authenticated session.
-   * The LLM is never told to set this; it is injected from the session JWT.
-   */
-  audience_tier: z.enum([
-    'super_admin',
-    'acharya_reviewer',
-    'client',
-    'public_redacted',
-  ]).optional(),
+  // audience_tier excised (C-2, tier_excision / DG1 ruling): it never
+  // differentiated pipeline behavior. Disclosure is carried separately via the
+  // route-local `audienceTier` → audit `disclosure_tier`.
 
   /** [ROUTE STAMP] Fingerprint of the CAPABILITY_MANIFEST.json at request time. */
   manifest_fingerprint: z.string().optional(),

@@ -13,7 +13,6 @@ const TEST_PLANS = [
     query_class: 'interpretive' as const,
     domains: ['career'],
     forward_looking: false,
-    audience_tier: 'super_admin' as const,
     tools_authorized: ['msr_sql'],
     history_mode: 'synthesized' as const,
     panel_mode: false,
