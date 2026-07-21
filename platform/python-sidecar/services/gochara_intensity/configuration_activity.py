@@ -71,11 +71,23 @@ def gather_configuration_sentences(
             (P.gochara_vedha_pair, True),
         ):
             try:
-                with savepoint_scope(conn, "config_activity_primitive"):
-                    if needs_conn:
+                # D-4b readiness-pass perf fix (profiled live, chart 482012f1):
+                # `savepoint_scope` issues a real SAVEPOINT/RELEASE SAVEPOINT
+                # round-trip on `conn`. Live profiling found ALL NINE primitives
+                # here costing the same ~110-120ms per (target, 10-day-window)
+                # call regardless of whether they touch the DB at all -- the
+                # six `needs_conn=False` primitives (degree_contact,
+                # drishti_contact, sign_ingress, nakshatra_ingress_tara,
+                # station_retro_loop, eclipse_degree) take no `conn` parameter
+                # and issue zero queries, so wrapping them in a savepoint was
+                # pure per-call overhead with nothing to protect. Only the two
+                # `needs_conn=True` primitives (which genuinely query
+                # chart_facts/bg_transit_rules) get the savepoint now.
+                if needs_conn:
+                    with savepoint_scope(conn, "config_activity_primitive"):
                         out.extend(fn(swe, chart_id, target, start_jd, end_jd, conn=conn))
-                    else:
-                        out.extend(fn(swe, chart_id, target, start_jd, end_jd))
+                else:
+                    out.extend(fn(swe, chart_id, target, start_jd, end_jd))
             except Exception as exc:  # noqa: BLE001
                 logger.info("[configuration_activity] %s failed for target_ref=%s: %s",
                             getattr(fn, "__name__", fn), target.target_ref, exc)
