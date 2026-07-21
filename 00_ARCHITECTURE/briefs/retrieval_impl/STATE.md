@@ -2020,4 +2020,76 @@ connection error L3 did and was resumed in place. `impl/wave-5` now carries
 L0, L1, L3, L4, L8 — five of eleven lanes landed, all held unmerged pending
 the D-4b mutex.
 
-Lane dispatch continues next entry (L2, L5–L7, L9–L10 + V5 gate).
+### W5 — Lane L2: per-family MCP surface profiles (2026-07-21)
+
+**Scope correction, found by reading the plan directly rather than assuming:**
+"family" in the compact/consult profile spec (`RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md`
+§R-4, `RETRIEVAL_PLAN_INDUSTRY_CONSULT_v1_0.md` §3.1) means **client/vendor
+family** (Claude vs. non-Claude MCP connectors — RC-1/RC-3/OT-10), not the
+astrology domain families (career/wealth/health/marriage) L3's
+`family_overrides` axis uses — naming overlap only, no actual conflict between
+the two lanes.
+
+**Built**, as an 8th projection (`mcp_surface_profiles.generated.json` +
+`platform-mcp/src/generated/mcp_surface_profiles.generated.ts` mirror, same
+de-mirror precedent as `envelope.ts`/`registry_shims.ts`): **full** (163,
+uncapped), **compact** (≤20 per RC-1, ranked by `demand_ranking`, overflow
+tools honestly reported via `overflow_tool_names`, never dropped), **consult**
+(7 orienting tools). F-R7 (`calibration_context_only`) excluded from all
+three. **Real registry gap found and worked around, not silently fixed at
+source:** the mechanical L-ORIENT tagging rule was sweeping internal
+orchestration meta-tools (`maro_orchestrate`, `synergy_pipeline`, etc. — each
+self-documented "not LLM-facing") into the consult set; excluded via an
+auditable filter in the builder, flagged for whoever owns
+`dprofiles_registration.ts` next.
+
+**OAuth-scope-gated serving:** `platform-mcp/src/lib/mcp_profile.ts` resolves
+a profile from the caller's OAuth scope (Bearer/first-party → full; unscoped
+or unrecognized OAuth grant → safe-default **consult**) and
+`applyProfileGate()` monkeypatches `McpServer.tool()` so every existing
+registration call site in `server.ts` is transparently scoped — zero
+per-file changes across ~20 registration modules. New `mcp:profile:full/
+compact/consult` scopes added to `oauth/authorize.ts`/`oauth/discovery.ts`.
+
+**V5-gate proof — the "consult profile cannot reach raw tools" requirement
+the wave's final gate checks — built here, adversarially, not just
+structurally:** the consult/full subset invariant is computed by the builder
+and re-verified in tests; a direct probe attempts real full-only tool names
+under consult and asserts none leak in; the known internal meta-tools are
+confirmed absent from every profile, consult least of all.
+
+**Integration required a THIRD 3-way merge cycle** — `generate_projections.ts`
+and `projection_compiler_parity.test.ts` had already been independently
+extended by L1+L3+L4 from the same pre-integration base L2 was dispatched
+from. The mechanical `git merge-file` pass mis-sliced a stray leftover comment
+line from the L4 merge and truncated the tool-search describe block in the
+test file — caught before committing (not after), fixed directly by hand
+rather than trusting the mechanical merge blindly. Also caught a real
+cross-lane type gap on the first `tsc` run: L2's builder reuses the
+tool-registration function L3 had extended with an `annotations` field, which
+the generated TS mirror's `McpSurfaceProfileToolEntry` interface didn't
+declare — added as optional, regenerated, re-verified clean.
+
+**Verified:** `tsc --noEmit` clean both packages.
+`platform/src/lib/retrieval/registry` + `src/lib/pipeline`: 1029/1154 passed
+(125 skipped), 0 failed. `platform-mcp`: `mcp_profile.test.ts` 16/16,
+`m8_e2e_proof` 39/39 (4 skipped); full suite 18 failed/75 tests — confirmed
+identical to the documented pre-existing baseline (unchanged since L1's
+entry), 0 new regressions.
+
+**Residuals, named not built:** `marsys_drill` (the plan's named
+compact-profile dispatcher) doesn't exist in the catalog — not fabricated;
+`drill_children` already gives overflow tools the same reachability
+guarantee. The other four pre-existing projections don't yet apply the F-R7
+filter this builder enforces — a future tightening pass. `prashna_ask` (plan:
+"MCP-consult = `prashna_ask` + ~5 orienting tools") is W6 scope — consult is
+the 7 orienting tools only until then.
+
+**L2: CLOSED.** Landed on `impl/wave-5` (PR #684, `685015ae`).
+
+**Six of eleven lanes now landed** (L0, L1, L2, L3, L4, L8), all held
+unmerged pending the D-4b mutex. Remaining: L5 (spine bundles), L6 (funnel
+batching/pooling), L7 (QoS/fairness/job queue), L9 (verdict-first streaming),
+L10 (battery baselines), then the V5 gate itself.
+
+Lane dispatch continues next entry (L5–L7, L9–L10 + V5 gate).
