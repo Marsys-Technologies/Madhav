@@ -36,7 +36,14 @@ const MCP_BASE_URL = (process.env['MCP_BASE_URL'] ?? 'https://madhav.marsys.in/m
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-const VALID_SCOPES = ['mcp:tools', 'mcp:resources', 'mcp:prompts']
+// W5 L2: profile-selecting scopes (OT-10 "OAuth scope selects the projection"). A grant
+// may combine one resource-shape scope (mcp:tools) with at most one profile scope; a
+// client that requests none of the three profile scopes gets 'consult' (see
+// lib/mcp_profile.ts's resolveProfileFromScopes — safe by default, not enforced here).
+const VALID_SCOPES = [
+  'mcp:tools', 'mcp:resources', 'mcp:prompts',
+  'mcp:profile:full', 'mcp:profile:compact', 'mcp:profile:consult',
+]
 
 // ── generateAuthCode / consumeAuthCode retained as the public interface ────────
 // These now delegate to the DB-backed platform API.

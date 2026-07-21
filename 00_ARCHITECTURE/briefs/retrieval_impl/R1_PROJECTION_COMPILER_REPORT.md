@@ -3,7 +3,7 @@ artifact: R1_PROJECTION_COMPILER_REPORT.md
 canonical_id: R1_PROJECTION_COMPILER_REPORT
 version: 1.0
 status: GENERATED — regenerate via `npx tsx --conditions=react-server scripts/manifest/generate_projections.ts`
-generated_at: 2026-07-21T15:24:52.617Z
+generated_at: 2026-07-21T15:32:34.800Z
 generator: platform/scripts/manifest/generate_projections.ts
 ---
 
@@ -194,7 +194,50 @@ corpus build — materially heavier, out of scope for this lane's first cut). A 
 token overlap against every entry returns an honest `total_matches: 0`, never a fabricated
 best-effort guess.
 
-## 8. Honesty notes / what's NOT done this lane
+## 8. (h) MCP surface profiles — full / compact≤20 / consult (W5 L2)
+
+Plan §R-4 item 1/2 + ruling RC-1/RC-3: "Profile selection = entitlement (OT-10 b+c):
+OAuth scope / connect URL selects the projection; a plain guest cannot reach raw tools."
+`mcp_surface_profiles.generated.json` builds the three named profiles as a 6th output of
+this same compiler (not a parallel one), reusing `buildMcpToolRegistration` for per-tool
+shape:
+
+- **full**: **148** `mcp_full`-tagged tools, uncapped.
+- **compact**: **20 / 20** (capped per RC-1;
+  49 eligible `mcp_compact`-tagged tools
+  did not make the cap — reachable via `full` or a surfaced sibling's `drill_children`, listed
+  in `overflow_tool_names`, never silently dropped).
+- **consult**: **8** `mcp_consult`-tagged (L-ORIENT) tools —
+  the restricted "safe by default" set (plan §6.5). Verified by construction (not just
+  asserted): every consult tool name is also a full tool name
+  (`invariant_consult_subset_of_full`: **true**) — consult can never surface
+  a name absent from full.
+
+F-R7 (NO-LEAKAGE) enforcement: `calibration_context_only` capabilities are excluded from all
+three profiles here. Full: lel_query, query_predictions
+excluded. Compact: lel_query, query_predictions
+excluded.
+
+**Wiring status:** `platform-mcp/src/lib/mcp_profile.ts` (this same lane) reads the generated
+TS mirror (`platform-mcp/src/generated/mcp_surface_profiles.generated.ts`) to resolve a
+profile from the caller's OAuth scope and gate `server.tool()` registration in
+`platform-mcp/src/server.ts` accordingly — see that file's own doc comments for the
+scope-to-profile mapping and the safe-default (unscoped/legacy OAuth token → consult).
+
+**Honest residuals, not silently closed:**
+- `marsys_drill` (the plan's named compact-profile dispatcher tool) does not exist in the
+  catalog — not fabricated here; the existing `drill_children` field already gives overflow
+  tools the same reachability guarantee. A literal dispatcher tool is a possible future wave,
+  not built this lane.
+- The OTHER four projections this compiler already emits (chat/mcp_full/mcp_compact/docs
+  census above) do not yet apply the F-R7 calibration_context_only filter this profile builder
+  enforces — flagged for a future tightening pass, not fixed here (out of this lane's scope,
+  touches files this lane did not open to rewrite).
+- `prashna_ask` (plan: "MCP-consult = `prashna_ask` + ~5 orienting tools") is W6 scope, not
+  yet built — the consult profile here is the 8 orienting
+  tools only; `prashna_ask` joins the consult set when W6 lands it.
+
+## 9. Honesty notes / what's NOT done this lane
 
 - Plan item 2c ("the vidhi primitive rows' tool bindings") is **not** covered by this
   generator — it is the separately-landed `codegen:vidhi`/`codegen:vidhi:check` lane

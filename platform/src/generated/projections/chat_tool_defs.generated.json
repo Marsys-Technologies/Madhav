@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-21T15:24:52.617Z",
+  "generated_at": "2026-07-21T15:32:34.800Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"chat\"",
   "total": 77,

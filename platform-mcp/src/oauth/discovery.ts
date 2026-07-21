@@ -26,7 +26,12 @@ export function buildDiscoveryMetadata(): ExtendedDiscoveryMetadata {
     token_endpoint: `${BASE_URL}/oauth/token`,
     // M5: dynamic client registration (RFC 7591)
     registration_endpoint: `${BASE_URL}/oauth/register`,
-    scopes_supported: ['mcp:tools', 'mcp:resources', 'mcp:prompts'],
+    // W5 L2: advertise the profile-selecting scopes (mcp:profile:full/compact/consult)
+    // alongside the existing resource-shape scopes — see oauth/authorize.ts's VALID_SCOPES.
+    scopes_supported: [
+      'mcp:tools', 'mcp:resources', 'mcp:prompts',
+      'mcp:profile:full', 'mcp:profile:compact', 'mcp:profile:consult',
+    ],
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'client_credentials', 'refresh_token'],
     token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic', 'none'],
