@@ -142,8 +142,35 @@ async function sendProgress(
 }
 
 /**
+ * Progress-percentage heuristic (W6 Part 2).
+ *
+ * Uses whichever ceiling the engine's cost-cap tracker is actually closer to
+ * tripping — `elapsed_ms / maxWallClockMs` and `tools_dispatched_count /
+ * maxCalls` are both partial signals (a request could finish in 2 fast tool
+ * calls out of a 10-call ceiling, or spend most of its wall-clock budget on a
+ * single slow call), so this takes the MAX of the two ratios rather than
+ * either alone — that is the one that best predicts "how close to done/capped
+ * is this job," and erring toward the larger of the two avoids a progress bar
+ * that appears to stall when the OTHER dimension is actually the one making
+ * progress. Clamped to [0, 99] — 100 is reserved for the terminal update so a
+ * caller can distinguish "nearly done" from "actually done."
+ */
+function estimateProgressPct(progress: import('../lib/prashna_ask_bridge.js').PrashnaAskProgressEvent): number {
+  const wallClockRatio = progress.elapsed_ms / Math.max(1, progress.cap_ceiling.maxWallClockMs)
+  const callCountRatio = progress.tools_dispatched_count / Math.max(1, progress.cap_ceiling.maxCalls)
+  const pct = Math.round(Math.max(wallClockRatio, callCountRatio) * 100)
+  return Math.min(99, Math.max(0, pct))
+}
+
+/**
  * Run the engine call in the background and deliver the outcome via progress
  * notification + JobRegistry update. Never throws — all failure paths resolve.
+ *
+ * W6 Part 2/3: `JobRegistry` is the AUTHORITATIVE, always-updated progress
+ * source `prashna_status` reads from — the MCP `notifications/progress` send
+ * below is best-effort/defensive only (see the file header's architectural
+ * caveat on why it is frequently undeliverable in this codebase's current
+ * stateless-per-request MCP transport).
  */
 async function runInBackground(
   jobId: string,
@@ -156,14 +183,26 @@ async function runInBackground(
   if (progressToken !== undefined) {
     await sendProgress(extra, progressToken, 0, 'prashna_ask: engine call started')
   }
+  prashnaAskJobs.updateProgress(jobId, { message: 'prashna_ask: engine call started', pct: 0 })
 
   let result: PrashnaAskEngineResponse
   try {
-    result = await callPrashnaAskEngine({
-      chartId,
-      question,
-      principal: { userUid: principal.user_uid, keyId: principal.key_id },
-    })
+    result = await callPrashnaAskEngine(
+      {
+        chartId,
+        question,
+        principal: { userUid: principal.user_uid, keyId: principal.key_id },
+      },
+      (progress) => {
+        const elapsedSec = (progress.elapsed_ms / 1000).toFixed(1)
+        prashnaAskJobs.updateProgress(jobId, {
+          message:
+            `${progress.tools_dispatched_count}/~${progress.cap_ceiling.maxCalls} tool calls made, ` +
+            `${elapsedSec}s elapsed`,
+          pct: estimateProgressPct(progress),
+        })
+      }
+    )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     prashnaAskJobs.fail(jobId, message)
@@ -210,11 +249,16 @@ export function registerPrashnaAskTool(
     'prashna_ask',
     'Full-loop Vidhi Engine question-answering: plans a tool-dispatch sequence for a natural-' +
     'language chart question, runs it under cost caps + NO-LEAKAGE enforcement, and returns an ' +
-    'IMMEDIATE job handle ({job_id, status:"pending"}) — the full/partial answer is delivered via ' +
-    'an MCP notifications/progress message (pass a progressToken in the tool-call request\'s ' +
-    '_meta) once the background engine call resolves. NOT for lightweight lookups — no `depth` ' +
-    'param (C-1 signature); use a retrieval-tier tool for a pinpointed factual lookup instead. ' +
-    'Requires the "full" or "compact" MCP surface profile — rejected for "consult".',
+    'IMMEDIATE job handle ({job_id, status:"pending"}) — it does NOT block until the answer is ' +
+    'ready. Two-step pattern: (1) call prashna_ask, get back {job_id}; (2) call prashna_status ' +
+    'with that job_id to check progress (a meaningful message + pct estimate while the job is ' +
+    'still running) or retrieve the final result once status is "complete"/"failed" — poll ' +
+    'prashna_status again after a short delay if the job is still "pending"/"running". A best-' +
+    'effort MCP notifications/progress message MAY also arrive (pass a progressToken in the ' +
+    'tool-call request\'s _meta) but is NOT reliably delivered in this deployment — prashna_status ' +
+    'is the durable way to get progress or the final answer. NOT for lightweight lookups — no ' +
+    '`depth` param (C-1 signature); use a retrieval-tier tool for a pinpointed factual lookup ' +
+    'instead. Requires the "full" or "compact" MCP surface profile — rejected for "consult".',
     {
       chart_id: z.string().uuid().describe('Chart UUID to answer the question against.'),
       question: z.string().min(1).describe('Natural-language question about the chart.'),
@@ -263,10 +307,16 @@ export function registerPrashnaAskTool(
       const progressToken = extra._meta?.progressToken
 
       // Fire-and-forget: do NOT await — the job-handle-first contract (OT-2)
-      // requires this handler to resolve before the engine call does.
+      // requires this handler to resolve before the engine call does. Report the
+      // literal 'pending' status the job was just created with, NOT `job.status`
+      // read after the fire-and-forget call — `runInBackground` runs synchronously
+      // up to its first await, and (when no progressToken is supplied, skipping
+      // the notification await) its first synchronous action is a `JobRegistry
+      // .updateProgress()` call that flips status to 'running' before this line
+      // would otherwise read it, racing the "immediate job handle" contract.
       void runInBackground(job.id, parsed.chart_id, parsed.question, principal, extra, progressToken)
 
-      return dualOutput({ job_id: job.id, status: job.status, chart_id: parsed.chart_id })
+      return dualOutput({ job_id: job.id, status: 'pending', chart_id: parsed.chart_id })
     }
   )
 }

@@ -215,6 +215,52 @@ describe('registerPrashnaAskTool', () => {
     expect(prashnaAskJobs.get(jobId)?.result).toEqual(planResult)
   })
 
+  it('calls JobRegistry.updateProgress with a human-readable message and pct for each interim progress event', async () => {
+    const updateProgressSpy = vi.spyOn(prashnaAskJobs, 'updateProgress')
+    let capturedOnProgress: ((p: {
+      tools_dispatched_count: number
+      cap_ceiling: { maxCalls: number; maxWallClockMs: number }
+      elapsed_ms: number
+      last_tool: string
+    }) => void) | undefined
+    let resolveEngine: (v: unknown) => void = () => {}
+    const enginePromise = new Promise((resolve) => { resolveEngine = resolve })
+    vi.spyOn(bridge, 'callPrashnaAskEngine').mockImplementation((_input, onProgress) => {
+      capturedOnProgress = onProgress
+      return enginePromise as never
+    })
+
+    const { server, getHandler } = makeMockServer()
+    registerPrashnaAskTool(server, makePrincipal(), 'full')
+    const handler = getHandler()
+
+    const handlerResult = (await handler(
+      { chart_id: CHART_ID, question: 'q', response_format: 'standard' },
+      makeExtra()
+    )) as { structuredContent: { job_id: string } }
+    const jobId = handlerResult.structuredContent.job_id
+
+    // Initial "started" update happened synchronously before the first await.
+    expect(updateProgressSpy).toHaveBeenCalledWith(jobId, expect.objectContaining({ pct: 0 }))
+
+    capturedOnProgress?.({
+      tools_dispatched_count: 3,
+      cap_ceiling: { maxCalls: 10, maxWallClockMs: 120_000 },
+      elapsed_ms: 12_400,
+      last_tool: 'get_dashas',
+    })
+
+    const lastCall = updateProgressSpy.mock.calls[updateProgressSpy.mock.calls.length - 1]
+    expect(lastCall[0]).toBe(jobId)
+    expect(lastCall[1].message).toContain('3/~10 tool calls made')
+    expect(lastCall[1].message).toContain('12.4s elapsed')
+    expect(lastCall[1].pct).toBeGreaterThan(0)
+    expect(lastCall[1].pct).toBeLessThan(100)
+
+    resolveEngine({ ok: true, trace_id: 't5', chart_id: CHART_ID, outcome: 'plan' })
+    updateProgressSpy.mockRestore()
+  })
+
   it('reaches JobRegistry "failed" status when the engine call errors', async () => {
     vi.spyOn(bridge, 'callPrashnaAskEngine').mockResolvedValue({
       ok: false,

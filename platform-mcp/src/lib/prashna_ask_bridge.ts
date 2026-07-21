@@ -96,6 +96,21 @@ export interface CallPrashnaAskEngineInput {
   principal: { userUid: string; keyId: string }
 }
 
+// ── Streamed-progress types (W6 Part 2) ──────────────────────────────────────
+//
+// Mirrors the `{"event":"progress",...}` NDJSON line shape the platform route
+// (`platform/src/app/api/mcp/prashna_ask/route.ts`) now emits per completed
+// tool-dispatch iteration — see that file's dispatch-loop `emitProgress()`.
+
+export interface PrashnaAskProgressEvent {
+  tools_dispatched_count: number
+  cap_ceiling: { maxCalls: number; maxWallClockMs: number }
+  elapsed_ms: number
+  last_tool: string
+}
+
+export type PrashnaAskOnProgress = (progress: PrashnaAskProgressEvent) => void
+
 // ── Identity token acquisition (identical pattern to client.ts) ──────────────
 
 let cachedIdTokenClient: IdTokenClient | null = null
@@ -151,9 +166,26 @@ function buildBridgeErrorEnvelope(
 /**
  * Call POST /api/mcp/prashna_ask on the platform — the actual engine invocation.
  * Never throws: network / parse errors are returned as a PrashnaAskErrorOutcome.
+ *
+ * W6 Part 2: the platform route now streams NDJSON (one `{"event":"progress",...}`
+ * line per completed tool-dispatch iteration, ending with one
+ * `{"event":"final",...}` line carrying the full response body) instead of a
+ * single JSON blob. This function reads the response body as a stream, decodes
+ * it incrementally, and:
+ *   - calls `onProgress` (if supplied) for each parsed `"event":"progress"` line
+ *     AS IT ARRIVES — not batched at the end;
+ *   - resolves with the parsed `"event":"final"` line's payload (the `event`
+ *     discriminator stripped), which is byte-for-byte the same shape this
+ *     function always returned.
+ * The early-return paths on the route (400/401/clarification_needed/fault) are
+ * still a single JSON object with no `event` field at all — a line with no
+ * `event` key is treated as the terminal payload directly, so those paths work
+ * unchanged. `onProgress` is optional and purely additive: a caller that
+ * doesn't pass it sees no change in behavior or return type.
  */
 export async function callPrashnaAskEngine(
-  input: CallPrashnaAskEngineInput
+  input: CallPrashnaAskEngineInput,
+  onProgress?: PrashnaAskOnProgress
 ): Promise<PrashnaAskEngineResponse> {
   const identityToken = await fetchIdentityToken()
 
@@ -176,15 +208,74 @@ export async function callPrashnaAskEngine(
     return buildBridgeErrorEnvelope(`Platform unreachable: ${message}`)
   }
 
-  let body: unknown
-  try {
-    body = await response.json()
-  } catch {
-    return buildBridgeErrorEnvelope('Platform returned non-JSON response')
+  // Defensive fallback for a caller/test double that doesn't expose a
+  // streamable `.body` (e.g. an environment without ReadableStream support) —
+  // fall back to the pre-streaming whole-body read. Real fetch() Response
+  // objects (Node 18+, the platform's actual NDJSON stream) always have `.body`.
+  if (!response.body) {
+    let body: unknown
+    try {
+      body = await response.json()
+    } catch {
+      return buildBridgeErrorEnvelope('Platform returned non-JSON response')
+    }
+    return body as PrashnaAskEngineResponse
   }
 
-  // The route always returns a well-formed envelope (success shape or
-  // McpEnvelope-shaped error) on every status code it emits — pass it through
-  // as-is rather than re-deriving error shaping here.
-  return body as PrashnaAskEngineResponse
+  let final: PrashnaAskEngineResponse | null = null
+
+  const processLine = (raw: string): void => {
+    const line = raw.trim()
+    if (!line) return
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(line)
+    } catch {
+      // A malformed NDJSON line is skipped rather than aborting the whole
+      // read — if the stream never yields a resolvable final/blob line, the
+      // `final === null` check below reports the honest empty-stream error.
+      return
+    }
+    if (parsed['event'] === 'progress') {
+      onProgress?.(parsed as unknown as PrashnaAskProgressEvent)
+      return
+    }
+    if (parsed['event'] === 'final') {
+      const rest: Record<string, unknown> = { ...parsed }
+      delete rest['event']
+      final = rest as unknown as PrashnaAskEngineResponse
+      return
+    }
+    // No `event` discriminator at all — one of the route's non-streamed
+    // early-return paths (400/401/clarification_needed/fault), which return a
+    // single plain JSON object body, not NDJSON.
+    final = parsed as unknown as PrashnaAskEngineResponse
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      let newlineIndex: number
+      while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+        processLine(buffer.slice(0, newlineIndex))
+        buffer = buffer.slice(newlineIndex + 1)
+      }
+    }
+    buffer += decoder.decode()
+    if (buffer.trim()) processLine(buffer)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return buildBridgeErrorEnvelope(`Error reading platform response stream: ${message}`)
+  }
+
+  if (final === null) {
+    return buildBridgeErrorEnvelope('Platform returned a non-JSON or empty response stream')
+  }
+  return final
 }

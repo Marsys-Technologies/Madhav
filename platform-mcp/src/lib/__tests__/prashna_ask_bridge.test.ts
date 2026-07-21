@@ -4,17 +4,39 @@
  * Vitest — not jest. Mocks fetch globally (matches m8_e2e_proof.test.ts style).
  * SERVICE_TOKEN env override bypasses GoogleAuth entirely (same pattern client.ts
  * uses for testability), so no google-auth-library mock is needed.
+ *
+ * W6 Part 2: the platform route now streams NDJSON (progress lines + one final
+ * line) instead of a single JSON blob — `makeStreamResponse()` below builds a
+ * mock `Response`-shaped object whose `.body` is a real `ReadableStream` so the
+ * bridge's incremental reader/decoder path is genuinely exercised, not bypassed.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   callPrashnaAskEngine,
   __resetPrashnaAskBridgeTokenCacheForTests,
+  type PrashnaAskProgressEvent,
 } from '../prashna_ask_bridge.js'
 
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 const PRINCIPAL = { userUid: 'user-1', keyId: 'key-1' }
+
+function makeStreamResponse(
+  lines: string[],
+  opts: { ok?: boolean; status?: number } = {}
+): { ok: boolean; status: number; body: ReadableStream<Uint8Array> } {
+  const encoder = new TextEncoder()
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const line of lines) {
+        controller.enqueue(encoder.encode(line + '\n'))
+      }
+      controller.close()
+    },
+  })
+  return { ok: opts.ok ?? true, status: opts.status ?? 200, body }
+}
 
 beforeEach(() => {
   mockFetch.mockReset()
@@ -34,11 +56,9 @@ afterEach(() => {
 
 describe('callPrashnaAskEngine', () => {
   it('POSTs to /api/mcp/prashna_ask with the exact client.ts auth-header pattern', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ ok: true, trace_id: 't1', chart_id: 'c1', outcome: 'plan' }),
-    })
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([JSON.stringify({ ok: true, trace_id: 't1', chart_id: 'c1', outcome: 'plan' })])
+    )
 
     await callPrashnaAskEngine({ chartId: 'c1', question: 'what dasha am I in?', principal: PRINCIPAL })
 
@@ -55,7 +75,7 @@ describe('callPrashnaAskEngine', () => {
     expect(JSON.parse(opts.body)).toEqual({ chart_id: 'c1', question: 'what dasha am I in?' })
   })
 
-  it('returns the plan outcome shape verbatim on success', async () => {
+  it('returns the plan outcome shape verbatim on success (single-blob body, no event field)', async () => {
     const planResponse = {
       ok: true,
       trace_id: 't1',
@@ -74,7 +94,78 @@ describe('callPrashnaAskEngine', () => {
       judgment_flags: [],
       results: [],
     }
-    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => planResponse })
+    mockFetch.mockResolvedValueOnce(makeStreamResponse([JSON.stringify(planResponse)]))
+
+    const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
+    expect(result).toEqual(planResponse)
+  })
+
+  it('streams interim progress lines to onProgress and resolves with the final event payload', async () => {
+    const planResponse = {
+      ok: true,
+      trace_id: 't1',
+      chart_id: 'c1',
+      outcome: 'plan',
+      query_class: 'dasha_timing',
+      query_intent_summary: 'current dasha',
+      completeness: {
+        status: 'complete',
+        tools_dispatched: [{ tool_name: 'chart_facts_query', status: 'done', result_count: 1, latency_ms: 5 }],
+        unserved_tools: [],
+        unresolved_tools: [],
+        stripped_leaked_capabilities: [],
+        cap_tripped: null,
+      },
+      judgment_flags: [],
+      results: [{ tool_name: 'chart_facts_query', bundle: {} }],
+    }
+    const progressLine1 = {
+      event: 'progress',
+      tools_dispatched_count: 1,
+      cap_ceiling: { maxCalls: 10, maxWallClockMs: 120_000 },
+      elapsed_ms: 40,
+      last_tool: 'chart_facts_query',
+    }
+    const progressLine2 = {
+      event: 'progress',
+      tools_dispatched_count: 2,
+      cap_ceiling: { maxCalls: 10, maxWallClockMs: 120_000 },
+      elapsed_ms: 90,
+      last_tool: 'get_positions',
+    }
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([
+        JSON.stringify(progressLine1),
+        JSON.stringify(progressLine2),
+        JSON.stringify({ event: 'final', ...planResponse }),
+      ])
+    )
+
+    const onProgress = vi.fn()
+    const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL }, onProgress)
+
+    expect(onProgress).toHaveBeenCalledTimes(2)
+    expect(onProgress).toHaveBeenNthCalledWith(1, progressLine1)
+    expect(onProgress).toHaveBeenNthCalledWith(2, progressLine2)
+    // The resolved value has the `event` discriminator stripped and otherwise
+    // matches the route's final body exactly.
+    expect(result).toEqual(planResponse)
+  })
+
+  it('does not require onProgress — a caller that omits it sees unchanged behavior', async () => {
+    const planResponse = { ok: true, trace_id: 't9', chart_id: 'c1', outcome: 'plan' }
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([
+        JSON.stringify({
+          event: 'progress',
+          tools_dispatched_count: 1,
+          cap_ceiling: { maxCalls: 10, maxWallClockMs: 120_000 },
+          elapsed_ms: 10,
+          last_tool: 'chart_facts_query',
+        }),
+        JSON.stringify({ event: 'final', ...planResponse }),
+      ])
+    )
 
     const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
     expect(result).toEqual(planResponse)
@@ -89,7 +180,7 @@ describe('callPrashnaAskEngine', () => {
       missing_scope_dims: ['domains'],
       suggested_options: ['wealth', 'career'],
     }
-    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => clarification })
+    mockFetch.mockResolvedValueOnce(makeStreamResponse([JSON.stringify(clarification)]))
 
     const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
     expect(result).toEqual(clarification)
@@ -101,7 +192,7 @@ describe('callPrashnaAskEngine', () => {
       trace_id: '',
       error: { class: 'auth', message: 'Invalid service token' },
     }
-    mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json: async () => errEnvelope })
+    mockFetch.mockResolvedValueOnce(makeStreamResponse([JSON.stringify(errEnvelope)], { ok: false, status: 401 }))
 
     const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
     expect(result).toEqual(errEnvelope)
@@ -119,17 +210,13 @@ describe('callPrashnaAskEngine', () => {
     }
   })
 
-  it('returns a synthesized error envelope when the platform returns non-JSON', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => { throw new Error('not json') },
-    })
+  it('returns a synthesized error envelope when the platform stream never yields a resolvable line', async () => {
+    mockFetch.mockResolvedValueOnce(makeStreamResponse(['not json at all']))
 
     const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.error.message).toContain('non-JSON')
+      expect(result.error.message).toContain('non-JSON or empty')
     }
   })
 
@@ -139,4 +226,32 @@ describe('callPrashnaAskEngine', () => {
       callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
     ).resolves.not.toThrow()
   })
+
+  it('never throws when the stream body itself errors mid-read', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new Error('stream broke'))
+        },
+      }),
+    })
+
+    const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.message).toContain('stream broke')
+    }
+  })
 })
+
+// Type-only sanity check — ensures PrashnaAskProgressEvent's shape stays in
+// sync with what the route actually emits (compile-time only; no runtime cost).
+const _typeCheck: PrashnaAskProgressEvent = {
+  tools_dispatched_count: 1,
+  cap_ceiling: { maxCalls: 10, maxWallClockMs: 1 },
+  elapsed_ms: 1,
+  last_tool: 'x',
+}
+void _typeCheck
