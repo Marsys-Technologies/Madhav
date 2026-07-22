@@ -1,24 +1,24 @@
 /**
- * session_pin.test.ts — R5 W4 session-pin serving unit tests (design §10.6/§31.3/§31.5).
+ * provenance_stamp.test.ts — R5 W4 provenance-stamp serving unit tests (design §10.6/§31.3/§31.5).
  *
  * Covers the PURE logic only (detectBuildDrift, readPinFromState, buildPinPatch) —
  * no DB required. The DB-backed functions (getLatestChartBuild, computeCurrentPinValues,
- * resolveSessionPin) are exercised by `sessions.integration.test.ts` against the real
- * mcp_sessions + builds tables (live Cloud SQL, per the brief's mandate to verify against
- * an actual gate, not just unit mocks).
+ * resolveProvenanceStamp) are exercised by `sessions.provenance_stamp.integration.test.ts`
+ * against the real mcp_sessions + builds tables (live Cloud SQL, per the brief's mandate to
+ * verify against an actual gate, not just unit mocks).
  */
 import { describe, it, expect } from 'vitest'
 import {
   detectBuildDrift,
   readPinFromState,
   buildPinPatch,
-  type SessionPinValues,
-} from './session_pin'
+  type ProvenanceStampValues,
+} from './provenance_stamp'
 
 const CHART_A = '11111111-1111-1111-1111-111111111111'
 const CHART_B = '22222222-2222-2222-2222-222222222222'
 
-function makePin(overrides: Partial<SessionPinValues> = {}): SessionPinValues {
+function makePin(overrides: Partial<ProvenanceStampValues> = {}): ProvenanceStampValues {
   return {
     chart_id: CHART_A,
     priors_version: '1.0',
@@ -34,14 +34,14 @@ function makePin(overrides: Partial<SessionPinValues> = {}): SessionPinValues {
 }
 
 /** Strip pinned_at — detectBuildDrift's `current` param never carries it (see signature). */
-function asCurrent(pin: SessionPinValues): Omit<SessionPinValues, 'pinned_at'> {
+function asCurrent(pin: ProvenanceStampValues): Omit<ProvenanceStampValues, 'pinned_at'> {
   const { pinned_at, ...rest } = pin
   void pinned_at
   return rest
 }
 
 describe('detectBuildDrift', () => {
-  it('reports no drift when there is no existing pin (first pin of the session)', () => {
+  it('reports no drift when there is no existing stamp (first stamp of the session)', () => {
     const result = detectBuildDrift(null, asCurrent(makePin()))
     expect(result.drift).toBe(false)
     expect(result.judgment_flags).toEqual([])
@@ -60,7 +60,7 @@ describe('detectBuildDrift', () => {
     const current = asCurrent(makePin({ build_id: 'build-2' }))
     const result = detectBuildDrift(existing, current)
     expect(result.drift).toBe(true)
-    expect(result.judgment_flags).toEqual(['chart_rebuilt_mid_session_pin_refreshed'])
+    expect(result.judgment_flags).toEqual(['chart_rebuilt_mid_provenance_stamp_refreshed'])
   })
 
   it('detects drift when the chart had no build before and now has one (null -> value)', () => {
@@ -85,7 +85,7 @@ describe('detectBuildDrift', () => {
     const current = asCurrent(makePin({ build_id: 'build-1', ledger_version: '4:1800000600' }))
     const result = detectBuildDrift(existing, current)
     expect(result.drift).toBe(true)
-    expect(result.judgment_flags).toEqual(['concept_ledger_updated_mid_session_pin_refreshed'])
+    expect(result.judgment_flags).toEqual(['concept_ledger_updated_mid_provenance_stamp_refreshed'])
   })
 
   it('detects drift when the ledger had no rows before and now has some (null -> value)', () => {
@@ -93,7 +93,7 @@ describe('detectBuildDrift', () => {
     const current = asCurrent(makePin({ ledger_version: '1:1800000000' }))
     const result = detectBuildDrift(existing, current)
     expect(result.drift).toBe(true)
-    expect(result.judgment_flags).toEqual(['concept_ledger_updated_mid_session_pin_refreshed'])
+    expect(result.judgment_flags).toEqual(['concept_ledger_updated_mid_provenance_stamp_refreshed'])
   })
 
   it('raises BOTH flags when build_id and ledger_version drift in the same resolution (signals collected, not short-circuited)', () => {
@@ -102,8 +102,8 @@ describe('detectBuildDrift', () => {
     const result = detectBuildDrift(existing, current)
     expect(result.drift).toBe(true)
     expect(result.judgment_flags).toEqual([
-      'chart_rebuilt_mid_session_pin_refreshed',
-      'concept_ledger_updated_mid_session_pin_refreshed',
+      'chart_rebuilt_mid_provenance_stamp_refreshed',
+      'concept_ledger_updated_mid_provenance_stamp_refreshed',
     ])
   })
 })
@@ -115,19 +115,19 @@ describe('readPinFromState / buildPinPatch (chart_id re-keying, design §31.3)',
     expect(readPinFromState(undefined, CHART_A)).toBeNull()
   })
 
-  it('returns null when the requested chart has no pin yet, even if others do', () => {
+  it('returns null when the requested chart has no stamp yet, even if others do', () => {
     const pin = makePin()
     const state = buildPinPatch({}, CHART_A, pin)
     expect(readPinFromState(state, CHART_B)).toBeNull()
   })
 
-  it('round-trips a pin through buildPinPatch -> readPinFromState', () => {
+  it('round-trips a stamp through buildPinPatch -> readPinFromState', () => {
     const pin = makePin()
     const state = buildPinPatch({}, CHART_A, pin)
     expect(readPinFromState(state, CHART_A)).toEqual(pin)
   })
 
-  it('re-keys by chart_id: pinning chart B does not clobber an existing pin for chart A (the §31.3 mitigation)', () => {
+  it('re-keys by chart_id: stamping chart B does not clobber an existing stamp for chart A (the §31.3 mitigation)', () => {
     const pinA = makePin({ chart_id: CHART_A, build_id: 'build-a' })
     const pinB = makePin({ chart_id: CHART_B, build_id: 'build-b' })
 
@@ -145,7 +145,7 @@ describe('readPinFromState / buildPinPatch (chart_id re-keying, design §31.3)',
     expect(readPinFromState(state, CHART_A)).toEqual(pin)
   })
 
-  it('replaces (not merges) an existing pin for the same chart_id on refresh', () => {
+  it('replaces (not merges) an existing stamp for the same chart_id on refresh', () => {
     const pinV1 = makePin({ build_id: 'build-1' })
     const pinV2 = makePin({ build_id: 'build-2', pinned_at: 'later' })
 
