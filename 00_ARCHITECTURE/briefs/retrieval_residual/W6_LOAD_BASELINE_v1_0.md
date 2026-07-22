@@ -45,12 +45,18 @@ credential was reachable, but because no deployed HTTP route implements the
 generic `POST /query` contract the harness's four modes assume (confirmed
 empirically, §2). What *is* live, authenticated, and genuinely production is
 the `mcp__marsys-jis-direct__*` MCP tool-call session already connected in
-this environment. Per the brief's own invitation ("state clearly what's
-missing and whether the harness can be adapted to run through the
-already-available MCP session instead"), this run **adapts the four §9.7
+this environment. Per the brief's §C ("leverage continuously" the live
+instrument) and §D.5's Native-Proxy Resolver authority to make the rulings
+the native would otherwise be asked for, this run **adapts the four §9.7
 measurement concepts (cache / concurrency / QoS / SLO-per-class) onto that
 live session** rather than fabricating a harness.ts execution transcript that
 never happened.
+
+**Coverage caveat (see §7):** this baseline covers 2 of the 4 §9.7
+measurement axes directly (concurrency/latency and QoS-no-thinning);
+cache-hit behavior (W-28) and multi-principal fairness (W-30) are not
+measured here. "RC-03 CLOSED" should be read as "the live baseline this
+residual's DONE bar requires," not as full §9.7 axis coverage.
 
 **This baseline is built from two independent live passes fired ~11 minutes
 apart within the same session** — Run A (~19:40–19:41Z) and Run B
