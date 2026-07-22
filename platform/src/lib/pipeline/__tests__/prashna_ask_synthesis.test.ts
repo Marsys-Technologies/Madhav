@@ -166,4 +166,26 @@ describe('synthesizeReading — never throws, degrades honestly', () => {
     const req = mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }
     expect(req.messages[0].content).toContain('no evidence was gathered')
   })
+
+  it('truncates an oversized evidence item and discloses it via judgment_flags (code-quality follow-up)', async () => {
+    // A single result field padded well past the 8,000-char cap — reproduces the
+    // real live case (an unfiltered chart_facts_query-class call returned 80KB+).
+    const hugeResult = { note: 'x'.repeat(20_000) }
+    const result = await synthesizeReading(
+      baseInput({ evidence: [{ tool_name: 'chart_facts_query', bundle: { results: [hugeResult] } }] }),
+    )
+    expect(result.judgment_flags).toContain('synthesis_evidence_truncated')
+
+    const req = mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }
+    const content = req.messages[0].content
+    expect(content).toContain('truncated="true"')
+    expect(content).toContain('TRUNCATED')
+    // The prompt itself must not balloon to the full 20KB+ payload.
+    expect(content.length).toBeLessThan(15_000)
+  })
+
+  it('does not flag truncation when every evidence item is under the size cap', async () => {
+    const result = await synthesizeReading(baseInput())
+    expect(result.judgment_flags).not.toContain('synthesis_evidence_truncated')
+  })
 })

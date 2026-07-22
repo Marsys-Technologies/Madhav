@@ -103,14 +103,35 @@ function buildChartContext(chart: {
   }
 }
 
-function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): string {
-  if (evidence.length === 0) return '(no evidence was gathered for this request)'
-  return evidence
-    .map(
-      (e) =>
-        `<evidence tool="${e.tool_name}">\n${JSON.stringify(e.bundle.results, null, 2)}\n</evidence>`,
-    )
+// Code-quality follow-up: a wide tool result (e.g. an unfiltered chart_facts_query
+// dump) can run to tens of thousands of characters — confirmed live this session
+// (a single ganita_chart_facts_get call returned an 80KB+ payload). Serializing that
+// unbounded into one synthesis prompt risks blowing the model's context budget and
+// spiking token cost with no visibility. Cap each evidence item's serialized size and
+// disclose truncation explicitly (never silently drop rows without saying so — B.10).
+const MAX_EVIDENCE_ITEM_CHARS = 8_000
+
+function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block: string; truncatedTools: string[] } {
+  if (evidence.length === 0) {
+    return { block: '(no evidence was gathered for this request)', truncatedTools: [] }
+  }
+  const truncatedTools: string[] = []
+  const block = evidence
+    .map((e) => {
+      const serialized = JSON.stringify(e.bundle.results, null, 2)
+      if (serialized.length <= MAX_EVIDENCE_ITEM_CHARS) {
+        return `<evidence tool="${e.tool_name}">\n${serialized}\n</evidence>`
+      }
+      truncatedTools.push(e.tool_name)
+      const truncated = serialized.slice(0, MAX_EVIDENCE_ITEM_CHARS)
+      return (
+        `<evidence tool="${e.tool_name}" truncated="true">\n${truncated}\n` +
+        `... [TRUNCATED — this tool returned more data than fits here; the reading ` +
+        `should not claim exhaustive coverage of every row from this specific tool]\n</evidence>`
+      )
+    })
     .join('\n\n')
+  return { block, truncatedTools }
 }
 
 function formatGapsBlock(input: SynthesizeReadingInput): string {
@@ -164,12 +185,17 @@ export async function synthesizeReading(
   const systemPrompt =
     consumeSystemPromptV2(buildChartContext(chartRow), [], 'acharya', false) + NO_LIVE_TOOLS_OVERRIDE
 
+  const { block: evidenceBlock, truncatedTools } = formatEvidenceBlock(input.evidence)
+  if (truncatedTools.length > 0) {
+    judgmentFlags.push('synthesis_evidence_truncated')
+  }
+
   const userMessage = [
     `<user_question>${input.question}</user_question>`,
     `Query class: ${input.queryClass}. Intent summary: ${input.queryIntentSummary}.`,
     '',
     'Gathered evidence:',
-    formatEvidenceBlock(input.evidence),
+    evidenceBlock,
     '',
     '<evidence_gaps>',
     formatGapsBlock(input),
