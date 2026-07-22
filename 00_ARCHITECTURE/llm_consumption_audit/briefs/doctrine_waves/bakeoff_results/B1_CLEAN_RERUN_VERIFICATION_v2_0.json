@@ -1,0 +1,101 @@
+{
+  "artifact": "B1_CLEAN_RERUN_VERIFICATION",
+  "version": "2.0",
+  "generated_at_utc": "2026-07-22T19:30:28.759544Z",
+  "manifest_hash_consistency_check": {
+    "expected_hash_sha256": "ac56aa45c6fbe4e17cd78e33878d8454252aeac366ed97bdde135a861669395b",
+    "batches": [
+      {
+        "batchKey": "batch1",
+        "manifestHash": "ac56aa45c6fbe4e17cd78e33878d8454252aeac366ed97bdde135a861669395b",
+        "match": true,
+        "writtenAt": "2026-07-22T18:43:37.234Z"
+      },
+      {
+        "batchKey": "batch2",
+        "manifestHash": "ac56aa45c6fbe4e17cd78e33878d8454252aeac366ed97bdde135a861669395b",
+        "match": true,
+        "writtenAt": "2026-07-22T18:56:41.960Z"
+      },
+      {
+        "batchKey": "batch3",
+        "manifestHash": "ac56aa45c6fbe4e17cd78e33878d8454252aeac366ed97bdde135a861669395b",
+        "match": true,
+        "writtenAt": "2026-07-22T19:15:20.917Z"
+      }
+    ],
+    "consistent": true
+  },
+  "sealed_split_reconfirmation": {
+    "boundary": "2020-01-01T00:00:00.000Z",
+    "method": "Cross-referenced every uniquely-scored eventId (across all 14 contenders x 3 batches) against the byte-identical eventDate/intervalStart/intervalEnd table embedded in all 3 batch drivers (verified identical across b1_batch{1,2,3}_driver_v2_0.ts), independently of harness.ts's own internal assertNoSealedSplitEvents() call and each driver's own explicit defense-in-depth call.",
+    "driver_tables_byte_identical_across_batches": true,
+    "unique_scored_event_ids_checked": 31,
+    "breaches_found": 0,
+    "breach_detail": [],
+    "clean": true
+  },
+  "batch_verifier_receipts_supplied_upstream": [
+    {
+      "batch": 1,
+      "verdict": "ACCEPT"
+    },
+    {
+      "batch": 2,
+      "verdict": "ACCEPT"
+    },
+    {
+      "batch": 3,
+      "verdict": "ACCEPT"
+    }
+  ],
+  "batch_metadata_cross_check": [
+    {
+      "batch": 1,
+      "contenders": [
+        "pratyantar_lord",
+        "vimshottari",
+        "yogini",
+        "ashtottari",
+        "chara_karaka"
+      ],
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "packet_blob_sha": "9b6713db8c2551a937ff2070e498da1f12526966",
+      "manifest_version": "2.0",
+      "train_scope_event_count": 32,
+      "scored_event_count": 31,
+      "negative_crps_count": 0
+    },
+    {
+      "batch": 2,
+      "contenders": [
+        "naisargika",
+        "mudda",
+        "kalachakra",
+        "narayana",
+        "sade_sati"
+      ],
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "packet_blob_sha": "9b6713db8c2551a937ff2070e498da1f12526966",
+      "manifest_version": "2.0",
+      "train_scope_event_count": 32,
+      "scored_event_count": 31,
+      "negative_crps_count": 0
+    },
+    {
+      "batch": 3,
+      "contenders": [
+        "guru_shani_double_transit",
+        "av_threshold",
+        "planetary_return",
+        "hierarchical_ensemble"
+      ],
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "packet_blob_sha": "9b6713db8c2551a937ff2070e498da1f12526966",
+      "manifest_version": "2.0",
+      "train_scope_event_count": 32,
+      "scored_event_count": 31,
+      "negative_crps_count": 0
+    }
+  ]
+}
