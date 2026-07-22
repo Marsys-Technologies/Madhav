@@ -13,7 +13,7 @@ import {
   L2_5_TOOLS,
 } from '@/lib/pipeline/compiled_floor_adapter'
 import type { ScopeTuple as ClassifierScopeTuple } from '@/lib/vidhi/scope_classifier'
-import type { PipelinePlan, QueryClass } from '@/lib/pipeline/types'
+import { QueryClassEnum, type PipelinePlan, type QueryClass } from '@/lib/pipeline/types'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { VIDHI_PRIMITIVES } from '@/lib/vidhi/registry_data'
 
@@ -230,6 +230,65 @@ describe('ensureDashaContextFloor', () => {
   it('no-ops when query_dasha_periods already authorized', () => {
     const authorized = ['query_dasha_periods']
     expect(ensureDashaContextFloor(plan('predictive', ['query_dasha_periods']), authorized)).toBe(false)
+  })
+})
+
+describe('RC-05 — no unresolvable required floor item for ANY query class (RETRIEVAL_RESIDUAL_CLOSURE_BRIEF §E Cluster 2)', () => {
+  // WP-1.7's full dead-capability list (tool_name_bridge.ts:410-422) — names with
+  // NO registered retrieval capability. pattern_register was the W6.2/W6.3 defect;
+  // resonance_register/cluster_atlas are the RC-05 defect this test guards against
+  // regression on. The rest are included for completeness of the guard, even though
+  // they were never actively floor-injected by this code adapter.
+  const DEAD_CAPABILITIES = [
+    'pattern_register', 'resonance_register', 'cluster_atlas',
+    'kp_query', 'query_kp_ruling_planets', 'query_ucn_walk',
+    'query_cdlm_lookup', 'query_rm_walk', 'query_jaimini_drishti',
+    'timeline_query', 'query_signal_state', 'multi_school_signal_lookup',
+    'jaimini_chara_dasha', 'jaimini_chara_dasha_full',
+  ] as const
+
+  it('ensureB11WholeChartReadFloor + ensureDashaContextFloor inject only resolvable tool_calls, for every QueryClass', () => {
+    for (const qc of QueryClassEnum.options) {
+      const p = plan(qc as QueryClass)
+      const authorized: string[] = []
+      ensureB11WholeChartReadFloor(p, authorized)
+      ensureDashaContextFloor(p, authorized)
+      for (const tc of p.tool_calls) {
+        expect(
+          getToolByName(tc.tool_name),
+          `query_class "${qc}": floor tool_call "${tc.tool_name}" must resolve via getToolByName()`,
+        ).toBeDefined()
+      }
+    }
+  })
+
+  it('never floor-injects a WP-1.7 dead capability, for any QueryClass', () => {
+    for (const qc of QueryClassEnum.options) {
+      const p = plan(qc as QueryClass)
+      const authorized: string[] = []
+      ensureB11WholeChartReadFloor(p, authorized)
+      ensureDashaContextFloor(p, authorized)
+      const names = p.tool_calls.map((t) => t.tool_name)
+      for (const dead of DEAD_CAPABILITIES) {
+        expect(
+          names,
+          `query_class "${qc}" must never floor-inject dead capability "${dead}" (WP-1.7/tool_name_bridge.ts:417 — no registered cap)`,
+        ).not.toContain(dead)
+      }
+    }
+  })
+
+  it('discovery and remedial classes specifically resolve clean (the RC-05 live-trace acceptance bar)', () => {
+    for (const qc of ['discovery', 'remedial'] as const) {
+      const p = plan(qc)
+      const authorized: string[] = []
+      ensureB11WholeChartReadFloor(p, authorized)
+      ensureDashaContextFloor(p, authorized)
+      expect(p.tool_calls.length).toBeGreaterThanOrEqual(0) // no-op is valid (no L2.5 tool from THIS adapter for these classes)
+      for (const tc of p.tool_calls) {
+        expect(getToolByName(tc.tool_name), `${qc}: "${tc.tool_name}" must resolve`).toBeDefined()
+      }
+    }
   })
 })
 
