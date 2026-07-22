@@ -678,7 +678,7 @@ sealed-split rows post hoc. Partial salvage is exactly the rationalization the s
 forbid.
 
 **Root cause + fix: DR-20** (`DISAGREEMENT_REGISTER_v1_0.md` DIS.031) — the seal was enforced by
-prompt instruction, never by the query/data layer. Fix registered as CR-126 (originally CR-123 —
+prompt instruction, never by the query/data layer. Fix registered as CR-127 (originally CR-123 —
 see `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` re-landing note): packet-construction-time train-split
 filtering, a harness-level hard exclusion the scoring loop cannot bypass, and a gate-blocking
 structural assertion at every verification altitude (per-batch, assembly, final anti-gaming) —
@@ -692,7 +692,7 @@ but still before any propagation, is the governance architecture succeeding unde
 exactly as designed.**
 
 **Binding next step:** one clean B-1 re-run on the DR-20-fixed harness, training-split only,
-chunked/checkpointed per the standing CR-125 pattern, full anti-gaming battery including the now-
+chunked/checkpointed per the standing CR-126 pattern, full anti-gaming battery including the now-
 structural sealed-split assertion. **Pre-committed outcome, stated in advance:** if the clean
 re-run returns NO_WINNER on the honest training set — plausible given the coverage thinness even
 the breached run showed (n=3 for most contenders) — that closes B-1 honestly via the campaign's
@@ -709,7 +709,7 @@ events, sign-test p=3.40e-05) once that outlier is excluded; every other contend
 structurally underpowered (n=2). This is the pre-committed outcome materializing exactly as
 anticipated — B-1 closes honestly with no forced champion.
 
-Reversibility: the quarantine is permanent by design; the fix (DR-20/CR-126) is the reversibility
+Reversibility: the quarantine is permanent by design; the fix (DR-20/CR-127) is the reversibility
 path for the CLASS of defect, not this instance — a clean re-run was the only way forward and it
 has now run.
 
@@ -728,7 +728,7 @@ campaign ("RC-10 namespace-gap") whose own merge had accidentally swept up this 
 files from a shared working directory, and which then correctly identified and reverted the
 contamination. The revert's `HEAD^1` reference rolled back further than the other campaign likely
 intended, incidentally reverting this campaign's own legitimate content too. Separately, this
-session's own DR-20/CR-123(now CR-126)/NP-D4B-007 doctrine entries were originally committed only
+session's own DR-20/CR-123(now CR-127)/NP-D4B-007 doctrine entries were originally committed only
 on the permanently-quarantined `wave/D-4b/B1-full-rerun` branch (a scoping choice at the time,
 writing incident docs directly onto the incident branch) — since that branch correctly never
 merges, those entries never reached `main` until this pass re-landed them under fresh numbers
@@ -739,14 +739,14 @@ git merges) is worth a native-level process note: doctrine-wave prose artifacts 
 close-report files) may need per-campaign-scoped sections or a coordination convention if this
 recurs.
 
-**2. B-2 architecture gap (CR-127) requires a real decision, not a mechanical fix.** Unlike
-DR-20/CR-126 (a genuine but mechanically-fixable harness bug), CR-127 is an actual missing/broken
+**2. B-2 architecture gap (CR-128) requires a real decision, not a mechanical fix.** Unlike
+DR-20/CR-127 (a genuine but mechanically-fixable harness bug), CR-128 is an actual missing/broken
 piece of the calibration architecture — `BRIEF_D4B.md`'s B-2 lane assumes a write surface
 (`mimamsa_outcome_record`) that was never built, and the nearest real candidate pipeline
 (`phala_anchors` → `mimamsa_calibration` → `mi_gunanaka`) has a live schema/code mismatch
 (`prediction_state` column referenced, does not exist). This is not something a conductor should
 resolve unilaterally by picking a repair direction — it requires the native's decision on which
-of the two dispositions in CR-127 (repair the existing pipeline vs. build the described surface
+of the two dispositions in CR-128 (repair the existing pipeline vs. build the described surface
 fresh) reflects actual intent. B-2/B-3 stay correctly blocked until that ruling.
 
 *— end NP-D4B-008, awaiting native disposition on item 2 (item 1 is informational only)*

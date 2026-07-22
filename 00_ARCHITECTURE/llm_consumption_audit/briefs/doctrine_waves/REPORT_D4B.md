@@ -5,7 +5,7 @@ type: WAVE CLOSE REPORT (protocol §7) — B-6 REAL CLOSE PASS #6, mode=GATED (e
 wave: D-4b — Calibration Ignition + Grand Bakeoff (campaign close lane B-6)
 status: OPEN — GATED. Headline: B-1 is DONE, genuinely, cleanly, and merged (PR #712) — the first
   legitimate scored result this campaign has ever produced, an honest NO_WINNER. B-2 is now
-  blocked on a real architecture gap (CR-127), not a bug in this campaign's own work. This report
+  blocked on a real architecture gap (CR-128), not a bug in this campaign's own work. This report
   supersedes PR #695/#703/#708 (all merged, preserved in history) and restores content an
   unrelated concurrent campaign's own cleanup revert accidentally rolled back.
 authored_by: Orchestrating session, directly (not agent-dispatched), given the precision required
@@ -25,7 +25,7 @@ result is an honest **NO_WINNER**: no contender clears its control with statisti
 distinguishability. This is not a failure — it is the campaign's own pre-committed outcome,
 reached honestly.
 
-**The wave still does not close.** B-2 hit a genuine architecture gap (CR-127): `BRIEF_D4B.md`'s
+**The wave still does not close.** B-2 hit a genuine architecture gap (CR-128): `BRIEF_D4B.md`'s
 described write target for the one-shot backfill does not exist in the live schema. This requires
 a native/Binder decision, not a mechanical fix.
 
@@ -50,13 +50,13 @@ n=2 events each — structurally too thin for any sign test to mean anything (ma
 0.5–1.0). **No contender clears DR-15(b). NO_WINNER is the honest, adversarially-checked
 adjudication, not an evasion.**
 
-## §2 — What made attempt #5 different: DR-20 and CR-125/126
+## §2 — What made attempt #5 different: DR-20 and CR-126/127
 
 Two consecutive unchunked full-scoring dispatches had crashed with zero committed progress before
-this campaign adopted checkpointed batching (**CR-125**, closed, proven twice — once on the
+this campaign adopted checkpointed batching (**CR-126**, closed, proven twice — once on the
 breached run, once on the clean one, both completing all 3 batches + assembly cleanly). Separately,
 the breach itself produced **DR-20** (`DISAGREEMENT_REGISTER_v1_0.md` DIS.031): *"a train/test seal
-is enforced at the query/data layer... never by agent instruction alone."* Its fix, **CR-126**
+is enforced at the query/data layer... never by agent instruction alone."* Its fix, **CR-127**
 (`sealed_split_guard.ts`, PR #709), is wired as the first statement in the harness's single
 universal scoring funnel — no driver or contender type can bypass it by construction. Verified
 independently twice: once by a fresh-context Opus reviewer (including an adversarial millisecond-
@@ -65,7 +65,7 @@ which wrote its own independent date cross-reference (not reusing the guard's co
 confirmed the exact prior-breach signature — the 2025 marriage event, the 20 post-2020
 `pratyantar_lord` scores — is provably absent this time.
 
-## §3 — B-2: CR-127, a real architecture gap
+## §3 — B-2: CR-128, a real architecture gap
 
 The B-2 dispatch, before writing anything, traced `mimamsa_outcome_record` (B-2's stated write
 target per `BRIEF_D4B.md` §1) end to end and found it does not exist — no table, no live write
@@ -77,7 +77,7 @@ named `prediction_state`, the column `update_calibration()` requires to populate
 pass's live check exactly; a third candidate, `mcp_prediction_outcomes`, exists but is empty,
 narrowly scoped to resolving one filed prediction at a time, and is wired into nothing. **B-2
 correctly halted rather than fabricate a row count against a write mechanism that doesn't exist.**
-Full detail: `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-127.
+Full detail: `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-128.
 
 **This requires a real decision, not a fix.** Either (a) repair `update_calibration()`/
 `phala_anchors`'s schema mismatch and wire a genuine event→calibration pipeline, or (b) build
@@ -88,7 +88,7 @@ that name. B-2/B-3 stay correctly blocked pending that ruling.
 
 Two distinct causes, both now understood and repaired:
 
-1. This session's own DR-20/CR-126(orig. CR-123)/NP-D4B-007 doctrine entries were first committed
+1. This session's own DR-20/CR-127(orig. CR-123)/NP-D4B-007 doctrine entries were first committed
    only on the incident branch itself (`wave/D-4b/B1-full-rerun`), which — correctly, by design —
    never merges (it stays QUARANTINED, permanently, as evidence). That meant those entries never
    actually reached `main`. This pass re-lands them under fresh numbers (`CR-122`/`CR-123` having
@@ -115,19 +115,19 @@ legitimate scored comparison.
 NP-D4B ledger: 001–006 unchanged status from prior passes. **007: outcome recorded** (the
 quarantine's pre-committed next step — a clean re-run — materialized exactly as the ruling
 anticipated). **008: new, process findings, native review requested** (informational on the
-content-loss incident; a real decision needed on CR-127).
+content-loss incident; a real decision needed on CR-128).
 
 ## §6 — Register final sweep
 
 `DISAGREEMENT_REGISTER_v1_0.md`: DIS.031 (DR-20) added. `MARSYS_DEFECT_GAP_REGISTER_v2_0.md`
-v3.13: CR-125/126 (closed, proven) and CR-127 (open, native decision required) added, with an
+v3.13: CR-126/127 (closed, proven) and CR-128 (open, native decision required) added, with an
 explicit re-landing/renumbering note for the CR-122/123 collision. `CAPABILITY_MANIFEST.json`: not
 touched, no drift. `NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md`: no new open directive.
 
 ## §7 — Three-point baseline diff
 
 **Still not run.** Its precondition (a completed calibration loop — B-1 through B-3 genuinely
-merged) is now half-met for the first time (B-1 merged) but B-2/B-3 remain blocked on CR-127. Not
+merged) is now half-met for the first time (B-1 merged) but B-2/B-3 remain blocked on CR-128. Not
 a new gap — the same one every prior GATED pass has honestly reported, now one lane closer.
 
 ## §8 — Standing live loop
@@ -137,7 +137,7 @@ open independent of B-1/B-2's internal state.
 
 ## §9 — Next action (binding)
 
-1. **Native/Binder decision on CR-127**: repair the `phala_anchors`/`update_calibration()` schema
+1. **Native/Binder decision on CR-128**: repair the `phala_anchors`/`update_calibration()` schema
    mismatch to wire a genuine pipeline, or build the write surface `mimamsa_outcome_record`
    actually described, since neither currently exists.
 2. Once that surface exists, B-2 can honestly simulate then execute its backfill (against

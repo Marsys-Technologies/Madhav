@@ -289,6 +289,28 @@ export const CompletenessPartSchema = z.object({
 
 export type CompletenessPart = z.infer<typeof CompletenessPartSchema>
 
+// ── Judgment-flags part (RC-02 — web/consult ↔ MCP/prashna_ask gate-flag parity) ──
+// `prashna_ask` (/api/mcp/prashna_ask/route.ts) has surfaced a `judgment_flags: string[]`
+// array directly in its response envelope since W6 — e.g. `no_leakage_capabilities_
+// stripped`, `planned_tools_unresolved`, `empty_tool_results`, `synthesis_evidence_
+// truncated`. The web/consult door had NO equivalent aggregation point at all (see the
+// route's own former code comment at the NO-LEAKAGE strip site) — a strip that fired
+// live was only `console.warn`'d server-side, never disclosed to the caller. This part
+// closes that specific, verified gap (RC-02_TWO_DOOR_PARITY_v1_0.md §4.2): it is emitted
+// once, near the end of the stream (alongside `data-completeness`), carrying the SAME
+// flag STRINGS as the MCP door for the SAME underlying condition (currently
+// `no_leakage_capabilities_stripped` — the literal shared-vocabulary flag; NOT a
+// unification of the two receipt schemas, which stay intentionally distinct per RC-02's
+// scope). Additional web-channel-only flags (e.g. namespace-gap disclosure) may be
+// appended here over time; they are additive, not standing in for an MCP-side flag that
+// does not apply to this channel.
+export const JudgmentFlagsPartSchema = z.object({
+  type: z.literal('judgment_flags'),
+  flags: z.array(z.string()),
+})
+
+export type JudgmentFlagsPart = z.infer<typeof JudgmentFlagsPartSchema>
+
 // ── Orientation part (W4 "One Planner" — S-1 orientation front-door on web channel) ──
 // Emitted ONCE near the START of the stream. Carries the ≤2000-token orientation block
 // (chart frame + structural facts + notable findings + dasha context + category/drill map).
@@ -317,6 +339,7 @@ export type OrientationPart = z.infer<typeof OrientationPartSchema>
 
 export const DataPartSchema = z.discriminatedUnion('type', [
   CompletenessPartSchema,
+  JudgmentFlagsPartSchema,
   OrientationPartSchema,
   ClarificationPartSchema,
   StagePartSchema,
@@ -459,6 +482,11 @@ export const clarificationPart = (args: Omit<ClarificationPart, 'type'>): Clarif
 
 export const completenessPart = (args: Omit<CompletenessPart, 'type'>): CompletenessPart => ({
   type: 'completeness',
+  ...args,
+})
+
+export const judgmentFlagsPart = (args: Omit<JudgmentFlagsPart, 'type'>): JudgmentFlagsPart => ({
+  type: 'judgment_flags',
   ...args,
 })
 
