@@ -51,14 +51,32 @@ const MS_PER_DAY = 86_400_000
  * only the date axis is permuted. Points that wrap past `boundsEnd` land
  * back at `boundsStart` plus the remainder, exactly mirroring
  * `circularShiftPeriods`'s wrap arithmetic in curve.ts.
+ *
+ * BUG FIX (F-2, 2026-07-22): the wraparound modulo arithmetic moves a
+ * point's DATE but `.map()` preserves the point's original ARRAY INDEX. Any
+ * point whose shift crosses `boundsEnd` lands back near `boundsStart` while
+ * staying at its old (now too-late) array position, so the output is no
+ * longer sorted ascending by date whenever `shiftDays` is not an exact
+ * multiple of the bounds span. `proper_scoring.ts`'s `crps()`/`gridStepDays()`
+ * treat array-adjacent points as date-adjacent neighbors (their Riemann-sum
+ * step is `(next.date - prev.date) / 2`); fed an unsorted grid, `next` can
+ * precede `prev` in time, producing a NEGATIVE step for that grid cell and,
+ * with it, mathematically impossible negative CRPS values (CRPS is an
+ * integral of squared terms and must be >= 0). Re-sorting by date after the
+ * wrap restores the grid invariant every downstream consumer of
+ * `CurvePoint[]` assumes. See PR #694 for the live reproduction that
+ * surfaced this (that PR's run numbers are VOID — see its own follow-up
+ * fix PR for the disclosure).
  */
 export function circularShiftCurve(curve: CurvePoint[], shiftDays: number, boundsStart: Date, boundsEnd: Date): CurvePoint[] {
   const totalMs = boundsEnd.getTime() - boundsStart.getTime()
   if (totalMs <= 0) return curve
-  return curve.map((pt) => {
+  const shifted = curve.map((pt) => {
     const offset = (((pt.date.getTime() - boundsStart.getTime() + shiftDays * MS_PER_DAY) % totalMs) + totalMs) % totalMs
     return { date: new Date(boundsStart.getTime() + offset), intensity: pt.intensity }
   })
+  shifted.sort((a, b) => a.date.getTime() - b.date.getTime())
+  return shifted
 }
 
 /**
