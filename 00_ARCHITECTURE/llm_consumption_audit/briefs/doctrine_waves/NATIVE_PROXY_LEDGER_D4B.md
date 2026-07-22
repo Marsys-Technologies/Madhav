@@ -572,3 +572,56 @@ commended as exactly the correct behavior under B.10.
 Reversibility: fully reversible — a future session may tighten this ruling to zero-tolerance
 (no aggregate carve-out) without needing to revisit anything already merged, since no lane's
 behavior depends on this carve-out existing going forward.
+
+---
+
+## NP-D4B-006 (2026-07-22, native ruling, direct via Cowork — not proxy-issued)
+
+**Deviation record: conductor-verified-under-infrastructure-duress, PR #699 (fix lane F-1).**
+
+Context: the Phase 4 workflow's fresh-context Opus verifier for F-1 stalled on repeated dispatch
+attempts (agent-infrastructure stream instability — three interrupted/stalled dispatches, none
+producing a substantive finding either way). Per native disposition this session, conductor-as-
+verifier was authorized as last resort, under strict terms: every probe executed live by the
+conductor itself, none taken from the PR's self-report.
+
+**Probes executed and logged, live, this session (not from PR description):**
+1. Read `ka_gochara_resonance/writer.py` (`TARGET_EVENT_CLASSES = ("marriage", "major_gain",
+   "career_advancement")`) and `GOCHARA_RESONANCE_MAP_SPEC.md` §4 (documents the 3-of-27 scope
+   choice, "a follow-on, not a G-1 blocker") directly — confirms 3 classes is designed scope, not
+   under-population.
+2. Live `POST /api/compute/permission_curve` call, chart 482012f1, `event_class="marriage"`,
+   `system_ids=["guru_shani_double_transit"]`, 2013-10-01→2013-12-31: `target_count=23`, 19/19
+   points `active=true`, including 2013-12-05/10/15 bracketing the true 2013-12-11 marriage date.
+3. Same call with `event_class="family"` (pre-fix passthrough value): `target_count=0`, 19/19
+   points `active=false` — negative control confirmed.
+4. Read `event_class_resolution.ts`'s `DOMAIN_TO_EVENT_CLASS` map directly; live DB query
+   confirmed the real marriage event's `domain='family/marriage'`, `category='family'`,
+   `event_date=2013-12-11` — exactly the category/domain mismatch the original bug missed, and
+   exactly what the map resolves correctly. **Honest limitation noted (not a defect):** the map
+   has no `career_advancement` domain entries at all, so that populated class will resolve
+   UNRESOLVED for every real event in this chart — consistent with the PR's own "2 resolved / 37
+   unresolved" count, not silently fabricated.
+5. All live queries this session scoped `event_date < '2020-01-01'` only — sealed test split
+   untouched.
+6. `git diff origin/main...HEAD --name-only` on the branch: exactly the 4 stated files
+   (`b1_driver_v1_0.ts`, `fetch_populated_event_classes.ts`, `event_class_resolution.ts` +
+   its test file) — no FROZEN orchestrator/`gochara_grammar`/`gochara_intensity`-core/raw-LEL-data
+   touched.
+7. `npx vitest run` on the F-1 test file: 22/22 passed, live-executed. `a3_scoring_harness` full
+   suite: 101/101 passed, live-executed.
+8. `gh pr checks 699`: all required checks SUCCESS. Merged forward against `origin/main` once
+   (branch was BEHIND after F-2's own merge), re-verified CI green post-merge, then merged.
+
+**Ruling: ACCEPT, conductor-verified, PR #699 merged** (merge commit on `main`, post F-1+F-2 both
+landing). **Mitigation, binding:** a retroactive fresh-context Opus verifier must run against the
+now-merged state as soon as agent infrastructure stabilizes — it may run in parallel with Phase
+4's downstream steps (B-1 full re-run onward), not gating them, per this entry's own authorization.
+**If that retroactive verifier finds a substantive defect**, the standing rule applies without
+exception: halt the affected downstream step, fix forward or revert, report — this deviation buys
+no immunity from that obligation.
+
+Reversibility: the retroactive verifier is the reversibility path — nothing about this deviation is
+treated as final until that pass runs.
+
+*— end NP-D4B-006*
