@@ -178,6 +178,51 @@ describe('registerPrashnaAskTool', () => {
     expect(terminalCall.params.message).toContain('"outcome":"plan"')
   })
 
+  it('forwards a supplied scope_tuple to callPrashnaAskEngine (W6.1 fix-cycle)', async () => {
+    const engineSpy = vi.spyOn(bridge, 'callPrashnaAskEngine').mockResolvedValue({
+      ok: true,
+      trace_id: 't1',
+      chart_id: CHART_ID,
+      outcome: 'plan',
+      query_class: 'holistic',
+      query_intent_summary: 'test',
+      completeness: {
+        status: 'complete',
+        tools_dispatched: [],
+        unserved_tools: [],
+        unresolved_tools: [],
+        stripped_leaked_capabilities: [],
+        cap_tripped: null,
+      },
+      judgment_flags: [],
+      results: [],
+    })
+
+    const { server, getHandler } = makeMockServer()
+    registerPrashnaAskTool(server, makePrincipal(), 'full')
+    const handler = getHandler()
+    const extra = makeExtra(undefined)
+
+    const scopeTuple = {
+      intent: 'domain_assessment',
+      domains: ['career'],
+      width: 'standard',
+      depth: 'standard',
+      horizon: 'near',
+      intervention: 'none',
+      entitlement: 'native',
+    }
+    await handler(
+      { chart_id: CHART_ID, question: 'career timing?', response_format: 'standard', scope_tuple: scopeTuple },
+      extra
+    )
+
+    await vi.waitFor(() => {
+      expect(engineSpy).toHaveBeenCalled()
+    })
+    expect(engineSpy.mock.calls[0][0].scopeTuple).toEqual(scopeTuple)
+  })
+
   it('reaches JobRegistry "complete" status after the background call resolves', async () => {
     const planResult = {
       ok: true as const,

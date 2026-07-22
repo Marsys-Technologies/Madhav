@@ -178,7 +178,8 @@ async function runInBackground(
   question: string,
   principal: Principal,
   extra: ToolExtra,
-  progressToken: string | number | undefined
+  progressToken: string | number | undefined,
+  scopeTuple: PrashnaAskInput['scope_tuple']
 ): Promise<void> {
   if (progressToken !== undefined) {
     await sendProgress(extra, progressToken, 0, 'prashna_ask: engine call started')
@@ -192,6 +193,7 @@ async function runInBackground(
         chartId,
         question,
         principal: { userUid: principal.user_uid, keyId: principal.key_id },
+        scopeTuple,
       },
       (progress) => {
         const elapsedSec = (progress.elapsed_ms / 1000).toFixed(1)
@@ -314,7 +316,15 @@ export function registerPrashnaAskTool(
       // the notification await) its first synchronous action is a `JobRegistry
       // .updateProgress()` call that flips status to 'running' before this line
       // would otherwise read it, racing the "immediate job handle" contract.
-      void runInBackground(job.id, parsed.chart_id, parsed.question, principal, extra, progressToken)
+      void runInBackground(
+        job.id,
+        parsed.chart_id,
+        parsed.question,
+        principal,
+        extra,
+        progressToken,
+        parsed.scope_tuple
+      )
 
       return dualOutput({ job_id: job.id, status: 'pending', chart_id: parsed.chart_id })
     }

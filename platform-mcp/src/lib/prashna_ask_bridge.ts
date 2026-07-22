@@ -90,10 +90,31 @@ export type PrashnaAskEngineResponse =
   | PrashnaAskClarificationOutcome
   | PrashnaAskErrorOutcome
 
+/**
+ * Mirrors `register_prashna_ask.ts`'s `ScopeTupleSchema`-inferred shape (the
+ * one shared scope-tuple vocabulary in this codebase, C-1/DR-8's contract).
+ * Kept as a structural type here rather than an import — `platform-mcp` has
+ * no import path into `platform/src` (see `no_leakage_filter.ts`/`cost_caps.ts`
+ * for the same cross-deployable constraint and pattern).
+ */
+export interface PrashnaAskScopeTuple {
+  intent: string
+  domains: string[]
+  width: 'narrow' | 'standard' | 'broad'
+  depth: 'shallow' | 'standard' | 'deep'
+  horizon: 'past' | 'present' | 'near' | 'far' | 'atemporal'
+  intervention: 'none' | 'remedy' | 'muhurta' | 'mitigation'
+  entitlement: 'reference' | 'native' | 'restricted'
+}
+
 export interface CallPrashnaAskEngineInput {
   chartId: string
   question: string
   principal: { userUid: string; keyId: string }
+  /** C-1 signature's optional scope hint — forwarded verbatim to the platform
+   *  route's `scope_tuple` body field. See `pipeline_planner.ts`'s
+   *  `suppliedScopeTuple` param for how it's consumed (W6.1 fix-cycle). */
+  scopeTuple?: PrashnaAskScopeTuple
 }
 
 // ── Streamed-progress types (W6 Part 2) ──────────────────────────────────────
@@ -200,7 +221,11 @@ export async function callPrashnaAskEngine(
         'X-MCP-User': input.principal.userUid,
         'X-MCP-Key-Id': input.principal.keyId,
       },
-      body: JSON.stringify({ chart_id: input.chartId, question: input.question }),
+      body: JSON.stringify({
+        chart_id: input.chartId,
+        question: input.question,
+        ...(input.scopeTuple !== undefined ? { scope_tuple: input.scopeTuple } : {}),
+      }),
       signal: AbortSignal.timeout(ENGINE_CALL_TIMEOUT_MS),
     })
   } catch (err) {

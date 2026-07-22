@@ -146,6 +146,15 @@ describe('POST /api/mcp/prashna_ask — auth', () => {
     expect(res.status).toBe(400)
   })
 
+  it('returns 400 for a malformed scope_tuple rather than silently ignoring it', async () => {
+    const res = await POST(
+      makeReq({ chart_id: CHART, question: 'test?', scope_tuple: { intent: 'not_a_real_intent' } })
+    )
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error.message).toMatch(/scope_tuple/i)
+  })
+
   it('denies a chart the caller cannot access with the distinct entitlement_denied envelope', async () => {
     ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('deny')
     const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
@@ -179,6 +188,37 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
     expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBeNull()
     expect((body.results as Array<{ tool_name: string }>).map((r) => r.tool_name)).toEqual(['chart_facts_query', 'get_positions'])
     expect(mockGetToolByName).toHaveBeenCalledTimes(2)
+  })
+
+  it('forwards a supplied scope_tuple to callPipelinePlanner as the 8th positional arg (W6.1 fix-cycle)', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const suppliedTuple = {
+      intent: 'domain_assessment',
+      domains: ['career'],
+      width: 'standard',
+      depth: 'standard',
+      horizon: 'near',
+      intervention: 'none',
+      entitlement: 'native',
+    }
+    await POST(makeReq({ chart_id: CHART, question: 'test?', scope_tuple: suppliedTuple }))
+    expect(mockCallPipelinePlanner).toHaveBeenCalledWith(
+      'test?',
+      [],
+      expect.any(String),
+      CHART,
+      undefined,
+      expect.any(String),
+      expect.any(String),
+      suppliedTuple
+    )
+  })
+
+  it('calls callPipelinePlanner with undefined for the 8th arg when no scope_tuple is supplied', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+    const lastCallArgs = mockCallPipelinePlanner.mock.calls[mockCallPipelinePlanner.mock.calls.length - 1]
+    expect(lastCallArgs[7]).toBeUndefined()
   })
 
   it('propagates a clarification_needed outcome without dispatching any tools', async () => {

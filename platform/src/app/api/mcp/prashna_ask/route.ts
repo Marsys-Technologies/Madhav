@@ -72,6 +72,7 @@ import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { query } from '@/lib/db/client'
 import { buildErrorEnvelope, buildEntitlementDenialEnvelope } from '@/lib/mcp/epistemics'
 import { callPipelinePlanner } from '@/lib/pipeline/pipeline_planner'
+import { ScopeTupleSchema } from '@/lib/vidhi/scope_classifier'
 import { arbitrateBudgets } from '@/lib/pipeline/budget_arbiter'
 import {
   compileFloorForPlan,
@@ -95,6 +96,14 @@ interface PrashnaAskRequestBody {
   response_format?: string
   /** Logging/observability only — see file header. Never used for privilege. */
   entitlement?: string
+  /**
+   * C-1 signature's optional scope hint. W6.1 fix-cycle (native-directed,
+   * trace c332bf16-1641-4f70-b15c-65ea33b589ee): when supplied with a
+   * resolved `intent`, this is trusted over the deterministic text
+   * classifier's own guess and can bypass a clarification_needed outcome —
+   * see `callPipelinePlanner`'s `suppliedScopeTuple` param.
+   */
+  scope_tuple?: unknown
 }
 
 interface ToolDispatchOutcome {
@@ -153,6 +162,24 @@ export async function POST(request: Request) {
     )
   }
 
+  // A malformed scope_tuple is a caller bug worth surfacing (400), not something
+  // to silently drop back to text-only classification — the whole point of this
+  // field is that the caller is making an explicit, out-of-band scope assertion.
+  let suppliedScopeTuple: import('@/lib/vidhi/scope_classifier').ScopeTuple | undefined
+  if (body.scope_tuple !== undefined) {
+    const parsedTuple = ScopeTupleSchema.safeParse(body.scope_tuple)
+    if (!parsedTuple.success) {
+      return NextResponse.json(
+        buildErrorEnvelope({
+          error_class: 'validation',
+          message: `Invalid scope_tuple: ${parsedTuple.error.message}`,
+        }),
+        { status: 400 },
+      )
+    }
+    suppliedScopeTuple = parsedTuple.data
+  }
+
   // ── Per-call chart-access authorization (same brain as the primitives route) ─
   const role = await resolveMcpPrincipalRole(userUid)
   const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
@@ -184,6 +211,7 @@ export async function POST(request: Request) {
     undefined,
     queryId,
     plannerFallbackModelId,
+    suppliedScopeTuple,
   )
 
   if (plannerOutcome.outcome === 'clarification_needed') {
