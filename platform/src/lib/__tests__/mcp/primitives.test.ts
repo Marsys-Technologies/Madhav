@@ -145,6 +145,7 @@ function buildRequest(
     missingUser?: boolean
     missingToken?: boolean
     params?: Record<string, unknown>
+    extraHeaders?: Record<string, string>
   } = {}
 ) {
   const headers: Record<string, string> = {
@@ -153,6 +154,7 @@ function buildRequest(
     'x-mcp-user': 'uid_test_user',
     'x-mcp-audience-tier': 'super_admin',
     'x-mcp-key-id': 'mcp_test_abc12345',
+    ...(opts.extraHeaders ?? {}),
   }
   if (opts.missingUser) delete headers['x-mcp-user']
   if (opts.missingToken) delete headers['x-mcp-internal-token']
@@ -272,5 +274,82 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
 
     expect(capturedPlan!['graph_seed_hints']).toBeUndefined()
     expect(capturedPlan!['graph_traversal_depth']).toBeUndefined()
+  })
+
+  // ── CR-118 (RC-11) regression — chart_id threaded onto queryPlan ───────────
+  //
+  // This route resolved `chartId` (params['chart_id'] ?? x-mcp-chart-id header)
+  // for the entitlement gate ONLY — the `queryPlan` object handed to
+  // `tool.retrieve(queryPlan, toolParams)` carried no `chart_id` field at all.
+  // tool_name_bridge.ts's getToolByName().retrieve() reads chart_id off the
+  // PLAN (`plan['chart_id']`), not off `params`, to populate the per_chart
+  // handler's `args.chart_id` — so a caller supplying chart_id only via the
+  // X-MCP-Chart-Id header (never inside `params`) would reach the capability
+  // handler with no chart_id and fast-fail immediately, matching CR-118's
+  // single-digit-ms error/empty pattern for msr_sql/get_yoga_firings/
+  // cgm_graph_walk. See MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-118.
+  const NATIVE_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
+
+  it('CR-118: chart_id supplied in params reaches queryPlan.chart_id', async () => {
+    let capturedPlan: Record<string, unknown> | null = null
+    mockGetTool.mockReturnValue({
+      name: 'msr_sql',
+      version: '1.0',
+      retrieve: vi.fn().mockImplementation((plan: Record<string, unknown>) => {
+        capturedPlan = plan
+        return Promise.resolve({ signals: [] })
+      }),
+    } as unknown as ReturnType<typeof getToolByName>)
+
+    const req = buildRequest('query_signals', { params: { chart_id: NATIVE_CHART, domain: 'career' } })
+    const res = await POST(req, buildRouteParams('query_signals'))
+    expect(res.status).toBe(200)
+
+    expect(capturedPlan).not.toBeNull()
+    expect(capturedPlan!['chart_id']).toBe(NATIVE_CHART)
+  })
+
+  it('CR-118: chart_id supplied ONLY via X-MCP-Chart-Id header still reaches queryPlan.chart_id', async () => {
+    let capturedPlan: Record<string, unknown> | null = null
+    mockGetTool.mockReturnValue({
+      name: 'cgm_graph_walk',
+      version: '1.0',
+      retrieve: vi.fn().mockImplementation((plan: Record<string, unknown>) => {
+        capturedPlan = plan
+        return Promise.resolve({ nodes: [], edges: [] })
+      }),
+    } as unknown as ReturnType<typeof getToolByName>)
+
+    // chart_id deliberately absent from params — header-only, the path CR-118's
+    // fast-fail would have hit pre-fix (queryPlan.chart_id stayed undefined
+    // regardless of how chartId was resolved for the entitlement check).
+    const req = buildRequest('get_cgm_subgraph', {
+      params: {},
+      extraHeaders: { 'x-mcp-chart-id': NATIVE_CHART },
+    })
+    const res = await POST(req, buildRouteParams('get_cgm_subgraph'))
+    expect(res.status).toBe(200)
+
+    expect(capturedPlan).not.toBeNull()
+    expect(capturedPlan!['chart_id']).toBe(NATIVE_CHART)
+  })
+
+  it('CR-118: chart-agnostic tool (vector_search) never has chart_id fabricated onto queryPlan', async () => {
+    let capturedPlan: Record<string, unknown> | null = null
+    mockGetTool.mockReturnValue({
+      name: 'vector_search',
+      version: '1.0',
+      retrieve: vi.fn().mockImplementation((plan: Record<string, unknown>) => {
+        capturedPlan = plan
+        return Promise.resolve({ results: [] })
+      }),
+    } as unknown as ReturnType<typeof getToolByName>)
+
+    const req = buildRequest('vector_search', { params: { query: 'test' } })
+    const res = await POST(req, buildRouteParams('vector_search'))
+    expect(res.status).toBe(200)
+
+    expect(capturedPlan).not.toBeNull()
+    expect(capturedPlan!['chart_id']).toBeUndefined()
   })
 })

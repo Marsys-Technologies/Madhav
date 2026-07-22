@@ -627,6 +627,19 @@ export async function POST(request: Request) {
   interface LegacyQueryPlanShape {
     query_plan_id: string
     query_text: string
+    // RC-11 (CR-118 fast-fail root cause): the retrieval-registry bridge
+    // (tool_name_bridge.ts's getToolByName().retrieve()) reads chart_id
+    // dynamically off this plan object to scope every `per_chart` capability
+    // call. This field was missing from both the type and the object literal
+    // below, so EVERY per_chart registry tool dispatched via this route
+    // (msr_sql/query_signals, get_yoga_firings, cgm_graph_walk/
+    // traverse_chart_graph, etc.) received no chart_id and fast-failed with an
+    // immediate `chart_id is required` validation error — before any DB
+    // round-trip, matching CR-118's observed ~4-6ms error latency exactly.
+    // Chart-id-agnostic tools (vector_search) were unaffected, which is why
+    // the original live probe saw a mix of failing and succeeding tools in
+    // the same request. See MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-118.
+    chart_id: string
     query_class:
       | 'factual'
       | 'interpretive'
@@ -661,6 +674,7 @@ export async function POST(request: Request) {
   const queryPlan: LegacyQueryPlanShape = {
     query_plan_id: queryId,
     query_text: queryText,
+    chart_id: chartId,
     query_class: plan.query_class,
     domains: plan.domains ?? [],
     forward_looking: plan.forward_looking ?? false,
