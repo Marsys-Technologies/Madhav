@@ -33,7 +33,7 @@ directive 2026-07-22.
 |---|---|---|---|---|---|
 | RC-01 | R-C | OPEN | — | — | live E2E, both charts |
 | RC-02 | R-C | OPEN | — | — | two-door parity |
-| RC-03 | R-C | OPEN | — | — | §9.7 load test |
+| RC-03 | R-C | BASELINE RECORDED (unverified — no verifier pass run this session) | res/rc03-load-baseline | — | Native-Proxy Resolver adapted-method live run (harness's own HTTP client could not reach deployed routes — see W6_LOAD_BASELINE_v1_0.md §2); two independent live passes via mcp__marsys-jis-direct__* against production; thresholds set, QoS doctrine directly inspected and held |
 | RC-04 | R-C | OPEN | — | — | census + probe re-run (needs Next.js runtime) |
 | RC-05 | R-A | **ACCEPTED, merged+deployed** | res/rc05-dead-tool-sweep @ 07179367 | ACCEPT (100e1051) | resonance_register/cluster_atlas swept; RC-06 unblocked |
 | RC-06 | R-B | **ACCEPTED (fix-cycle 2), merged+deployed** | res/rc06-golden-set @ 9365a616 | ACCEPT (fc1bb177), after REJECT (24d9bb04) | all 14 WP-1.7 dead caps confirmed swept |
