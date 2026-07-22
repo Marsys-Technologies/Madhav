@@ -51,6 +51,13 @@ vi.mock('@/lib/pipeline/no_leakage_filter', () => ({
   filterLeakedCapabilities: (names: readonly string[]) => names.filter((n) => n !== 'marsys://tool/L5/lel_query'),
 }))
 
+const { mockSynthesizeReading, mockFetchChartHeaderResolution } = vi.hoisted(() => ({
+  mockSynthesizeReading: vi.fn(),
+  mockFetchChartHeaderResolution: vi.fn(),
+}))
+vi.mock('@/lib/pipeline/prashna_ask_synthesis', () => ({ synthesizeReading: mockSynthesizeReading }))
+vi.mock('@/lib/retrieval/chart_header', () => ({ fetchChartHeaderResolution: mockFetchChartHeaderResolution }))
+
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { POST } from '../route'
 
@@ -120,6 +127,15 @@ beforeEach(() => {
       schema_version: '1.0',
     }),
   }))
+  mockSynthesizeReading.mockResolvedValue({
+    reading: 'Your Mercury-Jupiter Antardasha favors steady, disciplined career growth.',
+    model_id: 'claude-sonnet-test',
+    judgment_flags: [],
+  })
+  mockFetchChartHeaderResolution.mockResolvedValue({
+    header: { chart_id_short: '482012f1', name: 'Test', lagna_sign: 'Aries', lagna_deg: 1.2, moon_sign: 'Purva Bhadrapada', sun_sign: 'Capricorn', ayanamsha: 'lahiri_chitrapaksha', current_maha_antar: 'Mercury/Jupiter' },
+    flags: [],
+  })
 })
 
 describe('POST /api/mcp/prashna_ask — auth', () => {
@@ -186,6 +202,11 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
     expect(body.ok).toBe(true)
     expect((body.completeness as { status: string }).status).toBe('complete')
     expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBeNull()
+    // W6.2 fix-cycle: the full v3-enveloped reading (verdict + chart_header), not
+    // just raw evidence bundles — the actual defect this fix-cycle closed.
+    expect(body.reading).toBe('Your Mercury-Jupiter Antardasha favors steady, disciplined career growth.')
+    expect((body.chart_header as { lagna_sign: string }).lagna_sign).toBe('Aries')
+    expect(mockSynthesizeReading).toHaveBeenCalledTimes(1)
     expect((body.results as Array<{ tool_name: string }>).map((r) => r.tool_name)).toEqual(['chart_facts_query', 'get_positions'])
     expect(mockGetToolByName).toHaveBeenCalledTimes(2)
   })
@@ -371,5 +392,76 @@ describe('POST /api/mcp/prashna_ask — stream error handling', () => {
     expect(errorLine!.message).toContain('registry lookup exploded')
     // No 'final' line — the loop errored before reaching it.
     expect(lines.some((l) => l.event === 'final')).toBe(false)
+  })
+})
+
+describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () => {
+  it('passes the gathered evidence and gap disclosures to synthesizeReading', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
+    await readNdjson(res) // drives the stream's start() callback to completion
+
+    expect(mockSynthesizeReading).toHaveBeenCalledTimes(1)
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.chartId).toBe(CHART)
+    expect(call.question).toBe('What is my ascendant?')
+    expect(call.evidence.map((e: { tool_name: string }) => e.tool_name)).toEqual([
+      'chart_facts_query',
+      'get_positions',
+    ])
+    expect(call.unresolvedTools).toEqual([])
+    expect(call.emptyResultTools).toEqual([])
+    expect(call.strippedLeakedCapabilities).toEqual([])
+    expect(call.capTripped).toBeNull()
+  })
+
+  it('still runs synthesis over partial evidence when a cost cap trips, and forwards the cap reason as a gap', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(
+      planOutcome(['chart_facts_query', 'get_positions', 'get_strength', 'get_dashas']),
+    )
+    vi.doMock('@/lib/pipeline/cost_caps', async () => {
+      const actual = await vi.importActual<typeof import('@/lib/pipeline/cost_caps')>('@/lib/pipeline/cost_caps')
+      return { ...actual, resolveCostCapsForEntitlement: () => ({ maxCalls: 1, maxWallClockMs: 120_000 }) }
+    })
+    vi.resetModules()
+    const { POST: POST_WITH_LOW_CAP } = await import('../route')
+
+    const res = await POST_WITH_LOW_CAP(makeReq({ chart_id: CHART, question: 'deep dive' }))
+    await readNdjson(res)
+
+    expect(mockSynthesizeReading).toHaveBeenCalledTimes(1)
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.capTripped).toBe('call_count_cap')
+    expect(call.evidence.length).toBeGreaterThan(0)
+  })
+
+  it('surfaces synthesis-side judgment_flags (e.g. a failed synthesis call) in the final response without failing the whole request', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    mockSynthesizeReading.mockResolvedValue({
+      reading: null,
+      model_id: null,
+      judgment_flags: ['synthesis_call_failed'],
+    })
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    expect(body.ok).toBe(true) // the request still succeeds — synthesis failure is disclosed, not fatal
+    expect(body.reading).toBeNull()
+    expect(body.judgment_flags).toContain('synthesis_call_failed')
+  })
+
+  it('discloses chart_header resolution failure via judgment_flags without failing the request', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    mockFetchChartHeaderResolution.mockResolvedValue({ header: null, flags: ['chart_header_unresolved'] })
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    expect(body.ok).toBe(true)
+    expect(body.chart_header).toBeNull()
+    expect(body.judgment_flags).toContain('chart_header_unresolved')
   })
 })

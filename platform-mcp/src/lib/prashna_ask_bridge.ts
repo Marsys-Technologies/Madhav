@@ -50,7 +50,23 @@ export interface PrashnaAskCompleteness {
   unserved_tools: string[]
   unresolved_tools: string[]
   stripped_leaked_capabilities: string[]
+  /** W6.2 fix-cycle: a tool that dispatched successfully but returned zero
+   *  rows — disclosed, never silently absorbed (§N.6). */
+  empty_result_tools: string[]
   cap_tripped: string | null
+}
+
+/** Mirrors `platform/src/lib/retrieval/envelope.ts`'s `ChartHeader` — same
+ *  cross-deployable structural-mirror constraint as the rest of this file. */
+export interface PrashnaAskChartHeader {
+  chart_id_short: string
+  name: string | null
+  lagna_sign: string | null
+  lagna_deg: number | null
+  moon_sign: string | null
+  sun_sign: string | null
+  ayanamsha: string
+  current_maha_antar: string | null
 }
 
 export interface PrashnaAskPlanOutcome {
@@ -60,6 +76,15 @@ export interface PrashnaAskPlanOutcome {
   outcome: 'plan'
   query_class: string
   query_intent_summary: string
+  /** W6.2 fix-cycle: the full v3-enveloped reading — a single, non-agentic
+   *  synthesis call over the gathered floor evidence (see
+   *  `platform/src/lib/pipeline/prashna_ask_synthesis.ts`). `null` when
+   *  synthesis itself failed or returned empty — see `judgment_flags` for
+   *  which (`synthesis_skipped_*` / `synthesis_call_failed` /
+   *  `synthesis_returned_empty`); the raw `results` grounding evidence is
+   *  still present either way, per B.10 (never drop gathered data). */
+  reading: string | null
+  chart_header: PrashnaAskChartHeader | null
   completeness: PrashnaAskCompleteness
   judgment_flags: string[]
   results: Array<{ tool_name: string; bundle: unknown }>
