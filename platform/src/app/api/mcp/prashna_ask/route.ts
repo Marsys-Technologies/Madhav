@@ -438,6 +438,19 @@ export async function POST(request: Request) {
 
       const isPartial = costCapTripped !== null || unresolvedTools.length > 0
 
+      // W6.3 fix-cycle (native-directed, live trace d08d823a): chart_header must be
+      // resolved BEFORE synthesis, not after — synthesis needs current_maha_antar
+      // (+ the same as-of date) to anchor the model's notion of "now"; fetching it
+      // after synthesis returned meant the reading was built with no temporal anchor
+      // at all and reasoned from stale training-data assumptions instead.
+      const nowContextDate = new Date().toISOString().slice(0, 10)
+      const { header: chartHeader, flags: chartHeaderFlags } = await fetchChartHeaderResolution(
+        chartId ?? '',
+        undefined,
+        nowContextDate,
+      ).catch(() => ({ header: null, flags: ['chart_header_unresolved'] }))
+      judgmentFlags.push(...chartHeaderFlags)
+
       // ── Synthesis (W6.2 fix-cycle) ────────────────────────────────────────────
       // Turn the gathered floor evidence into an acharya-grade reading — a single,
       // non-agentic LLM call (see prashna_ask_synthesis.ts's header for the design
@@ -460,13 +473,10 @@ export async function POST(request: Request) {
         emptyResultTools,
         strippedLeakedCapabilities: leakedTools,
         capTripped: costCapTripped?.reason ?? null,
+        nowContextDate,
+        currentMahaAntar: chartHeader?.current_maha_antar ?? null,
       })
       judgmentFlags.push(...synthesis.judgment_flags)
-
-      const { header: chartHeader, flags: chartHeaderFlags } = await fetchChartHeaderResolution(chartId ?? '').catch(
-        () => ({ header: null, flags: ['chart_header_unresolved'] }),
-      )
-      judgmentFlags.push(...chartHeaderFlags)
 
       const finalBody = {
         ok: true,

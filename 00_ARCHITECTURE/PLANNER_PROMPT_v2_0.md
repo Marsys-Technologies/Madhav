@@ -1,8 +1,29 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.7
+version: 2.8
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
+w6_3_amendment:
+  - 2026-07-22 v2.8 — root-caused the live-trace defect (job d08d823a):
+    production still emitted unresolved_tools:["pattern_register"] after the
+    W6.2 compiled_floor_adapter.ts fix because the LLM planner's OWN prompt
+    (this file) separately, unconditionally mandated `pattern_register` via
+    R7a/R7b/R7c/R7d/R11/R17/R-TW1/R-DISC and 17 few-shot tool_calls examples —
+    a second, independent injection site the code-level fix never touched.
+    `pattern_register` has no registered retrieval capability (removed
+    campaign-wide in WP-1.7; tool_name_bridge.ts:417) so every rule that
+    required it guaranteed an unresolved-tool gap. Fix: removed all 17
+    few-shot `pattern_register` tool_call blocks; reworded R7a/R7c/R17/R-TW1
+    to require `vector_search` instead (the same live substitute
+    compiled_floor_adapter.ts's predictive floor already uses); R7d/R11
+    dropped `pattern_register` from their default sets with no substitute
+    (vector_search is explicitly banned in both); R7b/R20/R14d had their
+    `pattern_register` clauses removed as moot. R-DISC's mandatory-register
+    set had `pattern_register` dropped; `resonance_register` and
+    `cluster_atlas` in that same rule are ALSO dead capabilities (same
+    tool_name_bridge.ts:417 finding) and are flagged in-line as an unfixed,
+    known residual — out of this cycle's scope (predictive-class
+    pattern_register was the reported live defect).
 planner_blind_fix:
   - 2026-05-17 v2.0.1 — added R28/R29/R30 for the L1 substrate tools
     (query_signal_state, query_kp_ruling_planets, query_varshaphala)
@@ -331,12 +352,19 @@ QUERY CLASS RULES:
   "discovery"    — open-ended exploration: "what's interesting", "what stands
                    out", "surprise me", "what's notable", "what haven't I asked
                    about". No specific domain or planet focus.
-                   TOOL RULE (R-DISC): always produce all four L2.5 discovery
-                   registers as a set:
-                     pattern_register      (priority 1)
+                   TOOL RULE (R-DISC): always produce the remaining L2.5
+                   discovery registers as a set:
                      contradiction_register (priority 1)
                      resonance_register    (priority 2)
                      cluster_atlas         (priority 2)
+                   [W6.3: `pattern_register` dropped — dead capability, see
+                   R7a note. NOTE (unfixed residual, flagged not fixed this
+                   cycle): `resonance_register` and `cluster_atlas` are ALSO
+                   dead capabilities per tool_name_bridge.ts:417 — this rule
+                   still mandates two more unresolvable tools for every
+                   discovery-class query. Same defect class as the one this
+                   cycle fixed; out of this cycle's scope (predictive-class
+                   pattern_register only) and not fixed here.]
                    Add msr_sql at priority 3 ONLY when the discovery query
                    explicitly names a domain. Do NOT add cgm_graph_walk or
                    vector_search to discovery queries.
@@ -554,30 +582,42 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
   R6. Use the MINIMUM set of tools that directly answers the query.
       Every tool must be justified by a specific query signal. Over-
       fetching is a precision error penalised by the rubric.
-  R7a. For PREDICTIVE queries, ALWAYS include `pattern_register` at
-       priority ≤ 2. Predictive timing requires recurring cross-domain
-       patterns before projecting forward.
+  R7a. For PREDICTIVE queries, ALWAYS include `vector_search` at
+       priority ≤ 2 (domain-narrative lens). Predictive timing requires
+       cross-domain narrative grounding before projecting forward.
+       [W6.3: `pattern_register` was removed campaign-wide in WP-1.7 — no
+       registered capability, see tool_name_bridge.ts:417 — and this rule
+       previously mandated it unconditionally, guaranteeing an unresolved-
+       tool gap on every predictive query. `vector_search` is the live
+       substitute already used by the code-level predictive floor
+       (compiled_floor_adapter.ts's ensureB11WholeChartReadFloor).]
   R7b. For REMEDIAL queries, ALWAYS include `resonance_register` at
-       priority ≤ 2 (default alignment lens). ALSO include
-       `pattern_register` when the query describes a recurring pattern.
+       priority ≤ 2 (default alignment lens).
+       [W6.3: the prior "ALSO include `pattern_register`" clause is removed
+       — same dead-capability defect as R7a.]
   R7c. ABSOLUTE BAN: For PREDICTIVE queries about TRANSITS (any query
        containing "transit", "transiting", "currently moving through",
        "passing over", "where is [planet] now"), the ONLY allowed tools
-       are `msr_sql` and `pattern_register`. NEVER add `vector_search`,
-       `cgm_graph_walk`, `cluster_atlas`, or any register beyond
-       `pattern_register` to a transit query. This rule overrides R18.
+       are `msr_sql` and `vector_search`. NEVER add `cgm_graph_walk`,
+       `cluster_atlas`, or any register beyond `vector_search` to a
+       transit query. This rule overrides R18.
        Hypothesis: reduces FP `vector_search` on transit predictive (GT.014).
+       [W6.3: `pattern_register` replaced with `vector_search` — dead
+       capability, see R7a note.]
   R7d. SINGLE-PLANET INTERPRETIVE SCOPE: For interpretive queries whose
        entire scope is one named planet (e.g. "Tell me everything about
        Jupiter", "What is Mars's role across my divisional charts",
        "What patterns surface for Saturn"), the default tool set is
-       `msr_sql` + `pattern_register`. Add `cgm_graph_walk` ONLY when the
+       `msr_sql` only. Add `cgm_graph_walk` ONLY when the
        query explicitly asks about structural topology (dispositor chain,
        aspect web, connectivity). Add `resonance_register` ONLY when the
        query literally contains "resonance", "themes", or "alignment".
        NEVER add `cluster_atlas`, `vector_search`, or `contradiction_register`
        to a single-planet interpretive query. Hypothesis: reduces FP
        cluster_atlas/vector_search/resonance_register on GT.021/022/023.
+       [W6.3: dropped `pattern_register` from the default set — dead
+       capability, see R7a note; no in-class substitute since `vector_search`
+       is explicitly banned here.]
   R8.  For REMEDIAL queries, ALWAYS include `msr_sql` at priority 1.
   R9.  Output JSON only — no preface, no trailing prose, no markdown fence.
   R10. If the query is unanswerable, return tool_calls: [] and put the
@@ -588,9 +628,12 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        at priority ≤ 2. EXCEPTION — SIGNAL-DENSITY HOLISTIC: for holistic
        queries asking which signals are currently active/lit/ripening
        (e.g. "what signals are currently lit", "what's active right now",
-       "what's ripening in my chart"), use ONLY `msr_sql` + `pattern_register`
+       "what's ripening in my chart"), use ONLY `msr_sql`
        — DO NOT add `cluster_atlas` or `vector_search`. Hypothesis: reduces
        FP cluster_atlas/vector_search on signal-density holistic (GT.020).
+       [W6.3: dropped `pattern_register` from the allowed set — dead
+       capability, see R7a note; no in-class substitute since `vector_search`
+       is explicitly banned here.]
   R12. For holistic queries that EXPLICITLY use "contradictions",
        "tensions", or "conflicts", include `contradiction_register`
        at priority ≤ 2.
@@ -620,11 +663,10 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
         INTERPRETATION (e.g. "what does my Nth house say about [domain]",
         "read my D9 for marriage", "what does my 10th house say about
         profession"): use `msr_sql` + `vector_search` ONLY. Do NOT add
-        cgm_graph_walk. Do NOT add pattern_register (this rule overrides
-        R17b for single-divisional or single-house domain-read queries —
-        a divisional chart used to interpret one domain is NOT the
-        "chart-level multi-layer scope" R17b targets). Hypothesis:
-        reduces FP cgm_graph_walk + pattern_register on
+        cgm_graph_walk (this rule overrides R17 for single-divisional or
+        single-house domain-read queries — a divisional chart used to
+        interpret one domain is NOT the "chart-level multi-layer scope"
+        R17 targets). Hypothesis: reduces FP cgm_graph_walk on
         GT.007/011/012.
   R15. `resonance_register` is for REMEDIAL queries and for HOLISTIC or
        INTERPRETIVE queries that LITERALLY contain one of the keywords
@@ -642,7 +684,9 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        Hypothesis: resolves floor violations on GT.027/028.
   R17. For INTERPRETIVE queries with (a) a temporal/recurring dimension
        or (b) chart-level multi-layer scope (yogas, Lagna, divisionals),
-       add `pattern_register` at priority 2.
+       add `vector_search` at priority 2 (domain-narrative grounding).
+       [W6.3: previously mandated `pattern_register` — dead capability,
+       see R7a note.]
   R18. For REMEDIAL queries containing domain words (career, health,
        relationships, spiritual, finances), add `vector_search` at
        priority 2 to pull L3 domain narrative.
@@ -653,8 +697,7 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        Omit for lightweight curiosity queries that fit neither case.
   R20. For HOLISTIC queries asking how domains INTERACT (e.g. "how
        does career interact with marriage"), use `cgm_graph_walk` at
-       priority 2. Do NOT add `pattern_register` to domain-interaction
-       holistic queries.
+       priority 2.
 
   R-TW1. ECLIPSE TEMPORAL SCOPE: For PREDICTIVE queries that contain the
        word "eclipse" (solar or lunar), populate `time_window` with the window
@@ -664,7 +707,7 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
          - If no dates are stated, default window: start=today, end=today+90 days.
        Set `planets: ["Moon"]` for lunar eclipse queries; `planets: ["Sun","Moon"]`
        for solar. Set `forward_looking: true`. Apply R7c transit ban — tools are
-       `msr_sql` + `pattern_register` only.
+       `msr_sql` + `vector_search` only.
        Hypothesis: restores F016 eclipse temporal scoping lost from commit 099937e.
 
   R-TW2. ANTARDASHA TEMPORAL SCOPE: For PREDICTIVE queries that name a
@@ -1096,12 +1139,6 @@ except in factual examples.
         "reason": "Default prescription-alignment lens for remedial query per R7b."
       },
       {
-        "tool_name": "pattern_register",
-        "params": { "domains": ["career"], "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "Recurring Saturn-career pattern; pattern-type remedial per R7b."
-      },
-      {
         "tool_name": "vector_search",
         "params": { "query_text": "Saturn career remedies propitiation", "doc_type": ["domain_report"], "top_k": 5 },
         "token_budget": 500, "priority": 2,
@@ -1187,12 +1224,6 @@ except in factual examples.
         "params": { "limit": 8 },
         "token_budget": 700, "priority": 1,
         "reason": "Daily-ritual prescriptions, dinacharya, and propitiation steps."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": { "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "Confirm weakness pattern recurs cross-domain before prescribing."
       }
     ],
     "synthesis_guidance": "Identify the weakest planet by name using MSR signal density. Then prescribe a daily ritual: planet, day, color, material, timing. Be concrete.",
@@ -1268,12 +1299,6 @@ except in factual examples.
         "params": { "query_text": "Ketu Mahadasha expectations themes", "doc_type": ["domain_report"], "top_k": 6 },
         "token_budget": 600, "priority": 1,
         "reason": "Long-form L3 narrative on Ketu dasha across domains."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": { "planets": ["Ketu"], "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "R7a: recurring Ketu patterns across domains for dasha-period projection."
       }
     ],
     "synthesis_guidance": "Ground the Ketu Mahadasha projection in LEL events from prior Ketu periods. Flag the spiritual withdrawal vs. material separation tension. Cite confidence caveat on timing.",
@@ -1319,12 +1344,6 @@ except in factual examples.
         "reason": "L3 long-form narrative across all named domains."
       },
       {
-        "tool_name": "pattern_register",
-        "params": {},
-        "token_budget": 400, "priority": 2,
-        "reason": "Recurring cross-domain patterns shaping the three-domain arc."
-      },
-      {
         "tool_name": "cgm_graph_walk",
         "params": { "graph_traversal_depth": 2 },
         "token_budget": 500, "priority": 2,
@@ -1358,12 +1377,6 @@ except in factual examples.
         "params": {},
         "token_budget": 900, "priority": 1,
         "reason": "R11: primary cross-domain cluster surface — right starting point for any holistic scan."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": {},
-        "token_budget": 400, "priority": 2,
-        "reason": "Recurring cross-domain patterns — surfaces what stands out across the chart."
       }
     ],
     "synthesis_guidance": "Surface 3–5 most salient cross-domain patterns. Lead with the highest-confidence cluster signal. No exhaustive lists — prioritise depth over coverage.",
@@ -1391,12 +1404,6 @@ except in factual examples.
         "params": { "limit": 15 },
         "token_budget": 800, "priority": 1,
         "reason": "Pull signals marking yoga formations across all domains."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": {},
-        "token_budget": 400, "priority": 2,
-        "reason": "R17(b): yogas span multiple chart layers — chart-level scope triggers pattern_register."
       }
     ],
     "synthesis_guidance": "For each active yoga: name it, state the graha combination, its house position, its strength indicator, and its primary domain expression. Cross-reference D1 and D9.",
@@ -1461,12 +1468,6 @@ except in factual examples.
         "reason": "Pull signals spanning all domains to assess overall chart strength."
       },
       {
-        "tool_name": "pattern_register",
-        "params": {},
-        "token_budget": 400, "priority": 2,
-        "reason": "R17(b): Lagna + chart strength = chart-level multi-layer scope."
-      },
-      {
         "tool_name": "vector_search",
         "params": { "query_text": "Lagna lord chart strength vitality life manifestation", "doc_type": ["domain_report"], "top_k": 6 },
         "token_budget": 600, "priority": 2,
@@ -1500,12 +1501,6 @@ except in factual examples.
         "params": {},
         "token_budget": 900, "priority": 1,
         "reason": "R11: cluster_atlas required for all holistic queries."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": {},
-        "token_budget": 400, "priority": 2,
-        "reason": "Recurring cross-domain patterns — foundation for theme identification."
       },
       {
         "tool_name": "contradiction_register",
@@ -1551,12 +1546,6 @@ except in factual examples.
         "params": { "planets": ["Moon"], "forward_looking": true },
         "token_budget": 800, "priority": 1,
         "reason": "Pull Moon signals for eclipse sensitivity assessment."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": { "planets": ["Moon"], "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "R7a: recurring Moon patterns for eclipse-period projection."
       }
     ],
     "synthesis_guidance": "Ground the eclipse impact in Moon's natal placement and current dasha. Flag the orb window and whether the eclipse falls on a sensitive degree. Cite confidence caveat.",
@@ -1593,12 +1582,6 @@ except in factual examples.
         "params": { "planets": ["Mercury"], "forward_looking": true },
         "token_budget": 900, "priority": 1,
         "reason": "Pull Mercury-domain signals for antardasha projection."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": { "planets": ["Mercury"], "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "R7a: recurring Mercury patterns for antardasha period arc."
       }
     ],
     "synthesis_guidance": "Project the Mercury antardasha arc 2025–2027. Ground in LEL Mercury-period events. Lead with the dominant domain Mercury will activate. Cite dasha sub-period boundaries.",
@@ -1639,12 +1622,6 @@ except in factual examples.
         "reason": "R-GSH: karaka architectural query — walk from KRK seed nodes."
       },
       {
-        "tool_name": "pattern_register",
-        "params": {},
-        "token_budget": 400, "priority": 2,
-        "reason": "Named yoga patterns (Lakshmi, Sasha, etc.) for AK/AmK role."
-      },
-      {
         "tool_name": "cluster_atlas",
         "params": {},
         "token_budget": 700, "priority": 2,
@@ -1673,12 +1650,6 @@ except in factual examples.
       { "asset_id": "CDLM",     "priority": 2, "reason": "R-DISC: cross-domain linkage for unusual cross-system patterns." }
     ],
     "tool_calls": [
-      {
-        "tool_name": "pattern_register",
-        "params": {},
-        "token_budget": 500, "priority": 1,
-        "reason": "R-DISC: named cross-domain patterns — primary discovery surface."
-      },
       {
         "tool_name": "contradiction_register",
         "params": {},
@@ -1803,12 +1774,6 @@ except in factual examples.
         "params": { "query_text": "marriage life phases relationship children family", "doc_type": ["domain_report"], "top_k": 6 },
         "token_budget": 600, "priority": 1,
         "reason": "L3 domain narrative on marriage arc and children relationship across time."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": { "domains": ["relationships", "family"], "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "R7a: recurring relationships/family patterns for lifetime projection."
       }
     ],
     "synthesis_guidance": "Divide the marriage arc into dasha-aligned phases: pre-marriage, early, mid, late. For children, anchor to 5H and Jupiter. Ground phase boundaries in LEL events. Flag confidence caveats for post-current-dasha projections.",
@@ -1856,12 +1821,6 @@ except in factual examples.
         "params": { "forward_looking": true, "limit": 15 },
         "token_budget": 800, "priority": 1,
         "reason": "Foundation MSR signals to interpret which signal_ids the state rows reference."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": { "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "R7a: recurring patterns shaping the active-signal landscape across 2026."
       }
     ],
     "synthesis_guidance": "Lead with the highest-confidence lit signal, then surface 2–3 ripening signals with their projected activation windows. Anchor each to the active dasha. Cite the LEL for prior-period analogues.",
@@ -1930,12 +1889,6 @@ except in factual examples.
         "params": { "forward_looking": true, "limit": 12 },
         "token_budget": 800, "priority": 1,
         "reason": "MSR foundation signals to interpret the annual return against the natal layer."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": { "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "R7a: recurring patterns shaping the 2026 annual arc."
       }
     ],
     "synthesis_guidance": "Lead with the 2026 Lagna and the strongest annual planet. Identify the dominant domain the year activates. Anchor to the active dasha. Note: Varshesha and Muntha derive at synthesis, not substrate.",
@@ -1979,12 +1932,6 @@ except in factual examples.
         "params": { "domains": ["career"], "forward_looking": true },
         "token_budget": 900, "priority": 1,
         "reason": "Pull all career-domain signals for trajectory projection."
-      },
-      {
-        "tool_name": "pattern_register",
-        "params": { "domains": ["career"], "forward_looking": true },
-        "token_budget": 400, "priority": 2,
-        "reason": "R7a: recurring career patterns shaping the current trajectory."
       }
     ],
     "synthesis_guidance": "Cross-reference lit signals from query_signal_state against recorded career events from LEL. Lead with the dominant active signal and project the next 12–24 months. Anchor to the active dasha. Cite confidence caveats.",
@@ -2075,8 +2022,7 @@ Query: "What was Saturn doing when I got married in 2008?"
   "tool_calls": [
     { "tool_name": "lel_query", "params": {"category":"relationship","significance":"major"}, "token_budget": 600, "priority": 1, "reason": "Marriage event date from LEL." },
     { "tool_name": "msr_sql", "params": {"planets":["Saturn"], "min_significance":0.6, "limit":20}, "token_budget": 1200, "priority": 1, "reason": "Natal Saturn signals." },
-    { "tool_name": "query_ephemeris", "params": {"planet":"Saturn"}, "token_budget": 400, "priority": 2, "reason": "R-TC transit Saturn position at marriage date (synthesis layer joins on lel_query result)." },
-    { "tool_name": "pattern_register", "params": {"planets":["Saturn"], "min_strength":0.6}, "token_budget": 800, "priority": 2, "reason": "R7a predictive cross-domain lens — Saturn-keyed patterns." }
+    { "tool_name": "query_ephemeris", "params": {"planet":"Saturn"}, "token_budget": 400, "priority": 2, "reason": "R-TC transit Saturn position at marriage date (synthesis layer joins on lel_query result)." }
   ],
   "synthesis_guidance": "Compare natal Saturn (msr_sql) against transit Saturn at marriage date (query_ephemeris joined to lel_query event_date). Surface dignity, sign, retrograde, and any Saturn-aspect activation patterns.",
   "expected_output_shape": "time_indexed_prediction",
