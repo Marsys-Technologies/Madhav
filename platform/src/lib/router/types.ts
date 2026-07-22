@@ -32,6 +32,19 @@ export interface QueryPlan {
     | 'structured_data'
   manifest_fingerprint: string
   schema_version: '1.0'
+  /**
+   * RC-11 (CR-118 fast-fail root cause, W5 residual closure): the chart the plan
+   * is scoped to. `tool_name_bridge.ts`'s `getToolByName().retrieve()` reads this
+   * dynamically (`plan['chart_id']`) to populate `args.chart_id` for every
+   * `scope: 'per_chart'` capability. Never defaulted — undefined for
+   * chart-agnostic tools. A QueryPlan literal that omits this silently sends NO
+   * chart_id to a per-chart tool, which fails fast (a few ms, before any DB
+   * round-trip) with a `chart_id is required` validation error — CR-118's
+   * observed symptom on msr_sql/get_yoga_firings/cgm_graph_walk. Confirmed
+   * offender: `/api/mcp/primitives/[tool]/route.ts`'s queryPlan builder (fixed
+   * alongside this).
+   */
+  chart_id?: string
   // Optional fields
   planets?: string[]
   houses?: number[]
