@@ -165,3 +165,60 @@ describe('runMirroredScoringHarness — single-params entry point, mirroring by 
     expect(result.primary.meanCrpsControlShuffled).not.toBeCloseTo(result.primary.meanCrpsReal, 9)
   })
 })
+
+describe('runMirroredScoringHarness — CR-123/DR-20 structural sealed-test-split enforcement', () => {
+  // The D-4b B-1 chunked re-run's whole scoring pass got quarantined because a batch driver
+  // scored events on/after 2020-01-01. This suite proves the harness itself now refuses,
+  // end-to-end, before this test file's own pre-2020-only discipline (see file header) could
+  // ever be silently violated by a future driver forgetting to filter its own inputs.
+
+  it('runMirroredScoringHarness THROWS SealedTestSplitViolation, live, when a sealed event is passed in -- it never reaches scoring', () => {
+    const model = pratyantarLordModel({ synthetic_event_class: { Venus: 1.0 } })
+    const sealedEvents: CurveEvent[] = [
+      ...syntheticEvents(),
+      { eventId: 'sealed-e3', shape: 'point', dateConfidence: 'exact', eventDate: new Date('2021-06-01T00:00:00.000Z') },
+    ]
+    expect(() =>
+      runMirroredScoringHarness({
+        model,
+        chart: syntheticChart(),
+        eventClass: 'synthetic_event_class',
+        events: sealedEvents,
+        boundsStart: BOUNDS_START,
+        boundsEnd: D(2025, 1, 1),
+        params: BASE_PARAMS,
+      }),
+    ).toThrow(/sealed_split_guard refuses to proceed/)
+  })
+
+  it('runComparativeHarness (the two-params audit entry point) is ALSO gated -- no bypass via the alternate entry point', () => {
+    const model = pratyantarLordModel({ synthetic_event_class: { Venus: 1.0 } })
+    const sealedEvents: CurveEvent[] = [{ eventId: 'sealed-only', shape: 'point', dateConfidence: 'exact', eventDate: new Date('2022-01-01T00:00:00.000Z') }]
+    expect(() =>
+      runComparativeHarness({
+        model,
+        chart: syntheticChart(),
+        eventClass: 'synthetic_event_class',
+        events: sealedEvents,
+        boundsStart: BOUNDS_START,
+        boundsEnd: D(2025, 1, 1),
+        realParams: BASE_PARAMS,
+        controlParams: BASE_PARAMS,
+      }),
+    ).toThrow(/sealed_split_guard refuses to proceed/)
+  })
+
+  it('regression: an all-pre-2020 event set is completely unaffected by the new guard (existing behavior preserved)', () => {
+    const model = pratyantarLordModel({ synthetic_event_class: { Venus: 1.0 } })
+    const result = runMirroredScoringHarness({
+      model,
+      chart: syntheticChart(),
+      eventClass: 'synthetic_event_class',
+      events: syntheticEvents(),
+      boundsStart: BOUNDS_START,
+      boundsEnd: BOUNDS_END,
+      params: BASE_PARAMS,
+    })
+    expect(result.secondary.real.scoredCount).toBe(2)
+  })
+})
