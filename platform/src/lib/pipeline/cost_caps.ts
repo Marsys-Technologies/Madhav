@@ -94,10 +94,12 @@ export class CostCapTracker {
  * tier without an explicit override in `resolveCostCapsForEntitlement`.
  *
  * maxWallClockMs=120_000 confirmed against W4's measured worst-case
- * synthesis timings (see `00_ARCHITECTURE/briefs/retrieval_impl/STATE.md` and
- * `platform/src/lib/pipeline/__tests__/prashna_ask_spike.test.ts` where present)
+ * synthesis timings (see `00_ARCHITECTURE/briefs/retrieval_impl/STATE.md`)
  * — the recorded worst case is well under 80% of this budget, so no calibration
- * bump is needed. Value ported unchanged from the platform-mcp attempt.
+ * bump is needed. Value ported unchanged from the platform-mcp attempt and
+ * carried forward into the real `platform/src/app/api/mcp/prashna_ask/route.ts`
+ * (see its test suite at `platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts`),
+ * which superseded the retired `prashna_ask_spike.ts` reference implementation.
  */
 export const DEFAULT_COST_CAPS: CostCapConfig = {
   maxCalls: 10,
