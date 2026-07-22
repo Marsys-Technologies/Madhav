@@ -20,14 +20,54 @@
  * CRPS/skill = primary (DR-15(b)); hit-rate (±45d/±75d top-decile) =
  * legacy secondary. DR-17 graded scale is NOT computed here (no existing
  * implementation in the harness — see calling session's report).
+ *
+ * ── F-1 FIX (2026-07-22, wave/D-4b/F1-resonance-map) ────────────────────
+ * This run's original `event_class` value for every PERMISSION-system bind/
+ * curve call was `raw.category` (a raw `life_events.category` string like
+ * "family"/"finance"/"career") passed straight through — this essentially
+ * never matches a `gochara_resonance_map.event_class` row, degrading all 12
+ * PERMISSION contenders to the sidecar's fallback path SILENTLY
+ * (`B1_NARROWED_STATUS_v1_0.md` §5a; `REPORT_D4B.md` §0). Fixed: every
+ * event's REAL resonance-map `event_class` is now resolved via
+ * `event_class_resolution.ts`'s `resolveEventClass()` (evidence-cited,
+ * `life_events.domain`-driven — see that module's own docstring for the
+ * full defect/disposition writeup), and a live `assertEventClassCoverage()`
+ * pass runs BEFORE any scoring and writes a run-header disclosing, per
+ * event, whether it resolved to a POPULATED class or is UNRESOLVED (task
+ * item c — "no silent gaps"). `pratyantar_lord`'s own significator lookup
+ * is UNCHANGED (it is keyed by raw category via `CATEGORY_TO_DOMAIN`, an
+ * independent mechanism that was never the bug — see that block below).
+ * For an event whose class does not resolve to a populated row, the 12
+ * PERMISSION contenders + the hierarchical ensemble are SKIPPED for that
+ * event (not silently scored against a degraded fallback curve) —
+ * `pratyantar_lord` alone is still scored, since it does not depend on
+ * `gochara_resonance_map` at all.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import type { ChartContext, EventClass, TemporalCurveModel } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-bakeoff-narrowed/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/model_interface'
-import { buildActiveRoster, buildActiveRosterWithEnsemble } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-bakeoff-narrowed/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster'
-import { assertRosterBindable, RosterBindFailureError } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-bakeoff-narrowed/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster_bind'
-import { runMirroredScoringHarness, type MirroredScoringParams } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-bakeoff-narrowed/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/harness'
-import type { CurveEvent, DateConfidence, EventShape } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-bakeoff-narrowed/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/shape_scoring'
-import { hierarchicalEnsembleModel } from '/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/wave-D-4b-B1-bakeoff-narrowed/platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/ensemble_model'
+import type { ChartContext, EventClass, TemporalCurveModel } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/model_interface'
+import { buildActiveRoster, buildActiveRosterWithEnsemble } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster'
+import { assertRosterBindable, RosterBindFailureError } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/roster_bind'
+import { runMirroredScoringHarness, type MirroredScoringParams } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/harness'
+import type { CurveEvent, DateConfidence, EventShape } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/shape_scoring'
+import { hierarchicalEnsembleModel } from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/ensemble_model'
+import {
+  assertEventClassCoverage,
+  type RawEventForResolution,
+  type EventClassCoverageReport,
+} from '../../../../../platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/event_class_resolution'
+// NOTE (F-1 fix): this script lives outside platform/, so a bare `import
+// 'pg'` cannot resolve (Node walks up from the IMPORTING FILE's own
+// directory looking for node_modules, never finds platform/node_modules
+// from here) -- the same reason the original driver never imported any npm
+// package directly and instead read pre-fetched substrate from SCRATCH JSON
+// files (train_events.json, vimshottari_periods_train.json). The live
+// gochara_resonance_map read follows that SAME established pattern: run
+// `platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts`
+// (a real, committed, platform-resident script -- 'pg' resolves fine there)
+// FIRST to produce `${SCRATCH}/populated_event_classes.json`, then this
+// driver reads it. `assertEventClassCoverage()` itself (imported above) is
+// pure/DB-free by design (see event_class_resolution.ts) -- only the LIVE
+// fetch needed relocating.
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const AYANAMSHA = 'lahiri_chitrapaksha'
@@ -56,6 +96,13 @@ function significatorsForCategory(category: string): Record<string, number> {
 type RawEvent = {
   eventId: string; category: string; shape: EventShape; dateConfidence: DateConfidence
   eventDate?: string; intervalStart?: string; intervalEnd?: string
+  /** life_events.domain — REQUIRED for F-1's event_class_resolution.ts to
+   * resolve this event against gochara_resonance_map's populated classes.
+   * (F-1 fix, 2026-07-22: the original driver never carried this field and
+   * passed raw.category straight through as event_class — see module
+   * docstring below and event_class_resolution.ts's own docstring for the
+   * full defect + disposition writeup.) */
+  domain?: string
 }
 
 function toCurveEvent(r: RawEvent): CurveEvent {
@@ -93,6 +140,30 @@ async function main() {
   const eventClassSignificators: Record<EventClass, Record<string, number>> = {}
   for (const e of events) eventClassSignificators[e.category] = significatorsForCategory(e.category)
 
+  // ── F-1: live event-class coverage assertion, BEFORE any scoring ──────
+  // Never a hardcoded "3 classes" literal -- `populated_event_classes.json`
+  // is produced by `fetch_populated_event_classes.ts` querying
+  // gochara_resonance_map live (see that script + the NOTE above this
+  // driver's imports for why the DB read itself lives there, not here).
+  const populatedLive: string[] = JSON.parse(readFileSync(`${SCRATCH}/populated_event_classes.json`, 'utf8'))
+  const forResolution: RawEventForResolution[] = events.map((e) => ({ eventId: e.eventId, category: e.category, domain: e.domain }))
+  const coverage: EventClassCoverageReport = assertEventClassCoverage(CHART_ID, forResolution, populatedLive)
+  const resolvedByEventId = new Map(coverage.entries.map((e) => [e.eventId, e]))
+  console.error(
+    `[b1_driver] F-1 coverage: ${coverage.resolvedAndPopulatedCount}/${coverage.entries.length} events resolve to a ` +
+      `populated gochara_resonance_map class (live: ${coverage.populatedEventClassesLive.join(', ')}); ` +
+      `${coverage.unresolvedCount} UNRESOLVED (PERMISSION contenders skipped for those, pratyantar_lord still scored) -- see run header.`
+  )
+  writeFileSync(`${SCRATCH}/b1_run_header_f1.json`, JSON.stringify({
+    fix: 'F-1 (wave/D-4b/F1-resonance-map) -- event_class now resolved via event_class_resolution.ts, not raw.category passthrough',
+    chart_id: CHART_ID,
+    generated_at: new Date().toISOString(),
+    populated_event_classes_live: coverage.populatedEventClassesLive,
+    resolved_and_populated_count: coverage.resolvedAndPopulatedCount,
+    unresolved_count: coverage.unresolvedCount,
+    per_event: coverage.entries,
+  }, null, 2))
+
   const chart: ChartContext = { chartId: CHART_ID, ayanamsha: AYANAMSHA, substrate: { periods } }
   // stepDays MUST match pratyantar_lord's own hardcoded grid (5 -- see
   // model_interface.ts's pratyantarLordModel, buildCurve(...,5)) or
@@ -129,26 +200,73 @@ async function main() {
   for (const raw of events) {
     eventIdx++
     const range = rangeForEvent(raw)
-    const eventClass = raw.category
+    // pratyantar_lord's OWN eventClass argument stays the raw LEL category --
+    // its significator lookup (eventClassSignificators, built above) is
+    // keyed by raw category via CATEGORY_TO_DOMAIN, an independent mechanism
+    // that never touches gochara_resonance_map and was never the F-1 bug.
+    const rawCategoryEventClass = raw.category
+    // The RESOLVED gochara_resonance_map event_class (F-1 fix) -- this is
+    // what the 12 PERMISSION contenders + ensemble actually need.
+    const resolution = resolvedByEventId.get(raw.eventId)
+    const permissionEventClass = resolution?.populated ? resolution.resolvedEventClass! : null
     const curveEvent = toCurveEvent(raw)
-    console.error(`[b1_driver] event ${eventIdx}/${events.length} ${raw.eventId} (${eventClass}) range=${range[0].toISOString().slice(0,10)}..${range[1].toISOString().slice(0,10)}`)
-    // Bind the 13 base contenders IN PARALLEL (driver-level orchestration
-    // choice, not a harness-code change: ensemble_model.ts's own bind()
-    // chains sequentially, which serializes 12 real HTTP round-trips per
-    // event against the live sidecar). ensemble.curve() then reads the
-    // now-populated caches synchronously -- no separate ensemble.bind() call
-    // needed once its constituents are bound for this exact triple.
-    const t0 = Date.now()
-    await Promise.all(roster.map((m) => m.bind?.(chart, eventClass, range)))
-    console.error(`[b1_driver]   bound ${roster.length} base contenders in ${Date.now() - t0}ms`)
-    for (const model of fullRoster) {
+    console.error(
+      `[b1_driver] event ${eventIdx}/${events.length} ${raw.eventId} (category=${raw.category}, ` +
+        `resolved=${permissionEventClass ?? 'UNRESOLVED'}) range=${range[0].toISOString().slice(0, 10)}..${range[1].toISOString().slice(0, 10)}`
+    )
+
+    if (permissionEventClass) {
+      // Bind the 13 base contenders IN PARALLEL (driver-level orchestration
+      // choice, not a harness-code change: ensemble_model.ts's own bind()
+      // chains sequentially, which serializes 12 real HTTP round-trips per
+      // event against the live sidecar). ensemble.curve() then reads the
+      // now-populated caches synchronously -- no separate ensemble.bind() call
+      // needed once its constituents are bound for this exact triple.
+      //
+      // pratyantar_lord itself is bound here too, with permissionEventClass
+      // (NOT rawCategoryEventClass) -- harmless (pratyantarLordModel.bind is
+      // undefined, so `m.bind?.(...)` is a no-op for it); its curve() call
+      // below still uses rawCategoryEventClass, unaffected.
+      const t0 = Date.now()
+      await Promise.all(roster.map((m) => m.bind?.(chart, permissionEventClass, range)))
+      console.error(`[b1_driver]   bound ${roster.length} base contenders in ${Date.now() - t0}ms`)
+      for (const model of fullRoster) {
+        const eventClass = model.modelId === 'pratyantar_lord' ? rawCategoryEventClass : permissionEventClass
+        try {
+          const r = runMirroredScoringHarness({ model, chart, eventClass, events: [curveEvent], boundsStart: range[0], boundsEnd: range[1], params })
+          results[model.modelId] = results[model.modelId] || []
+          results[model.modelId].push({ eventId: raw.eventId, eventClass, range: [range[0].toISOString(), range[1].toISOString()], result: r })
+        } catch (err) {
+          results[model.modelId] = results[model.modelId] || []
+          results[model.modelId].push({ eventId: raw.eventId, eventClass, error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) })
+        }
+      }
+    } else {
+      // F-1: event_class does not resolve to a POPULATED gochara_resonance_map
+      // row for this event (see run header, b1_run_header_f1.json, for the
+      // reason). The 12 PERMISSION contenders + ensemble are SKIPPED for this
+      // event, explicitly and visibly -- not silently scored against the
+      // sidecar's target_count=0 fallback path (the original bug).
+      // pratyantar_lord alone is still scored -- it does not read
+      // gochara_resonance_map at all.
+      const pratyantarLord = fullRoster.find((m) => m.modelId === 'pratyantar_lord')!
       try {
-        const r = runMirroredScoringHarness({ model, chart, eventClass, events: [curveEvent], boundsStart: range[0], boundsEnd: range[1], params })
-        results[model.modelId] = results[model.modelId] || []
-        results[model.modelId].push({ eventId: raw.eventId, eventClass, range: [range[0].toISOString(), range[1].toISOString()], result: r })
+        const r = runMirroredScoringHarness({ model: pratyantarLord, chart, eventClass: rawCategoryEventClass, events: [curveEvent], boundsStart: range[0], boundsEnd: range[1], params })
+        results['pratyantar_lord'] = results['pratyantar_lord'] || []
+        results['pratyantar_lord'].push({ eventId: raw.eventId, eventClass: rawCategoryEventClass, range: [range[0].toISOString(), range[1].toISOString()], result: r })
       } catch (err) {
+        results['pratyantar_lord'] = results['pratyantar_lord'] || []
+        results['pratyantar_lord'].push({ eventId: raw.eventId, eventClass: rawCategoryEventClass, error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) })
+      }
+      for (const model of fullRoster) {
+        if (model.modelId === 'pratyantar_lord') continue
         results[model.modelId] = results[model.modelId] || []
-        results[model.modelId].push({ eventId: raw.eventId, eventClass, error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) })
+        results[model.modelId].push({
+          eventId: raw.eventId,
+          eventClass: null,
+          skipped: 'unresolved_event_class',
+          reason: resolution?.reason ?? 'no coverage-report entry found for this eventId (driver bug if it occurs)',
+        })
       }
     }
     writeFileSync(`${SCRATCH}/b1_results_raw.json`, JSON.stringify(results, null, 2))
