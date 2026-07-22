@@ -1,0 +1,1662 @@
+{
+  "batchKey": "batch3",
+  "manifestHash": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+  "writtenAt": "2026-07-22T16:35:36Z",
+  "results": {
+    "batch": "batch3",
+    "contenders": [
+      "guru_shani_double_transit",
+      "av_threshold",
+      "planetary_return",
+      "hierarchical_ensemble"
+    ],
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "preregistration_packet_blob_sha": "9b6713db8c2551a937ff2070e498da1f12526966",
+    "events_scored_count": 54,
+    "events_excluded": [
+      {
+        "eventId": "EVT.1984.02.05.01",
+        "reason": "structural_anchor_not_scored (packet §0)"
+      },
+      {
+        "eventId": "EVT.1995.XX.XX.02",
+        "reason": "congenital_onset_not_independently_scoreable (packet §0)"
+      }
+    ],
+    "grading": {
+      "framework": "DR-17 (dr17_grading.ts, PR #704, imported not reimplemented)",
+      "weights_ruling": "NP-D4B-001",
+      "tie_bands_ruling": "NP-D4B-003 (adopted table)",
+      "tie_band_set_used": "adopted"
+    },
+    "controls": {
+      "design": "DR-15(c) coverage-matched shuffled-birth",
+      "n": 1000,
+      "mirrored_via": "harness.ts runMirroredScoringHarness (structural control-mirroring)"
+    },
+    "negative_crps_check": {
+      "total_negative_crps_found": 0,
+      "verified_zero": true
+    },
+    "event_class_resolution_note": "Same 3-of-54 resolved events as batch1/batch2 (EVT.2010.XX.XX.01/EVT.2013.12.11.01/EVT.2025.07.XX.01), reusing batch1's own live-verified resolution (gochara_resonance_map career_advancement=22/major_gain=35/marriage=23 for this chart) rather than re-querying a third time this batch. All 3 batch3 PERMISSION contenders (guru_shani_double_transit/av_threshold/planetary_return, resolved live via the sidecar /api/compute/permission_curve route, confirmed reachable with a live PYTHON_SIDECAR_API_KEY pulled from Secret Manager this batch) are honestly SKIPPED for the other 51 unresolved events, matching F-1/batch1/batch2's established design. hierarchical_ensemble is necessarily scored on the SAME 3-event slice only (see J-ENSEMBLE-1 in b1_batch3_driver_v1_0.ts's module header) -- it is likewise SKIPPED (not fallback-scored) for the other 51.",
+    "ensemble_note": "hierarchical_ensemble built LAST, over all 13 non-ensemble contenders (pratyantar_lord [batch1] + all 12 PERMISSION_SYSTEM_IDS [4 batch1 + 5 batch2 + 3 batch3]) -- every one of which recorded eventsErrored=0 in its own batch artifact (batch_batch1.json/batch_batch2.json, cross-checked this batch) or in this batch's own Part A run, so all 13 were fed into the ensemble unfiltered. ensembleExclusions=0 this run (recorded live in b1_batch3_ensemble_exclusions.json; would have been non-empty and disclosed here had any constituent failed to bind/curve for a given event). J-ENSEMBLE-1 (b1_batch3_driver_v1_0.ts module header) discloses the one new judgment call this batch made: an eventClassSignificators key-alias extension (zero new significator weights, only two new keys pointing at batch1's own pre-existing DOMAIN_LORDS.wealth/DOMAIN_LORDS.marriage entries) so pratyantar_lord could be called with the SAME eventClass argument (major_gain/marriage) the ensemble hands its PERMISSION constituents, since ensemble_model.ts's curve() calls every constituent with one shared eventClass value.",
+    "disclosed_observation": "guru_shani_double_transit and planetary_return both grade peak/elevated on 1 of their 3 scored events (av_threshold peaks on a DIFFERENT event of the 3 -- EVT.2010.XX.XX.01 -- while guru_shani_double_transit/planetary_return peak/elevate on EVT.2025.07.XX.01), real differentiation consistent with batch2's own finding that this 3-event slice is NOT uniformly degenerate-flat across contenders. hierarchical_ensemble grades peak on 2 of 3 (EVT.2010.XX.XX.01, EVT.2013.12.11.01) and elevated on the third (EVT.2025.07.XX.01) -- its unweighted-sum construction means it inherits a peak whenever ANY constituent grades strongly on that event (e.g. av_threshold peaks on EVT.2010.XX.XX.01 even though guru_shani_double_transit/planetary_return grade neutral there), which is the expected behavior of an unweighted superposition per ensemble_model.ts's own documented design, not an anomaly. Disclosed, not investigated further -- outside this batch's scope (per-system weight learning is B-3's job, per BRIEF_D4B §1 and ensemble_model.ts's own header).",
+    "summaries": {
+      "guru_shani_double_transit": {
+        "modelId": "guru_shani_double_transit",
+        "eventsTotal": 54,
+        "eventsScored": 3,
+        "eventsSkippedUnresolvedEventClass": 51,
+        "eventsErrored": 0,
+        "negativeCrpsCount": 0,
+        "dr17GradeCounts": {
+          "neutral": 2,
+          "elevated": 1
+        },
+        "dr17WeightedTotal": 0.5,
+        "dr17WeightedMean": 0.16666666666666666,
+        "meanCrpsReal": 50.31987518654186,
+        "meanSkillVsShuffled": -0.3321990238661973,
+        "errors": []
+      },
+      "av_threshold": {
+        "modelId": "av_threshold",
+        "eventsTotal": 54,
+        "eventsScored": 3,
+        "eventsSkippedUnresolvedEventClass": 51,
+        "eventsErrored": 0,
+        "negativeCrpsCount": 0,
+        "dr17GradeCounts": {
+          "peak": 1,
+          "neutral": 2
+        },
+        "dr17WeightedTotal": 1,
+        "dr17WeightedMean": 0.3333333333333333,
+        "meanCrpsReal": 47.81476476476477,
+        "meanSkillVsShuffled": 0.040731107537409085,
+        "errors": []
+      },
+      "planetary_return": {
+        "modelId": "planetary_return",
+        "eventsTotal": 54,
+        "eventsScored": 3,
+        "eventsSkippedUnresolvedEventClass": 51,
+        "eventsErrored": 0,
+        "negativeCrpsCount": 0,
+        "dr17GradeCounts": {
+          "neutral": 2,
+          "peak": 1
+        },
+        "dr17WeightedTotal": 1,
+        "dr17WeightedMean": 0.3333333333333333,
+        "meanCrpsReal": 33.66864061864062,
+        "meanSkillVsShuffled": 0.20301390718856172,
+        "errors": []
+      },
+      "hierarchical_ensemble": {
+        "modelId": "hierarchical_ensemble",
+        "eventsTotal": 54,
+        "eventsScored": 3,
+        "eventsSkippedUnresolvedEventClass": 51,
+        "eventsErrored": 0,
+        "negativeCrpsCount": 0,
+        "dr17GradeCounts": {
+          "peak": 2,
+          "elevated": 1
+        },
+        "dr17WeightedTotal": 2.5,
+        "dr17WeightedMean": 0.8333333333333334,
+        "meanCrpsReal": 44.49548096085985,
+        "meanSkillVsShuffled": -0.2844210689456435,
+        "errors": []
+      }
+    },
+    "per_event_detail": {
+      "guru_shani_double_transit": [
+        {
+          "eventId": "EVT.1995.XX.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1998.02.16.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2000.XX.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2001.03.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2003.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2004.01.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2004.XX.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.XX.XX.03",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.10.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2008.06.09.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2009.06.XX.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2002.XX.XX.01",
+          "category": "psychological",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2002.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1998.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2010.XX.XX.01",
+          "category": "finance",
+          "resolvedEventClass": "major_gain",
+          "meanCrpsReal": 77.96703296703299,
+          "meanCrpsControlShuffled": 77.39199927544975,
+          "skillVsShuffled": -0.007430143903333075,
+          "hitRate": {
+            "real": false,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2010.XX.XX.01",
+            "modelId": "guru_shani_double_transit",
+            "grade": "neutral",
+            "weight": 0,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": null,
+            "matchedPeakDate": null,
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 45,
+            "dedupedMaximaCount": 1,
+            "reason": "window peak (intensity=0.0000) is statistically indistinguishable from the control baseline (mean=0.0000, sd=0.0000) and the model has no live-active elsewhere-peak to call wrong — honest null result, DR-17 §1 neutral."
+          }
+        },
+        {
+          "eventId": "EVT.2010.12.XX.01",
+          "category": "travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2011.01.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2011.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.09.XX.01",
+          "category": "creative",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.XX.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.10.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.03.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.05.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.XX.XX.01",
+          "category": "family",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.12.11.01",
+          "category": "family",
+          "resolvedEventClass": "marriage",
+          "meanCrpsReal": 10.399999999999997,
+          "meanCrpsControlShuffled": 10.061964000000001,
+          "skillVsShuffled": -0.03359542928199666,
+          "hitRate": {
+            "real": true,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2013.12.11.01",
+            "modelId": "guru_shani_double_transit",
+            "grade": "neutral",
+            "weight": 0,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": null,
+            "matchedPeakDate": null,
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 3,
+            "dedupedMaximaCount": 1,
+            "reason": "window peak (intensity=1.0000) is statistically indistinguishable from the control baseline (mean=1.0000, sd=0.0000) and the model has no live-active elsewhere-peak to call wrong — honest null result, DR-17 §1 neutral."
+          }
+        },
+        {
+          "eventId": "EVT.1993.XX.XX.01",
+          "category": "creative",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2016.XX.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2017.03.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2018.11.28.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2019.05.XX.01",
+          "category": "residential+travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.01.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.XX.XX.02",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.XX.XX.03",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.01.03.01",
+          "category": "family",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.XX.XX.02",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.10.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2010.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2015.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.05.XX.01",
+          "category": "residential+travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.07.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2024.02.16.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.05.XX.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.07.XX.01",
+          "category": "finance",
+          "resolvedEventClass": "major_gain",
+          "meanCrpsReal": 62.5925925925926,
+          "meanCrpsControlShuffled": 32.00731481481491,
+          "skillVsShuffled": -0.9555714984132622,
+          "hitRate": {
+            "real": true,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2025.07.XX.01",
+            "modelId": "guru_shani_double_transit",
+            "grade": "elevated",
+            "weight": 0.5,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": null,
+            "matchedPeakDate": "2025-05-01",
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 45,
+            "dedupedMaximaCount": 2,
+            "reason": "window peak (intensity=1.0000) exceeds control baseline mean+1sd=0.6359 but is not itself a tie-band-deduped local maximum matching the event — plateau/slope overlap, DR-17 §1 elevated case."
+          }
+        },
+        {
+          "eventId": "EVT.2026.03.20.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.04.08.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.XX.XX.02",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.01.XX.01",
+          "category": "other",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2024.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.06.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.11.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        }
+      ],
+      "av_threshold": [
+        {
+          "eventId": "EVT.1995.XX.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1998.02.16.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2000.XX.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2001.03.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2003.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2004.01.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2004.XX.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.XX.XX.03",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.10.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2008.06.09.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2009.06.XX.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2002.XX.XX.01",
+          "category": "psychological",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2002.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1998.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2010.XX.XX.01",
+          "category": "finance",
+          "resolvedEventClass": "major_gain",
+          "meanCrpsReal": 117.6388888888889,
+          "meanCrpsControlShuffled": 143.44463888888805,
+          "skillVsShuffled": 0.17990041454242311,
+          "hitRate": {
+            "real": true,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2010.XX.XX.01",
+            "modelId": "av_threshold",
+            "grade": "peak",
+            "weight": 1,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": 1,
+            "matchedPeakDate": "2010-10-19",
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 45,
+            "dedupedMaximaCount": 1,
+            "reason": "deduped local maximum rank 1/1 (intensity=1.0000, control baseline mean+1sd=0.3003) matches event within its interval bounds."
+          }
+        },
+        {
+          "eventId": "EVT.2010.12.XX.01",
+          "category": "travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2011.01.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2011.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.09.XX.01",
+          "category": "creative",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.XX.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.10.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.03.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.05.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.XX.XX.01",
+          "category": "family",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.12.11.01",
+          "category": "family",
+          "resolvedEventClass": "marriage",
+          "meanCrpsReal": 10.399999999999997,
+          "meanCrpsControlShuffled": 10.061964000000001,
+          "skillVsShuffled": -0.03359542928199666,
+          "hitRate": {
+            "real": false,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2013.12.11.01",
+            "modelId": "av_threshold",
+            "grade": "neutral",
+            "weight": 0,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": null,
+            "matchedPeakDate": null,
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 3,
+            "dedupedMaximaCount": 1,
+            "reason": "window peak (intensity=0.0000) is statistically indistinguishable from the control baseline (mean=0.0000, sd=0.0000) and the model has no live-active elsewhere-peak to call wrong — honest null result, DR-17 §1 neutral."
+          }
+        },
+        {
+          "eventId": "EVT.1993.XX.XX.01",
+          "category": "creative",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2016.XX.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2017.03.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2018.11.28.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2019.05.XX.01",
+          "category": "residential+travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.01.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.XX.XX.02",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.XX.XX.03",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.01.03.01",
+          "category": "family",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.XX.XX.02",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.10.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2010.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2015.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.05.XX.01",
+          "category": "residential+travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.07.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2024.02.16.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.05.XX.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.07.XX.01",
+          "category": "finance",
+          "resolvedEventClass": "major_gain",
+          "meanCrpsReal": 15.405405405405418,
+          "meanCrpsControlShuffled": 15.042700876552221,
+          "skillVsShuffled": -0.024111662648199195,
+          "hitRate": {
+            "real": false,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2025.07.XX.01",
+            "modelId": "av_threshold",
+            "grade": "neutral",
+            "weight": 0,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": null,
+            "matchedPeakDate": null,
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 45,
+            "dedupedMaximaCount": 1,
+            "reason": "window peak (intensity=0.0000) is statistically indistinguishable from the control baseline (mean=0.0000, sd=0.0000) and the model has no live-active elsewhere-peak to call wrong — honest null result, DR-17 §1 neutral."
+          }
+        },
+        {
+          "eventId": "EVT.2026.03.20.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.04.08.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.XX.XX.02",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.01.XX.01",
+          "category": "other",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2024.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.06.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.11.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        }
+      ],
+      "planetary_return": [
+        {
+          "eventId": "EVT.1995.XX.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1998.02.16.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2000.XX.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2001.03.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2003.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2004.01.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2004.XX.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.XX.XX.03",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.10.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2008.06.09.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2009.06.XX.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2002.XX.XX.01",
+          "category": "psychological",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2002.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1998.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2010.XX.XX.01",
+          "category": "finance",
+          "resolvedEventClass": "major_gain",
+          "meanCrpsReal": 77.96703296703299,
+          "meanCrpsControlShuffled": 77.39199927544975,
+          "skillVsShuffled": -0.007430143903333075,
+          "hitRate": {
+            "real": false,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2010.XX.XX.01",
+            "modelId": "planetary_return",
+            "grade": "neutral",
+            "weight": 0,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": null,
+            "matchedPeakDate": null,
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 45,
+            "dedupedMaximaCount": 1,
+            "reason": "window peak (intensity=0.0000) is statistically indistinguishable from the control baseline (mean=0.0000, sd=0.0000) and the model has no live-active elsewhere-peak to call wrong — honest null result, DR-17 §1 neutral."
+          }
+        },
+        {
+          "eventId": "EVT.2010.12.XX.01",
+          "category": "travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2011.01.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2011.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.09.XX.01",
+          "category": "creative",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.XX.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.10.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.03.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.05.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.XX.XX.01",
+          "category": "family",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.12.11.01",
+          "category": "family",
+          "resolvedEventClass": "marriage",
+          "meanCrpsReal": 10.399999999999997,
+          "meanCrpsControlShuffled": 10.061964000000001,
+          "skillVsShuffled": -0.03359542928199666,
+          "hitRate": {
+            "real": false,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2013.12.11.01",
+            "modelId": "planetary_return",
+            "grade": "neutral",
+            "weight": 0,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": null,
+            "matchedPeakDate": null,
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 3,
+            "dedupedMaximaCount": 1,
+            "reason": "window peak (intensity=0.0000) is statistically indistinguishable from the control baseline (mean=0.0000, sd=0.0000) and the model has no live-active elsewhere-peak to call wrong — honest null result, DR-17 §1 neutral."
+          }
+        },
+        {
+          "eventId": "EVT.1993.XX.XX.01",
+          "category": "creative",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2016.XX.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2017.03.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2018.11.28.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2019.05.XX.01",
+          "category": "residential+travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.01.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.XX.XX.02",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.XX.XX.03",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.01.03.01",
+          "category": "family",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.XX.XX.02",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.10.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2010.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2015.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.05.XX.01",
+          "category": "residential+travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.07.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2024.02.16.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.05.XX.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.07.XX.01",
+          "category": "finance",
+          "resolvedEventClass": "major_gain",
+          "meanCrpsReal": 12.638888888888888,
+          "meanCrpsControlShuffled": 36.11805555555612,
+          "skillVsShuffled": 0.6500672947510149,
+          "hitRate": {
+            "real": true,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2025.07.XX.01",
+            "modelId": "planetary_return",
+            "grade": "peak",
+            "weight": 1,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": 1,
+            "matchedPeakDate": "2025-06-15",
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 45,
+            "dedupedMaximaCount": 1,
+            "reason": "deduped local maximum rank 1/1 (intensity=1.0000, control baseline mean+1sd=0.4849) matches event within its ±75d point tolerance."
+          }
+        },
+        {
+          "eventId": "EVT.2026.03.20.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.04.08.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.XX.XX.02",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.01.XX.01",
+          "category": "other",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2024.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.06.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.11.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        }
+      ],
+      "hierarchical_ensemble": [
+        {
+          "eventId": "EVT.2010.XX.XX.01",
+          "category": "finance",
+          "resolvedEventClass": "major_gain",
+          "meanCrpsReal": 97.86159759642061,
+          "meanCrpsControlShuffled": 79.17799759063357,
+          "skillVsShuffled": -0.23596959476526647,
+          "hitRate": {
+            "real": true,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2010.XX.XX.01",
+            "modelId": "hierarchical_ensemble",
+            "grade": "peak",
+            "weight": 1,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": 1,
+            "matchedPeakDate": "2011-02-11",
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 45,
+            "dedupedMaximaCount": 3,
+            "reason": "deduped local maximum rank 1/3 (intensity=9.0000, control baseline mean+1sd=8.1636) matches event within its interval bounds."
+          }
+        },
+        {
+          "eventId": "EVT.2013.12.11.01",
+          "category": "family",
+          "resolvedEventClass": "marriage",
+          "meanCrpsReal": 17.757785467128016,
+          "meanCrpsControlShuffled": 12.124334948096823,
+          "skillVsShuffled": -0.4646399611316814,
+          "hitRate": {
+            "real": true,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2013.12.11.01",
+            "modelId": "hierarchical_ensemble",
+            "grade": "peak",
+            "weight": 1,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": 1,
+            "matchedPeakDate": "2014-01-15",
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 3,
+            "dedupedMaximaCount": 1,
+            "reason": "deduped local maximum rank 1/1 (intensity=8.0000, control baseline mean+1sd=5.5770) matches event within its ±45d point tolerance."
+          }
+        },
+        {
+          "eventId": "EVT.2025.07.XX.01",
+          "category": "finance",
+          "resolvedEventClass": "major_gain",
+          "meanCrpsReal": 17.867059819030928,
+          "meanCrpsControlShuffled": 15.500805297810352,
+          "skillVsShuffled": -0.15265365093998273,
+          "hitRate": {
+            "real": true,
+            "percentile": 0.9
+          },
+          "dr17": {
+            "eventId": "EVT.2025.07.XX.01",
+            "modelId": "hierarchical_ensemble",
+            "grade": "elevated",
+            "weight": 0.5,
+            "antiHitApplied": false,
+            "antiHitInertReason": "B-1's 14 contenders emit activation-only (non-negative, valence-free) intensity curves; DR-17 §1's anti-hit double-weight requires a GAIN/LOSS valence call this contender class structurally cannot make (module docstring, judgment call 4) — contra always scores at its ordinary -0.5 weight this run.",
+            "matchedPeakRank": null,
+            "matchedPeakDate": "2025-05-01",
+            "tieBandSet": "adopted",
+            "tieBandWidthDaysUsed": 45,
+            "dedupedMaximaCount": 2,
+            "reason": "window peak (intensity=10.8000) exceeds control baseline mean+1sd=8.4379 but is not itself a tie-band-deduped local maximum matching the event — plateau/slope overlap, DR-17 §1 elevated case."
+          }
+        },
+        {
+          "eventId": "EVT.1995.XX.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1998.02.16.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2000.XX.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2001.03.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2003.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2004.01.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2004.XX.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.XX.XX.03",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2007.06.10.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2008.06.09.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2009.06.XX.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2002.XX.XX.01",
+          "category": "psychological",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2002.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1998.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2010.12.XX.01",
+          "category": "travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2011.01.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2011.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.09.XX.01",
+          "category": "creative",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.XX.XX.02",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2012.10.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.03.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.05.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2013.XX.XX.01",
+          "category": "family",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.1993.XX.XX.01",
+          "category": "creative",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2016.XX.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2017.03.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2018.11.28.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2019.05.XX.01",
+          "category": "residential+travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.01.XX.01",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.XX.XX.02",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2021.XX.XX.03",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.01.03.01",
+          "category": "family",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.XX.XX.02",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2022.10.XX.01",
+          "category": "relationship",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2010.XX.XX.02",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2015.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.05.XX.01",
+          "category": "residential+travel",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.06.XX.01",
+          "category": "education",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2023.07.XX.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2024.02.16.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.05.XX.01",
+          "category": "loss",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.03.20.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.04.08.01",
+          "category": "career",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.XX.XX.02",
+          "category": "health",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2026.01.XX.01",
+          "category": "other",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2024.XX.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.06.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        },
+        {
+          "eventId": "EVT.2025.11.XX.01",
+          "category": "spiritual",
+          "resolvedEventClass": null,
+          "skipped": "unresolved_event_class"
+        }
+      ]
+    },
+    "ensemble_exclusions": []
+  }
+}
