@@ -651,3 +651,43 @@ compilation is NP-D4B-006 itself (new since that pass) and this pass's dispositi
 mitigation clause.
 
 *— end compiled summary, B-6 REAL close pass*
+
+---
+
+## Addendum — appended by the B-6 REAL close pass #4 (2026-07-22T17:29:44Z,
+## `wave/D-4b/B6-real-close-3`, mode=GATED)
+
+Per `BRIEF_D4B.md` §1 B-6's DR ratification sweep, this addendum updates the "exercised /
+discharged?" column of the PR #703 pass's own compiled summary table (above, unedited) with what
+this pass independently verified. **No entry NP-D4B-001 through 006 is upgraded to RATIFIED by
+this pass** — same discipline as both predecessor passes. This is compilation only.
+
+| Entry | Subject | This pass's independently-verified delta |
+|---|---|---|
+| NP-D4B-001 | DR-17 grading weights: verbatim consumption by B-1 | **Now genuinely EXERCISED**, not merely scaffolded. `dr17_grading.ts` merged to `main` (PR #704) and imported by all three `wave/D-4b/B1-full-rerun` batch drivers; per-contender grade distributions (peak/sub_peak/elevated/neutral/contra) are committed in `B1_FULLRERUN_ASSEMBLED_SUMMARY_v1_0.json`. Still on an unmerged branch — the exercise is real, but not yet part of the campaign's certified record. |
+| NP-D4B-002 | "Cheaper-null" circular time-shift control | Unchanged — no packet version bump registering it; the unmerged run used only the DR-15(c) shuffled-birth control (confirmed via the ASSEMBLY_REPORT's own §4 methodology note, re-read this pass). |
+| NP-D4B-003 | §4 tie-band widths | Unchanged in ruling; **the mandatory DR-13(d)-width sensitivity check this ruling's condition (d) requires is not visibly reported in the ASSEMBLY_REPORT** — flagged here as an open verification item for whoever reviews the eventual merge PR, not resolved by this pass (this pass did not re-derive the sensitivity recompute itself; noting its absence from the cited artifacts, not asserting it was skipped). |
+| NP-D4B-004 | Control sample design (N=1000, coverage-matching, seed scheme) | **Now genuinely RE-EXERCISED on the F-1+F-2-repaired substrate**, superseding the pre-F-2 NARROWED run's (PR #694) invalidated numbers. `negative_crps_check.total_negative_crps_found` sums to 0 across all 3 committed batches (re-read this pass from the ASSEMBLY_REPORT), consistent with condition (e)'s measured-cost-logging intent, though this pass did not independently re-extract the logged wall-clock/call-count figures from the batch JSON — flagged as a citation a future merge-review pass should pull directly, not fabricated here. |
+| NP-D4B-005 | Native, direct — B-5 aggregate `COUNT(*)` | Unaffected, direct native ruling, already final. |
+| NP-D4B-006 | Native, direct — conductor-verified-under-infrastructure-duress deviation, F-1 (PR #699) | Unchanged this pass — the PR #703 pass's DISCHARGED disposition (attributed, per that pass's own §0) stands; this pass did not re-derive it from scratch either. |
+
+**New item this pass, not a ledger entry (no ruling issued):** the B-1-full-rerun ASSEMBLY session
+(uncommitted-to-`main` artifact, `wave/D-4b/B1-full-rerun` @ `0aa69c06`) performed a DR-12
+*discharge-by-application* — applying the already-native-ratified DR-12 doctrine ("the data retires
+the loser") to real assembled scored data and invoking `BRIEF_D4B.md`'s pre-committed no-winner
+branch verbatim, yielding `verdict: "NO_WINNER"`. This is mechanical application of pre-ratified
+doctrine to data, not a fresh doctrine question, so this pass does not treat it as requiring a new
+NP-D4B ledger entry or native ruling. It is, however, **not yet reflected in
+`DISAGREEMENT_REGISTER_v1_0.md` DIS.025**, which still reads "RATIFIED but NOT YET DISCHARGED" —
+and it is not on `main`. This pass names the staleness rather than correcting it (register edits
+belong with the eventual merge, not with a GATED report narrating an unmerged branch), and flags it
+as a defensible native-ratification-sweep item for a future pass that either merges the branch or
+formally records the discharge.
+
+**CR-122 note (register-hygiene, not a ledger ruling):** the checkpointed-batching artifact-I/O
+harness (`b1_batch_artifact_io.ts`, commit `fc6ead96`) is named "CR-122" in its own commit message
+but has zero hits in `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` (grep, this pass) — unlike CR-120/CR-121,
+which are formally registered. Flagged as an open registration gap for a future pass; not added by
+this pass, which does not own that lane's infra.
+
+*— end addendum, B-6 REAL close pass #4*
