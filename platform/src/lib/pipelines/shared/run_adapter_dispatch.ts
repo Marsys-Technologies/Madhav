@@ -35,6 +35,7 @@ import {
   stagePart,
   observabilityPart,
   completenessPart,
+  judgmentFlagsPart,
   orientationPart,
 } from '@/lib/streams/data_parts'
 import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
@@ -171,6 +172,76 @@ export interface RunAdapterDispatchCtx {
    * SSE event near the END of the stream. Null when the plan carried no scope_tuple / compile failed.
    */
   completenessReceipt?: WebCompletenessReceipt | null
+
+  /**
+   * RC-02 (§H.1 crit-6, two-door parity) — judgment_flags aggregated by the route
+   * BEFORE dispatch (currently just the NO-LEAKAGE strip: `no_leakage_capabilities_
+   * stripped`, the same flag string /api/mcp/prashna_ask surfaces for the identical
+   * underlying condition). Merged with any flags derived in this module (below) and
+   * emitted as a single `data-judgment-flags` SSE event near the end of the stream,
+   * alongside `data-completeness`. Defaults to an empty array when omitted.
+   */
+  judgmentFlags?: string[]
+}
+
+// ---------------------------------------------------------------------------
+// RC-17 — pure, unit-testable temporal-anchor builder (mirrors
+// prashna_ask_synthesis.ts's `formatTemporalAnchor`, W6.3 fix-cycle / 2df42b61)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the explicit "today is X, current dasha period is Y" anchor line the
+ * consult-route synthesis model needs to correctly identify which raw dasha
+ * period (of the many returned by the B.11 dasha-context floor tool) is
+ * CURRENT, rather than reasoning from training-data recency. Without this the
+ * model has no way to know the request's actual current date/dasha — the
+ * exact defect class fixed for the MCP `prashna_ask` synthesis path in
+ * commit 2df42b61 (W6.3 fix-cycle) and independently live-reproduced on the
+ * web `/api/chat/consult` path in RC-02's two-door parity diagnostic (§5a).
+ * Degrades honestly (never fabricates a period) when `currentMahaAntar` is
+ * unresolved. Pure — no I/O, no `Date.now()` call — for deterministic testing.
+ */
+export function formatConsultTemporalAnchor(
+  nowContextDate: string,
+  currentMahaAntar: string | null,
+): string {
+  const dashaLine = currentMahaAntar
+    ? `The native's current Vimshottari dasha period, as of this date, is ${currentMahaAntar} — treat this as the CURRENT period, not upcoming or past.`
+    : `The native's current Vimshottari dasha period could not be resolved for this request — do not state or imply a specific current Mahadasha/Antardasha; disclose the gap instead.`
+  return (
+    `Today's date is ${nowContextDate}. ${dashaLine} Reason about "current", ` +
+    `"now", "upcoming", and "past" periods relative to THIS date and period only — ` +
+    `do not rely on any other date you might otherwise assume.`
+  )
+}
+
+/**
+ * Assembles the full synthesis `systemContent` string (RC-17): the temporal anchor
+ * (see `formatConsultTemporalAnchor` above) ALWAYS leads the block — the same
+ * unconditional placement `prashna_ask`'s synthesis prompt uses — followed by the
+ * B.11 floor bundle content, synthesis guidance, and the data-readiness note.
+ * Extracted as its own pure function (rather than left as an inline expression) so
+ * a regression test can assert the temporal anchor is actually wired into the text
+ * the synthesis model receives, not just that the formatter itself is correct.
+ */
+export function buildConsultSystemContent(params: {
+  bundleSystemContent: string
+  synthesisGuidance?: string | null
+  dataReadinessNote?: string
+  nowContextDate: string
+  currentMahaAntar: string | null
+}): string | undefined {
+  const temporalAnchorContent = `TEMPORAL ANCHOR:\n${formatConsultTemporalAnchor(params.nowContextDate, params.currentMahaAntar)}`
+  return (
+    [
+      temporalAnchorContent,
+      params.bundleSystemContent,
+      params.synthesisGuidance ? `SYNTHESIS GUIDANCE:\n${params.synthesisGuidance}` : '',
+      params.dataReadinessNote ?? '',
+    ]
+      .filter(Boolean)
+      .join('\n\n---\n\n') || undefined
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -275,6 +346,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
     dataReadinessNote,
     orientation,
     completenessReceipt,
+    judgmentFlags: ctxJudgmentFlags,
   } = ctx
 
   const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
@@ -304,11 +376,26 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
     .map(a => a.content)
     .filter(Boolean)
     .join('\n\n')
-  const systemContent = [
+  // RC-17 fix (web-door dasha-anchoring hallucination): the `data-orientation` SSE event
+  // already carries the correctly-resolved `chart_header.current_maha_antar`, but that
+  // block was delivered to the CLIENT only — never included in systemContent — so the
+  // synthesis model had no way to know which of the many raw dasha periods returned by
+  // the B.11 dasha-context floor tool (chart_facts_query/query_dasha_periods) is CURRENT.
+  // Live-reproduced 2026-07-22 (RC-02_TWO_DOOR_PARITY_v1_0.md §5a): door 2 synthesis text
+  // said "Mercury MD / Saturn AD" while its own data-orientation block (and the MCP door,
+  // for the same chart) correctly said "Saturn MD / Rahu AD". Same defect class as the
+  // W6.3 fix-cycle's prashna_ask_synthesis.ts `formatTemporalAnchor` (commit 2df42b61) —
+  // same fix shape here: an explicit anchor line, degrading honestly (never fabricating a
+  // period) when the dasha cannot be resolved. See RC-17_WEB_DASHA_HALLUCINATION_v1_0.md.
+  const nowContextDate = new Date().toISOString().slice(0, 10)
+  const currentMahaAntar = orientation?.chart_header?.current_maha_antar ?? orientation?.dasha_context?.current_maha_antar ?? null
+  const systemContent = buildConsultSystemContent({
     bundleSystemContent,
-    plan.synthesis_guidance ? `SYNTHESIS GUIDANCE:\n${plan.synthesis_guidance}` : '',
-    dataReadinessNote ?? '',
-  ].filter(Boolean).join('\n\n---\n\n') || undefined
+    synthesisGuidance: plan.synthesis_guidance,
+    dataReadinessNote,
+    nowContextDate,
+    currentMahaAntar,
+  })
   let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
   const adapter = getAdapter(adapterId)
   // R11E loop flags permanently true (WS-0 2026-06-04)
@@ -698,6 +785,24 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
           }),
         })
       }
+      // RC-02 (§H.1 crit-6, two-door parity) — judgment_flags disclosure. Emitted
+      // UNCONDITIONALLY (even when empty), same discipline as data-completeness above and
+      // per §N.6 ("an honest empty result is reported via flags, never silently omitted") —
+      // a caller can tell "checked, nothing to report" apart from "never checked". Starts
+      // from the flags the route aggregated BEFORE dispatch (currently just
+      // `no_leakage_capabilities_stripped` when the NO-LEAKAGE strip fired — the SAME flag
+      // string /api/mcp/prashna_ask surfaces for the identical underlying condition; see
+      // RunAdapterDispatchCtx.judgmentFlags), then appends web-channel-specific gate
+      // outcomes this module itself resolves. The citation gate has no MCP-door equivalent
+      // (prashna_ask's predictive-class synthesis does not cite) — these two flags are
+      // additive disclosure, not a claim of cross-door vocabulary overlap.
+      const judgmentFlags = [...(ctxJudgmentFlags ?? [])]
+      if (adapterCitationGateResult === 'WARN') judgmentFlags.push('citation_gate_warn')
+      if (adapterCitationGateResult === 'ERROR') judgmentFlags.push('citation_gate_error')
+      writer.write({
+        type: 'data-judgment-flags',
+        data: judgmentFlagsPart({ flags: judgmentFlags }),
+      })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       writer.write({ type: 'finish', finishReason: 'stop' } as any)
       writer.write({ type: 'data-stage', data: stagePart('synthesis', 'done', Date.now() - adapterStartMs) })

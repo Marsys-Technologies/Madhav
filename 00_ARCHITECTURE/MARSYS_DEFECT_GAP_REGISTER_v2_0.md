@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.11
+version: 3.12
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -1092,9 +1092,42 @@ piecemeal against the current interim substrate.
 **NOT-EVALUABLE, not retired, not deprecated by this row** — no transit-kernel code or doctrine
 reference is removed; `transitKernelModel()` stays exactly as-is in `model_interface.ts`.
 
+**CR-122 [RESOLVED 2026-07-23, RC-17 (web-door dasha-anchoring hallucination) fix session, branch
+`res/rc02-rc17-web-door-parity-and-dasha-fix` — discovered by RC-02's live two-door parity
+investigation (2026-07-22), independently live-reproduced this session, chart 1c826d5a, via the
+deployed `/api/chat/consult` route]:** the web-door synthesis text stated the native was running
+"Mercury MD / Saturn AD" while the SAME response's own `data-orientation.chart_header.
+current_maha_antar` (and the MCP `prashna_ask` door, for the same chart/question) both correctly
+said "Saturn MD / Rahu AD" — a fabricated Mahadasha lord asserted directly to the caller about
+their own timing. Root cause: `run_adapter_dispatch.ts`'s `systemContent` assembly never included
+the resolved `current_maha_antar` or today's date at all, so the synthesis model had no way to
+know which of the many raw dasha periods returned by the B.11 dasha-context floor tool is CURRENT
+and reasoned from training-data recency/pattern-bleed instead — the identical defect class fixed
+for the MCP `prashna_ask` synthesis path in commit `2df42b61` (W6.3 fix-cycle,
+`prashna_ask_synthesis.ts`'s `formatTemporalAnchor`), independently surviving on the web door
+because that fix only touched the MCP file. Fixed with the equivalent pattern
+(`formatConsultTemporalAnchor` + `buildConsultSystemContent`, wired into `systemContent` ahead of
+the B.11 floor bundle, sourced from the orientation block already resolved earlier in the request —
+no new fetch needed; degrades honestly, never fabricating a period, when `current_maha_antar` is
+unresolved); regression test `rc17_temporal_anchor.test.ts` (8 cases, all passing) proves the
+anchor is built correctly and is actually wired into the text the synthesis model receives,
+including an explicit regression guard against the exact live symptom (a different dasha lord
+silently substituted). Live-reproduced pre-fix twice: the original RC-02 investigation (query_id
+`05baeb74-6c7f-4d6b-ab57-9578e57ab083`, 2026-07-22) and an independent re-reproduction this session
+(query_id `86d2f98e-1f8c-4f73-90b2-6fc1fd1e9d41`, 2026-07-22 22:43 UTC, deployed revision
+`amjis-web-01103-nq7`) — both show the identical orientation-vs-synthesis contradiction. Post-fix
+live re-probe of the deployed (fixed) web door is deploy-gated — same carry-condition class as
+CR-118/RC-11 (`VERIFY_RC-11.md` §5) — recommended for Wave R-C after batched deploy. Full detail:
+`RC-17_WEB_DASHA_HALLUCINATION_v1_0.md`.
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.11 (2026-07-23, RC-11 / R-10 root-cause-closure
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.12 (2026-07-23, RC-02/RC-17 web-door-parity-and-
+dasha-fix session, branch `res/rc02-rc17-web-door-parity-and-dasha-fix`) — CR-122 added and
+RESOLVED same-session: web-door (`/api/chat/consult`) synthesis dasha-anchoring hallucination,
+discovered by RC-02's live two-door parity investigation, live-reproduced twice, fixed with the
+`prashna_ask_synthesis.ts`/`2df42b61` temporal-anchor pattern ported to `run_adapter_dispatch.ts`;
+regression test added. Full detail: `RC-17_WEB_DASHA_HALLUCINATION_v1_0.md`. v3.11 (2026-07-23, RC-11 / R-10 root-cause-closure
 session, branch `res/rc11-cr118-fastfails`) — CR-118 RESOLVED: root cause found (consult/route.ts's
 `LegacyQueryPlanShape` never carried `chart_id`, so every per_chart tool it dispatched — msr_sql,
 get_yoga_firings, cgm_graph_walk — hit its own `chart_id is required` fast-fail guard before any DB

@@ -173,3 +173,13 @@ describe('W6 Part D — consult route NO-LEAKAGE retrofit (both-doors requiremen
     expect(payload.tools_authorized).toContain('msr_sql')
   })
 })
+
+describe('RC-02 — judgment_flags aggregation point (web ↔ MCP gate-flag parity)', () => {
+  it('threads no_leakage_capabilities_stripped into runAdapterDispatch ctx.judgmentFlags when a strip fires — the SAME flag string /api/mcp/prashna_ask surfaces for the identical condition', async () => {
+    await POST(makePost(NATIVE, 'Give me an orientation overview of my whole chart.'))
+
+    expect(dispatchSpy).toHaveBeenCalledTimes(1)
+    const ctx = dispatchSpy.mock.calls[0][0] as Record<string, unknown>
+    expect(ctx.judgmentFlags).toContain('no_leakage_capabilities_stripped')
+  })
+})
