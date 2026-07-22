@@ -3,14 +3,121 @@ artifact: VERIFY_RC-06.md
 residual: RC-06 (golden set) — planner_golden_set.json recalibration
 brief: RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §E Cluster 2
 branch: res/rc06-golden-set
-commit_verified: 853cf471
+commit_verified: 9365a616 (fix-cycle-2); 853cf471 (fix-cycle-1, REJECTED — record below)
 base: a81f4cd6 (res/integration head — includes RC-05 dead-tool sweep)
-verifier: independent VERIFIER agent (did NOT implement)
-verdict: REJECT
+verifier: independent VERIFIER agent (did NOT implement) — fresh re-verify after fix
+verdict: ACCEPT (fix-cycle-2); prior REJECT (fix-cycle-1) retained below for audit
 date: 2026-07-22
 ---
 
-# RC-06 Independent Verification — VERDICT: REJECT
+# RC-06 Independent Verification — FIX-CYCLE-2 VERDICT: ACCEPT
+
+Re-verified from scratch against `res/rc06-golden-set` @ `9365a616` (worktree
+`.claude/worktrees/wf_3e85c10c-202-1`) after the prior REJECT (fix-cycle-1 @
+`853cf471`, full record preserved below this section). Nothing was trusted
+from the implementer report; every check was re-run. The residual is now
+**complete**: all three DONE-bar legs are met and every one of the seven
+required changes from the prior REJECT is independently confirmed.
+
+## Independent re-derivation of the authoritative dead set (not trusted from report)
+
+The WP-1.7 14-name dead set was re-derived from BOTH sources the task named:
+- `tool_name_bridge.ts:410-422` (the WP-1.7 removal note listing the 14 names REMOVED for having no backing registry capability), and
+- `compiled_floor_adapter.test.ts:242-247` (`DEAD_CAPABILITIES` array).
+
+Both sources agree exactly on the 14 names: `pattern_register,
+resonance_register, cluster_atlas, kp_query, query_kp_ruling_planets,
+query_ucn_walk, query_cdlm_lookup, query_rm_walk, query_jaimini_drishti,
+timeline_query, query_signal_state, multi_school_signal_lookup,
+jaimini_chara_dasha, jaimini_chara_dasha_full`. The RETAINED/now-resolvable
+set (`cgm_graph_walk, temporal, contradiction_register, query_tara_balam,
+query_chandra_balam`) was NOT treated as dead.
+
+## (a) Tests — rerun independently @ 9365a616
+
+- `npx vitest run tests/eval/` → **4 files, 73 passed (73)**, 1.88s.
+- `npx vitest run src/lib/pipeline/__tests__/compiled_floor_adapter.test.ts` (the RC-05 dead-cap floor guard) → **30 passed (30)**.
+- Regression gate legs verified passing: "baseline covers every planner_golden_set entry by id"; "avg_tool_recall ≥ 0.80 and avg_tool_precision ≥ 0.90".
+
+The prior REJECT correctly noted the mock gate is structurally blind to a
+dead-cap sitting in `expected_tools`/`required_tools`; that is why leg 1 is
+verified by the independent scan in (c), NOT by the gate alone.
+
+## (b) DONE bar (brief §E RC-06, verbatim) — all three legs MET
+
+> **DONE:** zero dead-capability references remain in the golden set; the
+> planner regression gate passes against the recalibrated set; a diff report
+> explains every changed case.
+
+1. **"zero dead-capability references remain in the golden set" — MET.** See
+   (c): 0 across `expected_tools`, `required_tools`, `available_tools`, and
+   baseline `mock_tool_calls[].tool_name` for all 14 WP-1.7 names.
+2. **"planner regression gate passes" — MET** (see (a)).
+3. **"a diff report explains every changed case" — MET.** `RC-06_DIFF_REPORT.md`
+   now marks the fix-cycle-1 leg-1 claim SUPERSEDED/FALSE (line 85) and adds a
+   "Fix-cycle-2" section (line 312+) with the full 14-name re-derivation and a
+   per-name Resolver-ruling table (lines 344-346) covering GT.050/051,
+   GT.056-058, GT.059-061.
+
+## (c) Independent dead-capability scan @ 9365a616 — the passing evidence
+
+Scanned `planner_golden_set.json` (86 entries) and
+`fixtures/regression_baseline.json` (86 entries) for all 14 names, via both a
+JSON-parse partition AND a raw `grep` cross-check (belt-and-suspenders):
+
+| Field | Dead refs (all 14 names) |
+|---|---|
+| `expected_tools` | **0** |
+| `required_tools` | **0** |
+| `available_tools` (catalog, now 13 names) | **0** |
+| baseline `mock_tool_calls[].tool_name` | **0** |
+
+Raw-grep reconciliation: the only remaining occurrences of any dead name in
+the golden set are `pattern_register`×16, `resonance_register`×5,
+`cluster_atlas`×5, `timeline_query`×6 = **32 total, ALL inside `forbidden_tools`**
+(JSON-partition: forbidden_tools=32, expected=0, required=0, available=0 —
+sum reconciles exactly, zero leakage into any authoritative field). Retention
+in `forbidden_tools` is correct and desirable: it is the guard asserting the
+planner must NEVER emit these. This matches the prior REJECT's own note that
+`forbidden_tools` retention is defensible.
+
+Per-entry confirmation of the seven required changes from the prior REJECT:
+- GT.050/051 (`multi_school_signal_lookup` dropped): now `expected=required=[convergence_score_lookup]` — sole live survivor. ✓
+- GT.056 (`query_signal_state` dropped): `expected=[msr_sql, vector_search]`, `required=[msr_sql]`. ✓
+- GT.057/058 (`query_signal_state` dropped): `msr_sql` promoted to required alongside temporal/lel_query. ✓
+- GT.059/060 (`query_kp_ruling_planets`/`kp_query` dropped): `expected=required=[msr_sql]`. ✓
+- GT.061 (`query_kp_ruling_planets` dropped, `msr_sql` forbidden here): `expected=required=[]` — empty, precedented (GT.027/028/046 already empty; `scoreEntry` treats empty expected as recall=precision=1). No div-by-zero; regression gate passes with all 4 empty-expected entries present. ✓
+- `available_tools` catalog: 16 → 13 (the 3 names removed). ✓
+- baseline mocks: 0 dead refs across all 86 entries; every golden entry still covered by a baseline entry (86/86, no missing ids); every `required_tool` present in its entry's mock (required_hit holds). ✓
+
+## (d) Scope / must_not_touch — CLEAN
+
+`git diff --stat a81f4cd6..HEAD` (full branch history) touches exactly four
+files, all inside `may_touch`:
+- `platform/tests/eval/planner_golden_set.json` (`platform/tests/eval/**`)
+- `platform/tests/eval/fixtures/regression_baseline.json` (same)
+- `00_ARCHITECTURE/briefs/retrieval_residual/RC-06_DIFF_REPORT.md` (`retrieval_residual/**`)
+- `00_ARCHITECTURE/briefs/retrieval_residual/VERIFY_RC-06.md` (this artifact)
+
+`git diff --name-only a81f4cd6..HEAD | grep -iE 'orchestrat|writer|ga_|bo_|ka_|ph_|mi_|WriterBase|chart_facts|migrations|CLAUDECODE_BRIEF.md|wave/D-4b|kala_|gochara'` → **empty**. No FROZEN
+orchestrator / WriterBase / layer writer, no `chart_facts` semantics, no
+`kala_*`/gochara serving semantics, no D-4b branch, no root CLAUDECODE_BRIEF,
+no migration touched. Working tree clean (only untracked `node_modules`).
+
+## FIX-CYCLE-2 VERDICT
+
+**ACCEPT.** All three DONE-bar legs are met; the independent 14-name scan
+returns 0 across every authoritative field and the baseline; the full eval
+suite (73/73) and the RC-05 floor guard (30/30) are green; scope is clean.
+RC-06 is CLOSED.
+
+---
+---
+
+# [SUPERSEDED] RC-06 fix-cycle-1 Independent Verification — VERDICT: REJECT (853cf471)
+
+*Retained verbatim for audit. Every required change below was subsequently
+applied in fix-cycle-2 (`9365a616`) and independently re-verified ACCEPT above.*
 
 Verified against `res/rc06-golden-set` @ `853cf471` (worktree
 `.claude/worktrees/wf_3e85c10c-202-1`). Every check below was run by the
