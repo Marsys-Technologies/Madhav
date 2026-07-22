@@ -26,6 +26,7 @@ import type { TemporalCurveModel, ChartContext, EventClass } from './model_inter
 import { shuffledBirthControlCurve, antiphaseControlCurve } from './curve_controls'
 import { runBlindBattery, type CurveEvent, type BlindBatteryResult } from './shape_scoring'
 import { crps, skill } from './proper_scoring'
+import { assertNoSealedSplitEvents } from './sealed_split_guard'
 
 export type MirroredScoringParams = {
   /** DR-13(a) percentile threshold: 0.9 top-decile (point checks), 2/3 top-tercile (blind battery). */
@@ -119,6 +120,13 @@ function scoreProperAgainstCurve(curveFor: (e: CurveEvent) => CurvePoint[], even
  * config is even representable through this function's signature).
  */
 export function runMirroredScoringHarness(input: HarnessInput): HarnessResult {
+  // CR-123/DR-20: structural sealed-test-split enforcement. This is the ONE function every
+  // contender's scoring call funnels through (pratyantar_lord, every PERMISSION system, and
+  // the ensemble alike) — placing the gate here, first, means no driver/batch/contender type
+  // can produce a score without passing this check, regardless of what its own dispatch
+  // instructions said. See sealed_split_guard.ts's module docstring for the incident this
+  // fixes (the D-4b B-1 chunked re-run's quarantined sealed-split breach).
+  assertNoSealedSplitEvents(input.events)
   const { model, chart, eventClass, events, boundsStart, boundsEnd, params } = input
   const range: [Date, Date] = [boundsStart, boundsEnd]
   const realCurve = model.curve(chart, eventClass, range)
