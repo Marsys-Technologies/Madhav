@@ -29,7 +29,8 @@ import { resolveGeneratedToolUri } from './generated_web_tool_bridge'
  * `TOOL_NAME_TO_URI` entirely.
  *
  * Real bug this fixes: `compiled_floor_adapter.ts`'s `ensureB11WholeChartReadFloor`
- * (and its `prashna_ask_spike.ts` twin) push literal registry URIs as `tool_name`
+ * (called from both `consult/route.ts` and the real `prashna_ask/route.ts`) pushes
+ * literal registry URIs as `tool_name`
  * — e.g. `'marsys://tool/L2/query_signals'` — under the assumption that a registry
  * URI is a valid, self-resolving tool identifier. It never was: `TOOL_NAME_TO_URI`
  * only maps legacy *names* (keys) to URIs (values); a URI was never a key, so

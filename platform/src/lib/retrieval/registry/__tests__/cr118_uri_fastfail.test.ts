@@ -2,8 +2,9 @@
  * cr118_uri_fastfail.test.ts — W5 L1: CR-118 fast-fail / msr_sql defect, before/after
  * ================================================================================
  * Real, live bug found while investigating the W5 "generated web-tool bridge"
- * task: `compiled_floor_adapter.ts`'s `ensureB11WholeChartReadFloor` (and its
- * `prashna_ask_spike.ts` twin) push literal registry URIs as `tool_name` —
+ * task: `compiled_floor_adapter.ts`'s `ensureB11WholeChartReadFloor` (called from
+ * both `consult/route.ts` and the real `prashna_ask/route.ts`) pushes literal
+ * registry URIs as `tool_name` —
  * e.g. `'marsys://tool/L2/query_signals'` (the exact capability `msr_sql`
  * already resolves correctly under its own name) and
  * `'marsys://tool/L2/traverse_chart_graph'`.
