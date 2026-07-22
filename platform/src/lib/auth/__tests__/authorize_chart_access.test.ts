@@ -38,15 +38,27 @@ const superAdmin: Principal = { uid: 'firebase-uid-admin', role: 'super_admin' }
 const chartId = 'chart-uuid-abc'
 
 describe('authorizeChartAccess (G2 gate)', () => {
-  it("super_admin returns 'all' for any chart", async () => {
-    // Even with an empty DB, super_admin must short-circuit.
-    const db = makeDb({})
+  it("super_admin returns 'all' for an existing chart", async () => {
+    // Chart exists (owner row present) — super_admin short-circuits to 'all'.
+    const db = makeDb({ owner: { owner_id: 'someone-else' } })
     const perm = await authorizeChartAccess({
       principal: superAdmin,
       chartId,
       db,
     })
     expect(perm).toBe('all')
+  })
+
+  it("super_admin returns 'deny' (not a silent grant) for a non-existent chart_id", async () => {
+    // RC-12 regression: no owner row (chart doesn't exist) must produce a
+    // clean not-found even for super_admin — never a silent 'all' grant.
+    const db = makeDb({})
+    const perm = await authorizeChartAccess({
+      principal: superAdmin,
+      chartId: 'does-not-exist',
+      db,
+    })
+    expect(perm).toBe('deny')
   })
 
   it("owner returns 'all'", async () => {
