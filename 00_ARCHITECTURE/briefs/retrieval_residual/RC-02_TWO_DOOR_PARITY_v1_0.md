@@ -10,13 +10,13 @@ version: 2.0 (supersedes the unmerged v1 investigation on branch
 date: 2026-07-23
 executed_by: Claude Code subagent, branch res/rc02-rc17-web-door-parity-and-dasha-fix
   (based on main post-RC-11 merge — RC-11's chart_id fix is live in this branch)
-verdict: STILL OPEN, but substantively improved and honestly re-scoped — see
-  §6 disposition. The specific defect v1 flagged (§4.2, judgment_flags totally
-  absent on the web door) is FIXED. Floor coverage has improved from 2/16 to
-  8/16 served as a direct, measured consequence of RC-11 (independent of this
-  session's own work). Full floor-ITEM-SET equality remains architecturally
-  unreachable without unifying the two receipt schemas — explicitly out of
-  this task's scope (see §6) — and is recorded honestly, not claimed closed.
+verdict: CLOSED via Native-Proxy Resolver Ruling RC-02-001 (RESOLVER_RULINGS.md,
+  2026-07-23, conductor-issued) — DONE bar narrowed to shared-condition
+  gate-flag parity (fixed) + measured, disclosed floor-coverage improvement
+  (2/16 -> 8/16, RC-11 consequence). Full receipt-schema/item-set equality is
+  WONTFIX as a genuine architectural difference between the two doors, not a
+  defect — see Ruling RC-02-001 for full rationale. One deploy-gated live
+  re-confirmation remains, same accepted carry-condition as RC-11/CR-118.
 ---
 
 # RC-02 v2 — Live two-door parity: `/api/chat/consult` vs `prashna_ask`
