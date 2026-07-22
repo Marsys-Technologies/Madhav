@@ -87,3 +87,32 @@ describe('classifyScope — fallback_recommended (drives ClarificationRequest)',
     expect(c.fallback_recommended).toBe(false)
   })
 })
+
+describe('classifyScope — domain-inferred intent fallback (W6.1 fix-cycle)', () => {
+  // Live E2E defect (native-directed, trace 6d1eb827-8c9c-4e98-b77e-7f5b5d689fbc,
+  // the unscoped prashna_ask call): this exact phrase named 'career' but matched
+  // no INTENT_RULES entry verbatim, so intent fell through to 'unknown' and
+  // triggered an unnecessary clarification_needed.
+  it('resolves a real domain-naming query to domain_assessment instead of unknown', () => {
+    const c = classifyScope('What is my career direction and its timing over the next few years?')
+    expect(c.scope_tuple.intent).toBe('domain_assessment')
+    expect(c.scope_tuple.domains).toContain('career')
+    expect(c.fallback_recommended).toBe(false)
+    expect(c.matched_rules).toContain('intent:domain_assessment<-domain_inferred')
+  })
+
+  it('still resolves to unknown when no domain matches either (genuinely ambiguous)', () => {
+    const c = classifyScope('hey there, can you help me out with something?')
+    expect(c.scope_tuple.intent).toBe('unknown')
+    expect(c.scope_tuple.domains).toEqual(['general'])
+    expect(c.fallback_recommended).toBe(true)
+  })
+
+  it('never overrides an intent a specific rule already resolved', () => {
+    // 'career' domain matches, but 'dasha' intent rule fires first and must win —
+    // the domain-inferred fallback only applies when intent is still 'unknown'.
+    const c = classifyScope('What does my current dasha period mean for my career?')
+    expect(c.scope_tuple.intent).toBe('dasha_timing')
+    expect(c.matched_rules).not.toContain('intent:domain_assessment<-domain_inferred')
+  })
+})

@@ -354,6 +354,7 @@ export async function callPipelinePlanner(
   emitTrace?: (event: TraceEvent) => void,
   queryId?: string,
   fallbackModelId?: string,
+  suppliedScopeTuple?: ScopeTuple,
 ): Promise<PlannerOutcome> {
   // ── Step 1: deterministic scope classification (BEFORE the LLM call) ────────
   // W4 core step 1. Runs on the raw incoming query text. A low-confidence /
@@ -361,8 +362,27 @@ export async function callPipelinePlanner(
   // short-circuits to a ClarificationRequest so genuinely ambiguous queries ask a
   // question instead of silently guessing a plan — and we skip the LLM cost.
   const classification = classifyScope(query)
-  const scopeTuple: ScopeTuple = classification.scope_tuple
-  if (classification.fallback_recommended) {
+  let scopeTuple: ScopeTuple = classification.scope_tuple
+  let fallbackRecommended = classification.fallback_recommended
+
+  // W6.1 fix-cycle (native-directed, trace c332bf16-1641-4f70-b15c-65ea33b589ee):
+  // a caller-supplied scope_tuple with a resolved intent (C-1 signature's
+  // `scope_tuple?` param) is an explicit, out-of-band scope declaration — it must
+  // be trusted over the deterministic text classifier's own guess, and it must be
+  // able to bypass a clarification_needed the classifier would otherwise produce.
+  // Domains fall back to the classifier's own result only when the caller didn't
+  // supply any (an empty/['general']-only array is treated as "not supplied").
+  if (suppliedScopeTuple && suppliedScopeTuple.intent !== 'unknown') {
+    const suppliedDomains =
+      suppliedScopeTuple.domains.length > 0 &&
+      !(suppliedScopeTuple.domains.length === 1 && suppliedScopeTuple.domains[0] === 'general')
+        ? suppliedScopeTuple.domains
+        : scopeTuple.domains
+    scopeTuple = { ...suppliedScopeTuple, domains: suppliedDomains }
+    fallbackRecommended = false
+  }
+
+  if (fallbackRecommended) {
     emitTrace?.({
       event: 'step_done',
       query_id: queryId ?? nativeId,

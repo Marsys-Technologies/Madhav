@@ -75,6 +75,39 @@ describe('callPrashnaAskEngine', () => {
     expect(JSON.parse(opts.body)).toEqual({ chart_id: 'c1', question: 'what dasha am I in?' })
   })
 
+  it('forwards scopeTuple in the POST body when supplied (W6.1 fix-cycle)', async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([JSON.stringify({ ok: true, trace_id: 't1', chart_id: 'c1', outcome: 'plan' })])
+    )
+    const scopeTuple = {
+      intent: 'domain_assessment',
+      domains: ['career'],
+      width: 'standard' as const,
+      depth: 'standard' as const,
+      horizon: 'near' as const,
+      intervention: 'none' as const,
+      entitlement: 'native' as const,
+    }
+
+    await callPrashnaAskEngine({ chartId: 'c1', question: 'career timing?', principal: PRINCIPAL, scopeTuple })
+
+    const [, opts] = mockFetch.mock.calls[0]
+    expect(JSON.parse(opts.body)).toEqual({
+      chart_id: 'c1',
+      question: 'career timing?',
+      scope_tuple: scopeTuple,
+    })
+  })
+
+  it('omits scope_tuple from the POST body entirely when not supplied (not sent as null/undefined)', async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([JSON.stringify({ ok: true, trace_id: 't1', chart_id: 'c1', outcome: 'plan' })])
+    )
+    await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
+    const [, opts] = mockFetch.mock.calls[0]
+    expect('scope_tuple' in JSON.parse(opts.body)).toBe(false)
+  })
+
   it('returns the plan outcome shape verbatim on success (single-blob body, no event field)', async () => {
     const planResponse = {
       ok: true,

@@ -186,6 +186,84 @@ describe('callPipelinePlanner — repair-retry then fault (the 422-bug fix)', ()
   })
 })
 
+describe('callPipelinePlanner — suppliedScopeTuple override (W6.1 fix-cycle)', () => {
+  // Live E2E defect (native-directed, trace c332bf16-1641-4f70-b15c-65ea33b589ee):
+  // an explicit, C-1-supplied scope_tuple with a resolved intent was silently
+  // dropped — the deterministic classifier re-ran on the raw text and still
+  // produced clarification_needed even though the caller already declared scope.
+  const SUPPLIED_TUPLE = {
+    intent: 'domain_assessment' as const,
+    domains: ['career' as const],
+    width: 'standard' as const,
+    depth: 'standard' as const,
+    horizon: 'near' as const,
+    intervention: 'none' as const,
+    entitlement: 'native' as const,
+  }
+
+  it('an otherwise-ambiguous query reaches a plan (not clarification_needed) when a resolved scope_tuple is supplied', async () => {
+    runAdapter.mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+
+    // This exact text alone short-circuits to clarification (see the first
+    // describe block above) — the supplied tuple must override that.
+    const outcome = await callPipelinePlanner(
+      'hey, can you help me with something?',
+      [],
+      'test-model',
+      'chart-1',
+      undefined,
+      undefined,
+      undefined,
+      SUPPLIED_TUPLE,
+    )
+
+    expect(outcome.outcome).toBe('plan')
+    if (outcome.outcome === 'plan') {
+      expect(outcome.plan.scope_tuple?.intent).toBe('domain_assessment')
+      expect(outcome.plan.scope_tuple?.domains).toContain('career')
+    }
+    expect(runAdapter).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT override when the supplied tuple itself has intent:unknown — still clarifies', async () => {
+    const outcome = await callPipelinePlanner(
+      'hey, can you help me with something?',
+      [],
+      'test-model',
+      'chart-1',
+      undefined,
+      undefined,
+      undefined,
+      { ...SUPPLIED_TUPLE, intent: 'unknown' },
+    )
+
+    expect(outcome.outcome).toBe('clarification_needed')
+    expect(runAdapter).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the classifier\'s own domains when the supplied tuple has none/general', async () => {
+    runAdapter.mockResolvedValueOnce(adapterReturn(VALID_PLAN_JSON))
+
+    const outcome = await callPipelinePlanner(
+      'What is my current dasha period?', // classifier resolves domains:['general'] here
+      [],
+      'test-model',
+      'chart-1',
+      undefined,
+      undefined,
+      undefined,
+      { ...SUPPLIED_TUPLE, domains: ['general'] },
+    )
+
+    expect(outcome.outcome).toBe('plan')
+    if (outcome.outcome === 'plan') {
+      // supplied intent wins, but domains come from the classifier's own read of
+      // the text since the caller didn't supply a real domain.
+      expect(outcome.plan.scope_tuple?.intent).toBe('domain_assessment')
+    }
+  })
+})
+
 describe('callPipelinePlanner — provider-error fault', () => {
   it('returns a retryable fault (not a throw) when the LLM call itself fails', async () => {
     runAdapter.mockRejectedValue(new Error('upstream 500 internal server error'))

@@ -238,6 +238,21 @@ export function classifyScope(rawQuery: string): ScopeClassification {
   }
   if (domains.length === 0) domains.push('general')
 
+  // 2b. Domain-inferred intent fallback (W6.1 fix-cycle, native-directed): a
+  // query that names a real life-area domain (career/wealth/marriage/etc.) but
+  // doesn't happen to use one of domain_assessment's own trigger words
+  // ("assess"/"prospects"/"outlook"/"analyze my"/"reading for") should still
+  // resolve to a real intent rather than fall through to 'unknown' and trigger
+  // an unnecessary clarification — e.g. "career direction and its timing over
+  // the next few years" names 'career' but matches no INTENT_RULES entry
+  // verbatim. Only applies when no more specific intent rule already fired and
+  // a real (non-'general') domain matched — this is strictly additive, it
+  // never overrides an intent a rule already resolved.
+  if (intent === 'unknown' && !(domains.length === 1 && domains[0] === 'general')) {
+    intent = 'domain_assessment'
+    matched.push('intent:domain_assessment<-domain_inferred')
+  }
+
   // 3. Width
   let width: Width = 'standard'
   if (WIDTH_BROAD.test(query)) { width = 'broad'; matched.push('width:broad') }
