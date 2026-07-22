@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-06-27T18:27:38.035Z",
+  "generated_at": "2026-07-22T06:50:04.573Z",
   "generator_version": "1.0",
-  "entry_count": 113,
-  "fingerprint": "2fff19900d8d46f3451534de786835451b30333766bb1f05ab5b71efdca01892",
+  "entry_count": 114,
+  "fingerprint": "651139efdb098680fda9f3fa12129d9672d92a10e30cb58eccceb459e5b6a030",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1112,10 +1112,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "55c23858f1bcca725dcc1bc4dd33100ebaed2c157ef203a94e7671635a184d7b",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "d328860e1a98b639c559036594cc7f880033baa288301fafaa3b6dddf5c561dd",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "PREDICTION_SCHEMA_v0_1",
@@ -1128,10 +1126,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "bf1189997a5d8e80798a7dde27d69f39d2f1d24bf845a64e768783b0328f9654",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "1db6a742f1fde19507b6c4c7ad1679c70f50f3286673a95960afea5f79f7da96",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
@@ -1144,10 +1140,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "e7003c5911edd8f74b4fb0a7d7fd46add4812fe8c46254e5f54513be366f8e36",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "0ed502f6994726f37f7d5e34997e0411d937188674b1022429234e3bcc820e4e",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "PROMPT_REGISTRY_INDEX",
@@ -1160,10 +1154,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "ee986600a0eecf33e2b61645056a7b76dea88019981280980b7aa2d5d87c846b",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "74ffef4271ca6168227e22af21099cc187490401431f13c57aa6ded119e9c71b",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "PREDICTION_LEDGER_JSONL",
@@ -1176,10 +1168,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "ac8a87cc55bbbe6d9d14ef4dd2229e701189507b01d6ecbffa51bcd5e41c701f",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "47ac93ebb6449f8c94a17758baf8c993ee09238f48a3b97ae6c270bc45113627",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "PATTERN_REGISTER_JSON",
@@ -1192,10 +1182,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "11ed5d57d48c23a4e3f9795df6107c9497cc6d988da2239ab3e5866cafd851fc",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "729d850720a4986389c451b3e0c425dc05c9f31ebb60dbe281ad387d275ec7a5",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "RESONANCE_REGISTER_JSON",
@@ -1208,10 +1196,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "92a6cde8cb869ff0b525477667a423852917573f0f1ffe9af3223fea1250e6ef",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "ac9f284bd591dc69c7ebf4bba3104b9f64c266f4340524eec46590203d23154d",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "CONTRADICTION_REGISTER_JSON",
@@ -1224,10 +1210,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "11c551afab85e6272d9f5569551ed5425f893edc44ee52852774caad5710857f",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "1e2fd304e400aee529eb3800f0e5facf4755de9bdb6e09878c11a6528ed80f68",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "CLUSTER_ATLAS_JSON",
@@ -1240,10 +1224,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "fa1dbd13991f06f6980e54ce586d1f1b40dbe969517ba0c5e6101de60e9a18d4",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "59d5d90c1759dce79ed83e4c47134b5d37b9ff36f926a1f639f7add0a50b233f",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "DISCOVERY_REGISTERS_INDEX",
@@ -1256,10 +1238,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "dd3eb54f70c2adb10ef91bca41b0ede2eeb955de1329b87e3f4dca38c832ad4e",
-      "native_id": "abhisek",
-      "last_verified_session": "REMEDIATION_PHASE0_2026-06-28",
-      "last_verified_on": "2026-06-28"
+      "fingerprint": "f6891c9a2813a1e7c94c4d8eed6ba39d577575218109dddc0a29fec182f61f07",
+      "native_id": "abhisek"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_msr_sql",
@@ -1598,17 +1578,27 @@
       "native_id": "abhisek"
     },
     {
-      "canonical_id": "L2_BODHA_CAMPAIGN_HANDOFF",
-      "path": "00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md",
-      "version": "1.1",
+      "canonical_id": "RETRIEVAL_TOOL_prashna_ask",
       "status": "CURRENT",
-      "layer": "L2",
-      "expose_to_chat": false,
+      "layer": "L1",
+      "expose_to_chat": true,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "e2771595a114bf5b41dd077403a346bc002762dbff015e091781c14476981807",
+      "fingerprint": "ac18ad9c4de0ee88caf7c9de4b9a4bf7bbd136f4734364feb4951bb19b49a17e",
+      "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "RETRIEVAL_TOOL_prashna_status",
+      "status": "CURRENT",
+      "layer": "L1",
+      "expose_to_chat": true,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "af5368cc9a708101aef051c717ec60a4652a7ceb7ed3768f9470edf04636a748",
       "native_id": "abhisek"
     }
   ]
