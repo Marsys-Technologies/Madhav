@@ -1,48 +1,26 @@
 {
-  "generated_at": "2026-07-19T20:35:30.199Z",
+  "generated_at": "2026-07-22T19:40:56.324Z",
   "method": "cross_diff_adjudication.ts — E1 (declared, TS registry static scan) vs E2 (DB truth, live information_schema + row counts) vs E3 (fact_category reconciliation)",
   "caveat_sidecar_not_scanned": "E1's table_hint only scans TS registry source (src/lib/retrieval/registry/layers + src/lib/retrieval/synthesis). A large share of L0 bg_* reference tables and other compute-plane data are read from platform/python-sidecar (Python, not TS) — this cross-diff cannot see that traffic at all, so a DARK row here means \"no TS-registry capability route found\", NOT \"provably unreachable by any means\".",
   "summary": {
-    "dark_count": 77,
-    "drift_count": 0,
+    "dark_count": 42,
+    "drift_count": 1,
     "fact_category_gap_rows": 3,
     "dark_by_layer": {
-      "L0": 29,
-      "L2": 16,
-      "L1": 10,
+      "L0": 5,
+      "L2": 13,
+      "L1": 8,
       "L3": 3,
-      "L5": 19
+      "L5": 13
     },
     "dark_by_proposed_disposition": {
-      "INTERNAL-BY-DESIGN": 25,
-      "NEEDS-OWNER": 52
+      "INTERNAL-BY-DESIGN": 12,
+      "NEEDS-OWNER": 30
     }
   },
   "rows": [
     {
       "id": "DARK-001",
-      "type": "DARK",
-      "table_name": "bg_avastha_schemes",
-      "layer": "L0",
-      "row_count": 35,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 35 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-002",
-      "type": "DARK",
-      "table_name": "bg_combustion_orbs",
-      "layer": "L0",
-      "row_count": 8,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 8 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-003",
       "type": "DARK",
       "table_name": "bg_dignity_reference",
       "layer": "L0",
@@ -53,161 +31,7 @@
       "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
     },
     {
-      "id": "DARK-004",
-      "type": "DARK",
-      "table_name": "bg_graha_dik",
-      "layer": "L0",
-      "row_count": 9,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 9 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-005",
-      "type": "DARK",
-      "table_name": "bg_graha_naisargika_friendship",
-      "layer": "L0",
-      "row_count": 72,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 72 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-006",
-      "type": "DARK",
-      "table_name": "bg_medical_mappings",
-      "layer": "L0",
-      "row_count": 21,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 21 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-007",
-      "type": "DARK",
-      "table_name": "bg_motion_state_thresholds",
-      "layer": "L0",
-      "row_count": 27,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 27 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-008",
-      "type": "DARK",
-      "table_name": "bg_nakshatra_medical",
-      "layer": "L0",
-      "row_count": 27,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 27 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-009",
-      "type": "DARK",
-      "table_name": "bg_prashna_fructification_rules",
-      "layer": "L0",
-      "row_count": 5,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 5 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-010",
-      "type": "DARK",
-      "table_name": "bg_prashna_lagna_methods",
-      "layer": "L0",
-      "row_count": 5,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 5 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 5 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-011",
-      "type": "DARK",
-      "table_name": "bg_prashna_significators",
-      "layer": "L0",
-      "row_count": 12,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 12 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 12 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-012",
-      "type": "DARK",
-      "table_name": "bg_prashna_special_techniques",
-      "layer": "L0",
-      "row_count": 3,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 3 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 3 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-013",
-      "type": "DARK",
-      "table_name": "bg_prashna_tajik_yogas",
-      "layer": "L0",
-      "row_count": 16,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 16 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 16 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-014",
-      "type": "DARK",
-      "table_name": "bg_shashtiamsha_deities",
-      "layer": "L0",
-      "row_count": 60,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 60 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-015",
-      "type": "DARK",
-      "table_name": "bg_transit_av_gates",
-      "layer": "L0",
-      "row_count": 8,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 8 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 8 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-016",
-      "type": "DARK",
-      "table_name": "bg_transit_engine",
-      "layer": "L0",
-      "row_count": 9,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 9 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 9 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-017",
-      "type": "DARK",
-      "table_name": "bg_transit_moorti",
-      "layer": "L0",
-      "row_count": 27,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 27 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-018",
+      "id": "DARK-002",
       "type": "DARK",
       "table_name": "bg_transit_rules",
       "layer": "L0",
@@ -218,40 +42,7 @@
       "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
     },
     {
-      "id": "DARK-019",
-      "type": "DARK",
-      "table_name": "bg_transit_vedha",
-      "layer": "L0",
-      "row_count": 33,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 33 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-020",
-      "type": "DARK",
-      "table_name": "bg_vastu_direction_remedials",
-      "layer": "L0",
-      "row_count": 24,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 24 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-021",
-      "type": "DARK",
-      "table_name": "bg_vastu_directions",
-      "layer": "L0",
-      "row_count": 8,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 8 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "INTERNAL-BY-DESIGN",
-      "rationale": "bg_* table name matches an internal reference/rule/threshold-table pattern — L0 Brahmagyan reference tables of this shape are typically consumed as computation INPUTS by the Python sidecar (ga_*/panchanga/transit engines), not served directly as a retrieval concept. This extractor did NOT verify the sidecar consumption for each table individually (out of TS-registry-scan scope) — disposition is a naming-pattern proposal, not a confirmed finding."
-    },
-    {
-      "id": "DARK-022",
+      "id": "DARK-003",
       "type": "DARK",
       "table_name": "bodha_anomalies",
       "layer": "L2",
@@ -262,7 +53,18 @@
       "rationale": "Table exists, holds 4954 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-023",
+      "id": "DARK-004",
+      "type": "DARK",
+      "table_name": "bodha_cdlm_chart_summary",
+      "layer": "L2",
+      "row_count": 10,
+      "count_method": "exact",
+      "evidence": "Real table in public schema (layer L2, 10 row(s), exact); zero capabilities' static table_hint reference it.",
+      "proposed_disposition": "NEEDS-OWNER",
+      "rationale": "Table exists, holds 10 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
+    },
+    {
+      "id": "DARK-005",
       "type": "DARK",
       "table_name": "bodha_cdlm_domain_rollups",
       "layer": "L2",
@@ -273,7 +75,7 @@
       "rationale": "Table exists, holds 60 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-024",
+      "id": "DARK-006",
       "type": "DARK",
       "table_name": "bodha_cdlm_evolution_gradients",
       "layer": "L2",
@@ -284,7 +86,7 @@
       "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
     },
     {
-      "id": "DARK-025",
+      "id": "DARK-007",
       "type": "DARK",
       "table_name": "bodha_cdlm_pattern_clusters",
       "layer": "L2",
@@ -295,7 +97,7 @@
       "rationale": "Table exists, holds 10 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-026",
+      "id": "DARK-008",
       "type": "DARK",
       "table_name": "bodha_cgm_chart_topology_summary",
       "layer": "L2",
@@ -306,7 +108,7 @@
       "rationale": "Table exists, holds 10 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-027",
+      "id": "DARK-009",
       "type": "DARK",
       "table_name": "bodha_cgm_edges",
       "layer": "L2",
@@ -317,7 +119,7 @@
       "rationale": "Table exists, holds 1573 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-028",
+      "id": "DARK-010",
       "type": "DARK",
       "table_name": "bodha_cgm_nodes",
       "layer": "L2",
@@ -328,7 +130,7 @@
       "rationale": "Table exists, holds 649 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-029",
+      "id": "DARK-011",
       "type": "DARK",
       "table_name": "bodha_cgm_sub_graphs",
       "layer": "L2",
@@ -339,7 +141,7 @@
       "rationale": "Table exists, holds 10 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-030",
+      "id": "DARK-012",
       "type": "DARK",
       "table_name": "bodha_contradictions",
       "layer": "L2",
@@ -350,7 +152,7 @@
       "rationale": "Table exists, holds 23 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-031",
+      "id": "DARK-013",
       "type": "DARK",
       "table_name": "bodha_convergence",
       "layer": "L2",
@@ -361,51 +163,7 @@
       "rationale": "Table exists, holds 60 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-032",
-      "type": "DARK",
-      "table_name": "bodha_rm_chart_summary",
-      "layer": "L2",
-      "row_count": 10,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L2, 10 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 10 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-033",
-      "type": "DARK",
-      "table_name": "bodha_rm_dasha_windowed_prescriptions",
-      "layer": "L2",
-      "row_count": 0,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L2, 0 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
-    },
-    {
-      "id": "DARK-034",
-      "type": "DARK",
-      "table_name": "bodha_rm_dosha_remedy_bundles",
-      "layer": "L2",
-      "row_count": 0,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L2, 0 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
-    },
-    {
-      "id": "DARK-035",
-      "type": "DARK",
-      "table_name": "bodha_rm_pattern_remedies",
-      "layer": "L2",
-      "row_count": 90,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L2, 90 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 90 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-036",
+      "id": "DARK-014",
       "type": "DARK",
       "table_name": "bodha_signal_embeddings",
       "layer": "L2",
@@ -416,18 +174,18 @@
       "rationale": "Table exists, holds 85997 row(s) (estimate), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-037",
+      "id": "DARK-015",
       "type": "DARK",
-      "table_name": "bodha_triangulation",
+      "table_name": "bodha_spine_bundles",
       "layer": "L2",
-      "row_count": 200,
+      "row_count": 0,
       "count_method": "exact",
-      "evidence": "Real table in public schema (layer L2, 200 row(s), exact); zero capabilities' static table_hint reference it.",
+      "evidence": "Real table in public schema (layer L2, 0 row(s), exact); zero capabilities' static table_hint reference it.",
       "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 200 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
+      "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
     },
     {
-      "id": "DARK-038",
+      "id": "DARK-016",
       "type": "DARK",
       "table_name": "brahma_activity_ontology",
       "layer": "L0",
@@ -438,40 +196,7 @@
       "rationale": "Table exists, holds 12 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-039",
-      "type": "DARK",
-      "table_name": "brahma_class_priors",
-      "layer": "L0",
-      "row_count": 164,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 164 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 164 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-040",
-      "type": "DARK",
-      "table_name": "brahma_compendium_index",
-      "layer": "L0",
-      "row_count": 9538,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 9538 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 9538 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-041",
-      "type": "DARK",
-      "table_name": "brahma_dasha_systems",
-      "layer": "L0",
-      "row_count": 18,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 18 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 18 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-042",
+      "id": "DARK-017",
       "type": "DARK",
       "table_name": "brahma_event_ontology",
       "layer": "L0",
@@ -482,18 +207,7 @@
       "rationale": "Table exists, holds 27 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-043",
-      "type": "DARK",
-      "table_name": "brahma_formula_constants",
-      "layer": "L0",
-      "row_count": 18,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 18 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 18 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-044",
+      "id": "DARK-018",
       "type": "DARK",
       "table_name": "brahma_prospective_ledger",
       "layer": "L0",
@@ -504,18 +218,7 @@
       "rationale": "Table exists, holds 7 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-045",
-      "type": "DARK",
-      "table_name": "brahma_vichara_constants",
-      "layer": "L0",
-      "row_count": 7,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L0, 7 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 7 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-046",
+      "id": "DARK-019",
       "type": "DARK",
       "table_name": "chart_facts_history",
       "layer": "L1",
@@ -526,7 +229,7 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_history) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-047",
+      "id": "DARK-020",
       "type": "DARK",
       "table_name": "chart_facts_supersedence",
       "layer": "L1",
@@ -537,7 +240,7 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_supersedence) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-048",
+      "id": "DARK-021",
       "type": "DARK",
       "table_name": "chart_grants",
       "layer": "L1",
@@ -548,7 +251,7 @@
       "rationale": "Table exists, holds 9 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-049",
+      "id": "DARK-022",
       "type": "DARK",
       "table_name": "chart_panchanga",
       "layer": "L1",
@@ -559,7 +262,7 @@
       "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
     },
     {
-      "id": "DARK-050",
+      "id": "DARK-023",
       "type": "DARK",
       "table_name": "chart_panchanga_cache",
       "layer": "L1",
@@ -570,18 +273,7 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_cache) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-051",
-      "type": "DARK",
-      "table_name": "ga_condition_composite",
-      "layer": "L1",
-      "row_count": 90,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L1, 90 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 90 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-052",
+      "id": "DARK-024",
       "type": "DARK",
       "table_name": "ga_prashna_judgment",
       "layer": "L1",
@@ -592,18 +284,7 @@
       "rationale": "Table exists, holds 5 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-053",
-      "type": "DARK",
-      "table_name": "ga_prashna_lagna",
-      "layer": "L1",
-      "row_count": 5,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L1, 5 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 5 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-054",
+      "id": "DARK-025",
       "type": "DARK",
       "table_name": "ganita_dashas",
       "layer": "L1",
@@ -614,7 +295,7 @@
       "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
     },
     {
-      "id": "DARK-055",
+      "id": "DARK-026",
       "type": "DARK",
       "table_name": "ganita_graha_sthana",
       "layer": "L1",
@@ -625,7 +306,7 @@
       "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
     },
     {
-      "id": "DARK-056",
+      "id": "DARK-027",
       "type": "DARK",
       "table_name": "kala_activation_predicates",
       "layer": "L3",
@@ -636,7 +317,7 @@
       "rationale": "Table exists, holds 78996 row(s) (estimate), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-057",
+      "id": "DARK-028",
       "type": "DARK",
       "table_name": "kala_convergence_staging",
       "layer": "L3",
@@ -647,18 +328,18 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_staging) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-058",
+      "id": "DARK-029",
       "type": "DARK",
       "table_name": "kala_gochara_windows",
       "layer": "L3",
-      "row_count": 5,
+      "row_count": 3148,
       "count_method": "exact",
-      "evidence": "Real table in public schema (layer L3, 5 row(s), exact); zero capabilities' static table_hint reference it.",
+      "evidence": "Real table in public schema (layer L3, 3148 row(s), exact); zero capabilities' static table_hint reference it.",
       "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 5 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
+      "rationale": "Table exists, holds 3148 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-059",
+      "id": "DARK-030",
       "type": "DARK",
       "table_name": "mimamsa_adjudication_log",
       "layer": "L5",
@@ -669,7 +350,7 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_log) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-060",
+      "id": "DARK-031",
       "type": "DARK",
       "table_name": "mimamsa_anchor_adjustment",
       "layer": "L5",
@@ -680,18 +361,7 @@
       "rationale": "Table exists, holds 384 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-061",
-      "type": "DARK",
-      "table_name": "mimamsa_attribution",
-      "layer": "L5",
-      "row_count": 0,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L5, 0 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
-    },
-    {
-      "id": "DARK-062",
+      "id": "DARK-032",
       "type": "DARK",
       "table_name": "mimamsa_calibration_snapshot",
       "layer": "L5",
@@ -702,7 +372,7 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_snapshot) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-063",
+      "id": "DARK-033",
       "type": "DARK",
       "table_name": "mimamsa_convergence_adjustment",
       "layer": "L5",
@@ -713,18 +383,7 @@
       "rationale": "Table exists, holds 1000 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-064",
-      "type": "DARK",
-      "table_name": "mimamsa_discoveries",
-      "layer": "L5",
-      "row_count": 45,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L5, 45 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 45 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-065",
+      "id": "DARK-034",
       "type": "DARK",
       "table_name": "mimamsa_event_provenance",
       "layer": "L5",
@@ -735,7 +394,7 @@
       "rationale": "Table exists, holds 57 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-066",
+      "id": "DARK-035",
       "type": "DARK",
       "table_name": "mimamsa_export_log",
       "layer": "L5",
@@ -746,7 +405,7 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_log) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-067",
+      "id": "DARK-036",
       "type": "DARK",
       "table_name": "mimamsa_fact_adjustment",
       "layer": "L5",
@@ -757,51 +416,7 @@
       "rationale": "Table exists, holds 121100 row(s) (estimate), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-068",
-      "type": "DARK",
-      "table_name": "mimamsa_insight_embeddings",
-      "layer": "L5",
-      "row_count": 0,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L5, 0 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
-    },
-    {
-      "id": "DARK-069",
-      "type": "DARK",
-      "table_name": "mimamsa_journal",
-      "layer": "L5",
-      "row_count": 0,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L5, 0 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
-    },
-    {
-      "id": "DARK-070",
-      "type": "DARK",
-      "table_name": "mimamsa_load_bearing",
-      "layer": "L5",
-      "row_count": 10,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L5, 10 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 10 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-071",
-      "type": "DARK",
-      "table_name": "mimamsa_manifestation_sets",
-      "layer": "L5",
-      "row_count": 384,
-      "count_method": "exact",
-      "evidence": "Real table in public schema (layer L5, 384 row(s), exact); zero capabilities' static table_hint reference it.",
-      "proposed_disposition": "NEEDS-OWNER",
-      "rationale": "Table exists, holds 384 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
-    },
-    {
-      "id": "DARK-072",
+      "id": "DARK-037",
       "type": "DARK",
       "table_name": "mimamsa_negative_controls",
       "layer": "L5",
@@ -812,7 +427,7 @@
       "rationale": "Table exists, holds 4 row(s) (exact), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-073",
+      "id": "DARK-038",
       "type": "DARK",
       "table_name": "mimamsa_pool_contributions",
       "layer": "L5",
@@ -823,7 +438,7 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_contributions) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-074",
+      "id": "DARK-039",
       "type": "DARK",
       "table_name": "mimamsa_preferences",
       "layer": "L5",
@@ -834,7 +449,7 @@
       "rationale": "Table exists and no capability's static table_hint references it, AND it currently holds zero rows on the live chart. Could be: (a) a table only populated for other charts / different build state, (b) a genuinely unused/dead table, or (c) a build gap. Row-count-zero alone is not enough evidence to pick a disposition — needs a human/conductor call."
     },
     {
-      "id": "DARK-075",
+      "id": "DARK-040",
       "type": "DARK",
       "table_name": "mimamsa_resonance_feedback",
       "layer": "L5",
@@ -845,7 +460,7 @@
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_feedback) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
     },
     {
-      "id": "DARK-076",
+      "id": "DARK-041",
       "type": "DARK",
       "table_name": "mimamsa_signal_adjustment",
       "layer": "L5",
@@ -856,7 +471,7 @@
       "rationale": "Table exists, holds 97504 row(s) (estimate), and no capability's static table_hint references it. This is the most consequential DARK class — real data with no discovered TS-registry route. Could still be served via the Python sidecar (this scan only covers TS registry source) — see `caveat_sidecar_not_scanned` in the JSON. Needs a human/conductor call."
     },
     {
-      "id": "DARK-077",
+      "id": "DARK-042",
       "type": "DARK",
       "table_name": "mimamsa_snapshot_cosign",
       "layer": "L5",
@@ -865,6 +480,17 @@
       "evidence": "Real table in public schema (layer L5, 0 row(s), exact); zero capabilities' static table_hint reference it.",
       "proposed_disposition": "INTERNAL-BY-DESIGN",
       "rationale": "Table name suffix matches an internal-bookkeeping/audit-trail pattern (_cosign) — these tables typically back an already-served table's history/staging/cache, not a distinct retrieval concept of their own. NOT independently verified per-table — a NEEDS-OWNER downgrade is appropriate if a reviewer finds one that is genuinely a distinct concept."
+    },
+    {
+      "id": "DRIFT-001",
+      "type": "DRIFT",
+      "declared_table_name": "events",
+      "declaring_capabilities": [
+        "marsys://tool/L5/mechanism_retrodiction_get"
+      ],
+      "evidence": "table_hint names a table that does not exist anywhere in the live public schema.",
+      "proposed_disposition": "NEEDS-OWNER",
+      "rationale": "Either a genuinely stale/renamed table reference in the capability's SQL, or a static-scan false positive (regex over-match). Needs a human read of the capability's actual SQL to confirm which."
     },
     {
       "id": "FCAT-001",
@@ -897,26 +523,26 @@
       "id": "FCAT-002",
       "type": "FACT_CATEGORY_GAP",
       "description": "fact_category values live in chart_facts but absent from coverage_matrix.ts CHART_FACTS_CATEGORIES (the TS retrieval registry's enum)",
-      "count": 66,
+      "count": 55,
       "sample": [
-        "ashtakavarga_bindu_per_varga",
-        "ashtakavarga_bindu_sign",
-        "ashtakavarga_ekadhipathya_shodhana",
-        "ashtakavarga_kakshya_boundary",
-        "ashtakavarga_pinda_raasi",
-        "ashtakavarga_pinda_sarva_per_varga",
-        "ashtakavarga_trikona_shodhana",
         "aspect_received_by_special_point",
         "ayurdaya",
-        "bhava_arudha",
         "bhava_cusps",
         "bhava_significance_link",
         "chart_center_of_gravity",
         "chart_cluster",
-        "combustion_per_varga"
+        "combustion_per_varga",
+        "combustion_relationship",
+        "conjunction_special_point",
+        "contradiction_pair",
+        "convergence_count",
+        "cusp_kp_lords",
+        "dispositor_tree",
+        "esoteric_point_sphuta_fertility",
+        "esoteric_point_yogi_system"
       ],
       "full_list_in": "e3_fact_category_reconciliation.json .reconciliation.live_db_categories_not_in_coverage_matrix",
-      "evidence": "66 category value(s) exist live with real rows but are not in the TS registry's own category enum — these categories cannot be filtered on by category-aware retrieval capabilities today.",
+      "evidence": "55 category value(s) exist live with real rows but are not in the TS registry's own category enum — these categories cannot be filtered on by category-aware retrieval capabilities today.",
       "proposed_disposition": "NEEDS-OWNER",
       "rationale": "This is the more consequential of the two gaps — it directly limits what chart_facts_query and friends can filter by. Candidate W2 migration item."
     },

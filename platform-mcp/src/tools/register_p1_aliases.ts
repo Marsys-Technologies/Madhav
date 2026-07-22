@@ -1431,7 +1431,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const data = await callSidecarPath('/api/compute/phala/outlook', {
           chart_id, horizon_months: horizon_months ?? 12,
         })
-        return dualOutput(data)
+        // RC-04 drill-crawl (2026-07-23): dualOutput(data) with no toolName arg was
+        // defaulting recover_via.instrument to the literal placeholder 'unknown_tool' in
+        // this tool's trim_report/drill_pointers whenever a section was auto-trimmed
+        // (live-reproduced: mitigations 100→10, auspicious_windows 30→15, both pointing
+        // callers at 'unknown_tool'). Passing the real tool name here matches the sibling
+        // call sites in this file (e.g. mimamsa_lel_query below) that already do this.
+        return dualOutput(data, 'phala_outlook_get')
       } catch (err) { return errOut('phala_outlook_get', String(err), { chart_id }) }
     }
   )
