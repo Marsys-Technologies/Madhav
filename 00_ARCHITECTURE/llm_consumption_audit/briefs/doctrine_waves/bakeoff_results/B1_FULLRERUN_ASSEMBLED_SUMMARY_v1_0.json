@@ -1,0 +1,478 @@
+{
+  "artifact": "B1_FULLRERUN_ASSEMBLED_SUMMARY",
+  "version": "1.0",
+  "assembled_at": "2026-07-22T16:49:03.759Z",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "chart_id_consistent_across_batches": true,
+  "preregistration_packet_blob_sha": "9b6713db8c2551a937ff2070e498da1f12526966",
+  "preregistration_packet_sha_consistent_across_batches": true,
+  "run_manifest_path": "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/bakeoff_results/B1_RUN_MANIFEST_v1_0.json",
+  "run_manifest_sha256": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+  "manifest_hash_consistency_check": {
+    "tool": "checkManifestHashConsistency() from platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/b1_batch_artifact_io.ts",
+    "consistent": true,
+    "expected_hash": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+    "mismatches": [],
+    "batches_checked": [
+      {
+        "batchKey": "batch1",
+        "manifestHash": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+        "writtenAt": "2026-07-22T15:59:00Z"
+      },
+      {
+        "batchKey": "batch2",
+        "manifestHash": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+        "writtenAt": "2026-07-22T16:12:07Z"
+      },
+      {
+        "batchKey": "batch3",
+        "manifestHash": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+        "writtenAt": "2026-07-22T16:35:36Z"
+      }
+    ]
+  },
+  "events_excluded": [
+    {
+      "eventId": "EVT.1984.02.05.01",
+      "reason": "structural_anchor_not_scored (packet §0)"
+    },
+    {
+      "eventId": "EVT.1995.XX.XX.02",
+      "reason": "congenital_onset_not_independently_scoreable (packet §0)"
+    }
+  ],
+  "negative_crps_total_across_all_batches": 0,
+  "contender_count": 14,
+  "career_advancement_disclosure": {
+    "finding": "career_advancement resolves ZERO of the 54 scored LEL events across all 14 contenders in this run.",
+    "resolved_event_count_for_career_advancement": 0,
+    "is_by_design": true,
+    "citation": "platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/event_class_resolution.ts module docstring: \"career_advancement legitimately resolves ZERO events under this table\" -- gochara_resonance_map has 22 populated rows for career_advancement (chart 482012f1) but none of this chart's 13 category=career LEL events semantically match career_advancement's classical signature (BPHS-cited) rather than a different populated/unpopulated class; the module explicitly refuses to force-map them to avoid over-resolution.",
+    "consequence": "All 12 PERMISSION contenders + hierarchical_ensemble are scored on only 3 of 54 events (2x major_gain, 1x marriage) -- zero career_advancement coverage despite career_advancement being one of only 3 gochara_resonance_map-populated classes for this chart. This is unchanged from batch1/batch2/batch3's own independent disclosures (all three batches report the identical 3-event resolved set)."
+  },
+  "per_model_summary_ranked_by_crps_skill_desc": [
+    {
+      "model_id": "planetary_return",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.3333333333333333,
+      "hits": 1,
+      "mean_crps_real": 33.66864061864062,
+      "mean_crps_control_shuffled": 41.19067294366862,
+      "crps_skill_vs_shuffled_primary": 0.20301390718856172,
+      "beats_control_event_count": 1,
+      "dr17_grade_counts": {
+        "peak": 1,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 2,
+        "contra": 0
+      },
+      "dr17_weighted_total": 1,
+      "dr17_weighted_mean": 0.3333333333333333,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "av_threshold",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.3333333333333333,
+      "hits": 1,
+      "mean_crps_real": 47.81476476476477,
+      "mean_crps_control_shuffled": 56.18310125514676,
+      "crps_skill_vs_shuffled_primary": 0.040731107537409085,
+      "beats_control_event_count": 1,
+      "dr17_grade_counts": {
+        "peak": 1,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 2,
+        "contra": 0
+      },
+      "dr17_weighted_total": 1,
+      "dr17_weighted_mean": 0.3333333333333333,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "chara_karaka",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.6666666666666666,
+      "hits": 2,
+      "mean_crps_real": 34.46905353155355,
+      "mean_crps_control_shuffled": 34.15641480761184,
+      "crps_skill_vs_shuffled_primary": -0.010519846810003028,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 3,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0,
+      "dr17_weighted_mean": 0,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "yogini",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.3333333333333333,
+      "hits": 1,
+      "mean_crps_real": 34.5908127908128,
+      "mean_crps_control_shuffled": 34.16555471733399,
+      "crps_skill_vs_shuffled_primary": -0.02171241194450964,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 3,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0,
+      "dr17_weighted_mean": 0,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "ashtottari",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.3333333333333333,
+      "hits": 1,
+      "mean_crps_real": 34.5908127908128,
+      "mean_crps_control_shuffled": 34.16555471733399,
+      "crps_skill_vs_shuffled_primary": -0.02171241194450964,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 3,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0,
+      "dr17_weighted_mean": 0,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "naisargika",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.3333333333333333,
+      "hits": 1,
+      "mean_crps_real": 34.5908127908128,
+      "mean_crps_control_shuffled": 34.16555471733399,
+      "crps_skill_vs_shuffled_primary": -0.02171241194450964,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 3,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0,
+      "dr17_weighted_mean": 0,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "narayana",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0,
+      "hits": 0,
+      "mean_crps_real": 34.5908127908128,
+      "mean_crps_control_shuffled": 34.16555471733399,
+      "crps_skill_vs_shuffled_primary": -0.02171241194450964,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 3,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0,
+      "dr17_weighted_mean": 0,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "sade_sati",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.3333333333333333,
+      "hits": 1,
+      "mean_crps_real": 34.5908127908128,
+      "mean_crps_control_shuffled": 34.16555471733399,
+      "crps_skill_vs_shuffled_primary": -0.02171241194450964,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 3,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0,
+      "dr17_weighted_mean": 0,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "pratyantar_lord",
+      "n_events_scored": 54,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 0,
+      "hit_rate_legacy_secondary": 0.5185185185185185,
+      "hits": 28,
+      "mean_crps_real": 239.19776175504143,
+      "mean_crps_control_shuffled": 241.29464418005077,
+      "crps_skill_vs_shuffled_primary": -0.15573960397888229,
+      "beats_control_event_count": 9,
+      "dr17_grade_counts": {
+        "peak": 17,
+        "sub_peak": 2,
+        "elevated": 8,
+        "neutral": 26,
+        "contra": 1
+      },
+      "dr17_weighted_total": 22,
+      "dr17_weighted_mean": 0.4074074074074074,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage",
+        null
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "hierarchical_ensemble",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 1,
+      "hits": 3,
+      "mean_crps_real": 44.49548096085985,
+      "mean_crps_control_shuffled": 35.60104594551358,
+      "crps_skill_vs_shuffled_primary": -0.2844210689456435,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 2,
+        "sub_peak": 0,
+        "elevated": 1,
+        "neutral": 0,
+        "contra": 0
+      },
+      "dr17_weighted_total": 2.5,
+      "dr17_weighted_mean": 0.8333333333333334,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "vimshottari",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.6666666666666666,
+      "hits": 2,
+      "mean_crps_real": 59.43954430621096,
+      "mean_crps_control_shuffled": 36.479600898214315,
+      "crps_skill_vs_shuffled_primary": -0.28871569461238145,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 3,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0,
+      "dr17_weighted_mean": 0,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "kalachakra",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.6666666666666666,
+      "hits": 2,
+      "mean_crps_real": 49.205677655677654,
+      "mean_crps_control_shuffled": 39.40459609181658,
+      "crps_skill_vs_shuffled_primary": -0.32241313089075807,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 1,
+        "neutral": 2,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0.5,
+      "dr17_weighted_mean": 0.16666666666666666,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "guru_shani_double_transit",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.6666666666666666,
+      "hits": 2,
+      "mean_crps_real": 50.31987518654186,
+      "mean_crps_control_shuffled": 39.82042603008822,
+      "crps_skill_vs_shuffled_primary": -0.3321990238661973,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 0,
+        "sub_peak": 0,
+        "elevated": 1,
+        "neutral": 2,
+        "contra": 0
+      },
+      "dr17_weighted_total": 0.5,
+      "dr17_weighted_mean": 0.16666666666666666,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    },
+    {
+      "model_id": "mudda",
+      "n_events_scored": 3,
+      "n_events_total_assigned": 54,
+      "n_events_skipped_unresolved_event_class": 51,
+      "hit_rate_legacy_secondary": 0.3333333333333333,
+      "hits": 1,
+      "mean_crps_real": 97.22249145697423,
+      "mean_crps_control_shuffled": 45.757057138795346,
+      "crps_skill_vs_shuffled_primary": -0.47598393457196536,
+      "beats_control_event_count": 0,
+      "dr17_grade_counts": {
+        "peak": 1,
+        "sub_peak": 0,
+        "elevated": 0,
+        "neutral": 2,
+        "contra": 0
+      },
+      "dr17_weighted_total": 1,
+      "dr17_weighted_mean": 0.3333333333333333,
+      "resolved_event_classes": [
+        "major_gain",
+        "marriage"
+      ],
+      "errors": []
+    }
+  ],
+  "dr12_adjudication": {
+    "dr_id": "DR-12",
+    "disagreement_register_ref": "DIS.025",
+    "ruling_text": "DR-12 (native-ratified 2026-07-17): \"the data retires the loser\" -- a winner may only be named if the empirical retrodiction score supports it; neither doctrine nor engineering decides the peak model by opinion.",
+    "brief_criterion": "BRIEF_D4B.md §1 B-1: name a winner only if it beats its coverage-matched shuffled-birth control with statistical distinguishability; otherwise invoke the pre-committed no-winner branch verbatim (no forced champion).",
+    "verdict": "NO_WINNER",
+    "reasoning": [
+      "Only pratyantar_lord has an adequate event sample (n=54 of 56 scoreable events) to support any distinguishability claim; its CRPS skill vs shuffled-birth control is negative (-0.1557), i.e. it underperforms the control on average (beats control on only 9/54 = 16.7% of events).",
+      "All 12 PERMISSION contenders and hierarchical_ensemble are constrained to n=3 scored events each (see career_advancement_disclosure above) -- far too small a sample for any statistical distinguishability claim regardless of sign.",
+      "The two contenders with nominally positive mean CRPS skill on their n=3 slice (planetary_return +0.203, av_threshold +0.041) each beat control on only 1 of their 3 events -- consistent with sampling noise on an n=3 slice, not a genuine effect.",
+      "No formal significance test (bootstrap CI / permutation p-value) exists in the committed a3_scoring_harness modules for this run; absent that infrastructure, a claim of \"genuinely beats control\" cannot be certified for any contender at this sample size, so none is certified.",
+      "midpoint_triangle and transit_kernel remain NOT-EVALUABLE this wave (CR-120/CR-121, MARSYS_DEFECT_GAP_REGISTER_v2_0.md v3.10) -- they carry no scored row in this assembly and are excluded from adjudication, not defeated."
+    ],
+    "disposition": "Per BRIEF_D4B.md §1 B-1 no-winner branch, verbatim: B-2's backfill (when dispatched) proceeds against the best-available model with model_confidence: none_validated stamped on every row. \"Best-available\" by data coverage (not by a certified win) is pratyantar_lord (n=54, DR-17 weighted mean 0.407, 17/54 peak grades) -- named here as the coverage-adequate candidate for B-2 to consider, not as a certified champion. Campaign close records \"no validated timing model yet -- prospective loop is the path\" as the honest finding, per BRIEF_D4B.md §1 B-1 verbatim."
+  },
+  "source_batches": [
+    {
+      "batchKey": "batch1",
+      "manifestHash": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+      "writtenAt": "2026-07-22T15:59:00Z",
+      "contenders": [
+        "pratyantar_lord",
+        "vimshottari",
+        "yogini",
+        "ashtottari",
+        "chara_karaka"
+      ],
+      "events_scored_count": 54,
+      "path": "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/bakeoff_results/b1_batches/batch_batch1.json"
+    },
+    {
+      "batchKey": "batch2",
+      "manifestHash": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+      "writtenAt": "2026-07-22T16:12:07Z",
+      "contenders": [
+        "naisargika",
+        "mudda",
+        "kalachakra",
+        "narayana",
+        "sade_sati"
+      ],
+      "events_scored_count": 54,
+      "path": "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/bakeoff_results/b1_batches/batch_batch2.json"
+    },
+    {
+      "batchKey": "batch3",
+      "manifestHash": "91dc0c3e203b565aba3b89604ea4a618c72fbada6487fe969269567ab2b37603",
+      "writtenAt": "2026-07-22T16:35:36Z",
+      "contenders": [
+        "guru_shani_double_transit",
+        "av_threshold",
+        "planetary_return",
+        "hierarchical_ensemble"
+      ],
+      "events_scored_count": 54,
+      "path": "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/bakeoff_results/b1_batches/batch_batch3.json"
+    }
+  ]
+}
