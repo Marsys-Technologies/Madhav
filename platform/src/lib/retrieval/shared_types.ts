@@ -13,6 +13,21 @@
 export interface QueryPlan {
   query_plan_id: string
   query_text: string
+  /**
+   * RC-11 (CR-118 fast-fail root cause, W5 residual closure): the chart the
+   * plan is scoped to. `tool_name_bridge.ts`'s `getToolByName().retrieve()`
+   * reads this dynamically (`plan['chart_id']`) to populate `args.chart_id`
+   * for every `scope: 'per_chart'` capability. It was declared here as
+   * optional-but-absent from every QueryPlan-literal builder for a long time;
+   * any caller that omitted it silently sent NO chart_id to a per-chart tool,
+   * which fails fast (a few ms, before any DB round-trip) with a
+   * `chart_id is required` validation error — exactly CR-118's observed
+   * "immediate validation/dispatch error" symptom on msr_sql/get_yoga_firings/
+   * cgm_graph_walk. Declared here so every future QueryPlan literal is
+   * reminded to carry it; `consult/route.ts`'s `LegacyQueryPlanShape` is the
+   * confirmed offender (fixed alongside this).
+   */
+  chart_id?: string
   query_class:
     | 'factual'
     | 'interpretive'

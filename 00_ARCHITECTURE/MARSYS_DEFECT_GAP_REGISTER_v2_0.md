@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.10
+version: 3.11
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -900,8 +900,10 @@ remaining scope (`CLAUDECODE_BRIEF_PF1_ENGINE_RESURRECTION_v1_0.md`, Lane F-2), 
 retrieval-campaign W4 closes, per the native's 2026-07-20 re-scope ruling. Full detail:
 `REPORT_PG-2.md`.
 
-**CR-118 [OPEN, discovered W4 precondition-verification live probe (2026-07-21), chart 482012f1,
-via the deployed `/api/chat/consult` route post-`bundle_hydrator.ts` fix]:** the `msr_sql` tool
+**CR-118 [RESOLVED 2026-07-23, RC-11 (R-10/CR-118) root-cause + fix session, branch
+`res/rc11-cr118-fastfails` — originally OPEN, discovered W4 precondition-verification live probe
+(2026-07-21), chart 482012f1, via the deployed `/api/chat/consult` route post-
+`bundle_hydrator.ts` fix]:** the `msr_sql` tool
 call errors mid-stream during live synthesis — SSE event
 `{"type":"tool","name":"msr_sql","status":"error","ms":4,"ok_count":0,"err_count":1}`, a ~4ms
 failure suggesting an immediate validation/dispatch error rather than a slow query or timeout.
@@ -945,6 +947,101 @@ much of the newly-compiled floor can actually serve data today, on top of the al
 namespace-gap limitation. Still did not block the overall response (graceful degradation held).
 Still out of W4 scope per the same native ruling; recorded here rather than silently left as a
 narrower finding than the evidence now supports.
+
+**RESOLUTION (2026-07-23, RC-11 / R-10 session, branch `res/rc11-cr118-fastfails`):** root-caused
+and fixed. The `ToolEvent` shape both live probes cite
+(`name`/`status`/`ms`/`ok_count`/`err_count`) exists nowhere else in the codebase but
+`platform/src/app/api/chat/consult/route.ts` (its own `ToolEvent` interface + `toolEventLog`
+push sites) — confirming both probes ran against `/api/chat/consult`, the web-chat synthesis
+route, not the `prashna_ask` MCP tool (which uses an unrelated `tool_name`/`result_count`/
+`latency_ms` shape and was independently confirmed healthy live this session — see below).
+
+**Root cause:** `consult/route.ts` builds a `LegacyQueryPlanShape` object ("Adapter: PipelinePlan
+→ legacy-shaped object for retrieval tools" comment, ~line 624) that is handed to
+`executeWithCache(tool, queryPlan, ...)` → `tool.retrieve(plan, params)`
+(`tool_name_bridge.ts`'s `getToolByName().retrieve()`). That wrapper reads `plan['chart_id']`
+to populate `args.chart_id` for every `scope: 'per_chart'` capability
+(`if (cap.scope === 'per_chart' && chartId) { args['chart_id'] = chartId }`). The
+`LegacyQueryPlanShape` **interface never declared a `chart_id` field, and the object literal
+never set one** — so `plan['chart_id']` was always `undefined` for this route's dispatch, for
+every tool, regardless of which chart the request was actually scoped to. `msr_sql`
+(`query_signals.ts`), `get_yoga_firings`, and `cgm_graph_walk` (`traverse_chart_graph`) are all
+`scope: 'per_chart'` with `required_inputs: ['chart_id']`; their handlers open with a synchronous
+guard — e.g. `query_signals.ts`: `const chart_id = args['chart_id'] as string; if (!chart_id)
+return { content: { error: 'chart_id is required' }, is_error: true }` — that returns **before
+any DB round-trip**, exactly matching the observed single-digit-ms error/empty pattern.
+`vector_search` (chart-agnostic, `scope` ≠ `per_chart`) never reads `chart_id` at all, which is
+why it alone succeeded in the same request (`ms:6065`, real data) while the other three fast-failed.
+
+**Fix:** added `chart_id: string` to `LegacyQueryPlanShape` and the object literal in
+`consult/route.ts` (`chart_id: chartId`, the same `chartId` the route already validates as a
+required UUID at request-body parsing). Mirrored the same `chart_id?: string` field onto the
+shared `QueryPlan` type (`platform/src/lib/retrieval/shared_types.ts`) so every future
+`QueryPlan`-literal builder is reminded to carry it. Code audit for the same bug class
+(`grep -rn '.retrieve('`) additionally found `platform/src/app/api/mcp/primitives/[tool]/route.ts`
+— the actual HTTP surface the MCP sidecar's surgical primitive calls hit
+(`platform-mcp/src/tools/registry_bridge.ts`'s `callPlatformPrimitive`, `register_p1_aliases.ts`'s
+`callPlatformPrim`) — with the identical defect: it resolved `chartId` (from `toolParams` or the
+`X-MCP-Chart-Id` header) for the `authorizeChartAccess` entitlement gate only, then built its own
+`queryPlan` with no `chart_id` field. Every MCP tool definition observed in this codebase happens
+to pass `chart_id` explicitly inside `params` (confirmed both by code reading and by live probes
+below), so this second site was not the one CR-118's SSE evidence reproduces — but it is the same
+bug class and was fixed alongside it as defense-in-depth (chart_id now threaded from the already-
+resolved `chartId` onto `queryPlan.chart_id`; also added `chart_id?: string` to
+`platform/src/lib/router/types.ts`'s `QueryPlan`, the type this route imports).
+
+**Live verification:** deployed main (`651c6478`) does not yet carry this fix (fix is local to
+this branch, unmerged/undeployed), so a live re-probe of `/api/chat/consult` itself was not
+reachable from this MCP-only session (no browser/HTTP-with-session-cookie tool available; only
+`mcp__marsys-jis-direct__*` tools). What WAS verified live, against the deployed connector, chart
+`482012f1-710e-4a25-994a-93821f5871aa`:
+  - `prashna_ask` (job `d008ca3b-da98-4320-9d2c-73ea636cf669`, deep cross-domain query hitting
+    yogas/MSR/CGM) → `completeness.tools_dispatched` shows `msr_sql` (`status:"done"`,
+    `latency_ms:64`) and `cgm_graph_walk` (`status:"done"`, `latency_ms:22`) both succeeding —
+    `empty_result_tools: []`, `unresolved_tools: []`. Confirms `prashna_ask` (which already built
+    its `queryPlanLike` with `chart_id: chartId` before this session — not itself affected by
+    CR-118) is healthy on the live deployment, consistent with the SSE-shape analysis above.
+  - Direct MCP primitive calls `get_signals` (msr_sql-equivalent), `ganita_yoga_firings_get`
+    (get_yoga_firings-equivalent), `get_cgm_subgraph` (cgm_graph_walk-equivalent) all returned
+    full structured data with no error/empty pattern — consistent with these MCP tool
+    definitions always supplying `chart_id` explicitly in `params`.
+  - `/api/chat/consult` itself (the actual CR-118 SSE-trace source) could not be re-probed live
+    from this session for the reason above. Confidence in the fix rests on: (a) exact root-cause
+    match between the code defect and the documented ~4-6ms error/empty symptom; (b) the
+    regression tests below, which fail (reproducing CR-118's exact symptom —
+    `plan['chart_id'] === undefined` for msr_sql/get_yoga_firings/cgm_graph_walk) against the
+    pre-fix code and pass against the fix; (c) `npx tsc --noEmit` clean, full relevant vitest
+    sweep green (1103 passed, 0 failed, 125 pre-existing skips unrelated to this change).
+
+**Regression tests added:**
+  - `platform/src/app/api/chat/__tests__/cr118_chart_id_plan_regression.test.ts` (new) — drives
+    `/api/chat/consult`'s real `POST` handler through a planner mock authorizing exactly
+    `msr_sql`/`get_yoga_firings`/`cgm_graph_walk`, captures every `plan` argument
+    `executeWithCache` is invoked with, and asserts `plan.chart_id` equals the request's
+    `chartId` for all three. Fails pre-fix (`expected undefined to be '482012f1-…'`), passes
+    post-fix.
+  - `platform/src/lib/__tests__/mcp/primitives.test.ts` (extended, 3 new cases) — CR-118 chart_id
+    reaches `queryPlan.chart_id` when supplied via `params`; CR-118 chart_id reaches
+    `queryPlan.chart_id` when supplied ONLY via the `X-MCP-Chart-Id` header (the specific gap the
+    primitives-route fix closes); chart-agnostic tool (`vector_search`) never has `chart_id`
+    fabricated onto its plan. All three fail pre-fix, pass post-fix.
+  - Verified regression-test validity directly: reverted the two production fixes via
+    `git stash`, re-ran the new/extended tests — all 3 target assertions failed with
+    `expected undefined to be '482012f1-710e-4a25-994a-93821f5871aa'`, i.e. they reproduce
+    CR-118's exact defect signature; restored the fixes, all tests green again.
+
+**Files touched:** `platform/src/app/api/chat/consult/route.ts`,
+`platform/src/lib/retrieval/shared_types.ts`, `platform/src/app/api/mcp/primitives/[tool]/route.ts`,
+`platform/src/lib/router/types.ts`, `platform/src/lib/__tests__/mcp/primitives.test.ts`,
+`platform/src/app/api/chat/__tests__/cr118_chart_id_plan_regression.test.ts`.
+
+**Residual:** the DONE bar's "resolves cleanly on a live trace" is fully satisfied for the
+`prashna_ask`/direct-primitive live paths (verified above) but NOT independently re-verified live
+for `/api/chat/consult` itself post-fix (requires a deployed build + authenticated web session,
+neither available to this MCP-tool-only session) — flagged honestly rather than claimed. Next
+session with web/browser access to the deployed app (post-merge) should re-run the same
+yoga/MSR/CGM-triggering chat query against `/api/chat/consult` and confirm the SSE trace shows
+`status:"done"` (not `error`) with realistic (non-single-digit-ms) latency for all three tools.
 
 **CR-120 [NOT-EVALUABLE — coverage gap, not a retirement, recorded D-4b permission-bridge lane
 (`wave/D-4b/permission-bridge`), 2026-07-22]:** B-1's Grand Bakeoff (`BRIEF_D4B.md §1 B-1`) names
@@ -997,7 +1094,19 @@ reference is removed; `transitKernelModel()` stays exactly as-is in `model_inter
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.10 (2026-07-22, D-4b permission-bridge lane,
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.11 (2026-07-23, RC-11 / R-10 root-cause-closure
+session, branch `res/rc11-cr118-fastfails`) — CR-118 RESOLVED: root cause found (consult/route.ts's
+`LegacyQueryPlanShape` never carried `chart_id`, so every per_chart tool it dispatched — msr_sql,
+get_yoga_firings, cgm_graph_walk — hit its own `chart_id is required` fast-fail guard before any DB
+round-trip, matching the documented single-digit-ms error/empty SSE pattern exactly); fixed
+(chart_id threaded onto the queryPlan literal + shared QueryPlan type); same bug class
+independently found and fixed as defense-in-depth in `/api/mcp/primitives/[tool]/route.ts` (the
+MCP sidecar's surgical-primitive HTTP surface, not itself confirmed as CR-118's origin but
+carrying the identical defect); 2 regression test files (1 new, 1 extended, 4 total new cases)
+added and confirmed to fail pre-fix / pass post-fix; live-verified healthy on the deployed
+`prashna_ask` MCP path and direct MCP primitive calls (chart 482012f1); `/api/chat/consult` itself
+not independently re-probed live post-fix (no browser/session-cookie tool available this
+session) — flagged as an honest residual, not claimed as verified. v3.10 (2026-07-22, D-4b permission-bridge lane,
 `wave/D-4b/permission-bridge`) — CR-120 and CR-121 added NOT-EVALUABLE (coverage gap, not a
 retirement): midpoint-triangle's mandatory-baseline role in B-1's bakeoff passes to the mirrored
 shuffled-birth controls (native ruling, this session); transit-kernel's D-3 RED result stands as

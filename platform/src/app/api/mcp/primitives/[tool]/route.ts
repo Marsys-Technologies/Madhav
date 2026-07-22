@@ -178,12 +178,26 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const toolParams = body.params ?? {}
 
+  // RC-11 (CR-118 fast-fail root cause, same bug class as consult/route.ts):
+  // resolved once, at this broader scope, so it can be threaded onto queryPlan
+  // below — not just used for the entitlement check. Previously this route
+  // computed chartId INSIDE the isPerChartPrimitive branch, used it only for
+  // authorizeChartAccess, then built `queryPlan` with NO chart_id field at
+  // all. tool_name_bridge.ts's getToolByName().retrieve() reads chart_id off
+  // the plan object (plan['chart_id']) to populate per_chart handler args —
+  // with it absent, any caller relying on the X-MCP-Chart-Id header (rather
+  // than a `chart_id` key inside `params`) would reach the capability handler
+  // with no chart_id and fast-fail immediately (`chart_id is required`,
+  // before any DB round-trip) — the same single-digit-ms error/empty pattern
+  // CR-118 documents for msr_sql/get_yoga_firings/cgm_graph_walk. See
+  // MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-118.
+  const chartId =
+    (toolParams['chart_id'] as string | undefined) ??
+    request.headers.get('x-mcp-chart-id') ??
+    undefined
+
   // M0 entitlement gate — enforce authorizeChartAccess for per_chart primitives.
   if (isPerChartPrimitive(mcpToolName)) {
-    const chartId =
-      (toolParams['chart_id'] as string | undefined) ??
-      request.headers.get('x-mcp-chart-id') ??
-      null
     if (!chartId) {
       return NextResponse.json(
         buildErrorEnvelope({ error_class: 'validation', message: 'CHART_REQUIRED', remediation: 'Supply chart_id in params or X-MCP-Chart-Id header for per-chart tools.' }),
@@ -219,6 +233,10 @@ export async function POST(request: Request, { params }: RouteParams) {
     expected_output_shape: 'structured_data',
     manifest_fingerprint: '',
     schema_version: '1.0',
+    // RC-11 (CR-118): never defaulted — chartId is undefined for chart-agnostic
+    // primitives (e.g. vector_search), which is correct (tool_name_bridge.ts only
+    // reads plan['chart_id'] for cap.scope === 'per_chart').
+    chart_id: chartId,
   }
 
   // Wire CGM graph traversal params from toolParams into queryPlan
