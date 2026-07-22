@@ -316,19 +316,49 @@ describe('end-to-end floor adoption parity (route sequence)', () => {
     expect(authorized.some((t) => L2_5_TOOLS.includes(t))).toBe(true)
   })
 
-  it('health deepdive (no mechanism_read primitive): B.11 guarantee fires registry floor', () => {
+  it('health deepdive: an L2.5 tool is present on the authorized set (RC-10: now via the compiled varga_ratification primitive, not the guarantee)', () => {
     const authorized = runFloor(tuple({ domains: ['health'], depth: 'deep' }), 'interpretive')
-    // health floor has no L2.5-mapped primitive → the guarantee injects the registry floor
+    // Pre-RC-10, health's floor had no L2.5-mapped primitive so the guarantee injected
+    // the registry floor. RC-10 bridged bodha_signals_get → marsys://tool/L2/query_signals,
+    // and health's own `varga_ratification` primitive (live_tool: bodha_signals_get) now
+    // supplies this directly from the compiled floor — same invariant (≥1 L2.5 tool),
+    // now satisfied by real domain-relevant data instead of generic filler.
     expect(authorized).toContain('marsys://tool/L2/query_signals')
     expect(authorized.some((t) => L2_5_TOOLS.includes(t))).toBe(true)
   })
 
   it('predictive holistic query still gets predictive floor + dasha floor (W6.2: pattern_register removed, query_dasha_periods not chart_facts_query)', () => {
     const authorized = runFloor(tuple({ domains: ['marriage'], depth: 'deep' }), 'predictive')
-    expect(authorized).toContain('vector_search')
+    // RC-10 (namespace-gap re-measure): marriage_deepdive's own `varga_ratification`
+    // primitive (live_tool: bodha_signals_get) now resolves to a real registry L2.5
+    // tool (marsys://tool/L2/query_signals) via the newly-bridged mapping — the SAME
+    // "compiled floor already supplies an L2.5 tool" no-op path the career_deepdive
+    // test above already exercises for cgm_graph_walk. ensureB11WholeChartReadFloor's
+    // no-op condition correctly fires (B.11 is satisfied by a real, domain-relevant
+    // signal query rather than the generic predictive-class filler), so the generic
+    // vector_search injection no longer fires for THIS specific case — the invariant
+    // (≥1 L2.5 whole-chart-read tool) still holds, just via a more precise source.
+    expect(authorized.some((t) => L2_5_TOOLS.includes(t))).toBe(true)
+    expect(authorized).toContain('marsys://tool/L2/query_signals')
     expect(authorized).not.toContain('pattern_register')
     expect(authorized).toContain('query_dasha_periods')
     expect(authorized).not.toContain('chart_facts_query')
+  })
+
+  it('predictive class with NO compiled L2.5 primitive still gets the generic vector_search + forward_looking floor', () => {
+    // retrieval_only's floor (positions_snapshot → ganita_positions_get) has no
+    // L2.5-mapped primitive, so the guarantee's generic predictive injection still
+    // fires exactly as before RC-10 — the fallback path is unchanged, only the
+    // "compiled floor already covers it" short-circuit widened (all four domain
+    // deepdives now hit that path, since each includes `varga_ratification`).
+    const authorized = runFloor(
+      tuple({ intent: 'planet_strength', domains: ['general'], depth: 'shallow' }),
+      'predictive',
+    )
+    expect(authorized).toContain('vector_search')
+    expect(authorized).toContain('marsys://tool/L2/query_signals')
+    expect(authorized).not.toContain('pattern_register')
+    expect(authorized).toContain('query_dasha_periods')
   })
 
   it('missing scope_tuple falls back to legacy floor (guarantees only)', () => {
