@@ -39,6 +39,24 @@ current_wave: D-4b (OPEN — NOT CAMPAIGN-CLOSED; B-6 close pass ran GATED mode,
   # reviewable `curve_controls.ts` date-sort fix + an A-2 event_class-to-resonance-map mapping
   # lane, then a fresh B-1 re-run over the full 56/54-event set (sealed split reserved for
   # gate-runner/anti-gaming-verifier only). Full record: REPORT_D4B.md, STATE_D4B.md.
+  # B-6 REAL close pass (2026-07-22, wave/D-4b/B6-real-close, mode=GATED — supersedes the
+  # narrative above, does not delete it): both of B-1's named defects are now FIXED and MERGED to
+  # main — F-1 (event_class mapping gap), PR #699, merged 2026-07-22T11:07:19Z under a documented
+  # deviation (NP-D4B-006: fresh-context Opus verifier stalled on agent-infra instability;
+  # conductor-as-verifier authorized as last resort, every probe live; a retroactive verifier was
+  # required as binding mitigation and is reported to this pass — not independently re-run here —
+  # as VERDICT ACCEPT, treated as DISCHARGING that obligation); F-2 (circularShiftCurve wraparound
+  # sort), PR #697, already merged at the prior pass. **Exact blocker now, narrower than before:
+  # no B-1 re-run exists in any form** — independently confirmed via `gh pr list --head
+  # wave/D-4b/B1-full-rerun --state all` (empty, no PR of any state) and via the local WIP
+  # worktree (`.claude/worktrees/wave-D-4b-B1-full-rerun`), which holds only an uncommitted
+  # `dr17_grading.ts` scaffold, no scoring run, no results artifact. B-2/B-3 remain correctly
+  # SKIPPED. `ka_gochara_sweep` materialization and `mimamsa_multipliers` observation counts
+  # re-verified live this pass and are BYTE-IDENTICAL to the prior pass (165/300, 55%; 0/9 rows
+  # with observations) — no new dispatch has run. Wave stays D-4b (OPEN), NOT CAMPAIGN-CLOSED.
+  # Next action: complete + commit the B-1 full re-run against the now-repaired substrate, certify
+  # champion or no-winner, THEN B-2/B-3. Full record: REPORT_D4B.md, STATE_D4B.md, PROMISE_LEDGER_D4B.md,
+  # NATIVE_PROXY_LEDGER_D4B.md compiled summary — all updated this pass (wave/D-4b/B6-real-close).
   # D-5 "Gochara-Chitra" CLOSED 2026-07-20 GREEN-WITH-PARTIALS: all 5 lanes (G-1..G-5) built,
   # adversarially verified, merged, deployed; 5 REBUILD-time incidents found+fixed via live/
   # orchestrator-driven execution (none a data-quality regression); gate_run_2's RED-C
