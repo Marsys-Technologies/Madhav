@@ -1,10 +1,12 @@
 ---
 artifact: PROBE_DIFF_v2_0.md
 canonical_id: RETRIEVAL_PROBE_DIFF_V2
-version: 2.0
-status: TERMINAL — RC-04 (R-3, probe-suite leg) closure
+version: 2.1
+status: TERMINAL — RC-04 (R-3, probe-suite leg) closure; fix-cycle closing
+  VERIFY_RC-04.md clause 3 applied 2026-07-23 (§3.1/§4 regressions now recorded in
+  MARSYS_DEFECT_GAP_REGISTER_v2_0.md as CR-122/CR-123 — see §7 changelog note)
 governed_by: 00_ARCHITECTURE/briefs/RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §E RC-04
-authored_by: Claude (RC-04 lane agent), 2026-07-22/23
+authored_by: Claude (RC-04 lane agent), 2026-07-22/23; fix-cycle pass 2026-07-23
 baseline: 00_ARCHITECTURE/briefs/retrieval_impl/BASELINE_PROBES.md (v1.0, W0, captured
   2026-07-19T17:15-17:20Z, 37 calls / 30 distinct tools) + companion
   baseline_probes_raw.json
@@ -139,10 +141,13 @@ still shows `date_range` as an *optional* property (only `chart_id` is in `requi
 but the underlying Python sidecar (`/api/compute/phala/event_anchors`) now hard-requires
 it and 422s without it. The tool schema and the live sidecar contract have drifted apart
 since W0. **This is a schema/implementation mismatch a caller cannot discover except by
-hitting the error** — worth a follow-up defect-register entry (outside RC-04's own
-scope to fix; flagged here per the DONE bar's "diff shows only intended changes" — this
+hitting the error** — outside RC-04's own scope to fix (per the fix-cycle's own bounded
+"measurement, not remediation" instruction); **recorded as
+`MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-122 (OPEN)** rather than left as a prose-only
+flag, per §G. Flagged here per the DONE bar's "diff shows only intended changes" — this
 change was not intended/documented anywhere in the W2-W6 close records reviewed for
-CENSUS_v2_0.md).
+CENSUS_v2_0.md, and the independent RC-04 verifier (`VERIFY_RC-04.md`) reproduced it
+live, confirming it is real and not a probe-suite artifact.
 
 ## 4. Real, substantive, not-a-regression finding: two reference catalogs grew past their old response size class
 
@@ -166,7 +171,10 @@ raw MCP transport limit instead of degrading gracefully. This is the same class 
 defect W0's §3.4 named (unclamped tools), just newly manifesting on these two as their
 underlying corpus crossed the threshold. **Recommendation for a future residual:** apply
 the same response-budget trimmer already proven on `get_domain_reading`/
-`asset_registry_all`/`mitigation_map` to `ref_yogas_get`/`ref_doshas_get`.
+`asset_registry_all`/`mitigation_map` to `ref_yogas_get`/`ref_doshas_get`. **Recorded as
+`MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-123 (OPEN)** per §G rather than left as a
+prose-only flag — a genuine, out-of-RC-04-scope code change (wiring the trimmer onto two
+more tools) that exceeds this fix-cycle's one-line-fix ceiling.
 
 ## 5. Coverage of this pass — what was and was not re-run
 
@@ -221,6 +229,18 @@ genuine, undocumented behavior change** — not found cited in any W2-W6 close r
 session's `CENSUS_v2_0.md` research reviewed. This is surfaced here precisely because
 the DONE bar asks for "only intended changes" — this one is not evidently intended, and
 is reported rather than smoothed over.
+
+**Fix-cycle update (2026-07-23):** the independent RC-04 verifier (`VERIFY_RC-04.md`)
+reproduced the §3.1 regression live and independently, and flagged that neither it nor
+§4's reference-catalog size finding had been recorded in
+`MARSYS_DEFECT_GAP_REGISTER_v2_0.md` as its own §G requires ("opened as a new RC-row
+rather than deferred") — a prose flag in this document is not the register entry §G
+mandates. Both are now recorded: **`MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-122** (§3.1,
+`phala_anchors_get` date_range 422) and **CR-123** (§4, `ref_yogas_get`/`ref_doshas_get`
+uncapped size), both OPEN, neither fixed in this fix-cycle per its own bounded
+measurement-not-remediation scope. This document's diff-level finding stands unchanged —
+this update closes the register-recording gap the verifier named, it does not revise the
+underlying finding.
 
 ---
 

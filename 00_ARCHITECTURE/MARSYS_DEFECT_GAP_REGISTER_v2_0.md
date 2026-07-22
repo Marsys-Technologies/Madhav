@@ -995,9 +995,85 @@ piecemeal against the current interim substrate.
 **NOT-EVALUABLE, not retired, not deprecated by this row** — no transit-kernel code or doctrine
 reference is removed; `transitKernelModel()` stays exactly as-is in `model_interface.ts`.
 
+**CR-122 [OPEN, discovered RC-04 live probe re-run (2026-07-22/23), `PROBE_DIFF_v2_0.md` §3.1,
+independently reproduced live by the RC-04 verifier 2026-07-23]:** `phala_anchors_get(chart_id=
+482012f1)` — the identical call that succeeded at W0 (2026-07-19, ~4.8KB response, "falsifier +
+causal_chain on every anchor") — now 422s: `sidecar /api/compute/phala/event_anchors failed (422):
+{"detail":[{"type":"missing","loc":["body","date_range"],"msg":"Field required",...}]}`. **Root
+cause: a schema/implementation contract drift, not a caller error** — the live MCP tool's own
+JSON schema still lists `date_range` as optional (only `chart_id` is in `required`), but the
+underlying Python sidecar (`/api/compute/phala/event_anchors`) now hard-requires it and 422s
+without it, sometime between W0 (2026-07-19) and this RC-04 re-run (2026-07-22) — not cited in any
+W2-W6 close record `CENSUS_v2_0.md` reviewed, i.e. undocumented/unintended. Every caller relying on
+the published tool schema (which says the field is optional) will 422 on this call today. **Not
+fixed this session** — per this fix-cycle's own bounded scope (RC-04 is measurement, not
+remediation; a real fix requires deciding whether the sidecar's new hard-require is the intended
+behavior, in which case the MCP tool schema should be corrected to mark `date_range` required, or
+whether the sidecar regressed and should accept the omitted field as it used to — that
+determination needs the phala/mimamsa engine owner, not a unilateral one-line guess). Owned by
+whichever future residual next touches `phala_anchors_get`'s sidecar contract (candidate: PF-1's
+engine-resurrection lane, same family as CR-115's `outcome.py`/`phala_anchors` schema drift, though
+a distinct symptom — CR-115 is `record_outcome`'s write-path column drift; this is
+`phala_anchors_get`'s read-path required-field drift; both point at the same underlying
+phala/mimamsa sidecar contract needing a schema reconciliation pass). Evidence: `PROBE_DIFF_v2_0.md`
+§3.1, `VERIFY_RC-04.md` §"Independent re-verification" item 3 (verifier's own live reproduction).
+
+**CR-123 [OPEN, discovered RC-04 live probe re-run (2026-07-22/23), `PROBE_DIFF_v2_0.md` §4]:**
+`ref_yogas_get()` and `ref_doshas_get()`, called unfiltered exactly as W0 called them, now return
+**86,972 chars** and **61,095 chars** respectively (W0, 2026-07-19: ~2.5KB and ~2.4KB) — both now
+hit the MCP client's own max-token cap (saved to disk by the harness's truncation-disclosure
+mechanism, not silently truncated). **Root cause confirmed via direct SQL, not a bug in the row
+shape:** `brahma_yoga_catalog` has grown to 179 rows and `brahma_dosha_catalog` to 79 rows (real
+classical-corpus growth, consistent with `bg_yogas`'s `target_floor: 250`), each a content-rich
+structured object; default page size is 100 rows on both tools. **The actual defect:** unlike
+`get_domain_reading` / `asset_registry_all` / `mitigation_map` — which this same RC-04 re-run
+confirmed are now budget-bounded via `response_budget.ts`'s trimmer (§N.6) — `ref_yogas_get` and
+`ref_doshas_get` carry **no `trim_report` / budget-bounding mechanism** and hit the raw transport
+limit instead of degrading gracefully as their underlying corpus crosses the threshold. Same defect
+class as the still-open R-1 row above (budget/trim not universal) and R-20 (mislabeled `ref_*`
+catalog tools), newly manifesting on these two specific tools as their row counts grew past the
+old response-size class. **Not fixed this session** — applying `response_budget.ts`'s trimmer to
+two more tools is a genuine, scoped code change (find every call site, wire `dualOutput`/trim
+config, verify no truncation-disclosure regression) that exceeds this fix-cycle's "one-line
+schema/trim-config fix" ceiling; recorded here per §G rather than attempted speculatively.
+**Recommendation for the future residual that picks this up:** apply the identical trimmer
+mechanism already proven on the three siblings above to `ref_yogas_get`/`ref_doshas_get`. Evidence:
+`PROBE_DIFF_v2_0.md` §4.
+
+**CR-124 [OPEN, discovered RC-04 drill-crawl fix-cycle (2026-07-23), `RESOLVER_RULINGS.md`
+Ruling RC-04-002]:** `register_p1_aliases.ts` has **22 other `dualOutput(data)` call sites**
+(no explicit `toolName` argument) beyond the one this fix-cycle live-reproduced-broken and fixed
+(`phala_outlook_get`, line 1434 → now `dualOutput(data, 'phala_outlook_get')`). Every one of
+these 22 will default `autoDetectTrimmableSections`'s `recover_via.instrument` to the literal
+placeholder `"unknown_tool"` (`register_p1_aliases.ts:181`) the moment its response is large
+enough to trigger auto-trim — the same honest-but-unhelpful-navigability defect class as the
+fixed instance, not a fabrication (B.10-compliant: it says "unknown," it does not invent a
+plausible-but-wrong tool name). **Lines (grep-confirmed, 2026-07-23):** 440, 491, 700, 842, 894,
+936, 1007, 1138, 1161, 1197, 1209, 1221, 1233, 1245, 1257, 1269, 1309, 1416, 1479, 1495, 1509,
+1583. **Not fixed this session** — none of the 22 was live-reproduced as actually broken (their
+auto-trim path may not have fired on the calls made this session), and bulk-auditing/fixing all
+22 exceeds this fix-cycle's "one-line schema/trim-config fix" ceiling. **Recommendation:** a
+future pass should either (a) live-probe each of the 22 to confirm which actually trigger
+auto-trim and pass `toolName` at those sites, or (b) more robustly, change
+`autoDetectTrimmableSections`'s call sites in bulk to always pass the tool name, closing the
+whole class at once rather than one call site at a time. Evidence: `RESOLVER_RULINGS.md` Ruling
+RC-04-002 §"Scope note."
+
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.10 (2026-07-22, D-4b permission-bridge lane,
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.11 (2026-07-23, RC-04 fix-cycle closing
+`VERIFY_RC-04.md` clauses 2-3) — CR-122 added OPEN (`phala_anchors_get` date_range 422 regression:
+MCP schema says optional, live sidecar now hard-requires it, contract drift since W0, not caller
+error); CR-123 added OPEN (`ref_yogas_get`/`ref_doshas_get` now uncapped at 87KB/61KB as their
+underlying catalogs grew past 100 rows, no `response_budget.ts` trim coverage unlike their three
+sibling tools). Both discovered by `PROBE_DIFF_v2_0.md`'s live RC-04 re-run and independently
+reproduced by the RC-04 verifier (`VERIFY_RC-04.md`); neither fixed in this fix-cycle per its own
+bounded measurement-not-remediation scope — recorded per §G so they are not silently dropped.
+CR-124 added OPEN (22 unaudited `dualOutput(data)` sibling call sites in `register_p1_aliases.ts`
+sharing the `phala_outlook_get`/`unknown_tool` defect class this fix-cycle's drill-crawl found and
+fixed at its one live-confirmed site — named residual, not silently absorbed into a false
+"drill-crawl clean" claim; see Ruling RC-04-002).
+v3.10 (2026-07-22, D-4b permission-bridge lane,
 `wave/D-4b/permission-bridge`) — CR-120 and CR-121 added NOT-EVALUABLE (coverage gap, not a
 retirement): midpoint-triangle's mandatory-baseline role in B-1's bakeoff passes to the mirrored
 shuffled-birth controls (native ruling, this session); transit-kernel's D-3 RED result stands as

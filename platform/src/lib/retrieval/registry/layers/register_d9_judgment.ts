@@ -1048,7 +1048,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         { instrument: 'get_signals', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment MSR signal set beyond bearing_yogas_corroboration's top ${max_signals} shown here — secondary/corroboration only (A3/R-3). (SC-18: was 'query_signals', a non-existent MCP tool name.)`, pointer_type: 'opposing_yoga' },
         { instrument: 'get_dashas', hint: 'full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.', pointer_type: 'dasha_of_promise' },
         { instrument: 'traverse_graph', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.`, pointer_type: 'dispositor_chain' },
-        { instrument: 'query_classical_texts', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya).`, pointer_type: 'other' },
+        { instrument: 'ref_rules_search', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya). (RC-04: was 'query_classical_texts', the internal registry capability name (marsys://tool/L0/query_classical_texts), not a live MCP tool name — same SC-18 dead-pointer class as the two siblings above; ref_rules_search is one of the tool's live MCP aliases per mcp_capability_bridge.ts.)`, pointer_type: 'other' },
         { instrument: 'synth_tail_divergence_get', hint: `the mandatory dissent/tail-check step (design §26) — contrarian signals and unresolved tensions bearing on ${spec.label.toLowerCase()} not surfaced by this call's convergent verdict.`, pointer_type: 'tail_dissent' },
       ]
 
