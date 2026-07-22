@@ -1,6 +1,6 @@
 {
   "extractor": "E4 — signal-class inventory (bodha/kala/phala)",
-  "generated_at": "2026-07-19T20:35:29.939Z",
+  "generated_at": "2026-07-22T19:40:53.053Z",
   "plan_claim": "no signal-class registry exists for bodha/kala/phala",
   "verdict": {
     "summary": "PARTIALLY TRUE, PARTIALLY FALSE — confirmed empirically, not assumed. bodha_msr_signals.signal_type_class IS a real, populated, de facto signal-class column (a genuine, useful counter-finding to the plan's flat claim). But it is NOT shared/centralized: excluding the trivial `snapshot_type` build-metadata field (which every bodha_* writer table sets to the literal string 'static_natal' and is not a signal classification), cross-table value overlap between DIFFERENTLY-NAMED *_class/*_type columns is 15 pairs (mostly incidental — e.g. small numeric-string coincidences, or one genuine 2-value overlap between bodha_anomalies.anomaly_type and bodha_discoveries.discovery_class). No column is queried by more than one table's writer as a shared enum. So \"no UNIFIED cross-plane signal-class registry exists\" is the accurate, narrower version of the plan's claim.",
@@ -55,9 +55,9 @@
     "cross_table_value_overlaps_excluding_shared_snapshot_type_metadata": 15
   },
   "summary": {
-    "name_matching_columns_total": 114,
+    "name_matching_columns_total": 115,
     "candidate_enum_shaped_columns": 77,
-    "excluded_id_array_jsonb_count_columns": 37,
+    "excluded_id_array_jsonb_count_columns": 38,
     "tables_covered": [
       "bodha_anomalies",
       "bodha_cdlm_cells",
@@ -84,6 +84,7 @@
       "bodha_rm_remedy_prescriptions",
       "bodha_rm_resonances",
       "bodha_signal_embeddings",
+      "bodha_spine_bundles",
       "bodha_triangulation",
       "kala_activation",
       "kala_activation_predicates",
@@ -248,6 +249,11 @@
       "table": "bodha_signal_embeddings",
       "column": "signal_id",
       "data_type": "uuid"
+    },
+    {
+      "table": "bodha_spine_bundles",
+      "column": "signal_count",
+      "data_type": "integer"
     },
     {
       "table": "bodha_triangulation",
@@ -2325,18 +2331,22 @@
       "table": "kala_gochara_windows",
       "column": "event_class",
       "data_type": "text",
-      "distinct_count": 2,
+      "distinct_count": 3,
       "values_sample": [
         {
+          "value": "career_advancement",
+          "row_count": 3094
+        },
+        {
           "value": "marriage",
-          "row_count": 3
+          "row_count": 52
         },
         {
           "value": "major_gain",
           "row_count": 2
         }
       ],
-      "total_rows_non_null": 5
+      "total_rows_non_null": 3148
     },
     {
       "table": "kala_jivana_parva",
@@ -2405,7 +2415,7 @@
       "table": "phala_anchors",
       "column": "event_type",
       "data_type": "text",
-      "distinct_count": 8,
+      "distinct_count": 9,
       "values_sample": [
         {
           "value": "transition_convergence_event",
@@ -2413,7 +2423,7 @@
         },
         {
           "value": "transition_bhavishya_event",
-          "row_count": 87
+          "row_count": 86
         },
         {
           "value": "transition_discovery_event",
@@ -2432,8 +2442,12 @@
           "row_count": 5
         },
         {
+          "value": "psychological_arc",
+          "row_count": 2
+        },
+        {
           "value": "health_bhavishya_event",
-          "row_count": 3
+          "row_count": 2
         },
         {
           "value": "relationship_discovery_event",
@@ -2504,11 +2518,11 @@
       "distinct_count": 1,
       "values_sample": [
         {
-          "value": null,
+          "value": "pending_observation",
           "row_count": 7
         },
         {
-          "value": "pending_observation",
+          "value": null,
           "row_count": 7
         }
       ],

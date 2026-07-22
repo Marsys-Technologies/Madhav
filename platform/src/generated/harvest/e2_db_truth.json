@@ -1,6 +1,6 @@
 {
   "extractor": "E2 — DB truth",
-  "generated_at": "2026-07-19T20:35:11.161Z",
+  "generated_at": "2026-07-22T19:40:26.105Z",
   "db": {
     "instance": "madhav-astrology:asia-south1:amjis-postgres",
     "database": "amjis",
@@ -8,23 +8,23 @@
   },
   "method": {
     "exact_count_threshold_reltuples": 20000,
-    "exact_count_tables": 235,
+    "exact_count_tables": 237,
     "estimate_count_tables": 12,
     "estimate_source": "pg_class.reltuples (last ANALYZE, not live-exact for those tables)"
   },
   "summary": {
-    "total_tables": 247,
+    "total_tables": 249,
     "by_layer": {
       "OTHER": {
-        "table_count": 119,
-        "row_total": 851998
+        "table_count": 120,
+        "row_total": 852382
       },
       "L0": {
         "table_count": 34,
         "row_total": 11454
       },
       "L2": {
-        "table_count": 28,
+        "table_count": 29,
         "row_total": 196129
       },
       "L1": {
@@ -33,7 +33,7 @@
       },
       "L3": {
         "table_count": 11,
-        "row_total": 630067
+        "row_total": 633210
       },
       "L5": {
         "table_count": 27,
@@ -49,7 +49,7 @@
     {
       "table_name": "_migrations_applied",
       "layer": "OTHER",
-      "row_count": 342,
+      "row_count": 346,
       "count_method": "exact",
       "reltuples_raw": 274
     },
@@ -446,6 +446,13 @@
       "reltuples_raw": 85997
     },
     {
+      "table_name": "bodha_spine_bundles",
+      "layer": "L2",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
       "table_name": "bodha_triangulation",
       "layer": "L2",
       "row_count": 200,
@@ -574,23 +581,23 @@
     {
       "table_name": "build_run_assets",
       "layer": "OTHER",
-      "row_count": 4970,
+      "row_count": 4994,
       "count_method": "exact",
       "reltuples_raw": 4891
     },
     {
       "table_name": "build_runs",
       "layer": "OTHER",
-      "row_count": 380,
+      "row_count": 393,
       "count_method": "exact",
-      "reltuples_raw": 372
+      "reltuples_raw": 384
     },
     {
       "table_name": "build_substep_progress",
       "layer": "OTHER",
-      "row_count": 122,
+      "row_count": 287,
       "count_method": "exact",
-      "reltuples_raw": 69
+      "reltuples_raw": 239
     },
     {
       "table_name": "builds_staging",
@@ -719,6 +726,13 @@
       "reltuples_raw": -1
     },
     {
+      "table_name": "concept_ledger",
+      "layer": "OTHER",
+      "row_count": 0,
+      "count_method": "exact",
+      "reltuples_raw": -1
+    },
+    {
       "table_name": "concordance_ayanamsha_flags",
       "layer": "OTHER",
       "row_count": 2,
@@ -770,14 +784,14 @@
     {
       "table_name": "conversation_message_embeddings",
       "layer": "OTHER",
-      "row_count": 0,
+      "row_count": 6,
       "count_method": "exact",
       "reltuples_raw": -1
     },
     {
       "table_name": "conversation_messages",
       "layer": "OTHER",
-      "row_count": 0,
+      "row_count": 6,
       "count_method": "exact",
       "reltuples_raw": -1
     },
@@ -791,7 +805,7 @@
     {
       "table_name": "conversations",
       "layer": "OTHER",
-      "row_count": 2,
+      "row_count": 10,
       "count_method": "exact",
       "reltuples_raw": -1
     },
@@ -952,9 +966,9 @@
     {
       "table_name": "kala_gochara_windows",
       "layer": "L3",
-      "row_count": 5,
+      "row_count": 3148,
       "count_method": "exact",
-      "reltuples_raw": -1
+      "reltuples_raw": 3148
     },
     {
       "table_name": "kala_jivana_parva",
@@ -1057,7 +1071,7 @@
     {
       "table_name": "llm_call_log",
       "layer": "OTHER",
-      "row_count": 2,
+      "row_count": 23,
       "count_method": "exact",
       "reltuples_raw": -1
     },
@@ -1092,7 +1106,7 @@
     {
       "table_name": "llm_usage_events",
       "layer": "OTHER",
-      "row_count": 2,
+      "row_count": 23,
       "count_method": "exact",
       "reltuples_raw": -1
     },
@@ -1148,7 +1162,7 @@
     {
       "table_name": "mcp_predictions",
       "layer": "OTHER",
-      "row_count": 0,
+      "row_count": 3,
       "count_method": "exact",
       "reltuples_raw": -1
     },
@@ -1367,7 +1381,7 @@
       "layer": "OTHER",
       "row_count": 0,
       "count_method": "exact",
-      "reltuples_raw": -1
+      "reltuples_raw": 0
     },
     {
       "table_name": "performance_judge_verdict",
@@ -1423,7 +1437,7 @@
       "layer": "L4",
       "row_count": 384,
       "count_method": "exact",
-      "reltuples_raw": 380
+      "reltuples_raw": 376
     },
     {
       "table_name": "phala_rectification",
@@ -1444,7 +1458,7 @@
       "layer": "L4",
       "row_count": 1330,
       "count_method": "exact",
-      "reltuples_raw": 1300
+      "reltuples_raw": 1330
     },
     {
       "table_name": "phala_sodhana",
@@ -1458,14 +1472,14 @@
       "layer": "L4",
       "row_count": 384,
       "count_method": "exact",
-      "reltuples_raw": 380
+      "reltuples_raw": 384
     },
     {
       "table_name": "plan_alternatives_log",
       "layer": "OTHER",
-      "row_count": 9,
+      "row_count": 56,
       "count_method": "exact",
-      "reltuples_raw": -1
+      "reltuples_raw": 56
     },
     {
       "table_name": "prashna_charts",
@@ -1519,14 +1533,14 @@
     {
       "table_name": "query_plan_log",
       "layer": "OTHER",
-      "row_count": 2,
+      "row_count": 5,
       "count_method": "exact",
       "reltuples_raw": -1
     },
     {
       "table_name": "query_trace_steps",
       "layer": "OTHER",
-      "row_count": 534,
+      "row_count": 597,
       "count_method": "exact",
       "reltuples_raw": 528
     },

@@ -1,19 +1,19 @@
 {
   "extractor": "E1 — registry-declared",
-  "generated_at": "2026-07-19T20:34:53.076Z",
+  "generated_at": "2026-07-22T19:38:24.616Z",
   "method": "getCatalog() live in-process load (registers every capability via the real import chain used by both MCP and chat channels) + best-effort static FROM/JOIN regex table_hint scan over registry/layers + synthesis source, same method as WP-1.6 generate_capability_map.ts.",
   "summary": {
-    "total_declared_capabilities": 118,
+    "total_declared_capabilities": 165,
     "by_layer": {
-      "L0": 31,
-      "L2": 25,
+      "L0": 63,
+      "L2": 31,
       "L3": 14,
-      "L1": 32,
+      "L1": 34,
       "L4": 10,
-      "L5": 6
+      "L5": 13
     },
-    "capabilities_with_no_table_hint": 36,
-    "distinct_tables_hinted": 58
+    "capabilities_with_no_table_hint": 46,
+    "distinct_tables_hinted": 95
   },
   "concepts": [
     {
@@ -39,8 +39,8 @@
       "archetype": "orientation_digest",
       "traversal_level": "L-ORIENT",
       "tool_role": "umbrella",
-      "description_len": 297,
-      "description_preview": "Full asset_registry snapshot: all build assets across all layers (L0–L5). Includes asset_id, layer, sanskrit/english names, target_floor, scope, is_active. Use ",
+      "description_len": 493,
+      "description_preview": "Full asset_registry snapshot: all build assets across all layers (L0–L5). Includes asset_id, layer, sanskrit/english names, target_floor, scope, is_active, asse",
       "table_hint": [
         "asset_registry"
       ],
@@ -55,7 +55,7 @@
       "archetype": "orientation_digest",
       "traversal_level": "L-OVERVIEW",
       "tool_role": "umbrella",
-      "description_len": 222,
+      "description_len": 408,
       "description_preview": "L0 Brahmagyan asset_registry slice: all brahmagyan layer assets (shastra texts, sutravali rules, ontology, remedies, ephemeris, etc.). Includes current row coun",
       "table_hint": [
         "asset_registry"
@@ -87,6 +87,20 @@
       "description_preview": "Ephemeris cache for a calendar year — all 9 Jyotish bodies (Sun through Ketu) at daily resolution. Covers 1900-2150. URI parameter {yyyy} is the 4-digit year (e",
       "table_hint": [],
       "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts"
+    },
+    {
+      "uri": "marsys://resource/maro/profiles",
+      "type": "resource",
+      "layer": "L0",
+      "name": "maro_profiles",
+      "scope": "global",
+      "archetype": "calibration",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "quality",
+      "description_len": 465,
+      "description_preview": "MARO behavioral profiles — read-only dossier for all four LLM families. Returns the v1 profile for each family (anthropic / gemini / openai / deepseek) plus the",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/dprofiles_registration.ts"
     },
     {
       "uri": "marsys://tool/channel/chat_dispatch",
@@ -207,6 +221,20 @@
       "source_file": "src/lib/retrieval/registry/layers/register_d10_pact.ts"
     },
     {
+      "uri": "marsys://tool/L-SPINE/query_spine_bundle",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_spine_bundle",
+      "scope": "per_chart",
+      "archetype": "cross_domain",
+      "traversal_level": "L-SYNTH",
+      "tool_role": "synthesizer",
+      "description_len": 787,
+      "description_preview": "Returns the pre-joined \"spine bundle\" for one domain of a chart: the chain signal (bodha_msr_signals) → its activation windows (kala_activation) → its phala anc",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/register_spine_bundle.ts"
+    },
+    {
       "uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
       "type": "tool",
       "layer": "L3",
@@ -222,6 +250,20 @@
         "kala_activation"
       ],
       "source_file": "src/lib/retrieval/registry/layers/register_d8_assess_domain.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/call_panchanga_service",
+      "type": "tool",
+      "layer": "L0",
+      "name": "call_panchanga_service",
+      "scope": "global",
+      "archetype": "temporal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "temporal",
+      "description_len": 574,
+      "description_preview": "Compute panchanga (tithi/vara/nakshatra/yoga/karana + sunrise/sunset) for an arbitrary date and location (panchang.py compute service, Swiss-Ephemeris-backed, e",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts"
     },
     {
       "uri": "marsys://tool/L0/find_verses_about",
@@ -311,6 +353,38 @@
       "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts"
     },
     {
+      "uri": "marsys://tool/L0/query_avastha_schemes",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_avastha_schemes",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 488,
+      "description_preview": "Query the classical planetary-state (avasthā) scheme reference (bg_avastha_schemes, 35 rows across 5 schemes: baladi, jagradadi, deeptaadi, lajjitaadi, sayanadi",
+      "table_hint": [
+        "bg_avastha_schemes"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_class_priors",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_class_priors",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 556,
+      "description_preview": "Query the versioned salience class-prior weight reference (brahma_class_priors, 164 rows). Axes: prior_version, signal_type_class, fact_kind, source_subsystem, ",
+      "table_hint": [
+        "brahma_class_priors"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts"
+    },
+    {
       "uri": "marsys://tool/L0/query_classical_texts",
       "type": "tool",
       "layer": "L0",
@@ -325,6 +399,54 @@
         "classical_text_chunks"
       ],
       "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_combustion_orbs",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_combustion_orbs",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 501,
+      "description_preview": "Query the classical combustion (asta) orb reference (bg_combustion_orbs, 8 rows — Saravali Ch.6 / BPHS Ch.3). orb_degrees is the outer threshold (planet enters ",
+      "table_hint": [
+        "bg_combustion_orbs"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_compendium_index",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_compendium_index",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 545,
+      "description_preview": "Query the classical-text compendium index/table-of-contents (brahma_compendium_index, 9538 rows). Each row: text_id, chapter_num, chapter_title_en/sa, topic_id,",
+      "table_hint": [
+        "brahma_compendium_index"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_dasha_systems",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_dasha_systems",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 478,
+      "description_preview": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 18 rows). Each row: canonical_id, name_en/name_sa, total_cycle_years, base_unit (n",
+      "table_hint": [
+        "brahma_dasha_systems"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts"
     },
     {
       "uri": "marsys://tool/L0/query_dosha_catalog",
@@ -343,6 +465,54 @@
       "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts"
     },
     {
+      "uri": "marsys://tool/L0/query_formula_constants",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_formula_constants",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 546,
+      "description_preview": "Query the formula-constants registry (brahma_formula_constants, 18 rows). Each row: constant_id, value_jsonb, class (classical|native_judgment|engineering| conf",
+      "table_hint": [
+        "brahma_formula_constants"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_graha_dik",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_graha_dik",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 486,
+      "description_preview": "Query the Dig Bala (directional strength) reference (bg_graha_dik, 9 rows — BPHS Ch.27; Saravali Ch.3; Brihat Jataka Ch.2). Each graha has a peak_house (bhava o",
+      "table_hint": [
+        "bg_graha_dik"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_graha_naisargika_friendship",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_graha_naisargika_friendship",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 607,
+      "description_preview": "Query the classical natural (naisargika) friendship reference (bg_graha_naisargika_friendship, 72 rows — one row per ordered graha pair, BPHS Ch.27 / UK Ch.4). ",
+      "table_hint": [
+        "bg_graha_naisargika_friendship"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts"
+    },
+    {
       "uri": "marsys://tool/L0/query_mantras",
       "type": "tool",
       "layer": "L0",
@@ -357,6 +527,54 @@
         "brahma_remedy_corpus"
       ],
       "source_file": "src/lib/retrieval/registry/layers/register_d7_channel.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_medical_mappings",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_medical_mappings",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 431,
+      "description_preview": "Query the graha→Ayurvedic medical reference (bg_medical_mappings, 9 rows — one per graha — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita). Each row: dosha[],",
+      "table_hint": [
+        "bg_medical_mappings"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_motion_state_thresholds",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_motion_state_thresholds",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 541,
+      "description_preview": "Query the classical graha motion-state speed-threshold reference (bg_motion_state_thresholds, 27 rows). motion_state one of vakra (retrograde), anuvakra (statio",
+      "table_hint": [
+        "bg_motion_state_thresholds"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_nakshatra_medical",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_nakshatra_medical",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 329,
+      "description_preview": "Query the nakshatra→body-part medical reference (bg_nakshatra_medical, 27 rows — Ashtanga Hridayam / BPHS). Each row: nakshatra_name, nakshatra_number (1-27), b",
+      "table_hint": [
+        "bg_nakshatra_medical"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts"
     },
     {
       "uri": "marsys://tool/L0/query_planet_position",
@@ -383,6 +601,86 @@
       "description_preview": "Query a planet's transit series (daily longitude, sign, nakshatra) across a date window. Optionally filter by tropical sign number to find when a planet transit",
       "table_hint": [],
       "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_prashna_fructification_rules",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_prashna_fructification_rules",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 296,
+      "description_preview": "Query the Prashna fructification-timing reference (bg_prashna_fructification_rules, 5 rows). Each row: rule_id, time_unit (hours|days|weeks|months|years), degre",
+      "table_hint": [
+        "bg_prashna_fructification_rules"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_prashna_lagna_methods",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_prashna_lagna_methods",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 357,
+      "description_preview": "Query the Prashna (horary) lagna-derivation method reference (bg_prashna_lagna_methods, 5 rows). Each row: method_id, method_name (+ Sanskrit), derivation_rule ",
+      "table_hint": [
+        "bg_prashna_lagna_methods"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_prashna_significators",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_prashna_significators",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 290,
+      "description_preview": "Query the Prashna significator-derivation reference (bg_prashna_significators, 12 rows). Each row: question_class, querent_house/querent_planet, quesited_house/",
+      "table_hint": [
+        "bg_prashna_significators"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_prashna_special_techniques",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_prashna_special_techniques",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 250,
+      "description_preview": "Query the Prashna special-technique reference (bg_prashna_special_techniques, 3 rows). Each row: technique_id, technique_name (+ Sanskrit), application_rule, cl",
+      "table_hint": [
+        "bg_prashna_special_techniques"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_prashna_tajik_yogas",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_prashna_tajik_yogas",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 325,
+      "description_preview": "Query the Tajik horary yoga reference (bg_prashna_tajik_yogas, 16 rows). Each row: yoga_id, yoga_name (+ Sanskrit), judgment_meaning, formation_rule (text + opt",
+      "table_hint": [
+        "bg_prashna_tajik_yogas"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts"
     },
     {
       "uri": "marsys://tool/L0/query_remedies_by_planet",
@@ -446,6 +744,22 @@
       "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts"
     },
     {
+      "uri": "marsys://tool/L0/query_shashtiamsha_deities",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_shashtiamsha_deities",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 478,
+      "description_preview": "Query the canonical D60 (Shashtiamsha) amsa-quality reference (bg_shashtiamsha_deities, 60 rows, one per amsa 1-60). Each row: amsa_number, quality (kroora=male",
+      "table_hint": [
+        "bg_shashtiamsha_deities"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts"
+    },
+    {
       "uri": "marsys://tool/L0/query_sign_medical",
       "type": "tool",
       "layer": "L0",
@@ -504,6 +818,118 @@
         "brahma_remedy_corpus"
       ],
       "source_file": "src/lib/retrieval/registry/layers/register_d7_channel.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_transit_av_gates",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_transit_av_gates",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 539,
+      "description_preview": "Query the Ashtakavarga (AV) transit-gate reference (bg_transit_av_gates, 8 rows — BPHS Ch.66-68; Phaladeepika Ch.26). gate_kind one of kakshya (per-graha benefi",
+      "table_hint": [
+        "bg_transit_av_gates"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_transit_engine",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_transit_engine",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 374,
+      "description_preview": "Query the classical graha average-motion reference (bg_transit_engine, 9 rows — one per graha — BPHS Ch.22). Each row: graha, avg_daily_motion_deg, zodiac_perio",
+      "table_hint": [
+        "bg_transit_engine"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_transit_moorti",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_transit_moorti",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 466,
+      "description_preview": "Query the Moorti Nirnaya transit-nakshatra quality reference (bg_transit_moorti, 27 rows — Phaladeepika Ch.26; BPHS Ch.28). Keyed by nakshatra_offset (1-27, cou",
+      "table_hint": [
+        "bg_transit_moorti"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_transit_vedha",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_transit_vedha",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 458,
+      "description_preview": "Query the classical Gochara vedha (transit-obstruction) reference (bg_transit_vedha, 33 rows — BPHS Ch.29; Phaladeepika Ch.26). Each row: primary_graha, primary",
+      "table_hint": [
+        "bg_transit_vedha"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_vastu_direction_remedials",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_vastu_direction_remedials",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 321,
+      "description_preview": "Query the classical Vastu direction-remedy reference (bg_vastu_direction_remedials, 24 rows — Brihat Samhita Ch.53 / Mayamata Ch.6). Each row: direction, remedy",
+      "table_hint": [
+        "bg_vastu_direction_remedials"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_vastu_directions",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_vastu_directions",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 465,
+      "description_preview": "Query the classical Vastu direction reference (bg_vastu_directions, 8 rows — Mayamata Ch.6). Each row: direction, direction_deg, ruling_graha, secondary_graha, ",
+      "table_hint": [
+        "bg_vastu_directions"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts"
+    },
+    {
+      "uri": "marsys://tool/L0/query_vichara_constants",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_vichara_constants",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 314,
+      "description_preview": "Query the vichara ratification-constants registry (brahma_vichara_constants, 7 rows). Each row: constant_key, value_jsonb, citation, version, updated_at. Filter",
+      "table_hint": [
+        "brahma_vichara_constants"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts"
     },
     {
       "uri": "marsys://tool/L0/query_yoga_catalog",
@@ -580,6 +1006,20 @@
       "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts"
     },
     {
+      "uri": "marsys://tool/L0/tool_search",
+      "type": "tool",
+      "layer": "L0",
+      "name": "tool_search",
+      "scope": "global",
+      "archetype": "orientation_digest",
+      "traversal_level": "L-ORIENT",
+      "tool_role": "umbrella",
+      "description_len": 609,
+      "description_preview": "Keyword search over the full MARSYS tool/resource/prompt catalog (~120 capabilities across L0-L5). Returns matching tool names, descriptions, and layer/domain t",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/L0_brahmagyan/tool_search.ts"
+    },
+    {
       "uri": "marsys://tool/L1/chart_facts_query",
       "type": "tool",
       "layer": "L1",
@@ -634,8 +1074,8 @@
       "archetype": "flat_fact",
       "traversal_level": "L-SIGNAL",
       "tool_role": "leaf",
-      "description_len": 413,
-      "description_preview": "Retrieve Ashtakavarga data for a chart: individual bindus (per graha per house), anubindus (trikona/ekadhipatya reduced), and Pinda Bala (Bhinna, Sarva, Sodhita",
+      "description_len": 1139,
+      "description_preview": "Retrieve Ashtakavarga data for a chart: individual bindus per graha per house and per sign, Pinda Bala (Bhinna, Sarva, Sodhita, Raasi), and the refinement set a",
       "table_hint": [
         "chart_facts"
       ],
@@ -736,6 +1176,22 @@
       "source_file": "src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts"
     },
     {
+      "uri": "marsys://tool/L1/get_condition_composite",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_condition_composite",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "leaf",
+      "description_len": 666,
+      "description_preview": "Retrieve the unified per-graha condition rollup for a chart from ga_condition_composite. Per-graha row bundles: dignity_d1 + dignity_score_d1 + varga_dignity_sp",
+      "table_hint": [
+        "ga_condition_composite"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts"
+    },
+    {
       "uri": "marsys://tool/L1/get_dasha_lord_capability",
       "type": "tool",
       "layer": "L1",
@@ -796,7 +1252,7 @@
       "archetype": "flat_fact",
       "traversal_level": "L-SIGNAL",
       "tool_role": "leaf",
-      "description_len": 369,
+      "description_len": 716,
       "description_preview": "Retrieve dispositor chain data for a chart: natal dispositor chains (who lords each graha's sign), dispositor chains per varga (D2–D60), composite dispositor st",
       "table_hint": [
         "chart_facts"
@@ -862,7 +1318,7 @@
       "archetype": "flat_fact",
       "traversal_level": "L-SIGNAL",
       "tool_role": "leaf",
-      "description_len": 678,
+      "description_len": 1235,
       "description_preview": "Retrieve Jaimini karaka and KP (Krishnamurti Paddhati) data for a chart. Includes: Chara Karaka positions (AK/AmK/BK/MK/PK/GK/DK — the 7 temporal significators)",
       "table_hint": [
         "chart_facts"
@@ -910,12 +1366,28 @@
       "archetype": "flat_fact",
       "traversal_level": "L-SIGNAL",
       "tool_role": "leaf",
-      "description_len": 1102,
+      "description_len": 1574,
       "description_preview": "Retrieve Gaṇita graha positions for a chart. Returns sidereal longitudes, rashi, nakshatra, pada, retrograde status, and combust status. CR-50: the DEFAULT page",
       "table_hint": [
         "chart_facts"
       ],
       "source_file": "src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts"
+    },
+    {
+      "uri": "marsys://tool/L1/get_prashna_lagna",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_prashna_lagna",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "leaf",
+      "description_len": 435,
+      "description_preview": "Retrieve the computed Prashna-Lagna (horary ascendant) for a prashna chart from ga_prashna_lagna. Per-method row: lagna_method (e.g. tajik_moment_lagna, kp_249)",
+      "table_hint": [
+        "ga_prashna_lagna"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts"
     },
     {
       "uri": "marsys://tool/L1/get_sade_sati",
@@ -1132,11 +1604,9 @@
       "archetype": "cross_domain",
       "traversal_level": "L-ORIENT",
       "tool_role": "umbrella",
-      "description_len": 421,
-      "description_preview": "Retrieve the Cross-Domain Linkage Matrix (CDLM) chart-level summary from bodha_cdlm_chart_summary — one row per ayanamsha. Fields: chart_typology_class, total_c",
-      "table_hint": [
-        "bodha_cdlm_chart_summary"
-      ],
+      "description_len": 1207,
+      "description_preview": "Retrieve the Cross-Domain Linkage Matrix (CDLM) for a chart, across four depth tiers (the `tier` facet — default chart_summary, fully backward compatible): 'cha",
+      "table_hint": [],
       "source_file": "src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts"
     },
     {
@@ -1298,6 +1768,70 @@
       "source_file": "src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts"
     },
     {
+      "uri": "marsys://tool/L2/query_rm_chart_summary",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_rm_chart_summary",
+      "scope": "per_chart",
+      "archetype": "rich_relational",
+      "traversal_level": "L-DOMAIN",
+      "tool_role": "leaf",
+      "description_len": 507,
+      "description_preview": "Retrieve the chart-level remedial priority summary from bodha_rm_chart_summary (Remedial Matrix). Each row: snapshot_type, top_3_resonance_targets_jsonb, top_10",
+      "table_hint": [
+        "bodha_rm_chart_summary"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts"
+    },
+    {
+      "uri": "marsys://tool/L2/query_rm_dasha_windowed_prescriptions",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_rm_dasha_windowed_prescriptions",
+      "scope": "per_chart",
+      "archetype": "rich_relational",
+      "traversal_level": "L-DOMAIN",
+      "tool_role": "leaf",
+      "description_len": 660,
+      "description_preview": "Retrieve dasha-window-targeted remedy prescriptions from bodha_rm_dasha_windowed_prescriptions (Remedial Matrix — the time-targeted remedy slice). Each row: bas",
+      "table_hint": [
+        "bodha_rm_dasha_windowed_prescriptions"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts"
+    },
+    {
+      "uri": "marsys://tool/L2/query_rm_dosha_remedy_bundles",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_rm_dosha_remedy_bundles",
+      "scope": "per_chart",
+      "archetype": "rich_relational",
+      "traversal_level": "L-DOMAIN",
+      "tool_role": "leaf",
+      "description_len": 538,
+      "description_preview": "Retrieve per-dosha-class remedy bundles from bodha_rm_dosha_remedy_bundles (Remedial Matrix). Each row: dosha_class, active_flag, intensity_score, cancellation_",
+      "table_hint": [
+        "bodha_rm_dosha_remedy_bundles"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts"
+    },
+    {
+      "uri": "marsys://tool/L2/query_rm_pattern_remedies",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_rm_pattern_remedies",
+      "scope": "per_chart",
+      "archetype": "rich_relational",
+      "traversal_level": "L-DOMAIN",
+      "tool_role": "leaf",
+      "description_len": 404,
+      "description_preview": "Retrieve pattern-level remedy themes from bodha_rm_pattern_remedies (Remedial Matrix). Each row: source_kind (cdlm_pattern_cluster|cgm_motif), source_id, remedy",
+      "table_hint": [
+        "bodha_rm_pattern_remedies"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts"
+    },
+    {
       "uri": "marsys://tool/L2/query_rm_prescriptions",
       "type": "tool",
       "layer": "L2",
@@ -1344,6 +1878,22 @@
       "source_file": "src/lib/retrieval/registry/layers/register_d6_synergy.ts"
     },
     {
+      "uri": "marsys://tool/L2/query_triangulation",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_triangulation",
+      "scope": "per_chart",
+      "archetype": "rich_relational",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 512,
+      "description_preview": "Retrieve multi-tradition concordance rows from bodha_triangulation. Each row: one (question_class, tradition) pair — tradition in {parashari, jaimini, kp, tajik",
+      "table_hint": [
+        "bodha_triangulation"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts"
+    },
+    {
       "uri": "marsys://tool/L2/query_ucd",
       "type": "tool",
       "layer": "L2",
@@ -1366,8 +1916,8 @@
       "archetype": "graph_traversal",
       "traversal_level": "L-DOMAIN",
       "tool_role": "graph",
-      "description_len": 823,
-      "description_preview": "Traverse the Cosmological Graph Model (CGM) for a chart. Four modes: neighbors (BFS from seed nodes), paths (shortest path between two nodes), convergence (top-",
+      "description_len": 921,
+      "description_preview": "Traverse the Cosmological Graph Model (CGM) for a chart. Five modes: neighbors (BFS from seed nodes), paths (shortest path between two nodes), convergence (top-",
       "table_hint": [],
       "source_file": "src/lib/retrieval/registry/layers/register_d6_synergy.ts"
     },
@@ -1410,8 +1960,8 @@
       "archetype": "temporal",
       "traversal_level": "L-SIGNAL",
       "tool_role": "temporal",
-      "description_len": 226,
-      "description_preview": "Score an auspicious window for a specific datetime and purpose (ka_muhurta_seva service). Global scope — not chart-specific at the service level. Returns muhurt",
+      "description_len": 578,
+      "description_preview": "Score an auspicious window (raw muhurta quality) for a specific UTC datetime and event class (ka_muhurta_seva service — reuses the same score_muhurat() scoring ",
       "table_hint": [],
       "source_file": "src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts"
     },
@@ -1748,6 +2298,41 @@
       "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts"
     },
     {
+      "uri": "marsys://tool/L5/mechanism_retrodiction_get",
+      "type": "tool",
+      "layer": "L5",
+      "name": "mechanism_retrodiction_get",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "quality",
+      "description_len": 764,
+      "description_preview": "CONFIRMATION-ONLY retrodictive evidence surface (never prediction input). Joins the chart's pre-2020 Life Event Log entries to the classical house-lord/Vimshott",
+      "table_hint": [
+        "chart_dashas",
+        "chart_facts",
+        "events",
+        "life_events"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_mechanism_retrodiction.ts"
+    },
+    {
+      "uri": "marsys://tool/L5/query_attribution",
+      "type": "tool",
+      "layer": "L5",
+      "name": "query_attribution",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "quality",
+      "description_len": 529,
+      "description_preview": "Retrieve per-signal credit/blame attribution rows from mimamsa_attribution (mi_pariksha). Each row: match_id, signal_id, family_id, dimension (timing|magnitude|",
+      "table_hint": [
+        "mimamsa_attribution"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts"
+    },
+    {
       "uri": "marsys://tool/L5/query_calibration",
       "type": "tool",
       "layer": "L5",
@@ -1767,6 +2352,23 @@
       "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts"
     },
     {
+      "uri": "marsys://tool/L5/query_insight_embeddings",
+      "type": "tool",
+      "layer": "L5",
+      "name": "query_insight_embeddings",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "quality",
+      "description_len": 666,
+      "description_preview": "Look up embedding provenance for mimamsa_insight_units rows (mi_darshana), or find the nearest-neighbor insights to a given already-embedded insight_id via pgve",
+      "table_hint": [
+        "mimamsa_insight_embeddings",
+        "mimamsa_insight_units"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts"
+    },
+    {
       "uri": "marsys://tool/L5/query_insights",
       "type": "tool",
       "layer": "L5",
@@ -1784,6 +2386,38 @@
       "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts"
     },
     {
+      "uri": "marsys://tool/L5/query_journal",
+      "type": "tool",
+      "layer": "L5",
+      "name": "query_journal",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "description_len": 322,
+      "description_preview": "Retrieve the native Q&A journal from mimamsa_journal (mi_seva_abhilekha). Each row: prediction_id, prompt_shown, native_answer, answered_at, resulting_event_id,",
+      "table_hint": [
+        "mimamsa_journal"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts"
+    },
+    {
+      "uri": "marsys://tool/L5/query_load_bearing",
+      "type": "tool",
+      "layer": "L5",
+      "name": "query_load_bearing",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "quality",
+      "description_len": 466,
+      "description_preview": "Retrieve conclusion interpretability rows from mimamsa_load_bearing (mi_adhilepa — NOT the GATED calibration-overlay siblings; this table has no leakage_status ",
+      "table_hint": [
+        "mimamsa_load_bearing"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts"
+    },
+    {
       "uri": "marsys://tool/L5/query_manifestation_grammar",
       "type": "tool",
       "layer": "L5",
@@ -1798,6 +2432,38 @@
         "mimamsa_manifestation_grammar"
       ],
       "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts"
+    },
+    {
+      "uri": "marsys://tool/L5/query_manifestation_sets",
+      "type": "tool",
+      "layer": "L5",
+      "name": "query_manifestation_sets",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-DOMAIN",
+      "tool_role": "quality",
+      "description_len": 505,
+      "description_preview": "Retrieve prediction-manifestation-channel records from mimamsa_manifestation_sets (mi_bhavisya) — NOT mimamsa_manifestation_grammar (a different table; see quer",
+      "table_hint": [
+        "mimamsa_manifestation_sets"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts"
+    },
+    {
+      "uri": "marsys://tool/L5/query_mimamsa_discoveries",
+      "type": "tool",
+      "layer": "L5",
+      "name": "query_mimamsa_discoveries",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-DOMAIN",
+      "tool_role": "quality",
+      "description_len": 491,
+      "description_preview": "Retrieve L5 research-value discoveries from mimamsa_discoveries (mi_pariksha) — NOT the L2 bodha_discoveries table (a different concept; see bodha_discoveries_g",
+      "table_hint": [
+        "mimamsa_discoveries"
+      ],
+      "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts"
     },
     {
       "uri": "marsys://tool/L5/query_predictions",
@@ -1830,6 +2496,76 @@
         "mimamsa_signal_families"
       ],
       "source_file": "src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts"
+    },
+    {
+      "uri": "marsys://tool/maro/mcp_surface",
+      "type": "tool",
+      "layer": "L0",
+      "name": "maro_mcp_surface",
+      "scope": "global",
+      "archetype": "orientation_digest",
+      "traversal_level": "L-ORIENT",
+      "tool_role": "umbrella",
+      "description_len": 539,
+      "description_preview": "MARO MCP channel surface resolver. Returns the surface spec for the BYO-MCP channel given a declared (or undeclared) model family. Declared family → serve that ",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/dprofiles_registration.ts"
+    },
+    {
+      "uri": "marsys://tool/maro/orchestrate",
+      "type": "tool",
+      "layer": "L0",
+      "name": "maro_orchestrate",
+      "scope": "global",
+      "archetype": "orientation_digest",
+      "traversal_level": "L-ORIENT",
+      "tool_role": "umbrella",
+      "description_len": 697,
+      "description_preview": "MARO core: resolves the per-family normalization parameters for a retrieval request. Takes a chart_id (required, never defaulted), query, model_family, and capa",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/dprofiles_registration.ts"
+    },
+    {
+      "uri": "marsys://tool/router/route",
+      "type": "tool",
+      "layer": "L0",
+      "name": "route",
+      "scope": "global",
+      "archetype": "orientation_digest",
+      "traversal_level": "L-ORIENT",
+      "tool_role": "umbrella",
+      "description_len": 304,
+      "description_preview": "Internal D2 query router. Classifies a query into one of five route classes (numeric_exact, relational, narrative, simple, multi_hop) and selects the appropriat",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/router_registration.ts"
+    },
+    {
+      "uri": "marsys://tool/synergy/cross_layer",
+      "type": "tool",
+      "layer": "L0",
+      "name": "synergy_cross_layer",
+      "scope": "global",
+      "archetype": "cross_domain",
+      "traversal_level": "L-SYNTH",
+      "tool_role": "synthesizer",
+      "description_len": 413,
+      "description_preview": "D6 cross-layer signal reconciliation. Accepts a chart_id and a set of signals from multiple layers (L1 chart_facts, L2 Bodha, L3 Kāla, L4 Phala, L5 Mīmāṃsā) and",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/register_d6_synergy.ts"
+    },
+    {
+      "uri": "marsys://tool/synergy/pipeline",
+      "type": "tool",
+      "layer": "L0",
+      "name": "synergy_pipeline",
+      "scope": "global",
+      "archetype": "orientation_digest",
+      "traversal_level": "L-ORIENT",
+      "tool_role": "umbrella",
+      "description_len": 514,
+      "description_preview": "D6 synergy pipeline — combines the router→grounding→graph+assets→MARO chain into a single introspectable capability descriptor. Accepts a chart_id and query; ro",
+      "table_hint": [],
+      "source_file": "src/lib/retrieval/registry/layers/register_d6_synergy.ts"
     },
     {
       "uri": "marsys://tool/synthesis/compose_large_n",

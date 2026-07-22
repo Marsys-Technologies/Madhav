@@ -4,7 +4,7 @@ canonical_id: FACT_CATEGORY_ENUMERATION_RECONCILIATION
 version: 1.0
 status: GENERATED — v1 (design note; no source files were changed this wave)
 generator: platform/scripts/census/generate_concept_reachability.ts
-generated_at: 2026-07-19T21:18:10.804Z
+generated_at: 2026-07-22T19:41:15.255Z
 ---
 
 # Fact-Category Enumeration Reconciliation v1.0 (W-23)

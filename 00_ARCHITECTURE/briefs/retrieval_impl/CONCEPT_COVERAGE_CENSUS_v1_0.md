@@ -4,7 +4,7 @@ canonical_id: CONCEPT_COVERAGE_CENSUS
 version: 1.0
 status: GENERATED — v1
 generator: platform/scripts/census/generate_concept_reachability.ts
-generated_at: 2026-07-19T21:18:10.803Z
+generated_at: 2026-07-22T19:41:15.254Z
 ---
 
 # Concept Coverage Census v1.0 (W-21 — concept granularity, not table)
@@ -14,8 +14,8 @@ Per RETRIEVAL_PLANE_ELEVATION_PLAN §9.4 W-21: "Census granularity = CONCEPT not
 **Headline finding, verified by direct source read (corrects L1b's stated impact claim):** `chart_facts_query`'s category filter (`register_d7_channel.ts`) does `fact_category = ANY($n::text[])` straight from the caller's string — **no enum validates it, from any of the four static category lists in the repo.** So all 218 live categories are technically SERVED (queryable) today, not just the 152 L1b's ledger loader counted as SERVED (which used coverage_matrix.ts membership as its SERVED/DARK signal). The real gap is **discoverability at the serving layer**: `chart_facts_query`'s own handler never consults `coverage_matrix.ts`'s 158-entry `CHART_FACTS_CATEGORIES` constant, so an LLM caller has no single documented, load-bearing list of the real category strings to draw from at query time. That constant is **not fully dead**, though — a real repo-wide import-site scan (this generator's own `scanImportSites()`, not a hand-typed claim) finds **1** import site(s): `platform/tests/retrieval/coverage_gate.test.ts:15`. It is imported by `platform/tests/retrieval/coverage_gate.test.ts` and used as a live CI coverage gate — one real consumer, just a test-time gate rather than a runtime-serving one.
 
 - Live categories: **218**
-- Documented in coverage_matrix.ts's list (158 entries, but unused by the query path): **152**
-- SERVED-UNDOCUMENTED (queryable but absent from every static list): **66**
+- Documented in coverage_matrix.ts's list (158 entries, but unused by the query path): **163**
+- SERVED-UNDOCUMENTED (queryable but absent from every static list): **55**
 - Planner-known (referenced by name in a vidhi primitive/floor's fallback_face or definition): **0**
 
 ## Per-category coverage
@@ -28,16 +28,16 @@ Per RETRIEVAL_PLANE_ELEVATION_PLAN §9.4 W-21: "Census granularity = CONCEPT not
 | `argala_natal_matrix` | 41760 | yes | yes | no |
 | `arudha_pada` | 570 | yes | yes | no |
 | `ashtakavarga_bindu` | 960 | yes | yes | no |
-| `ashtakavarga_bindu_per_varga` | 13440 | yes | no | no |
-| `ashtakavarga_bindu_sign` | 960 | yes | no | no |
-| `ashtakavarga_ekadhipathya_shodhana` | 840 | yes | no | no |
-| `ashtakavarga_kakshya_boundary` | 240 | yes | no | no |
+| `ashtakavarga_bindu_per_varga` | 13440 | yes | yes | no |
+| `ashtakavarga_bindu_sign` | 960 | yes | yes | no |
+| `ashtakavarga_ekadhipathya_shodhana` | 840 | yes | yes | no |
+| `ashtakavarga_kakshya_boundary` | 240 | yes | yes | no |
 | `ashtakavarga_pinda_bhinna` | 80 | yes | yes | no |
-| `ashtakavarga_pinda_raasi` | 80 | yes | no | no |
+| `ashtakavarga_pinda_raasi` | 80 | yes | yes | no |
 | `ashtakavarga_pinda_sarva` | 80 | yes | yes | no |
-| `ashtakavarga_pinda_sarva_per_varga` | 1120 | yes | no | no |
+| `ashtakavarga_pinda_sarva_per_varga` | 1120 | yes | yes | no |
 | `ashtakavarga_pinda_sodhita` | 80 | yes | yes | no |
-| `ashtakavarga_trikona_shodhana` | 840 | yes | no | no |
+| `ashtakavarga_trikona_shodhana` | 840 | yes | yes | no |
 | `ashtama_shani_period` | 480 | yes | yes | no |
 | `aspect_jaimini` | 1080 | yes | yes | no |
 | `aspect_jaimini_per_varga` | 31320 | yes | yes | no |
@@ -49,7 +49,7 @@ Per RETRIEVAL_PLANE_ELEVATION_PLAN §9.4 W-21: "Census granularity = CONCEPT not
 | `aspect_tajik` | 31 | yes | yes | no |
 | `ayurdaya` | 260 | yes | no | no |
 | `bhadra_flag` | 12 | yes | yes | no |
-| `bhava_arudha` | 420 | yes | no | no |
+| `bhava_arudha` | 420 | yes | yes | no |
 | `bhava_bala_aspectual` | 120 | yes | yes | no |
 | `bhava_bala_directional` | 120 | yes | yes | no |
 | `bhava_bala_lord` | 120 | yes | yes | no |
@@ -147,12 +147,12 @@ Per RETRIEVAL_PLANE_ELEVATION_PLAN §9.4 W-21: "Census granularity = CONCEPT not
 | `janma_shani_period` | 200 | yes | yes | no |
 | `kala_sarpa_per_varga` | 290 | yes | yes | no |
 | `kantaka_shani_period` | 460 | yes | yes | no |
-| `karaka_bhava_concordance` | 8700 | yes | no | no |
+| `karaka_bhava_concordance` | 8700 | yes | yes | no |
 | `karaka_chara_position` | 1050 | yes | yes | no |
 | `karaka_house_lord_overlap_flag` | 120 | yes | yes | no |
 | `karakamsa_position` | 30 | yes | yes | no |
 | `karakatva_strength_per_significance` | 600 | yes | yes | no |
-| `karaka_web_per_varga` | 2156 | yes | no | no |
+| `karaka_web_per_varga` | 2156 | yes | yes | no |
 | `kendradhipati_dosha` | 20 | yes | no | no |
 | `kp_cuspal_significators` | 600 | yes | yes | no |
 | `kp_ruling_planets_natal` | 100 | yes | yes | no |
@@ -164,7 +164,7 @@ Per RETRIEVAL_PLANE_ELEVATION_PLAN §9.4 W-21: "Census granularity = CONCEPT not
 | `nakshatra_cogravity` | 20 | yes | no | no |
 | `nakshatra_conjunction` | 7 | yes | no | no |
 | `nakshatra_co_tenancy` | 7 | yes | no | no |
-| `nakshatra_cross_ayanamsha` | 36 | yes | no | no |
+| `nakshatra_cross_ayanamsha` | 36 | yes | yes | no |
 | `nakshatra_dispositor` | 400 | yes | no | no |
 | `nakshatra_dispositor_chain` | 100 | yes | no | no |
 | `nakshatra_lord_relationship` | 90 | yes | no | no |
