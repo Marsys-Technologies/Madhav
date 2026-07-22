@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0",
-  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall \u2265 0.80, precision \u2265 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) \u2014 see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026\u2013GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls \u2014 by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1. Extended 2026-05-19 (Phase 4A) with GT.065\u2013GT.069 for query_ephemeris R-TC transit-context rule coverage. Extended 2026-05-19 (Phase 4B) with GT.070\u2013GT.073 for derived-column queries: combust, dignity, whole-sign-house, sign-ingress. Extended 2026-05-19 (Phase 4C) with GT.074\u2013GT.077 for R-PA panchanga anchor: tithi-at-LEL-event, Purnima lookup, Moon-nakshatra-of-day, and the NEGATIVE natal-nakshatra case (query_panchanga forbidden). Extended 2026-05-19 (Phase 5A) with GT.083\u2013GT.086 for R-DA dasha-anchor rule: current MD, next MD after Mercury (canonical failure-case), Saturn MD historical, and interpretive MD-lord query (R-DA negative).",
+  "description": "W2-EVAL-B AC.V.3 regression baseline. Mock planner responses for the 29 golden_test_set entries. Each entry's mock_tool_calls mirror that entry's expected_tools, with required_tools and R7-mandated tools mapped to priority 1 and the rest to priority 2. Scored against golden_test_set.json this baseline yields avg_tool_recall = 1.00 and avg_tool_precision = 1.00, well above the published thresholds (recall ≥ 0.80, precision ≥ 0.90). Aligned 2026-05-02 (W2-UQE-ACTIVATE round 3) with PLANNER_PROMPT_v1_0.md R7: every predictive/remedial entry's expected_tools now contains pattern_register OR resonance_register at priority 1. Constrained to PRIMARY_TOOL_NAMES (W2-MANIFEST AC.M.1) — see golden_test_set.json available_tools. Extended at BHISMA-W2-S-D close (2026-05-03) with mocks for GT.026–GT.029 (predictive #5 + 3 new edge cases). GT.027 and GT.028 carry empty mock_tool_calls — by smoke_runner.scoreEntry() convention, empty-predicted vs empty-expected scores recall=1, precision=1. Extended 2026-05-19 (Phase 4A) with GT.065–GT.069 for query_ephemeris R-TC transit-context rule coverage. Extended 2026-05-19 (Phase 4B) with GT.070–GT.073 for derived-column queries: combust, dignity, whole-sign-house, sign-ingress. Extended 2026-05-19 (Phase 4C) with GT.074–GT.077 for R-PA panchanga anchor: tithi-at-LEL-event, Purnima lookup, Moon-nakshatra-of-day, and the NEGATIVE natal-nakshatra case (query_panchanga forbidden). Extended 2026-05-19 (Phase 5A) with GT.083–GT.086 for R-DA dasha-anchor rule: current MD, next MD after Mercury (canonical failure-case), Saturn MD historical, and interpretive MD-lord query (R-DA negative).",
   "entries": [
     {
       "id": "GT.001",
@@ -11,13 +11,6 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "career-domain remedial prescription (codex)"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 gemstone-planet-career resonance"
         },
         {
           "tool_name": "msr_sql",
@@ -44,13 +37,6 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "mantra prescription (codex)"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 mantra-deity-spirituality resonance"
         },
         {
           "tool_name": "msr_sql",
@@ -86,11 +72,11 @@
           "reason": "Jupiter natal placement, dignity, signal strength"
         },
         {
-          "tool_name": "resonance_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 800,
           "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 yellow-sapphire-Jupiter resonance"
+          "reason": "R7 cross-domain lens — yellow-sapphire-Jupiter resonance [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -112,11 +98,11 @@
           "reason": "Mars-domain signals"
         },
         {
-          "tool_name": "resonance_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 800,
           "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 Mars-domain remedial alignment"
+          "reason": "R7 cross-domain lens — Mars-domain remedial alignment [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -138,11 +124,11 @@
           "reason": "low-strength signals across grahas"
         },
         {
-          "tool_name": "pattern_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 800,
           "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 weakest-planet pattern across the chart"
+          "reason": "R7 cross-domain lens — weakest-planet pattern across the chart [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -157,25 +143,18 @@
           "reason": "fasting-practice prescription (codex)"
         },
         {
-          "tool_name": "vector_search",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "health L3 domain_report narrative"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 fasting-planet-health resonance"
-        },
-        {
           "tool_name": "msr_sql",
           "params": {},
           "token_budget": 800,
           "priority": 2,
           "reason": "health-domain signals"
+        },
+        {
+          "tool_name": "vector_search",
+          "params": {},
+          "token_budget": 800,
+          "priority": 1,
+          "reason": "health L3 domain_report narrative"
         }
       ]
     },
@@ -214,13 +193,6 @@
           "token_budget": 800,
           "priority": 2,
           "reason": "overall life-path L3 narrative"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "Lagna-strength yogas"
         }
       ]
     },
@@ -228,11 +200,11 @@
       "id": "GT.009",
       "mock_tool_calls": [
         {
-          "tool_name": "pattern_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 800,
           "priority": 1,
-          "reason": "named yogas (Raja, Dhana, etc.)"
+          "reason": "named yogas (Raja, Dhana, etc.) [RC-06: substituted for a dead-capability tool]"
         },
         {
           "tool_name": "msr_sql",
@@ -316,13 +288,6 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "natal Ketu signals (forward_looking)"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 Ketu-keyed forward_looking patterns"
         }
       ]
     },
@@ -337,11 +302,11 @@
           "reason": "currently-active Saturn signals (planet=Saturn, temporal_activation=lit)"
         },
         {
-          "tool_name": "pattern_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 800,
           "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 forward_looking Saturn patterns"
+          "reason": "R7 cross-domain lens — forward_looking Saturn patterns [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -354,13 +319,6 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "career-domain forward_looking, ripening signals"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 forward_looking career yogas"
         },
         {
           "tool_name": "vector_search",
@@ -382,13 +340,6 @@
           "reason": "ripening venture-positive signals (forward_looking, temporal_activation=ripening)"
         },
         {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 forward_looking patterns"
-        },
-        {
           "tool_name": "vector_search",
           "params": {},
           "token_budget": 800,
@@ -401,25 +352,11 @@
       "id": "GT.017",
       "mock_tool_calls": [
         {
-          "tool_name": "cluster_atlas",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "dominant cross-domain clusters"
-        },
-        {
           "tool_name": "vector_search",
           "params": {},
           "token_budget": 800,
           "priority": 1,
           "reason": "L3 domain_report narratives across domains"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "named yogas across domains"
         },
         {
           "tool_name": "cgm_graph_walk",
@@ -441,25 +378,11 @@
           "reason": "structural contradictions"
         },
         {
-          "tool_name": "pattern_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 800,
           "priority": 1,
-          "reason": "named patterns / yogas"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "cross-system resonances"
-        },
-        {
-          "tool_name": "cluster_atlas",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "dominant clusters"
+          "reason": "named patterns / yogas [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -471,7 +394,7 @@
           "params": {},
           "token_budget": 800,
           "priority": 1,
-          "reason": "career\u2013marriage\u2013health graph traversal"
+          "reason": "career–marriage–health graph traversal"
         },
         {
           "tool_name": "vector_search",
@@ -479,13 +402,6 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "per-domain L3 domain_report narratives"
-        },
-        {
-          "tool_name": "cluster_atlas",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "cross-domain clusters"
         },
         {
           "tool_name": "msr_sql",
@@ -505,13 +421,6 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "msr_sql temporal_activation=lit|ripening returns date-indexed signal state"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "forward_looking patterns currently in play"
         }
       ]
     },
@@ -524,13 +433,6 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "all Jupiter-keyed signals across signal_types"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "Jupiter yogas (Gajakesari, Hamsa, etc.)"
         },
         {
           "tool_name": "cgm_graph_walk",
@@ -550,33 +452,12 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "Mars across D1/D9/D10/D7 vargas (signal_type=divisional)"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "named Mars yogas across divisional charts"
         }
       ]
     },
     {
       "id": "GT.023",
       "mock_tool_calls": [
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "Saturn-tagged discovery patterns"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "Saturn-bridging resonance pairs"
-        },
         {
           "tool_name": "msr_sql",
           "params": {},
@@ -590,18 +471,11 @@
       "id": "GT.024",
       "mock_tool_calls": [
         {
-          "tool_name": "pattern_register",
+          "tool_name": "contradiction_register",
           "params": {},
           "token_budget": 800,
           "priority": 2,
-          "reason": "L2.5 discovery \u2014 revealed patterns, ambiguous prompt fallback"
-        },
-        {
-          "tool_name": "cluster_atlas",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "L2.5 discovery \u2014 dominant clusters, ambiguous prompt fallback"
+          "reason": "L2.5 discovery — revealed patterns, ambiguous prompt fallback [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -609,32 +483,11 @@
       "id": "GT.025",
       "mock_tool_calls": [
         {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "discovery surface \u2014 named patterns"
-        },
-        {
           "tool_name": "contradiction_register",
           "params": {},
           "token_budget": 800,
           "priority": 2,
-          "reason": "discovery surface \u2014 contradictions"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "discovery surface \u2014 resonances"
-        },
-        {
-          "tool_name": "cluster_atlas",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "discovery surface \u2014 clusters"
+          "reason": "discovery surface — contradictions"
         }
       ]
     },
@@ -647,13 +500,6 @@
           "token_budget": 800,
           "priority": 1,
           "reason": "Mercury-domain forward_looking signals + dasha-tagged signals"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 1,
-          "reason": "R7 cross-domain lens \u2014 Mercury-keyed forward_looking patterns"
         },
         {
           "tool_name": "vector_search",
@@ -681,20 +527,6 @@
           "token_budget": 800,
           "priority": 2,
           "reason": "holistic signal sweep (post-budget-arbitration)"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "named yogas across the chart"
-        },
-        {
-          "tool_name": "cluster_atlas",
-          "params": {},
-          "token_budget": 800,
-          "priority": 2,
-          "reason": "dominant cross-domain clusters"
         },
         {
           "tool_name": "cgm_graph_walk",
@@ -752,28 +584,7 @@
       "id": "GT.033",
       "mock_tool_calls": [
         {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
           "tool_name": "contradiction_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "cluster_atlas",
           "params": {},
           "token_budget": 2000,
           "priority": 1,
@@ -785,28 +596,7 @@
       "id": "GT.034",
       "mock_tool_calls": [
         {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
           "tool_name": "contradiction_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "cluster_atlas",
           "params": {},
           "token_budget": 2000,
           "priority": 1,
@@ -818,28 +608,7 @@
       "id": "GT.035",
       "mock_tool_calls": [
         {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
           "tool_name": "contradiction_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "cluster_atlas",
           "params": {},
           "token_budget": 2000,
           "priority": 1,
@@ -934,13 +703,6 @@
           "token_budget": 2000,
           "priority": 1,
           "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
         }
       ]
     },
@@ -949,13 +711,6 @@
       "mock_tool_calls": [
         {
           "tool_name": "msr_sql",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "pattern_register",
           "params": {},
           "token_budget": 2000,
           "priority": 1,
@@ -981,18 +736,11 @@
           "reason": "mock for regression gate"
         },
         {
-          "tool_name": "cluster_atlas",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 2000,
           "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
+          "reason": "mock for regression gate [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -1007,11 +755,11 @@
           "reason": "mock for regression gate"
         },
         {
-          "tool_name": "pattern_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 2000,
           "priority": 1,
-          "reason": "mock for regression gate"
+          "reason": "mock for regression gate [RC-06: substituted for a dead-capability tool]"
         },
         {
           "tool_name": "cgm_graph_walk",
@@ -1031,13 +779,6 @@
           "token_budget": 2000,
           "priority": 1,
           "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
         }
       ]
     },
@@ -1046,13 +787,6 @@
       "mock_tool_calls": [
         {
           "tool_name": "msr_sql",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "pattern_register",
           "params": {},
           "token_budget": 2000,
           "priority": 1,
@@ -1078,18 +812,11 @@
           "reason": "mock for regression gate"
         },
         {
-          "tool_name": "cluster_atlas",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 2000,
           "priority": 1,
-          "reason": "mock for regression gate"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "mock for regression gate"
+          "reason": "mock for regression gate [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -1151,18 +878,11 @@
       "id": "GT.050",
       "mock_tool_calls": [
         {
-          "tool_name": "multi_school_signal_lookup",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "retrieve all-school career signals"
-        },
-        {
           "tool_name": "convergence_score_lookup",
           "params": {},
           "token_budget": 1500,
           "priority": 1,
-          "reason": "compute cross-school convergence for CAREER"
+          "reason": "compute cross-school convergence for CAREER [RC-06 fix-cycle-2: multi_school_signal_lookup mock removed — WP-1.7 dead capability, no live twin]"
         }
       ]
     },
@@ -1174,14 +894,7 @@
           "params": {},
           "token_budget": 2000,
           "priority": 1,
-          "reason": "convergence score for RELATIONSHIP domain across Parashari, Jaimini, KP"
-        },
-        {
-          "tool_name": "multi_school_signal_lookup",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 2,
-          "reason": "retrieve school-specific relationship signals"
+          "reason": "convergence score for RELATIONSHIP domain across Parashari, Jaimini, KP [RC-06 fix-cycle-2: multi_school_signal_lookup mock removed — WP-1.7 dead capability, no live twin]"
         }
       ]
     },
@@ -1215,13 +928,6 @@
           "reason": "career and profession signals"
         },
         {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 2,
-          "reason": "career pattern archetypes"
-        },
-        {
           "tool_name": "cgm_graph_walk",
           "params": {},
           "token_budget": 1500,
@@ -1253,13 +959,6 @@
           "token_budget": 2000,
           "priority": 2,
           "reason": "dasha-linked MSR signals"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 3,
-          "reason": "pattern archetypes active in upcoming dasha"
         }
       ]
     },
@@ -1281,11 +980,11 @@
           "reason": "7th/4th house and relationship signals"
         },
         {
-          "tool_name": "resonance_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 1500,
           "priority": 2,
-          "reason": "resonance patterns for relationship domain"
+          "reason": "resonance patterns for relationship domain [RC-06: substituted for a dead-capability tool]"
         },
         {
           "tool_name": "cgm_graph_walk",
@@ -1300,38 +999,24 @@
       "id": "GT.056",
       "mock_tool_calls": [
         {
-          "tool_name": "query_signal_state",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "currently active MSR signals"
-        },
-        {
           "tool_name": "msr_sql",
           "params": {},
           "token_budget": 2000,
-          "priority": 2,
-          "reason": "signal definitions and metadata"
+          "priority": 1,
+          "reason": "currently active MSR signals, signal definitions and metadata [RC-06 fix-cycle-2: query_signal_state mock removed — WP-1.7 dead capability; msr_sql is its live twin (tool_name_bridge.ts:420) and promoted to priority 1]"
         },
         {
-          "tool_name": "pattern_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 1500,
           "priority": 3,
-          "reason": "active pattern archetypes correlated with lit signals"
+          "reason": "active pattern archetypes correlated with lit signals [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
     {
       "id": "GT.057",
       "mock_tool_calls": [
-        {
-          "tool_name": "query_signal_state",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "signals ripening over 12-month window"
-        },
         {
           "tool_name": "temporal",
           "params": {},
@@ -1344,27 +1029,13 @@
           "params": {},
           "token_budget": 2000,
           "priority": 2,
-          "reason": "signal definitions for ripening signals"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 3,
-          "reason": "pattern archetypes associated with ripening signals"
+          "reason": "signal definitions for ripening signals, incl. ripening-state filtering [RC-06 fix-cycle-2: query_signal_state mock removed — WP-1.7 dead capability; msr_sql is its live twin and promoted to required]"
         }
       ]
     },
     {
       "id": "GT.058",
       "mock_tool_calls": [
-        {
-          "tool_name": "query_signal_state",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "state of SIG.MSR.142 during specified period"
-        },
         {
           "tool_name": "lel_query",
           "params": {},
@@ -1377,7 +1048,7 @@
           "params": {},
           "token_budget": 2000,
           "priority": 2,
-          "reason": "SIG.MSR.142 definition and co-signals"
+          "reason": "SIG.MSR.142 definition, co-signals, and state during specified period [RC-06 fix-cycle-2: query_signal_state mock removed — WP-1.7 dead capability; msr_sql is its live twin and promoted to required]"
         }
       ]
     },
@@ -1385,18 +1056,11 @@
       "id": "GT.059",
       "mock_tool_calls": [
         {
-          "tool_name": "query_kp_ruling_planets",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "KP star-lord and sub-lord chain for each graha"
-        },
-        {
           "tool_name": "msr_sql",
           "params": {},
           "token_budget": 1500,
-          "priority": 2,
-          "reason": "KP-correlated MSR signals"
+          "priority": 1,
+          "reason": "KP-correlated MSR signals [RC-06 fix-cycle-2: query_kp_ruling_planets mock removed — WP-1.7 dead capability, no KP engine registered; msr_sql is the sole surviving substrate read, promoted to priority 1/required]"
         }
       ]
     },
@@ -1404,39 +1068,17 @@
       "id": "GT.060",
       "mock_tool_calls": [
         {
-          "tool_name": "query_kp_ruling_planets",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "Saturn KP ruling-planet chain"
-        },
-        {
           "tool_name": "msr_sql",
           "params": {},
           "token_budget": 1500,
-          "priority": 2,
-          "reason": "Saturn-related MSR signals"
-        },
-        {
-          "tool_name": "kp_query",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 2,
-          "reason": "KP cuspal and significator data for Saturn"
+          "priority": 1,
+          "reason": "Saturn-related MSR signals [RC-06 fix-cycle-2: query_kp_ruling_planets and kp_query mocks removed — both WP-1.7 dead capabilities, no KP engine registered; msr_sql is the sole surviving substrate read, promoted to priority 1/required]"
         }
       ]
     },
     {
       "id": "GT.061",
-      "mock_tool_calls": [
-        {
-          "tool_name": "query_kp_ruling_planets",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "KP sub-lords under lahiri vs krishnamurti ayanamsha comparison"
-        }
-      ]
+      "mock_tool_calls": []
     },
     {
       "id": "GT.062",
@@ -1454,13 +1096,6 @@
           "token_budget": 2000,
           "priority": 2,
           "reason": "MSR signals relevant for 2026"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 2,
-          "reason": "pattern archetypes activated in 2026 Varshaphala"
         },
         {
           "tool_name": "lel_query",
@@ -1489,18 +1124,11 @@
           "reason": "MSR signals across the 2024-2028 window"
         },
         {
-          "tool_name": "pattern_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 1500,
           "priority": 2,
-          "reason": "pattern archetypes for multi-year annual chart comparison"
-        },
-        {
-          "tool_name": "resonance_register",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 3,
-          "reason": "resonance patterns across the comparison period"
+          "reason": "pattern archetypes for multi-year annual chart comparison [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -1534,13 +1162,6 @@
           "token_budget": 2000,
           "priority": 2,
           "reason": "MSR signals active in the coming year"
-        },
-        {
-          "tool_name": "pattern_register",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 3,
-          "reason": "pattern archetypes for next-year forecast"
         }
       ]
     },
@@ -1612,11 +1233,11 @@
           "reason": "R-TC: current transit snapshot — today's planetary positions"
         },
         {
-          "tool_name": "pattern_register",
+          "tool_name": "vector_search",
           "params": {},
           "token_budget": 1500,
           "priority": 2,
-          "reason": "pattern archetypes activated by current transit configuration"
+          "reason": "pattern archetypes activated by current transit configuration [RC-06: substituted for a dead-capability tool]"
         }
       ]
     },
@@ -1692,14 +1313,19 @@
       "mock_tool_calls": [
         {
           "tool_name": "lel_query",
-          "params": { "category": "relationship", "significance": "major" },
+          "params": {
+            "category": "relationship",
+            "significance": "major"
+          },
           "token_budget": 600,
           "priority": 1,
           "reason": "R-PA + LEL anchor: get marriage event date from ground-truth log"
         },
         {
           "tool_name": "query_panchanga",
-          "params": { "date": "2008-04-15" },
+          "params": {
+            "date": "2008-04-15"
+          },
           "token_budget": 400,
           "priority": 1,
           "reason": "R-PA: panchanga at marriage sunrise — tithi is the primary answer"
@@ -1711,7 +1337,12 @@
       "mock_tool_calls": [
         {
           "tool_name": "query_panchanga",
-          "params": { "start_date": "2026-05-19", "end_date": "2026-07-31", "tithi": 15, "limit": 3 },
+          "params": {
+            "start_date": "2026-05-19",
+            "end_date": "2026-07-31",
+            "tithi": 15,
+            "limit": 3
+          },
           "token_budget": 400,
           "priority": 1,
           "reason": "R-PA explicit Purnima (tithi=15) filter — pure panchanga lookup, no ephemeris needed"
@@ -1747,7 +1378,13 @@
       "mock_tool_calls": [
         {
           "tool_name": "query_transit_event",
-          "params": { "event_type": "ingress", "planet": "Jupiter", "target_sign": "Aries", "start_date": "2026-05-19", "limit": 5 },
+          "params": {
+            "event_type": "ingress",
+            "planet": "Jupiter",
+            "target_sign": "Aries",
+            "start_date": "2026-05-19",
+            "limit": 5
+          },
           "token_budget": 400,
           "priority": 1,
           "reason": "R-TE event_type=ingress — routes to ephemeris_daily.sign_ingress_today for next Jupiter-Aries ingress"
@@ -1759,7 +1396,12 @@
       "mock_tool_calls": [
         {
           "tool_name": "query_transit_event",
-          "params": { "event_type": "station", "planet": "Mercury", "station_type": "retrograde_start", "start_date": "2026-05-19" },
+          "params": {
+            "event_type": "station",
+            "planet": "Mercury",
+            "station_type": "retrograde_start",
+            "start_date": "2026-05-19"
+          },
           "token_budget": 400,
           "priority": 1,
           "reason": "R-TE event_type=station — routes to retrogrades table for next Mercury retrograde start"
@@ -1771,14 +1413,30 @@
       "mock_tool_calls": [
         {
           "tool_name": "query_transit_event",
-          "params": { "event_type": "aspect", "transit_planet": "Saturn", "natal_planet": "Moon", "aspect_degrees": [180, 90, 60, 120], "orb_deg": 1.5, "start_date": "2026-05-19", "end_date": "2028-05-19" },
+          "params": {
+            "event_type": "aspect",
+            "transit_planet": "Saturn",
+            "natal_planet": "Moon",
+            "aspect_degrees": [
+              180,
+              90,
+              60,
+              120
+            ],
+            "orb_deg": 1.5,
+            "start_date": "2026-05-19",
+            "end_date": "2028-05-19"
+          },
           "token_budget": 600,
           "priority": 1,
           "reason": "R-TE event_type=aspect — natal_planet=Moon triggers chart_facts lookup inside tool; sidecar live-compute returns exact event JDs"
         },
         {
           "tool_name": "msr_sql",
-          "params": { "planet": "Moon", "limit": 15 },
+          "params": {
+            "planet": "Moon",
+            "limit": 15
+          },
           "token_budget": 400,
           "priority": 2,
           "reason": "R7a: natal Moon signal density for synthesis-layer interpretation of upcoming Saturn transit"
@@ -1790,7 +1448,13 @@
       "mock_tool_calls": [
         {
           "tool_name": "query_transit_event",
-          "params": { "event_type": "conjunction", "planet_a": "Jupiter", "planet_b": "Saturn", "start_date": "2026-05-19", "orb_deg": 1.0 },
+          "params": {
+            "event_type": "conjunction",
+            "planet_a": "Jupiter",
+            "planet_b": "Saturn",
+            "start_date": "2026-05-19",
+            "orb_deg": 1.0
+          },
           "token_budget": 500,
           "priority": 1,
           "reason": "R-TE event_type=conjunction — sidecar live-compute for next Jupiter-Saturn conjunction"
@@ -1802,7 +1466,9 @@
       "mock_tool_calls": [
         {
           "tool_name": "query_ephemeris",
-          "params": { "planet": "Jupiter" },
+          "params": {
+            "planet": "Jupiter"
+          },
           "token_budget": 400,
           "priority": 1,
           "reason": "R-TC WHAT-not-WHEN: current Jupiter sign is a positional lookup; R-TE does NOT fire"
@@ -1826,7 +1492,10 @@
       "mock_tool_calls": [
         {
           "tool_name": "query_dasha_periods",
-          "params": { "level": "M", "next_count": 1 },
+          "params": {
+            "level": "M",
+            "next_count": 1
+          },
           "token_budget": 300,
           "priority": 1,
           "reason": "R-DA: next MD lookup — level:M + next_count:1 returns the first MD cluster after Mercury MD"
@@ -1838,7 +1507,9 @@
       "mock_tool_calls": [
         {
           "tool_name": "query_dasha_periods",
-          "params": { "md_lord": "Saturn" },
+          "params": {
+            "md_lord": "Saturn"
+          },
           "token_budget": 400,
           "priority": 1,
           "reason": "R-DA: md_lord filter returns all Saturn MD antardasha rows (DSH.V.006-014)"
@@ -1850,21 +1521,28 @@
       "mock_tool_calls": [
         {
           "tool_name": "msr_sql",
-          "params": { "planet": "Mercury", "limit": 20 },
+          "params": {
+            "planet": "Mercury",
+            "limit": 20
+          },
           "token_budget": 800,
           "priority": 1,
           "reason": "R7a: natal Mercury signal density for MD-lord interpretive query"
         },
         {
           "tool_name": "chart_facts_query",
-          "params": { "planet": "Mercury" },
+          "params": {
+            "planet": "Mercury"
+          },
           "token_budget": 400,
           "priority": 1,
           "reason": "R-FACT: Mercury placement + strength data for MD-lord interpretation"
         },
         {
           "tool_name": "query_dasha_periods",
-          "params": { "md_lord": "Mercury" },
+          "params": {
+            "md_lord": "Mercury"
+          },
           "token_budget": 200,
           "priority": 3,
           "reason": "R-DA priority 3: date anchor for interpretive query — schedule context only"
