@@ -437,7 +437,7 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.currentMahaAntar).toBeNull()
   })
 
-  it('still runs synthesis over partial evidence when a cost cap trips, and forwards the cap reason as a gap', async () => {
+  it('RC-07: skips the synthesis LLM call (fail-honest degradation) when the call-count cap already tripped during dispatch, instead of firing an unaccounted extra call', async () => {
     mockCallPipelinePlanner.mockResolvedValue(
       planOutcome(['chart_facts_query', 'get_positions', 'get_strength', 'get_dashas']),
     )
@@ -449,12 +449,88 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     const { POST: POST_WITH_LOW_CAP } = await import('../route')
 
     const res = await POST_WITH_LOW_CAP(makeReq({ chart_id: CHART, question: 'deep dive' }))
-    await readNdjson(res)
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    // The synthesis LLM call is itself a costed sub-call now covered by the SAME
+    // tracker the dispatch loop used — once the call-count cap is exhausted by
+    // dispatch, the synthesis call must be skipped, not fired anyway as an
+    // untracked extra call.
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(body.reading).toBeNull()
+    expect((body.completeness as { status: string }).status).toBe('partial')
+    expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBe('call_count_cap')
+    expect(body.judgment_flags).toContain('cost_cap_call_count_exceeded')
+    expect(body.judgment_flags).toContain('synthesis_skipped_cost_cap')
+  })
+
+  it('RC-07: skips the synthesis LLM call and degrades honestly when the wall-clock cap is exhausted by the time synthesis is reached, even though dispatch itself never tripped', async () => {
+    // A single tool call whose dispatch-loop cap check passes immediately (the
+    // cap hasn't elapsed yet when checked, just before the retrieve() call
+    // starts) but whose retrieve() itself takes real time — long enough that by
+    // the time execution reaches the synthesis-stage cap check, the (small)
+    // wall-clock budget has elapsed. This proves the synthesis stage carries
+    // its OWN live cap check against the tracker, independent of whatever
+    // happened during dispatch — not merely inheriting dispatch's already-set
+    // costCapTripped state.
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    mockGetToolByName.mockImplementation((name: string) => ({
+      name,
+      version: '1.0',
+      retrieve: vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  tool_bundle_id: 'b1',
+                  tool_name: name,
+                  tool_version: '1.0',
+                  invocation_params: {},
+                  results: [{ id: '1' }],
+                  served_from_cache: false,
+                  latency_ms: 1,
+                  result_hash: 'sha256:x',
+                  schema_version: '1.0',
+                }),
+              40,
+            ),
+          ),
+      ),
+    }))
+    vi.doMock('@/lib/pipeline/cost_caps', async () => {
+      const actual = await vi.importActual<typeof import('@/lib/pipeline/cost_caps')>('@/lib/pipeline/cost_caps')
+      return { ...actual, resolveCostCapsForEntitlement: () => ({ maxCalls: 10, maxWallClockMs: 15 }) }
+    })
+    vi.resetModules()
+    const { POST: POST_WITH_TIGHT_WALL_CLOCK } = await import('../route')
+
+    const res = await POST_WITH_TIGHT_WALL_CLOCK(makeReq({ chart_id: CHART, question: 'deep dive' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(body.reading).toBeNull()
+    expect((body.completeness as { status: string }).status).toBe('partial')
+    expect((body.completeness as { cap_tripped: unknown }).cap_tripped).toBe('wall_clock_cap')
+    expect(body.judgment_flags).toContain('cost_cap_wall_clock_exceeded')
+    expect(body.judgment_flags).toContain('synthesis_skipped_cost_cap')
+    // The tool dispatch itself still ran and reported successfully — the cap
+    // breach is specific to the synthesis stage, not a re-litigation of dispatch.
+    expect((body.results as Array<{ tool_name: string }>).map((r) => r.tool_name)).toEqual(['chart_facts_query'])
+  })
+
+  it('RC-07: runs synthesis normally (not skipped) when neither cap is anywhere near breached', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(
+      planOutcome(['chart_facts_query', 'get_positions', 'get_strength', 'get_dashas']),
+    )
+    const res = await POST(makeReq({ chart_id: CHART, question: 'deep dive' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
 
     expect(mockSynthesizeReading).toHaveBeenCalledTimes(1)
-    const call = mockSynthesizeReading.mock.calls[0][0]
-    expect(call.capTripped).toBe('call_count_cap')
-    expect(call.evidence.length).toBeGreaterThan(0)
+    expect(body.judgment_flags).not.toContain('synthesis_skipped_cost_cap')
+    expect(body.reading).not.toBeNull()
   })
 
   it('surfaces synthesis-side judgment_flags (e.g. a failed synthesis call) in the final response without failing the whole request', async () => {

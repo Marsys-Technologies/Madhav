@@ -14,20 +14,21 @@
  *
  * GET query params:
  *   ?pin_chart_id=<uuid>  — optional (R5 W4, design §10.6/§31.3/§31.5). When present,
- *                           resolves (and persists if new/drifted) the session pin for
- *                           this chart_id and includes it in the response as
- *                           `session_pin` + any `judgment_flags`. chart_id is ALWAYS
+ *                           resolves (and persists if new/drifted) the provenance stamp
+ *                           for this chart_id and includes it in the response as
+ *                           `provenance_stamp` + any `judgment_flags`. chart_id is ALWAYS
  *                           explicit here — never inferred from active_chart_id (the
  *                           §31.3 mitigation: correctness never rests on active_chart).
  *
  * POST body (JSON):
  *   { active_chart_id?: string | null, pin_chart_id?: string }
- *   pin_chart_id: same semantics as the GET query param — resolves/refreshes the pin
- *   for this chart_id after the active_chart_id write (if any). Independent of
- *   active_chart_id so a caller can pin a chart without also making it "active".
+ *   pin_chart_id: same semantics as the GET query param — resolves/refreshes the
+ *   provenance stamp for this chart_id after the active_chart_id write (if any).
+ *   Independent of active_chart_id so a caller can stamp a chart without also
+ *   making it "active".
  *
  * Responses:
- *   200: { session: McpSession, session_pin?: SessionPinValues, judgment_flags?: string[] }
+ *   200: { session: McpSession, provenance_stamp?: ProvenanceStampValues, judgment_flags?: string[] }
  *   400: { error: string }    — missing required headers
  *   401: { error: string }    — invalid service token
  *   500: { error: string }    — DB error
@@ -42,7 +43,7 @@
  *     the MCP sidecar/tool layer must already have authorized the chart before
  *     ever passing its chart_id here.
  *
- * M3 — MCP elevation arc (2026-07-01). Session pin — R5 W4 (2026-07-09).
+ * M3 — MCP elevation arc (2026-07-01). Provenance stamp — R5 W4 (2026-07-09).
  */
 
 import 'server-only'
@@ -51,7 +52,7 @@ import {
   getOrCreateSession,
   updateActiveChart,
   listUserSessions,
-  getOrRefreshSessionPin,
+  getOrRefreshProvenanceStamp,
 } from '@/lib/mcp/sessions'
 import { validateServiceToken } from '@/lib/mcp/service_token'
 
@@ -79,14 +80,14 @@ export async function GET(request: Request) {
     const session = await getOrCreateSession(uid, sessionKey)
 
     if (pinChartId) {
-      const { pin, judgment_flags } = await getOrRefreshSessionPin(
+      const { pin, judgment_flags } = await getOrRefreshProvenanceStamp(
         session.session_id,
         uid,
         pinChartId
       )
       return NextResponse.json({
         session,
-        session_pin: pin,
+        provenance_stamp: pin,
         ...(judgment_flags.length > 0 ? { judgment_flags } : {}),
       })
     }
@@ -137,14 +138,14 @@ export async function POST(request: Request) {
     }
 
     if (body.pin_chart_id) {
-      const { pin, judgment_flags } = await getOrRefreshSessionPin(
+      const { pin, judgment_flags } = await getOrRefreshProvenanceStamp(
         session.session_id,
         uid,
         body.pin_chart_id
       )
       return NextResponse.json({
         session,
-        session_pin: pin,
+        provenance_stamp: pin,
         ...(judgment_flags.length > 0 ? { judgment_flags } : {}),
       })
     }

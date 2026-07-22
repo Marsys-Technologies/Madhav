@@ -22,10 +22,10 @@
 import 'server-only'
 import { query } from '@/lib/db/client'
 import {
-  resolveSessionPin,
+  resolveProvenanceStamp,
   buildPinPatch,
-  type SessionPinValues,
-} from '@/lib/retrieval/session_pin'
+  type ProvenanceStampValues,
+} from '@/lib/retrieval/provenance_stamp'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -121,33 +121,33 @@ export async function getActiveChart(
   return rows[0]?.active_chart_id ?? null
 }
 
-// ── Session pin (R5 W4 — design §10.6 + §31.3 + §31.5) ────────────────────────
+// ── Provenance stamp (R5 W4 — design §10.6 + §31.3 + §31.5) ───────────────────
 
-export interface SessionPinResult {
-  pin: SessionPinValues
+export interface ProvenanceStampResult {
+  pin: ProvenanceStampValues
   drift: boolean
   judgment_flags: string[]
 }
 
 /**
- * Resolve (and, if needed, refresh + persist) the session pin for
- * (session_id, user_uid, chart_id). Re-keys the pin by chart_id INSIDE the
- * session's existing state_json — see session_pin.ts's doc comment for the full
+ * Resolve (and, if needed, refresh + persist) the provenance stamp for
+ * (session_id, user_uid, chart_id). Re-keys the stamp by chart_id INSIDE the
+ * session's existing state_json — see provenance_stamp.ts's doc comment for the full
  * design-mandate trace (§10.6 SESSION STABILITY, §31.3 SESSION-PIN COLLISION,
  * §31.5 BUILD PROVENANCE). No schema change (D6): state_json is the free-form
  * JSONB column already provisioned by migration 382.
  *
  * Lookup-mutate-writeback, same discipline as the rest of this file: reads the
- * current state_json, resolves the pin (reusing it untouched if the chart's
- * build hasn't moved), and writes back ONLY when the pin is new or drifted —
- * an unchanged pin causes no write (last_seen_at is still touched by the
+ * current state_json, resolves the stamp (reusing it untouched if the chart's
+ * build hasn't moved), and writes back ONLY when the stamp is new or drifted —
+ * an unchanged stamp causes no write (last_seen_at is still touched by the
  * caller's own getOrCreateSession call, so this does not need to duplicate that).
  */
-export async function getOrRefreshSessionPin(
+export async function getOrRefreshProvenanceStamp(
   session_id: string,
   user_uid: string,
   chart_id: string
-): Promise<SessionPinResult> {
+): Promise<ProvenanceStampResult> {
   const { rows } = await query<{ state_json: Record<string, unknown> }>(
     `SELECT state_json
      FROM mcp_sessions
@@ -156,7 +156,7 @@ export async function getOrRefreshSessionPin(
     [session_id, user_uid]
   )
   const stateJson = rows[0]?.state_json ?? {}
-  const { pin, drift, judgment_flags } = await resolveSessionPin(stateJson, chart_id)
+  const { pin, drift, judgment_flags } = await resolveProvenanceStamp(stateJson, chart_id)
 
   const alreadyPersisted = !drift && rows.length > 0 &&
     (stateJson['pins'] as Record<string, unknown> | undefined)?.[chart_id] !== undefined

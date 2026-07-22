@@ -56,6 +56,11 @@
  * a `judgment_flags` entry naming which cap tripped. Per ratified doctrine, this
  * is never silently truncated and presented as complete.
  *
+ * The synthesis stage (below the dispatch loop) is gated through the SAME
+ * `tracker` via its own `checkAndRecordCall()` call — RC-07 closed the gap where
+ * that LLM call ran unconditionally, outside the dual cap (see the synthesis
+ * block's own comment for the fail-honest degradation shape).
+ *
  * Runs synchronously, in one HTTP response, up to the resolved
  * `maxWallClockMs` (a few minutes for elevated entitlements) — a later task
  * builds the async job-handle wrapper around this call on the platform-mcp side.
@@ -436,8 +441,6 @@ export async function POST(request: Request) {
         judgmentFlags.push('empty_tool_results')
       }
 
-      const isPartial = costCapTripped !== null || unresolvedTools.length > 0
-
       // W6.3 fix-cycle (native-directed, live trace d08d823a): chart_header must be
       // resolved BEFORE synthesis, not after — synthesis needs current_maha_antar
       // (+ the same as-of date) to anchor the model's notion of "now"; fetching it
@@ -451,32 +454,57 @@ export async function POST(request: Request) {
       ).catch(() => ({ header: null, flags: ['chart_header_unresolved'] }))
       judgmentFlags.push(...chartHeaderFlags)
 
-      // ── Synthesis (W6.2 fix-cycle) ────────────────────────────────────────────
+      // ── Synthesis (W6.2 fix-cycle; cap-gated per RC-07) ──────────────────────
       // Turn the gathered floor evidence into an acharya-grade reading — a single,
       // non-agentic LLM call (see prashna_ask_synthesis.ts's header for the design
-      // rationale). Runs even when a cap tripped or some floor items didn't resolve
-      // — the synthesis prompt is told about every gap explicitly (formatGapsBlock)
-      // so it discloses rather than fabricates over them; a partial-but-honest
-      // reading over whatever evidence was gathered is more useful than none.
-      controller.enqueue(
-        encoder.encode(JSON.stringify({ event: 'progress', tools_dispatched_count: toolEventLog.length, cap_ceiling: { maxCalls: costCaps.maxCalls, maxWallClockMs: costCaps.maxWallClockMs }, elapsed_ms: Date.now() - dispatchLoopStart, last_tool: 'synthesis' }) + '\n'),
-      )
-      const synthesis = await synthesizeReading({
-        // Guaranteed non-empty by POST's own guard clause before this closure ever
-        // runs — TS can't carry that narrowing across the function boundary.
-        chartId: chartId ?? '',
-        question: question ?? '',
-        queryClass: plan.query_class ?? 'unknown',
-        queryIntentSummary: plan.query_intent_summary ?? '',
-        evidence: toolResults,
-        unresolvedTools,
-        emptyResultTools,
-        strippedLeakedCapabilities: leakedTools,
-        capTripped: costCapTripped?.reason ?? null,
-        nowContextDate,
-        currentMahaAntar: chartHeader?.current_maha_antar ?? null,
-      })
+      // rationale). It is a real costed sub-call exactly like a tool dispatch, so
+      // it goes through the SAME `tracker` instance the dispatch loop above uses
+      // — checkAndRecordCall() folds it into BOTH the call-count and wall-clock
+      // caps, closing the gap where this call previously ran unconditionally and
+      // unaccounted regardless of tracker state (RC-07, RETRIEVAL_RESIDUAL_CLOSURE
+      // _BRIEF_v1_0.md §Cluster 3). Fail-honest: if the cap is already breached —
+      // whether tripped earlier in the dispatch loop or freshly by wall-clock —
+      // the LLM call is skipped entirely (never fired, never left to hang) and
+      // synthesis degrades to the SAME `{ reading: null, judgment_flags: [...] }`
+      // shape `synthesizeReading`'s own internal failure paths already use, so a
+      // caller sees one consistent degraded-synthesis contract no matter which
+      // failure mode produced it. The completeness receipt (`cap_tripped`,
+      // `status: 'partial'`) and a dedicated `synthesis_skipped_cost_cap`
+      // judgment flag disclose exactly what happened — never a silent drop.
+      const synthesisCapCheck = tracker.checkAndRecordCall()
+      let synthesis: Awaited<ReturnType<typeof synthesizeReading>>
+      if (synthesisCapCheck.stopped) {
+        const reasonFlag = synthesisCapCheck.judgmentFlag ?? 'cost_cap_exceeded'
+        if (!judgmentFlags.includes(reasonFlag)) judgmentFlags.push(reasonFlag)
+        judgmentFlags.push('synthesis_skipped_cost_cap')
+        if (!costCapTripped) {
+          costCapTripped = { reason: synthesisCapCheck.reason ?? 'unknown_cap', judgmentFlag: reasonFlag }
+        }
+        synthesis = { reading: null, model_id: null, judgment_flags: [] }
+      } else {
+        controller.enqueue(
+          encoder.encode(JSON.stringify({ event: 'progress', tools_dispatched_count: toolEventLog.length, cap_ceiling: { maxCalls: costCaps.maxCalls, maxWallClockMs: costCaps.maxWallClockMs }, elapsed_ms: Date.now() - dispatchLoopStart, last_tool: 'synthesis' }) + '\n'),
+        )
+        synthesis = await synthesizeReading({
+          // Guaranteed non-empty by POST's own guard clause before this closure
+          // ever runs — TS can't carry that narrowing across the function
+          // boundary.
+          chartId: chartId ?? '',
+          question: question ?? '',
+          queryClass: plan.query_class ?? 'unknown',
+          queryIntentSummary: plan.query_intent_summary ?? '',
+          evidence: toolResults,
+          unresolvedTools,
+          emptyResultTools,
+          strippedLeakedCapabilities: leakedTools,
+          capTripped: costCapTripped?.reason ?? null,
+          nowContextDate,
+          currentMahaAntar: chartHeader?.current_maha_antar ?? null,
+        })
+      }
       judgmentFlags.push(...synthesis.judgment_flags)
+
+      const isPartial = costCapTripped !== null || unresolvedTools.length > 0
 
       const finalBody = {
         ok: true,

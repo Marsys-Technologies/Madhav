@@ -76,7 +76,7 @@ describe('JUDGMENT_FLAG_CODES — closed, registry-checked vocabulary', () => {
     'no_parivartana_or_catalog_matches_for_graha',
     'no_mahadasha_periods_for_graha',
     'budget_exceeded_after_trim',
-    'chart_rebuilt_mid_session_pin_refreshed',
+    'chart_rebuilt_mid_provenance_stamp_refreshed',
     'chart_header_unresolved',
     'cursor_filter_mismatch',
     'hollow_envelope_no_data_rows',
@@ -116,9 +116,9 @@ describe('judgmentFlagsInclude / judgmentFlagText — compat shim over mixed-sha
     expect(judgmentFlagsInclude(flags, 'timing_hook_failed')).toBe(false)
   })
 
-  it('finds a code among legacy bare-string entries (pre-migration emitter, e.g. session-pin drift)', () => {
-    const flags: JudgmentFlagEntry[] = ['chart_rebuilt_mid_session_pin_refreshed']
-    expect(judgmentFlagsInclude(flags, 'chart_rebuilt_mid_session_pin_refreshed')).toBe(true)
+  it('finds a code among legacy bare-string entries (pre-migration emitter, e.g. provenance-stamp drift)', () => {
+    const flags: JudgmentFlagEntry[] = ['chart_rebuilt_mid_provenance_stamp_refreshed']
+    expect(judgmentFlagsInclude(flags, 'chart_rebuilt_mid_provenance_stamp_refreshed')).toBe(true)
   })
 
   it('finds a code among legacy `code: detail` prefixed strings (the pre-migration convention several emitters used)', () => {
@@ -127,9 +127,9 @@ describe('judgmentFlagsInclude / judgmentFlagText — compat shim over mixed-sha
   })
 
   it('never throws on a mixed array of both shapes', () => {
-    const flags: JudgmentFlagEntry[] = [judgmentFlag('zero_rows_returned'), 'chart_rebuilt_mid_session_pin_refreshed']
+    const flags: JudgmentFlagEntry[] = [judgmentFlag('zero_rows_returned'), 'chart_rebuilt_mid_provenance_stamp_refreshed']
     expect(() => judgmentFlagsInclude(flags, 'zero_rows_returned')).not.toThrow()
-    expect(judgmentFlagsInclude(flags, 'chart_rebuilt_mid_session_pin_refreshed')).toBe(true)
+    expect(judgmentFlagsInclude(flags, 'chart_rebuilt_mid_provenance_stamp_refreshed')).toBe(true)
   })
 
   it('handles null/undefined flags arrays defensively', () => {
