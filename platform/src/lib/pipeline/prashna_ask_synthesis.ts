@@ -111,32 +111,162 @@ function buildChartContext(chart: {
   }
 }
 
-// Code-quality follow-up: a wide tool result (e.g. an unfiltered chart_facts_query
-// dump) can run to tens of thousands of characters — confirmed live this session
-// (a single ganita_chart_facts_get call returned an 80KB+ payload). Serializing that
-// unbounded into one synthesis prompt risks blowing the model's context budget and
-// spiking token cost with no visibility. Cap each evidence item's serialized size and
-// disclose truncation explicitly (never silently drop rows without saying so — B.10).
-const MAX_EVIDENCE_ITEM_CHARS = 8_000
+// RC-08 fix (RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md, 2026-07-22): the original
+// (W6.2, commit 56d4a41f) flat MAX_EVIDENCE_ITEM_CHARS=8_000 was firing
+// synthesis_evidence_truncated on ordinary deepdive readings, not just the
+// pathological unfiltered-dump case it was built for. Root cause: this route's
+// `tool.retrieve()` calls (platform/src/app/api/mcp/prashna_ask/route.ts) run
+// in-process against the retrieval registry directly — they never pass through
+// platform-mcp's `applyResponseBudget` / `finalizeMcpBudget` (response_budget.ts),
+// which only wraps the MCP protocol boundary in the platform-mcp package. So a
+// normal floor item's full, untrimmed result set lands here with NO upstream size
+// control at all, and a flat per-item cap blind to how many tools the floor
+// actually dispatched was both too tight for a lean floor (few tools, budget to
+// spare) and non-adaptive for a wide one.
+//
+// Fix, per RETRIEVAL_STRATEGY_v1_0.md §3.5 (the distillation boundary):
+//   1. The per-item budget is now PROPORTIONAL to the evidence set — a shared
+//      TOTAL_EVIDENCE_BUDGET_CHARS ceiling divided across however many items
+//      actually arrived (floored at MIN_EVIDENCE_ITEM_CHARS so a wide floor can't
+//      starve every item to unreadability). A standard ≤10-umbrella-call deepdive
+//      (§2 rule 6 target) gets several times the old flat 8,000-char cap per item.
+//   2. When an item's results genuinely exceed its budget, trimming is ROW-LEVEL
+//      and BEARING-AWARE (§3.5: "rank by bearing-on-the-question, not magnitude";
+//      a "dissent quota" for contradictions/anomalies/low-confidence-high-impact
+//      rows) — never a blind character slice through the middle of a serialized
+//      JSON array, which is lossy in a way that silently favors whichever rows
+//      happen to serialize first and can drop the single dissenting or
+//      highest-significance row purely because of its position.
+//   3. Trim is disclosed (kept/total row counts, whether a dissent row still
+//      didn't fit) — never a silent drop (B.10).
+const TOTAL_EVIDENCE_BUDGET_CHARS = 320_000
+const MIN_EVIDENCE_ITEM_CHARS = 6_000
+/** A row this uncertain about its own finding is exactly the "low-confidence-
+ *  high-impact" class §3.5(b)'s dissent quota exists to protect: it must survive
+ *  a trim ahead of higher-confidence-but-lower-significance filler, never be the
+ *  first thing cut just because it sorted late in the tool's raw result order. */
+const DISSENT_CONFIDENCE_THRESHOLD = 0.5
+/** Added to a dissent row's rank score so it always outranks a non-dissent row —
+ *  the quota is a real floor, not a soft tiebreaker. */
+const DISSENT_RANK_BONUS = 1_000
+/** Conservative estimate of a row's contribution to the enclosing array's own
+ *  JSON punctuation/newlines/indentation beyond the row's own serialized size.
+ *  Under-counting here only makes selection stop very slightly early — never
+ *  over budget. */
+const PER_ROW_OVERHEAD_CHARS = 40
 
-function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block: string; truncatedTools: string[] } {
+/** Best-effort read of a row's bearing signal. `ToolBundleResult` (the shared
+ *  retrieval type every registered tool's `results` conform to — see
+ *  `@/lib/retrieval/shared_types`) already carries `significance` and
+ *  `confidence`; this is read defensively since `SynthesisEvidenceItem.bundle`
+ *  is deliberately typed as `unknown[]`, not every row is guaranteed to
+ *  populate those optional fields. */
+function readBearingHints(row: unknown): { significance: number; isDissent: boolean } {
+  if (typeof row !== 'object' || row === null) return { significance: 0, isDissent: false }
+  const r = row as Record<string, unknown>
+  const significance = typeof r.significance === 'number' ? r.significance : 0
+  const confidence = typeof r.confidence === 'number' ? r.confidence : undefined
+  const isDissent = confidence !== undefined && confidence < DISSENT_CONFIDENCE_THRESHOLD
+  return { significance, isDissent }
+}
+
+export interface RowSelectionResult {
+  keptResults: unknown[]
+  keptCount: number
+  totalCount: number
+  /** Dissent rows that STILL didn't fit even after the dissent bonus — should be
+   *  0 in the common case; only nonzero in the degenerate case where dissent rows
+   *  alone already exceed the item's budget. Disclosed honestly, never hidden. */
+  droppedDissentCount: number
+}
+
+/**
+ * Select which rows of a single evidence item's `results` array fit within
+ * `budgetChars`, ranked by bearing (significance, with a dissent-quota bonus for
+ * low-confidence rows) rather than by original array position — the §3.5 "rank
+ * by bearing-on-the-question, not magnitude" rule made concrete for this prompt.
+ * Kept rows are returned in their ORIGINAL relative order (readability), even
+ * though selection itself is bearing-ranked.
+ */
+export function selectRowsWithinBudget(results: unknown[], budgetChars: number): RowSelectionResult {
+  const scored = results.map((row, index) => {
+    const { significance, isDissent } = readBearingHints(row)
+    const serialized = JSON.stringify(row, null, 2) ?? 'null'
+    return {
+      index,
+      size: serialized.length,
+      score: significance + (isDissent ? DISSENT_RANK_BONUS : 0),
+      isDissent,
+    }
+  })
+  // Highest bearing first; index is a stable tiebreak for equal-score rows —
+  // NOT a magnitude/position rule, just deterministic output among genuine ties.
+  const ranked = [...scored].sort((a, b) => b.score - a.score || a.index - b.index)
+
+  const keepIndices = new Set<number>()
+  let used = 0
+  for (const candidate of ranked) {
+    const cost = candidate.size + PER_ROW_OVERHEAD_CHARS
+    if (used + cost > budgetChars) continue // doesn't fit — a smaller lower-bearing row later in ranked order still might
+    keepIndices.add(candidate.index)
+    used += cost
+  }
+
+  const droppedDissentCount = scored.filter((c) => c.isDissent && !keepIndices.has(c.index)).length
+
+  if (keepIndices.size === 0 && results.length > 0) {
+    // Degenerate case: even the single highest-bearing row alone exceeds the
+    // budget. Keep it anyway so the tool isn't silently zeroed out — its JSON
+    // gets character-sliced by the caller as a last resort.
+    keepIndices.add(ranked[0].index)
+  }
+
+  const keptResults = results.filter((_, i) => keepIndices.has(i))
+  return { keptResults, keptCount: keptResults.length, totalCount: results.length, droppedDissentCount }
+}
+
+export function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block: string; truncatedTools: string[] } {
   if (evidence.length === 0) {
     return { block: '(no evidence was gathered for this request)', truncatedTools: [] }
   }
   const truncatedTools: string[] = []
+  const perItemBudgetChars = Math.max(
+    MIN_EVIDENCE_ITEM_CHARS,
+    Math.floor(TOTAL_EVIDENCE_BUDGET_CHARS / evidence.length),
+  )
   const block = evidence
     .map((e) => {
-      const serialized = JSON.stringify(e.bundle.results, null, 2)
-      if (serialized.length <= MAX_EVIDENCE_ITEM_CHARS) {
-        return `<evidence tool="${e.tool_name}">\n${serialized}\n</evidence>`
+      const results = Array.isArray(e.bundle.results) ? e.bundle.results : []
+      const fullSerialized = JSON.stringify(results, null, 2) ?? '[]'
+      if (fullSerialized.length <= perItemBudgetChars) {
+        return `<evidence tool="${e.tool_name}">\n${fullSerialized}\n</evidence>`
       }
       truncatedTools.push(e.tool_name)
-      const truncated = serialized.slice(0, MAX_EVIDENCE_ITEM_CHARS)
-      return (
-        `<evidence tool="${e.tool_name}" truncated="true">\n${truncated}\n` +
-        `... [TRUNCATED — this tool returned more data than fits here; the reading ` +
-        `should not claim exhaustive coverage of every row from this specific tool]\n</evidence>`
-      )
+
+      const selection = selectRowsWithinBudget(results, perItemBudgetChars)
+      const keptSerialized = JSON.stringify(selection.keptResults, null, 2) ?? '[]'
+      const rowsWereDropped = selection.keptCount < selection.totalCount
+
+      // Degenerate fallback: even the selected (highest-bearing) row set's own
+      // JSON still exceeds the budget (e.g. a single monolithic result blob, not
+      // an array of many small rows) — character-slice as a last resort, same as
+      // the pre-RC-08 behavior, but only ever applied to the highest-bearing
+      // content already selected, never a blind cut across the raw array.
+      const finalSerialized =
+        keptSerialized.length <= perItemBudgetChars ? keptSerialized : keptSerialized.slice(0, perItemBudgetChars)
+
+      const disclosure = rowsWereDropped
+        ? `... [TRUNCATED — kept ${selection.keptCount} of ${selection.totalCount} rows, ranked by ` +
+          `bearing-on-the-question (RETRIEVAL_STRATEGY §3.5); dissent/low-confidence-high-impact rows ` +
+          `are protected first` +
+          (selection.droppedDissentCount > 0
+            ? `, though ${selection.droppedDissentCount} dissent row(s) still did not fit`
+            : '') +
+          ` — the reading should not claim exhaustive coverage of every row from this specific tool]`
+        : `... [TRUNCATED — this tool's highest-bearing content alone exceeds the per-item budget and was ` +
+          `character-truncated — the reading should not claim exhaustive coverage of this tool]`
+
+      return `<evidence tool="${e.tool_name}" truncated="true">\n${finalSerialized}\n${disclosure}\n</evidence>`
     })
     .join('\n\n')
   return { block, truncatedTools }
