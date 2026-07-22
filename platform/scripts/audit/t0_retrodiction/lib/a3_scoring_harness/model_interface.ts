@@ -43,10 +43,26 @@ export type ModelId = 'pratyantar_lord' | 'midpoint_triangle' | 'transit_kernel'
  * model's intensity function over `[t1, t2]`, discretized (STEP_DAYS
  * resolution is the model's own choice — the harness makes no assumption
  * about spacing beyond "sorted ascending by date").
+ *
+ * `bind()` (OPTIONAL, additive — D-4b permission-bridge lane,
+ * wave/D-4b/permission-bridge) is for a model whose `curve()` needs data
+ * that can only be resolved asynchronously (e.g. an HTTP call to the
+ * Python sidecar) but must still satisfy `curve()`'s own SYNCHRONOUS
+ * signature, unchanged, so the rest of the harness (harness.ts,
+ * curve_controls.ts) never has to become async. Such a model's `bind()`
+ * pre-fetches/resolves whatever `curve()` needs for the EXACT
+ * `(chart, eventClass, range)` triple and caches it internally; `curve()`
+ * then reads that cache synchronously and throws (never fabricates a
+ * curve) if called for a triple `bind()` was never awaited for. A model
+ * with no async substrate (e.g. `pratyantar_lord`, whose `curve()` already
+ * reads synchronously from `chart.substrate`) simply omits `bind` — every
+ * existing caller of `TemporalCurveModel` is unaffected, since `bind` is
+ * optional and no existing model implements it.
  */
 export type TemporalCurveModel = {
   readonly modelId: ModelId
   curve(chart: ChartContext, eventClass: EventClass, range: [Date, Date]): CurvePoint[]
+  bind?(chart: ChartContext, eventClass: EventClass, range: [Date, Date]): Promise<void>
 }
 
 export class NotImplementedModelError extends Error {

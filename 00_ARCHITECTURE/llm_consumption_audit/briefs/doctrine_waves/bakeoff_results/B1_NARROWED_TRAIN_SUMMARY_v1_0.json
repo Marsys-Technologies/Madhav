@@ -1,0 +1,156 @@
+{
+  "pratyantar_lord": {
+    "n_events": 31,
+    "mean_crps_real": 37.79159177058348,
+    "mean_crps_control_shuffled": -5.394826977685248,
+    "mean_skill_vs_shuffled": 6.3391316261546065,
+    "hit_count_real": 28,
+    "hit_rate_real": 0.9032258064516129,
+    "mean_shuffled_control_hit_rate": 0.9209354838709678,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "vimshottari": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 31,
+    "hit_rate_real": 1.0,
+    "mean_shuffled_control_hit_rate": 1,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "yogini": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 31,
+    "hit_rate_real": 1.0,
+    "mean_shuffled_control_hit_rate": 1,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "ashtottari": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 31,
+    "hit_rate_real": 1.0,
+    "mean_shuffled_control_hit_rate": 1,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "chara_karaka": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 31,
+    "hit_rate_real": 1.0,
+    "mean_shuffled_control_hit_rate": 1,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "naisargika": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 31,
+    "hit_rate_real": 1.0,
+    "mean_shuffled_control_hit_rate": 1,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "mudda": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 31,
+    "hit_rate_real": 1.0,
+    "mean_shuffled_control_hit_rate": 1,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "kalachakra": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 31,
+    "hit_rate_real": 1.0,
+    "mean_shuffled_control_hit_rate": 1,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "narayana": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 31,
+    "hit_rate_real": 1.0,
+    "mean_shuffled_control_hit_rate": 1,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "sade_sati": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 0,
+    "hit_rate_real": 0.0,
+    "mean_shuffled_control_hit_rate": 0,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "guru_shani_double_transit": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 0,
+    "hit_rate_real": 0.0,
+    "mean_shuffled_control_hit_rate": 0,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "av_threshold": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 0,
+    "hit_rate_real": 0.0,
+    "mean_shuffled_control_hit_rate": 0,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "planetary_return": {
+    "n_events": 31,
+    "mean_crps_real": 30.24844830170484,
+    "mean_crps_control_shuffled": -4.89863817133319,
+    "mean_skill_vs_shuffled": 6.595132065610005,
+    "hit_count_real": 0,
+    "hit_rate_real": 0.0,
+    "mean_shuffled_control_hit_rate": 0,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  },
+  "hierarchical_ensemble": {
+    "n_events": 31,
+    "mean_crps_real": 29.97862372646951,
+    "mean_crps_control_shuffled": -5.121123092197341,
+    "mean_skill_vs_shuffled": 5.986574998033214,
+    "hit_count_real": 30,
+    "hit_rate_real": 0.967741935483871,
+    "mean_shuffled_control_hit_rate": 0.988516129032258,
+    "n_primary_battery_events": 23,
+    "n_secondary_battery_events": 8
+  }
+}

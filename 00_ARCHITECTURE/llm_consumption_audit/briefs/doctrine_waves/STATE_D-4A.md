@@ -4,7 +4,7 @@ lifecycle_step: 8  # CLOSED — all 6 lanes merged+deployed+live-verified, gate 
                    # complete, close artifacts sealed. Deployed SHAs: amjis-web/86e9954d (matches
                    # origin/main HEAD), amjis-sidecar+job/e995c498, amjis-mcp/8f3ace37 (each at
                    # the last commit that touched its respective build path — no drift).
-status: CLOSED — GATE GREEN 7/7
+status: CLOSED — GATE GREEN 7/7  # item 5 scope-corrected 2026-07-22 — see REPORT_D-4A.md §10
 closed_on: 2026-07-19
 opened_on: 2026-07-19  # same-session open-to-close; native directive was fully autonomous,
                        # single-prompt execution to the gate
