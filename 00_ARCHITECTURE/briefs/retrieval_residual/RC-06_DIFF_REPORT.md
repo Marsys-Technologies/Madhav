@@ -4,8 +4,8 @@ residual: RC-06 (golden set) — planner_golden_set.json recalibration
 brief: RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §E Cluster 2
 branch: res/rc06-golden-set
 base: main @ a81f4cd6 (includes RC-05 dead-tool sweep — PLANNER_PROMPT_v2_0.md v2.9)
-status: COMPLETE — regression gate PASSING
-date: 2026-07-22
+status: COMPLETE — fix-cycle-2 applied after independent-verifier REJECT (VERIFY_RC-06.md, 2026-07-22); full 14-name WP-1.7 dead-capability sweep now closed
+date: 2026-07-22 (fix-cycle-1); 2026-07-22 (fix-cycle-2, same-day re-submission)
 ---
 
 # RC-06 — `planner_golden_set.json` Recalibration — Diff Report
@@ -82,14 +82,17 @@ to exercise the precision<1.0 path. Both predate RC-06 and are untouched by
 it, except that GT.065's own dead-tool entry was still fixed in
 `expected_tools`, as documented in its row below.)
 
-Zero dead-capability references remain in `expected_tools`/`required_tools`
-anywhere in the file, verified programmatically:
-
-```python
-dead = {'pattern_register','resonance_register','cluster_atlas'}
-# 0 hits across all 86 entries' expected_tools/required_tools
-# 0 hits across all 86 baseline mock_tool_calls tool_name fields
-```
+**[fix-cycle-1 claim — SUPERSEDED, was FALSE, see "Fix-cycle-2" section below.]**
+~~Zero dead-capability references remain in `expected_tools`/`required_tools`
+anywhere in the file, verified programmatically~~ — this scan only checked the
+3-name register family (`pattern_register`, `resonance_register`,
+`cluster_atlas`), not the full WP-1.7 14-name dead set. The independent
+verifier (`VERIFY_RC-06.md`, 2026-07-22) caught this: 4 more dead capabilities
+(`multi_school_signal_lookup`, `query_kp_ruling_planets`, `kp_query`,
+`query_signal_state`) survived in `expected_tools`/`required_tools`/
+`available_tools`/baseline mocks across 9 entries. Fix-cycle-2 (below) closes
+this gap; see that section for the correct, full-14-name-set programmatic
+verification.
 
 ## Substitution rules applied (per PLANNER_PROMPT_v2_0.md v2.9 / VERIFY_RC-05.md)
 
@@ -306,14 +309,140 @@ platform source).
 - `platform/tests/eval/fixtures/regression_baseline.json` (42 entries — all
   except GT.065, whose mock was deliberately preserved unchanged)
 
+## Fix-cycle-2 (2026-07-22) — remaining WP-1.7 dead-capability sweep
+
+**Trigger:** independent verifier REJECT (`VERIFY_RC-06.md`, commit
+`24d9bb04`, verdict REJECT). The verifier re-derived the authoritative dead
+set as the full **WP-1.7 14-name list** (from `compiled_floor_adapter.test.ts:242`
+`DEAD_CAPABILITIES` and `tool_name_bridge.ts:410-422`):
+
+```
+pattern_register, resonance_register, cluster_atlas, kp_query,
+query_kp_ruling_planets, query_ucn_walk, query_cdlm_lookup, query_rm_walk,
+query_jaimini_drishti, timeline_query, query_signal_state,
+multi_school_signal_lookup, jaimini_chara_dasha, jaimini_chara_dasha_full
+```
+
+(RETAINED / now-resolvable, NOT dead: `cgm_graph_walk, temporal,
+contradiction_register, query_tara_balam, query_chandra_balam`.)
+
+Fix-cycle-1 only swept the 3-name register family
+(`pattern_register`/`resonance_register`/`cluster_atlas`); the other 11 names
+were never checked. Of those 11, four were actually present in the golden set
++ baseline, across 9 entries (`multi_school_signal_lookup`: GT.050/051;
+`query_signal_state`: GT.056-058; `query_kp_ruling_planets`: GT.059-061;
+`kp_query`: GT.060). The other 7 (`query_ucn_walk`, `query_cdlm_lookup`,
+`query_rm_walk`, `query_jaimini_drishti`, `timeline_query` [outside
+`forbidden_tools`], `jaimini_chara_dasha`, `jaimini_chara_dasha_full`) were
+never present in the file to begin with — confirmed by the fix-cycle-2
+verification scan below.
+
+### Resolver ruling applied (per VERIFY_RC-06.md "what must change" §1-7)
+
+| Dead tool | Entries | Disposition | Rationale |
+|---|---|---|---|
+| `multi_school_signal_lookup` | GT.050 (expected+required), GT.051 (expected only) | DROP, no substitute | Legacy lib/tools impl, never bridged (`tool_name_bridge.ts:415,507`). `convergence_score_lookup` — already co-expected/required in both entries — is the sole surviving multi-school-triangulation tool. No new tool added; nothing to promote it *to* required in GT.051 since GT.050 already required it. |
+| `query_signal_state` | GT.056, GT.057, GT.058 (expected+required in all three) | SUBSTITUTE → `msr_sql` | `query_signals` is served by `msr_sql` (`tool_name_bridge.ts:420`) — the direct live twin, already present in each entry's `expected_tools`. Dropped the dead name, promoted `msr_sql` from expected-only to required in its place. |
+| `query_kp_ruling_planets` | GT.059, GT.060, GT.061 (expected+required in all three) | DROP, no substitute | No KP engine is registered (`tool_name_bridge.ts:417`); the KP star-lord/sub-lord chain concept has no live twin. GT.059/GT.060: `msr_sql` was already co-expected — dropped the dead name, promoted `msr_sql` to required. GT.061: `msr_sql` is itself `forbidden_tools` in this entry (ayanamsha-mismatch rationale) — no in-entry substitute exists, so `expected_tools`/`required_tools` are left empty (Resolver disposition; precedent for empty `expected_tools`/`required_tools` already exists at GT.024/GT.027/GT.028/GT.046 — `planner_smoke_runner.ts`'s `scoreEntry()` treats an empty `expected_tools` set as trivially satisfied, `tool_recall = 1` / `tool_precision = 1` when nothing is predicted either). |
+| `kp_query` | GT.060 (expected only) | DROP, no substitute | Same class as `query_kp_ruling_planets` — no KP engine registered. |
+
+`available_tools` catalog: removed `multi_school_signal_lookup`,
+`query_kp_ruling_planets`, `query_signal_state` (16 → 13 tools).
+
+`fixtures/regression_baseline.json`: mirrored every edit above in the 9
+affected `mock_tool_calls` entries (GT.050, GT.051, GT.056-061) — the dead
+tool's mock call removed, the substitute (where one exists) promoted to
+priority 1, GT.061's `mock_tool_calls` set to `[]`.
+
+`forbidden_tools` — left unchanged, same policy as fix-cycle-1 (dead names in
+`forbidden_tools` are inert/harmless documentation, per the golden set's own
+`field_notes.forbidden_tools`). This includes `pattern_register` remaining
+forbidden in GT.059/GT.060/GT.061 and `cluster_atlas` remaining forbidden in
+GT.058 — those are correct as-is (forbidding an already-dead tool is a no-op,
+not a defect).
+
+### Fix-cycle-2 test results
+
+```
+$ npx vitest run tests/eval/planner_regression_gate.test.ts
+ ✓ tests/eval/planner_regression_gate.test.ts > planner regression gate (mocked) > baseline covers every planner_golden_set entry by id
+ ✓ tests/eval/planner_regression_gate.test.ts > planner regression gate (mocked) > avg_tool_recall ≥ 0.80 and avg_tool_precision ≥ 0.90
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+
+$ npx vitest run tests/eval/
+ Test Files  4 passed (4)
+      Tests  73 passed (73)
+```
+
+Aggregate scores unchanged from fix-cycle-1 (dead-tool drops/substitutions
+were mirrored 1:1 into the baseline mocks, so mocked recall/precision does
+not move): `avg_tool_recall = 0.997`, `avg_tool_precision = 0.996` (thresholds
+0.80/0.90). The two pre-existing imperfect-score fixtures (GT.065 recall path,
+GT.086 precision path) are untouched by fix-cycle-2.
+
+### Fix-cycle-2 programmatic verification — the full 14-name WP-1.7 dead set
+
+This is the check the verifier specified must return 0 before re-submission
+(`VERIFY_RC-06.md`, final paragraph). Ran against `planner_golden_set.json`
+(86 entries) and `fixtures/regression_baseline.json` (86 entries) after the
+fix-cycle-2 edits above:
+
+```python
+DEAD = ["pattern_register","resonance_register","cluster_atlas","kp_query",
+        "query_kp_ruling_planets","query_ucn_walk","query_cdlm_lookup","query_rm_walk",
+        "query_jaimini_drishti","timeline_query","query_signal_state",
+        "multi_school_signal_lookup","jaimini_chara_dasha","jaimini_chara_dasha_full"]
+
+# scan golden.entries[].expected_tools, .required_tools, golden.available_tools,
+# baseline.entries[].mock_tool_calls[].tool_name against DEAD (14 names)
+```
+
+```
+Scanned 14 WP-1.7 dead-capability names across 86 golden entries + 86 baseline entries:
+
+  expected_tools: 0 hits []
+  required_tools: 0 hits []
+  available_tools: 0 hits []
+  baseline_mock_tool_calls: 0 hits []
+
+TOTAL DEAD-CAP REFERENCES: 0
+PASS: zero dead-capability references across all 4 surfaces, all 14 WP-1.7 names.
+```
+
+Pre-fix-cycle-2 run of the identical script (for the record — matches
+`VERIFY_RC-06.md` §(c) exactly): `expected_tools: 9`, `required_tools: 7`,
+`available_tools: 3`, `baseline_mock_tool_calls: 9` — same counts/entries the
+verifier reported.
+
+### Files changed (fix-cycle-2)
+
+- `platform/tests/eval/planner_golden_set.json` (8 entries: GT.050, GT.051,
+  GT.056, GT.057, GT.058, GT.059, GT.060, GT.061 + `available_tools`)
+- `platform/tests/eval/fixtures/regression_baseline.json` (8 entries, same
+  ids)
+- `00_ARCHITECTURE/briefs/retrieval_residual/RC-06_DIFF_REPORT.md` (this file
+  — corrects the false leg-1 claim, adds this section)
+
 ## DONE bar (brief §E RC-06, verbatim) vs. what shipped
 
-1. "zero dead-capability references remain in the golden set" — **MET** for
-   `expected_tools`/`required_tools`/`available_tools` (the assertable,
-   test-consumed surfaces). `forbidden_tools` references to dead names are
-   retained by deliberate, documented design (see Summary) — this is a
-   scoped judgment call, not an oversight; flagged here for the RC-16 sealer
-   to ratify or override.
+1. "zero dead-capability references remain in the golden set" — **MET**,
+   re-derived against the full WP-1.7 **14-name** dead set (not the 3-name
+   register family fix-cycle-1 mistakenly treated as authoritative) across
+   `expected_tools`/`required_tools`/`available_tools`/baseline mocks — see
+   "Fix-cycle-2 programmatic verification" above, 0 hits on all 4 surfaces.
+   `forbidden_tools` references to dead names remain, by deliberate documented
+   design (golden set's own `field_notes.forbidden_tools`); this was true in
+   fix-cycle-1 and is unchanged — flagged for the RC-16 sealer to ratify or
+   override, not a leg-1 violation (the verifier's own methodology in
+   `VERIFY_RC-06.md` §(c) scoped its scan to the same 4 surfaces, excluding
+   `forbidden_tools`, for the same reason).
 2. "the planner regression gate passes against the recalibrated set" — **MET**,
-   verified live (see Test results above).
-3. "a diff report explains every changed case" — **MET** (this document).
+   verified live post-fix-cycle-2 (see "Fix-cycle-2 test results" above).
+   Note the verifier's caveat still holds structurally: the gate's mock
+   planner mirrors `expected_tools`, so gate-passing alone is not proof of
+   leg 1 — leg 1 is proven by the separate programmatic scan above, not by
+   the gate.
+3. "a diff report explains every changed case" — **MET** for fix-cycle-1's 43
+   entries (unchanged) and fix-cycle-2's 8 entries (Resolver-ruling table
+   above).

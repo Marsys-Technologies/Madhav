@@ -31,11 +31,8 @@
     "convergence_score_lookup",
     "lel_query",
     "msr_sql",
-    "multi_school_signal_lookup",
     "query_ephemeris",
-    "query_kp_ruling_planets",
     "query_panchanga",
-    "query_signal_state",
     "query_transit_event",
     "query_varshaphala",
     "remedial_codex_query",
@@ -1195,11 +1192,9 @@
       "query_class": "multi_school_triangulation",
       "category": "multi_school_triangulation",
       "expected_tools": [
-        "multi_school_signal_lookup",
         "convergence_score_lookup"
       ],
       "required_tools": [
-        "multi_school_signal_lookup",
         "convergence_score_lookup"
       ],
       "forbidden_tools": [
@@ -1209,7 +1204,7 @@
         "FORENSIC",
         "MSR"
       ],
-      "notes": "M9-D-S1 multi_school_triangulation golden entry 1. Planner must call both tools: multi_school_signal_lookup for CAREER topic coverage by school, convergence_score_lookup for CAREER convergence metrics. Expected domains=['CAREER']."
+      "notes": "M9-D-S1 multi_school_triangulation golden entry 1. Planner must call convergence_score_lookup for CAREER convergence metrics. Expected domains=['CAREER']. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): multi_school_signal_lookup was a WP-1.7 dead capability (never bridged in tool_name_bridge.ts) — dropped with no live twin; convergence_score_lookup (already co-expected/required) is the sole surviving multi-school-triangulation tool for this entry."
     },
     {
       "id": "GT.051",
@@ -1217,7 +1212,6 @@
       "query_class": "multi_school_triangulation",
       "category": "multi_school_triangulation",
       "expected_tools": [
-        "multi_school_signal_lookup",
         "convergence_score_lookup"
       ],
       "required_tools": [
@@ -1230,7 +1224,7 @@
         "FORENSIC",
         "MSR"
       ],
-      "notes": "M9-D-S1 multi_school_triangulation golden entry 2. Schools filter=[parashari, jaimini, kp]. Domain=RELATIONSHIP. convergence_score_lookup is required; multi_school_signal_lookup optional but expected."
+      "notes": "M9-D-S1 multi_school_triangulation golden entry 2. Schools filter=[parashari, jaimini, kp]. Domain=RELATIONSHIP. convergence_score_lookup is required. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): multi_school_signal_lookup was a WP-1.7 dead capability (never bridged) — dropped with no live twin; convergence_score_lookup remains the sole surviving multi-school-triangulation tool for this entry."
     },
     {
       "id": "GT.052",
@@ -1337,12 +1331,11 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "query_signal_state",
         "msr_sql",
         "vector_search"
       ],
       "required_tools": [
-        "query_signal_state"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "classical_text_search"
@@ -1351,7 +1344,7 @@
         "FORENSIC",
         "MSR"
       ],
-      "notes": "2026-05-17 query_signal_state golden entry 1. Live current-state question. query_signal_state with {states:['lit','ripening'], limit:50} surfaces the date-indexed signal_states snapshot for today from the signal_states table (migration 023, populated by temporal signal_activator). msr_sql resolves SIG.MSR.NNN ids to full signal metadata; pattern_register satisfies R7's predictive cross-domain-lens mandate. classical_text_search forbidden — text-corpus retrieval is wrong layer for a 'right now' substrate query. RC-06 (2026-07-22): pattern_register was a dead capability — replaced with vector_search (R7a's live cross-domain-lens substitute for predictive queries; not forbidden in this entry). Remains optional (not required)."
+      "notes": "2026-05-17 query_signal_state golden entry 1. Live current-state question. msr_sql resolves SIG.MSR.NNN ids to full signal metadata, including lit/ripening state; vector_search satisfies R7's predictive cross-domain-lens mandate. classical_text_search forbidden — text-corpus retrieval is wrong layer for a 'right now' substrate query. RC-06 (2026-07-22): pattern_register was a dead capability — replaced with vector_search (R7a's live cross-domain-lens substitute for predictive queries; not forbidden in this entry). Remains optional (not required). RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1): query_signal_state was itself a WP-1.7 dead capability (never bridged in tool_name_bridge.ts) — dropped and promoted its live twin msr_sql (query_signals is served by msr_sql per tool_name_bridge.ts:420) from expected-only to required, since it was already co-expected."
     },
     {
       "id": "GT.057",
@@ -1359,13 +1352,12 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "query_signal_state",
         "temporal",
         "msr_sql"
       ],
       "required_tools": [
-        "query_signal_state",
-        "temporal"
+        "temporal",
+        "msr_sql"
       ],
       "forbidden_tools": [
         "vector_search"
@@ -1374,7 +1366,7 @@
         "FORENSIC",
         "MSR"
       ],
-      "notes": "2026-05-17 query_signal_state golden entry 2. Forward window scan. query_signal_state with {query_date:'2026-05-17', end_date:'2027-05-17', states:['ripening']} surfaces signals that flip from dormant to active over the next 12 months. temporal supplies the dasha + transit context for the window. msr_sql resolves the ripening SIG.MSR.NNN ids; pattern_register satisfies R7's predictive cross-domain-lens mandate. vector_search forbidden — narrative retrieval would dilute a structured state-table scan. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry — narrative retrieval would dilute a structured state-table scan)."
+      "notes": "2026-05-17 query_signal_state golden entry 2. Forward window scan. temporal supplies the dasha + transit context for the window. msr_sql resolves the ripening SIG.MSR.NNN ids, including ripening-state filtering. vector_search forbidden — narrative retrieval would dilute a structured state-table scan. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry — narrative retrieval would dilute a structured state-table scan). RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1): query_signal_state was itself a WP-1.7 dead capability (never bridged) — dropped and promoted its live twin msr_sql (already co-expected) to required in its place."
     },
     {
       "id": "GT.058",
@@ -1382,13 +1374,12 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "query_signal_state",
         "lel_query",
         "msr_sql"
       ],
       "required_tools": [
-        "query_signal_state",
-        "lel_query"
+        "lel_query",
+        "msr_sql"
       ],
       "forbidden_tools": [
         "cluster_atlas"
@@ -1398,7 +1389,7 @@
         "MSR",
         "LEL"
       ],
-      "notes": "2026-05-17 query_signal_state golden entry 3. Cross-anchored historical-state probe. lel_query with {category:'career', start_date:'2020-01-01', end_date:'2020-12-31'} returns the recorded 2020 career-transition event date(s) — providing the anchor date(s) to pass into query_signal_state with {signal_ids:['SIG.MSR.142'], query_date:<event_date>}. msr_sql resolves SIG.MSR.142 metadata. cluster_atlas forbidden — clusters are L2.5 synthesis surfaces and not the right layer for a single-signal historical-state lookup."
+      "notes": "2026-05-17 query_signal_state golden entry 3. Cross-anchored historical-state probe. lel_query with {category:'career', start_date:'2020-01-01', end_date:'2020-12-31'} returns the recorded 2020 career-transition event date(s) — providing the anchor date(s) for a msr_sql SIG.MSR.142 historical-state lookup. cluster_atlas forbidden — clusters are L2.5 synthesis surfaces and not the right layer for a single-signal historical-state lookup. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1): query_signal_state was a WP-1.7 dead capability (never bridged) — dropped and promoted its live twin msr_sql (already co-expected) to required in its place."
     },
     {
       "id": "GT.059",
@@ -1406,11 +1397,10 @@
       "query_class": "factual",
       "category": "factual",
       "expected_tools": [
-        "query_kp_ruling_planets",
         "msr_sql"
       ],
       "required_tools": [
-        "query_kp_ruling_planets"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "pattern_register",
@@ -1419,7 +1409,7 @@
       "required_asset_ids": [
         "FORENSIC"
       ],
-      "notes": "2026-05-17 query_kp_ruling_planets golden entry 1. Pure factual substrate read. query_kp_ruling_planets with {} (no params) returns the full 9-graha star-lord / sub-lord / sub-sub-lord chain from kp_sublords (migration 024, pyswisseph + lahiri). msr_sql optionally cross-references with FORENSIC §4 chart_facts. pattern_register/vector_search forbidden — no yoga or narrative interpretation asked; this is substrate-table data."
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 1. Pure factual substrate read. msr_sql cross-references FORENSIC §4 chart_facts. pattern_register/vector_search forbidden — no yoga or narrative interpretation asked; this is substrate-table data. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): query_kp_ruling_planets was a WP-1.7 dead capability — no KP engine is registered (tool_name_bridge.ts:417). No live twin exists for the KP star-lord/sub-lord concept; dropped with msr_sql (already co-expected) promoted to required as the sole surviving substrate read."
     },
     {
       "id": "GT.060",
@@ -1427,12 +1417,9 @@
       "query_class": "factual",
       "category": "factual",
       "expected_tools": [
-        "query_kp_ruling_planets",
-        "msr_sql",
-        "kp_query"
+        "msr_sql"
       ],
       "required_tools": [
-        "query_kp_ruling_planets",
         "msr_sql"
       ],
       "forbidden_tools": [
@@ -1441,19 +1428,15 @@
       "required_asset_ids": [
         "FORENSIC"
       ],
-      "notes": "2026-05-17 query_kp_ruling_planets golden entry 2. Single-planet KP substrate read. query_kp_ruling_planets with {planet:'Saturn'} returns Saturn's star-lord / sub-lord / sub-sub-lord chain from kp_sublords. kp_query reads the FORENSIC §4 authoritative chart_facts values for Saturn — the two coexist (substrate computation + canonical-source value) and the synthesis layer cross-checks per 05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md. msr_sql for Saturn natal signal context. pattern_register forbidden — no yoga interpretation asked."
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 2. Single-planet KP substrate read. msr_sql supplies Saturn natal signal context, the sole surviving substrate read for this query. pattern_register forbidden — no yoga interpretation asked. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): both query_kp_ruling_planets and kp_query were WP-1.7 dead capabilities — no KP engine is registered (tool_name_bridge.ts:417). No live twin exists for the KP chain concept; both dropped with msr_sql (already co-expected/required) retained."
     },
     {
       "id": "GT.061",
       "query": "Compare my KP sub-lords under lahiri vs krishnamurti ayanamsha.",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": [
-        "query_kp_ruling_planets"
-      ],
-      "required_tools": [
-        "query_kp_ruling_planets"
-      ],
+      "expected_tools": [],
+      "required_tools": [],
       "forbidden_tools": [
         "pattern_register",
         "msr_sql"
@@ -1461,7 +1444,7 @@
       "required_asset_ids": [
         "FORENSIC"
       ],
-      "notes": "2026-05-17 query_kp_ruling_planets golden entry 3. Cross-ayanamsha substrate comparison. Planner must emit TWO calls to query_kp_ruling_planets — one {ayanamsha:'lahiri'} and one {ayanamsha:'krishnamurti'} — and synthesis layer diffs the sub-lord chains. Pure substrate question; msr_sql forbidden because MSR signals are ayanamsha-fixed to lahiri (cross-ayanamsha read would mismatch). pattern_register forbidden — no yoga interpretation."
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 3. Cross-ayanamsha substrate comparison. msr_sql forbidden because MSR signals are ayanamsha-fixed to lahiri (cross-ayanamsha read would mismatch). pattern_register forbidden — no yoga interpretation. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): query_kp_ruling_planets was a WP-1.7 dead capability — no KP engine is registered (tool_name_bridge.ts:417). No live twin exists, and unlike GT.059/GT.060 the entry's own governing rule forbids msr_sql, so there is no in-entry substitute to promote — dropped with expected_tools/required_tools left empty (Resolver disposition; precedent GT.024/GT.027/GT.028/GT.046 already use empty required_tools/expected_tools for entries where no primary tool applies; scoring path treats an empty expected_tools set as trivially satisfied — planner_smoke_runner.ts scoreEntry())."
     },
     {
       "id": "GT.062",

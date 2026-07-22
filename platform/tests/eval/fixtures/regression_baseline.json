@@ -878,18 +878,11 @@
       "id": "GT.050",
       "mock_tool_calls": [
         {
-          "tool_name": "multi_school_signal_lookup",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "retrieve all-school career signals"
-        },
-        {
           "tool_name": "convergence_score_lookup",
           "params": {},
           "token_budget": 1500,
           "priority": 1,
-          "reason": "compute cross-school convergence for CAREER"
+          "reason": "compute cross-school convergence for CAREER [RC-06 fix-cycle-2: multi_school_signal_lookup mock removed — WP-1.7 dead capability, no live twin]"
         }
       ]
     },
@@ -901,14 +894,7 @@
           "params": {},
           "token_budget": 2000,
           "priority": 1,
-          "reason": "convergence score for RELATIONSHIP domain across Parashari, Jaimini, KP"
-        },
-        {
-          "tool_name": "multi_school_signal_lookup",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 2,
-          "reason": "retrieve school-specific relationship signals"
+          "reason": "convergence score for RELATIONSHIP domain across Parashari, Jaimini, KP [RC-06 fix-cycle-2: multi_school_signal_lookup mock removed — WP-1.7 dead capability, no live twin]"
         }
       ]
     },
@@ -1013,18 +999,11 @@
       "id": "GT.056",
       "mock_tool_calls": [
         {
-          "tool_name": "query_signal_state",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "currently active MSR signals"
-        },
-        {
           "tool_name": "msr_sql",
           "params": {},
           "token_budget": 2000,
-          "priority": 2,
-          "reason": "signal definitions and metadata"
+          "priority": 1,
+          "reason": "currently active MSR signals, signal definitions and metadata [RC-06 fix-cycle-2: query_signal_state mock removed — WP-1.7 dead capability; msr_sql is its live twin (tool_name_bridge.ts:420) and promoted to priority 1]"
         },
         {
           "tool_name": "vector_search",
@@ -1039,13 +1018,6 @@
       "id": "GT.057",
       "mock_tool_calls": [
         {
-          "tool_name": "query_signal_state",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "signals ripening over 12-month window"
-        },
-        {
           "tool_name": "temporal",
           "params": {},
           "token_budget": 2000,
@@ -1057,20 +1029,13 @@
           "params": {},
           "token_budget": 2000,
           "priority": 2,
-          "reason": "signal definitions for ripening signals"
+          "reason": "signal definitions for ripening signals, incl. ripening-state filtering [RC-06 fix-cycle-2: query_signal_state mock removed — WP-1.7 dead capability; msr_sql is its live twin and promoted to required]"
         }
       ]
     },
     {
       "id": "GT.058",
       "mock_tool_calls": [
-        {
-          "tool_name": "query_signal_state",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "state of SIG.MSR.142 during specified period"
-        },
         {
           "tool_name": "lel_query",
           "params": {},
@@ -1083,7 +1048,7 @@
           "params": {},
           "token_budget": 2000,
           "priority": 2,
-          "reason": "SIG.MSR.142 definition and co-signals"
+          "reason": "SIG.MSR.142 definition, co-signals, and state during specified period [RC-06 fix-cycle-2: query_signal_state mock removed — WP-1.7 dead capability; msr_sql is its live twin and promoted to required]"
         }
       ]
     },
@@ -1091,18 +1056,11 @@
       "id": "GT.059",
       "mock_tool_calls": [
         {
-          "tool_name": "query_kp_ruling_planets",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "KP star-lord and sub-lord chain for each graha"
-        },
-        {
           "tool_name": "msr_sql",
           "params": {},
           "token_budget": 1500,
-          "priority": 2,
-          "reason": "KP-correlated MSR signals"
+          "priority": 1,
+          "reason": "KP-correlated MSR signals [RC-06 fix-cycle-2: query_kp_ruling_planets mock removed — WP-1.7 dead capability, no KP engine registered; msr_sql is the sole surviving substrate read, promoted to priority 1/required]"
         }
       ]
     },
@@ -1110,39 +1068,17 @@
       "id": "GT.060",
       "mock_tool_calls": [
         {
-          "tool_name": "query_kp_ruling_planets",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "Saturn KP ruling-planet chain"
-        },
-        {
           "tool_name": "msr_sql",
           "params": {},
           "token_budget": 1500,
-          "priority": 2,
-          "reason": "Saturn-related MSR signals"
-        },
-        {
-          "tool_name": "kp_query",
-          "params": {},
-          "token_budget": 1500,
-          "priority": 2,
-          "reason": "KP cuspal and significator data for Saturn"
+          "priority": 1,
+          "reason": "Saturn-related MSR signals [RC-06 fix-cycle-2: query_kp_ruling_planets and kp_query mocks removed — both WP-1.7 dead capabilities, no KP engine registered; msr_sql is the sole surviving substrate read, promoted to priority 1/required]"
         }
       ]
     },
     {
       "id": "GT.061",
-      "mock_tool_calls": [
-        {
-          "tool_name": "query_kp_ruling_planets",
-          "params": {},
-          "token_budget": 2000,
-          "priority": 1,
-          "reason": "KP sub-lords under lahiri vs krishnamurti ayanamsha comparison"
-        }
-      ]
+      "mock_tool_calls": []
     },
     {
       "id": "GT.062",
