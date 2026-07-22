@@ -232,6 +232,31 @@ CURRENT_STATE §2 update, SESSION_LOG entries, plan status flip, supersede
 stale coverage map (W-15 doc half), CAPABILITY_MANIFEST regeneration.
 **V6 (final):** §H below.
 
+**W6 status (2026-07-22): implementation complete, pending V6 gate / native
+read of `briefs/retrieval_impl/FINAL_REPORT.md`.** All named lanes shipped
+and deployed: `prashna_ask`/`prashna_status` (PR #691, `d0e8eb29`), NO-LEAKAGE
+arm-2 retrofit onto `/api/chat/consult` alongside the new route, cost-cap
+enforcement relocated to `platform/src/lib/pipeline/` after the mid-build
+architecture correction (the engine's tool-dispatch loop was found to execute
+in `platform`, not `platform-mcp`), a 9-test resilience/chaos pass, W-19
+(PARIPRASHNA §6.1 diagram fix), and this docs-seal task (CURRENT_STATE §2,
+SESSION_LOG, this row, the W-15 coverage-map supersession, and the
+CAPABILITY_MANIFEST regeneration — PR #696, `95e786b3`, plus the follow-up
+commit closing this task). **W-17** (broader code-level `session_pin` →
+`provenance_stamp` rename, GT-F28) was deliberately **not executed** — found
+NEEDS-RULING with no ratification anywhere, unlike W-19; carried as a named
+§H residual, not silently dropped. Two items are deferred for lack of an
+authenticated live-connector credential in this session (checked local
+`.env` + CI secrets — genuinely unavailable): (a) the full authenticated
+`prashna_ask`→`prashna_status` round-trip against the deployed connector,
+(b) actually running the `platform/tests/eval/w6_load_battery/` harness for
+real against the deployed connector (dry-run-verified locally against a mock
+that embeds the real `QosDispatchQueue`). **This row intentionally does NOT
+flip to CLOSED/COMPLETE** — per this brief's own `status_field_semantics`
+and §H, the campaign is COMPLETE only once the native has read Task 16's
+`FINAL_REPORT.md` (not yet written) and responded; that disposition happens
+outside this task.
+
 ## §F — THE HUMAN GATE (only one)
 
 At W1 close the conductor produces the **Native Review Packet**

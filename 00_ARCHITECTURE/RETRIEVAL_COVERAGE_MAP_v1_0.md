@@ -2,12 +2,29 @@
 artifact: RETRIEVAL_COVERAGE_MAP
 canonical_id: RETRIEVAL_COVERAGE_MAP
 version: 1.0
-status: DRAFT — Part A Audits 1+2
+status: SUPERSEDED (2026-07-22, W6 docs seal — retained in place per archival discipline, not deleted)
 created: 2026-07-02
 author: Claude Code (retrieval audit execution)
 parent: CLAUDECODE_BRIEF_RETRIEVAL_TOOL_BLUEPRINT_AND_AUDIT v2.0 §2–§3
 source_catalog: RETRIEVAL_TO_SYNTHESIS_ANALYSIS_AND_INTERVENTION_v1_0.md (live list_assets 2026-07-02)
+superseded_by: 00_ARCHITECTURE/briefs/retrieval_impl/CONCEPT_COVERAGE_CENSUS_v1_0.md
+superseded_rationale: >
+  This document's §2 tool→table map is scoped to the "53-tool era" (2026-07-02) and its §7
+  coverage claim (85 assets) is table-granularity, not concept-granularity. Both
+  `RETRIEVAL_STRATEGY_v1_0.md` §"53-tool era... is stale — supersede it" and
+  `RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md` §9.6 item 4 ("Supersede the stale
+  RETRIEVAL_COVERAGE_MAP_v1_0.md (53-tool era) with the census") name this exact file as the
+  W-15 doc-half obligation, discharged here at the Wave 6 ("prashna_ask + Seal") docs-seal
+  close. `CONCEPT_COVERAGE_CENSUS_v1_0.md` (W-21, concept-granularity — 218 live
+  `chart_facts.fact_category` values, not table counts) is the live successor. Retained in
+  place, not deleted, per this repo's archival-retain-in-place hygiene policy
+  (`ONGOING_HYGIENE_POLICIES_v1_0.md` §A).
 ---
+
+> **⚠️ SUPERSEDED (2026-07-22).** This map is 53-tool-era (2026-07-02) and table-granularity.
+> The live successor is `00_ARCHITECTURE/briefs/retrieval_impl/CONCEPT_COVERAGE_CENSUS_v1_0.md`
+> (concept-granularity, 218 live fact categories). Retained below for historical/audit reference
+> only — do not use it as a current coverage source.
 
 # Retrieval Coverage Map v1.0
 

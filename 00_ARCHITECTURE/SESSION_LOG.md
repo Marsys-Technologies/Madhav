@@ -33009,3 +33009,96 @@ session_close:
 W5 (Adaptive Serving + Scale, R-4) is next per the retrieval campaign's own wave sequence, but this session does NOT open it — the native's explicit close-out instruction was to stop before W5. Native go-ahead required to proceed; the two carried residuals (CR-118's widened tool fast-fail pattern, and the MCP↔web namespace gap limiting compiled-floor coverage) are named entry points for whichever of W5 or PF-1 picks them up first.
 
 *End of W4-ONE-PLANNER-CLOSE-2026-07-21 entry — 2026-07-21.*
+
+---
+
+## W6-DOCS-SEAL-2026-07-22 — W6 "prashna_ask + Seal" Task 15 (docs seal)
+
+```yaml
+session_open:
+  session_id: W6-DOCS-SEAL-2026-07-22
+  cowork_thread_name: "Madhav — W6 prashna_ask + Seal (Task 15: docs seal)"
+  agent_name: claude-sonnet-5
+  predecessor_session: W6-TASK-13-14-DISPOSITION-2026-07-21 (load-test harness residual,
+    D-4b confirmed still active, breaking flip stays parked; commit `326b4449`)
+  role: >
+    Task 15 of the W6 "prashna_ask + Seal" wave per
+    RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md §E — the wave's second-to-last task.
+    Seals the wave's documentation surface: CURRENT_STATE §2 update, SESSION_LOG entry,
+    master-brief W6 status update (implementation complete, NOT closed/complete), supersede
+    the stale W-15 coverage-map doc half, regenerate CAPABILITY_MANIFEST.json.
+  declared_scope:
+    may_touch:
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md, SESSION_LOG.md (append-only)"
+      - "00_ARCHITECTURE/briefs/RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md (W6 section only)"
+      - "00_ARCHITECTURE/RETRIEVAL_COVERAGE_MAP_v1_0.md (frontmatter/status only, retain in place)"
+      - "00_ARCHITECTURE/manifest_overrides.yaml, 00_ARCHITECTURE/CAPABILITY_MANIFEST.json (regen)"
+    must_not_touch:
+      - "Task 16 (§H final acceptance + FINAL_REPORT.md) — the next task, not this one"
+      - "plan status field / overall campaign status — flips COMPLETE only after native reads
+         Task 16's FINAL_REPORT.md, outside this task's authority"
+      - "doctrine-waves campaign files/branches; D-4b's own briefs/ledgers"
+  red_team_due: false
+```
+
+**Body.** Docs-only task, no code changes. **Step 1:** `CURRENT_STATE_v1_0.md` v6.39 → v6.40 —
+new §2 cross-campaign note (inserted above the existing 2026-07-22 note, same section, per the
+established convention that the retrieval campaign records its own state as read-only notes
+inside the doctrine-wave banner block rather than a competing pointer) summarizing W6's shipped
+scope (prashna_ask/prashna_status, dual cost caps, NO-LEAKAGE arm-2 on both routes, the
+platform-mcp→platform/lib/pipeline enforcement relocation, the notifications/progress
+undeliverable-transport finding, the chaos pass, W-19, the load harness), the deployed PRs (#691
+`d0e8eb29`, #696 `95e786b3`), the named W-17 residual (NEEDS-RULING, not executed), the two
+credential-blocked deferrals, and this task's own housekeeping (below). Changelog entry added.
+**Step 2:** this SESSION_LOG entry. **Step 3:** `RETRIEVAL_IMPLEMENTATION_MASTER_BRIEF_v1_0.md`
+§E W6 section amended with a status paragraph reading "implementation complete, pending V6
+gate / native read of FINAL_REPORT.md" — explicitly NOT CLOSED/COMPLETE; the plan-wide
+`status: ACTIVE` field and campaign status are untouched (that flip is Task 16's, gated on the
+native). **Step 4:** identified the W-15 "stale coverage map (doc half)" obligation by tracing
+`RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md` §9.6 item 4 ("Supersede the stale
+`RETRIEVAL_COVERAGE_MAP_v1_0.md` (53-tool era) with the census") — `RETRIEVAL_COVERAGE_MAP_v1_0.md`
+frontmatter `status` flipped to `SUPERSEDED` with a `superseded_by`/`superseded_rationale` block
+pointing at `briefs/retrieval_impl/CONCEPT_COVERAGE_CENSUS_v1_0.md` (W-21, concept-granularity);
+a body banner added; file retained in place per `ONGOING_HYGIENE_POLICIES_v1_0.md` §A, not
+deleted. **Step 5:** ran `npm run manifest:build` (generator: `platform/src/scripts/manifest/build.ts`).
+The generator does not scan MCP tool registrations directly — tool-shaped entries
+(`RETRIEVAL_TOOL_*`) are hand-curated `additional_entries` rows in `manifest_overrides.yaml`, a
+pattern already used for 28 prior retrieval tools — so `RETRIEVAL_TOOL_prashna_ask` and
+`RETRIEVAL_TOOL_prashna_status` were added there following that exact convention (same fields,
+same `expose_to_planner`/`token_cost_hint`/`layer` shape) before regenerating. Confirmed both
+appear in the regenerated `CAPABILITY_MANIFEST.json` (entry_count 112 → 114; verified via direct
+JSON parse, not just build-log trust). The regeneration re-surfaces the same 28 pre-existing
+`must have required property 'path'/'version'` schema-validation warnings the 28 prior
+`RETRIEVAL_TOOL_*` entries already carried (now 30, +2 for the new entries) — a known,
+pre-existing gap in how tool-shaped override entries satisfy the `asset_entry` schema, not
+introduced or fixed by this task (out of scope; not chased).
+
+```yaml
+session_close:
+  session_id: W6-DOCS-SEAL-2026-07-22
+  wave: W6
+  close_criteria_met: true
+  verification: "CURRENT_STATE v6.40 changelog + §2 note committed; SESSION_LOG entry appended
+    (this entry); master brief W6 section carries the non-terminal status paragraph verified
+    to not contain CLOSED/COMPLETE on the row, plan status field, or campaign status;
+    RETRIEVAL_COVERAGE_MAP_v1_0.md frontmatter status = SUPERSEDED, file retained in place;
+    CAPABILITY_MANIFEST.json regenerated and independently verified (JSON parse) to contain
+    both RETRIEVAL_TOOL_prashna_ask and RETRIEVAL_TOOL_prashna_status, entry_count 112→114"
+  deploy: "n/a — docs-only task, no code changes, no deploy"
+  product_code_writes_made: "None — this task touches only 00_ARCHITECTURE/ docs +
+    manifest_overrides.yaml + the regenerated CAPABILITY_MANIFEST.json"
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "None new — W-17/deferred-credential residuals were already
+    named in the prior W6 session (326b4449); this session documents, does not re-adjudicate,
+    them"
+  followups: "Task 16 (§H final acceptance + FINAL_REPORT.md) is the immediate next task — the
+    very last task of the W6 wave and of the entire retrieval campaign. It authors
+    briefs/retrieval_impl/FINAL_REPORT.md per §H's 6 criteria and is the vehicle through which
+    the campaign status can eventually flip toward COMPLETE, pending native review — not this
+    task's authority."
+  next_session_objective: "Task 16 — §H final acceptance + FINAL_REPORT.md authoring. Not
+    opened by this session."
+```
+
+*End of W6-DOCS-SEAL-2026-07-22 entry — 2026-07-22.*
