@@ -253,17 +253,27 @@ export function ensureB11WholeChartReadFloor(plan: PipelinePlan, toolsAuthorized
   if (toolsAuthorized.some((t) => L2_5_TOOLS.includes(t))) return false
 
   if (plan.query_class === 'predictive') {
-    // Predictive class: cgm_graph_walk is banned (R14c); pattern_register is required
-    // (R7a). Inject msr_sql + vector_search + pattern_register so the synthesis model
-    // receives the domain narrative it needs.
+    // Predictive class: cgm_graph_walk is banned (R14c). Inject msr_sql + vector_search
+    // so the synthesis model receives the domain narrative it needs.
+    //
+    // W6.2 fix-cycle (native-directed, live E2E trace 980e8181): this used to ALSO
+    // inject 'pattern_register' per an "R7a requirement" — but pattern_register was
+    // deliberately removed from the MCP surgical whitelist in WP-1.7 with the explicit
+    // finding "no registered cap / concept never existed" (tool_name_bridge.ts:417).
+    // Requiring a capability that can never resolve meant every single predictive-class
+    // query on BOTH doors (consult and prashna_ask) permanently carried an unresolved-
+    // tool gap since WP-1.7 landed — not a rare edge case, a guaranteed one. Removed.
+    // If a real replacement for R7a's intent (pattern-grounding for predictive synthesis)
+    // is built in a future wave (e.g. once the D-4b Discovery Layer's pattern registers
+    // are actually served as a retrieval capability), this is the injection site to
+    // re-add it — not before a real, resolvable capability exists.
     const domainSearchQuery =
       (plan.domains ?? []).length > 0 ? (plan.domains ?? []).join(' ') : 'relationships family marriage children'
     plan.tool_calls.push(
       { tool_name: 'marsys://tool/L2/query_signals', params: { forward_looking: true }, token_budget: 600, priority: 1, reason: 'B.11 predictive floor: signal foundation (registry)' },
       { tool_name: 'vector_search', params: { query_text: domainSearchQuery, doc_type: ['domain_report'], top_k: 6 }, token_budget: 500, priority: 1, reason: 'B.11 predictive floor: domain narrative' },
-      { tool_name: 'pattern_register', params: { forward_looking: true }, token_budget: 400, priority: 2, reason: 'B.11 predictive floor: R7a requirement' },
     )
-    toolsAuthorized.push('marsys://tool/L2/query_signals', 'vector_search', 'pattern_register')
+    toolsAuthorized.push('marsys://tool/L2/query_signals', 'vector_search')
   } else {
     plan.tool_calls.push(
       { tool_name: 'marsys://tool/L2/query_signals', params: {}, token_budget: 600, priority: 1, reason: 'B.11 floor enforcement (registry)' },
@@ -276,25 +286,37 @@ export function ensureB11WholeChartReadFloor(plan: PipelinePlan, toolsAuthorized
 
 /**
  * Guarantee the canonical Vimshottari dasha context floor for predictive/holistic
- * query classes (data lives in chart_facts.dasha_vimshottari). No-ops otherwise or if
- * `chart_facts_query` is already authorized. Mutates in place; returns whether injected.
+ * query classes. No-ops otherwise or if `query_dasha_periods` is already authorized.
+ * Mutates in place; returns whether injected.
+ *
+ * W6.2 fix-cycle (native-directed, live E2E trace 980e8181): this used to inject
+ * `chart_facts_query` with `{category:'dasha_vimshottari', limit:50}` — a genuine bug,
+ * not a rare edge case. Dasha period data has never lived in `chart_facts` at all; it
+ * lives in the separate `chart_dashas` table, served by `query_dasha_periods` (resolves
+ * to `marsys://tool/L1/get_dashas` — tool_name_bridge.ts:86). The old injection was
+ * confirmed live (both a `category:'dasha_vimshottari'` filter AND a bare `keyword:
+ * 'dasha'` search against `chart_facts_query` return `returned_count:0` on the
+ * canonical chart) — every single predictive/holistic query on BOTH doors has been
+ * silently missing its dasha context floor since this function was written, exactly
+ * the "silently absorbed empty result" failure mode B.10/§N.6 forbid. `get_dashas.ts`
+ * needs no window override to get a synthesis-useful default: unfiltered, it already
+ * returns a ±5-year window around "now" (verified live) — wide enough to cover any
+ * currently-running MD/AD/PD and near-future transitions without needing a bespoke
+ * limit.
  */
 export function ensureDashaContextFloor(plan: PipelinePlan, toolsAuthorized: string[]): boolean {
   if (
     (plan.query_class === 'predictive' || plan.query_class === 'holistic') &&
-    !toolsAuthorized.includes('chart_facts_query')
+    !toolsAuthorized.includes('query_dasha_periods')
   ) {
     plan.tool_calls.push({
-      tool_name: 'chart_facts_query',
-      // limit:50 required — there are 50 AD records (V.001–V.050). Default limit:20
-      // only covers through Mercury-Mars AD (ends 2020), cutting off the current
-      // Mercury-Saturn AD and all future Ketu MD + Venus MD periods.
-      params: { category: 'dasha_vimshottari', limit: 50 },
+      tool_name: 'query_dasha_periods',
+      params: { system: 'vimshottari', level: 2 },
       token_budget: 600,
       priority: 1,
       reason: 'dasha context floor: synthesis requires canonical MD/AD sequence for phase-anchored predictions',
     })
-    toolsAuthorized.push('chart_facts_query')
+    toolsAuthorized.push('query_dasha_periods')
     return true
   }
   return false

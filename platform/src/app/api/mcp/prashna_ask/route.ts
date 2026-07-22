@@ -418,6 +418,22 @@ export async function POST(request: Request) {
         judgmentFlags.push('planned_tools_unresolved')
       }
 
+      // W6.2 fix-cycle (native-directed, live E2E trace 980e8181): a tool that
+      // dispatched successfully (status:'done', no error) but returned zero rows is
+      // NOT the same thing as "nothing was wrong" — it can mean a floor item's query
+      // genuinely matched nothing for this chart (fine), or it can mean a filter/param
+      // bug silently returning an empty-but-not-erroring result (the exact class of bug
+      // this fix-cycle found in ensureDashaContextFloor). Per §N.6 ("an honest empty
+      // result is reported via flags, never silently substituted"), this must always be
+      // visibly disclosed, not left for a caller to notice by reading every row of
+      // tools_dispatched themselves.
+      const emptyResultTools = toolEventLog
+        .filter((t) => t.status === 'done' && t.result_count === 0)
+        .map((t) => t.tool_name)
+      if (emptyResultTools.length > 0) {
+        judgmentFlags.push('empty_tool_results')
+      }
+
       const isPartial = costCapTripped !== null || unresolvedTools.length > 0
 
       const finalBody = {
@@ -433,6 +449,7 @@ export async function POST(request: Request) {
           unserved_tools: unservedTools,
           unresolved_tools: unresolvedTools,
           stripped_leaked_capabilities: leakedTools,
+          empty_result_tools: emptyResultTools,
           cap_tripped: costCapTripped?.reason ?? null,
         },
         judgment_flags: judgmentFlags,

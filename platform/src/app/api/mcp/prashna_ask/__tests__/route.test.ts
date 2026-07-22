@@ -190,6 +190,38 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
     expect(mockGetToolByName).toHaveBeenCalledTimes(2)
   })
 
+  it('discloses a tool that dispatched successfully but returned zero rows (W6.2 fix-cycle empty_tool_results hardening)', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
+    mockGetToolByName.mockImplementation((name: string) => ({
+      name,
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({
+        tool_bundle_id: 'b1',
+        tool_name: name,
+        tool_version: '1.0',
+        invocation_params: {},
+        // chart_facts_query dispatches cleanly but matches nothing; get_positions
+        // returns a real row — the disclosure must name only the empty one.
+        results: name === 'chart_facts_query' ? [] : [{ id: '1' }],
+        served_from_cache: false,
+        latency_ms: 1,
+        result_hash: 'sha256:x',
+        schema_version: '1.0',
+      }),
+    }))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my current dasha?' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    expect(body.judgment_flags).toContain('empty_tool_results')
+    expect((body.completeness as { empty_result_tools: string[] }).empty_result_tools).toEqual(['chart_facts_query'])
+    // An honest empty result is NOT the same as an incomplete job — status stays
+    // 'complete' (nothing failed, nothing was capped/unresolved); the flag is the
+    // disclosure mechanism, not a completeness demotion.
+    expect((body.completeness as { status: string }).status).toBe('complete')
+  })
+
   it('forwards a supplied scope_tuple to callPipelinePlanner as the 8th positional arg (W6.1 fix-cycle)', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
     const suppliedTuple = {
