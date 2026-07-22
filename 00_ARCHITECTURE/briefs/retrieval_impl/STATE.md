@@ -2517,3 +2517,32 @@ session; underlying engine independently verified live via the consult
 route across this campaign; tool not yet visible on the expert-profile
 connector — confirm it surfaces on a consult-scoped connection." Flagged
 as the single highest-priority post-seal verification item.
+
+### W6 — Task 13 (§9.7 four-point load test) + Task 14 (D-4b liveness re-check)
+
+**Task 13 — harness built (Task 12), real run NOT executed this session,
+carried as a residual alongside Task 9's.** The load-generation harness
+(`platform/tests/eval/w6_load_battery/`) is built, dry-run-verified against
+a local mock (which embeds the REAL `QosDispatchQueue`, not a stub), and
+28/28 unit tests pass. Running it for real against the deployed connector
+needs the same authenticated credential Task 9's full round-trip needs —
+not available in this session. Carried to §H alongside Task 9's residual,
+same owner (the Cowork operator, authenticated live-connector session).
+`DEFAULT_THRESHOLDS` in `types.ts` are explicitly labeled placeholders —
+no numeric §9.7 threshold (RPS/p95/hit-rate %) exists anywhere in the
+source doctrine; the operator's first real run should itself become the
+recorded baseline (mirroring how `W5_BATTERY_BASELINE_v1_0.md` was
+established).
+
+**Task 14 — D-4b liveness re-checked live, immediately before this note
+(not from any earlier note in this session or plan):** `git branch -a` /
+`gh pr list --state open` show D-4b is genuinely, unambiguously still
+executing — two NEW lanes (`wave/D-4b/F1-resonance-map`,
+`wave/D-4b/F2-curve-controls`) beyond the B1-B6 set already merged this
+session, with PR #697 (F2-curve-controls) open right now. **Disposition:
+`impl/w5-breaking` stays parked.** Per the master brief's own contingency
+("if D-4b is still running at W6's natural end, the flip is the campaign's
+LAST act before §H — do not seal around it without the native's explicit
+say-so"), this wave does not land the flip and does not attempt another
+liveness check later in this same session — the native's own go-ahead is
+the next required step, not a session-internal recheck loop.
