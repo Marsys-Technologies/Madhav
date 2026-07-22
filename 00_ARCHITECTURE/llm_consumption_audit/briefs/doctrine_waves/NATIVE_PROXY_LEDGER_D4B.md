@@ -625,3 +625,29 @@ Reversibility: the retroactive verifier is the reversibility path — nothing ab
 treated as final until that pass runs.
 
 *— end NP-D4B-006*
+
+---
+
+## Compiled summary — NP-D4B-001 through NP-D4B-006 (appended by the B-6 REAL close pass,
+## 2026-07-22, `wave/D-4b/B6-real-close`, mode=GATED)
+
+This section compiles all six ledger entries for the native's single-pass review, per
+`BRIEF_D4B.md` §1 B-6 ("DR ratification sweep... presented to the native for final ratification").
+**None are upgraded to RATIFIED by this pass — compilation only, exactly as the PR #695 pass's own
+DR-3b sweep did for NP-D4B-001 through 005.**
+
+| Entry | Date | Subject | Ruling (provisional unless noted) | Exercised / discharged? |
+|---|---|---|---|---|
+| NP-D4B-001 | 2026-07-21 | DR-17 grading weights: verbatim consumption by B-1 | RATIFIED VERBATIM (provisional) | NOT exercised — DR-17 grading harness still not fully built in any committed artifact this pass could find, though an uncommitted `dr17_grading.ts` scaffold exists in the B-1-full-rerun WIP worktree (unverified, unfinished). |
+| NP-D4B-002 | 2026-07-21 | "Cheaper-null" circular time-shift control | Refused as primary; admissible only as pre-registered diagnostic | NOT exercised — no packet version bump registering it, unchanged. |
+| NP-D4B-003 | 2026-07-21 | §4 tie-band widths (±3d/±7d/±45d/±180d) | ADOPTED as operational constants | NOT yet exercised at scale — B-1's certified run still has not happened. |
+| NP-D4B-004 | 2026-07-21 | Control sample design (N=1000, coverage-matching, seed scheme) | ADOPTED as committed | Exercised in the NARROWED run (PR #694) — but that run predates F-2's fix, so its exercised numbers are the ones F-2 was written to correct. Not yet re-exercised on the repaired substrate. |
+| NP-D4B-005 | 2026-07-22 | Native, direct — B-5 aggregate `COUNT(*)` near sealed-split boundary | REVIEWED — NO BREACH, one-time carve-out | Direct native ruling, already final. Unaffected by this pass. |
+| NP-D4B-006 | 2026-07-22 | Native, direct — conductor-verified-under-infrastructure-duress deviation, F-1 (PR #699) | ACCEPT, conductor-verified, PR #699 merged; **binding mitigation**: retroactive fresh-context Opus verifier required | **This pass's own disposition:** a retroactive verification pass was reported to this pass (by the orchestrating session, not re-run independently here) with **VERDICT: ACCEPT**, reproducing every numbered probe in NP-D4B-006 independently against `origin/main` at `25e0dc4a` — including the live `permission_curve` probe and its negative control. On that reported basis, **NP-D4B-006's mitigation obligation is treated as DISCHARGED by this pass**. This is an attribution, not this pass's own from-scratch re-derivation of all eight probes; a future session that wants first-hand confirmation should re-run them itself rather than cite this entry as having done so. |
+
+**This pass's own rulings:** none, same discipline as the PR #695 pass. This is compilation and
+honest status-tracking, not adjudication. The one substantive update over the PR #695 pass's own
+compilation is NP-D4B-006 itself (new since that pass) and this pass's disposition of its
+mitigation clause.
+
+*— end compiled summary, B-6 REAL close pass*
