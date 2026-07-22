@@ -1,7 +1,7 @@
 {
   "canonical_id": "CHART_FACTS_CATEGORIES_AUTHORITATIVE",
   "version": 1,
-  "generated_at": "2026-07-19T21:18:10.804Z",
+  "generated_at": "2026-07-22T19:41:15.255Z",
   "source": "live DB — SELECT DISTINCT fact_category FROM chart_facts (via E3, retrieval_census_ro role)",
   "rationale": "Picked as the single source of truth because it is the only one of the (now confirmed FOUR, not three) static/live sources that reflects what the L1 build ACTUALLY WROTE, per CLAUDE.md §N.5 (\"L1 is the authority over L2+ derivations\") generalized to L1's own documentation: chart_facts (the table) is definitionally the ground truth for chart_facts (the category enum), not any hand-maintained mirror of it. All three static lists are demonstrably STALE mirrors, not competing design intents: CHART_FACTS_SCHEMA.json (147, missing 73 live categories) and coverage_matrix.ts (158, missing 66 live categories, AND unused by the chart_facts_query serving path it appears to document — a real repo-wide import-site scan finds 1 import site(s): platform/tests/retrieval/coverage_gate.test.ts:15, so it is not fully dead — it is a live CI coverage-gate dependency, just not runtime-serving) both undercount; a FOURTH, previously-uncited source (ganita/types.ts, 26 entries, imported by facts_store.ts but only re-exported, never used to validate anything) undercounts far more severely. None of the three static sources gates the live write path OR the live read path (chart_facts_query has no category enum check at all) — they are pure documentation, currently wrong documentation.",
   "count": 218,
