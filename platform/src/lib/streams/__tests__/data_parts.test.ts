@@ -12,6 +12,7 @@ import {
   ObservabilityPartSchema,
   CitationGatePartSchema,
   PersistencePartSchema,
+  JudgmentFlagsPartSchema,
   DataPartSchema,
   stagePart,
   toolPart,
@@ -19,6 +20,7 @@ import {
   observabilityPart,
   citationGatePart,
   persistencePart,
+  judgmentFlagsPart,
   TIME_TO_FIRST_VERDICT_SLO_MS,
   type StagePart,
   type ToolPart,
@@ -266,6 +268,28 @@ describe('PersistencePartSchema', () => {
   })
 })
 
+// ── JudgmentFlagsPart (RC-02 — web ↔ MCP gate-flag parity) ─────────────────
+
+describe('JudgmentFlagsPartSchema', () => {
+  it('accepts an empty flags array (unconditional emission, §N.6 — "checked, nothing to report")', () => {
+    const result = JudgmentFlagsPartSchema.safeParse({ type: 'judgment_flags', flags: [] })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts the same flag string prashna_ask surfaces for the NO-LEAKAGE strip', () => {
+    const result = JudgmentFlagsPartSchema.safeParse({
+      type: 'judgment_flags',
+      flags: ['no_leakage_capabilities_stripped'],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a non-array flags field', () => {
+    const result = JudgmentFlagsPartSchema.safeParse({ type: 'judgment_flags', flags: 'not-an-array' })
+    expect(result.success).toBe(false)
+  })
+})
+
 // ── DataPartSchema (union discriminator) ──────────────────────────────────
 
 describe('DataPartSchema (union)', () => {
@@ -277,6 +301,7 @@ describe('DataPartSchema (union)', () => {
       { type: 'observability', query_id: '550e8400-e29b-41d4-a716-446655440000', trace_url: 'https://a.com/t' },
       { type: 'citation_gate', status: 'pass' },
       { type: 'persistence', conversation_id: '550e8400-e29b-41d4-a716-446655440000', message_id: 'msg_1', status: 'ok' },
+      { type: 'judgment_flags', flags: ['no_leakage_capabilities_stripped'] },
     ]
     for (const v of variants) {
       const result = DataPartSchema.safeParse(v)
@@ -342,5 +367,12 @@ describe('Helper constructors', () => {
       status: 'ok',
     })
     expect(PersistencePartSchema.safeParse(part).success).toBe(true)
+  })
+
+  it('judgmentFlagsPart produces valid JudgmentFlagsPart', () => {
+    const part = judgmentFlagsPart({ flags: ['no_leakage_capabilities_stripped'] })
+    expect(JudgmentFlagsPartSchema.safeParse(part).success).toBe(true)
+    expect(part.type).toBe('judgment_flags')
+    expect(part.flags).toEqual(['no_leakage_capabilities_stripped'])
   })
 })
