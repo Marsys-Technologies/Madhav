@@ -651,3 +651,54 @@ compilation is NP-D4B-006 itself (new since that pass) and this pass's dispositi
 mitigation clause.
 
 *— end compiled summary, B-6 REAL close pass*
+
+---
+
+## NP-D4B-007 (2026-07-22, native ruling, direct via Cowork — sole-halt-condition disposition)
+
+**Question:** the D-4b B-1 chunked re-run's final anti-gaming verifier found that all 3
+checkpointed batches scored the sealed test split (events on/after 2020-01-01) across all 14
+contenders — a real breach of the sealed split the Native-Proxy charter's retained invariant names
+as the sole condition the proxy may never rule around. The merge agent correctly declined to
+merge; the conductor correctly refused to self-fix under that invariant and escalated instead.
+Disposition?
+
+**Ruling: QUARANTINE the breached run in full. No partial salvage.** Every score, delta, and the
+DR-12 NO_WINNER adjudication from `wave/D-4b/B1-full-rerun` (tip `0aa69c06`) is VOID — cited
+nowhere, fed to nothing, the branch stays permanently unmerged as incident evidence only. See
+`bakeoff_results/QUARANTINE_B1_FULL_RERUN_v1_0.md` for the full incident record. A run that
+touched the sealed split is wholly disqualified even where individual contenders' pre-2020 scores
+were computed honestly — the contamination is at the RUN level (shared controls, seed derivation,
+and adjudication computed with sealed-split data present), not curable by discarding only the
+sealed-split rows post hoc. Partial salvage is exactly the rationalization the seal exists to
+forbid.
+
+**Root cause + fix: DR-20** (`DISAGREEMENT_REGISTER_v1_0.md` DIS.031) — the seal was enforced by
+prompt instruction, never by the query/data layer. Fix registered as CR-123
+(`MARSYS_DEFECT_GAP_REGISTER_v2_0.md`): packet-construction-time train-split filtering, a
+harness-level hard exclusion the scoring loop cannot bypass, and a gate-blocking structural
+assertion at every verification altitude (per-batch, assembly, final anti-gaming) — not merely the
+final pass, closing the defense-in-depth gap this incident also exposed (the breach traveled three
+verification altitudes before being caught).
+
+**Commendations, recorded plainly, not merely logged:** the merge agent's decline on the
+verifier's verdict; the conductor's refusal to self-fix under the retained invariant, escalating
+instead of routing around it; the fact that nothing from the breached run ever reached `main`,
+`B-2`, or `B-3` at any point. **The breach is a process defect. Catching it, three altitudes deep
+but still before any propagation, is the governance architecture succeeding under real failure —
+exactly as designed.**
+
+**Binding next step:** one clean B-1 re-run on the DR-20-fixed harness, training-split only,
+chunked/checkpointed per the standing CR-122 pattern, full anti-gaming battery including the now-
+structural sealed-split assertion. **Pre-committed outcome, stated in advance:** if the clean
+re-run returns NO_WINNER on the honest training set — plausible given the coverage thinness even
+the breached run showed (n=3 for most contenders) — that closes B-1 honestly via the campaign's
+own pre-committed no-winner branch. A real no-winner on clean data is a valid, valuable outcome;
+the campaign does not chase a champion. The prospective ledger remains the campaign's real forward
+test and is already open.
+
+Reversibility: the quarantine is permanent by design (the entire point is that this data is never
+reusable); the fix (DR-20) is the reversibility path for the CLASS of defect, not this instance —
+a clean re-run is the only way forward, there is no partial-recovery path and none was sought.
+
+*— end NP-D4B-007*

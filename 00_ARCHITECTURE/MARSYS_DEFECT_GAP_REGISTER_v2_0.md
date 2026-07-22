@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.11
+version: 3.12
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -1021,10 +1021,43 @@ this run's scale — not a one-off workaround.
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.11 (2026-07-22, D-4b B-1 chunked re-run,
-`wave/D-4b/B1-full-rerun`) — CR-122 added: checkpointed batching registered as standing doctrine
-for heavy scoring lanes, after two consecutive unchunked-dispatch failures isolated to exactly this
-task profile. Prior: v3.10 (2026-07-22, D-4b permission-bridge lane,
+**CR-123 [SEVERITY: HIGH — sealed test-split breach, CONTAINED (never reached `main`), recorded
+D-4b B-1 chunked re-run, `wave/D-4b/B1-full-rerun` (now QUARANTINED), 2026-07-22]:** all 3
+checkpointed batches of the D-4b B-1 full re-run scored the sealed test split
+(`life_events.event_date >= '2020-01-01'`) despite every batch-build dispatch carrying the
+explicit instruction not to. `pratyantar_lord` scored 20 post-2020 events; every PERMISSION
+contender + `hierarchical_ensemble` scored a 2025 marriage event. **Root cause: the seal was
+enforced by prompt instruction, never by the query/data layer** — nothing in the scoring
+harness's event-fetch path physically prevented a sealed event from being retrieved if a batch's
+own query logic constructed one. Caught by the FINAL anti-gaming verifier only — three
+verification altitudes downstream of where it originated; neither per-batch verifier receipts nor
+the assembly step checked the seal at all (a defense-in-depth gap, separately noted below).
+**Disposition (native ruling, 2026-07-22): full quarantine, no partial salvage.** Every score,
+delta, and the DR-12 NO_WINNER adjudication from the breached run is VOID — cited nowhere, fed to
+nothing, the branch stays permanently unmerged as incident evidence only
+(`QUARANTINE_B1_FULL_RERUN_v1_0.md`). **Fix, registered as DR-20** (`DISAGREEMENT_REGISTER_v1_0.md`
+DIS.031): the pre-registration packet's event set is filtered to the training split at
+packet-construction time; the harness's event-fetch path hard-excludes the sealed range by
+construction (mirrors D-3 ADMIT's correct approach); a gate-blocking structural assertion (zero
+sealed events in the scored set) is added at every verification altitude — per-batch, assembly,
+and final anti-gaming — so a repeat is caught at its origin, not three stages later.
+**Governance note, commended not merely logged:** the merge agent declined to merge on the
+verifier's verdict: the conductor refused to self-fix under the Native-Proxy charter's retained
+"never touch the sealed split" invariant and escalated instead; nothing from the breached run ever
+reached `main`, `B-2`, or `B-3`. The breach is a process defect; catching it before propagation is
+the governance architecture succeeding under real failure, per the native's own framing of this
+incident.
+
+---
+
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.12 (2026-07-22, D-4b B-1 chunked re-run
+quarantine + DR-20 structural-seal fix) — CR-123 added: sealed test-split breach (contained,
+never reached main), root cause (instruction-only enforcement, not structural), disposition (full
+quarantine of the breached branch, DR-20 registered as the structural fix). Prior: v3.11
+(2026-07-22, D-4b B-1 chunked re-run, `wave/D-4b/B1-full-rerun`) — CR-122 added: checkpointed
+batching registered as standing doctrine for heavy scoring lanes, after two consecutive
+unchunked-dispatch failures isolated to exactly this task profile. Prior: v3.10 (2026-07-22, D-4b
+permission-bridge lane,
 `wave/D-4b/permission-bridge`) — CR-120 and CR-121 added NOT-EVALUABLE (coverage gap, not a
 retirement): midpoint-triangle's mandatory-baseline role in B-1's bakeoff passes to the mirrored
 shuffled-birth controls (native ruling, this session); transit-kernel's D-3 RED result stands as
