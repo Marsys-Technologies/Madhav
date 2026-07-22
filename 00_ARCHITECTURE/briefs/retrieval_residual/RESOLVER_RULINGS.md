@@ -185,4 +185,65 @@ calls the identical registry URI). Full per-tool evidence: `NAMESPACE_COVERAGE_v
 Coverage: 11/23 → 21/23 mechanically bridged; 23/23 accounted for (2 DEFERRED with rationale,
 zero silent gaps).
 
+> **Correction (2026-07-23, noted per this ledger's own correction-of-factual-error allowance):**
+> the "10 of the original 12" / "21/23" figures above counted `ganita_condition_get` as one of the
+> 10 genuine 1:1 matches. Independent verification (`VERIFY_RC-10.md`) found this was NOT a
+> genuine 1:1 match — see Ruling RC-10-003 below, which DEFERS `ganita_condition_get` alongside
+> `ganita_structural_get`. Corrected figures: **9** of the original 12 bridged, **20/23**
+> mechanically bridged, **3 DEFERRED** (not 2). This paragraph's original text is left unedited
+> above per the ledger's append-only discipline; RC-10-003 is the authoritative correction.
+
+## Ruling RC-10-003 — `ganita_condition_get` DEFERRED (facet-multiplexed dispatcher, identical case to RC-10-001; corrects a REJECTED bridge entry)
+
+**Date:** 2026-07-23
+**Residual:** RC-10 (R-9) — Cluster 4, `RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md` §E
+**Resolver authority cited:** §D.5's residual-disposition authority ("Resolver-disposition each
+un-bridged tool with rationale"), applying the same evidence-first discipline RC-09's dark-table
+rulings and RC-10-001 already established (per-item concrete finding, not a default withholding).
+
+**Context:** the RC-10 close originally force-mapped `ganita_condition_get` to
+`marsys://tool/L1/get_condition_composite` in `LIVE_TOOL_TO_RETRIEVAL`, on the mistaken premise
+that the MCP tool "talks to the same L1 condition-composite writer output." An independent
+verifier (`VERIFY_RC-10.md`, 2026-07-23) REJECTED this as a wrong-data laundering defect. This
+ruling formally corrects the disposition to DEFERRED, matching RC-10-001's treatment of the
+structurally identical `ganita_structural_get`.
+
+**Ruling:** `ganita_condition_get` is DEFERRED, not force-mapped. Evidence (full detail:
+`VERIFY_RC-10.md`, `NAMESPACE_COVERAGE_v2_0.md` §4/§5):
+
+1. The MCP handler (`platform-mcp/src/tools/register_p1_ganita.ts` ~L663) is a **3-facet
+   dispatcher** over `CONDITION_FACET_URI` (`dignity → get_dignity`, `avasthas → get_avasthas`,
+   `karakas → get_karakas`, default facet `dignity`) — it never calls `get_condition_composite`.
+2. `get_condition_composite.ts`'s own header states verbatim that `ganita_condition_get`'s facets
+   "all read chart_facts directly, not this composite" — direct source-documentation contradiction
+   of the rejected mapping.
+3. Six Vidhi floor primitives declare this `live_tool` (`bhavesha_condition`, `karaka_condition`,
+   `chara_karaka_read`, `dignity_scan`, `arudha_read`, `karakamsa_read` — `registry_data.ts`
+   L47/59/107/230/350/472); `ga_condition_composite`'s columns contain no karaka assignment, no
+   arudha, and no karakamsa data, so 4 of the 6 (`karaka_condition`, `chara_karaka_read`,
+   `arudha_read`, `karakamsa_read`) compiled onto the web door would silently return rows that do
+   not contain the concept the primitive asked for — the anti-laundering failure §N.6/B.10 forbid.
+
+A single static URI mapping cannot be correct here — the Vidhi modes
+(lord/karaka/chara_karaka/dignity/arudha/karakamsa) do not even correspond 1:1 to the tool's own
+3-facet enum, let alone to `get_condition_composite`'s schema. This is the identical failure
+shape RC-10-001 already ruled DEFERRED for `ganita_structural_get`; treating the two differently
+was the defect this ruling corrects.
+
+**Disposition:** DEFERRED, honestly reported via `unmappedPrimitives` (never dropped silently,
+never force-mapped to a plausible-looking but wrong URI). **Revisit condition:** identical to
+RC-10-001 — a future lane adds facet/mode-aware resolution to `compileFloorForPlan` (deriving the
+correct facet per `primitive_id` and selecting the matching `CONDITION_FACET_URI` entry, noting
+the Vidhi modes do not currently map onto the tool's facet enum, so a correct 1:1 does not exist
+yet) — real compiler engineering, out of a bridge-extension's mechanical scope.
+
+**Code changes this ruling accompanies:** the `ganita_condition_get: 'marsys://tool/L1/
+get_condition_composite'` entry was removed from `LIVE_TOOL_TO_RETRIEVAL` in
+`compiled_floor_adapter.ts`; the comment block there and `NAMESPACE_COVERAGE_v2_0.md` (now v2.1)
+were corrected throughout. **Coverage corrected: 21/23 → 20/23 mechanically bridged; 23/23
+accounted for (3 DEFERRED — structural, temporal_bundle, condition — zero silent gaps).**
+
+**Subject to verifier review:** yes, per §D.5's standing requirement — this ruling is itself the
+record of a verifier-driven correction and remains open to further review.
+
 *End of RESOLVER_RULINGS.md (RC-10 entries). Next lane appends below this line.*

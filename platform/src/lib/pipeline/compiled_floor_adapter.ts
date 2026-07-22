@@ -121,8 +121,8 @@ export function classifierTupleToCompilerTuple(tuple: ClassifierScopeTuple): Com
 // equivalent can execute on the web consult path. Every value here MUST resolve via
 // getToolByName() — asserted by compiled_floor_adapter.test.ts against the bridge.
 // The floor primitives whose live_tool has NO retrieval equivalent
-// (ganita_structural_get / kala_temporal_bundle, as of RC-10) are intentionally
-// absent — they are reported as unmappedPrimitives, not pushed as no-op tool
+// (ganita_structural_get / ganita_condition_get / kala_temporal_bundle, as of RC-10) are
+// intentionally absent — they are reported as unmappedPrimitives, not pushed as no-op tool
 // names. (Known gap, Resolver-dispositioned per RC-10: see this file's
 // LIVE_TOOL_TO_RETRIEVAL comment above + NAMESPACE_COVERAGE_v2_0.md.)
 //
@@ -136,11 +136,14 @@ export function classifierTupleToCompilerTuple(tuple: ClassifierScopeTuple): Com
 // `tool_name_bridge.ts`'s `resolveToolUri()` accepts literal registry URIs directly
 // (the CR-118 fast-fail fix).
 //
-// RC-10 (R-9, 2026-07-22) re-measured combined coverage (this hand map + the
-// generated-bridge fallback) at 21/23 of Vidhi's distinct `live_tool` names —
-// up from the W5 L1 baseline of 11/23. The remaining 2 (`ganita_structural_get`,
-// `kala_temporal_bundle`) are Resolver-dispositioned below, not silently dropped.
-// See `00_ARCHITECTURE/briefs/retrieval_residual/NAMESPACE_COVERAGE_v2_0.md` for
+// RC-10 (R-9, 2026-07-22, corrected 2026-07-23 on verifier REJECT) measures combined
+// coverage (this hand map + the generated-bridge fallback) at 20/23 of Vidhi's distinct
+// `live_tool` names — up from the W5 L1 baseline of 11/23. The remaining 3
+// (`ganita_structural_get`, `ganita_condition_get`, `kala_temporal_bundle`) are
+// Resolver-dispositioned below (DEFERRED), not silently dropped and not force-mapped to a
+// plausible-looking but wrong URI. See
+// `00_ARCHITECTURE/briefs/retrieval_residual/NAMESPACE_COVERAGE_v2_0.md` and
+// `00_ARCHITECTURE/briefs/retrieval_residual/RESOLVER_RULINGS.md` (RC-10-001/002/003) for
 // the full per-tool evidence table and disposition rationale.
 export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
   get_cgm_subgraph: 'cgm_graph_walk', // mechanism_read → L2 CGM subgraph walk (an L2.5 tool)
@@ -148,14 +151,17 @@ export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
   ganita_yoga_firings_get: 'get_yoga_firings', // dhana_yoga_scan / nbry_scan → L1 yoga firings
   bodha_discoveries_get: 'query_discoveries', // contradiction_scan → L2 discoveries
 
-  // RC-10 (R-9, namespace-gap re-measure, 2026-07-22): 10 more of the 23 distinct
+  // RC-10 (R-9, namespace-gap re-measure, 2026-07-22): 9 more of the 23 distinct
   // `live_tool` names, each verified as a genuine 1:1 concept match to an already-live
   // retrieval-registry capability (confirmed by reading the MCP tool's own handler body
   // in platform-mcp/src/tools/register_p1_*.ts — every entry below calls the exact
   // registry URI on the right via `callRegistryCapability(...)`, so this is the SAME
   // underlying data the MCP door already serves under this name, not a new/guessed
   // mapping). See NAMESPACE_COVERAGE_v2_0.md for the full per-tool evidence table.
-  ganita_condition_get: 'marsys://tool/L1/get_condition_composite', // bhavesha/karaka/chara-karaka condition reads
+  // (`ganita_condition_get` was REMOVED from this map on verifier REJECT, 2026-07-23 —
+  // see RESOLVER_RULINGS.md RC-10-003: the MCP handler is itself a facet dispatcher over
+  // get_dignity/get_avasthas/get_karakas and never calls get_condition_composite; DEFERRED
+  // below alongside ganita_structural_get.)
   ganita_dasha_lord_capability_get: 'marsys://tool/L1/get_dasha_lord_capability',
   ganita_sensitive_degrees_get: 'marsys://tool/L1/get_sensitive_degrees',
   ganita_strength_get: 'marsys://tool/L1/get_strength', // shadbala / graha strength
@@ -173,6 +179,16 @@ export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
   //     `bhava_condition`), so a single static URI here would silently serve the WRONG
   //     data for some primitives — exactly the anti-laundering failure §N.6/B.10 forbid.
   //     Needs facet-aware routing in compileFloorForPlan, not a hand-map entry.
+  //   ganita_condition_get   — facet-multiplexed dispatcher (3-facet: dignity/avasthas/
+  //     karakas via CONDITION_FACET_URI, default facet `dignity`, register_p1_ganita.ts
+  //     ~L663) — the IDENTICAL case to ganita_structural_get. It never calls
+  //     get_condition_composite (get_condition_composite.ts's own header states its data is
+  //     NOT what condition_get's facets read); 4 of the 6 consuming Vidhi primitives
+  //     (karaka_condition, chara_karaka_read, arudha_read, karakamsa_read) target concepts
+  //     absent from ga_condition_composite's columns entirely. A static URI here would
+  //     silently serve the WRONG data — the same §N.6/B.10 anti-laundering failure.
+  //     REJECTED at verify (RESOLVER_RULINGS.md RC-10-003); DEFERRED, needs facet/mode-aware
+  //     routing in compileFloorForPlan, not a hand-map entry.
   //   kala_temporal_bundle   — sidecar composite with NO retrieval-registry capability at
   //     all (platform-mcp/src/server.ts's own "KEYSTONE REQUEST" comment: "has no registry
   //     primitive... REQUEST to retrieval fork: expose 'kala_temporal_bundle' capability").

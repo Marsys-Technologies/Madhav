@@ -1,12 +1,19 @@
 ---
 artifact: NAMESPACE_COVERAGE_v2_0.md
 canonical_id: NAMESPACE_COVERAGE
-version: 2.0
+version: 2.1
 status: CLOSED
 governed_by: 00_ARCHITECTURE/briefs/RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §E RC-10 (R-9)
 supersedes: >
   W5 STATE.md's "4/23 → 11/23" measurement (Lane L1, 2026-07-21) — that number is now
   historical; this document is the current authoritative measurement.
+corrected: >
+  v2.1 (2026-07-23): independent verifier REJECTED the v2.0 "21/23 bridged" figure
+  (VERIFY_RC-10.md) — `ganita_condition_get` was force-mapped to
+  `marsys://tool/L1/get_condition_composite`, a URI the MCP handler of that name never
+  calls (it is a facet dispatcher over get_dignity/get_avasthas/get_karakas). Corrected
+  throughout to 20/23 bridged + 3 DEFERRED (structural, temporal_bundle, condition). See
+  RESOLVER_RULINGS.md RC-10-003.
 ---
 
 # RC-10 (R-9) — MCP↔Web Namespace Gap, Re-Measured
@@ -82,7 +89,6 @@ dead-tool substitutions used).
 
 | `live_tool` | Registry capability found | MCP handler confirms same URI? | Disposition |
 |---|---|---|---|
-| `ganita_condition_get` | `marsys://tool/L1/get_condition_composite` (`get_condition_composite.ts`) | n/a (P1 Group-1 tool talks to the same L1 condition-composite writer output) | **BRIDGED** |
 | `ganita_dasha_lord_capability_get` | `marsys://tool/L1/get_dasha_lord_capability` | n/a | **BRIDGED** |
 | `ganita_sensitive_degrees_get` | `marsys://tool/L1/get_sensitive_degrees` | n/a | **BRIDGED** |
 | `ganita_strength_get` | `marsys://tool/L1/get_strength` (shadbala) | n/a | **BRIDGED** |
@@ -93,14 +99,18 @@ dead-tool substitutions used).
 | `bodha_remedies_search` | `marsys://tool/L2/query_remedies` | **Yes** — same file, explicitly documented "as secondary alias" / "alias of bodha_remedies_get", same URI. | **BRIDGED** |
 | `kala_windows_get` | `marsys://tool/L3/query_temporal_activation` | **Yes** — `register_p1_aliases.ts` calls `callRegistryCap('marsys://tool/L3/query_temporal_activation', ...)`. Same capability `temporal` already resolves to (WP-1.7). | **BRIDGED** |
 | `ganita_structural_get` | No single URI — facet-multiplexed dispatcher, 13 facets each routing to a *different* registry URI (`STRUCTURAL_FACET_URI` in `register_p1_ganita.ts`) | n/a — multi-target | **DISPOSITIONED** (§5) |
+| `ganita_condition_get` | No single correct URI — 3-facet dispatcher (`CONDITION_FACET_URI` in `register_p1_ganita.ts` ~L663: dignity/avasthas/karakas, default facet `dignity`); the MCP handler never calls `get_condition_composite`, and `get_condition_composite.ts`'s own header states its data is NOT what condition_get's facets read | **No** — verifier-confirmed the handler dispatches to `get_dignity`/`get_avasthas`/`get_karakas`, never `get_condition_composite` (VERIFY_RC-10.md) | **DISPOSITIONED** (§5) |
 | `kala_temporal_bundle` | **None exists.** Sidecar composite, no registry primitive at all. | n/a — genuinely absent | **DISPOSITIONED** (§5) |
 
-10 of the 12 were genuine 1:1 concept matches resolvable with a single hand-map entry each —
-mechanical, low-risk, evidence-backed (5 of the 10 independently confirmed by reading the
+9 of the 12 were genuine 1:1 concept matches resolvable with a single hand-map entry each —
+mechanical, low-risk, evidence-backed (5 of the 9 independently confirmed by reading the
 MCP tool's own handler source, not merely inferred from naming similarity). These are now added
-to `LIVE_TOOL_TO_RETRIEVAL` in `compiled_floor_adapter.ts` (RC-10 commit).
+to `LIVE_TOOL_TO_RETRIEVAL` in `compiled_floor_adapter.ts` (RC-10 commit). A 10th candidate,
+`ganita_condition_get`, was initially force-mapped to `get_condition_composite` but this was
+REJECTED at independent verification (VERIFY_RC-10.md, 2026-07-23) as a wrong-data laundering
+defect — see RC-10-003 below.
 
-## §5 — Resolver dispositions for the remaining 2 (Native-Proxy Resolver, brief §D.5)
+## §5 — Resolver dispositions for the remaining 3 (Native-Proxy Resolver, brief §D.5)
 
 Per §D.5, the Resolver may disposition a residual item with a written rationale citing existing
 doctrine; it may not weaken a security control or change a frozen contract. Neither disposition
@@ -135,6 +145,51 @@ unmapped. **Revisit condition:** a future lane that builds primitive-level facet
 the compiler (either by adding a `facet` field to each affected `VidhiPrimitive`'s `tool_args`
 consistently, or by teaching `resolveLiveTool` to accept a facet argument).
 
+### RC-10-003 — `ganita_condition_get`: DEFERRED (facet-multiplexed dispatcher, identical case to RC-10-001)
+
+**Finding:** `ganita_condition_get` is not one capability but a **3-facet dispatcher**
+(`CONDITION_FACET_URI` in `register_p1_ganita.ts` ~L663: `dignity → marsys://tool/L1/get_dignity`,
+`avasthas → marsys://tool/L1/get_avasthas`, `karakas → marsys://tool/L1/get_karakas`, default
+facet `dignity`) — it **never** calls `marsys://tool/L1/get_condition_composite`. The v2.0
+version of this document force-mapped it to `get_condition_composite` anyway, on the mistaken
+premise that the two "talk to the same L1 condition-composite writer output." Three independent
+counts refute this (full detail: `VERIFY_RC-10.md`):
+
+1. The MCP handler body resolves only to `get_dignity`/`get_avasthas`/`get_karakas`, never to
+   `get_condition_composite`.
+2. `get_condition_composite.ts`'s own header states verbatim: *"`ganita_condition_get`'s
+   dignity/avasthas/karakas facets all read chart_facts directly, not this composite — this tool
+   exposes the composite rollup itself."* `get_condition_composite` reads a different table
+   (`ga_condition_composite`, 90 rows) entirely.
+3. Six Vidhi floor primitives carry `live_tool: 'ganita_condition_get'`: `bhavesha_condition`
+   (lord), `karaka_condition` (karaka), `chara_karaka_read` (chara_karaka), `dignity_scan`
+   (dignity), `arudha_read` (arudha), `karakamsa_read` (karakamsa). `ga_condition_composite`'s
+   columns (graha / dignity / varga-dignity / 5 avasthas / motion / combustion / friendships /
+   graha-yuddha / condition_score / dasha windows) contain **no karaka assignment, no arudha, and
+   no karakamsa data** — so 4 of the 6 consuming primitives (`karaka_condition`,
+   `chara_karaka_read`, `arudha_read`, `karakamsa_read`) would silently receive per-graha
+   condition-composite rows that do not contain the concept requested.
+
+**Why this is not mechanical:** identical failure shape to RC-10-001 — a single static
+`LIVE_TOOL_TO_RETRIEVAL['ganita_condition_get'] = <one URI>` entry cannot be correct for
+primitives whose modes (`lord`/`karaka`/`chara_karaka`/`dignity`/`arudha`/`karakamsa`) do not even
+correspond to the tool's own 3-facet enum (`dignity`/`avasthas`/`karakas`), let alone to
+`get_condition_composite`'s columns. This is the exact anti-laundering failure §N.6/B.10 forbid,
+and the two must be treated the same way per the internal-consistency requirement RC-09's rulings
+established.
+
+**Disposition: DEFERRED**, not force-mapped — `compileFloorForPlan` already reports every
+`ganita_condition_get`-mapped primitive_id via `unmappedPrimitives` (never pushed as a no-op tool
+call). **Revisit condition:** identical to RC-10-001 — a future lane adds facet/mode-aware
+resolution to `compileFloorForPlan` (deriving the correct facet per `primitive_id` and selecting
+the matching `CONDITION_FACET_URI` entry, noting the Vidhi modes do not currently map onto the
+tool's facet enum, so a correct 1:1 does not exist yet) — real compiler engineering, out of a
+bridge-extension's mechanical scope.
+
+**Correction record:** this disposition supersedes the v2.0 **BRIDGED** disposition for this
+tool, which was REJECTED at independent verification (`VERIFY_RC-10.md`, 2026-07-23) and removed
+from `LIVE_TOOL_TO_RETRIEVAL` in `compiled_floor_adapter.ts`. See `RESOLVER_RULINGS.md` RC-10-003.
+
 ### RC-10-002 — `kala_temporal_bundle`: DEFERRED (no registry capability exists; pre-existing documented gap)
 
 **Finding:** `kala_temporal_bundle` has **no retrieval-registry capability at all** — it is a
@@ -154,28 +209,28 @@ requested composite capability (a new L3 Kāla registry primitive combining time
 convergence/obstruction/snapshot), which is new-capability construction out of a residual
 bridge-extension's scope and belongs to the registry build track, not this closure campaign.
 
-## §6 — Measurement AFTER this residual (current)
+## §6 — Measurement AFTER this residual (current, corrected 2026-07-23)
 
-10 of the 12 previously-unmapped names bridged; 2 dispositioned (not silently dropped — both
+9 of the 12 previously-unmapped names bridged; 3 dispositioned (not silently dropped — all three
 reported via `unmappedPrimitives` with an honest, doctrine-cited rationale).
 
-**Real coverage: 21/23 (~91%) mechanically bridged, 23/23 accounted for (100% dispositioned or
+**Real coverage: 20/23 (~87%) mechanically bridged, 23/23 accounted for (100% dispositioned or
 bridged, zero silent gaps).**
 
-| # | Now-bridged (10 new) | Target |
+| # | Now-bridged (9) | Target |
 |---|---|---|
-| 1 | `ganita_condition_get` | `marsys://tool/L1/get_condition_composite` |
-| 2 | `ganita_dasha_lord_capability_get` | `marsys://tool/L1/get_dasha_lord_capability` |
-| 3 | `ganita_sensitive_degrees_get` | `marsys://tool/L1/get_sensitive_degrees` |
-| 4 | `ganita_strength_get` | `marsys://tool/L1/get_strength` |
-| 5 | `ganita_nakshatra_get` | `marsys://tool/L1/get_tara_chandra_bala` |
-| 6 | `ref_doshas_get` | `marsys://tool/L0/query_dosha_catalog` |
-| 7 | `bodha_signals_get` | `marsys://tool/L2/query_signals` |
-| 8 | `bodha_remedies_get` | `marsys://tool/L2/query_remedies` |
-| 9 | `bodha_remedies_search` | `marsys://tool/L2/query_remedies` |
-| 10 | `kala_windows_get` | `marsys://tool/L3/query_temporal_activation` |
+| 1 | `ganita_dasha_lord_capability_get` | `marsys://tool/L1/get_dasha_lord_capability` |
+| 2 | `ganita_sensitive_degrees_get` | `marsys://tool/L1/get_sensitive_degrees` |
+| 3 | `ganita_strength_get` | `marsys://tool/L1/get_strength` |
+| 4 | `ganita_nakshatra_get` | `marsys://tool/L1/get_tara_chandra_bala` |
+| 5 | `ref_doshas_get` | `marsys://tool/L0/query_dosha_catalog` |
+| 6 | `bodha_signals_get` | `marsys://tool/L2/query_signals` |
+| 7 | `bodha_remedies_get` | `marsys://tool/L2/query_remedies` |
+| 8 | `bodha_remedies_search` | `marsys://tool/L2/query_remedies` |
+| 9 | `kala_windows_get` | `marsys://tool/L3/query_temporal_activation` |
 
-Still unmapped (2, dispositioned DEFERRED per §5): `ganita_structural_get`, `kala_temporal_bundle`.
+Still unmapped (3, dispositioned DEFERRED per §5): `ganita_structural_get`, `ganita_condition_get`,
+`kala_temporal_bundle`.
 
 ## §7 — Downstream effect observed and handled (not silently absorbed)
 
@@ -200,10 +255,10 @@ and documented in-line at both the map declaration and the affected test. A new 
 forward_looking floor`) confirms the fallback path itself is unchanged when the compiled floor
 genuinely supplies no L2.5 tool.
 
-## §8 — Verification run (this session)
+## §8 — Verification run (this session; re-run 2026-07-23 after the RC-10-003 correction)
 
 ```
-$ npx vitest run src/lib/pipeline src/lib/vidhi src/lib/retrieval/registry/tool_name_bridge_r6_0b_deadtools.test.ts
+$ npx vitest run src/lib/pipeline src/lib/vidhi src/lib/retrieval/registry/tool_name_bridge_r6_0b_deadtools.test.ts src/lib/pipeline/__tests__/compiled_floor_adapter.test.ts
  Test Files  18 passed (18)
       Tests  154 passed (154)
 
@@ -215,15 +270,25 @@ $ npx tsc --noEmit
 (clean, no output)
 ```
 
+All counts reproduce exactly after removing the `ganita_condition_get` entry from
+`LIVE_TOOL_TO_RETRIEVAL` — `compiled_floor_adapter.test.ts`'s bridge-integrity suite asserts
+resolvability of mapped names, not the presence of any specific key, so no test required
+modification for the removal itself.
+
 ## §9 — DONE bar (brief §E RC-10) — met
 
 > "a real number recorded; if <100%, either close the remaining gap (generated-bridge extension)
 > or Resolver-disposition each un-bridged tool with rationale"
 
-Real number: **21/23 bridged mechanically** (up from 11/23). The remaining 2/23
-(`ganita_structural_get`, `kala_temporal_bundle`) are Resolver-dispositioned DEFERRED with
-written, doctrine-cited rationale (§5), each already honestly surfaced via `unmappedPrimitives`
-rather than silently dropped or force-mapped to wrong data. 23/23 accounted for — zero residual
-silent gaps.
+Real number: **20/23 bridged mechanically** (up from 11/23). The remaining 3/23
+(`ganita_structural_get`, `ganita_condition_get`, `kala_temporal_bundle`) are Resolver-dispositioned
+DEFERRED with written, doctrine-cited rationale (§5), each already honestly surfaced via
+`unmappedPrimitives` rather than silently dropped or force-mapped to wrong data. 23/23 accounted
+for — zero residual silent gaps.
+
+**Correction note (2026-07-23):** the original v2.0 close of this document reported 21/23 with
+`ganita_condition_get` counted as bridged. Independent verification (`VERIFY_RC-10.md`) REJECTED
+that mapping as a wrong-data laundering defect and required the correction recorded throughout
+this v2.1 revision. See §4/§5 (RC-10-003) and `RESOLVER_RULINGS.md` RC-10-003.
 
 *End of NAMESPACE_COVERAGE_v2_0.md.*
