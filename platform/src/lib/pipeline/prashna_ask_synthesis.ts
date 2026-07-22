@@ -19,14 +19,23 @@ import 'server-only'
  * BEFORE synthesis, via the compiled floor + B.11/dasha guarantees — not the
  * model choosing tools live, unlike consult's `runAgenticLoop`). So this
  * synthesis stage is a SINGLE, non-agentic LLM call over the already-gathered
- * evidence — it does not hand the model a live tool-calling loop. This keeps
- * the whole request bounded by the existing cost caps (call-count counts
- * retrieval dispatches, not this call) and avoids re-implementing
- * `agentic_loop.ts`'s streaming/multi-turn machinery for a job-handle-polled
- * tool that doesn't need it. If the deterministic floor proves insufficient
- * in practice (the model routinely needs to call more tools than the floor
- * gathered), that's a real, separate future enhancement — not silently routed
- * around here.
+ * evidence — it does not hand the model a live tool-calling loop. This avoids
+ * re-implementing `agentic_loop.ts`'s streaming/multi-turn machinery for a
+ * job-handle-polled tool that doesn't need it. If the deterministic floor
+ * proves insufficient in practice (the model routinely needs to call more
+ * tools than the floor gathered), that's a real, separate future enhancement —
+ * not silently routed around here.
+ *
+ * RC-07 (RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §Cluster 3): this call is a
+ * real costed sub-call and is gated by the SAME `CostCapTracker` instance the
+ * caller's tool-dispatch loop uses — the call site
+ * (`platform/src/app/api/mcp/prashna_ask/route.ts`) checks
+ * `tracker.checkAndRecordCall()` immediately before invoking `synthesizeReading`
+ * and skips the call entirely (fail-honest degradation, never a hang) if
+ * either the call-count or wall-clock cap is already breached. This module
+ * itself stays cap-agnostic — it does not import or reference the tracker —
+ * the gating lives entirely at the call site, consistent with cost_caps.ts
+ * only ever being consulted by call sites, never by the work it wraps.
  *
  * Reuses the SAME acharya-grade system prompt + citation format consult uses
  * (`consumeSystemPromptV2` / `src/lib/claude/system-prompts.ts`) so the two
