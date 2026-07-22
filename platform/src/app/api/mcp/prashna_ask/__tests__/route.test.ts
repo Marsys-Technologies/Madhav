@@ -415,6 +415,28 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.capTripped).toBeNull()
   })
 
+  it('W6.3: threads chart_header.current_maha_antar and today\'s date into the synthesis call as the temporal anchor', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my current dasha?' }))
+    await readNdjson(res)
+
+    expect(mockFetchChartHeaderResolution).toHaveBeenCalledTimes(1)
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.currentMahaAntar).toBe('Mercury/Jupiter') // from the mocked chart_header
+    expect(call.nowContextDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('W6.3: degrades honestly (currentMahaAntar: null) when chart_header resolution fails, instead of skipping synthesis', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    mockFetchChartHeaderResolution.mockResolvedValue({ header: null, flags: ['chart_header_unresolved'] })
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my current dasha?' }))
+    await readNdjson(res)
+
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.currentMahaAntar).toBeNull()
+  })
+
   it('still runs synthesis over partial evidence when a cost cap trips, and forwards the cap reason as a gap', async () => {
     mockCallPipelinePlanner.mockResolvedValue(
       planOutcome(['chart_facts_query', 'get_positions', 'get_strength', 'get_dashas']),

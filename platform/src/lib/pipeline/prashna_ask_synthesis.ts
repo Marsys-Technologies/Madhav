@@ -60,6 +60,14 @@ export interface SynthesizeReadingInput {
   emptyResultTools: string[]
   strippedLeakedCapabilities: string[]
   capTripped: string | null
+  /** ISO "YYYY-MM-DD" — the same as_of_date used to resolve chart_header.current_maha_antar
+   *  (W6.3 fix-cycle: this call has no live tools, so the model cannot look up "today" itself
+   *  the way consult's agentic loop can — it must be told explicitly or it reasons from
+   *  training-data recency, e.g. narrating a 2024 dasha window as "current" 1.5 years late,
+   *  confirmed live on trace d08d823a). */
+  nowContextDate: string
+  /** chart_header.current_maha_antar (e.g. "Mercury MD / Saturn AD"), or null if unresolved. */
+  currentMahaAntar: string | null
 }
 
 export interface SynthesizeReadingResult {
@@ -134,6 +142,25 @@ function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block: string
   return { block, truncatedTools }
 }
 
+/**
+ * W6.3 fix-cycle (native-directed, live trace d08d823a): builds the explicit
+ * "today is X, current period is Y" anchor. Without this the model has no way
+ * to know the request's actual current date/dasha and reasons from whatever
+ * date its training data biases it toward — confirmed live as a ~1.5-year-
+ * stale MD/AD narration. Degrades honestly (never fabricates a period) when
+ * `currentMahaAntar` is unresolved.
+ */
+function formatTemporalAnchor(input: SynthesizeReadingInput): string {
+  const dashaLine = input.currentMahaAntar
+    ? `The native's current Vimshottari dasha period, as of this date, is ${input.currentMahaAntar} — treat this as the CURRENT period, not upcoming or past.`
+    : `The native's current Vimshottari dasha period could not be resolved for this request — do not state or imply a specific current Mahadasha/Antardasha; disclose the gap instead.`
+  return (
+    `Today's date is ${input.nowContextDate}. ${dashaLine} Reason about "current", ` +
+    `"now", "upcoming", and "past" periods relative to THIS date and period only — ` +
+    `do not rely on any other date you might otherwise assume.`
+  )
+}
+
 function formatGapsBlock(input: SynthesizeReadingInput): string {
   const gaps: string[] = []
   for (const t of input.unresolvedTools) gaps.push(`${t}: unresolved tool name, never dispatched`)
@@ -192,6 +219,7 @@ export async function synthesizeReading(
 
   const userMessage = [
     `<user_question>${input.question}</user_question>`,
+    `<temporal_anchor>${formatTemporalAnchor(input)}</temporal_anchor>`,
     `Query class: ${input.queryClass}. Intent summary: ${input.queryIntentSummary}.`,
     '',
     'Gathered evidence:',

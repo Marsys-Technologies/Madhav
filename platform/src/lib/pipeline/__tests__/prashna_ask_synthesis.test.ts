@@ -44,6 +44,8 @@ function baseInput(overrides: Partial<SynthesizeReadingInput> = {}): SynthesizeR
     emptyResultTools: [],
     strippedLeakedCapabilities: [],
     capTripped: null,
+    nowContextDate: '2026-07-22',
+    currentMahaAntar: 'Mercury MD / Saturn AD',
     ...overrides,
   }
 }
@@ -112,6 +114,25 @@ describe('synthesizeReading — happy path', () => {
     expect(content).toContain('marsys://tool/L5/lel_query')
     expect(content).toContain('NO-LEAKAGE')
     expect(content).toContain('call_count_cap')
+  })
+})
+
+describe('synthesizeReading — temporal anchor (W6.3 fix-cycle, live trace d08d823a)', () => {
+  it('tells the model today\'s date and the current maha/antar dasha explicitly', async () => {
+    await synthesizeReading(baseInput({ nowContextDate: '2026-07-22', currentMahaAntar: 'Mercury MD / Saturn AD' }))
+    const req = mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }
+    const content = req.messages[0].content
+    expect(content).toContain('2026-07-22')
+    expect(content).toContain('Mercury MD / Saturn AD')
+    expect(content).toMatch(/CURRENT period, not upcoming or past/i)
+  })
+
+  it('degrades honestly instead of fabricating a period when current_maha_antar is unresolved', async () => {
+    await synthesizeReading(baseInput({ currentMahaAntar: null }))
+    const req = mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }
+    const content = req.messages[0].content
+    expect(content).toContain('could not be resolved')
+    expect(content).not.toContain('Mercury MD / Saturn AD')
   })
 })
 
