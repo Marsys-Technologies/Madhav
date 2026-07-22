@@ -1,0 +1,75 @@
+{
+  "artifact": "B1_RUN_MANIFEST",
+  "version": "2.0",
+  "created": "2026-07-22 (D-4b, clean B-1 re-run -- attempt #3, post CR-123/DR-20)",
+  "supersedes": "B1_RUN_MANIFEST_v1_0.json on the now-QUARANTINED branch wave/D-4b/B1-full-rerun (bakeoff_results/QUARANTINE_B1_FULL_RERUN_v1_0.md) -- every score/delta/adjudication from that manifest's run is VOID, cited nowhere.",
+  "purpose": "Immutable, hashable single source every batch consumes identically. v2.0 adds explicit, structural TRAIN-SPLIT-ONLY scope -- the v1.0 run's batches scored the sealed test split despite instruction-only guidance; this run relies on CR-123's harness-level assertNoSealedSplitEvents() as the structural backstop (platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/sealed_split_guard.ts, PR #709, merged) plus filterToTrainScope() at packet-construction time -- belt and suspenders, per DR-20.",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "pre_registration_packet": {
+    "path": "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/D4B_PREREGISTRATION_PACKET_v1_0.md",
+    "version": "1.2",
+    "status": "FROZEN, UNCHANGED -- git blob sha byte-identical to v1.0 manifest's reference",
+    "git_blob_sha": "9b6713db8c2551a937ff2070e498da1f12526966",
+    "note": "Per native ruling: F-1/F-2/CR-123 are harness-integrity repairs, never packet amendments -- any temptation to adjust the packet alongside this fix is explicitly refused."
+  },
+  "event_set": {
+    "source": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md, resolved via D4B_PREREGISTRATION_PACKET_v1_0.md §0/§1 (56-event scoreable corpus)",
+    "full_scoreable_count": 56,
+    "scope_this_run": "TRAIN split ONLY (event_date < 2020-01-01, ESCALATION_POLICY_v1_0.md §4). Batches must call filterToTrainScope() (platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/sealed_split_guard.ts) on the packet's §1 event list to construct their working set -- never hand-filter with an ad-hoc date comparison. The harness's runMirroredScoringHarness ALSO structurally refuses (assertNoSealedSplitEvents, throws SealedTestSplitViolation) if any sealed event reaches it regardless of how a batch built its input -- this is the CR-123 backstop, not the primary mechanism.",
+    "note": "The exact TRAIN count (< 56) must be determined live by each batch from the packet's actual §1 table -- do not assume a number, count it live per B.10."
+  },
+  "contender_roster": {
+    "count": 14,
+    "contenders": [
+      { "id": "pratyantar_lord", "kind": "classical_default", "source": "DR-10; real curve() in model_interface.ts" },
+      { "id": "vimshottari", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "yogini", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "ashtottari", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "chara_karaka", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "naisargika", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "mudda", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "kalachakra", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "narayana", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "sade_sati", "kind": "permission_system", "source": "permission.py weight dict, via PERMISSION-bridge PR #693" },
+      { "id": "guru_shani_double_transit", "kind": "permission_system", "source": "permission.py weight dict, via PERMISSION-bridge PR #693" },
+      { "id": "av_threshold", "kind": "permission_system", "source": "permission.py weight dict, via PERMISSION-bridge PR #693" },
+      { "id": "planetary_return", "kind": "permission_system", "source": "permission.py weight dict, via PERMISSION-bridge PR #693" },
+      { "id": "hierarchical_ensemble", "kind": "ensemble", "source": "superposition over whichever of the above 13 are evaluable; build last" }
+    ],
+    "not_evaluable_this_wave": [
+      { "id": "midpoint_triangle", "cr": "CR-120", "disposition": "baseline role passes to mirrored shuffled-birth controls" },
+      { "id": "transit_kernel", "cr": "CR-121", "disposition": "D-3 RED stands, NOT-RE-EVALUATED-ON-REPAIRED-SUBSTRATE, named D-6-era candidate" }
+    ]
+  },
+  "grading": {
+    "framework": "DR-17 (peak/sub_peak/elevated/neutral/contra)",
+    "weights_ruling": "NP-D4B-001 (ratified verbatim, including the -1.0 anti-hit double-weight)",
+    "tie_bands_ruling": "NP-D4B-003 (adopted, mandatory DR-13(d)-width sensitivity recompute)",
+    "implementation": "platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/dr17_grading.ts (PR #704, merged, 23/23 tests)"
+  },
+  "controls": {
+    "design": "DR-15(c) coverage-matched shuffled-birth ONLY",
+    "n": 1000,
+    "ruling": "NP-D4B-004 (adopted; N=1000, coverage-matching window, sha256-derived logged seed)",
+    "refused_alternative": "circular-time-shift null (NP-D4B-002) -- refused for gate-bearing use"
+  },
+  "harness_fixes_applied": {
+    "F1_resonance_map_coverage": { "pr": 699, "merged": "2026-07-22T11:07:19Z" },
+    "F2_circular_shift_curve_sort": { "pr": 697, "merged": "2026-07-22T07:03:12Z" },
+    "CR122_checkpointed_batching_harness": { "commit": "fc6ead96 (originally on quarantined branch, re-landed fresh here)", "note": "sound component, not affected by the quarantine -- native explicitly distinguished the harness/manifest from the scoring that ran on top of it" },
+    "CR123_DR20_structural_seal": { "pr": 709, "merged": "2026-07-22T18:20:42Z", "note": "assertNoSealedSplitEvents() wired as the first statement in harness.ts's runMirroredScoringHarness -- the universal funnel every contender's scoring call passes through. This is the mechanism this run relies on to make the v1.0 breach structurally impossible to repeat." }
+  },
+  "prior_void_runs": {
+    "PR_694": "31-event narrowed run, pre-F1/F2-fix. VOID -- 433 negative CRPS values, only 31 of 56 events, no DR-17 grading. Reference only as defect history.",
+    "wave_D-4b_B1-full-rerun_v1": "Full chunked re-run, post-F1/F2 but pre-CR-123. QUARANTINED -- scored the sealed test split across all 14 contenders. Every score/delta/adjudication VOID. See QUARANTINE_B1_FULL_RERUN_v1_0.md, NP-D4B-007, DR-20 (DIS.031), CR-123."
+  },
+  "batching": {
+    "batch_count": 3,
+    "batches": [
+      { "id": 1, "contenders": ["pratyantar_lord", "vimshottari", "yogini", "ashtottari", "chara_karaka"] },
+      { "id": 2, "contenders": ["naisargika", "mudda", "kalachakra", "narayana", "sade_sati"] },
+      { "id": 3, "contenders": ["guru_shani_double_transit", "av_threshold", "planetary_return", "hierarchical_ensemble"] }
+    ],
+    "note": "Each batch scores ONLY its TRAIN-split events for its assigned contenders. DR-12 adjudication runs ONCE, at assembly, over the full assembled result -- never per-batch. The sealed-split assertion runs at EVERY altitude: inside the harness itself (structural, CR-123), again explicitly at each batch's own commit, again at assembly, again at the final anti-gaming pass -- defense-in-depth per the native's explicit instruction after the v1.0 breach traveled three altitudes uncaught."
+  }
+}
