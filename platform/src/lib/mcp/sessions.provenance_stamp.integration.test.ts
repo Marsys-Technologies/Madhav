@@ -1,8 +1,8 @@
 /**
  * @integration-test
  *
- * sessions.session_pin.integration.test.ts — live-DB verification of getOrRefreshSessionPin
- * (R5 W4 session-pin serving, design §10.6/§31.3/§31.5).
+ * sessions.provenance_stamp.integration.test.ts — live-DB verification of
+ * getOrRefreshProvenanceStamp (R5 W4 provenance-stamp serving, design §10.6/§31.3/§31.5).
  * ==============================================================================================
  * Verifies against the REAL `build_runs` table (migration 171) for the native chart
  * (482012f1) — the actual currently-live build tracker (NOT the phantom `builds` table
@@ -16,12 +16,12 @@
  * against a real PostgreSQL DB when DB_URL/DATABASE_URL is set, skips cleanly otherwise.
  *
  * Run:
- *   DATABASE_URL=postgresql://... vitest run --testPathPattern=sessions.session_pin.integration
+ *   DATABASE_URL=postgresql://... vitest run --testPathPattern=sessions.provenance_stamp.integration
  */
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { query } from '@/lib/db/client'
-import { getOrCreateSession, getOrRefreshSessionPin, deleteSession } from './sessions'
+import { getOrCreateSession, getOrRefreshProvenanceStamp, deleteSession } from './sessions'
 
 const DB_AVAILABLE = !!(process.env.DB_URL || process.env.DATABASE_URL)
 
@@ -31,7 +31,7 @@ const TEST_SESSION_KEY = 'r5-w4-session-pin-integration-test'
 
 const maybeDescribe = DB_AVAILABLE ? describe : describe.skip
 
-maybeDescribe('getOrRefreshSessionPin — live DB, native chart (482012f1)', () => {
+maybeDescribe('getOrRefreshProvenanceStamp — live DB, native chart (482012f1)', () => {
   afterEach(async () => {
     // Clean up: delete the synthetic test session (never touches any real user's session).
     const { rows } = await query<{ session_id: string }>(
@@ -43,15 +43,15 @@ maybeDescribe('getOrRefreshSessionPin — live DB, native chart (482012f1)', () 
     }
   })
 
-  it('resolves a real build_id from build_runs for the native chart on first pin (no fabrication)', async () => {
+  it('resolves a real build_id from build_runs for the native chart on first stamp (no fabrication)', async () => {
     const session = await getOrCreateSession(TEST_USER, TEST_SESSION_KEY)
-    const { pin, drift, judgment_flags } = await getOrRefreshSessionPin(
+    const { pin, drift, judgment_flags } = await getOrRefreshProvenanceStamp(
       session.session_id,
       TEST_USER,
       NATIVE_CHART_ID,
     )
 
-    expect(drift).toBe(false) // first pin of the session — nothing to drift from
+    expect(drift).toBe(false) // first stamp of the session — nothing to drift from
     expect(judgment_flags).toEqual([])
     expect(pin.chart_id).toBe(NATIVE_CHART_ID)
     expect(pin.priors_version).toBe('1.0') // ranking/priors_config.ts PRIORS_VERSION, frozen
@@ -61,10 +61,10 @@ maybeDescribe('getOrRefreshSessionPin — live DB, native chart (482012f1)', () 
     expect(pin.build_status).toBe('completed')
   })
 
-  it('persists the pin and re-resolves the SAME pin (no drift) on a second call — the §10.6 contract', async () => {
+  it('persists the stamp and re-resolves the SAME stamp (no drift) on a second call — the §10.6 contract', async () => {
     const session = await getOrCreateSession(TEST_USER, TEST_SESSION_KEY)
-    const first = await getOrRefreshSessionPin(session.session_id, TEST_USER, NATIVE_CHART_ID)
-    const second = await getOrRefreshSessionPin(session.session_id, TEST_USER, NATIVE_CHART_ID)
+    const first = await getOrRefreshProvenanceStamp(session.session_id, TEST_USER, NATIVE_CHART_ID)
+    const second = await getOrRefreshProvenanceStamp(session.session_id, TEST_USER, NATIVE_CHART_ID)
 
     expect(second.drift).toBe(false)
     expect(second.judgment_flags).toEqual([])
@@ -72,16 +72,16 @@ maybeDescribe('getOrRefreshSessionPin — live DB, native chart (482012f1)', () 
     expect(second.pin.pinned_at).toBe(first.pin.pinned_at) // untouched — genuinely reused, not recomputed
   })
 
-  it('re-keys the pin by chart_id inside one session (§31.3 mitigation): pinning a second synthetic chart_id does not disturb the first', async () => {
+  it('re-keys the stamp by chart_id inside one session (§31.3 mitigation): stamping a second synthetic chart_id does not disturb the first', async () => {
     const OTHER_CHART_ID = '00000000-0000-0000-0000-000000000000' // has no build_runs rows — honest null
     const session = await getOrCreateSession(TEST_USER, TEST_SESSION_KEY)
 
-    const nativePin = await getOrRefreshSessionPin(session.session_id, TEST_USER, NATIVE_CHART_ID)
-    const otherPin = await getOrRefreshSessionPin(session.session_id, TEST_USER, OTHER_CHART_ID)
-    const nativePinAgain = await getOrRefreshSessionPin(session.session_id, TEST_USER, NATIVE_CHART_ID)
+    const nativePin = await getOrRefreshProvenanceStamp(session.session_id, TEST_USER, NATIVE_CHART_ID)
+    const otherPin = await getOrRefreshProvenanceStamp(session.session_id, TEST_USER, OTHER_CHART_ID)
+    const nativePinAgain = await getOrRefreshProvenanceStamp(session.session_id, TEST_USER, NATIVE_CHART_ID)
 
     expect(otherPin.pin.build_id).toBeNull() // no build_runs row for this synthetic chart — honest, not fabricated
-    expect(nativePinAgain.pin.build_id).toBe(nativePin.pin.build_id) // unaffected by pinning the other chart
+    expect(nativePinAgain.pin.build_id).toBe(nativePin.pin.build_id) // unaffected by stamping the other chart
     expect(nativePinAgain.pin.pinned_at).toBe(nativePin.pin.pinned_at) // reused, not recomputed
   })
 })

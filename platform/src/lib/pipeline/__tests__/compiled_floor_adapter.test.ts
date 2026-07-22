@@ -13,7 +13,7 @@ import {
   L2_5_TOOLS,
 } from '@/lib/pipeline/compiled_floor_adapter'
 import type { ScopeTuple as ClassifierScopeTuple } from '@/lib/vidhi/scope_classifier'
-import type { PipelinePlan, QueryClass } from '@/lib/pipeline/types'
+import { QueryClassEnum, type PipelinePlan, type QueryClass } from '@/lib/pipeline/types'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { VIDHI_PRIMITIVES } from '@/lib/vidhi/registry_data'
 
@@ -233,6 +233,65 @@ describe('ensureDashaContextFloor', () => {
   })
 })
 
+describe('RC-05 — no unresolvable required floor item for ANY query class (RETRIEVAL_RESIDUAL_CLOSURE_BRIEF §E Cluster 2)', () => {
+  // WP-1.7's full dead-capability list (tool_name_bridge.ts:410-422) — names with
+  // NO registered retrieval capability. pattern_register was the W6.2/W6.3 defect;
+  // resonance_register/cluster_atlas are the RC-05 defect this test guards against
+  // regression on. The rest are included for completeness of the guard, even though
+  // they were never actively floor-injected by this code adapter.
+  const DEAD_CAPABILITIES = [
+    'pattern_register', 'resonance_register', 'cluster_atlas',
+    'kp_query', 'query_kp_ruling_planets', 'query_ucn_walk',
+    'query_cdlm_lookup', 'query_rm_walk', 'query_jaimini_drishti',
+    'timeline_query', 'query_signal_state', 'multi_school_signal_lookup',
+    'jaimini_chara_dasha', 'jaimini_chara_dasha_full',
+  ] as const
+
+  it('ensureB11WholeChartReadFloor + ensureDashaContextFloor inject only resolvable tool_calls, for every QueryClass', () => {
+    for (const qc of QueryClassEnum.options) {
+      const p = plan(qc as QueryClass)
+      const authorized: string[] = []
+      ensureB11WholeChartReadFloor(p, authorized)
+      ensureDashaContextFloor(p, authorized)
+      for (const tc of p.tool_calls) {
+        expect(
+          getToolByName(tc.tool_name),
+          `query_class "${qc}": floor tool_call "${tc.tool_name}" must resolve via getToolByName()`,
+        ).toBeDefined()
+      }
+    }
+  })
+
+  it('never floor-injects a WP-1.7 dead capability, for any QueryClass', () => {
+    for (const qc of QueryClassEnum.options) {
+      const p = plan(qc as QueryClass)
+      const authorized: string[] = []
+      ensureB11WholeChartReadFloor(p, authorized)
+      ensureDashaContextFloor(p, authorized)
+      const names = p.tool_calls.map((t) => t.tool_name)
+      for (const dead of DEAD_CAPABILITIES) {
+        expect(
+          names,
+          `query_class "${qc}" must never floor-inject dead capability "${dead}" (WP-1.7/tool_name_bridge.ts:417 — no registered cap)`,
+        ).not.toContain(dead)
+      }
+    }
+  })
+
+  it('discovery and remedial classes specifically resolve clean (the RC-05 live-trace acceptance bar)', () => {
+    for (const qc of ['discovery', 'remedial'] as const) {
+      const p = plan(qc)
+      const authorized: string[] = []
+      ensureB11WholeChartReadFloor(p, authorized)
+      ensureDashaContextFloor(p, authorized)
+      expect(p.tool_calls.length).toBeGreaterThanOrEqual(0) // no-op is valid (no L2.5 tool from THIS adapter for these classes)
+      for (const tc of p.tool_calls) {
+        expect(getToolByName(tc.tool_name), `${qc}: "${tc.tool_name}" must resolve`).toBeDefined()
+      }
+    }
+  })
+})
+
 describe('end-to-end floor adoption parity (route sequence)', () => {
   // Reproduces the route.ts sequence: compile → adopt → B.11 guarantee → dasha guarantee.
   function runFloor(t: ClassifierScopeTuple, queryClass: QueryClass): string[] {
@@ -257,19 +316,49 @@ describe('end-to-end floor adoption parity (route sequence)', () => {
     expect(authorized.some((t) => L2_5_TOOLS.includes(t))).toBe(true)
   })
 
-  it('health deepdive (no mechanism_read primitive): B.11 guarantee fires registry floor', () => {
+  it('health deepdive: an L2.5 tool is present on the authorized set (RC-10: now via the compiled varga_ratification primitive, not the guarantee)', () => {
     const authorized = runFloor(tuple({ domains: ['health'], depth: 'deep' }), 'interpretive')
-    // health floor has no L2.5-mapped primitive → the guarantee injects the registry floor
+    // Pre-RC-10, health's floor had no L2.5-mapped primitive so the guarantee injected
+    // the registry floor. RC-10 bridged bodha_signals_get → marsys://tool/L2/query_signals,
+    // and health's own `varga_ratification` primitive (live_tool: bodha_signals_get) now
+    // supplies this directly from the compiled floor — same invariant (≥1 L2.5 tool),
+    // now satisfied by real domain-relevant data instead of generic filler.
     expect(authorized).toContain('marsys://tool/L2/query_signals')
     expect(authorized.some((t) => L2_5_TOOLS.includes(t))).toBe(true)
   })
 
   it('predictive holistic query still gets predictive floor + dasha floor (W6.2: pattern_register removed, query_dasha_periods not chart_facts_query)', () => {
     const authorized = runFloor(tuple({ domains: ['marriage'], depth: 'deep' }), 'predictive')
-    expect(authorized).toContain('vector_search')
+    // RC-10 (namespace-gap re-measure): marriage_deepdive's own `varga_ratification`
+    // primitive (live_tool: bodha_signals_get) now resolves to a real registry L2.5
+    // tool (marsys://tool/L2/query_signals) via the newly-bridged mapping — the SAME
+    // "compiled floor already supplies an L2.5 tool" no-op path the career_deepdive
+    // test above already exercises for cgm_graph_walk. ensureB11WholeChartReadFloor's
+    // no-op condition correctly fires (B.11 is satisfied by a real, domain-relevant
+    // signal query rather than the generic predictive-class filler), so the generic
+    // vector_search injection no longer fires for THIS specific case — the invariant
+    // (≥1 L2.5 whole-chart-read tool) still holds, just via a more precise source.
+    expect(authorized.some((t) => L2_5_TOOLS.includes(t))).toBe(true)
+    expect(authorized).toContain('marsys://tool/L2/query_signals')
     expect(authorized).not.toContain('pattern_register')
     expect(authorized).toContain('query_dasha_periods')
     expect(authorized).not.toContain('chart_facts_query')
+  })
+
+  it('predictive class with NO compiled L2.5 primitive still gets the generic vector_search + forward_looking floor', () => {
+    // retrieval_only's floor (positions_snapshot → ganita_positions_get) has no
+    // L2.5-mapped primitive, so the guarantee's generic predictive injection still
+    // fires exactly as before RC-10 — the fallback path is unchanged, only the
+    // "compiled floor already covers it" short-circuit widened (all four domain
+    // deepdives now hit that path, since each includes `varga_ratification`).
+    const authorized = runFloor(
+      tuple({ intent: 'planet_strength', domains: ['general'], depth: 'shallow' }),
+      'predictive',
+    )
+    expect(authorized).toContain('vector_search')
+    expect(authorized).toContain('marsys://tool/L2/query_signals')
+    expect(authorized).not.toContain('pattern_register')
+    expect(authorized).toContain('query_dasha_periods')
   })
 
   it('missing scope_tuple falls back to legacy floor (guarantees only)', () => {

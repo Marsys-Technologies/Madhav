@@ -6,10 +6,10 @@
  * read path.
  *
  * Rules (in order):
- *   1. super_admin → 'all'
+ *   1. super_admin, IF chart_id exists → 'all'
  *   2. principal.uid === charts.owner_id → 'all'
  *   3. chart_grants row matches (chartId, principal.uid) → 'view'
- *   4. else → 'deny'
+ *   4. else → 'deny' (also covers: chart_id does not exist, any role)
  *
  * 'view' grants Profile/Consult/Panchang read-only — Build/edit/delete reject.
  * Caller is responsible for mapping the returned Permission to HTTP status + UI.
@@ -47,8 +47,18 @@ export async function authorizeChartAccess(
 ): Promise<Permission> {
   const { principal, chartId, db } = args
 
-  // Rule 1: super_admin sees everything.
-  if (principal.role === 'super_admin') return 'all'
+  // Rule 1: super_admin sees everything — but only for a chart_id that
+  // actually exists. Defense-in-depth: without this check a super_admin
+  // request for a bogus/deleted chart_id would get a silent 'all' grant
+  // that only fails (or worse, doesn't fail) further downstream, instead
+  // of the clean not-found every other role already gets via Rule 4.
+  if (principal.role === 'super_admin') {
+    const existsRes = await db.query<{ owner_id: string | null }>(
+      'SELECT owner_id FROM charts WHERE id=$1',
+      [chartId]
+    )
+    return existsRes.rows[0] ? 'all' : 'deny'
+  }
 
   // Rule 2: owner_id match → full access.
   const ownerRes = await db.query<{ owner_id: string | null }>(

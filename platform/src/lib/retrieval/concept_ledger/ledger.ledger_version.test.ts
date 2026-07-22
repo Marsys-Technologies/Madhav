@@ -5,7 +5,7 @@
  *   - empty ledger → honest null (never a fabricated version — B.10).
  *   - a real "bump" (row count or updated_at moves forward) produces a DIFFERENT
  *     ledger_version string, mirroring the same fixture-bump discipline the brief
- *     asks for on build_id (session_pin.test.ts's detectBuildDrift tests).
+ *     asks for on build_id (provenance_stamp.test.ts's detectBuildDrift tests).
  *   - the SAME underlying DB row state produces the IDENTICAL ledger_version on a
  *     second call — the cache-safety property this field exists to carry.
  */

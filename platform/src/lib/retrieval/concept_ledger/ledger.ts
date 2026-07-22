@@ -216,7 +216,7 @@ export async function countConcepts(): Promise<number> {
 
 /**
  * The single monotonic staleness signal for the concept ledger, mirroring the EXACT
- * pattern `session_pin.ts#getLatestChartBuild` already uses for `build_id` (per-chart
+ * pattern `provenance_stamp.ts#getLatestChartBuild` already uses for `build_id` (per-chart
  * build_runs staleness) — a comparable value derived from the source-of-truth table's
  * own state, never a separately-invented counter. `build_id` answers "has THIS CHART's
  * data changed"; `ledger_version` answers "has the SERVING CATALOG (which concepts are

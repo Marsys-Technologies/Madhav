@@ -27,21 +27,15 @@
     "cgm_graph_walk",
     "classical_attribution_lookup",
     "classical_text_search",
-    "cluster_atlas",
     "contradiction_register",
     "convergence_score_lookup",
     "lel_query",
     "msr_sql",
-    "multi_school_signal_lookup",
-    "pattern_register",
     "query_ephemeris",
-    "query_kp_ruling_planets",
     "query_panchanga",
-    "query_signal_state",
     "query_transit_event",
     "query_varshaphala",
     "remedial_codex_query",
-    "resonance_register",
     "vector_search"
   ],
   "field_notes": {
@@ -61,17 +55,16 @@
       "expected_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "vector_search",
-        "resonance_register"
+        "vector_search"
       ],
       "required_tools": [
         "remedial_codex_query",
-        "resonance_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "temporal"
       ],
-      "notes": "Career-domain remedial. remedial_codex_query supplies gemstone prescription (doc_type=l4_remedial). msr_sql identifies the planet to strengthen via career-domain signals (10H lord, Sun, Saturn). vector_search reaches the career L3 domain_report rag_chunks for diagnostic context. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a gemstone is a remedial alignment between planet, native, and career domain — resonance is the right lens. temporal is forbidden because the question is not transit-bound.",
+      "notes": "Career-domain remedial. remedial_codex_query supplies gemstone prescription (doc_type=l4_remedial). msr_sql identifies the planet to strengthen via career-domain signals (10H lord, Sun, Saturn). vector_search reaches the career L3 domain_report rag_chunks for diagnostic context. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a gemstone is a remedial alignment between planet, native, and career domain — resonance is the right lens. temporal is forbidden because the question is not transit-bound. RC-06 (2026-07-22): resonance_register was a dead capability (WP-1.7/tool_name_bridge.ts:417, RC-05 finding) — replaced with vector_search, R7b's unconditional live substitute for the remedial alignment lens.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -86,18 +79,17 @@
       "expected_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "vector_search",
-        "resonance_register"
+        "vector_search"
       ],
       "required_tools": [
         "remedial_codex_query",
-        "resonance_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "query_varshaphala",
         "temporal"
       ],
-      "notes": "Spiritual-domain remedial. Mantra is a remedial_codex artifact (doc_type=l4_remedial). msr_sql surfaces Jupiter / Ketu / 9H signals in the spiritual domain. vector_search reaches the spirituality L3 domain_report. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a mantra aligns deity/planet vibration with the spiritual domain — resonance is the right lens. No annual-return or transit dependence.",
+      "notes": "Spiritual-domain remedial. Mantra is a remedial_codex artifact (doc_type=l4_remedial). msr_sql surfaces Jupiter / Ketu / 9H signals in the spiritual domain. vector_search reaches the spirituality L3 domain_report. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a mantra aligns deity/planet vibration with the spiritual domain — resonance is the right lens. No annual-return or transit dependence. RC-06 (2026-07-22): resonance_register was a dead capability — replaced with vector_search per R7b's unconditional alignment-lens substitute.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -112,18 +104,17 @@
       "expected_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "resonance_register"
+        "vector_search"
       ],
       "required_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "resonance_register"
+        "vector_search"
       ],
       "forbidden_tools": [
-        "vector_search",
         "domain_report_query"
       ],
-      "notes": "Single-stone remedial. remedial_codex_query holds the yellow-sapphire prescription rules (gemstone practice_type, planet=Jupiter). msr_sql returns Jupiter's natal signals — placement, dignity, and signal strength. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a yellow-sapphire prescription rests on Jupiter's resonance with the native — confirm the alignment before recommending the stone. The query has a precise structured answer; vector_search is forbidden because semantic retrieval would dilute the codex-grounded prescription.",
+      "notes": "Single-stone remedial. remedial_codex_query holds the yellow-sapphire prescription rules (gemstone practice_type, planet=Jupiter). msr_sql returns Jupiter's natal signals — placement, dignity, and signal strength. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a yellow-sapphire prescription rests on Jupiter's resonance with the native — confirm the alignment before recommending the stone. The query has a precise structured answer; vector_search is forbidden because semantic retrieval would dilute the codex-grounded prescription. RC-06 (2026-07-22): resonance_register was a dead capability — replaced with vector_search. R7b now unconditionally mandates vector_search for every remedial query (not conditionally banned for structured single-stone lookups), which supersedes this entry's prior 'vector_search forbidden — dilutes codex-grounded prescription' design; vector_search removed from forbidden_tools accordingly (domain_report_query remains forbidden — never a primary tool).",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -138,17 +129,17 @@
       "expected_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "resonance_register"
+        "vector_search"
       ],
       "required_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "resonance_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "temporal"
       ],
-      "notes": "Single-planet remedial scoped to Mars. msr_sql for Mars-domain signals (planet=Mars, all signal_types). remedial_codex_query for the rituals/stones/mantras keyed to Mars (planet=Mars, all practice_types). resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: Mars-keyed remedies must be tuned to Mars's resonance with the native's domains — alignment lens before prescription.",
+      "notes": "Single-planet remedial scoped to Mars. msr_sql for Mars-domain signals (planet=Mars, all signal_types). remedial_codex_query for the rituals/stones/mantras keyed to Mars (planet=Mars, all practice_types). resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: Mars-keyed remedies must be tuned to Mars's resonance with the native's domains — alignment lens before prescription. RC-06 (2026-07-22): resonance_register was a dead capability — replaced with vector_search per R7b's unconditional alignment-lens substitute.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -163,17 +154,17 @@
       "expected_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "required_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "query_varshaphala"
       ],
-      "notes": "Whole-chart strength scan + remedial. msr_sql surfaces low-strength signals across grahas (signal_type=strength, valence=challenging). remedial_codex_query supplies the dinacharya / daily-practice prescription for the implicated planet. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate: identifying the chart's weakest planet is fundamentally a recurring-weakness-pattern question — pattern_register is the right lens, not resonance.",
+      "notes": "Whole-chart strength scan + remedial. msr_sql surfaces low-strength signals across grahas (signal_type=strength, valence=challenging). remedial_codex_query supplies the dinacharya / daily-practice prescription for the implicated planet. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate: identifying the chart's weakest planet is fundamentally a recurring-weakness-pattern question — pattern_register is the right lens, not resonance. RC-06 (2026-07-22): pattern_register was a dead capability. R7b's 'pattern vs resonance lens' distinction no longer exists in the current rule (R7b unconditionally mandates vector_search for every remedial query regardless of framing) — replaced with vector_search.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -188,18 +179,16 @@
       "expected_tools": [
         "remedial_codex_query",
         "msr_sql",
-        "vector_search",
-        "resonance_register"
+        "vector_search"
       ],
       "required_tools": [
         "remedial_codex_query",
-        "vector_search",
-        "resonance_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "query_varshaphala"
       ],
-      "notes": "Health-domain remedial. remedial_codex_query supplies the fasting/dinacharya prescription. vector_search reaches the health L3 domain_report (doc_type='domain_report') for diagnosis context. msr_sql identifies the implicated graha via health-domain signals. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a fasting prescription aligns the body's rhythms with the implicated planet's resonance — alignment lens, not pattern.",
+      "notes": "Health-domain remedial. remedial_codex_query supplies the fasting/dinacharya prescription. vector_search reaches the health L3 domain_report (doc_type='domain_report') for diagnosis context. msr_sql identifies the implicated graha via health-domain signals. resonance_register satisfies R7's predictive/remedial cross-domain-lens mandate: a fasting prescription aligns the body's rhythms with the implicated planet's resonance — alignment lens, not pattern. RC-06 (2026-07-22): resonance_register was a dead capability — replaced with vector_search per R7b's unconditional alignment-lens substitute (already present in expected_tools; deduplicated).",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -237,8 +226,7 @@
       "category": "interpretive",
       "expected_tools": [
         "msr_sql",
-        "vector_search",
-        "pattern_register"
+        "vector_search"
       ],
       "required_tools": [
         "msr_sql"
@@ -246,7 +234,7 @@
       "forbidden_tools": [
         "remedial_codex_query"
       ],
-      "notes": "Whole-chart interpretive. msr_sql is the structured surface for Lagna lord, ascendant degree, shadbala-type signals. pattern_register surfaces named yogas tied to Lagna strength (Raja, Dhana, etc.). vector_search reaches L3 narrative chunks for overall life-path context.",
+      "notes": "Whole-chart interpretive. msr_sql is the structured surface for Lagna lord, ascendant degree, shadbala-type signals. pattern_register surfaces named yogas tied to Lagna strength (Raja, Dhana, etc.). vector_search reaches L3 narrative chunks for overall life-path context. RC-06 (2026-07-22): pattern_register was a dead capability. Lagna + overall chart strength is chart-level multi-layer scope under R17, whose vector_search mandate already covered this call — pattern_register dropped (deduplicated against the existing vector_search entry).",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -259,17 +247,17 @@
       "query_class": "interpretive",
       "category": "interpretive",
       "expected_tools": [
-        "pattern_register",
+        "vector_search",
         "msr_sql"
       ],
       "required_tools": [
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "temporal",
         "remedial_codex_query"
       ],
-      "notes": "Yogas are a structural pattern read. pattern_register is the L2.5 surface for named yogas (Raja, Dhana, Pancha-mahapurusha, etc.); msr_sql supplies the underlying placement signals (signal_type=yoga) that confirm each yoga.",
+      "notes": "Yogas are a structural pattern read. pattern_register is the L2.5 surface for named yogas (Raja, Dhana, Pancha-mahapurusha, etc.); msr_sql supplies the underlying placement signals (signal_type=yoga) that confirm each yoga. RC-06 (2026-07-22): pattern_register was a dead capability (the L2.5 named-yoga register). 'Yogas' is a literal R17 chart-level-multi-layer-scope trigger — replaced with vector_search (R17's live substitute); msr_sql (signal_type=yoga) remains the structured confirmation surface per the original notes.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -352,19 +340,17 @@
       "category": "predictive",
       "expected_tools": [
         "vector_search",
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
         "vector_search",
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "remedial_codex_query",
         "query_varshaphala"
       ],
-      "notes": "Long-horizon dasha-based prediction. vector_search reaches the L5 lifetime timeline (doc_type='l5_timeline') for the Ketu MD arc 2027–2034. msr_sql supplies natal Ketu signals (planet=Ketu, forward_looking=true). pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by surfacing Ketu-keyed forward_looking patterns; promoted to required_tools so a predictive answer cannot ship without the cross-domain pattern lens.",
+      "notes": "Long-horizon dasha-based prediction. vector_search reaches the L5 lifetime timeline (doc_type='l5_timeline') for the Ketu MD arc 2027–2034. msr_sql supplies natal Ketu signals (planet=Ketu, forward_looking=true). pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by surfacing Ketu-keyed forward_looking patterns; promoted to required_tools so a predictive answer cannot ship without the cross-domain pattern lens. RC-06 (2026-07-22): pattern_register was a dead capability — dropped (deduplicated against the existing required vector_search entry, R7a's live cross-domain-lens substitute).",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -378,18 +364,18 @@
       "category": "predictive",
       "expected_tools": [
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "required_tools": [
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "remedial_codex_query",
         "query_varshaphala",
         "timeline_query"
       ],
-      "notes": "Live-transit prediction. msr_sql with planet=Saturn + temporal_activation=lit returns currently-active Saturn signals; pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by surfacing forward_looking Saturn patterns and is promoted to required_tools. The L5 timeline horizon is wrong for a live-transit question.",
+      "notes": "Live-transit prediction. msr_sql with planet=Saturn + temporal_activation=lit returns currently-active Saturn signals; pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by surfacing forward_looking Saturn patterns and is promoted to required_tools. The L5 timeline horizon is wrong for a live-transit question. RC-06 (2026-07-22): pattern_register was a dead capability. This is a literal R7c transit query ('transiting... right now') whose ABSOLUTE BAN allows only msr_sql + vector_search — replaced with vector_search accordingly.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -403,17 +389,16 @@
       "category": "predictive",
       "expected_tools": [
         "msr_sql",
-        "pattern_register",
         "vector_search"
       ],
       "required_tools": [
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "remedial_codex_query"
       ],
-      "notes": "Annual-horizon prediction. msr_sql with domain=career + forward_looking=true + temporal_activation=ripening surfaces near-term career-positive signals. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by adding forward_looking career yogas and is promoted to required_tools. vector_search reaches the career L3 domain_report for context.",
+      "notes": "Annual-horizon prediction. msr_sql with domain=career + forward_looking=true + temporal_activation=ripening surfaces near-term career-positive signals. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by adding forward_looking career yogas and is promoted to required_tools. vector_search reaches the career L3 domain_report for context. RC-06 (2026-07-22): pattern_register was a dead capability — dropped (deduplicated against the existing vector_search entry); vector_search promoted to required as R7a's live cross-domain-lens substitute.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -427,17 +412,16 @@
       "category": "predictive",
       "expected_tools": [
         "msr_sql",
-        "pattern_register",
         "vector_search"
       ],
       "required_tools": [
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "remedial_codex_query"
       ],
-      "notes": "Forward-looking timing. msr_sql with forward_looking=true + temporal_activation=ripening returns ripening venture-positive signals. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by adding forward_looking patterns and is promoted to required_tools. vector_search reaches L5 timeline (doc_type='l5_timeline') for upcoming favorable windows.",
+      "notes": "Forward-looking timing. msr_sql with forward_looking=true + temporal_activation=ripening returns ripening venture-positive signals. pattern_register satisfies R7's predictive/remedial cross-domain-lens mandate by adding forward_looking patterns and is promoted to required_tools. vector_search reaches L5 timeline (doc_type='l5_timeline') for upcoming favorable windows. RC-06 (2026-07-22): pattern_register was a dead capability — dropped (deduplicated against the existing vector_search entry); vector_search promoted to required as R7a's live cross-domain-lens substitute.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -450,20 +434,17 @@
       "query_class": "holistic",
       "category": "holistic",
       "expected_tools": [
-        "cluster_atlas",
         "vector_search",
-        "pattern_register",
         "cgm_graph_walk"
       ],
       "required_tools": [
-        "cluster_atlas",
         "vector_search"
       ],
       "forbidden_tools": [
         "remedial_codex_query",
         "query_varshaphala"
       ],
-      "notes": "Multi-domain whole-chart synthesis. cluster_atlas surfaces the dominant signal clusters across domains. vector_search reaches L3 domain_report chunks (doc_type='domain_report') for per-domain narratives. pattern_register adds named yogas across domains. cgm_graph_walk shows cross-domain linkages between domain seed nodes.",
+      "notes": "Multi-domain whole-chart synthesis. cluster_atlas surfaces the dominant signal clusters across domains. vector_search reaches L3 domain_report chunks (doc_type='domain_report') for per-domain narratives. pattern_register adds named yogas across domains. cgm_graph_walk shows cross-domain linkages between domain seed nodes. RC-06 (2026-07-22): cluster_atlas and pattern_register were dead capabilities. cluster_atlas -> vector_search (R11 main-branch live substitute, already present in expected_tools; deduplicated). pattern_register dropped with no substitute — R11 excised it entirely in W6.3/v2.8 (no in-class substitute).",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -477,21 +458,19 @@
       "query_class": "holistic",
       "category": "holistic",
       "expected_tools": [
-        "pattern_register",
         "contradiction_register",
-        "resonance_register",
-        "cluster_atlas"
+        "vector_search"
       ],
       "required_tools": [
         "contradiction_register",
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "temporal",
         "remedial_codex_query",
         "query_varshaphala"
       ],
-      "notes": "Pattern-and-contradiction holistic. contradiction_register and pattern_register are both required; resonance_register and cluster_atlas amplify the synthesis with cross-system resonances and dominant clusters.",
+      "notes": "Pattern-and-contradiction holistic. contradiction_register and pattern_register are both required; resonance_register and cluster_atlas amplify the synthesis with cross-system resonances and dominant clusters. RC-06 (2026-07-22): resonance_register and cluster_atlas were dead capabilities; pattern_register also dead. Query literally contains 'themes' (R15 keyword trigger) and matches R11's own 'themes and contradictions' example phrase — one vector_search call now covers both the R11 and R15 mandates, promoted to required. pattern_register dropped with no substitute (R11 excised it, no in-class substitute). contradiction_register remains required per R12 (explicit 'contradictions').",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -507,7 +486,6 @@
       "expected_tools": [
         "cgm_graph_walk",
         "vector_search",
-        "cluster_atlas",
         "msr_sql"
       ],
       "required_tools": [
@@ -518,7 +496,7 @@
         "remedial_codex_query",
         "query_varshaphala"
       ],
-      "notes": "Cross-domain synthesis (3 domains). cgm_graph_walk traverses conceptual links between career-marriage-health seed nodes. vector_search reaches the per-domain L3 domain_report narratives. cluster_atlas surfaces clusters spanning the three domains. msr_sql supplies the underlying cross-domain signals.",
+      "notes": "Cross-domain synthesis (3 domains). cgm_graph_walk traverses conceptual links between career-marriage-health seed nodes. vector_search reaches the per-domain L3 domain_report narratives. cluster_atlas surfaces clusters spanning the three domains. msr_sql supplies the underlying cross-domain signals. RC-06 (2026-07-22): cluster_atlas was a dead capability — dropped (deduplicated against the existing required vector_search entry, R11's live substitute).",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -532,8 +510,7 @@
       "query_class": "holistic",
       "category": "holistic",
       "expected_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
         "msr_sql"
@@ -543,7 +520,7 @@
         "query_varshaphala",
         "timeline_query"
       ],
-      "notes": "Date-indexed signal-state holistic. msr_sql with temporal_activation in {lit, ripening} returns the date-indexed signal state directly from the 499-row MSR. pattern_register adds forward_looking patterns currently in play.",
+      "notes": "Date-indexed signal-state holistic. msr_sql with temporal_activation in {lit, ripening} returns the date-indexed signal state directly from the 499-row MSR. pattern_register adds forward_looking patterns currently in play. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute. This is R11's SIGNAL-DENSITY EXCEPTION branch ('currently lit or ripening'), which bans vector_search unconditionally (use ONLY msr_sql); no live substitute exists in this branch.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -558,7 +535,6 @@
       "category": "planetary",
       "expected_tools": [
         "msr_sql",
-        "pattern_register",
         "cgm_graph_walk"
       ],
       "required_tools": [
@@ -568,7 +544,7 @@
         "remedial_codex_query",
         "query_varshaphala"
       ],
-      "notes": "Single-planet deep dive. msr_sql with planet=Jupiter returns all Jupiter-keyed signals across signal_types (placement, aspect, dignity, divisional). pattern_register surfaces Jupiter yogas (Gajakesari, Hamsa, etc.). cgm_graph_walk seeded at PLN.Jupiter traces Jupiter's conceptual neighborhood.",
+      "notes": "Single-planet deep dive. msr_sql with planet=Jupiter returns all Jupiter-keyed signals across signal_types (placement, aspect, dignity, divisional). pattern_register surfaces Jupiter yogas (Gajakesari, Hamsa, etc.). cgm_graph_walk seeded at PLN.Jupiter traces Jupiter's conceptual neighborhood. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute. This is R7d's single-planet interpretive scope (Jupiter), which bans vector_search/cluster_atlas/resonance_register/contradiction_register unconditionally; no live substitute exists in this rule.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM"
@@ -580,8 +556,7 @@
       "query_class": "interpretive",
       "category": "planetary",
       "expected_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
         "msr_sql"
@@ -590,7 +565,7 @@
         "remedial_codex_query",
         "temporal"
       ],
-      "notes": "Multi-varga single-planet read. msr_sql with planet=Mars + signal_type=divisional returns Mars across D1, D9, D10, D7 etc. pattern_register adds named Mars yogas (Mangal Dosha, Ruchaka, etc.) that cross divisional charts.",
+      "notes": "Multi-varga single-planet read. msr_sql with planet=Mars + signal_type=divisional returns Mars across D1, D9, D10, D7 etc. pattern_register adds named Mars yogas (Mangal Dosha, Ruchaka, etc.) that cross divisional charts. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute. This query is R7d's own worked example (single-planet Mars scope across divisionals), which bans vector_search unconditionally.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM"
@@ -602,19 +577,17 @@
       "query_class": "interpretive",
       "category": "planetary",
       "expected_tools": [
-        "pattern_register",
-        "resonance_register",
         "msr_sql"
       ],
       "required_tools": [
-        "pattern_register"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "remedial_codex_query",
         "domain_report_query",
         "temporal"
       ],
-      "notes": "Single-planet pattern + resonance read. pattern_register filtered on Saturn-tagged patterns; resonance_register filtered on Saturn-bridging resonance pairs; msr_sql with planet=Saturn anchors the underlying signals. (Rewritten from a KP ruling-planets query — KP cusp/star-lord retrieval has no primary-tool surface; the planetary-pattern framing is what the 8 primary tools actually support.)",
+      "notes": "Single-planet pattern + resonance read. pattern_register filtered on Saturn-tagged patterns; resonance_register filtered on Saturn-bridging resonance pairs; msr_sql with planet=Saturn anchors the underlying signals. (Rewritten from a KP ruling-planets query — KP cusp/star-lord retrieval has no primary-tool surface; the planetary-pattern framing is what the 8 primary tools actually support.) RC-06 (2026-07-22): pattern_register and resonance_register were dead capabilities — both dropped with no substitute. This is a single-planet (Saturn) query, so R7d governs despite the literal 'patterns and resonances' phrasing — the R7d/R15 overlap resolves in R7d's favor (VERIFY_RC-05 non-blocking note 1), and R7d's prior 'resonance_register on literal resonance/themes/alignment keyword' conditional clause was removed in RC-05 (moved to the permanent NEVER-add list); vector_search remains banned in R7d. msr_sql promoted to required — R7d's actual mandate is 'the default tool set is msr_sql only', and leaving required_tools empty after dropping the sole required dead entry would make this case vacuously pass.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM"
@@ -626,8 +599,7 @@
       "query_class": "interpretive",
       "category": "edge_case",
       "expected_tools": [
-        "pattern_register",
-        "cluster_atlas"
+        "contradiction_register"
       ],
       "required_tools": [],
       "forbidden_tools": [
@@ -636,7 +608,7 @@
         "query_varshaphala",
         "timeline_query"
       ],
-      "notes": "Edge case: ambiguous, low-specificity prompt. A correct planner should reach for L2.5 discovery surfaces (pattern_register for revealed patterns, cluster_atlas for dominant clusters) rather than time-bound or remedial tools. (Rewritten from a degenerate single-character '?' query that previously expected manifest_query — manifest_query is not a primary tool, and a degenerate query is an unrealistic test of planner robustness against the constrained primary surface.)",
+      "notes": "Edge case: ambiguous, low-specificity prompt. A correct planner should reach for L2.5 discovery surfaces (pattern_register for revealed patterns, cluster_atlas for dominant clusters) rather than time-bound or remedial tools. (Rewritten from a degenerate single-character '?' query that previously expected manifest_query — manifest_query is not a primary tool, and a degenerate query is an unrealistic test of planner robustness against the constrained primary surface.) RC-06 (2026-07-22): pattern_register and cluster_atlas were dead capabilities. Despite the interpretive class label, the notes' own framing ('L2.5 discovery surfaces') matches R-DISC — replaced with contradiction_register, the sole live L2.5 discovery register post-RC-05 (vector_search is banned for discovery by the same rule).",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -649,19 +621,18 @@
       "query_class": "holistic",
       "category": "edge_case",
       "expected_tools": [
-        "pattern_register",
-        "contradiction_register",
-        "resonance_register",
-        "cluster_atlas"
+        "contradiction_register"
       ],
-      "required_tools": [],
+      "required_tools": [
+        "contradiction_register"
+      ],
       "forbidden_tools": [
         "temporal",
         "query_varshaphala",
         "remedial_codex_query",
         "timeline_query"
       ],
-      "notes": "Edge case: open-ended ambiguous prompt. A correct planner should reach for L2.5 discovery surfaces (patterns, contradictions, resonances, clusters) rather than time-bound or remedial tools. No required_tools because any non-empty subset of the four discovery registers is acceptable.",
+      "notes": "Edge case: open-ended ambiguous prompt. A correct planner should reach for L2.5 discovery surfaces (patterns, contradictions, resonances, clusters) rather than time-bound or remedial tools. No required_tools because any non-empty subset of the four discovery registers is acceptable. RC-06 (2026-07-22): pattern_register, resonance_register, and cluster_atlas were dead capabilities. Replaced with contradiction_register, now the SOLE live L2.5 discovery register post-RC-05 (R-DISC dropped the other two with no substitute — vector_search is banned for discovery). Promoted to required: with only one live register left, the prior 'any non-empty subset of the four is acceptable' framing collapses to 'contradiction_register is the unconditional R-DISC mandate'.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -676,17 +647,16 @@
       "category": "predictive",
       "expected_tools": [
         "msr_sql",
-        "pattern_register",
         "vector_search"
       ],
       "required_tools": [
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "remedial_codex_query"
       ],
-      "notes": "Dasha-timing predictive (BHISMA-W2-S-D gap-close: predictive entry #5). The brief specified `l1_facts_query` + `msr_sql`, but `l1_facts_query` is not a primary tool (W2-MANIFEST AC.M.1 limits the planner to 8 primary tools). Mapped to the constrained surface: msr_sql for Mercury-domain forward_looking signals; pattern_register satisfies R7's predictive cross-domain-lens mandate (Mercury-keyed forward_looking patterns) and is promoted to required_tools; vector_search reaches the L5 lifetime timeline (doc_type='l5_timeline') for the MD arc. Note: the native is currently in Mercury MD (ends 2027-08-21 per native_context); the planner must surface the active arc, not a forecast of a future onset.",
+      "notes": "Dasha-timing predictive (BHISMA-W2-S-D gap-close: predictive entry #5). The brief specified `l1_facts_query` + `msr_sql`, but `l1_facts_query` is not a primary tool (W2-MANIFEST AC.M.1 limits the planner to 8 primary tools). Mapped to the constrained surface: msr_sql for Mercury-domain forward_looking signals; pattern_register satisfies R7's predictive cross-domain-lens mandate (Mercury-keyed forward_looking patterns) and is promoted to required_tools; vector_search reaches the L5 lifetime timeline (doc_type='l5_timeline') for the MD arc. Note: the native is currently in Mercury MD (ends 2027-08-21 per native_context); the planner must surface the active arc, not a forecast of a future onset. RC-06 (2026-07-22): pattern_register was a dead capability — dropped (deduplicated against the existing vector_search entry); vector_search promoted to required as R7a's live cross-domain-lens substitute.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -738,8 +708,6 @@
       "category": "edge_case",
       "expected_tools": [
         "msr_sql",
-        "pattern_register",
-        "cluster_atlas",
         "cgm_graph_walk",
         "vector_search"
       ],
@@ -747,7 +715,7 @@
       "forbidden_tools": [
         "remedial_codex_query"
       ],
-      "notes": "Edge case: overloaded holistic prompt. The planner must not hang or run unbounded — budget arbitration (W2-PLANNER ADR-6) is expected to trim the plan to fit the synthesis-model context envelope. expected_tools enumerates the holistic L2.5 surface a budget-unconstrained planner would select; required_tools is empty because budget arbitration may legitimately prune any single tool. remedial_codex_query is forbidden because the prompt expresses no remedial intent.",
+      "notes": "Edge case: overloaded holistic prompt. The planner must not hang or run unbounded — budget arbitration (W2-PLANNER ADR-6) is expected to trim the plan to fit the synthesis-model context envelope. expected_tools enumerates the holistic L2.5 surface a budget-unconstrained planner would select; required_tools is empty because budget arbitration may legitimately prune any single tool. remedial_codex_query is forbidden because the prompt expresses no remedial intent. RC-06 (2026-07-22): pattern_register and cluster_atlas were dead capabilities. cluster_atlas -> vector_search (R11 main-branch live substitute, already present; deduplicated). pattern_register dropped with no substitute (R11 excised it). required_tools remains empty — budget arbitration may legitimately prune any single tool.",
       "required_asset_ids": [
         "FORENSIC",
         "CGM",
@@ -828,13 +796,9 @@
       "query_class": "discovery",
       "category": "discovery",
       "expected_tools": [
-        "pattern_register",
-        "contradiction_register",
-        "resonance_register",
-        "cluster_atlas"
+        "contradiction_register"
       ],
       "required_tools": [
-        "pattern_register",
         "contradiction_register"
       ],
       "forbidden_tools": [
@@ -846,7 +810,7 @@
         "UCN",
         "CDLM"
       ],
-      "notes": "R-DISC: open-ended discovery — all four L2.5 registers. No domain anchor so msr_sql is not added. Open exploration language triggers all four registers."
+      "notes": "R-DISC: open-ended discovery — all four L2.5 registers. No domain anchor so msr_sql is not added. Open exploration language triggers all four registers. RC-06 (2026-07-22): pattern_register, resonance_register, and cluster_atlas were dead capabilities. R-DISC dropped all three with no substitute (vector_search is explicitly banned for discovery) — contradiction_register is now the sole live L2.5 discovery register."
     },
     {
       "id": "GT.034",
@@ -854,14 +818,10 @@
       "query_class": "discovery",
       "category": "discovery",
       "expected_tools": [
-        "pattern_register",
-        "contradiction_register",
-        "resonance_register",
-        "cluster_atlas"
+        "contradiction_register"
       ],
       "required_tools": [
-        "pattern_register",
-        "cluster_atlas"
+        "contradiction_register"
       ],
       "forbidden_tools": [
         "remedial_codex_query",
@@ -873,7 +833,7 @@
         "UCN",
         "CDLM"
       ],
-      "notes": "R-DISC: classic discovery trigger ('surprise me', 'patterns'). No domain signal — msr_sql explicitly forbidden. All four L2.5 registers required."
+      "notes": "R-DISC: classic discovery trigger ('surprise me', 'patterns'). No domain signal — msr_sql explicitly forbidden. All four L2.5 registers required. RC-06 (2026-07-22): pattern_register, resonance_register, and cluster_atlas were dead capabilities. R-DISC dropped all three with no substitute (vector_search is explicitly banned for discovery) — contradiction_register is now the sole live L2.5 discovery register; msr_sql stays forbidden (no domain anchor)."
     },
     {
       "id": "GT.035",
@@ -881,14 +841,11 @@
       "query_class": "discovery",
       "category": "discovery",
       "expected_tools": [
-        "pattern_register",
         "contradiction_register",
-        "resonance_register",
-        "cluster_atlas",
         "msr_sql"
       ],
       "required_tools": [
-        "pattern_register",
+        "contradiction_register",
         "msr_sql"
       ],
       "forbidden_tools": [
@@ -900,7 +857,7 @@
         "UCN",
         "CDLM"
       ],
-      "notes": "R-DISC with domain anchor: discovery query naming 'career' domain — msr_sql added at priority 3 per R-DISC exception rule. All four L2.5 registers remain required."
+      "notes": "R-DISC with domain anchor: discovery query naming 'career' domain — msr_sql added at priority 3 per R-DISC exception rule. All four L2.5 registers remain required. RC-06 (2026-07-22): pattern_register, resonance_register, and cluster_atlas were dead capabilities. R-DISC dropped all three with no substitute (vector_search is explicitly banned for discovery) — contradiction_register is now the sole live L2.5 discovery register; msr_sql remains required via the R-DISC domain-anchor exception ('career' named)."
     },
     {
       "id": "GT.036",
@@ -984,12 +941,10 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "vector_search",
@@ -1003,7 +958,7 @@
       "required_plan_fields": [
         "time_window"
       ],
-      "notes": "R-TW1: eclipse keyword in predictive query — time_window must be populated with 90-day forward window. planets: ['Moon']. R7c transit ban: vector_search forbidden. required_plan_fields asserts time_window presence in emitted plan."
+      "notes": "R-TW1: eclipse keyword in predictive query — time_window must be populated with 90-day forward window. planets: ['Moon']. R7c transit ban: vector_search forbidden. required_plan_fields asserts time_window presence in emitted plan. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (this entry's own forbidden_tools already bans vector_search under the R7c transit-ban posture R-TW1 pairs with)."
     },
     {
       "id": "GT.040",
@@ -1011,12 +966,10 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "vector_search",
@@ -1031,7 +984,7 @@
         "time_window",
         "dasha_context_required"
       ],
-      "notes": "R-TW2: named antardasha (Mercury) + explicit date range (2025–2027) — time_window: {start: '2025-01-01', end: '2027-12-31'}, dasha_context_required: true. required_plan_fields asserts both fields populated."
+      "notes": "R-TW2: named antardasha (Mercury) + explicit date range (2025–2027) — time_window: {start: '2025-01-01', end: '2027-12-31'}, dasha_context_required: true. required_plan_fields asserts both fields populated. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry)."
     },
     {
       "id": "GT.041",
@@ -1041,8 +994,7 @@
       "expected_tools": [
         "msr_sql",
         "cgm_graph_walk",
-        "cluster_atlas",
-        "pattern_register"
+        "vector_search"
       ],
       "required_tools": [
         "msr_sql",
@@ -1061,7 +1013,7 @@
       "required_plan_fields": [
         "graph_seed_hints"
       ],
-      "notes": "R-GSH: explicit AK/AmK + yoga mapping — graph_seed_hints must be populated with KRK.* and YOG.* namespace node IDs. required_plan_fields asserts graph_seed_hints presence."
+      "notes": "R-GSH: explicit AK/AmK + yoga mapping — graph_seed_hints must be populated with KRK.* and YOG.* namespace node IDs. required_plan_fields asserts graph_seed_hints presence. RC-06 (2026-07-22): cluster_atlas and pattern_register were dead capabilities. cluster_atlas -> vector_search (R11 main-branch live substitute; vector_search is not forbidden in this entry). pattern_register dropped with no substitute (R11 excised it entirely, no in-class substitute)."
     },
     {
       "id": "GT.042",
@@ -1070,12 +1022,12 @@
       "category": "interpretive",
       "expected_tools": [
         "msr_sql",
-        "pattern_register",
+        "vector_search",
         "cgm_graph_walk"
       ],
       "required_tools": [
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "remedial_codex_query",
@@ -1089,7 +1041,7 @@
       "required_plan_fields": [
         "graph_seed_hints"
       ],
-      "notes": "R-GSH: named yogas (Lakshmi Yoga, Sasha Yoga) + named dasha lord (Mercury mahadasha) — graph_seed_hints should include YOG.LAKSHMI, YOG.SASHA, DSH.MD.MERCURY. required_plan_fields asserts graph_seed_hints non-empty."
+      "notes": "R-GSH: named yogas (Lakshmi Yoga, Sasha Yoga) + named dasha lord (Mercury mahadasha) — graph_seed_hints should include YOG.LAKSHMI, YOG.SASHA, DSH.MD.MERCURY. required_plan_fields asserts graph_seed_hints non-empty. RC-06 (2026-07-22): pattern_register was a dead capability. Named yogas + named dasha lord is chart-level multi-layer scope under R17 — replaced with vector_search, R17's live substitute."
     },
     {
       "id": "GT.043",
@@ -1097,12 +1049,10 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "vector_search",
@@ -1113,7 +1063,7 @@
         "CGM",
         "LEL"
       ],
-      "notes": "R7a: predictive with temporal window — pattern_register required. No transit language so R7c transit ban does not apply; vector_search forbidden regardless (no domain document signal in a timing query)."
+      "notes": "R7a: predictive with temporal window — pattern_register required. No transit language so R7c transit ban does not apply; vector_search forbidden regardless (no domain document signal in a timing query). RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry regardless of transit-keyword absence, per its own 'no domain document signal in a timing query' rationale)."
     },
     {
       "id": "GT.044",
@@ -1121,12 +1071,10 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "vector_search",
@@ -1137,7 +1085,7 @@
         "CGM",
         "LEL"
       ],
-      "notes": "Mahadasha-end event + health domain + year-anchored → time_window encouraged but not required (year implicit, not explicit range). No remedial prescription asked — remedial_codex_query forbidden."
+      "notes": "Mahadasha-end event + health domain + year-anchored → time_window encouraged but not required (year implicit, not explicit range). No remedial prescription asked — remedial_codex_query forbidden. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry)."
     },
     {
       "id": "GT.045",
@@ -1147,8 +1095,7 @@
       "expected_tools": [
         "msr_sql",
         "cgm_graph_walk",
-        "cluster_atlas",
-        "pattern_register"
+        "vector_search"
       ],
       "required_tools": [
         "msr_sql",
@@ -1164,7 +1111,7 @@
         "UCN",
         "CDLM"
       ],
-      "notes": "R14a amended trigger: 'arc of my life' is a new trigger phrase added in QP-S1 for cgm_graph_walk. Variant of GT.017 ('Give me a comprehensive overview of my life path') using synonym phrasing to verify R14a trigger list breadth."
+      "notes": "R14a amended trigger: 'arc of my life' is a new trigger phrase added in QP-S1 for cgm_graph_walk. Variant of GT.017 ('Give me a comprehensive overview of my life path') using synonym phrasing to verify R14a trigger list breadth. RC-06 (2026-07-22): cluster_atlas and pattern_register were dead capabilities. cluster_atlas -> vector_search (R11 main-branch live substitute; vector_search is not forbidden in this entry). pattern_register dropped with no substitute (R11 excised it entirely)."
     },
     {
       "id": "GT.046",
@@ -1245,11 +1192,9 @@
       "query_class": "multi_school_triangulation",
       "category": "multi_school_triangulation",
       "expected_tools": [
-        "multi_school_signal_lookup",
         "convergence_score_lookup"
       ],
       "required_tools": [
-        "multi_school_signal_lookup",
         "convergence_score_lookup"
       ],
       "forbidden_tools": [
@@ -1259,7 +1204,7 @@
         "FORENSIC",
         "MSR"
       ],
-      "notes": "M9-D-S1 multi_school_triangulation golden entry 1. Planner must call both tools: multi_school_signal_lookup for CAREER topic coverage by school, convergence_score_lookup for CAREER convergence metrics. Expected domains=['CAREER']."
+      "notes": "M9-D-S1 multi_school_triangulation golden entry 1. Planner must call convergence_score_lookup for CAREER convergence metrics. Expected domains=['CAREER']. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): multi_school_signal_lookup was a WP-1.7 dead capability (never bridged in tool_name_bridge.ts) — dropped with no live twin; convergence_score_lookup (already co-expected/required) is the sole surviving multi-school-triangulation tool for this entry."
     },
     {
       "id": "GT.051",
@@ -1267,7 +1212,6 @@
       "query_class": "multi_school_triangulation",
       "category": "multi_school_triangulation",
       "expected_tools": [
-        "multi_school_signal_lookup",
         "convergence_score_lookup"
       ],
       "required_tools": [
@@ -1280,7 +1224,7 @@
         "FORENSIC",
         "MSR"
       ],
-      "notes": "M9-D-S1 multi_school_triangulation golden entry 2. Schools filter=[parashari, jaimini, kp]. Domain=RELATIONSHIP. convergence_score_lookup is required; multi_school_signal_lookup optional but expected."
+      "notes": "M9-D-S1 multi_school_triangulation golden entry 2. Schools filter=[parashari, jaimini, kp]. Domain=RELATIONSHIP. convergence_score_lookup is required. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): multi_school_signal_lookup was a WP-1.7 dead capability (never bridged) — dropped with no live twin; convergence_score_lookup remains the sole surviving multi-school-triangulation tool for this entry."
     },
     {
       "id": "GT.052",
@@ -1309,7 +1253,6 @@
       "expected_tools": [
         "lel_query",
         "msr_sql",
-        "pattern_register",
         "cgm_graph_walk"
       ],
       "required_tools": [
@@ -1325,7 +1268,7 @@
         "LEL",
         "MSR"
       ],
-      "notes": "2026-05-17 lel_query golden entry 1. Career-arc anchoring on recorded ground truth. lel_query with {category:'career', significance:'major'} returns the recorded career shift dates from LIFE_EVENT_LOG_v1_2 — B.10 discipline forbids fabricating career events from dasha inference when LEL holds the recorded dates. msr_sql supplies the natal 10H/Saturn/Sun signals that contextualize each shift; pattern_register surfaces career-keyed yogas and forward_looking patterns; cgm_graph_walk traces career-concept dependencies. vector_search forbidden — narrative L3 retrieval would dilute the ground-truth anchor."
+      "notes": "2026-05-17 lel_query golden entry 1. Career-arc anchoring on recorded ground truth. lel_query with {category:'career', significance:'major'} returns the recorded career shift dates from LIFE_EVENT_LOG_v1_2 — B.10 discipline forbids fabricating career events from dasha inference when LEL holds the recorded dates. msr_sql supplies the natal 10H/Saturn/Sun signals that contextualize each shift; pattern_register surfaces career-keyed yogas and forward_looking patterns; cgm_graph_walk traces career-concept dependencies. vector_search forbidden — narrative L3 retrieval would dilute the ground-truth anchor. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry — narrative L3 retrieval would dilute the LEL ground-truth anchor)."
     },
     {
       "id": "GT.054",
@@ -1335,8 +1278,7 @@
       "expected_tools": [
         "temporal",
         "lel_query",
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
         "temporal",
@@ -1353,7 +1295,7 @@
         "LEL",
         "MSR"
       ],
-      "notes": "2026-05-17 lel_query golden entry 2. Forward-projection question. temporal supplies the upcoming Vimshottari MD/AD boundary (Mercury MD → Ketu MD at 2027-08-21). lel_query with {significance:'major'} returns prior dasha-boundary correlated events from LEL — these serve as the empirical anchors for what a 'major dasha transition' has historically meant for this native (not generic-classical text inference). msr_sql for Ketu signals + dasha-lord patterns; pattern_register satisfies R7's predictive cross-domain-lens mandate. vector_search/cluster_atlas forbidden — narrative + cluster surfaces are wrong horizon for boundary-event timing."
+      "notes": "2026-05-17 lel_query golden entry 2. Forward-projection question. temporal supplies the upcoming Vimshottari MD/AD boundary (Mercury MD → Ketu MD at 2027-08-21). lel_query with {significance:'major'} returns prior dasha-boundary correlated events from LEL — these serve as the empirical anchors for what a 'major dasha transition' has historically meant for this native (not generic-classical text inference). msr_sql for Ketu signals + dasha-lord patterns; pattern_register satisfies R7's predictive cross-domain-lens mandate. vector_search/cluster_atlas forbidden — narrative + cluster surfaces are wrong horizon for boundary-event timing. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry)."
     },
     {
       "id": "GT.055",
@@ -1363,13 +1305,13 @@
       "expected_tools": [
         "lel_query",
         "msr_sql",
-        "resonance_register",
+        "vector_search",
         "cgm_graph_walk"
       ],
       "required_tools": [
         "lel_query",
         "msr_sql",
-        "resonance_register"
+        "vector_search"
       ],
       "forbidden_tools": [
         "temporal"
@@ -1381,7 +1323,7 @@
         "MSR",
         "RM"
       ],
-      "notes": "2026-05-17 lel_query golden entry 3. Relationship + family historical read. lel_query called twice (or with combined filter) for {category:'relationship'} and {category:'family'} — B.10 discipline forbids inferring marriage/family events from natal 7H/4H placements when LEL holds the recorded dates. msr_sql for 7H/4H/Venus/Moon natal signals; resonance_register satisfies R7's cross-domain-lens mandate for relationship/family-domain reads; cgm_graph_walk traces relational-concept dependencies. temporal forbidden — this is a retrospective historical read, not a transit-bound question."
+      "notes": "2026-05-17 lel_query golden entry 3. Relationship + family historical read. lel_query called twice (or with combined filter) for {category:'relationship'} and {category:'family'} — B.10 discipline forbids inferring marriage/family events from natal 7H/4H placements when LEL holds the recorded dates. msr_sql for 7H/4H/Venus/Moon natal signals; resonance_register satisfies R7's cross-domain-lens mandate for relationship/family-domain reads; cgm_graph_walk traces relational-concept dependencies. temporal forbidden — this is a retrospective historical read, not a transit-bound question. RC-06 (2026-07-22): resonance_register was a dead capability — replaced with vector_search (R7's live cross-domain-lens substitute; not forbidden in this entry)."
     },
     {
       "id": "GT.056",
@@ -1389,12 +1331,11 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "query_signal_state",
         "msr_sql",
-        "pattern_register"
+        "vector_search"
       ],
       "required_tools": [
-        "query_signal_state"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "classical_text_search"
@@ -1403,7 +1344,7 @@
         "FORENSIC",
         "MSR"
       ],
-      "notes": "2026-05-17 query_signal_state golden entry 1. Live current-state question. query_signal_state with {states:['lit','ripening'], limit:50} surfaces the date-indexed signal_states snapshot for today from the signal_states table (migration 023, populated by temporal signal_activator). msr_sql resolves SIG.MSR.NNN ids to full signal metadata; pattern_register satisfies R7's predictive cross-domain-lens mandate. classical_text_search forbidden — text-corpus retrieval is wrong layer for a 'right now' substrate query."
+      "notes": "2026-05-17 query_signal_state golden entry 1. Live current-state question. msr_sql resolves SIG.MSR.NNN ids to full signal metadata, including lit/ripening state; vector_search satisfies R7's predictive cross-domain-lens mandate. classical_text_search forbidden — text-corpus retrieval is wrong layer for a 'right now' substrate query. RC-06 (2026-07-22): pattern_register was a dead capability — replaced with vector_search (R7a's live cross-domain-lens substitute for predictive queries; not forbidden in this entry). Remains optional (not required). RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1): query_signal_state was itself a WP-1.7 dead capability (never bridged in tool_name_bridge.ts) — dropped and promoted its live twin msr_sql (query_signals is served by msr_sql per tool_name_bridge.ts:420) from expected-only to required, since it was already co-expected."
     },
     {
       "id": "GT.057",
@@ -1411,14 +1352,12 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "query_signal_state",
         "temporal",
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
-        "query_signal_state",
-        "temporal"
+        "temporal",
+        "msr_sql"
       ],
       "forbidden_tools": [
         "vector_search"
@@ -1427,7 +1366,7 @@
         "FORENSIC",
         "MSR"
       ],
-      "notes": "2026-05-17 query_signal_state golden entry 2. Forward window scan. query_signal_state with {query_date:'2026-05-17', end_date:'2027-05-17', states:['ripening']} surfaces signals that flip from dormant to active over the next 12 months. temporal supplies the dasha + transit context for the window. msr_sql resolves the ripening SIG.MSR.NNN ids; pattern_register satisfies R7's predictive cross-domain-lens mandate. vector_search forbidden — narrative retrieval would dilute a structured state-table scan."
+      "notes": "2026-05-17 query_signal_state golden entry 2. Forward window scan. temporal supplies the dasha + transit context for the window. msr_sql resolves the ripening SIG.MSR.NNN ids, including ripening-state filtering. vector_search forbidden — narrative retrieval would dilute a structured state-table scan. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry — narrative retrieval would dilute a structured state-table scan). RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1): query_signal_state was itself a WP-1.7 dead capability (never bridged) — dropped and promoted its live twin msr_sql (already co-expected) to required in its place."
     },
     {
       "id": "GT.058",
@@ -1435,13 +1374,12 @@
       "query_class": "predictive",
       "category": "predictive",
       "expected_tools": [
-        "query_signal_state",
         "lel_query",
         "msr_sql"
       ],
       "required_tools": [
-        "query_signal_state",
-        "lel_query"
+        "lel_query",
+        "msr_sql"
       ],
       "forbidden_tools": [
         "cluster_atlas"
@@ -1451,7 +1389,7 @@
         "MSR",
         "LEL"
       ],
-      "notes": "2026-05-17 query_signal_state golden entry 3. Cross-anchored historical-state probe. lel_query with {category:'career', start_date:'2020-01-01', end_date:'2020-12-31'} returns the recorded 2020 career-transition event date(s) — providing the anchor date(s) to pass into query_signal_state with {signal_ids:['SIG.MSR.142'], query_date:<event_date>}. msr_sql resolves SIG.MSR.142 metadata. cluster_atlas forbidden — clusters are L2.5 synthesis surfaces and not the right layer for a single-signal historical-state lookup."
+      "notes": "2026-05-17 query_signal_state golden entry 3. Cross-anchored historical-state probe. lel_query with {category:'career', start_date:'2020-01-01', end_date:'2020-12-31'} returns the recorded 2020 career-transition event date(s) — providing the anchor date(s) for a msr_sql SIG.MSR.142 historical-state lookup. cluster_atlas forbidden — clusters are L2.5 synthesis surfaces and not the right layer for a single-signal historical-state lookup. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1): query_signal_state was a WP-1.7 dead capability (never bridged) — dropped and promoted its live twin msr_sql (already co-expected) to required in its place."
     },
     {
       "id": "GT.059",
@@ -1459,11 +1397,10 @@
       "query_class": "factual",
       "category": "factual",
       "expected_tools": [
-        "query_kp_ruling_planets",
         "msr_sql"
       ],
       "required_tools": [
-        "query_kp_ruling_planets"
+        "msr_sql"
       ],
       "forbidden_tools": [
         "pattern_register",
@@ -1472,7 +1409,7 @@
       "required_asset_ids": [
         "FORENSIC"
       ],
-      "notes": "2026-05-17 query_kp_ruling_planets golden entry 1. Pure factual substrate read. query_kp_ruling_planets with {} (no params) returns the full 9-graha star-lord / sub-lord / sub-sub-lord chain from kp_sublords (migration 024, pyswisseph + lahiri). msr_sql optionally cross-references with FORENSIC §4 chart_facts. pattern_register/vector_search forbidden — no yoga or narrative interpretation asked; this is substrate-table data."
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 1. Pure factual substrate read. msr_sql cross-references FORENSIC §4 chart_facts. pattern_register/vector_search forbidden — no yoga or narrative interpretation asked; this is substrate-table data. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): query_kp_ruling_planets was a WP-1.7 dead capability — no KP engine is registered (tool_name_bridge.ts:417). No live twin exists for the KP star-lord/sub-lord concept; dropped with msr_sql (already co-expected) promoted to required as the sole surviving substrate read."
     },
     {
       "id": "GT.060",
@@ -1480,12 +1417,9 @@
       "query_class": "factual",
       "category": "factual",
       "expected_tools": [
-        "query_kp_ruling_planets",
-        "msr_sql",
-        "kp_query"
+        "msr_sql"
       ],
       "required_tools": [
-        "query_kp_ruling_planets",
         "msr_sql"
       ],
       "forbidden_tools": [
@@ -1494,19 +1428,15 @@
       "required_asset_ids": [
         "FORENSIC"
       ],
-      "notes": "2026-05-17 query_kp_ruling_planets golden entry 2. Single-planet KP substrate read. query_kp_ruling_planets with {planet:'Saturn'} returns Saturn's star-lord / sub-lord / sub-sub-lord chain from kp_sublords. kp_query reads the FORENSIC §4 authoritative chart_facts values for Saturn — the two coexist (substrate computation + canonical-source value) and the synthesis layer cross-checks per 05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md. msr_sql for Saturn natal signal context. pattern_register forbidden — no yoga interpretation asked."
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 2. Single-planet KP substrate read. msr_sql supplies Saturn natal signal context, the sole surviving substrate read for this query. pattern_register forbidden — no yoga interpretation asked. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): both query_kp_ruling_planets and kp_query were WP-1.7 dead capabilities — no KP engine is registered (tool_name_bridge.ts:417). No live twin exists for the KP chain concept; both dropped with msr_sql (already co-expected/required) retained."
     },
     {
       "id": "GT.061",
       "query": "Compare my KP sub-lords under lahiri vs krishnamurti ayanamsha.",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": [
-        "query_kp_ruling_planets"
-      ],
-      "required_tools": [
-        "query_kp_ruling_planets"
-      ],
+      "expected_tools": [],
+      "required_tools": [],
       "forbidden_tools": [
         "pattern_register",
         "msr_sql"
@@ -1514,7 +1444,7 @@
       "required_asset_ids": [
         "FORENSIC"
       ],
-      "notes": "2026-05-17 query_kp_ruling_planets golden entry 3. Cross-ayanamsha substrate comparison. Planner must emit TWO calls to query_kp_ruling_planets — one {ayanamsha:'lahiri'} and one {ayanamsha:'krishnamurti'} — and synthesis layer diffs the sub-lord chains. Pure substrate question; msr_sql forbidden because MSR signals are ayanamsha-fixed to lahiri (cross-ayanamsha read would mismatch). pattern_register forbidden — no yoga interpretation."
+      "notes": "2026-05-17 query_kp_ruling_planets golden entry 3. Cross-ayanamsha substrate comparison. msr_sql forbidden because MSR signals are ayanamsha-fixed to lahiri (cross-ayanamsha read would mismatch). pattern_register forbidden — no yoga interpretation. RC-06 fix-cycle-2 (2026-07-22, VERIFY_RC-06.md reject item 1/Native-Proxy Resolver ruling): query_kp_ruling_planets was a WP-1.7 dead capability — no KP engine is registered (tool_name_bridge.ts:417). No live twin exists, and unlike GT.059/GT.060 the entry's own governing rule forbids msr_sql, so there is no in-entry substitute to promote — dropped with expected_tools/required_tools left empty (Resolver disposition; precedent GT.024/GT.027/GT.028/GT.046 already use empty required_tools/expected_tools for entries where no primary tool applies; scoring path treats an empty expected_tools set as trivially satisfied — planner_smoke_runner.ts scoreEntry())."
     },
     {
       "id": "GT.062",
@@ -1524,7 +1454,6 @@
       "expected_tools": [
         "query_varshaphala",
         "msr_sql",
-        "pattern_register",
         "lel_query"
       ],
       "required_tools": [
@@ -1539,7 +1468,7 @@
         "MSR",
         "LEL"
       ],
-      "notes": "2026-05-17 query_varshaphala golden entry 1. Tajika annual-chart read. query_varshaphala with {year:2026} returns the Solar Return UTC, Ascendant, and 9-graha sidereal positions for the 2026–2027 solar year (migration 025). msr_sql contextualizes the Varshaphala placements with natal MSR signals. pattern_register surfaces recurring annual yogas (Tajika Ithasala/Isarapha etc., scheduled when synthesis layer needs them). lel_query with {start_date:'2025-02-05', end_date:'2026-02-05'} provides prior-year ground-truth events as calibration. vector_search forbidden — Varshaphala is structured substrate, not narrative."
+      "notes": "2026-05-17 query_varshaphala golden entry 1. Tajika annual-chart read. query_varshaphala with {year:2026} returns the Solar Return UTC, Ascendant, and 9-graha sidereal positions for the 2026–2027 solar year (migration 025). msr_sql contextualizes the Varshaphala placements with natal MSR signals. pattern_register surfaces recurring annual yogas (Tajika Ithasala/Isarapha etc., scheduled when synthesis layer needs them). lel_query with {start_date:'2025-02-05', end_date:'2026-02-05'} provides prior-year ground-truth events as calibration. vector_search forbidden — Varshaphala is structured substrate, not narrative. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry — Varshaphala is structured substrate, not narrative)."
     },
     {
       "id": "GT.063",
@@ -1549,8 +1478,7 @@
       "expected_tools": [
         "query_varshaphala",
         "msr_sql",
-        "pattern_register",
-        "resonance_register"
+        "vector_search"
       ],
       "required_tools": [
         "query_varshaphala",
@@ -1564,7 +1492,7 @@
         "MSR",
         "RM"
       ],
-      "notes": "2026-05-17 query_varshaphala golden entry 2. Multi-year Tajika window. query_varshaphala with {year_start:2024, year_end:2028} returns five annual charts in one call (most efficient pattern). msr_sql for natal-signal cross-reference. pattern_register surfaces recurring yoga patterns across the 5-year window. resonance_register satisfies R7's predictive cross-domain-lens mandate — multi-year compare is fundamentally a cross-year resonance question. temporal forbidden — Varshaphala is its own time-engine; transit/dasha overlay would conflate engines."
+      "notes": "2026-05-17 query_varshaphala golden entry 2. Multi-year Tajika window. query_varshaphala with {year_start:2024, year_end:2028} returns five annual charts in one call (most efficient pattern). msr_sql for natal-signal cross-reference. pattern_register surfaces recurring yoga patterns across the 5-year window. resonance_register satisfies R7's predictive cross-domain-lens mandate — multi-year compare is fundamentally a cross-year resonance question. temporal forbidden — Varshaphala is its own time-engine; transit/dasha overlay would conflate engines. RC-06 (2026-07-22): pattern_register and resonance_register were dead capabilities — both replaced by a single vector_search call (R7's live cross-domain-lens substitute; vector_search is not forbidden in this entry, only temporal is)."
     },
     {
       "id": "GT.064",
@@ -1575,8 +1503,7 @@
         "query_varshaphala",
         "temporal",
         "lel_query",
-        "msr_sql",
-        "pattern_register"
+        "msr_sql"
       ],
       "required_tools": [
         "query_varshaphala",
@@ -1593,7 +1520,7 @@
         "LEL",
         "CGM"
       ],
-      "notes": "2026-05-17 query_varshaphala golden entry 3. Open-horizon forward predictive question with no explicit year — exercises the plan.time_window fallback in query_varshaphala (RCS optimal_patterns line 3). Planner emits query_varshaphala with {} or {} + time_window-injected year=2027. temporal supplies the dasha+transit overlay for the next-year window. lel_query with {significance:'major'} grounds the forward read against ground-truth event base-rates. msr_sql for natal-signal context; pattern_register for forward_looking yogas. vector_search/cluster_atlas forbidden — wrong layers for a substrate-heavy annual prediction."
+      "notes": "2026-05-17 query_varshaphala golden entry 3. Open-horizon forward predictive question with no explicit year — exercises the plan.time_window fallback in query_varshaphala (RCS optimal_patterns line 3). Planner emits query_varshaphala with {} or {} + time_window-injected year=2027. temporal supplies the dasha+transit overlay for the next-year window. lel_query with {significance:'major'} grounds the forward read against ground-truth event base-rates. msr_sql for natal-signal context; pattern_register for forward_looking yogas. vector_search/cluster_atlas forbidden — wrong layers for a substrate-heavy annual prediction. RC-06 (2026-07-22): pattern_register was a dead capability — dropped with no substitute (vector_search is forbidden in this entry)."
     },
     {
       "id": "GT.065",
@@ -1604,7 +1531,7 @@
         "lel_query",
         "msr_sql",
         "query_ephemeris",
-        "pattern_register"
+        "vector_search"
       ],
       "required_tools": [
         "lel_query",
@@ -1618,7 +1545,7 @@
         "FORENSIC",
         "LEL"
       ],
-      "notes": "Phase 4A R-TC golden entry 1. R-TC + R7a. Historical LEL-anchored transit query. lel_query supplies job-change date; query_ephemeris reads Mars transit position at that date; msr_sql gives natal Mars signals; pattern_register satisfies R7a predictive cross-domain lens. temporal is NOT needed (no eclipse/sade-sati/retrograde-window dependency)."
+      "notes": "Phase 4A R-TC golden entry 1. R-TC + R7a. Historical LEL-anchored transit query. lel_query supplies job-change date; query_ephemeris reads Mars transit position at that date; msr_sql gives natal Mars signals; pattern_register satisfies R7a predictive cross-domain lens. temporal is NOT needed (no eclipse/sade-sati/retrograde-window dependency). RC-06 (2026-07-22): pattern_register was a dead capability — replaced with vector_search (R7a's live cross-domain-lens substitute; not forbidden in this entry). Remains optional (not required) — the regression_baseline mock for this id intentionally omits the 4th tool to exercise the recall<1.0 scoring path; left unchanged."
     },
     {
       "id": "GT.066",
@@ -1669,19 +1596,19 @@
       "expected_tools": [
         "msr_sql",
         "query_ephemeris",
-        "pattern_register"
+        "vector_search"
       ],
       "required_tools": [
         "msr_sql",
         "query_ephemeris",
-        "pattern_register"
+        "vector_search"
       ],
       "forbidden_tools": [],
       "required_asset_ids": [
         "FORENSIC",
         "CGM"
       ],
-      "notes": "Phase 4A R-TC golden entry 4. R-TC + R7a. Domain-scoped present-tense transit query. msr_sql with domain=career; query_ephemeris with empty params (today); pattern_register satisfies R7a."
+      "notes": "Phase 4A R-TC golden entry 4. R-TC + R7a. Domain-scoped present-tense transit query. msr_sql with domain=career; query_ephemeris with empty params (today); pattern_register satisfies R7a. RC-06 (2026-07-22): pattern_register was a dead capability. Literal R7c transit query ('current transit picture') whose ABSOLUTE BAN allows only msr_sql + vector_search — replaced with vector_search, still required."
     },
     {
       "id": "GT.069",
@@ -1787,10 +1714,22 @@
       "query": "What tithi was it on the day I got married in 2008?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["lel_query", "query_panchanga"],
-      "required_tools": ["lel_query", "query_panchanga"],
-      "forbidden_tools": ["vector_search", "pattern_register"],
-      "required_asset_ids": ["FORENSIC", "LEL"],
+      "expected_tools": [
+        "lel_query",
+        "query_panchanga"
+      ],
+      "required_tools": [
+        "lel_query",
+        "query_panchanga"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC",
+        "LEL"
+      ],
       "planets": [],
       "domains": [],
       "forward_looking": false,
@@ -1801,10 +1740,20 @@
       "query": "When is the next Purnima?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_panchanga"],
-      "required_tools": ["query_panchanga"],
-      "forbidden_tools": ["vector_search", "pattern_register", "query_ephemeris"],
-      "required_asset_ids": ["FORENSIC"],
+      "expected_tools": [
+        "query_panchanga"
+      ],
+      "required_tools": [
+        "query_panchanga"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register",
+        "query_ephemeris"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
       "planets": [],
       "domains": [],
       "forward_looking": true,
@@ -1815,11 +1764,22 @@
       "query": "What nakshatra is the Moon in today?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_panchanga"],
-      "required_tools": ["query_panchanga"],
-      "forbidden_tools": ["vector_search", "msr_sql"],
-      "required_asset_ids": ["FORENSIC"],
-      "planets": ["Moon"],
+      "expected_tools": [
+        "query_panchanga"
+      ],
+      "required_tools": [
+        "query_panchanga"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "msr_sql"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "planets": [
+        "Moon"
+      ],
       "domains": [],
       "forward_looking": false,
       "notes": "R-PA Moon-nakshatra-of-day trigger. Distinct from natal Moon nakshatra (which goes through chart_facts_query). msr_sql FORBIDDEN — that would surface natal signals, not transit."
@@ -1829,11 +1789,22 @@
       "query": "What was my birth nakshatra?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["chart_facts_query"],
-      "required_tools": ["chart_facts_query"],
-      "forbidden_tools": ["query_panchanga", "query_ephemeris"],
-      "required_asset_ids": ["FORENSIC"],
-      "planets": ["Moon"],
+      "expected_tools": [
+        "chart_facts_query"
+      ],
+      "required_tools": [
+        "chart_facts_query"
+      ],
+      "forbidden_tools": [
+        "query_panchanga",
+        "query_ephemeris"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "planets": [
+        "Moon"
+      ],
       "domains": [],
       "forward_looking": false,
       "notes": "NEGATIVE for R-PA. Pure natal query about birth nakshatra — chart_facts_query is the right surface (natal Moon nakshatra is a chart fact). query_panchanga FORBIDDEN — that would be the daily-Moon-nakshatra-at-sunrise, not natal."
@@ -1843,11 +1814,22 @@
       "query": "When does Jupiter next enter Aries?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_transit_event"],
-      "required_tools": ["query_transit_event"],
-      "forbidden_tools": ["vector_search", "pattern_register"],
-      "required_asset_ids": ["FORENSIC"],
-      "planets": ["Jupiter"],
+      "expected_tools": [
+        "query_transit_event"
+      ],
+      "required_tools": [
+        "query_transit_event"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "planets": [
+        "Jupiter"
+      ],
       "domains": [],
       "forward_looking": true,
       "notes": "R-TE event_type=ingress, planet=Jupiter, target_sign=Aries. R-FACT enforces single-tool synthesis. query_ephemeris NOT needed — query_transit_event routes ingress to ephemeris_daily.sign_ingress_today directly."
@@ -1857,11 +1839,21 @@
       "query": "When is Mercury retrograde next?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_transit_event"],
-      "required_tools": ["query_transit_event"],
-      "forbidden_tools": ["vector_search"],
-      "required_asset_ids": ["FORENSIC"],
-      "planets": ["Mercury"],
+      "expected_tools": [
+        "query_transit_event"
+      ],
+      "required_tools": [
+        "query_transit_event"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "planets": [
+        "Mercury"
+      ],
       "domains": [],
       "forward_looking": true,
       "notes": "R-TE event_type=station, planet=Mercury, station_type=retrograde_start. Routes to retrogrades table. R-FACT bans registers."
@@ -1871,11 +1863,23 @@
       "query": "When will Saturn aspect my natal Moon next?",
       "query_class": "predictive",
       "category": "predictive",
-      "expected_tools": ["query_transit_event", "msr_sql"],
-      "required_tools": ["query_transit_event", "msr_sql"],
+      "expected_tools": [
+        "query_transit_event",
+        "msr_sql"
+      ],
+      "required_tools": [
+        "query_transit_event",
+        "msr_sql"
+      ],
       "forbidden_tools": [],
-      "required_asset_ids": ["FORENSIC", "CGM"],
-      "planets": ["Saturn", "Moon"],
+      "required_asset_ids": [
+        "FORENSIC",
+        "CGM"
+      ],
+      "planets": [
+        "Saturn",
+        "Moon"
+      ],
       "domains": [],
       "forward_looking": true,
       "notes": "R-TE event_type=aspect, transit_planet=Saturn, natal_planet=Moon, aspect_degrees=[180,90,60,120]. Tool resolves natal Moon longitude from chart_facts internally. msr_sql for natal Moon signals to interpret the upcoming aspect."
@@ -1885,11 +1889,22 @@
       "query": "When do Jupiter and Saturn next conjunct?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_transit_event"],
-      "required_tools": ["query_transit_event"],
-      "forbidden_tools": ["vector_search"],
-      "required_asset_ids": ["FORENSIC"],
-      "planets": ["Jupiter", "Saturn"],
+      "expected_tools": [
+        "query_transit_event"
+      ],
+      "required_tools": [
+        "query_transit_event"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "planets": [
+        "Jupiter",
+        "Saturn"
+      ],
       "domains": [],
       "forward_looking": true,
       "notes": "R-TE event_type=conjunction, planet_a=Jupiter, planet_b=Saturn. orb_deg default 1.0. Live-compute via sidecar /transit_search."
@@ -1899,11 +1914,22 @@
       "query": "What sign is Jupiter in right now?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_ephemeris"],
-      "required_tools": ["query_ephemeris"],
-      "forbidden_tools": ["query_transit_event", "vector_search"],
-      "required_asset_ids": ["FORENSIC"],
-      "planets": ["Jupiter"],
+      "expected_tools": [
+        "query_ephemeris"
+      ],
+      "required_tools": [
+        "query_ephemeris"
+      ],
+      "forbidden_tools": [
+        "query_transit_event",
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "planets": [
+        "Jupiter"
+      ],
       "domains": [],
       "forward_looking": false,
       "notes": "NEGATIVE for R-TE. WHAT-not-WHEN query — current Jupiter position is a lookup, not a search. query_ephemeris (R-TC) is the right surface. query_transit_event FORBIDDEN — search-mode does not fire for positional lookups."
@@ -1913,10 +1939,19 @@
       "query": "What's my current mahadasha?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_dasha_periods"],
-      "required_tools": ["query_dasha_periods"],
-      "forbidden_tools": ["vector_search", "pattern_register"],
-      "required_asset_ids": ["FORENSIC"],
+      "expected_tools": [
+        "query_dasha_periods"
+      ],
+      "required_tools": [
+        "query_dasha_periods"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
       "planets": [],
       "domains": [],
       "forward_looking": false,
@@ -1927,10 +1962,20 @@
       "query": "What is my next mahadasha after Mercury?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_dasha_periods"],
-      "required_tools": ["query_dasha_periods"],
-      "forbidden_tools": ["vector_search", "pattern_register", "msr_sql"],
-      "required_asset_ids": ["FORENSIC"],
+      "expected_tools": [
+        "query_dasha_periods"
+      ],
+      "required_tools": [
+        "query_dasha_periods"
+      ],
+      "forbidden_tools": [
+        "vector_search",
+        "pattern_register",
+        "msr_sql"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
       "planets": [],
       "domains": [],
       "forward_looking": true,
@@ -1941,11 +1986,21 @@
       "query": "When was my Saturn mahadasha?",
       "query_class": "factual",
       "category": "factual",
-      "expected_tools": ["query_dasha_periods"],
-      "required_tools": ["query_dasha_periods"],
-      "forbidden_tools": ["vector_search"],
-      "required_asset_ids": ["FORENSIC"],
-      "planets": ["Saturn"],
+      "expected_tools": [
+        "query_dasha_periods"
+      ],
+      "required_tools": [
+        "query_dasha_periods"
+      ],
+      "forbidden_tools": [
+        "vector_search"
+      ],
+      "required_asset_ids": [
+        "FORENSIC"
+      ],
+      "planets": [
+        "Saturn"
+      ],
       "domains": [],
       "forward_looking": false,
       "notes": "R-DA with md_lord='Saturn' filter. Returns DSH.V.006-014 (Saturn MD 1991-2010). NEGATIVE for R7c — no transit ban issue since not predictive."
@@ -1955,11 +2010,22 @@
       "query": "What does it mean that my current dasha lord is Mercury?",
       "query_class": "interpretive",
       "category": "interpretive",
-      "expected_tools": ["msr_sql", "chart_facts_query"],
-      "required_tools": ["msr_sql", "chart_facts_query"],
+      "expected_tools": [
+        "msr_sql",
+        "chart_facts_query"
+      ],
+      "required_tools": [
+        "msr_sql",
+        "chart_facts_query"
+      ],
       "forbidden_tools": [],
-      "required_asset_ids": ["FORENSIC", "MSR"],
-      "planets": ["Mercury"],
+      "required_asset_ids": [
+        "FORENSIC",
+        "MSR"
+      ],
+      "planets": [
+        "Mercury"
+      ],
       "domains": [],
       "forward_looking": false,
       "notes": "NEGATIVE for R-DA pure-lookup path. This is natal interpretation of MD-lord significance, NOT a schedule query. query_dasha_periods MAY attach at priority 3 for date anchor, but msr_sql + chart_facts_query are the primary surfaces. Tests that R-DA doesn't over-fire on interpretive queries."

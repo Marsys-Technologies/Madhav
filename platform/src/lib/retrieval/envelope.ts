@@ -961,10 +961,10 @@ export const JUDGMENT_FLAG_CODES = [
   'no_mahadasha_periods_for_graha',
   // ── response_budget.ts finalizeMcpBudget hard-cap ──
   'budget_exceeded_after_trim',
-  // ── session-pin drift (distinct subsystem, session_pin.ts) — included so a value it
-  // already emits (as a plain string, unconverted this wave) is always a VALID code, not
-  // an orphaned literal outside the closed vocabulary. ──
-  'chart_rebuilt_mid_session_pin_refreshed',
+  // ── provenance-stamp drift (distinct subsystem, provenance_stamp.ts) — included so a
+  // value it already emits (as a plain string, unconverted this wave) is always a VALID
+  // code, not an orphaned literal outside the closed vocabulary. ──
+  'chart_rebuilt_mid_provenance_stamp_refreshed',
   // ── coordination placeholders for parallel W3 lanes (do not rename — see brief) ──
   'chart_header_unresolved', // W3-L1 (chart_header fail-loud)
   'cursor_filter_mismatch', // W3-L4 (cursor-fingerprint)
@@ -1211,12 +1211,12 @@ export interface V3Envelope extends Omit<LegacyEnvelope, 'envelope_version'> {
   prediction?: PredictionClaim | null
   /** Design §31.5 BUILD PROVENANCE AT SERVE TIME — chart-level build identifier for
    *  this response's data. Undefined/null when not supplied by the caller (honest
-   *  null, never fabricated — B.10); callers that track chart builds (e.g. session-pin
+   *  null, never fabricated — B.10); callers that track chart builds (e.g. provenance-stamp
    *  serving, design §10.6/§31.3) populate this from the chart's latest complete
    *  `builds` row. Consistency invariant (E-4, extended): one response = one build_id. */
   build_id?: string | null
   /** W3-L8 (RETRIEVAL_PLANE_ELEVATION_PLAN §9.6-3/4 + §9.7, W-26/W-28): the serving-catalog
-   *  staleness signal, orthogonal to `build_id` — see `session_pin.ts`'s `SessionPinValues.
+   *  staleness signal, orthogonal to `build_id` — see `provenance_stamp.ts`'s `ProvenanceStampValues.
    *  ledger_version` doc and `concept_ledger/ledger.ts#getLedgerVersion` for the full
    *  derivation. `build_id` says "this chart's data hasn't moved"; `ledger_version` says
    *  "the concept ledger (which capabilities are SERVED/RETIRED/etc) hasn't moved" — the

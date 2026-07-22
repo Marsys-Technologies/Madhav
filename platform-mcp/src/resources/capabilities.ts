@@ -185,7 +185,7 @@ right choice when you specifically want the apex bundle's own contradiction/conv
 
 ---
 
-${SESSION_PIN_HYGIENE_SECTION}
+${PROVENANCE_STAMP_HYGIENE_SECTION}
 
 ---
 
@@ -215,32 +215,32 @@ ${th
  * Shared between the live and placeholder markdown so this teaching surface
  * never silently regresses when perf-data wiring fails.
  */
-const SESSION_PIN_HYGIENE_SECTION = `## SESSION HYGIENE + SESSION PIN (design §10.6 / §31.3 / §31.5)
+const PROVENANCE_STAMP_HYGIENE_SECTION = `## SESSION HYGIENE + PROVENANCE STAMP (design §10.6 / §31.3 / §31.5)
 
 **Session key collision risk (§31.3):** \`mcp_sessions\` is keyed by (user, session_key), and
 \`session_key\` defaults to \`"default"\` when a client sends none. Two CONCURRENT conversations by
 the same user that both omit \`session_key\` share ONE session row — including one
-\`active_chart_id\` and one set of session pins. **Client hygiene rule: pass a stable, distinct
+\`active_chart_id\` and one set of provenance stamps. **Client hygiene rule: pass a stable, distinct
 \`session_key\` per conversation/thread** (e.g. a conversation/thread id) whenever more than one
 conversation for the same user may be live at once. Never rely on \`active_chart_id\` for
 correctness — it is a convenience default only; pass \`chart_id\` explicitly on every chart-scoped
 call regardless of what was last selected.
 
-**Session pin** (\`recall_session\`, \`select_chart\`): resolves/refreshes, per EXPLICIT chart_id,
-\`session_pin = {priors_version, formula_versions, ranking_config, build_id, build_status,
+**Provenance stamp** (\`recall_session\`, \`select_chart\`): resolves/refreshes, per EXPLICIT chart_id,
+\`provenance_stamp = {priors_version, formula_versions, ranking_config, build_id, build_status,
 now_context_date, pinned_at}\` — captured once per (session_key, chart_id) pair (re-keyed inside
-the session's state, so two chart contexts under one session_key get independent pins, mitigating
+the session's state, so two chart contexts under one session_key get independent stamps, mitigating
 part of §31.3). This is NOT a mechanism to keep reading an OLDER chart build's data — L1+ storage
 is delete-then-insert per chart (a rebuild REPLACES rows in place; no historical snapshot is kept).
 It is an honesty mechanism: if the chart's \`build_id\` changes mid-session (a rebuild happened
-while you were mid-conversation), the pin is refreshed to the NEW build and the response carries
-\`judgment_flags: ["chart_rebuilt_mid_session_pin_refreshed"]\` plus a plain-language advisory —
+while you were mid-conversation), the stamp is refreshed to the NEW build and the response carries
+\`judgment_flags: ["chart_rebuilt_mid_provenance_stamp_refreshed"]\` plus a plain-language advisory —
 never a silent blend of pre-rebuild assumptions with post-rebuild data.
 
 **Full fix scope note:** per-conversation session keys are ultimately a CLIENT concern (the MCP
 client, not this server, knows which calls belong to the same conversation) — the full fix rides
 the MCP-elevation workstream. This wave ships the mitigations available at the serving layer:
-explicit chart_id everywhere, chart_id-rekeyed pins, and this documented hygiene rule.`
+explicit chart_id everywhere, chart_id-rekeyed stamps, and this documented hygiene rule.`
 
 const CAPABILITIES_PLACEHOLDER = `# MARSYS-JIS Capabilities Snapshot
 **MCP Resource: \`marsys://capabilities\`**
@@ -320,7 +320,7 @@ WP-1.3(i)/LCA-11; capability preserved on the canonical \`assess_*\` tools.)
 
 ---
 
-${SESSION_PIN_HYGIENE_SECTION}
+${PROVENANCE_STAMP_HYGIENE_SECTION}
 
 ---
 

@@ -1,8 +1,61 @@
 ---
 artifact: PLANNER_PROMPT_v2_0.md
-version: 2.8
+version: 2.9
 status: CURRENT
 supersedes: PLANNER_PROMPT_v1_0.md (v1.7 — now SUPERSEDED)
+rc05_amendment:
+  - 2026-07-22 v2.9 — RC-05 (RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §E
+    Cluster 2, res/rc05-dead-tool-sweep) closed the residual the W6.3
+    amendment flagged but explicitly left unfixed: `resonance_register` and
+    `cluster_atlas` have no registered retrieval capability (WP-1.7,
+    tool_name_bridge.ts:417 — same "no registered cap" finding as
+    `pattern_register`), so every rule that mandated them guaranteed an
+    unresolved-tool gap. Confirmed the full dead-capability set against
+    tool_name_bridge.ts's WP-1.7 removal list (14 vestigial names: this
+    prompt only references `resonance_register`/`cluster_atlas` among
+    them — `multi_school_signal_lookup`/`query_kp_ruling_planets`/
+    `query_signal_state`/etc. are keyword-gated via R28-R32 and CAPABILITY_
+    MANIFEST.json gating_constraints, a different mechanism, out of this
+    sweep's scope). Fixed every MANDATORY (unconditional-once-triggered)
+    injection site:
+      - R-DISC (discovery): dropped both from the "always produce" set —
+        NO substitute (`vector_search` is explicitly banned for discovery
+        by this same rule); `contradiction_register` (still live) is now
+        the sole mandated L2.5 discovery register.
+      - R7b (remedial): `resonance_register` → `vector_search` (default
+        alignment/domain-narrative lens; not banned for remedial). R18's
+        conditional `vector_search` injection is now redundant with R7b's
+        unconditional one — R18 reworded to only refine R7b's `query_text`
+        param, not add a second tool_call.
+      - R11 (holistic, main/non-signal-density branch): `cluster_atlas` →
+        `vector_search` (cross-domain narrative surface; not banned in this
+        branch — the SIGNAL-DENSITY exception's separate ban and
+        no-substitute posture are unchanged).
+      - R15 (holistic/interpretive literal-keyword trigger):
+        `resonance_register` → `vector_search` when the literal keyword
+        ("resonance"/"themes"/"alignment"/"central patterns") fires; the
+        REMEDIAL clause folded into R7b (moot as a separate case).
+      - R7d (single-planet interpretive scope): the conditional
+        `resonance_register` clause DROPPED with no substitute
+        (`vector_search` explicitly banned in this rule too) — moved
+        `resonance_register` onto the rule's permanent NEVER-add list,
+        mirroring R7d's existing `pattern_register` no-substitute posture.
+      - R-CDOM cross-reference updated (no longer points at now-fixed
+        R11/R15 as a cluster_atlas/resonance_register exception).
+    Updated the 9 few-shot `tool_calls` blocks that used to emit
+    `resonance_register` or `cluster_atlas` (examples 4.1, 4.2, 4.3, 4.6,
+    4.7, 4.11, 4.14, 4.15) so every example is self-consistent with the
+    rules above; example 4.3 (previously the only remedial few-shot with
+    NO alignment-lens tool_call at all, an R7b-noncompliance the old rule
+    already had) gained its `vector_search` call for consistency.
+    Companion fix: `compiled_floor_adapter.ts`'s `ensureB11WholeChartReadFloor`
+    / `ensureDashaContextFloor` (the code-level injection site) never
+    actively injected `resonance_register`/`cluster_atlas` for any class
+    (only `pattern_register` was ever actively injected there, for
+    predictive, and that was fixed in W6.2) — so no code change was needed
+    there; added a regression test asserting this holds for every
+    `QueryClass` going forward (`compiled_floor_adapter.test.ts`, "no
+    unresolvable required floor item for ANY query class").
 w6_3_amendment:
   - 2026-07-22 v2.8 — root-caused the live-trace defect (job d08d823a):
     production still emitted unresolved_tools:["pattern_register"] after the
@@ -345,26 +398,32 @@ QUERY CLASS RULES:
                    interaction language: "how does X affect Y", "interaction
                    between", "relationship between X and Y domains",
                    "connected", "how X and Y interact". Do NOT add
-                   cluster_atlas or resonance_register unless the query
-                   explicitly triggers R11 or R15.
+                   `cluster_atlas` or `resonance_register` — dead
+                   capabilities, see R7a note (RC-05, 2026-07-22); R11/R15's
+                   former triggers for these names now resolve to
+                   `vector_search` instead, so there is no longer a
+                   cluster_atlas/resonance_register exception to invoke here.
                    ASSET BUNDLE: FORENSIC + CGM (floors) + UCN (priority 2)
                    + CDLM (priority 2, cross-domain linkage surface).
   "discovery"    — open-ended exploration: "what's interesting", "what stands
                    out", "surprise me", "what's notable", "what haven't I asked
                    about". No specific domain or planet focus.
-                   TOOL RULE (R-DISC): always produce the remaining L2.5
-                   discovery registers as a set:
-                     contradiction_register (priority 1)
-                     resonance_register    (priority 2)
-                     cluster_atlas         (priority 2)
+                   TOOL RULE (R-DISC): always include `contradiction_register`
+                   at priority 1 — the only live L2.5 discovery register
+                   (resolves to L2/query_contradictions, tool_name_bridge.ts:169).
                    [W6.3: `pattern_register` dropped — dead capability, see
-                   R7a note. NOTE (unfixed residual, flagged not fixed this
-                   cycle): `resonance_register` and `cluster_atlas` are ALSO
-                   dead capabilities per tool_name_bridge.ts:417 — this rule
-                   still mandates two more unresolvable tools for every
-                   discovery-class query. Same defect class as the one this
-                   cycle fixed; out of this cycle's scope (predictive-class
-                   pattern_register only) and not fixed here.]
+                   R7a note. RC-05 (2026-07-22, RETRIEVAL_RESIDUAL_CLOSURE_BRIEF):
+                   `resonance_register` and `cluster_atlas` were ALSO dead
+                   capabilities per WP-1.7/tool_name_bridge.ts:417 (no
+                   registered cap) — this rule previously mandated two more
+                   guaranteed-unresolvable tools on EVERY discovery-class
+                   query. DROPPED both with NO substitute: `vector_search`
+                   (the usual W6.3 substitute) is explicitly banned for
+                   discovery queries by this same rule, and no other live
+                   L2.5 discovery register exists yet. A future wave can
+                   re-add real resonance/cluster discovery surfaces once
+                   resolvable capabilities exist — same posture as R7a's note
+                   for the predictive-class precedent.]
                    Add msr_sql at priority 3 ONLY when the discovery query
                    explicitly names a domain. Do NOT add cgm_graph_walk or
                    vector_search to discovery queries.
@@ -591,10 +650,18 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        tool gap on every predictive query. `vector_search` is the live
        substitute already used by the code-level predictive floor
        (compiled_floor_adapter.ts's ensureB11WholeChartReadFloor).]
-  R7b. For REMEDIAL queries, ALWAYS include `resonance_register` at
-       priority ≤ 2 (default alignment lens).
-       [W6.3: the prior "ALSO include `pattern_register`" clause is removed
-       — same dead-capability defect as R7a.]
+  R7b. For REMEDIAL queries, ALWAYS include `vector_search` at
+       priority ≤ 2 (default alignment / domain-narrative lens).
+       [W6.3: the prior "ALSO include `pattern_register`" clause was removed
+       — dead capability, see R7a note. RC-05 (2026-07-22,
+       RETRIEVAL_RESIDUAL_CLOSURE_BRIEF): `resonance_register` (the rule's
+       replacement default) was ALSO a dead capability per WP-1.7/
+       tool_name_bridge.ts:417 — no registered cap — so every remedial-class
+       query guaranteed one unresolved tool. Replaced with `vector_search`,
+       the same live substitute R7a/R7c/R11/R17 already use; `vector_search`
+       is NOT banned for remedial queries. This subsumes R18's conditional
+       injection — R18 now only refines this call's `query_text`, it does
+       not add a second tool_call (see R18).]
   R7c. ABSOLUTE BAN: For PREDICTIVE queries about TRANSITS (any query
        containing "transit", "transiting", "currently moving through",
        "passing over", "where is [planet] now"), the ONLY allowed tools
@@ -610,30 +677,44 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        "What patterns surface for Saturn"), the default tool set is
        `msr_sql` only. Add `cgm_graph_walk` ONLY when the
        query explicitly asks about structural topology (dispositor chain,
-       aspect web, connectivity). Add `resonance_register` ONLY when the
-       query literally contains "resonance", "themes", or "alignment".
-       NEVER add `cluster_atlas`, `vector_search`, or `contradiction_register`
-       to a single-planet interpretive query. Hypothesis: reduces FP
-       cluster_atlas/vector_search/resonance_register on GT.021/022/023.
+       aspect web, connectivity).
+       NEVER add `cluster_atlas`, `resonance_register`, `vector_search`, or
+       `contradiction_register` to a single-planet interpretive query.
+       Hypothesis: reduces FP cluster_atlas/vector_search/resonance_register
+       on GT.021/022/023.
        [W6.3: dropped `pattern_register` from the default set — dead
        capability, see R7a note; no in-class substitute since `vector_search`
-       is explicitly banned here.]
+       is explicitly banned here. RC-05 (2026-07-22): the prior "Add
+       `resonance_register` ONLY when the query literally contains
+       'resonance', 'themes', or 'alignment'" clause is REMOVED — same
+       dead-capability defect (WP-1.7/tool_name_bridge.ts:417), and the same
+       no-substitute posture applies here since `vector_search` is banned in
+       this rule too. `resonance_register` moved from "conditionally
+       required" to the permanent NEVER-add list above.]
   R8.  For REMEDIAL queries, ALWAYS include `msr_sql` at priority 1.
   R9.  Output JSON only — no preface, no trailing prose, no markdown fence.
   R10. If the query is unanswerable, return tool_calls: [] and put the
        reason in query_intent_summary.
   R11. For HOLISTIC queries asking for comprehensive synthesis, life path,
        or general overview ("stands out", "high-level read", "overview",
-       "everything", "themes and contradictions"), include `cluster_atlas`
-       at priority ≤ 2. EXCEPTION — SIGNAL-DENSITY HOLISTIC: for holistic
-       queries asking which signals are currently active/lit/ripening
-       (e.g. "what signals are currently lit", "what's active right now",
-       "what's ripening in my chart"), use ONLY `msr_sql`
-       — DO NOT add `cluster_atlas` or `vector_search`. Hypothesis: reduces
-       FP cluster_atlas/vector_search on signal-density holistic (GT.020).
+       "everything", "themes and contradictions"), include `vector_search`
+       at priority ≤ 2 (cross-domain narrative surface). EXCEPTION —
+       SIGNAL-DENSITY HOLISTIC: for holistic queries asking which signals
+       are currently active/lit/ripening (e.g. "what signals are currently
+       lit", "what's active right now", "what's ripening in my chart"), use
+       ONLY `msr_sql` — DO NOT add `cluster_atlas` or `vector_search`.
+       Hypothesis: reduces FP cluster_atlas/vector_search on signal-density
+       holistic (GT.020).
        [W6.3: dropped `pattern_register` from the allowed set — dead
-       capability, see R7a note; no in-class substitute since `vector_search`
-       is explicitly banned here.]
+       capability, see R7a note; no in-class substitute in the EXCEPTION
+       branch since `vector_search` is explicitly banned there. RC-05
+       (2026-07-22): the MAIN branch's mandate was previously `cluster_atlas`
+       — ALSO a dead capability per WP-1.7/tool_name_bridge.ts:417 (no
+       registered cap), guaranteeing an unresolved tool on every
+       comprehensive/general-overview holistic query. Replaced with
+       `vector_search`, the same live substitute R7a/R7b/R7c/R17 use;
+       `vector_search` is NOT banned in this (non-exception) branch. The
+       EXCEPTION branch's ban and no-substitute posture are unchanged.]
   R12. For holistic queries that EXPLICITLY use "contradictions",
        "tensions", or "conflicts", include `contradiction_register`
        at priority ≤ 2.
@@ -668,14 +749,20 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
         interpret one domain is NOT the "chart-level multi-layer scope"
         R17 targets). Hypothesis: reduces FP cgm_graph_walk on
         GT.007/011/012.
-  R15. `resonance_register` is for REMEDIAL queries and for HOLISTIC or
+  R15. [RC-05 (2026-07-22): `resonance_register` has no registered capability
+       (WP-1.7/tool_name_bridge.ts:417, same dead-capability finding as
+       `pattern_register`/`cluster_atlas`) — NEVER add it, under any
+       condition, to any query class. REMEDIAL's default alignment lens now
+       lives in R7b (`vector_search`, unconditional). For HOLISTIC or
        INTERPRETIVE queries that LITERALLY contain one of the keywords
        "resonance", "themes", "alignment", or "central patterns" in the
-       query string. Strict literal-keyword test — no paraphrastic
-       expansion. NEVER add resonance_register to interpretive,
-       holistic, planetary, or predictive queries lacking the literal
-       keyword. Hypothesis: reduces FP resonance_register on
-       GT.017/021 (queries without those keywords).
+       query string, include `vector_search` at priority ≤ 2 instead (strict
+       literal-keyword test — no paraphrastic expansion; `vector_search` is
+       not separately banned for holistic/interpretive queries triggering
+       this keyword). Hypothesis: reduces FP resonance_register on
+       GT.017/021 (queries without those keywords) while keeping the
+       keyword-triggered case resolvable rather than a guaranteed
+       unresolved-tool gap.]
   R16. If the query is empty or <5 non-whitespace characters, return
        query_class "factual" with tool_calls: [] and asset_bundle:
        [{"asset_id":"FORENSIC","priority":1,"reason":"Floor"},
@@ -687,9 +774,15 @@ TOOL_CALLS HARD RULES (unchanged from v1.7):
        add `vector_search` at priority 2 (domain-narrative grounding).
        [W6.3: previously mandated `pattern_register` — dead capability,
        see R7a note.]
-  R18. For REMEDIAL queries containing domain words (career, health,
-       relationships, spiritual, finances), add `vector_search` at
-       priority 2 to pull L3 domain narrative.
+  R18. [RC-05 (2026-07-22): SUPERSEDED — R7b now unconditionally includes
+       `vector_search` for every REMEDIAL query as its default alignment
+       lens, so this rule no longer adds a second tool_call.] For REMEDIAL
+       queries containing domain words (career, health, relationships,
+       spiritual, finances), set R7b's `vector_search` call's `query_text`
+       to the domain-qualified phrase (e.g. "Saturn career remedies
+       propitiation") rather than a generic alignment query — this is a
+       parameterization refinement of R7b's single call, not a second
+       tool_call.
   R19. Include `msr_sql` in holistic plans when: (a) specific domains
        are explicitly named together, OR (b) the query uses
        "comprehensive", "full synthesis", "complete picture",
@@ -1133,16 +1226,10 @@ except in factual examples.
         "reason": "Surface forward-looking career signals involving Saturn."
       },
       {
-        "tool_name": "resonance_register",
-        "params": { "domains": ["career"], "theme": "Saturn-career" },
-        "token_budget": 400, "priority": 2,
-        "reason": "Default prescription-alignment lens for remedial query per R7b."
-      },
-      {
         "tool_name": "vector_search",
         "params": { "query_text": "Saturn career remedies propitiation", "doc_type": ["domain_report"], "top_k": 5 },
         "token_budget": 500, "priority": 2,
-        "reason": "R18: 'career' domain word — L3 domain narrative for prescription context."
+        "reason": "R7b: default alignment/domain-narrative lens for remedial query (RC-05: resonance_register was a dead capability); R18: 'career' domain word refines query_text."
       }
     ],
     "synthesis_guidance": "Prescribe specific Saturn remedies tied to the career-domain signals. Name the gemstone, mantra, and timing. Ground in dasha state. Avoid generic 'strengthen Saturn' language.",
@@ -1180,16 +1267,10 @@ except in factual examples.
         "reason": "Mantra prescriptions from the remedial codex for spiritual domain."
       },
       {
-        "tool_name": "resonance_register",
-        "params": { "theme": "spiritual-alignment" },
-        "token_budget": 400, "priority": 2,
-        "reason": "Cross-domain resonance: confirm mantra aligns with chart's spiritual signal pattern."
-      },
-      {
         "tool_name": "vector_search",
         "params": { "query_text": "spiritual practice mantra", "doc_type": ["domain_report"], "top_k": 5 },
         "token_budget": 500, "priority": 2,
-        "reason": "R18: 'spiritual' domain word — L3 spiritual narrative for prescription context."
+        "reason": "R7b: default alignment/domain-narrative lens for remedial query (RC-05: resonance_register was a dead capability); R18: 'spiritual' domain word refines query_text."
       }
     ],
     "synthesis_guidance": "Name the single most resonant mantra for the spiritual domain. Connect it to the strongest Jupiter/Ketu/9H signal. Specify recitation time and count.",
@@ -1224,6 +1305,12 @@ except in factual examples.
         "params": { "limit": 8 },
         "token_budget": 700, "priority": 1,
         "reason": "Daily-ritual prescriptions, dinacharya, and propitiation steps."
+      },
+      {
+        "tool_name": "vector_search",
+        "params": { "query_text": "weakest planet daily ritual propitiation", "doc_type": ["domain_report"], "top_k": 5 },
+        "token_budget": 500, "priority": 2,
+        "reason": "R7b: default alignment/domain-narrative lens for remedial query (RC-05, no domain word so generic query_text)."
       }
     ],
     "synthesis_guidance": "Identify the weakest planet by name using MSR signal density. Then prescribe a daily ritual: planet, day, color, material, timing. Be concrete.",
@@ -1326,12 +1413,6 @@ except in factual examples.
     ],
     "tool_calls": [
       {
-        "tool_name": "cluster_atlas",
-        "params": {},
-        "token_budget": 900, "priority": 1,
-        "reason": "R11: primary cross-domain cluster surface for holistic scope."
-      },
-      {
         "tool_name": "msr_sql",
         "params": { "limit": 20 },
         "token_budget": 900, "priority": 1,
@@ -1341,7 +1422,7 @@ except in factual examples.
         "tool_name": "vector_search",
         "params": { "query_text": "life path domains career relationships health", "doc_type": ["domain_report"], "top_k": 8 },
         "token_budget": 700, "priority": 1,
-        "reason": "L3 long-form narrative across all named domains."
+        "reason": "R11: cross-domain narrative surface for holistic scope (RC-05: replaces the dead cluster_atlas); also L3 long-form narrative across all named domains."
       },
       {
         "tool_name": "cgm_graph_walk",
@@ -1373,13 +1454,13 @@ except in factual examples.
     ],
     "tool_calls": [
       {
-        "tool_name": "cluster_atlas",
-        "params": {},
+        "tool_name": "vector_search",
+        "params": { "query_text": "chart-wide salient patterns overview", "doc_type": ["domain_report"], "top_k": 8 },
         "token_budget": 900, "priority": 1,
-        "reason": "R11: primary cross-domain cluster surface — right starting point for any holistic scan."
+        "reason": "R11: cross-domain narrative surface — right starting point for any holistic scan (RC-05: replaces the dead cluster_atlas)."
       }
     ],
-    "synthesis_guidance": "Surface 3–5 most salient cross-domain patterns. Lead with the highest-confidence cluster signal. No exhaustive lists — prioritise depth over coverage.",
+    "synthesis_guidance": "Surface 3–5 most salient cross-domain patterns. Lead with the highest-confidence signal. No exhaustive lists — prioritise depth over coverage.",
     "expected_output_shape": "single_answer"
   }
 }
@@ -1497,22 +1578,16 @@ except in factual examples.
     ],
     "tool_calls": [
       {
-        "tool_name": "cluster_atlas",
-        "params": {},
+        "tool_name": "vector_search",
+        "params": { "query_text": "central themes contradictions cross-domain patterns", "doc_type": ["domain_report"], "top_k": 8 },
         "token_budget": 900, "priority": 1,
-        "reason": "R11: cluster_atlas required for all holistic queries."
+        "reason": "R11: cross-domain narrative surface for holistic scope; R15: query literally contains 'central themes' (RC-05: replaces the dead cluster_atlas/resonance_register — one call covers both triggers)."
       },
       {
         "tool_name": "contradiction_register",
         "params": {},
         "token_budget": 400, "priority": 2,
         "reason": "R12: query explicitly uses 'contradictions' — contradiction register required."
-      },
-      {
-        "tool_name": "resonance_register",
-        "params": {},
-        "token_budget": 400, "priority": 2,
-        "reason": "R15: query explicitly uses 'central themes' — resonance register required."
       }
     ],
     "synthesis_guidance": "Map themes and contradictions as a connected structure, not a list. Show how each contradiction shapes a specific recurring theme. Name the most irresolvable tension explicitly.",
@@ -1622,10 +1697,10 @@ except in factual examples.
         "reason": "R-GSH: karaka architectural query — walk from KRK seed nodes."
       },
       {
-        "tool_name": "cluster_atlas",
-        "params": {},
+        "tool_name": "vector_search",
+        "params": { "query_text": "Atmakaraka Amatyakaraka architectural role yogas", "doc_type": ["domain_report"], "top_k": 6 },
         "token_budget": 700, "priority": 2,
-        "reason": "R11: cluster surface for holistic karaka-yoga architecture."
+        "reason": "R11: cross-domain narrative surface for holistic karaka-yoga architecture (RC-05: replaces the dead cluster_atlas)."
       }
     ],
     "synthesis_guidance": "Map AK and AmK as the primary and secondary soul-drivers. Show how each karaka's placement shapes the dominant yogas. Connect to 2–3 specific life domains. One structural arc, not a list.",
@@ -1635,7 +1710,7 @@ except in factual examples.
 }
 ```
 
-### 4.15 Discovery class (all four L2.5 registers)
+### 4.15 Discovery class (the one live L2.5 discovery register)
 
 ```json
 {
@@ -1654,19 +1729,7 @@ except in factual examples.
         "tool_name": "contradiction_register",
         "params": {},
         "token_budget": 400, "priority": 1,
-        "reason": "R-DISC: contradictions reveal unusual chart tensions."
-      },
-      {
-        "tool_name": "resonance_register",
-        "params": {},
-        "token_budget": 400, "priority": 2,
-        "reason": "R-DISC: cross-system resonances for unusual alignment patterns."
-      },
-      {
-        "tool_name": "cluster_atlas",
-        "params": {},
-        "token_budget": 700, "priority": 2,
-        "reason": "R-DISC: cluster surface for dominant unusual patterns."
+        "reason": "R-DISC: contradictions reveal unusual chart tensions — the only live L2.5 discovery register (RC-05: resonance_register and cluster_atlas were dead capabilities, dropped with no substitute since vector_search is banned for discovery)."
       }
     ],
     "synthesis_guidance": "Lead with the single most unusual or surprising cross-domain pattern. Explain why it is unusual — what norm it breaks or what paradox it creates. No exhaustive listing.",
@@ -2285,8 +2348,50 @@ and failing scores. ≥ 8 admits the plan to retrieval and synthesis.
 *v2.5 content extension 2026-05-25 (TR-P10-S1) — R-TD.1 (session-start diagnostic), R-NDE.1 (no date estimation), R-LP.1 (log_prediction mandatory), R-FD.1 (flag_disagreement on broken tools), R-CS.1 (cross-school before high-confidence). Five methodology rules from the MARSYS-JIS Tooling Remediation Phase 10.1–10.5.*
 *v2.6 content extension 2026-05-25 (TR-P10-S2) — R-CS.2 (pre-compute chart summary), R-CGM.1 (CGM + vector proactive use), R-TRI.1 (triangulate before asserting), R-PER.1 (mark permanence), R-SCH.1 (read schemas before use). Five methodology rules from the MARSYS-JIS Tooling Remediation Phase 10.6–10.10. MP.1 mirror propagated to .geminirules TOOLING_REMEDIATION_RULES section (all 10 rules).*
 *v2.7 content extension 2026-05-25 (UDA-3-S3) — R-NRM.1 (canonical tool names) added. Declares that portal planner uses portal canonical names and MCP consumer uses MCP names; both resolved against CAPABILITY_MANIFEST alias_names[]; names not in INTERFACE_NORMALIZATION_REGISTER are forbidden. MP.1 mirror propagated to .geminirules INTERFACE_NORMALIZATION_RULES section.*
+*v2.8 fix 2026-07-22 (W6.3, live trace d08d823a) — removed all prompt-level `pattern_register` mandates (R7a/R7b/R7c/R7d/R11/R17/R-TW1/R-DISC + 17 few-shot blocks) — dead capability, WP-1.7/tool_name_bridge.ts:417. Substituted `vector_search` where not separately banned, dropped with no substitute where it was. Flagged `resonance_register`/`cluster_atlas` in R-DISC as the same defect class, unfixed, out of that cycle's scope.*
+*v2.9 fix 2026-07-22 (RC-05, RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §E Cluster 2) — closed the v2.8-flagged residual: `resonance_register`/`cluster_atlas` also have no registered capability (WP-1.7/tool_name_bridge.ts:417). Fixed all 4 mandatory injection sites (R-DISC, R7b, R11, R15) and R7d's no-substitute posture; updated 9 few-shot blocks; see the `rc05_amendment` frontmatter block for the full substitution table.*
 
 ## Changelog
+
+### v2.9 — 2026-07-22 (RC-05 — RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §E Cluster 2, res/rc05-dead-tool-sweep)
+Closed the dead-capability residual v2.8/W6.3 explicitly flagged as unfixed:
+`resonance_register` and `cluster_atlas` have no registered retrieval
+capability (WP-1.7, tool_name_bridge.ts:417 — same finding as
+`pattern_register`), so every rule mandating them guaranteed an
+unresolved-tool gap. Confirmed the full WP-1.7 dead-capability set (14
+vestigial names) against tool_name_bridge.ts; only these two are referenced
+in this prompt as unconditional/keyword-triggered mandates. Fixed:
+- R-DISC (discovery): dropped both, NO substitute (`vector_search` banned
+  for discovery by the same rule) — `contradiction_register` is now the
+  sole mandated L2.5 discovery register.
+- R7b (remedial): `resonance_register` → `vector_search` (default lens,
+  not banned for remedial); R18 reworded from a second injection to a
+  `query_text` refinement of R7b's call.
+- R11 (holistic, main branch): `cluster_atlas` → `vector_search`
+  (not banned in this branch); the SIGNAL-DENSITY exception's ban and
+  no-substitute posture are unchanged.
+- R15 (literal-keyword trigger): `resonance_register` → `vector_search`;
+  REMEDIAL clause folded into R7b.
+- R7d (single-planet interpretive): dropped the conditional
+  `resonance_register` clause, no substitute (`vector_search` banned in
+  this rule); moved to the permanent NEVER-add list.
+Updated 9 few-shot `tool_calls` blocks (4.1, 4.2, 4.3, 4.6, 4.7, 4.11, 4.14,
+4.15) for self-consistency with the amended rules. Code-level companion:
+`compiled_floor_adapter.ts` never actively injected either dead tool for any
+class (only `pattern_register`, fixed in W6.2) — no code change needed;
+added a regression test asserting this holds for every `QueryClass`
+(`compiled_floor_adapter.test.ts`).
+
+### v2.8 — 2026-07-22 (W6.3, live trace d08d823a)
+Root-caused why production still emitted `unresolved_tools:["pattern_register"]`
+after the W6.2 code-level fix: this prompt's OWN rules (R7a/R7b/R7c/R7d/R11/
+R17/R-TW1/R-DISC) and 17 few-shot examples separately, unconditionally
+mandated `pattern_register` — a second injection site the code fix never
+touched. Removed all 17 few-shot blocks; substituted `vector_search` where
+not separately banned (R7a/R7c/R17/R-TW1); dropped with no substitute where
+banned (R7d/R11); removed moot clauses (R7b/R20/R14d). Flagged
+`resonance_register`/`cluster_atlas` in R-DISC as the same dead-capability
+defect class, unfixed — closed in v2.9/RC-05 above.
 
 ### v2.7 — 2026-05-25 (UDA-3-S3)
 Added R-NRM.1 (canonical tool names): when a tool exists in both the portal and MCP
