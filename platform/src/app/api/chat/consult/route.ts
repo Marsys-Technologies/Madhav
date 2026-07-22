@@ -598,6 +598,14 @@ export async function POST(request: Request) {
   // correct dates (data lives in chart_facts.dasha_vimshottari).
   ensureDashaContextFloor(plan, toolsAuthorized)
 
+  // RC-02 (§H.1 crit-6, two-door parity) — judgment_flags aggregation point.
+  // /api/mcp/prashna_ask has surfaced a `judgment_flags: string[]` array in its response
+  // envelope since W6 (no_leakage_capabilities_stripped, planned_tools_unresolved, …).
+  // This route had NO equivalent — the gap this array closes. It is threaded through
+  // runAdapterDispatch and emitted as a `data-judgment-flags` SSE event (see
+  // run_adapter_dispatch.ts) near the end of the stream, alongside `data-completeness`.
+  const judgmentFlags: string[] = []
+
   // NO-LEAKAGE enforcement (doctrine ruling F-R7; "both doors" requirement — see
   // no_leakage_filter.ts's header). Applied to the FULLY composed toolsAuthorized
   // (planner-selected tools + compiled floor + B.11/dasha guarantees above) BEFORE
@@ -608,15 +616,12 @@ export async function POST(request: Request) {
   const noLeakageFiltered = filterLeakedCapabilities(toolsAuthorized)
   if (noLeakageFiltered.length !== toolsAuthorized.length) {
     const stripped = toolsAuthorized.filter((t) => !noLeakageFiltered.includes(t))
-    // Observable disclosure of the strip: this route's downstream envelope
-    // does not yet have a judgment_flags aggregation point at this call site
-    // (unlike /api/mcp/prashna_ask, which surfaces `no_leakage_capabilities_
-    // stripped` directly in its response). Logging here at minimum makes the
-    // strip visible in traces rather than silent — full response-envelope
-    // disclosure for this route is a named follow-up, not done here, since
-    // wiring a new flags field through this route's synthesis/envelope layer
-    // is a larger change than this fix's scope.
+    // RC-02 fix: this strip is now disclosed to the caller, not just logged —
+    // `no_leakage_capabilities_stripped` is the SAME flag string prashna_ask surfaces
+    // for the identical underlying condition (see judgmentFlags declaration above).
+    // console.warn retained for server-side trace visibility (unchanged behavior).
     console.warn('[consume:v2] NO-LEAKAGE stripped capabilities from toolsAuthorized:', stripped)
+    judgmentFlags.push('no_leakage_capabilities_stripped')
     plan.tool_calls = plan.tool_calls.filter((tc) => noLeakageFiltered.includes(tc.tool_name))
     toolsAuthorized.splice(0, toolsAuthorized.length, ...noLeakageFiltered)
   }
@@ -1113,6 +1118,7 @@ export async function POST(request: Request) {
     dataReadinessNote,
     orientation,
     completenessReceipt,
+    judgmentFlags,
   })
   // (formerly route.ts L899–1319: STACK_TO_ADAPTER mapping → adapter chat
   // request assembly → Gemini cache → createUIMessageStream → B.11 citation

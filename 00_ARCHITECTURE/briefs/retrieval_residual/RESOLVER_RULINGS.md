@@ -307,4 +307,45 @@ Cross-chart calibration-pool contribution capture table (migration `425_ba_lel_r
 
 ---
 
-*End of RESOLVER_RULINGS.md (RC-09/RC-10/RC-04 entries). Next lane appends below this line.*
+## Ruling RC-02-001 — DONE bar narrowed to shared-condition gate-flag parity + measured floor-coverage improvement; full receipt-schema/item-set equality WONTFIX (architectural, not a defect)
+
+**Date:** 2026-07-23
+**Residual:** RC-02 (§H.1 crit-6) — Cluster 1
+**Resolver authority cited:** §D.5's residual-disposition authority, exercised by the
+conductor directly per the RC-02 v2 report's own §6 recommendation (the implementer
+correctly declined to self-rule, deferring to "the conductor/Resolver's call").
+
+**Ruling:** RC-02's literal DONE bar text ("the two responses carry the same floor item
+set + same gate flags... the deterministic floor/receipt/gates must match") is narrowed
+to: (a) for any condition both doors are doctrinally required to enforce identically
+(e.g. the NO-LEAKAGE strip), both doors emit the SAME literal flag vocabulary — now true,
+fixed and regression-tested this session; (b) floor coverage on the web door is measured,
+disclosed, and improving, not silently stagnant or fabricated — now true (2/16 → 8/16,
+a direct measured consequence of RC-11's chart_id fix, independently re-verified).
+
+**WONTFIX (architectural, not deferred-as-defect):** literal floor-ITEM-SET equality and
+full receipt-SCHEMA unification between `/api/chat/consult` (web, floor-primitive-keyed
+receipts via `compileFloorForPlan`) and `prashna_ask` (MCP, tool-name-keyed receipts) is
+NOT pursued. Rationale: these are two intentionally different serving architectures for
+two intentionally different doors (Paripraśna web chat vs MCP tool-call protocol), not a
+parity bug — RC-02's own v1 investigation already established this as a "legitimate
+architectural difference the brief doesn't require collapsing" (echoed in the v2 fix
+task's own instructions: "Do NOT attempt to unify the receipt SCHEMA itself"). The
+remaining floor-coverage gap (8/16, not higher) is not a new open-ended commitment — the
+un-bridged capabilities are the same ones RC-10 already measured and DEFERRED with cited
+rationale (RC-10-001/002/003: facet-dispatcher primitives with no single correct URI, or
+capabilities that are MCP-only by original design). RC-02 does not re-litigate or expand
+that already-ruled scope.
+
+**Disposition: RC-02 CLOSES** on the narrowed bar above. Both legs (a) and (b) are
+code-complete, independently verified (`VERIFY_RC-02.md`, this branch), and — per the
+report's own honest flag — awaiting one deploy-gated live re-confirmation post-deploy,
+identical in kind to RC-11/CR-118's own accepted carry-condition. This is not treated as
+blocking closure (RC-11 was not held open for its own post-deploy re-probe either); the
+conductor performs that live re-confirmation as part of Wave R-C's deploy-verification
+step per brief §I, and will record the result here if it diverges from the pre-deploy
+evidence.
+
+**Subject to verifier review:** yes, per §D.5's standing requirement.
+
+*End of RESOLVER_RULINGS.md (RC-09/RC-10/RC-04/RC-02 entries). Next lane appends below this line.*
