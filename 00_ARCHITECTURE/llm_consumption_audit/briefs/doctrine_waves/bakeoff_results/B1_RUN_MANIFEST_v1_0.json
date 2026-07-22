@@ -1,0 +1,70 @@
+{
+  "artifact": "B1_RUN_MANIFEST",
+  "version": "1.0",
+  "created": "2026-07-22 (D-4b Phase 5, chunked B-1 re-run)",
+  "purpose": "Immutable, hashable single source every batch consumes identically -- per BRIEF_D4B §1 B-1's 'identical everything' hard rule surviving chunking. Batches must NOT re-derive or re-transcribe the pre-registration packet's content; they consume it by direct git blob reference so no transcription drift is possible.",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "pre_registration_packet": {
+    "path": "00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/D4B_PREREGISTRATION_PACKET_v1_0.md",
+    "version": "1.2",
+    "status": "FROZEN",
+    "git_blob_sha": "9b6713db8c2551a937ff2070e498da1f12526966",
+    "note": "Batches read this exact blob (git show <sha>) for the full 56-event set with DR-13 shapes/windows, DR-17 tie-bands (§4), thresholds (§3/§6/§9), and control design. UNCHANGED by this manifest or any batch -- F-1/F-2 are harness-integrity repairs, not packet changes, per the native's explicit instruction this run."
+  },
+  "event_set": {
+    "source": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md, resolved via D4B_PREREGISTRATION_PACKET_v1_0.md §0/§1 (56-event scoreable corpus, reconciling the 58-grep-artifact/57-frontmatter/56-scoreable figures documented there)",
+    "scoreable_count": 56,
+    "note": "Batches must read the packet's own §1 event list verbatim (by blob sha above), never re-derive from a fresh grep -- the packet's reconciliation (excluding EVT.1984.02.05.01 birth-tautology and EVT.CURRENT.01 ongoing-status-marker) is the binding scope."
+  },
+  "contender_roster": {
+    "count": 14,
+    "contenders": [
+      { "id": "pratyantar_lord", "kind": "classical_default", "source": "DR-10; real curve() in model_interface.ts" },
+      { "id": "vimshottari", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "yogini", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "ashtottari", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "chara_karaka", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "naisargika", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "mudda", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "kalachakra", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "narayana", "kind": "permission_system", "source": "permission.py DASHA_SYSTEM_IDS, via PERMISSION-bridge PR #693" },
+      { "id": "sade_sati", "kind": "permission_system", "source": "permission.py weight dict, via PERMISSION-bridge PR #693" },
+      { "id": "guru_shani_double_transit", "kind": "permission_system", "source": "permission.py weight dict, via PERMISSION-bridge PR #693" },
+      { "id": "av_threshold", "kind": "permission_system", "source": "permission.py weight dict, via PERMISSION-bridge PR #693" },
+      { "id": "planetary_return", "kind": "permission_system", "source": "permission.py weight dict, via PERMISSION-bridge PR #693" },
+      { "id": "hierarchical_ensemble", "kind": "ensemble", "source": "superposition over whichever of the above 13 are evaluable; build last, per BRIEF_D4B §1" }
+    ],
+    "not_evaluable_this_wave": [
+      { "id": "midpoint_triangle", "cr": "CR-120", "disposition": "baseline role passes to mirrored shuffled-birth controls" },
+      { "id": "transit_kernel", "cr": "CR-121", "disposition": "D-3 RED stands, NOT-RE-EVALUATED-ON-REPAIRED-SUBSTRATE, named D-6-era candidate" }
+    ]
+  },
+  "grading": {
+    "framework": "DR-17 (peak/sub_peak/elevated/neutral/contra)",
+    "weights_ruling": "NP-D4B-001 (ratified verbatim, including the -1.0 anti-hit double-weight)",
+    "tie_bands_ruling": "NP-D4B-003 (adopted, mandatory DR-13(d)-width sensitivity recompute)",
+    "implementation": "platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/dr17_grading.ts (PR #704, merged, 23/23 tests -- import, do not reimplement)"
+  },
+  "controls": {
+    "design": "DR-15(c) coverage-matched shuffled-birth ONLY",
+    "n": 1000,
+    "ruling": "NP-D4B-004 (adopted as committed in packet §6; N=1000, coverage-matching window, sha256-derived logged seed)",
+    "refused_alternative": "circular-time-shift null (NP-D4B-002) -- refused for gate-bearing use, admitted only as a disclosed non-gate-bearing diagnostic under 5 binding conditions, not used in this run's primary metric"
+  },
+  "harness_fixes_applied": {
+    "F1_resonance_map_coverage": { "pr": 699, "merged": "2026-07-22T11:07:19Z", "verified": ["conductor-live (NP-D4B-006)", "retroactive Opus (Phase 4b)"] },
+    "F2_circular_shift_curve_sort": { "pr": 697, "merged": "2026-07-22T07:03:12Z", "verified": ["Opus, fresh-context"] }
+  },
+  "prior_void_runs": {
+    "PR_694": "31-event narrowed run, pre-F1/F2-fix. VOID -- contains 433 negative CRPS values (proof F-2 was needed), only 31 of 56 events, no DR-17 grading applied. Reference only as defect history, never as data."
+  },
+  "batching": {
+    "batch_count": 3,
+    "batches": [
+      { "id": 1, "contenders": ["pratyantar_lord", "vimshottari", "yogini", "ashtottari", "chara_karaka"] },
+      { "id": 2, "contenders": ["naisargika", "mudda", "kalachakra", "narayana", "sade_sati"] },
+      { "id": 3, "contenders": ["guru_shani_double_transit", "av_threshold", "planetary_return", "hierarchical_ensemble"] }
+    ],
+    "note": "Each batch scores ALL 56 events for its assigned contenders only. DR-12 adjudication runs ONCE, at assembly, over the full assembled 14-contender result -- never per-batch."
+  }
+}

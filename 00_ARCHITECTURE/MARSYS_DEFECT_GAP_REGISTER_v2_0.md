@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.10
+version: 3.11
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -997,7 +997,34 @@ reference is removed; `transitKernelModel()` stays exactly as-is in `model_inter
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.10 (2026-07-22, D-4b permission-bridge lane,
+**CR-122 [PROCESS/INFRASTRUCTURE — checkpointed batching is the standing pattern for heavy scoring
+lanes, recorded D-4b B-1 chunked re-run, `wave/D-4b/B1-full-rerun`, 2026-07-22]:** two consecutive
+unchunked B-1 full-re-run dispatches (56 events × 14 contenders × N=1000 controls, hundreds of live
+sidecar/DB calls inside one continuous agent turn) crashed with zero committed progress — a
+mid-stream connection drop on the first attempt, and (on the second, resumed attempt) a downstream
+verifier correctly discovering the "completed" step had never actually landed a commit despite
+returning ostensible result text. Zero comparable failures occurred on any other D-4b lane in this
+same campaign (F-1, F-2, B-4, B-5, the PERMISSION-bridge build, every verify/merge dispatch) — all
+of which are shorter-lived and/or make far fewer live calls per turn. **Diagnosis, not bad luck:**
+continuous long-call scoring dispatches exceed single-agent-turn reliability once live-call volume
+crosses roughly this order of magnitude. **Standing fix, registered as doctrine:** any lane with a
+similarly large live-call volume must be CHECKPOINTED — an immutable run manifest committed first
+(so every batch consumes identical inputs by direct content-hash/blob-sha reference, never
+re-derived or re-transcribed per batch); the work batched into bounded chunks (~5 contenders per
+batch in this run), each batch producing its own committed, idempotent (delete-then-insert keyed by
+batch-scope × manifest reference) intermediate artifact; a single assembly + adjudication pass over
+the FULL assembled result (never per-batch, to preserve "one identical harness" — BRIEF_D4B §1's
+own hard rule); per-batch lightweight verifier receipts plus one full anti-gaming pass at assembly.
+This pattern (and its reusable batch-runner scaffold, committed alongside the B-1 run manifest) is
+referenced by D-6's design doc §6 and binds on any future lane whose live-call volume approaches
+this run's scale — not a one-off workaround.
+
+---
+
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.11 (2026-07-22, D-4b B-1 chunked re-run,
+`wave/D-4b/B1-full-rerun`) — CR-122 added: checkpointed batching registered as standing doctrine
+for heavy scoring lanes, after two consecutive unchunked-dispatch failures isolated to exactly this
+task profile. Prior: v3.10 (2026-07-22, D-4b permission-bridge lane,
 `wave/D-4b/permission-bridge`) — CR-120 and CR-121 added NOT-EVALUABLE (coverage gap, not a
 retirement): midpoint-triangle's mandatory-baseline role in B-1's bakeoff passes to the mirrored
 shuffled-birth controls (native ruling, this session); transit-kernel's D-3 RED result stands as
