@@ -192,7 +192,15 @@ export async function measureQosBackpressure(
       : null
 
   const attemptable = results.length - succeeded.length
+  // NOTE (code-quality follow-up): when attemptable === 0 (nothing failed —
+  // i.e. the burst never actually produced contention), this trivially
+  // reports 1.0 ("fully honest degradation"), which would let `pass` read
+  // as PASS even though W-30's backpressure behavior was never exercised.
+  // `contentionObserved` below makes that distinction explicit so a report
+  // reader (or a future stricter `pass` rule) can't mistake "never tested"
+  // for "tested and honest."
   const honestDegradationRate = attemptable === 0 ? 1 : honestlyRefused.length / attemptable
+  const contentionObserved = attemptable > 0
 
   return {
     totalRequests: results.length,
@@ -201,6 +209,7 @@ export async function measureQosBackpressure(
     silentlyDegraded: silentlyDegraded.length,
     otherErrors: otherErrors.length,
     honestDegradationRate,
+    contentionObserved,
     byPriorityClass: byClass,
     interactivePrioritizedOverBackground,
     qosMechanismObserved: honestlyRefused.length > 0 ? 'real_dispatch_queue' : 'no_qos_signal_detected',

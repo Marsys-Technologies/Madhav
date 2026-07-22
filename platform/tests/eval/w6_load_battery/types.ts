@@ -134,6 +134,12 @@ export interface QosBackpressureReport {
   readonly silentlyDegraded: number
   readonly otherErrors: number
   readonly honestDegradationRate: number
+  /** False when nothing failed at all — i.e. the burst never produced real
+   *  contention. In that case `honestDegradationRate` trivially reads 1.0
+   *  and `pass` can read PASS without W-30's backpressure path having been
+   *  exercised at all. A report reader (and the human operator running this
+   *  for real in Task 13) MUST check this before trusting a QoS PASS. */
+  readonly contentionObserved: boolean
   readonly byPriorityClass: Record<
     'interactive' | 'background',
     { requests: number; succeeded: number; honestlyRefused: number; successRate: number }

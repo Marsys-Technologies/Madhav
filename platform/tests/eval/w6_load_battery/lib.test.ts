@@ -211,6 +211,26 @@ describe('W6 load harness — dry-run against the local mock server', () => {
     // At this burst size against a 6-concurrency/12-depth queue, refusals should occur.
     expect(report.qosMechanismObserved).toBe('real_dispatch_queue')
     expect(report.honestlyRefused).toBeGreaterThan(0)
+    expect(report.contentionObserved).toBe(true)
+    expect(report.pass).toBe(true)
+  })
+
+  it('W-30: QoS/backpressure — a burst too small to cause contention reports contentionObserved:false, not a false PASS', async () => {
+    const target = defaultTarget(mock.url)
+    // A tiny burst well under the mock's concurrency=6/maxQueueDepth=12 defaults —
+    // nothing should fail, so honestDegradationRate trivially reads 1.0. The point
+    // of this test is that contentionObserved distinguishes "never tested" from
+    // "tested and honest" — a report reader must not mistake this for a real PASS
+    // on W-30's backpressure behavior.
+    const report = await measureQosBackpressure(target, DEFAULT_THRESHOLDS, {
+      principals: 1,
+      requestsPerPrincipal: 2,
+    })
+    expect(report.honestlyRefused).toBe(0)
+    expect(report.contentionObserved).toBe(false)
+    expect(report.honestDegradationRate).toBe(1)
+    // pass reads true here (nothing failed dishonestly), but contentionObserved
+    // is the field a caller must check before trusting that as meaningful.
     expect(report.pass).toBe(true)
   })
 
