@@ -806,3 +806,48 @@ additional_entries:
     expose_to_chat: false
     native_id: "abhisek"
     produced_during: "M5-A-COV-S4"
+
+  # ── W6 (Retrieval Plane Elevation — Wave 6, "prashna_ask + Seal") ──
+
+  - canonical_id: "RETRIEVAL_TOOL_prashna_ask"
+    tool_name: "prashna_ask"
+    tool_description: "Job-handle-first question-answering entry point (C-1 contract). Accepts {chart_id, question, scope_tuple?, response_format} — explicitly rejects a `depth` parameter (superseded by the planner's own scope-tuple decomposition). Enforces dual cost caps (call-count + wall-clock) resolved per-entitlement via Principal.role, and NO-LEAKAGE arm-2 (F-R7) runtime filtering. Returns a job handle immediately; poll completion via prashna_status. Fails honest under a cap trip: partial result + completeness receipt + judgment_flags, never a silent truncation. Engine route: platform/src/app/api/mcp/prashna_ask/route.ts; enforcement lives in platform/src/lib/pipeline/ (relocated there mid-build after the engine's tool-dispatch loop was found to execute in platform, not platform-mcp)."
+    query_schema:
+      type: object
+      properties:
+        chart_id:
+          type: string
+          description: "Target chart UUID"
+        question:
+          type: string
+          description: "Free-text question"
+        scope_tuple:
+          type: object
+          description: "Optional pre-decomposed scope (domain/time/entity) — see W4 One Planner"
+        response_format:
+          type: string
+          description: "full|compact|consult"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: high
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "W6-prashna_ask-seal"
+
+  - canonical_id: "RETRIEVAL_TOOL_prashna_status"
+    tool_name: "prashna_status"
+    tool_description: "Polling companion to prashna_ask. Given a job handle, returns meaningful in-flight progress (never a bare 'pending') and the full result envelope on completion, including completeness receipts and judgment_flags on a cost-cap trip. The durable primary delivery mechanism for prashna_ask answers in this codebase's current stateless-per-request MCP transport — MCP notifications/progress was found undeliverable here (the SDK tears down the connection right after the tool-call response) per an OT-2-aligned native ruling; the notification path remains best-effort/documented, not a blocker."
+    query_schema:
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: "Job handle returned by prashna_ask"
+    linked_data_asset_ids: ["FORENSIC"]
+    expose_to_planner: true
+    token_cost_hint: low
+    layer: "L1"
+    expose_to_chat: true
+    native_id: "abhisek"
+    produced_during: "W6-prashna_ask-seal"
