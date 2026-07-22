@@ -1709,3 +1709,55 @@ finding_entry:
   consumed_by: [Every future lane agent's session-open handshake; CONDUCTOR_PROTOCOL.md's
     dispatch discipline]
 ```
+
+*Re-landing note (2026-07-23): DR-20/DIS.031 was originally ratified 2026-07-22 and committed to
+`NATIVE_PROXY_LEDGER_D4B.md`/this register on branch `wave/D-4b/B1-full-rerun` -- but that branch
+is the permanently-QUARANTINED incident branch (`bakeoff_results/QUARANTINE_B1_FULL_RERUN_v1_0.md`)
+and, correctly, never merges to `main`. The ruling itself was never voided by the quarantine (only
+the SCORING RUN it investigates was); this entry re-lands DR-20's text on a mergeable branch so it
+actually reaches `main`, which the original commit never did. No content change from the original
+ratification.*
+
+```yaml
+finding_entry:
+  logged_by: "D-4b B-1 chunked re-run incident, wave/D-4b/B1-full-rerun (QUARANTINED); re-landed
+    on wave/D-4b/B6-real-close-6, 2026-07-23"
+  dr_id: DIS.031
+  campaign_ref: DR-20
+  question: >
+    D-4b's B-1 chunked re-run scored the sealed test split (life_events.event_date >= 2020-01-01)
+    across all 14 contenders, despite every batch-build dispatch carrying the explicit instruction
+    "Never read/query events on/after 2020-01-01." The seal was enforced by PROMPT TEXT, not by
+    any filter the scoring harness's event-fetch path could not bypass -- the harness had no
+    structural mechanism preventing it from retrieving a sealed event if an agent's own query
+    logic (correctly or not) constructed one. The breach was caught, three verification altitudes
+    downstream of where it originated, only by the FINAL anti-gaming pass -- neither the per-batch
+    verifier receipts nor the assembly step checked the seal at all.
+  status: RATIFIED (native, 2026-07-22, Cowork D-4b resumption session, sole-halt-condition
+    disposition)
+  ratified_text: >
+    DR-20 -- A train/test seal is enforced at the query/data layer -- the scoring harness cannot
+    physically retrieve a sealed event -- never by agent instruction alone. Any seal that depends
+    on an agent choosing to obey is not a seal. Consequence, binding: (a) the pre-registration
+    packet's event set is filtered to the training split at packet-construction time, not
+    left to per-call discretion; (b) the scoring harness's event-fetch path hard-excludes the
+    sealed range by construction (a filter the loop cannot bypass -- mirrors the D-3 ADMIT lane's
+    correct approach); (c) a gate-blocking assertion -- the scored event set contains zero sealed
+    events, checked structurally, not by instruction-compliance -- is added at EVERY verification
+    altitude a scoring lane has (per-batch, assembly, and final anti-gaming), so a future breach
+    is caught at the batch that caused it, not three stages downstream. This fix ENFORCES the
+    existing sealed-split boundary; it does not move, loosen, or reinterpret it -- the Native-Proxy
+    charter's "never touch the sealed split" invariant is honored precisely because the fix
+    removes access, never grants it. Registered 2026-07-22, precedent: the D-4b B-1 chunked
+    re-run's sealed-split breach, caught by the final anti-gaming verifier, quarantined in full
+    (`QUARANTINE_B1_FULL_RERUN_v1_0.md`) rather than partially salvaged. **Discharged 2026-07-22**
+    via `sealed_split_guard.ts` (PR #709, merged commit `67e3e35a`), wired into `harness.ts`'s
+    `runMirroredScoringHarness` -- the universal funnel every D-4b contender's scoring call passes
+    through -- with 13 new tests (10 unit + 3 end-to-end throw/regression), 137/137 full-suite
+    green, independently Opus-verified ACCEPT. The subsequent clean B-1 re-run (`wave/D-4b/B1-full-
+    rerun-2`, merged PR #712) confirmed zero sealed-split touches under live adversarial
+    re-derivation -- the exact prior-breach signature is provably absent.
+  consumed_by: [Every future heavy scoring lane's harness design; CR-125/CR-126
+    (MARSYS_DEFECT_GAP_REGISTER_v2_0.md); the D-4b B-1 re-run that superseded the quarantined
+    branch]
+```
