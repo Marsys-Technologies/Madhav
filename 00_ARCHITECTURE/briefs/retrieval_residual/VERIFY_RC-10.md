@@ -177,3 +177,100 @@ This is not a reason for rejection.
 
 None of RC-10's other work is in question. Fixing item 1 is a one-line deletion
 plus doc/ruling updates; re-verify and this closes.
+
+---
+---
+
+# VERIFY RC-10 — FIX CYCLE 2 (re-verification after REJECT)
+
+```
+artifact: VERIFY_RC-10.md (fix-cycle-2 append)
+residual: RC-10 (R-9) — Re-measure the MCP↔web namespace gap
+verifier: independent VERIFIER agent (opus, high effort) — NOT the implementer
+branch_verified: res/rc10-namespace-gap @ e8376776 (fix commit on top of rejected faca7ded)
+prior_verdict: REJECT (faca7ded/f8d84fea — this file's cycle-1 record above)
+date: 2026-07-23
+verdict: ACCEPT
+```
+
+**VERDICT: ACCEPT.** The one defect that caused the cycle-1 REJECT — the
+`ganita_condition_get → marsys://tool/L1/get_condition_composite` wrong-data
+laundering entry — is genuinely fixed. All four required changes are present, all
+tests reproduce exactly, the coverage number is corrected and now matches the
+executed code state, and no `must_not_touch` path was touched. Verified from
+scratch in an isolated worktree checked out at `e8376776` (`node_modules`
+symlinked from main; vitest 4.1.7; tsx react-server condition).
+
+## (a) Tests re-run independently — PASS (reproduced exactly)
+
+| Suite | Result | Implementer claim |
+|---|---|---|
+| `vitest run src/lib/pipeline src/lib/vidhi tool_name_bridge_r6_0b_deadtools.test.ts compiled_floor_adapter.test.ts` | **154 passed** (18 files) | 154 ✓ |
+| `vitest run src/lib/retrieval src/app/api/chat` | **1474 passed, 137 skipped** (132 files) | 1474 / 137 ✓ |
+| `tsc --noEmit` | **clean (exit 0)** | ✓ |
+
+## (b) `ganita_condition_get` genuinely removed, NOT silently re-added
+
+- **Removed from the hand map.** `LIVE_TOOL_TO_RETRIEVAL` in
+  `compiled_floor_adapter.ts` (branch tip) has NO `ganita_condition_get` key — a
+  removal comment + DEFERRED disposition block sit where the entry was. Grep of the
+  live file returns the name only in comments/disposition text, never as a map key.
+- **Not re-added by any other resolution layer.** `resolveLiveTool()` =
+  `LIVE_TOOL_TO_RETRIEVAL[t] ?? resolveGeneratedToolUri(t)`. The generated bridge
+  (`generated_web_tool_bridge.ts`) has no `condition` mapping; `tool_name_bridge.ts`'s
+  `TOOL_NAME_TO_URI` has no `ganita_condition_get` entry. The remaining occurrences
+  (`vidhi/registry_data.ts` ×6 as `live_tool` consumers, `get_condition_composite.ts`
+  header) are expected and not mappings.
+- **The reject rationale re-confirmed at source.** The MCP handler
+  (`platform-mcp/src/tools/register_p1_ganita.ts` L662–693) is a 3-facet dispatcher
+  over `CONDITION_FACET_URI = { dignity→get_dignity, avasthas→get_avasthas,
+  karakas→get_karakas }` (default `dignity`) and calls `callRegistryCapability(uri,…)`
+  with that facet URI — it NEVER calls `get_condition_composite`. Removal + deferral
+  is the correct disposition.
+
+## (c) Coverage recounted independently — 20/23 bridged + 3 DEFERRED confirmed
+
+Executed (not read): a throwaway vitest spec importing the branch's own
+`resolveLiveTool` / `LIVE_TOOL_TO_RETRIEVAL` and iterating the distinct Vidhi
+`live_tool` set. Asserted and PASSED: **23 distinct** live_tools, **13** hand-map
+entries, **20 bridged**, **3 DEFERRED** = `{ganita_condition_get,
+ganita_structural_get, kala_temporal_bundle}`. This matches the corrected headline
+exactly. The RC-10 hand-map block is now "9 more" (down from 10); comment blocks in
+`compiled_floor_adapter.ts` all read 20/23 + 3 DEFERRED. `NAMESPACE_COVERAGE_v2_0.md`
+is bumped to v2.1 with a `corrected:` frontmatter field, condition moved from the
+BRIDGED to the DISPOSITIONED row, the false "same L1 condition-composite writer
+output" claim removed, and RC-10-003 added; the only surviving "21/23" strings are
+in explicit correction/history notes. `RESOLVER_RULINGS.md` adds RC-10-003
+(append-only, with a noted correction of the stale figures) recording the deferral
+and facet-dispatcher evidence.
+
+## (d) Anti-laundering spot-check of 3 OTHER hand-map entries — all genuine 1:1
+
+Read each MCP handler body and confirmed the mapped URI is what it actually calls
+(no dispatcher/facet mismatch):
+
+| live_tool | mapped URI | handler call site — confirmed |
+|---|---|---|
+| `ganita_strength_get` | `…/L1/get_strength` | register_p1_ganita.ts L449 — direct `callRegistryCapability('…/get_strength', …)` ✓ |
+| `ganita_nakshatra_get` | `…/L1/get_tara_chandra_bala` | register_p1_ganita.ts L762 — direct call to that exact URI (name differs, target correct) ✓ |
+| `bodha_signals_get` | `…/L2/query_signals` | register_p1_aliases.ts L405 — direct `callRegistryCap('…/query_signals', …)` ✓ |
+
+None dispatch by facet; each is a single fixed URI equal to the map value.
+
+## (e) `must_not_touch` — CLEAN
+
+Cycle-2 delta `faca7ded..e8376776` = exactly 3 files, all `may_touch`:
+`compiled_floor_adapter.ts` (`platform/**`), `NAMESPACE_COVERAGE_v2_0.md`,
+`RESOLVER_RULINGS.md`. No FROZEN orchestrator / `WriterBase` / `ga_*`/`bo_*` writer
+logic, no migration, no `CLAUDECODE_BRIEF.md`, no D-4b briefs/branches, no
+chart_facts or `kala_*`/gochara serving semantics. No test file modified (the
+bridge-integrity suite asserts resolvability of mapped values, not presence of any
+key, so removing the entry needed no test edit).
+
+## Conclusion
+
+RC-10 fix cycle 2 is **ACCEPTED**. The laundering defect is removed at the code
+level and cannot re-enter through the generated bridge or the tool-name bridge; the
+coverage figure (20/23 + 3 DEFERRED) is honest and reproduced by executing the
+branch's own resolver; the two brief documents are consistent with the code; scope
+is clean. RC-10 closes.
