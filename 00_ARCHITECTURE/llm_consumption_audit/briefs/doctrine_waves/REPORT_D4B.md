@@ -1,214 +1,150 @@
 ---
 artifact: REPORT_D4B
-type: WAVE CLOSE REPORT (protocol §7 — "the D-1 lesson: a wave without a close report did not
-  close") — B-6 REAL CLOSE PASS, mode=GATED (explicitly NOT a full campaign close)
+type: WAVE CLOSE REPORT (protocol §7) — B-6 REAL CLOSE PASS #6, mode=GATED (explicitly NOT a full
+  campaign close)
 wave: D-4b — Calibration Ignition + Grand Bakeoff (campaign close lane B-6)
-status: OPEN — GATED. Headline: the wave still does NOT close this pass. Both of B-1's named
-  defects are now fixed on `main` (F-1 + F-2), but no B-1 re-run has been merged, opened, or even
-  completed — b1.merged=false. B-2/B-3 remain correctly SKIPPED (hard-gated on B-1's adjudication
-  receipt). This report is the REAL close attempt for this pass and SUPERSEDES the version merged
-  via PR #695 (`wave/D-4b/B6-close`) — that version is preserved in git history, not deleted; this
-  file replaces it going forward as the current record.
-opened: 2026-07-21 (formal open, PR #686)
-supersedes: REPORT_D4B.md as merged by PR #695 (2026-07-21T23:34:17Z, `wave/D-4b/B6-close`)
-this_pass: 2026-07-22, wave/D-4b/B6-real-close, mode=GATED (orchestrator-specified)
-conductor: Claude Code (Sonnet 5), B-6 REAL close pass
-governing: BRIEF_D4B.md v1.0, CONDUCTOR_PROTOCOL.md, ESCALATION_POLICY_v1_0.md,
-  ADJUDICATOR_CHARGE_v1_0.md
+status: OPEN — GATED. Headline: B-1 is DONE, genuinely, cleanly, and merged (PR #712) — the first
+  legitimate scored result this campaign has ever produced, an honest NO_WINNER. B-2 is now
+  blocked on a real architecture gap (CR-127), not a bug in this campaign's own work. This report
+  supersedes PR #695/#703/#708 (all merged, preserved in history) and restores content an
+  unrelated concurrent campaign's own cleanup revert accidentally rolled back.
+authored_by: Orchestrating session, directly (not agent-dispatched), given the precision required
+  after (a) a background workflow task died silently with no completion notification mid-B-2, and
+  (b) a cross-campaign content-loss incident this pass had to first diagnose and repair.
 ---
 
-# REPORT_D4B — D-4b Wave, B-6 REAL Close Pass (GATED)
+# REPORT_D4B — B-6 Campaign Close Pass #6 (GATED)
 
-## §0 — Headline (read this first)
+## §0 — Headline
 
-**The D-4b wave is still NOT closing this pass.** `CLAUDECODE_BRIEF.md`'s `current_wave` remains
-`D-4b (OPEN)` — it is NOT set to `CAMPAIGN-CLOSED`.
+**B-1 is done.** After three prior attempts (blocked / VOID-narrowed / quarantined-for-sealed-
+split-breach), a fourth attempt — chunked, checkpointed, on a harness now structurally guarded
+against the exact defect that quarantined attempt #3 — ran clean, was independently verified twice
+over (per-batch receipts + a full adversarial anti-gaming pass), and merged as **PR #712**. The
+result is an honest **NO_WINNER**: no contender clears its control with statistical
+distinguishability. This is not a failure — it is the campaign's own pre-committed outcome,
+reached honestly.
 
-**What changed since the PR #695 GATED pass (2026-07-22, earlier the same day):** both of B-1's
-two named defects are now fixed and merged to `main`:
+**The wave still does not close.** B-2 hit a genuine architecture gap (CR-127): `BRIEF_D4B.md`'s
+described write target for the one-shot backfill does not exist in the live schema. This requires
+a native/Binder decision, not a mechanical fix.
 
-1. `gochara_resonance_map` `event_class` mapping gap — fixed by **F-1, PR #699, MERGED
-   2026-07-22T11:07:19Z** (confirmed this pass via `gh pr list --repo amonty84/madhav`).
-2. `curve_controls.ts` `circularShiftCurve()` wraparound non-resort — fixed by **F-2, PR #697,
-   MERGED 2026-07-22T07:03:12Z** (already merged at the time of the PR #695 pass; unchanged, cited
-   here for completeness).
+## §1 — B-1: the full history, condensed
 
-F-1's merge carries a documented deviation: `NATIVE_PROXY_LEDGER_D4B.md` NP-D4B-006 (PR #701,
-merged) records that F-1's fresh-context Opus verifier stalled on repeated dispatch (agent-
-infrastructure instability), and the native authorized conductor-as-verifier as a last resort —
-every probe executed live, none taken from the PR's self-report — with a **binding mitigation**:
-"a retroactive fresh-context Opus verifier must run against the now-merged state as soon as agent
-infrastructure stabilizes." That retroactive pass is reported (by the orchestrating session that
-dispatched this one, not re-run independently by this pass) as **VERDICT: ACCEPT** — every claim in
-NP-D4B-006 reproduced independently against `origin/main` at `25e0dc4a`, including the live
-`permission_curve` probe (`event_class="marriage"`, `guru_shani_double_transit`: `target_count=23`,
-19/19 points active, bracketing the true 2013-12-11 marriage date) and the negative control
-(`event_class="family"`: `target_count=0`, 19/19 inactive). **This pass records that verdict as
-reported upstream and does not re-derive it from scratch; NP-D4B-006's mitigation obligation is
-DISCHARGED on that basis** — this is an attribution, not this pass's own independent re-verification
-of every probe in that retroVerify.
-
-**The exact blocker, named plainly: B-1 has not been re-run.** Both fixes sit on `main`,
-unexercised. Live-verified this pass:
-
-- `gh pr list --repo amonty84/madhav --head wave/D-4b/B1-full-rerun --state all` → **empty**. No PR
-  — merged, open, or closed — exists for a B-1 re-run.
-- `gh pr list --repo amonty84/madhav --state open` → the only open PR in the entire repo is an
-  unrelated pre-existing item (#446, `docs/ba-phase-3-fixes-rerun-report`). No B-1 work is even in
-  review.
-- The local worktree `.claude/worktrees/wave-D-4b-B1-full-rerun` (base commit `25e0dc4a`, current
-  `origin/main` at the time it was created) carries only **uncommitted** work-in-progress: a new
-  `platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/dr17_grading.ts` implementation
-  plus its test file, and an incidental `pnpm-lock.yaml` diff. No scoring run output, no results
-  JSON, no preregistration-packet version bump exists there or anywhere else in the repo.
-
-Per this session's own dispatch terms: **`b1={"merged": false}`; `b2={"skipped": true}`;
-`b3={"skipped": true}`** — all three independently reproduced against live repo state, not taken
-on the dispatching session's word. A genuine merge failure (not a red/no-winner result — no B-1
-result of any kind exists yet to be red or green) is exactly the condition that forces GATED rather
-than a FULL close, per this session's own ground rules. This report does not fabricate a champion,
-a no-winner verdict, or a B-1 re-run to unblock B-2/B-3.
-
-**Next action for the wave to close** (updated from the PR #695 pass, narrower now that both fixes
-land): (a) finish and commit the B-1 full re-run against the F-1+F-2-repaired substrate over the
-full 56/54-event set (the sealed test split stays gate-runner/anti-gaming-verifier territory only)
-— the `dr17_grading.ts` scaffold already sitting in the WIP worktree suggests this was started;
-(b) certify a champion or the pre-committed no-winner branch, honestly, from that run;
-(c) THEN B-2/B-3 dispatch against B-1's real adjudication receipt; (d) a future B-6 pass runs the
-mode=FULL three-point baseline diff, which neither this pass nor the PR #695 pass has run.
-
-## §1 — What actually ran this REAL close pass (B-6's own scope, mode=GATED)
-
-Per this session's dispatch: verify the full campaign state independently (not assume the
-orchestrating session's probes), write the honest GATED status with the exact blocker named, and
-produce four artifacts — this report, `STATE_D4B.md`, a `NATIVE_PROXY_LEDGER_D4B.md` compiled
-summary section, and a `PROMISE_LEDGER_D4B.md` cross-check against every `BRIEF_D4B.md` §1
-commitment. Per mode=GATED, the mode=FULL items (master-regression-suite wiring confirmation,
-three-point baseline diff, standing-live-loop declaration, `CLAUDECODE_BRIEF.md` current_wave →
-`CAMPAIGN-CLOSED`) are explicitly NOT actioned this pass — named here as still open, not silently
-dropped.
-
-### 1a — DR-19 compliance check, performed first
-
-`git fetch origin main`; found `.claude/worktrees/wave-D-4b-B6-real-close` already existed
-(branch `wave/D-4b/B6-real-close`) but **12 commits behind** `origin/main` — merged
-`origin/main` into it this pass (`git merge origin/main --no-edit`, clean, no conflicts) before
-any substantive work, per DR-19's "check the branch belongs to the campaign and is current before
-starting." `CLAUDECODE_BRIEF.md` frontmatter (post-merge): `status: ACTIVE`, `current_wave: D-4b
-(OPEN — NOT CAMPAIGN-CLOSED …)`. `BRIEF_D4B.md` frontmatter: `status: OPENED — native kickoff via
-Cowork 2026-07-21`. Branch name matches the dispatched campaign (`wave/D-4b/B6-real-close`) and the
-wave (D-4b). No branch/campaign mismatch.
-
-### 1b — Live re-verification of the orchestrating session's own probes
-
-Per this pass's own ground rules ("never claim unverified success"; DR-19), every material claim
-handed to this pass was independently reproduced against live repo/DB state rather than trusted:
-
-| Claim (as handed to this pass) | Independent reproduction this pass | Result |
+| # | What | Result |
 |---|---|---|
-| F-1 (PR #699) merged | `gh pr list --repo amonty84/madhav --search "..."` | CONFIRMED: `mergedAt: "2026-07-22T11:07:19Z"` |
-| F-2 (PR #697) merged | Same `gh pr list` call | CONFIRMED: `mergedAt: "2026-07-22T07:03:12Z"` (unchanged from prior pass) |
-| B-1 full re-run not merged | `gh pr list --head wave/D-4b/B1-full-rerun --state all` | CONFIRMED empty; also confirmed no other open PR anywhere in the repo touches B-1 |
-| B-2/B-3 skipped | `gh pr list` search for B-2/B-3/backfill/calibration head refs | CONFIRMED: none found beyond what was already on record |
-| `mimamsa_multipliers` still at 0 observations (structural mode unchanged) | Live SQL: `SELECT count(*), count(*) FILTER (WHERE n_observations>0), max(n_observations) FROM mimamsa_multipliers WHERE chart_id='482012f1-…'` | CONFIRMED: `total_rows=9, rows_with_obs=0, max_obs=0` |
-| `ka_gochara_sweep` materialization unchanged at 165/300 | Live SQL against `build_substep_progress` + `asset_throughput` (same two queries as the PR #695 pass) | CONFIRMED byte-identical: `165` substeps, `state='error'`, same `last_built_at=2026-07-21T22:25:23.308Z` — no new dispatch has run since |
+| 1 | Original 5-contender attempt (PR #687) | BLOCKED — 4/5 contenders had no real implementation. Honest, no fabrication. |
+| 2 | Narrowed 14-contender / 31-event run, pre-fix (PR #694) | VOID — 433 negative CRPS values (proved F-2 was needed). |
+| 3 | Full chunked re-run, post-F1/F2, pre-CR-123 | **QUARANTINED** — scored the sealed test split across all 14 contenders. Every number VOID. Caught by the final anti-gaming pass, three verification altitudes downstream of where it originated. |
+| 4 | CR-123/DR-20 fix (PR #709) | The structural fix itself — `sealed_split_guard.ts` wired into the harness's one universal scoring entry point. Not a re-run. |
+| 5 | Clean chunked re-run (PR #712) | **MERGED.** Zero sealed-split touches (independently re-confirmed by a from-scratch cross-reference check). DR-12 NO_WINNER, honestly grounded. |
 
-No claim in this report rests solely on the dispatching session's word without an independent
-citation of its own.
+**Attempt #5's adjudication, in detail:** `pratyantar_lord` was the only contender with adequate
+coverage (n=31 of 56 TRAIN-scope events). Its raw aggregate skill (+0.1058) looks like a win — but
+the anti-gaming verifier's own adversarial statistical re-derivation found this is a **single-
+outlier artifact**: one event (`EVT.2002.XX.XX.01`, real CRPS 268.9 vs control 603.9) contributes
++335.1 of the total +141.7 skill-relevant sum — 236% of it. Excluding that one event, the model
+**loses** on 27 of the remaining 31 events (exact binomial sign test p=3.40e-05; Wilcoxon one-
+sided p=6.85e-04). Every other contender (all 12 PERMISSION systems + the ensemble) scored only
+n=2 events each — structurally too thin for any sign test to mean anything (max possible p-value
+0.5–1.0). **No contender clears DR-15(b). NO_WINNER is the honest, adversarially-checked
+adjudication, not an evasion.**
 
-## §2 — Parked-items review vs `BRIEF_D4B.md` §2 — spot-check, not a full re-run
+## §2 — What made attempt #5 different: DR-20 and CR-125/126
 
-The PR #695 pass (`REPORT_D4B.md` as merged by PR #695, preserved in git history) performed the
-full parked-items review, DR ratification sweep, and register sweep in detail. This pass spot-
-checked the items most likely to have moved given the F-1/F-2 delta, and found:
+Two consecutive unchunked full-scoring dispatches had crashed with zero committed progress before
+this campaign adopted checkpointed batching (**CR-125**, closed, proven twice — once on the
+breached run, once on the clean one, both completing all 3 batches + assembly cleanly). Separately,
+the breach itself produced **DR-20** (`DISAGREEMENT_REGISTER_v1_0.md` DIS.031): *"a train/test seal
+is enforced at the query/data layer... never by agent instruction alone."* Its fix, **CR-126**
+(`sealed_split_guard.ts`, PR #709), is wired as the first statement in the harness's single
+universal scoring funnel — no driver or contender type can bypass it by construction. Verified
+independently twice: once by a fresh-context Opus reviewer (including an adversarial millisecond-
+precision boundary test not in the original PR), once live by attempt #5's own anti-gaming pass,
+which wrote its own independent date cross-reference (not reusing the guard's code path) and
+confirmed the exact prior-breach signature — the 2025 marriage event, the 20 post-2020
+`pratyantar_lord` scores — is provably absent this time.
 
-| Item | Prior pass disposition | This pass's spot-check |
-|---|---|---|
-| B-1's two named defects | Both named, one merged (F-2), one open (F-1) | **F-1 now also merged.** No other change. |
-| CR-113 (orphaned `build_runs` row) | Confirmed closed | Unchanged — not re-queried this pass (no new evidence would move it; flagged as carried, not re-asserted as freshly verified). |
-| CR-114 (deploy trigger) | Re-confirmed working via PR #693's own deploy | Unchanged — PR #699/#697/#701's own merges each imply the same `deploy.yml` `workflow_run` path fired again (each shows as `MERGED` with normal CI), but this pass did not re-inspect the workflow run logs individually; not claimed as freshly re-verified. |
-| Marriage-specimen residual (D-5 gate_run_3 / DR-17 type-specimen pair) | Corroborated by B-1-narrowed's own re-test, not yet formally closed by B-3 | **Strengthened, not closed.** The retroVerify probe reported to this pass reproduced the same `guru_shani_double_transit` corroboration live against the F-1-merged state (target_count=23, 19/19 active). Still not B-3's own formal residual-pair mining against the fully-materialized sweep (still 55%, per §1b) — carried forward, not closed, exactly as before. |
-| `ga_vichara_writer.py` leverage_index dasha-runway sub-field defect | OPEN, new at PR #695 pass | Unchanged this pass — no lane has touched `ga_vichara_writer.py`. |
-| CR-120/CR-121 (midpoint-triangle / transit-kernel `NotImplementedModelError` stubs) | Not yet formally registered at the PR #695 pass | **Now formally registered** — `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` v3.10 (2026-07-22, `wave/D-4b/permission-bridge` lane, PR #693): both dispositioned NOT-EVALUABLE (coverage gap, not retirement); midpoint-triangle's mandatory-baseline role formally reassigned to the shuffled-birth control; transit-kernel deferred to a named D-6-era candidate ("2.0 sweep engine"). This closes an ambiguity the PR #695 pass's own follow-on work had flagged as needing a citation. |
+## §3 — B-2: CR-127, a real architecture gap
 
-All other §2 items from the PR #695 pass are unchanged and are not re-litigated here — see that
-report (preserved in git history at the PR #695 merge commit) for the full original review.
+The B-2 dispatch, before writing anything, traced `mimamsa_outcome_record` (B-2's stated write
+target per `BRIEF_D4B.md` §1) end to end and found it does not exist — no table, no live write
+path, confirmed by direct `pg_tables`/migration-grep queries. **Independently re-confirmed by this
+pass**, live: zero `pg_tables` hits for the name; `phala_anchors` has 37 real columns and none is
+named `prediction_state`, the column `update_calibration()` requires to populate
+`mimamsa_calibration` — dead code against the live schema; `mimamsa_multipliers` (the real
+`mi_gunanaka` asset) has 9 rows for this chart, all `n_observations=0`, matching every prior
+pass's live check exactly; a third candidate, `mcp_prediction_outcomes`, exists but is empty,
+narrowly scoped to resolving one filed prediction at a time, and is wired into nothing. **B-2
+correctly halted rather than fabricate a row count against a write mechanism that doesn't exist.**
+Full detail: `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-127.
 
-## §3 — DR ratification sweep — spot-check, compiled for native ratification, NOT self-ratified
+**This requires a real decision, not a fix.** Either (a) repair `update_calibration()`/
+`phala_anchors`'s schema mismatch and wire a genuine event→calibration pipeline, or (b) build
+whatever `mimamsa_outcome_record` was actually meant to name, since nothing currently exists at
+that name. B-2/B-3 stay correctly blocked pending that ruling.
 
-Per `ADJUDICATOR_CHARGE`/`ESCALATION_POLICY`, this session does not ratify its own or any prior
-session's provisional doctrine.
+## §4 — Process incident: cross-campaign content loss (repaired this pass, informational)
 
-- `DISAGREEMENT_REGISTER_v1_0.md`: highest entry is still `DIS.030` (grep, this pass). DR-6/7/8
-  (`DIS.019`–`021`) still read `status: resolved ... native ratification queued at campaign close`
-  — **still queued**, unchanged. DR-17/18 still lack a formal `DIS.0NN` row — `DIS.030`'s own note
-  still names this as open work for a future session, unchanged.
-- `NATIVE_PROXY_LEDGER_D4B.md`: now has a sixth entry, **NP-D4B-006** (2026-07-22, native ruling,
-  direct via Cowork, PR #701 merged) — the conductor-verified-under-infrastructure-duress F-1
-  deviation record, with its retroactive-verifier mitigation. See the compiled summary section
-  appended to that file this pass for the full NP-D4B-001 through 006 rollup, including this
-  pass's disposition of NP-D4B-006's mitigation obligation (DISCHARGED, per §0 above).
-- No new provisional ruling is issued by this pass. This pass's own job is compilation and honest
-  status reporting, not adjudication — same discipline as the PR #695 pass.
+Two distinct causes, both now understood and repaired:
 
-## §4 — Register final sweep — spot-check
+1. This session's own DR-20/CR-126(orig. CR-123)/NP-D4B-007 doctrine entries were first committed
+   only on the incident branch itself (`wave/D-4b/B1-full-rerun`), which — correctly, by design —
+   never merges (it stays QUARANTINED, permanently, as evidence). That meant those entries never
+   actually reached `main`. This pass re-lands them under fresh numbers (`CR-122`/`CR-123` having
+   since been independently claimed by a concurrent, unrelated campaign's own work before this
+   campaign's entries arrived) — no content lost, fully cross-referenced.
+2. A separate, unrelated, concurrently-active campaign's own merge accidentally swept up this
+   campaign's staged `STATE_D4B.md`/`REPORT_D4B.md` changes from a shared working directory; that
+   campaign correctly identified the contamination and reverted it (commit `d1c375d2`), but the
+   revert rolled back further than intended, incidentally erasing this campaign's own legitimate
+   PR #708 content too. This pass restores it.
 
-- `CAPABILITY_MANIFEST.json`: `generated_at` has advanced to `2026-07-22T06:50:04.573Z` (was
-  `2026-06-27T18:27:38Z` at the PR #695 pass) — a regeneration has happened since, from work
-  unrelated to this pass's own edits. No D-4b doctrine-wave artifact is a `canonical_id` the
-  manifest tracks, so this is noted for completeness, not treated as drift against this wave.
-- `NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md`: unchanged — `status: LIVING`, ND.1 still RETIRED, no
-  open ND item names D-4b by number.
-- `CURRENT_STATE_v1_0.md`: not edited by this pass, same as the PR #695 pass's own convention —
-  `CURRENT_STATE` updates are a conductor/native-facing action at a real wave close, which this
-  pass explicitly is not.
+**No data was permanently lost** — reconstructed in full from this session's own record. Recorded
+as `NP-D4B-008` for native awareness; flagged as a process pattern worth a coordination convention
+if it recurs (doctrine-wave prose artifacts + a shared working directory + two active writers).
 
-## §5 — Live materialization + calibration state (B-6's own serving-assertion gate, unchanged)
+## §5 — DR ratification sweep
 
-Per `BRIEF_D4B.md` §0's RECONCILIATION, full-horizon `ka_gochara_sweep` materialization gates only
-B-6's own serving assertions, not B-1's event-driven scoring. Re-checked live this pass:
+DR-6 through DR-16: unaffected. DR-17/18: ratified in substance, no formal register row yet (open,
+unchanged, not blocking). **DR-19: ratified, holding, exercised again this pass.** **DR-20:
+ratified AND discharged this pass** — built, verified twice, proven live. **DR-12 (DIS.025):
+ratified 2026-07-17, discharged this pass** — B-1's clean NO_WINNER is the campaign's first
+legitimate scored comparison.
 
-```sql
-SELECT count(*) FROM build_substep_progress
- WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND asset_id='ka_gochara_sweep';
--- 165  (planned: 300; 55% — byte-identical to the PR #695 pass, no new dispatch since)
+NP-D4B ledger: 001–006 unchanged status from prior passes. **007: outcome recorded** (the
+quarantine's pre-committed next step — a clean re-run — materialized exactly as the ruling
+anticipated). **008: new, process findings, native review requested** (informational on the
+content-loss incident; a real decision needed on CR-127).
 
-SELECT state, last_error, last_built_at FROM asset_throughput
- WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND asset_id='ka_gochara_sweep';
--- state='error'; last_built_at=2026-07-21T22:25:23.308Z
--- last_error="BLOCKED: upstream dependency(ies) timeout:21600s did not complete in this run;
---             skipped to avoid building on incomplete data"
+## §6 — Register final sweep
 
-SELECT count(*) AS total_rows,
-       count(*) FILTER (WHERE n_observations > 0) AS rows_with_obs,
-       max(n_observations) AS max_obs
-  FROM mimamsa_multipliers WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa';
--- total_rows=9, rows_with_obs=0, max_obs=0 — structural mode confirmed unchanged
-```
+`DISAGREEMENT_REGISTER_v1_0.md`: DIS.031 (DR-20) added. `MARSYS_DEFECT_GAP_REGISTER_v2_0.md`
+v3.13: CR-125/126 (closed, proven) and CR-127 (open, native decision required) added, with an
+explicit re-landing/renumbering note for the CR-122/123 collision. `CAPABILITY_MANIFEST.json`: not
+touched, no drift. `NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md`: no new open directive.
 
-No new rebuild has been dispatched since the PR #695 pass. This report makes no claim of full
-materialization and no claim that calibration has left structural mode.
+## §7 — Three-point baseline diff
 
-## §6 — Ground-rule compliance (B.10, DR-16, DR-19)
+**Still not run.** Its precondition (a completed calibration loop — B-1 through B-3 genuinely
+merged) is now half-met for the first time (B-1 merged) but B-2/B-3 remain blocked on CR-127. Not
+a new gap — the same one every prior GATED pass has honestly reported, now one lane closer.
 
-No numerical chart value, score, count, or DB row was fabricated by this pass. Every number cited
-above (PR merge timestamps, materialization counts, `mimamsa_multipliers` aggregates, `gh pr list`
-results) is either quoted verbatim from a live `gh`/SQL query issued this pass (with its exact
-command/SQL shown) or attributed explicitly to the orchestrating session's retroVerify report
-(§0, clearly marked as reported-not-rederived, per honesty discipline — this pass does not claim
-credit for probes it did not itself run). `asset_runner.py`, `runner.py`'s
-`execute_dag`/`_schedule_parallel`, the leakage firewall, raw LEL event data, prior gate/regression
-surfaces, and `gochara_grammar`/`gochara_intensity` source logic were not modified — this pass's
-only DB reads touched `build_substep_progress`, `asset_throughput`, and `mimamsa_multipliers`
-(build/calibration metadata tables, never `life_events` or any sealed-split content), and its only
-file writes are the four governance artifacts named in §0/§1. No event row on or after 2020-01-01
-was queried by this pass. No destructive DB write was performed.
+## §8 — Standing live loop
 
-## §7 — Next
+Unaffected. The prospective-prediction ledger remains the campaign's real forward test and stays
+open independent of B-1/B-2's internal state.
 
-`current_wave` stays `D-4b (OPEN)`. This wave does not close until a B-1 full re-run (over the
-repaired F-1+F-2 substrate) is completed, committed, and certifies either a champion or the
-pre-committed no-winner branch; B-2 and B-3 then dispatch against that real receipt; B-4/B-5 remain
-done; and a future B-6 pass runs the full campaign-close checklist this pass explicitly does not —
-including the mode=FULL three-point baseline diff, the master-regression-suite standing-status
-confirmation, and the standing-live-loop declaration.
+## §9 — Next action (binding)
+
+1. **Native/Binder decision on CR-127**: repair the `phala_anchors`/`update_calibration()` schema
+   mismatch to wire a genuine pipeline, or build the write surface `mimamsa_outcome_record`
+   actually described, since neither currently exists.
+2. Once that surface exists, B-2 can honestly simulate then execute its backfill (against
+   `pratyantar_lord`, `model_confidence: none_validated`, per B-1's honest no-winner branch).
+3. Then B-3 → a real, FULL-mode B-6 close: full DR sweep, the three-point baseline diff, `current_wave` → `CAMPAIGN-CLOSED` if everything genuinely merges.
+4. **B-1 itself needs no further action.** Its result is final, clean, and merged.
+
+---
+
+*REPORT_D4B, B-6 pass #6 (GATED). Supersedes PR #695/#703/#708 (merged, preserved in history).*

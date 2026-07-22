@@ -651,3 +651,102 @@ compilation is NP-D4B-006 itself (new since that pass) and this pass's dispositi
 mitigation clause.
 
 *— end compiled summary, B-6 REAL close pass*
+
+---
+
+## NP-D4B-007 (2026-07-22, native ruling, direct via Cowork — sole-halt-condition disposition)
+
+*Re-landing note (2026-07-23): originally committed on the permanently-QUARANTINED branch
+`wave/D-4b/B1-full-rerun` alongside the incident record — that branch correctly never merges, so
+this entry never reached `main` until now. No content change from the original ruling.*
+
+**Question:** the D-4b B-1 chunked re-run's final anti-gaming verifier found that all 3
+checkpointed batches scored the sealed test split (events on/after 2020-01-01) across all 14
+contenders — a real breach of the sealed split the Native-Proxy charter's retained invariant names
+as the sole condition the proxy may never rule around. The merge agent correctly declined to
+merge; the conductor correctly refused to self-fix under that invariant and escalated instead.
+Disposition?
+
+**Ruling: QUARANTINE the breached run in full. No partial salvage.** Every score, delta, and the
+DR-12 NO_WINNER adjudication from `wave/D-4b/B1-full-rerun` (tip `0aa69c06`) is VOID — cited
+nowhere, fed to nothing, the branch stays permanently unmerged as incident evidence only. See
+`bakeoff_results/QUARANTINE_B1_FULL_RERUN_v1_0.md` for the full incident record. A run that
+touched the sealed split is wholly disqualified even where individual contenders' pre-2020 scores
+were computed honestly — the contamination is at the RUN level (shared controls, seed derivation,
+and adjudication computed with sealed-split data present), not curable by discarding only the
+sealed-split rows post hoc. Partial salvage is exactly the rationalization the seal exists to
+forbid.
+
+**Root cause + fix: DR-20** (`DISAGREEMENT_REGISTER_v1_0.md` DIS.031) — the seal was enforced by
+prompt instruction, never by the query/data layer. Fix registered as CR-126 (originally CR-123 —
+see `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` re-landing note): packet-construction-time train-split
+filtering, a harness-level hard exclusion the scoring loop cannot bypass, and a gate-blocking
+structural assertion at every verification altitude (per-batch, assembly, final anti-gaming) —
+not merely the final pass, closing the defense-in-depth gap this incident also exposed.
+
+**Commendations, recorded plainly, not merely logged:** the merge agent's decline on the
+verifier's verdict; the conductor's refusal to self-fix under the retained invariant, escalating
+instead of routing around it; the fact that nothing from the breached run ever reached `main`,
+`B-2`, or `B-3` at any point. **The breach is a process defect. Catching it, three altitudes deep
+but still before any propagation, is the governance architecture succeeding under real failure —
+exactly as designed.**
+
+**Binding next step:** one clean B-1 re-run on the DR-20-fixed harness, training-split only,
+chunked/checkpointed per the standing CR-125 pattern, full anti-gaming battery including the now-
+structural sealed-split assertion. **Pre-committed outcome, stated in advance:** if the clean
+re-run returns NO_WINNER on the honest training set — plausible given the coverage thinness even
+the breached run showed (n=3 for most contenders) — that closes B-1 honestly via the campaign's
+own pre-committed no-winner branch. A real no-winner on clean data is a valid, valuable outcome;
+the campaign does not chase a champion. The prospective ledger remains the campaign's real forward
+test and is already open.
+
+**Outcome (recorded 2026-07-23, discharging this ruling's binding next step):** the clean re-run
+ran on `wave/D-4b/B1-full-rerun-2`, merged as PR #712. Anti-gaming verification independently
+confirmed zero sealed-split touches (the exact prior-breach signature provably absent) and an
+honest DR-12 NO_WINNER — `pratyantar_lord`'s apparent positive skill was proven, under adversarial
+statistical re-derivation, to be a single-outlier artifact that reverses to a clear loss (27/31
+events, sign-test p=3.40e-05) once that outlier is excluded; every other contender was
+structurally underpowered (n=2). This is the pre-committed outcome materializing exactly as
+anticipated — B-1 closes honestly with no forced champion.
+
+Reversibility: the quarantine is permanent by design; the fix (DR-20/CR-126) is the reversibility
+path for the CLASS of defect, not this instance — a clean re-run was the only way forward and it
+has now run.
+
+*— end NP-D4B-007*
+
+---
+
+## NP-D4B-008 (2026-07-23, conductor finding, native review requested — not yet ruled)
+
+**Two findings, recorded for native disposition:**
+
+**1. Cross-campaign accidental content loss (process finding, not a breach of anything sealed).**
+This campaign's `STATE_D4B.md`/`REPORT_D4B.md` (as merged via PR #708) were later reverted to a
+pre-#708 state by commit `d1c375d2` — a good-faith cleanup by a concurrently-active, unrelated
+campaign ("RC-10 namespace-gap") whose own merge had accidentally swept up this campaign's staged
+files from a shared working directory, and which then correctly identified and reverted the
+contamination. The revert's `HEAD^1` reference rolled back further than the other campaign likely
+intended, incidentally reverting this campaign's own legitimate content too. Separately, this
+session's own DR-20/CR-123(now CR-126)/NP-D4B-007 doctrine entries were originally committed only
+on the permanently-quarantined `wave/D-4b/B1-full-rerun` branch (a scoping choice at the time,
+writing incident docs directly onto the incident branch) — since that branch correctly never
+merges, those entries never reached `main` until this pass re-landed them under fresh numbers
+(CR-122/123 having since been independently claimed by the concurrent RC-04 campaign). **No data
+was permanently lost** — this pass reconstructed everything from the original session's own
+record — but the pattern (two active D-4b-adjacent doctrine writers, one shared repo, file-level
+git merges) is worth a native-level process note: doctrine-wave prose artifacts (register/ledger/
+close-report files) may need per-campaign-scoped sections or a coordination convention if this
+recurs.
+
+**2. B-2 architecture gap (CR-127) requires a real decision, not a mechanical fix.** Unlike
+DR-20/CR-126 (a genuine but mechanically-fixable harness bug), CR-127 is an actual missing/broken
+piece of the calibration architecture — `BRIEF_D4B.md`'s B-2 lane assumes a write surface
+(`mimamsa_outcome_record`) that was never built, and the nearest real candidate pipeline
+(`phala_anchors` → `mimamsa_calibration` → `mi_gunanaka`) has a live schema/code mismatch
+(`prediction_state` column referenced, does not exist). This is not something a conductor should
+resolve unilaterally by picking a repair direction — it requires the native's decision on which
+of the two dispositions in CR-127 (repair the existing pipeline vs. build the described surface
+fresh) reflects actual intent. B-2/B-3 stay correctly blocked until that ruling.
+
+*— end NP-D4B-008, awaiting native disposition on item 2 (item 1 is informational only)*

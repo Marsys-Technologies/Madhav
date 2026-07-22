@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.12
+version: 3.13
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -1158,7 +1158,88 @@ RC-04-002 §"Scope note."
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.12 (2026-07-23, RC-04 fix-cycle closing
+*Numbering + re-landing note (2026-07-23): CR-125/126/127 below were originally intended as
+CR-122/123 (checkpointed batching, sealed-split fix) and a new CR for the B-2 gap. CR-122/123 were
+independently claimed by the concurrent RC-04 campaign above before this campaign's own entries
+reached `main` (they were first committed only on the permanently-QUARANTINED
+`wave/D-4b/B1-full-rerun` branch, which correctly never merges). Renumbered here to the next free
+slot rather than re-litigate the collision — no content lost, cross-referenced below.*
+
+**CR-125 [CLOSED — FIXED, D-4b B-1 chunked re-run, `wave/D-4b/B1-full-rerun` (incident) /
+`wave/D-4b/B1-full-rerun-2` (reuse), 2026-07-22/23]:** checkpointed batching registered as
+standing doctrine for heavy scoring lanes. Two consecutive unchunked B-1 full-re-run dispatches
+(56 events × 14 contenders × N=1000 controls, hundreds of live sidecar/DB calls inside one
+continuous agent turn) crashed with zero committed progress. Zero comparable failures on any
+other D-4b lane (shorter-lived, fewer live calls per turn). **Fix, built and proven twice:** an
+immutable run manifest committed first (batches consume identical inputs by content-hash
+reference, never re-derived per batch); work batched into bounded chunks (~5 contenders/batch),
+each producing its own committed, idempotent (delete-then-insert keyed by batch × manifest-hash)
+intermediate artifact (`platform/scripts/audit/t0_retrodiction/lib/a3_scoring_harness/
+b1_batch_artifact_io.ts`, 8/8 tests); a single assembly + adjudication pass over the FULL
+assembled result (never per-batch, preserving BRIEF_D4B §1's "one identical harness" rule); a
+lightweight per-batch verifier receipt plus one full anti-gaming pass at assembly. **Proven twice
+live**: the breached run (3/3 batches completed cleanly, only the sealed-split issue — CR-126 —
+caused its quarantine) and the clean re-run (`wave/D-4b/B1-full-rerun-2`, merged PR #712, 3/3
+batches + assembly + anti-gaming all succeeded on the first pass). Referenced by D-6's design doc
+§6 as the standing pattern for any future lane approaching this call volume.
+
+**CR-126 [CLOSED — FIXED + independently verified twice, PR #709, merged `67e3e35a`,
+2026-07-22]:** sealed test-split breach (see DR-20, `DISAGREEMENT_REGISTER_v1_0.md` DIS.031, for
+the full root-cause/ruling) — a train/test seal enforced by prompt instruction alone is not a
+seal. **Fix:** `sealed_split_guard.ts`'s `assertNoSealedSplitEvents()` wired as the first
+statement in `harness.ts`'s `runMirroredScoringHarness` — the ONE function every D-4b contender's
+scoring call funnels through (pratyantar_lord, all 12 PERMISSION systems, the ensemble) — so no
+driver/batch/contender type can bypass it by construction. `filterToTrainScope()` for
+packet-construction-time use. 13 new tests (10 unit covering point/interval/chain/exact-boundary/
+multi-offender cases + 3 end-to-end throw/regression proofs), 137/137 full suite green, `tsc`
+clean. **Independently verified twice**: once by a fresh-context Opus verifier (ACCEPT, including
+an adversarial boundary re-test the PR itself didn't have — `>=` vs `>` at millisecond precision)
+before merge; once live in production by the clean B-1 re-run's own anti-gaming pass, which
+cross-referenced all 56 pre-registered events' dates by an independently-written check (not
+reusing `sealed_split_guard.ts`'s own code path) and confirmed zero sealed-split touches — the
+exact prior-breach signature (a 2025 marriage event, 20 post-2020 `pratyantar_lord` events)
+provably absent. **Known residual scope note** (not a defect in this fix, informational): a
+separate, older scoring path (`checks.ts`/D-3 Lane T-0's `run_t0.ts`) is not covered by this
+guard — that path's own design deliberately scores a post-2020 event as D-3's own retrodiction
+target and has its own Python-side `SealedTestSplitViolation` guard
+(`kala_admission/lel.py`) — correctly out of this fix's scope, flagged here only so a future
+session doesn't assume repo-wide coverage from this one PR.
+
+**CR-127 [OPEN — real architecture gap, discovered D-4b B-2 backfill dispatch, `wave/D-4b/
+B1-full-rerun-2` context, 2026-07-23]:** `BRIEF_D4B.md` §1 B-2's write target,
+`mimamsa_outcome_record`, **does not exist as a table or any live write path** — confirmed by
+direct `pg_tables` query (zero hits) and exhaustive grep across `platform/migrations` and
+`platform/supabase/migrations` (zero `CREATE TABLE` hits for that literal name). Three real,
+distinct surfaces were investigated and none is the described batch-backfill target:
+(a) `mcp_prediction_outcomes` — exists, 8-column schema (`prediction_id`, `outcome_occurred`,
+`outcome_date`, ...), 0 rows, designed for resolving ONE filed prospective prediction at a time,
+not batch-writing ~40 scored-LEL-event rows; not referenced anywhere in the `mi_gunanaka`/
+calibration pipeline. (b) `mimamsa_multipliers` (asset `mi_gunanaka`, migration 349) — the real
+`WriterBase` asset with `n_observations`/proper §N.3 idempotency; 9 rows for chart `482012f1`,
+all `n_observations=0` (live-confirmed, matches `STATE_D4B.md`'s prior live checks exactly). But
+`mi_gunanaka.run()` builds its posteriors from `mimamsa_calibration` (0 rows, live-confirmed),
+which is populated by `update_calibration()`, which references `phala_anchors.prediction_state`
+— **a column that does not exist on the live `phala_anchors` table** (37 real columns enumerated
+live via `information_schema.columns`; `prediction_state` is not among them) — dead code against
+the current schema. (c) The B-1 scoring harness (`platform/scripts/audit/t0_retrodiction/`)
+produces JSON artifacts only; no DB write path to any of the above exists anywhere in that tree.
+**Correctly not fabricated**: the B-2 dispatch that found this halted before any write, commit,
+branch, or PR rather than simulate a row count against a write mechanism that doesn't exist
+(B.10/DR-16/DR-19/DR-20 compliant). **Disposition: native/Binder decision required** — either (a)
+repair `update_calibration()`/`phala_anchors`'s schema mismatch and wire a genuine
+LEL-event → `phala_anchors.prediction_state` → `mimamsa_calibration` → `mi_gunanaka` pipeline, or
+(b) a new migration for whatever surface `mimamsa_outcome_record` was actually meant to name,
+since none currently exists. B-2/B-3 remain correctly blocked pending this decision — see
+`STATE_D4B.md`/`REPORT_D4B.md` (this pass).
+
+---
+
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.13 (2026-07-23, D-4b B-6 close pass #6) —
+CR-125/126/127 added: checkpointed-batching doctrine (CLOSED, proven twice), sealed-split
+structural fix (CLOSED, verified twice), and the B-2 mimamsa_outcome_record architecture gap
+(OPEN, native/Binder decision required). Renumbered from the original CR-122/123 slots after
+those numbers were independently claimed by the concurrent RC-04 campaign before this campaign's
+entries reached `main` — no content lost, see the re-landing note above. Prior: v3.12 (2026-07-23, RC-04 fix-cycle closing
 `VERIFY_RC-04.md` clauses 2-3) — CR-122 added OPEN (`phala_anchors_get` date_range 422 regression:
 MCP schema says optional, live sidecar now hard-requires it, contract drift since W0, not caller
 error); CR-123 added OPEN (`ref_yogas_get`/`ref_doshas_get` now uncapped at 87KB/61KB as their
