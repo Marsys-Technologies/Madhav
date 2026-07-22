@@ -29,14 +29,14 @@
  *   - No native chart_id or name appears in this file.
  *   - list_my_charts takes no chart_id param.
  *
- * Session pin (R5 W4 — design §10.6/§31.3/§31.5): select_chart is the natural
+ * Provenance stamp (R5 W4 — design §10.6/§31.3/§31.5): select_chart is the natural
  * "session open" anchor for the chart being selected — after persisting
- * active_chart_id it also resolves/refreshes the session_pin for that same
+ * active_chart_id it also resolves/refreshes the provenance_stamp for that same
  * chart_id ({priors_version, formula_versions, ranking_config, build_id,
  * now_context_date}) and returns it. A mid-session rebuild of the chart being
  * (re-)selected surfaces honestly as an advisory + `judgment_flags`.
  *
- * M2+M3+M4 chart selection (MCP elevation arc, 2026-07-01). Session pin — R5 W4 (2026-07-09).
+ * M2+M3+M4 chart selection (MCP elevation arc, 2026-07-01). Provenance stamp — R5 W4 (2026-07-09).
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -233,25 +233,25 @@ export function registerChartSelectionTools(
       }
 
       // M3 + R5 W4: persist the newly selected active_chart_id AND resolve/refresh
-      // the session pin for it, in one round trip. Failure is non-fatal — the call
-      // still returns the selected chart_id even if session/pin persistence fails.
-      let sessionPin: unknown = undefined
+      // the provenance stamp for it, in one round trip. Failure is non-fatal — the call
+      // still returns the selected chart_id even if session/stamp persistence fails.
+      let provenanceStamp: unknown = undefined
       let pinJudgmentFlags: string[] | undefined
       if (session) {
         try {
           const pinResult = await persistActiveChartAndPin(principal, key, chart_id)
-          if (pinResult.session_pin) {
-            sessionPin = pinResult.session_pin
+          if (pinResult.provenance_stamp) {
+            provenanceStamp = pinResult.provenance_stamp
             pinJudgmentFlags = pinResult.judgment_flags
             if (pinJudgmentFlags && pinJudgmentFlags.length > 0) {
               advisories.push(
-                `Chart ${chart_id} was rebuilt since your session pin was last set — ` +
-                'pin refreshed to the new build.'
+                `Chart ${chart_id} was rebuilt since your provenance stamp was last set — ` +
+                'stamp refreshed to the new build.'
               )
             }
           }
         } catch (err: unknown) {
-          console.error('[mcp:select_chart] session/pin persist failed', err)
+          console.error('[mcp:select_chart] session/stamp persist failed', err)
         }
       }
 
@@ -262,8 +262,8 @@ export function registerChartSelectionTools(
         session_key: key,
         message: `Chart selected: ${name}. Pass this chart_id to subsequent tools.`,
       }
-      if (sessionPin) {
-        result['session_pin'] = sessionPin
+      if (provenanceStamp) {
+        result['provenance_stamp'] = provenanceStamp
       }
       if (pinJudgmentFlags && pinJudgmentFlags.length > 0) {
         result['judgment_flags'] = pinJudgmentFlags
