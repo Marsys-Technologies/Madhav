@@ -2482,3 +2482,38 @@ owns — not a call for the retrieval campaign to make unilaterally mid-seal.
 change), needs an explicit native ruling coordinated with the
 session-semantics decision before execution; does not block campaign
 COMPLETE since no shipped behavior depends on the name.
+
+### W6 — Task 9 (live E2E on the deployed connector)
+
+**Deploy confirmed live and running this wave's code.** PR #691 merged
+(`d0e8eb29`); `Build & Deploy Web` + `Build & Deploy MCP` both succeeded;
+`amjis-web-01083-kwp` and `amjis-mcp-00448-6sp` both carry
+`commit-sha=d0e8eb29204c6fb738c4eddaa16f8b294a34ee3e` — exactly `main`'s
+merge commit, confirmed via `gcloud run revisions describe`. The MCP
+service's `/health` endpoint reports `"tools":122`, matching the deployed
+`server.ts`'s `REGISTERED_TOOL_COUNT = 122` constant exactly (120 base +
+D-4b's `mechanism_retrodiction` + this wave's `prashna_ask`/
+`prashna_status`) — genuine evidence the new tools registered successfully
+in production, not just that CI passed. Auth is confirmed still gated (an
+unauthenticated `tools/list` call returns `401 Unauthorized`, not a leak).
+Cloud Run boot logs for the new revision are clean, no fatal errors.
+
+**Honest limitation, not silently worked around:** this session's own
+`marsys-jis-direct` MCP connection was established before this redeploy
+(same class of caveat W5's close hit) — `prashna_ask`/`prashna_status`
+don't appear in this session's connected tool list without a reconnect
+this session cannot perform, and no valid bearer credential for the
+deployed connector is accessible in this environment (checked local `.env`
+files and CI secrets — `TAP_MCP_SERVER_URL`/`TAP_MCP_SMOKE_BEARER_TOKEN`
+are both unset, confirming LIVE-mode smoke testing was never wired up for
+this repo, not just unavailable this session). Native ruling (2026-07-22):
+the full authenticated `tools/call` round-trip (job_id → `prashna_status` →
+full result) will be run by the Cowork operator from an already-
+authenticated live connector session, as the independent confirmation
+promised since W3 — not fabricated or worked around here. **Carried to §H
+as a named residual, does not block V6 ACCEPT:** "prashna_ask end-to-end
+(job_id → prashna_status → full result) pending an entitled connector
+session; underlying engine independently verified live via the consult
+route across this campaign; tool not yet visible on the expert-profile
+connector — confirm it surfaces on a consult-scoped connection." Flagged
+as the single highest-priority post-seal verification item.
