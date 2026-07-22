@@ -125,4 +125,123 @@ principle was extended to.
 
 ---
 
-*End of RESOLVER_RULINGS.md v1.0 (RC-09 entries). Next lane appends below this line.*
+---
+
+## Ruling RC-10-001 — `ganita_structural_get` DEFERRED (facet-multiplexed dispatcher, not a mechanical bridge entry)
+
+**Date:** 2026-07-22
+**Residual:** RC-10 (R-9) — Cluster 4, `RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md` §E
+**Resolver authority cited:** §D.5's residual-disposition authority ("Resolver-disposition each
+un-bridged tool with rationale", RC-10's own DONE bar), applying the same evidence-first
+discipline RC-09's dark-table rulings established (per-item concrete finding, not a default
+withholding).
+
+**Ruling:** `ganita_structural_get` remains unmapped in `LIVE_TOOL_TO_RETRIEVAL`, DEFERRED, not
+force-mapped. Evidence: it is a 13-facet dispatcher (`STRUCTURAL_FACET_URI` in
+`register_p1_ganita.ts`) routing to a DIFFERENT registry URI per facet, and the Vidhi floor
+primitives that declare this `live_tool` do not uniformly carry a `facet` in `tool_args` (e.g.
+`bhava_condition`'s is `{chart_id, house}` — no facet at all, with its own `fallback_face`
+documenting a different intended capability, `ganita_chart_facts_get(category=bhava)`). A single
+static URI mapping would silently serve the wrong data for most callers — the exact
+anti-laundering failure §N.6/B.10 forbid, and the precise class of bug `register_p1_ganita.ts`'s
+own R-17 serve-time assertion exists to catch on the MCP side. Full evidence:
+`NAMESPACE_COVERAGE_v2_0.md` §5 (RC-10-001).
+
+**Disposition:** DEFERRED, honestly reported via `unmappedPrimitives` (never dropped silently,
+never force-mapped to a plausible-looking but wrong URI). **Revisit condition:** a future lane
+adds facet-aware resolution to `compileFloorForPlan` (deriving the correct facet per
+`primitive_id` and selecting the matching `STRUCTURAL_FACET_URI` entry) — real compiler
+engineering, out of a bridge-extension's mechanical scope.
+
+## Ruling RC-10-002 — `kala_temporal_bundle` DEFERRED (no registry capability exists; standing documented gap)
+
+**Date:** 2026-07-22
+**Residual:** RC-10 (R-9)
+**Resolver authority cited:** §D.5's residual-disposition authority, citing doctrine already on
+record (per §D.5's requirement that a WONTFIX/DEFERRED disposition cite existing doctrine, not
+invent a new reason).
+
+**Ruling:** `kala_temporal_bundle` remains unmapped, DEFERRED. This is not a new finding — it is
+the formal recording of a gap already documented verbatim in the codebase at TWO independent
+sites: `platform-mcp/src/server.ts:83-84` ("KEYSTONE REQUEST: kala_temporal_bundle... has no
+registry primitive. REQUEST to retrieval fork: expose 'kala_temporal_bundle' capability.") and
+`platform-mcp/src/tools/register_p1_aliases.ts`'s header "DOCUMENTED DEFERRALS" list, item 6
+("kala_temporal_bundle → kala_bundle_get [kala sidecar composite — multi-subsystem gather]").
+No retrieval-registry capability of this shape (a composite gather across timeline/convergence/
+obstruction/snapshot) exists anywhere in `platform/src/lib/retrieval/registry/layers/**` — this
+is a sidecar-only MCP capability by original design, not a bridging oversight.
+
+**Disposition:** DEFERRED, honestly reported via `unmappedPrimitives`. **Revisit condition:** the
+retrieval-registry fork builds the requested composite L3 Kāla capability — new-capability
+construction, out of a residual bridge-extension's scope; belongs to the registry build track.
+
+**Code changes this ruling accompanies:** 10 of the original 12 unmapped `live_tool` names (all
+EXCEPT these two) were mechanically bridged in `compiled_floor_adapter.ts`'s
+`LIVE_TOOL_TO_RETRIEVAL` map, each verified as a genuine 1:1 concept match (5 of the 10
+independently confirmed by reading the corresponding MCP tool's own handler body to confirm it
+calls the identical registry URI). Full per-tool evidence: `NAMESPACE_COVERAGE_v2_0.md`.
+Coverage: 11/23 → 21/23 mechanically bridged; 23/23 accounted for (2 DEFERRED with rationale,
+zero silent gaps).
+
+> **Correction (2026-07-23, noted per this ledger's own correction-of-factual-error allowance):**
+> the "10 of the original 12" / "21/23" figures above counted `ganita_condition_get` as one of the
+> 10 genuine 1:1 matches. Independent verification (`VERIFY_RC-10.md`) found this was NOT a
+> genuine 1:1 match — see Ruling RC-10-003 below, which DEFERS `ganita_condition_get` alongside
+> `ganita_structural_get`. Corrected figures: **9** of the original 12 bridged, **20/23**
+> mechanically bridged, **3 DEFERRED** (not 2). This paragraph's original text is left unedited
+> above per the ledger's append-only discipline; RC-10-003 is the authoritative correction.
+
+## Ruling RC-10-003 — `ganita_condition_get` DEFERRED (facet-multiplexed dispatcher, identical case to RC-10-001; corrects a REJECTED bridge entry)
+
+**Date:** 2026-07-23
+**Residual:** RC-10 (R-9) — Cluster 4, `RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md` §E
+**Resolver authority cited:** §D.5's residual-disposition authority ("Resolver-disposition each
+un-bridged tool with rationale"), applying the same evidence-first discipline RC-09's dark-table
+rulings and RC-10-001 already established (per-item concrete finding, not a default withholding).
+
+**Context:** the RC-10 close originally force-mapped `ganita_condition_get` to
+`marsys://tool/L1/get_condition_composite` in `LIVE_TOOL_TO_RETRIEVAL`, on the mistaken premise
+that the MCP tool "talks to the same L1 condition-composite writer output." An independent
+verifier (`VERIFY_RC-10.md`, 2026-07-23) REJECTED this as a wrong-data laundering defect. This
+ruling formally corrects the disposition to DEFERRED, matching RC-10-001's treatment of the
+structurally identical `ganita_structural_get`.
+
+**Ruling:** `ganita_condition_get` is DEFERRED, not force-mapped. Evidence (full detail:
+`VERIFY_RC-10.md`, `NAMESPACE_COVERAGE_v2_0.md` §4/§5):
+
+1. The MCP handler (`platform-mcp/src/tools/register_p1_ganita.ts` ~L663) is a **3-facet
+   dispatcher** over `CONDITION_FACET_URI` (`dignity → get_dignity`, `avasthas → get_avasthas`,
+   `karakas → get_karakas`, default facet `dignity`) — it never calls `get_condition_composite`.
+2. `get_condition_composite.ts`'s own header states verbatim that `ganita_condition_get`'s facets
+   "all read chart_facts directly, not this composite" — direct source-documentation contradiction
+   of the rejected mapping.
+3. Six Vidhi floor primitives declare this `live_tool` (`bhavesha_condition`, `karaka_condition`,
+   `chara_karaka_read`, `dignity_scan`, `arudha_read`, `karakamsa_read` — `registry_data.ts`
+   L47/59/107/230/350/472); `ga_condition_composite`'s columns contain no karaka assignment, no
+   arudha, and no karakamsa data, so 4 of the 6 (`karaka_condition`, `chara_karaka_read`,
+   `arudha_read`, `karakamsa_read`) compiled onto the web door would silently return rows that do
+   not contain the concept the primitive asked for — the anti-laundering failure §N.6/B.10 forbid.
+
+A single static URI mapping cannot be correct here — the Vidhi modes
+(lord/karaka/chara_karaka/dignity/arudha/karakamsa) do not even correspond 1:1 to the tool's own
+3-facet enum, let alone to `get_condition_composite`'s schema. This is the identical failure
+shape RC-10-001 already ruled DEFERRED for `ganita_structural_get`; treating the two differently
+was the defect this ruling corrects.
+
+**Disposition:** DEFERRED, honestly reported via `unmappedPrimitives` (never dropped silently,
+never force-mapped to a plausible-looking but wrong URI). **Revisit condition:** identical to
+RC-10-001 — a future lane adds facet/mode-aware resolution to `compileFloorForPlan` (deriving the
+correct facet per `primitive_id` and selecting the matching `CONDITION_FACET_URI` entry, noting
+the Vidhi modes do not currently map onto the tool's facet enum, so a correct 1:1 does not exist
+yet) — real compiler engineering, out of a bridge-extension's mechanical scope.
+
+**Code changes this ruling accompanies:** the `ganita_condition_get: 'marsys://tool/L1/
+get_condition_composite'` entry was removed from `LIVE_TOOL_TO_RETRIEVAL` in
+`compiled_floor_adapter.ts`; the comment block there and `NAMESPACE_COVERAGE_v2_0.md` (now v2.1)
+were corrected throughout. **Coverage corrected: 21/23 → 20/23 mechanically bridged; 23/23
+accounted for (3 DEFERRED — structural, temporal_bundle, condition — zero silent gaps).**
+
+**Subject to verifier review:** yes, per §D.5's standing requirement — this ruling is itself the
+record of a verifier-driven correction and remains open to further review.
+
+*End of RESOLVER_RULINGS.md (RC-09/RC-10 entries). Next lane appends below this line.*
