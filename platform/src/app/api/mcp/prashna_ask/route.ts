@@ -84,6 +84,8 @@ import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/co
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
+import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
+import { synthesizeReading } from '@/lib/pipeline/prashna_ask_synthesis'
 
 // Wall-clock generous enough for the elevated super_admin cost cap (300s) plus
 // margin for the HTTP round trip; the resolved per-entitlement cap enforces the
@@ -418,7 +420,53 @@ export async function POST(request: Request) {
         judgmentFlags.push('planned_tools_unresolved')
       }
 
+      // W6.2 fix-cycle (native-directed, live E2E trace 980e8181): a tool that
+      // dispatched successfully (status:'done', no error) but returned zero rows is
+      // NOT the same thing as "nothing was wrong" — it can mean a floor item's query
+      // genuinely matched nothing for this chart (fine), or it can mean a filter/param
+      // bug silently returning an empty-but-not-erroring result (the exact class of bug
+      // this fix-cycle found in ensureDashaContextFloor). Per §N.6 ("an honest empty
+      // result is reported via flags, never silently substituted"), this must always be
+      // visibly disclosed, not left for a caller to notice by reading every row of
+      // tools_dispatched themselves.
+      const emptyResultTools = toolEventLog
+        .filter((t) => t.status === 'done' && t.result_count === 0)
+        .map((t) => t.tool_name)
+      if (emptyResultTools.length > 0) {
+        judgmentFlags.push('empty_tool_results')
+      }
+
       const isPartial = costCapTripped !== null || unresolvedTools.length > 0
+
+      // ── Synthesis (W6.2 fix-cycle) ────────────────────────────────────────────
+      // Turn the gathered floor evidence into an acharya-grade reading — a single,
+      // non-agentic LLM call (see prashna_ask_synthesis.ts's header for the design
+      // rationale). Runs even when a cap tripped or some floor items didn't resolve
+      // — the synthesis prompt is told about every gap explicitly (formatGapsBlock)
+      // so it discloses rather than fabricates over them; a partial-but-honest
+      // reading over whatever evidence was gathered is more useful than none.
+      controller.enqueue(
+        encoder.encode(JSON.stringify({ event: 'progress', tools_dispatched_count: toolEventLog.length, cap_ceiling: { maxCalls: costCaps.maxCalls, maxWallClockMs: costCaps.maxWallClockMs }, elapsed_ms: Date.now() - dispatchLoopStart, last_tool: 'synthesis' }) + '\n'),
+      )
+      const synthesis = await synthesizeReading({
+        // Guaranteed non-empty by POST's own guard clause before this closure ever
+        // runs — TS can't carry that narrowing across the function boundary.
+        chartId: chartId ?? '',
+        question: question ?? '',
+        queryClass: plan.query_class ?? 'unknown',
+        queryIntentSummary: plan.query_intent_summary ?? '',
+        evidence: toolResults,
+        unresolvedTools,
+        emptyResultTools,
+        strippedLeakedCapabilities: leakedTools,
+        capTripped: costCapTripped?.reason ?? null,
+      })
+      judgmentFlags.push(...synthesis.judgment_flags)
+
+      const { header: chartHeader, flags: chartHeaderFlags } = await fetchChartHeaderResolution(chartId ?? '').catch(
+        () => ({ header: null, flags: ['chart_header_unresolved'] }),
+      )
+      judgmentFlags.push(...chartHeaderFlags)
 
       const finalBody = {
         ok: true,
@@ -427,12 +475,15 @@ export async function POST(request: Request) {
         outcome: 'plan',
         query_class: plan.query_class,
         query_intent_summary: plan.query_intent_summary,
+        chart_header: chartHeader,
+        reading: synthesis.reading,
         completeness: {
           status: isPartial ? 'partial' : 'complete',
           tools_dispatched: toolEventLog,
           unserved_tools: unservedTools,
           unresolved_tools: unresolvedTools,
           stripped_leaked_capabilities: leakedTools,
+          empty_result_tools: emptyResultTools,
           cap_tripped: costCapTripped?.reason ?? null,
         },
         judgment_flags: judgmentFlags,

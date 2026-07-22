@@ -187,13 +187,17 @@ describe('ensureB11WholeChartReadFloor — B.11 invariant', () => {
     expect(authorized).toContain('marsys://tool/L2/query_signals')
     expect(authorized).toContain('marsys://tool/L2/traverse_chart_graph')
   })
-  it('predictive class injects vector_search + pattern_register, not traverse_chart_graph', () => {
+  it('predictive class injects vector_search (not traverse_chart_graph); pattern_register removed (W6.2 fix-cycle)', () => {
     const p = plan('predictive', [], ['marriage'])
     const authorized: string[] = []
     ensureB11WholeChartReadFloor(p, authorized)
     expect(authorized).toContain('marsys://tool/L2/query_signals')
     expect(authorized).toContain('vector_search')
-    expect(authorized).toContain('pattern_register')
+    // W6.2 fix-cycle: pattern_register was removed from the MCP whitelist in WP-1.7
+    // ("no registered cap") but this predictive-floor injection kept requiring it,
+    // guaranteeing an unresolved-tool gap on every predictive query. Must never
+    // reappear here without a real, resolvable capability backing it.
+    expect(authorized).not.toContain('pattern_register')
     expect(authorized).not.toContain('marsys://tool/L2/traverse_chart_graph')
     // domain-derived search query
     const vs = p.tool_calls.find((t) => t.tool_name === 'vector_search')
@@ -202,12 +206,17 @@ describe('ensureB11WholeChartReadFloor — B.11 invariant', () => {
 })
 
 describe('ensureDashaContextFloor', () => {
-  it('injects chart_facts_query dasha floor for predictive class', () => {
+  it('injects query_dasha_periods (W6.2 fix-cycle — NOT chart_facts_query, which never held dasha data)', () => {
     const p = plan('predictive')
     const authorized: string[] = []
     expect(ensureDashaContextFloor(p, authorized)).toBe(true)
+    // W6.2 fix-cycle: chart_facts_query with category:'dasha_vimshottari' always
+    // returned returned_count:0 live (dasha data lives in chart_dashas, served by
+    // query_dasha_periods → marsys://tool/L1/get_dashas, not chart_facts at all).
     const cf = p.tool_calls.find((t) => t.tool_name === 'chart_facts_query')
-    expect(cf?.params).toEqual({ category: 'dasha_vimshottari', limit: 50 })
+    expect(cf).toBeUndefined()
+    const dp = p.tool_calls.find((t) => t.tool_name === 'query_dasha_periods')
+    expect(dp?.params).toEqual({ system: 'vimshottari', level: 2 })
   })
   it('injects for holistic class', () => {
     const authorized: string[] = []
@@ -218,9 +227,9 @@ describe('ensureDashaContextFloor', () => {
     expect(ensureDashaContextFloor(plan('interpretive'), authorized)).toBe(false)
     expect(ensureDashaContextFloor(plan('factual'), authorized)).toBe(false)
   })
-  it('no-ops when chart_facts_query already authorized', () => {
-    const authorized = ['chart_facts_query']
-    expect(ensureDashaContextFloor(plan('predictive', ['chart_facts_query']), authorized)).toBe(false)
+  it('no-ops when query_dasha_periods already authorized', () => {
+    const authorized = ['query_dasha_periods']
+    expect(ensureDashaContextFloor(plan('predictive', ['query_dasha_periods']), authorized)).toBe(false)
   })
 })
 
@@ -255,11 +264,12 @@ describe('end-to-end floor adoption parity (route sequence)', () => {
     expect(authorized.some((t) => L2_5_TOOLS.includes(t))).toBe(true)
   })
 
-  it('predictive holistic query still gets predictive floor + dasha floor', () => {
+  it('predictive holistic query still gets predictive floor + dasha floor (W6.2: pattern_register removed, query_dasha_periods not chart_facts_query)', () => {
     const authorized = runFloor(tuple({ domains: ['marriage'], depth: 'deep' }), 'predictive')
     expect(authorized).toContain('vector_search')
-    expect(authorized).toContain('pattern_register')
-    expect(authorized).toContain('chart_facts_query')
+    expect(authorized).not.toContain('pattern_register')
+    expect(authorized).toContain('query_dasha_periods')
+    expect(authorized).not.toContain('chart_facts_query')
   })
 
   it('missing scope_tuple falls back to legacy floor (guarantees only)', () => {
@@ -270,6 +280,6 @@ describe('end-to-end floor adoption parity (route sequence)', () => {
     ensureDashaContextFloor(p, authorized)
     expect(authorized).toContain('marsys://tool/L2/query_signals')
     expect(authorized).toContain('vector_search')
-    expect(authorized).toContain('chart_facts_query')
+    expect(authorized).toContain('query_dasha_periods')
   })
 })
