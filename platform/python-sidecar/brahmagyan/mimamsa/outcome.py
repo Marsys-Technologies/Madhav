@@ -1,29 +1,31 @@
 """
 brahmagyan/mimamsa/outcome.py — Brahma L5 Mīmāṃsā — mimamsa.outcome (MI-5-3)
 
-Asset:    mimamsa.outcome
-Tool:     record_outcome(prediction_id, outcome_observed) →
-              {brier_score, updated_calibration, provenance_envelope}
-Table:    mimamsa_calibration (chart_id UUID, technique TEXT, ayanamsha_id TEXT,
-          brier_score FLOAT, sample_size INT, computed_at TIMESTAMPTZ,
-          source_citation TEXT NOT NULL)
+record_outcome() is RETIRED (CR-115/CR-128, 2026-07-23, native-directed) — see its own
+docstring below for the full reasoning. It now raises RecordOutcomeRetiredError
+unconditionally, before any DB access; the FastAPI route returns HTTP 410 Gone.
 
-Scoring:
-    Brier score = (confidence - outcome_binary)²
-    outcome_binary: TRUE → 1.0, FALSE → 0.0
-    Calibration = mean(brier_scores) per (technique, ayanamsha_id)
+query_calibration() remains LIVE and CORRECT (fixed separately, R-14 / CR-51/CR-30) — it
+reads the real, live mimamsa_calibration schema (match_id/prediction_id/event_id/
+score_timing/composite_score/brier_vs_null/...), written by the mi_pramana orchestrator
+writer. Untouched by this retirement.
 
-Contract (BRAHMA MI-5-3):
+Original asset docs (historical, for record_outcome's now-dead design — kept for context,
+not as a live contract):
+    Tool:     record_outcome(prediction_id, outcome_observed) →
+                  {brier_score, updated_calibration, provenance_envelope}  [RETIRED]
+    Table:    mimamsa_calibration (chart_id UUID, technique TEXT, ayanamsha_id TEXT,
+              brier_score FLOAT, sample_size INT, computed_at TIMESTAMPTZ,
+              source_citation TEXT NOT NULL)  — this shape never matched the live table;
+              the live mi_pramana-written schema is documented in query_calibration() below.
+
+Contract (BRAHMA MI-5-3, query_calibration only):
     - source_citation non-null on all rows (B.3 mandate)
     - provenance_envelope on every tool response
-    - Migration: brahma_mimamsa_outcome.sql (IF NOT EXISTS)
-    - Brier score range: [0.0, 1.0]
     - NO LEAKAGE: life_events must never feed into prediction generation;
       they feed only into calibration after outcomes are observed.
-      outcome_observed_at must be strictly after prediction created_at.
 
-Depends:  brahma_mimamsa_outcome.sql
-          phala_anchors (PH-4-1) for prediction resolution
+Depends:  mimamsa_calibration (written by mi_pramana, NOT by this module)
           FORENSIC v8.0 §5.1 DSH.V.023–028
           LEL v1.7 (life event ground-truth for calibration)
 
@@ -31,7 +33,7 @@ Native:   Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
           chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 
 Authors:  Silpī (MI-5-3 session)
-Version:  1.0 — 2026-06-04
+Version:  1.1 — 2026-07-23 (record_outcome retired; CR-115/CR-128)
 BRAHMA-MI-5-3
 """
 
@@ -77,6 +79,32 @@ VALID_AYANAMSHAS = frozenset({
 
 # Uninformative Brier baseline (random 50/50 at 0.5 confidence)
 UNINFORMATIVE_BRIER_BASELINE = 0.25
+
+# CR-115/CR-128 (2026-07-23, native-directed retirement): record_outcome()'s write path is
+# RETIRED. It targeted phala_anchors columns (id, confidence, prediction_state, outcome_note,
+# outcome_recorded_at, updated_at) that do not exist on the live table (live phala_anchors has
+# anchor_id/confidence_low/confidence_high/posterior/computed_at instead), and called the SQL
+# function update_calibration(), which wrote into a mimamsa_calibration(technique, ayanamsha_id,
+# brier_score, sample_size, source_citation, computed_at) shape the live table has never had.
+# Both column sets are phantom — this was disconnected, misleading dead code, not a working
+# write path with a schema bug.
+#
+# The REAL, live calibration write-surface is the mi_pramana / mi_gunanaka orchestrator writer
+# pair: mi_pramana matches mimamsa_predictions against mimamsa_event_provenance (LEL-derived,
+# admissible_clean) and writes the REAL, live mimamsa_calibration schema (chart_id, match_id,
+# prediction_id, event_id, score_timing/magnitude/domain/falsifier/manifestation,
+# composite_score, composite_verdict, leakage_status, brier_vs_null, ...); mi_gunanaka reads it
+# to produce mimamsa_multipliers. Both have already run for chart 482012f1 (asset_throughput
+# state=stale, last_built_at=2026-07-18) and correctly wrote ZERO calibration rows — an honest
+# result (no admissible-window overlap yet), not a broken pipeline. There is no manual
+# "record an outcome" step in the real pipeline; it is driven entirely by chart rebuild.
+#
+# record_outcome() is retired rather than repaired: repairing it to point at either live schema
+# would create a second, redundant write path into mimamsa_calibration that bypasses
+# mi_pramana's admissibility/held-out/leakage discipline — worse than leaving it dead. See
+# MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-115 (RESOLVED) / CR-128 (RESOLVED) for the full record.
+class RecordOutcomeRetiredError(RuntimeError):
+    """Raised unconditionally by record_outcome() — the endpoint is retired, not repaired."""
 
 
 # ── DB URL ────────────────────────────────────────────────────────────────────
@@ -150,221 +178,37 @@ def record_outcome(
     outcome_note: str | None = None,
 ) -> dict[str, Any]:
     """
-    Record an observed outcome for a prediction (phala_anchors row) and
-    recompute the Brier-score calibration for (technique, ayanamsha_id).
+    RETIRED (CR-115/CR-128, 2026-07-23, native-directed). Raises
+    RecordOutcomeRetiredError unconditionally, before any DB access — this function
+    NEVER touches phala_anchors or mimamsa_calibration anymore.
 
-    NO LEAKAGE invariant:
-        The prediction was written before the outcome was observed.
-        This function enforces that outcome_observed_at > created_at.
+    Why: this write path targeted phantom columns on both ends (phala_anchors.prediction_state/
+    outcome_note/outcome_recorded_at/updated_at; a mimamsa_calibration(technique, ayanamsha_id,
+    brier_score, ...) shape) that do not exist on the live schema, and was fully disconnected
+    from the REAL, live calibration write-surface: the mi_pramana / mi_gunanaka orchestrator
+    writer pair, which already matches mimamsa_predictions against mimamsa_event_provenance
+    (LEL-derived) and writes the real, live mimamsa_calibration schema. That real pipeline has
+    already run for chart 482012f1 and correctly produced zero calibration rows (no
+    admissible-window overlap yet) — an honest result, not a gap this function should try to
+    fill. There is no manual "record an outcome" step in the real architecture; calibration
+    ignites automatically as the orchestrator rebuilds a chart against a growing LEL corpus.
 
-    Algorithm:
-        1. Fetch the phala_anchors row by anchor_id = prediction_id.
-        2. Validate leakage guard (outcome must be recorded after prediction).
-        3. Compute individual Brier score = (confidence - outcome_binary)².
-        4. Set prediction_state to 'confirmed' (True) or 'falsified' (False).
-        5. Update outcome_note and outcome_recorded_at.
-        6. Call update_calibration() SQL function → mimamsa_calibration row.
-        7. Return {brier_score, updated_calibration, provenance_envelope}.
+    Repairing this function to target either live schema was deliberately rejected: it would
+    create a second, redundant write path into mimamsa_calibration that bypasses mi_pramana's
+    admissibility/held-out/leakage discipline — worse than leaving it retired.
 
-    Args:
-        prediction_id:    anchor_id from phala_anchors (or legacy prediction_id
-                          from prediction_ledger / mcp_predictions).
-        outcome_observed: True = event occurred (confirmed); False = did not occur (falsified).
-        technique:        Dasha/technique used for this prediction. Default 'vimshottari'.
-        ayanamsha_id:     Ayanamsha for chart computation. Default 'lahiri'.
-        chart_id:         Chart UUID (required; ValueError if None/empty).
-        outcome_note:     Optional operator annotation on the outcome.
-
-    Returns:
-        {
-            "ok": True,
-            "prediction_id": str,
-            "outcome_observed": bool,
-            "brier_score": float,         # [0.0, 1.0]
-            "updated_calibration": {
-                "technique": str,
-                "ayanamsha_id": str,
-                "brier_score": float,     # mean across all resolved predictions
-                "sample_size": int,
-                "computed_at": str,       # ISO datetime
-            },
-            "provenance_envelope": {
-                "source": "mimamsa.outcome",
-                "asset": "MI-5-3",
-                "algorithm": "Brier score = (confidence - outcome_binary)²",
-                "chart_id": str,
-                "prediction_id": str,
-                "technique": str,
-                "ayanamsha_id": str,
-                "recorded_at": str,       # ISO datetime
-                "l1_ground_truth": str,
-                "b3_citation_compliant": bool,
-                "leakage_guard_passed": bool,
-            }
-        }
+    See MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-115 / CR-128 for the full record.
 
     Raises:
-        ValueError:   Invalid prediction_id, technique, ayanamsha_id, or leakage violation.
-        RuntimeError: DATABASE_URL not configured.
+        RecordOutcomeRetiredError: always.
     """
-    if not chart_id or not str(chart_id).strip():
-        raise ValueError("chart_id is required and must be a non-empty string")
-    effective_chart_id = chart_id
-
-    if technique not in VALID_TECHNIQUES:
-        raise ValueError(
-            f"Invalid technique '{technique}'. Valid: {sorted(VALID_TECHNIQUES)}"
-        )
-    if ayanamsha_id not in VALID_AYANAMSHAS:
-        raise ValueError(
-            f"Invalid ayanamsha_id '{ayanamsha_id}'. Valid: {sorted(VALID_AYANAMSHAS)}"
-        )
-    if not prediction_id or not prediction_id.strip():
-        raise ValueError("prediction_id must be a non-empty string")
-
-    db_url = _get_db_url()
-    now = datetime.now(tz=timezone.utc)
-    recorded_at_iso = now.isoformat()
-
-    # Step 1–3: Fetch prediction row + compute Brier score
-    new_state = "confirmed" if outcome_observed else "falsified"
-
-    with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
-        # Fetch the phala_anchors row
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, chart_id, anchor_id, confidence, prediction_state,
-                       created_at, outcome_note
-                FROM public.phala_anchors
-                WHERE anchor_id = %s AND chart_id = %s
-                LIMIT 1
-                """,
-                [prediction_id, effective_chart_id],
-            )
-            row = cur.fetchone()
-
-        if row is None:
-            raise ValueError(
-                f"prediction_id '{prediction_id}' not found in phala_anchors "
-                f"for chart_id '{effective_chart_id}'"
-            )
-
-        # Leakage guard: outcome_recorded_at must be after created_at
-        created_at = row["created_at"]
-        if isinstance(created_at, str):
-            created_at = datetime.fromisoformat(created_at)
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-
-        leakage_guard_passed = now > created_at
-        if not leakage_guard_passed:
-            raise ValueError(
-                f"LEAKAGE VIOLATION: outcome_observed_at ({now.isoformat()}) "
-                f"must be strictly after prediction created_at ({created_at.isoformat()}). "
-                "Outcomes must never be recorded before or at the same instant as the prediction."
-            )
-
-        confidence = float(row["confidence"])
-        individual_brier = compute_brier_score(confidence, outcome_observed)
-
-        # Step 4–5: Update phala_anchors row
-        effective_note = outcome_note or (
-            "Confirmed: event occurred as predicted."
-            if outcome_observed else
-            "Falsified: falsifier condition triggered."
-        )
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE public.phala_anchors
-                SET prediction_state     = %s,
-                    outcome_note         = %s,
-                    outcome_recorded_at  = %s,
-                    updated_at           = %s
-                WHERE anchor_id = %s AND chart_id = %s
-                """,
-                [new_state, effective_note, now, now,
-                 prediction_id, effective_chart_id],
-            )
-
-        # Step 6: Call update_calibration() → mimamsa_calibration
-        calibration_row: dict[str, Any] | None = None
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT * FROM update_calibration(%s, %s, %s::UUID)",
-                    [technique, ayanamsha_id, effective_chart_id],
-                )
-                cal = cur.fetchone()
-                if cal:
-                    calibration_row = dict(cal)
-        except psycopg.errors.RaiseException as exc:
-            # update_calibration raises if no resolved predictions — this shouldn't
-            # happen since we just marked one, but guard defensively.
-            logger.warning(
-                "update_calibration raised (chart_id=%s technique=%s ayanamsha=%s): %s",
-                effective_chart_id, technique, ayanamsha_id, exc,
-            )
-            conn.rollback()
-            calibration_row = None
-
-        conn.commit()
-
-    # Build source_citation (B.3 mandate)
-    source_citation = (
-        f"MI-5-3 record_outcome: prediction_id={prediction_id} "
-        f"chart_id={effective_chart_id} technique={technique} "
-        f"ayanamsha={ayanamsha_id} outcome={'confirmed' if outcome_observed else 'falsified'} "
-        f"recorded_at={recorded_at_iso}; "
-        f"source: FORENSIC v8.0 §5.1 DSH.V.023-028; LEL v1.7"
+    raise RecordOutcomeRetiredError(
+        "record_outcome() is RETIRED (CR-115/CR-128, 2026-07-23, native-directed) — it targeted "
+        "phantom phala_anchors/mimamsa_calibration columns disconnected from the real pipeline. "
+        "Calibration is computed automatically by the mi_pramana -> mi_gunanaka orchestrator "
+        "writers from LEL-event provenance; there is no manual outcome-recording step. See "
+        "MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-115 / CR-128 (both RESOLVED 2026-07-23)."
     )
-
-    updated_calibration: dict[str, Any] = {}
-    if calibration_row:
-        updated_calibration = {
-            "technique": technique,
-            "ayanamsha_id": ayanamsha_id,
-            "brier_score": float(calibration_row.get("new_brier_score", UNINFORMATIVE_BRIER_BASELINE)),
-            "sample_size": int(calibration_row.get("new_sample_size", 1)),
-            "computed_at": (
-                calibration_row["inserted_at"].isoformat()
-                if hasattr(calibration_row.get("inserted_at"), "isoformat")
-                else str(calibration_row.get("inserted_at", recorded_at_iso))
-            ),
-        }
-    else:
-        # Fallback: individual score only, no aggregate calibration yet
-        updated_calibration = {
-            "technique": technique,
-            "ayanamsha_id": ayanamsha_id,
-            "brier_score": individual_brier,
-            "sample_size": 1,
-            "computed_at": recorded_at_iso,
-        }
-
-    return {
-        "ok": True,
-        "prediction_id": prediction_id,
-        "outcome_observed": outcome_observed,
-        "brier_score": individual_brier,
-        "prediction_state": new_state,
-        "updated_calibration": updated_calibration,
-        "provenance_envelope": {
-            "source": "mimamsa.outcome",
-            "asset": "MI-5-3",
-            "algorithm": "Brier score = (confidence - outcome_binary)²; "
-                         "calibration = mean(brier_scores) per (technique, ayanamsha_id)",
-            "chart_id": effective_chart_id,
-            "prediction_id": prediction_id,
-            "technique": technique,
-            "ayanamsha_id": ayanamsha_id,
-            "recorded_at": recorded_at_iso,
-            "l1_ground_truth": "FORENSIC v8.0 §5.1 DSH.V.023–028; LEL v1.7",
-            "b3_citation_compliant": bool(source_citation),
-            "leakage_guard_passed": leakage_guard_passed,
-        },
-    }
 
 
 # ── Calibration query ─────────────────────────────────────────────────────────
@@ -763,19 +607,8 @@ class QueryCalibrationRequest(BaseModel):
 @router.post("/mimamsa/record_outcome")
 def api_record_outcome(req: RecordOutcomeRequest) -> dict[str, Any]:
     """
-    MI-5-3 record_outcome tool.
-
-    Record an observed outcome for a phala_anchors prediction and update
-    the Brier-score calibration for (technique, ayanamsha_id).
-
-    Returns:
-        {ok, prediction_id, outcome_observed, brier_score, prediction_state,
-         updated_calibration, provenance_envelope}
-
-    Brier score = (confidence - outcome_binary)² ∈ [0.0, 1.0].
-    Lower = better calibration.
-
-    NO LEAKAGE: outcome must be recorded strictly after prediction creation.
+    RETIRED (CR-115/CR-128, 2026-07-23, native-directed). Always returns HTTP 410 Gone —
+    never touches the database. See record_outcome()'s docstring for the full reasoning.
     """
     try:
         return record_outcome(
@@ -786,6 +619,8 @@ def api_record_outcome(req: RecordOutcomeRequest) -> dict[str, Any]:
             chart_id=req.chart_id,
             outcome_note=req.outcome_note,
         )
+    except RecordOutcomeRetiredError as exc:
+        raise HTTPException(status_code=410, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:

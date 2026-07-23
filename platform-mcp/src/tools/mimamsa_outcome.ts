@@ -191,39 +191,34 @@ async function callSidecar<T>(
 // ── Core functions ─────────────────────────────────────────────────────────────
 
 /**
- * Record an observed outcome for a phala_anchors prediction.
- * Updates prediction_state to 'confirmed' or 'falsified',
- * computes the individual Brier score, and updates the calibration table.
+ * RETIRED (CR-115/CR-128, 2026-07-23, native-directed). Throws unconditionally, before
+ * ever contacting the sidecar — defense-in-depth alongside the sidecar's own retirement
+ * (outcome.py's record_outcome() / RecordOutcomeRetiredError, HTTP 410).
  *
- * NO LEAKAGE: outcome_observed_at must be strictly after prediction created_at.
- *
- * Brier score = (confidence - outcome_binary)²
- *   outcome_binary: True → 1.0, False → 0.0
- *   Range [0.0, 1.0]. Lower = better calibration.
- *   0.0 = perfect (fully confident, correct).
- *   1.0 = worst (fully confident, wrong).
- *   0.25 = uninformative baseline.
+ * Why: this call chain targeted phala_anchors/mimamsa_calibration columns that do not
+ * exist on the live schema and was fully disconnected from the real, live calibration
+ * write-surface (the mi_pramana -> mi_gunanaka orchestrator writer pair, which already
+ * runs automatically as part of a chart rebuild). There is no manual outcome-recording
+ * step in the real architecture. See MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-115 / CR-128
+ * (both RESOLVED 2026-07-23).
  */
 export async function recordOutcome(
-  predictionId: string,
-  outcomeObserved: boolean,
-  opts: {
+  _predictionId: string,
+  _outcomeObserved: boolean,
+  _opts: {
     technique?: string
     ayanamshaId?: string
     chartId?: string
     outcomeNote?: string
   } = {}
 ): Promise<RecordOutcomeResult> {
-  const body: Record<string, unknown> = {
-    prediction_id: predictionId,
-    outcome_observed: outcomeObserved,
-    technique: opts.technique ?? 'vimshottari',
-    ayanamsha_id: opts.ayanamshaId ?? 'lahiri',
-  }
-  if (opts.chartId) body.chart_id = opts.chartId
-  if (opts.outcomeNote) body.outcome_note = opts.outcomeNote
-
-  return callSidecar<RecordOutcomeResult>('/api/compute/mimamsa/record_outcome', body)
+  throw new Error(
+    'record_outcome is RETIRED (CR-115/CR-128, 2026-07-23, native-directed) — it targeted ' +
+      'phantom phala_anchors/mimamsa_calibration columns disconnected from the real pipeline. ' +
+      'Calibration is computed automatically by the mi_pramana -> mi_gunanaka orchestrator ' +
+      'writers from LEL-event provenance; there is no manual outcome-recording step. See ' +
+      'MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-115 / CR-128 (both RESOLVED 2026-07-23).'
+  )
 }
 
 /**
@@ -275,15 +270,13 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
 
   server.tool(
     'record_outcome',
-    'Record an observed outcome for a prediction and update Brier-score calibration (MI-5-3).\n\n' +
-      'Brier score = (confidence - outcome_binary)² ∈ [0.0, 1.0].\n' +
-      'Lower = better calibration. 0.0 = perfect. 0.25 = uninformative baseline. 1.0 = worst.\n\n' +
-      'Sets prediction_state to "confirmed" (occurred) or "falsified" (did not occur).\n' +
-      'Recomputes mean Brier calibration for (technique, ayanamsha_id).\n\n' +
-      'NO LEAKAGE: life_events feed only into calibration after outcome is observed —\n' +
-      'never into prediction generation. Leakage guard enforced.\n\n' +
-      'L1 ground-truth: FORENSIC v8.0 §5.1 DSH.V.023–028 + LEL v1.7.\n' +
-      'BRAHMA-MI-5-3 | mimamsa.outcome contract.',
+    '[DEPRECATED — RETIRED, CR-115/CR-128, 2026-07-23] This tool always fails. It used to ' +
+      'target phala_anchors/mimamsa_calibration columns that do not exist on the live schema, ' +
+      'disconnected from the real calibration pipeline. Calibration is computed automatically ' +
+      'by the mi_pramana -> mi_gunanaka orchestrator writers from LEL-event provenance as part ' +
+      'of a normal chart rebuild — there is no manual outcome-recording step. To inspect current ' +
+      'calibration state, use query_calibration / mimamsa_calibration_get instead. See ' +
+      'MARSYS_DEFECT_GAP_REGISTER_v2_0.md CR-115 / CR-128 (both RESOLVED) for the full record.',
     {
       prediction_id: z
         .string()
