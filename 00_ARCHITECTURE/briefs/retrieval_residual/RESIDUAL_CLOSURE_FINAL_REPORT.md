@@ -46,7 +46,7 @@ open, with the exact unblock condition named, exactly as the brief's own §D.6/�
 | RC-13 | R-4 | **CLOSED** | `session_pin` → `provenance_stamp` rename across ~13 files, ratified by the Resolver citing the D-16 session-semantics doctrine; full suite green, zero behavior delta; `PARIPRASHNA_TARGET_ARCHITECTURE` vocabulary coordinated. Deployed `651c6478`. |
 | RC-14 | R-5 | **BLOCKED** (sole permitted open item) | D-4b reconfirmed genuinely active at every checkpoint (PRs #708, #709, #712, #717 merged to `main` mid-campaign). `impl/w5-breaking` additionally found ~26k lines stale, predating the entire W6 body of work — not "ready to land in one command." Unblock condition: D-4b verified quiet (live check, not a stale ledger) AND the flip rebuilt against current `main`. |
 | RC-15 | R-6 | **CLOSED** | 18 workflow worktrees removed; 23 `res/*`/`docs/rc-*` branches deleted local+origin (each confirmed merged); 2 remaining merged W6.x fix branches deleted. `git worktree list`: only `main` + one legitimately-active D-4b worktree (untouched) + one unrelated pre-existing worktree outside scope. |
-| RC-16 | seal | **CLOSED** | This report; `FINAL_REPORT.md` §H.6 rewritten; `CAPABILITY_MANIFEST.json` regenerated; `CURRENT_STATE_v1_0.md` §2 note added (read-only on D-4b); `SESSION_LOG.md` appended; campaign status flipped to COMPLETE. |
+| RC-16 | seal | **CLOSED** | This report; `FINAL_REPORT.md` §H.6 rewritten; `CURRENT_STATE_v1_0.md` §2 note added (read-only on D-4b); `SESSION_LOG.md` appended; campaign status flipped to COMPLETE. `CAPABILITY_MANIFEST.json` regeneration was attempted (`npm run manifest:build`) then deliberately reverted after it was found to introduce 10 HIGH-severity fingerprint-mismatch drift findings for files this campaign never touched (a pre-existing generator/tracking-sync gap surfaced by, not caused by, the rebuild — see §5 below); no residual in this campaign actually required a manifest change, so the safe choice was to leave it exactly as `main` already had it and flag the gap for a dedicated future session instead of forcing a fix under this seal's own time pressure. |
 | RC-17 (new, §G) | discovered by RC-02 | **CLOSED** (2 fix cycles) | Web-door dasha-anchoring hallucination. Fix-cycle 1 was independently verifier-ACCEPTED, merged, and deployed (`7dcffa91`) — and a conductor-performed live post-deploy re-check found it still present in a new, worse form (fabricated "as per your request" hedge + wrong "actual current period" claim, apparent cross-chart pattern bleed). Fix-cycle 2 rewrote the temporal-anchor wording (removed the imperative "treat this as" framing), deployed `ee76ff47`; the conductor performed the verifier-mandated ≥5-run live production re-probe: 5/5 clean, zero hedge-pattern hits. See `RC-17_WEB_DASHA_HALLUCINATION_v1_0.md` §12 for the full evidence + raw SSE transcripts. |
 
 ## §3 — The campaign's central discipline, demonstrated
@@ -106,6 +106,25 @@ code being present.
 - Local checkout: clean (verified via `git status --porcelain` immediately before this report
   was written), tracking `origin/main` exactly, no uncommitted campaign artifacts remaining
   outside what this seal's own PR carries.
+- **`CAPABILITY_MANIFEST.json` regeneration attempted, then deliberately reverted.** RC-16's
+  own instruction called for regenerating the manifest; `npm run manifest:build` was run and
+  produced a new manifest. Before committing it, a routine drift-detector sanity check (run
+  correctly from the repo root, matching CI's invocation exactly) surfaced 10 new HIGH-severity
+  `fingerprint_mismatch` findings, none for any file this campaign touched — every one was a
+  pre-existing `06_LEARNING_LAYER`/`035_DISCOVERY_LAYER` schema/register file whose on-disk
+  content is byte-identical before and after the rebuild, but whose *declared* fingerprint (read
+  from `CAPABILITY_MANIFEST.json`, per `CLAUDE.md`'s own noted manifest-mode default) the
+  regeneration recomputed differently than `drift_detector.py`'s own hashing expects — a
+  pre-existing generator/checker sync gap the rebuild surfaced, not a defect this campaign
+  introduced. Baseline `main` (pre-rebuild) drift-checks clean at `exit=3` (216 MEDIUM/LOW
+  findings, the project's own long-standing accepted baseline); the regenerated manifest flipped
+  that to `exit=2` (225 findings, 10 newly HIGH) — a hard CI failure. Since zero residuals in
+  this campaign actually required a manifest content change (no new/removed/renamed canonical
+  artifact from this campaign's own work needed reflecting), the regenerated manifest was
+  reverted to `main`'s existing version rather than forcing a fix into this seal under time
+  pressure. **This is a real, pre-existing gap worth a dedicated future session** (the manifest
+  generator's fingerprint algorithm and `drift_detector.py`'s fingerprint check need to agree on
+  what they're hashing) — flagged here rather than silently worked around.
 
 ## §6 — Independent fact-check
 
