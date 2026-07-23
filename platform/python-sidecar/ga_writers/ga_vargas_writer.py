@@ -232,7 +232,7 @@ D2700_SUB_RISHIS = D150_RISHIS  # Same list at finer granularity
 # Karya-bhava (signification) per varga
 VARGA_KARYA = {
     1:  "lagna_karya",   2: "wealth_karya",   3: "siblings_karya",
-    4:  "home_karya",    7: "spouse_karya",   9: "dharma_karya",
+    4:  "home_karya",    7: "progeny_karya",   9: "dharma_karya",
     10: "career_karya",  12: "liberation_karya", 16: "vehicles_karya",
     20: "spirituality_karya", 24: "education_karya", 27: "strength_karya",
     30: "misfortune_karya", 40: "maternal_karya", 45: "paternal_karya",

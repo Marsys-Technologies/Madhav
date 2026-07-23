@@ -130,6 +130,15 @@ class TestConstants:
         m = _mod()
         assert m.VIMSOPAKA_SHODA_WEIGHTS[1] == 3.5
 
+    def test_d7_karya_is_progeny_not_spouse(self):
+        """Regression (PRE_DARPANA_READINESS A-4): D7 Saptamsha is the progeny/
+        children significator, not spouse. The `progeny_deepdive` floor (VIDHI-
+        PURNATA) consumes this karya marker directly — a `spouse_karya` mislabel
+        here would pollute progeny answers with spouse semantics."""
+        m = _mod()
+        assert m.VARGA_KARYA[7] == "progeny_karya"
+        assert m.VARGA_KARYA[7] != "spouse_karya"
+
 
 # ── 2. Varga formula functions ────────────────────────────────────────────────
 
