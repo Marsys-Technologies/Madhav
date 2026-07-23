@@ -1,10 +1,10 @@
 ---
 artifact: RESIDUAL_CLOSURE_FINAL_REPORT.md
 canonical_id: RETRIEVAL_RESIDUAL_CLOSURE_FINAL_REPORT
-version: 1.0
+version: 1.1
 status: COMPLETE
 governed_by: RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md
-authored_by: Claude Code (Sonnet 5), conductor session, 2026-07-22/23
+authored_by: Claude Code (Sonnet 5), conductor session, 2026-07-22/23; RC-14 closure addendum 2026-07-23
 purpose: >
   The terminal artifact of the Retrieval Residual Closure campaign
   (native directive 2026-07-22). Presents the §H final-acceptance gate
@@ -24,8 +24,11 @@ residual left open by the Retrieval Plane Elevation campaign's own `FINAL_REPORT
 open — "carried forward" explicitly not a permitted terminal state.
 
 **Outcome: 16/16 named residuals (RC-01..RC-16) closed, plus one new residual (RC-17)
-discovered mid-campaign and closed. RC-14 is the sole permitted exception — BLOCKED, not
-open, with the exact unblock condition named, exactly as the brief's own §D.6/§J anticipated.**
+discovered mid-campaign and closed. RC-14 was left BLOCKED at this report's original seal
+(2026-07-22/23) per the brief's own §D.6/§J anticipated exception, then CLOSED in a
+follow-on session (2026-07-23) once D-4b's campaign-close commit (`cd5ad175`) landed and was
+live-reverified quiet. The residual register is now fully empty — 17/17 (16 original + RC-17)
+closed, zero open, zero BLOCKED.**
 
 ## §2 — Residual-by-residual disposition
 
@@ -44,7 +47,7 @@ open, with the exact unblock condition named, exactly as the brief's own §D.6/�
 | RC-11 | R-10 | **CLOSED** | CR-118 root-caused: `LegacyQueryPlanShape` (web door) and the MCP sidecar's primitive route never carried `chart_id`, so every `per_chart`-scoped tool hit its own guard before any DB round-trip. Fixed at both sites; regression tests reproduce the exact pre-fix symptom; `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-118 RESOLVED. PR #713, deployed `844a23a0`. |
 | RC-12 | R-7 | **CLOSED** | `authorizeChartAccess` existence check added ahead of the `super_admin` grant; non-existent `chart_id` now returns clean not-found; regression test; existing flows unaffected. Deployed `651c6478`. |
 | RC-13 | R-4 | **CLOSED** | `session_pin` → `provenance_stamp` rename across ~13 files, ratified by the Resolver citing the D-16 session-semantics doctrine; full suite green, zero behavior delta; `PARIPRASHNA_TARGET_ARCHITECTURE` vocabulary coordinated. Deployed `651c6478`. |
-| RC-14 | R-5 | **BLOCKED** (sole permitted open item) | D-4b reconfirmed genuinely active at every checkpoint (PRs #708, #709, #712, #717 merged to `main` mid-campaign). `impl/w5-breaking` additionally found ~26k lines stale, predating the entire W6 body of work — not "ready to land in one command." Unblock condition: D-4b verified quiet (live check, not a stale ledger) AND the flip rebuilt against current `main`. |
+| RC-14 | R-5 | **CLOSED** (2026-07-23, follow-on session) | D-4b's campaign-close commit `cd5ad175` confirmed on `main`; re-verified live (no active `wave/D-4b/*` work) immediately before merge, deploy mutex taken. Per native correction, `impl/w5-breaking` (found ~178 commits stale) was NOT landed directly — the flip was re-implemented fresh on `res/rc14-breaking-flip` against current `main` (stale branch used only as an intent reference, targets reconciled against a live grep of `canonical_faces.json`), merged PR #726 (`7a0954b4`). Live post-deploy evidence: all 43 legacy MCP names + the 6 pre-rename originals now return `Tool <name> not found`; the 6 DEFERRED renames (`catalog_charts_list`, `catalog_chart_select`, `session_recall`, `session_list`, `bodha_bundle_get`, `kala_bundle_get`) resolve live in the 102-tool `tools/list` surface; `query_spine_bundle` (web-door-only, reached via `/api/retrieval/capability`) returned a real pre-joined signal→window→anchor chain (15 signals, `activation_windows`, `source_citation`) for chart `482012f1`; `plan_retrieval` with a stale `client_capability_version` returned `capability_stale: true` + `tools_list_changed_emitted: true` against live `capability_version: "vidhi-2.0.0+r02b0d798b1d6"`. Two RC-05-class dead-tool regressions (`compiled_floor_adapter.ts` + `completeness_wiring.ts`, caused by the flip's `live_tool` repoints) found via full-suite re-run post-merge, fixed, independently re-verified. Full record: `RC-14_BREAKING_FLIP_v1_0.md`, `RC14_PRE_DEPLOY_BASELINE_v1_0.md`. |
 | RC-15 | R-6 | **CLOSED** | 18 workflow worktrees removed; 23 `res/*`/`docs/rc-*` branches deleted local+origin (each confirmed merged); 2 remaining merged W6.x fix branches deleted. `git worktree list`: only `main` + one legitimately-active D-4b worktree (untouched) + one unrelated pre-existing worktree outside scope. |
 | RC-16 | seal | **CLOSED** | This report; `FINAL_REPORT.md` §H.6 rewritten; `CURRENT_STATE_v1_0.md` §2 note added (read-only on D-4b); `SESSION_LOG.md` appended; campaign status flipped to COMPLETE. `CAPABILITY_MANIFEST.json` regeneration was attempted (`npm run manifest:build`) then deliberately reverted after it was found to introduce 10 HIGH-severity fingerprint-mismatch drift findings for files this campaign never touched (a pre-existing generator/tracking-sync gap surfaced by, not caused by, the rebuild — see §5 below); no residual in this campaign actually required a manifest change, so the safe choice was to leave it exactly as `main` already had it and flag the gap for a dedicated future session instead of forcing a fix under this seal's own time pressure. |
 | RC-17 (new, §G) | discovered by RC-02 | **CLOSED** (2 fix cycles) | Web-door dasha-anchoring hallucination. Fix-cycle 1 was independently verifier-ACCEPTED, merged, and deployed (`7dcffa91`) — and a conductor-performed live post-deploy re-check found it still present in a new, worse form (fabricated "as per your request" hedge + wrong "actual current period" claim, apparent cross-chart pattern bleed). Fix-cycle 2 rewrote the temporal-anchor wording (removed the imperative "treat this as" framing), deployed `ee76ff47`; the conductor performed the verifier-mandated ≥5-run live production re-probe: 5/5 clean, zero hedge-pattern hits. See `RC-17_WEB_DASHA_HALLUCINATION_v1_0.md` §12 for the full evidence + raw SSE transcripts. |
@@ -66,10 +69,10 @@ code being present.
 
 ## §4 — §H final acceptance gate
 
-1. **Every RC-01..RC-16 VERIFIER-ACCEPTED, or RC-14 the single formally-BLOCKED item.** ✅ —
-   see §2 table above. Nothing else is open.
-2. **`FINAL_REPORT.md` §H.6 residual table EMPTY (all CLOSED, or RC-14 BLOCKED-documented).** ✅
-   — rewritten this session; every row CLOSED with cited evidence except R-5/RC-14.
+1. **Every RC-01..RC-16 VERIFIER-ACCEPTED; RC-14 CLOSED as of the 2026-07-23 follow-on
+   session.** ✅ — see §2 table above. Nothing open, nothing BLOCKED.
+2. **`FINAL_REPORT.md` §H.6 residual table EMPTY (all CLOSED).** ✅ — every row CLOSED with
+   cited evidence; RC-14's BLOCKED status superseded by its 2026-07-23 closure.
 3. **Live: full probe suite vs W0 baseline shows only intended changes; `prashna_ask` verified
    live on BOTH charts; two-door parity confirmed; load baseline recorded; discovery + remedy
    classes show no unresolved tools.** ✅ — RC-01 (both charts), RC-04 (`PROBE_DIFF_v2_0.md`),
@@ -140,13 +143,9 @@ and the Cloud Run revision history (`gcloud run revisions list --service=amjis-w
 
 ## §7 — What remains
 
-**RC-14 only.** `impl/w5-breaking` is not landed. It is not fully rebuilt against current
-`main` either (found ~26k lines stale mid-campaign; no rebuild was attempted given D-4b's
-continued activity and the risk of building against a moving target). The unblock condition is
-exact and named: D-4b verified genuinely quiet (no open D-4b PRs, no active `wave/D-4b/*` work,
-checked live, not from a stale ledger reading), at which point the flip must first be rebuilt
-against whatever `main` looks like at that time, then landed under the standard deploy-mutex
-discipline both campaigns already share.
+**Nothing.** RC-14 closed 2026-07-23 (see §2 table above) — the residual register is fully
+empty. `impl/w5-breaking` and `res/rc14-breaking-flip` are both deleted, local and origin;
+zero `res/*` branches remain.
 
 Two non-blocking recommendations are recorded in `STATE.md` and `RESOLVER_RULINGS.md` for a
 future session, neither of which was required to close any residual: (a) wire a production-side
@@ -154,6 +153,19 @@ hedge detector into `judgment_flags` so any future recurrence of RC-17's defect 
 mechanically rather than requiring another manual live audit; (b) the 22 unaudited
 `dualOutput(data)` sibling call sites recorded as CR-124.
 
+## §8 — RC-14 closure addendum (2026-07-23)
+
+RC-14 was closed in a dedicated follow-on session, native-directed once D-4b's campaign-close
+commit (`cd5ad175`) landed on `main`. Per the native's explicit correction, `impl/w5-breaking`
+(found ~178 commits behind `main` at that point — even staler than this report's original
+~26k-line estimate) was never landed; the flip was re-implemented fresh on
+`res/rc14-breaking-flip` against current `main`, reconciling every alias/flag target against a
+live grep of `canonical_faces.json` rather than trusting the stale branch's targets. Merged PR
+#726 (`7a0954b4`), which is now both `main` HEAD and the deployed SHA for `amjis-web` and
+`amjis-mcp` alike (`gcloud run services describe`, confirmed this session). Full live-trace
+evidence and the seal checklist are recorded in §2's RC-14 row above and in
+`RC-14_BREAKING_FLIP_v1_0.md`.
+
 ---
 
-*End of RESIDUAL_CLOSURE_FINAL_REPORT.md. Campaign status: COMPLETE.*
+*End of RESIDUAL_CLOSURE_FINAL_REPORT.md. Campaign status: COMPLETE. Zero residuals remain.*
