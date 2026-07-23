@@ -132,7 +132,14 @@ class TestKemadrumaAnaphaMutualExclusion:
         )
         assert _find_row(rows, "kemadruma") is None, "no dosha_label row may be written for a Kemadruma that never formed"
 
-    def test_kemadruma_fires_when_no_flanking_planet_and_moon_outside_kendra(self):
+    def test_kemadruma_cancelled_by_tara_graha_in_kendra_from_moon(self):
+        # Reproduces the native's chart shape (482012f1, CR-73): the Moon forms
+        # Kemadruma structurally (no flanking/conjunct planet, Moon outside
+        # kendra from lagna) but Jupiter sits in the 7th-from-Moon — a kendra
+        # FROM THE MOON. `brahma_dosha_catalog.kemadruma` lists "any planet in
+        # kendra from Moon or lagna" as a BPHS bhanga ground; the cancellation
+        # must catch it (the pre-CR-73 code omitted the kendra-from-Moon ground
+        # and let this fire, contradicting the Anapha/Sunapha firing authority).
         chart = {
             "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
             "grahas": [
@@ -148,11 +155,49 @@ class TestKemadrumaAnaphaMutualExclusion:
             ],
         }
         # Moon H3: 2nd-from-Moon=H4 (empty), 12th-from-Moon=H2 (Rahu only,
-        # exempt) — no genuine flanking planet; Moon not in kendra (1/4/7/10).
+        # exempt) — no genuine flanking planet; Moon not in kendra from lagna.
+        # Kendra from Moon (H3) = {H3, H6, H9, H12}: Jupiter (H9) is the 7th
+        # from the Moon → a tara-graha in a kendra from the Moon → bhanga.
+        finding = sut._detect_kemadruma(chart)
+        assert finding is not None, "Kemadruma still FORMS structurally (no flanking, Moon outside lagna kendra)"
+        verdict = sut._cancel_kemadruma(finding, chart)
+        assert verdict["bhanga_active"] is True
+        assert "kendra_from_moon" in verdict["bhanga_rule_fired"]
+        assert "Jupiter" in verdict["bhanga_rule_fired"]
+
+        rows = sut._build_dosha_rows(
+            NULL_CONN, chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            dosha_catalog=[_dosha_entry("kemadruma", "no planet in 2nd or 12th from Moon")],
+        )
+        row = _find_row(rows, "kemadruma")
+        assert row is not None, "a formed-but-cancelled dosha still emits an auditable row (B.10/§N.6)"
+        assert row["fact_value_jsonb"]["fires"] is False, "cancelled Kemadruma must not serve as a finding"
+        assert row["fact_value_jsonb"]["bhanga_active"] is True
+
+    def test_kemadruma_fires_only_when_no_kendra_support_at_all(self):
+        # Genuinely uncancelled Kemadruma — proves the kendra-support rule
+        # DISCRIMINATES (it does not simply always-cancel). All five tara-grahas
+        # sit in H6/H9/H12, which are NEITHER kendras from the Moon (Moon H2 ->
+        # kendras {H2,H5,H8,H11}) NOR kendras from the lagna ({H1,H4,H7,H10}),
+        # and none flanks/conjoins the Moon. Sun and the nodes are exempt.
+        chart = {
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 15.0},
+            "grahas": [
+                {"name": "Sun", "sign": "Pisces", "sign_id": 12, "house": 12, "longitude": 345.0, "retrograde": False},
+                {"name": "Moon", "sign": "Taurus", "sign_id": 2, "house": 2, "longitude": 40.0, "retrograde": False},
+                {"name": "Mars", "sign": "Virgo", "sign_id": 6, "house": 6, "longitude": 160.0, "retrograde": False},
+                {"name": "Mercury", "sign": "Virgo", "sign_id": 6, "house": 6, "longitude": 165.0, "retrograde": False},
+                {"name": "Jupiter", "sign": "Sagittarius", "sign_id": 9, "house": 9, "longitude": 255.0, "retrograde": False},
+                {"name": "Venus", "sign": "Sagittarius", "sign_id": 9, "house": 9, "longitude": 260.0, "retrograde": False},
+                {"name": "Saturn", "sign": "Pisces", "sign_id": 12, "house": 12, "longitude": 350.0, "retrograde": False},
+                {"name": "Rahu", "sign": "Gemini", "sign_id": 3, "house": 3, "longitude": 75.0, "retrograde": True},
+                {"name": "Ketu", "sign": "Sagittarius", "sign_id": 9, "house": 9, "longitude": 255.0, "retrograde": True},
+            ],
+        }
         finding = sut._detect_kemadruma(chart)
         assert finding is not None
         verdict = sut._cancel_kemadruma(finding, chart)
-        assert verdict["bhanga_active"] is False
+        assert verdict["bhanga_active"] is False, "no tara-graha in any kendra from Moon or lagna -> uncancelled"
 
         rows = sut._build_dosha_rows(
             NULL_CONN, chart, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
