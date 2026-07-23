@@ -1,12 +1,18 @@
 {
-  "generated_at": "2026-07-21T15:32:34.800Z",
+  "generated_at": "2026-07-23T20:16:05.987Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
   "vidhi_live_tool_bridge": {
-    "total": 23,
-    "mapped": 11,
-    "unmapped": 12,
+    "total": 30,
+    "mapped": 12,
+    "unmapped": 18,
     "entries": [
+      {
+        "name": "bodha_chart_digest_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
       {
         "name": "bodha_discoveries_get",
         "uri": "marsys://tool/L2/query_discoveries",
@@ -16,19 +22,28 @@
         ]
       },
       {
+        "name": "bodha_graph_subgraph_get",
+        "uri": "marsys://tool/L2/traverse_chart_graph",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "get_cgm_subgraph",
+          "cgm_graph_walk"
+        ]
+      },
+      {
         "name": "bodha_remedies_get",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
       },
       {
-        "name": "bodha_remedies_search",
+        "name": "bodha_signals_get",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
       },
       {
-        "name": "bodha_signals_get",
+        "name": "ganita_ayurdaya_get",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
@@ -60,6 +75,14 @@
         "resolution_kind": "canonical_reverse_alias",
         "via": [
           "query_dasha_periods"
+        ]
+      },
+      {
+        "name": "ganita_medical_get",
+        "uri": "marsys://tool/L1/get_medical_indications",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "get_medical_indications"
         ]
       },
       {
@@ -111,12 +134,28 @@
         ]
       },
       {
-        "name": "get_cgm_subgraph",
-        "uri": "marsys://tool/L2/traverse_chart_graph",
-        "resolution_kind": "mcp_alias_direct",
-        "via": [
-          "cgm_graph_walk"
-        ]
+        "name": "gochara_activation_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "gochara_election_avoidance_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "gochara_forecast_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_bundle_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
       },
       {
         "name": "kala_muhurta_get",
@@ -126,12 +165,6 @@
           "muhurta_finder",
           "query_muhurat"
         ]
-      },
-      {
-        "name": "kala_temporal_bundle",
-        "uri": null,
-        "resolution_kind": "unmapped",
-        "via": []
       },
       {
         "name": "kala_windows_get",
@@ -148,12 +181,6 @@
         ]
       },
       {
-        "name": "lel_query",
-        "uri": "marsys://tool/L5/lel_query",
-        "resolution_kind": "catalog_name_direct",
-        "via": []
-      },
-      {
         "name": "mimamsa_calibration_get",
         "uri": "marsys://tool/L5/query_calibration",
         "resolution_kind": "canonical_reverse_alias",
@@ -162,7 +189,27 @@
         ]
       },
       {
+        "name": "mimamsa_lel_query",
+        "uri": "marsys://tool/L5/lel_query",
+        "resolution_kind": "canonical_reverse_alias",
+        "via": [
+          "lel_query"
+        ]
+      },
+      {
+        "name": "phala_predictive_anchors_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
         "name": "ref_doshas_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "synth_tail_divergence_get",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
@@ -170,8 +217,8 @@
     ]
   },
   "canonical_faces_bridge": {
-    "total": 95,
-    "mapped": 39,
+    "total": 96,
+    "mapped": 40,
     "unmapped": 56,
     "entries": [
       {
@@ -196,6 +243,12 @@
         "name": "assess_wealth",
         "uri": "marsys://tool/L-DOMAIN/assess_wealth",
         "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "bodha_bundle_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
         "via": []
       },
       {
@@ -234,6 +287,14 @@
         "via": []
       },
       {
+        "name": "bodha_mechanisms_get",
+        "uri": "marsys://tool/L2/query_mechanisms",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "query_mechanisms"
+        ]
+      },
+      {
         "name": "bodha_quality_get",
         "uri": null,
         "resolution_kind": "unmapped",
@@ -265,6 +326,18 @@
       },
       {
         "name": "catalog_assets_list",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "catalog_chart_select",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "catalog_charts_list",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
@@ -433,12 +506,6 @@
         "via": []
       },
       {
-        "name": "holistic_bundle_chart_facts",
-        "uri": null,
-        "resolution_kind": "unmapped",
-        "via": []
-      },
-      {
         "name": "intent_classify",
         "uri": null,
         "resolution_kind": "unmapped",
@@ -448,6 +515,12 @@
         "name": "judgment_query",
         "uri": "marsys://tool/L-JUDGMENT/judgment_query",
         "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
+        "name": "kala_bundle_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
         "via": []
       },
       {
@@ -478,12 +551,6 @@
         "via": []
       },
       {
-        "name": "kala_temporal_bundle",
-        "uri": null,
-        "resolution_kind": "unmapped",
-        "via": []
-      },
-      {
         "name": "kala_windows_get",
         "uri": null,
         "resolution_kind": "unmapped",
@@ -501,18 +568,6 @@
         "name": "list_entities",
         "uri": "marsys://tool/L0/list_entities",
         "resolution_kind": "catalog_name_direct",
-        "via": []
-      },
-      {
-        "name": "list_my_charts",
-        "uri": null,
-        "resolution_kind": "unmapped",
-        "via": []
-      },
-      {
-        "name": "list_my_sessions",
-        "uri": null,
-        "resolution_kind": "unmapped",
         "via": []
       },
       {
@@ -596,12 +651,6 @@
       },
       {
         "name": "reading_notes_get",
-        "uri": null,
-        "resolution_kind": "unmapped",
-        "via": []
-      },
-      {
-        "name": "recall_session",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
@@ -787,7 +836,13 @@
         "via": []
       },
       {
-        "name": "select_chart",
+        "name": "session_list",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "session_recall",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
