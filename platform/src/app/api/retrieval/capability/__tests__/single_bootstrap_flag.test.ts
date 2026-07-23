@@ -65,22 +65,57 @@ afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
 })
 
-describe('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED — paused at false, flip pre-verified (2026-07-21)', () => {
-  it('DEFAULT_FLAGS carries the flag as false (paused, not abandoned — see feature_flags.ts doc comment)', async () => {
+describe('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED — flipped TRUE as the production default (RC-14, 2026-07-23)', () => {
+  it('DEFAULT_FLAGS carries the flag as true (RC-14 flip — D-4b quiet, w5-breaking landed)', async () => {
     const { DEFAULT_FLAGS } = await import('@/lib/config/feature_flags')
-    expect(DEFAULT_FLAGS.RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED).toBe(false)
+    expect(DEFAULT_FLAGS.RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED).toBe(true)
   })
 
-  it('configService.getFlag reads false with no env override present', async () => {
+  it('configService.getFlag reads true with no env override present (the new default)', async () => {
     delete process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED
+    const { configService } = await import('@/lib/config/index')
+    expect(configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')).toBe(true)
+  })
+
+  it('configService.getFlag reads false when explicitly forced off via env (the emergency-rollback path stays live-verified)', async () => {
+    process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED = 'false'
     const { configService } = await import('@/lib/config/index')
     expect(configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')).toBe(false)
   })
+})
 
-  it('configService.getFlag reads true when explicitly forced on via env (the flip stays live-verified while paused)', async () => {
-    process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED = 'true'
-    const { configService } = await import('@/lib/config/index')
-    expect(configService.getFlag('RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED')).toBe(true)
+describe('flag default (no env override) — single bootstrap is now the production path', () => {
+  beforeEach(() => {
+    // No MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED override — exercise the DEFAULT.
+    delete process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED
+  })
+
+  it('serves query_spine_bundle BY DEFAULT — RC-14 activated W5 L5\'s spine bundle via the flip', async () => {
+    const { POST } = await import('../route')
+    const res = await POST(
+      makeReq({ uri: 'marsys://tool/L-SPINE/query_spine_bundle', args: {} })
+    )
+    // The flip means catalog.ts is the sole registration path by default, so the
+    // spine bundle (registered only via catalog.ts) is now reachable with NO override.
+    expect(res.status).not.toBe(404)
+    const json = await res.json()
+    if (res.status !== 200) {
+      const message = JSON.stringify(json)
+      expect(message).not.toMatch(/Unknown capability URI/)
+    }
+  })
+
+  it('serves synth_compose_large_n BY DEFAULT — the reverse gap is closed under the flipped default', async () => {
+    const { POST } = await import('../route')
+    const res = await POST(
+      makeReq({ uri: 'marsys://tool/synthesis/compose_large_n', args: {} })
+    )
+    expect(res.status).not.toBe(404)
+    const json = await res.json()
+    if (res.status !== 200) {
+      const message = JSON.stringify(json)
+      expect(message).not.toMatch(/Unknown capability URI/)
+    }
   })
 })
 
@@ -135,7 +170,7 @@ describe('flag=true (forced on via override) — single bootstrap exclusively fr
   })
 })
 
-describe('flag=false (forced via explicit env override — also the current default) — legacy hand-maintained path stays reachable', () => {
+describe('flag=false (forced via explicit env override — the emergency-rollback path, no longer the default) — legacy hand-maintained path stays reachable', () => {
   beforeEach(() => {
     process.env.MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED = 'false'
   })
@@ -161,7 +196,7 @@ describe('flag=false (forced via explicit env override — also the current defa
     expect(json.error).toContain('Unknown capability URI')
   })
 
-  it('does NOT serve query_spine_bundle — W5 L5\'s capability is dormant under the paused default until the flip', async () => {
+  it('does NOT serve query_spine_bundle — W5 L5\'s capability is dormant only when the flag is force-rolled-back to false', async () => {
     const { POST } = await import('../route')
     const res = await POST(
       makeReq({ uri: 'marsys://tool/L-SPINE/query_spine_bundle', args: {} })
