@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.40
+version: 6.41
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,28 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.41 (2026-07-24, PRE-DARPANA READINESS pass — Tier A/B swarm, HONEST-OPEN close):
+    Executed `PRE_DARPANA_READINESS_v1_0.md`'s Tier A/B checklist ahead of UAT-DARPANA opening,
+    via a Sonnet-coordinator/Opus-step-up parallel swarm. **Tier A: 3/6 CLOSED** (A-1 PR #729
+    governance-gate merged `64318a2f`, root cause an ASCII-only regex in `schema_validator.py`
+    failing on diacritics; A-2 VIDHI-PŪRṆATĀ deploy+4-probe live-verify, image parity confirmed;
+    A-4 D7 `spouse_karya`→`progeny_karya` writer fix, rebuilt+verified live both charts, PR
+    #730), **1/6 OPEN honest** (A-3/CR-131 — sweep still 165/300, brief's "~600x faster resume"
+    premise checked and found false at ~6x actual; a second independent gap found in the
+    gochara serving tools' `DATABASE_URL`), **2/6 HALTED for native decision** (A-5 remedy-
+    engine, A-6 timing-anchor — both investigated, no bounded fabrication-free repair, accept-
+    as-dark recommended, disclosure verified live for both). **Tier B:** 2/5 PASS (B-3 CR-130
+    dark-flag, B-5 sealed-split untouched), 1/5 PASS-with-caveat (B-4 connector env), 1/5
+    PARTIAL with a new silent-empty finding (B-1 — `phala_predictive_anchors_get` empty with no
+    `empty_reason`/`known_gap`, present in every deepdive's machine band), 1/5 FAIL-as-specified
+    (B-2 — the Sat-Jupiter Apr-Aug 2027 standing-prediction claim not located on any live
+    surface). **Exit condition NOT met; UAT-DARPANA remains HELD.** Full evidence:
+    `PRE_DARPANA_READINESS_v1_1.md` (v1.0 superseded in place). Two decisions now pending
+    native ruling (A-5, A-6); A-3/CR-131 needs a longer session with write-DB/cockpit
+    credentials to re-dispatch, or a formal timeline re-scope. No FROZEN orchestrator,
+    L1-L5/calibration tables (beyond A-4's chart-scoped rebuild), or sealed split touched
+    (confirmed, B-5). last_session_id: PRE-DARPANA-READINESS-2026-07-24. predecessor_session:
+    VIDHI-PURNATA-2026-07-23.
   - v6.40 (2026-07-22, Retrieval Plane Elevation — Wave 6 "prashna_ask + Seal" docs-seal task):
     New §2 cross-campaign note recording W6's implementation-complete state, pending the
     native's V6 gate read of Task 16's (not-yet-written) `FINAL_REPORT.md`. Deployed:
@@ -5411,6 +5433,26 @@ block (post-rebuild era), and proceeds.
 > executing" via live branches/PRs — `git branch -a` / `gh pr list` at the time showed zero
 > `wave/D-4b/*` branches or PRs; recorded as a drift finding (`MARSYS_DEFECT_GAP_REGISTER_v2_0.md`
 > CR-119), annotated not reverted. Working branch for the open: `wave/D-4b/open`.
+>
+> 🔔 **CROSS-CAMPAIGN NOTE for the D-4b conductor (2026-07-24, from the concurrent
+> PRE-DARPANA READINESS pass — read-only note, this file's doctrine-wave banners above are
+> untouched): the readiness swarm ahead of UAT-DARPANA is CLOSED-HONEST-OPEN, not clean —
+> UAT-DARPANA remains HELD.** Full evidence: `PRE_DARPANA_READINESS_v1_1.md` (v1.0 superseded
+> in place); session record `SESSION_LOG.md` `PRE-DARPANA-READINESS-2026-07-24`. Tier A: 3/6
+> CLOSED (A-1 governance-gate diagnosis+merge PR #729/`64318a2f`; A-2 deploy+live-verify of
+> VIDHI-PŪRṆATĀ, image parity confirmed; A-4 D7 `spouse_karya`→`progeny_karya` writer fix,
+> rebuilt+verified live for 482012f1+1c826d5a, PR #730), 1/6 OPEN honest (A-3/CR-131 —
+> `ka_gochara_sweep` confirmed still 165/300, `state='error'`; the prior close's "~600x faster
+> post-memoization" resume estimate was checked against real timestamps and found **false**,
+> actual ~6x, meaning ~11+ more hours of Cloud Run time remain; independently, the gochara
+> serving tools have a second, separate gap — `DATABASE_URL not set` in their execution path),
+> 2/6 HALTED for native decision (A-5 remedy-engine CR-67/CR-69, A-6 timing-anchor CR-66/CR-37
+> — both investigated by Opus, no bounded fabrication-free repair found for either, accept-as-
+> dark recommended, disclosure verified live and correct for both). **Zero D-4b/`ka_gochara_
+> sweep`/gochara-serving files were modified by this pass** — A-3 was investigation + a failed
+> resume attempt only (no write-DB access, no cockpit API session reachable this session), not
+> a code or data change; this note exists so a fresh D-4b session isn't surprised by anything
+> here, because nothing here touched D-4b's surface. No action needed from D-4b.
 >
 > 🔔 **CROSS-CAMPAIGN NOTE for the D-4b conductor (2026-07-23, from the concurrent Retrieval
 > Residual Closure campaign — read-only note, this file's doctrine-wave banners above are
