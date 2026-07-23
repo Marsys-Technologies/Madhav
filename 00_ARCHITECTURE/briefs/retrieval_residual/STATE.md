@@ -42,7 +42,7 @@ immediately before each PR, never inside individual RC lane branches.
 | ID | Status | Branch(es) | Verifier verdict | Notes |
 |---|---|---|---|---|
 | RC-01 | **ACCEPTED (live)** | — | live traces confirmed | `prashna_ask` predictive/remedial classes verified live on both charts (482012f1, 1c826d5a): `chart_header` populated, correct dasha anchoring, `unresolved_tools:[]`, NO-LEAKAGE flag present, completeness receipt intact |
-| RC-02 | **OPEN — REJECTED (genuine FAIL)**, retry in progress | `res/rc02-two-door-parity` (original finding), `res/rc02-rc17-web-door-parity-and-dasha-fix` (fix, combined with RC-17) | FAIL (verified): web door served 2/16 floor items vs MCP door's 10/10, no `judgment_flags`/NO-LEAKAGE signal on web door at all | RC-11's chart_id fix (deployed) should close much of the floor gap; retry attempts full fix + re-verify |
+| RC-02 | **CLOSED via Resolver Ruling RC-02-001, merged+deployed** | `res/rc02-rc17-web-door-parity-and-dasha-fix` @ `4fc1b241` | ACCEPT (`ac9676ce`) + conductor Resolver ruling | DONE bar narrowed to shared-condition gate-flag parity (fixed, live-confirmed: `data-judgment-flags` SSE event live with `no_leakage_capabilities_stripped`) + measured floor-coverage improvement (2/16→8/16, RC-11 consequence). Full receipt-schema/item-set equality WONTFIX'd as genuine architectural difference. Merged via PR #716 (`7dcffa91`), deployed and SHA-confirmed. |
 | RC-03 | **ACCEPTED, merged+deployed** | `res/rc03-load-baseline` @ `e3d3f2f7` | ACCEPT | Live 4-point measurement via Native-Proxy-Resolver-adapted method (harness's own HTTP client had no reachable route/credential — confirmed, not a shortcut); 2-of-4 §9.7 axes covered (cache-hit W-28, fairness W-30 not measured — honestly disclosed); QoS no-thinning confirmed by direct inspection |
 | RC-04 | **ACCEPTED (fix-cycle 2), merged+deployed** | `res/rc04-census-probe-rerun` @ `266ea935` | ACCEPT (`e7559e16`), after REJECT (`5787cf94`) | Census+probe re-run genuinely un-blocked (prior "Next.js runtime" blocker was a shortcut, not real); 5 dark tables dispositioned; CR-122/CR-123/CR-124 recorded (not fixed, correctly out of scope); 2 more dead-pointer defects found+fixed along the way |
 | RC-05 | **ACCEPTED, merged+deployed** | `res/rc05-dead-tool-sweep` @ `07179367` | ACCEPT (`100e1051`) | `resonance_register`/`cluster_atlas` swept from discovery+remedial floors; live discovery+remedy traces both confirm `unresolved_tools:[]` |
@@ -57,7 +57,7 @@ immediately before each PR, never inside individual RC lane branches.
 | RC-14 | **EXPECTED BLOCKED** (D-4b active) | `impl/w5-breaking` | — | Branch found badly stale (~26k lines behind `main` — predates W6 synthesis/cost-cap/session_pin work entirely); not "ready to land in one command" as brief assumed. No risky rebuild attempted against a live-moving `main` while D-4b is active. Will close BLOCKED with this documented, per brief's own sanctioned exception. |
 | RC-15 | OPEN (after RC-02/RC-17 land) | — | — | Branch/worktree hygiene |
 | RC-16 | OPEN (last) | — | — | Final seal |
-| RC-17 (new, opened this session per §G) | OPEN, in progress with RC-02 | `res/rc02-rc17-web-door-parity-and-dasha-fix` | — | Web-door dasha-anchoring hallucination bug discovered during RC-02's live investigation (web synthesis said "Mercury MD / Saturn AD" for a chart whose correct anchoring — confirmed by both its own chart_header and the MCP door — is "Saturn MD / Rahu AD"); not covered by the 2df42b61 MCP-only fix |
+| RC-17 (new, opened this session per §G) | **OPEN — fix-cycle 1 REGRESSED, fix-cycle 2 in progress** | `res/rc02-rc17-web-door-parity-and-dasha-fix` @ `bd2c35e1` (fix-cycle 1, merged, insufficient); `res/rc17-fixcycle2-still-hallucinating` (fix-cycle 2, in progress) | fix-cycle 1: ACCEPT (`ac9676ce`) — **later found insufficient by the conductor's own deploy-gated live re-check** | **CRITICAL: fix-cycle 1's temporal-anchor fix was merged+deployed (`7dcffa91`) and its own verifier ACCEPTed it, but a live post-deploy check by the conductor found the hallucination still present in a new form** — synthesis now says "as per your request, we are treating your current period as Saturn MD/Rahu AD" (fabricating a nonexistent user request) and then "your chart's actual current period is Mercury MD/Saturn AD" (wrong — that is the NATIVE's dasha on a different chart entirely, apparent cross-chart pattern bleed). This is a genuine LLM instruction-following/hedging failure, not a simple missing-context bug; fix-cycle 2 is strengthening the anchor wording and investigating root cause. **The prior ACCEPT verdict was real but insufficient — the verifier tested the fix worked, not that no NEW hedge pattern could emerge; this is now the standard for RC-17's re-close: live re-check by an independent party after every fix.** |
 
 ## Wave close log
 
@@ -78,9 +78,13 @@ immediately before each PR, never inside individual RC lane branches.
 - **RC-04 fix-cycle 2**: ACCEPTED. Merged via PR #714 (`92113dbe`), deployed
   and SHA-confirmed on both `amjis-web` (`amjis-web-01104-5n2`) and
   `amjis-mcp` (`amjis-mcp-00452-r82`).
-- **RC-02+RC-17 retry**: in progress (first attempt errored on an
-  infrastructure connection drop before any task-specific commit; no work
-  lost; respawned once per brief §D.6).
+- **RC-02+RC-17 retry**: completed. RC-02 ACCEPTED and closed via Resolver
+  Ruling RC-02-001. RC-17 fix-cycle 1 ACCEPTED by its verifier. Both merged
+  via PR #716 (`7dcffa91`), deployed and SHA-confirmed
+  (`amjis-web-01106-259`).
+- **Post-deploy live re-check (conductor, per brief §I deploy-verification
+  step) found RC-17's fix-cycle 1 insufficient** — see Incident 4 below.
+  RC-17 reopened; fix-cycle 2 launched.
 
 ## Incidents (self-corrected)
 
@@ -108,11 +112,56 @@ immediately before each PR, never inside individual RC lane branches.
    `.../shared/__tests__/rc17_temporal_anchor.test.ts` untracked) observed
    after the RC-02/RC-17 retry launched — plausibly that agent's isolated
    worktree ended up pointing at/leaking into the primary directory rather
-   than a true isolated worktree. Left untouched (not staged, not
-   committed, not deleted) pending the retry's own completion and report;
-   will be reconciled once that workflow returns.
+   than a true isolated worktree. Resolved once the source branch's own
+   commit landed on `main` and the primary checkout's stray copy was
+   confirmed byte-identical to the merged version, then removed so the
+   primary checkout could fast-forward cleanly.
+4. **RC-17's fix-cycle 1 was independently verifier-ACCEPTED, merged, and
+   deployed to production — and was still wrong.** This is the most
+   important finding of the campaign and is recorded here in full rather
+   than quietly absorbed into a "fix-cycle 2" line. The verifier's ACCEPT
+   for fix-cycle 1 was itself well-evidenced (live pre-fix reproduction,
+   a faithful port of the known-working MCP-side fix pattern, 8 passing
+   regression tests) — the process was not sloppy. What actually happened:
+   the fix added a correct, factual temporal anchor to the synthesis
+   prompt, and the regression tests correctly proved that anchor text
+   reaches the model. What neither the implementer's regression tests nor
+   the verifier checked was the model's *narrative framing* of that fact
+   under live conditions — in production, the synthesis model wrapped the
+   (correct) anchored fact in a fabricated "as per your request" hedge and
+   then appended a wrong "your chart's actual current period is X" coda
+   that appears to be cross-chart training-data pattern bleed (X exactly
+   matches a *different* real chart's real dasha). This is a live,
+   deploy-gated behavior that a unit test asserting "the anchor string is
+   present in the prompt" cannot catch — it requires an actual live model
+   call. **Caught by the conductor performing the brief §I
+   deploy-verification live re-check that both RC-02 and RC-17's fix-cycle
+   1 reports themselves flagged as an outstanding, not-yet-performed step**
+   — i.e., the campaign's own discipline of never treating a deploy-gated
+   claim as closed until independently re-confirmed post-deploy is what
+   caught this, not a lucky accident. Fix-cycle 2 launched immediately;
+   RC-17 reopened in the status table above. **Lesson for RC-16's final
+   seal:** every "deploy-gated, not yet re-confirmed" flag left by any
+   verifier in this campaign must be resolved by an actual live check
+   before the campaign can claim COMPLETE — not assumed clean by default.
 
 ## Resolver rulings
 
 See `RESOLVER_RULINGS.md` — currently RC-09-001/002/003, RC-10-001/002/003,
-RC-04-001/002.
+RC-04-001/002, RC-02-001.
+
+## Outstanding deploy-gated re-checks (must clear before RC-16 seal)
+
+Per Incident 4's lesson, every verifier note below flagged evidence as
+"deploy-gated, not yet independently re-confirmed live" — tracked here so
+none is silently assumed clean:
+
+- [x] RC-11 (CR-118 fast-fails on `/api/chat/consult`) — confirmed live via
+  RC-02's own investigation (0/10 `route_error`, was 6/10).
+- [x] RC-02 (`judgment_flags` disclosure on web door) — confirmed live by
+  the conductor post-PR#716-deploy (`data-judgment-flags` event present,
+  `no_leakage_capabilities_stripped` flag correctly disclosed).
+- [ ] RC-17 (dasha-anchoring hallucination) — checked live by the conductor
+  post-PR#716-deploy, **FOUND STILL PRESENT** (new hedge form). Fix-cycle 2
+  in progress; must be live re-checked again after its deploy before
+  closing.
