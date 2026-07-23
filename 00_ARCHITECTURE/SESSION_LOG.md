@@ -33245,3 +33245,186 @@ session_close:
 None opened by this campaign — it is fully COMPLETE with no successor session queued. RC-14 (`impl/w5-breaking`) is the sole carried item: not this campaign's to force, per the brief's own hard safety rule, and waits on D-4b going genuinely quiet (verified live, not from a stale ledger) before whichever future session picks it up first rebuilds it against `main` and lands it under standard deploy-mutex discipline. Two non-blocking recommendations are recorded in `retrieval_residual/STATE.md`/`RESOLVER_RULINGS.md` for whichever session has bandwidth: a production-side hedge detector for RC-17's defect class, and the `CAPABILITY_MANIFEST.json`-vs-`drift_detector.py` fingerprint-hashing disagreement this seal surfaced and deliberately left unfixed (§5 of `RESIDUAL_CLOSURE_FINAL_REPORT.md`).
 
 *End of RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23 entry — 2026-07-23.*
+
+---
+
+## VIDHI-PURNATA-2026-07-23 — VIDHI-PŪRṆATĀ: planner completeness + default-deep + elevation layer
+
+```yaml
+session_open:
+  session_id: VIDHI-PURNATA-2026-07-23
+  cowork_thread_name: "Madhav — VIDHI-PŪRṆATĀ (planner completeness + default-deep + elevation)"
+  agent_name: claude-sonnet-5
+  predecessor_session: RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23 (Retrieval Residual Closure
+    campaign COMPLETE, 16/16 + RC-17)
+  role: >
+    Conductor for the VIDHI-PŪRṆATĀ wave per native directive (Cowork, 2026-07-23): planner-
+    completeness fix + default-deep doctrine + elevation layer for the Vidhi retrieval planner,
+    ahead of the (separate, not-yet-opened) UAT-DARPANA dynamic UAT initiative, per
+    BRIEF_VIDHI_PURNATA_v1_0.md. Sonnet Coordinator + Opus sub-agents (high->max effort);
+    fully autonomous, verifier-gated, no human gates until this close report.
+  declared_scope:
+    may_touch:
+      - "platform/src/lib/vidhi/** and platform-mcp/src/resources/vidhi/** (regenerated mirror)"
+      - "vidhi test files"
+      - "surgical migrations for the vidhi seed/gate fix"
+      - "00_ARCHITECTURE/llm_consumption_audit/briefs/vidhi_purnata/** and /uat_darpana/** (audit/brief docs)"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md, SESSION_LOG.md (append/close)"
+      - "MARSYS_DEFECT_GAP_REGISTER_v2_0.md"
+      - "git branches/worktrees for this wave; PR to main"
+    must_not_touch:
+      - "FROZEN orchestrator + WriterBase + ga_*/bo_*/ka_*/ph_*/mi_* writer build logic"
+      - "L1-L5 writers/tables, calibration tables, the sealed split"
+      - "CLAUDECODE_BRIEF.md (root); the D-4b doctrine-wave briefs/ledgers/branches (READ-ONLY)"
+  red_team_due: false
+```
+
+**Native directive (Cowork, 2026-07-23):** open and execute the VIDHI-PŪRṆATĀ wave —
+planner-completeness fix + default-deep doctrine + elevation layer for the Vidhi retrieval
+planner, ahead of the (separate, not-yet-opened) UAT-DARPANA dynamic UAT initiative. Governing
+brief: `00_ARCHITECTURE/llm_consumption_audit/briefs/vidhi_purnata/BRIEF_VIDHI_PURNATA_v1_0.md`.
+Finding base: `00_ARCHITECTURE/llm_consumption_audit/briefs/uat_darpana/STATIC_VIDHI_AUDIT_v1_0.md`
+(F1-F9). Sonnet Coordinator + Opus sub-agents (high→max effort) per native directive; fully
+autonomous, verifier-gated, no human gates until this close report. Executed on an isolated
+worktree (`wave/vidhi-purnata/open` at `/Users/Dev/Vibe-Coding/Apps/madhav-wave-vidhi-purnata`)
+so the primary checkout stayed on `main` throughout.
+
+**Outcome: STATIC_VIDHI_AUDIT F1-F7 + F9 all CLOSED.** Full closure ledger:
+`STATIC_VIDHI_AUDIT_v1_1.md`. PR #728 opened (`wave/vidhi-purnata/open` -> `main`), not yet
+merged — this is the primary session deliverable, awaiting native/CI merge.
+
+**Lanes executed (P-0 through P-4 + P-3b elevation lanes), sequentially — the canonical registry
+file is shared across every lane, so this was a strict pipeline, not a parallel fan-out:**
+- **P-0 Discovery:** live-probed the honesty ledger against chart `482012f1` for every new
+  aspect the wave wanted to plan. Corrected the brief's "three-copy" framing to **four** copies
+  (canonical TS, generated TS mirror, and the DB seed is actually two Python-embedded writer
+  files, `bg_vidhi_primitives.py`/`bg_vidhi_floors.py` — not a migration `INSERT`). Found the
+  taxonomy is bridged through **two disjoint vocabularies** (classifier vocab vs. compiler
+  `IntentClass`) with a real pre-existing MCP-path bridge gap broader than F1 alone. Ruled the D7
+  `chart_divisionals` `varga_karya_bhava` row's `spouse_karya` label a genuine **L1 writer
+  mislabel** (should read `progeny_karya`) — `must_not_touch`, so the progeny floor was
+  deliberately keyed off H5/Jupiter/PuK instead, and the mislabel is flagged for the data team
+  as a new CR rather than worked around silently. Identified `phala_predictive_anchors_get` as
+  the E-2 standing-predictions ledger face.
+- **P-1 Depth-default inversion (F5/F6):** replaced keyword-gated depth/intervention with
+  intent-driven defaults (`defaultDepthForIntent`/`defaultInterventionForIntent`) in
+  `scope_resolver.ts` — a `*_deepdive` intent now compiles the full floor + machine band +
+  intervention layer without needing "deep"/"remedy" in the question text.
+- **P-2 New intents (F1):** `spirituality_deepdive`, `education_deepdive`, `progeny_deepdive`
+  added to the `IntentClass` enum, `intent_classify` (DR-8), and the fallback keyword path, each
+  with a full worked floor (24/23/19 items respectively).
+- **P-3 Floor completeness (F2/F3/F4/F7):** marriage timing spine (`taranga_curve` +
+  `dasha_spine_lord_capability`) + Jaimini spouse tools (`upapada_read`, DK, H2/H8); health
+  longevity axis (`ayurdaya_read`->`ganita_ayurdaya_get`, `medical_read`->`ganita_medical_get`,
+  H8, Saturn); career Amātyakāraka.
+- **P-3b Elevation lanes E-0 through E-7 (brief §B, the "beyond acharya" differentiation
+  layer):** all seven landed in one pass, none deferred — E-0 Pūrṇa-Ādhāra foundational floor
+  (replaces the 6-item `general_synthesis` stub with a ~24-item layered whole-chart foundation,
+  §N.6-disciplined, safety-net not default-path); E-1 wires the D-5 Gochara-Chitra temporal
+  engine into every deepdive's machine band; E-2 standing-predictions ledger surface; E-3
+  anusaraṇa one-hop chart-adaptive expansion rules (structurally incapable of transitive
+  closure); E-4 multi-domain floor union; E-5 `contradiction_scan` in every deepdive; E-6
+  `lel_retrodiction` in every deepdive; E-7 the closing insight band
+  (`tail_divergence_read`->`synth_tail_divergence_get`, `mechanism_read`, `statistical_context`,
+  the upgraded insight-mandate `llm_extension_note`).
+- **P-4 Parity + tests:** mirror regenerated (`npm run codegen:vidhi`), two surgical seed
+  migrations (`462_vidhi_purnata_seed.sql`, `463_vidhi_purnata_gate_fix.sql`), both validated
+  against an ephemeral Postgres 15 (idempotent, 0 FK orphans), `codegen:vidhi:check` green,
+  `vidhi_codegen_parity.test.ts` green, full vidhi suite green (67 tests across both packages).
+- **F9 reconciled:** `dhana_yoga_scan`'s `known_gap: 'CR-56'` was stale register drift — live
+  probe of `ganita_yoga_firings_get` confirms the house-lord dhana/raja yoga family fires
+  (`dhana_yoga_house_lords`). `CR-56` flipped to `null` and moved `OPEN_CRS` -> `CLOSED_CRS`,
+  mirroring the existing `CR-59`/`nbry_scan` precedent.
+
+**Verification — independent fresh-context Opus Gate, run twice:** the brief's own 8-criterion
+checklist (§3) is adversarial by design — a fresh-context verifier with no memory of the
+implementation, re-deriving every claim from the live repo state rather than trusting
+self-reports. **First pass FAILED**, narrowly, on criterion 1 only (criteria 2-8 — depth-default
+inversion in compiled output, honesty ledger, determinism + three-copy parity, E-3's one-hop
+cap, E-4's union, E-0's dual gate, no fabricated computation — all independently verified PASS
+on the first pass already): (a) F9 self-contradiction — the registry simultaneously asserted the
+house-lord family "absent" (via `dhana_yoga_scan`'s stale tag) and "confirmed firing" (via the
+new `yoga_firings_read` primitive) in two places; (b) F4's health floor was missing
+`karaka_condition {karaka:'moon'}`, explicitly named in both the audit and the brief's own floor
+design, data-backed, simply omitted. Both fixed (one dedicated fix-and-reverify pass, full vidhi
+suite re-run green). **Second Gate — fully independent, no memory of the fix pass's own
+self-report, re-ran all 8 criteria from scratch (not just the two deltas, to catch any
+regression the fix itself might have introduced) — PASSED clean, no residual issues.**
+
+**Infrastructure note (not a governance finding):** two of the workflow's agent stages hit
+transient tool-layer failures during execution — P-1's first attempt errored mid-response
+("Connection closed mid-response") and P-3b's elevation-lane stage stalled repeatedly (6 retry
+attempts exhausted, causing one full workflow abort that required a `Workflow` resume from the
+cached run). In both cases the underlying file edits the agent had already made via tool calls
+persisted on disk even though the agent's own text-result was lost — confirmed directly against
+`git diff`, not assumed. No wave content was lost; both stages completed successfully on retry/
+resume. Recorded here per the project's own "verify, don't trust self-reports" discipline.
+
+**Honesty ledger (new-but-dark primitives, none faked):** `spiritual_yoga_scan` -> `CR-130`
+(Jaimini "spiritual" yoga family not present as a `family_ids` key on
+`ganita_yoga_firings_get` — a genuine new gap this wave's own P-0 probe surfaced, not
+fabricated); `gochara_activation_read`/`gochara_forecast_read`/`election_read` -> `CR-131`
+(tools registered/live; row-level data reachability could not be confirmed through this
+session's probe connector — `DATABASE_URL not set`, DB-direct required — not proof of empty);
+`upapada_read` -> `CR-61` (pre-existing, raw UL served, ranking is the open gap); marriage
+`taranga_curve` (education domain) -> `CR-66` (pre-existing, no education-domain phala anchor
+confirmed in the probe sample). Full backlog: `STATIC_VIDHI_AUDIT_v1_1.md` §3.
+
+**Scope guards held throughout (verified on both Gate passes via forbidden-path diff against
+`origin/main`):** the FROZEN orchestrator/`WriterBase` contract, L1-L5 writers/tables,
+calibration tables, and the sealed split were not touched. All 21 changed/created files sit
+inside the brief's declared `may_touch`: `platform/src/lib/vidhi/**`,
+`platform-mcp/src/resources/vidhi/**` (mirror, regenerated only), two vidhi test files (the
+implementer flagged this as a scope-glob technicality — de-minimis, count-literal fixes only —
+in its own report, and the Gate concurred it was non-blocking), two new surgical migrations, and
+the two audit/brief doc files.
+
+```yaml
+session_close:
+  session_id: VIDHI-PURNATA-2026-07-23
+  campaign: BRIEF_VIDHI_PURNATA_v1_0
+  close_criteria_met: true
+  verification: "Independent fresh-context Opus Gate ran twice against the brief's 8-criterion
+    checklist. First pass FAILED narrowly on criterion 1 (F9 self-contradiction; F4 health
+    floor missing karaka_condition moon). Both fixed. Re-Gate PASSED all 8 criteria clean:
+    F1-F7+F9 closed, depth-default inversion verified in compiled output, honesty ledger
+    (every new item live-routed or truthfully known_gap-flagged, none faked), determinism +
+    three-copy parity green (67 vidhi tests both packages), E-3 one-hop cap structurally
+    enforced, E-4 multi-domain union verified, E-0 dual gate verified both directions, no
+    fabricated computation."
+  deploy: "Not deployed — lands as PR #728 (wave/vidhi-purnata/open -> main), pending
+    native/CI merge. No production deploy performed by this session."
+  product_code_writes_made: "Yes — platform/src/lib/vidhi/**, platform-mcp/src/resources/
+    vidhi/** (regenerated mirror), two vidhi test files, two new surgical migrations (462,
+    463), per the brief's declared may_touch scope. FROZEN orchestrator/WriterBase, L1-L5
+    writers/tables, calibration tables, and the sealed split verified untouched via
+    forbidden-path diff on both Gate passes."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "CR-56 (dhana_yoga_scan house-lord yoga family) RESOLVED —
+    moved OPEN_CRS -> CLOSED_CRS, stale register drift corrected. CR-130 (Jaimini spiritual
+    yoga family absent) and CR-131 (gochara D-5 tool data reachability unconfirmed via this
+    probe's connector) opened OPEN — new, genuine, honestly-flagged data-layer gaps. CR-61/
+    CR-66 pre-existing, carried unchanged."
+  followups: "(1) Data-team CR needed for the L1 chart_divisionals writer's D7
+    varga_karya_bhava mislabel (reads spouse_karya, should read progeny_karya) — out of this
+    wave's must_not_touch scope. (2) CR-131 gochara reachability needs confirmation in a
+    DB-connected runtime. (3) Non-blocking: MCP fallback keyword regex for marriage doesn't
+    match 'married'/'marry' (authoritative intent_classify path unaffected). (4) UAT-DARPANA
+    may now open per brief §4 — this wave's close is its precondition."
+  next_session_objective: "Native/CI merge of PR #728. Then, per BRIEF_VIDHI_PURNATA_v1_0.md
+    §4: re-confirm this closure against the merged main, then open UAT-DARPANA's dynamic run
+    against the fixed planner. No further VIDHI-PŪRṆATĀ work is queued; the wave is closed."
+```
+
+### Next session objective
+
+Merge PR #728 (`wave/vidhi-purnata/open` -> `main`), then per `BRIEF_VIDHI_PURNATA_v1_0.md`
+§4: re-confirm F1-F7+F9 closure holds against merged `main` (not just the worktree), then open
+UAT-DARPANA's dynamic run against the fixed planner — its §6.2 Vidhi track should now measure a
+completed planner and confirm the fix held under real questions. The worktree
+`wave/vidhi-purnata/open` at `/Users/Dev/Vibe-Coding/Apps/madhav-wave-vidhi-purnata` can be
+removed (`git worktree remove`) once the PR merges. No further VIDHI-PŪRṆATĀ work is queued —
+the wave is closed.
+
+*End of VIDHI-PURNATA-2026-07-23 entry — 2026-07-23.*
