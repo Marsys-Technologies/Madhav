@@ -749,4 +749,51 @@ resolve unilaterally by picking a repair direction — it requires the native's 
 of the two dispositions in CR-128 (repair the existing pipeline vs. build the described surface
 fresh) reflects actual intent. B-2/B-3 stay correctly blocked until that ruling.
 
-*— end NP-D4B-008, awaiting native disposition on item 2 (item 1 is informational only)*
+*— end NP-D4B-008, item 2 resolved below by NP-D4B-009 (item 1 remains informational)*
+
+---
+
+## NP-D4B-009 (2026-07-23, native ruling, direct via Cowork — CR-128 disposition, campaign close)
+
+**Question:** NP-D4B-008 item 2 — does CR-128 (the missing/broken calibration write-surface) get
+repaired or built now, so B-2/B-3 can proceed, or does the campaign close some other way?
+
+**Ruling: do NOT build/repair the calibration write-surface now. Close D-4b honestly with
+calibration DEFERRED to the prospective regime.** Full reasoning, on the record: B-1 returned
+NO_WINNER — no contender beat its control, and the one apparent signal was a verified outlier
+artifact. Per the pre-committed no-winner branch, B-2's backfill would write
+`model_confidence: none_validated` rows: calibrating against a model the data itself says isn't
+validated, from N≈40 design-time-exposed events. There is nothing legitimate to backfill. CR-128
+is therefore not a blocker to fix — it's a surface that correctly should not be used yet. Building
+it now to write meaningless rows would be the exact fabrication this campaign exists to refuse.
+The gap and the no-winner agree: retrodiction cannot ignite calibration on this corpus.
+
+**Disposition, binding:**
+- B-2/B-3 close as **HONESTLY-DEFERRED**, not blocked-pending-fix. This IS the pre-committed
+  no-winner outcome; the campaign reaches its designed honest terminus.
+- CR-128 stays **OPEN** as a named future-work item, not a D-4b blocker — built when there is real
+  data to write it from. Repair-vs-rebuild decided then, against real requirements.
+- B-6 REAL close proceeds independent of CR-128 (a reading comparison, not a calibration write).
+  If any component genuinely can't render without the calibration surface, it serves with
+  `calibration_state: structural_prior` disclosed — never blocked, never faked. (Confirmed live
+  this close: `judgment_query`'s `epistemic.grade: structural_prior` already does exactly this.)
+- Campaign seal: all DR-n through DR-20 + the full Native-Proxy ledger compiled for ratification;
+  registers sealed through CR-128; the master battery becomes the standing per-release regression
+  suite; the standing live loop declared OPEN as the PRIMARY path; `current_wave` →
+  CAMPAIGN-CLOSED; D-6 staged ratification-ready.
+- The incident record stands honestly: B-1's quarantined breach, the sealed-split structural fix
+  (DR-20), the cross-campaign content-loss recovery, the CR-numbering collisions — all recorded,
+  including the cross-campaign collision as a named process/hygiene finding for whoever runs the
+  next concurrent waves (reserved ranges or a lock convention needed).
+
+**Commendation, recorded plainly:** B-2's own halt — tracing `mimamsa_outcome_record` end-to-end,
+finding it does not exist, and stopping before writing anything rather than fabricating a row
+count — is exactly the discipline this ruling now ratifies at the campaign level. The architecture
+gap and the honest no-winner result independently corroborated each other; neither was bent to
+force the other's hand.
+
+**Outcome:** discharged in full this pass. See `REPORT_D4B.md` (campaign close), `STATE_D4B.md`
+(campaign close), `PROMISE_LEDGER_D4B.md` v3.0, and `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-128
+(disposition text updated) for the complete package this ruling produced.
+
+*— end NP-D4B-009, campaign close*

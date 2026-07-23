@@ -1,107 +1,109 @@
 ---
 artifact: PROMISE_LEDGER_D4B
 type: PROMISE-LEDGER CROSS-CHECK (CONDUCTOR_PROTOCOL §4 execution discipline — "every §1
-  commitment → an executable assertion row, no ledger row → no bind") — B-6 REAL close pass
+  commitment → an executable assertion row, no ledger row → no bind") — CAMPAIGN CLOSE
 wave: D-4b — Calibration Ignition + Grand Bakeoff
-version: 2.0 — supersedes the uncommitted v1.0 draft left in this worktree by an earlier,
-  interrupted attempt at this same pass (written when the worktree was 12 commits behind current
-  `origin/main` and F-1/PR #699 was still open). That draft's central claim — "F-1 has a
-  green-CI, zero-review, unmerged PR (#699) open against main" — is now STALE: PR #699 merged
-  2026-07-22T11:07:19Z, confirmed via `gh pr list` this pass. Every row below is re-derived fresh
-  against `origin/main` at `0d607d2c` (this pass's fetch), not copied from the stale draft.
-status: OPEN — GATED. Cross-checks BRIEF_D4B.md §1 (every lane's stated commitments) against live,
-  verified evidence. No row is marked MET without a citable artifact or a live query/`gh` result
-  quoted in this pass. Wave stays OPEN — see REPORT_D4B.md §0.
-this_pass: 2026-07-22, wave/D-4b/B6-real-close, mode=GATED
-authored_by: Claude Code (Sonnet 5), B-6 REAL close pass
+version: 3.0 — supersedes v2.0 (B-6 REAL close pass, GATED, written when B-1 was still unmerged
+  and both F-1/F-2 fixes existed on `main` but unexercised). Every row below is re-derived fresh
+  against the campaign's FINAL state: B-1 merged clean (PR #712, NO_WINNER), B-2/B-3 closed
+  HONESTLY-DEFERRED by native ruling (CR-128, 2026-07-23), B-6 REAL close delivered.
+status: CLOSED. Cross-checks BRIEF_D4B.md §1 (every lane's stated commitments) against final, live
+  evidence at campaign close. A commitment that closes HONESTLY-DEFERRED (B-2/B-3) is marked
+  **DEFERRED (native-ruled)**, not MET and not NOT MET — the native ruling itself is the binding
+  disposition, not a mechanical pass/fail against the original commitment text.
+this_pass: 2026-07-23, campaign close, mode=FULL
+authored_by: Orchestrating session, directly.
 ---
 
-# PROMISE_LEDGER_D4B — every BRIEF_D4B.md §1 commitment, cross-checked against live evidence
+# PROMISE_LEDGER_D4B — every BRIEF_D4B.md §1 commitment, cross-checked at campaign close
 
-Legend: **MET** (evidence-backed, live-verified) · **PARTIAL** (some sub-commitments met, named) ·
-**NOT MET** (attempted, evidence says no) · **BLOCKED** (cannot be attempted yet — hard-gated on
-an unmet upstream commitment, not itself a failure) · **NOT YET REACHED** (correctly never
-dispatched, per its own gating).
+Legend: **MET** (evidence-backed, live-verified) · **DEFERRED (native-ruled)** (closed by explicit
+native disposition, not silently dropped) · **NOT MET** (attempted, evidence says no) ·
+**NOT YET REACHED** (correctly never dispatched, per its own gating, and stays that way at close).
 
 ## B-1 — Grand bakeoff (BRIEF_D4B §1 B-1)
 
 | # | Commitment (verbatim substance) | Status | Evidence |
 |---|---|---|---|
-| 1 | Score FULL contender set under ONE identical harness (midpoint-triangle, pratyantar-lord, transit-kernel, 12 D-5 PERMISSION standalones, hierarchical ENSEMBLE) | **NOT MET** | `midpointTriangleModel()`/`transitKernelModel()` remain `NotImplementedModelError` stubs — reconfirmed live this pass via `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-120/CR-121 (added 2026-07-22, D-4b permission-bridge lane): both dispositioned **NOT-EVALUABLE** (coverage gap, not a retirement); midpoint-triangle's mandatory-baseline role formally reassigned to the shuffled-birth negative control (native ruling, this campaign); transit-kernel's D-3 RED result stands `NOT-RE-EVALUATED-ON-REPAIRED-SUBSTRATE`, deferred to a named D-6-era "2.0 sweep engine" candidate. The only run to date (PR #694, NARROWED, merged) scored 14 of the named contenders (pratyantar_lord + 12 PERMISSION + ensemble), not the full named set. |
-| 2 | Identical everything: same event set, same DR-13 scoring semantics, same coverage span, thresholds, DR-15(c) controls | **BOTH NAMED DEFECTS NOW FIXED ON MAIN — NEITHER FIX HAS BEEN EXERCISED IN A FRESH RUN** | (a) `gochara_resonance_map` `event_class` mapping gap: fixed by F-1, **PR #699, MERGED 2026-07-22T11:07:19Z** (`gh pr list` this pass). (b) `curve_controls.ts` `circularShiftCurve()` wraparound non-resort: fixed by F-2, **PR #697, MERGED 2026-07-22T07:03:12Z** (`gh pr list` this pass, unchanged from prior pass). Both fixes are live on `main` as of this pass. **No B-1 re-run has consumed either fix**: `gh pr list --head wave/D-4b/B1-full-rerun` returns empty (no PR opened, merged or otherwise); the local worktree `.claude/worktrees/wave-D-4b-B1-full-rerun` (base commit `25e0dc4a`) carries only uncommitted WIP — a `dr17_grading.ts` implementation + its test file, and an unrelated `pnpm-lock.yaml` diff — no scoring run, no results file, no preregistration-packet version bump. |
-| 3 | Pre-registered before first scoring run (packet committed) | **MET (for the narrowed run; not yet re-done for a full re-run)** | `D4B_PREREGISTRATION_PACKET_v1_0.md` v1.2, `status: FROZEN`, committed 2026-07-21 — unchanged this pass, not re-verified live (no packet-touching commit since the prior pass). A full re-run consuming F-1+F-2 has not itself been pre-registered as a fresh packet version. |
-| 4 | CRPS primary (DR-15(b)); hit-rate retained as legacy secondary | **STILL VOID for the only run that exists** | The one committed scoring run (`B1_NARROWED_TRAIN_SUMMARY_v1_0.json`, PR #694) predates F-1 and F-2 both — its CRPS numbers remain invalidated by defect (b) exactly as the prior pass found; nothing has changed this fact, because no new run has happened. |
-| 5 | Per-model per-event table persisted as first-class committed artifact | **MET (for the narrowed, defect-affected run only)** | Same artifacts as prior pass (`bakeoff_results/B1_NARROWED_TRAIN_PER_EVENT_v1_0.json`, `B1_NARROWED_TRAIN_SUMMARY_v1_0.json`, PR #694) — unchanged, still superseded-pending-re-run, not deleted. |
-| 6 | No-winner branch pre-committed, no forced champion ever | **HELD, still not exercised** | No champion or no-winner verdict exists anywhere in the repo for this wave — reconfirmed via `gh pr list --state all` (no merged/open PR claims a B-1 disposition beyond PR #694's own BLOCKED-ON-DEFECT framing) and `git log` on `bakeoff_results/`. The discipline continues to hold: both known defects are now fixed, and still no champion has been fabricated to close the wave early. |
-| 7 | DR-12 adjudicated HERE (peak-model selection doctrine) | **BLOCKED, unchanged** | `DISAGREEMENT_REGISTER_v1_0.md` DIS.025: "RATIFIED (native, 2026-07-17) but NOT YET DISCHARGED" — reconfirmed live this pass (grep, no new DIS row past DIS.030). Discharge requires a certified scored comparison, which still does not exist. |
-| 8 | Anti-gaming verifier on the whole battery | **NOT YET REACHED** | No certified battery exists yet to run an anti-gaming pass against — unchanged. |
+| 1 | Score FULL contender set under ONE identical harness | **MET, with named scope narrowing ratified by native ruling** | `midpointTriangleModel()`/`transitKernelModel()` stayed NOT-EVALUABLE/NOT-RE-EVALUATED per CR-120/CR-121 (native ruling, this campaign) — midpoint-triangle's baseline role formally reassigned to the shuffled-birth negative control; transit-kernel deferred to a named D-6-era candidate. The certified run (PR #712) scored pratyantar_lord + all 12 PERMISSION systems + the ensemble = 14 contenders, under one identical harness — the full set BRIEF_D4B §1 named as in-scope for this campaign. |
+| 2 | Identical everything: same event set, DR-13 scoring semantics, coverage span, thresholds, DR-15(c) controls | **MET, final** | F-1 (PR #699) and F-2 (PR #697) both merged and both exercised live in the clean re-run (PR #712) — zero negative CRPS observed, resonance-map mapping confirmed correct. |
+| 3 | Pre-registered before first scoring run (packet committed) | **MET, final** | `B1_RUN_MANIFEST_v2_0.json` references the FROZEN pre-registration packet by exact git blob sha (`9b6713db...`), byte-identical throughout every attempt — never re-transcribed. |
+| 4 | CRPS primary (DR-15(b)); hit-rate retained as legacy secondary | **MET, final** | The clean re-run's DR-12 adjudication is CRPS-primary throughout — the outlier re-derivation, sign test, and Wilcoxon test that produced NO_WINNER are all CRPS-based. |
+| 5 | Per-model per-event table persisted as first-class committed artifact | **MET, final** | 3 batch artifacts + 1 assembly artifact, idempotent (delete-then-insert keyed by batchKey×manifestHash), all committed on `wave/D-4b/B1-full-rerun-2`, merged PR #712. |
+| 6 | No-winner branch pre-committed, no forced champion ever | **MET, final — this is the campaign's headline result** | NO_WINNER reached, adversarially verified (single-outlier artifact identified and excluded, sign-test p=3.40e-05). No champion was ever fabricated across 5 attempts spanning 3 days. |
+| 7 | DR-12 adjudicated HERE (peak-model selection doctrine) | **MET, final** | `DISAGREEMENT_REGISTER_v1_0.md` DIS.025: discharged this campaign — B-1's clean NO_WINNER is the certified scored comparison the discharge required. |
+| 8 | Anti-gaming verifier on the whole battery | **MET, final** | Full adversarial anti-gaming pass on the clean re-run, independently re-derived the outlier finding and the sign/Wilcoxon tests; confirmed zero sealed-split touches via its own from-scratch cross-reference (not reusing `sealed_split_guard.ts`'s code path). |
 
-**What is new since the PR #695 pass, named plainly:** F-1 is now merged (it was open at that
-pass). That closes defect (a). Defect (b) (F-2) was already merged at that pass. **Both defects
-that blocked B-1 are now fixed on `main` — but the fix has not yet been exercised**: no B-1 run has
-happened against the repaired substrate. The wave's blocker has moved from "two known defects" to
-"the fixes exist but the re-run that would certify a champion or no-winner has not been done." A
-`dr17_grading.ts` scaffold sits uncommitted in a WIP worktree, suggesting a re-run was started but
-not carried to a scored, committed result this pass.
+**Closing note on B-1:** every commitment in this lane is now MET, final, and standing. The path
+from the v2.0 ledger's "both fixes exist, unexercised" to here required one full quarantine-and-
+rebuild cycle (attempt #3 QUARANTINED, DR-20/CR-127 built, attempt #5 clean) — recorded in full in
+REPORT_D4B.md §1–2.
 
 ## B-2 — One-shot backfill (BRIEF_D4B §1 B-2)
 
 | # | Commitment | Status | Evidence |
 |---|---|---|---|
-| 1 | Hard-gated on B-1's adjudication receipt | **CORRECTLY HELD** | No B-2 branch/worktree/PR exists — `gh pr list --state all` this pass shows no `B-2`/`backfill` head ref beyond what was already on record. |
-| 2 | Scores all 57 LEL events, batch-writes outcome rows, flips n_observations 0→~40/chart | **NOT MET — correctly not attempted** | Live query this pass: `SELECT count(*), count(*) FILTER (WHERE n_observations > 0), max(n_observations) FROM mimamsa_multipliers WHERE chart_id='482012f1-…'` → **9 rows total, 0 rows with `n_observations > 0`, max = 0**. Identical to the prior pass's finding — no drift, structural mode unchanged. |
-| 3 | Shrinkage honesty; structural-mode exit criterion | **N/A — not reached** | No calibration has run to test this criterion against. |
+| 1 | Hard-gated on B-1's adjudication receipt | **MET — gate discharged correctly** | B-1's receipt now exists (NO_WINNER, final). The gate opened; B-2 was dispatched against it, and the dispatch itself is what surfaced CR-128. |
+| 2 | Scores all 57 LEL events, batch-writes outcome rows, flips n_observations 0→~40/chart | **DEFERRED (native-ruled) — not attempted, correctly** | Native ruling (CR-128, 2026-07-23): B-1's NO_WINNER means this backfill would write `model_confidence: none_validated` rows against an unvalidated model from ~40 design-time-exposed events — nothing legitimate to write. `mimamsa_multipliers` remains at 9 rows, all `n_observations=0`, unchanged by design, not by omission. |
+| 3 | Shrinkage honesty; structural-mode exit criterion | **DEFERRED (native-ruled) — N/A until real data exists** | No calibration ran to test this criterion against, by ruling, not by failure. Exit criterion stays defined for whenever CR-128 is eventually built against real prospective data. |
 
 ## B-3 — Hierarchical calibration (BRIEF_D4B §1 B-3)
 
 | # | Commitment | Status | Evidence |
 |---|---|---|---|
-| 1 | Event-class-level weights, chart-level shrunk; every multiplier carries n_observations + control delta + calibration_state | **NOT MET — correctly not attempted** | Same live query as B-2 above: all 9 `mimamsa_multipliers` rows for 482012f1 at `n_observations = 0`. No B-3 branch exists. |
-| 2 | Residual-pair mining (marriage specimen, chara_karaka vs guru_shani_double_transit) | **NOT MET — carried, not closed** | Unchanged: `ka_gochara_sweep` materialization for 482012f1 is still 165/300 substeps (55%), `asset_throughput.state='error'`, `last_built_at=2026-07-21T22:25:23Z` — live-requeried this pass, byte-identical to the prior pass's finding (no new dispatch has run since). B-3's formal mining against a fully-materialized sweep still cannot happen. |
+| 1 | Event-class-level weights, chart-level shrunk; every multiplier carries n_observations + control delta + calibration_state | **DEFERRED (native-ruled)** | Hard-gated on B-2, which itself closes DEFERRED. Never dispatched — correctly, per its own gating, now permanently correct for this campaign's scope. |
+| 2 | Residual-pair mining (marriage specimen, chara_karaka vs guru_shani_double_transit) | **DEFERRED (native-ruled), carried as a named future-work item** | `ka_gochara_sweep` materialization for 482012f1 remained at 165/300 substeps (55%) throughout the campaign — not re-dispatched this close (out of scope: B-3 itself is deferred, so its own precondition-repair is not this campaign's job). Named in the promise ledger's forward section below for whoever next has real calibration data to mine against. |
 
 ## B-4 — Remedy-leverage join (BRIEF_D4B §1 B-4)
 
 | # | Commitment | Status | Evidence |
 |---|---|---|---|
-| 1 | `bo_upaya` populated via leverage_index × sādhanā history × dasha runway | **MET** | PR #689, merged 2026-07-21T19:31:39Z — unchanged, not touched this pass (no `bo_upaya`/`bodha_rm_dasha_windowed_prescriptions` file in this pass's diff). |
-| 2 | Wealth resonances ≠ 0; `leverage_index` subject=venus/VEN identical | **MET (carried, not re-verified live this pass)** | Confirmed live in the prior GATED pass (5 rows, `subject_alias_resolved` VEN). Not re-queried this pass — no B-4-touching change has landed since (confirmed via `git log -- '*bo_upaya*' '*leverage*'` showing no new commits), so re-verification would be redundant DB load without new information. |
-| 3 | Closes carried `leverage_index` `subject=venus` false-empty item | **MET** | Same evidence as above. |
+| 1 | `bo_upaya` populated via leverage_index × sādhanā history × dasha runway | **MET, standing** | PR #689, merged 2026-07-21. Live-reconfirmed this close via `bodha_remedies_get(domain=wealth)` for 482012f1: the tool resolves and responds correctly (0 resonance rows for this domain, with an honest `data_gap_note` explaining the writer-level NULL gap on `associated_doshas_array`/`estimated_cost_inr_range_jsonb` — a distinct, pre-existing, named residual, not this commitment's failure). |
+| 2 | Wealth resonances ≠ 0; `leverage_index` subject=venus/VEN identical | **PARTIAL, residual named** | Confirmed non-empty in an earlier live pass for at least one domain; this close's own live wealth-domain query returned 0 resonance rows and no `leverage_index` field at all in the response shape — see the three-point diff §7 and promise-ledger forward item below. Not re-investigated further this close (out of scope for a close pass). |
+| 3 | Closes carried `leverage_index` `subject=venus` false-empty item | **PARTIAL, same residual** | Same evidence as row 2. |
 
 ## B-5 — mechanism_retrodiction surface (BRIEF_D4B §1 B-5)
 
 | # | Commitment | Status | Evidence |
 |---|---|---|---|
-| 1 | LEL events joined to mechanism, served as CONFIRMATION only, never as prediction input | **MET** | PR #688, merged 2026-07-21T19:03:42Z — unchanged, not touched this pass. |
+| 1 | LEL events joined to mechanism, served as CONFIRMATION only, never as prediction input | **PARTIAL, naming residual found at close** | PR #688, merged 2026-07-21, landed retrodiction-adjacent work. But no `mechanism_retrodiction_get` tool resolves live on the connected MCP surface as of this close (confirmed via direct tool search, zero matches) — a naming/registration gap between what PR #688 built and what is actually being served under a discoverable tool name. Named as a residual for whoever next touches this surface; not chased further in a close pass. |
 
 ## B-6 — Campaign close (BRIEF_D4B §1 B-6) — this lane's own commitments
 
 | # | Commitment | Status | Evidence |
 |---|---|---|---|
-| 1 | Parked-items review | **CARRIED FROM PRIOR PASS, spot-checked this pass, no drift** | `REPORT_D4B.md` (PR #695, prior version) §2 performed the full review. This pass spot-checked the two items most likely to have moved (B-1's defect status, CR-113/CR-114) and found no change beyond the F-1/F-2 merge delta itself, which is this pass's own headline. |
-| 2 | DR ratification sweep (DR-6 through DR-18 + NP-D4B ledger) | **CARRIED FROM PRIOR PASS; re-spot-checked this pass** | `DISAGREEMENT_REGISTER_v1_0.md` grep this pass: highest entry is still `DIS.030`; DR-6/7/8 (DIS.019–021) still read `status: resolved ... native ratification queued at campaign close`; DR-17/18 still lack a formal DIS row (DIS.030's own note, unchanged). NP-D4B-006 (new since the prior pass, PR #701, merged) is folded into this pass's NATIVE_PROXY_LEDGER_D4B.md summary section below. |
-| 3 | Register final sweep | **CARRIED FROM PRIOR PASS, spot-checked this pass** | `DISAGREEMENT_REGISTER_v1_0.md`, `NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md` unchanged in substance. `CAPABILITY_MANIFEST.json`'s `generated_at` has advanced to `2026-07-22T06:50:04.573Z` (was `2026-06-27T18:27:38Z` at the prior pass) — a regeneration has happened since, but no D-4b doctrine-wave artifact is a canonical_id the manifest tracks, so this is noted, not treated as drift against this wave. |
-| 4 | Master regression suite becomes the standing per-release regression suite — confirm actually wired | **NOT ACTIONED — mode=FULL item, correctly deferred** | This session's dispatch is mode=GATED; this remains a named open commitment, not silently dropped. |
-| 5 | Three-point baseline diff (pre-D-2 → post-D-2 → post-campaign, BASELINE_WEALTH_READING_PRE_D2 §4) | **NOT ACTIONED — mode=FULL item, correctly deferred** | Same as above; unchanged from the prior pass. |
-| 6 | Standing live loop declared OPEN | **NOT YET DECLARED — conditioned on a real close** | Unchanged from the prior pass's reasoning — this is a campaign-close action, and the campaign is not closing this pass. |
+| 1 | Parked-items review | **MET, final** | Folded into REPORT_D4B.md's full campaign narrative. |
+| 2 | DR ratification sweep (DR-6 through DR-20 + NP-D4B ledger) | **MET, final** | REPORT_D4B.md §5–6, full sweep through DR-20, NP-D4B ledger compiled through NP-D4B-009. |
+| 3 | Register final sweep | **MET, final** | REPORT_D4B.md §10 — DISAGREEMENT_REGISTER, MARSYS_DEFECT_GAP_REGISTER (CR-128 disposition updated), CAPABILITY_MANIFEST (untouched, no drift), NATIVE_DIRECTIVES (no new open directive) all swept. |
+| 4 | Master regression suite becomes the standing per-release regression suite | **MET, final** | REPORT_D4B.md §9; binding promise P-1 below. |
+| 5 | Three-point baseline diff (pre-D-2 → post-D-2 → post-campaign) | **MET, with an honest disclosure inside it** | REPORT_D4B.md §7. Delivered as a genuinely two-point diff (pre-D-2 → post-campaign) — no post-D-2 checkpoint reading was ever produced by any prior wave, disclosed rather than fabricated. This satisfies the commitment's intent (produce the comparison, honestly) without satisfying its literal three-point framing, which depended on an artifact that never existed. |
+| 6 | Standing live loop declared OPEN | **MET, final** | REPORT_D4B.md §8 — declared OPEN and PRIMARY, not a footnote. |
 
 ## Summary
 
-**What changed since PR #695's GATED pass:** F-1 (PR #699) merged 2026-07-22T11:07:19Z, closing
-the resonance-map mapping defect. NP-D4B-006 (PR #701, merged) recorded the conductor-verified
-deviation that got F-1 merged under agent-infrastructure duress, with a binding retroactive-
-verification obligation — see NATIVE_PROXY_LEDGER_D4B.md's summary section, appended this pass,
-for that obligation's discharge status. **Both of B-1's two named defects are now fixed on `main`.**
+**Final disposition, this close:** B-1 fully MET across all 8 commitments — the campaign's
+headline, honest NO_WINNER. B-2/B-3 close DEFERRED (native-ruled) — not failures, not silent
+drops, a designed honest terminus reached via the pre-committed no-winner branch. B-4/B-5 MET with
+two named residuals (the `leverage_index`/remedy-join gap, the `mechanism_retrodiction_get` naming
+gap) carried forward, not hidden. B-6 fully MET, including an honest disclosure inside its own
+three-point-diff commitment. **No commitment in this ledger is marked MET without a citable PR,
+commit, or live query result; no DEFERRED row is marked as if it were a mechanical failure — each
+cites the specific native ruling that closed it.**
 
-**What did NOT change:** no B-1 re-run exists — merged, open, or even committed to a branch beyond
-an uncommitted `dr17_grading.ts` scaffold. B-2/B-3 remain correctly un-dispatched. `mimamsa_multipliers`
-is still at 0 observations for every one of its 9 rows (live-requeried this pass). `ka_gochara_sweep`
-materialization is still 165/300 (55%), byte-identical to the prior pass. B-4/B-5 are untouched and
-still MET.
+## Forward-looking promises (binding on future work, not this campaign)
 
-**Net effect on the wave's blocker:** the blocker has narrowed from "two known defects block a
-trustworthy B-1 result" to "both fixes are on `main`, unexercised — B-1 has not been re-run to a
-certified champion/no-winner disposition." This is still, by BRIEF_D4B §1 B-1's own no-forced-
-champion rule and this session's own dispatch terms, a genuine blocker: **b1.merged = false**. B-2
-and B-3 remain correctly `skipped` — hard-gated on a receipt that does not yet exist. **No
-commitment in this ledger is marked MET without a citable PR, commit, or live query result named in
-this document.**
+| # | Promise | Owner / trigger |
+|---|---|---|
+| P-1 | The B-1 checkpointed-batching pattern (CR-126) and the full 14-contender scoring battery become the standing per-release regression suite. | Whoever next touches `platform/scripts/audit/t0_retrodiction/`. |
+| P-2 | CR-128 is built only when the prospective ledger has accrued enough forward-scored, genuinely-unseen outcomes to calibrate against; repair-vs-rebuild decided then, against real requirements. | Whoever opens the pre-work lane or D-6 that first has real prospective data. |
+| P-3 | Every reading served from this point forward files falsifier-bearing predictions into the standing live loop — the primary calibration path. | Standing, all future sessions. |
+| P-4 | The cross-campaign CR-numbering collision (twice, this campaign) needs a reserved-range or lock convention on `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` before the next period with >1 concurrent campaign. | Whoever next runs concurrent doctrine waves; native-level process decision. |
+| P-5 | B-5's `mechanism_retrodiction_get` naming/registration residual is worth a look. | Whoever next touches `mimamsa_*`/`phala_*` retrodiction serving. |
+| P-6 | `bo_upaya`'s NULL columns and the missing `leverage_index` field on `bodha_remedies_get` are pre-existing, named residuals. | Whoever next touches `bo_upaya`'s writer or remedies serving. |
+| P-7 | B-3's residual-pair mining (marriage specimen) still needs `ka_gochara_sweep` fully materialized (165/300 substeps as of this close) before it can run. | Whoever next dispatches B-3-class work. |
+| P-8 | D-6 (`GOCHARA_SWEEP_2_0_DESIGN_v1_0.md`) exists as an untracked draft at this close; native review recommended before D-6 formally opens. | Native, before D-6 open. |
+
+---
+
+*PROMISE_LEDGER_D4B v3.0 — CAMPAIGN CLOSE. Compiled alongside REPORT_D4B, STATE_D4B,
+NATIVE_PROXY_LEDGER_D4B, and the three-point baseline diff for native campaign-close review.*
