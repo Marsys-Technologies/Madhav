@@ -1,13 +1,23 @@
 /**
  * Vidhi registry data — D-2 Lane V-1 (absorbed Track-3 authoring).
  *
- * 37 versioned primitives (design §3 targets "~30"; expanded here by 7 to guarantee full
- * §B0.4 mandatory-surface coverage + all four CR-27 improvisation instances + the CR-36
+ * 48 versioned primitives (design §3 targets "~30"; expanded to guarantee full §B0.4
+ * mandatory-surface coverage + all four CR-27 improvisation instances + the CR-36
  * buried-evidence specimen are each prevented by a named floor item — see
  * `00_ARCHITECTURE/llm_consumption_audit/briefs/doctrine_waves/track3/` for the human-
- * readable source drafts this file mirrors 1:1) + 8 intent-class floors (acharya floor +
- * machine band each), matching the worked `floor(wealth_deepdive)` template in
- * DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §3 verbatim for its 14 named atoms.
+ * readable source drafts this file mirrors 1:1; the 38th, `spiritual_yoga_scan`, was added by
+ * VIDHI-PŪRṆATĀ P-2, the 39th–41st — `ayurdaya_read` / `medical_read` / `upapada_read` —
+ * by VIDHI-PŪRṆATĀ P-3 for F4/F3 floor-completeness, and the 42nd–48th —
+ * `chart_digest_read` / `yoga_firings_read` / `gochara_activation_read` / `gochara_forecast_read` /
+ * `election_read` / `standing_predictions_read` / `tail_divergence_read` — by VIDHI-PŪRṆATĀ P-3b
+ * for the E-0..E-7 elevation lanes) + 11 intent-class floors (acharya floor + machine band each) — the
+ * original 8 plus VIDHI-PŪRṆATĀ P-2's spirituality_deepdive / education_deepdive /
+ * progeny_deepdive (F1 taxonomy completeness) — matching the worked `floor(wealth_deepdive)`
+ * template in DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §3 verbatim for its 14 named atoms. P-3b (E-0)
+ * also replaced the thin general_synthesis fallback with the comprehensive Pūrṇa-Ādhāra
+ * foundational floor (exported as FOUNDATION_BAND_ITEMS) and gave every *_deepdive machine band
+ * the shared elevation tail (E-1 gochara / E-2 standing predictions / E-5 contradiction /
+ * E-6 lel retrodiction / E-7 insight band), see `elevationTail()` below.
  *
  * SOURCE-OF-TRUTH NOTE: at runtime (post V-2 wiring) the MCP resource face reads these
  * rows from the DB (`vidhi_primitives` / `vidhi_intent_floors` / `vidhi_floor_items`,
@@ -119,9 +129,29 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     live_tool: 'ganita_yoga_firings_get',
     tool_args: { chart_id: '{chart_id}', domain: '{domain}', family: 'house_lord' },
     fallback_face: 'ganita_yogas_get',
-    known_gap: 'CR-56', // house-lord yoga detector family absent — OPEN, ELEVATED (#1 acharya-grade blocker)
+    known_gap: null, // CR-56 CORRECTED (VIDHI-PŪRṆATĀ, 2026-07-23): the house-lord dhana/raja family IS confirmed firing live via ganita_yoga_firings_get (dhana_yoga_house_lords), verified by P-0's probe AND by yoga_firings_read (same underlying tool, known_gap:null) in this file. CR-56 CLOSED 2026-07-23 — the tag was stale register drift. Mirrors the CR-59/nbry_scan stale-correction precedent above.
     mandatory_tags: [],
     cr27_prevents: ['CR-27c'],
+  },
+  {
+    // VIDHI-PŪRṆATĀ P-2 (2026-07-23): dedicated Jaimini spiritual/renunciate yoga scan for the
+    // spirituality_deepdive floor. Kept SEPARATE from dhana_yoga_scan (rather than a family
+    // override on it) precisely so its data-gap is honest and durable: dhana_yoga_scan's CR-56
+    // has now been reconciled to null (VIDHI-PŪRṆATĀ, 2026-07-23: the house-lord family DOES fire
+    // live), and had the spiritual-family gap been folded into CR-56, that CR-56 closure would have
+    // silently un-flagged a gap that is genuinely still dark. The 'spiritual' family key is absent from
+    // ganita_yoga_firings_get (P-0 probe) → known_gap CR-130 → surfaces in the completeness
+    // receipt's `dark` bucket, never presented as served (brief §0 honesty line).
+    primitive_id: 'spiritual_yoga_scan',
+    version: 1,
+    definition: 'Scans the Jaimini spiritual/renunciate yoga family (pravrajyā, sannyāsa, tāpasa — 4+ grahas in one bhāva, Ketu/Saturn/12th-lord involvement) for the mokṣa domain.',
+    category: 'doctrine',
+    live_tool: 'ganita_yoga_firings_get',
+    tool_args: { chart_id: '{chart_id}', domain: 'spirituality', family: 'spiritual' },
+    fallback_face: 'ganita_yogas_get',
+    known_gap: 'CR-130', // Jaimini 'spiritual' yoga family not surfaced as a family key by the firings engine (P-0) — data gap, do NOT fake
+    mandatory_tags: [],
+    cr27_prevents: [],
   },
   {
     primitive_id: 'nbry_scan',
@@ -490,7 +520,221 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     mandatory_tags: ['kp_cusp_sublord'],
     cr27_prevents: ['CR-36'],
   },
+
+  // ── VIDHI-PŪRṆATĀ P-3 (F2/F3/F4 floor-completeness, 2026-07-23) — three new primitives ──
+  // All three re-probed LIVE at P-3 against chart 482012f1 and confirmed data-backed:
+  //   ganita_ayurdaya_get → 26 rows (AMSAYU/PINDAYU/NISARGAYU totals, applicable_method=pindayu,
+  //     maraka_grahas=Mars,Saturn,Venus); ganita_medical_get → per-graha dosha/organ/body watch
+  //     (e.g. Saturn: vata; teeth/bones/joints/legs; BPHS Ch.18); ganita_condition_get facet=karakas
+  //     → bhava_arudha.BHAVA_ARUDHA_UPA (house_d1=3, sign Cancer) + arudha_pada.ARUDHA_A12 present.
+  {
+    // F4 (health): the āyurdāya/longevity spine the audit found missing from health_deepdive.
+    primitive_id: 'ayurdaya_read',
+    version: 1,
+    definition:
+      'Classical longevity (Āyurdāya) computation: Piṇḍa/Aṃśa/Naisarga āyus totals + longevity band (alpāyu/madhyāyu/pūrṇāyu), applicable_method, and the maraka grahas — a longevity-band + maraka-load read, NOT a death prediction.',
+    category: 'doctrine',
+    live_tool: 'ganita_ayurdaya_get',
+    tool_args: { chart_id: '{chart_id}' },
+    fallback_face: null,
+    known_gap: null, // data-backed live (P-3 probe: 26 rows, maraka_grahas served).
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // F4 (health): per-graha Vaidya-phala watch-indications, the medical layer the audit wanted.
+    primitive_id: 'medical_read',
+    version: 1,
+    definition:
+      'Vaidya-phala medical watch-indications per graha: dosha aggravated (vāta/pitta/kapha), organ_watch, body_part_watch, and indication tier, with BPHS Ch.18 / Aṣṭāṅga Hṛdayam citations. NOT a diagnosis — classical watch-indications only.',
+    category: 'structural',
+    live_tool: 'ganita_medical_get',
+    tool_args: { chart_id: '{chart_id}' },
+    fallback_face: 'ref_sign_medical_get',
+    known_gap: null, // data-backed live (P-3 probe: per-graha dosha/organ/body watch + citations).
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // F3 (marriage): Upapada Lagna read. NOTE ON NAMING — the P-3 task called for "a new arudha_read
+    // primitive scoped to UPA"; it is authored here as a DISTINCT primitive_id (`upapada_read`)
+    // rather than overloading the existing generic `arudha_read` (which declares the mode:'arudha'
+    // route) because (a) primitive_ids must be unique and (b) the P-0 ledger + P-3 live probe confirm
+    // UPA data resolves specifically via `ganita_condition_get facet=karakas` (bhava_arudha.UPA /
+    // arudha_pada.ARUDHA_A12), a different route than generic arudha_read declares. The 2nd-from-UL
+    // is folded in as an ANSWERER-SIDE derivation off the UPA house (deterministic bhava-from-bhava
+    // over the data-backed UPA position — like P-2's from-karakāṃśa-12th) — NOT a separate tool, so
+    // no known_gap is minted for it. The raw arudha positions are data-backed; only their salience
+    // RANKING is the outstanding gap (CR-61, OPEN), inherited from arudha_read.
+    primitive_id: 'upapada_read',
+    version: 1,
+    definition:
+      'Upapada Lagna (UL/UPA) read for the marriage/relationship domain: the UPA bhava-arudha position (sign + house) and Arudha A12 (ARUDHA_A12), plus the 2nd-from-UL bhāva as an answerer-side derivation off the UPA house (sustenance / longevity-of-union significator). Raw arudha positions are data-backed; salience ranking is CR-61.',
+    category: 'signal',
+    live_tool: 'ganita_condition_get',
+    tool_args: { chart_id: '{chart_id}', facet: 'karakas' },
+    fallback_face: 'bodha_signals_get(frame=arudha)',
+    known_gap: 'CR-61', // arudha stored but never RANKED — OPEN (raw UPA is served; ranking is the gap)
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+
+  // ── VIDHI-PŪRṆATĀ P-3b elevation primitives (E-0/E-1/E-2/E-7, 2026-07-23) — 7 new atoms ──
+  // All re-probed LIVE at P-3b against chart 482012f1 (2026-07-23):
+  //   bodha_chart_digest_get   → whole-chart UCD digest (signal/yoga/dosha counts, contradiction_count,
+  //       weakest_graha=Venus via shadbala re-derivation, composite-ranked entity_profiles per graha +
+  //       BHAVA_1..12, convergence_domains, top_signals) — data-backed, E-0 lead.
+  //   ganita_yoga_firings_get  → 12 fired yogas incl. dhana_yoga_house_lords / raja_yoga_kendra_trikona /
+  //       neecha_bhanga_raja_yoga (bhanga_active) — data-backed firings-authoritative surface, E-0.
+  //   synth_tail_divergence_get→ bottom-decile dissent/tail signals w/ salience_pctl — data-backed, E-7.
+  //   phala_predictive_anchors_get → 6 OPEN filed predictions (domain/window/falsifier/posterior) — E-2.
+  //   gochara_{activation,forecast,election_avoidance}_get → REGISTERED + LIVE with a correct DR-16
+  //       envelope, but backing_data_reachable:false (DATABASE_URL not set — require direct DB) on every
+  //       P-0 + P-3b probe → known_gap CR-131 (reachability), surfaced dark, never faked (brief §0).
+  {
+    // E-0 (Pūrṇa-Ādhāra): the whole-chart digest/rollup that LEADS the foundational floor — the
+    // densest, verdict-bearing layer served FIRST (§N.6), hard_floor-protected at the floor level.
+    // Alias of get_chart_orientation (L2 UCD): rolls up all 12 bhāvas + graha strength + contradictions.
+    primitive_id: 'chart_digest_read',
+    version: 1,
+    definition:
+      'Whole-chart UCD digest (bodha_chart_digest_get): msr_signal/yoga/dosha counts, contradiction_count, weakest_graha (shadbala-derived), composite-ranked entity_profiles (one row per graha and per BHAVA_1..12), convergence_domains, and top signals — the layered digest/rollup that leads the Pūrṇa-Ādhāra foundational floor.',
+    category: 'structural',
+    live_tool: 'bodha_chart_digest_get',
+    tool_args: { chart_id: '{chart_id}', mode: 'summary' },
+    fallback_face: 'get_chart_orientation',
+    known_gap: null, // data-backed live (P-3b probe: full digest + entity_profiles + convergence_domains).
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // E-0: the firings-AUTHORITATIVE yoga surface for the foundation — ALL fired yogas (not the
+    // house-lord family filter dhana_yoga_scan applies, and NOT carrying dhana_yoga_scan's separate
+    // CR-56 register question). Routes to ganita_yoga_firings_get, which P-0 + P-3b confirmed serves
+    // 12 fired yogas (dhana_yoga_house_lords, raja_yoga_kendra_trikona, neecha_bhanga_raja_yoga w/
+    // bhanga_active, budha_aditya, sarasvati, …) with per-varga BPHS grounds.
+    primitive_id: 'yoga_firings_read',
+    version: 1,
+    definition:
+      'Firings-authoritative yoga surface (ganita_yoga_firings_get): every FIRED yoga for the chart (dhana / raja / nīcha-bhaṅga / pañca-mahāpuruṣa / budha-āditya / sarasvatī …) with fire_reason, per-varga grounds and strength — the "confirmed firings" layer (never a catalog/label match) the whole-chart foundation reads.',
+    category: 'doctrine',
+    live_tool: 'ganita_yoga_firings_get',
+    tool_args: { chart_id: '{chart_id}' },
+    fallback_face: 'ganita_yogas_get',
+    known_gap: null, // data-backed live (P-0/P-3b: 12 fired yogas, firings-authoritative surface).
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // E-1 (D-5 temporal engine): current-date activation of the signed λ_e gochara field.
+    primitive_id: 'gochara_activation_read',
+    version: 1,
+    definition:
+      'Gochara (D-5) activation view (gochara_activation_get): kala_gochara_windows rows ACTIVE on the current date — "is this event-class configuration firing right now?" over the signed λ_e intensity field, carrying the DR-16 honest-clarity + structural_prior envelope. Bind at horizon=current in every deepdive machine band.',
+    category: 'temporal',
+    live_tool: 'gochara_activation_get',
+    tool_args: { chart_id: '{chart_id}' },
+    fallback_face: 'kala_windows_get',
+    known_gap: 'CR-131', // registered+live but backing_data_reachable:false via the MCP path (DATABASE_URL) — dark, not faked
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // E-1: forward-looking multi-year forecast over the gochara field. Bind where horizon=multi_year.
+    primitive_id: 'gochara_forecast_read',
+    version: 1,
+    definition:
+      'Gochara (D-5) forecast view (gochara_forecast_get): kala_gochara_windows overlapping a forward date range (point/interval/chain shapes, is_irreversibility_milestone flagged) over the signed λ_e field, DR-16-enveloped — the forward temporal spine. Bind where horizon=multi_year.',
+    category: 'temporal',
+    live_tool: 'gochara_forecast_get',
+    tool_args: { chart_id: '{chart_id}' },
+    fallback_face: 'kala_windows_get',
+    known_gap: 'CR-131', // registered+live but backing_data_reachable:false via the MCP path — dark, not faked
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // E-1: election-avoidance (adverse-window) view — binds when the question is an undertaking/muhurta ask.
+    primitive_id: 'election_read',
+    version: 1,
+    definition:
+      'Gochara (D-5) election-avoidance view (gochara_election_avoidance_get): ADVERSE kala_gochara_windows to avoid for an undertaking, each carrying the full DR-16 payload (clarity_statement, probabilistic framing, falsifier, mitigation-paired BPHS remedy, confidence_disclosure). Bind when the question is an undertaking / timing / muhūrta ask.',
+    category: 'temporal',
+    live_tool: 'gochara_election_avoidance_get',
+    tool_args: { chart_id: '{chart_id}' },
+    fallback_face: 'kala_muhurta_get',
+    known_gap: 'CR-131', // registered+live but backing_data_reachable:false via the MCP path — dark, not faked
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // E-2 (prospective ledger): the OPEN filed falsifiable predictions for the question's domain.
+    // Confirmation / disclosure ONLY — this primitive NEVER writes calibration (mimamsa_outcome_record
+    // and the retired record_outcome path are out of scope; CR-128).
+    primitive_id: 'standing_predictions_read',
+    version: 1,
+    definition:
+      'Standing prospective-ledger read (phala_predictive_anchors_get): the OPEN filed predictions for the domain — each with window_start/peak/end, magnitude, confidence band, malleability, a FALSIFIER (deny/confirm observable + evaluation date) and posterior. Makes every reading falsifier-bearing by default. Confirmation/disclosure ONLY — never a calibration write.',
+    category: 'temporal',
+    live_tool: 'phala_predictive_anchors_get',
+    tool_args: { chart_id: '{chart_id}', domain: '{domain}' },
+    fallback_face: 'phala_anchors_get',
+    known_gap: null, // data-backed live (P-0 + P-3b: 6 anchors w/ falsifier / malleability / posterior).
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // E-7 (insight band): rarity / where-THIS-chart-diverges-from-the-typical — the beyond-acharya carve.
+    primitive_id: 'tail_divergence_read',
+    version: 1,
+    definition:
+      'Tail-divergence read (synth_tail_divergence_get): the bottom-decile dissent/tail signals (BA-P4 70/20/10 attention budget) that contradict or diverge from the dominant synthesis — the rarity / "where THIS chart departs from the typical" surface the insight band mines for the non-obvious, beyond-acharya finding.',
+    category: 'signal',
+    live_tool: 'synth_tail_divergence_get',
+    tool_args: { chart_id: '{chart_id}', domain: '{domain}' },
+    fallback_face: 'bodha_discoveries_get',
+    known_gap: null, // data-backed live (P-3b probe: tail_signals with salience_pctl + classical sources).
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
 ] as const;
+
+// ─────────────────────────────────────────────────────────────────────────────────────
+// VIDHI-PŪRṆATĀ P-3b — shared deepdive elevation tail (E-1/E-2/E-5/E-6/E-7)
+// ─────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The elevation tail every `*_deepdive` machine band ends with (VIDHI-PŪRṆATĀ P-3b). Ordered
+ * AFTER a floor's own domain-specific machine items (dasha spine, taraṅga curve,
+ * intervention/remedy). `domain` scopes the domain-bearing primitives; `from` is the first
+ * `order` value the caller passes (the next free order after its own machine items). Pure data —
+ * the compiler / codegen mirror / registry-parity test all see the fully-expanded arrays.
+ *
+ *   E-1  gochara_activation_read (horizon=current) · gochara_forecast_read (horizon=multi_year) ·
+ *        election_read (undertaking asks) — the D-5 temporal engine, all CR-131-dark (reachability).
+ *   E-2  standing_predictions_read — the domain's OPEN filed falsifiable predictions (live).
+ *   E-6  lel_retrodiction — domain-scoped personal retrodiction (confirmation-only).
+ *   E-7  INSIGHT BAND (hard_floor-protected, §N.6 — never the rows a budget trim sacrifices first):
+ *        contradiction_scan (also satisfies E-5 cross-domain awareness) · tail_divergence_read ·
+ *        mechanism_read · statistical_context — the beyond-acharya insight carve that closes the plan.
+ */
+function elevationTail(domain: string, from: number): FloorItem[] {
+  return [
+    // E-1 — D-5 temporal engine (all dark, CR-131 reachability; asked-for, never faked).
+    { primitive_id: 'gochara_activation_read', order: from, band: 'machine_band' },
+    { primitive_id: 'gochara_forecast_read', order: from + 1, band: 'machine_band' },
+    { primitive_id: 'election_read', order: from + 2, band: 'machine_band' },
+    // E-2 — prospective ledger: OPEN filed predictions for the domain (confirmation-only, live).
+    { primitive_id: 'standing_predictions_read', order: from + 3, band: 'machine_band', args_override: { domain } },
+    // E-6 — personal retrodiction, domain-scoped (confirmation-only framing preserved).
+    { primitive_id: 'lel_retrodiction', order: from + 4, band: 'machine_band', args_override: { domain } },
+    // ── E-7 INSIGHT BAND (hard_floor: the beyond-acharya carve; §N.6-protected) ──
+    { primitive_id: 'contradiction_scan', order: from + 5, band: 'machine_band', hard_floor: true }, // + E-5
+    { primitive_id: 'tail_divergence_read', order: from + 6, band: 'machine_band', args_override: { domain }, hard_floor: true },
+    { primitive_id: 'mechanism_read', order: from + 7, band: 'machine_band', hard_floor: true },
+    { primitive_id: 'statistical_context', order: from + 8, band: 'machine_band', hard_floor: true },
+  ];
+}
 
 // ─────────────────────────────────────────────────────────────────────────────────────
 // Floors
@@ -538,12 +782,13 @@ const WEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'sudarshana_agreement_check', order: 18, band: 'acharya_floor' },
   { primitive_id: 'bhavat_bhavam_check', order: 19, band: 'acharya_floor' },
   { primitive_id: 'nakshatra_semantics', order: 20, band: 'acharya_floor' },
-  { primitive_id: 'mechanism_read', order: 21, band: 'acharya_floor' },
-  { primitive_id: 'dasha_spine_lord_capability', order: 22, band: 'machine_band' },
-  { primitive_id: 'taranga_curve', order: 23, band: 'machine_band', args_override: { domain: 'wealth' } },
-  { primitive_id: 'lel_retrodiction', order: 24, band: 'machine_band', args_override: { domain: 'wealth' } },
-  { primitive_id: 'statistical_context', order: 25, band: 'machine_band' },
-  { primitive_id: 'intervention_synthesis', order: 26, band: 'machine_band' },
+  // P-3b: mechanism_read + statistical_context relocated to the E-7 insight band (elevationTail);
+  // lel_retrodiction likewise now arrives via the tail (still a design-§3 atom — present, just re-banded).
+  { primitive_id: 'dasha_spine_lord_capability', order: 21, band: 'machine_band' },
+  { primitive_id: 'taranga_curve', order: 22, band: 'machine_band', args_override: { domain: 'wealth' } },
+  { primitive_id: 'intervention_synthesis', order: 23, band: 'machine_band' },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=wealth; orders 24-32).
+  ...elevationTail('wealth', 24),
 ];
 
 const CAREER_DEEPDIVE_ITEMS: readonly FloorItem[] = [
@@ -565,10 +810,16 @@ const CAREER_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'bhavat_bhavam_check', order: 14, band: 'acharya_floor' },
   { primitive_id: 'dhana_yoga_scan', order: 15, band: 'acharya_floor', args_override: { domain: 'career', family: 'raja' } },
   { primitive_id: 'nakshatra_semantics', order: 16, band: 'acharya_floor' },
-  { primitive_id: 'mechanism_read', order: 17, band: 'acharya_floor' },
+  // VIDHI-PŪRṆATĀ P-3 (F7 career-completeness, 2026-07-23): the Amātyakāraka (AmK) — the Jaimini
+  // significator of profession/minister — was absent from the career floor. Data-backed via
+  // ganita_condition_get facet=karakas (chara-karaka category, two_pass_verified).
+  { primitive_id: 'chara_karaka_read', order: 17, band: 'acharya_floor', args_override: { chara_karaka: 'AmK' } },
+  // P-3b: mechanism_read relocated to the E-7 insight band (elevationTail) — present, re-banded.
   { primitive_id: 'dasha_spine_lord_capability', order: 18, band: 'machine_band' },
   { primitive_id: 'taranga_curve', order: 19, band: 'machine_band', args_override: { domain: 'career' } },
   { primitive_id: 'intervention_synthesis', order: 20, band: 'machine_band' },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=career; orders 21-29).
+  ...elevationTail('career', 21),
 ];
 
 const HEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
@@ -590,9 +841,22 @@ const HEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'kp_cusp_sublord_read', order: 13, band: 'acharya_floor' },
   { primitive_id: 'sudarshana_agreement_check', order: 14, band: 'acharya_floor' },
   { primitive_id: 'bhavat_bhavam_check', order: 15, band: 'acharya_floor' },
-  { primitive_id: 'dasha_spine_lord_capability', order: 16, band: 'machine_band' },
-  { primitive_id: 'taranga_curve', order: 17, band: 'machine_band', args_override: { domain: 'health' } },
-  { primitive_id: 'remedy_scan', order: 18, band: 'machine_band', args_override: { domain: 'health' } },
+  // ── VIDHI-PŪRṆATĀ P-3 (F4 health-completeness, 2026-07-23) ──
+  // F4 (longevity + medical + 8th + Saturn): the āyurdāya longevity spine, the per-graha Vaidya
+  // medical watch, the 8th (āyuṣ / longevity) bhāva, and Saturn as the chronic/longevity kāraka.
+  { primitive_id: 'ayurdaya_read', order: 16, band: 'acharya_floor' },
+  { primitive_id: 'medical_read', order: 17, band: 'acharya_floor' },
+  { primitive_id: 'bhava_condition', order: 18, band: 'acharya_floor', args_override: { house: 8 } },
+  { primitive_id: 'karaka_condition', order: 19, band: 'acharya_floor', args_override: { karaka: 'saturn' } },
+  // VIDHI-PŪRṆATĀ (F4 health-floor completeness, 2026-07-23): the Moon as mind/mental-health kāraka —
+  // required by STATIC_VIDHI_AUDIT_v1_0.md F4 + brief §2 P-3's health floor. Data-backed live via the
+  // same karaka_condition primitive that already routes mars/saturn/jupiter here (known_gap NULL).
+  { primitive_id: 'karaka_condition', order: 20, band: 'acharya_floor', args_override: { karaka: 'moon' } },
+  { primitive_id: 'dasha_spine_lord_capability', order: 21, band: 'machine_band' },
+  { primitive_id: 'taranga_curve', order: 22, band: 'machine_band', args_override: { domain: 'health' } },
+  { primitive_id: 'remedy_scan', order: 23, band: 'machine_band', args_override: { domain: 'health' } },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=health; orders 24-32).
+  ...elevationTail('health', 24),
 ];
 
 const MARRIAGE_DEEPDIVE_ITEMS: readonly FloorItem[] = [
@@ -612,8 +876,21 @@ const MARRIAGE_DEEPDIVE_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'kp_cusp_sublord_read', order: 12, band: 'acharya_floor' },
   { primitive_id: 'sudarshana_agreement_check', order: 13, band: 'acharya_floor' },
   { primitive_id: 'bhavat_bhavam_check', order: 14, band: 'acharya_floor' },
-  { primitive_id: 'dasha_spine_lord_capability', order: 15, band: 'machine_band' },
-  { primitive_id: 'remedy_scan', order: 16, band: 'machine_band', args_override: { domain: 'marriage' } },
+  // ── VIDHI-PŪRṆATĀ P-3 (F2/F3 marriage-completeness, 2026-07-23) ──
+  // F3 (Jaimini spouse tools + kuṭumba/māṅgalya bhāvas): 2nd (kuṭumba — family into which one
+  // marries), 8th (māṅgalya / longevity-of-union), Dārā-kāraka (DK — the Jaimini significator of
+  // spouse), and the Upapada Lagna read (UL + 2nd-from-UL derived answerer-side).
+  { primitive_id: 'bhava_condition', order: 15, band: 'acharya_floor', args_override: { house: 2 } },
+  { primitive_id: 'bhava_condition', order: 16, band: 'acharya_floor', args_override: { house: 8 } },
+  { primitive_id: 'chara_karaka_read', order: 17, band: 'acharya_floor', args_override: { chara_karaka: 'DK' } },
+  { primitive_id: 'upapada_read', order: 18, band: 'acharya_floor' },
+  { primitive_id: 'dasha_spine_lord_capability', order: 19, band: 'machine_band' },
+  // F2 (timing spine): marriage previously had NO domain-scoped temporal window bundle. taranga_curve
+  // carries CR-66 (phala domain anchors still zero) — dark, surfaced in the receipt, never faked.
+  { primitive_id: 'taranga_curve', order: 20, band: 'machine_band', args_override: { domain: 'marriage' } },
+  { primitive_id: 'remedy_scan', order: 21, band: 'machine_band', args_override: { domain: 'marriage' } },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=marriage; orders 22-30).
+  ...elevationTail('marriage', 22),
 ];
 
 /** Narrow, structure-depth — "show me my D1" canonical example (design §3 §8). */
@@ -642,14 +919,155 @@ const RETRIEVAL_ONLY_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'positions_snapshot', order: 1, band: 'acharya_floor' },
 ];
 
-/** General fallback for questions that don't cleanly map to a domain deepdive. */
-const GENERAL_SYNTHESIS_ITEMS: readonly FloorItem[] = [
-  { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 1 } },
-  { primitive_id: 'shadbala_rank', order: 2, band: 'acharya_floor' },
-  { primitive_id: 'mechanism_read', order: 3, band: 'acharya_floor' },
-  { primitive_id: 'dasha_spine_lord_capability', order: 4, band: 'machine_band' },
-  { primitive_id: 'contradiction_scan', order: 5, band: 'machine_band' },
-  { primitive_id: 'intervention_synthesis', order: 6, band: 'machine_band' },
+/**
+ * E-0 (Pūrṇa-Ādhāra foundational floor, VIDHI-PŪRṆATĀ P-3b). "When the planner does not recognize
+ * the territory, it lays the entire foundation on the table and lets the intelligence judge."
+ * Replaces the thin pre-P-3b 6-item general_synthesis fallback with a comprehensive, LAYERED
+ * whole-chart foundation (BRIEF_VIDHI_PURNATA_v1_0 §B E-0). Served digest-FIRST per §N.6: the
+ * chart_digest_read lead (hard_floor) is the densest verdict-bearing rollup — it carries the
+ * all-12-bhāva + per-graha-strength + contradiction rollup (entity_profiles BHAVA_1..12), so the
+ * foundation LEADS with that layer and provides drill pointers (the full per-bhāva reads) rather
+ * than dumping 24 raw bhava/bhavesha rows (the "undifferentiated dump" §N.6 forbids). Everything
+ * an acharya lays out for an unknown chart is PRESENT and prioritized: positions+degrees,
+ * dignity/shadbala/bhava-bala, the lagna anchor + bhāvat-bhāvam (aspects/argala structure), all
+ * chara-karakas + arudhas incl. Upapada, sensitive degrees, the core cross-domain vargas
+ * (D9+D2/D10/D7/D20), the firings-authoritative yoga surface, the full dasha spine, and the
+ * E-1..E-7 elevation tail (gochara activation/forecast/election, standing predictions, LEL
+ * retrodiction, and the hard_floor-protected E-7 insight band — contradiction/tail-divergence/
+ * mechanism/statistical).
+ *
+ * REUSABLE BAND (E-0): exported so any intent's floor can splice `...FOUNDATION_BAND_ITEMS` as a
+ * foundation layer ("expose the same set as a foundation band any intent can request").
+ *
+ * DUAL GATE (E-0, held both directions): this floor is the UNCLASSIFIABLE-question path
+ * (general_synthesis) — a safety net, NEVER the default for a CLASSIFIED question (a wealth
+ * question routes to wealth_deepdive, etc., via scope_resolver + compiler DOMAIN_TO_INTENT). It
+ * is deliberately NOT a domain deepdive, so the E-4 union never replaces a classified floor with
+ * it and never treats it as a union base.
+ */
+export const FOUNDATION_BAND_ITEMS: readonly FloorItem[] = [
+  // ── Layer 1 (densest, hard_floor): the whole-chart digest / rollup / verdict lead (§N.6) ──
+  { primitive_id: 'chart_digest_read', order: 1, band: 'acharya_floor', hard_floor: true },
+  // ── Layer 2: whole-chart structural + strength foundation ──
+  { primitive_id: 'positions_snapshot', order: 2, band: 'acharya_floor' },
+  { primitive_id: 'dignity_scan', order: 3, band: 'acharya_floor' },
+  { primitive_id: 'shadbala_rank', order: 4, band: 'acharya_floor' },
+  { primitive_id: 'bhava_bala_scan', order: 5, band: 'acharya_floor' },
+  // Lagna anchor + house-from-house. Aspects/parivartana/argala structure is carried by
+  // bhava_condition's aspects-received + bhavat_bhavam + the tail's CGM mechanism_read (no
+  // fabricated argala primitive is minted); the other 11 bhāvas roll up in chart_digest_read
+  // with drill pointers, per §N.6 digest-first layering.
+  { primitive_id: 'bhava_condition', order: 6, band: 'acharya_floor', args_override: { house: 1 } },
+  { primitive_id: 'bhavat_bhavam_check', order: 7, band: 'acharya_floor' },
+  { primitive_id: 'sensitive_degree_check', order: 8, band: 'acharya_floor' },
+  // ── Layer 3: Jaimini kārakas + arudhas (incl. Upapada Lagna) ──
+  { primitive_id: 'chara_karaka_read', order: 9, band: 'acharya_floor', args_override: { chara_karaka: 'AK' } },
+  { primitive_id: 'karakamsa_read', order: 10, band: 'acharya_floor' },
+  { primitive_id: 'arudha_read', order: 11, band: 'acharya_floor' },
+  { primitive_id: 'upapada_read', order: 12, band: 'acharya_floor' },
+  // ── Layer 4: firings-authoritative yogas + core cross-domain vargas (D9+D2/D10/D7/D20 digest) ──
+  { primitive_id: 'yoga_firings_read', order: 13, band: 'acharya_floor' },
+  { primitive_id: 'divisional_facts', order: 14, band: 'acharya_floor', args_override: { varga: 'D9' } },
+  { primitive_id: 'divisional_facts', order: 15, band: 'acharya_floor', args_override: { varga: 'D2' } },
+  { primitive_id: 'divisional_facts', order: 16, band: 'acharya_floor', args_override: { varga: 'D10' } },
+  { primitive_id: 'divisional_facts', order: 17, band: 'acharya_floor', args_override: { varga: 'D7' } },
+  { primitive_id: 'divisional_facts', order: 18, band: 'acharya_floor', args_override: { varga: 'D20' } },
+  // ── Machine band: the full dasha spine + the E-1..E-7 elevation tail (domain=general; 20-28) ──
+  { primitive_id: 'dasha_spine_lord_capability', order: 19, band: 'machine_band' },
+  ...elevationTail('general', 20),
+];
+
+/** General fallback = the Pūrṇa-Ādhāra foundation (E-0). The unclassifiable-question path now
+ *  compiles the deepest floor of all, per the depth-default doctrine (ambiguity → MORE depth,
+ *  never less). Aliased (not re-listed) so the two never drift. */
+const GENERAL_SYNTHESIS_ITEMS: readonly FloorItem[] = FOUNDATION_BAND_ITEMS;
+
+// ── VIDHI-PŪRṆATĀ P-2 (F1 taxonomy completeness, 2026-07-23) — three new life-domain floors ──
+// Every item below resolves to a live tool (per P-0's data-support ledger, chart 482012f1) OR
+// carries a truthful primitive-level known_gap surfaced in the completeness receipt's `dark`
+// bucket. NONE is faked (brief §0 honesty line). Depth defaults to `deepdive` for these intents
+// via scope_resolver.defaultDepthForIntent, so a naive "will I attain moksha?" compiles the full
+// floor + machine band.
+
+/**
+ * floor(spirituality_deepdive) [MANDATORY — brief §2 P-2 / §A]. Mokṣa-domain acharya floor:
+ * 9th (dharma) + 12th (mokṣa) bhāvas & lords · Jupiter (guru-kāraka) + Ketu (mokṣa-kāraka) ·
+ * Ātmakāraka + Karakāṃśa (the from-karakāṃśa 12th/4th mokṣa-trikoṇa is an answerer-side
+ * derivation off the karakāṃśa position) · D20 Vimśāṃśa + its D1/D9/D20 varga-ratification ·
+ * nakshatra semantics (Ketu/Jupiter focus, answerer-side) · the Jaimini spiritual-yoga scan
+ * (dark, CR-130) · CGM mechanism read · sudarśana tri-lagna agreement. Machine band: dasha spine
+ * + leverage-ranked intervention synthesis.
+ */
+const SPIRITUALITY_DEEPDIVE_ITEMS: readonly FloorItem[] = [
+  { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 9 } },
+  { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 12 } },
+  { primitive_id: 'bhavesha_condition', order: 3, band: 'acharya_floor', args_override: { house: 9 } },
+  { primitive_id: 'bhavesha_condition', order: 4, band: 'acharya_floor', args_override: { house: 12 } },
+  { primitive_id: 'karaka_condition', order: 5, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
+  { primitive_id: 'karaka_condition', order: 6, band: 'acharya_floor', args_override: { karaka: 'ketu' } },
+  { primitive_id: 'chara_karaka_read', order: 7, band: 'acharya_floor', args_override: { chara_karaka: 'AK' } },
+  { primitive_id: 'karakamsa_read', order: 8, band: 'acharya_floor' },
+  { primitive_id: 'divisional_facts', order: 9, band: 'acharya_floor', args_override: { varga: 'D20' } },
+  { primitive_id: 'varga_ratification', order: 10, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D20'] } },
+  { primitive_id: 'nakshatra_semantics', order: 11, band: 'acharya_floor' },
+  { primitive_id: 'spiritual_yoga_scan', order: 12, band: 'acharya_floor' },
+  // P-3b: mechanism_read relocated to the E-7 insight band (elevationTail) — present, re-banded.
+  { primitive_id: 'sudarshana_agreement_check', order: 13, band: 'acharya_floor' },
+  { primitive_id: 'dasha_spine_lord_capability', order: 14, band: 'machine_band' },
+  { primitive_id: 'intervention_synthesis', order: 15, band: 'machine_band' },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=spirituality; orders 16-24).
+  ...elevationTail('spirituality', 16),
+];
+
+/**
+ * floor(education_deepdive) [CANDIDATE — full worked floor; D24 confirmed data-backed at P-0].
+ * 4th (formal schooling) + 5th (buddhi/pūrva-puṇya) + 9th (higher learning/guru) bhāvas & the
+ * 4th/5th lords · Mercury (buddhi) + Jupiter (jñāna) kārakas · D24 Chaturviṃśāṃśa + D1/D9/D24
+ * ratification · nakshatra semantics (Mercury focus) · dignity + sensitive-degree checks. Machine
+ * band: dasha spine + education-scoped taraṅga curve (its phala anchors are the CR-66 dark gap —
+ * flagged, not faked).
+ */
+const EDUCATION_DEEPDIVE_ITEMS: readonly FloorItem[] = [
+  { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 4 } },
+  { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 5 } },
+  { primitive_id: 'bhava_condition', order: 3, band: 'acharya_floor', args_override: { house: 9 } },
+  { primitive_id: 'bhavesha_condition', order: 4, band: 'acharya_floor', args_override: { house: 4 } },
+  { primitive_id: 'bhavesha_condition', order: 5, band: 'acharya_floor', args_override: { house: 5 } },
+  { primitive_id: 'karaka_condition', order: 6, band: 'acharya_floor', args_override: { karaka: 'mercury' } },
+  { primitive_id: 'karaka_condition', order: 7, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
+  { primitive_id: 'divisional_facts', order: 8, band: 'acharya_floor', args_override: { varga: 'D24' } },
+  { primitive_id: 'varga_ratification', order: 9, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D24'] } },
+  { primitive_id: 'nakshatra_semantics', order: 10, band: 'acharya_floor' },
+  { primitive_id: 'dignity_scan', order: 11, band: 'acharya_floor' },
+  { primitive_id: 'sensitive_degree_check', order: 12, band: 'acharya_floor' },
+  { primitive_id: 'dasha_spine_lord_capability', order: 13, band: 'machine_band' },
+  { primitive_id: 'taranga_curve', order: 14, band: 'machine_band', args_override: { domain: 'education' } },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=education; orders 15-23).
+  ...elevationTail('education', 15),
+];
+
+/**
+ * floor(progeny_deepdive) [CANDIDATE — full worked floor; D7 confirmed data-backed at P-0].
+ * SPINE KEYED OFF H5 + Jupiter (putra-kāraka) + PuK REGARDLESS of the D7 karya-label quirk
+ * (P-0 (e): the D7 `varga_karya_bhava` row mislabels as `spouse_karya`; that is an L1
+ * `chart_divisionals` writer bug — must_not_touch — so this floor never reads the karya label;
+ * D7 `divisional_facts` is corroboration only). 5th (santāna) + its lord · 9th read as the
+ * 5th-from-5th derivation · Jupiter putra-kāraka + Jaimini PuK · D7 Saptāṃśa + D1/D9/D7
+ * ratification · dosha scan. Machine band: dasha spine + progeny-scoped remedy scan.
+ */
+const PROGENY_DEEPDIVE_ITEMS: readonly FloorItem[] = [
+  { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 5 } },
+  { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 9 } },
+  { primitive_id: 'bhavesha_condition', order: 3, band: 'acharya_floor', args_override: { house: 5 } },
+  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
+  { primitive_id: 'chara_karaka_read', order: 5, band: 'acharya_floor', args_override: { chara_karaka: 'PuK' } },
+  { primitive_id: 'divisional_facts', order: 6, band: 'acharya_floor', args_override: { varga: 'D7' } },
+  { primitive_id: 'varga_ratification', order: 7, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D7'] } },
+  { primitive_id: 'dosha_scan', order: 8, band: 'acharya_floor' },
+  { primitive_id: 'dasha_spine_lord_capability', order: 9, band: 'machine_band' },
+  { primitive_id: 'remedy_scan', order: 10, band: 'machine_band', args_override: { domain: 'progeny' } },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=progeny; orders 11-19).
+  ...elevationTail('progeny', 11),
 ];
 
 export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
@@ -678,6 +1096,36 @@ export const VIDHI_INTENT_FLOORS: readonly IntentFloor[] = [
     version: 1,
     floor_items: MARRIAGE_DEEPDIVE_ITEMS,
     cr27_coverage: ['CR-27b'],
+  },
+  {
+    intent: 'spirituality_deepdive',
+    version: 1,
+    floor_items: SPIRITUALITY_DEEPDIVE_ITEMS,
+    cr27_coverage: [],
+    notes:
+      'VIDHI-PŪRṆATĀ P-2 [MANDATORY] — mokṣa-domain floor (brief §2 P-2 / §A). H9+H12 + lords, ' +
+      'Jupiter(guru)+Ketu(mokṣa) kārakas, AK+karakāṃśa (from-karakāṃśa 12th derived answerer-side), ' +
+      'D20, D1/D9/D20 ratification. Jaimini spiritual-yoga scan is DARK (CR-130 — family key absent).',
+  },
+  {
+    intent: 'education_deepdive',
+    version: 1,
+    floor_items: EDUCATION_DEEPDIVE_ITEMS,
+    cr27_coverage: [],
+    notes:
+      'VIDHI-PŪRṆATĀ P-2 [CANDIDATE] — D24-backed education floor (brief §A). H4+H5+H9 + 4th/5th ' +
+      'lords, Mercury(buddhi)+Jupiter(jñāna) kārakas, D24 + D1/D9/D24 ratification. education-scoped ' +
+      'taraṅga_curve inherits CR-66 (phala domain anchors zero) — dark, not faked.',
+  },
+  {
+    intent: 'progeny_deepdive',
+    version: 1,
+    floor_items: PROGENY_DEEPDIVE_ITEMS,
+    cr27_coverage: [],
+    notes:
+      'VIDHI-PŪRṆATĀ P-2 [CANDIDATE] — D7-backed progeny floor (brief §A). Spine off H5 + Jupiter ' +
+      '(putra-kāraka) + PuK REGARDLESS of the D7 spouse_karya label quirk (P-0 (e): L1 chart_divisionals ' +
+      'writer mislabel, must_not_touch; D7 is corroboration only). H5(+H9 5th-from-5th), D7, D1/D9/D7 ratification.',
   },
   {
     intent: 'structure_read',
