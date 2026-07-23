@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-21T15:32:34.800Z",
+  "generated_at": "2026-07-23T20:20:06.711Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"mcp_full\"",
-  "total": 155,
+  "total": 158,
   "tool_registrations": [
     {
       "tool_name": "assess_career",
@@ -1493,6 +1493,40 @@
       }
     },
     {
+      "tool_name": "get_kp_cusps",
+      "description": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class. For each of the 12 bhava cusps: cusp sidereal longitude, sign (rashi), and the full KP lord chain — sign_lord (rashi lord) / star_lord (nakshatra lord) / sub_lord / sub_sub_lord / prana_lord — plus the cuspal significators list and the cusp degrees (Placidus and Sripati start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every value is an already-stored L1 fact (categories cusp_kp_lords, kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical Krishnamurti ayanamsha; pass ayanamsha_id to select any of the 5 stored ayanamshas. Pass include_graha_kp_lords=true to also get each graha's own KP star/sub/sub_sub/prana chain (graha_kp_lords). Each cusp carries the source fact_ids for Bodha constituent_facts_array back-reference.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Ayanamsha (default 'krishnamurti', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical."
+          },
+          "include_graha_kp_lords": {
+            "type": "boolean",
+            "description": "If true, also return the per-graha KP lord chain (graha_kp_lords). Default false."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L1/get_kp_cusps",
+      "layer": "L1",
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Kp Cusps",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "get_medical_indications",
       "description": "Retrieve classical medical (Vaidya-phala) indications for a chart from ga_medical. Per-graha rows: natal_sign, natal_nakshatra, indication_strength, dosha_aggravated (vata/pitta/kapha), organ_watch, body_part_watch, nakshatra_body_part, indication_tier, and classical_citation. NOT a diagnosis (not_diagnosis=true on every row) — these are classical watch-indications, not medical advice. Filters: graha, ayanamsha_id, indication_tier. Bounded to 50 rows with a disclosed total.",
       "input_schema": {
@@ -2648,6 +2682,52 @@
       "name_valid": true,
       "annotations": {
         "title": "Maro Orchestrate",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "mechanism_retrodiction_get",
+      "description": "CONFIRMATION-ONLY retrodictive evidence surface (never prediction input). Joins the chart's pre-2020 Life Event Log entries to the classical house-lord/Vimshottari-dasha activation mechanism: for each domain-mapped LEL event, reports whether that house's sign lord was running as Mahādasha (MD) or Antardasha (AD) lord on the event date. Returns per-house firing counts (\"this chart's 2nd-house mechanism has fired N times\"), the confirming events, events where the mapped house's lord was NOT active (honest non-firing), and events whose domain has no classical house mapping (honest gap — never silently dropped). Hard-excludes any event on/after 2020-01-01 (sealed test split) — not a caller-settable parameter. Feeds L5 mimamsa's retrodictive-evidence section.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha')."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Filter to one domain prefix (e.g. 'wealth', 'career', 'health'). Omit for all mapped domains."
+          },
+          "house": {
+            "type": "number",
+            "description": "Filter to one house number (1-12). Omit to report all houses with any mapped event."
+          },
+          "dasha_level": {
+            "type": "string",
+            "description": "Which dasha level counts as a firing: 'md', 'ad', or 'both' (default: 'both')."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max LEL events considered (default: 50, max: 50)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L5/mechanism_retrodiction_get",
+      "layer": "L5",
+      "name_valid": true,
+      "annotations": {
+        "title": "Mechanism Retrodiction Get",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -5512,6 +5592,53 @@
       "name_valid": true,
       "annotations": {
         "title": "Query Spillover Cascades",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_spine_bundle",
+      "description": "Returns the pre-joined \"spine bundle\" for one domain of a chart: the chain signal (bodha_msr_signals) → its activation windows (kala_activation) → its phala anchors (phala_anchors) → the chart's calibration scorecard (mimamsa_calibration/mimamsa_multipliers, filtered to this domain). This is the single-call replacement for the 3-5 separate calls (query_signals, query_temporal_activation, query_predictive_anchors, query_calibration) that answering a cross-layer question previously required. Served from a post-build materialized view when fresh; the `source` field discloses whether this response came from the persisted view or a live recompute (missing/stale row) — never silently presented as always-cached. Drill further into any one layer with the four capabilities named above.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID (<chart_uuid>). Required."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Domain to bundle. One of: career, wealth, relationship, health, character, spirituality, other. Default: 'career'.",
+            "enum": [
+              "career",
+              "wealth",
+              "relationship",
+              "health",
+              "character",
+              "spirituality",
+              "other"
+            ]
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha')."
+          },
+          "top_k": {
+            "type": "number",
+            "description": "Max signals in the bundle (default: 15, max: 50)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L-SPINE/query_spine_bundle",
+      "layer": "L2",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Spine Bundle",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,

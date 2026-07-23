@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-21T15:32:34.800Z",
+  "generated_at": "2026-07-23T20:20:06.711Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"chat\"",
-  "total": 77,
+  "total": 79,
   "tool_defs": [
     {
       "name": "assess_career",
@@ -1080,6 +1080,53 @@
       "destructive": false,
       "annotations": {
         "title": "Maro Orchestrate",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "mechanism_retrodiction_get",
+      "description": "CONFIRMATION-ONLY retrodictive evidence surface (never prediction input). Joins the chart's pre-2020 Life Event Log entries to the classical house-lord/Vimshottari-dasha activation mechanism: for each domain-mapped LEL event, reports whether that house's sign lord was running as Mahādasha (MD) or Antardasha (AD) lord on the event date. Returns per-house firing counts (\"this chart's 2nd-house mechanism has fired N times\"), the confirming events, events where the mapped house's lord was NOT active (honest non-firing), and events whose domain has no classical house mapping (honest gap — never silently dropped). Hard-excludes any event on/after 2020-01-01 (sealed test split) — not a caller-settable parameter. Feeds L5 mimamsa's retrodictive-evidence section.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha')."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Filter to one domain prefix (e.g. 'wealth', 'career', 'health'). Omit for all mapped domains."
+          },
+          "house": {
+            "type": "number",
+            "description": "Filter to one house number (1-12). Omit to report all houses with any mapped event."
+          },
+          "dasha_level": {
+            "type": "string",
+            "description": "Which dasha level counts as a firing: 'md', 'ad', or 'both' (default: 'both')."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max LEL events considered (default: 50, max: 50)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L5/mechanism_retrodiction_get",
+      "layer": "L5",
+      "read_only": true,
+      "destructive": false,
+      "annotations": {
+        "title": "Mechanism Retrodiction Get",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -2893,6 +2940,54 @@
       "destructive": false,
       "annotations": {
         "title": "Query Signals",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "query_spine_bundle",
+      "description": "Returns the pre-joined \"spine bundle\" for one domain of a chart: the chain signal (bodha_msr_signals) → its activation windows (kala_activation) → its phala anchors (phala_anchors) → the chart's calibration scorecard (mimamsa_calibration/mimamsa_multipliers, filtered to this domain). This is the single-call replacement for the 3-5 separate calls (query_signals, query_temporal_activation, query_predictive_anchors, query_calibration) that answering a cross-layer question previously required. Served from a post-build materialized view when fresh; the `source` field discloses whether this response came from the persisted view or a live recompute (missing/stale row) — never silently presented as always-cached. Drill further into any one layer with the four capabilities named above.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID (<chart_uuid>). Required."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Domain to bundle. One of: career, wealth, relationship, health, character, spirituality, other. Default: 'career'.",
+            "enum": [
+              "career",
+              "wealth",
+              "relationship",
+              "health",
+              "character",
+              "spirituality",
+              "other"
+            ]
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha')."
+          },
+          "top_k": {
+            "type": "number",
+            "description": "Max signals in the bundle (default: 15, max: 50)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L-SPINE/query_spine_bundle",
+      "layer": "L2",
+      "read_only": true,
+      "destructive": false,
+      "annotations": {
+        "title": "Query Spine Bundle",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,

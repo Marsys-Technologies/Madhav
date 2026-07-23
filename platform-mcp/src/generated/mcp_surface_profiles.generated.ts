@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-07-21T15:32:34.800Z
+ * generated_at: 2026-07-23T20:20:06.711Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -46,7 +46,7 @@ export const MCP_SURFACE_PROFILES: {
   "full": {
     "profile": "full",
     "max_tools": null,
-    "total": 148,
+    "total": 150,
     "tool_names": [
       "assess_career",
       "assess_health",
@@ -80,6 +80,7 @@ export const MCP_SURFACE_PROFILES: {
       "get_eclipse_flags",
       "get_graha_yuddha",
       "get_karakas",
+      "get_kp_cusps",
       "get_medical_indications",
       "get_panchanga",
       "get_positions",
@@ -174,6 +175,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_signal_families",
       "query_signals",
       "query_spillover_cascades",
+      "query_spine_bundle",
       "query_sutravali_rules",
       "query_sutravali_rules_for_planet",
       "query_tantric_remedies",
@@ -1680,6 +1682,40 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Get Karakas",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "get_kp_cusps",
+        "description": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class. For each of the 12 bhava cusps: cusp sidereal longitude, sign (rashi), and the full KP lord chain — sign_lord (rashi lord) / star_lord (nakshatra lord) / sub_lord / sub_sub_lord / prana_lord — plus the cuspal significators list and the cusp degrees (Placidus and Sripati start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every value is an already-stored L1 fact (categories cusp_kp_lords, kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical Krishnamurti ayanamsha; pass ayanamsha_id to select any of the 5 stored ayanamshas. Pass include_graha_kp_lords=true to also get each graha's own KP star/sub/sub_sub/prana chain (graha_kp_lords). Each cusp carries the source fact_ids for Bodha constituent_facts_array back-reference.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Ayanamsha (default 'krishnamurti', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical."
+            },
+            "include_graha_kp_lords": {
+              "type": "boolean",
+              "description": "If true, also return the per-graha KP lord chain (graha_kp_lords). Default false."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L1/get_kp_cusps",
+        "layer": "L1",
+        "name_valid": true,
+        "annotations": {
+          "title": "Get Kp Cusps",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -5545,6 +5581,53 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "query_spine_bundle",
+        "description": "Returns the pre-joined \"spine bundle\" for one domain of a chart: the chain signal (bodha_msr_signals) → its activation windows (kala_activation) → its phala anchors (phala_anchors) → the chart's calibration scorecard (mimamsa_calibration/mimamsa_multipliers, filtered to this domain). This is the single-call replacement for the 3-5 separate calls (query_signals, query_temporal_activation, query_predictive_anchors, query_calibration) that answering a cross-layer question previously required. Served from a post-build materialized view when fresh; the `source` field discloses whether this response came from the persisted view or a live recompute (missing/stale row) — never silently presented as always-cached. Drill further into any one layer with the four capabilities named above.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID (<chart_uuid>). Required."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Domain to bundle. One of: career, wealth, relationship, health, character, spirituality, other. Default: 'career'.",
+              "enum": [
+                "career",
+                "wealth",
+                "relationship",
+                "health",
+                "character",
+                "spirituality",
+                "other"
+              ]
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha')."
+            },
+            "top_k": {
+              "type": "number",
+              "description": "Max signals in the bundle (default: 15, max: 50)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L-SPINE/query_spine_bundle",
+        "layer": "L2",
+        "name_valid": true,
+        "annotations": {
+          "title": "Query Spine Bundle",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "query_sutravali_rules",
         "description": "Query sutravali_rules by antecedent JSONB pattern. Supports optional filters: planet (graha name), house (1-12), sign (rashi name), antecedent_pattern (free-text substring match on antecedent JSONB), limit (default 20). SQL-only via the Python sidecar. Zero LLM. Returns classical rule rows with antecedent, predicate, prediction, confidence, text_id, and provenance. Use to look up classical rules for a planet/house combination. Registry equivalent of lib/retrieve/sutravali_tools.ts::query_rules (D7 gap fill).",
         "input_schema": {
@@ -6395,6 +6478,7 @@ export const MCP_SURFACE_PROFILES: {
     "overflow_tool_names": [],
     "excluded_calibration_context_only": [
       "lel_query",
+      "mechanism_retrodiction_get",
       "query_predictions"
     ],
     "excluded_not_llm_facing": [
@@ -7375,6 +7459,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_retrograde_periods",
       "query_signal_families",
       "query_signals",
+      "query_spine_bundle",
       "query_sutravali_rules",
       "query_sutravali_rules_for_planet",
       "query_tantric_remedies",
@@ -7386,6 +7471,7 @@ export const MCP_SURFACE_PROFILES: {
     ],
     "excluded_calibration_context_only": [
       "lel_query",
+      "mechanism_retrodiction_get",
       "query_predictions"
     ],
     "excluded_not_llm_facing": [
