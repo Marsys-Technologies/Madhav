@@ -8,6 +8,10 @@ const ALL_INTENT_CLASSES: readonly IntentClass[] = [
   'career_deepdive',
   'health_deepdive',
   'marriage_deepdive',
+  // VIDHI-PŪRṆATĀ P-2 (F1 taxonomy completeness) — the three new life-domain deepdives.
+  'spirituality_deepdive',
+  'education_deepdive',
+  'progeny_deepdive',
   'structure_read',
   'panoramic_breadth',
   'retrieval_only',

@@ -99,7 +99,10 @@ describe('row 14 — vidhi registry as an MCP resource', () => {
     const payload = JSON.parse(out.contents[0]!.text) as ReturnType<typeof buildRegistryPayload>;
     expect(payload.primitive_count).toBe(VIDHI_PRIMITIVES.length);
     expect((payload.primitives as unknown[]).length).toBe(VIDHI_PRIMITIVES.length);
-    expect((payload.intent_floors as unknown[]).length).toBe(8);
+    // VIDHI-PŪRṆATĀ P-2 (F1 taxonomy completeness, 2026-07-23): the registry grew from the
+    // original 8 intent floors to 11 with spirituality_deepdive [MANDATORY] + education_deepdive /
+    // progeny_deepdive [CANDIDATE]. Assert against the live registry length, not a stale literal.
+    expect((payload.intent_floors as unknown[]).length).toBe(11);
     expect(payload.capability_version).toBe(VIDHI_CAPABILITY_VERSION);
   });
 });

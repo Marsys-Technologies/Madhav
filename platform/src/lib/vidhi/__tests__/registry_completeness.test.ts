@@ -23,6 +23,11 @@ const LIVE_TOOLS = new Set<string>([
   'get_chart_quality', 'get_classical_citation', 'get_dashas', 'get_domain_reading',
   'get_graha_yuddha', 'get_positions', 'get_projections', 'get_remedies', 'get_signals',
   'get_temporal_windows', 'graha_portrait', 'bodha_bundle_get', 'intent_classify',
+  // VIDHI-PŪRṆATĀ P-3b (E-1): the D-5 Gochara-Chitra window-engine tools — REGISTERED + LIVE on
+  // the connector (their ROW data requires DB-direct access, tracked as the CR-131 known_gap; the
+  // tool NAMES are real, which is exactly what this allowlist guards). The three E-1 primitives
+  // (gochara_activation_read / gochara_forecast_read / election_read) route to these.
+  'gochara_activation_get', 'gochara_forecast_get', 'gochara_election_avoidance_get',
   'judgment_query', 'kala_life_arc_get', 'kala_muhurta_get', 'kala_priority_ranking_get',
   'kala_projections_get', 'kala_bundle_get', 'kala_windows_get', 'kala_yoga_activation_get',
   'lel_query', 'list_assets', 'list_entities', 'catalog_charts_list', 'session_list',

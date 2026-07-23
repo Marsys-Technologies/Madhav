@@ -36,9 +36,12 @@ describe('vidhi registry parity — served mirror equals V-1 canonical', () => {
     expect(MIRROR_PRIMITIVES.length).toBeGreaterThanOrEqual(30);
   });
 
-  it('VIDHI_INTENT_FLOORS deep-equal (all 8 intents)', () => {
+  it('VIDHI_INTENT_FLOORS deep-equal (all 11 intents)', () => {
+    // VIDHI-PŪRṆATĀ P-2 (F1): 8 → 11 intent floors (added spirituality_deepdive [MANDATORY],
+    // education_deepdive, progeny_deepdive [CANDIDATE]). The deep-equal below still enforces
+    // mirror↔canonical parity; only the count literal advances with the taxonomy.
     expect(MIRROR_FLOORS).toEqual(CANON_FLOORS);
-    expect(MIRROR_FLOORS.length).toBe(8);
+    expect(MIRROR_FLOORS.length).toBe(11);
   });
 
   it('compiler produces byte-identical contracts for the same tuple', () => {

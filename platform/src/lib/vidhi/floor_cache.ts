@@ -164,6 +164,11 @@ export function compileContractCached(
     scope_tuple: tuple,
     floor: substituteChartId(placeholder.floor, chartId),
     machine_band: substituteChartId(placeholder.machine_band, chartId),
+    // E-3 adaptive_expansions (VIDHI-PŪRṆATĀ P-3b) are chart-AGNOSTIC — computeAdaptiveExpansions
+    // embeds NO chart_id (only house/karaka/primitive_id) — so the placeholder's set is reused
+    // verbatim, keeping the cached contract byte-identical to a direct compile (the hash-equality
+    // floor_cache.test.ts asserts). Field position mirrors compiler.ts (after machine_band).
+    adaptive_expansions: placeholder.adaptive_expansions,
     completeness_receipt_template: placeholder.completeness_receipt_template,
     llm_extension_note: placeholder.llm_extension_note,
   };

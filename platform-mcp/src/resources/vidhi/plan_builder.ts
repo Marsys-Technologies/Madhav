@@ -8,7 +8,7 @@
  *   - a completeness receipt (served/empty/dark per floor item; dark cites its CR — row 17),
  *   - the served capability_version (row 18).
  */
-import { compileContract, defaultRegistry } from './compiler.js';
+import { compileMultiDomainContract, defaultRegistry } from './compiler.js';
 import { resolveScopeTuple, type ScopeTupleInput, type ResolvedScope } from './scope_resolver.js';
 import { VIDHI_CAPABILITY_VERSION } from './capability_version.js';
 import {
@@ -16,7 +16,7 @@ import {
   type FloorItemObservation,
   type CompletenessReceipt,
 } from '../../lib/completeness_receipt.js';
-import type { CompiledFloorItem } from './types.js';
+import type { AdaptiveExpansion, CompiledFloorItem } from './types.js';
 
 export interface BuildPlanArgs {
   readonly chart_id: string;
@@ -40,6 +40,13 @@ export interface VidhiPlan {
   };
   readonly floor: readonly CompiledFloorItem[];
   readonly machine_band: readonly CompiledFloorItem[];
+  /**
+   * E-3 Anusaraṇa (VIDHI-PŪRṆATĀ P-3b): the deterministic, one-hop, executor-side follow-rules
+   * the compiler pre-authorized from the resolved floor (bhāveśa→occupied-house, kāraka→dispositor,
+   * response-flag drills). Chart-agnostic directives — the executor materializes each against live
+   * chart facts (never the compiler; that would need chart data). Empty when nothing triggers.
+   */
+  readonly adaptive_expansions: readonly AdaptiveExpansion[];
   readonly completeness_receipt: CompletenessReceipt;
   readonly llm_extension_note: string;
   readonly correction_hint: string;
@@ -53,7 +60,11 @@ export interface VidhiPlan {
 export function buildVidhiPlan(args: BuildPlanArgs): VidhiPlan {
   const resolved = resolveScopeTuple(args.question, args.scope_tuple);
   const registry = defaultRegistry();
-  const contract = compileContract(resolved.scope_tuple, registry, args.chart_id);
+  // E-4 (VIDHI-PŪRṆATĀ P-3b): compile via the multi-domain-aware entry. It delegates to the plain
+  // single-intent compileContract when the tuple resolves to one deepdive (the common case → the
+  // output is byte-identical), and UNIONS the matched deepdive floors when scope_tuple.domains[]
+  // names more than one (dedup on primitive_id+args, primary-first stable order).
+  const contract = compileMultiDomainContract(resolved.scope_tuple, registry, args.chart_id);
   const receipt = emitCompletenessReceipt(contract, args.observations ?? []);
 
   return {
@@ -69,6 +80,7 @@ export function buildVidhiPlan(args: BuildPlanArgs): VidhiPlan {
     },
     floor: contract.floor,
     machine_band: contract.machine_band,
+    adaptive_expansions: contract.adaptive_expansions,
     completeness_receipt: receipt,
     llm_extension_note: contract.llm_extension_note,
     correction_hint:
