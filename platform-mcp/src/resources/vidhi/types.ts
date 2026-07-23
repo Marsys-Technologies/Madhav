@@ -81,6 +81,15 @@ export interface FloorItem {
   readonly band: FloorBand;
   /** Optional per-floor arg overrides merged onto the primitive's tool_args (e.g. house number). */
   readonly args_override?: Readonly<Record<string, unknown>>;
+  /**
+   * §N.6 Serving-Density signal (VIDHI-PŪRṆATĀ P-3b). `true` marks this item as on the
+   * densest / most-actionable layer of its band — E-0's foundational digest lead rows, and
+   * E-7's insight band (contradiction/tail_divergence/mechanism/statistical). It is the
+   * machine-readable analogue of `response_budget.ts`'s `TrimmableSection.hardFloor`: a budget
+   * trim must protect these rows and never sacrifice them FIRST (§N.6 Part 2 + Part 4:
+   * "density signaling is data, not narration"). Absent/false ⇒ a lower-density, floorable row.
+   */
+  readonly hard_floor?: boolean;
 }
 
 export type IntentClass =
@@ -88,6 +97,14 @@ export type IntentClass =
   | 'career_deepdive'
   | 'health_deepdive'
   | 'marriage_deepdive'
+  // VIDHI-PŪRṆATĀ P-2 (F1 taxonomy completeness, 2026-07-23): three life-domain deepdives
+  // the pre-wave enum lacked. `spirituality_deepdive` is MANDATORY (brief §2 P-2);
+  // `education_deepdive` / `progeny_deepdive` are the CANDIDATE pair, added with full worked
+  // floors because P-0's data-support ledger confirmed D24 (education) and D7 (progeny) are
+  // data-backed live. All three carry a registered floor in registry_data.ts.
+  | 'spirituality_deepdive'
+  | 'education_deepdive'
+  | 'progeny_deepdive'
   | 'structure_read'
   | 'panoramic_breadth'
   | 'retrieval_only'
@@ -130,6 +147,13 @@ export interface CompiledFloorItem {
   readonly tool_args: Readonly<Record<string, unknown>>;
   readonly fallback_face: string | null;
   readonly known_gap: string | null;
+  /**
+   * §N.6 density signal, compiled from `FloorItem.hard_floor` (VIDHI-PŪRṆATĀ P-3b). Always
+   * present on the compiled item (`false` when the floor item did not declare it). The serving
+   * layer / response-budget trimmer reads this to protect the densest layer (E-0 digest lead,
+   * E-7 insight band) ahead of floorable rows.
+   */
+  readonly hard_floor: boolean;
 }
 
 export interface CompletenessReceiptTemplate {
@@ -142,6 +166,36 @@ export interface CompletenessReceiptTemplate {
 }
 
 /**
+ * E-3 Anusaraṇa (chart-adaptive) one-hop expansion RULE (VIDHI-PŪRṆATĀ P-3b). Emitted by the
+ * compiler AFTER the static floor resolves, as a PURE function of (compiled floor + registry) —
+ * it consults NO chart facts and embeds NO chart_id, so it stays chart-agnostic and the
+ * determinism / hash-equality test still holds (the floor_cache reuses it verbatim across
+ * charts). Each rule is a follow-DIRECTIVE the executor materializes against live chart facts;
+ * the compiler never RESOLVES it (that would require chart data). Hard-capped at ONE hop
+ * (`hop: 1`, no transitive closure) so §N.6 budgets survive.
+ */
+export type AnusaranaRule = 'bhavesha_dispositor_hop' | 'karaka_dispositor_hop' | 'response_flag_drill';
+
+export interface AdaptiveExpansion {
+  readonly rule: AnusaranaRule;
+  /** The compiled floor item this expansion follows FROM. */
+  readonly source_primitive_id: string;
+  /** The house the source item targets (bhavesha/bhava hops), when applicable. */
+  readonly source_house?: number;
+  /** The kāraka the source item targets (karaka hops), when applicable. */
+  readonly source_karaka?: string;
+  /** Human/machine description of the single hop the executor performs against chart facts. */
+  readonly follow: string;
+  /** The primitive the executor is pre-authorized to add at the (executor-)resolved target. */
+  readonly add_primitive_id: string;
+  /** When the executor should materialize this (response-flag rules fire only on a live flag). */
+  readonly trigger: string;
+  /** Hard cap — always 1. One hop, no transitive closure. */
+  readonly hop: 1;
+  readonly note: string;
+}
+
+/**
  * The compiled output. Deterministic: identical `ScopeTuple` → byte-identical
  * `CompiledContract` (compiler.test.ts asserts this via a hash-equality check).
  */
@@ -150,6 +204,12 @@ export interface CompiledContract {
   readonly scope_tuple: ScopeTuple;
   readonly floor: readonly CompiledFloorItem[];
   readonly machine_band: readonly CompiledFloorItem[];
+  /**
+   * E-3 Anusaraṇa: the deterministic, one-hop, executor-side expansion rules compiled from the
+   * resolved floor. Empty when no floor item triggers a follow-rule. Never executed by the
+   * compiler; the executor materializes each against live chart facts (see `AdaptiveExpansion`).
+   */
+  readonly adaptive_expansions: readonly AdaptiveExpansion[];
   readonly completeness_receipt_template: CompletenessReceiptTemplate;
   readonly llm_extension_note: string;
 }

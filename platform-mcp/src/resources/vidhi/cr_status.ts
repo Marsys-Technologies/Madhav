@@ -64,7 +64,9 @@ export const OPEN_CRS = [
   // POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md v1.5 §G row text; re-verified OPEN at W4
   // (2026-07-21). NOTE: CR-54 and CR-59 were in this list at bind time but the register has
   // since CLOSED both (D-2 GATE GREEN 2026-07-17) — moved to CLOSED_CRS below (W4 CR-55 lane).
-  'CR-56',
+  // NOTE: CR-56 was ALSO in this list until VIDHI-PŪRṆATĀ (2026-07-23) reconciled it — the
+  // house-lord dhana/raja yoga family DOES fire live via ganita_yoga_firings_get (F9); moved to
+  // CLOSED_CRS below (same stale-register-drift precedent as CR-54/CR-59).
   'CR-63',
   'CR-65',
   'CR-66',
@@ -72,6 +74,30 @@ export const OPEN_CRS = [
   'CR-68',
   'CR-69',
   'CR-37',
+  // CR-130 — NEW, minted by VIDHI-PŪRṆATĀ P-2 (2026-07-23; next free slot after CR-129, the
+  // highest in MARSYS_DEFECT_GAP_REGISTER_v2_0.md at wave open). DATA GAP: the Jaimini
+  // spiritual / renunciate yoga family (pravrajyā, sannyāsa, tāpasa yogas) is NOT surfaced as a
+  // family key by `ganita_yoga_firings_get` (P-0 F-probe: all firing rows carry `family_ids:[]`;
+  // no 'spiritual' family). The `spiritual_yoga_scan` primitive (spirituality_deepdive floor)
+  // asks for it AND flags it dark — planner-honest per brief §0's honesty line, never faked.
+  // FOLLOW-UP (conductor / P-4): file the formal CR-130 row in MARSYS_DEFECT_GAP_REGISTER — that
+  // register is outside this lane's may_touch, so it is flagged here rather than edited.
+  'CR-130',
+  // CR-131 — NEW, minted by VIDHI-PŪRṆATĀ P-3b (E-1, 2026-07-23; next free slot after CR-130).
+  // DATA-REACHABILITY GAP: the D-5 Gochara-Chitra window engine (kala_gochara_windows, served by
+  // gochara_activation_get / gochara_forecast_get / gochara_election_avoidance_get) is REGISTERED
+  // and LIVE with a correct DR-16 honest-clarity envelope, but its rows are NOT reachable through
+  // the standard MCP capability path — every probe (P-0 and the P-3b re-probe of chart 482012f1,
+  // 2026-07-23) returns `backing_data_reachable:false, empty_reason:"DATABASE_URL not set — require
+  // direct DB access"`. The three E-1 primitives (gochara_activation_read / gochara_forecast_read /
+  // election_read) ask for the temporal engine in every deepdive's machine band AND flag it dark —
+  // brief §0 honesty line: added, never faked, surfaced in the completeness receipt's `dark` bucket
+  // until DB-direct reachability is confirmed in a DATABASE_URL-equipped serving runtime. This is a
+  // reachability/verification gap, NOT a claim the tools are absent.
+  // FOLLOW-UP (conductor / P-4): file the formal CR-131 row in MARSYS_DEFECT_GAP_REGISTER (that
+  // register is outside this lane's may_touch); when DB reachability is confirmed live, retire the
+  // three primitives' known_gap to null (the CR-56/CR-59 stale-correction precedent).
+  'CR-131',
 ] as const;
 
 /** LOGGED = inputs, not defects (BRIEF_D2.md §B0.1). Citable as known_gap context, never as a "fix this" CR. */
@@ -107,6 +133,13 @@ export const CLOSED_CRS = [
   // registry_data.ts already set its known_gap to null. RESIDUAL: L2 salience ranking of NBRY
   // signals routed to D-3 (a narrower surfacing issue, not the original detection defect).
   'CR-59',
+  // CR-56: STALE-corrected (VIDHI-PŪRṆATĀ, 2026-07-23). Was in OPEN_CRS at bind time, tagged the
+  // dhana_yoga_scan known_gap ("house-lord yoga detector family absent"). RECONCILED on live data:
+  // ganita_yoga_firings_get fires dhana_yoga_house_lords (F9 — confirmed by P-0's probe AND the
+  // yoga_firings_read primitive, which marks the same tool known_gap:null). The house-lord dhana/
+  // raja family is confirmed firing live; the tag was stale register drift. registry_data.ts has
+  // set dhana_yoga_scan's known_gap to null. Same precedent as CR-54/CR-59.
+  'CR-56',
   'A7',
   'R-17',
   'R-47',
