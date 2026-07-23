@@ -94,11 +94,23 @@ logger = logging.getLogger(__name__)
 # (BRIEF_D5 §6, ratified ARC PLAN §10 Q3) -- deliberately NOT tied to computed
 # longevity/ayurdaya (an Ethical Framework violation to do so).
 _HORIZON_YEARS = 100
-_N_YEARS = _HORIZON_YEARS  # one substep per calendar year -- see module
-                            # docstring's CHUNK GRANULARITY note (was 10
-                            # decade-sized substeps; a real dispatch hit the
-                            # 1800s writer_timeout_seconds watchdog on a
-                            # single decade substep, D-5 REBUILD fix 2026-07-20)
+# One Jan-1-aligned yearly chunk per substep (CHUNK GRANULARITY note above --
+# was 10 decade-sized substeps; a real dispatch hit the 1800s
+# writer_timeout_seconds watchdog on a single decade substep, D-5 REBUILD fix
+# 2026-07-20).
+#
+# INCLUSIVE-ENDPOINT (+1) -- SARVA-SIDDHI W-1 T-2, 2026-07-24: the required
+# corpus span is birth -> birth+100y INCLUSIVE (chart 482012f1: 1984-02-05 ->
+# 2084-02-05). `run_substep` maps year_idx -> the calendar year
+# [birth_year+year_idx-01-01, birth_year+year_idx+1-01-01). With `_birth_year`
+# now the LITERAL birth year (see `_derive_birth_year` -- previously the
+# dasha-balance start, ~34y early for 482012f1), year_idx 0..99 alone covers
+# 1984..2083 and stops at 2084-01-01, i.e. ~1 month SHORT of the birth+100y
+# anniversary. The extra year (year_idx 100 -> the 2084 chunk,
+# [2084-01-01, 2085-01-01)) makes the birth+100y date fall strictly INSIDE the
+# final chunk, so the served corpus provably spans the whole required range.
+# Net: 101 substeps per event_class.
+_N_YEARS = _HORIZON_YEARS + 1
 
 # Bump when substep SEMANTICS change, so an in-flight resume ledger from an
 # older writer build is treated as a different build and replanned-all
@@ -133,7 +145,19 @@ _N_YEARS = _HORIZON_YEARS  # one substep per calendar year -- see module
 # single global argmax per run -- an old point-class row committed under
 # v5 reflects the collapsed, superseded shape and must not be read as
 # already-correctly-completed by a resume.
-_RESUME_VERSION = 6
+# Bumped 6 -> 7 (SARVA-SIDDHI W-1 T-2 span fix, 2026-07-24): the sweep
+# horizon anchor moved from the dasha-balance start to the LITERAL birth year
+# (`_derive_birth_year` rewrite) AND the horizon gained its inclusive
+# birth+100y endpoint year (`_N_YEARS` 100 -> 101). Both change substep-key
+# SEMANTICS (year_idx N now maps to a DIFFERENT calendar year than before,
+# and there is a new terminal year_idx), so an in-flight ledger keyed under
+# the old 1950-anchored / 100-year plan must NOT be read as
+# already-correctly-completed. `_birth_year` is already part of the
+# fingerprint, so the anchor change alone forces a full replan-all; the bump
+# documents the semantics change and additionally covers charts whose literal
+# birth year happens to equal their dasha-balance year (no birth_year delta,
+# but the +1 horizon year still changed the plan).
+_RESUME_VERSION = 7
 
 
 # D-4b materialization-time optimization (native directive, 2026-07-21): the
@@ -519,14 +543,54 @@ class KaGocharaSweepWriter(WriterBase):
 
     @staticmethod
     def _derive_birth_year(conn, chart_id: str):
-        """Chart-relative birth year, NOT hardcoded to any one native
-        (CR-87-class discipline) -- mirrors ka_sangam's own
-        `_derive_birth_year` technique exactly (earliest level_n=1 MD start
-        in chart_dashas): this is the DASHA-BALANCE start, which can predate
-        the literal birth date by up to one full mahadasha (the running
-        dasha at birth started before birth) -- the SAME accepted
-        approximation `ka_sangam.py`'s lifetime tier already uses for its
-        birth_date->birth_date+100y horizon, not a new invention."""
+        """LITERAL birth year for the birth->birth+100y sweep horizon,
+        chart-relative and NEVER hardcoded to any one native (CR-87
+        discipline). SARVA-SIDDHI W-1 T-2 root-cause fix, 2026-07-24.
+
+        PRIOR BEHAVIOUR this fixes: this method returned the DASHA-BALANCE
+        start -- MIN(start_date) at level_n=1 in chart_dashas -- on the old
+        docstring's premise that it "predates the literal birth by up to one
+        full mahadasha (<=20y)". That premise does NOT hold: chart_dashas
+        stores the running dasha sequence from a CYCLE start that can sit far
+        earlier than birth. For chart 482012f1 the value is 1949-12-31, i.e.
+        34 YEARS before the literal birth 1984-02-05. The consequences were
+        (a) 34 substep-years per event_class of meaningless PRE-BIRTH compute
+        and (b) a horizon of 1950..2049 that never reached the required
+        birth+100y endpoint (2084) -- the largest materialized window_end was
+        2037. This writer's OWN `_SCORING_SPAN_END_YEAR` comment already
+        assumes birth_year==1984 ("birth 1984-02-05 -> ... year_idx 43"), so
+        the code contradicted its own documentation; this fix reconciles them.
+
+        Now: the LITERAL birth year from public.charts.birth_date, using the
+        SAME `WHERE id = %s OR chart_id = %s` lookup ka_sangam
+        `_resolve_birth_location` already uses against public.charts (B.10 --
+        read the fact, never invent it). Falls back to the old dasha-balance
+        MIN(start_date) ONLY if public.charts has no birth_date for this
+        chart, so a chart lacking a public.charts row still produces an
+        honest plan rather than crashing.
+
+        (ka_sangam's lifetime tier still uses the dasha-balance approximation
+        for its own birth_date+100y horizon; that is a separate asset and a
+        latent instance of the same span shortfall -- flagged to the native,
+        not fixed here, since T-2's scope is ka_gochara_sweep only.)"""
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT birth_date FROM public.charts "
+                    "WHERE id = %s OR chart_id = %s "
+                    "ORDER BY birth_date NULLS LAST LIMIT 1",
+                    (chart_id, chart_id),
+                )
+                row = cur.fetchone()
+                if row:
+                    bd = row['birth_date'] if isinstance(row, dict) else row[0]
+                    if bd is not None:
+                        return bd.year
+        except Exception as exc:
+            logger.warning("ka_gochara_sweep: public.charts birth_date lookup failed for "
+                            "chart %s (%s); falling back to dasha-balance start", chart_id, exc)
+        # Fallback: earliest level_n=1 MD start (the OLD, superseded anchor --
+        # only reached when public.charts has no usable birth_date).
         try:
             with conn.cursor() as cur:
                 cur.execute(

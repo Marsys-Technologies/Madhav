@@ -27,8 +27,8 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
   it('returns true for all whitelisted tool names', () => {
     const mcpToolNames = Object.keys(MCP_TO_RETRIEVAL_TOOL)
     // 34 post-WP-1.7 + 13 WP-1.3a + 5 WP-1.3j + 1 DOCTRINE-WAVES D-4b Lane B-5
-    // (mechanism_retrodiction_get)
-    expect(mcpToolNames).toHaveLength(53)
+    // (mechanism_retrodiction_get) + 1 SARVA-SIDDHI CR-24 (bodha_mechanisms_get)
+    expect(mcpToolNames).toHaveLength(54)
     for (const name of mcpToolNames) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }

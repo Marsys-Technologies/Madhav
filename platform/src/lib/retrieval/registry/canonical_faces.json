@@ -10,6 +10,7 @@
     "bodha_domain_reading_get",
     "bodha_graph_subgraph_get",
     "bodha_graph_traverse_get",
+    "bodha_mechanisms_get",
     "bodha_quality_get",
     "bodha_remedies_get",
     "bodha_signals_get",

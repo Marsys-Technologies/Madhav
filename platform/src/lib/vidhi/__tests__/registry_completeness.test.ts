@@ -33,6 +33,10 @@ const LIVE_TOOLS = new Set<string>([
   'lel_query', 'list_assets', 'list_entities', 'catalog_charts_list', 'session_list',
   'list_remedies_by_category', 'mimamsa_calibration_get', 'mimamsa_insight_get',
   'mimamsa_lel_query', 'mimamsa_outcome_record', 'mitigation_map', 'muhurta_finder',
+  // SARVA-SIDDHI (2026-07-24): mechanism_retrodiction_get shipped PR #688 (5f27d9d2,
+  // 2026-07-21) — registered + live-wired, verified live for chart 482012f1. CR-68's
+  // lel_retrodiction primitive now routes here (was mimamsa_lel_query).
+  'mechanism_retrodiction_get',
   'pact_query', 'phala_anchors_get', 'phala_mitigation_get', 'phala_outlook',
   'phala_outlook_get', 'phala_predictive_anchors_get', 'phala_rectification_get',
   'prashna_undertaking_get', 'query_aspects_at_time', 'query_calibration',
