@@ -1,0 +1,132 @@
+data: {"type":"start","messageId":"msg-mcA7yrNhp8bMd4YA"}
+
+data: {"type":"data-orientation","data":{"type":"orientation","chart_id":"1c826d5a-41cb-4450-b4dc-59d440e5f75a","ayanamsha_id":"lahiri_chitrapaksha","degraded":false,"budget":{"limit_tokens":2000,"estimated_tokens":790,"enforced":false,"trims":[]},"orientation":{"chart_id":"1c826d5a-41cb-4450-b4dc-59d440e5f75a","ayanamsha_id":"lahiri_chitrapaksha","chart_header":{"chart_id_short":"1c826d5a","name":"Abhinandan Mohanty","lagna_sign":"Aries","lagna_deg":23.5264715224494,"moon_sign":"Gemini","sun_sign":"Aquarius","ayanamsha":"lahiri_chitrapaksha","current_maha_antar":"Saturn MD / Rahu AD"},"header_flags":[],"structural_facts":{"msr_signal_count":9578,"yoga_count":13,"dosha_count":2,"contradiction_count":1,"weakest_graha":"Jupiter","weakest_graha_source":"shadbala_total_min (BPHS Ch.27 six-fold strength; CR-55 fix)","top_priority_class":"medium"},"notable_findings":[{"entity":"VENUS","entity_type":"graha","signal_count":252,"dominant_domains":["character","career","relationship"],"dominant_valence":"neutral","top_signal_ids":["1f168e9e-b1db-4a22-8765-3d926e989e3a","07a57ffa-76eb-4d27-985d-76c8332e50b4","631fa45d-9724-478d-b6f0-45d6b0cbf65d"]},{"entity":"SUN","entity_type":"graha","signal_count":2,"dominant_domains":["character","career"],"dominant_valence":"neutral","top_signal_ids":["4a54ac62-ac9c-4a5a-af88-2c9b9a18aebf","7de5a5b7-bd42-4997-9131-098511c66abd"]},{"entity":"MARS","entity_type":"graha","signal_count":2,"dominant_domains":["character","career"],"dominant_valence":"neutral","top_signal_ids":["b33be45a-c5e2-4e9f-a0ff-0a4dfba10de7","0f667641-c97c-4591-81db-fcfccc4bea73"]},{"entity":"MERCURY","entity_type":"graha","signal_count":1,"dominant_domains":["character","career"],"dominant_valence":"neutral","top_signal_ids":["377b976f-ecd0-4e94-965a-09dd671385ba"]},{"entity":"SATURN","entity_type":"graha","signal_count":1,"dominant_domains":["character","career"],"dominant_valence":"neutral","top_signal_ids":["0bff5688-c88a-471a-a338-0c21340a6c06"]},{"entity":"MOON","entity_type":"graha","signal_count":1,"dominant_domains":["character","career"],"dominant_valence":"neutral","top_signal_ids":["516d8de9-7020-46c0-996b-a52a295f9823"]}],"convergence_domains":[{"domain":"career","convergence_score":9276.650502},{"domain":"character","convergence_score":8017.183629},{"domain":"relationship","convergence_score":3478.382973},{"domain":"wealth","convergence_score":1309.377103},{"domain":"health","convergence_score":487.631478},{"domain":"spirituality","convergence_score":163.77725}],"dasha_context":{"current_maha_antar":"Saturn MD / Rahu AD"},"category_inventory":[{"category":"structural","drill_tool":"ganita_structural_get","hint":"bhava/bhavesha/karaka condition, house-by-house structure"},{"category":"strength","drill_tool":"ganita_strength_get","hint":"shadbala, dignity, graha strength ranking"},{"category":"signals","drill_tool":"get_signals","hint":"atomic composite-ranked MSR signals for any entity"},{"category":"domain","drill_tool":"get_domain_reading","hint":"domain-conditioned reading (career/wealth/marriage/health)"},{"category":"temporal","drill_tool":"get_dashas","hint":"Vimshottari dasha spine, timing windows, activations"},{"category":"mechanism","drill_tool":"get_cgm_subgraph","hint":"CGM causal-graph walk for a cause→effect chain"},{"category":"life_events","drill_tool":"lel_query","hint":"Life Event Log retrodiction / prediction anchors"},{"category":"remedy","drill_tool":"get_remedies","hint":"prescriptions: gemstone/mantra/ritual (intervention asks)"}],"budget":{"limit_tokens":2000,"estimated_tokens":790,"enforced":false,"trims":[]},"degraded":false}}}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"first_verdict","status":"done","ms":10116}}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"classify","status":"done","ms":4049}}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"compose_bundle","status":"done","ms":7}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"msr_sql","status":"done","ms":17,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"marsys://tool/L2/query_signals","status":"done","ms":17,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"marsys://tool/L1/get_sensitive_degrees","status":"done","ms":81,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"get_yoga_firings","status":"done","ms":91,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"marsys://tool/L1/get_tara_chandra_bala","status":"done","ms":98,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"marsys://tool/L1/get_strength","status":"done","ms":292,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"query_dasha_periods","status":"done","ms":405,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"cgm_graph_walk","status":"done","ms":485,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"marsys://tool/L1/chart_facts_query","status":"done","ms":503,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-tool","data":{"type":"tool","name":"vector_search","status":"done","ms":5681,"ok_count":1,"err_count":0}}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"tool_fetch","status":"done","ms":5682}}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"synthesis","status":"running"}}
+
+data: {"type":"text-start","id":"text-0"}
+
+data: {"type":"text-delta","id":"text-0","delta":"Based on a holistic analysis of your chart, your current Vimshottari dasha period is **Saturn Mahadasha /"}
+
+data: {"type":"text-delta","id":"text-0","delta":" Rahu Antardasha**. This combination points to a significant and dynamic phase for your career, defined by the interplay between structure"}
+
+data: {"type":"text-delta","id":"text-0","delta":" and ambition.\n\nHere is a breakdown of what this period indicates for your professional life:\n\n### 1. The Foundation"}
+
+data: {"type":"text-delta","id":"text-0","delta":": Saturn Mahadasha - Consolidating Authority\n\nThe major period is ruled by Saturn, which is arguably the most"}
+
+data: {"type":"text-delta","id":"text-0","delta":" powerful and beneficial planet in your entire chart.\n\n*   **The \"Primary Deliverer\":** Your Saturn is exalted in Libra"}
+
+data: {"type":"text-delta","id":"text-0","delta":" in the 7th house of partnerships and public standing. It holds the highest rank in Shadbala (planetary strength), is"}
+
+data: {"type":"text-delta","id":"text-0","delta":" your Amatya Karaka (the natural significator of career), and has an overwhelmingly beneficial 9:1 Ishta/"}
+
+data: {"type":"text-delta","id":"text-0","delta":"Kashta ratio, meaning it is primed to deliver positive results. The Unified Chart Narrative (UCN) identifies Saturn as your \"primary"}
+
+data: {"type":"text-delta","id":"text-0","delta":" deliverer.\"\n*   **Authority Through Tension:** Saturn forms the \"Authority-Through-Tension\" pattern by"}
+
+data: {"type":"text-delta","id":"text-0","delta":" being conjunct its natural enemy, Mars. This means your authority and professional ascent are not achieved despite pressure, but *because* of it. You"}
+
+data: {"type":"text-delta","id":"text-0","delta":" are designed to perform best and achieve the most in demanding, high-stakes environments.\n*   **Sasha Mah"}
+
+data: {"type":"text-delta","id":"text-0","delta":"apurusha Yoga:** Your exalted Saturn in a kendra (angular house) forms this powerful yoga, indicating leadership, integrity"}
+
+data: {"type":"text-delta","id":"text-0","delta":", and the capacity to command respect and build lasting institutions.\n\nDuring this major Saturn period, the overarching theme is the consolidation"}
+
+data: {"type":"text-delta","id":"text-0","delta":" of your authority, the reaping of rewards from disciplined hard work, and the building of enduring professional structures.\n\n### 2. The"}
+
+data: {"type":"text-delta","id":"text-0","delta":" Active Theme: Rahu Antardasha - Unconventional Amplification\n\nThe current sub-period is ruled by Rahu, the planet"}
+
+data: {"type":"text-delta","id":"text-0","delta":" of ambition, foreign connections, technology, and unconventional methods.\n\n*   **Wealth from Unconventional Sources:** Rahu is strongly"}
+
+data: {"type":"text-delta","id":"text-0","delta":" placed in your 2nd house of wealth, in the sign of Taurus. This position is noted in your chart analysis"}
+
+data: {"type":"text-delta","id":"text-0","delta":" for creating a \"Jaimini Quadruple\" yoga, indicating \"foreign material accumulation and unusual gains.\"\n*   **Amb"}
+
+data: {"type":"text-delta","id":"text-0","delta":"ition and Innovation:** Rahu injects a dose of high-octane ambition and a drive for expansion. It pushes"}
+
+data: {"type":"text-delta","id":"text-0","delta":" you to innovate, embrace technology (like AI), and explore international or cross-cultural opportunities.\n\n### 3. The Synthesis"}
+
+data: {"type":"text-delta","id":"text-0","delta":": Saturn-Rahu Career Prospects\n\nThis is a period where Saturn's stable, structured authority meets Rahu's ambitious"}
+
+data: {"type":"text-delta","id":"text-0","delta":", expansive drive. The theme is **\"Structure meets Ambition.\"**\n\n*   **Historical Precedent:** The last"}
+
+data: {"type":"text-delta","id":"text-0","delta":" time you were in a Saturn-Rahu period was around **June 2007**, which is precisely when you"}
+
+data: {"type":"text-delta","id":"text-0","delta":" **joined Cognizant for your first corporate IT job**. This sets a clear precedent: this dasha combination initiates significant new chapters"}
+
+data: {"type":"text-delta","id":"text-0","delta":" in your career, particularly those involving technology and structured corporate environments. The current period can be seen as a higher-octave"}
+
+data: {"type":"text-delta","id":"text-0","delta":" repetition of that same energy—not an entry-level start, but a major new phase of elevation and expansion.\n*   **Key"}
+
+data: {"type":"text-delta","id":"text-0","delta":" Opportunities:**\n    *   **Amplified Gains:** Rahu's position in the 2nd house of wealth,"}
+
+data: {"type":"text-delta","id":"text-0","delta":" activated under the महादशा of your career-significator Saturn, is a powerful combination for significant financial and professional growth. Expect"}
+
+data: {"type":"text-delta","id":"text-0","delta":" opportunities to monetize your authority and expertise in new or unusual ways.\n    *   **International Scope:** Rahu's nature"}
+
+data: {"type":"text-delta","id":"text-0","delta":" strongly supports career developments involving foreign clients, international travel, or cross-cultural collaborations. Given your chart's powerful \"Foreign/"}
+
+data: {"type":"text-delta","id":"text-0","delta":"Moksha Signature,\" this period is highly likely to activate it on the professional front.\n    *   **Leadership"}
+
+data: {"type":"text-delta","id":"text-0","delta":" in Technology:** With your chart's inherent strength in technology (Mercury's eight-system convergence) and Rahu's influence"}
+
+data: {"type":"text-delta","id":"text-0","delta":", this is an ideal time to lead projects involving cutting-edge technology, automation, or large-scale systems.\n\n### Operating"}
+
+data: {"type":"text-delta","id":"text-0","delta":" Principle for This Period\n\nThe primary task is to channel Rahu's immense ambition into the disciplined, ethical, and long-term"}
+
+data: {"type":"text-delta","id":"text-0","delta":" structures that Saturn represents. Avoid Rahu's tendency for shortcuts or overreach, and instead use its innovative energy to super"}
+
+data: {"type":"text-delta","id":"text-0","delta":"charge the solid foundations you have already built.\n\nThis is a potent time for a significant leap in status and income, driven by leveraging"}
+
+data: {"type":"text-delta","id":"text-0","delta":" your established authority in new, technologically advanced, or international arenas. Your past experience in 2007 confirms that"}
+
+data: {"type":"text-delta","id":"text-0","delta":" this period is a catalyst for major career beginnings."}
+
+data: {"type":"text-end","id":"text-0"}
+
+data: {"type":"data-citation-gate","data":{"type":"citation_gate","status":"fail","issues":["prescriptive query (predictive) produced 0 citations — guidance must be grounded"]}}
+
+data: {"type":"data-persistence","data":{"type":"persistence","conversation_id":"36266c49-9ec6-44ad-8278-3fb32ab01f48","message_id":"6e7d2f4a-2e8f-4002-b9c7-8befe32fc9f4","status":"ok"}}
+
+data: {"type":"data-title","data":{"type":"title","conversation_id":"36266c49-9ec6-44ad-8278-3fb32ab01f48"}}
+
+data: {"type":"data-completeness","data":{"type":"completeness","channel":"web","served":[{"floor_item_id":"varga_ratification","source":"marsys://tool/L2/query_signals"},{"floor_item_id":"bhava_bala_scan","source":"marsys://tool/L1/get_strength"},{"floor_item_id":"sensitive_degree_check","source":"marsys://tool/L1/get_sensitive_degrees"},{"floor_item_id":"sudarshana_agreement_check","source":"marsys://tool/L2/query_signals"},{"floor_item_id":"bhavat_bhavam_check","source":"marsys://tool/L2/query_signals"},{"floor_item_id":"dhana_yoga_scan","source":"get_yoga_firings"},{"floor_item_id":"nakshatra_semantics","source":"marsys://tool/L1/get_tara_chandra_bala"},{"floor_item_id":"mechanism_read","source":"cgm_graph_walk"}],"empty":[{"floor_item_id":"bhava_condition","empty_reason":"web_namespace_gap: live_tool \"ganita_structural_get\" has no web retrieval-registry equivalent (MCP-native only)"},{"floor_item_id":"bhavesha_condition","empty_reason":"web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"},{"floor_item_id":"karaka_condition","empty_reason":"web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"},{"floor_item_id":"divisional_facts","empty_reason":"web_namespace_gap: live_tool \"ganita_chart_facts_get\" has no web retrieval-registry equivalent (MCP-native only)"},{"floor_item_id":"chalit_cusp_read","empty_reason":"web_namespace_gap: live_tool \"ganita_chart_facts_get\" has no web retrieval-registry equivalent (MCP-native only)"},{"floor_item_id":"ashtakavarga_scan","empty_reason":"web_namespace_gap: live_tool \"ganita_chart_facts_get\" has no web retrieval-registry equivalent (MCP-native only)"},{"floor_item_id":"karakamsa_read","empty_reason":"web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"}],"dark":[{"floor_item_id":"kp_cusp_sublord_read","cr_row":"CR-30","note":"coverage gap tracked by CR-30 (OPEN/LOGGED)"}],"coverage":{"floor_item_total":16,"served":8,"empty":7,"dark":1},"channel_note":"8 of 16 floor items have NO web-executable retrieval tool (MCP↔web namespace gap); 8 served, 7 empty, 1 dark. A small served count reflects the namespace gap, not a fully-honored floor."}}
+
+data: {"type":"data-judgment-flags","data":{"type":"judgment_flags","flags":["no_leakage_capabilities_stripped","citation_gate_error"]}}
+
+data: {"type":"finish","finishReason":"stop"}
+
+data: {"type":"data-stage","data":{"type":"stage","stage":"synthesis","status":"done","ms":32011}}
+
+data: {"type":"data-observability","data":{"type":"observability","query_id":"c6b61828-b6be-4dcc-9240-d9d23b5424a8","trace_url":"/observatory/trace/c6b61828-b6be-4dcc-9240-d9d23b5424a8"}}
+
+data: [DONE]
+
