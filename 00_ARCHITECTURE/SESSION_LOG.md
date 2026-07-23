@@ -33248,7 +33248,36 @@ None opened by this campaign — it is fully COMPLETE with no successor session 
 
 ---
 
-## VIDHI-PŪRṆATĀ — planner completeness + default-deep + elevation layer (2026-07-23)
+## VIDHI-PURNATA-2026-07-23 — VIDHI-PŪRṆATĀ: planner completeness + default-deep + elevation layer
+
+```yaml
+session_open:
+  session_id: VIDHI-PURNATA-2026-07-23
+  cowork_thread_name: "Madhav — VIDHI-PŪRṆATĀ (planner completeness + default-deep + elevation)"
+  agent_name: claude-sonnet-5
+  predecessor_session: RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23 (Retrieval Residual Closure
+    campaign COMPLETE, 16/16 + RC-17)
+  role: >
+    Conductor for the VIDHI-PŪRṆATĀ wave per native directive (Cowork, 2026-07-23): planner-
+    completeness fix + default-deep doctrine + elevation layer for the Vidhi retrieval planner,
+    ahead of the (separate, not-yet-opened) UAT-DARPANA dynamic UAT initiative, per
+    BRIEF_VIDHI_PURNATA_v1_0.md. Sonnet Coordinator + Opus sub-agents (high->max effort);
+    fully autonomous, verifier-gated, no human gates until this close report.
+  declared_scope:
+    may_touch:
+      - "platform/src/lib/vidhi/** and platform-mcp/src/resources/vidhi/** (regenerated mirror)"
+      - "vidhi test files"
+      - "surgical migrations for the vidhi seed/gate fix"
+      - "00_ARCHITECTURE/llm_consumption_audit/briefs/vidhi_purnata/** and /uat_darpana/** (audit/brief docs)"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md, SESSION_LOG.md (append/close)"
+      - "MARSYS_DEFECT_GAP_REGISTER_v2_0.md"
+      - "git branches/worktrees for this wave; PR to main"
+    must_not_touch:
+      - "FROZEN orchestrator + WriterBase + ga_*/bo_*/ka_*/ph_*/mi_* writer build logic"
+      - "L1-L5 writers/tables, calibration tables, the sealed split"
+      - "CLAUDECODE_BRIEF.md (root); the D-4b doctrine-wave briefs/ledgers/branches (READ-ONLY)"
+  red_team_due: false
+```
 
 **Native directive (Cowork, 2026-07-23):** open and execute the VIDHI-PŪRṆATĀ wave —
 planner-completeness fix + default-deep doctrine + elevation layer for the Vidhi retrieval
