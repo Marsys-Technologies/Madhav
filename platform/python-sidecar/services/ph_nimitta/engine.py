@@ -14,7 +14,7 @@ Do NOT treat computed posteriors as calibrated until JL-009 is closed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 __all__ = [
@@ -61,20 +61,84 @@ def _coerce_date(v) -> Optional[date]:
 
 # ── domain validation ─────────────────────────────────────────────────────────
 
+# CR-66 root cause #1 (wealth=0): this set was a STALE vocabulary
+# ({career, relationship, financial, spiritual, health, transition, psychological})
+# that agreed with NEITHER (a) the upstream kala_convergence / kala_bhavishya /
+# bodha_discoveries / bodha_msr_signals domain values (career, relationship, wealth,
+# spirituality, health, character, general) NOR (b) the phala_anchors_domain_canonical
+# DB CHECK constraint. Consequence: every 'wealth' / 'spirituality' / 'character' source
+# row fell through to 'transition' (so wealth anchors could NEVER exist), and any row that
+# DID map to 'financial'/'spiritual'/'psychological' would have violated the DB CHECK and
+# aborted the whole asset — the writer only ever survived on the accidental intersection
+# {career, relationship, health, transition}. This is now the canonical DB vocabulary
+# (migration: phala_anchors_domain_canonical), so upstream domains pass through unchanged.
 _VALID_DOMAINS = frozenset({
-    'career', 'relationship', 'financial',
-    'spiritual', 'health', 'transition', 'psychological',
+    'career', 'wealth', 'relationship', 'progeny', 'health',
+    'education', 'family', 'residence', 'travel', 'spirituality',
+    'character', 'transition', 'general',
 })
+
+# Legacy/synonym inputs → canonical DB vocabulary. Keeps any caller or older source that
+# still emits the pre-CR-66 words landing on a VALID canonical value (never a CHECK-violating
+# one), instead of silently collapsing to 'transition'. Not a fabrication: these are exact
+# 1:1 renamings of the same domain concept.
+_DOMAIN_SYNONYMS = {
+    'financial': 'wealth',
+    'money': 'wealth',
+    'finance': 'wealth',
+    'spiritual': 'spirituality',
+    'dharma': 'spirituality',
+    'psychological': 'character',
+    'psychology': 'character',
+    'mind': 'character',
+    'marriage': 'relationship',
+    'spouse': 'relationship',
+    'children': 'progeny',
+    'progeny_children': 'progeny',
+}
 
 _AYANAMSHA_ROBUSTNESS_DEFAULT = 3
 
+# CR-66 root cause #3: a window already closed in the past is historical/retrodictive, not
+# a "near" (upcoming) prediction. ~3 years is the near horizon.
+_NEAR_HORIZON_DAYS = 1096
+
 
 def _canonical_domain(*candidates: Optional[str]) -> str:
-    """Return first valid canonical domain from candidates; else 'transition'."""
+    """Return first valid canonical domain from candidates; else 'transition'.
+
+    Applies _DOMAIN_SYNONYMS first so a legacy/synonym word (e.g. 'financial') resolves to
+    its canonical DB value ('wealth') rather than falling through to 'transition'.
+    """
     for c in candidates:
-        if c and c.lower() in _VALID_DOMAINS:
-            return c.lower()
+        if not c:
+            continue
+        cl = c.lower().strip()
+        cl = _DOMAIN_SYNONYMS.get(cl, cl)
+        if cl in _VALID_DOMAINS:
+            return cl
     return 'transition'
+
+
+def _horizon_tier(window_end: Optional[date]) -> str:
+    """Map a window_end to the DB-legal horizon tier ('near' | 'lifetime').
+
+    CR-66 root cause #3: the prior inline test (`window_end < today + 3yr → 'near'`) labeled
+    EVERY past window 'near', so the writer's stale-'near' clip gate then rejected 100% of the
+    convergence anchors (whose top-scoring windows lie in the past) — leaving zero convergence
+    anchors. Corrected banding:
+      • window_end already in the past          → 'lifetime' (historical / retrodictive)
+      • window_end within ~3 years of today      → 'near'     (a genuine upcoming prediction)
+      • window_end further out / unknown          → 'lifetime'
+    """
+    if window_end is None:
+        return 'lifetime'
+    today = date.today()
+    if window_end < today:
+        return 'lifetime'
+    if window_end <= today + timedelta(days=_NEAR_HORIZON_DAYS):
+        return 'near'
+    return 'lifetime'
 
 
 def _resolve_event_type(event_class_id: Optional[str], domain: str, anchor_source: str) -> str:
@@ -132,7 +196,7 @@ def derive_karmic_frame(root_graha: Optional[str]) -> tuple[Optional[str], Optio
 
 # ── V4: actionability / malleability ─────────────────────────────────────────
 
-_INFLUENCEABLE_DOMAINS = {'career', 'health', 'transition', 'financial'}
+_INFLUENCEABLE_DOMAINS = {'career', 'health', 'transition', 'wealth'}
 
 
 def derive_malleability(domain: str, magnitude: str, direction: str) -> str:
@@ -438,7 +502,7 @@ def derive_anchor_from_convergence(
         event_type=evt_type,
         direction=direction,
         domain=domain,
-        horizon_tier='near' if window_end and window_end < date.today().replace(year=date.today().year + 3) else 'lifetime',
+        horizon_tier=_horizon_tier(window_end),
         window_start=window_start,
         peak_date=peak_date,
         window_end=window_end,
@@ -647,7 +711,7 @@ def derive_anchor_from_discovery(
         event_type=_resolve_event_type(ctx.event_class_id, domain, 'discovery'),
         direction='elevated',
         domain=domain,
-        horizon_tier='near',
+        horizon_tier=_horizon_tier(window_end),
         window_start=window_start,
         peak_date=peak_date,
         window_end=window_end,

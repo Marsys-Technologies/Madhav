@@ -555,6 +555,105 @@ class TestDateCoercion:
         assert isinstance(a.window_end, date) and not isinstance(a.window_end, datetime)
 
 
+# ── CR-66: domain-vocabulary alignment + horizon-tier banding ────────────────
+
+class TestCr66DomainVocabulary:
+    """CR-66 root cause #1: the engine's _VALID_DOMAINS was a stale vocabulary
+    (financial/spiritual/psychological) that neither matched the upstream sources nor the
+    phala_anchors_domain_canonical DB CHECK — so 'wealth'/'spirituality'/'character' source
+    rows all collapsed to 'transition' (wealth anchors could never exist)."""
+
+    def test_wealth_domain_survives(self):
+        from services.ph_nimitta.engine import _canonical_domain
+        assert _canonical_domain('wealth') == 'wealth'
+
+    def test_spirituality_domain_survives(self):
+        from services.ph_nimitta.engine import _canonical_domain
+        assert _canonical_domain('spirituality') == 'spirituality'
+
+    def test_character_domain_survives(self):
+        from services.ph_nimitta.engine import _canonical_domain
+        assert _canonical_domain('character') == 'character'
+
+    def test_legacy_financial_maps_to_wealth(self):
+        from services.ph_nimitta.engine import _canonical_domain
+        assert _canonical_domain('financial') == 'wealth'
+
+    def test_legacy_spiritual_maps_to_spirituality(self):
+        from services.ph_nimitta.engine import _canonical_domain
+        assert _canonical_domain('spiritual') == 'spirituality'
+
+    def test_legacy_psychological_maps_to_character(self):
+        from services.ph_nimitta.engine import _canonical_domain
+        assert _canonical_domain('psychological') == 'character'
+
+    def test_unknown_falls_back_to_transition(self):
+        from services.ph_nimitta.engine import _canonical_domain
+        assert _canonical_domain('nonsense', None) == 'transition'
+
+    def test_convergence_wealth_row_yields_wealth_anchor(self):
+        """The end-to-end regression: a wealth-domain convergence row must produce a
+        domain='wealth' anchor, not 'transition' (the wealth=0 bug)."""
+        from services.ph_nimitta.engine import derive_anchor_from_convergence, NimittaContext
+        row = {
+            'convergence_id': 99,
+            'signal_id': None,
+            'mode': 'D',
+            'peak_date': date(2028, 12, 26),
+            'window_start': date(2028, 12, 26),
+            'window_end': date(2029, 12, 22),
+            'convergence_score': 0.304,
+            'rarity_years': 0.99,
+            'constituent_factors': {},
+            'source_citation': 'kala_convergence/99',
+            'independent_current_count': 1,
+            'confidence_score': 0.304,
+            'confidence_label': 'moderate',
+            'domain': 'wealth',
+        }
+        a = derive_anchor_from_convergence(row, NimittaContext(), n_independent=1)
+        assert a.domain == 'wealth'
+
+
+class TestCr66HorizonTier:
+    """CR-66 root cause #3: a past window must be 'lifetime' (historical), never 'near' —
+    the prior inline test mislabeled every past window 'near', which the writer's stale-'near'
+    clip gate then rejected, wiping out 100% of convergence anchors."""
+
+    def test_past_window_is_lifetime(self):
+        from services.ph_nimitta.engine import _horizon_tier
+        assert _horizon_tier(date(2000, 1, 1)) == 'lifetime'
+
+    def test_upcoming_window_is_near(self):
+        from services.ph_nimitta.engine import _horizon_tier
+        soon = date.today().replace(year=date.today().year + 1)
+        assert _horizon_tier(soon) == 'near'
+
+    def test_far_future_window_is_lifetime(self):
+        from services.ph_nimitta.engine import _horizon_tier
+        far = date.today().replace(year=date.today().year + 20)
+        assert _horizon_tier(far) == 'lifetime'
+
+    def test_none_window_is_lifetime(self):
+        from services.ph_nimitta.engine import _horizon_tier
+        assert _horizon_tier(None) == 'lifetime'
+
+    def test_convergence_past_window_not_near(self):
+        """A convergence anchor with a past window_end must NOT be 'near' (would be
+        clip-gate-rejected as stale) — it is a lifetime/retrodictive anchor."""
+        from services.ph_nimitta.engine import derive_anchor_from_convergence, NimittaContext
+        row = {
+            'convergence_id': 7, 'signal_id': None, 'mode': 'A',
+            'peak_date': date(2010, 5, 1), 'window_start': date(2010, 1, 1),
+            'window_end': date(2010, 12, 31), 'convergence_score': 1.0,
+            'rarity_years': 5.0, 'constituent_factors': {}, 'source_citation': 'x',
+            'independent_current_count': 1, 'confidence_score': 1.0, 'confidence_label': 'high',
+            'domain': 'career',
+        }
+        a = derive_anchor_from_convergence(row, NimittaContext(), n_independent=1)
+        assert a.horizon_tier == 'lifetime'
+
+
 # ── Anti-drift ───────────────────────────────────────────────────────────────
 
 class TestAntiDrift:
