@@ -57,7 +57,7 @@ immediately before each PR, never inside individual RC lane branches.
 | RC-14 | **EXPECTED BLOCKED** (D-4b active) | `impl/w5-breaking` | — | Branch found badly stale (~26k lines behind `main` — predates W6 synthesis/cost-cap/session_pin work entirely); not "ready to land in one command" as brief assumed. No risky rebuild attempted against a live-moving `main` while D-4b is active. Will close BLOCKED with this documented, per brief's own sanctioned exception. |
 | RC-15 | OPEN (after RC-02/RC-17 land) | — | — | Branch/worktree hygiene |
 | RC-16 | OPEN (last) | — | — | Final seal |
-| RC-17 (new, opened this session per §G) | **OPEN — fix-cycle 1 REGRESSED, fix-cycle 2 in progress** | `res/rc02-rc17-web-door-parity-and-dasha-fix` @ `bd2c35e1` (fix-cycle 1, merged, insufficient); `res/rc17-fixcycle2-still-hallucinating` (fix-cycle 2, in progress) | fix-cycle 1: ACCEPT (`ac9676ce`) — **later found insufficient by the conductor's own deploy-gated live re-check** | **CRITICAL: fix-cycle 1's temporal-anchor fix was merged+deployed (`7dcffa91`) and its own verifier ACCEPTed it, but a live post-deploy check by the conductor found the hallucination still present in a new form** — synthesis now says "as per your request, we are treating your current period as Saturn MD/Rahu AD" (fabricating a nonexistent user request) and then "your chart's actual current period is Mercury MD/Saturn AD" (wrong — that is the NATIVE's dasha on a different chart entirely, apparent cross-chart pattern bleed). This is a genuine LLM instruction-following/hedging failure, not a simple missing-context bug; fix-cycle 2 is strengthening the anchor wording and investigating root cause. **The prior ACCEPT verdict was real but insufficient — the verifier tested the fix worked, not that no NEW hedge pattern could emerge; this is now the standard for RC-17's re-close: live re-check by an independent party after every fix.** |
+| RC-17 (new, opened this session per §G) | **CLOSED, merged+deployed, live re-probe passed** | fix-cycle 1: `res/rc02-rc17-web-door-parity-and-dasha-fix` @ `bd2c35e1` (insufficient, superseded); fix-cycle 2: `res/rc17-fixcycle2-still-hallucinating` @ `4c6c1ade` | fix-cycle 2: ACCEPT-WITH-CAVEATS (`1af77103`), conductor mandatory 5-run production re-probe: **5/5 clean** | Fix-cycle 1 was independently verifier-ACCEPTED, merged, and deployed (`7dcffa91`) — a conductor live re-check then found the hallucination still present in a new, worse form (fabricated "as per your request" hedge + wrong "actual current period" claim, apparent cross-chart pattern bleed). Fix-cycle 2 rewrote the temporal-anchor wording to remove imperative/"treat this as" framing and prohibit the exact hedge phrases observed; merged+deployed (`ee76ff47`). Conductor performed the verifier-mandated >=5-run live production re-probe post-deploy: 5/5 runs clean, zero hedge-pattern hits, correct dasha stated plainly every time. Full evidence + raw SSE transcripts: `RC-17_WEB_DASHA_HALLUCINATION_v1_0.md` §12, `rc17_reprobe_evidence/`. Recommended (non-blocking) follow-up: wire a production-side hedge detector into `judgment_flags` so any future recurrence is caught mechanically. |
 
 ## Wave close log
 
@@ -85,6 +85,14 @@ immediately before each PR, never inside individual RC lane branches.
 - **Post-deploy live re-check (conductor, per brief §I deploy-verification
   step) found RC-17's fix-cycle 1 insufficient** — see Incident 4 below.
   RC-17 reopened; fix-cycle 2 launched.
+- **RC-17 fix-cycle 2**: ACCEPT-WITH-CAVEATS. Merged via PR #719
+  (`ee76ff47`), deployed and SHA-confirmed (`amjis-web-01109-2vp`).
+  Conductor performed the verifier-mandated >=5-run live production
+  re-probe: 5/5 clean. RC-17 CLOSED.
+- **Wave R-C fully closed**: RC-01, RC-02, RC-03, RC-04, RC-11 all ACCEPTED
+  and RC-17 (new residual) ACCEPTED — every item in Cluster 1 (Live
+  verification) and the RC-11/RC-17 defects it surfaced are now closed with
+  live, deploy-confirmed evidence.
 
 ## Incidents (self-corrected)
 
@@ -161,7 +169,9 @@ none is silently assumed clean:
 - [x] RC-02 (`judgment_flags` disclosure on web door) — confirmed live by
   the conductor post-PR#716-deploy (`data-judgment-flags` event present,
   `no_leakage_capabilities_stripped` flag correctly disclosed).
-- [ ] RC-17 (dasha-anchoring hallucination) — checked live by the conductor
-  post-PR#716-deploy, **FOUND STILL PRESENT** (new hedge form). Fix-cycle 2
-  in progress; must be live re-checked again after its deploy before
-  closing.
+- [x] RC-17 (dasha-anchoring hallucination) — checked live by the conductor
+  post-PR#716-deploy, found still present (new hedge form); fix-cycle 2
+  deployed (PR #719, `ee76ff47`), conductor performed the mandatory
+  >=5-run live production re-probe post-deploy: **5/5 clean**. CLOSED.
+
+All outstanding deploy-gated re-checks are now cleared.

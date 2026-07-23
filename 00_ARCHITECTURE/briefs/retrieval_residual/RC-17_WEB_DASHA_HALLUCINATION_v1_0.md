@@ -10,13 +10,15 @@ branch: res/rc02-rc17-web-door-parity-and-dasha-fix (fix-cycle 1);
   res/rc17-fixcycle2-still-hallucinating (fix-cycle 2)
 related_fix: commit 2df42b61 (W6.3 fix-cycle, prashna_ask_synthesis.ts formatTemporalAnchor) —
   same defect class, MCP door; this residual is the web-door twin the that fix did NOT cover
-status: fix-cycle 1 code deployed to main@7dcffa91 but did NOT fully close the gap — a live
+status: CLOSED. fix-cycle 1 deployed to main@7dcffa91 but did NOT fully close the gap — a live
   post-deploy verification (2026-07-23) found the SAME defect class still present in a new, worse
-  form (§9 below). fix-cycle 2 (this section) rewrites the anchor wording to remove the
-  "treat this as"/imperative framing that fix-cycle 1 left in place. Code + regression tests
-  complete this branch, PLUS a genuine local-dev-server + live-DB + live-model verification
-  (§9.6-9.7, two clean runs, not deploy-gated); a re-probe against the actually-redeployed
-  production service after this branch merges and deploys is the one item still DEPLOY-GATED.
+  form (§9 below). fix-cycle 2 rewrote the anchor wording to remove the "treat this as"/imperative
+  framing, deployed to main@ee76ff47, and was verifier-ACCEPT-WITH-CAVEATS pending a mandatory
+  >=5-run production re-probe. The conductor performed that re-probe (§12 below) 2026-07-23 against
+  the deployed service: 5/5 runs clean — zero hedge-pattern matches, correct dasha stated plainly
+  in all 5, zero "actual current period" contradictions, the two "Mercury" mentions found were
+  legitimate astrological content (Mercury as a technology significator) not a hallucination
+  recurrence. RC-17 CLOSES on this evidence.
 ---
 
 # RC-17 — Web-door (`/api/chat/consult`) dasha-anchoring hallucination
@@ -456,3 +458,55 @@ orchestrator/WriterBase, no `chart_facts` semantics, no `kala_*`/gochara
 serving semantics, no D-4b branch touched. Branch:
 `res/rc17-fixcycle2-still-hallucinating`, isolated worktree, created from
 `main` (which already carries fix-cycle 1's code).
+
+## 12. Mandatory production re-probe (conductor, 2026-07-23, closes RC-17)
+
+Per fix-cycle 2's verifier verdict (`VERIFY_RC-17.md`, ACCEPT-WITH-CAVEATS):
+"RC-17 stays OPEN until [a >=5-run production re-probe] passes" — explicitly
+citing fix-cycle 1's own deferred-re-probe as exactly how the regression
+shipped undetected. The conductor performed this re-probe directly against
+production after fix-cycle 2 deployed (`main@ee76ff47`,
+`amjis-web-01109-2vp`, commit-sha-confirmed), not delegated to a subagent.
+
+**Method:** minted a fresh session cookie (`scripts/get_session_cookie.mjs`),
+fired the identical reproduction question ("What does my current dasha
+period say about career prospects?") at the deployed
+`/api/chat/consult`, chart `1c826d5a`, **5 times sequentially**. Raw SSE
+transcripts saved: `rc17_reprobe_evidence/run_1.sse` through `run_5.sse`.
+
+**Results (5/5 clean):**
+
+| Run | `current_maha_antar` (orientation) | Stated plainly in synthesis | Hedge pattern hits | "Mercury" mentioned | Context |
+|---|---|---|---|---|---|
+| 1 | Saturn MD / Rahu AD | Yes | 0 | No | — |
+| 2 | Saturn MD / Rahu AD | Yes | 0 | Yes | legitimate — "Mercury's eight-system convergence" as a technology significator, not a dasha-lord claim |
+| 3 | Saturn MD / Rahu AD | Yes | 0 | Yes | legitimate — "an expression of Mercury's influence, activated by Rahu" |
+| 4 | Saturn MD / Rahu AD | Yes | 0 | No | — |
+| 5 | Saturn MD / Rahu AD | Yes | 0 | No | — |
+
+Hedge-pattern detector checked for: `as instructed`, `as per your request`,
+`as per the instruction`, `actual current period`, `actual current dasha`,
+`confidence note`, `TEMPORAL ANCHOR:`, `VERIFIED CHART FACT` (case-
+insensitive substring match against the full synthesis text of each run).
+**Zero hits across all 5 runs.** Every run stated the correct dasha
+(Saturn MD / Rahu AD) plainly and directly, with no fabricated "as
+instructed" framing and no contradictory "actual current period" coda. The
+two runs that mention Mercury do so as a planetary significator in
+substantive astrological analysis (consistent with `PLN.MERCURY`-class
+grounding, not a dasha-lord claim) — read in full context, neither is the
+hallucination recurring in a new phrasing.
+
+`judgment_flags` also confirmed present and correct on all 5 runs
+(`no_leakage_capabilities_stripped`, `citation_gate_error`), consistent with
+RC-02's own live-confirmed fix.
+
+**Disposition:** the mandatory re-probe passes. RC-17 CLOSES. This does not
+prove the defect can never recur under any sampling outcome (the verifier's
+own caveat about non-deterministic LLM behavior stands as a permanent
+property of this class of fix, not a gap in this closure) — the
+verifier's second recommendation (a production-side hedge detector wired
+into `judgment_flags`, so any future recurrence is caught mechanically
+rather than requiring another manual live audit) is recorded as a
+recommended follow-up, not a blocking condition, since RC-17's own DONE
+bar (the specific live-reproduced defect is fixed and does not recur across
+a real multi-run production sample) is met.
