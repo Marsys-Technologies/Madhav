@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-21T15:32:34.800Z",
+  "generated_at": "2026-07-23T20:16:05.987Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 163,
+  "total": 166,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -464,6 +464,41 @@
       ],
       "short_label": "Pact Query",
       "one_line": "THE PACT PROTOCOL (design §26/§28.3) as one chained investigation for event/timing questions — the classical predictive grammar \"promise in the rashi →…",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": true
+    },
+    {
+      "uri": "marsys://tool/L-SPINE/query_spine_bundle",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_spine_bundle",
+      "scope": "per_chart",
+      "archetype": "cross_domain",
+      "traversal_level": "L-SYNTH",
+      "tool_role": "synthesizer",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 4,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Spine Bundle",
+      "one_line": "Returns the pre-joined \"spine bundle\" for one domain of a chart: the chain signal (bodha_msr_signals) → its activation windows (kala_activation) → its phala…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3562,6 +3597,41 @@
       "has_drill_children": true
     },
     {
+      "uri": "marsys://tool/L2/query_mechanisms",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_mechanisms",
+      "scope": "per_chart",
+      "archetype": "graph_traversal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "graph",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 7,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Mechanisms",
+      "one_line": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L2/query_pratijna",
       "type": "tool",
       "layer": "L2",
@@ -4866,6 +4936,41 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L5/mechanism_retrodiction_get",
+      "type": "tool",
+      "layer": "L5",
+      "name": "mechanism_retrodiction_get",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "quality",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": true,
+      "calibration_context_only": true,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 6,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Mechanism Retrodiction Get",
+      "one_line": "CONFIRMATION-ONLY retrodictive evidence surface (never prediction input).",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L5/query_attribution",
       "type": "tool",
       "layer": "L5",
@@ -5465,50 +5570,50 @@
   "summary": {
     "by_layer": {
       "L0": 63,
-      "L2": 30,
+      "L2": 32,
       "L3": 14,
       "L1": 34,
       "L4": 10,
-      "L5": 12
+      "L5": 13
     },
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 157
+      "tool": 160
     },
     "by_scope": {
       "global": 67,
-      "per_chart": 96
+      "per_chart": 99
     },
     "by_archetype": {
       "orientation_digest": 11,
       "flat_fact": 73,
-      "calibration": 19,
+      "calibration": 20,
       "rich_relational": 20,
+      "cross_domain": 9,
       "temporal": 21,
       "prose_citation": 8,
-      "cross_domain": 8,
-      "graph_traversal": 3
+      "graph_traversal": 4
     },
     "by_tool_role": {
       "umbrella": 19,
       "leaf": 81,
-      "quality": 19,
+      "quality": 20,
       "drill": 19,
+      "synthesizer": 4,
       "temporal": 15,
       "hybrid_retrieval": 4,
-      "synthesizer": 3,
-      "graph": 3
+      "graph": 4
     },
     "by_data_source": {
-      "stored": 142,
+      "stored": 145,
       "computed": 20,
       "hybrid": 1
     },
     "by_projection_tag": {
-      "chat": 82,
-      "mcp_full": 161,
-      "mcp_compact": 81,
+      "chat": 85,
+      "mcp_full": 164,
+      "mcp_compact": 84,
       "mcp_consult": 14
     },
     "no_projection_tags": [

@@ -1,8 +1,8 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-07-21T15:32:34.800Z",
-  "total": 163,
+  "generated_at": "2026-07-23T20:16:05.987Z",
+  "total": 166,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -214,6 +214,22 @@
       "scope": "per_chart",
       "archetype": "rich_relational",
       "tool_role": "drill",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L-SPINE/query_spine_bundle",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_spine_bundle",
+      "short_label": "Query Spine Bundle",
+      "one_line": "Returns the pre-joined \"spine bundle\" for one domain of a chart: the chain signal (bodha_msr_signals) → its activation windows (kala_activation) → its phala…",
+      "scope": "per_chart",
+      "archetype": "cross_domain",
+      "tool_role": "synthesizer",
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -1600,6 +1616,22 @@
       ]
     },
     {
+      "uri": "marsys://tool/L2/query_mechanisms",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_mechanisms",
+      "short_label": "Query Mechanisms",
+      "one_line": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds.",
+      "scope": "per_chart",
+      "archetype": "graph_traversal",
+      "tool_role": "graph",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L2/query_pratijna",
       "type": "tool",
       "layer": "L2",
@@ -2186,6 +2218,22 @@
       ]
     },
     {
+      "uri": "marsys://tool/L5/mechanism_retrodiction_get",
+      "type": "tool",
+      "layer": "L5",
+      "name": "mechanism_retrodiction_get",
+      "short_label": "Mechanism Retrodiction Get",
+      "one_line": "CONFIRMATION-ONLY retrodictive evidence surface (never prediction input).",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "tool_role": "quality",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L5/query_attribution",
       "type": "tool",
       "layer": "L5",
@@ -2463,16 +2511,16 @@
   "summary": {
     "by_layer": {
       "L0": 63,
-      "L2": 30,
+      "L2": 32,
       "L3": 14,
       "L1": 34,
       "L4": 10,
-      "L5": 12
+      "L5": 13
     },
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 157
+      "tool": 160
     }
   }
 }
