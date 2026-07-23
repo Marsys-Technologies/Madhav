@@ -29,20 +29,27 @@
  * independently live-tested against the real `kala_gochara_windows` table
  * (see this lane's close report for the direct-call verification transcript).
  *
- * DB ACCESS NOTE: every other tool in this directory proxies DB reads through
- * `callPlatformPrimitive`/`callRegistryCapability`, which requires the target
- * capability to already be registered in `platform/src/lib/retrieval/registry`
- * (a shared, NOT-new file — also outside G-4's declared `may_touch`). Wiring a
- * brand-new capability into that registry needs edits to files this lane does
- * not own (`tool_name_bridge.ts`, the registry's layer index, the surgical
- * whitelist). Rather than reach outside scope, this file uses a small,
- * self-contained `pg.Pool` (an existing `platform-mcp` dependency,
- * `package.json` `"pg": "^8.21.0"`) reading `DATABASE_URL` directly — the same
- * DSN every other MCP-adjacent surface in this codebase already expects to be
- * set (see `phala_outlook.ts`'s own error-hint text: "verify DATABASE_URL and
- * PYTHON_SIDECAR_URL are set"). This keeps the new capability fully
- * self-contained inside this one new file, with no edits to any shared file —
- * the safest interpretation of a `may_touch` glob that names only new files.
+ * DB ACCESS NOTE (SARVA-SIDDHI W-1 T-1, 2026-07-24 — root-cause fix, replaces
+ * the original self-contained-pg.Pool approach): the D-5 G-4 lane originally
+ * opened a self-contained `pg.Pool` here reading `process.env['DATABASE_URL']`,
+ * to stay inside a `may_touch` glob that named only new files. That was the
+ * defect: the deployed `amjis-mcp` Cloud Run service has NO direct DB path by
+ * design — `deploy.yml`'s `deploy-mcp` job sets only PLATFORM_URL /
+ * PYTHON_SIDECAR_URL / MCP_BASE_URL, never DATABASE_URL and no Cloud SQL
+ * attachment — so `getPool()` threw "DATABASE_URL not set" and all three tools
+ * served `backing_data_reachable:false` in production (register CR-131). Every
+ * OTHER MCP tool honors the invariant "the MCP server does not hold a direct DB
+ * connection" and proxies reads through the platform, which does hold the
+ * connection. This file now does the same: it routes its (already-parameterized,
+ * server-authored, SELECT-only) SQL through `POST ${PLATFORM_URL}/api/mcp/db/query`
+ * via the exact `platformQuery(sql, params, principal)` pattern
+ * `register_p1_synthesis.ts` uses — two-layer auth (X-MCP-Internal-Token +
+ * X-MCP-User/X-MCP-Key-Id) and table-level whitelisting on the platform side.
+ * `kala_gochara_windows` and `brahma_remedy_corpus` were added to that route's
+ * ALLOWED_TABLES read-only whitelist. No `pg` dependency, no DATABASE_URL, no
+ * infra change to amjis-mcp — the fix conforms the tool to the platform's
+ * established DB-access contract rather than bolting DB creds onto a publicly-
+ * invokable serving process.
  *
  * §N.6 density_contract (CLAUDE.md, BRIEF_D5 §5 — required from day one, not
  * deferred): each tool's `DENSITY_CONTRACT` const below matches the shape
@@ -57,27 +64,40 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { Pool } from 'pg'
 import type { Principal } from '../../types.js'
 import { remoteAuthorize } from '../../lib/authz.js'
 import { applyResponseBudget, type TrimmableSection } from '../../lib/response_budget.js'
 
-// ── DB pool (self-contained — see module docstring) ──────────────────────────
+// ── Platform DB proxy (see module DB ACCESS NOTE) ────────────────────────────
+// The MCP server holds no direct DB connection; it proxies SELECT-only,
+// server-authored SQL through the platform's whitelisted /api/mcp/db/query
+// route, which owns the live PG connection. Same helper shape as
+// register_p1_synthesis.ts's `platformQuery`.
 
-let _pool: Pool | null = null
-function getPool(): Pool {
-  if (!_pool) {
-    const connectionString = process.env['DATABASE_URL']
-    if (!connectionString) {
-      throw new Error(
-        'DATABASE_URL not set — gochara_windows tools require direct DB access ' +
-          '(see register_gochara_windows.ts module docstring for why this tool does not ' +
-          'proxy through /api/retrieval/capability).'
-      )
-    }
-    _pool = new Pool({ connectionString, max: 5, connectionTimeoutMillis: 10_000 })
+const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
+const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+
+async function platformQuery(
+  sql: string,
+  params: unknown[],
+  principal: Principal
+): Promise<{ rows: Record<string, unknown>[] }> {
+  const res = await fetch(`${PLATFORM_URL}/api/mcp/db/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+      'X-MCP-User': principal.user_uid,
+      'X-MCP-Key-Id': principal.key_id,
+    },
+    body: JSON.stringify({ sql, params }),
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`[gochara_windows] platform DB query failed (${res.status}): ${text.slice(0, 200)}`)
   }
-  return _pool
+  return res.json() as Promise<{ rows: Record<string, unknown>[] }>
 }
 
 // ── Shared row shape ──────────────────────────────────────────────────────────
@@ -169,11 +189,14 @@ const ROW_COLUMNS = `
   computed_at, continuity_state
 `
 
-async function queryRows(sql: string, params: unknown[]): Promise<{ rows: GocharaWindowRow[]; ok: boolean; error?: string }> {
+async function queryRows(
+  sql: string,
+  params: unknown[],
+  principal: Principal
+): Promise<{ rows: GocharaWindowRow[]; ok: boolean; error?: string }> {
   try {
-    const pool = getPool()
-    const { rows } = await pool.query(sql, params)
-    return { rows: rows as GocharaWindowRow[], ok: true }
+    const { rows } = await platformQuery(sql, params, principal)
+    return { rows: rows as unknown as GocharaWindowRow[], ok: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return { rows: [], ok: false, error: message }
@@ -245,6 +268,7 @@ const ActivationInputSchema = z.object({
 export async function computeGocharaActivation(
   chartId: string,
   asOfDate: string,
+  principal: Principal,
   eventClass?: string
 ): Promise<Record<string, unknown>> {
   const params: unknown[] = [chartId, asOfDate]
@@ -256,7 +280,7 @@ export async function computeGocharaActivation(
   }
   sql += ' ORDER BY signed_intensity DESC'
 
-  const { rows: rawRows, ok, error } = await queryRows(sql, params)
+  const { rows: rawRows, ok, error } = await queryRows(sql, params, principal)
   const rows = withPlateauDisclosure(rawRows)
   const content: { windows: GocharaWindowRow[] } = { windows: rows }
   const budgeted = applyResponseBudget(content, 20, windowsSection(5))
@@ -303,7 +327,7 @@ export function registerGocharaActivationTool(server: McpServer, principal: Prin
       }
       const asOf = input.as_of_date ?? new Date().toISOString().slice(0, 10)
       try {
-        const result = await computeGocharaActivation(input.chart_id, asOf, input.event_class)
+        const result = await computeGocharaActivation(input.chart_id, asOf, principal, input.event_class)
         return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -338,7 +362,8 @@ export async function computeGocharaForecast(
   dateRange: { start: string; end: string },
   eventClass: string | undefined,
   valence: string | undefined,
-  limit: number
+  limit: number,
+  principal: Principal
 ): Promise<Record<string, unknown>> {
   const params: unknown[] = [chartId, dateRange.end, dateRange.start]
   let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows
@@ -354,7 +379,7 @@ export async function computeGocharaForecast(
   params.push(limit)
   sql += ` ORDER BY window_start ASC, signed_intensity DESC LIMIT $${params.length}`
 
-  const { rows: rawRows, ok, error } = await queryRows(sql, params)
+  const { rows: rawRows, ok, error } = await queryRows(sql, params, principal)
   const rows = withPlateauDisclosure(rawRows)
   const content: { windows: GocharaWindowRow[] } = { windows: rows }
   const budgeted = applyResponseBudget(content, 40, windowsSection(10))
@@ -408,7 +433,7 @@ export function registerGocharaForecastTool(server: McpServer, principal: Princi
         return { content: [{ type: 'text' as const, text: 'AUTHZ_DENIED: not authorized to access this chart' }], isError: true }
       }
       try {
-        const result = await computeGocharaForecast(input.chart_id, input.date_range, input.event_class, input.valence, input.limit)
+        const result = await computeGocharaForecast(input.chart_id, input.date_range, input.event_class, input.valence, input.limit, principal)
         return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -468,13 +493,14 @@ export function dominantGraha(row: GocharaWindowRow): string | null {
   return null
 }
 
-async function fetchMitigation(planet: string | null): Promise<Record<string, unknown> | null> {
+async function fetchMitigation(planet: string | null, principal: Principal): Promise<Record<string, unknown> | null> {
   if (!planet) return null
   const { rows } = await queryRows(
     `SELECT remedy_id, planet, domain, remedy_type, prescription_text, mantra_text, gemstone,
             charity_action, source_citation, classical_ref, confidence
        FROM brahma_remedy_corpus WHERE planet = $1 ORDER BY confidence DESC LIMIT 1`,
-    [planet]
+    [planet],
+    principal
   ) as unknown as { rows: Record<string, unknown>[] }
   return rows[0] ?? null
 }
@@ -483,7 +509,8 @@ export async function computeGocharaElectionAvoidance(
   chartId: string,
   dateRange: { start: string; end: string },
   eventClass: string | undefined,
-  limit: number
+  limit: number,
+  principal: Principal
 ): Promise<Record<string, unknown>> {
   const params: unknown[] = [chartId, dateRange.end, dateRange.start]
   let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows
@@ -495,12 +522,12 @@ export async function computeGocharaElectionAvoidance(
   params.push(limit)
   sql += ` ORDER BY signed_intensity ASC LIMIT $${params.length}`  // most-negative first
 
-  const { rows, ok, error } = await queryRows(sql, params)
+  const { rows, ok, error } = await queryRows(sql, params, principal)
 
   const avoidWindows = await Promise.all(
     rows.map(async (row) => {
       const planet = dominantGraha(row)
-      const mitigation = await fetchMitigation(planet)
+      const mitigation = await fetchMitigation(planet, principal)
       const plateauDisclosure = derivePlateauDisclosure(row)
       return {
         event_class: row.event_class,
@@ -633,7 +660,7 @@ export function registerGocharaElectionAvoidanceTool(server: McpServer, principa
         return { content: [{ type: 'text' as const, text: 'AUTHZ_DENIED: not authorized to access this chart' }], isError: true }
       }
       try {
-        const result = await computeGocharaElectionAvoidance(input.chart_id, input.date_range, input.event_class, input.limit)
+        const result = await computeGocharaElectionAvoidance(input.chart_id, input.date_range, input.event_class, input.limit, principal)
         return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
