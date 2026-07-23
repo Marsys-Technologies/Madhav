@@ -113,7 +113,7 @@ export function registerChartSelectionTools(
 ): void {
   // ── list_my_charts ──────────────────────────────────────────────────────────
   server.tool(
-    'list_my_charts',
+    'catalog_charts_list',
     'List all charts you are entitled to access. Returns chart names, stable IDs, and 0-indexed labels. Use the chart_id from the response to pass to other chart-scoped tools.',
     {},  // no parameters — "my" is implicit from the authenticated principal
     async () => {
@@ -162,7 +162,7 @@ export function registerChartSelectionTools(
           usage_hint:
             'Pass chart_id to chart-scoped tools, or use select_chart to validate a choice.',
         },
-        'list_my_charts',
+        'catalog_charts_list',
       )
 
       return {
@@ -178,7 +178,7 @@ export function registerChartSelectionTools(
 
   // ── select_chart ────────────────────────────────────────────────────────────
   server.tool(
-    'select_chart',
+    'catalog_chart_select',
     'Validate and select a chart for use in subsequent tool calls. Checks that you are entitled to access the chart, persists the selection to your session, and returns the canonical chart_id with the chart display name. Pass the returned chart_id to other chart-scoped tools.',
     {
       chart_id: z.string().uuid().describe(
@@ -272,7 +272,7 @@ export function registerChartSelectionTools(
         result['advisories'] = advisories
       }
 
-      const budgeted = budgetMcpContent(result, 'select_chart')
+      const budgeted = budgetMcpContent(result, 'catalog_chart_select')
 
       return {
         content: [

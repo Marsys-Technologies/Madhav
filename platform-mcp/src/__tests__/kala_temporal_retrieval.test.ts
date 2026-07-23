@@ -16,7 +16,7 @@
  *   ✓ unreachable registry → every array empty, snapshot present with honest nulls
  *   ✓ live registry → rows flow through, sidecar_available=true, snapshot composed from
  *     the MD/AD/PD dossier rows + kala_darshana confluence row
- *   ✓ registerKalaTemporalRetrievalTool(server, principal) registers 'kala_temporal_bundle'
+ *   ✓ registerKalaTemporalRetrievalTool(server, principal) registers 'kala_bundle_get'
  *   ✓ provenance_envelope.obstructions_not_date_filtered = true (kala_obstruction has no
  *     per-row date range — must never be silently mis-filtered)
  *
@@ -128,7 +128,7 @@ beforeEach(() => {
 
 // ── Tests: source_citation ────────────────────────────────────────────────────
 
-describe('kala_temporal_bundle — source_citation', () => {
+describe('kala_bundle_get — source_citation', () => {
   it('provenance_envelope.source_citation is exact', async () => {
     const result = await getBundle(false)
     expect(result.provenance_envelope.source_citation).toBe(SOURCE_CITATION)
@@ -137,7 +137,7 @@ describe('kala_temporal_bundle — source_citation', () => {
 
 // ── Tests: unreachable registry (honest empty, never fabricated) ─────────────
 
-describe('kala_temporal_bundle — registry unreachable', () => {
+describe('kala_bundle_get — registry unreachable', () => {
   it('every array is empty and sidecar_available is false', async () => {
     const result = await getBundle(false)
     expect(result.timeline_excerpt).toEqual([])
@@ -162,7 +162,7 @@ describe('kala_temporal_bundle — registry unreachable', () => {
 
 // ── Tests: live registry (CR-40/T-1 fix — real rows flow through) ────────────
 
-describe('kala_temporal_bundle — live registry', () => {
+describe('kala_bundle_get — live registry', () => {
   it('timeline_excerpt carries real kala_avadhi rows', async () => {
     const result = await getBundle(true)
     expect(result.timeline_excerpt.length).toBeGreaterThan(0)
@@ -212,7 +212,7 @@ describe('kala_temporal_bundle — live registry', () => {
 
 // ── Tests: provenance_envelope ────────────────────────────────────────────────
 
-describe('kala_temporal_bundle — provenance_envelope', () => {
+describe('kala_bundle_get — provenance_envelope', () => {
   it('provenance_envelope present and has required fields', async () => {
     const result = await getBundle(true)
     const pe = result.provenance_envelope
@@ -240,7 +240,7 @@ describe('kala_temporal_bundle — provenance_envelope', () => {
 
 // ── Tests: double-unwrap regression (the bug this file exists to catch) ──────
 
-describe('kala_temporal_bundle — double-content-unwrap regression', () => {
+describe('kala_bundle_get — double-content-unwrap regression', () => {
   it('extracts rows from the real double-wrapped envelope shape ({ ok, content: { content: { rows }, is_error } })', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
@@ -274,8 +274,8 @@ describe('kala_temporal_bundle — double-content-unwrap regression', () => {
 
 // ── Tests: tool registration ──────────────────────────────────────────────────
 
-describe('kala_temporal_bundle — tool registration', () => {
-  it('registerKalaTemporalRetrievalTool(server, principal) registers kala_temporal_bundle tool', () => {
+describe('kala_bundle_get — tool registration', () => {
+  it('registerKalaTemporalRetrievalTool(server, principal) registers kala_bundle_get tool', () => {
     let registeredName: string | null = null
     const mockServer = {
       tool: (name: string, _desc: string, _schema: unknown, _handler: unknown) => {
@@ -284,7 +284,7 @@ describe('kala_temporal_bundle — tool registration', () => {
     } as unknown as McpServer
 
     registerKalaTemporalRetrievalTool(mockServer, TEST_PRINCIPAL)
-    expect(registeredName).toBe('kala_temporal_bundle')
+    expect(registeredName).toBe('kala_bundle_get')
   })
 
   it('registerKalaTemporalRetrievalTool called with 4 args', () => {

@@ -2,9 +2,9 @@
  * m2_chart_selection.test.ts — M2 chart selection tool tests.
  *
  * Tests:
- *   - list_my_charts: returns entitled charts by display_name (not raw UUID only)
- *   - select_chart: denies unentitled chart
- *   - select_chart: returns canonical chart_id on entitled chart
+ *   - catalog_charts_list: returns entitled charts by display_name (not raw UUID only)
+ *   - catalog_chart_select: denies unentitled chart
+ *   - catalog_chart_select: returns canonical chart_id on entitled chart
  *
  * Chart-agnostic invariants:
  *   - No native chart_id or name appears in this file.
@@ -23,7 +23,7 @@ vi.stubGlobal('fetch', mockFetch)
 // ── Import after mocking ───────────────────────────────────────────────────────
 
 // We test the tool logic directly via helper functions extracted from the module.
-// For the list_my_charts + select_chart tools, we test the HTTP call patterns
+// For the catalog_charts_list + catalog_chart_select tools, we test the HTTP call patterns
 // and the remoteAuthorize integration.
 
 import { remoteAuthorize } from '../lib/authz.js'
@@ -63,9 +63,9 @@ beforeEach(() => {
   mockFetch.mockReset()
 })
 
-// ── M2.1 — list_my_charts integration tests ───────────────────────────────────
+// ── M2.1 — catalog_charts_list integration tests ───────────────────────────────────
 
-describe('list_my_charts (via platform /api/mcp/my/charts)', () => {
+describe('catalog_charts_list (via platform /api/mcp/my/charts)', () => {
   it('returns charts by display_name (not raw UUID only)', async () => {
     // Mock the platform /api/mcp/my/charts call
     mockFetch.mockResolvedValueOnce({
@@ -158,9 +158,9 @@ describe('list_my_charts (via platform /api/mcp/my/charts)', () => {
   })
 })
 
-// ── M2.2 — select_chart via remoteAuthorize ────────────────────────────────────
+// ── M2.2 — catalog_chart_select via remoteAuthorize ────────────────────────────────────
 
-describe('select_chart — entitlement gate', () => {
+describe('catalog_chart_select — entitlement gate', () => {
   it('denies access to an unentitled chart (AUTHZ_DENIED)', async () => {
     // Platform returns authorized=false for CHART_BETA
     mockFetch.mockResolvedValueOnce({
@@ -203,7 +203,7 @@ describe('select_chart — entitlement gate', () => {
     expect(authorized).toBe(true)
 
     // chart_id passed in === chart_id returned (UUID preserved)
-    // (The select_chart tool returns the same UUID it received after authorizing)
+    // (The catalog_chart_select tool returns the same UUID it received after authorizing)
     const chartIdReturned = CHART_ALPHA  // invariant: canonical id is unchanged
     expect(chartIdReturned).toBe(CHART_ALPHA)
   })

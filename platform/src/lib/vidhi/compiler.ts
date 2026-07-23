@@ -29,7 +29,12 @@ import type {
 } from './types';
 import { VIDHI_PRIMITIVES, VIDHI_INTENT_FLOORS } from './registry_data';
 
-export const COMPILER_VERSION = '1.0.0';
+// RC-14 breaking flip (2026-07-23): bumped 1.0.0 -> 2.0.0. The 43 legacy P1 tool
+// names were removed from the MCP surface and 6 tools renamed; this bump (plus the
+// VIDHI_PRIMITIVES live_tool/fallback repoints) moves VIDHI_CAPABILITY_VERSION so a
+// tools/list_changed staleness notification fires for every client holding the old
+// version (capability_version.ts / notifyIfCapabilityStale).
+export const COMPILER_VERSION = '2.0.0';
 
 export interface VidhiRegistry {
   readonly primitives: readonly VidhiPrimitive[];

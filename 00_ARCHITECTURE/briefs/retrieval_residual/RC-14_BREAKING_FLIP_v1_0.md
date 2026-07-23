@@ -3,7 +3,7 @@ artifact: RC-14_BREAKING_FLIP_v1_0.md
 residual_id: RC-14
 title: The impl/w5-breaking flip — alias cutover + single-bootstrap default + query_spine_bundle activation
 version: 1.0
-status: PARTIAL — Pieces 2+3 LANDED & tested; Piece 1 (alias cutover) BLOCKED on a one-line DIRECTION ruling
+status: COMPLETE — all three pieces landed + tested (direction corrected & confirmed by conductor)
 authored_by: Claude (Opus 4.8), RC-14 execution session
 date: 2026-07-23
 branch: res/rc14-breaking-flip
@@ -14,92 +14,161 @@ governing_brief: RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md §E RC-14
 
 ## TL;DR
 
-- **Piece 2 (single-bootstrap default flip) — DONE, tested, tsc-green.** `RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED` default flipped `false → true`. Registration now routes exclusively through `getCatalog()`. Superset diff re-verified: the catalog path is a strict superset of the legacy hand-list; the ONLY catalog-only additions are the two known/accepted items (`query_spine_bundle` + `synth/compose_large_n`). **No new gap** introduced by the 178 commits.
-- **Piece 3 (query_spine_bundle activation) — DONE, tested.** Auto-activates via the Piece-2 flip (registered only via `catalog.ts:87` side-effect import → `registerCapability` at `register_spine_bundle.ts:126`). No new wiring needed. New default-path test proves it is reachable with no env override.
-- **notifications/tools/list_changed — INVESTIGATED, remediation specified.** The vidhi capability-version hash keys off `VIDHI_PRIMITIVES`/`VIDHI_INTENT_FLOORS` + `COMPILER_VERSION` only — NOT the MCP tool list. Pieces 2/3 do NOT change the MCP tool list, so no bump is needed for them. A future Piece-1 tool-name removal would NOT reliably auto-bump the hash and REQUIRES a manual `COMPILER_VERSION` bump (see §4).
-- **Piece 1 (alias cutover + 6 deferred renames) — NOT EXECUTED. BLOCKED on a direction ruling.** The task's literal mechanic ("remove `registerP1AliasTools`") is **inverted** relative to the codebase's own authoritative dedup registry (`canonical_faces.json`) and the naming standard's Phase-3 gate. Executing it verbatim would DELETE the canonical `layer_noun_verb` faces and leave only the legacy short names — the exact opposite of this residual's DONE bar ("canonical-only tool names resolving"). Full evidence, an executable manifest for the CORRECT direction, and the single blocking question are in §3.
+All three pieces landed and verified. The task's original Piece-1 mechanic ("remove
+`registerP1AliasTools`") was **inverted** — that registrar holds the CANONICAL faces, not the
+legacy names (proven against `canonical_faces.json` + `MCP_TOOL_NAMING_STANDARD §4 Phase-3`).
+The conductor independently confirmed the correction. So the flip **KEEPS** `register_p1_aliases.ts`
+and instead **removes the 43 legacy short names** and **renames the 6 deferred tools**.
 
----
+- **Piece 1a — 43 legacy names removed.** A single, auditable, unconditional registration gate
+  (`applyDeprecatedToolGate`, `platform-mcp/src/lib/deprecated_tool_gate.ts`) no-ops every legacy
+  short name at MCP registration. Only the canonical `layer_noun_verb` faces resolve.
+- **Piece 1b — 6 deferred renames executed** at their source registrations; old names moved to
+  `canonical_faces.json` `deprecated_aliases` (web-replay preserved); 12 vidhi `live_tool`/
+  `fallback_face` refs repointed to canonical (else the floors would inject dead tools).
+- **Piece 2 — single-bootstrap default flipped `false→true`** (registration routes exclusively
+  through `getCatalog()`; superset diff re-verified, no new gap).
+- **Piece 3 — query_spine_bundle activates automatically** via Piece 2; reachable-by-default test added.
+- **list_changed — fires.** The vidhi repoints already move `VIDHI_CAPABILITY_VERSION`'s hash;
+  `COMPILER_VERSION` also bumped `1.0.0→2.0.0` to mark the breaking release explicitly.
 
-## §1 — Alias census (before)
+## §1 — Alias census (before → after)
 
-`registerP1AliasTools` (`platform-mcp/src/tools/register_p1_aliases.ts`) registers **56** MCP tool names (re-derived by parsing every `regAlias`/`globalAlias`/`server.tool` call in the file — do not trust the header's "47" or the server.ts "45"):
+`registerP1AliasTools` registers **56** canonical `layer_noun_verb` faces (re-derived by parsing
+every `regAlias`/`globalAlias`/`server.tool` call). All 56 are `canonical_faces.json` entries — **KEPT**.
 
-- **45** are the P1 naming aliases enumerated in the `server.ts:562-586` census comment (D7/D8 17, L0 Ephemeris 5, L0 Brahmagyan 5, L0 Remedy 8, L4 Phala 4, L5 Mīmāṃsā 3, L1 PyJHora 3).
-- **+11** additional canonical-named tools NOT in that comment — these are the SOLE serving surface for previously-dark assets (no legacy twin exists): `ganita_av_transit_gating_get`, `ganita_ayurdaya_get`, `ganita_medical_get`, `ganita_sensitive_degrees_get`, `ganita_vastu_get`, `ganita_vichara_get`, `ganita_yoga_firings_get`, `kala_priority_ranking_get`, `phala_predictive_anchors_get`, `ref_sign_medical_get`, `query_dasha_periods` (repointed baseline).
+The breaking change is the removal/rename of the LEGACY surface (the `deprecated_aliases` keys):
 
-**Every one of these 56 names is a `layer_noun_verb` CANONICAL face** (verified against `canonical_faces.json.canonical_faces`), each delegating to the same handler as a pre-existing legacy tool. **The legacy short names** (`get_positions`, `get_signals`, `query_chart_facts`, `vector_search`, …) are registered ELSEWHERE — `registry_bridge.ts`, `l0_ephemeris.ts`, `l0_brahmagyan.ts`, `retrieval/remedy_tools.ts`, `retrieval/pyhora_natal.ts`, the phala/mimamsa tool files — and are the `deprecated_aliases` KEYS in `canonical_faces.json`.
+| | before | after |
+|---|---|---|
+| Live MCP tool count (`REGISTERED_TOOL_COUNT`) | 122 | **79** (122 − 43) |
+| Legacy P1 short names live | 43 | **0** (gated) |
+| 6 deferred tools | old names | **renamed to canonical** |
+| canonical_faces.json — canonical_faces | 95 | 95 (6 swapped in place) |
+| canonical_faces.json — deprecated_aliases | 43 | **49** (+6 renamed old names) |
 
-## §2 — The authoritative end-state (why the task mechanic is inverted)
+## §2 — Piece 1a: the deprecated-tool gate (43 legacy names removed)
 
-Three independent authorities agree on the target state, and all three contradict "remove `registerP1AliasTools`":
+**Mechanism:** `applyDeprecatedToolGate(server)` monkeypatches the per-request `McpServer.tool()`
+to no-op any name in `DEPRECATED_MCP_TOOL_NAMES` (a TS mirror of `canonical_faces.json`'s 43
+`deprecated_aliases` keys, minus the 6 renamed). Wired in `server.ts` immediately after the
+`McpServer` is constructed and BEFORE `applyProfileGate` — so it applies **unconditionally to
+every profile** (the profile gate is a no-op for `full`; the deprecated gate is not). A gated
+name is never handed to the SDK registry, so a `tools/call` for it fails exactly like any
+unregistered name (MCP protocol error, not a redacted success).
 
-1. **`platform/src/lib/retrieval/registry/canonical_faces.json`** (`$schema_note`: "canonical_faces = go-forward LLM-visible faces; deprecated_aliases[legacy]=canonical namespaced twin"). It lists all 56 `*_get`/`layer_noun_verb` names as `canonical_faces` (KEEP) and lists the 43 legacy short names as `deprecated_aliases` KEYS mapping TO those canonical faces (REMOVE). e.g. `"get_positions": "ganita_positions_get"`, `"query_chart_facts": "ganita_chart_facts_get"`, `"vector_search": "ref_vector_search"`, `"list_assets": "catalog_assets_list"`.
-2. **`00_ARCHITECTURE/MCP_TOOL_NAMING_STANDARD_v1_0.md §4 Phase 3** (line 159): "remove the **old-name** registrations." The survivors are the new canonical `layer_noun_verb` names.
-3. **`tool_name_bridge.ts`** (web replay bridge, KEPT per task) + `canonical_faces.deprecated_aliases` both map **legacy → canonical**, i.e. canonical is the survivor.
+**Why a central gate, not 43 hand-deletions across 9 registrars:**
+1. Every canonical face already resolves — verified: each `deprecated_aliases` value is a live
+   `server.tool` registration → removing the legacy MCP registration drops **zero** capability
+   (the canonical tools' handlers call platform PRIMITIVES by legacy name, e.g.
+   `callPlatformPrim('query_remedies', …)`, NOT the sibling MCP `server.tool` — so the primitive
+   surface is untouched).
+2. It is the mechanism the RC-14 task itself sanctions ("gate it so it no longer registers legacy names").
+3. Single auditable source of truth (mirrors canonical_faces.json), trivially reversible, can't
+   half-break a multi-line handler block, and it PRESERVES the `registry_bridge.ts` source that
+   `projection_compiler_parity.test.ts`'s `extractRegistryBridgeToolsFromDisk` tripwire asserts on.
 
-The task's OWN acceptance criteria are consistent with this ("test a: the 45 legacy alias names now unresolvable"; "test b: the 6 NEW canonical names resolve and the 6 OLD names do not"). Only the Piece-1-step-3 *mechanic* is wrong: it assumes `register_p1_aliases.ts` holds the legacy names. It holds the CANONICAL faces. Removing it would delete the go-forward surface and leave the legacy names live in the other ~9 registrars — the inverse of the DONE bar, and a capability regression for the 11 dark-asset fronting tools that have no legacy twin at all.
+The 43 legacy names and their registrar sites (all no-op'd by the gate): registry_bridge.ts (15:
+`get_chart_orientation, get_domain_reading, get_signals, traverse_graph, get_positions, get_dashas,
+get_temporal_windows, get_projections, get_classical_citation, get_remedies, get_chart_quality,
+list_assets, get_cgm_subgraph, query_chart_facts, vector_search`), l0_ephemeris.ts (5), l0_brahmagyan.ts
+(`asset_registry_all/l0`), retrieval/remedy_tools.ts (7), retrieval/pyhora_natal.ts (2:
+`compute_natal_positions, query_special_lagnas`), phala_event_anchors.ts (`event_anchors`),
+phala_mitigation_map.ts (`mitigation_map`), phala_outlook.ts (`phala_outlook`), muhurta_finder.ts
+(`muhurta_finder`), mimamsa_lel_intake.ts (`lel_query`), mimamsa_outcome.ts (`query_calibration,
+record_outcome`), register_p1_aliases.ts in-file (`bodha_remedies_search, query_dasha_periods,
+ref_remedies_search, util_intent_classify`).
 
-## §3 — Piece 1: the CORRECT-direction manifest (for the conductor to execute after a direction ruling)
+## §3 — Piece 1b: the 6 deferred renames
 
-**Do NOT remove `registerP1AliasTools`.** Instead:
+Renamed at source (old name gone, new canonical name live). Old names moved to
+`deprecated_aliases` for web-channel replay.
 
-### 3a. Remove the 43 legacy short names (the `deprecated_aliases` keys)
+| old (removed) | new (canonical) | source registrar |
+|---|---|---|
+| `recall_session` | `session_recall` | tools/session_tools.ts |
+| `list_my_sessions` | `session_list` | tools/session_tools.ts |
+| `list_my_charts` | `catalog_charts_list` | tools/chart_selection.ts |
+| `select_chart` | `catalog_chart_select` | tools/chart_selection.ts |
+| `holistic_bundle_chart_facts` | `bodha_bundle_get` | tools/retrieval/holistic_bundle.ts |
+| `kala_temporal_bundle` | `kala_bundle_get` | tools/retrieval/kala_temporal.ts (`TOOL_NAME`) |
 
-| Registrar file | Legacy names to unregister |
+**Governance conflict resolved (per conductor's explicit ruling):** `canonical_faces.json`
+previously listed the 6 OLD names as canonical (the deferral doc's proposed new names were never
+ratified). Per the conductor's native-directed instruction, the 6 were renamed AND
+`canonical_faces.json` updated in the same change (6 old removed from `canonical_faces`, 6 new
+added; 6 `deprecated_aliases` entries added old→new).
+
+**Call sites updated (every one — no dangling functional reference; verified by grep):**
+- `platform/src/lib/retrieval/registry/canonical_faces.json` — 6 moved + 6 deprecated_aliases.
+- `platform/src/lib/vidhi/registry_data.ts` (canonical) — **12 vidhi refs repointed** to canonical
+  faces (4 `live_tool`: `bodha_remedies_search→bodha_remedies_get`, `get_cgm_subgraph→
+  bodha_graph_subgraph_get`, `kala_temporal_bundle→kala_bundle_get`, `lel_query→mimamsa_lel_query`;
+  8 `fallback_face`: `get_positions, get_remedies, get_signals, muhurta_finder, query_planet_transit,
+  query_remedies_for_chart, query_special_lagnas, yoga_activation_by_dasha` → their canonical twins).
+  **This is the dead-tool-prevention step:** without it, the vidhi floors would inject the just-
+  removed legacy names (the exact `unresolved_tools` defect class RC-05 fought). Mirror
+  regenerated via `npm run codegen:vidhi`.
+- `platform-mcp/src/resources/capabilities.ts` (served doc), `register_p1_aliases.ts` deferral
+  comment, `server.ts` census comment + `REGISTERED_TOOL_COUNT` (122→79).
+- Tests: `registry_completeness.test.ts` LIVE_TOOLS (6 renamed), `canonical_faces.test.ts` census
+  count (138→144, +6 replay aliases), MCP suites `m2_chart_selection`, `m3_m4_session`,
+  `m8_e2e_proof`, `kala_temporal_retrieval` (old→new names).
+
+**tool_name_bridge.ts** (web replay bridge) is KEPT. The 6 old names were never in its hand-map
+`TOOL_NAME_TO_URI` (they are MCP-connector-surface tools, not web-planner tools — verified: 0
+occurrences), so web replay for them needs no new hand entry; their replay is covered by the
+`canonical_faces.json` `deprecated_aliases` the generated bridge projects.
+
+## §4 — list_changed / vidhi capability-version bump
+
+`VIDHI_CAPABILITY_VERSION = vidhi-${COMPILER_VERSION}+r${sha256(VIDHI_PRIMITIVES + VIDHI_INTENT_FLOORS)}`.
+The 12 vidhi repoints change `VIDHI_PRIMITIVES` content → the hash moves → `notifyIfCapabilityStale`
+fires `tools/list_changed` for any client holding the old version. Additionally `COMPILER_VERSION`
+was bumped `1.0.0→2.0.0` (both hand-synced copies: `platform/src/lib/vidhi/compiler.ts` +
+`platform-mcp/src/resources/vidhi/compiler.ts`) to mark the breaking release explicitly and
+guarantee the bump even independent of the registry-content change. Format assertion
+(`vidhi-\d+\.\d+\.\d+\+r[0-9a-f]{12}`) still holds (verified: `vidhi_delivery.test.ts` green).
+
+## §5 — Piece 2 & 3 (unchanged from the first commit)
+
+- `RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: false→true`. Superset diff re-verified — only
+  `query_spine_bundle` + `synth/compose_large_n` diverge (known/accepted); no new gap.
+- `query_spine_bundle` reachable by default (auto-activated via the flag; catalog.ts:87 →
+  register_spine_bundle.ts:126). No new wiring.
+
+## §6 — Verification
+
+| check | result |
 |---|---|
-| `tools/registry_bridge.ts` | `get_chart_orientation`, `get_domain_reading`, `get_signals`, `traverse_graph`, `get_positions`, `get_dashas`, `get_temporal_windows`, `get_projections`, `get_classical_citation`, `get_remedies`, `get_chart_quality`, `list_assets`, `get_cgm_subgraph`, `query_chart_facts`, `vector_search` (KEEP the canonical faces in this file: `assess_*`, `judgment_query`, `graha_portrait`, `pact_query`, `chart_snapshot`, `get_graha_yuddha`, `tool_search`) |
-| `tools/l0_ephemeris.ts` | `query_planet_position`, `query_planet_transit`, `query_aspects_at_time`, `query_retrograde_periods`, `ephemeris_cache_year` |
-| `tools/l0_brahmagyan.ts` | `asset_registry_all`, `asset_registry_l0` (KEEP `resolve_entity`, `list_entities` — both are canonical faces, NOT deprecated) |
-| `tools/retrieval/remedy_tools.ts` | `query_remedies`, `query_remedies_for_chart`, `list_remedies_by_category`, `read_remedy`, `query_tantric_remedies`, `query_remedies_by_planet`, `query_mantras` |
-| `tools/retrieval/pyhora_natal.ts` | `compute_natal_positions`, `query_special_lagnas` |
-| `tools/phala_event_anchors.ts` | `event_anchors` |
-| `tools/phala_mitigation_map.ts` | `mitigation_map` |
-| `tools/phala_outlook.ts` | `phala_outlook` |
-| `tools/muhurta_finder.ts` | `muhurta_finder` |
-| `tools/mimamsa_lel_intake.ts` | `lel_query` |
-| `tools/mimamsa_outcome.ts` | `record_outcome`, `query_calibration` |
-| `tools/register_p1_aliases.ts` (in-file deprecated names) | `bodha_remedies_search`, `query_dasha_periods`, `ref_remedies_search`, `util_intent_classify` |
+| `tsc --noEmit` platform-mcp | **exit 0** |
+| `tsc --noEmit` platform | **exit 0** |
+| new `deprecated_tool_gate.test.ts` | **8 passed** (43 gated & unresolvable; 6 renames; canonical_faces parity) |
+| `kala_temporal_retrieval` / `m2` / `m3` / `m8` | **91 passed, 4 skipped (@integration)** |
+| `vidhi_delivery` + `vidhi_codegen_parity` | **18 passed** |
+| platform `registry_completeness` + `projection_compiler_parity` + `single_bootstrap` | **59 passed** |
+| platform `canonical_faces.test.ts` | **6 passed** (census 144) |
+| platform `src/lib/vidhi` + `src/lib/retrieval/registry` (full) | **1033 passed, 0 failed, 125 skipped** |
+| **platform-mcp FULL suite** | **18 failed files / 75 failed tests = the documented baseline EXACTLY** — confirmed via `git stash` that the 3 name-adjacent failures (kala_timeline, phala_muhurta, registry_bridge_r5w3) fail identically at baseline; **none of my files are in the failed set** |
 
-Total = 43 legacy names → the corresponding canonical faces already resolve and survive.
+## §7 — Honest limitations / conductor follow-ups
 
-### 3b. The 6 DEFERRED renames — HAVE A SEPARATE CONFLICT (needs its own ruling)
-
-The task's 6 renames (`recall_session→session_recall`, `list_my_sessions→session_list`, `list_my_charts→catalog_charts_list`, `select_chart→catalog_chart_select`, `holistic_bundle_chart_facts→bodha_bundle_get`, `kala_temporal_bundle→kala_bundle_get`) rename AWAY from names that `canonical_faces.json` currently lists as **canonical faces** (`recall_session`, `list_my_sessions`, `list_my_charts`, `select_chart`, `holistic_bundle_chart_facts`, `kala_temporal_bundle`). The target names (`session_recall`, etc.) are NOT in `canonical_faces.json` at all — the "deferral doc" in `register_p1_aliases.ts:8-16` PROPOSED them but they were never ratified into the dedup registry.
-
-So executing the 6 renames requires ALSO updating `canonical_faces.json` (move the 6 from `canonical_faces` to the new names) AND every consumer of that registry (`doctrine_harness/lib/alias_check.ts`, any conformance/census test). These 6 tools are registered at: `session_tools.ts` (recall_session, list_my_sessions), `chart_selection.ts` (list_my_charts, select_chart), the holistic-bundle registrar (`holistic_bundle_chart_facts`), the kala-temporal registrar (`kala_temporal_bundle`).
-
-### 3c. Consumers to update when 3a/3b land
-
-- `platform/src/lib/retrieval/registry/tool_name_bridge.ts` — **KEEP** (web replay bridge for old persisted conversations). Its `TOOL_NAME_TO_URI` already maps the legacy names → URIs, so old web-channel transcripts still resolve after the MCP names are gone. For the 6 renames, ADD `oldname→newURI` entries if not already present (the generated projection may already cover them — verify against `web_tool_bridge.generated.json`).
-- `platform/src/lib/retrieval/registry/canonical_faces.json` — for the 6 renames only (3b).
-- `server.ts:561` census comment + `REGISTERED_TOOL_COUNT` + `/health` tool list.
-- MCP-level tests asserting legacy names resolve (e.g. `alias_conformance_check.ts`, `whitelist_resolution_invariant.test.ts`, MCP E2E) — update to assert legacy names are now unresolvable and canonical faces resolve.
-- `platform-mcp/src/resources/vidhi/compiler.ts` — bump `COMPILER_VERSION` (see §4).
-
-## §4 — notifications/tools/list_changed (mechanism + remediation)
-
-`VIDHI_CAPABILITY_VERSION = vidhi-${COMPILER_VERSION}+r${sha256(VIDHI_PRIMITIVES + VIDHI_INTENT_FLOORS).slice(12)}` (`platform-mcp/src/resources/vidhi/capability_version.ts:42`). `notifyIfCapabilityStale()` fires `server.sendToolListChanged()` only when a client presents a version that differs from the live one — i.e. only when this hash moves.
-
-**Finding:** the hash is NOT derived from the MCP tool list. I checked `registry_data.ts` for the affected names: most legacy names (`traverse_graph`, `query_chart_facts`, `vector_search`, `get_dashas`, …) and ALL 6 deferred old names are ABSENT from `VIDHI_PRIMITIVES`/`VIDHI_INTENT_FLOORS` (which reference the CANONICAL names as recommended tools). Only `get_positions`, `get_signals`, `kala_temporal_bundle` happen to appear. So a Piece-1 removal would NOT reliably bump the hash.
-
-**Remediation (when Piece 1 lands):** bump `COMPILER_VERSION` in `compiler.ts` (`1.0.0 → 2.0.0`). This deterministically changes `VIDHI_CAPABILITY_VERSION`, firing `tools/list_changed` for every client presenting the old version — the correct "staleness kill" for a breaking tool-name change. I did NOT bump it in this session because bumping without the actual breaking change would be a false signal.
-
-## §5 — Pieces 2 & 3 (what LANDED this session)
-
-- `platform/src/lib/config/feature_flags.ts` — `RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: false → true` (+ updated rationale comment).
-- `platform/src/app/api/retrieval/capability/__tests__/single_bootstrap_flag.test.ts` — default assertions flipped to `true`; added a no-override "default path" describe proving `query_spine_bundle` + `synth/compose_large_n` are reachable BY DEFAULT; the flag=false block retitled as the emergency-rollback path. The existing superset-diff test (re-derives catalog-vs-hand-list) is unchanged and passes — confirming no new gap.
-
-**Verification:** `npx vitest run single_bootstrap_flag.test.ts capability_cache_wiring.test.ts` → **23 passed**. `npx tsc --noEmit` (platform) → **exit 0**.
-
-**query_spine_bundle activation confirmed by code trace:** `catalog.ts:87` `import './layers/register_spine_bundle'` (side-effect) → `register_spine_bundle.ts:126` `registerCapability(querySpineBundleCapability)` (uri `marsys://tool/L-SPINE/query_spine_bundle`). Under flag=true, `ensureBootstrapped()` (`route.ts:108`) calls `getCatalog()`, which pulls that side-effect import. No new wiring required.
-
-## §6 — D-4b gate status
-
-RC-14's original blocker (D-4b active) appears resolved: `cd5ad175 docs(d4b): CAMPAIGN CLOSE (#723)` and the campaign-close merge are on main. Stale local `wave/D-4b/*` experiment branches still exist but the campaign is closed. Pieces 2/3 are additive (allowed under the deploy mutex without waiting per brief §J.4). Piece 1 is now blocked on the DIRECTION ruling below, not on D-4b. Live-verification of "no active D-4b work on the connector" before any deploy remains the conductor's job (brief §J.3) — I cannot verify the live deployed connector from this environment.
-
-## §7 — The single blocking question for the conductor / native
-
-> **Confirm the Piece-1 direction:** the breaking flip should REMOVE the 43 legacy short names (the `canonical_faces.json` `deprecated_aliases` keys, per the §3a manifest) and KEEP `registerP1AliasTools` (the canonical faces) — NOT remove `registerP1AliasTools`. AND: ratify the 6 deferred renames — do we adopt `session_recall`/`session_list`/`catalog_charts_list`/`catalog_chart_select`/`bodha_bundle_get`/`kala_bundle_get` (updating `canonical_faces.json` accordingly), or keep the current canonical faces (`recall_session` etc.) that `canonical_faces.json` already ratifies and drop the deferral doc?
-
-Once ruled, §3's manifest + §4's `COMPILER_VERSION` bump make Piece 1 a mechanical, fully-specified change.
+1. **Live-connector proof is the conductor's job.** RC-14's DONE bar ("a live trace shows
+   canonical-only tool names resolving and `query_spine_bundle` returning a real chain on
+   482012f1") requires the DEPLOYED connector. I cannot reach it from this environment; the
+   `@integration` MCP tests are skipped locally. Verify post-deploy: (a) a `tools/list` shows the
+   43 legacy names ABSENT and the 6 new names PRESENT, (b) `query_spine_bundle` returns a pre-joined
+   chain, (c) a `list_changed` fires for a client presenting the old `vidhi-1.0.0+…` version.
+2. **Generated projection artifacts were NOT regenerated** (`web_tool_bridge.generated.json`,
+   `mcp_surface_profiles.generated.ts`, etc.). Regenerating pulled in ~1100 lines of pre-existing
+   drift unrelated to RC-14, and `projection_compiler_parity.test.ts` does NOT byte-diff the
+   committed files (it exercises the builder functions against the live catalog), so they are not
+   test-gated. The runtime web bridge still resolves all legacy names for replay. A clean
+   `npm run codegen:projections` is a good separate hygiene pass (would also clear the drift).
+3. **Cosmetic-only:** a few internal code comments in `server.ts` (registration-site comments),
+   `lib/session.ts`, and `platform/src/app/api/mcp/sessions/route.ts` still name the old tools in
+   prose. Non-functional; left for a hygiene sweep.
+4. **`registry_completeness.test.ts` LIVE_TOOLS** still lists the 43 legacy names as "live" (the
+   test's forward assertion — every primitive live_tool ∈ LIVE_TOOLS — is unaffected since all
+   primitives now point at canonical faces). Trimming those 43 from the snapshot is a cosmetic
+   accuracy follow-up.

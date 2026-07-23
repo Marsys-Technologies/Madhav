@@ -470,7 +470,7 @@ const InputSchema = z.object({
 
 // ── Tool description ──────────────────────────────────────────────────────────
 
-const TOOL_NAME = 'kala_temporal_bundle'
+const TOOL_NAME = 'kala_bundle_get'
 
 // REMEDIATION D7 (RULE-3): native identifiers removed from LLM-visible description.
 // CR-40/T-1: description updated — source is now the L3 Kāla registry capabilities

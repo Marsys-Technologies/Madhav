@@ -29,7 +29,10 @@ import type {
 } from './types.js';
 import { VIDHI_PRIMITIVES, VIDHI_INTENT_FLOORS } from './registry_data.js';
 
-export const COMPILER_VERSION = '1.0.0';
+// RC-14 breaking flip (2026-07-23): bumped 1.0.0 -> 2.0.0. Kept in sync with the
+// platform canonical copy (platform/src/lib/vidhi/compiler.ts). Moves
+// VIDHI_CAPABILITY_VERSION so tools/list_changed fires for the breaking tool-name change.
+export const COMPILER_VERSION = '2.0.0';
 
 export interface VidhiRegistry {
   readonly primitives: readonly VidhiPrimitive[];

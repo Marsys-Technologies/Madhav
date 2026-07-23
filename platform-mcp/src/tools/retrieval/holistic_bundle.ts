@@ -73,8 +73,8 @@ function bundleEntriesSection(): TrimmableSection<Record<string, unknown>> {
     // SC-17 fix: 'bodha_bundle_get' was never registered as an MCP tool (a planned rename
     // that never shipped) — recovering via it 404'd exactly when data was withheld. The
     // live, registered tool for the full multi-subsystem bundle is THIS tool itself,
-    // 'holistic_bundle_chart_facts' (registered below via registerHolisticBundleRetrievalTool).
-    recover: { instrument: 'holistic_bundle_chart_facts', hint: 'full multi-subsystem bundle — call again (this call trimmed bundle_entries to fit the MCP response budget).' },
+    // 'bodha_bundle_get' (registered below via registerHolisticBundleRetrievalTool).
+    recover: { instrument: 'bodha_bundle_get', hint: 'full multi-subsystem bundle — call again (this call trimmed bundle_entries to fit the MCP response budget).' },
   }
 }
 
@@ -129,7 +129,7 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
   // chart_agnostic_gate RULE-1: per_chart scope → chart_id in required_inputs.
   // R2.1: delegates to callPlatformPrimitive('holistic_bundle', params) — no local Pool.
   server.tool(
-    'holistic_bundle_chart_facts',
+    'bodha_bundle_get',
     {
       chart_id: z.string().uuid().describe(
         'Chart UUID. Required — no default chart.'
@@ -141,7 +141,7 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
     async ({ chart_id, include_graph = false }) => {
       if (!chart_id) {
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ error: 'chart_id is required', tool: 'holistic_bundle_chart_facts' }, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify({ error: 'chart_id is required', tool: 'bodha_bundle_get' }, null, 2) }],
           isError: true,
         }
       }
