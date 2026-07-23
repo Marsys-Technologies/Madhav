@@ -1239,39 +1239,98 @@ since none currently exists. B-2/B-3 remain correctly blocked pending this decis
 
 ---
 
-**CR-125 [RESOLVED 2026-07-23, RC-17 (web-door dasha-anchoring hallucination) fix session, branch
-`res/rc02-rc17-web-door-parity-and-dasha-fix` — discovered by RC-02's live two-door parity
-investigation (2026-07-22), independently live-reproduced this session, chart 1c826d5a, via the
-deployed `/api/chat/consult` route]:** the web-door synthesis text stated the native was running
-"Mercury MD / Saturn AD" while the SAME response's own `data-orientation.chart_header.
-current_maha_antar` (and the MCP `prashna_ask` door, for the same chart/question) both correctly
-said "Saturn MD / Rahu AD" — a fabricated Mahadasha lord asserted directly to the caller about
-their own timing. Root cause: `run_adapter_dispatch.ts`'s `systemContent` assembly never included
-the resolved `current_maha_antar` or today's date at all, so the synthesis model had no way to
-know which of the many raw dasha periods returned by the B.11 dasha-context floor tool is CURRENT
-and reasoned from training-data recency/pattern-bleed instead — the identical defect class fixed
-for the MCP `prashna_ask` synthesis path in commit `2df42b61` (W6.3 fix-cycle,
-`prashna_ask_synthesis.ts`'s `formatTemporalAnchor`), independently surviving on the web door
-because that fix only touched the MCP file. Fixed with the equivalent pattern
-(`formatConsultTemporalAnchor` + `buildConsultSystemContent`, wired into `systemContent` ahead of
-the B.11 floor bundle, sourced from the orientation block already resolved earlier in the request —
-no new fetch needed; degrades honestly, never fabricating a period, when `current_maha_antar` is
-unresolved); regression test `rc17_temporal_anchor.test.ts` (8 cases, all passing) proves the
-anchor is built correctly and is actually wired into the text the synthesis model receives,
-including an explicit regression guard against the exact live symptom (a different dasha lord
-silently substituted). Live-reproduced pre-fix twice: the original RC-02 investigation (query_id
-`05baeb74-6c7f-4d6b-ab57-9578e57ab083`, 2026-07-22) and an independent re-reproduction this session
-(query_id `86d2f98e-1f8c-4f73-90b2-6fc1fd1e9d41`, 2026-07-22 22:43 UTC, deployed revision
-`amjis-web-01103-nq7`) — both show the identical orientation-vs-synthesis contradiction. Post-fix
-live re-probe of the deployed (fixed) web door is deploy-gated — same carry-condition class as
-CR-118/RC-11 (`VERIFY_RC-11.md` §5) — recommended for Wave R-C after batched deploy. Full detail:
-`RC-17_WEB_DASHA_HALLUCINATION_v1_0.md`. (Numbered CR-125, not CR-122 as this fix-cycle's own
-branch history initially had it — CR-122 collided with RC-04's unrelated `phala_anchors_get`
-finding, which merged to `main` first; renumbered during integration, no content change.)
+**CR-125 [fix-cycle 1: RESOLVED 2026-07-23 — INCORRECT; see fix-cycle 2 below. Status corrected to
+OPEN → RE-FIXED 2026-07-23 same day, branch `res/rc17-fixcycle2-still-hallucinating`. RC-17
+(web-door dasha-anchoring hallucination) — discovered by RC-02's live two-door parity investigation
+(2026-07-22), fixed twice this same day, chart 1c826d5a, via the deployed `/api/chat/consult`
+route]:** the web-door synthesis text stated the native was running "Mercury MD / Saturn AD" while
+the SAME response's own `data-orientation.chart_header.current_maha_antar` (and the MCP
+`prashna_ask` door, for the same chart/question) both correctly said "Saturn MD / Rahu AD" — a
+fabricated Mahadasha lord asserted directly to the caller about their own timing.
+
+**Fix-cycle 1** (branch `res/rc02-rc17-web-door-parity-and-dasha-fix`, merged to `main@7dcffa91`,
+deployed): root cause diagnosed as `run_adapter_dispatch.ts`'s `systemContent` assembly never
+including the resolved `current_maha_antar` or today's date at all — the identical defect class
+fixed for the MCP `prashna_ask` synthesis path in commit `2df42b61` (W6.3 fix-cycle). Fixed by
+porting the `formatTemporalAnchor`/`buildConsultSystemContent` pattern, wired into `systemContent`
+ahead of the B.11 floor bundle. Regression test `rc17_temporal_anchor.test.ts` (8 cases) added, all
+passing. **This fix-cycle's own verification correctly flagged, and did not skip, the one thing it
+could not check**: a live post-deploy re-probe of the fixed web door was explicitly marked
+deploy-gated/NOT verified in `RC-17_WEB_DASHA_HALLUCINATION_v1_0.md` §6 — the branch's code was
+never fired against the live deployed service post-merge before this entry was first marked
+RESOLVED. That gap is exactly where fix-cycle 1 turned out to be incomplete.
+
+**Fix-cycle 1 did NOT fully close the gap.** A live post-deploy verification the same day
+(2026-07-23), after `main@7dcffa91` deployed, found the SAME defect class **still present, in a
+new and worse form**: (a) synthesis prefixed the correct period with *"As per your
+request/instructed, we are treating your current period as Saturn MD / Rahu AD..."* — fabricating
+that the user requested/instructed a plain factual question's premise; (b) synthesis appended a
+*"Confidence Note: ... Your chart's actual current period is Mercury MD / Saturn AD..."* —
+substituting a hallucinated "corrected" answer that is not even this chart's dasha (it belongs to
+a different chart entirely). Independently live-reproduced three more times this session (before
+any fix-cycle-2 code existed) against the deployed service: one run reproduced the "As instructed"
+hedge verbatim (including the internal `TEMPORAL ANCHOR:` prompt-section label leaking into
+user-facing text); a second reproduced an even starker form — the wrong period ("Mercury Mahadasha
+/ Saturn Antardasha") stated flatly as `**CURRENT PERIOD:**` with ZERO hedge language and the
+correct period never appearing anywhere in the visible text at all.
+
+**Root-cause investigation (fix-cycle 2)** ruled out data-plane explanations before concluding this
+is a pure prompt-wording/instruction-following failure: `orientation` is `await`-ed fresh per
+request (no caching), `nowContextDate` is computed fresh per call (no caching), the Gemini
+`cachedContent` code path is permanently dead (`if (false && ...)`, WS-0), and the deterministic
+`data-orientation` block correctly named this chart's own dasha in every single reproduction —
+ruling out cross-chart data leakage as a mechanism. The actual cause: fix-cycle 1's anchor sentence
+— *"...is {dasha} — **treat this as** the CURRENT period..."* — is a conditional/imperative frame
+("pretend X"), which is exactly the shape of language that invites a large model (default stack
+`gemini`, `gemini-2.5-pro` primary) to narrate compliance with what it reads as an instruction, and
+to treat the framing as inherently questionable, inviting an unprompted "but actually..."
+correction.
+
+**Fix-cycle 2** (branch `res/rc17-fixcycle2-still-hallucinating`): rewrote
+`formatConsultTemporalAnchor`/`buildConsultSystemContent` to (1) state the current period as
+unconditional declarative fact ("This... IS true... NOT an instruction... NOT something you have
+been 'asked' to treat as true"), never "treat this as"; (2) explicitly forbid the exact hedge
+phrasings observed live ("as instructed", "as per your request", "per the instruction", etc.); (3)
+explicitly forbid naming any OTHER Mahadasha/Antardasha combination as the "actual"/"real"/"true"
+current period, directly targeting the "Confidence Note" symptom; (4) rename the internal section
+label from `TEMPORAL ANCHOR:` (echoed verbatim by the model live) to `VERIFIED CHART FACT (do not
+cite this label; state the fact plainly):`, plus an explicit "do not quote/mention this paragraph"
+instruction. Regression test suite extended from 8 to 16 cases (all passing) — new cases assert the
+anti-"treat this as" wording, the anti-hedge and anti-substitution prohibitions are present in the
+anchor text, the label rename, and a local `containsRc17HedgePattern` text-detector correctly flags
+both live symptom strings verbatim. Broader sweep 125/125 pass; `tsc --noEmit` clean.
+
+**Live post-fix verification this time was NOT deploy-gated** — fix-cycle 2 stood up a local `npm
+run dev` server against the live Cloud SQL database (existing `cloud-sql-proxy` on
+`127.0.0.1:5433`) and fired the exact reproduction question at it twice against the fixed code:
+both runs stated the correct period plainly with zero hedge-pattern matches (`actual`, `confidence
+note`, `as instructed`, `as per your request`, `TEMPORAL ANCHOR`, `VERIFIED CHART FACT` all absent
+from the visible synthesis text in both runs). This is genuine end-to-end verification of the fixed
+code, not unit-tests-only — closing exactly the verification gap that let fix-cycle 1's regression
+reach production undetected. Honest caveat: this remains a prompt-engineering mitigation against a
+non-deterministic LLM, not a deterministic guarantee — two clean runs is strong evidence the
+specific "treat this as" wording defect is gone, not formal proof against every sampling outcome.
+Full detail, both fix-cycles: `RC-17_WEB_DASHA_HALLUCINATION_v1_0.md` §§1-8 (cycle 1), §§9-11
+(cycle 2). (Numbered CR-125, not CR-122 as this fix-cycle's own branch history initially had it —
+CR-122 collided with RC-04's unrelated `phala_anchors_get` finding, which merged to `main` first;
+renumbered during integration, no content change.)
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.14 (2026-07-23, D-4b B-6 close pass #6) —
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.15 (2026-07-23, RC-17 fix-cycle 2, branch
+`res/rc17-fixcycle2-still-hallucinating`) — CR-125 status corrected: fix-cycle 1 (v3.13) was
+marked RESOLVED but a live post-deploy verification found the identical defect class still present
+in production, in a worse form (an "as instructed"/"as per your request" hedge framing the correct
+period as a complied-with user instruction, and a fabricated "Confidence Note ... actual current
+period is [wrong chart's dasha]" second-guess). Independently live-reproduced three times this
+session before any fix-cycle-2 code was written. Root cause: fix-cycle 1's anchor wording ("treat
+this as the CURRENT period") is an imperative/conditional frame that invites exactly this hedge
+completion pattern; ruled out caching/data-leak mechanisms first. Fixed by rewriting the anchor as
+unconditional declarative fact with explicit anti-hedge and anti-substitution prohibitions, plus
+renaming the internal section label the model was echoing verbatim. Regression suite extended 8→16
+cases. Live-verified against a local dev server (not deploy-gated this time) — two clean runs,
+zero hedge-pattern matches. Full detail: `RC-17_WEB_DASHA_HALLUCINATION_v1_0.md` §§9-11.
+Prior: v3.14 (2026-07-23, D-4b B-6 close pass #6) —
 CR-126/127/128 added: checkpointed-batching doctrine (CLOSED, proven twice), sealed-split
 structural fix (CLOSED, verified twice), and the B-2 mimamsa_outcome_record architecture gap
 (OPEN, native/Binder decision required). Twice-renumbered from the original CR-122/123 slots —

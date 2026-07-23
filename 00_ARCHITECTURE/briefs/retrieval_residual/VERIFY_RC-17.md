@@ -104,3 +104,132 @@ identical carry-condition Wave R-C already accepted for RC-11 (VERIFY_RC-11.md �
 closes as code-complete; the conductor should, after the batched Wave R-C deploy, re-fire
 the identical question at `/api/chat/consult` for chart `1c826d5a` and confirm the synthesis
 text no longer contradicts its own `data-orientation` block.
+
+---
+
+# VERIFY — RC-17 fix-cycle 2 (independent verifier, opus/high, NOT the implementer)
+
+- **branch:** `res/rc17-fixcycle2-still-hallucinating`  **verified_commit:** `4c6c1ade`
+- **date:** 2026-07-23
+- **verdict:** **ACCEPT-WITH-CAVEATS** — the fix is real, correct in direction,
+  broader than its own root-cause narrative, scope-clean, and materially better
+  than fix-cycle 1; but it is a probabilistic prompt fix against a
+  non-deterministic model, the prior fix-cycle-1 "ACCEPT (code-complete,
+  deploy-gated re-probe)" verdict is exactly what let this defect ship, and two
+  clean local runs are not proof. The post-deploy production re-probe is
+  therefore **NOT an optional carry-forward this time — it is a mandatory close
+  gate** (see Caveats).
+
+## Context that governs this verdict
+
+This is the SECOND verification of the same production correctness defect. The
+fix-cycle-1 verifier (this same file, above) issued **ACCEPT** with the live
+post-deploy re-probe treated as an acceptable Wave-R-C carry-condition. That
+deferral is precisely the hole the regression walked through: fix-cycle-1 code
+deployed to `main@7dcffa91`, was never fired against the live service before
+being marked RESOLVED, and the defect resurfaced in a worse form. I will not
+repeat that pattern — the deploy re-probe is escalated from "carry-forward" to
+"mandatory gate."
+
+## (a) Tests re-run by this verifier (not trusting the report)
+
+- `rc17_temporal_anchor.test.ts`: **16/16 pass** (re-ran).
+- Broader sweep `src/app/api/chat/ src/lib/pipelines/shared/ src/lib/streams/`:
+  **125/125 pass** (re-ran).
+- `npx tsc --noEmit`: **exit 0** (re-ran).
+- Caveat on test *meaning*: every case asserts the prompt STRING changed
+  (contains/omits phrases), not that the LLM stops hallucinating. Green here is
+  necessary-not-sufficient; 16/16 must not be read as "hallucination eliminated."
+
+## (b) Did the implementer genuinely reproduce the live bug first? — YES, verified
+
+I inspected the raw SSE evidence files directly (scratchpad, not committed):
+- `repro_pre_fix2.sse` contains verbatim `TEMPORAL ANCHOR:** As instructed,
+  this analysis is based on your current period being **Saturn Mahadasha (MD)`.
+  The literal `TEMPORAL ANCHOR:` label exists ONLY in fix-cycle-1's code — this
+  is direct proof fix-cycle-1 was deployed and STILL produced the "as
+  instructed" hedge (the whole premise of fix-cycle 2 is sound).
+- `repro_pre_fix3.sse` contains the flat `CURRENT PERIOD:** Mercury Mahadasha /
+  Saturn Antardasha` hallucination; the correct `Saturn MD / Rahu AD` appears
+  exactly once (the client-only orientation JSON), never in synthesis prose.
+The implementer minted their own path (`scripts/get_session_cookie.mjs` present)
+and did not merely trust the conductor's report.
+
+## (c) Does the new wording eliminate the failure mode, or just reduce it? — PARTIAL; root-cause narrative has a hole
+
+Read the before/after anchor directly (diff of `run_adapter_dispatch.ts`). The
+fix (1) removes every "treat this as" imperative frame → flat declarative
+"verified fact ... NOT a user instruction"; (2) explicitly forbids the observed
+hedge phrases; (3) forbids naming any other MD/AD as "actual/real/true"; (4)
+renames the echoed `TEMPORAL ANCHOR:` label. Directionally correct and, crucially,
+item (3) is broader than pure wording — it targets the structural cause (the
+web door dumps a large raw dasha table with historical Mercury-MD-2010-2027 rows
+the model latches onto).
+
+**But the stated root cause ("`treat this as` imperative framing") is not
+conclusively THE cause:** the MCP door (`prashna_ask_synthesis.ts:294`) uses the
+IDENTICAL `treat this as the CURRENT period` wording and is reported (RC-17 doc
+§2, corroborated by live MCP) as NOT exhibiting the defect. If that phrase were
+the root cause, the MCP twin should fail too. The more likely differentiator is
+the web door's contradictory-evidence bundle, which item (3) addresses — so the
+fix probably works for the right reason even though the narrative overweights the
+wording. This lowers confidence that the wording change alone is decisive.
+
+## (d) Local dev-server evidence real, not fabricated? — YES, verified
+
+`local_repro1.sse` and `local_repro2.sse` both contain
+`current Vimshottari dasha period is **Saturn Mahadasha / Rahu Antardasha**`
+with ZERO matches for `as instructed|as per your request|confidence note|TEMPORAL
+ANCHOR|VERIFIED CHART FACT|actual current`. Files are timestamped 06:57–06:58,
+after the pre-fix repros (06:50–06:51) — a coherent reproduce→fix→verify
+sequence. Genuine E2E against fixed code, not a unit-test-only claim.
+
+## (e) Can any prompt wording "fully fix" this with confidence? — NO
+
+This is instruction-following behavior on a non-deterministic model
+(`gemini-2.5-pro`). Two clean runs is weak statistical evidence: pre-fix the
+failure rate was high enough to catch in 2–3 runs, so if the residual rate
+merely dropped to (say) 10%, two clean runs would not reveal it. The honest
+framing is **"improved, residual risk remains, needs live monitoring
+post-deploy,"** NOT a clean fix. The implementer's own §9.7 says as much — I
+concur and hold them to it. Ground truth independently confirmed via the live
+MCP connector: for chart `1c826d5a` as of 2026-07-23 the L2 period is
+`Saturn-Rahu` (Rahu AD 2023-12-04→2026-10-10), so `Mercury MD / Saturn AD` is a
+genuine hallucination — and it is the NATIVE's (`482012f1`) own period, i.e. a
+cross-chart-shaped wrong answer, which raises the severity.
+
+## (f) Scope / must_not_touch — CLEAN
+
+4 files changed, all within brief §may_touch: `run_adapter_dispatch.ts` +
+its test (`platform/**`), `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` (defect status),
+`RC-17_...v1_0.md` (`retrieval_residual/**`). No FROZEN orchestrator/WriterBase,
+no `ga_*/bo_*/ka_*/ph_*/mi_*` writer logic, no `chart_facts` semantics, no
+`kala_*`/gochara serving semantics, no D-4b branch, no root `CLAUDECODE_BRIEF.md`.
+
+## Caveats — residual risk + required follow-up (conditions of this ACCEPT)
+
+1. **MANDATORY post-deploy production re-probe (close gate, not carry-forward).**
+   After the batched deploy, fire the identical question at the DEPLOYED
+   `/api/chat/consult` for `1c826d5a` **multiple times** (≥5, given
+   non-determinism and the ~15min cold path) and confirm synthesis names
+   `Saturn MD / Rahu AD` with no hedge and no `Mercury`. RC-17 is NOT closed by
+   this branch alone — fix-cycle-1's "code-complete ACCEPT" already proved a
+   single deferred re-probe is how this defect ships.
+2. **Strongly recommend a production-side detector.** `containsRc17HedgePattern`
+   exists only in the test file. Given a defect that recurred AFTER an ACCEPT,
+   wire an output-side tripwire (that detector or equivalent) into the
+   post-stream checks in `runAdapterDispatch` → `judgment_flags`, so a third
+   recurrence is caught mechanically rather than by luck. This is the single
+   highest-value follow-up; without it "probably fixed" stays unfalsifiable in
+   production. (Implementer scoped it out per task instruction — flag it up, do
+   not let it drop.)
+3. **Two-door parity gap.** The identical `treat this as the CURRENT period`
+   wording the fix calls dangerous still lives in the MCP door
+   (`prashna_ask_synthesis.ts:294`). Either bring it to parity with the new
+   declarative/anti-substitution framing or record why the MCP door is exempt
+   (RC-02 territory). Leaving one door hardened and its twin carrying the exact
+   phrase is an inconsistency and a latent RC-02 risk.
+
+**Bottom line:** ACCEPT the fix-cycle-2 code as a genuine improvement and merge
+it, but RC-17 does not flip to CLOSED until caveat 1 (multi-run post-deploy
+re-probe) passes; caveats 2–3 are open follow-ups to record in the ledger.

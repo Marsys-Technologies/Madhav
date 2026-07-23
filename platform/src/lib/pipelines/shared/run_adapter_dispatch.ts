@@ -187,6 +187,31 @@ export interface RunAdapterDispatchCtx {
 // ---------------------------------------------------------------------------
 // RC-17 — pure, unit-testable temporal-anchor builder (mirrors
 // prashna_ask_synthesis.ts's `formatTemporalAnchor`, W6.3 fix-cycle / 2df42b61)
+//
+// fix-cycle 2 (2026-07-23): fix-cycle 1's wording ("treat this as the CURRENT
+// period") survived deploy but the defect RESURFACED in a new, worse form —
+// live-reproduced against the deployed `amjis-web` `/api/chat/consult` route,
+// chart 1c826d5a, three independent times this session:
+//   (a) synthesis opened "**TEMPORAL ANCHOR:** As instructed, this analysis
+//       is based on your current period being Saturn MD / Rahu AD..." — the
+//       model treated the anchor as a user INSTRUCTION it was reluctantly
+//       complying with (and echoed the internal section header back into
+//       user-facing text), not as an established fact;
+//   (b) a separate run fabricated "Mercury Mahadasha / Saturn Antardasha" as
+//       the "CURRENT PERIOD" outright, with the correct "Saturn MD / Rahu AD"
+//       never once appearing in the visible synthesis text at all — only in
+//       the (client-only) data-orientation JSON alongside it.
+// Root cause of the wording-level failure: "treat this as X" is a conditional/
+// imperative frame ("pretend X for the purposes of this exercise"), which
+// invites exactly the "as instructed"/hedge/second-guess completion pattern a
+// large model produces when it is told to "treat" something as true rather
+// than told the thing simply IS true. The rewrite below removes every
+// "treat X as Y" / "as instructed" surface, states the fact as unconditional
+// declarative ground truth sourced from the deterministic chart-facts
+// database, explicitly forbids the hedge phrasings observed live, and
+// explicitly forbids naming any OTHER Mahadasha/Antardasha combination as the
+// "actual"/"real"/"true" current period regardless of what other historical
+// dasha rows appear elsewhere in the supplied evidence.
 // ---------------------------------------------------------------------------
 
 /**
@@ -200,18 +225,24 @@ export interface RunAdapterDispatchCtx {
  * web `/api/chat/consult` path in RC-02's two-door parity diagnostic (§5a).
  * Degrades honestly (never fabricates a period) when `currentMahaAntar` is
  * unresolved. Pure — no I/O, no `Date.now()` call — for deterministic testing.
+ *
+ * fix-cycle 2: unconditional declarative framing (never "treat this as"),
+ * plus explicit anti-hedge and anti-substitution prohibitions — see the block
+ * comment above for the live symptoms this specifically targets.
  */
 export function formatConsultTemporalAnchor(
   nowContextDate: string,
   currentMahaAntar: string | null,
 ): string {
   const dashaLine = currentMahaAntar
-    ? `The native's current Vimshottari dasha period, as of this date, is ${currentMahaAntar} — treat this as the CURRENT period, not upcoming or past.`
-    : `The native's current Vimshottari dasha period could not be resolved for this request — do not state or imply a specific current Mahadasha/Antardasha; disclose the gap instead.`
+    ? `This chart's current Vimshottari dasha period, as of this date, is ${currentMahaAntar}. This is the CURRENT period, not upcoming or past. This is a verified fact read directly from the deterministic chart-facts database — it is NOT a user instruction, NOT an assumption, and NOT something you have been "asked" to treat as true; it simply is true, the same as any other chart fact you cite.`
+    : `This chart's current Vimshottari dasha period could not be resolved from the deterministic chart-facts database for this request — do not state or imply any specific current Mahadasha/Antardasha, including any period that happens to appear elsewhere in the supplied evidence; disclose the gap honestly instead.`
   return (
     `Today's date is ${nowContextDate}. ${dashaLine} Reason about "current", ` +
     `"now", "upcoming", and "past" periods relative to THIS date and period only — ` +
-    `do not rely on any other date you might otherwise assume.`
+    `do not rely on any other date you might otherwise assume. ` +
+    `There is exactly one current Mahadasha/Antardasha combination — the one stated above (or the honest gap-disclosure above, if it could not be resolved). Any other Mahadasha/Antardasha combination that appears anywhere else in your evidence (raw dasha-period tables, prior citations, life-event log entries, or your own general knowledge) is necessarily a PAST or FUTURE period, never the current one — do not name, imply, hedge toward, or add a corrective/confidence note suggesting any other combination is the "actual", "real", or "true" current period. ` +
+    `This fact is authoritative and non-negotiable ground truth, not a request you are complying with: never preface it, qualify it, or refer to it with phrasing such as "as instructed", "as per your request", "as requested", "per the instruction", "per your instruction", or any similar framing — that framing is factually false (no such instruction was given) and must not appear anywhere in your response. Simply state the current period as a plain fact, the way you would state the native's Lagna or Moon sign. Do not quote, mention, or refer to this paragraph, its label, or its existence in your response to the user — it is internal grounding only.`
   )
 }
 
@@ -223,6 +254,13 @@ export function formatConsultTemporalAnchor(
  * Extracted as its own pure function (rather than left as an inline expression) so
  * a regression test can assert the temporal anchor is actually wired into the text
  * the synthesis model receives, not just that the formatter itself is correct.
+ *
+ * fix-cycle 2: the section header itself is renamed from "TEMPORAL ANCHOR:" to
+ * "VERIFIED CHART FACT (do not cite this label; state the fact plainly):" —
+ * live evidence showed the model echoing the literal "TEMPORAL ANCHOR:" header
+ * back into user-facing text as something it was "instructed" by, which is
+ * itself a symptom of the anchor reading as an imperative directive rather
+ * than absorbed ground truth. The new label is deliberately awkward to quote.
  */
 export function buildConsultSystemContent(params: {
   bundleSystemContent: string
@@ -231,7 +269,9 @@ export function buildConsultSystemContent(params: {
   nowContextDate: string
   currentMahaAntar: string | null
 }): string | undefined {
-  const temporalAnchorContent = `TEMPORAL ANCHOR:\n${formatConsultTemporalAnchor(params.nowContextDate, params.currentMahaAntar)}`
+  const temporalAnchorContent =
+    `VERIFIED CHART FACT (do not cite this label; state the fact plainly):\n` +
+    formatConsultTemporalAnchor(params.nowContextDate, params.currentMahaAntar)
   return (
     [
       temporalAnchorContent,
