@@ -33428,3 +33428,158 @@ removed (`git worktree remove`) once the PR merges. No further VIDHI-PŪRṆATĀ
 the wave is closed.
 
 *End of VIDHI-PURNATA-2026-07-23 entry — 2026-07-23.*
+
+---
+
+## PRE-DARPANA-READINESS-2026-07-24 — Pre-Darpana Readiness Pass (Tier A/B swarm)
+
+```yaml
+session_open:
+  session_id: PRE-DARPANA-READINESS-2026-07-24
+  cowork_thread_name: "Madhav — PRE-DARPANA READINESS (Tier A fixes + Tier B verifications)"
+  agent_name: claude-sonnet-5
+  predecessor_session: VIDHI-PURNATA-2026-07-23 (planner completeness + default-deep +
+    elevation layer, PR #728 merged)
+  role: >
+    Coordinator (Sonnet) running a parallel-worker sub-agent swarm per native directive:
+    Sonnet default, Opus step-up only for judgment-heavy investigate/decide/verify lanes
+    (A-5, A-6 investigators; Lane B verifier). Fully autonomous except the two reserved human
+    decision points (A-5, A-6) named in the governing directive.
+  declared_scope:
+    may_touch:
+      - "00_ARCHITECTURE/llm_consumption_audit/briefs/uat_darpana/** (readiness doc + v1.1)"
+      - "00_ARCHITECTURE/SESSION_LOG.md, CURRENT_STATE_v1_0.md (append/close)"
+      - "PR #729 SESSION_LOG close content (A-1); platform/python-sidecar/ga_writers/
+        ga_vargas_writer.py + its test file (A-4, surgical label fix only)"
+      - "live serving surface deploy-verification only (A-2) — no code changes"
+      - "chart-scoped data rebuild for chart_id 482012f1 and 1c826d5a (A-4 only, via existing
+        writer idempotency path)"
+    must_not_touch:
+      - "FROZEN orchestrator + WriterBase + ga_*/bo_*/ka_*/ph_*/mi_* writer build logic beyond
+        A-4's single-line label fix"
+      - "L1-L5 data tables/calibration tables beyond A-4's scoped rebuild; the sealed split"
+      - "any fabricated computation, remedy ranking, timing window, or completion state"
+  red_team_due: false
+```
+
+**Native directive:** execute `PRE_DARPANA_READINESS_v1_0.md`'s Tier A (must-fix) and Tier B
+(must-verify) checklist ahead of UAT-DARPANA opening, as a swarm of parallel Sonnet worker
+agents with Opus step-ups on judgment-heavy lanes, gated only at the two decision points the
+brief itself reserves (A-5 remedy-engine, A-6 timing-anchor — proceed unless the bounded-repair
+option is unclear). Full per-item evidence published as
+`PRE_DARPANA_READINESS_v1_1.md` (v1.0 marked SUPERSEDED in place, retained for audit trail).
+
+**Outcome: Tier A 3/6 CLOSED (A-1, A-2, A-4), 1/6 OPEN (A-3/CR-131, honest unresolved
+blocker), 2/6 HALTED for native decision (A-5, A-6). Tier B: 2/5 PASS (B-3, B-5), 1/5
+PASS-with-caveat (B-4), 1/5 PARTIAL with a new silent-empty finding (B-1), 1/5 FAIL-as-specified
+(B-2). Exit condition NOT met — UAT-DARPANA remains HELD.** This is reported honestly per the
+directive's own instruction ("do not stretch a partial into a pass"); see
+`PRE_DARPANA_READINESS_v1_1.md` for full per-item evidence.
+
+**Lanes executed, dependency-ordered, parallel where independent:**
+- **A-1 (CLOSED):** PR #729's "Governance Gates" exit-2 failure root-caused to an ASCII-only
+  regex in `schema_validator.py`'s `_SESSION_LOG_HEADING_RE`, which failed to match the
+  diacritics in the "VIDHI-PŪRṆATĀ" heading and bled that entry's `session_close.session_id`
+  into the prior entry. Fixed by leading the heading with the ASCII session_id token and adding
+  a missing `session_open` block the same bug had masked (content fix, gate itself untouched).
+  Merged squash commit `64318a2f`.
+- **A-2 (CLOSED):** confirmed CI auto-deploys on merge (`.github/workflows/deploy.yml`);
+  verified live image-SHA parity for `amjis-web`/`amjis-mcp` against commit `350d8455`
+  (main HEAD at #728 merge); migrations 462/463 confirmed applied live; all 4 live-verify
+  probes passed via `marsys-jis-direct` with real tool output quoted.
+- **A-3 (OPEN, honest):** `ka_gochara_sweep` for 482012f1 confirmed live at 165/300 substeps,
+  `state='error'`. The brief's "~600x faster post-memoization" premise was checked against real
+  timestamps and found **unsupported** (~6x actual). Re-dispatch not possible this session — no
+  write-DB access, no cockpit API session to create the required `build_runs` row. Independently,
+  the three gochara serving tools return empty for a *second*, separate reason:
+  `DATABASE_URL not set` in their execution path. CR-131 remains OPEN with both blockers
+  disclosed, not papered over.
+- **A-4 (CLOSED):** `VARGA_KARYA[7]` mislabel (`spouse_karya`→`progeny_karya`) fixed
+  surgically in `ga_vargas_writer.py`, regression test added, chart-scoped delete-then-insert
+  rebuild executed and verified live for 482012f1 + 1c826d5a (zero `spouse_karya` rows remain
+  DB-wide; no other karya label or row count changed). Landed as **PR #730** (own branch/PR,
+  CI-gated) — caught during Coordinator close after the worker lane left the fix uncommitted.
+- **A-5 (HALTED for native):** CR-67/CR-69 remedy-engine cluster investigated (Opus); no
+  bounded, fabrication-free repair exists (CR-67 needs new L2 derivation — a 100%-NULL join
+  column; CR-69 needs both a first-ever production exercise of an unbuilt table AND serving
+  rewiring). Accept-as-dark recommended; disclosure verified live and correct.
+- **A-6 (HALTED for native):** CR-66/CR-37 timing-anchor cluster investigated (Opus). Corrects
+  the brief's own framing: A-3's Gochara failure does **not** darken this cluster, because
+  `taranga_curve`'s live_tool (`kala_bundle_get`) is real and Gochara-independent. Data cores
+  (phala anchors, yoga-activation dates) have no fabrication-free bounded repair — most
+  "undated" yoga rows are correctly undated (always-on natal yogas). Two live, bounded,
+  fabrication-free disclosure bugs found and left for native sign-off: `phala_predictive_
+  anchors_get`'s empty response has no `empty_reason`/`known_gap`; `yoga_activation_scan` is
+  wired into no floor so CR-37 never reaches a completeness receipt.
+- **Lane B (fresh-context Opus verifier):** independently reproduced the `phala_predictive_
+  anchors_get` silent empty (B-1) and found the Sat–Jupiter Apr–Aug 2027 standing-prediction
+  claim absent from every live surface checked (B-2 FAIL-as-specified). B-3 (CR-130 dark-flag)
+  and B-5 (sealed split/§11 untouched) PASS. B-4 (connector environment) PASS, with the caveat
+  that the fresh-context verifier confirmed post-#728 *behavior* live but could not
+  independently re-derive the exact deployed image digest from within its sandbox.
+
+**Infrastructure note:** two background worker lanes (A-2, A-4) dropped mid-response to a
+transient API error ("Connection closed mid-response") and were resumed from their transcripts
+rather than restarted; both completed correctly on resume, confirmed against actual tool output,
+not assumed.
+
+**Scope guards held throughout:** the only Tier-A code diff across the whole swarm is A-4's
+1-line writer fix + 9-line regression test; a full keyword scan for
+`calibrat|sealed|train|test_split|2020-01-01|split` against that diff returned zero hits.
+FROZEN orchestrator/WriterBase contract, L1-L5 tables/calibration tables, and the sealed split
+confirmed untouched (B-5).
+
+```yaml
+session_close:
+  session_id: PRE-DARPANA-READINESS-2026-07-24
+  campaign: PRE_DARPANA_READINESS_v1_0
+  close_criteria_met: false
+  verification: "Tier A: 3/6 CLOSED (A-1 merged 64318a2f, A-2 deploy+4-probe live-verify,
+    A-4 fixed+rebuilt+verified via PR #730), 1/6 OPEN honest (A-3/CR-131, two independent
+    stacked blockers, brief's speedup premise checked and found false), 2/6 HALTED for native
+    decision (A-5, A-6 — no bounded fabrication-free repair found for either; accept-as-dark
+    recommended, disclosure verified live for both). Tier B: 2/5 PASS (B-3, B-5), 1/5
+    PASS-with-caveat (B-4), 1/5 PARTIAL with a new silent-empty finding (B-1,
+    phala_predictive_anchors_get), 1/5 FAIL-as-specified (B-2, Sat-Jupiter Apr-Aug 2027 claim
+    not located on any live surface). Full evidence: PRE_DARPANA_READINESS_v1_1.md."
+  deploy: "A-2 confirmed #728 already deployed live (image parity 350d8455, both amjis-web
+    and amjis-mcp). A-4's fix (PR #730) not yet merged as of this close — pending CI/merge,
+    tracked as next_session_objective. No other production deploy performed by this session."
+  product_code_writes_made: "Yes — platform/python-sidecar/ga_writers/ga_vargas_writer.py
+    (1-line D7 karya label fix) + platform/python-sidecar/tests/test_ga6_writer.py (regression
+    test), on PR #730. 00_ARCHITECTURE/SESSION_LOG.md content fix on PR #729 (merged).
+    FROZEN orchestrator/WriterBase, L1-L5 writers/tables, calibration tables, and the sealed
+    split verified untouched (B-5)."
+  native_chart_touched: true
+  current_state_updated: true
+  register_dispositions_flipped: "None flipped by this session — CR-131 remains OPEN (with
+    corrected, more pessimistic timeline evidence); CR-67/CR-69/CR-66/CR-37 remain OPEN,
+    pending native's accept-as-dark ruling (A-5, A-6). MARSYS_DEFECT_GAP_REGISTER_v2_0.md's
+    CR-37/R-45 disposition flagged as STALE (register says 0/13,364 dated; live data is 97%
+    dated except the YOGA class) — register owner should update, not this session's call to
+    make unilaterally."
+  followups: "(1) NATIVE DECISION NEEDED — A-5: accept-as-dark for CR-67/CR-69 (recommended),
+    or pursue CR-69's plausible bounded-ish path (rebuild bo_upaya + rewire query_remedies.ts).
+    (2) NATIVE DECISION NEEDED — A-6: accept-as-dark for CR-66/CR-37 data cores (recommended),
+    and separately decide on shipping the two bounded disclosure fixes found
+    (phala_predictive_anchors_get empty_reason; floor yoga_activation_scan so CR-37 reaches a
+    receipt). (3) A-3/CR-131 needs either a longer session with write-DB + cockpit API access
+    to re-dispatch ka_gochara_sweep (est. 11+ more hours of Cloud Run time) plus a fix for the
+    gochara tools' DATABASE_URL gap, or an honest re-scope of CR-131's timeline in the register.
+    (4) Merge PR #730 (A-4). (5) UAT-DARPANA stays HELD until a genuine v1.2 close."
+  next_session_objective: "Native rules on A-5 and A-6 (the two reserved decision points).
+    Merge PR #730. Re-attempt A-3/CR-131 with proper write-DB/cockpit access in a
+    longer-running session, or formally re-scope it. Only then does PRE_DARPANA_READINESS
+    reach a genuine close and UAT-DARPANA open."
+```
+
+### Next session objective
+
+Native decision on A-5 (remedy-engine accept-as-dark vs. CR-69 bounded path) and A-6
+(timing-anchor accept-as-dark vs. shipping the two disclosure fixes) — the two gates this
+swarm reserved per its own directive. Merge PR #730. Re-attempt CR-131's Gochara sweep
+re-dispatch with proper write-DB/cockpit credentials in a session that can absorb the
+~11-hour Cloud Run runtime, or formally re-scope its timeline. `PRE_DARPANA_READINESS_v1_1.md`
+is the authoritative status; UAT-DARPANA does not open until a genuine v1.2 close.
+
+*End of PRE-DARPANA-READINESS-2026-07-24 entry — 2026-07-24.*
