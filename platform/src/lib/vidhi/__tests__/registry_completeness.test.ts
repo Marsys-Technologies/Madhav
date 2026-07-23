@@ -35,6 +35,9 @@ const LIVE_TOOLS = new Set<string>([
   'mimamsa_lel_query', 'mimamsa_outcome_record', 'mitigation_map', 'muhurta_finder',
   'pact_query', 'phala_anchors_get', 'phala_mitigation_get', 'phala_outlook',
   'phala_outlook_get', 'phala_predictive_anchors_get', 'phala_rectification_get',
+  // SARVA-SIDDHI W-2 P-1: the LIVE prospective-ledger read tool (brahma_prospective_ledger),
+  // the repointed live_tool for the E-2 standing_predictions_read primitive.
+  'standing_predictions_read',
   'prashna_undertaking_get', 'query_aspects_at_time', 'query_calibration',
   'query_chart_facts', 'query_dasha_periods', 'query_mantras', 'query_planet_position',
   'query_planet_transit', 'query_remedies', 'query_remedies_by_planet',
