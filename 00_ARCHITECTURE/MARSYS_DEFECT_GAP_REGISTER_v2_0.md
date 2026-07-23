@@ -1210,8 +1210,11 @@ target and has its own Python-side `SealedTestSplitViolation` guard
 (`kala_admission/lel.py`) — correctly out of this fix's scope, flagged here only so a future
 session doesn't assume repo-wide coverage from this one PR.
 
-**CR-128 [OPEN — real architecture gap, discovered D-4b B-2 backfill dispatch, `wave/D-4b/
-B1-full-rerun-2` context, 2026-07-23]:** `BRIEF_D4B.md` §1 B-2's write target,
+**CR-128 [OPEN — named future-work item, NOT a D-4b blocker; native ruling 2026-07-23 (campaign
+close, NP-D4B-009): do not build/repair now. Discovered D-4b B-2 backfill dispatch, `wave/D-4b/
+B1-full-rerun-2` context, 2026-07-23]:** calibration write-surface unbuilt;
+`update_calibration()` dead-code references dropped `phala_anchors.prediction_state`.
+`BRIEF_D4B.md` §1 B-2's write target,
 `mimamsa_outcome_record`, **does not exist as a table or any live write path** — confirmed by
 direct `pg_tables` query (zero hits) and exhaustive grep across `platform/migrations` and
 `platform/supabase/migrations` (zero `CREATE TABLE` hits for that literal name). Three real,
@@ -1230,12 +1233,20 @@ the current schema. (c) The B-1 scoring harness (`platform/scripts/audit/t0_retr
 produces JSON artifacts only; no DB write path to any of the above exists anywhere in that tree.
 **Correctly not fabricated**: the B-2 dispatch that found this halted before any write, commit,
 branch, or PR rather than simulate a row count against a write mechanism that doesn't exist
-(B.10/DR-16/DR-19/DR-20 compliant). **Disposition: native/Binder decision required** — either (a)
-repair `update_calibration()`/`phala_anchors`'s schema mismatch and wire a genuine
-LEL-event → `phala_anchors.prediction_state` → `mimamsa_calibration` → `mi_gunanaka` pipeline, or
-(b) a new migration for whatever surface `mimamsa_outcome_record` was actually meant to name,
-since none currently exists. B-2/B-3 remain correctly blocked pending this decision — see
-`STATE_D4B.md`/`REPORT_D4B.md` (this pass).
+(B.10/DR-16/DR-19/DR-20 compliant). **Disposition (native ruling, 2026-07-23, campaign close —
+NP-D4B-009): do NOT build/repair now.** B-1's own honest NO_WINNER means a B-2 backfill against
+this surface would write `model_confidence: none_validated` rows calibrating against a model the
+data itself says isn't validated, from N≈40 design-time-exposed events — there is nothing
+legitimate to backfill. CR-128 is not a blocker to fix; it is a surface correctly not used yet.
+**B-2/B-3 close HONESTLY-DEFERRED, not blocked-pending-fix** — the campaign's own pre-committed
+no-winner branch, reached honestly. CR-128 stays **OPEN as a named future-work item**, built when
+the prospective ledger has accrued enough forward-scored, genuinely-unseen outcomes to calibrate
+against — either (a) repair `update_calibration()`/`phala_anchors`'s schema mismatch and wire a
+genuine LEL-event → `phala_anchors.prediction_state` → `mimamsa_calibration` → `mi_gunanaka`
+pipeline, or (b) a new migration for whatever surface `mimamsa_outcome_record` was actually meant
+to name, decided then against real requirements, not now against a dead one. Natural home: a small
+pre-work lane before whichever future wave first has that data, or folded into D-6. See
+`STATE_D4B.md`/`REPORT_D4B.md`/`NATIVE_PROXY_LEDGER_D4B.md` NP-D4B-009 (campaign close).
 
 ---
 

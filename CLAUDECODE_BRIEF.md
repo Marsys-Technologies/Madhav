@@ -14,8 +14,16 @@ supersedes: >
   W4(narrator)→A4, W5(honesty; the vichara face is live and becomes a gate regression guard)→A4+A3,
   W6→A5). Do not execute it.
 governing_plan: 00_ARCHITECTURE/DOCTRINE_CAMPAIGN_EXECUTION_PLAN_v1_0.md (v1.1 FINAL)
-current_wave: D-4b (OPEN — NOT CAMPAIGN-CLOSED; B-6 close pass ran GATED mode, honest partial
-  # status below; wave stays OPEN pending the exact blockers named)   # Formally opened 2026-07-21
+current_wave: CAMPAIGN-CLOSED (D-4b, 2026-07-23 — native ruling CR-128/NP-D4B-009 via Cowork: B-1
+  # DONE, final, honest NO_WINNER (PR #712); B-2/B-3 close HONESTLY-DEFERRED to the prospective
+  # regime, not blocked-pending-fix; B-6 REAL close delivered a two-point baseline diff (no
+  # post-D-2 checkpoint ever existed, disclosed honestly). Registers sealed through CR-128
+  # (stays OPEN as named future work, not a blocker). Standing live loop declared OPEN, PRIMARY
+  # path. Master battery promoted to standing regression suite. Full close package:
+  # REPORT_D4B.md, STATE_D4B.md, PROMISE_LEDGER_D4B.md v3.0, NATIVE_PROXY_LEDGER_D4B.md
+  # (NP-D4B-009). D-6 staged ratification-ready — GOCHARA_SWEEP_2_0_DESIGN_v1_0.md drafted,
+  # native review recommended before formal open. History below preserved verbatim.)
+  # D-4b (OPEN — history preserved) — Formally opened 2026-07-21
   # via wave/D-4b/open — see BRIEF_D4B.md status. Native kickoff via Cowork, §0 event-driven-
   # scoring reconciliation applied. BRIEF_D4B.md v1.0 FROZEN 2026-07-21 (pre-D-4b readiness pass
   # v3); native kickoff directive recorded — opened, bound.

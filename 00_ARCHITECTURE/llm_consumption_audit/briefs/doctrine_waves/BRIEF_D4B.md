@@ -3,8 +3,11 @@ artifact: BRIEF_D4B
 type: WAVE BRIEF (FROZEN — fleshed per pre-D-4b readiness pass; §B binds fresh at D-4b open)
 wave: D-4b — Calibration Ignition + Grand Bakeoff (campaign close)
 version: 1.0
-status: OPENED — native kickoff via Cowork 2026-07-21, formally recorded this commit; predecessor
-  halt report (HALTED-PENDING-FORMAL-OPEN, prior session same date) incorporated.
+status: CLOSED — CAMPAIGN CLOSE, 2026-07-23, native ruling (CR-128/NP-D4B-009 via Cowork): B-1
+  DONE (PR #712, honest NO_WINNER, final); B-2/B-3 close HONESTLY-DEFERRED to the prospective
+  regime; B-6 REAL close delivered. See `REPORT_D4B.md`/`STATE_D4B.md`/`PROMISE_LEDGER_D4B.md` for
+  the full close package. Native kickoff via Cowork 2026-07-21, formally recorded at open;
+  predecessor halt report (HALTED-PENDING-FORMAL-OPEN, prior session same date) incorporated.
 prerequisite: D-5 gate GREEN-WITH-PARTIALS (native-accepted close disposition, STATE_D-5.md
   gate_run_3) + A.0's materialization-completeness gate (this brief's own §0, NEW) satisfied
   at D-4b open — re-verified fresh at open, not assumed from this pass's snapshot.
