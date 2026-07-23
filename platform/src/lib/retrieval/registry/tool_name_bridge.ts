@@ -194,6 +194,8 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   query_question_lenses:      'marsys://tool/L2/query_question_lenses',      // F-0156,0176 bodha_question_lenses
   query_rm_prescriptions:     'marsys://tool/L2/query_rm_prescriptions',     // F-0161,0165,0174 bodha_rm_remedy_prescriptions
   query_rm_resonances:        'marsys://tool/L2/query_rm_resonances',        // F-0161,0165,0174 bodha_rm_resonances
+  // SARVA-SIDDHI W-4 / CR-24: bodha_mechanisms first-class serving face.
+  query_mechanisms:           'marsys://tool/L2/query_mechanisms',           // CR-24 bodha_mechanisms (bo_yantra_mechanism)
 }
 
 // ── ToolBundle adapter ────────────────────────────────────────────────────────
@@ -480,6 +482,8 @@ export const SURGICAL_TOOLS = [
   'query_question_lenses',
   'query_rm_prescriptions',
   'query_rm_resonances',
+  // SARVA-SIDDHI W-4 / CR-24: bodha_mechanisms first-class serving face.
+  'query_mechanisms',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -568,6 +572,8 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   bodha_question_lenses_get:   'query_question_lenses',     // F-0156,0176
   bodha_rm_prescriptions_get:  'query_rm_prescriptions',    // F-0161,0165,0174
   bodha_rm_resonances_get:     'query_rm_resonances',       // F-0161,0165,0174
+  // SARVA-SIDDHI W-4 / CR-24: MCP-facing name for the bodha_mechanisms serving face.
+  bodha_mechanisms_get:        'query_mechanisms',          // CR-24 bodha_mechanisms
 }
 
 /**
