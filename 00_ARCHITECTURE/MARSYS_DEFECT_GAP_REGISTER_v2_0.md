@@ -1,6 +1,6 @@
 ---
 canonical_id: MARSYS_DEFECT_GAP_REGISTER
-version: 3.14
+version: 3.16
 status: LIVING — the authoritative, exhaustive register of every known defect + coverage gap in the
   MARSYS-JIS instrument as of 2026-07-10, resynced 2026-07-16 (D-1.6 Lane S-8, Section 13). Add
   rows, never silently drop them. Each row closes only with a fix PR + [verify-against] evidence
@@ -1210,43 +1210,88 @@ target and has its own Python-side `SealedTestSplitViolation` guard
 (`kala_admission/lel.py`) — correctly out of this fix's scope, flagged here only so a future
 session doesn't assume repo-wide coverage from this one PR.
 
-**CR-128 [OPEN — named future-work item, NOT a D-4b blocker; native ruling 2026-07-23 (campaign
-close, NP-D4B-009): do not build/repair now. Discovered D-4b B-2 backfill dispatch, `wave/D-4b/
-B1-full-rerun-2` context, 2026-07-23]:** calibration write-surface unbuilt;
-`update_calibration()` dead-code references dropped `phala_anchors.prediction_state`.
-`BRIEF_D4B.md` §1 B-2's write target,
-`mimamsa_outcome_record`, **does not exist as a table or any live write path** — confirmed by
-direct `pg_tables` query (zero hits) and exhaustive grep across `platform/migrations` and
-`platform/supabase/migrations` (zero `CREATE TABLE` hits for that literal name). Three real,
-distinct surfaces were investigated and none is the described batch-backfill target:
-(a) `mcp_prediction_outcomes` — exists, 8-column schema (`prediction_id`, `outcome_occurred`,
-`outcome_date`, ...), 0 rows, designed for resolving ONE filed prospective prediction at a time,
-not batch-writing ~40 scored-LEL-event rows; not referenced anywhere in the `mi_gunanaka`/
-calibration pipeline. (b) `mimamsa_multipliers` (asset `mi_gunanaka`, migration 349) — the real
-`WriterBase` asset with `n_observations`/proper §N.3 idempotency; 9 rows for chart `482012f1`,
-all `n_observations=0` (live-confirmed, matches `STATE_D4B.md`'s prior live checks exactly). But
-`mi_gunanaka.run()` builds its posteriors from `mimamsa_calibration` (0 rows, live-confirmed),
-which is populated by `update_calibration()`, which references `phala_anchors.prediction_state`
-— **a column that does not exist on the live `phala_anchors` table** (37 real columns enumerated
-live via `information_schema.columns`; `prediction_state` is not among them) — dead code against
-the current schema. (c) The B-1 scoring harness (`platform/scripts/audit/t0_retrodiction/`)
-produces JSON artifacts only; no DB write path to any of the above exists anywhere in that tree.
-**Correctly not fabricated**: the B-2 dispatch that found this halted before any write, commit,
-branch, or PR rather than simulate a row count against a write mechanism that doesn't exist
-(B.10/DR-16/DR-19/DR-20 compliant). **Disposition (native ruling, 2026-07-23, campaign close —
-NP-D4B-009): do NOT build/repair now.** B-1's own honest NO_WINNER means a B-2 backfill against
-this surface would write `model_confidence: none_validated` rows calibrating against a model the
-data itself says isn't validated, from N≈40 design-time-exposed events — there is nothing
-legitimate to backfill. CR-128 is not a blocker to fix; it is a surface correctly not used yet.
-**B-2/B-3 close HONESTLY-DEFERRED, not blocked-pending-fix** — the campaign's own pre-committed
-no-winner branch, reached honestly. CR-128 stays **OPEN as a named future-work item**, built when
-the prospective ledger has accrued enough forward-scored, genuinely-unseen outcomes to calibrate
-against — either (a) repair `update_calibration()`/`phala_anchors`'s schema mismatch and wire a
-genuine LEL-event → `phala_anchors.prediction_state` → `mimamsa_calibration` → `mi_gunanaka`
-pipeline, or (b) a new migration for whatever surface `mimamsa_outcome_record` was actually meant
-to name, decided then against real requirements, not now against a dead one. Natural home: a small
-pre-work lane before whichever future wave first has that data, or folded into D-6. See
-`STATE_D4B.md`/`REPORT_D4B.md`/`NATIVE_PROXY_LEDGER_D4B.md` NP-D4B-009 (campaign close).
+**CR-128 [RESOLVED 2026-07-23 — post-close investigation superseded the "write-surface
+unbuilt" premise; native-directed retirement, branch `wave/postclose/cr128-record-outcome-
+retire`. Originally OPEN, discovered D-4b B-2 backfill dispatch, `wave/D-4b/B1-full-rerun-2`
+context, 2026-07-23; native-ruled DEFERRED via NP-D4B-009 same day, then fully investigated and
+RESOLVED in this post-close pass]:** the write-surface exists, is live, and ran honestly to
+zero. `BRIEF_D4B.md` §1 B-2's named write target, `mimamsa_outcome_record`, was never a table —
+it does not exist and never did. But the REAL calibration write-surface — `mi_pramana`
+(orchestrator `WriterBase` asset, `platform/python-sidecar/pipeline/orchestrator/writers/
+mi_pramana.py`, fully implemented, non-stub) — matches `mimamsa_predictions` (384 rows) against
+`mimamsa_event_provenance` (57 admissible-clean LEL events, populated by `mi_jivanaghatana`) and
+writes the real, live `mimamsa_calibration` table (chart_id, match_id, prediction_id, event_id,
+score_timing/magnitude/domain/falsifier/manifestation, composite_score, composite_verdict,
+leakage_status, brier_vs_null, ...); `mi_gunanaka` reads it correctly and writes
+`mimamsa_multipliers`. **Both writers already ran for chart 482012f1**
+(`asset_throughput.state='stale'`, `last_built_at=2026-07-18T14:18:31Z`, no error) and correctly
+produced **zero** calibration rows — no admissible-window overlap yet between filed predictions
+and clean events. This is structurally correct per NP-D4B-009 (calibration ignition deferred to
+the prospective regime), not a broken pipeline. The actual defect was a fully separate,
+disconnected dead path: `brahmagyan/mimamsa/outcome.py`'s `record_outcome()` (called by the MCP
+`record_outcome` tool, `platform-mcp/src/tools/mimamsa_outcome.ts`) targeted phantom columns on
+BOTH ends — `phala_anchors.prediction_state`/`outcome_note`/`outcome_recorded_at`/`updated_at`
+(none exist on the live 37-column `phala_anchors` table) and a `mimamsa_calibration(technique,
+ayanamsha_id, brier_score, sample_size, source_citation, computed_at)` shape the live table has
+never had — and its own SQL function `update_calibration()` would hard-error at its first SELECT
+if ever invoked. Never called in production (`asset_throughput` for `mi_pramana`/`mi_gunanaka`
+shows the only real calibration activity; nothing references `update_calibration()` except this
+one dead function). Identical to the independently-discovered **CR-115** (see below) — cross-
+referenced and closed together. **Disposition (native ruling, 2026-07-23, post-close): retire,
+do not repair.** Repairing `record_outcome()`/`update_calibration()` to point at either live
+schema would create a second, redundant write path into `mimamsa_calibration` that bypasses
+`mi_pramana`'s admissibility/held-out/leakage discipline — worse than leaving it dead. Fix:
+`record_outcome()` now raises `RecordOutcomeRetiredError` unconditionally, before any DB access
+(FastAPI route → HTTP 410 Gone); the MCP `recordOutcome()` TS function throws immediately,
+before contacting the sidecar (defense-in-depth); migration 464 drops the now-orphaned
+`update_calibration(text,text,uuid)`/`compute_brier_score(float,boolean)` SQL functions (verified
+no other SQL-level caller of either). `query_calibration` is untouched — it was already fixed
+separately (R-14/CR-51/CR-30) to read the real live schema and remains correct. **Calibration
+ignition itself remains deferred to the prospective regime** (NP-D4B-009 unchanged) — it will
+occur through the live `mi_pramana` pipeline automatically as forward outcomes accrue via chart
+rebuild, not through any new manual surface. Evidence: live-schema queries against
+`phala_anchors`/`mimamsa_calibration`/`mcp_prediction_outcomes`/`mimamsa_multipliers`/
+`mimamsa_event_provenance`/`mimamsa_predictions`, `pg_get_functiondef`/
+`pg_get_function_identity_arguments` on both dead SQL functions, `asset_throughput` trace for
+`mi_pramana`/`mi_gunanaka`, full source trace of `mi_pramana.py`/`mi_gunanaka.py`/`outcome.py`.
+See `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` CR-129 for the separately-parked OT-11 ledger-
+consolidation question this investigation also surfaced (explicitly out of this CR's scope).
+
+**CR-115 [RESOLVED 2026-07-23 — same fix as CR-128, native-directed post-close retirement;
+originally OPEN, discovered PG-2 Lane X-5 (2026-07-19), carried to PF-1 §F1 Lane F-2, live
+schema-diffed]:** `platform/python-sidecar/brahmagyan/mimamsa/outcome.py` referenced
+`phala_anchors` columns absent from the live schema (`id`, `confidence`, `prediction_state`,
+`outcome_note`, `outcome_recorded_at`, `updated_at` vs. the live table's `anchor_id`,
+`confidence_low`/`confidence_high`, `posterior`, `computed_at`) — the MCP `record_outcome` tool
+would fail at runtime and had never been called. PF-1's original plan (Lane F-2, kickoff after
+retrieval-campaign W4) proposed fixing the apparent renames (`id`→`anchor_id`,
+`confidence`→`confidence_low/high`) in code while leaving the three outcome-capture fields
+as a real, non-speculative migration question. **Superseded by CR-128's fuller investigation**:
+the real calibration write-surface (`mi_pramana`/`mi_gunanaka`) already exists independently of
+`phala_anchors` entirely — repairing `record_outcome()`'s column references would still leave it
+writing into a `mimamsa_calibration` shape the live table doesn't have, and would duplicate
+`mi_pramana`'s write path outside its leakage discipline. Retired, not repaired — see CR-128 for
+the full fix (same commit/PR). PF-1 Lane F-2's remaining scope for this item is discharged.
+
+**CR-129 [OPEN — standing decision item, parked deliberately out of CR-128's post-close cleanup
+scope, native-directed 2026-07-23]:** whether to consolidate the three disjoint prediction-
+tracking tables — `mimamsa_predictions` (384 rows, L5 build-orchestrator-written, referenced by
+the real `mimamsa_calibration`/`mi_pramana` pipeline), `mcp_predictions` (0 rows at OT-11's
+2026-07-19 investigation, 3 rows live-reconfirmed 2026-07-23 — accretes via chat capture;
+interim relay, marked TODO-migrate in `ppl_writer.ts`), and `brahma_prospective_ledger` (22
+cols, 5 rows at OT-11's investigation, 7 rows live-reconfirmed 2026-07-23 — also accretes;
+D-4a §11 explicit-filing surface) — is a pre-existing architectural question,
+first surfaced by **OT-11** (2026-07-19, a separate investigation, session `a4c9a84e-...`,
+six-lane PG-2 pass). OT-11 costed both options (merge into one schema-unified ledger vs. keep
+three + document the split) and explicitly declined to choose (its own PC-8 no-choice rule) —
+this requires native input, assembled deliberately in front of the native, not decided on the
+fly inside an unrelated cleanup pass. **Explicitly out of scope for CR-128/CR-115's retirement**
+— those two closed a dead, disconnected path; this is about three *live*, disjoint, differently-
+schemad tables with real (if partly sparse) data in two of the three. Relevant to the eventual
+honest calibration CR-128's disposition text describes: whichever ledger(s) end up carrying
+prospective, forward-filed predictions is where the standing live loop's outcomes will
+eventually accrue toward. Gets its own investigation/decision session when picked up — not
+bundled into any future wave's cleanup by default.
 
 ---
 
@@ -1328,7 +1373,25 @@ renumbered during integration, no content change.)
 
 ---
 
-*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.15 (2026-07-23, RC-17 fix-cycle 2, branch
+*End of MARSYS_DEFECT_GAP_REGISTER. Changelog: v3.16 (2026-07-23, post-D-4b-close cleanup,
+branch `wave/postclose/cr128-record-outcome-retire`) — CR-128 RESOLVED: post-close investigation
+found the calibration write-surface already exists, live (mi_pramana -> mimamsa_calibration ->
+mi_gunanaka -> mimamsa_multipliers), and already ran honestly to zero for chart 482012f1 (no
+admissible-window overlap yet) — superseding the "write-surface unbuilt" premise NP-D4B-009
+deferred under. The actual defect was a disconnected dead path: record_outcome()
+(`brahmagyan/mimamsa/outcome.py`) / the MCP `record_outcome` tool
+(`platform-mcp/src/tools/mimamsa_outcome.ts`) / the SQL `update_calibration()` function, all
+targeting phantom columns on both `phala_anchors` and `mimamsa_calibration`. Native-directed:
+retire, do not repair (repairing would create a second write path bypassing mi_pramana's
+leakage discipline). Fix: record_outcome() now raises RecordOutcomeRetiredError unconditionally
+before any DB access (route -> HTTP 410); MCP recordOutcome() throws before contacting the
+sidecar; migration 464 drops the orphaned update_calibration()/compute_brier_score() SQL
+functions. **CR-115 RESOLVED same commit** — identical defect, independently discovered
+2026-07-19 (PG-2 Lane X-5), closed together with CR-128. **CR-129 added OPEN** — the OT-11
+(2026-07-19) ledger-consolidation question (mimamsa_predictions / mcp_predictions /
+brahma_prospective_ledger) is parked as its own standing decision item, explicitly out of this
+cleanup's scope, per native directive.
+Prior: v3.15 (2026-07-23, RC-17 fix-cycle 2, branch
 `res/rc17-fixcycle2-still-hallucinating`) — CR-125 status corrected: fix-cycle 1 (v3.13) was
 marked RESOLVED but a live post-deploy verification found the identical defect class still present
 in production, in a worse form (an "as instructed"/"as per your request" hedge framing the correct
