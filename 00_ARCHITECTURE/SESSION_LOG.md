@@ -33105,7 +33105,36 @@ session_close:
 
 ---
 
-## RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23
+## RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23 — Retrieval Residual Closure campaign COMPLETE (16/16 + RC-17)
+
+```yaml
+session_open:
+  session_id: RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23
+  cowork_thread_name: "Madhav — Retrieval Residual Closure (RC-01..RC-16 + RC-17)"
+  agent_name: claude-sonnet-5
+  predecessor_session: W6-DOCS-SEAL-2026-07-22 (W6 docs-sealed, Task 16/§H final acceptance
+    left open pending native review of FINAL_REPORT.md)
+  role: >
+    Conductor for the Retrieval Residual Closure campaign per native directive 2026-07-22
+    (RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md): close every residual left by the Retrieval
+    Plane Elevation campaign's own FINAL_REPORT.md §H.6 (R-1..R-10, renumbered RC-01..RC-16),
+    fully autonomous, verifier-gated, closing only on independent VERIFIER ACCEPT with cited
+    evidence, flipping the campaign to COMPLETE only when the residual register is empty
+    (or RC-14 formally BLOCKED as the brief's own sanctioned exception).
+  declared_scope:
+    may_touch:
+      - "platform/** and platform-mcp/** source (the implementation campaign itself)"
+      - "00_ARCHITECTURE/briefs/retrieval_residual/** (ledger, per-residual reports)"
+      - "00_ARCHITECTURE/briefs/retrieval_impl/FINAL_REPORT.md + STATE.md"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md, SESSION_LOG.md (append/close)"
+      - "00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md"
+      - "git branches/worktrees for this campaign; merge to main; push; deploy"
+    must_not_touch:
+      - "FROZEN orchestrator + WriterBase + ga_*/bo_*/ka_*/ph_*/mi_* writer build logic"
+      - "CLAUDECODE_BRIEF.md (root); the D-4b doctrine-wave briefs/ledgers/branches (READ-ONLY)"
+      - "chart_facts semantics / chart computation; LEL content"
+  red_team_due: false
+```
 
 **Governing brief:** `00_ARCHITECTURE/briefs/RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md` (native
 directive 2026-07-22). **Mode:** fully autonomous conductor + verifier-gated swarm — no human
@@ -33210,5 +33239,9 @@ session_close:
     is explicitly not this campaign's to force — per the brief's own hard safety rule, it waits
     on D-4b."
 ```
+
+### Next session objective
+
+None opened by this campaign — it is fully COMPLETE with no successor session queued. RC-14 (`impl/w5-breaking`) is the sole carried item: not this campaign's to force, per the brief's own hard safety rule, and waits on D-4b going genuinely quiet (verified live, not from a stale ledger) before whichever future session picks it up first rebuilds it against `main` and lands it under standard deploy-mutex discipline. Two non-blocking recommendations are recorded in `retrieval_residual/STATE.md`/`RESOLVER_RULINGS.md` for whichever session has bandwidth: a production-side hedge detector for RC-17's defect class, and the `CAPABILITY_MANIFEST.json`-vs-`drift_detector.py` fingerprint-hashing disagreement this seal surfaced and deliberately left unfixed (§5 of `RESIDUAL_CLOSURE_FINAL_REPORT.md`).
 
 *End of RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23 entry — 2026-07-23.*
