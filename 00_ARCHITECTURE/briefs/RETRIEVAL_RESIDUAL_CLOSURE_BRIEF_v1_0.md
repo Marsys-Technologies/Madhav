@@ -3,19 +3,33 @@ artifact: RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md
 canonical_id: RETRIEVAL_RESIDUAL_CLOSURE_BRIEF
 version: 1.0
 status: COMPLETE
-closed_on: 2026-07-23
+closed_on: 2026-07-23 (RC-14 closure addendum: 2026-07-23, follow-on session)
 closure_summary: >
-  All 16 named residuals (RC-01..RC-16) plus one new residual discovered
-  mid-campaign (RC-17, per §G) are closed with cited, independently-verified
-  evidence. RC-14 is the sole permitted BLOCKED item (D-4b genuinely active
-  throughout, per §D.6/§J) — impl/w5-breaking is staged-but-not-landed and
-  found badly stale, requiring a rebuild before it can land once D-4b is
-  quiet. §H final gate passes: main SHA == deployed amjis-web production SHA
-  (gcloud-verified); amjis-mcp correctly lags at its last platform-mcp-
-  source-touching commit (established precedent, not a mismatch); all
-  res/*/w6* branches merged+deleted; worktrees clean. Full record:
+  All 17 residuals (RC-01..RC-16 plus RC-17, discovered mid-campaign per §G)
+  are CLOSED with cited, independently-verified evidence — zero residuals
+  remaining. RC-14 (the impl/w5-breaking alias-cutover + single-bootstrap
+  flip + query_spine_bundle activation) was left BLOCKED at this brief's
+  original 2026-07-22/23 seal per §D.6/§J's own anticipated exception
+  (D-4b genuinely active throughout that window), then CLOSED in a
+  dedicated 2026-07-23 follow-on session once D-4b's campaign-close commit
+  (cd5ad175) landed and was live-reverified quiet. Per native correction,
+  impl/w5-breaking (found ~178 commits stale) was never landed directly —
+  the flip was re-implemented fresh on res/rc14-breaking-flip against
+  current main, reconciled live against canonical_faces.json rather than
+  trusting the stale branch's targets, merged PR #726 (7a0954b4). Live
+  DONE-bar evidence: all 43 legacy MCP tool names + the 6 pre-rename
+  originals return "not found"; the 6 DEFERRED renames resolve live; a
+  direct /api/retrieval/capability call returned query_spine_bundle's real
+  pre-joined signal->window->anchor chain for chart 482012f1; a stale
+  client_capability_version triggered a live tools/list_changed
+  notification. §H final gate passes: main SHA (7a0954b4) == deployed
+  amjis-web AND amjis-mcp production SHA (gcloud-verified, both services
+  now current since RC-14 touched platform-mcp/); impl/w5-breaking and
+  res/rc14-breaking-flip deleted local+origin; zero res/* branches remain;
+  worktrees clean. Full record:
   00_ARCHITECTURE/briefs/retrieval_residual/STATE.md,
-  00_ARCHITECTURE/briefs/retrieval_residual/RESIDUAL_CLOSURE_FINAL_REPORT.md.
+  00_ARCHITECTURE/briefs/retrieval_residual/RESIDUAL_CLOSURE_FINAL_REPORT.md
+  (§2 RC-14 row + §8 addendum).
 type: CLAUDECODE_BRIEF (governing scope for the residual-closure campaign)
 authored_by: Claude (Cowork, Fable 5) 2026-07-22, native-directed
 authority: >
