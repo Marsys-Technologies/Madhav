@@ -371,11 +371,20 @@ def test_substep_key_encodes_event_class_and_year():
 
 def test_plan_substeps_produces_year_granularity_not_decade():
     """Regression guard for the D-5 REBUILD chunking fix: plan_substeps must
-    emit one substep per (event_class x year) -- 100 per event_class over
-    the 100-year horizon -- not the old one-per-decade (10 per event_class)
-    grain that timed out against real data."""
+    emit one substep per (event_class x year) -- NOT the old one-per-decade
+    (10 per event_class) grain that timed out against real data.
+
+    SARVA-SIDDHI W-1 T-2 (2026-07-24): the per-event-class substep count is
+    now `_HORIZON_YEARS + 1` (101), not `_HORIZON_YEARS` (100). The +1 is the
+    inclusive birth+100y endpoint year: with the horizon anchored at the
+    LITERAL birth year, year_idx 0..99 (Jan-1-aligned chunks) covers only
+    birth..birth+99 and stops at the birth+100y-minus-1-month boundary; the
+    extra terminal year_idx (100) puts the birth+100y anniversary strictly
+    inside the final chunk so the served corpus provably spans the full
+    required birth -> birth+100y range."""
     from services.ka_gochara_sweep.writer import _N_YEARS, _HORIZON_YEARS
-    assert _N_YEARS == _HORIZON_YEARS == 100
+    assert _HORIZON_YEARS == 100
+    assert _N_YEARS == _HORIZON_YEARS + 1 == 101
 
 
 def test_substep_sort_key_orders_years_numerically_not_lexically():
