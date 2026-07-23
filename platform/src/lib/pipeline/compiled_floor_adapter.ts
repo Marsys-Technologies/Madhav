@@ -146,8 +146,14 @@ export function classifierTupleToCompilerTuple(tuple: ClassifierScopeTuple): Com
 // `00_ARCHITECTURE/briefs/retrieval_residual/RESOLVER_RULINGS.md` (RC-10-001/002/003) for
 // the full per-tool evidence table and disposition rationale.
 export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
-  get_cgm_subgraph: 'cgm_graph_walk', // mechanism_read → L2 CGM subgraph walk (an L2.5 tool)
-  lel_query: 'lel_query', // lel_retrodiction → L5 life-event log
+  get_cgm_subgraph: 'cgm_graph_walk', // legacy live_tool name; kept for any stale reference
+  bodha_graph_subgraph_get: 'cgm_graph_walk', // RC-14: mechanism_read's live_tool was repointed from
+    // the removed legacy name get_cgm_subgraph to its canonical replacement bodha_graph_subgraph_get
+    // (VIDHI_PRIMITIVES); this key keeps the mapping live under the new name — mechanism_read → L2 CGM subgraph walk (an L2.5 tool)
+  lel_query: 'lel_query', // legacy live_tool name; kept for any stale reference
+  mimamsa_lel_query: 'lel_query', // RC-14: lel_retrodiction's live_tool was repointed from
+    // the removed legacy name lel_query to its canonical replacement mimamsa_lel_query
+    // (VIDHI_PRIMITIVES); this key keeps the mapping live under the new name → L5 life-event log
   ganita_yoga_firings_get: 'get_yoga_firings', // dhana_yoga_scan / nbry_scan → L1 yoga firings
   bodha_discoveries_get: 'query_discoveries', // contradiction_scan → L2 discoveries
 
@@ -189,10 +195,11 @@ export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
   //     silently serve the WRONG data — the same §N.6/B.10 anti-laundering failure.
   //     REJECTED at verify (RESOLVER_RULINGS.md RC-10-003); DEFERRED, needs facet/mode-aware
   //     routing in compileFloorForPlan, not a hand-map entry.
-  //   kala_temporal_bundle   — sidecar composite with NO retrieval-registry capability at
-  //     all (platform-mcp/src/server.ts's own "KEYSTONE REQUEST" comment: "has no registry
-  //     primitive... REQUEST to retrieval fork: expose 'kala_temporal_bundle' capability").
-  //     Requires building a new registry capability, out of a bridge-extension's scope.
+  //   kala_bundle_get (RC-14: renamed from kala_temporal_bundle) — sidecar composite with NO
+  //     retrieval-registry capability at all (platform-mcp/src/server.ts's own "KEYSTONE
+  //     REQUEST" comment: "has no registry primitive... REQUEST to retrieval fork: expose
+  //     'kala_temporal_bundle' capability"). Requires building a new registry capability,
+  //     out of a bridge-extension's scope.
 }
 
 /**
