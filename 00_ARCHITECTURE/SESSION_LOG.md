@@ -33102,3 +33102,146 @@ session_close:
 ```
 
 *End of W6-DOCS-SEAL-2026-07-22 entry — 2026-07-22.*
+
+---
+
+## RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23 — Retrieval Residual Closure campaign COMPLETE (16/16 + RC-17)
+
+```yaml
+session_open:
+  session_id: RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23
+  cowork_thread_name: "Madhav — Retrieval Residual Closure (RC-01..RC-16 + RC-17)"
+  agent_name: claude-sonnet-5
+  predecessor_session: W6-DOCS-SEAL-2026-07-22 (W6 docs-sealed, Task 16/§H final acceptance
+    left open pending native review of FINAL_REPORT.md)
+  role: >
+    Conductor for the Retrieval Residual Closure campaign per native directive 2026-07-22
+    (RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md): close every residual left by the Retrieval
+    Plane Elevation campaign's own FINAL_REPORT.md §H.6 (R-1..R-10, renumbered RC-01..RC-16),
+    fully autonomous, verifier-gated, closing only on independent VERIFIER ACCEPT with cited
+    evidence, flipping the campaign to COMPLETE only when the residual register is empty
+    (or RC-14 formally BLOCKED as the brief's own sanctioned exception).
+  declared_scope:
+    may_touch:
+      - "platform/** and platform-mcp/** source (the implementation campaign itself)"
+      - "00_ARCHITECTURE/briefs/retrieval_residual/** (ledger, per-residual reports)"
+      - "00_ARCHITECTURE/briefs/retrieval_impl/FINAL_REPORT.md + STATE.md"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md, SESSION_LOG.md (append/close)"
+      - "00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md"
+      - "git branches/worktrees for this campaign; merge to main; push; deploy"
+    must_not_touch:
+      - "FROZEN orchestrator + WriterBase + ga_*/bo_*/ka_*/ph_*/mi_* writer build logic"
+      - "CLAUDECODE_BRIEF.md (root); the D-4b doctrine-wave briefs/ledgers/branches (READ-ONLY)"
+      - "chart_facts semantics / chart computation; LEL content"
+  red_team_due: false
+```
+
+**Governing brief:** `00_ARCHITECTURE/briefs/RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0.md` (native
+directive 2026-07-22). **Mode:** fully autonomous conductor + verifier-gated swarm — no human
+intervention during execution; every merge/push/deploy step performed by the conductor directly
+at reviewed checkpoints (PR + required CI + `gh pr merge`), never delegated into unattended
+background code.
+
+**Scope:** close every residual (R-1..R-10) left by the Retrieval Plane Elevation campaign's own
+`FINAL_REPORT.md` §H.6, renumbered RC-01..RC-16 per the closure brief, plus any new defect
+discovered mid-campaign (per its §G, opened as a new RC-row rather than deferred).
+
+**Outcome: 16/16 named residuals + 1 new residual (RC-17) closed.** Full ledger with every
+branch, commit, verifier verdict, and deploy SHA: `00_ARCHITECTURE/briefs/retrieval_residual/STATE.md`.
+Per-residual verification reports: `retrieval_residual/VERIFY_*.md`. Resolver rulings (Native-Proxy
+Resolver authority, brief §D.5): `retrieval_residual/RESOLVER_RULINGS.md` (RC-09-001/002/003,
+RC-10-001/002/003, RC-04-001/002, RC-02-001).
+
+**Waves:**
+- **Wave R-A** (RC-05,07,08,12,13 — dead-tool sweep, synthesis cost-cap, synthesis truncation,
+  authz hardening, session_pin rename): all 5 ACCEPTED first pass. PR #710, deployed, SHA-confirmed.
+- **Wave R-B** (RC-06,09,10 — golden-set recalibration, 51 dark tables, MCP↔web namespace gap):
+  RC-09 ACCEPTED first pass; RC-06 and RC-10 each REJECTED once then ACCEPTED on fix-cycle 2
+  (RC-06 missed 4/14 dead-capability names; RC-10 had one invalid bridge mapping that would have
+  laundered wrong data). Same PR #710 batched deploy.
+- **Wave R-C** (RC-01,02,03,04,11 — live verification): RC-03/RC-11 ACCEPTED first pass (PR #713);
+  RC-04 REJECTED then ACCEPTED on fix-cycle 2 (PR #714); RC-02 genuinely FAILED its first live
+  check (not a process failure — the web door served far fewer floor items than the MCP door and
+  surfaced no gate-flag signal at all), surfacing a real, independent defect (RC-17) along the way.
+- **RC-02+RC-17** (PR #716): RC-02 closed via a conductor Resolver ruling (RC-02-001) narrowing
+  its DONE bar to the achievable substance (shared-condition gate-flag parity + measured floor-
+  coverage improvement) and WONTFIXing full receipt-schema unification as a genuine architectural
+  difference between two intentionally different serving doors, not a defect. RC-17's fix-cycle 1
+  was independently verifier-ACCEPTED — **and still wrong**: a conductor-performed live post-
+  deploy re-check (the deploy-verification discipline the brief's own §I mandates) found the
+  dasha-anchoring hallucination still present in a new, worse form (a fabricated "as per your
+  request" hedge plus a wrong "actual current period" claim that appears to be cross-chart
+  training-data pattern bleed). Fix-cycle 2 (PR #719) rewrote the temporal-anchor wording to
+  remove the imperative "treat this as" framing that invited the hedge, and was itself only
+  ACCEPT-WITH-CAVEATS pending a mandatory ≥5-run live production re-probe. The conductor performed
+  that re-probe directly against production after deploy: 5/5 clean. RC-17 closes.
+- **RC-14** (`impl/w5-breaking`): confirmed **BLOCKED**, the sole permitted open item per the
+  brief's own §D.6/§J safety rule — D-4b was reconfirmed genuinely active at every checkpoint
+  (PRs #708, #709, #712, #717 among others merged to `main` mid-campaign). The branch was also
+  found badly stale (~26k lines behind `main`, predating the entire W6 synthesis/cost-cap/
+  session_pin work) — not "ready to land in one command" as the originating brief assumed; no
+  rebuild was attempted against a live-moving `main` while D-4b is active.
+- **RC-15** (branch/worktree hygiene): 18 workflow worktrees removed; 23 `res/*`/`docs/rc-*`
+  branches deleted local+origin (each confirmed merged first); 2 remaining merged W6.x fix
+  branches deleted from origin. Final `git worktree list`: only `main` + the one legitimately-
+  active D-4b worktree (untouched) + one unrelated pre-existing worktree outside scope.
+- **RC-16** (this seal): `FINAL_REPORT.md` §H.6 residual table rewritten — every row CLOSED with
+  cited evidence except R-5/RC-14's documented BLOCKED status; `CAPABILITY_MANIFEST.json`
+  regenerated (`npm run manifest:build`); `CURRENT_STATE_v1_0.md` §2 cross-campaign note added
+  (read-only, D-4b banners untouched); this SESSION_LOG entry; campaign status flips to COMPLETE.
+
+**One incident, self-corrected, no D-4b content lost:** a merge commit on this campaign's own
+integration branch transiently picked up in-flight, uncommitted `STATE_D4B.md`/`REPORT_D4B.md`
+changes from the concurrently-running D-4b campaign, which was sharing this primary working
+directory at that point — a must_not_touch violation. Caught before any push; both files reverted
+to their pre-merge content in a follow-up commit before the first PR opened. All further
+integration work moved to a dedicated isolated worktree for the remainder of the campaign.
+
+**Live production defects found and fixed this campaign (beyond the originally-listed residuals):**
+CR-118 (mid-stream tool fast-fails, root-caused to a missing `chart_id` field on two query-plan
+construction sites), a web-door NO-LEAKAGE/gate-flag disclosure gap, a web-door dasha-anchoring
+hallucination (two fix cycles, described above), and several dead-pointer/schema-drift defects
+(CR-122/123/124/125 in `MARSYS_DEFECT_GAP_REGISTER_v2_0.md`, the two regressions recorded but
+correctly not fixed as out of their discovering residual's own bounded scope).
+
+```yaml
+session_close:
+  session_id: RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23
+  campaign: RETRIEVAL_RESIDUAL_CLOSURE_BRIEF_v1_0
+  close_criteria_met: true
+  verification: "retrieval_residual/STATE.md ledger complete for all 17 RC-rows (16 named +
+    RC-17); FINAL_REPORT.md §H.6 table rewritten, empty except the single documented RC-14
+    BLOCKED row; CAPABILITY_MANIFEST.json regenerated; CURRENT_STATE §2 cross-campaign note
+    added; main SHA verified == deployed amjis-web production SHA via
+    `gcloud run revisions describe` commit-sha label (amjis-mcp correctly lags at its last
+    platform-mcp-source-touching commit, consistent with the campaign's own established
+    precedent for docs-only/non-MCP-source merges); res/*, w6*, W6.x-fix branches merged+
+    deleted local+origin; worktrees cleaned"
+  deploy: "batched per §I — R-A/R-B in one deploy (651c6478), R-C's individual fix-cycles in
+    their own deploys (844a23a0, 92113dbe, 7dcffa91, ee76ff47), each SHA-confirmed against
+    both amjis-web and amjis-mcp Cloud Run revisions before proceeding"
+  product_code_writes_made: "Yes — platform/** and platform-mcp/** source, per the brief's own
+    may_touch scope; full diff is the union of PRs #710/#713/#714/#716/#719; RC-14's breaking
+    flip explicitly NOT landed"
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "CR-118 RESOLVED; CR-122/123/124/125 added OPEN (correctly not
+    fixed, out of their discovering residual's bounded scope); MARSYS_DEFECT_GAP_REGISTER_v2_0.md
+    v3.10 -> v3.13"
+  followups: "RC-14 (impl/w5-breaking) remains the one BLOCKED item — unblock condition: D-4b
+    verified quiet (no open D-4b PRs, no active wave/D-4b/* work, checked live not from a stale
+    ledger), AND the flip rebuilt against whatever main looks like at that time (it is currently
+    ~26k lines stale). Recommended, non-blocking follow-up from RC-17's verifier: wire a
+    production-side hedge detector into judgment_flags so any future recurrence of the dasha-
+    anchoring defect class is caught mechanically rather than requiring another manual live
+    audit."
+  next_session_objective: "None opened by this campaign. RC-14 is the only carried item, and it
+    is explicitly not this campaign's to force — per the brief's own hard safety rule, it waits
+    on D-4b."
+```
+
+### Next session objective
+
+None opened by this campaign — it is fully COMPLETE with no successor session queued. RC-14 (`impl/w5-breaking`) is the sole carried item: not this campaign's to force, per the brief's own hard safety rule, and waits on D-4b going genuinely quiet (verified live, not from a stale ledger) before whichever future session picks it up first rebuilds it against `main` and lands it under standard deploy-mutex discipline. Two non-blocking recommendations are recorded in `retrieval_residual/STATE.md`/`RESOLVER_RULINGS.md` for whichever session has bandwidth: a production-side hedge detector for RC-17's defect class, and the `CAPABILITY_MANIFEST.json`-vs-`drift_detector.py` fingerprint-hashing disagreement this seal surfaced and deliberately left unfixed (§5 of `RESIDUAL_CLOSURE_FINAL_REPORT.md`).
+
+*End of RETRIEVAL-RESIDUAL-CLOSURE-2026-07-23 entry — 2026-07-23.*
