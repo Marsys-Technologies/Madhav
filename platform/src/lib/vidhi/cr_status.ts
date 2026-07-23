@@ -70,9 +70,8 @@ export const OPEN_CRS = [
   'CR-63',
   'CR-65',
   'CR-66',
-  'CR-67',
+  // CR-67 & CR-69 — CLOSED by SARVA-SIDDHI W-3 (2026-07-24); moved to CLOSED_CRS below.
   'CR-68',
-  'CR-69',
   'CR-37',
   // CR-130 — NEW, minted by VIDHI-PŪRṆATĀ P-2 (2026-07-23; next free slot after CR-129, the
   // highest in MARSYS_DEFECT_GAP_REGISTER_v2_0.md at wave open). DATA GAP: the Jaimini
@@ -140,6 +139,25 @@ export const CLOSED_CRS = [
   // raja family is confirmed firing live; the tag was stale register drift. registry_data.ts has
   // set dhana_yoga_scan's known_gap to null. Same precedent as CR-54/CR-59.
   'CR-56',
+  // CR-67: CLOSED (SARVA-SIDDHI W-3, 2026-07-24). Root cause was an unimplemented L2 derivation:
+  // bodha_rm_resonances.associated_cdlm_cells_array was 100% NULL DB-wide because the bo_upaya
+  // writer had no code path populating it. FIX: bo_upaya now joins each graha's remedy resonance
+  // to the CDLM cross-domain-linkage cells it is a material constituent of (salience-share ≥
+  // equal-share baseline), resolved via each signal's constituent_facts_array → chart_facts
+  // .fact_subject (§N.5, grounds to real L1 fact_ids). Verified live on chart 482012f1: 25/45
+  // resonances now carry non-empty CDLM cell arrays; query_remedies domain= filter returns real
+  // domain-joined resonances (wealth → Saturn/Jupiter/Sun). registry_data.ts remedy_scan
+  // known_gap set to null.
+  'CR-67',
+  // CR-69: CLOSED (SARVA-SIDDHI W-3, 2026-07-24). query_remedies.ts never read the leverage_ranked
+  // arg and exposed no leverage_index axis. FIX: query_remedies now reads leverage_ranked and ranks
+  // resonance targets by the L1 chart_vichara.leverage_index composite = (domain load-bearing weight
+  // ÷ graha capability) × forward daśā runway (ga_vichara leverage_index_v1; read, not recomputed,
+  // §N.5). intervention_synthesis floor items now pass their domain. Also fixed a latent SQL bug in
+  // bo_upaya's B-4 windowed-prescription builder (`event_date < DATE %s` → `< %s::date`) that had
+  // kept bodha_rm_dasha_windowed_prescriptions at 0 rows; rebuild now writes 5 windowed rows for
+  // chart 482012f1. registry_data.ts intervention_synthesis known_gap set to null.
+  'CR-69',
   'A7',
   'R-17',
   'R-47',

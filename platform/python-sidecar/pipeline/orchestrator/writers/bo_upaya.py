@@ -67,7 +67,7 @@ INSERT INTO bodha_rm_resonances (
   %(weakness_score)s, %(contradiction_factor)s, %(domain_burden)s, %(motif_burden)s,
   %(is_yoga_karaka_flag)s, %(is_chara_karaka_role)s,
   %(weakest_rank_in_chart)s, %(remedy_priority_class)s,
-  %(associated_doshas_array)s, NULL, NULL,
+  %(associated_doshas_array)s, NULL, %(associated_cdlm_cells_array)s,
   %(ephemeris_audit_jsonb)s::jsonb, %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s
 )
 """
@@ -429,6 +429,83 @@ def _fetch_cgm_motif_weakness(conn: Any, chart_id: str, aya: str) -> dict[str, f
     return out
 
 
+# ── CR-67 (SARVA-SIDDHI W-3): resonance → CDLM cell join ────────────────────
+# bodha_rm_resonances.associated_cdlm_cells_array was 100% NULL DB-wide across
+# every built chart: the writer had no code path that populated it. This is the
+# missing L2 derivation that joins each graha's remedy resonance to the CDLM
+# cross-domain-linkage cells the graha is a load-bearing constituent of.
+#
+# GROUNDING (§N.5 — L1 is the authority; no fabricated cell assignments):
+#   1. Each MSR signal resolves to its graha(s) via its constituent_facts_array
+#      → chart_facts.fact_subject (the canonical L1 fact ids the signal already
+#      cites). fact_subject ∈ {SUN,MOON,MAR,MER,JUP,VEN,SAT,RAH_MEAN,KET_MEAN}
+#      maps to the KNOWN_GRAHAS name. A signal may resolve to >1 graha (e.g. an
+#      aspect Mars→Saturn), in which case it contributes to each.
+#   2. A CDLM cell (bo_sangati) bridges two life domains via its
+#      shared_signal_ids_array. For each cell, sum computed_salience of the
+#      shared signals resolving to each graha.
+#   3. A graha is a MATERIAL CONSTITUENT of a cell iff its salience-share of the
+#      cell is ≥ the equal-share baseline (cell_salience ÷ number-of-distinct-
+#      grahas-present-in-cell) — i.e. an above-average bridging contributor.
+#      This deterministic threshold distinguishes load-bearing bridging grahas
+#      from incidental single-signal touches (without it, the dense shared-signal
+#      sets would associate ~every graha with ~every cell — true but useless).
+#   associated_cdlm_cells_array[graha] = cell_ids where graha is material.
+#
+# The whole join runs as one SQL per (chart, ayanamsha) — the array-membership
+# and salience aggregation are far cheaper server-side than materialising ~10k
+# signals into Python.
+
+def _fetch_graha_cdlm_cells(conn: Any, chart_id: str, aya: str) -> dict[str, list[str]]:
+    """graha → list of CDLM cell_id (uuid str) the graha is a material
+    constituent of. See the CR-67 block comment above for the derivation."""
+    rows = conn.execute(
+        """
+        WITH sig_graha AS (
+          SELECT s.signal_id, s.computed_salience,
+            CASE cf.fact_subject
+              WHEN 'SUN' THEN 'Sun'  WHEN 'MOON' THEN 'Moon' WHEN 'MAR' THEN 'Mars'
+              WHEN 'MER' THEN 'Mercury' WHEN 'JUP' THEN 'Jupiter' WHEN 'VEN' THEN 'Venus'
+              WHEN 'SAT' THEN 'Saturn' WHEN 'RAH_MEAN' THEN 'Rahu' WHEN 'KET_MEAN' THEN 'Ketu'
+            END AS graha
+          FROM bodha_msr_signals s
+          JOIN LATERAL (
+            SELECT DISTINCT cf.fact_subject FROM chart_facts cf
+            WHERE cf.fact_id = ANY(s.constituent_facts_array)
+              AND cf.fact_subject IN
+                ('SUN','MOON','MAR','MER','JUP','VEN','SAT','RAH_MEAN','KET_MEAN')
+          ) cf ON TRUE
+          WHERE s.chart_id = %(chart_id)s AND s.ayanamsha_id = %(aya)s
+        ),
+        cell_sig AS (
+          SELECT c.cell_id, sg.graha, sg.computed_salience
+          FROM bodha_cdlm_cells c
+          JOIN sig_graha sg ON sg.signal_id = ANY(c.shared_signal_ids_array)
+          WHERE c.chart_id = %(chart_id)s AND c.ayanamsha_id = %(aya)s
+        ),
+        per AS (
+          SELECT cell_id, graha,
+                 SUM(computed_salience) AS graha_sal,
+                 SUM(SUM(computed_salience)) OVER (PARTITION BY cell_id) AS cell_sal,
+                 COUNT(*) OVER (PARTITION BY cell_id) AS n_graha
+          FROM cell_sig
+          GROUP BY cell_id, graha
+        )
+        SELECT graha, cell_id::text AS cell_id
+        FROM per
+        WHERE n_graha > 0 AND graha_sal >= cell_sal / n_graha
+        """,
+        {"chart_id": chart_id, "aya": aya},
+    ).fetchall()
+    out: dict[str, list[str]] = {}
+    for r in rows:
+        graha = str(r[0] if isinstance(r, tuple) else r.get("graha") or "")
+        cell  = str(r[1] if isinstance(r, tuple) else r.get("cell_id") or "")
+        if graha and cell:
+            out.setdefault(graha, []).append(cell)
+    return out
+
+
 def _fetch_chart_typology(conn: Any, chart_id: str, aya: str) -> str:
     """
     Derive chart typology from element distribution of graha sign placements.
@@ -564,7 +641,7 @@ def _fetch_sadhana_milestones(conn: Any, chart_id: str) -> list[dict]:
         """SELECT event_id, event_date, domain, source_citation
            FROM life_events
            WHERE chart_id = %s AND event_type = 'spiritual'
-             AND event_date < DATE %s
+             AND event_date < %s::date
            ORDER BY event_date""",
         [chart_id, _SADHANA_EMBARGO_DATE],
     ).fetchall()
@@ -727,6 +804,9 @@ def _build_resonances_and_prescriptions(
         _now_dt = datetime.now(timezone.utc)
     dasha_proximity = _fetch_dasha_proximity(conn, chart_id, aya, _now_dt)
     cgm_motif_weakness = _fetch_cgm_motif_weakness(conn, chart_id, aya)
+    # CR-67 (SARVA-SIDDHI W-3): graha → CDLM cells the graha is a material
+    # constituent of (was 100% NULL DB-wide — the missing L2 derivation).
+    graha_cdlm_cells = _fetch_graha_cdlm_cells(conn, chart_id, aya)
 
     resonances: list[dict] = []
 
@@ -819,6 +899,10 @@ def _build_resonances_and_prescriptions(
             "weakest_rank_in_chart": None,  # set after ranking
             "remedy_priority_class": None,  # set after ranking
             "associated_doshas_array": dosha_by_graha.get(graha),
+            # CR-67: real, L1-grounded CDLM cells this graha is a material
+            # constituent of (None when the graha bridges no cell above the
+            # equal-share salience baseline — an honest empty, not a NULL gap).
+            "associated_cdlm_cells_array": (graha_cdlm_cells.get(graha) or None),
             "ephemeris_audit_jsonb": json.dumps({
                 "inputs_complete": inputs_complete,
                 "missing_inputs": missing_inputs,
@@ -830,6 +914,10 @@ def _build_resonances_and_prescriptions(
                 "vargottama_absence_score": 0.5,
                 "cancellation_burden": 0.0,
                 "cdlm_weakest_constituent_count": 0.0,
+                # CR-67: count of CDLM cross-domain-linkage cells this graha is a
+                # material constituent of (salience-share ≥ equal-share baseline),
+                # resolved via constituent_facts_array → chart_facts.fact_subject.
+                "associated_cdlm_cell_count": len(graha_cdlm_cells.get(graha) or []),
                 "note": (
                     "vargottama_absence, cancellation_burden, cdlm_weakest_constituent_count "
                     "remain honest 0.0/0.5 placeholders (no already-computed source exists yet); "
