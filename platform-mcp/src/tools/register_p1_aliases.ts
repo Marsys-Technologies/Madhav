@@ -5,15 +5,19 @@
  *   BOTH names call one handler. Old names are deprecated (not removed — Phase 3 removal gate).
  *   Dedup: bodha_remedies_get primary; bodha_remedies_search → alias; ref_remedies_search retained.
  *
- * DOCUMENTED DEFERRALS (6 of 6 maximum):
- *   1. recall_session     → session_recall        [internal lib/session.js — aliasable only inside session_tools.ts]
- *   2. list_my_sessions   → session_list          [internal lib/session.js]
- *   3. list_my_charts     → catalog_charts_list   [principal-bound closure; needs server-level auth]
- *   4. select_chart       → catalog_chart_select  [principal-bound closure; needs server-level auth]
- *   5. holistic_bundle_chart_facts → bodha_bundle_get  [uses callPlatformBundle with principal]
- *   6. kala_temporal_bundle → kala_bundle_get     [kala sidecar composite — multi-subsystem gather]
+ * DOCUMENTED DEFERRALS — RESOLVED at the RC-14 breaking flip (2026-07-23). All 6 were
+ * RENAMED IN PLACE at their source registrations (old name gone, new canonical name live);
+ * the old names moved into canonical_faces.json's deprecated_aliases for web-channel replay:
+ *   1. recall_session     → session_recall        [session_tools.ts]
+ *   2. list_my_sessions   → session_list          [session_tools.ts]
+ *   3. list_my_charts     → catalog_charts_list   [chart_selection.ts]
+ *   4. select_chart       → catalog_chart_select  [chart_selection.ts]
+ *   5. holistic_bundle_chart_facts → bodha_bundle_get  [retrieval/holistic_bundle.ts]
+ *   6. kala_temporal_bundle → kala_bundle_get     [retrieval/kala_temporal.ts]
  *
- * The 47 aliases implemented in this file cover the remaining 47 of the 53 baseline tools.
+ * RC-14 ALSO removed the 43 legacy P1 short names (this file's canonical faces are KEPT;
+ * the legacy duplicates are no-op'd by lib/deprecated_tool_gate.ts). This file registers
+ * canonical layer_noun_verb faces — it is NOT removed.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'

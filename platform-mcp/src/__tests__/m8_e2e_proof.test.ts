@@ -7,7 +7,7 @@
  * Goal clauses proven in this file (mock/unit layer):
  *   G2:  Identity + entitlement — each user sees only their entitled chart set
  *   G4:  Gated every call — unentitled chart → AUTHZ_DENIED
- *   G5:  Session + memory — recall_session gated per user×chart
+ *   G5:  Session + memory — session_recall gated per user×chart
  *   G7:  Per-model surface — declared vs undeclared key → different model_family
  *   G8:  Resources + prompts — 9 resources + 3 guided prompts registered
  *   G11: Zero bleed — no native name in any chart-agnostic surface
@@ -149,7 +149,7 @@ describe('M8 — Structured logger + request-ID', () => {
       request_id: 'mcp-test-abc123',
       user_uid: 'uid-test',
       key_id: 'key-test',
-      tool: 'list_my_charts',
+      tool: 'catalog_charts_list',
       outcome: 'ok',
       latency_ms: 42,
       message: 'test log entry',
@@ -160,7 +160,7 @@ describe('M8 — Structured logger + request-ID', () => {
     expect(parsed['service']).toBe('marsys-mcp')
     expect(parsed['level']).toBe('info')
     expect(parsed['request_id']).toBe('mcp-test-abc123')
-    expect(parsed['tool']).toBe('list_my_charts')
+    expect(parsed['tool']).toBe('catalog_charts_list')
     expect(parsed['outcome']).toBe('ok')
     expect(parsed['latency_ms']).toBe(42)
     expect(parsed['timestamp']).toBeDefined()
@@ -286,7 +286,7 @@ describe('G4 — Entitlement gate: unentitled chart denied on every chart-scoped
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// G5 — Session + memory (recall_session per user×chart)
+// G5 — Session + memory (session_recall per user×chart)
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('G5 — Session recall: scoped per user×chart', () => {
@@ -652,9 +652,9 @@ async function callMcpTool(
 }
 
 describe.skipIf(INTEGRATION_SKIP)('INTEGRATION — G3/G9/G10 (live prod)', () => {
-  it('@integration G3: list_my_charts returns chart names (not UUID-only)', async () => {
+  it('@integration G3: catalog_charts_list returns chart names (not UUID-only)', async () => {
     const result = await callMcpTool('tools/call', {
-      name: 'list_my_charts',
+      name: 'catalog_charts_list',
       arguments: {},
     }) as { result?: { content?: Array<{ text?: string }> } }
     const text = result?.result?.content?.[0]?.text ?? ''
@@ -672,7 +672,7 @@ describe.skipIf(INTEGRATION_SKIP)('INTEGRATION — G3/G9/G10 (live prod)', () =>
   it('@integration G9: get_positions returns real planetary data via registry (not 404)', async () => {
     // First get an entitled chart_id
     const listResult = await callMcpTool('tools/call', {
-      name: 'list_my_charts',
+      name: 'catalog_charts_list',
       arguments: {},
     }) as { result?: { content?: Array<{ text?: string }> } }
     const listText = listResult?.result?.content?.[0]?.text ?? ''
@@ -680,8 +680,9 @@ describe.skipIf(INTEGRATION_SKIP)('INTEGRATION — G3/G9/G10 (live prod)', () =>
     const chartId = listParsed.charts?.[0]?.chart_id
     expect(chartId).toBeDefined()
 
+    // RC-14: get_positions removed from the MCP surface; canonical face is ganita_positions_get.
     const result = await callMcpTool('tools/call', {
-      name: 'get_positions',
+      name: 'ganita_positions_get',
       arguments: { chart_id: chartId },
     }) as { result?: { content?: Array<{ text?: string }> } }
     const text = result?.result?.content?.[0]?.text ?? ''
@@ -729,7 +730,7 @@ describe.skipIf(G10_SKIP)('INTEGRATION — G10 (requires D-A MSR rebuild)', () =
     '@integration G10: get_domain_reading returns non-empty grounded signals with resolving constituent_facts',
     async () => {
       const listResult = await callMcpTool('tools/call', {
-        name: 'list_my_charts',
+        name: 'catalog_charts_list',
         arguments: {},
       }) as { result?: { content?: Array<{ text?: string }> } }
       const listText = listResult?.result?.content?.[0]?.text ?? ''

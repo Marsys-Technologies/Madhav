@@ -35,6 +35,7 @@ import { validateAccessToken } from './oauth/token_store.js'
 import { registerOAuthClient, validateOAuthClient } from './oauth/oauth_platform_client.js'
 // W5 L2: per-family MCP surface profiles (full/compact≤20/consult), OAuth-scope-gated.
 import { resolveMcpProfile, applyProfileGate, type ToolRegisteringServer } from './lib/mcp_profile.js'
+import { applyDeprecatedToolGate } from './lib/deprecated_tool_gate.js'
 // R5 W0a punch-list (#8, 401 headers): every 401 this server returns for a
 // client-facing Bearer/OAuth auth failure must carry a WWW-Authenticate
 // challenge per RFC 6750 §3 (bare 401s with no challenge header are non-
@@ -331,6 +332,14 @@ app.post('/mcp', async (req: Request, res: Response) => {
     version: '1.0.0',
   })
 
+  // RC-14 breaking flip (MCP_TOOL_NAMING_STANDARD §4 Phase-3): remove the 43 legacy
+  // P1 short names from the MCP surface so ONLY the canonical `layer_noun_verb` faces
+  // resolve. Applied FIRST (before prashna + the profile gate) and UNCONDITIONALLY
+  // for every profile — unlike applyProfileGate, which is a no-op for `full`. Web
+  // replay of old persisted names is unaffected (tool_name_bridge, a different door).
+  // See lib/deprecated_tool_gate.ts.
+  const deprecatedGate = applyDeprecatedToolGate(server as unknown as ToolRegisteringServer)
+
   // W5 L2: resolve + apply the per-family MCP surface profile (full/compact≤20/consult)
   // BEFORE any register*Tools() call below runs. `applyProfileGate` monkeypatches this
   // request-scoped server's `.tool()` method in place so every existing registration
@@ -481,6 +490,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
     message:
       `MCP request dispatched (mcp_profile=${mcpProfile}` +
       (profileGate.blockedAttempts.length > 0 ? `, gate_blocked=${profileGate.blockedAttempts.length}` : '') +
+      (deprecatedGate.blockedDeprecated.length > 0 ? `, deprecated_blocked=${deprecatedGate.blockedDeprecated.length}` : '') +
       ')',
   })
 
@@ -589,7 +599,14 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // D-2 Lane V-3 — +2 scan_fetch_signals, reading_notes_get:                    +2
 // W6 Task 7 — +1 prashna_ask (job-handle-first full-loop engine call):        +1
 // W6 Part 3 — +1 prashna_status (poll a prashna_ask job's progress/result):   +1
-const REGISTERED_TOOL_COUNT = 122
+// RC-14 breaking flip (2026-07-23): −43 legacy P1 short names removed from the live MCP
+// surface by applyDeprecatedToolGate (the registrars still CALL server.tool() for them, but
+// the gate no-ops those calls — see lib/deprecated_tool_gate.ts). The canonical layer_noun_verb
+// faces they duplicated remain. The 6 DEFERRED tools were RENAMED in place (recall_session→
+// session_recall, list_my_sessions→session_list, list_my_charts→catalog_charts_list, select_chart
+// →catalog_chart_select, holistic_bundle_chart_facts→bodha_bundle_get, kala_temporal_bundle→
+// kala_bundle_get) — count-neutral. 122 − 43 = 79.
+const REGISTERED_TOOL_COUNT = 79
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({

@@ -246,11 +246,18 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // MCPT v3.1.0 — MCP v3.1 pure-MCP server. Default true — foundation sealed 2026-05-22.
   // Override via MARSYS_FLAG_MCP_V3_ENABLED=false to revert to v1 path (emergency only).
   MCP_V3_ENABLED: true,
-  // Retrieval Plane Elevation R-1 item 3 — single bootstrap. PAUSED at FALSE
-  // (2026-07-21) — code-complete and fully tested, flip held on impl/w5-breaking
-  // pending D-4b quiet per master brief §I.6. See the FeatureFlag union's doc
-  // comment above for the full rationale.
-  RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: false,
+  // Retrieval Plane Elevation R-1 item 3 — single bootstrap. FLIPPED to TRUE
+  // (RC-14, 2026-07-23) — the D-4b doctrine campaign closed (commit cd5ad175
+  // "docs(d4b): CAMPAIGN CLOSE"), unblocking the w5-breaking release per master
+  // brief §I.6 / RC-14. This route now routes registration EXCLUSIVELY through
+  // registry/catalog.ts's getCatalog() — the same production consumption surface
+  // the MCP Layer-2 primitives route and the chat channel already import — which
+  // is a strict superset of the legacy hand-maintained per-wave list (the only
+  // catalog-only additions are the deliberately-reviewed reverse-gap set:
+  // marsys://tool/L-SPINE/query_spine_bundle + marsys://tool/synthesis/
+  // compose_large_n). Set MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false
+  // to force the legacy hand-maintained path (emergency rollback only).
+  RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: true,
 }
 
 // Numeric config keys (read via configService.getValue)

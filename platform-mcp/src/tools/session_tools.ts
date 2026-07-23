@@ -55,7 +55,7 @@ export function registerSessionTools(
 ): void {
   // ── recall_session ──────────────────────────────────────────────────────────
   server.tool(
-    'recall_session',
+    'session_recall',
     'Recall your current session state, including the last active chart. ' +
     'Re-checks your current entitlement for the stored chart before returning it — ' +
     'if access was revoked, the chart will not be surfaced. ' +
@@ -158,7 +158,7 @@ export function registerSessionTools(
             : 'No active chart. Use list_my_charts to see your entitled charts, then select_chart to choose one.',
       }
 
-      const budgeted = budgetMcpContent(result, 'recall_session')
+      const budgeted = budgetMcpContent(result, 'session_recall')
       return {
         content: [
           {
@@ -172,7 +172,7 @@ export function registerSessionTools(
 
   // ── list_my_sessions ────────────────────────────────────────────────────────
   server.tool(
-    'list_my_sessions',
+    'session_list',
     'List all your MCP sessions across clients, showing the active chart and last activity time for each. ' +
     'Results include only your own sessions — never another user\'s.',
     {
@@ -218,7 +218,7 @@ export function registerSessionTools(
             : `Showing ${sessions.length} session(s). Use recall_session with session_key to resume a specific session.`,
       }
 
-      const budgeted = budgetMcpContent(result, 'list_my_sessions')
+      const budgeted = budgetMcpContent(result, 'session_list')
       return {
         content: [
           {

@@ -5,9 +5,12 @@
  * (platform/scripts/audit/doctrine_harness/lib/alias_check.ts). Asserts the file matches the
  * documented interface { canonical_faces: string[], deprecated_aliases: Record<string,string> }
  * and reconciles internally: every deprecated alias's canonical target exists in canonical_faces,
- * no name is both canonical and deprecated, and the union covers the 138 live tools with no orphans.
+ * no name is both canonical and deprecated, and the union covers the 144 census tools with no orphans.
  * (D-4a Lane A-0: 135 -> 138 — plan_retrieval, reading_notes_get, scan_fetch_signals were
  * previously unaccounted; added to canonical_faces so census == canonical list again.)
+ * (RC-14 2026-07-23: 138 -> 144 — the 6 DEFERRED tools were renamed at source; their OLD names
+ * moved from canonical_faces into deprecated_aliases (kept for web-channel replay), a net +6 to
+ * the union since each old name now coexists with its new canonical face.)
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -43,12 +46,12 @@ describe('canonical_faces.json — V-0 alias_check contract', () => {
     expect(new Set(parsed.canonical_faces).size).toBe(parsed.canonical_faces.length)
   })
 
-  it('accounts for all 138 live tools (canonical ∪ deprecated = census), no unaccounted', () => {
+  it('accounts for all 144 census tools (canonical ∪ deprecated = census), no unaccounted', () => {
     const union = new Set([...parsed.canonical_faces, ...Object.keys(parsed.deprecated_aliases)])
-    expect(union.size).toBe(138)
+    expect(union.size).toBe(144)
   })
 
-  it('V-0 checkAliasCount reconciles against the 138-tool census (row-4 green, source=v3)', () => {
+  it('V-0 checkAliasCount reconciles against the 144-tool census (row-4 green, source=v3)', () => {
     const census = [...parsed.canonical_faces, ...Object.keys(parsed.deprecated_aliases)]
       .map((name) => ({ name, description: '' }))
     const result = checkAliasCount(census)

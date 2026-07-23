@@ -3,10 +3,10 @@
  *
  * Tests:
  *   M3 — session create/lookup/writeback
- *   M3 — recall_session re-checks entitlement (revoked grant → refused)
- *   M3 — list_my_sessions scoped to principal.uid (no cross-user leakage)
- *   M3 — select_chart persists active_chart_id to session
- *   M4 — select_chart surfaces advisory when chart_id != session.active_chart_id
+ *   M3 — session_recall re-checks entitlement (revoked grant → refused)
+ *   M3 — session_list scoped to principal.uid (no cross-user leakage)
+ *   M3 — catalog_chart_select persists active_chart_id to session
+ *   M4 — catalog_chart_select surfaces advisory when chart_id != session.active_chart_id
  *   Security — memory strictly per user×chart; no cross-user leakage (2 users)
  *
  * Chart-agnostic invariants:
@@ -141,7 +141,7 @@ describe('M3 — getOrCreateSession', () => {
   })
 })
 
-// ── M3.2 — persistActiveChart (select_chart wiring) ──────────────────────────
+// ── M3.2 — persistActiveChart (catalog_chart_select wiring) ──────────────────────────
 
 describe('M3 — persistActiveChart', () => {
   it('persists active_chart_id by calling POST /api/mcp/session', async () => {
@@ -178,7 +178,7 @@ describe('M3 — persistActiveChart', () => {
   })
 })
 
-// ── M3.3 — listSessions (list_my_sessions) ────────────────────────────────────
+// ── M3.3 — listSessions (session_list) ────────────────────────────────────
 
 describe('M3 — listSessions', () => {
   it('returns only the calling user\'s sessions', async () => {
@@ -223,7 +223,7 @@ describe('M3 — listSessions', () => {
 
 // ── M3.4 — Entitlement re-check on recall ─────────────────────────────────────
 
-describe('M3 — entitlement re-check on recall_session', () => {
+describe('M3 — entitlement re-check on session_recall', () => {
   it('denies a revoked chart on recall (grant revoked between sessions)', async () => {
     // Session lookup returns a session with active_chart_id = CHART_BETA
     mockFetch.mockResolvedValueOnce({
@@ -271,7 +271,7 @@ describe('M3 — entitlement re-check on recall_session', () => {
 // ── M4 — Chart-switch advisory ────────────────────────────────────────────────
 
 describe('M4 — chart-switch advisory', () => {
-  it('advisory fires when select_chart switches to a different chart', () => {
+  it('advisory fires when catalog_chart_select switches to a different chart', () => {
     // Simulate the switch-detection logic from chart_selection.ts
     const previousChartId = CHART_ALPHA
     const incomingChartId = CHART_BETA

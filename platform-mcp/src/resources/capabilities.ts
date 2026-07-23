@@ -226,7 +226,7 @@ conversation for the same user may be live at once. Never rely on \`active_chart
 correctness — it is a convenience default only; pass \`chart_id\` explicitly on every chart-scoped
 call regardless of what was last selected.
 
-**Provenance stamp** (\`recall_session\`, \`select_chart\`): resolves/refreshes, per EXPLICIT chart_id,
+**Provenance stamp** (\`session_recall\`, \`catalog_chart_select\`): resolves/refreshes, per EXPLICIT chart_id,
 \`provenance_stamp = {priors_version, formula_versions, ranking_config, build_id, build_status,
 now_context_date, pinned_at}\` — captured once per (session_key, chart_id) pair (re-keyed inside
 the session's state, so two chart contexts under one session_key get independent stamps, mitigating
