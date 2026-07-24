@@ -518,12 +518,15 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     version: 1,
     definition: 'Real KP cusps + sub-lords (bhāva cuspal sub-lord chain per KP).',
     category: 'structural',
-    live_tool: 'ganita_chart_facts_get',
-    tool_args: { chart_id: '{chart_id}', category: 'kp_cusps' },
-    fallback_face: 'ganita_structural_get',
-    known_gap: 'CR-30', // no dedicated MCP face for KP sub-lords yet — served via chart_facts category
-                          // filter only; broad alias/capability-map dedup (CR-30) is the nearest open
-                          // register pointer for "this primitive lacks a first-class face".
+    // CR-30 CLOSED (SARVA-SIDDHI W-4 D-4): dedicated first-class KP cusp/sub-lord face shipped
+    // — ganita_kp_cusps_get (→ marsys://tool/L1/get_kp_cusps). Serves the full per-cusp KP chain
+    // (sign/star/sub/sub_sub/prana lords + significators + cusp degrees) + natal ruling planets
+    // over the already-stored L1 facts (no new computation). Was previously reachable only via
+    // the raw ganita_chart_facts_get category route; now a first-class primitive face.
+    live_tool: 'ganita_kp_cusps_get',
+    tool_args: { chart_id: '{chart_id}' },
+    fallback_face: 'ganita_chart_facts_get',
+    known_gap: null,
     mandatory_tags: ['kp_cusp_sublord'],
     cr27_prevents: ['CR-36'],
   },

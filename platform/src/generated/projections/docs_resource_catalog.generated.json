@@ -1,8 +1,8 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-07-23T20:16:05.987Z",
-  "total": 166,
+  "generated_at": "2026-07-24T04:49:55.973Z",
+  "total": 168,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -1263,6 +1263,20 @@
       ]
     },
     {
+      "uri": "marsys://tool/L1/get_kp_cusps",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_kp_cusps",
+      "short_label": "Get Kp Cusps",
+      "one_line": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class.",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
       "uri": "marsys://tool/L1/get_medical_indications",
       "type": "tool",
       "layer": "L1",
@@ -2158,6 +2172,20 @@
       ]
     },
     {
+      "uri": "marsys://tool/L4/query_prospective_ledger",
+      "type": "tool",
+      "layer": "L4",
+      "name": "query_prospective_ledger",
+      "short_label": "Query Prospective Ledger",
+      "one_line": "Returns the OPEN filed, falsifiable standing predictions for a chart from the LIVE prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane…",
+      "scope": "per_chart",
+      "archetype": "rich_relational",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
       "uri": "marsys://tool/L4/query_rectification",
       "type": "tool",
       "layer": "L4",
@@ -2513,14 +2541,14 @@
       "L0": 63,
       "L2": 32,
       "L3": 14,
-      "L1": 34,
-      "L4": 10,
+      "L1": 35,
+      "L4": 11,
       "L5": 13
     },
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 160
+      "tool": 162
     }
   }
 }
