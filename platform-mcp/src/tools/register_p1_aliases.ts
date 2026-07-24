@@ -963,6 +963,54 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }
   )
 
+  // CR-24 completion fix (mechanism_read conformance): the planner primitive `mechanism_read`
+  // (registry_data.ts) was repointed from `bodha_graph_subgraph_get` to `bodha_mechanisms_get`
+  // at the CR-24 merge, but that change only updated the planner-side registry/tests — it never
+  // registered the corresponding MCP tool, so `bodha_mechanisms_get` did not exist as a callable
+  // surface (unlike sibling faces bodha_graph_subgraph_get / bodha_signals_get, each of which has
+  // its own server.tool registration). The capability itself was never missing: bo_yantra_mechanism
+  // (writer) populates bodha_mechanisms, and query_mechanisms.ts (L2_bodha registry capability)
+  // already reads it — this wires that existing capability up as a first-class live tool.
+  // get_mechanisms → bodha_mechanisms_get
+  server.tool(
+    'bodha_mechanisms_get',
+    'L2 named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class ' +
+    'CGM-subgraph mechanisms the bo_yantra_mechanism writer builds (convergent_dispositor_chain, ' +
+    'dispositor_cycle, house_lordship_cycle, yoga_cluster, mutual_reception, parivartana_chain, ' +
+    'stellium, mutual_aspect, mutual_aspect_triangle, graha_bhava_affliction). Each row: ' +
+    'mechanism_name, mechanism_class, valence (benefic|malefic|mixed|neutral), member_node_ids / ' +
+    'member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), ' +
+    'centrality_summary, and a grounding citation. Filters: ayanamsha_id, mechanism_class, valence, ' +
+    'chain_circuit_only (isolates the convergent_dispositor_chain/dispositor_cycle/house_lordship_cycle ' +
+    'family, served first). Per-class and per-valence facet counts over the full match set are always ' +
+    'returned. Bounded (LIMIT <=50) with a disclosed total, offset pagination, and an honest ' +
+    'empty_reason when a chart carries no mechanisms.',
+    {
+      ...ChartBase,
+      mechanism_class:    z.string().optional().describe('Filter by a single mechanism_class. Omit for all.'),
+      valence:            z.enum(['benefic', 'malefic', 'mixed', 'neutral']).optional(),
+      chain_circuit_only: z.boolean().optional().describe(
+        'When true, return only the CR-24 chain/circuit family (convergent_dispositor_chain, ' +
+        'dispositor_cycle, house_lordship_cycle). Default false.'),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, limit, offset, mechanism_class, valence, chain_circuit_only } =
+        params as Record<string, unknown>
+      if (!chart_id) return errOut('bodha_mechanisms_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L2/query_mechanisms', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          ...(mechanism_class ? { mechanism_class } : {}),
+          ...(valence ? { valence } : {}),
+          ...(chain_circuit_only != null ? { chain_circuit_only } : {}),
+          ...(limit != null ? { limit } : {}),
+          ...(offset != null ? { offset } : {}),
+        }, principal)
+        return dualOutput(data, 'bodha_mechanisms_get')
+      } catch (err) { return errOut('bodha_mechanisms_get', String(err), { chart_id }) }
+    }
+  )
+
   // query_chart_facts → ganita_chart_facts_get
   // R5 W1 (lane: chart_query) fix: extraSchema previously declared fact_category/fact_id,
   // neither of which the registry handler (register_d7_channel.ts) ever read — a dead-param
