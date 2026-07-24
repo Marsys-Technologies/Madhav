@@ -4,6 +4,14 @@ canonical_id: ELEVATION_CAMPAIGN_CHARTER
 version: 2.1
 status: READY-FOR-EXECUTION — governing charter for the 3-stream autonomous overnight elevation run
 created: 2026-07-24
+amendments:
+  - 2026-07-24 (pre-launch, post-pre-flight): M2.0 converted from three separate CLONES to three
+    sibling GIT WORKTREES (same isolation guarantee, matches repo convention, one object store);
+    M2.2 gains the `worktree` lock and the concurrent-worktree git-hygiene rules (gc.auto 0,
+    fetch --no-write-fetch-head); NEW M2.3b records that `main` is branch-protected and every merge
+    including Phase 0 must use the PR + auto-merge path, with the lock-until-merged / 30-minute
+    ceiling / always-release rules; M2.4 notes branches and worktrees are created by pre-flight so
+    Phase 0 verifies rather than creates. No change to scope, lanes, mandate, or verification.
 v2_1_changelog: >
   Adversarial red-team pass (two independent Opus reviewers, 2026-07-24) found 27 defects in v2.0,
   of which 14 were run-killing. All fixed in place. The material ones: (1) the TCI could be STUBBED,
@@ -913,12 +921,52 @@ Three Claude Code sessions, one per stream: ~3× token throughput and crash isol
 file-based coordination. v2.0's sketch of this mode had six run-killing defects; the following rules
 are **mandatory and complete** — a stream that cannot satisfy one of them halts rather than improvises.
 
-**M2.0 · WORKING-TREE ISOLATION (finding #1 — catastrophic).** Three Claude Code sessions in ONE
-checkout collide on `.git/index.lock`, and one stream's `pull --rebase` moves HEAD under another's
-builders mid-edit — producing commits that silently revert merged work, undetectable because each
-stream verifies only its own recipes. **Each session runs in its OWN clone:**
-`~/madhav-alpha`, `~/madhav-beta`, `~/madhav-gamma`, each cloned from the same origin. Lane worktrees
-are cut inside the owning clone. **No two sessions ever share a working tree.**
+**M2.0 · WORKING-TREE ISOLATION VIA GIT WORKTREES (finding #1 — catastrophic if unaddressed).**
+Three Claude Code sessions sharing ONE working tree collide on `.git/index.lock`, and one stream's
+`pull --rebase` moves HEAD under another's builders mid-edit — producing commits that silently
+revert merged work, undetectable because each stream verifies only its own recipes.
+
+**The isolation mechanism is `git worktree`, which is this project's established convention**
+(`.gitignore` §"Git worktrees" `.worktrees/` and the documented sibling `../Madhav-{session}` pattern;
+the `.claude/worktrees/agent-*` family; the live sibling `../madhav-wave-vidhi-purnata`). A worktree
+gives each session its **own HEAD, own index, own working files** — which is precisely the isolation
+separate clones would provide — while sharing one object database, so disk cost and fetch traffic are
+paid once rather than three times. *(Amendment 2026-07-24: v2.1 as merged specified three separate
+clones. Worktrees deliver the same isolation guarantee more efficiently and match repo convention;
+the clone wording is superseded. Nothing else in M2 changes — all three sessions still start from the
+project root and never share a tree.)*
+
+**Layout — SIBLING directories, never nested inside the repo:**
+```
+/Users/Dev/Vibe-Coding/Apps/Madhav              ← project root (main). All 3 sessions START here.
+/Users/Dev/Vibe-Coding/Apps/madhav-wt-alpha     ← worktree on branch elev/alpha
+/Users/Dev/Vibe-Coding/Apps/madhav-wt-beta      ← worktree on branch elev/beta
+/Users/Dev/Vibe-Coding/Apps/madhav-wt-gamma     ← worktree on branch elev/gamma
+```
+Siblings, not `.worktrees/` subdirectories, for one concrete reason: a nested worktree puts three
+additional copies of every source file inside the repo, so every `rg`/glob an agent runs at the
+project root returns triplicated hits and the agent reasons about the wrong copy. The sibling layout
+makes that impossible.
+
+**THE ROOT-CHECKOUT RULE (absolute).** Every session starts in the project root, and its **first
+action is to `cd` into its own worktree and stay there for the entire run.** No session may run any
+git command that mutates the ROOT working tree — no `checkout`, no `pull`, no `merge`, no `stash`, no
+`reset` at `/Users/Dev/Vibe-Coding/Apps/Madhav`. The root stays parked on `main` as a stable
+reference. Reading at the root (`git log`, `git show`, `rg`) is fine.
+
+**GIT HYGIENE FOR CONCURRENT WORKTREES (mandatory; set once by pre-flight, verified in Phase 0):**
+- `git config gc.auto 0` — a background auto-gc firing mid-run can briefly lock refs under three
+  concurrent writers. Disabled for the duration; re-enable at close.
+- **All fetches use `git fetch --no-write-fetch-head`** (git 2.34.1 confirmed present). `FETCH_HEAD`
+  is the one genuinely shared, non-per-worktree file that concurrent fetches race on; this flag
+  sidesteps it entirely.
+- Per-worktree index and HEAD mean `add`/`commit`/`rebase` never contend across streams. Ref updates
+  take per-ref locks, and each stream owns a disjoint branch namespace (`elev/<stream>/**`), so ref
+  contention cannot occur between streams either.
+- `git worktree add|remove|prune` mutates the shared `.git/worktrees/` registry: take the
+  **`worktree` lock** (M2.2) around any of them.
+- Each worktree needs its own `node_modules` (gitignored, therefore not inherited) — installed by
+  pre-flight, not on the critical path.
 
 **M2.1 · SHARED STATE LIVES OUTSIDE ANY CHECKOUT.** Coordination state lives at
 `~/elev-v2-shared/` (created by α in Phase 0) — locks, flags, contract status, heartbeats,
@@ -937,7 +985,8 @@ durable record, but **mutual exclusion never depends on git.**
 - Breaking is two-phase: write `<lock>.break_intent`, wait 60s for the holder to bump its heartbeat,
   then break and log to `INTEGRATION_LOG.md`.
 - Lock names: `merge` (one global), `deploy-platform`, `deploy-platform-mcp`, `deploy-sidecar`,
-  `deploy-pipeline`, `db-rebuild`, and `RESTORE` (§11.9).
+  `deploy-pipeline`, `db-rebuild`, `worktree` (any `git worktree add|remove|prune` — the registry at
+  `.git/worktrees/` is shared state), and `RESTORE` (§11.9).
 
 **M2.3 · THE MERGE LOCK COVERS THE AUTO-DEPLOY (finding #6).** `platform` auto-deploys on merge to
 `main`, so the deploy cannot be serialised separately from the merge. **The merge lock is held
@@ -945,7 +994,30 @@ continuously through: rebase → CI green → merge → push → the resulting a
 image-SHA check → smoke gate green → integration battery (M2.6) → release.** `platform-mcp` is a
 CONTENDED target between α and γ; its explicit deploy takes `deploy-platform-mcp` separately.
 
-**M2.4 · PHASE 0 AND THE START GATE (findings #7, #8).** α runs Phase 0 in this order and writes
+**M2.3b · MERGE PATH IS PR + AUTO-MERGE, NEVER A DIRECT PUSH (pre-flight verified 2026-07-24).**
+`main` is protected: 4 required status checks with `enforce_admins: true`. A direct
+`git push origin main` is REJECTED (GH006) even for an admin account — confirmed by an actual
+rejected push. Every merge, including α's Phase-0 contract publication, uses:
+`git push origin <branch>` → `gh pr create --base main` → `gh pr merge --auto --squash`.
+Consequences, all binding:
+- **The merge lock is held until the PR actually MERGES**, not until the push. Poll the PR state and
+  keep heartbeating the lock throughout (M2.2) — a CI cycle far exceeds any age-based timeout.
+- **Auto-merge fires only when checks go green; a red check means it never fires and the PR sits
+  forever.** Poll with a **30-minute ceiling**; on expiry inspect the failing check and either fix
+  and re-poll once, or close the PR and park the affected items `PARKED-HONEST`. **Release the merge
+  lock on every exit path, including failure** — an unreleased lock here deadlocks the whole run.
+- **CI is the arbiter, not the local run.** Local Node is v24.14.0; CI pins Node 20. Local green does
+  not imply CI green.
+- **Batch merges.** Every merge serializes the global merge lock through a full CI cycle. Accumulate
+  a coherent set of work and merge once per phase — never per lane-item.
+- Baseline CI state on `main` at launch is **all green** (typecheck, typecheck-mcp, unit-tests
+  6818/7136 passing, 0 failures, planner-regression), recorded in
+  `~/elev-v2-shared/PREEXISTING_CI_STATE.md`. **Any red check is therefore yours**; it may not be
+  attributed to pre-existing breakage.
+
+**M2.4 · PHASE 0 AND THE START GATE (findings #7, #8).** Branches and worktrees are created by
+pre-flight, not Phase 0, so Phase 0 stays short and β/γ start sooner; α VERIFIES them rather than
+creating them. α runs Phase 0 in this order and writes
 `~/elev-v2-shared/PHASE0_COMPLETE.flag` **LAST**, containing a manifest:
 ```json
 {"run_start_tag":"...","db_snapshot_id":"...","baseline_ledger_path":"...","baseline_sha256":"...",
