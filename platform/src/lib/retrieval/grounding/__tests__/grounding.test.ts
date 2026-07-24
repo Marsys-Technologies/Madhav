@@ -23,6 +23,7 @@
  *   G17 — resolveSignals: l0_citation_refs extracted from classical_sources_jsonb
  *   G18 — resolveSignals: ayanamsha filter applied when provided
  *   G19 — GOVERNED_METRICS set contains all expected metrics
+ *   G20 — citation_human sanitization: GAP-ticket + fact_id substring stripped at construction
  */
 
 import { describe, it, expect } from 'vitest'
@@ -609,5 +610,79 @@ describe('G19: GOVERNED_METRICS vocabulary', () => {
 
   it('does not contain any unknown or out-of-schema metrics', () => {
     expect(GOVERNED_METRICS.has('some_random_field' as import('../types').GovernedMetric)).toBe(false)
+  })
+})
+
+// ── G20 — citation_human GAP-ticket/fact_id stripping ────────────────────────
+
+const FACT_ID_GAP = 'factid00000gap01'
+const RAW_CITATION_WITH_GAP_TICKET =
+  'Saturn nak-lord chain length=7 (cycle@6) in lahiri_chitrapaksha. ' +
+  'GAP-4: L1 nakshatra_lord fact_id=16ff3dbbc4bc15b5 (graha_nakshatra_join).'
+const EXPECTED_CLEAN_CITATION =
+  'Saturn nak-lord chain length=7 (cycle@6) in lahiri_chitrapaksha.'
+
+describe('G20: citation_human — GAP-ticket + fact_id substring stripped at construction', () => {
+  it('strips the internal GAP-ticket/fact_id annotation from resolveSignals resolved_facts', async () => {
+    const signal = {
+      ...MSR_SIGNAL_2,
+      signal_id: 'aaaaaaaa-0000-0000-0000-0000000000gp',
+      constituent_facts_array: [FACT_ID_GAP],
+    }
+    const fact = {
+      ...CHART_FACT_1,
+      fact_id: FACT_ID_GAP,
+      citation_human: RAW_CITATION_WITH_GAP_TICKET,
+    }
+    const db = makeStubDbProxy({
+      bodha_msr_signals: [signal],
+      chart_facts: [fact],
+    })
+
+    const outcome = await resolveSignals(db, CHART_ID_A, [signal.signal_id])
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) return
+
+    const resolved = outcome.result.signals[0].resolved_facts[0]
+    expect(resolved.citation_human).toBe(EXPECTED_CLEAN_CITATION)
+    expect(resolved.citation_human).not.toMatch(/GAP-\d+/)
+    expect(resolved.citation_human).not.toMatch(/fact_id=/)
+    // citation_ref (the machine-readable field) and fact_id remain untouched —
+    // the linkage still has a proper home, it's just not duplicated into the
+    // human-readable string.
+    expect(resolved.fact_id).toBe(FACT_ID_GAP)
+    expect(resolved.citation_ref).toBe(CHART_FACT_1.citation_ref)
+  })
+
+  it('strips the internal GAP-ticket/fact_id annotation from resolveMetric (fact_value_num)', async () => {
+    const db = makeStubDbProxy({
+      chart_facts: [{
+        fact_id: FACT_ID_GAP,
+        chart_id: CHART_ID_A,
+        fact_value_num: 7,
+        citation_human: RAW_CITATION_WITH_GAP_TICKET,
+      }],
+    })
+
+    const outcome = await resolveMetric(db, CHART_ID_A, 'fact_value_num', FACT_ID_GAP)
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) return
+    expect(outcome.metric.citation).toBe(EXPECTED_CLEAN_CITATION)
+    expect(outcome.metric.citation).not.toMatch(/GAP-\d+/)
+  })
+
+  it('is a no-op on citation_human strings that carry no GAP-ticket annotation', async () => {
+    const db = makeStubDbProxy({
+      bodha_msr_signals: [MSR_SIGNAL_1, MSR_SIGNAL_2],
+      chart_facts: [CHART_FACT_1, CHART_FACT_2],
+    })
+
+    const outcome = await resolveSignals(db, CHART_ID_A, [SIGNAL_ID_1])
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) return
+
+    const facts = outcome.result.signals[0].resolved_facts
+    const jupRashi = facts.find(f => f.fact_key === 'rashi')
+    expect(jupRashi?.citation_human).toBe('Jupiter in Cancer (LAHIRI).')
   })
 })
