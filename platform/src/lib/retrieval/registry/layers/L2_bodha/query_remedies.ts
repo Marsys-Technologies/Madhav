@@ -26,28 +26,138 @@
  * REAL fix applied here: `citation_ref` / `citation_human` (both tables) and
  * `classical_sources_jsonb` (prescriptions) are 100% populated but were never
  * selected — they are now selected and narrated as the U-c inline classical
- * citation. Always-null columns (associated_doshas_array/motifs_array/
- * cdlm_cells_array on resonances; estimated_cost_inr_range_jsonb/
- * estimated_time_minutes_daily/phase_sequence_class/phase_duration_days on
- * prescriptions) and the redundant prescription_detail_jsonb (duplicates
- * remedy_label_human in every observed row) are dropped from the default
- * per-row payload to fund the narration text within the existing byte
- * ceiling; full raw rows remain available via `fields=all`.
+ * citation. Remaining always-null columns (associated_doshas_array/motifs_array
+ * on resonances; estimated_cost_inr_range_jsonb/estimated_time_minutes_daily/
+ * phase_sequence_class/phase_duration_days on prescriptions) and the redundant
+ * prescription_detail_jsonb (duplicates remedy_label_human in every observed
+ * row) are dropped from the default per-row payload to fund the narration text
+ * within the existing byte ceiling; full raw rows remain available via
+ * `fields=all`.
+ *
+ * SARVA-SIDDHI W-3 (CR-67 + CR-69):
+ *  - CR-67: associated_cdlm_cells_array is no longer null DB-wide — the bo_upaya
+ *    writer now populates it (each graha's material CDLM cross-domain-linkage
+ *    cells). The `domain` filter therefore now selects real domain-joined
+ *    resonances; compact rows surface associated_cdlm_cell_count.
+ *  - CR-69: this tool now reads `leverage_ranked` and ranks targets by the L1
+ *    chart_vichara.leverage_index composite (§N.5, read-not-recomputed). See
+ *    LEVERAGE_FORMULA_DOC.
  */
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 
+// ── CR-69 (SARVA-SIDDHI W-3): leverage-ranked remedy synthesis ──────────────
+// intervention_synthesis calls this tool with `leverage_ranked: true`, but the
+// arg was never read and no leverage_index axis was exposed (the documented
+// CR-69 gap). leverage_index is the L1 ga_vichara composite already stored per
+// (graha × domain) in chart_vichara.leverage_index — it is READ here, never
+// recomputed (§N.5 — L1 is the authority over L2+ derivations).
+//
+//   leverage_index = (domain load-bearing weight ÷ graha capability)
+//                     × forward daśā runway weight
+//
+// where the three factors (domain_load_bearing_weight_normalized, capability,
+// dasha_runway_weight) are ga_vichara's registry-weighted terms — domain load
+// from lordship/karakatva/occupancy/yoga-participation weights held in
+// brahma_vichara_constants (design §8/§11, formula_version leverage_index_v1),
+// capability from shadbala percentile + dignity + ratification, runway from the
+// graha's next/current Vimśottarī Mahādaśā proximity. A high leverage_index =
+// the graha most structurally on the hook for the domain relative to its own
+// capability, forward-weighted by when its daśā opens — i.e. the highest-yield
+// remedy target.
+const LEVERAGE_FORMULA_DOC =
+  'leverage_index = (domain_load_bearing_weight_normalized ÷ capability) × ' +
+  'dasha_runway_weight. Source: L1 chart_vichara.leverage_index ' +
+  '(ga_vichara formula_version leverage_index_v1, design §8/§11; classical ' +
+  'load weights — lordship/karakatva/occupancy/yoga-participation — from the ' +
+  'brahma_vichara_constants registry). Read here, not recomputed (§N.5).'
+
+// chart_vichara.subject uses L1 planet codes; resonances/prescriptions use the
+// title-case graha name. Reverse of the sidecar _SUBJECT_TO_PLANET map.
+const SUBJECT_TO_GRAHA: Record<string, string> = {
+  SUN: 'Sun', MOON: 'Moon', MAR: 'Mars', MER: 'Mercury', JUP: 'Jupiter',
+  VEN: 'Venus', SAT: 'Saturn', RAH_MEAN: 'Rahu', KET_MEAN: 'Ketu',
+}
+
+interface LeverageEntry {
+  leverage_index: number
+  leverage_domain: string
+  domain_load_bearing_weight_normalized: number | null
+  capability: number | null
+  dasha_runway_weight: number | null
+  constituent_fact_ids: unknown
+}
+
+// Build graha → leverage entry. When `domain` is given, rank by that domain's
+// leverage_index (falling back to the chart-wide 'general' domain if the queried
+// domain carries no leverage rows — e.g. spirituality/progeny, which ga_vichara
+// does not score for load-bearing weight). With no domain, each graha takes its
+// single highest-leverage domain (its peak structural exposure).
+async function fetchLeverageByGraha(
+  chart_id: string,
+  ayanamsha_id: string,
+  domain: string | undefined,
+): Promise<{ map: Map<string, LeverageEntry>; resolvedDomain: string | null; note: string | null }> {
+  const runQuery = async (dom: string | null) => {
+    const conds = ["chart_id = $1", "ayanamsha_id = $2", "vichara_family = 'leverage_index'", 'value_num IS NOT NULL', 'value_num > 0']
+    const params: unknown[] = [chart_id, ayanamsha_id]
+    if (dom) { conds.push(`domain = $${params.length + 1}`); params.push(dom) }
+    const sql = `SELECT subject, domain, value_num, value_jsonb, constituent_fact_ids
+                 FROM chart_vichara WHERE ${conds.join(' AND ')} ORDER BY value_num DESC`
+    return (await query<Record<string, unknown>>(sql, params)).rows
+  }
+
+  let resolvedDomain: string | null = domain ?? null
+  let note: string | null = null
+  let rows = await runQuery(domain ?? null)
+
+  if (domain && rows.length === 0) {
+    // Queried domain is not load-bearing-scored by ga_vichara — fall back to
+    // the chart-wide 'general' leverage domain rather than return nothing.
+    rows = await runQuery('general')
+    if (rows.length > 0) {
+      resolvedDomain = 'general'
+      note = `No leverage_index rows for domain='${domain}' (ga_vichara does not score it for load-bearing weight); ranked by the chart-wide 'general' leverage domain instead.`
+    } else {
+      resolvedDomain = null
+      note = `No leverage_index rows for domain='${domain}' or 'general'; leverage ranking unavailable — falling back to resonance_score order.`
+    }
+  }
+
+  const map = new Map<string, LeverageEntry>()
+  for (const r of rows) {
+    const graha = SUBJECT_TO_GRAHA[String(r['subject'] ?? '')]
+    if (!graha) continue
+    const lev = Number(r['value_num'])
+    const existing = map.get(graha)
+    // With no domain filter, keep each graha's single strongest-leverage domain.
+    if (existing && existing.leverage_index >= lev) continue
+    const j = (r['value_jsonb'] as Record<string, unknown> | null) ?? {}
+    map.set(graha, {
+      leverage_index: lev,
+      leverage_domain: String(r['domain'] ?? resolvedDomain ?? 'general'),
+      domain_load_bearing_weight_normalized: j['domain_load_bearing_weight_normalized'] != null ? Number(j['domain_load_bearing_weight_normalized']) : null,
+      capability: j['capability'] != null ? Number(j['capability']) : null,
+      dasha_runway_weight: j['dasha_runway_weight'] != null ? Number(j['dasha_runway_weight']) : null,
+      constituent_fact_ids: r['constituent_fact_ids'] ?? null,
+    })
+  }
+  return { map, resolvedDomain, note }
+}
+
 // ── Bo_upaya-wide data-gap honesty note (U-b) ──────────────────────────────
 const DATA_GAP_NOTE =
   'bo_upaya data-population gap (writer-level, not dropped here): ' +
   'associated_doshas_array (formal named-dosha tagging on resonances) and ' +
-  'estimated_cost_inr_range_jsonb (exact INR cost on prescriptions) are ' +
-  '100% NULL for every chart built so far. Named-affliction mapping below ' +
+  'estimated_cost_inr_range_jsonb (exact INR cost on prescriptions) remain ' +
+  'NULL for every chart built so far. Named-affliction mapping below ' +
   'is derived instead from graha + remedy_priority_class + weakest_rank_in_chart ' +
   '+ is_yoga_karaka_flag; cost is a qualitative tier derived from ' +
-  'remedy_category + ritual_complexity_class, not a computed INR figure.'
+  'remedy_category + ritual_complexity_class, not a computed INR figure. ' +
+  '(CR-67 CLOSED: associated_cdlm_cells_array is now populated — resonances ' +
+  'carry their material CDLM cross-domain-linkage cells; use domain=… to join.)'
 
 // ── Qualitative cost-tier derivation (category + complexity -> tier label) ─
 function costTierFor(remedy_category: unknown, ritual_complexity_class: unknown): string {
@@ -143,6 +253,14 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       description: 'Max rows to return per section (resonances, prescriptions). Default: all ' +
         '(45 resonances / 135 prescriptions); max: 200.',
     },
+    leverage_ranked: {
+      type: 'boolean',
+      description: 'When true, rank resonance targets by L1 leverage_index = ' +
+        '(domain load-bearing weight ÷ graha capability) × forward daśā runway ' +
+        '(read from chart_vichara, §N.5). Pair with `domain` for a domain-specific ' +
+        'leverage rank; without a domain each graha takes its peak-leverage domain. ' +
+        'This is the intervention_synthesis primitive axis.',
+    },
   },
 
   llm_hints: {
@@ -169,6 +287,7 @@ export const queryRemediesCapability: CapabilityDescriptor = {
     const domain         = args['domain'] as string | undefined
     const keyword        = args['keyword'] as string | undefined
     const limit          = args['limit'] != null ? Math.min(Number(args['limit']), 200) : undefined
+    const leverageRanked = args['leverage_ranked'] === true || String(args['leverage_ranked']).toLowerCase() === 'true'
 
     try {
       // Resonances (graha-keyed; no signal_id column on this table)
@@ -256,45 +375,109 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       const resRows = resResult.rows
       const preRows = preResult.rows
 
-      // ── U-a verdict-first lead: top resonance(s) by resonance_score (already
-      // ordered DESC by the query above) ────────────────────────────────────
-      const topRow = resRows[0]
-      const secondaryGrahas = resRows.slice(1, 4).map((r) => String(r['graha']))
+      // ── CR-69: leverage-ranked synthesis (reads L1 chart_vichara.leverage_index) ─
+      const leverageInfo = leverageRanked
+        ? await fetchLeverageByGraha(chart_id, ayanamsha_id, domain)
+        : null
+      const leverageMap = leverageInfo?.map ?? new Map()
+      const leverageActive = leverageRanked && leverageMap.size > 0
+      const levFor = (r: Record<string, unknown>) => leverageMap.get(String(r['graha'])) ?? null
+
+      // When leverage-ranked AND leverage rows exist, order resonance targets by
+      // leverage_index DESC (grahas with no leverage row keep their relative
+      // resonance_score order and sort last). Otherwise keep resonance_score order.
+      const orderedResRows = leverageActive
+        ? [...resRows].sort((a, b) => {
+            const la = levFor(a)?.leverage_index ?? -1
+            const lb = levFor(b)?.leverage_index ?? -1
+            if (lb !== la) return lb - la
+            return Number(b['resonance_score'] ?? 0) - Number(a['resonance_score'] ?? 0)
+          })
+        : resRows
+
+      // ── U-a verdict-first lead ──────────────────────────────────────────────
+      const topRow = orderedResRows[0]
+      const secondaryGrahas = orderedResRows.slice(1, 4).map((r) => String(r['graha']))
       const leadSentence = topRow
-        ? `Your Bodha remedy layer flags ${String(topRow['graha'])} as your #1 remedy-priority target` +
-          ` — resonance_score ${Number(topRow['resonance_score']).toFixed(3)}, priority class ${String(topRow['remedy_priority_class'])}` +
-          (secondaryGrahas.length ? ` — followed by ${secondaryGrahas.join(', ')}.` : '.')
+        ? (leverageActive
+            ? `Your highest-leverage remedy target is ${String(topRow['graha'])}` +
+              ` — leverage_index ${Number(levFor(topRow)?.leverage_index ?? 0).toFixed(3)}` +
+              ` (domain '${String(levFor(topRow)?.leverage_domain ?? leverageInfo?.resolvedDomain ?? 'general')}'),` +
+              ` resonance_score ${Number(topRow['resonance_score']).toFixed(3)}, priority class ${String(topRow['remedy_priority_class'])}` +
+              (secondaryGrahas.length ? ` — followed by ${secondaryGrahas.join(', ')}.` : '.')
+            : `Your Bodha remedy layer flags ${String(topRow['graha'])} as your #1 remedy-priority target` +
+              ` — resonance_score ${Number(topRow['resonance_score']).toFixed(3)}, priority class ${String(topRow['remedy_priority_class'])}` +
+              (secondaryGrahas.length ? ` — followed by ${secondaryGrahas.join(', ')}.` : '.'))
         : `No resonance rows found for chart ${chart_id}${graha ? ` (graha filter: ${graha})` : ''}.`
 
       // ── resonance_ranked_present: prose ranking of ALL resonance rows ─────
-      const resonanceRanked = resRows.map((r, i) => ({
-        rank: i + 1,
-        graha: r['graha'],
-        resonance_score: r['resonance_score'],
-        weakness_score: r['weakness_score'],
-        contradiction_factor: r['contradiction_factor'],
-        remedy_priority_class: r['remedy_priority_class'],
-        is_yoga_karaka_flag: r['is_yoga_karaka_flag'],
-        weakest_rank_in_chart: r['weakest_rank_in_chart'],
-        named_affliction_mapping: namedAfflictionLabel(r),
-        citation: r['citation_human'] ?? r['citation_ref'] ?? null,
-      }))
+      const resonanceRanked = orderedResRows.map((r, i) => {
+        const lev = levFor(r)
+        return {
+          rank: i + 1,
+          graha: r['graha'],
+          resonance_score: r['resonance_score'],
+          weakness_score: r['weakness_score'],
+          contradiction_factor: r['contradiction_factor'],
+          remedy_priority_class: r['remedy_priority_class'],
+          is_yoga_karaka_flag: r['is_yoga_karaka_flag'],
+          weakest_rank_in_chart: r['weakest_rank_in_chart'],
+          ...(leverageRanked ? { leverage_index: lev?.leverage_index ?? null, leverage_domain: lev?.leverage_domain ?? null } : {}),
+          named_affliction_mapping: namedAfflictionLabel(r),
+          citation: r['citation_human'] ?? r['citation_ref'] ?? null,
+        }
+      })
 
       // ── compact resonance rows (drop always-null array columns; keep scalars) ─
-      const resonancesCompact = resRows.map((r) => ({
-        resonance_id: r['resonance_id'],
-        graha: r['graha'],
-        resonance_score: r['resonance_score'],
-        weakness_score: r['weakness_score'],
-        contradiction_factor: r['contradiction_factor'],
-        domain_burden: r['domain_burden'],
-        motif_burden: r['motif_burden'],
-        remedy_priority_class: r['remedy_priority_class'],
-        is_yoga_karaka_flag: r['is_yoga_karaka_flag'],
-        weakest_rank_in_chart: r['weakest_rank_in_chart'],
-        named_affliction_mapping: namedAfflictionLabel(r),
-        computed_at: r['computed_at'],
-      }))
+      const resonancesCompact = orderedResRows.map((r) => {
+        const lev = levFor(r)
+        return {
+          resonance_id: r['resonance_id'],
+          graha: r['graha'],
+          resonance_score: r['resonance_score'],
+          weakness_score: r['weakness_score'],
+          contradiction_factor: r['contradiction_factor'],
+          domain_burden: r['domain_burden'],
+          motif_burden: r['motif_burden'],
+          remedy_priority_class: r['remedy_priority_class'],
+          is_yoga_karaka_flag: r['is_yoga_karaka_flag'],
+          weakest_rank_in_chart: r['weakest_rank_in_chart'],
+          // CR-67: associated_cdlm_cells_array is now populated (real, L1-grounded
+          // CDLM cross-domain-linkage cells this graha is a material constituent
+          // of). Surface the count in compact mode; full uuid list via fields=all.
+          associated_cdlm_cell_count: Array.isArray(r['associated_cdlm_cells_array'])
+            ? (r['associated_cdlm_cells_array'] as unknown[]).length : 0,
+          ...(leverageRanked ? { leverage_index: lev?.leverage_index ?? null, leverage_domain: lev?.leverage_domain ?? null } : {}),
+          named_affliction_mapping: namedAfflictionLabel(r),
+          computed_at: r['computed_at'],
+        }
+      })
+
+      // ── CR-69 leverage_ranked block (explicit, machine-readable rank axis) ──
+      const leverageRankedBlock = leverageRanked
+        ? {
+            available: leverageActive,
+            ranked_domain: leverageInfo?.resolvedDomain ?? null,
+            formula: LEVERAGE_FORMULA_DOC,
+            note: leverageInfo?.note ?? null,
+            ranking: orderedResRows
+              .map((r) => {
+                const lev = levFor(r)
+                return lev
+                  ? {
+                      graha: r['graha'],
+                      leverage_index: lev.leverage_index,
+                      leverage_domain: lev.leverage_domain,
+                      domain_load_bearing_weight_normalized: lev.domain_load_bearing_weight_normalized,
+                      capability: lev.capability,
+                      dasha_runway_weight: lev.dasha_runway_weight,
+                      grounds_to_l1_fact_ids: lev.constituent_fact_ids,
+                    }
+                  : null
+              })
+              .filter((x) => x !== null),
+          }
+        : null
 
       // ── compact prescription rows (drop redundant/always-null fields;
       // add derived qualitative cost tier + wired-in citation) ──────────────
@@ -332,7 +515,7 @@ export const queryRemediesCapability: CapabilityDescriptor = {
           // asset the gap belongs to without implying it's an MCP tool a client can call.
           type: 'build_state',
           asset_id: 'bo_upaya',
-          hint: 'associated_doshas_array and estimated_cost_inr_range_jsonb are unpopulated bo_upaya-wide — see build-state ledger for why (writer gap, not a serving-layer drop).',
+          hint: 'associated_doshas_array and estimated_cost_inr_range_jsonb remain unpopulated bo_upaya-wide — see build-state ledger (writer gap, not a serving-layer drop). associated_cdlm_cells_array is now populated (CR-67 closed).',
         },
         ...(fields !== 'all'
           ? [{ type: 'recover', instrument: 'bodha_remedies_get', hint: "Call with fields='all' for full raw rows (associated_*_array, estimated_cost_inr_range_jsonb, prescription_detail_jsonb)." }]
@@ -350,14 +533,17 @@ export const queryRemediesCapability: CapabilityDescriptor = {
           chart_id,
           ayanamsha_id,
           narration,
-          resonances:           includeAll ? resRows : resonancesCompact,
+          resonances:           includeAll ? orderedResRows : resonancesCompact,
           resonance_count:      resRows.length,
           prescriptions:        includeAll ? preRows : prescriptionsCompact,
           prescription_count:   preRows.length,
-          filters: { tradition, graha, fields, domain: domain ?? null, keyword: keyword ?? null, limit: limit ?? null },
+          ...(leverageRanked ? { leverage_ranked: leverageRankedBlock } : {}),
+          filters: { tradition, graha, fields, domain: domain ?? null, keyword: keyword ?? null, limit: limit ?? null, leverage_ranked: leverageRanked },
           drill_pointers: drillPointers,
           provenance: {
-            tables: ['bodha_rm_resonances', 'bodha_rm_remedy_prescriptions'],
+            tables: leverageRanked
+              ? ['bodha_rm_resonances', 'bodha_rm_remedy_prescriptions', 'chart_vichara']
+              : ['bodha_rm_resonances', 'bodha_rm_remedy_prescriptions'],
           },
         },
         is_error: false,
