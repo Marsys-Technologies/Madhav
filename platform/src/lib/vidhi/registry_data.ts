@@ -339,7 +339,12 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     live_tool: 'kala_yoga_activation_get',
     tool_args: { chart_id: '{chart_id}' },
     fallback_face: 'kala_yoga_activation_get',
-    known_gap: 'CR-37', // temporal stage empty — activation dates missing/undated — OPEN, UPDATE evidence
+    known_gap: null, // CR-37 CLOSED (SARVA-SIDDHI T-3, 2026-07-24): ka_yojaka/ka_kalasutra rebuilt
+    // with real dasha-derived activation windows for both charts (native 482012f1 YOGA 12/74→161/207
+    // dated, DOSHA 203/422→926/1059; control 1c826d5a YOGA 0/66→168/213, DOSHA 0/155→760/820).
+    // Live-verified 2026-07-24: kala_yoga_activation_get returns real chart_dashas-derived windows
+    // (Anapha/Sasa/Vasi) for non-structural yogas; correctly-undated distribution yogas (Gola/Kedara/
+    // Shoola/Yuga) now carry an honest always_on_reason discriminator instead of a bare null.
     mandatory_tags: [],
     cr27_prevents: [],
   },
