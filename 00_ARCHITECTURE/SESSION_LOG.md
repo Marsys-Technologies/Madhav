@@ -33583,3 +33583,139 @@ re-dispatch with proper write-DB/cockpit credentials in a session that can absor
 is the authoritative status; UAT-DARPANA does not open until a genuine v1.2 close.
 
 *End of PRE-DARPANA-READINESS-2026-07-24 entry — 2026-07-24.*
+
+## SARVA-SIDDHI-2026-07-24 — SARVA-SIDDHI campaign: close every open serving/data gap before UAT-DARPANA
+
+```yaml
+session_open:
+  session_id: SARVA-SIDDHI-2026-07-24
+  cowork_thread_name: SARVA-SIDDHI campaign close
+  predecessor_session: PRE-DARPANA-READINESS-2026-07-24
+  may_touch:
+    - "platform/python-sidecar/**"
+    - "platform/src/lib/vidhi/**"
+    - "platform/src/lib/retrieval/registry/**"
+    - "platform-mcp/src/**"
+    - "platform/migrations/**"
+    - "00_ARCHITECTURE/llm_consumption_audit/**"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+  must_not_touch:
+    - "FROZEN orchestrator internals (WriterBase run()/plan_substeps() contract)"
+    - "mimamsa_* calibration tables / sealed test split / §11 governance"
+    - "L1-L5 canonical row data outside chart-scoped delete-then-insert rebuilds"
+  red_team_due: false
+```
+
+Native directive: open and execute SARVA-SIDDHI — close every open serving/data gap the
+project's registers carried into PRE_DARPANA_READINESS_v1_1.md, with EVERY prior
+accept-as-dark ruling (A-5/A-6) explicitly RESCINDED. Coordinator (Sonnet) ran an agentic swarm
+of 11 parallel worker lanes (one worktree/PR each) plus a W-0 truth pass and a W-5
+adversarial-verification pass, both Opus. Full governing brief:
+`00_ARCHITECTURE/llm_consumption_audit/briefs/sarva_siddhi/BRIEF_SARVA_SIDDHI_v1_0.md`.
+
+**W-0 (truth pass, Opus, 3 parallel agents):** published `SARVA_SIDDHI_TRUTH_TABLE_v1_0.md`.
+Corrected the native's own recollection that a successful gochara sweep completion followed the
+D-4b event-driven reconciliation — live `build_run` history showed 16/16 attempts errored, zero
+successful completions ever. Confirmed CR-68/CR-16/CR-61/CR-64 as stale register-drift (already
+fixed in code via prior PRs, register never updated) and CR-130/CR-24/CR-73/CR-30 as real,
+scoped work.
+
+**W-1..W-4 (11 parallel fix lanes, Opus, one worktree/PR each):** all 11 merged to main —
+#732 (T-1 DATABASE_URL fix), #733 (register reconciliation: CR-68/16/61/64), #734 (D-2, CR-24
+serving face), #735 (D-3, CR-73 kemadruma cancellation), #736 (P-1, standing predictions
+provenance), #737 (T-2, gochara span/birth-year fix), #738 (D-4, CR-30 KP face), #739 (T-4/T-5,
+CR-66 phala anchors + disclosure), #740 (D-1, CR-130 Jaimini yoga detectors), #741 (R-1/R-2,
+CR-67/CR-69 remedy core), #742 (T-3, CR-37 activation dating). Several lanes touched the same
+shared `platform/src/lib/vidhi/registry_data.ts` file in parallel, producing real merge
+conflicts on landing — resolved by hand (source auto-merges where possible, codegen
+regeneration for the mirror/generated files, never a blind pick) with validators re-run after
+each resolution.
+
+**W-5 (full re-verification, this session):** 9 of 11 lanes independently live-verified via
+direct MCP tool access against chart `482012f1` (T-1's DATABASE_URL fix, CR-68, CR-16, CR-61,
+CR-130, CR-37's real dating, CR-67/CR-69's domain-joined remedies, T-5's disclosure fix, P-1's
+planner-level repoint). 2 lanes (CR-24, CR-30's new tools) confirmed via planner-level wiring
+only — their MCP tools were deployed mid-session, after this session's tool catalog was cached.
+A fresh-context Opus adversarial verifier reviewed all 12 merged diffs via direct source read
+(same connector limitation applied to it) and confirmed all 12 as genuine, non-fabricated code
+fixes — zero §N B.10 violations, zero §N.5 circular-derivation violations found. W-5 itself
+caught a genuine recurrence of the register-drift class mid-campaign (CR-37's dark-flag
+surviving its own fix's merge) and a self-inflicted git hygiene issue (two node_modules symlinks
+accidentally committed via a `git add -A` during conflict resolution) — both fixed in PR #743.
+
+**Full evidence: `PRE_DARPANA_READINESS_v2.0.md`** (supersedes v1.1). Exit condition **NOT
+fully met, honestly** — 9/11 lanes CLOSED-WITH-EVIDENCE; 2 lanes (CR-66, CR-73) are
+code-complete + live-derivation-proven but the production data hasn't been rebuilt yet (needs
+the same cockpit/write-DB access as T-2, no new code required); T-2's own materialization
+(~23.5h across ≥4 dispatches, resized upward from W-0's original estimate once the span bug was
+found and fixed) was deliberately **not dispatched this session** — the native was asked
+explicitly given the real cost (paid compute, direct production writes outside the cockpit UI)
+and chose to run it personally via the cockpit UI. CR-24 has one small planner-wiring follow-up
+(`mechanism_read` primitive not yet repointed to the new `bodha_mechanisms_get` tool).
+
+**Scope guards held throughout:** FROZEN orchestrator/WriterBase contract untouched; every
+writer change conforms to `plan_substeps`/`run_substep` + chart-scoped delete-then-insert;
+`mimamsa_*` calibration tables and the sealed test split untouched (T-4's phala anchors are
+deterministic L4 phala, not L5 calibration — confirmed by keyword scan across all 12 diffs, no
+hits). Each lane its own worktree/PR; CI green on every merge.
+
+```yaml
+session_close:
+  session_id: SARVA-SIDDHI-2026-07-24
+  campaign: SARVA_SIDDHI_v1_0
+  close_criteria_met: false
+  verification: "9/11 fix lanes CLOSED-WITH-EVIDENCE (T-1, T-3, T-5, P-1, R-1/R-2, D-1, D-3-code,
+    D-4, register-reconciliation); 2/11 CODE-COMPLETE-DATA-PENDING (CR-66 phala anchors, CR-73
+    kemadruma cancellation — real fixes merged + deployed + live-derivation-proven, production
+    tables not yet rebuilt, needs cockpit build access); T-2 (gochara full materialization)
+    real work sized (~23.5h, resized upward from W-0's original estimate after the span bug was
+    found and fixed) but deliberately not dispatched this session per native's own decision to
+    run it personally via the cockpit UI. D-2/CR-24 has one bounded planner-wiring follow-up.
+    Full evidence: PRE_DARPANA_READINESS_v2.0.md. Fresh-context Opus adversarial review
+    confirmed all 12 merged diffs (11 fix lanes + register reconciliation) as genuine,
+    non-fabricated fixes via direct source read."
+  deploy: "11 PRs (#732-#742) + 1 hygiene PR (#743) merged to main; CI auto-deploys on merge.
+    T-1's DATABASE_URL fix and T-2's span fix both confirmed live via direct MCP probe this
+    session. CR-24/CR-30's new MCP tools confirmed deployed via planner-level wiring only (their
+    tool schemas were not in this session's cached MCP catalog, since they deployed mid-session)."
+  product_code_writes_made: "Yes, extensively — 11 fix-lane PRs across platform/python-sidecar
+    (ga_yoga_writer.py, ga_structural_writer.py, ka_gochara_sweep/writer.py, bo_upaya, ph_nimitta
+    engine/writer), platform/src/lib/vidhi + retrieval/registry (new capabilities, primitive
+    repoints), platform-mcp/src/tools + generated (new MCP tools: bodha_mechanisms_get,
+    ganita_kp_cusps_get, standing_predictions_read; DB-proxy fix for 3 gochara tools), plus
+    migrations 464/465. FROZEN orchestrator/WriterBase, calibration tables, and sealed split
+    verified untouched by keyword scan across all diffs (zero hits)."
+  native_chart_touched: true
+  current_state_updated: true
+  register_dispositions_flipped: "CR-68, CR-16, CR-61, CR-64 flipped OPEN->CLOSED (stale
+    register-drift, PR #733); CR-132 minted for CR-64's narrower residual. CR-37 flipped
+    OPEN->CLOSED for real (PR #742's data fix) with its registry dark-flag cleared in a
+    same-campaign follow-up (PR #743) after W-5 caught it still set post-merge. CR-67, CR-69,
+    CR-130 (Jaimini half), CR-24 (tool-exists half), CR-30 flipped OPEN->CLOSED for real.
+    CR-66 and CR-73 (kemadruma half) remain technically OPEN in the register pending the
+    production data rebuild that would make their real code fixes actually served."
+  followups: "(1) Native to dispatch T-2's gochara materialization via the cockpit UI (~23.5h,
+    >=4 resumable ~6h Cloud Run runs against brahma-build-pipeline-job, whose deployed image
+    already includes PR #737's span fix) and, ideally in the same build pass, a rebuild that
+    refreshes phala_anchors (CR-66) and dosha_label (CR-73) production data -- both are pure
+    data-refresh, zero new code needed. (2) Repoint the mechanism_read vidhi primitive to
+    bodha_mechanisms_get (CR-24) -- small, bounded. (3) Re-verify CR-66/CR-73/T-2 live once the
+    rebuild runs, and re-verify CR-24/CR-30's new MCP tools directly once a fresh session's tool
+    catalog picks them up. (4) Only then does PRE_DARPANA_READINESS reach a genuine v2.1/exit-met
+    close and UAT-DARPANA open."
+  next_session_objective: "Confirm the native's cockpit-driven T-2 + data-rebuild dispatch
+    completed; live re-verify CR-66, CR-73, CR-24's planner wiring, and the full gochara
+    materialization span (birth->birth+100y); publish PRE_DARPANA_READINESS_v2.1 as the genuine
+    exit-met close if all three land clean."
+```
+
+### Next session objective
+
+Confirm the native's cockpit-driven T-2 gochara materialization + phala_anchors/dosha_label
+data-rebuild dispatch completed; live re-verify CR-66, CR-73, and CR-24's planner wiring once
+repointed; live re-verify the full gochara materialization span reaches birth+100y (2084).
+`PRE_DARPANA_READINESS_v2_0.md` is the authoritative status; UAT-DARPANA does not open until a
+genuine v2.1 close.
+
+*End of SARVA-SIDDHI-2026-07-24 entry — 2026-07-24.*
