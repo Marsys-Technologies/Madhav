@@ -68,6 +68,18 @@ import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenanc
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
+// Internal L1-writer namespace tags (e.g. "[ga_sensitive]", "[ga_structural]") that get
+// appended onto signal_headline_text at write time to mark the writer's own internal
+// classification of the row. These are an L1-writer-internal bookkeeping detail — never a
+// user-facing gloss — and must not be echoed into the served headline string. Response-envelope
+// hygiene only: the underlying bodha_msr_signals row (and its provenance) are never touched.
+const INTERNAL_NAMESPACE_TAG_RE = /\s*\[ga_\w+\]/g
+
+/** Strip a trailing internal-namespace tag from a served headline string, if present. */
+function stripInternalNamespaceTag(text: string): string {
+  return text.replace(INTERNAL_NAMESPACE_TAG_RE, '').trimEnd()
+}
+
 // Coarse candidate pool for composite re-ranking when domain is specified.
 // Fetch this many by computed_salience, then composite-rank in TypeScript, then slice.
 const CANDIDATE_FETCH_SIZE = 500
@@ -534,6 +546,22 @@ export const querySignalsCapability: CapabilityDescriptor = {
       // almanac fact_keys + per-varga granular data may not carry major/chart_defining
       // tiers on the wire. Applied on BOTH the composite and salience-fallback paths.
       signals = demoteSignatureTiers(signals)
+
+      // Response-envelope hygiene fix: strip the internal L1-writer namespace tag
+      // (e.g. "[ga_sensitive]", "[ga_structural]") from signal_headline_text before it is
+      // served. The tag is an L1-writer-internal classification artifact stored on the row —
+      // it was being echoed verbatim into the user-facing headline field with no gloss or
+      // stripping. Applied on BOTH the composite and salience-fallback paths, before
+      // projection/truncation, so it holds regardless of which columns are requested. The
+      // underlying bodha_msr_signals row and its provenance are untouched — this only affects
+      // what is echoed into the served string.
+      signals = signals.map(s => {
+        const headline = s['signal_headline_text']
+        if (typeof headline !== 'string') return s
+        const stripped = stripInternalNamespaceTag(headline)
+        if (stripped === headline) return s
+        return { ...s, signal_headline_text: stripped }
+      })
 
       // Size guard (H-12): prevent >1.5MB responses from overwhelming the MCP transport
       // S3 fix (R5 W0a perf lane): Buffer.byteLength on the UTF-8 encoding, not
