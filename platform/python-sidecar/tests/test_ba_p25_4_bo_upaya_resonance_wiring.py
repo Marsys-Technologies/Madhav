@@ -317,3 +317,63 @@ class TestResonanceDegeneracyGate:
             "The graha with weaker dispositor terminal + active own-dasha should "
             "rank as MORE resonant (higher remedy priority), not less"
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CR-67 (SARVA-SIDDHI W-3): _fetch_graha_cdlm_cells — the previously-missing
+# resonance → CDLM cell derivation (associated_cdlm_cells_array was 100% NULL).
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestGrahaCdlmCellsWired:
+    def _load(self):
+        return _load_module("bo_upaya.py")
+
+    def test_groups_cell_ids_by_graha(self):
+        mod = self._load()
+        # SQL returns one (graha, cell_id) row per material (graha × cell) pair.
+        rows = [
+            ("Sun", "cell-1"), ("Sun", "cell-2"), ("Saturn", "cell-1"),
+            ("Jupiter", "cell-3"),
+        ]
+        conn = _conn_returning(rows)
+        result = mod._fetch_graha_cdlm_cells(conn, "chart-1", "lahiri_chitrapaksha")
+        assert result["Sun"] == ["cell-1", "cell-2"]
+        assert result["Saturn"] == ["cell-1"]
+        assert result["Jupiter"] == ["cell-3"]
+
+    def test_empty_when_no_material_cells(self):
+        mod = self._load()
+        conn = _conn_returning([])
+        result = mod._fetch_graha_cdlm_cells(conn, "chart-1", "lahiri_chitrapaksha")
+        assert result == {}
+
+    def test_handles_dict_row_factory(self):
+        mod = self._load()
+        rows = [{"graha": "Venus", "cell_id": "cell-9"}]
+        conn = _conn_returning(rows)
+        result = mod._fetch_graha_cdlm_cells(conn, "chart-1", "lahiri_chitrapaksha")
+        assert result == {"Venus": ["cell-9"]}
+
+    def test_insert_binds_cdlm_param_not_literal_null(self):
+        """The INSERT must bind %(associated_cdlm_cells_array)s — a regression
+        to the old literal NULL is what left the column 100% empty DB-wide."""
+        mod = self._load()
+        assert "%(associated_cdlm_cells_array)s" in mod._RESONANCE_INSERT
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CR-69 (SARVA-SIDDHI W-3): the sadhana-milestone date filter must use a
+# parameter cast (`%s::date`), not the invalid `DATE %s` that raised a
+# SyntaxError and kept bodha_rm_dasha_windowed_prescriptions at 0 rows.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestSadhanaMilestoneDateCast:
+    def _load(self):
+        return _load_module("bo_upaya.py")
+
+    def test_sadhana_query_uses_param_cast_not_date_keyword(self):
+        mod = self._load()
+        import inspect
+        src = inspect.getsource(mod._fetch_sadhana_milestones)
+        assert "%s::date" in src, "sadhana date filter must cast the bound param"
+        assert "DATE %s" not in src, "the invalid `DATE %s` parameter form must be gone"
