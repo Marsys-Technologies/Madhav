@@ -41,7 +41,8 @@ describe('WP-1.2(d) salience demotion — descriptive/per-varga barred from majo
     const out = demoteSignatureTier(row)
     expect(out.signature_tier).toBe(DEMOTED_TIER)
     expect(out.signature_tier_demoted_from).toBe('chart_defining')
-    expect(out.signature_tier_demotion_reason).toContain('WP-1.2d')
+    expect(out.signature_tier_demotion_reason).toContain('not served at major/chart_defining tier')
+    expect(out.signature_tier_demotion_reason).not.toContain('WP-1.2d')
   })
 
   it('caps a major descriptive signal (pakshi) but leaves a real major yoga untouched', () => {
