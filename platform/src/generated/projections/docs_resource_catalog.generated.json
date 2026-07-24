@@ -1,8 +1,8 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-07-24T04:50:51.898Z",
-  "total": 167,
+  "generated_at": "2026-07-24T05:06:15.709Z",
+  "total": 168,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -1255,6 +1255,20 @@
       "name": "get_karakas",
       "short_label": "Get Karakas",
       "one_line": "Retrieve Jaimini karaka and KP (Krishnamurti Paddhati) data for a chart.",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L1/get_kp_cusps",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_kp_cusps",
+      "short_label": "Get Kp Cusps",
+      "one_line": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class.",
       "scope": "per_chart",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -2527,14 +2541,14 @@
       "L0": 63,
       "L2": 32,
       "L3": 14,
-      "L1": 34,
+      "L1": 35,
       "L4": 11,
       "L5": 13
     },
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 161
+      "tool": 162
     }
   }
 }

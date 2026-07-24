@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-07-24T04:50:51.898Z",
+  "generated_at": "2026-07-24T05:06:15.709Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
   "vidhi_live_tool_bridge": {
-    "total": 30,
+    "total": 31,
     "mapped": 12,
-    "unmapped": 18,
+    "unmapped": 19,
     "entries": [
       {
         "name": "bodha_chart_digest_get",
@@ -76,6 +76,12 @@
         "via": [
           "query_dasha_periods"
         ]
+      },
+      {
+        "name": "ganita_kp_cusps_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
       },
       {
         "name": "ganita_medical_get",

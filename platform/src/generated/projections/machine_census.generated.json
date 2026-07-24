@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-24T04:50:51.898Z",
+  "generated_at": "2026-07-24T05:06:15.709Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 167,
+  "total": 168,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -2776,6 +2776,39 @@
       ],
       "short_label": "Get Karakas",
       "one_line": "Retrieve Jaimini karaka and KP (Krishnamurti Paddhati) data for a chart.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L1/get_kp_cusps",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_kp_cusps",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 3,
+      "projection_tags": [
+        "mcp_full"
+      ],
+      "short_label": "Get Kp Cusps",
+      "one_line": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class.",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -5605,22 +5638,22 @@
       "L0": 63,
       "L2": 32,
       "L3": 14,
-      "L1": 34,
+      "L1": 35,
       "L4": 11,
       "L5": 13
     },
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 161
+      "tool": 162
     },
     "by_scope": {
       "global": 67,
-      "per_chart": 100
+      "per_chart": 101
     },
     "by_archetype": {
       "orientation_digest": 11,
-      "flat_fact": 73,
+      "flat_fact": 74,
       "calibration": 20,
       "rich_relational": 21,
       "cross_domain": 9,
@@ -5630,7 +5663,7 @@
     },
     "by_tool_role": {
       "umbrella": 19,
-      "leaf": 82,
+      "leaf": 83,
       "quality": 20,
       "drill": 19,
       "synthesizer": 4,
@@ -5639,13 +5672,13 @@
       "graph": 4
     },
     "by_data_source": {
-      "stored": 146,
+      "stored": 147,
       "computed": 20,
       "hybrid": 1
     },
     "by_projection_tag": {
       "chat": 85,
-      "mcp_full": 165,
+      "mcp_full": 166,
       "mcp_compact": 84,
       "mcp_consult": 14
     },

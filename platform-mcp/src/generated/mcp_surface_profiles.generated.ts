@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-07-24T04:50:51.898Z
+ * generated_at: 2026-07-24T05:06:15.709Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -46,7 +46,7 @@ export const MCP_SURFACE_PROFILES: {
   "full": {
     "profile": "full",
     "max_tools": null,
-    "total": 151,
+    "total": 152,
     "tool_names": [
       "assess_career",
       "assess_health",
@@ -80,6 +80,7 @@ export const MCP_SURFACE_PROFILES: {
       "get_eclipse_flags",
       "get_graha_yuddha",
       "get_karakas",
+      "get_kp_cusps",
       "get_medical_indications",
       "get_panchanga",
       "get_positions",
@@ -1683,6 +1684,40 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Get Karakas",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "get_kp_cusps",
+        "description": "Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart, first-class. For each of the 12 bhava cusps: cusp sidereal longitude, sign (rashi), and the full KP lord chain — sign_lord (rashi lord) / star_lord (nakshatra lord) / sub_lord / sub_sub_lord / prana_lord — plus the cuspal significators list and the cusp degrees (Placidus and Sripati start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every value is an already-stored L1 fact (categories cusp_kp_lords, kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical Krishnamurti ayanamsha; pass ayanamsha_id to select any of the 5 stored ayanamshas. Pass include_graha_kp_lords=true to also get each graha's own KP star/sub/sub_sub/prana chain (graha_kp_lords). Each cusp carries the source fact_ids for Bodha constituent_facts_array back-reference.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Ayanamsha (default 'krishnamurti', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical."
+            },
+            "include_graha_kp_lords": {
+              "type": "boolean",
+              "description": "If true, also return the per-graha KP lord chain (graha_kp_lords). Default false."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L1/get_kp_cusps",
+        "layer": "L1",
+        "name_valid": true,
+        "annotations": {
+          "title": "Get Kp Cusps",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,

@@ -14,6 +14,8 @@ const LIVE_TOOLS = new Set<string>([
   'catalog_assets_all', 'catalog_assets_l0', 'catalog_assets_list', 'chart_snapshot',
   'compute_natal_positions', 'ephemeris_cache_year', 'event_anchors',
   'ganita_ayurdaya_get', 'ganita_chart_facts_get', 'ganita_condition_get',
+  // SARVA-SIDDHI W-4 D-4 (CR-30): dedicated first-class KP cusp/sub-lord face.
+  'ganita_kp_cusps_get',
   'ganita_dasha_lord_capability_get', 'ganita_dasha_periods_get', 'ganita_dashas_get',
   'ganita_medical_get', 'ganita_nakshatra_get', 'ganita_natal_positions_compute',
   'ganita_positions_get', 'ganita_sade_sati_get', 'ganita_sensitive_degrees_get',

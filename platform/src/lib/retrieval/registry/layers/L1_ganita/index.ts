@@ -46,6 +46,9 @@ import { getAvTransitGatingCapability }     from './get_av_transit_gating'
 // rollup + prashna-lagna serving.
 import { getConditionCompositeCapability }  from './get_condition_composite'
 import { getPrashnaLagnaCapability }        from './get_prashna_lagna'
+// SARVA-SIDDHI W-4 lane D-4 (CR-30): dedicated first-class KP (Krishnamurti Paddhati)
+// cusp/sub-lord serving face over the already-stored KP fact categories (no new computation).
+import { getKpCuspsCapability }             from './get_kp_cusps'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -80,3 +83,4 @@ registerCapability(getDashaLordCapabilityCapability)
 registerCapability(getAvTransitGatingCapability)
 registerCapability(getConditionCompositeCapability)
 registerCapability(getPrashnaLagnaCapability)
+registerCapability(getKpCuspsCapability)
