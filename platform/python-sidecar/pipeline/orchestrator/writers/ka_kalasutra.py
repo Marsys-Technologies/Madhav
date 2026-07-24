@@ -119,6 +119,22 @@ class KaKalasutraWriter(WriterBase):
             if windows.activation_start is not None:
                 dated += 1
 
+            # CR-37 (SARVA-SIDDHI W-1 T-3) §N.6 disclosure: a yoga that ka_yojaka
+            # marked as a Nabhasa/ākṛti distribution yoga (formed by all seven
+            # grahas → no discriminating daśā lord) is CORRECTLY undated. Surface
+            # WHY, so a caller reads "structurally always-on" rather than a bare
+            # null. The reason rides both the active_dasha_periods listing (as a
+            # marker entry) and the source_citation, so the serving surface can
+            # distinguish it from a genuinely-missing window.
+            always_on_reason = None
+            if isinstance(dasha_rule, dict):
+                always_on_reason = dasha_rule.get('always_on_reason')
+            active_periods_payload = windows.active_dasha_periods
+            if always_on_reason:
+                active_periods_payload = list(windows.active_dasha_periods) + [
+                    {'kind': 'always_on', 'reason': str(always_on_reason)}
+                ]
+
             # CR-109 fix (D-4a Lane A-0): one row per matched in-life period
             # (windows.period_windows), not one collapsed row per predicate. Every
             # row carries the SAME full active_dasha_periods_jsonb / predicted_dates
@@ -139,7 +155,7 @@ class KaKalasutraWriter(WriterBase):
                     signal_id,
                     ayanamsha_id,
                     sig_class,
-                    json.dumps(windows.active_dasha_periods),
+                    json.dumps(active_periods_payload),
                     json.dumps(windows.predicted_dates),
                     pw['proximity_score'],
                     pw['start'].isoformat() if pw['start'] else None,
@@ -147,7 +163,10 @@ class KaKalasutraWriter(WriterBase):
                     pw['peak'].isoformat() if pw['peak'] else None,
                     conv.get('orb_strength'),
                     conv.get('convergence_score'),
-                    f"ka_kalasutra:v1.0:signal={sig_id_str[:8]}:src={pw['resolution_source']}:period={idx}",
+                    (
+                        f"ka_kalasutra:v1.0:signal={sig_id_str[:8]}:src={pw['resolution_source']}:period={idx}"
+                        + (f":always_on={always_on_reason}" if always_on_reason else "")
+                    ),
                 ))
 
         rows_actually_inserted = 0

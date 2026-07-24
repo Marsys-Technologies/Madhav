@@ -8,6 +8,23 @@ D6 (Kāla completeness v2): reads bodha_cgm_nodes pagerank centrality and
 bodha_cdlm_cells domain-link strength to enrich each predicate's
 dasha_eligibility_rule with a cgm_centrality_weight field. This allows
 ka_sangam to prioritize predicates whose primary graha is a graph hub.
+
+CR-37 (SARVA-SIDDHI W-1 T-3): YOGA/DOSHA activation dating. The ratified
+binder set no usable constituent_lords for yoga_label / dosha signals (it
+dumped L1 fact-id hashes — see binder._extract_constituent_lords), so those
+predicates never matched a daśā period and came out UNDATED. This writer now
+resolves the REAL forming grahā(s) from authoritative L1 sources:
+  • YOGA — `ga_yoga_firings.constituent_planets` keyed by yoga_canonical_id
+    (mapped from the signal's yoga_label constituent fact). A Nabhasa/ākṛti
+    "distribution" yoga (formed by (near-)all seven grahas) has no single
+    activating daśā lord and stays honestly UNDATED with an inspectable
+    `always_on_reason` (§N.6); a bounded-set yoga (Pañca-Mahāpuruṣa, solar/
+    lunar adjacency, Rāja/Dhana) inherits its forming grahas → real windows.
+  • DOSHA — kāla-sarpa (fired) activates through the nodal axis [Rahu, Ketu]
+    (definitional); a fired dosha_label inherits the grahā(s) named by its
+    graha_position constituent facts. Unfired / requires_pass catalog-only
+    doshas stay UNDATED (dating a catalog-only match would be fabrication).
+Every emitted lord traces to a real L1 row (§N.5 — reference, never invent).
 """
 import json
 import logging
@@ -19,9 +36,20 @@ from services.ka_temporal import (
     extract_lords_from_config,
     extract_lords_from_text,
     lord_from_house_varga,
+    normalize_graha,
 )
 
 logger = logging.getLogger(__name__)
+
+# CR-37: a Nabhasa/ākṛti/saṅkhyā "distribution" yoga is defined by how (near-)all
+# seven grahas are arranged (e.g. Gola/Kedāra/Yuga/Śūla — the "how many signs the
+# 7 planets occupy" saṅkhyā family, and the ākṛti shape yogas). Every graha is a
+# constituent, so no single daśā lord discriminates its activation — dating it to
+# "the current daśā" would manufacture a discrete window for an always-on natal
+# condition (fabrication). Point yogas name a bounded forming set: Pañca-
+# Mahāpuruṣa = 1, solar/lunar adjacency (Vasi/Veśi/Anaphā) = 2-3, Rāja/Dhana/
+# NBRY = 2-5. A threshold of 6 cleanly separates the two on the observed data.
+DISTRIBUTION_YOGA_MIN_GRAHAS = 6
 
 
 @register('ka_yojaka')
@@ -88,6 +116,15 @@ class KaYojakaWriter(WriterBase):
         # (e.g. "D9") but no direct graha key — net_argala_per_varga and
         # siblings. §N.5-clean: every lord traces to a real L1 fact row.
         house_lord_map: dict[tuple, str] = self._fetch_house_lord_map(conn, chart_id)
+
+        # CR-37: authoritative YOGA/DOSHA forming-graha sources.
+        #  - yoga_firing_planets: {(ayanamsha_id, yoga_canonical_id): [planet,...]}
+        #    from L1 ga_yoga_firings (fired yogas only).
+        #  - activation_source_facts: {fact_id: (fact_category, fact_subject)} for
+        #    the yoga_label / dosha_label / graha_position facts used to map a
+        #    signal → its yoga canonical id (yoga) or forming grahas (dosha).
+        yoga_firing_planets: dict[tuple, list] = self._fetch_yoga_firing_planets(conn, chart_id)
+        activation_source_facts: dict[str, tuple] = self._fetch_activation_source_facts(conn, chart_id)
 
         # Step 3a: pratijna linkage — promise-register IDs per domain + multi-system confirmation
         # SAVEPOINT-guarded: soft dependency on P3B data (bodha_pratijna may not be built yet)
@@ -184,6 +221,28 @@ class KaYojakaWriter(WriterBase):
                 except Exception:
                     config = {}
             config = config or {}
+
+            # CR-37: authoritative YOGA/DOSHA forming-graha resolution. Runs
+            # BEFORE the generic config/house/fact_subject chain and OVERRIDES
+            # whatever the binder produced for these classes, because the L1
+            # firing sources are the authority (§N.5). For a distribution yoga
+            # it sets no lords and stamps always_on_reason (stays honestly
+            # undated); for a bounded-set yoga / fired dosha it sets the real
+            # forming grahas so the resolver produces genuine daśā windows.
+            if sc in ('YOGA', 'DOSHA'):
+                firing_lords, always_on_reason, firing_source = _resolve_firing_lords(
+                    signal_dict, sc, config, yoga_firing_planets, activation_source_facts,
+                )
+                if always_on_reason:
+                    pred['dasha_eligibility_rule']['constituent_lords'] = []
+                    pred['dasha_eligibility_rule']['always_on_reason'] = always_on_reason
+                    pred['dasha_eligibility_rule']['constituent_lords_source'] = firing_source
+                    existing_lords = []
+                elif firing_lords:
+                    pred['dasha_eligibility_rule']['constituent_lords'] = firing_lords
+                    pred['dasha_eligibility_rule']['constituent_lords_source'] = firing_source
+                    existing_lords = firing_lords
+
             if not existing_lords:
                 resolved_lords = extract_lords_from_config(
                     config,
@@ -425,6 +484,80 @@ class KaYojakaWriter(WriterBase):
         return result
 
 
+    def _fetch_yoga_firing_planets(self, conn, chart_id: str) -> dict[tuple, list]:
+        """CR-37: authoritative forming-graha set per FIRED yoga from L1
+        ga_yoga_firings. Returns {(ayanamsha_id, yoga_canonical_id): [planet,...]}.
+        SAVEPOINT-guarded soft dependency (same pattern as _fetch_cgm_pagerank) —
+        returns {} on any failure rather than aborting the writer's transaction.
+        """
+        result: dict[tuple, list] = {}
+        with conn.cursor() as sp:
+            sp.execute("SAVEPOINT sp_yoga_firings")
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT ayanamsha_id, yoga_canonical_id, constituent_planets
+                    FROM ga_yoga_firings
+                    WHERE chart_id = %s AND fired = true
+                      AND constituent_planets IS NOT NULL
+                    """,
+                    (chart_id,),
+                )
+                rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_yoga_firings")
+            for r in rows:
+                planets = r['constituent_planets']
+                if isinstance(planets, str):
+                    try:
+                        planets = json.loads(planets)
+                    except Exception:
+                        continue
+                if isinstance(planets, list) and planets:
+                    result[(str(r['ayanamsha_id']), str(r['yoga_canonical_id']))] = [
+                        str(p) for p in planets
+                    ]
+            logger.debug("ka_yojaka: yoga firing planets loaded — %d fired yogas", len(result))
+        except Exception as exc:
+            with conn.cursor() as sp:
+                sp.execute("ROLLBACK TO SAVEPOINT sp_yoga_firings")
+            logger.debug("ka_yojaka: yoga firing planets fetch skipped: %s", exc)
+        return result
+
+    def _fetch_activation_source_facts(self, conn, chart_id: str) -> dict[str, tuple]:
+        """CR-37: {fact_id: (fact_category, fact_subject)} for the L1 chart_facts
+        categories used to resolve yoga/dosha forming grahas — 'yoga_label' &
+        'dosha_label' (fact_subject IS the canonical id), and 'graha_position'
+        (fact_subject IS the graha). SAVEPOINT-guarded soft dependency.
+        """
+        result: dict[str, tuple] = {}
+        with conn.cursor() as sp:
+            sp.execute("SAVEPOINT sp_activation_facts")
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_id, fact_category, fact_subject
+                    FROM chart_facts
+                    WHERE chart_id = %s
+                      AND fact_category IN ('yoga_label', 'dosha_label', 'graha_position')
+                    """,
+                    (chart_id,),
+                )
+                rows = cur.fetchall()
+            with conn.cursor() as sp:
+                sp.execute("RELEASE SAVEPOINT sp_activation_facts")
+            for r in rows:
+                result[str(r['fact_id'])] = (str(r['fact_category']), r['fact_subject'])
+            logger.debug("ka_yojaka: activation source facts loaded — %d facts", len(result))
+        except Exception as exc:
+            with conn.cursor() as sp:
+                sp.execute("ROLLBACK TO SAVEPOINT sp_activation_facts")
+            logger.debug("ka_yojaka: activation source facts fetch skipped: %s", exc)
+        return result
+
+
 # ── D6 helpers (module-level) ─────────────────────────────────────────────────
 
 # CR-85 (D-2 Lane V-4): centrality-consumption stub removal, bounded to this
@@ -498,3 +631,94 @@ def _infer_signal_domain(signal_dict: dict) -> str:
         if any(kw in stid for kw in keywords):
             return domain
     return 'general'
+
+
+def _resolve_firing_lords(
+    signal_dict: dict,
+    signature_class: str,
+    config: dict,
+    yoga_firing_planets: dict,
+    activation_source_facts: dict,
+) -> tuple[list, str | None, str | None]:
+    """CR-37: authoritative forming-graha resolution for one YOGA/DOSHA signal.
+
+    Returns (lords, always_on_reason, source):
+      • lords            — canonical graha names whose daśā activates the signal
+                           (empty when none resolve or the yoga is always-on).
+      • always_on_reason — set ONLY for a Nabhasa/ākṛti distribution yoga; the
+                           caller then leaves it undated with this inspectable
+                           reason (§N.6). None otherwise.
+      • source           — provenance label for constituent_lords_source.
+
+    Never fabricates: a value is returned only when a real L1 row backs it.
+    Unfired / requires_pass catalog-only doshas resolve to ([], None, None) —
+    correctly undated.
+    """
+    ayan = str(signal_dict.get('ayanamsha_id'))
+    cfa = signal_dict.get('constituent_facts_array') or []
+    if not isinstance(cfa, list):
+        cfa = []
+
+    if signature_class == 'YOGA':
+        # Nabhasa saṅkhyā "distribution" yogas (Gola/Yuga/Śūla/Kedāra/Pāśa/…)
+        # are defined by how many SIGNS the seven grahas occupy — their bodha
+        # fire_reason is the '<N>_distinct_signs' condition. Every graha is a
+        # constituent, so no single daśā lord discriminates activation → the
+        # yoga is honestly UNDATED with an inspectable reason (§N.6), never a
+        # manufactured window. Checked FIRST because the L1 ga_yoga_firings
+        # engine does not record every saṅkhyā yoga (e.g. Gola/Śūla/Yuga on the
+        # native), and the lookup below would otherwise leave them silently null.
+        fire_reason = str((config or {}).get('fire_reason') or '')
+        if fire_reason.endswith('distinct_signs'):
+            return [], 'distribution_yoga_sankhya', 'ka_yojaka:sankhya_fire_reason'
+
+        # Map the signal → its yoga canonical id via a yoga_label constituent
+        # fact (fact_subject IS the canonical id), then look up the fired yoga's
+        # complete forming-graha set from L1 ga_yoga_firings.
+        for fid in cfa:
+            cat, subj = activation_source_facts.get(str(fid), (None, None))
+            if cat != 'yoga_label' or not subj:
+                continue
+            planets = yoga_firing_planets.get((ayan, str(subj)))
+            if not planets:
+                continue
+            if len(planets) >= DISTRIBUTION_YOGA_MIN_GRAHAS:
+                return [], 'distribution_yoga_all_grahas', 'ka_yojaka:ga_yoga_firings'
+            lords: list[str] = []
+            for p in planets:
+                g = normalize_graha(p)
+                if g and g not in lords:
+                    lords.append(g)
+            if lords:
+                return lords, None, 'ka_yojaka:ga_yoga_firings'
+        return [], None, None
+
+    # DOSHA
+    stid = str(signal_dict.get('signal_type_id') or '')
+    fires = config.get('fires')
+    fires_true = fires is True or str(fires).strip().lower() == 'true'
+
+    if stid.startswith('kala_sarpa'):
+        # Kāla-sarpa: all grahas hemmed within the Rāhu-Ketu axis; it operates
+        # through the nodal daśās by definition. Only a FIRED per-varga detection
+        # is a real dosha — a 'none' variant carries no dosha to activate.
+        if fires_true:
+            return ['Rahu', 'Ketu'], None, 'ka_yojaka:kala_sarpa_nodal_axis'
+        return [], None, None
+
+    if fires_true:
+        # A confirmed dosha inherits the grahā(s) named by its graha_position
+        # constituent facts (e.g. Kemadruma → Moon). §N.5 — real L1 rows.
+        lords = []
+        for fid in cfa:
+            cat, subj = activation_source_facts.get(str(fid), (None, None))
+            if cat == 'graha_position':
+                g = normalize_graha(subj)
+                if g and g not in lords:
+                    lords.append(g)
+        if lords:
+            return lords, None, 'ka_yojaka:dosha_constituent_grahas'
+
+    # Unfired / requires_pass catalog-only dosha — correctly undated (dating a
+    # catalog-only match would be fabrication).
+    return [], None, None
