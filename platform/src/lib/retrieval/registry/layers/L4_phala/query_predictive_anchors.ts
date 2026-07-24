@@ -130,6 +130,43 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
         if (row.signal_id) signalRefs.add(row.signal_id)
       }
 
+      // §N.6 Serving Density Principle (T-5 fix, A-6/B-1): an empty `anchors` array must
+      // NEVER be a silent empty. Distinguish (a) a genuine filter miss (the chart HAS
+      // anchors, just none match this domain/event_type/direction/horizon_tier), from
+      // (b) a genuinely empty backing set for this chart (the CR-66 degenerate-build
+      // condition), from (c) an unreachable backing table. We resolve which by counting
+      // the chart's total anchors once, only when the filtered result is empty — an
+      // honest, non-fabricated disclosure — and cite the open CR so a caller can never
+      // read the empty as "no predictions exist for this native."
+      let empty_reason: string | null = null
+      let known_gap: string | null = null
+      let backing_data_reachable = true
+      if (result.rows.length === 0) {
+        const hasFilter = Boolean(domain || event_type || direction || horizon_tier)
+        let chartTotal = -1
+        try {
+          const totalRes = await query(
+            'SELECT count(*)::int AS n FROM phala_anchors WHERE chart_id = $1',
+            [chart_id],
+          )
+          chartTotal = Number((totalRes.rows[0] as { n?: number } | undefined)?.n ?? 0)
+        } catch {
+          chartTotal = -1
+        }
+        if (chartTotal < 0) {
+          backing_data_reachable = false
+          empty_reason = 'phala_anchors count for this chart could not be read on this call — backing data may be unreachable; this empty is NOT a confirmed zero-prediction result.'
+        } else if (chartTotal === 0) {
+          empty_reason = 'phala_anchors has zero rows for this chart — the L4 predictive-anchor build (ph_nimitta) has not produced anchors for this native, or the build is degenerate. This is a known data gap, not a fabricated empty.'
+          known_gap = 'CR-66'
+        } else if (hasFilter) {
+          empty_reason = `phala_anchors has ${chartTotal} anchor(s) for this chart, but none match the requested filter (domain=${domain ?? '∅'}, event_type=${event_type ?? '∅'}, direction=${direction ?? '∅'}, horizon_tier=${horizon_tier ?? '∅'}). Drop or widen the filter to see the chart's anchors — an honest filter miss, not a fabricated empty.`
+          known_gap = 'CR-66'
+        } else {
+          empty_reason = `phala_anchors reports ${chartTotal} anchor(s) for this chart but the primary query returned none — unexpected; treat as an honest empty pending investigation, not a confirmed zero.`
+        }
+      }
+
       // R5.1 C2 item 4 (posterior cardinality + base_rate_source stamping — seal §6 /
       // lift_vector provenance). `posterior`/`lift_vector_jsonb` (migration 398, BA-P5B) are
       // a DETERMINISTIC product model — posterior = base_rate × promise_lift ×
@@ -176,10 +213,12 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
           chart_id,
           anchors:      anchorsWithProvenance,
           anchor_count: result.rows.length,
+          empty_reason,
+          known_gap,
           signal_id_refs: Array.from(signalRefs),
           filters: { domain, event_type, direction, horizon_tier, top_k },
           drill_next: ['marsys://tool/L4/query_domain_result', 'marsys://tool/L4/query_falsifiers'],
-          provenance: { tables: ['phala_anchors'] },
+          provenance: { tables: ['phala_anchors'], backing_data_reachable },
         },
         is_error: false,
       }

@@ -745,15 +745,21 @@ function elevationTail(domain: string, from: number): FloorItem[] {
     { primitive_id: 'gochara_activation_read', order: from, band: 'machine_band' },
     { primitive_id: 'gochara_forecast_read', order: from + 1, band: 'machine_band' },
     { primitive_id: 'election_read', order: from + 2, band: 'machine_band' },
+    // E-1 (T-5 fix, A-6(b)): the daśā-driven yoga-activation surface (kala_yoga_activation_get).
+    // Previously a REGISTERED primitive wired into NO floor, so CR-37 (yoga-activation dating)
+    // could never reach a completeness receipt regardless of the tool's own honest
+    // undated_activation_count. Binding it into the shared E-1 temporal band puts CR-37's
+    // known_gap into every deepdive + foundation receipt (dark, disclosed, never faked).
+    { primitive_id: 'yoga_activation_scan', order: from + 3, band: 'machine_band' },
     // E-2 — prospective ledger: OPEN filed predictions for the domain (confirmation-only, live).
-    { primitive_id: 'standing_predictions_read', order: from + 3, band: 'machine_band', args_override: { domain } },
+    { primitive_id: 'standing_predictions_read', order: from + 4, band: 'machine_band', args_override: { domain } },
     // E-6 — personal retrodiction, domain-scoped (confirmation-only framing preserved).
-    { primitive_id: 'lel_retrodiction', order: from + 4, band: 'machine_band', args_override: { domain } },
+    { primitive_id: 'lel_retrodiction', order: from + 5, band: 'machine_band', args_override: { domain } },
     // ── E-7 INSIGHT BAND (hard_floor: the beyond-acharya carve; §N.6-protected) ──
-    { primitive_id: 'contradiction_scan', order: from + 5, band: 'machine_band', hard_floor: true }, // + E-5
-    { primitive_id: 'tail_divergence_read', order: from + 6, band: 'machine_band', args_override: { domain }, hard_floor: true },
-    { primitive_id: 'mechanism_read', order: from + 7, band: 'machine_band', hard_floor: true },
-    { primitive_id: 'statistical_context', order: from + 8, band: 'machine_band', hard_floor: true },
+    { primitive_id: 'contradiction_scan', order: from + 6, band: 'machine_band', hard_floor: true }, // + E-5
+    { primitive_id: 'tail_divergence_read', order: from + 7, band: 'machine_band', args_override: { domain }, hard_floor: true },
+    { primitive_id: 'mechanism_read', order: from + 8, band: 'machine_band', hard_floor: true },
+    { primitive_id: 'statistical_context', order: from + 9, band: 'machine_band', hard_floor: true },
   ];
 }
 

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-24T04:49:55.973Z",
+  "generated_at": "2026-07-24T05:06:15.709Z",
   "catalog_total": 168,
   "catalog_by_type": {
     "tool": 162,
@@ -103,7 +103,7 @@
     "generated_count": 160,
     "excluded_non_tool_count": 6,
     "registry_bridge_block_count": 26,
-    "registry_bridge_source": "/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a04197824920505f0/platform-mcp/src/tools/registry_bridge.ts",
+    "registry_bridge_source": "/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a8fc2530b82a43c76/platform-mcp/src/tools/registry_bridge.ts",
     "name_overlap": [
       "assess_career",
       "assess_health",
