@@ -867,19 +867,42 @@ export function buildReadingContract(params: BuildReadingContractParams): string
 // ── signal_reader_text selector ────────────────────────────────────────────────
 
 /**
- * Collect the draft reader text for the signal classes PRESENT in this response (from the
- * register block's signal_class entries). Response-scoped: only the classes actually served
- * get their paragraph attached. Pass `all: true` to get the full 19-class map (used by the
- * coverage test / a docs projection).
+ * The internal editorial marker prefixed to every SIGNAL_READER_TEXT paragraph (see that
+ * map's doc comment: "generate draft reader text ... flag for native polish post-campaign").
+ * It is a scaffolding note for the native's later editorial pass — NOT reader-facing content
+ * — and must never reach a served response. Stripped at the `collectSignalReaderText` serve
+ * boundary below (fabrication-free: this only removes the internal flag, it does not rewrite
+ * or invent any of the substantive prose that follows it).
+ */
+const DRAFT_MARKER_RE = /^DRAFT \(native-polish-pending\)\.\s*/
+
+/** Strip the internal draft/native-polish-pending marker from a reader-text paragraph before
+ *  it is allowed to cross the serve boundary. Leaves the substantive prose untouched. */
+function stripDraftMarker(text: string): string {
+  return text.replace(DRAFT_MARKER_RE, '')
+}
+
+/**
+ * Collect the reader text for the signal classes PRESENT in this response (from the
+ * register block's signal_class entries), with the internal draft/native-polish-pending
+ * editorial marker stripped before it is returned. Response-scoped: only the classes
+ * actually served get their paragraph attached. Pass `all: true` to get the full 19-class
+ * map (used by the coverage test / a docs projection) — still marker-stripped.
  */
 export function collectSignalReaderText(
   signalClassTokens: string[],
   opts?: { all?: boolean },
 ): Record<string, string> {
-  if (opts?.all) return { ...SIGNAL_READER_TEXT }
+  if (opts?.all) {
+    const out: Record<string, string> = {}
+    for (const cls of Object.keys(SIGNAL_READER_TEXT)) {
+      out[cls] = stripDraftMarker(SIGNAL_READER_TEXT[cls]!)
+    }
+    return out
+  }
   const out: Record<string, string> = {}
   for (const cls of signalClassTokens) {
-    if (SIGNAL_READER_TEXT[cls]) out[cls] = SIGNAL_READER_TEXT[cls]
+    if (SIGNAL_READER_TEXT[cls]) out[cls] = stripDraftMarker(SIGNAL_READER_TEXT[cls]!)
   }
   return out
 }
