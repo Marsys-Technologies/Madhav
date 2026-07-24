@@ -134,3 +134,24 @@ describe('classifyScope — entitlement tier', () => {
     expect(classifyScope('What is my wealth outlook?').scope_tuple.entitlement).toBe('restricted')
   })
 })
+
+describe('classifyScope — fallback_prompt entitlement gating (fix: no unconditional disclosure)', () => {
+  it('discloses the full internal classifier prompt only for entitlement:native', () => {
+    const r = classifyScope('What is my wealth outlook?')
+    expect(r.scope_tuple.entitlement).toBe('native')
+    expect(r.fallback_prompt).toBe(renderFallbackPrompt('What is my wealth outlook?'))
+    expect(r.fallback_prompt).toContain('You are a Jyotish query classifier')
+  })
+  it('withholds the internal classifier prompt for entitlement:reference callers', () => {
+    const r = classifyScope('What does the BPHS say about Rahu?')
+    expect(r.scope_tuple.entitlement).toBe('reference')
+    expect(r.fallback_prompt).not.toContain('You are a Jyotish query classifier')
+    expect(r.fallback_prompt).not.toBe(renderFallbackPrompt('What does the BPHS say about Rahu?'))
+    expect(r.fallback_prompt.toLowerCase()).toContain('withheld')
+  })
+  it('empty-query fallback (entitlement defaults to native) still discloses the full prompt', () => {
+    const r = classifyScope('')
+    expect(r.scope_tuple.entitlement).toBe('native')
+    expect(r.fallback_prompt).toBe(renderFallbackPrompt(''))
+  })
+})
