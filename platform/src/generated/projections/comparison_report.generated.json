@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-07-21T15:32:34.800Z",
-  "catalog_total": 163,
+  "generated_at": "2026-07-24T04:49:55.973Z",
+  "catalog_total": 168,
   "catalog_by_type": {
-    "tool": 157,
+    "tool": 162,
     "resource": 5,
     "prompt": 1
   },
   "chat_projection": {
-    "generated_count": 77,
+    "generated_count": 80,
     "tool_contracts_count": 5,
     "overlap_by_name": [
       "find_verses_about",
@@ -41,6 +41,7 @@
       "list_sutravali_rules_by_text",
       "maro_mcp_surface",
       "maro_orchestrate",
+      "mechanism_retrodiction_get",
       "pact_query",
       "query_activation_waveform",
       "query_anomaly_flags",
@@ -66,6 +67,7 @@
       "query_manifestation_grammar",
       "query_manifestation_sets",
       "query_mantras",
+      "query_mechanisms",
       "query_mimamsa_discoveries",
       "query_muhurat",
       "query_obstruction_periods",
@@ -82,6 +84,7 @@
       "query_retrograde_periods",
       "query_signal_families",
       "query_signals",
+      "query_spine_bundle",
       "query_sutravali_rules",
       "query_sutravali_rules_for_planet",
       "query_tantric_remedies",
@@ -97,10 +100,10 @@
     ]
   },
   "mcp_projection": {
-    "generated_count": 155,
+    "generated_count": 160,
     "excluded_non_tool_count": 6,
     "registry_bridge_block_count": 26,
-    "registry_bridge_source": "/Users/Dev/Vibe-Coding/Apps/Madhav/platform-mcp/src/tools/registry_bridge.ts",
+    "registry_bridge_source": "/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a04197824920505f0/platform-mcp/src/tools/registry_bridge.ts",
     "name_overlap": [
       "assess_career",
       "assess_health",
@@ -157,6 +160,7 @@
       "get_divisionals",
       "get_eclipse_flags",
       "get_karakas",
+      "get_kp_cusps",
       "get_medical_indications",
       "get_panchanga",
       "get_prashna_lagna",
@@ -178,6 +182,7 @@
       "list_sutravali_rules_by_text",
       "maro_mcp_surface",
       "maro_orchestrate",
+      "mechanism_retrodiction_get",
       "query_activation_waveform",
       "query_anomaly_flags",
       "query_aspects_at_time",
@@ -214,6 +219,7 @@
       "query_manifestation_grammar",
       "query_manifestation_sets",
       "query_mantras",
+      "query_mechanisms",
       "query_medical_mappings",
       "query_mimamsa_discoveries",
       "query_motion_state_thresholds",
@@ -231,6 +237,7 @@
       "query_predictions",
       "query_predictive_anchors",
       "query_projections",
+      "query_prospective_ledger",
       "query_quality_scorecard",
       "query_question_lenses",
       "query_rectification",
@@ -251,6 +258,7 @@
       "query_signal_families",
       "query_signals",
       "query_spillover_cascades",
+      "query_spine_bundle",
       "query_sutravali_rules",
       "query_sutravali_rules_for_planet",
       "query_tantric_remedies",
@@ -311,7 +319,7 @@
       "marsys://tool/L3/query_temporal_activation"
     ],
     "catalog_uris_reachable_via_registry_bridge_count": 24,
-    "catalog_uris_unreachable_via_registry_bridge_count": 139,
+    "catalog_uris_unreachable_via_registry_bridge_count": 144,
     "registry_bridge_uris_not_found_in_live_catalog": []
   }
 }

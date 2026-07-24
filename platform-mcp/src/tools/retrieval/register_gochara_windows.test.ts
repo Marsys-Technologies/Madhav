@@ -3,9 +3,13 @@
  *
  * Pure/structural tests (no DB): `dominantGraha` graha-resolution logic and
  * the §N.6 density_contract shapes. A DB-backed integration check
- * (`DATABASE_URL`-guarded, skipped when unset — same discipline as this
+ * (`RUN_DB_INTEGRATION`-gated, skipped by default — same discipline as this
  * lane's Python `@pytest.mark.integration` tests) proves the three compute*
- * functions return real, shape-correct rows against the live proxy.
+ * functions return real, shape-correct rows against the live platform DB proxy
+ * (SARVA-SIDDHI W-1 T-1: these tools now proxy SELECT-only SQL through
+ * POST ${PLATFORM_URL}/api/mcp/db/query — the MCP server holds no direct DB
+ * connection — so the integration run requires a reachable platform, not a raw
+ * DATABASE_URL).
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -16,6 +20,7 @@ import {
   computeGocharaElectionAvoidance,
   type GocharaWindowRow,
 } from './register_gochara_windows.js'
+import type { Principal } from '../../types.js'
 
 function makeRow(overrides: Partial<GocharaWindowRow> = {}): GocharaWindowRow {
   return {
@@ -124,17 +129,20 @@ describe('dominantGraha', () => {
 // consts are module-private; the served INVARIANT — every response carries
 // one — is what actually matters and is checked against real output).
 
-// ── Integration (live proxy; skipped when DATABASE_URL is unset) ──────────
+// ── Integration (live platform DB proxy; gated on RUN_DB_INTEGRATION) ──────
+// SARVA-SIDDHI W-1 T-1: these tools proxy through POST ${PLATFORM_URL}/api/mcp/db/query
+// (the MCP server holds no direct DB connection), so the integration run needs a
+// reachable platform (PLATFORM_URL + MCP_INTERNAL_TOKEN) and a valid principal — not a
+// raw DATABASE_URL DSN.
 
-const LIVE_DSN = 'postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis'
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const TEST_PRINCIPAL: Principal = { user_uid: 'integration-test', key_id: 'integration-test', role: 'super_admin' }
 
 const describeIntegration = process.env['RUN_DB_INTEGRATION'] === '1' ? describe : describe.skip
 
 describeIntegration('gochara_*_get — live DB integration', () => {
   it('gochara_activation_get returns a shape-correct envelope for the marriage specimen date', async () => {
-    process.env['DATABASE_URL'] = process.env['DATABASE_URL'] ?? LIVE_DSN
-    const result = (await computeGocharaActivation(CHART_ID, '2013-12-11', 'marriage')) as {
+    const result = (await computeGocharaActivation(CHART_ID, '2013-12-11', TEST_PRINCIPAL, 'marriage')) as {
       windows: GocharaWindowRow[]
       provenance_envelope: Record<string, unknown>
     }
@@ -146,13 +154,13 @@ describeIntegration('gochara_*_get — live DB integration', () => {
   })
 
   it('gochara_forecast_get returns rows overlapping the windfall interval specimen', async () => {
-    process.env['DATABASE_URL'] = process.env['DATABASE_URL'] ?? LIVE_DSN
     const result = (await computeGocharaForecast(
       CHART_ID,
       { start: '2010-06-01', end: '2011-04-01' },
       'major_gain',
       undefined,
-      50
+      50,
+      TEST_PRINCIPAL
     )) as { windows: GocharaWindowRow[]; provenance_envelope: Record<string, unknown> }
     expect(result.provenance_envelope.shape_breakdown).toBeDefined()
     for (const w of result.windows) {
@@ -162,12 +170,12 @@ describeIntegration('gochara_*_get — live DB integration', () => {
   })
 
   it('gochara_election_avoidance_get carries all 5 DR-16 properties on any adverse row', async () => {
-    process.env['DATABASE_URL'] = process.env['DATABASE_URL'] ?? LIVE_DSN
     const result = (await computeGocharaElectionAvoidance(
       CHART_ID,
       { start: '1950-01-01', end: '2050-01-01' },
       undefined,
-      50
+      50,
+      TEST_PRINCIPAL
     )) as { windows: Array<Record<string, unknown>>; provenance_envelope: Record<string, unknown> }
     expect(result.provenance_envelope.dr16_properties).toEqual([
       'honest_clarity',

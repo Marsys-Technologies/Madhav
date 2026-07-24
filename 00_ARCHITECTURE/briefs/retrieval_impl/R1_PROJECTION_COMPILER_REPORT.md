@@ -3,7 +3,7 @@ artifact: R1_PROJECTION_COMPILER_REPORT.md
 canonical_id: R1_PROJECTION_COMPILER_REPORT
 version: 1.0
 status: GENERATED — regenerate via `npx tsx --conditions=react-server scripts/manifest/generate_projections.ts`
-generated_at: 2026-07-21T15:32:34.800Z
+generated_at: 2026-07-24T04:49:55.973Z
 generator: platform/scripts/manifest/generate_projections.ts
 ---
 
@@ -14,9 +14,9 @@ regenerated, not hand-maintained — see the generator's own header comment for 
 
 ## 0. Live catalog snapshot
 
-`getCatalog()` returned **163** live capabilities at generation time.
+`getCatalog()` returned **168** live capabilities at generation time.
 
-By resolved type: **tool**=157, **resource**=5, **prompt**=1.
+By resolved type: **tool**=162, **resource**=5, **prompt**=1.
 
 (6 of these resolve `type` via a `primitive_type` fallback — a real, pre-existing
 registry inconsistency this generator tolerates rather than papers over; see
@@ -25,7 +25,7 @@ registry inconsistency this generator tolerates rather than papers over; see
 ## 1. (a) Chat tool-def projection vs. the real served chat contract catalog
 
 Generated chat projection (type=tool + `projection_tags` includes `chat`):
-**77** tool defs.
+**80** tool defs.
 
 Real served chat contract catalog (`TOOL_CONTRACTS`, `platform/src/lib/contract/registry.ts`):
 **5** entries. (The plan's GT-3 citation says 6; this worktree's live
@@ -35,13 +35,13 @@ Real served chat contract catalog (`TOOL_CONTRACTS`, `platform/src/lib/contract/
 - Only in `TOOL_CONTRACTS` (not reachable via the generated chat projection today):
   read_chapter, read_classical_text, search_classical_texts
 - Only in the generated projection (new capabilities `TOOL_CONTRACTS` never covered):
-  75 names — see `comparison_report.generated.json`
+  78 names — see `comparison_report.generated.json`
   `chat_projection.only_in_generated` for the full list (too long to inline).
 
 **Reading:** `TOOL_CONTRACTS` is a hand-authored 5-classical-text-tool surface that predates
 the registry (`lib/retrieve/index.ts`'s own header: "DEPRECATED as of D7... 17+ active
 callers... still depend on it"). The generated projection draws from the registry's
-77 chat-tagged capabilities instead — a near-complete disjoint set by name,
+80 chat-tagged capabilities instead — a near-complete disjoint set by name,
 because they were never the same catalog. This is the exact triplication the plan's R-1
 opening line names ("kill the triplication") — the projection compiler does not resolve it
 by itself (that is item 3, One Bootstrap, and item 4, Alias cutover — explicitly out of this
@@ -51,7 +51,7 @@ first time.
 ## 2. (b) MCP tool-registration projection vs. the ~25 hand-written `server.tool` blocks
 
 Generated MCP projection (type=tool + `projection_tags` includes `mcp_full`):
-**155** tool registrations (+ 6 mcp-tagged
+**160** tool registrations (+ 6 mcp-tagged
 resources/prompts that would need `server.resource()`/`server.prompt()`, not
 `server.tool()` — listed separately, not folded in).
 
@@ -62,7 +62,7 @@ Real hand-written `server.tool(...)` blocks extracted from
 - Name overlap: 13 → assess_career, assess_health, assess_marriage, assess_wealth, chart_snapshot, get_dashas, get_graha_yuddha, get_positions, graha_portrait, judgment_query, pact_query, tool_search, yoga_activation_by_dasha
 - Only in `registry_bridge.ts` (workflow-shaped consolidated names with no 1:1 registry
   capability of the same name): get_cgm_subgraph, get_chart_orientation, get_chart_quality, get_classical_citation, get_domain_reading, get_projections, get_remedies, get_signals, get_temporal_windows, list_assets, query_chart_facts, traverse_graph, vector_search
-- Only in the generated projection: 142 names (the granular
+- Only in the generated projection: 147 names (the granular
   registry capability set the hand-written file does not expose under its own name —
   see `comparison_report.generated.json` for the full list).
 - 7 of the 26 hand-written blocks use the
@@ -71,8 +71,8 @@ Real hand-written `server.tool(...)` blocks extracted from
 
 **Reachability cross-check** (does a registry capability have ANY route through the current
 hand-written 25, by literal `marsys://` URI reference in that tool's body — not by name):
-**24 / 163** catalog URIs are referenced somewhere in
-`registry_bridge.ts`; **139 / 163** are not referenced
+**24 / 168** catalog URIs are referenced somewhere in
+`registry_bridge.ts`; **144 / 168** are not referenced
 by literal URI anywhere in that file (they may still be reachable via a different bridge file,
 a resource loader, or not yet individually exposed on MCP at all — this scan is scoped to
 `registry_bridge.ts` only, per this lane's (b) sub-item; a full-surface reachability
@@ -81,7 +81,7 @@ cross-check across every MCP bridge file is a larger census, not this generator'
 
 **Reading:** the plan's own framing ("replacing the ~25 hand-written server.tool blocks...
 with a loop over compiled defs — handlers stay hand-written; surfaces are generated") implies
-a MUCH larger generated MCP surface (near-1:1 with the registry, 155 tools) than
+a MUCH larger generated MCP surface (near-1:1 with the registry, 160 tools) than
 today's curated 26-tool consolidation. The hand-written file fans multiple
 registry capabilities into single workflow-shaped tools (e.g. `get_chart_orientation` wraps
 `marsys://tool/L2/query_ucd` plus a `get_chart_header` follow-up call) and adds real business
@@ -91,7 +91,7 @@ gap; it does not propose collapsing the two (see §4, out of scope this lane).
 
 ## 3. (c) Machine census
 
-`machine_census.generated.json` — **163** entries, every field the registry
+`machine_census.generated.json` — **168** entries, every field the registry
 declares (uri/type/layer/name/scope/archetype/traversal_level/tool_role/data_source/
 mutation/emits_references/lel_capable/calibration_context_only/bearing_first/
 required_inputs/projection_tags/display/annotations + presence flags for
@@ -116,17 +116,17 @@ task's own instruction — "new code paths gated behind an explicit flag that de
 ## 5. (e) Web↔MCP tool-name bridge (W5 L1)
 
 `web_tool_bridge.generated.json` — resolves the Vidhi floor compiler's
-`live_tool` namespace (23 distinct names across
+`live_tool` namespace (31 distinct names across
 `registry_data.ts`) plus the full `canonical_faces.json` list
-(95 names) to registry URIs, by chaining
+(96 names) to registry URIs, by chaining
 `getCatalog()` capability names + `canonical_faces.json`'s `deprecated_aliases`
 + `tool_name_bridge.ts`'s existing hand-curated maps (not re-authored — chained).
 
-- Vidhi `live_tool` bridge: **11 / 23** resolve to a
+- Vidhi `live_tool` bridge: **12 / 31** resolve to a
   registry URI (before this lane's generated projection, `compiled_floor_adapter.ts`'s
-  hand-curated `LIVE_TOOL_TO_RETRIEVAL` mapped only **4 / 23**).
-  Unmapped: bodha_remedies_get, bodha_remedies_search, bodha_signals_get, ganita_condition_get, ganita_dasha_lord_capability_get, ganita_nakshatra_get, ganita_sensitive_degrees_get, ganita_strength_get, ganita_structural_get, kala_temporal_bundle, kala_windows_get, ref_doshas_get.
-- `canonical_faces.json` bridge (broader census): **39 / 95**
+  hand-curated `LIVE_TOOL_TO_RETRIEVAL` mapped only **4 / 31**).
+  Unmapped: bodha_chart_digest_get, bodha_remedies_get, bodha_signals_get, ganita_ayurdaya_get, ganita_condition_get, ganita_dasha_lord_capability_get, ganita_kp_cusps_get, ganita_nakshatra_get, ganita_sensitive_degrees_get, ganita_strength_get, ganita_structural_get, gochara_activation_get, gochara_election_avoidance_get, gochara_forecast_get, kala_bundle_get, kala_windows_get, ref_doshas_get, standing_predictions_read, synth_tail_divergence_get.
+- `canonical_faces.json` bridge (broader census): **40 / 96**
   resolve to a registry URI. 56 remain unmapped — see
   `web_tool_bridge.generated.json`'s `canonical_faces_bridge.entries` for the
   full per-name resolution_kind/via chain (not inlined here, too long).
@@ -137,8 +137,8 @@ in its hand-curated `TOOL_NAME_TO_URI`, and resolves literal registry URIs
 directly (the CR-118 fast-fail fix — see that file's `isCapabilityUri` doc
 comment). `compiled_floor_adapter.ts`'s `LIVE_TOOL_TO_RETRIEVAL` now consults
 this generated bridge before falling back to its small hand-curated map, raising
-Vidhi floor-primitive mappability from 4/23 toward
-11/23 without hand-editing that file.
+Vidhi floor-primitive mappability from 4/31 toward
+12/31 without hand-editing that file.
 
 ## 6. (f) Per-family tool-def projection (W5 lane L3 — annotations + family_overrides + input_examples/search_result emissions)
 
@@ -175,7 +175,7 @@ mock overrides exercising every merge path: `description_override`, `name_overri
 
 ## 7. (g) W5 Lane L4 — tool-search index (`tool_search_index.generated.json`)
 
-**163** entries — one per live capability, no filtering. Each entry
+**168** entries — one per live capability, no filtering. Each entry
 carries `uri`/`name`/`type`/`layer`/`scope`/`family` (the descriptor's own
 `archetype`)/`tool_role`/`short_label`/`one_line`/`description`/`keywords` (a deduped,
 sorted, tokenized set derived from name+description+display+layer+archetype+tool_role+
@@ -202,9 +202,9 @@ OAuth scope / connect URL selects the projection; a plain guest cannot reach raw
 this same compiler (not a parallel one), reusing `buildMcpToolRegistration` for per-tool
 shape:
 
-- **full**: **148** `mcp_full`-tagged tools, uncapped.
+- **full**: **152** `mcp_full`-tagged tools, uncapped.
 - **compact**: **20 / 20** (capped per RC-1;
-  49 eligible `mcp_compact`-tagged tools
+  51 eligible `mcp_compact`-tagged tools
   did not make the cap — reachable via `full` or a surfaced sibling's `drill_children`, listed
   in `overflow_tool_names`, never silently dropped).
 - **consult**: **8** `mcp_consult`-tagged (L-ORIENT) tools —
@@ -214,8 +214,8 @@ shape:
   a name absent from full.
 
 F-R7 (NO-LEAKAGE) enforcement: `calibration_context_only` capabilities are excluded from all
-three profiles here. Full: lel_query, query_predictions
-excluded. Compact: lel_query, query_predictions
+three profiles here. Full: lel_query, mechanism_retrodiction_get, query_predictions
+excluded. Compact: lel_query, mechanism_retrodiction_get, query_predictions
 excluded.
 
 **Wiring status:** `platform-mcp/src/lib/mcp_profile.ts` (this same lane) reads the generated

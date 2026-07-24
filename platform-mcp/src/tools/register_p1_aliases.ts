@@ -821,6 +821,27 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       top_k: z.number().optional(),
     }, principal)
 
+  // SARVA-SIDDHI W-2 P-1 (2026-07-24) — standing_predictions_read: the READ side of the LIVE
+  // prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane A-4). This is the
+  // live_tool the Vidhi E-2 primitive `standing_predictions_read` was repointed to (it had been
+  // mis-wired to phala_predictive_anchors_get, an L4 phala_anchors surface — the PRE_DARPANA_
+  // READINESS B-2 FAIL). Returns the OPEN filed, falsifiable standing predictions for the chart,
+  // domain-layered (§N.6): the requested domain's material cluster leads (wealth ⊇ {wealth,
+  // residence}), non-matching open predictions returned under other_domain_predictions (never
+  // dropped — B.10), explicit empty_reason on an empty result. Confirmation/disclosure ONLY —
+  // §11: predictions exist by explicit filing only; this surface never files or calibrates.
+  regAlias(server, 'standing_predictions_read',
+    'Standing prospective-ledger read (brahma_prospective_ledger) — the OPEN filed, falsifiable ' +
+    'predictions for the chart: claim, event_class, temporal shape + window/milestones, confidence, ' +
+    'a MANDATORY falsifier, generator_class and source_citation. Domain-layered (wealth clusters ' +
+    '{wealth, residence}); non-matching open predictions returned under other_domain_predictions. ' +
+    'Confirmation/disclosure only — never a filing or calibration write (§11).',
+    'marsys://tool/L4/query_prospective_ledger',
+    {
+      domain: z.string().optional().describe('Question domain (wealth clusters {wealth, residence}).'),
+      status: z.string().optional().describe('Lifecycle filter (open | matched | confirmed | falsified | withdrawn). Default: open.'),
+    }, principal)
+
   // list_assets → catalog_assets_list
   // W5 L8 ("listCapabilities filters" / W-13): same additional filters as list_assets
   // (registry_bridge.ts) and asset_registry_all.ts's own handler — asset_type,

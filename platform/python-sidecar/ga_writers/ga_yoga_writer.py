@@ -325,6 +325,13 @@ class ChartState:
         # sign name → house number (lagna)
         self.lagna_sign: str | None = None
         self.lagna_house_planets: dict[int, list[str]] = {}
+        # Jaimini Karakāṃśa (CR-130): the navāṃśa (D9) sign occupied by the
+        # Ātmakāraka, treated as the karakāṃśa lagna. READ from chart_facts
+        # (fact_category='karakamsa_position', KARAKAMSA/sign — written by
+        # ga_sensitive_writer); never recomputed here (§N.5 L1-authority).
+        self.karakamsha_sign: str | None = None
+        self.karakamsha_fact_id: str | None = None
+        self.atmakaraka_graha: str | None = None
 
         self._parse(facts)
 
@@ -376,6 +383,15 @@ class ChartState:
             # Lagna (legacy category fallback)
             if cat in ("lagna", "ascendant") and key in ("sign", "sign_name"):
                 self.lagna_sign = (f.get("fact_value_text") or "").lower()
+
+            # Karakāṃśa lagna (CR-130) — D9 sign of the Ātmakāraka, from
+            # ga_sensitive_writer's karakamsa_position rows. Consumed read-only.
+            if cat == "karakamsa_position" and subj == "karakamsa":
+                if key == "sign":
+                    self.karakamsha_sign = (f.get("fact_value_text") or "").lower()
+                    self.karakamsha_fact_id = f["fact_id"]
+                elif key == "atmakaraka_graha":
+                    self.atmakaraka_graha = (f.get("fact_value_text") or "").lower()
 
         # Build lagna-relative house → planets map
         if self.lagna_sign and self.lagna_sign in SIGN_NUMBERS:
@@ -2543,6 +2559,211 @@ def _build_nbry_firing(
         return 0
 
 
+# ── CR-130: Jaimini Karakāṃśa yoga firings ─────────────────────────────────────
+#
+# Classical basis (Jaimini Sutram, Adhyāya 1 Pāda 2 karakāṃśa-phala; BPHS
+# Ch.34 Karakāṃśa-phala adhyāya): the Ātmakāraka (graha with the highest
+# degree-in-sign) occupies a navāṃśa (D9) sign — the KARAKĀṂŚA, read as a
+# lagna. The soul-purpose reading is taken from the grahas that (a) OCCUPY
+# that sign in the rāśi (D1) chart, or (b) cast a Jaimini chara-rāśi-dṛṣṭi
+# (sign aspect) upon it. Each such graha stamps its karaka significations on
+# the native's dharma/vocation.
+#
+# L1-authority (§N.5): the karakāṃśa sign and the Ātmakāraka identity are READ
+# from chart_facts (fact_category='karakamsa_position', written by
+# ga_sensitive_writer via the 7-graha Parāśari reckoning) — this detector never
+# recomputes them. The graha's D1 sign is the same ChartState.planet_sign the
+# rest of this writer consumes. No fabricated placements (B.10).
+#
+# Aspect model: Jaimini chara-rāśi-dṛṣṭi (sign aspects), NOT graha (Parāśari
+# house) aspects — because these are Jaimini-school yogas. The three rules
+# (Jaimini Sutram 1.1.9–11): a movable (chara) sign aspects the fixed (sthira)
+# signs except the one adjacent to it (2nd from it); a fixed sign aspects the
+# movable signs except the one adjacent to it (12th from it); a dual
+# (dvisvabhāva) sign aspects the other three dual signs. Movable⇄adjacent-fixed
+# is a mutual NON-aspect (symmetric), so the rule is self-consistent.
+
+# canonical_id → (planet, allow_aspect). Rahu's catalog row carries no
+# `or_aspect` clause (its rāśi-dṛṣṭi is not classically settled) — occupation
+# only. Mercury is intentionally ABSENT: l0_yogas.py §3.7 defines no
+# jaimini_karakamsha_mercury row, so firing one would be fabrication (B.10).
+KARAKAMSHA_YOGAS: dict[str, tuple[str, bool]] = {
+    "jaimini_karakamsha_sun": ("sun", True),
+    "jaimini_karakamsha_moon": ("moon", True),
+    "jaimini_karakamsha_mars": ("mars", True),
+    "jaimini_karakamsha_jupiter": ("jupiter", True),
+    "jaimini_karakamsha_venus": ("venus", True),
+    "jaimini_karakamsha_saturn": ("saturn", True),
+    "jaimini_karakamsha_rahu": ("rahu", False),
+}
+
+# Per-graha classical effect phrase (verbatim significations_text from
+# l0_yogas.py §3.7) — folded into citation_human so every firing row carries
+# its own cited karaka reading, not a generic label.
+KARAKAMSHA_EFFECT: dict[str, str] = {
+    "sun": "government service, employment by royalty or authority",
+    "moon": "trade in liquids, agriculture, employment under authority",
+    "mars": "work with weapons, fire or metals; valour (engineering, surgery)",
+    "jupiter": "learning in the Vedas, eloquence, piety, favour of rulers",
+    "venus": "wealth, luxury, marital happiness, skill in the arts",
+    "saturn": "laborious work, service, iron/machinery trades, austerity",
+    "rahu": "technical, foreign, or unconventional profession",
+}
+
+# Jaimini classical citation shared by the family (the per-planet effect and
+# occupation/aspect mode are appended per firing).
+KARAKAMSHA_CITATION_REF = "jaimini_sutram:1.2_karakamsa_phala;bphs:ch34_karakamsa_phala_adhyaya"
+
+
+def _jaimini_rasi_aspects(from_sign: str) -> set[str]:
+    """Signs that `from_sign` aspects by Jaimini chara-rāśi-dṛṣṭi (sign
+    aspects). Jaimini Sutram 1.1.9–11. Empty set for an unknown sign."""
+    s = from_sign.lower()
+    idx = SIGN_NUMBERS.get(s)
+    if idx is None:
+        return set()
+    if s in MOVABLE_SIGNS:
+        # aspects the fixed signs except the adjacent one (2nd from it)
+        adjacent_fixed = SIGN_NAMES[(idx % 12) + 1]
+        return FIXED_SIGNS - {adjacent_fixed}
+    if s in FIXED_SIGNS:
+        # aspects the movable signs except the adjacent one (12th from it)
+        adjacent_movable = SIGN_NAMES[((idx - 2) % 12) + 1]
+        return MOVABLE_SIGNS - {adjacent_movable}
+    # dual sign — aspects the other dual signs
+    return DUAL_SIGNS - {s}
+
+
+def _karakamsha_reaches(planet_sign: str, karakamsha_sign: str, allow_aspect: bool) -> str | None:
+    """Return 'occupation', 'aspect', or None describing how a graha in
+    `planet_sign` relates to the `karakamsha_sign`."""
+    if planet_sign == karakamsha_sign:
+        return "occupation"
+    if allow_aspect and karakamsha_sign in _jaimini_rasi_aspects(planet_sign):
+        return "aspect"
+    return None
+
+
+def _build_karakamsha_firings(
+    cur: Any,
+    chart_id: str,
+    build_uuid: str,
+    ayanamsha_id: str,
+    state: ChartState,
+    shadbala_map: dict[str, dict[str, float]],
+    family_map: dict[str, list[str]],
+) -> int:
+    """Evaluate the 7 Jaimini karakāṃśa planet yogas for this (chart,
+    ayanamsha) and insert one ga_yoga_firings row per graha that occupies or
+    (chara-rāśi-dṛṣṭi) aspects the karakāṃśa sign. Returns rows inserted.
+    Never commits — caller owns the transaction.
+
+    Honest degradation: if chart_facts carries no karakāṃśa sign for this
+    ayanamsha (ga_sensitive not built), no karakāṃśa firing is written and the
+    condition is logged — never fabricated."""
+    kshign = state.karakamsha_sign
+    if not kshign or kshign not in SIGN_NUMBERS:
+        logger.info(
+            "[ga_yoga_writer] karakāṃśa sign unavailable for chart=%s ayanamsha=%s "
+            "(karakamsa_position not in chart_facts) — no karakāṃśa firings",
+            chart_id, ayanamsha_id,
+        )
+        return 0
+
+    rows_inserted = 0
+    for cid, (planet, allow_aspect) in KARAKAMSHA_YOGAS.items():
+        planet_sign = state.planet_sign.get(planet)
+        if not planet_sign:
+            continue
+        mode = _karakamsha_reaches(planet_sign, kshign, allow_aspect)
+        if mode is None:
+            continue
+
+        house = _house_of_planet(planet, state)
+        constituent_houses = [house] if house else []
+
+        # constituent_fact_ids resolve to chart_facts (L1 authority, B.3):
+        # the graha's own D1 position row + the karakāṃśa_position row that
+        # supplies the karakāṃśa sign. Both MUST resolve.
+        constituent_fact_ids = state.fact_ids_for_planets([planet])
+        if state.karakamsha_fact_id:
+            constituent_fact_ids = constituent_fact_ids + [state.karakamsha_fact_id]
+
+        # Strength: constituent_bala_v1 (JL-012/J3), the single ratified
+        # non-fabricated derivation. NULL for Rahu (no classical shadbala).
+        strength, derivation, strength_label, _bala_ref, _bala_human = (
+            _compute_constituent_bala_strength(
+                [planet], shadbala_map, cid, chart_id, ayanamsha_id,
+            )
+        )
+
+        mode_text = (
+            f"placed in the karakāṃśa ({kshign.title()})"
+            if mode == "occupation"
+            else f"casting Jaimini chara-rāśi-dṛṣṭi on the karakāṃśa ({kshign.title()}) from {planet_sign.title()}"
+        )
+        citation_human = (
+            f"Jaimini Sutram 1.2 (karakāṃśa-phala) / BPHS Ch.34: {planet.title()} "
+            f"{mode_text} gives {KARAKAMSHA_EFFECT.get(planet, 'its karaka significations')}. "
+            f"Ātmakāraka={(state.atmakaraka_graha or 'n/a').title()}; karakāṃśa reckoned "
+            f"as the D9 sign of the Ātmakāraka (ga_sensitive karakamsa_position, §N.5). "
+            f"Aspect model: Jaimini chara-rāśi-dṛṣṭi (sign aspects), not Parāśari graha aspects."
+        )
+        citation_ref = f"{KARAKAMSHA_CITATION_REF}:{planet}_{mode}"
+
+        # No classical cancellation (bhanga) rule is defined for karakāṃśa
+        # occupation/aspect yogas — honest NULL-with-reason floor (B.10),
+        # matching this writer's bhanga discipline elsewhere.
+        bhanga_na_reason = (
+            "No classical bhanga rule for Jaimini karakāṃśa occupation/aspect yogas "
+            "in the Jaimini Sutram; honest NULL floor (B.10)."
+        )
+
+        try:
+            cur.execute("""
+                INSERT INTO ga_yoga_firings (
+                    chart_id, build_id, ayanamsha_id, yoga_canonical_id,
+                    fired, constituent_fact_ids, constituent_planets,
+                    constituent_houses, strength, strength_formula_version,
+                    partial_formation_pct, is_partial,
+                    bhanga_active, bhanga_rule_fired, bhanga_na_reason,
+                    derivation, strength_label, citation_ref, citation_human,
+                    family_ids, computed_at
+                ) VALUES (
+                    %s, %s::uuid, %s, %s,
+                    %s, %s::jsonb, %s::jsonb,
+                    %s::jsonb, %s, %s,
+                    %s, %s,
+                    %s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s::jsonb, NOW()
+                )
+            """, (
+                chart_id, build_uuid, ayanamsha_id, cid,
+                True,
+                json.dumps(constituent_fact_ids),
+                json.dumps([planet]),
+                json.dumps(constituent_houses),
+                strength,
+                derivation or STRENGTH_FORMULA_VERSION,
+                None, False,
+                None, None, bhanga_na_reason,
+                derivation, strength_label, citation_ref, citation_human,
+                json.dumps(family_map.get(cid, [])),
+            ))
+            rows_inserted += 1
+        except Exception as exc:
+            logger.warning(
+                "[ga_yoga_writer] karakāṃśa insert failed for yoga=%s chart=%s ayanamsha=%s: %s",
+                cid, chart_id, ayanamsha_id, exc,
+            )
+    logger.info(
+        "[ga_yoga_writer] karakāṃśa firings: chart=%s ayanamsha=%s karakāṃśa=%s rows=%d",
+        chart_id, ayanamsha_id, kshign, rows_inserted,
+    )
+    return rows_inserted
+
+
 # ── Idempotency helper for ga_yoga_firings ────────────────────────────────────
 
 def _delete_prior_yoga_firings(conn: Any, chart_id: str, ayanamsha_id: str) -> int:
@@ -2817,6 +3038,14 @@ def build_ga_yoga_substep(
                     "[ga_yoga_writer] detector insert failed for yoga=%s chart=%s ayanamsha=%s: %s",
                     det_id, chart_id, ayanamsha_id, exc,
                 )
+
+        # ── CR-130: Jaimini karakāṃśa planet yogas ─────────────────────────────
+        # Runs AFTER the catalog pass + NBRY + detector registry, exactly like
+        # those own inserts. Reads the karakāṃśa sign from chart_facts (L1
+        # authority) and writes one firing per graha occupying/aspecting it.
+        rows_inserted += _build_karakamsha_firings(
+            cur, chart_id, build_uuid, ayanamsha_id, state, shadbala_map, family_map,
+        )
 
     elapsed = time.time() - t0
     logger.info(

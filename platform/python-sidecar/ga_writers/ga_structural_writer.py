@@ -2137,17 +2137,67 @@ def _detect_kemadruma(chart_output: dict[str, Any]) -> dict[str, Any] | None:
     return {"constituent_planets": ["Moon"], "constituent_houses": [moon_h], "moon_house": moon_h}
 
 
+# The five non-luminary, non-node grahas (the tara-grahas) are the ONLY
+# bodies reckoned for the Chandra-yoga family (Sunapha/Anapha/Durudhara/
+# Kemadruma and their bhanga): the Sun is excluded (an Amavasya Moon beside
+# the Sun is still counted "unsupported"), and the nodes are shadowy and
+# excluded classically. This is the SAME exempt set `_moon_flanking_planets`
+# already uses ({Moon, Sun, Rahu, Ketu}), so the formation and cancellation
+# passes reckon one coherent body of grahas (CR-73 mutual-exclusivity by
+# shared arithmetic, extended to the kendra-support ground).
+_KEMADRUMA_SUPPORT_EXEMPT = frozenset({"Moon", "Sun", "Rahu", "Ketu"})
+
+
+def _kemadruma_kendra_support(chart_output: dict[str, Any], reference_house: int) -> list[str]:
+    """Tara-grahas (Mars/Mercury/Jupiter/Venus/Saturn) occupying a kendra
+    (1st/4th/7th/10th) from `reference_house`. Used for the classical
+    kendra-from-Moon and kendra-from-lagna Kemadruma-bhanga grounds — the
+    exact arithmetic the project's own ga_yoga_writer kemadruma detection
+    (`no_planet_in_2_or_12_from_moon_and_no_kendra_support`) already applies
+    for its firing verdict; restoring it here makes the dosha_label agree
+    with that firing authority instead of contradicting it (CR-73)."""
+    if not reference_house:
+        return []
+    kendra_houses = {((reference_house - 1 + k - 1) % 12) + 1 for k in (1, 4, 7, 10)}
+    return sorted({
+        g["name"]
+        for g in chart_output.get("grahas", [])
+        if g.get("name") not in _KEMADRUMA_SUPPORT_EXEMPT
+        and int(g.get("house", 0)) in kendra_houses
+    })
+
+
 def _cancel_kemadruma(finding: dict[str, Any], chart_output: dict[str, Any]) -> dict[str, Any]:
-    """Mandatory cancellation callable (registry hygiene) kept as
-    defense-in-depth, not a duplicate evaluator: by the time a finding
-    reaches here, `_detect_kemadruma` has already verified no flanking/
-    conjunct planet and Moon outside kendra, so a non-None finding always
-    yields an honest 'not cancelled' verdict. The function exists so
-    Kemadruma carries the same mandatory-callable shape as every other
-    dosha (CR-73's doctrine), not a second silent gate — mirrors the yoga
-    writer's own precedent that kemadruma_aristha's bhanga is "left
-    untouched, not duplicated"."""
-    ref = "bphs:kemadruma:anapha_durudhara_or_kendra_cancels"
+    """Mandatory cancellation callable — the REAL Kemadruma-bhanga
+    adjudication (CR-73).
+
+    `brahma_dosha_catalog.kemadruma.cancellation_conditions.bhanga` (cited to
+    BPHS) lists four classical bhanga grounds; its `formation_rule` likewise
+    requires "...none in kendra from Moon/lagna". This function evaluates the
+    two POSITIONAL grounds that resolve deterministically from the D1 houses
+    the writer already loads:
+
+      (1) a tara-graha in a kendra (1/4/7/10) from the Moon, and
+      (2) a tara-graha in a kendra from the lagna,
+
+    plus the flanking/conjunction ground (which normally routes through
+    `_detect_kemadruma` and is kept here as defense-in-depth). The Moon-in-
+    kendra-from-lagna ground is already folded into `_detect_kemadruma`'s
+    formation gate, so a finding never reaches here in that case.
+
+    The prior implementation folded ONLY the flanking-absence and Moon-in-
+    kendra-from-lagna cases into formation and then returned an unconditional
+    "not cancelled" here — silently omitting the single most common classical
+    bhanga, a graha occupying a kendra FROM THE MOON. On the native's chart
+    (482012f1) that omission let Kemadruma spuriously fire while Jupiter and
+    Venus sit in the 10th-from-Moon (a kendra from the Moon) and the yoga-
+    firing authority correctly shows Anapha/Sunapha (never kemadruma_aristha)
+    — a cross-layer contradiction. This restores the kendra-support bhanga so
+    the label agrees with the firing authority. The catalog's fourth ground
+    ("Moon aspected by a benefic") remains an honest floor (B.10) — it is not
+    fabricated into a positional shortcut here.
+    """
+    ref = "bphs:kemadruma:kendra_support_or_flanking_cancels"
     flank = _moon_flanking_planets(chart_output)
     if flank["house_2nd"] or flank["house_12th"] or flank["conjunct"]:
         # Unreachable given _detect_kemadruma's own gate — defensive only.
@@ -2158,14 +2208,39 @@ def _cancel_kemadruma(finding: dict[str, Any], chart_output: dict[str, Any]) -> 
             "citation_ref": ref,
             "citation_human": "A planet flanks/conjoins the Moon — Anapha/Sunapha/Durudhara forms instead of Kemadruma.",
         }
+
+    moon_house = _graha_house(chart_output, "Moon")
+    kendra_from_moon = _kemadruma_kendra_support(chart_output, moon_house)
+    kendra_from_lagna = _kemadruma_kendra_support(chart_output, 1)
+
+    grounds: list[str] = []
+    if kendra_from_moon:
+        grounds.append(f"kendra_from_moon:{','.join(kendra_from_moon)}")
+    if kendra_from_lagna:
+        grounds.append(f"kendra_from_lagna:{','.join(kendra_from_lagna)}")
+
+    if grounds:
+        return {
+            "bhanga_active": True,
+            "bhanga_rule_fired": ";".join(grounds),
+            "cancellation_na_reason": None,
+            "citation_ref": ref,
+            "citation_human": (
+                "brahma_dosha_catalog kemadruma cancellation_conditions ('any planet in kendra "
+                f"from Moon or lagna', BPHS): {'; '.join(grounds)} — a tara-graha in a kendra "
+                "supports the Moon, so Kemadruma is cancelled and does not serve as a finding."
+            ),
+        }
+
     return {
         "bhanga_active": False,
         "bhanga_rule_fired": None,
         "cancellation_na_reason": None,
         "citation_ref": ref,
         "citation_human": (
-            "No planet flanks or conjoins the Moon, and Moon is outside kendra from lagna — "
-            "Kemadruma stands uncancelled (benefic-aspect ground not evaluated, honest floor B.10)."
+            "No planet flanks or conjoins the Moon, no tara-graha occupies a kendra from the Moon "
+            "or the lagna, and the Moon is outside kendra from lagna — Kemadruma stands uncancelled "
+            "(the benefic-aspect ground is not evaluated, honest floor B.10)."
         ),
     }
 
