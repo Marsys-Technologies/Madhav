@@ -84,7 +84,10 @@ export function demoteSignatureTier<T extends DemotableRow>(
       ...row,
       signature_tier: DEMOTED_TIER,
       signature_tier_demoted_from: tier,
-      signature_tier_demotion_reason: 'WP-1.2d: descriptive/per-varga barred from major/chart_defining at serve time',
+      // Served reason is human-readable prose; keep the WP-1.2d ticket reference only in
+      // code comments (see file header) — never ship raw work-package ids in served fields.
+      signature_tier_demotion_reason:
+        'Demoted: descriptive/per-varga signals are not served at major/chart_defining tier',
     }
   }
   return row
