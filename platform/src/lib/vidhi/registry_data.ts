@@ -377,10 +377,13 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     version: 1,
     definition: 'Named, valenced CGM subgraph read — chain/circuit motifs (e.g. the 10→8→12→10 specimen).',
     category: 'signal',
-    live_tool: 'bodha_graph_subgraph_get',
+    live_tool: 'bodha_mechanisms_get',
     tool_args: { chart_id: '{chart_id}' },
     fallback_face: 'bodha_graph_subgraph_get',
-    known_gap: 'CR-24', // chain/circuit motif not served as a first-class mechanism — OPEN
+    // CR-24 CLOSED (SARVA-SIDDHI planner-wiring follow-up, 2026-07-24): repointed from the raw
+    // bodha_graph_subgraph_get path to the dedicated bodha_mechanisms_get serving face
+    // (§N.6-compliant chain/circuit-first ordering). registry_data.ts + cr_status.ts both updated.
+    known_gap: null,
     mandatory_tags: [],
     cr27_prevents: ['CR-27c'],
   },

@@ -10,6 +10,7 @@ const LIVE_TOOLS = new Set<string>([
   'assess_career', 'assess_health', 'assess_marriage', 'assess_wealth',
   'asset_registry_all', 'asset_registry_l0', 'bodha_chart_digest_get', 'bodha_discoveries_get',
   'bodha_domain_reading_get', 'bodha_graph_subgraph_get', 'bodha_graph_traverse_get',
+  'bodha_mechanisms_get', // CR-24 (SARVA-SIDDHI, 2026-07-24): dedicated mechanism serving face
   'bodha_quality_get', 'bodha_remedies_get', 'bodha_remedies_search', 'bodha_signals_get',
   'catalog_assets_all', 'catalog_assets_l0', 'catalog_assets_list', 'chart_snapshot',
   'compute_natal_positions', 'ephemeris_cache_year', 'event_anchors',

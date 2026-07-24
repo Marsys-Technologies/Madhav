@@ -40,7 +40,6 @@ export const OPEN_CRS = [
   'CR-14',
   'CR-39',
   'CR-15',
-  'CR-24',
   'CR-25',
   'CR-26',
   'CR-28',
@@ -204,6 +203,14 @@ export const CLOSED_CRS = [
   // mechanisms fired). registry_data.ts has repointed lel_retrodiction's live_tool from
   // mimamsa_lel_query to mechanism_retrodiction_get and set known_gap to null.
   'CR-68',
+  // CR-24: CLOSED (SARVA-SIDDHI Stage-1 planner-wiring follow-up, 2026-07-24). Was in OPEN_CRS,
+  // tagged mechanism_read's known_gap ("chain/circuit motif not served as a first-class
+  // mechanism"). The bo_yantra_mechanism.py object + bodha_mechanisms_get serving face were
+  // already built and merged (PR #734); this closure repoints mechanism_read's live_tool from
+  // the raw bodha_graph_subgraph_get to bodha_mechanisms_get and sets known_gap to null
+  // (registry_data.ts). Verified: plan_retrieval now resolves mechanism_read to the dedicated
+  // face for chart 482012f1.
+  'CR-24',
   'A7',
   'R-17',
   'R-47',
