@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-07-21T15:32:34.800Z
+ * generated_at: 2026-07-24T04:50:51.898Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -46,7 +46,7 @@ export const MCP_SURFACE_PROFILES: {
   "full": {
     "profile": "full",
     "max_tools": null,
-    "total": 148,
+    "total": 151,
     "tool_names": [
       "assess_career",
       "assess_health",
@@ -138,6 +138,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_manifestation_grammar",
       "query_manifestation_sets",
       "query_mantras",
+      "query_mechanisms",
       "query_medical_mappings",
       "query_mimamsa_discoveries",
       "query_motion_state_thresholds",
@@ -154,6 +155,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_pratijna",
       "query_predictive_anchors",
       "query_projections",
+      "query_prospective_ledger",
       "query_quality_scorecard",
       "query_question_lenses",
       "query_rectification",
@@ -174,6 +176,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_signal_families",
       "query_signals",
       "query_spillover_cascades",
+      "query_spine_bundle",
       "query_sutravali_rules",
       "query_sutravali_rules_for_planet",
       "query_tantric_remedies",
@@ -4193,6 +4196,56 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "query_mechanisms",
+        "description": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds. Each row: mechanism_name, mechanism_class (convergent_dispositor_chain | dispositor_cycle | house_lordship_cycle | yoga_cluster | mutual_reception | parivartana_chain | stellium | mutual_aspect | mutual_aspect_triangle | graha_bhava_affliction), valence (benefic|malefic|mixed|neutral), member_node_ids / member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), centrality_summary, and a grounding citation. The chain/circuit family (multi-node named mechanisms) is served FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class, valence, chain_circuit_only. Per-class and per-valence facet counts over the full match set are always returned. Bounded (LIMIT ≤50) with a disclosed total, offset pagination, and an honest empty_reason when a chart carries no mechanisms.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5."
+            },
+            "mechanism_class": {
+              "type": "string",
+              "description": "Filter by a single mechanism_class. Omit for all."
+            },
+            "valence": {
+              "type": "string",
+              "description": "Filter by valence (benefic|malefic|mixed|neutral). Omit for all."
+            },
+            "chain_circuit_only": {
+              "type": "boolean",
+              "description": "When true, return only the CR-24 chain/circuit family (convergent_dispositor_chain, dispositor_cycle, house_lordship_cycle). Default false."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max rows (default 50, max 50)."
+            },
+            "offset": {
+              "type": "number",
+              "description": "Pagination offset (default 0)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L2/query_mechanisms",
+        "layer": "L2",
+        "name_valid": true,
+        "annotations": {
+          "title": "Query Mechanisms",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "query_medical_mappings",
         "description": "Query the graha→Ayurvedic medical reference (bg_medical_mappings, 9 rows — one per graha — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita). Each row: dosha[], dhatu[], organ_systems[], body_part[], disease_tendency[], classical_citation. Filter by graha. Global classical reference — no chart_id needed. Jyotish reference only — NOT a medical diagnostic system; not_diagnosis applies to any downstream indication built from this.",
         "input_schema": {
@@ -4719,6 +4772,44 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Projections",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "query_prospective_ledger",
+        "description": "Returns the OPEN filed, falsifiable standing predictions for a chart from the LIVE prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane A-4). Each prediction carries: claim, event_class, temporal shape (point/interval/chain) with its window or milestone_set, confidence, a MANDATORY falsifier, generator_class (reading_synthesis | engine | native_intuition | anchor_engine), source_citation, and lifecycle_status. §11 governance: predictions exist by explicit filing only — this is a READ/confirmation surface, never a filing or calibration write. Filter by domain (question domain — wealth clusters {wealth, residence} as the material/ asset cluster) and lifecycle_status. Non-domain-matching open predictions are still returned under other_domain_predictions (never silently dropped).",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID (<chart_uuid>). Required."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Question domain (e.g. wealth, career, spirituality, residence). Predictions whose event_class resolves into this domain (wealth clusters {wealth, residence}) lead the response; all other open predictions are still returned under other_domain_predictions."
+            },
+            "status": {
+              "type": "string",
+              "description": "Lifecycle filter (open | matched | confirmed | falsified | withdrawn). Default: open."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max predictions to scan (default 100)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L4/query_prospective_ledger",
+        "layer": "L4",
+        "name_valid": true,
+        "annotations": {
+          "title": "Query Prospective Ledger",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -5538,6 +5629,53 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Spillover Cascades",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "query_spine_bundle",
+        "description": "Returns the pre-joined \"spine bundle\" for one domain of a chart: the chain signal (bodha_msr_signals) → its activation windows (kala_activation) → its phala anchors (phala_anchors) → the chart's calibration scorecard (mimamsa_calibration/mimamsa_multipliers, filtered to this domain). This is the single-call replacement for the 3-5 separate calls (query_signals, query_temporal_activation, query_predictive_anchors, query_calibration) that answering a cross-layer question previously required. Served from a post-build materialized view when fresh; the `source` field discloses whether this response came from the persisted view or a live recompute (missing/stale row) — never silently presented as always-cached. Drill further into any one layer with the four capabilities named above.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID (<chart_uuid>). Required."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Domain to bundle. One of: career, wealth, relationship, health, character, spirituality, other. Default: 'career'.",
+              "enum": [
+                "career",
+                "wealth",
+                "relationship",
+                "health",
+                "character",
+                "spirituality",
+                "other"
+              ]
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Ayanamsha filter (default: 'lahiri_chitrapaksha')."
+            },
+            "top_k": {
+              "type": "number",
+              "description": "Max signals in the bundle (default: 15, max: 50)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L-SPINE/query_spine_bundle",
+        "layer": "L2",
+        "name_valid": true,
+        "annotations": {
+          "title": "Query Spine Bundle",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -6395,6 +6533,7 @@ export const MCP_SURFACE_PROFILES: {
     "overflow_tool_names": [],
     "excluded_calibration_context_only": [
       "lel_query",
+      "mechanism_retrodiction_get",
       "query_predictions"
     ],
     "excluded_not_llm_facing": [
@@ -7360,6 +7499,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_manifestation_grammar",
       "query_manifestation_sets",
       "query_mantras",
+      "query_mechanisms",
       "query_mimamsa_discoveries",
       "query_muhurat",
       "query_obstruction_periods",
@@ -7375,6 +7515,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_retrograde_periods",
       "query_signal_families",
       "query_signals",
+      "query_spine_bundle",
       "query_sutravali_rules",
       "query_sutravali_rules_for_planet",
       "query_tantric_remedies",
@@ -7386,6 +7527,7 @@ export const MCP_SURFACE_PROFILES: {
     ],
     "excluded_calibration_context_only": [
       "lel_query",
+      "mechanism_retrodiction_get",
       "query_predictions"
     ],
     "excluded_not_llm_facing": [

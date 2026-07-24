@@ -105,7 +105,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     live_tool: 'ganita_special_lagnas_get',
     tool_args: { chart_id: '{chart_id}', lagnas: '{lagnas}' },
     fallback_face: 'ganita_special_lagnas_get',
-    known_gap: 'CR-16', // chart-keyed special-lagna access still OPEN (query_special_lagnas is BirthDataSchema-only)
+    known_gap: null, // CR-16 STALE-CORRECTED (SARVA-SIDDHI, 2026-07-24): shipped PR #594/D-2 (20e2da8e) — ganita_special_lagnas_get (register_p1_aliases.ts) now accepts an optional chart_id and serves stored special-lagna facts from chart_facts (245 facts verified live for chart 482012f1). Was still tagged OPEN here — register drift, same precedent as CR-54/CR-56/CR-59.
     mandatory_tags: [],
     cr27_prevents: [],
   },
@@ -219,10 +219,17 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     version: 1,
     definition: 'Joins LEL events to the signal/mechanism they retrodictively confirm, served as confirmation only (never as prediction input).',
     category: 'temporal',
-    live_tool: 'mimamsa_lel_query',
+    // CR-68 STALE-CORRECTED (SARVA-SIDDHI, 2026-07-24): shipped PR #688 (5f27d9d2, 2026-07-21) —
+    // mechanism_retrodiction_get is a dedicated, registered, live-wired tool that joins LEL events
+    // to the classical house-lord/dasha activation mechanism per house (fired_count, fired_events,
+    // not_confirmed_events, unmapped_events — CONFIRMATION-ONLY, sealed pre-2020 test split).
+    // Verified live for chart 482012f1 (7 mechanisms fired, e.g. 10th-house/Saturn career mechanism
+    // fired 2x). Repoints this primitive's live_tool from mimamsa_lel_query (the raw LEL surface,
+    // kept as fallback_face) to the purpose-built retrodiction surface.
+    live_tool: 'mechanism_retrodiction_get',
     tool_args: { chart_id: '{chart_id}', domain: '{domain}' },
     fallback_face: 'mimamsa_lel_query',
-    known_gap: 'CR-68', // mechanism_retrodiction surface absent — LEL walled off beyond prediction — OPEN
+    known_gap: null, // CR-68 CLOSED — see live_tool comment above.
     mandatory_tags: [],
     cr27_prevents: [],
   },
@@ -284,7 +291,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     live_tool: 'ganita_nakshatra_get',
     tool_args: { chart_id: '{chart_id}' },
     fallback_face: 'bodha_signals_get(signal_type_class=nakshatra_semantic)',
-    known_gap: 'CR-64', // nakshatra semantics never rank — OPEN, UPDATE evidence
+    known_gap: null, // CR-64 STALE-CORRECTED (SARVA-SIDDHI, 2026-07-24): shipped via the V-5 emitter (PR #585) — bodha_signals_get(signal_type_class=nakshatra_semantic) returns 9 salience-ranked rows live for chart 482012f1 (computed_salience populated, verification_pass_status=documented_approximation). RESIDUAL (not a route gap, does not block this closure): constituent_facts_array carries a 16.7% orphan rate on this chart (DEFECT-001, live-reported by the tool itself) — tracked separately, see cr_status.ts CLOSED_CRS note.
     mandatory_tags: [],
     cr27_prevents: ['CR-27d'],
   },
@@ -380,7 +387,7 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     live_tool: 'ganita_condition_get',
     tool_args: { chart_id: '{chart_id}', mode: 'arudha' },
     fallback_face: 'bodha_signals_get(frame=arudha)',
-    known_gap: 'CR-61', // arudha stored but never ranked — OPEN
+    known_gap: null, // CR-61 STALE-CORRECTED (SARVA-SIDDHI, 2026-07-24): shipped via the V-5 emitter (PR #585) — bodha_signals_get(signal_type_class=arudha) returns 5 salience-ranked rows live for chart 482012f1 (AL-conjunction, A2/A11 tenancy, AL-bhava relation, real computed_salience). See cr_status.ts CLOSED_CRS note.
     mandatory_tags: [],
     cr27_prevents: [],
   },
@@ -569,12 +576,12 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     primitive_id: 'upapada_read',
     version: 1,
     definition:
-      'Upapada Lagna (UL/UPA) read for the marriage/relationship domain: the UPA bhava-arudha position (sign + house) and Arudha A12 (ARUDHA_A12), plus the 2nd-from-UL bhāva as an answerer-side derivation off the UPA house (sustenance / longevity-of-union significator). Raw arudha positions are data-backed; salience ranking is CR-61.',
+      'Upapada Lagna (UL/UPA) read for the marriage/relationship domain: the UPA bhava-arudha position (sign + house) and Arudha A12 (ARUDHA_A12), plus the 2nd-from-UL bhāva as an answerer-side derivation off the UPA house (sustenance / longevity-of-union significator). Raw arudha positions are data-backed; salience ranking shipped (CR-61, see known_gap).',
     category: 'signal',
     live_tool: 'ganita_condition_get',
     tool_args: { chart_id: '{chart_id}', facet: 'karakas' },
     fallback_face: 'bodha_signals_get(frame=arudha)',
-    known_gap: 'CR-61', // arudha stored but never RANKED — OPEN (raw UPA is served; ranking is the gap)
+    known_gap: null, // CR-61 STALE-CORRECTED (SARVA-SIDDHI, 2026-07-24): arudha ranking now live via bodha_signals_get(signal_type_class=arudha) — see arudha_read's known_gap note above for the verified evidence.
     mandatory_tags: [],
     cr27_prevents: [],
   },
@@ -671,15 +678,26 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     // E-2 (prospective ledger): the OPEN filed falsifiable predictions for the question's domain.
     // Confirmation / disclosure ONLY — this primitive NEVER writes calibration (mimamsa_outcome_record
     // and the retired record_outcome path are out of scope; CR-128).
+    //
+    // SARVA-SIDDHI W-2 P-1 (2026-07-24) — live_tool REPOINTED phala_predictive_anchors_get →
+    // standing_predictions_read. The prior wiring was the exact PRE_DARPANA_READINESS B-2 FAIL:
+    // this primitive is DEFINED as a "prospective-ledger read", but phala_predictive_anchors_get
+    // reads L4 phala_anchors (deterministic ph_nimitta rows), NOT the LIVE prospective ledger
+    // (brahma_prospective_ledger, migration 458). For a wealth plan phala_anchors is empty, so the
+    // native's genuinely-filed standing predictions (Sat–Jupiter Apr–Aug 2027, Ketu-MD shape,
+    // Venus-MD 2034 — all filed 2026-07-19, D-4a Lane A-4, provenance intact in the ledger) never
+    // surfaced. standing_predictions_read → marsys://tool/L4/query_prospective_ledger reads the
+    // table this primitive was always meant to read. phala_predictive_anchors_get is kept as the
+    // fallback_face (still a valid, distinct L4 predictive-anchors surface).
     primitive_id: 'standing_predictions_read',
-    version: 1,
+    version: 2,
     definition:
-      'Standing prospective-ledger read (phala_predictive_anchors_get): the OPEN filed predictions for the domain — each with window_start/peak/end, magnitude, confidence band, malleability, a FALSIFIER (deny/confirm observable + evaluation date) and posterior. Makes every reading falsifier-bearing by default. Confirmation/disclosure ONLY — never a calibration write.',
+      'Standing prospective-ledger read (standing_predictions_read → brahma_prospective_ledger): the OPEN filed, falsifiable predictions for the domain — each with claim, event_class, temporal shape + window/milestones, confidence, a MANDATORY FALSIFIER, generator_class (reading_synthesis | engine | native_intuition | anchor_engine) and source_citation. Non-domain-matching open predictions are still returned (other_domain_predictions) — never silently dropped. Makes every reading falsifier-bearing by default. Confirmation/disclosure ONLY — never a calibration or filing write (§11: predictions exist by explicit filing only).',
     category: 'temporal',
-    live_tool: 'phala_predictive_anchors_get',
+    live_tool: 'standing_predictions_read',
     tool_args: { chart_id: '{chart_id}', domain: '{domain}' },
-    fallback_face: 'phala_anchors_get',
-    known_gap: null, // data-backed live (P-0 + P-3b: 6 anchors w/ falsifier / malleability / posterior).
+    fallback_face: 'phala_predictive_anchors_get',
+    known_gap: null, // data-backed live: reads brahma_prospective_ledger (migration 458) via query_prospective_ledger.
     mandatory_tags: [],
     cr27_prevents: [],
   },
