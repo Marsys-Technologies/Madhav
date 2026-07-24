@@ -606,7 +606,11 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // session_recall, list_my_sessions→session_list, list_my_charts→catalog_charts_list, select_chart
 // →catalog_chart_select, holistic_bundle_chart_facts→bodha_bundle_get, kala_temporal_bundle→
 // kala_bundle_get) — count-neutral. 122 − 43 = 79.
-const REGISTERED_TOOL_COUNT = 79
+// CR-24 completion fix (2026-07-24): +1 bodha_mechanisms_get — the CR-24 merge repointed the
+// mechanism_read planner primitive's live_tool to bodha_mechanisms_get but never registered the
+// corresponding MCP tool (registerP1AliasTools now does, delegating to query_mechanisms.ts).
+// 79 + 1 = 80.
+const REGISTERED_TOOL_COUNT = 80
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
