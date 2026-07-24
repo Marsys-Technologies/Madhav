@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-24T04:25:05.425Z",
+  "generated_at": "2026-07-24T04:49:55.973Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
   "vidhi_live_tool_bridge": {
@@ -201,13 +201,13 @@
         ]
       },
       {
-        "name": "phala_predictive_anchors_get",
+        "name": "ref_doshas_get",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
       },
       {
-        "name": "ref_doshas_get",
+        "name": "standing_predictions_read",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []

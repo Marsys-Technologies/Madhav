@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-07-24T04:25:05.425Z
+ * generated_at: 2026-07-24T04:49:55.973Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -46,7 +46,7 @@ export const MCP_SURFACE_PROFILES: {
   "full": {
     "profile": "full",
     "max_tools": null,
-    "total": 151,
+    "total": 152,
     "tool_names": [
       "assess_career",
       "assess_health",
@@ -156,6 +156,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_pratijna",
       "query_predictive_anchors",
       "query_projections",
+      "query_prospective_ledger",
       "query_quality_scorecard",
       "query_question_lenses",
       "query_rectification",
@@ -4806,6 +4807,44 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Projections",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "query_prospective_ledger",
+        "description": "Returns the OPEN filed, falsifiable standing predictions for a chart from the LIVE prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane A-4). Each prediction carries: claim, event_class, temporal shape (point/interval/chain) with its window or milestone_set, confidence, a MANDATORY falsifier, generator_class (reading_synthesis | engine | native_intuition | anchor_engine), source_citation, and lifecycle_status. §11 governance: predictions exist by explicit filing only — this is a READ/confirmation surface, never a filing or calibration write. Filter by domain (question domain — wealth clusters {wealth, residence} as the material/ asset cluster) and lifecycle_status. Non-domain-matching open predictions are still returned under other_domain_predictions (never silently dropped).",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID (<chart_uuid>). Required."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Question domain (e.g. wealth, career, spirituality, residence). Predictions whose event_class resolves into this domain (wealth clusters {wealth, residence}) lead the response; all other open predictions are still returned under other_domain_predictions."
+            },
+            "status": {
+              "type": "string",
+              "description": "Lifecycle filter (open | matched | confirmed | falsified | withdrawn). Default: open."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max predictions to scan (default 100)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L4/query_prospective_ledger",
+        "layer": "L4",
+        "name_valid": true,
+        "annotations": {
+          "title": "Query Prospective Ledger",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,

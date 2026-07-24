@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-24T04:25:05.425Z",
+  "generated_at": "2026-07-24T04:49:55.973Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 167,
+  "total": 168,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -4833,6 +4833,39 @@
       "has_drill_children": true
     },
     {
+      "uri": "marsys://tool/L4/query_prospective_ledger",
+      "type": "tool",
+      "layer": "L4",
+      "name": "query_prospective_ledger",
+      "scope": "per_chart",
+      "archetype": "rich_relational",
+      "traversal_level": "L-DOMAIN",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 4,
+      "projection_tags": [
+        "mcp_full"
+      ],
+      "short_label": "Query Prospective Ledger",
+      "one_line": "Returns the OPEN filed, falsifiable standing predictions for a chart from the LIVE prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane…",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L4/query_rectification",
       "type": "tool",
       "layer": "L4",
@@ -5606,23 +5639,23 @@
       "L2": 32,
       "L3": 14,
       "L1": 35,
-      "L4": 10,
+      "L4": 11,
       "L5": 13
     },
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 161
+      "tool": 162
     },
     "by_scope": {
       "global": 67,
-      "per_chart": 100
+      "per_chart": 101
     },
     "by_archetype": {
       "orientation_digest": 11,
       "flat_fact": 74,
       "calibration": 20,
-      "rich_relational": 20,
+      "rich_relational": 21,
       "cross_domain": 9,
       "temporal": 21,
       "prose_citation": 8,
@@ -5630,7 +5663,7 @@
     },
     "by_tool_role": {
       "umbrella": 19,
-      "leaf": 82,
+      "leaf": 83,
       "quality": 20,
       "drill": 19,
       "synthesizer": 4,
@@ -5639,13 +5672,13 @@
       "graph": 4
     },
     "by_data_source": {
-      "stored": 146,
+      "stored": 147,
       "computed": 20,
       "hybrid": 1
     },
     "by_projection_tag": {
       "chat": 85,
-      "mcp_full": 165,
+      "mcp_full": 166,
       "mcp_compact": 84,
       "mcp_consult": 14
     },
