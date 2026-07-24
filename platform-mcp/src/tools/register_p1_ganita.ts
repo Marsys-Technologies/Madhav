@@ -694,6 +694,56 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     }
   )
 
+  // ── 3b. ganita_kp_cusps_get (SARVA-SIDDHI W-4 D-4, CR-30) ─────────────────
+  // Dedicated first-class KP (Krishnamurti Paddhati) cusp/sub-lord face. SERVING ONLY —
+  // no new computation (B.10); every value is an already-stored L1 fact. Closes the CR-30
+  // known-gap on the vidhi primitive kp_cusp_sublord_read (previously reachable only via the
+  // Jaimini+KP omnibus get_karakas or the raw chart_facts category route). This is NOT a
+  // resurrection of the dropped kp_query / query_kp_ruling_planets phantoms — those were
+  // whitelist names with no backing engine (removed by WP-1.7 for exactly that reason); this
+  // is a real capability backed by real, stored data.
+  server.tool(
+    'ganita_kp_cusps_get',
+    'Retrieve the dedicated KP (Krishnamurti Paddhati) cuspal picture for a chart (L1 Gaṇita). ' +
+    'For each of the 12 bhava cusps: cusp sidereal longitude, sign (rashi), and the full KP lord ' +
+    'chain — sign_lord (rashi lord) / star_lord (nakshatra lord) / sub_lord / sub_sub_lord / ' +
+    'prana_lord — plus the cuspal significators list and the cusp degrees (Placidus and Sripati ' +
+    'start/madhya/end). Also returns the KP ruling planets for the natal moment (Ascendant lord, ' +
+    'Ascendant sub-lord, Moon sign/star lord, Day lord). SERVING ONLY — no new computation; every ' +
+    'value is an already-stored L1 fact (chart_facts categories cusp_kp_lords, ' +
+    'kp_cuspal_significators, bhava_cusps, kp_ruling_planets_natal). Defaults to the KP-canonical ' +
+    "Krishnamurti ayanamsha; pass ayanamsha_id for any of the 5 stored ayanamshas. Pass " +
+    'include_graha_kp_lords=true to also get each graha’s own KP chain (graha_kp_lords). ' +
+    'Each cusp carries its source fact_ids for grounding back-reference.',
+    {
+      chart_id: z.string().uuid().describe('Chart UUID. Required.'),
+      ayanamsha_id: z.string().optional()
+        .describe("Ayanamsha (default: 'krishnamurti', the KP-canonical one). Also: " +
+          'lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.'),
+      include_graha_kp_lords: z.boolean().optional()
+        .describe('If true, also return the per-graha KP star/sub/sub_sub/prana chain. Default false.'),
+    },
+    async ({ chart_id, ayanamsha_id, include_graha_kp_lords }) => {
+      if (!chart_id) return errorOutput('ganita_kp_cusps_get', 'chart_id is required')
+      // KP defaults to Krishnamurti — do NOT route through normalizeAyanamsha (it defaults to
+      // lahiri and folds true_chitra→lahiri, both wrong for a KP surface). Pass through, with a
+      // minimal lahiri-alias convenience only.
+      const aya = !ayanamsha_id
+        ? undefined
+        : (ayanamsha_id === 'lahiri' || ayanamsha_id === 'LAHIRI' ? 'lahiri_chitrapaksha' : ayanamsha_id)
+      try {
+        const data = await callRegistryCapability('marsys://tool/L1/get_kp_cusps', {
+          chart_id,
+          ...(aya ? { ayanamsha_id: aya } : {}),
+          ...(include_graha_kp_lords ? { include_graha_kp_lords: true } : {}),
+        }, principal)
+        return dualOutput(envelope(data, 'ganita_kp_cusps_get'))
+      } catch (err) {
+        return errorOutput('ganita_kp_cusps_get', String(err), { chart_id })
+      }
+    }
+  )
+
   // ── 4. ganita_sade_sati_get ───────────────────────────────────────────────
   server.tool(
     'ganita_sade_sati_get',

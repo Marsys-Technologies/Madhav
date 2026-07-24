@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-07-23T20:16:05.987Z",
+  "generated_at": "2026-07-24T04:49:55.973Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
   "vidhi_live_tool_bridge": {
-    "total": 30,
+    "total": 31,
     "mapped": 12,
-    "unmapped": 18,
+    "unmapped": 19,
     "entries": [
       {
         "name": "bodha_chart_digest_get",
@@ -76,6 +76,12 @@
         "via": [
           "query_dasha_periods"
         ]
+      },
+      {
+        "name": "ganita_kp_cusps_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
       },
       {
         "name": "ganita_medical_get",
@@ -181,6 +187,12 @@
         ]
       },
       {
+        "name": "mechanism_retrodiction_get",
+        "uri": "marsys://tool/L5/mechanism_retrodiction_get",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
         "name": "mimamsa_calibration_get",
         "uri": "marsys://tool/L5/query_calibration",
         "resolution_kind": "canonical_reverse_alias",
@@ -189,21 +201,13 @@
         ]
       },
       {
-        "name": "mimamsa_lel_query",
-        "uri": "marsys://tool/L5/lel_query",
-        "resolution_kind": "canonical_reverse_alias",
-        "via": [
-          "lel_query"
-        ]
-      },
-      {
-        "name": "phala_predictive_anchors_get",
+        "name": "ref_doshas_get",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
       },
       {
-        "name": "ref_doshas_get",
+        "name": "standing_predictions_read",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
