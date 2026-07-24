@@ -47,6 +47,7 @@ import {
   buildRetrievalEnvelope,
   resolveEnvelopeFormat,
   judgmentFlag,
+  redactProvenanceTables,
   type EnvelopeFormat,
   type ChartHeader,
   type DrillPointerType,
@@ -267,6 +268,12 @@ function envelope(
     coverage?: CoverageStamp | null
     trim_report?: TrimReportEntry[] | null
   },
+  // Entitlement gate (finding: "provenance.tables / source_table expose raw internal
+  // schema names regardless of entitlement") — pass `false` for an ordinary end-user
+  // caller (not native/debug-tier) to strip raw provenance.tables/source_table schema
+  // detail from `content` (buildRetrievalEnvelope → redactProvenanceTables). Omitted
+  // (default) preserves today's byte-identical content for every existing call site.
+  entitled?: boolean,
 ) {
   return buildRetrievalEnvelope(
     {
@@ -282,6 +289,7 @@ function envelope(
       as_of_date: v3Extras?.as_of_date,
       coverage: v3Extras?.coverage,
       trim_report: v3Extras?.trim_report,
+      entitled,
     },
     format,
   )
@@ -2009,9 +2017,15 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // R5.1 C1: 'v3' is now the MCP-channel DEFAULT for this instrument (an explicit
         // response_format:'legacy' remains the escape hatch to the pre-C1 hollow envelope).
         const format = resolveEnvelopeFormat(response_format ?? 'v3')
+        // Entitlement gate (finding: "provenance.tables / source_table expose raw internal
+        // schema names regardless of entitlement") — only a native/debug-tier principal
+        // (super_admin, same role check the X-MCP-Audience-Tier header above already uses)
+        // sees raw DB table names in a `provenance` block; an ordinary end-user-facing call
+        // gets the same content with those two fields stripped (redactProvenanceTables).
+        const entitled = principal.role === 'super_admin'
 
         // B.11: fetch holistic orientation alongside the judgment recipe (S1: parallelized)
-        const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
+        const [{ orientation_context: rawOrientationContext, orientation_ok }, raw] = await Promise.all([
           fetchOrientationContext(chart_id, resolvedAyanamsha, principal),
           callRegistryCapability(
             'marsys://tool/L-JUDGMENT/judgment_query',
@@ -2019,6 +2033,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
+        // orientation_context carries query_ucd's raw content verbatim (including its
+        // content.provenance.tables block, e.g. ['vw_chart_digest', 'bodha_msr_signals',
+        // 'bodha_convergence']) — it rides in as a SIBLING field, not through envelope()'s
+        // `content`, so it needs its own gate call (envelope()'s `entitled` param below only
+        // covers judgment_query's own `inner` content).
+        const orientation_context = redactProvenanceTables(rawOrientationContext, entitled)
         const wrapper = raw as Record<string, unknown>
         const inner = (wrapper['content'] as Record<string, unknown>) ?? wrapper
 
@@ -2169,7 +2189,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         ]
 
         if (format !== 'v3') {
-          const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'judgment_query') }
+          const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'judgment_query', undefined, 'legacy', undefined, entitled) }
           return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.judgment_query, verbosity), judgmentSections))
         }
 
@@ -2195,7 +2215,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           orientation_context, orientation_ok,
           ...envelope(inner, 'judgment_query', undefined, 'v3', {
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
-          }),
+          }, entitled),
         }
         const budgeted = applyMcpBudget(v3Response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.judgment_query, verbosity), judgmentSections)
         // R-21 fix: `receipt.varga_confirmed`/`receipt.timing_anchored` were stamped from the
