@@ -269,8 +269,9 @@ the standing-predictions ledger, Sade Sati, logged LEL history), not on the inco
 ### S4-03 (S4)
 
 - user_voice_text: "What's my exact Gulika placement, and how strong is it working out to be?"
-- band: DELIGHT  · veto: False  · normalized_score: 10
-- failure_tag: HONEST-GAP  · severity: None
+- band: DELIGHT  · veto: False  · normalized_score: 10  (ORIGINAL GRADER — OVERTURNED, see audit)
+- **FINAL_BAND (post-audit, use this for all scoring/synthesis): FAIL · veto: TRUE · failure_tag: FALSE-CONFIDENT · severity: TRUST-BREAKING**
+- failure_tag: HONEST-GAP  · severity: None  (original grader tag, superseded)
 - Family A (SUBSTANCE) subtotal: 10  · Family B (TRUTH) subtotal: 8  · Family C (DELIVERY) subtotal: 6
 - grader notes: Refuses to invent a Gulika degree it doesn't have; distinguishes an unverified affliction flag from a real placement; correctly notes shadow-points don't receive Shadbala. Minor classical-taxonomy quibble (lists 'Kala' among the Sun-based upagrahas, where Kala is often grouped with the Saturn/time-based set) but this is reporting stored data, not a load-bearing claim, and does not mislead. HONEST-GAP counted with pride.
 - **adversarial audit**: score=1 band=FAIL veto=True agrees=False final=FAIL
@@ -313,8 +314,9 @@ PRIOR-GRADER LENIENCY: accepted the answer's self-report without querying the DB
 ### S4-06 (S4)
 
 - user_voice_text: "Did anything significant happen for me in 2023?"
-- band: DELIGHT  · veto: False  · normalized_score: 10
-- failure_tag: None  · severity: None
+- band: DELIGHT  · veto: False  · normalized_score: 10  (ORIGINAL GRADER — DOWNGRADED, see audit)
+- **FINAL_BAND (post-audit, use this for all scoring/synthesis): PASS · veto: FALSE · failure_tag: none (not a failure, a docked-but-passing answer) · severity: COSMETIC**
+- failure_tag: None  · severity: None  (original grader tag)
 - Family A (SUBSTANCE) subtotal: 10  · Family B (TRUTH) subtotal: 8  · Family C (DELIVERY) subtotal: 6
 - grader notes: Specific, well-sourced 2023 recap (return to India + US job loss May, Tepper EMBA June, Marsys founding July) and transparent that it is confirming the on-file life record, not divining. Mercury dasha 2010-2027 consistent across the set. Minor astrological imprecision: calling 2023 the 'tail' of Sade Sati is loose (Saturn was entering Aquarius/over the Moon then, i.e. onset/peak; S4-05 puts the easing ~2027) - a soft contextual aside, not a fabricated fact, so no dimension drops.
 - **adversarial audit**: score=9 band=PASS veto=False agrees=False final=PASS
