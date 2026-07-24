@@ -156,6 +156,11 @@ export const LIVE_TOOL_TO_RETRIEVAL: Readonly<Record<string, string>> = {
     // (VIDHI_PRIMITIVES); this key keeps the mapping live under the new name → L5 life-event log
   ganita_yoga_firings_get: 'get_yoga_firings', // dhana_yoga_scan / nbry_scan → L1 yoga firings
   bodha_discoveries_get: 'query_discoveries', // contradiction_scan → L2 discoveries
+  // SARVA-SIDDHI W-2 P-1: standing_predictions_read (E-2) → the LIVE prospective-ledger read
+  // capability (brahma_prospective_ledger, migration 458). Repointed from the mis-wired
+  // phala_predictive_anchors_get (L4 phala_anchors) so the native's filed standing predictions
+  // surface on the web consult path exactly as they do on the MCP connector.
+  standing_predictions_read: 'marsys://tool/L4/query_prospective_ledger',
 
   // RC-10 (R-9, namespace-gap re-measure, 2026-07-22): 9 more of the 23 distinct
   // `live_tool` names, each verified as a genuine 1:1 concept match to an already-live

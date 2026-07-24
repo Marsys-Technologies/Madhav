@@ -28,6 +28,10 @@ import {
   queryRectificationCapability,
 } from './query_phala_calibration'
 import { queryMuhuratCapability } from './query_muhurat'
+// SARVA-SIDDHI W-2 P-1 — read side of the LIVE prospective ledger (brahma_prospective_ledger),
+// the table the Vidhi E-2 `standing_predictions_read` primitive was always meant to read (it
+// had been mis-wired to phala_predictive_anchors_get). See query_prospective_ledger.ts header.
+import { queryProspectiveLedgerCapability } from './query_prospective_ledger'
 
 registerCapability(queryPredictiveAnchorsCapability)
 registerCapability(queryDomainResultCapability)
@@ -41,3 +45,4 @@ registerCapability(queryRectificationCapability)
 // R5.1 C3 — real electional muhurta finder (replaces the query_planet_transit
 // mis-mapping in tool_name_bridge.ts). See query_muhurat.ts header comment.
 registerCapability(queryMuhuratCapability)
+registerCapability(queryProspectiveLedgerCapability)
