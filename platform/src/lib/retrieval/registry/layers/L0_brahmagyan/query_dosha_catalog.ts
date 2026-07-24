@@ -42,7 +42,28 @@ export const queryDoshaCatalogCapability: CapabilityDescriptor = {
       const offset = (args.offset as number) ?? 0
       const params: unknown[] = [limit, offset]
       let sql = `SELECT * FROM brahma_dosha_catalog WHERE 1=1`
-      if (args.dosha_name) { sql += ` AND name_en ILIKE $${params.length + 1}`; params.push(`%${args.dosha_name as string}%`) }
+      if (args.dosha_name) {
+        // name_en alone (e.g. 'Manglik Dosha', 'Kuja Dosha (from Moon)') misses common
+        // colloquial spellings whose substrings don't literally occur in name_en — the
+        // classic trap is 'mangal', which is NOT a substring of 'Manglik' (no second 'a').
+        // Broaden to name_sa + canonical_id, and expand known synonym groups so a search
+        // on any member of a group matches catalog rows carrying any other member.
+        const raw = (args.dosha_name as string).trim().toLowerCase()
+        const synonymGroups = [['mangal', 'manglik', 'kuja']]
+        const terms = new Set<string>([raw])
+        for (const group of synonymGroups) {
+          if (group.some((t) => raw.includes(t) || t.includes(raw))) {
+            for (const t of group) terms.add(t)
+          }
+        }
+        const clauses: string[] = []
+        for (const term of terms) {
+          const idx = params.length + 1
+          clauses.push(`(name_en ILIKE $${idx} OR name_sa ILIKE $${idx} OR canonical_id ILIKE $${idx})`)
+          params.push(`%${term}%`)
+        }
+        sql += ` AND (${clauses.join(' OR ')})`
+      }
       if (args.severity)   { sql += ` AND severity_grades ? $${params.length + 1}`; params.push(args.severity as string) }
       if (args.domain)     { sql += ` AND category = $${params.length + 1}`; params.push(args.domain as string) }
       sql += ` ORDER BY category, name_en LIMIT $1 OFFSET $2`
