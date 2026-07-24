@@ -110,6 +110,33 @@ const METRIC_FACT_SQL = `
     AND fact_id = $2
 `
 
+// ── citation_human sanitization ────────────────────────────────────────────────
+
+/**
+ * Matches an internal GAP-tracking-ticket + raw-fact_id annotation appended to
+ * a citation_human string, e.g.:
+ *   "Saturn nak-lord chain length=7 (cycle@6) in lahiri_chitrapaksha. \
+ *    GAP-4: L1 nakshatra_lord fact_id=16ff3dbbc4bc15b5 (graha_nakshatra_join)."
+ *
+ * citation_human is served as a human-readable string; the fact_id/ticket
+ * linkage already has a proper home in citation_ref (machine-readable) and the
+ * L1Fact.fact_id field itself, both visible elsewhere in the same envelope.
+ * Duplicating that internal bookkeeping into citation_human is a leak, not a
+ * feature — strip it here, once, at construction time.
+ */
+const CITATION_GAP_TICKET_RE = /\s*GAP-\d+:\s*L1\s+\S+\s+fact_id=\S+\s*\([^)]*\)\.?\s*$/i
+
+/**
+ * Sanitize a raw citation_human value read from the DB by stripping any
+ * trailing internal GAP-ticket + fact_id annotation. Safe no-op on strings
+ * that don't carry the annotation (principle #2 — never fabricates; only
+ * removes a substring that should never have been human-facing).
+ */
+function sanitizeCitationHuman(raw: string): string {
+  if (!raw) return raw
+  return raw.replace(CITATION_GAP_TICKET_RE, '').trimEnd()
+}
+
 // ── Grounding resolver ────────────────────────────────────────────────────────
 
 /**
@@ -198,7 +225,7 @@ export async function resolveSignals(
         fact_value_jsonb: row.fact_value_jsonb as Record<string, unknown> | null,
         unit: row.unit,
         citation_ref: row.citation_ref,
-        citation_human: row.citation_human,
+        citation_human: sanitizeCitationHuman(row.citation_human),
         source_calculation: row.source_calculation,
         verification_pass_status: row.verification_pass_status,
       })
@@ -366,7 +393,7 @@ export async function resolveMetric(
         value: row.fact_value_num != null ? Number(row.fact_value_num) : null,
         source_id,
         source_table: 'chart_facts',
-        citation: row.citation_human,
+        citation: sanitizeCitationHuman(row.citation_human),
       }
       return { ok: true, metric: resolved }
 
@@ -399,7 +426,7 @@ export async function resolveMetric(
         value: rawValue != null ? Number(rawValue) : null,
         source_id,
         source_table: 'bodha_msr_signals',
-        citation: row.citation_human,
+        citation: sanitizeCitationHuman(row.citation_human),
       }
       return { ok: true, metric: resolved }
     }
