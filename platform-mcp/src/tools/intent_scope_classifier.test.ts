@@ -129,8 +129,9 @@ describe('classifyScope — entitlement tier', () => {
   it('reference intents get reference entitlement', () => {
     expect(classifyScope('What does the BPHS say about Rahu?').scope_tuple.entitlement).toBe('reference')
   })
-  it('chart-specific intents get native entitlement', () => {
-    expect(classifyScope('What is my wealth outlook?').scope_tuple.entitlement).toBe('native')
+  it('chart-specific intents default to the least-privilege restricted entitlement ' +
+    '(no session context is available to this deterministic classifier to justify native)', () => {
+    expect(classifyScope('What is my wealth outlook?').scope_tuple.entitlement).toBe('restricted')
   })
 })
 
