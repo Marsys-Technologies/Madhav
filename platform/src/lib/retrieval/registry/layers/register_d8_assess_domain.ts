@@ -1136,6 +1136,22 @@ export const yogaActivationByDashaCapability: CapabilityDescriptor = {
 
       const result = await query<Record<string, unknown>>(sql, params)
 
+      // CR-37 (SARVA-SIDDHI W-1 T-3) §N.6: a yoga can be undated for two very
+      // different reasons, and flattening them into one `undated_activation_count`
+      // hides that distinction. ka_kalasutra stamps `:always_on=<reason>` on the
+      // source_citation of a Nabhasa/ākṛti distribution yoga (formed by all seven
+      // grahas → no single activating daśā lord → CORRECTLY always-on, not a
+      // missing window). Annotate each such row with an inspectable
+      // `always_on_reason` and count the two undated kinds separately.
+      const ALWAYS_ON_RE = /:always_on=([a-z0-9_]+)/i
+      for (const row of result.rows as Array<{ source_citation?: string | null; activation_start?: string | null; always_on_reason?: string | null }>) {
+        const m = typeof row.source_citation === 'string' ? row.source_citation.match(ALWAYS_ON_RE) : null
+        row.always_on_reason = m ? m[1]! : null
+      }
+      const rowsTyped = result.rows as Array<{ activation_start?: string | null; always_on_reason?: string | null }>
+      const structurallyAlwaysOnCount = rowsTyped.filter((r) => r.activation_start == null && r.always_on_reason).length
+      const undatedPendingWindowCount = rowsTyped.filter((r) => r.activation_start == null && !r.always_on_reason).length
+
       // Collect signal_id references
       const signalRefs = [
         ...new Set(
@@ -1171,6 +1187,13 @@ export const yogaActivationByDashaCapability: CapabilityDescriptor = {
           // but their activation_start/end are null pending the ka_kalasutra dating writer.
           undated_activation_count: (result.rows as Array<{ activation_start?: string | null }>)
             .filter((r) => r.activation_start == null).length,
+          // CR-37 §N.6: split the undated total by REASON so a caller never reads a
+          // correctly-always-on distribution yoga as a missing window.
+          //   structurally_always_on_count — Nabhasa/ākṛti yogas with no discrete
+          //     activation window BY NATURE (each row carries always_on_reason).
+          //   undated_pending_window_count  — genuinely lacking a resolved window.
+          structurally_always_on_count: structurallyAlwaysOnCount,
+          undated_pending_window_count: undatedPendingWindowCount,
           ...(result.rows.length === 0
             ? { empty_reason: `No yoga signals join to kala_activation for chart ${chart_id} at ayanamsha '${ayanamsha_id}'${domain ? ` in domain '${domain}'` : ''}.` }
             : {}),

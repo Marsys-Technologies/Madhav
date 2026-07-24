@@ -6,7 +6,23 @@ from typing import Any
 
 
 def _extract_constituent_lords(signal: dict) -> list:
-    """Best-effort extraction of constituent lords from configuration_jsonb / constituent_facts_array."""
+    """Best-effort extraction of constituent lords from configuration_jsonb.
+
+    CR-37 (SARVA-SIDDHI W-1 T-3) root-cause fix: the previous implementation,
+    when configuration_jsonb carried no graha-valued key (the case for EVERY
+    `yoga_label:yoga_name` MSR signal — their config holds only yoga_name +
+    citations), fell back to `constituent_facts_array[:10]` and dumped those
+    values verbatim into `constituent_lords`. But `constituent_facts_array`
+    holds L1 `chart_facts.fact_id` HASHES (e.g. '050b754375d2181d'), not graha
+    names — so downstream `date_resolver.normalize_graha` rejected every one of
+    them, no daśā period ever matched, and 100% of yoga_label activations came
+    out UNDATED. Worse, because the returned list was non-empty, it suppressed
+    ka_yojaka's own `if not existing_lords` lord-enrichment chain, so the
+    authoritative forming-graha source was never consulted. Dropping the
+    fact-id fallback here lets ka_yojaka resolve real forming grahā(s) from
+    L1 `ga_yoga_firings.constituent_planets` (see ka_yojaka.py CR-37 block).
+    No fabrication (B.10): a fact-id hash was never a valid lord.
+    """
     cfg = signal.get('configuration_jsonb') or {}
     lords = []
     if isinstance(cfg, dict):
@@ -16,9 +32,6 @@ def _extract_constituent_lords(signal: dict) -> list:
                 lords.extend(str(v) for v in val)
             elif isinstance(val, str):
                 lords.append(val)
-    cfa = signal.get('constituent_facts_array') or []
-    if isinstance(cfa, list) and not lords:
-        lords = [str(f) for f in cfa[:10]]
     return lords
 
 
