@@ -255,9 +255,12 @@ export function classifyScope(rawQuery: string): ScopeClassification {
   else if (INTERVENTION_MITIGATION.test(query)) { intervention = 'mitigation'; matched.push('intervention:mitigation') }
 
   // 7. Entitlement — best-effort disclosure tier. Reference/panchanga = public reference data;
-  //    everything chart-specific defaults to native (the query is chart-agnostic, so this is a
-  //    hint the compiler refines against the actual principal, never an authorization decision).
-  const entitlement: Entitlement = REFERENCE_INTENTS.has(intent) ? 'reference' : 'native'
+  //    everything else defaults to the LEAST-PRIVILEGE tier ('restricted') — this classifier has
+  //    no visibility into the calling principal's session, so it must never hint 'native' for a
+  //    chart-specific query on the strength of a regex match alone. The compiler is the one that
+  //    upgrades to 'native' when an explicit authenticated native-session signal is present in the
+  //    caller's context; this function only ever offers a hint, never an authorization decision.
+  const entitlement: Entitlement = REFERENCE_INTENTS.has(intent) ? 'reference' : 'restricted'
   matched.push(`entitlement:${entitlement}`)
 
   // Confidence: intent match is the dominant term; corroborating dimensions add smaller weight.
