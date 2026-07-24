@@ -30,8 +30,13 @@ from services.ph_nimitta.engine import (
 
 logger = logging.getLogger(__name__)
 
-_MAX_CONVERGENCE = 200  # top windows by convergence_score
-_MAX_DISCOVERIES = 100  # top discoveries by confidence_score
+# CR-66: overall ceiling raised so the per-domain stratified picks are NOT re-cut by a
+# flat global score sort — a low-score-but-real domain (e.g. wealth, whose windows peak at
+# ~0.30 vs character's 1.0) must not be squeezed out of the final set by higher-scoring rows
+# from other domains. With ~6 domains × 50 = ~300 picks this ceiling is never the binding cut.
+_MAX_CONVERGENCE = 500            # overall hard ceiling
+_MAX_CONVERGENCE_PER_DOMAIN = 50  # CR-66: per-domain cap so no single domain starves the rest
+_MAX_DISCOVERIES = 100            # top discoveries by confidence_score
 
 
 def _anchor_dedup_key(a) -> tuple:
@@ -270,19 +275,48 @@ class PhNimittaWriter(WriterBase):
     # ── private helpers ──────────────────────────────────────────────────────
 
     def _load_convergence(self, conn, chart_id: str) -> list:
+        """CR-66 root cause #2 (zero convergence anchors → wealth=0, 8 total rows).
+
+        The prior query — `ORDER BY convergence_score DESC, convergence_id ASC LIMIT 200` —
+        collapsed the entire selection onto ONE era + ONE domain: with ~245 rows tied at
+        convergence_score=1.0, the top-200-by-id were all the earliest score-1.0 windows,
+        which are historical 'character'-domain windows (peak_date 1964–2023, every
+        window_end in the past). Those then all became stale-'near' anchors and were rejected
+        100% by the writer's clip gate — so NOT ONE convergence anchor survived, and the
+        956 wealth / 674 spirituality / 816 career future-dated windows were never even loaded.
+
+        Fix: select per-domain (PARTITION BY domain), prioritizing LIVE windows
+        (window_end >= today) over closed ones, then by convergence_score / rarity. This
+        guarantees every domain that has convergence windows — wealth, career, spirituality,
+        health, character — contributes its top real, mostly-future windows, instead of one
+        domain's historical rows monopolizing a flat top-200. `domain` is now also SELECTed so
+        the engine can use kala_convergence.domain as a derivation candidate.
+        """
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT convergence_id, chart_id, signal_id, mode, peak_date,
                        window_start, window_end, convergence_score, rarity_years,
                        constituent_factors, source_citation, independent_current_count,
-                       confidence_score, confidence_label
-                FROM kala_convergence
-                WHERE chart_id = %s
-                ORDER BY convergence_score DESC, convergence_id ASC
+                       confidence_score, confidence_label, domain
+                FROM (
+                    SELECT kc.*,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY kc.domain
+                               ORDER BY (kc.window_end >= CURRENT_DATE) DESC,
+                                        kc.convergence_score DESC,
+                                        kc.rarity_years DESC NULLS LAST,
+                                        kc.convergence_id ASC
+                           ) AS rn
+                    FROM kala_convergence kc
+                    WHERE kc.chart_id = %s
+                ) ranked
+                WHERE rn <= %s
+                ORDER BY (window_end >= CURRENT_DATE) DESC,
+                         convergence_score DESC, convergence_id ASC
                 LIMIT %s
                 """,
-                (chart_id, _MAX_CONVERGENCE),
+                (chart_id, _MAX_CONVERGENCE_PER_DOMAIN, _MAX_CONVERGENCE),
             )
             return cur.fetchall()
 
@@ -563,27 +597,35 @@ class PhNimittaWriter(WriterBase):
             return {}
 
     # B5: subsystem → canonical domain mapping for discovery anchors.
-    # Canonical domains (from engine.py derive_anchor_from_discovery):
-    # career | relationship | financial | spiritual | health | transition | psychological
+    # CR-66 root cause #1: these MUST be the canonical phala_anchors_domain_canonical DB
+    # vocabulary (career | wealth | relationship | progeny | health | education | family |
+    # residence | travel | spirituality | character | transition | general). The prior
+    # targets ('spiritual'/'financial'/'psychological') were NOT in the DB CHECK — a discovery
+    # whose subsystem mapped to any of them would have violated phala_anchors_domain_canonical
+    # and aborted the whole asset; the build only ever survived because no discovery on the
+    # built chart happened to hit that path. Aligning the targets closes that latent abort AND
+    # lets wealth/spirituality/character discovery anchors actually exist.
     _SUBSYSTEM_DOMAIN: dict[str, str] = {
-        'yoga':          'spiritual',
+        'yoga':          'spirituality',
         'graha':         'career',
         'bhava':         'career',
         'dasha':         'career',
         'transit':       'career',
-        'nakshatra':     'psychological',   # nakshatra = character/psychological axis
+        'nakshatra':     'character',   # nakshatra = character axis
         'divisional':    'career',
         'career':        'career',
-        'wealth':        'financial',
+        'wealth':        'wealth',
         'health':        'health',
         'relationship':  'relationship',
         'marriage':      'relationship',
-        'spiritual':     'spiritual',
-        'dharma':        'spiritual',
-        'psychology':    'psychological',
-        'psychological': 'psychological',
-        'financial':     'financial',
-        'money':         'financial',
+        'spiritual':     'spirituality',
+        'spirituality':  'spirituality',
+        'dharma':        'spirituality',
+        'psychology':    'character',
+        'psychological': 'character',
+        'character':     'character',
+        'financial':     'wealth',
+        'money':         'wealth',
     }
 
     def _enrich_discovery_row(self, conn, row: dict, chart_id: str | None = None) -> dict:
