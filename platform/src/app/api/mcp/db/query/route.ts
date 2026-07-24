@@ -50,6 +50,19 @@ const ALLOWED_TABLES = new Set([
   // L0 Brahmagyan reference table via this route; its absence from the whitelist was the
   // "platform DB query failed: 400" the re-audit saw. Read-only global reference data.
   'bg_transit_rules',
+  // SARVA-SIDDHI W-1 T-1 (2026-07-24): the three gochara serving tools
+  // (gochara_activation_get / gochara_forecast_get / gochara_election_avoidance_get,
+  // platform-mcp/src/tools/retrieval/register_gochara_windows.ts) were re-pointed OFF a
+  // self-contained pg.Pool (which read DATABASE_URL — never set on the amjis-mcp Cloud Run
+  // service, so every call returned backing_data_reachable:false; register CR-131) ONTO this
+  // read-only proxy — the same invariant every other MCP tool honors ("the MCP server does
+  // not hold a direct DB connection"). kala_gochara_windows = G-4's signed-intensity standing
+  // table (chart-scoped; each tool remoteAuthorize()s the chart before querying, matching the
+  // register_p1_synthesis.ts call-site discipline this route's docstring requires).
+  // brahma_remedy_corpus = the BPHS-cited remedy table election-avoidance pairs its DR-16
+  // mitigation from (global read-only reference). Read-only; no write path added.
+  'kala_gochara_windows',
+  'brahma_remedy_corpus',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.

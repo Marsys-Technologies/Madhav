@@ -40,16 +40,13 @@ export const OPEN_CRS = [
   'CR-14',
   'CR-39',
   'CR-15',
-  'CR-16',
   'CR-24',
   'CR-25',
   'CR-26',
-  'CR-64',
   'CR-28',
   'CR-30',
   'CR-36',
   'CR-44',
-  'CR-61',
   'CR-62',
   'CR-73',
   'CR-76',
@@ -67,11 +64,16 @@ export const OPEN_CRS = [
   // NOTE: CR-56 was ALSO in this list until VIDHI-PŪRṆATĀ (2026-07-23) reconciled it — the
   // house-lord dhana/raja yoga family DOES fire live via ganita_yoga_firings_get (F9); moved to
   // CLOSED_CRS below (same stale-register-drift precedent as CR-54/CR-59).
+  // NOTE: CR-16, CR-61, CR-64, CR-68 were ALSO in this list until the SARVA-SIDDHI
+  // register-reconciliation lane (2026-07-24) — all four are shipped-and-live (W-0 truth-pass
+  // confirmed); moved to CLOSED_CRS below (same stale-register-drift precedent, third confirmed
+  // occurrence of this class after CR-56 — see CLOSED_CRS entries + the standing note in
+  // POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md).
   'CR-63',
   'CR-65',
   'CR-66',
-  // CR-67 & CR-69 — CLOSED by SARVA-SIDDHI W-3 (2026-07-24); moved to CLOSED_CRS below.
-  'CR-68',
+  // CR-67, CR-68 & CR-69 all CLOSED (SARVA-SIDDHI, 2026-07-24; CR-68 via the
+  // register-reconciliation lane, CR-67/CR-69 via W-3); moved to CLOSED_CRS below.
   'CR-37',
   // CR-130 — NEW, minted by VIDHI-PŪRṆATĀ P-2 (2026-07-23; next free slot after CR-129, the
   // highest in MARSYS_DEFECT_GAP_REGISTER_v2_0.md at wave open). DATA GAP: the Jaimini
@@ -97,6 +99,18 @@ export const OPEN_CRS = [
   // register is outside this lane's may_touch); when DB reachability is confirmed live, retire the
   // three primitives' known_gap to null (the CR-56/CR-59 stale-correction precedent).
   'CR-131',
+  // CR-132 — NEW, minted by the SARVA-SIDDHI register-reconciliation lane (2026-07-24; next free
+  // slot after CR-131). RESIDUAL, NOT a route/ranking gap (CR-64's core finding — ranking itself
+  // — is CLOSED, see CLOSED_CRS below): nakshatra_semantic signals carry a 16.7% orphan
+  // constituent_facts_array rate against chart_facts for chart 482012f1 (live DEFECT-001
+  // self-report on bodha_signals_get(signal_type_class=nakshatra_semantic): 9/54 refs
+  // unresolved) plus a DRAFT-quality reader-facing description for this signal class. Filed here
+  // as a citable, non-blocking known_gap for any primitive/reader that wants to flag it honestly;
+  // no primitive currently cites it (nakshatra_semantics itself is known_gap:null — the ranking
+  // works, this is a narrower data-quality residual on top of it).
+  // FOLLOW-UP (conductor): file the formal CR-132 row in MARSYS_DEFECT_GAP_REGISTER (outside this
+  // lane's may_touch, so flagged here rather than edited) if/when a reader wants to surface it.
+  'CR-132',
 ] as const;
 
 /** LOGGED = inputs, not defects (BRIEF_D2.md §B0.1). Citable as known_gap context, never as a "fix this" CR. */
@@ -158,6 +172,38 @@ export const CLOSED_CRS = [
   // kept bodha_rm_dasha_windowed_prescriptions at 0 rows; rebuild now writes 5 windowed rows for
   // chart 482012f1. registry_data.ts intervention_synthesis known_gap set to null.
   'CR-69',
+  // CR-16: STALE-corrected (SARVA-SIDDHI, 2026-07-24). Was in OPEN_CRS at bind time, tagged
+  // special_lagna_read's known_gap ("chart-keyed special-lagna access still OPEN"). Shipped via
+  // PR #594/D-2 (20e2da8e): ganita_special_lagnas_get (register_p1_aliases.ts) now accepts an
+  // optional chart_id and serves stored special_lagna/upagraha/saham facts from chart_facts under
+  // entitlement — 245 facts verified live for chart 482012f1. registry_data.ts has set
+  // special_lagna_read's known_gap to null. Same stale-register-drift precedent as CR-54/CR-56/CR-59.
+  'CR-16',
+  // CR-61: STALE-corrected (SARVA-SIDDHI, 2026-07-24). Was in OPEN_CRS at bind time, tagged
+  // arudha_read + upapada_read's known_gap ("arudha stored but never ranked"). Shipped via the
+  // V-5 emitter (PR #585): bodha_signals_get(signal_type_class=arudha) returns real salience-
+  // ranked rows live (5 rows verified for chart 482012f1 — AL-conjunction, A2/A11 tenancy,
+  // AL-bhava relation). registry_data.ts has set both primitives' known_gap to null.
+  'CR-61',
+  // CR-64: STALE-corrected (SARVA-SIDDHI, 2026-07-24). Was in OPEN_CRS at bind time, tagged
+  // nakshatra_semantics's known_gap ("nakshatra semantics never rank"). Shipped via the same V-5
+  // wave: bodha_signals_get(signal_type_class=nakshatra_semantic) returns 9 salience-ranked rows
+  // live for chart 482012f1 (computed_salience populated). registry_data.ts has set
+  // nakshatra_semantics's known_gap to null.
+  // RESIDUAL (NOT re-opening CR-64 — a narrower, separately tracked item, see CR-132 below):
+  // the tool's own live DEFECT-001 report shows constituent_facts_array carries a 16.7%
+  // orphan-ref rate for chart 482012f1 (9/54 refs unresolved against chart_facts) on this
+  // signal_type_class specifically, plus the reader-facing description for this signal class is
+  // still DRAFT-quality. Neither blocks the ranking closure this CR was about.
+  'CR-64',
+  // CR-68: STALE-corrected (SARVA-SIDDHI, 2026-07-24). Was in OPEN_CRS at bind time, tagged
+  // lel_retrodiction's known_gap ("mechanism_retrodiction surface absent — LEL walled off beyond
+  // prediction"). Shipped PR #688 (5f27d9d2, 2026-07-21): mechanism_retrodiction_get is a
+  // dedicated, registered, live tool serving per-house dasha-lord/LEL-event confirmation
+  // (CONFIRMATION-ONLY, sealed pre-2020 test split) — verified live for chart 482012f1 (7
+  // mechanisms fired). registry_data.ts has repointed lel_retrodiction's live_tool from
+  // mimamsa_lel_query to mechanism_retrodiction_get and set known_gap to null.
+  'CR-68',
   'A7',
   'R-17',
   'R-47',

@@ -36,6 +36,9 @@ import { queryRmDashaWindowedPrescriptionsCapability } from './query_rm_dasha_wi
 import { queryRmPatternRemediesCapability }          from './query_rm_pattern_remedies'
 import { queryRmDoshaRemedyBundlesCapability }       from './query_rm_dosha_remedy_bundles'
 import { queryTriangulationCapability }              from './query_triangulation'
+// SARVA-SIDDHI W-4 / CR-24: bodha_mechanisms (bo_yantra_mechanism) first-class serving face —
+// named, valenced chain/circuit mechanisms, previously reachable only via traverse_chart_graph.
+import { queryMechanismsCapability }                 from './query_mechanisms'
 
 registerCapability(queryUcdCapability)
 registerCapability(traverseChartGraphCapability)
@@ -59,3 +62,4 @@ registerCapability(queryRmDashaWindowedPrescriptionsCapability)
 registerCapability(queryRmPatternRemediesCapability)
 registerCapability(queryRmDoshaRemedyBundlesCapability)
 registerCapability(queryTriangulationCapability)
+registerCapability(queryMechanismsCapability)
