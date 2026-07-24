@@ -6,7 +6,9 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
-const PANCHANGA_CATEGORIES = [
+// Exported so other capabilities (e.g. chart_facts_query's category-alias resolution, which
+// expands the bare umbrella term 'panchanga' to this family) can reuse it without duplication.
+export const PANCHANGA_CATEGORIES = [
   'panchanga_abhijit_muhurta', 'panchanga_agni_vasa', 'panchanga_brahma_muhurta',
   'panchanga_calendrical', 'panchanga_choghadiya_birth', 'panchanga_disha_shul',
   'panchanga_durmuhurta', 'panchanga_godhuli_muhurta', 'panchanga_gulika_kalam',

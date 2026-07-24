@@ -53,6 +53,19 @@ import type { CapabilityDescriptor } from '../types'
 import { query } from '@/lib/db/client'
 import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME, type HouseNumber } from '@/lib/retrieval/address_resolver'
 import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
+import { PANCHANGA_CATEGORIES } from './L1_ganita/get_panchanga'
+
+// Category-alias resolution (chart_facts_query category filter): bare umbrella terms that do
+// not themselves exist as a fact_category but have an obvious real-category family behind them.
+// 'panchanga' is not a stored fact_category — the real data lives under panchanga_tithi,
+// panchanga_karana, panchanga_sun_moon_dynamics, etc. (all 40 panchanga_* categories, see
+// get_panchanga.ts) — so a caller passing the natural umbrella term got an honest-empty 0/0
+// instead of the populated family. Mirrors the facet-alias pattern in get_yoga_dosha.ts's
+// FACET_TO_TYPE map: expand the alias to its real category set at the filter-compilation step,
+// no new data or computation involved.
+const CATEGORY_ALIASES: Record<string, readonly string[]> = {
+  panchanga: PANCHANGA_CATEGORIES,
+}
 
 /** `about` facet resolution result for chart_facts_query — mirrors the shape the handler needs
  *  (fact_subject codes to feed into the whitelisted SQL below), backed by the canonical
@@ -810,6 +823,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       description: [
         'Fact category to filter by (e.g. "graha_position", "graha_dignity_per_varga", "yoga_label",',
         '"house_bhava_bala_total"). Accepts a single value or comma-separated list for multiple categories.',
+        'The umbrella term "panchanga" expands to the full panchanga_* family (panchanga_tithi,',
+        'panchanga_karana, panchanga_sun_moon_dynamics, etc.).',
       ].join(' '),
     },
     planet: {
@@ -968,7 +983,12 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         : (args['category'] as string | undefined)
       if (categoriesRaw) {
         const categories = categoriesRaw.split(',').map(c => c.trim()).filter(Boolean)
-        params.push(categories)
+        // Expand any bare umbrella term (e.g. 'panchanga') to its real fact_category family —
+        // see CATEGORY_ALIASES above. Case-insensitive match; non-aliased categories pass through
+        // unchanged (including already-specific ones like 'panchanga_karana').
+        const expandedCategories = categories.flatMap(c => CATEGORY_ALIASES[c.toLowerCase()] ?? [c])
+        const dedupedCategories = Array.from(new Set(expandedCategories))
+        params.push(dedupedCategories)
         sql += ` AND fact_category = ANY($${params.length}::text[])`
       }
 
