@@ -162,7 +162,11 @@ class TestDiscoveryAnchorTimingAndDomain:
         assert enriched['window_end'] == expected_end
 
     def test_enrich_maps_subsystem_to_real_domain(self):
-        """B5: discovery_subsystem 'yoga' → domain 'spiritual', not 'transition'."""
+        """B5: discovery_subsystem 'yoga' → domain 'spirituality', not 'transition'.
+
+        CR-66: the mapping target is now the canonical phala_anchors_domain_canonical DB
+        vocabulary ('spirituality'), not the pre-CR-66 'spiritual' (which was not a legal
+        phala_anchors.domain value)."""
         writer = self._make_writer()
         conn, cur = _make_conn_with_savepoint()
 
@@ -177,7 +181,7 @@ class TestDiscoveryAnchorTimingAndDomain:
         enriched = writer._enrich_discovery_row(conn, row)
 
         assert enriched['domain'] != 'transition', "domain must not be 'transition' when subsystem maps to something real"
-        assert enriched['domain'] == 'spiritual'
+        assert enriched['domain'] == 'spirituality'
 
     def test_enrich_health_subsystem(self):
         """B5: 'health' subsystem → domain 'health'."""

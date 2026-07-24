@@ -83,3 +83,66 @@ describe('query_predictive_anchors — posterior_provenance (R5.1 C2 item 4)', (
     expect(String(anchor.posterior_provenance_note)).toMatch(/not computed/i)
   })
 })
+
+// ── T-5 fix (A-6/B-1): §N.6 empty-reason discipline — no silent empties ─────────
+describe('query_predictive_anchors — empty_reason / known_gap (T-5, A-6/B-1)', () => {
+  beforeEach(() => queryMock.mockReset())
+  afterEach(() => vi.restoreAllMocks())
+
+  it('empty backing set for the chart → empty_reason + known_gap CR-66 (never a silent empty)', async () => {
+    // 1st call: main anchor query → empty. 2nd call: chart-total count → 0.
+    queryMock.mockResolvedValueOnce({ rows: [] })
+    queryMock.mockResolvedValueOnce({ rows: [{ n: 0 }] })
+
+    const result = await queryPredictiveAnchorsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { anchors: unknown[]; anchor_count: number; empty_reason: string | null; known_gap: string | null; provenance: { backing_data_reachable: boolean } }
+      is_error: boolean
+    }
+
+    expect(result.is_error).toBe(false)
+    expect(result.content.anchor_count).toBe(0)
+    expect(result.content.empty_reason).toBeTruthy()
+    expect(result.content.known_gap).toBe('CR-66')
+    expect(result.content.provenance.backing_data_reachable).toBe(true)
+  })
+
+  it('filter miss (chart HAS anchors, none match filter) → distinct empty_reason + CR-66, not silent', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [] })          // filtered main query
+    queryMock.mockResolvedValueOnce({ rows: [{ n: 42 }] }) // chart total > 0
+
+    const result = await queryPredictiveAnchorsCapability.handler({ chart_id: NATIVE_CHART_ID, domain: 'wealth' }, undefined) as {
+      content: { empty_reason: string | null; known_gap: string | null }
+      is_error: boolean
+    }
+
+    expect(result.content.empty_reason).toContain('42 anchor')
+    expect(String(result.content.empty_reason)).toMatch(/filter/i)
+    expect(result.content.known_gap).toBe('CR-66')
+  })
+
+  it('unreachable count → backing_data_reachable false + honest empty_reason (not a confirmed zero)', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [] })                 // main query empty
+    queryMock.mockRejectedValueOnce(new Error('DATABASE_URL not set')) // count throws
+
+    const result = await queryPredictiveAnchorsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { empty_reason: string | null; provenance: { backing_data_reachable: boolean } }
+      is_error: boolean
+    }
+
+    expect(result.is_error).toBe(false)
+    expect(result.content.provenance.backing_data_reachable).toBe(false)
+    expect(String(result.content.empty_reason)).toMatch(/unreachable|could not be read/i)
+  })
+
+  it('non-empty result carries empty_reason=null / known_gap=null', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [REAL_ANCHOR_ROW] })
+
+    const result = await queryPredictiveAnchorsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { empty_reason: string | null; known_gap: string | null; anchor_count: number }
+    }
+
+    expect(result.content.anchor_count).toBe(1)
+    expect(result.content.empty_reason).toBeNull()
+    expect(result.content.known_gap).toBeNull()
+  })
+})

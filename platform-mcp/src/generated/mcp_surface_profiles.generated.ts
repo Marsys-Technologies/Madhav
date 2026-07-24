@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-07-24T04:49:55.973Z
+ * generated_at: 2026-07-24T05:06:15.709Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
