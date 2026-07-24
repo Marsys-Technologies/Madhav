@@ -170,6 +170,22 @@ const INTERVENTION_REMEDY = /\b(remed(y|ies|ial)|upaya|upāya|mantra|gemstone|ra
 
 const REFERENCE_INTENTS: ReadonlySet<Intent> = new Set(['classical_rule', 'panchanga'])
 
+// ── Entitlement-gated fallback_prompt disclosure ───────────────────────────────
+// The rendered fallback_prompt is the ENTIRE internal classifier system-prompt, verbatim
+// (dev-facing prompt-engineering text). It must not reach every caller unconditionally —
+// only entitlement:'native' (internal/native-facing) callers get the full text; reference/
+// restricted callers get a redaction stub instead. See finding: "fallback_prompt inlines
+// the full internal classifier system-prompt unconditionally".
+
+const FALLBACK_PROMPT_REDACTED =
+  '[fallback_prompt withheld: the internal classifier system-prompt is disclosed only to ' +
+  'entitlement="native" callers. This query classified at a non-native entitlement tier; ' +
+  'escalate via the native-facing path if the full LLM-delegation prompt is required.]'
+
+function gateFallbackPrompt(rendered: string, entitlement: Entitlement): string {
+  return entitlement === 'native' ? rendered : FALLBACK_PROMPT_REDACTED
+}
+
 // ── Classifier ────────────────────────────────────────────────────────────────
 
 function firstMatch<T>(query: string, rules: ReadonlyArray<readonly [T, RegExp]>, matched: string[], kind: string): T | null {
@@ -189,18 +205,19 @@ function firstMatch<T>(query: string, rules: ReadonlyArray<readonly [T, RegExp]>
 export function classifyScope(rawQuery: string): ScopeClassification {
   const query = (rawQuery ?? '').trim()
   const matched: string[] = []
-  const fallback_prompt = renderFallbackPrompt(query)
+  const renderedFallbackPrompt = renderFallbackPrompt(query)
 
   if (!query) {
+    const emptyQueryEntitlement: Entitlement = 'native'
     return {
       scope_tuple: {
         intent: 'unknown', domains: ['general'], width: 'standard', depth: 'standard',
-        horizon: 'atemporal', intervention: 'none', entitlement: 'native',
+        horizon: 'atemporal', intervention: 'none', entitlement: emptyQueryEntitlement,
       },
       confidence: 0,
       method: 'deterministic_rules',
       matched_rules: [],
-      fallback_prompt,
+      fallback_prompt: gateFallbackPrompt(renderedFallbackPrompt, emptyQueryEntitlement),
       fallback_recommended: true,
       usage: 'Empty query — no deterministic classification possible. Use fallback_prompt with an LLM.',
     }
@@ -277,7 +294,7 @@ export function classifyScope(rawQuery: string): ScopeClassification {
     confidence,
     method: 'deterministic_rules',
     matched_rules: matched,
-    fallback_prompt,
+    fallback_prompt: gateFallbackPrompt(renderedFallbackPrompt, entitlement),
     fallback_recommended,
     usage: fallback_recommended
       ? 'Low-confidence / unmatched intent — the scope_tuple is a best-effort default. ' +
