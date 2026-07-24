@@ -177,6 +177,20 @@ describe('W3-L3 signal_reader_text — covers every enumerated signal class', ()
     const all = collectSignalReaderText([], { all: true })
     expect(Object.keys(all)).toHaveLength(19)
   })
+
+  it('collectSignalReaderText strips the internal draft/native-polish-pending marker before it crosses the serve boundary', () => {
+    // The raw source map still carries the internal scaffolding marker (asserted above) —
+    // but nothing that has passed through collectSignalReaderText (scoped OR all:true) may.
+    const scoped = collectSignalReaderText(['karaka_alignment'])
+    expect(scoped.karaka_alignment).not.toMatch(/DRAFT/)
+    expect(scoped.karaka_alignment).not.toMatch(/native-polish-pending/)
+    expect(scoped.karaka_alignment).toMatch(/^A karaka-alignment signal reports/)
+
+    const all = collectSignalReaderText([], { all: true })
+    for (const cls of LIVE_SIGNAL_CLASSES) {
+      expect(all[cls]).not.toMatch(/DRAFT \(native-polish-pending\)/)
+    }
+  })
 })
 
 describe('W3-L3 envelope wiring — additive on v3, absent on legacy', () => {
@@ -210,6 +224,8 @@ describe('W3-L3 envelope wiring — additive on v3, absent on legacy', () => {
     expect(v3.reading_contract).toMatch(/1 of 5/)
     // signal_reader_text scoped to the one class present.
     expect(Object.keys(v3.signal_reader_text!)).toEqual(['karaka_alignment'])
+    // the internal editorial draft marker must never reach a served envelope.
+    expect(v3.signal_reader_text!.karaka_alignment).not.toMatch(/DRAFT \(native-polish-pending\)/)
   })
 
   it('emit_register_block:false suppresses the three fields on v3', () => {
