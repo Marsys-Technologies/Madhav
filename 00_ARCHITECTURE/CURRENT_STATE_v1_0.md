@@ -5434,6 +5434,29 @@ block (post-rebuild era), and proceeds.
 > `wave/D-4b/*` branches or PRs; recorded as a drift finding (`MARSYS_DEFECT_GAP_REGISTER_v2_0.md`
 > CR-119), annotated not reverted. Working branch for the open: `wave/D-4b/open`.
 >
+> 🔔 **CROSS-CAMPAIGN NOTE for the D-4b conductor (2026-07-24, later same day, from the
+> SARVA-SIDDHI Stage-1 wrap-up pass — read-only note, this file's doctrine-wave banners above
+> are untouched): supersedes the v1.1-era note immediately below in currency (that note's
+> underlying evidence file has itself been superseded).** `PRE_DARPANA_READINESS_v2_0.md` (not
+> v1.1) is now the authoritative SARVA-SIDDHI status; PR #744 (TRUTH_TABLE v1.0 +
+> READINESS v2.0 + session close) merged to `main` at `890fc03e`. This pass additionally closed
+> the one remaining bounded item that v2.0 flagged OPEN: **CR-24's planner-wiring residual**
+> (`mechanism_read` repointed from raw `bodha_graph_subgraph_get` to the dedicated
+> `bodha_mechanisms_get` face; `cr_status.ts` OPEN_CRS→CLOSED_CRS; B.11 floor mapping +
+> tests updated) — PR #745, merged at `658f695d`, CI green. **Also found and fixed, independent
+> of the CR-24 lane:** the T-2-PRE "zombie" `build_run` for chart 482012f1
+> (`0a3f15e2-d9e3-43c0-9bca-5a0a0d075ba1`, `ka_gochara_sweep` rebuild, `state='running'` since
+> 2026-07-21T07:57:49Z, ~71h with no forward progress) was reconciled to `state='failed'` via
+> the governed `POST /api/cockpit/watchdog` endpoint (not a hand-crafted row) — root cause: the
+> `watchdog-reaper` Cloud Scheduler job (`*/5 * * * *`, asia-south1) was found **PAUSED**, so the
+> automatic 5-minute reaper never ran; the job has been resumed (state now `ENABLED`) so this
+> class of zombie self-heals going forward. `PRE_DARPANA_READINESS` exit condition still
+> correctly NOT fully met — 2 lanes (CR-66, CR-73) remain CODE-COMPLETE-DATA-PENDING and T-2's
+> full materialization is still undispatched pending the native's own span-scoped-dispatch
+> ruling — this note records only what changed this pass, not a new exit-met close. No D-4b
+> files touched. Full evidence: this session's own record (SESSION_LOG.md, entry pending) +
+> PR #744/#745.
+>
 > 🔔 **CROSS-CAMPAIGN NOTE for the D-4b conductor (2026-07-24, from the concurrent
 > PRE-DARPANA READINESS pass — read-only note, this file's doctrine-wave banners above are
 > untouched): the readiness swarm ahead of UAT-DARPANA is CLOSED-HONEST-OPEN, not clean —
