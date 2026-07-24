@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-23T20:20:06.711Z",
+  "generated_at": "2026-07-24T04:25:05.425Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 166,
+  "total": 167,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -3630,6 +3630,41 @@
       "has_drill_children": true
     },
     {
+      "uri": "marsys://tool/L2/query_mechanisms",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_mechanisms",
+      "scope": "per_chart",
+      "archetype": "graph_traversal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "graph",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 7,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Mechanisms",
+      "one_line": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L2/query_pratijna",
       "type": "tool",
       "layer": "L2",
@@ -5568,7 +5603,7 @@
   "summary": {
     "by_layer": {
       "L0": 63,
-      "L2": 31,
+      "L2": 32,
       "L3": 14,
       "L1": 35,
       "L4": 10,
@@ -5577,11 +5612,11 @@
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 160
+      "tool": 161
     },
     "by_scope": {
       "global": 67,
-      "per_chart": 99
+      "per_chart": 100
     },
     "by_archetype": {
       "orientation_digest": 11,
@@ -5591,7 +5626,7 @@
       "cross_domain": 9,
       "temporal": 21,
       "prose_citation": 8,
-      "graph_traversal": 3
+      "graph_traversal": 4
     },
     "by_tool_role": {
       "umbrella": 19,
@@ -5601,17 +5636,17 @@
       "synthesizer": 4,
       "temporal": 15,
       "hybrid_retrieval": 4,
-      "graph": 3
+      "graph": 4
     },
     "by_data_source": {
-      "stored": 145,
+      "stored": 146,
       "computed": 20,
       "hybrid": 1
     },
     "by_projection_tag": {
-      "chat": 84,
-      "mcp_full": 164,
-      "mcp_compact": 83,
+      "chat": 85,
+      "mcp_full": 165,
+      "mcp_compact": 84,
       "mcp_consult": 14
     },
     "no_projection_tags": [

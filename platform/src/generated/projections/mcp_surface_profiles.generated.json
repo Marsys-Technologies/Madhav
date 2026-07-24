@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-23T20:20:06.711Z",
+  "generated_at": "2026-07-24T04:25:05.425Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities filtered by projection_tags (mcp_full/mcp_compact/mcp_consult), ranked by demand_ranking (bearing_first, family_rank, static_salience) for the compact cap",
   "compact_max_tools": 20,
@@ -8,7 +8,7 @@
     "full": {
       "profile": "full",
       "max_tools": null,
-      "total": 150,
+      "total": 151,
       "tool_names": [
         "assess_career",
         "assess_health",
@@ -101,6 +101,7 @@
         "query_manifestation_grammar",
         "query_manifestation_sets",
         "query_mantras",
+        "query_mechanisms",
         "query_medical_mappings",
         "query_mimamsa_discoveries",
         "query_motion_state_thresholds",
@@ -4191,6 +4192,56 @@
           }
         },
         {
+          "tool_name": "query_mechanisms",
+          "description": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds. Each row: mechanism_name, mechanism_class (convergent_dispositor_chain | dispositor_cycle | house_lordship_cycle | yoga_cluster | mutual_reception | parivartana_chain | stellium | mutual_aspect | mutual_aspect_triangle | graha_bhava_affliction), valence (benefic|malefic|mixed|neutral), member_node_ids / member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), centrality_summary, and a grounding citation. The chain/circuit family (multi-node named mechanisms) is served FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class, valence, chain_circuit_only. Per-class and per-valence facet counts over the full match set are always returned. Bounded (LIMIT ≤50) with a disclosed total, offset pagination, and an honest empty_reason when a chart carries no mechanisms.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "chart_id": {
+                "type": "string",
+                "description": "Chart UUID. Required."
+              },
+              "ayanamsha_id": {
+                "type": "string",
+                "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5."
+              },
+              "mechanism_class": {
+                "type": "string",
+                "description": "Filter by a single mechanism_class. Omit for all."
+              },
+              "valence": {
+                "type": "string",
+                "description": "Filter by valence (benefic|malefic|mixed|neutral). Omit for all."
+              },
+              "chain_circuit_only": {
+                "type": "boolean",
+                "description": "When true, return only the CR-24 chain/circuit family (convergent_dispositor_chain, dispositor_cycle, house_lordship_cycle). Default false."
+              },
+              "limit": {
+                "type": "number",
+                "description": "Max rows (default 50, max 50)."
+              },
+              "offset": {
+                "type": "number",
+                "description": "Pagination offset (default 0)."
+              }
+            },
+            "required": [
+              "chart_id"
+            ]
+          },
+          "uri": "marsys://tool/L2/query_mechanisms",
+          "layer": "L2",
+          "name_valid": true,
+          "annotations": {
+            "title": "Query Mechanisms",
+            "readOnlyHint": true,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
           "tool_name": "query_medical_mappings",
           "description": "Query the graha→Ayurvedic medical reference (bg_medical_mappings, 9 rows — one per graha — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita). Each row: dosha[], dhatu[], organ_systems[], body_part[], disease_tendency[], classical_citation. Filter by graha. Global classical reference — no chart_id needed. Jyotish reference only — NOT a medical diagnostic system; not_diagnosis applies to any downstream indication built from this.",
           "input_schema": {
@@ -7406,6 +7457,7 @@
         "query_manifestation_grammar",
         "query_manifestation_sets",
         "query_mantras",
+        "query_mechanisms",
         "query_mimamsa_discoveries",
         "query_muhurat",
         "query_obstruction_periods",

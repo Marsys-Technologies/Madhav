@@ -1,8 +1,8 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-07-23T20:20:06.711Z",
-  "total": 166,
+  "generated_at": "2026-07-24T04:25:05.425Z",
+  "total": 167,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -1630,6 +1630,22 @@
       ]
     },
     {
+      "uri": "marsys://tool/L2/query_mechanisms",
+      "type": "tool",
+      "layer": "L2",
+      "name": "query_mechanisms",
+      "short_label": "Query Mechanisms",
+      "one_line": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds.",
+      "scope": "per_chart",
+      "archetype": "graph_traversal",
+      "tool_role": "graph",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L2/query_pratijna",
       "type": "tool",
       "layer": "L2",
@@ -2509,7 +2525,7 @@
   "summary": {
     "by_layer": {
       "L0": 63,
-      "L2": 31,
+      "L2": 32,
       "L3": 14,
       "L1": 35,
       "L4": 10,
@@ -2518,7 +2534,7 @@
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 160
+      "tool": 161
     }
   }
 }

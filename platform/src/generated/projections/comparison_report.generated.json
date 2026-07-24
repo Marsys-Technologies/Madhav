@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-07-23T20:20:06.711Z",
-  "catalog_total": 166,
+  "generated_at": "2026-07-24T04:25:05.425Z",
+  "catalog_total": 167,
   "catalog_by_type": {
-    "tool": 160,
+    "tool": 161,
     "resource": 5,
     "prompt": 1
   },
   "chat_projection": {
-    "generated_count": 79,
+    "generated_count": 80,
     "tool_contracts_count": 5,
     "overlap_by_name": [
       "find_verses_about",
@@ -67,6 +67,7 @@
       "query_manifestation_grammar",
       "query_manifestation_sets",
       "query_mantras",
+      "query_mechanisms",
       "query_mimamsa_discoveries",
       "query_muhurat",
       "query_obstruction_periods",
@@ -99,7 +100,7 @@
     ]
   },
   "mcp_projection": {
-    "generated_count": 158,
+    "generated_count": 159,
     "excluded_non_tool_count": 6,
     "registry_bridge_block_count": 26,
     "registry_bridge_source": "/Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a04197824920505f0/platform-mcp/src/tools/registry_bridge.ts",
@@ -218,6 +219,7 @@
       "query_manifestation_grammar",
       "query_manifestation_sets",
       "query_mantras",
+      "query_mechanisms",
       "query_medical_mappings",
       "query_mimamsa_discoveries",
       "query_motion_state_thresholds",
@@ -316,7 +318,7 @@
       "marsys://tool/L3/query_temporal_activation"
     ],
     "catalog_uris_reachable_via_registry_bridge_count": 24,
-    "catalog_uris_unreachable_via_registry_bridge_count": 142,
+    "catalog_uris_unreachable_via_registry_bridge_count": 143,
     "registry_bridge_uris_not_found_in_live_catalog": []
   }
 }

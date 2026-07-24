@@ -5,7 +5,7 @@
  * (platform/scripts/audit/doctrine_harness/lib/alias_check.ts). Asserts the file matches the
  * documented interface { canonical_faces: string[], deprecated_aliases: Record<string,string> }
  * and reconciles internally: every deprecated alias's canonical target exists in canonical_faces,
- * no name is both canonical and deprecated, and the union covers the 144 census tools with no orphans.
+ * no name is both canonical and deprecated, and the union covers the 145 census tools with no orphans.
  * (D-4a Lane A-0: 135 -> 138 — plan_retrieval, reading_notes_get, scan_fetch_signals were
  * previously unaccounted; added to canonical_faces so census == canonical list again.)
  * (RC-14 2026-07-23: 138 -> 144 — the 6 DEFERRED tools were renamed at source; their OLD names
@@ -46,12 +46,13 @@ describe('canonical_faces.json — V-0 alias_check contract', () => {
     expect(new Set(parsed.canonical_faces).size).toBe(parsed.canonical_faces.length)
   })
 
-  it('accounts for all 144 census tools (canonical ∪ deprecated = census), no unaccounted', () => {
+  it('accounts for all 145 census tools (canonical ∪ deprecated = census), no unaccounted', () => {
+    // +1 vs the 144 baseline: SARVA-SIDDHI CR-24 added bodha_mechanisms_get as a canonical face.
     const union = new Set([...parsed.canonical_faces, ...Object.keys(parsed.deprecated_aliases)])
-    expect(union.size).toBe(144)
+    expect(union.size).toBe(145)
   })
 
-  it('V-0 checkAliasCount reconciles against the 144-tool census (row-4 green, source=v3)', () => {
+  it('V-0 checkAliasCount reconciles against the 145-tool census (row-4 green, source=v3)', () => {
     const census = [...parsed.canonical_faces, ...Object.keys(parsed.deprecated_aliases)]
       .map((name) => ({ name, description: '' }))
     const result = checkAliasCount(census)

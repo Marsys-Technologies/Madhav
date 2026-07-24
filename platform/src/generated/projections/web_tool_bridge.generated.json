@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-23T20:20:06.711Z",
+  "generated_at": "2026-07-24T04:25:05.425Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
   "vidhi_live_tool_bridge": {
@@ -187,19 +187,17 @@
         ]
       },
       {
+        "name": "mechanism_retrodiction_get",
+        "uri": "marsys://tool/L5/mechanism_retrodiction_get",
+        "resolution_kind": "catalog_name_direct",
+        "via": []
+      },
+      {
         "name": "mimamsa_calibration_get",
         "uri": "marsys://tool/L5/query_calibration",
         "resolution_kind": "canonical_reverse_alias",
         "via": [
           "query_calibration"
-        ]
-      },
-      {
-        "name": "mimamsa_lel_query",
-        "uri": "marsys://tool/L5/lel_query",
-        "resolution_kind": "canonical_reverse_alias",
-        "via": [
-          "lel_query"
         ]
       },
       {
@@ -223,8 +221,8 @@
     ]
   },
   "canonical_faces_bridge": {
-    "total": 95,
-    "mapped": 39,
+    "total": 96,
+    "mapped": 40,
     "unmapped": 56,
     "entries": [
       {
@@ -291,6 +289,14 @@
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
+      },
+      {
+        "name": "bodha_mechanisms_get",
+        "uri": "marsys://tool/L2/query_mechanisms",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "query_mechanisms"
+        ]
       },
       {
         "name": "bodha_quality_get",
