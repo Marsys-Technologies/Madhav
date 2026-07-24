@@ -139,11 +139,12 @@ describe('compileFloorForPlan — floor adoption', () => {
   it('career_deepdive tuple yields the career floor items mapped to retrieval tools', () => {
     const r = compileFloorForPlan(tuple({ domains: ['career'], depth: 'deep' }), CHART)
     expect(r.compilerIntent).toBe('career_deepdive')
-    // career floor includes mechanism_read (→ cgm_graph_walk) and dhana_yoga_scan (→ get_yoga_firings)
+    // career floor includes mechanism_read (→ marsys://tool/L2/query_mechanisms, CR-24) and
+    // dhana_yoga_scan (→ get_yoga_firings)
     expect(r.mappedPrimitives).toContain('mechanism_read')
     expect(r.mappedPrimitives).toContain('dhana_yoga_scan')
     const names = r.toolCalls.map((t) => t.tool_name)
-    expect(names).toContain('cgm_graph_walk')
+    expect(names).toContain('marsys://tool/L2/query_mechanisms')
     expect(names).toContain('get_yoga_firings')
     // MCP-native primitives with no retrieval equivalent are reported, not pushed.
     expect(r.unmappedPrimitives).toContain('bhava_condition')
@@ -309,9 +310,10 @@ describe('end-to-end floor adoption parity (route sequence)', () => {
     return authorized
   }
 
-  it('career deepdive: compiled cgm_graph_walk satisfies B.11 (no redundant registry floor)', () => {
+  it('career deepdive: compiled query_mechanisms satisfies B.11 (no redundant registry floor)', () => {
     const authorized = runFloor(tuple({ domains: ['career'], depth: 'deep' }), 'interpretive')
-    expect(authorized).toContain('cgm_graph_walk')
+    // CR-24: mechanism_read now maps to the dedicated marsys://tool/L2/query_mechanisms face.
+    expect(authorized).toContain('marsys://tool/L2/query_mechanisms')
     expect(authorized).not.toContain('marsys://tool/L2/traverse_chart_graph')
     expect(authorized.some((t) => L2_5_TOOLS.includes(t))).toBe(true)
   })

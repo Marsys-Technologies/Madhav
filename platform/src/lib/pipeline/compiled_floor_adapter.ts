@@ -54,6 +54,11 @@ export const L2_5_TOOLS: readonly string[] = [
   'cgm_graph_walk',
   'marsys://tool/L2/query_signals',
   'marsys://tool/L2/traverse_chart_graph',
+  // CR-24 (SARVA-SIDDHI, 2026-07-24): mechanism_read's live_tool was repointed from the raw
+  // bodha_graph_subgraph_get (→ cgm_graph_walk) to the dedicated bodha_mechanisms_get face
+  // (→ marsys://tool/L2/query_mechanisms, generated bridge). Same L2 whole-chart-read tier —
+  // named-mechanism CGM subgraph motifs — so it belongs in the B.11 floor alongside its sibling.
+  'marsys://tool/L2/query_mechanisms',
 ]
 
 // ── classifier tuple → compiler tuple ───────────────────────────────────────────
