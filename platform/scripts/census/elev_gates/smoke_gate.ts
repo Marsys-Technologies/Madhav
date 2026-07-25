@@ -70,7 +70,7 @@ const PARAM_OVERRIDES: Record<string, Record<string, unknown>> = {
   session_list: {},
   session_recall: { session_id: 'nonexistent-probe-id' },
   prashna_ask: { query_text: 'Will this venture succeed?', chart_id: CANONICAL_CHART_ID },
-  prashna_status: { prashna_id: 'nonexistent-probe-id' },
+  prashna_status: { job_id: 'nonexistent-probe-id' },
   mimamsa_outcome_record: { chart_id: CANONICAL_CHART_ID, prediction_id: 'nonexistent-probe-id', outcome: 'unknown' },
 }
 

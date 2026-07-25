@@ -1,0 +1,135 @@
+name: Elevation Campaign — Serving Gates (Stream α / SATYA, Lane K1)
+
+# α's (SATYA) K1 CI gate battery — platform/scripts/census/elev_gates/**. Three gates so far:
+#   - smoke_gate.ts          — every registered MCP tool called; fails on HTTP >=500 or a hang.
+#   - budget_census_gate.ts  — every tool's worst-case response measured against its declared
+#                              MCP_RESPONSE_BUDGET_KB ceiling (registry_bridge.ts).
+#   - receipt_gate.ts        — fixed-catalog multi-select tools (categories[]/domains[]/include[])
+#                              checked for "✓ over an empty array" and count/array-mismatch
+#                              structural violations via _structural_checks.ts's two walkers.
+#   - absence_lint_gate.ts   — static grep lint over platform-mcp/src/tools/** +
+#                              platform/src/lib/retrieval/registry/** for ontological-absence
+#                              phrasing not backed by a resolver-miss code path nearby. Pure
+#                              source-tree scan, no MCP calls — report-only (WARN) by default;
+#                              ABSENCE_LINT_STRICT=true upgrades ungrounded candidates to FAIL.
+#
+# Each script runs in TWO modes, matching the codebase's TAP-9 discipline ("an absent oracle
+# must be declared, never silently passed" — see tap-ci.yml's header for the same doctrine):
+#   PLAN mode (no MCP_SERVER_URL) — static-only (source-tree enumeration/scan + call-plan),
+#     always exits 0, no network calls, no secret required. Runs on every push/PR.
+#   LIVE mode (MCP_SERVER_URL + MARSYS_MCP_KEY secret set) — drives the real deployed
+#     connector. Gated the same way ci.yml's own census-battery job gates its live run: never
+#     on every push (rate-limit risk + a multi-minute paced sweep across all three gates), only
+#     on workflow_dispatch, and it degrades to an explicit skip (never a fabricated pass) if the
+#     secret is not configured for this repo/branch.
+#
+# This workflow does not run in the authoring sandbox (no CI access there) — its syntactic
+# validity and consistency with ci.yml's own Node/npm-ci/working-directory conventions is what
+# was checked before landing it; the first real execution is CI's, not this session's.
+
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke-gate-plan:
+    name: K1 — smoke_gate (PLAN mode)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: smoke_gate — static tool enumeration + call plan (no live calls)
+        run: npx tsx scripts/census/elev_gates/smoke_gate.ts
+
+  budget-census-gate-plan:
+    name: K1 — budget_census_gate (PLAN mode)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: budget_census_gate — MCP_RESPONSE_BUDGET_KB ledger extraction (no live calls)
+        run: npx tsx scripts/census/elev_gates/budget_census_gate.ts
+
+  receipt-gate-plan:
+    name: K1 — receipt_gate (PLAN mode)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: receipt_gate — static multi-category param scan + drift check (no live calls)
+        run: npx tsx scripts/census/elev_gates/receipt_gate.ts
+
+  absence-lint-gate:
+    name: K1 — absence_lint_gate (static, report-only)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: absence_lint_gate — ontological-absence phrasing candidates (WARN, non-blocking)
+        run: npx tsx scripts/census/elev_gates/absence_lint_gate.ts
+
+  serving-gates-live:
+    # D-2 Lane V-0 precedent (ci.yml's census-battery job): a live-estate check against the
+    # deployed connector is workflow_dispatch-only and self-skips (exit 0, not a fabricated
+    # pass) when its credential secret is absent — never a hard requirement on every push.
+    name: K1 — serving gates (LIVE mode, deployed connector)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: K1 gates — smoke + budget-census + receipt (LIVE, paced)
+        env:
+          MCP_SERVER_URL: ${{ secrets.MARSYS_MCP_URL }}
+          MCP_BEARER: ${{ secrets.MARSYS_MCP_KEY }}
+        run: |
+          if [ -z "$MCP_SERVER_URL" ]; then
+            echo "MARSYS_MCP_URL secret not configured — skipping the live K1 gate battery (never a fabricated pass)." >&2
+            exit 0
+          fi
+          npx tsx scripts/census/elev_gates/smoke_gate.ts
+          npx tsx scripts/census/elev_gates/budget_census_gate.ts
+          npx tsx scripts/census/elev_gates/receipt_gate.ts

@@ -566,10 +566,14 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // M3+M4 Session tools (recall_session + list_my_sessions):        2
 // ── BASELINE SUBTOTAL: ────────────────────────────────────────────            53
 // ── BA-P1 ADDITIONS ───────────────────────────────────────────────────────────
-// P1 Group 1 — computed-chart tools (registerP1GanitaTools):      9
+// P1 Group 1 — computed-chart tools (registerP1GanitaTools):      12
 //   ganita_strength_get, ganita_structural_get, ganita_condition_get,
 //   ganita_sade_sati_get, ganita_tajaka_get, ganita_nakshatra_get,
-//   ganita_yogas_get, phala_rectification_get, ganita_transit_anchors_get
+//   ganita_yogas_get, phala_rectification_get, ganita_transit_anchors_get,
+//   ganita_database_schema_get, ganita_concept_locate, ganita_planet_get
+//   (last 3: Elevation Campaign v2.1 STREAM α Lane-H — front the batch-1 registry
+//   capabilities get_database_schema/concept_locate/query_planet, which existed in the
+//   L1_ganita registry index with no MCP-facing tool)
 // P1 Group 2 — reference tools (registerP1ReferenceTools):        7
 //   ref_rules_search, ref_yogas_get, ref_doshas_get,
 //   ref_dignity_reference_get, ref_dasha_systems_get, ref_nakshatra_get,
@@ -618,7 +622,11 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // mechanism_read planner primitive's live_tool to bodha_mechanisms_get but never registered the
 // corresponding MCP tool (registerP1AliasTools now does, delegating to query_mechanisms.ts).
 // 79 + 1 = 80.
-const REGISTERED_TOOL_COUNT = 80
+// Elevation Campaign v2.1 STREAM α Lane-H (2026-07-25): +3 ganita_database_schema_get,
+// ganita_concept_locate, ganita_planet_get — front the 3 batch-1 registry capabilities
+// (get_database_schema/concept_locate/query_planet) that existed in the L1_ganita registry
+// index with no MCP-facing tool (registerP1GanitaTools now does). 80 + 3 = 83.
+const REGISTERED_TOOL_COUNT = 83
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
