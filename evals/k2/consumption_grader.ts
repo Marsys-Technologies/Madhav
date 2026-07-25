@@ -288,7 +288,7 @@ export function gradeConsumption(
   chartId: string,
   transcript: NormalizedTranscript,
   finalAnswer: string,
-  topFindings?: string[],
+  topFindings?: FindingRef[],
 ): K2ConsumptionGrade {
   const consumption = computeConsumptionRatio(domain, chartId, transcript)
   const accounting_completeness = computeAccountingCompleteness(finalAnswer, consumption.consumption_ratio)
