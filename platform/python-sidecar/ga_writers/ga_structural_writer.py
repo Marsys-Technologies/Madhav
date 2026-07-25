@@ -3652,6 +3652,15 @@ def _build_structural_relationship_rows(
     # Build sign → planet mapping
     sign_to_lord = SIGN_LORDS.copy()
 
+    # EL-40 fix (Elevation Campaign β.D, 2026-07-25): dignity→strength lookup for
+    # the composite_dispositor_strength chain-mean (below). SAME mapping the prior
+    # terminal-only formula used — no new constants introduced (B.10-clean).
+    _DIGNITY_STRENGTH = {"exalted": 1.0, "own_sign": 0.875, "neutral": 0.5, "debilitated": 0.25}
+    dignity_strength_by_name = {
+        g.get("name"): _DIGNITY_STRENGTH.get(g.get("dignity_status", "neutral"), 0.5)
+        for g in grahas_data
+    }
+
     # Dispositor chains per graha
     for g in grahas_data:
         g_name = g["name"]
@@ -3700,23 +3709,37 @@ def _build_structural_relationship_rows(
             ),
         ))
 
-        # Composite dispositor strength (AH): terminal graha's strength
+        # Composite dispositor strength (AH).
+        # EL-40 fix (Elevation Campaign β.D, 2026-07-25): the prior formula took
+        # ONLY the terminal graha's dignity-strength. Because dispositor chains
+        # almost always sink into a single graha in its own sign (here every one
+        # of the 9 chains terminates on Jupiter in Sagittarius → own_sign →
+        # 0.875), the field collapsed to a chart-global constant — zero
+        # per-graha discrimination served under a name that implies a composite
+        # (EL-40). It is now the arithmetic MEAN of the dignity-strength of
+        # EVERY graha ALONG the chain (root→terminal), which genuinely differs
+        # per graha because each chain has different members. No new constants:
+        # each member uses the same dignity→strength mapping the terminal formula
+        # used. Honestly "composite" = aggregated over the chain. The terminal
+        # graha + its strength stay disclosed in the citation for auditability.
         terminal = chain[-1]
-        terminal_g = next((g2 for g2 in grahas_data if g2["name"] == terminal), None)
-        if terminal_g:
-            t_dignity = terminal_g.get("dignity_status", "neutral")
-            t_strength = {"exalted": 1.0, "own_sign": 0.875, "neutral": 0.5, "debilitated": 0.25}.get(t_dignity, 0.5)
-        else:
-            t_strength = 0.5
+        member_strengths = [
+            dignity_strength_by_name.get(member, 0.5) for member in chain
+        ]
+        composite_strength = round(sum(member_strengths) / len(member_strengths), 4)
+        t_strength = dignity_strength_by_name.get(terminal, 0.5)
 
         rows.append(_base_row(
             "composite_dispositor_strength", subject, "terminal_strength",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_num=round(t_strength, 4),
+            value_num=composite_strength,
             verif="two_pass_verified",
-            source=f"pyjhora_adapter.dispositor_strength/{eng_ver}",
+            source=f"ga_structural.dispositor_chain_mean_dignity_strength_v2/{eng_ver}",
             citation_human=(
-                f"{g_name} chain terminal ({terminal}) strength: {t_strength:.4f} ({ayanamsha_id})."
+                f"{g_name} dispositor-chain composite strength (mean of "
+                f"dignity-strength over {len(chain)} chain members "
+                f"{' → '.join(chain)}): {composite_strength:.4f}; terminal "
+                f"{terminal} strength {t_strength:.4f} ({ayanamsha_id})."
             ),
         ))
 
