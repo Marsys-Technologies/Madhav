@@ -40,6 +40,16 @@ import { deriveDefect001Note } from '../../provenance/freshness_notes'
 import { resolveAddress } from '../../address_resolver'
 import { SHASTRA_MAP } from './register_d9_judgment'
 import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
+import { applyCompositeRanking, type MsrSignalRow } from '../../ranking/composite_ranker'
+import { fetchL1Context } from '../../ranking/l1_context_fetcher'
+import { rankGrahasByShadbala, type GrahaShadbalaInput } from '../../ranking/rank_vocabulary'
+import {
+  humanizeMachineKey,
+  humanizeSnakeLabel,
+  displayGraha,
+  displayVarga,
+  ordinalHouse,
+} from '../../ranking/identifier_format'
 
 // Y-2 (D-1.6 Lane S-3, CRIT): assess_* domain-bearing yoga discount, mirroring
 // judgment_query's YOGA_BHANGA_DISCOUNT (register_d9_judgment.ts) semantics — a firing whose
@@ -115,6 +125,363 @@ function capArray<T>(
   return { items, total_count, truncated, ...(truncated && drillUri ? { drill_uri: drillUri } : {}) }
 }
 
+// ── EL-45: direct varga/AV consumption (no "see other tool" stubs) ────────────
+// Every domain assessor here consumes ITS classical varga(s) directly from L1 chart_facts
+// (graha_dignity_per_varga + ashtakavarga_pinda_sarva_per_varga) instead of pointing the
+// caller to chart_facts_query for a layer classical to its own domain. wealth gets BOTH
+// classical wealth vargas (D2 Horā for liquid wealth, D11 Labha for gains/income — the
+// charter's verified gap: "D11... is not in the wealth floor at all", §0.2.A) plus Indu
+// Lagna (the dedicated Jaimini wealth-strength lagna). Exported so a CI check (and the D8
+// test suite) can assert every SHASTRA_MAP domain this file serves has a non-empty entry —
+// "no domain assessor may ship a stub for a layer classical to its own domain."
+export const DOMAIN_DIRECT_VARGAS: Record<string, string[]> = {
+  wealth: ['D2', 'D11'],
+  career: ['D10'],
+  relationship: ['D9'],
+  health: ['D6'],
+}
+const DOMAIN_INDU_LAGNA = new Set(['wealth'])
+
+interface VargaDignityRow {
+  graha: string
+  dignity: string | null
+  sign: string | null
+  house: number | null
+  fact_id: string
+}
+
+/** graha_dignity_per_varga rows for the given vargas, keyed by varga. Real L1 fact_ids
+ *  (§N.5) — never restates a computed value, only reads the stored one. */
+async function fetchVargaDignity(
+  chart_id: string,
+  ayanamsha_id: string,
+  vargas: string[],
+): Promise<Record<string, VargaDignityRow[]>> {
+  const out: Record<string, VargaDignityRow[]> = {}
+  for (const v of vargas) out[v] = []
+  if (vargas.length === 0) return out
+  const res = await query<Record<string, unknown>>(
+    `SELECT fact_id, fact_subject, fact_value_text, fact_value_jsonb
+     FROM chart_facts
+     WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
+       AND fact_value_jsonb->>'varga' = ANY($3)`,
+    [chart_id, ayanamsha_id, vargas],
+  )
+  for (const row of res.rows) {
+    const jsonb = row['fact_value_jsonb'] as Record<string, unknown> | null
+    const varga = typeof jsonb?.['varga'] === 'string' ? (jsonb['varga'] as string) : null
+    if (!varga || !out[varga]) continue
+    const subject = String(row['fact_subject'] ?? '')
+    const graha = subject.startsWith(`${varga}_`) ? subject.slice(varga.length + 1) : subject
+    out[varga].push({
+      graha,
+      dignity: (row['fact_value_text'] as string | null) ?? null,
+      sign: typeof jsonb?.['sign'] === 'string' ? (jsonb['sign'] as string) : null,
+      house: typeof jsonb?.['house'] === 'number' ? (jsonb['house'] as number) : null,
+      fact_id: String(row['fact_id'] ?? ''),
+    })
+  }
+  return out
+}
+
+interface VargaAvResult {
+  rows: Array<{ graha: string; pinda_sarva: number; fact_id: string }>
+  fact_ids: string[]
+  available: boolean
+}
+
+/** ashtakavarga_pinda_sarva_per_varga rows for the given vargas, keyed by varga. Honestly
+ *  `available: false` (never fabricated) for a varga L1 has not built per-varga AV for yet
+ *  (e.g. D11 at the time of writing — a data-plane gap, disclosed, not silently stubbed). */
+async function fetchVargaAvPindaSarva(
+  chart_id: string,
+  ayanamsha_id: string,
+  vargas: string[],
+): Promise<Record<string, VargaAvResult>> {
+  const out: Record<string, VargaAvResult> = {}
+  for (const v of vargas) out[v] = { rows: [], fact_ids: [], available: false }
+  if (vargas.length === 0) return out
+  const res = await query<Record<string, unknown>>(
+    `SELECT fact_id, fact_subject, fact_key, fact_value_num
+     FROM chart_facts
+     WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'ashtakavarga_pinda_sarva_per_varga'
+       AND fact_key = ANY($3)`,
+    [chart_id, ayanamsha_id, vargas],
+  )
+  for (const row of res.rows) {
+    const v = String(row['fact_key'] ?? '')
+    if (!out[v]) continue
+    const fact_id = String(row['fact_id'] ?? '')
+    out[v].rows.push({
+      graha: String(row['fact_subject'] ?? ''),
+      pinda_sarva: Number(row['fact_value_num'] ?? 0),
+      fact_id,
+    })
+    out[v].fact_ids.push(fact_id)
+    out[v].available = true
+  }
+  return out
+}
+
+interface InduLagnaResult {
+  sign: unknown
+  sign_lord: unknown
+  house_d1: unknown
+  nakshatra: unknown
+  fact_ids: string[]
+  note: string
+}
+
+/** special_lagna INDU_LAGNA facts — the dedicated Jaimini wealth-strength lagna. */
+async function fetchInduLagna(chart_id: string, ayanamsha_id: string): Promise<InduLagnaResult | null> {
+  try {
+    const res = await query<Record<string, unknown>>(
+      `SELECT fact_id, fact_key, fact_value_text, fact_value_num
+       FROM chart_facts
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'special_lagna' AND fact_subject = 'INDU_LAGNA'`,
+      [chart_id, ayanamsha_id],
+    )
+    if (res.rows.length === 0) return null
+    const byKey: Record<string, unknown> = {}
+    const fact_ids: string[] = []
+    for (const row of res.rows) {
+      const key = String(row['fact_key'] ?? '')
+      byKey[key] = row['fact_value_text'] ?? row['fact_value_num']
+      fact_ids.push(String(row['fact_id'] ?? ''))
+    }
+    return {
+      sign: byKey['sign'] ?? null,
+      sign_lord: byKey['sign_lord'] ?? null,
+      house_d1: byKey['house_d1'] ?? null,
+      nakshatra: byKey['nakshatra'] ?? null,
+      fact_ids,
+      note: 'Indu Lagna (Jaimini) — computed from Moon + the 9th house counted from Moon; a ' +
+        'benefic occupying/aspecting it, or its sign-lord being strong, is a classical ' +
+        'wealth-strength indicator distinct from the 2nd/11th house-and-lord reading.',
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * EL-45 — assemble a domain's classical-varga analysis DIRECTLY from L1 chart_facts. Replaces
+ * the former uniform "see chart_facts_query" stub for every assess_* tool. A domain with no
+ * entry in DOMAIN_DIRECT_VARGAS honestly reports `direct_consumption: false` (never a fake
+ * fill) — currently every domain this file serves (wealth/career/marriage/health) has one.
+ */
+export async function buildVargaAnalysisDirect(
+  chart_id: string,
+  ayanamsha_id: string,
+  domain: string,
+): Promise<Record<string, unknown>> {
+  const vargas = DOMAIN_DIRECT_VARGAS[domain] ?? []
+  if (vargas.length === 0) {
+    return {
+      direct_consumption: false,
+      consumed_vargas: [],
+      note: `No classical varga mapped for domain "${domain}" — falling back to drill (chart_facts_query).`,
+      drill_uri: 'marsys://tool/L1/chart_facts_query',
+    }
+  }
+  try {
+    const [dignityByVarga, avByVarga, induLagna] = await Promise.all([
+      fetchVargaDignity(chart_id, ayanamsha_id, vargas),
+      fetchVargaAvPindaSarva(chart_id, ayanamsha_id, vargas),
+      DOMAIN_INDU_LAGNA.has(domain) ? fetchInduLagna(chart_id, ayanamsha_id) : Promise.resolve(null),
+    ])
+    const per_varga: Record<string, unknown> = {}
+    const fact_ids: string[] = []
+    for (const v of vargas) {
+      const dignityRows = dignityByVarga[v] ?? []
+      const avResult = avByVarga[v]
+      for (const r of dignityRows) fact_ids.push(r.fact_id)
+      if (avResult) fact_ids.push(...avResult.fact_ids)
+      per_varga[v] = {
+        varga_display: displayVarga(v),
+        graha_dignity: dignityRows.map(r => ({
+          graha: displayGraha(r.graha),
+          dignity: r.dignity,
+          sign: r.sign,
+          house: r.house,
+          house_display: r.house ? ordinalHouse(r.house) : null,
+          humanized: humanizeMachineKey(`${v}_${r.graha}`),
+          fact_id: r.fact_id,
+        })),
+        ashtakavarga_pinda_sarva: avResult?.available ? avResult.rows : null,
+        ashtakavarga_available: avResult?.available ?? false,
+        ...(avResult?.available
+          ? {}
+          : {
+              empty_reason: `ashtakavarga_pinda_sarva_per_varga has no ${v} rows for this chart — ` +
+                `per-varga Ashtakavarga is not yet computed for ${v} at L1 (a data-plane gap, not a ` +
+                `serving stub). The ${v} sign/house/dignity placements above ARE real, directly-` +
+                'consumed L1 facts.',
+            }),
+      }
+    }
+    if (induLagna) fact_ids.push(...induLagna.fact_ids)
+    return {
+      direct_consumption: true,
+      consumed_vargas: vargas,
+      per_varga,
+      ...(induLagna ? { indu_lagna: induLagna } : {}),
+      fact_ids: Array.from(new Set(fact_ids)),
+      note: `${vargas.map(displayVarga).join(' + ')} consumed directly from L1 chart_facts ` +
+        '(graha_dignity_per_varga + ashtakavarga_pinda_sarva_per_varga)' +
+        (induLagna ? ' + Indu Lagna (special_lagna)' : '') +
+        ' — not a "see other tool" stub (EL-45). Full per-house Ashtakavarga bindu detail ' +
+        '(ashtakavarga_bindu_per_varga) available via the chart_facts_query drill below.',
+      drill_uri: 'marsys://tool/L1/chart_facts_query',
+    }
+  } catch (err) {
+    return {
+      direct_consumption: false,
+      consumed_vargas: vargas,
+      error: String(err),
+      note: 'Direct varga consumption failed for this call — see error. Not silently downgraded to a stub.',
+      drill_uri: 'marsys://tool/L1/chart_facts_query',
+    }
+  }
+}
+
+// ── EL-44: deterministic verdict layer ─────────────────────────────────────────
+// 3-5 plain-language sentences summarizing a domain assessment's bottom line, composed by a
+// FIXED TEMPLATE over already-graded terms (B.10: no generative call in the serving path —
+// every clause is string-concatenation over real counts/labels already computed above, never
+// an LLM). Every clause states which real L1/L2 fact_ids it is grounded on; a clause that
+// describes an honest absence (no yogas fired, no contradictions) carries `grounded: false`
+// with an empty fact_ids array rather than a fabricated citation (B.10).
+export interface VerdictClause {
+  text: string
+  fact_ids: string[]
+  grounded: boolean
+}
+export interface VerdictLayer {
+  clauses: VerdictClause[]
+  sentence_count: number
+  fact_ids_cited: string[]
+  template: 'deterministic_v1'
+  note: string
+}
+
+interface VerdictLayerInputs {
+  domain_label: string
+  top10: Array<Record<string, unknown>>
+  bearingYogaFirings: Array<Record<string, unknown>>
+  domainMatchedYogaFactIds: string[]
+  vargaAnalysis: Record<string, unknown>
+  contradictions: Record<string, unknown>
+  chartWideContradictionCount: number
+  temporalOk: boolean
+  stageTemporalCount: number
+}
+
+export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
+  const clauses: VerdictClause[] = []
+
+  // 1 — overview (always present; grounded on the top composite signals' own fact_ids).
+  const top10FactIds = Array.from(new Set(
+    inputs.top10.flatMap(s => (Array.isArray(s['constituent_fact_ids']) ? s['constituent_fact_ids'] as string[] : []))
+  ))
+  clauses.push({
+    text: `${inputs.domain_label} assessment draws on ${inputs.top10.length} composite-ranked ` +
+      `signal(s) for this chart, cross-referenced against classical yoga firings, varga ` +
+      'placements, contradictions, and dasha timing below.',
+    fact_ids: top10FactIds,
+    grounded: top10FactIds.length > 0,
+  })
+
+  // 2 — yoga findings.
+  const domainMatched = inputs.bearingYogaFirings.filter(y => y['domain_match'] === true)
+  if (domainMatched.length > 0) {
+    const names = domainMatched.slice(0, 3)
+      .map(y => humanizeSnakeLabel(String(y['yoga_canonical_id'] ?? '')))
+      .filter(Boolean)
+      .join(', ')
+    clauses.push({
+      text: `${domainMatched.length} confirmed yoga(s) fired on this chart (ga_yoga_firings) ` +
+        `bear directly on this domain's significators${names ? `, including ${names}` : ''}.`,
+      fact_ids: inputs.domainMatchedYogaFactIds,
+      grounded: inputs.domainMatchedYogaFactIds.length > 0,
+    })
+  } else if (inputs.bearingYogaFirings.length > 0) {
+    clauses.push({
+      text: `${inputs.bearingYogaFirings.length} yoga(s) fired on this chart overall, but none ` +
+        "name only this domain's bhāveśa/kāraka(s) — shown for context, not domain-confirmed.",
+      fact_ids: [],
+      grounded: false,
+    })
+  } else {
+    clauses.push({
+      text: 'No confirmed yoga firings are recorded for this chart in ga_yoga_firings — an ' +
+        'honest absence, not a fabricated claim either way.',
+      fact_ids: [],
+      grounded: false,
+    })
+  }
+
+  // 3 — varga grounding (EL-45 direct consumption).
+  if (inputs.vargaAnalysis['direct_consumption'] === true) {
+    const vargas = (inputs.vargaAnalysis['consumed_vargas'] as string[] | undefined) ?? []
+    const vargaFactIds = (inputs.vargaAnalysis['fact_ids'] as string[] | undefined) ?? []
+    clauses.push({
+      text: `${vargas.map(displayVarga).join(' + ')} placements were consumed directly from L1 ` +
+        "to confirm this domain's operative-varga promise (see varga_analysis.per_varga for " +
+        'per-graha dignity and, where computed, per-varga Ashtakavarga).',
+      fact_ids: vargaFactIds,
+      grounded: vargaFactIds.length > 0,
+    })
+  }
+
+  // 4 — contradictions (EL-57 domain-filtered).
+  const contraStatus = String(inputs.contradictions['status'] ?? '')
+  if (contraStatus === 'ok') {
+    const items = Array.isArray(inputs.contradictions['items']) ? inputs.contradictions['items'] as Array<Record<string, unknown>> : []
+    clauses.push({
+      text: `${items.length} domain-tagged tension(s) surfaced for this domain (of ` +
+        `${inputs.chartWideContradictionCount} chart-wide) — see contradictions for the adjudication detail.`,
+      fact_ids: [],
+      grounded: false,
+    })
+  } else if (contraStatus === 'no_contradictions_in_domain') {
+    clauses.push({
+      text: `No contradictions are tagged to this domain specifically (${inputs.chartWideContradictionCount} ` +
+        'exist chart-wide) — an honest domain-scoped absence, not a silent omission.',
+      fact_ids: [],
+      grounded: false,
+    })
+  } else {
+    clauses.push({
+      text: 'No contradictions are recorded for this chart/ayanamsha at all — verify the chart ' +
+        'has completed its L2 build (bo_karanajala) before reading this as a clean chart.',
+      fact_ids: [],
+      grounded: false,
+    })
+  }
+
+  // 5 — timing (optional 5th sentence; only added when there is real signal either way).
+  if (inputs.temporalOk && inputs.stageTemporalCount > 0) {
+    clauses.push({
+      text: 'A dated daśā-activation window is available for this domain\'s signals — see ' +
+        'activating_dasha for the exact bounds.',
+      fact_ids: [],
+      grounded: false,
+    })
+  }
+
+  const bounded = clauses.slice(0, 5)
+  return {
+    clauses: bounded,
+    sentence_count: bounded.length,
+    fact_ids_cited: Array.from(new Set(bounded.flatMap(c => c.fact_ids))),
+    template: 'deterministic_v1',
+    note: 'Composed by a fixed string template over already-graded terms computed above — ' +
+      'no generative call in the serving path (B.10). A clause with grounded:false states an ' +
+      'absence or a cross-reference pointer honestly rather than fabricating a fact_id for it.',
+  }
+}
+
 async function runAssessDomain(
   args: Record<string, unknown>,
   opts: Pick<AssessDomainArgs, 'domain' | 'domain_label' | 'judgment_flag_note'>
@@ -168,12 +535,44 @@ async function runAssessDomain(
     // Pull signal_id refs from the domain result to filter activations.
     const domainContent = domainResult.content as Record<string, unknown>
 
-    // F-021R: bound question_lenses.all_relevant_ranked_jsonb per lens.
-    // The raw handler returns all rows; each can be 1–2 MB of ranked signals.
+    // R6-lens-dedup (γ.E Lane E item 2): bodha_question_lenses serves one row per
+    // question_type, but two question_types on the same domain can carry a byte-identical
+    // `template_element_ids_jsonb.signal_ids` set (observed live, chart 482012f1: wealth's
+    // "property" and "wealth" question_types both resolve to the same 336 signal_ids, same
+    // order) — the SAME 1.4MB-scale ranked_signals block served twice under two labels for
+    // zero new information. Collapse same-signal-set lenses into ONE served block, keeping
+    // every question_type that mapped to it (nothing dropped, B.10 — just not repeated).
+    // Dedup key: the ordered signal_ids array (the identity of what a lens ranked), not
+    // ranked_signals (which carries denormalized per-signal text — comparing the id list is
+    // cheap and exactly captures "is this the same underlying set").
     const rawLenses = Array.isArray(domainContent['question_lenses'])
       ? (domainContent['question_lenses'] as Record<string, unknown>[])
       : []
-    const boundedLenses = rawLenses.map((lens) => {
+    const lensDedupSeen = new Map<string, Record<string, unknown>>()
+    const lensDedupOrder: string[] = []
+    for (const lens of rawLenses) {
+      const tej = lens['template_element_ids_jsonb']
+      const signalIds = tej && typeof tej === 'object' && Array.isArray((tej as Record<string, unknown>)['signal_ids'])
+        ? (tej as Record<string, unknown>)['signal_ids']
+        : null
+      const dedupKey = signalIds ? JSON.stringify(signalIds) : `__no_signal_ids__:${String(lens['lens_id'] ?? '')}`
+      const existing = lensDedupSeen.get(dedupKey)
+      if (existing) {
+        const collapsed = (existing['collapsed_question_types'] as string[] | undefined) ?? [String(existing['question_type'] ?? '')]
+        existing['collapsed_question_types'] = [...collapsed, String(lens['question_type'] ?? '')]
+        existing['is_deduped'] = true
+      } else {
+        const withDedupFlag = { ...lens, is_deduped: false }
+        lensDedupSeen.set(dedupKey, withDedupFlag)
+        lensDedupOrder.push(dedupKey)
+      }
+    }
+    const dedupedLenses = lensDedupOrder.map(k => lensDedupSeen.get(k)!)
+    const lensesDroppedAsDuplicate = rawLenses.length - dedupedLenses.length
+
+    // F-021R: bound question_lenses.all_relevant_ranked_jsonb per lens.
+    // The raw handler returns all rows; each can be 1–2 MB of ranked signals.
+    const boundedLenses = dedupedLenses.map((lens) => {
       const arj = lens['all_relevant_ranked_jsonb']
       if (arj && typeof arj === 'object') {
         const arjObj = arj as Record<string, unknown>
@@ -241,19 +640,50 @@ async function runAssessDomain(
     )
 
     const contraContent = contraResult.content as Record<string, unknown>
+
+    // EL-57: domain filter on the contradiction surface. bodha_contradictions rows carry
+    // domains_affected_array (query_contradictions.ts SELECT) but query_contradictions itself
+    // has no domain param (chart/ayanamsha-scoped only, by design — it is a shared L2 leaf) —
+    // filtered HERE, at this domain-specific assembly boundary, so assess_wealth never shows a
+    // career-only tension pair under "wealth contradictions". The chart-wide count is always
+    // retained alongside the filtered one so the caller can tell "domain-empty" from "chart-empty".
+    const rawContraItems = Array.isArray(contraContent['contradictions'])
+      ? (contraContent['contradictions'] as Record<string, unknown>[])
+      : []
+    const chartWideContradictionCount = rawContraItems.length
+    const domainFilteredContraItems = rawContraItems.filter(row => {
+      const arr = row['domains_affected_array']
+      return Array.isArray(arr) && arr.includes(domain)
+    })
+
     const contradictions =
       contraResult.is_error
         ? { status: 'error', note: String(contraContent['error']) }
-        : (contraContent['contradiction_count'] as number) === 0
+        : chartWideContradictionCount === 0
         ? {
             status: 'no_data',
             note:
               contraContent['contradictions_note'] ??
               'bodha_contradictions: 0 rows for this chart/ayanamsha — verify chart has been built (bo_karanajala).',
           }
+        : domainFilteredContraItems.length === 0
+        ? {
+            // EL-57: honest, EXPLICIT empty state — "N contradictions exist for this chart, but
+            // none tag this domain" — distinct from the chart-wide no_data case above, and never
+            // a silent omission (B.10): the chart-wide count is stated, plus a drill to the
+            // unfiltered surface.
+            status: 'no_contradictions_in_domain',
+            chart_wide_contradiction_count: chartWideContradictionCount,
+            note: `${chartWideContradictionCount} contradiction(s) exist for this chart/ayanamsha, ` +
+              `but none are tagged domains_affected_array ∋ "${domain}" — no contradictions ` +
+              'found for this domain specifically. Full chart-wide set via query_contradictions (unfiltered).',
+            drill_uri: 'marsys://tool/L2/query_contradictions',
+          }
         : {
             status: 'ok',
-            items: contraContent['contradictions'],
+            items: domainFilteredContraItems,
+            chart_wide_contradiction_count: chartWideContradictionCount,
+            domain_filtered: true,
             discoveries: (() => {
               const capped = capArray(contraContent['discoveries'], ASSESS_DEFAULT_MAX_DISCOVERIES, 'marsys://tool/L2/query_contradictions')
               return { items: capped.items, total_count: capped.total_count, truncated: capped.truncated, drill_uri: capped.drill_uri }
@@ -289,6 +719,9 @@ async function runAssessDomain(
       // Non-fatal: ranking_basis falls back to salience_fallback
     }
 
+    // ── Step 5: direct varga/AV consumption (EL-45) — never a "see other tool" stub ──
+    const vargaAnalysis = await buildVargaAnalysisDirect(chart_id, ayanamsha_id, domain)
+
     // ── Assemble verdict_skeleton (deterministic — no LLM inference) ──────────
     // Groups signals by reasoning-chain stage.
     // Stages: yoga/configuration → karaka_alignment → lord/dispositor (parivartana)
@@ -304,6 +737,10 @@ async function runAssessDomain(
         source_subsystem:   s['source_subsystem'],
         composite_score:    s['composite_score'] ?? null,
         final_rank_score:   s['final_rank_score'] ?? null,
+        // WP-1.3(ii) (EL-44 verdict layer): carry the L1 fact_ids this signal is grounded on
+        // through to the verdict-layer sentence builder — every verdict clause must cite real
+        // fact_ids (B.3), never a bare prose claim.
+        constituent_fact_ids: Array.isArray(s['constituent_facts_array']) ? s['constituent_facts_array'] : [],
       }))
 
     // WP-1.3(i) / R-40 — verdict_skeleton serving fix. Root-cause (prod, chart 482012f1 lahiri):
@@ -323,7 +760,15 @@ async function runAssessDomain(
     let stagePool: Record<string, unknown>[] = []
     try {
       const poolRes = await query<Record<string, unknown>>(
-        `SELECT signal_id, signal_type_class, source_subsystem, signal_summary_text, computed_salience
+        // R6-composite-score (γ.E Lane E item 2): pulled in the columns applyCompositeRanking
+        // needs (signal_type_id, signal_tradition, configuration_jsonb, constituent_facts_array,
+        // graph_node_strength_contribution_jsonb) — previously this SELECT carried only enough
+        // to bucket-classify a row, so every by_stage signal below served `composite_score: null`
+        // (uncomputed, not trimmed — the stagePool rows never went through the ranker at all).
+        `SELECT signal_id, signal_type_id, signal_type_class, signal_tradition, source_subsystem,
+                signal_summary_text, computed_salience, domains_affected_array,
+                constituent_facts_array, configuration_jsonb,
+                graph_node_strength_contribution_jsonb
          FROM bodha_msr_signals
          WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
            AND (signal_type_class = ANY($4) OR source_subsystem = 'varga')
@@ -335,6 +780,47 @@ async function runAssessDomain(
     } catch {
       // Non-fatal: structural stages fall back to the top-50 composite pool.
       stagePool = topCompositeSignals
+    }
+
+    // R6-composite-score: run the SAME 4D composite ranker query_signals uses over stagePool,
+    // so by_stage.{yoga,karaka,lord,varga} carry real composite_score/final_rank_score instead
+    // of null. Non-fatal — on any failure the stage buckets keep their raw stagePool order and
+    // composite_score stays honestly null (never fabricated), same as before this fix.
+    // l1ctx is hoisted so the graha-strength ranking below (EL-59/20 rank vocabulary) reuses the
+    // same fetch (fetchL1Context caches per chart/ayanamsha/date — one real DB round-trip either way).
+    let l1ctx: Awaited<ReturnType<typeof fetchL1Context>> | null = null
+    let scoredStagePool: Record<string, unknown>[] = stagePool
+    try {
+      const as_of_date = new Date().toISOString().split('T')[0]!
+      l1ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date)
+      if (stagePool.length > 0) {
+        const scored = applyCompositeRanking(stagePool as unknown as MsrSignalRow[], l1ctx, domain)
+        scoredStagePool = scored.map(s => {
+          const { _subscores, ...rest } = s
+          void _subscores
+          return rest as unknown as Record<string, unknown>
+        })
+      }
+    } catch {
+      // Non-fatal: falls back to raw stagePool (composite_score stays null, honestly).
+      scoredStagePool = stagePool
+    }
+    stagePool = scoredStagePool
+
+    // ── EL-59/20: graha shadbala rank statements (ONE rank vocabulary) ────────────
+    // Fills the honest gap noted at stage_status.strength (below): "strength" has no MSR
+    // signal class to bucket from bodha_msr_signals — but the REAL L1 shadbala data used to
+    // FEED that gap-note IS already fetched above (l1ctx.graha_map) and was previously
+    // discarded. Every rank here is served with rank_basis + population_size (rank_vocabulary.ts)
+    // — never a bare `rank: n` (the Venus weakest_rank_in_chart:5-vs-"weakest of 7" regression
+    // this closes for this file's own served surface).
+    let grahaStrengthRanking: ReturnType<typeof rankGrahasByShadbala> = []
+    if (l1ctx) {
+      const inputs: GrahaShadbalaInput[] = Object.entries(l1ctx.graha_map).map(([graha, info]) => ({
+        graha,
+        shadbala_total: info.shadbala_total,
+      }))
+      grahaStrengthRanking = rankGrahasByShadbala(inputs, 'classical_7')
     }
 
     const temporalContent = (temporalResult.data ?? {}) as Record<string, unknown>
@@ -446,8 +932,18 @@ async function runAssessDomain(
       karaka:   { count: stageKaraka.length, source: 'bodha_msr_signals (signal_type_class=karaka_alignment)' },
       lord:     { count: stageLord.length,   source: 'bodha_msr_signals (signal_type_class=parivartana — lord/dispositor exchange)' },
       // strength has NO MSR signal source — it is an L1 chart_facts (shadbala/ashtakavarga)
-      // concept. Reported honestly as always-empty with a drill, rather than a dead filter.
-      strength: { count: 0, source: 'L1 chart_facts (shadbala / ashtakavarga) — graha strength is not an MSR signal class', drill_uri: 'marsys://tool/L2/get_domain_reading' },
+      // concept, so `by_stage.strength` (the MSR-signal-bucket shape every other stage uses)
+      // stays honestly empty rather than a dead filter. EL-59/20: the REAL L1 shadbala data
+      // that grounds this gap-note is surfaced separately as `graha_shadbala_ranking` — ONE
+      // rank vocabulary (rank_vocabulary.ts: rank + population_size + rank_basis on every
+      // entry), so a caller gets the actual strength ranking this stage's MSR-shaped bucket
+      // structurally cannot hold, instead of only a pointer to go fetch it elsewhere.
+      strength: {
+        count: 0,
+        source: 'L1 chart_facts (shadbala / ashtakavarga) — graha strength is not an MSR signal class',
+        drill_uri: 'marsys://tool/L2/get_domain_reading',
+        graha_shadbala_ranking: grahaStrengthRanking,
+      },
       varga:    { count: stageVarga.length,  source: 'bodha_msr_signals (source_subsystem=varga)' },
       temporal: {
         count: stageTemporal.length,
@@ -457,8 +953,16 @@ async function runAssessDomain(
       contradiction_pairs: {
         count: stageContra.length,
         source: 'bodha_contradictions (L2 bo_karanajala)',
+        // EL-57: the honest empty reason now distinguishes "0 rows chart-wide" (no_data) from
+        // "N rows chart-wide, 0 tag this domain" (no_contradictions_in_domain) — never one
+        // generic "0 rows" message papering over which case actually happened.
         ...(stageContra.length === 0
-          ? { empty_reason: 'bodha_contradictions: 0 rows for this chart/ayanamsha (bo_karanajala) — no_data, not a serving trim.' }
+          ? {
+              empty_reason:
+                contradictions.status === 'no_contradictions_in_domain'
+                  ? (contradictions as Record<string, unknown>)['note']
+                  : 'bodha_contradictions: 0 rows for this chart/ayanamsha (bo_karanajala) — no_data, not a serving trim.',
+            }
           : {}),
       },
     }
@@ -532,6 +1036,20 @@ async function runAssessDomain(
       boundedContradictions = contradictions
     }
 
+    // EL-44: the grounded verdict layer — 3-5 plain-language sentences, deterministic
+    // template, every clause citing its real fact_ids (or honestly reporting it has none).
+    const verdict = buildVerdictLayer({
+      domain_label,
+      top10,
+      bearingYogaFirings,
+      domainMatchedYogaFactIds: Array.from(yogaFactIds),
+      vargaAnalysis,
+      contradictions,
+      chartWideContradictionCount,
+      temporalOk: temporalResult.ok,
+      stageTemporalCount: stageTemporal.length,
+    })
+
     return {
       content: {
         domain,
@@ -539,6 +1057,7 @@ async function runAssessDomain(
         chart_id,
         ayanamsha_id,
         ranking_basis: p2RankingBasis,
+        verdict,
         verdict_skeleton,
         step_results: {
           domain_reading: { ok: true },
@@ -549,8 +1068,13 @@ async function runAssessDomain(
         house_analysis: {
           question_lenses: boundedLenses,
           lens_count: domainContent['lens_count'] ?? 0,
+          lenses_served_count: boundedLenses.length,
+          lenses_deduped_count: lensesDroppedAsDuplicate,
           signals_per_lens_cap: max_signals_per_lens,
-          note: 'bodha_question_lenses returned chart-wide (no domain column); reconcile via cdlm_cells. all_relevant_ranked_jsonb capped per lens — drill via get_domain_reading for full signal lists.',
+          note: 'bodha_question_lenses returned chart-wide (no domain column); reconcile via cdlm_cells. all_relevant_ranked_jsonb capped per lens — drill via get_domain_reading for full signal lists.' +
+            (lensesDroppedAsDuplicate > 0
+              ? ` ${lensesDroppedAsDuplicate} lens(es) with byte-identical signal_ids collapsed into their surviving twin (see collapsed_question_types on the merged lens) — never repeat the same ranked-signal block under two labels.`
+              : ''),
         },
         karaka_analysis: (() => {
           // R6 3b-budgets (R-1/R-8): cdlm_cells was fully unbounded — the largest single
@@ -565,10 +1089,8 @@ async function runAssessDomain(
             ...(capped.truncated ? { cdlm_cells_drill_uri: capped.drill_uri } : {}),
           }
         })(),
-        varga_analysis: {
-          note: 'Varga refinement (D9/D10/D6) available via chart_facts_query with divisional_chart filter.',
-          drill_uri: 'marsys://tool/L1/chart_facts_query',
-        },
+        // EL-45: direct consumption, not a "see other tool" stub — see buildVargaAnalysisDirect.
+        varga_analysis: vargaAnalysis,
         activating_dasha: (() => {
           const cappedActivations = temporalResult.ok
             ? capArray(temporalContent['activations'], ASSESS_DEFAULT_MAX_ACTIVATIONS, 'marsys://tool/L3/query_temporal_activation')
