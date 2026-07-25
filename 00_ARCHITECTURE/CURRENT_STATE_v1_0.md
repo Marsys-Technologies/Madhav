@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.41
+version: 6.42
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,33 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.42 (2026-07-25/26, ELEVATION CAMPAIGN v2.1 — 3-stream autonomous overnight run, CLOSED-HONEST):
+    Full 3-stream (α SATYA / β GAṆITA / γ PŪRṆA) autonomous overnight run per
+    `ELEVATION_CAMPAIGN_CHARTER_v2_1.md`, conducted by α per M2.7 close ownership.
+    **α: 4 merges shipped/deployed/live-verified** (PR #768 EL-37 hard-floor fix + C1 budget_kb core;
+    PR #771 EL-36 graha_portrait fix + C1 sweep + EL-31 discovery tools + K1 receipt gate; PR #772
+    EL-48 chart_snapshot multi-varga + EL-36 legacy path + EL-07 grounding fix; urgent PR #782 wiring
+    assess_wealth/assess_career through dossier's completeness mechanism, dispatched to address a
+    cross-stream flagship-blocking gap γ's own self-verification surfaced). **γ: COMPLETE**
+    (`STREAM_GAMMA_COMPLETE.flag`, all 16 own lane items VERIFIED-CLOSED — Ω1-8, Lane I/E/F/J/K2 —
+    except the flagship acceptance itself). **β: 5 PRs merged** (#767, #769, #774, #776, #786 final
+    consolidated), CI green, formal completion flag not observed before this close.
+    **§0 depth-mandate verdict: NOT MET.** Fresh sealed-evaluator-harness runs (mechanically graded,
+    not judged) on all 4 (domain, chart) combinations scored 15-33%, all below the 0.90 pass bar —
+    every layer this campaign built (TCI, 100%-accounting contract, depth-routing, dossier's paged
+    synthesis-gate mechanism, mechanism/chain serving, floor reconciliation) verified working
+    correctly in isolation; the precisely-diagnosed remaining gap is that a naive consumer's own tool
+    choice defaults to assess_wealth/assess_career rather than dossier, and even after α's urgent fix
+    made those default tools carry a complete accounting receipt + directive, a naive agent does not
+    reliably act on it. Full grading: `ALPHA_FLAGSHIP_ACCEPTANCE_GRADING_v1_0.md`. Full coverage
+    matrix (every EL + Ω item dispositioned, four-state discipline, no silent gaps):
+    `ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md`. Full narrative: `ELEVATION_V2_RUN_REPORT_v1_0.md`.
+    Dark-corpus report (γ, chart 482012f1 only, pre-dates α's final fix — explicitly flagged stale,
+    not re-run fresh given wall-clock position at Phase 4): 5.58%/8.47% bright coverage
+    (wealth/career). No FORENSIC/MSR/architecture regression found in anything α touched or
+    independently spot-checked (both canonical charts, chart-agnostic). §16 cleanup executed
+    per charter (see SESSION_LOG.md entry same date for the cleanup verification evidence).
+    last_session_id: ELEVATION-V2-ALPHA-2026-07-25. predecessor_session: PRE-DARPANA-READINESS-2026-07-24.
   - v6.41 (2026-07-24, PRE-DARPANA READINESS pass — Tier A/B swarm, HONEST-OPEN close):
     Executed `PRE_DARPANA_READINESS_v1_0.md`'s Tier A/B checklist ahead of UAT-DARPANA opening,
     via a Sonnet-coordinator/Opus-step-up parallel swarm. **Tier A: 3/6 CLOSED** (A-1 PR #729
@@ -5418,6 +5445,30 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🔔 **CROSS-CAMPAIGN NOTE (2026-07-25/26, Elevation Campaign v2.1 — 3-stream autonomous overnight run,
+> closed by α per M2.7 close ownership): CLOSED-HONEST, §0 depth mandate NOT MET, root cause fully
+> diagnosed — read-only note, this file's doctrine-wave/D-4b banners below are untouched.**
+> α shipped 4 merges (PR #768/#771/#772 + urgent #782), each independently live-verified against
+> production on both canonical charts before release. γ signaled COMPLETE at 16:48Z with all 16 of
+> its own lane items VERIFIED-CLOSED. β merged 5 PRs (#767/#769/#774/#776/#786), CI green throughout;
+> its formal completion flag was not observed before this close. **The flagship acceptance criterion
+> (§2 Ω-Verification of the campaign charter) failed on all 4 tested (domain, chart) combinations**
+> (fresh sealed-harness runs, mechanically graded: 15-33%, all below the 0.90 bar) — every layer the
+> campaign built is independently confirmed working correctly in isolation; the diagnosed gap is that
+> a naive consumer's own tool choice defaults to `assess_wealth`/`assess_career` rather than the new
+> `dossier` mechanism, and even after α's urgent fix made those default tools carry a complete
+> accounting receipt + a directive toward `dossier`, a naive agent does not reliably act on the
+> directive. Two concrete next actions are named (not built this run, time-boxed out): have
+> `assess_wealth`/`assess_career` internally hydrate the missing concept classes directly, or make
+> `dossier` itself the tool a naive agent's own `tool_search`/catalog surfaces first. Full detail:
+> `00_ARCHITECTURE/llm_consumption_audit/ELEVATION_V2_RUN_REPORT_v1_0.md`,
+> `.../ledgers/elevation_v2/ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md`,
+> `.../ledgers/elevation_v2/ALPHA_FLAGSHIP_ACCEPTANCE_GRADING_v1_0.md`. No FORENSIC/MSR/architecture
+> regression found in anything α touched or independently spot-checked this run. §16 cleanup executed
+> per charter — see SESSION_LOG.md same-date entry for verification evidence. No action needed from
+> any other concurrent workstream; this note exists so a fresh session sees this campaign's true
+> terminal state without re-deriving it.
 
 > ✅ **AUTHORITATIVE STATE (2026-07-21, formal open — supersedes the "INCOMING" banner immediately
 > below, which is retained for its history): Doctrine-Waves campaign ACTIVE — current_wave = D-4b

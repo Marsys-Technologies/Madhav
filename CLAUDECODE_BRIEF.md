@@ -2,8 +2,11 @@
 artifact: CLAUDECODE_BRIEF_ELEVATION_CAMPAIGN
 type: CLAUDECODE_BRIEF (governing scope for execution sessions)
 version: 2.0
-status: ACTIVE — READY-FOR-EXECUTION (3-stream autonomous overnight run; flip to COMPLETE only
-  after the run's session-close checklist validates per charter §14)
+status: COMPLETE (3-stream autonomous overnight run closed 2026-07-25/26 per charter §14 — session-
+  close checklist validated, CURRENT_STATE + SESSION_LOG updated atomically. Campaign's own §0
+  flagship mandate NOT MET this run — see ELEVATION_V2_RUN_REPORT_v1_0.md for the full honest verdict
+  and ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md for every EL/Ω item's disposition. "COMPLETE" here
+  means the run executed to its defined close, not that the mandate was achieved.)
 authored_by: Fable/Opus (Cowork planning session), native-commissioned 2026-07-24
 authority: >
   Per CLAUDE.md §C item 0. This brief is a POINTER: the operative mandate, stream topology, lane
