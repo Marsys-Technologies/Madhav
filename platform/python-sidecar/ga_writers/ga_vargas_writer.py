@@ -829,6 +829,17 @@ def _build_position_rows(
     now = datetime.now(timezone.utc).isoformat()
     v_status = _verification_status("varga_position", varga_n)
 
+    # EL-47 fix (Elevation Campaign β.D, 2026-07-25): divisional facts served
+    # `house: None` — the house-from-varga-lagna was left for the consumer to
+    # derive client-side (a §N.5/B.10 exposure). Compute it here, server-side,
+    # whole-sign from THIS varga's own Lagna sign (Lagna = house 1), 1-indexed,
+    # and stamp the convention (contract C4) so serving (Stream α) can tell a
+    # corrected row from a legacy one across the estate. Mirrors the existing
+    # D2 `hora_d2_house` derivation (CR-58) — a pure count over positions
+    # already in varga_data, no new astronomical computation.
+    _varga_lagna = varga_data.get("Lagna")
+    varga_lagna_sign_idx = _varga_lagna["sign_idx"] if _varga_lagna else None
+
     for body in CLASSICAL_BODIES:
         bdata = varga_data.get(body)
         if bdata is None:
@@ -837,12 +848,16 @@ def _build_position_rows(
         sign_idx = bdata["sign_idx"]
         deg_in_sign = bdata["degree_in_sign"]
         boundary_info = _check_near_boundary(deg_in_sign)
+        house_from_varga_lagna = (
+            ((sign_idx - varga_lagna_sign_idx) % 12) + 1
+            if varga_lagna_sign_idx is not None else None
+        )
 
         # D9 vargottama flag at point
         d1_sign = int(d1_data.get(body, {}).get("sign_idx", -1) if isinstance(d1_data.get(body), dict) else int(d1_data.get(body, 0) / 30.0)) % 12
         vargottama_at_point = (sign_idx == d1_sign)
 
-        # Keys: sign, sign_id, degree_in_sign, house, sign_lord, formula_id
+        # Keys: sign, sign_id, degree_in_sign, house_from_varga_lagna, sign_lord, formula_id
         keys_values = [
             ("sign", "text", sign_idx, SIGN_NAMES[sign_idx], None),
             ("sign_id", "num", sign_idx, None, sign_idx + 1),
@@ -850,6 +865,15 @@ def _build_position_rows(
             ("sign_lord", "text", sign_idx, SIGN_LORDS[sign_idx], None),
             ("formula_id", "text", sign_idx, f"parashari_D{varga_n}", None),
         ]
+        # EL-47: whole-sign house from the varga's own Lagna (1-indexed). The
+        # fact_key `house_from_varga_lagna` is itself the C4 convention marker —
+        # it exists ONLY on convention-corrected rows, so serving can trust it
+        # unconditionally and fall back to sign-derivation for legacy rows that
+        # lack it. Emitted only when this varga carries a Lagna position.
+        if house_from_varga_lagna is not None:
+            keys_values.append(
+                ("house_from_varga_lagna", "num", sign_idx, None, float(house_from_varga_lagna))
+            )
 
         for key, vtype, _, vtxt, vnum in keys_values:
             rid = _fact_id(vid, body, "varga_position", key, chart_id, ayanamsha_id, build_id)

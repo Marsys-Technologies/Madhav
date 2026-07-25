@@ -306,10 +306,34 @@ def _is_vargottama(long_deg: float) -> bool:
     return sign_d1 == sign_d9
 
 
+# Estate-safety convention stamp (EL-30 / Elevation Campaign β.D, contract C4).
+# Every house-semantic row this writer emits under a `house_*` key carries this
+# machine tag in chart_facts.formula_id so serving (Stream α) can distinguish a
+# convention-corrected row (whole-sign, 1-indexed, counted from the varga-lagna)
+# from a legacy pre-fix row and normalise the estate without a full rebuild.
+HOUSE_CONVENTION_ID = "wholesign_from_lagna:1indexed:v2"
+
+
 def _house_d1(longitude_sidereal: float, lagna_longitude: float) -> int:
-    """Whole-sign house number (1-based) given sidereal longitude and lagna longitude."""
-    diff = (longitude_sidereal - lagna_longitude) % 360.0
-    return int(diff / 30.0) + 1
+    """Whole-sign house number (1-based) counted from the lagna's WHOLE SIGN.
+
+    EL-30 fix (Elevation Campaign β.D, 2026-07-25): the prior implementation
+    computed a DEGREE-ARC house — `int((long - lagna) % 360 / 30) + 1` — which
+    silently disagrees with whole-sign houses whenever the lagna sits mid-sign.
+    For chart 482012f1 (lagna 12.43° Aries) a point at 0° Capricorn (270°) is
+    only 8.58 arcs of 30° from the lagna → 9, not the whole-sign 10; and a point
+    at 0° Aries (same sign as the lagna) falls *behind* the mid-sign lagna →
+    (0-12.43)%360=347.57 → arc 11 → house 12 (the "A10 0° wraparound" anomaly in
+    EL-30). Both are the SAME defect: arc-count vs whole-sign-count. Houses in
+    this instrument are whole-sign (LAGNA sign = house 1); bhava-chalit lives in
+    its own `house_chalit` category. The correct count is over whole signs.
+
+    Verified against the EL-30 evidence rows (Aries lagna): ARUDHA_A1 Capricorn
+    -> 10, ARUDHA_A7 Aquarius -> 11, ARUDHA_A10 Aries -> 1.
+    """
+    sign_idx = int((longitude_sidereal % 360.0) / 30.0)
+    lagna_sign_idx = int((lagna_longitude % 360.0) / 30.0)
+    return ((sign_idx - lagna_sign_idx) % 12) + 1
 
 
 def _midpoint(long1: float, long2: float) -> float:
@@ -1447,6 +1471,7 @@ def _build_arudha_rows(
                       vargottama_flag_at_point=False),
             _make_row("arudha_pada", subj, "house_d1",
                       float(house_d1), None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_id=HOUSE_CONVENTION_ID,
                       formula_provenance_text=prov, tolerance_arcsec=1.0,
                       near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
                       vargottama_flag_at_point=False),
@@ -1483,6 +1508,7 @@ def _build_arudha_rows(
                       vargottama_flag_at_point=False),
             _make_row("arudha_pada", subj, "house_d1",
                       float(house_d1), None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      formula_id=HOUSE_CONVENTION_ID,
                       formula_provenance_text=prov, tolerance_arcsec=1.0,
                       near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
                       vargottama_flag_at_point=False),
@@ -1592,6 +1618,7 @@ def _build_bhava_arudha_rows(
                           vargottama_flag_at_point=False),
                 _make_row("bhava_arudha", s, "house_d1",
                           float(house_d1), None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                          formula_id=HOUSE_CONVENTION_ID,
                           formula_provenance_text=prov, tolerance_arcsec=1.0,
                           near_sign_boundary_flag=near_sign, near_nakshatra_boundary_flag=near_nak,
                           vargottama_flag_at_point=False),
