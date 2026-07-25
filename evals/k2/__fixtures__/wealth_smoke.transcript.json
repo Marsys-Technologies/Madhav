@@ -1,0 +1,18 @@
+{
+  "domain": "wealth",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "query": "How is my wealth?",
+  "calls": [
+    {
+      "tool": "mcp__marsys-jis-direct__ganita_chart_facts_get",
+      "arguments": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "fact_category": "anumukha_shani_period" },
+      "result_raw": "{\"facts\":[{\"fact_id\":\"0100aa5df24cfbd6\",\"category\":\"anumukha_shani_period\",\"detail\":\"CYCLE_1_ANUMUKHA\"},{\"fact_id\":\"06fb3782114fba96\",\"category\":\"anumukha_shani_period\"}]}"
+    },
+    {
+      "tool": "mcp__marsys-jis-direct__assess_wealth",
+      "arguments": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa" },
+      "result_raw": "{\"verdict\":\"Strong wealth potential grounded in a genuine Dhana Yoga (Venus-Jupiter, H9) and the Śaśa Yoga giving status. I checked dispositor chains and special lagnas but did not query per-varga ashtakavarga bindus this pass, so treat the varga-level picture as unconfirmed for now.\"}"
+    }
+  ],
+  "final_answer": "Your chart shows real financial strength: a Dhana Yoga (Venus conjunct Jupiter in the 9th) grounds durable prosperity, and an exalted Śaśa Yoga gives you standing and discipline around money. I checked dispositor chains and special lagnas for this reading, but I did not query the per-varga ashtakavarga bindus this pass — treat that layer as unconfirmed rather than assume it was covered."
+}
