@@ -22,6 +22,41 @@ import { buildVidhiPlan } from '../resources/vidhi/plan_builder.js';
 import type { CompiledFloorItem } from '../resources/vidhi/types.js';
 import { remoteAuthorize } from '../lib/authz.js';
 import type { Principal } from '../types.js';
+import {
+  COMPOSITION_SEQUENCE,
+  MANDATORY_GESTALT_VOLUNTEER,
+} from '../resources/vidhi/composition_doctrine.js';
+
+/**
+ * EL-61 + EL-29 + EL-05 (Elevation Campaign v2.1, Lane I). For a DEEPDIVE plan, the floor is the
+ * gather stage; the compose stage is Ω5's `dossier` gather-then-compose gate. This block wires the
+ * plan to that gate: it names the dossier handle to page the domain's ENTIRE slice, the STRUCTURAL
+ * rule (do not compose until synthesis_gate: OPEN), and the EL-29 composition SEQUENCE the reading
+ * follows once OPEN — stage 1 of which is the mandatory EL-05 top-N gestalt volunteering. Pure
+ * doctrine text over the vendored composition_doctrine constants; it does not call dossier here
+ * (that is the consumer's runtime move) and reimplements no computation (B.10).
+ */
+function gatherThenComposeBlock(domain: string): string[] {
+  const seq = COMPOSITION_SEQUENCE.map((s, i) => `${i + 1}. ${s}`).join(' → ');
+  const gestaltTools = MANDATORY_GESTALT_VOLUNTEER.serving_tools.map((t) => t.tool).join(', ');
+  return [
+    '── GATHER-THEN-COMPOSE (Ω5 dossier · EL-61) ──',
+    'The floor above is the GATHER stage. For a full composed reading, page the whole domain',
+    `slice through the Ω5 gate before composing: dossier({ domain: "${domain}", chart_id }).`,
+    'Follow its `cursor` to exhaustion. The interpretive surfaces are WITHHELD by construction',
+    'until synthesis_gate reads OPEN (100% accounted) — this is a STRUCTURAL gate, not advice.',
+    'Do NOT compose from page 1; a premature composition is visibly missing its scaffold.',
+    '',
+    '── COMPOSITION SEQUENCE (EL-29; only once synthesis_gate: OPEN) ──',
+    `Compose in this fixed order: ${seq}.`,
+    `  • gestalt (stage 1) is MANDATORY and served UNPROMPTED (EL-05): open with the chart's own`,
+    `    top-${MANDATORY_GESTALT_VOLUNTEER.top_n} laksana/gestalt findings via ${gestaltTools}`,
+    '    — orient on who the chart IS before answering the question.',
+    '  • tensions are ADJUDICATED, not just listed; carry cross-ayanamsha agreement (n/5) as a',
+    '    confidence discount where a finding is ayanamsha-fragile (EL-27).',
+    'The deliverable is the synthesis over the WHOLE slice — not a narration of the parts.',
+  ];
+}
 
 function renderItem(item: CompiledFloorItem, i: number): string {
   const gap = item.known_gap ? `  [known_gap: ${item.known_gap} — DARK; account for it, do not silently skip]` : '';
@@ -88,6 +123,12 @@ export function registerVidhiPlanPrompt(server: McpServer, principal: Principal)
           ? plan.completeness_receipt.dark.map((d) => `  - ${d.floor_item_id}: ${d.cr_row}`).join('\n')
           : '  (none — every floor item has a live route)';
 
+      // EL-61/EL-29/EL-05: attach the gather-then-compose + composition doctrine for a deepdive
+      // plan (the depth at which a full composed reading — not a lookup — is the deliverable).
+      const st = plan.scope_tuple as { depth?: string; domains?: readonly string[] };
+      const composeDomain = st.domains?.[0] ?? 'general';
+      const composeLines = st.depth === 'deepdive' ? gatherThenComposeBlock(composeDomain) : [];
+
       return {
         messages: [
           {
@@ -127,6 +168,7 @@ export function registerVidhiPlanPrompt(server: McpServer, principal: Principal)
                 '`observations` array (one {floor_item_id, status: served|empty, source?/empty_reason?}',
                 'per floor item you executed). Never mark an item served without data; never claim an',
                 'item empty from a truncated/paginated read — page to exhaustion or use a total field.',
+                ...(composeLines.length > 0 ? ['', ...composeLines] : []),
                 '',
                 plan.llm_extension_note,
               ]

@@ -13,6 +13,11 @@ const LIVE_TOOLS = new Set<string>([
   'bodha_mechanisms_get', // CR-24 (SARVA-SIDDHI, 2026-07-24): dedicated mechanism serving face
   'bodha_quality_get', 'bodha_remedies_get', 'bodha_remedies_search', 'bodha_signals_get',
   'catalog_assets_all', 'catalog_assets_l0', 'catalog_assets_list', 'chart_snapshot',
+  // Elevation Campaign v2.1 · Stream γ · Lane Ω5: the deployed gather-then-compose paging engine
+  // (dossier.ts, wired into server.ts, independently verified live). The full_domain_dossier
+  // primitive's live_tool routes to it — this allowlist entry keeps the "live_tool is a REAL tool"
+  // bind-time guard honest for the new full-coverage floor lead.
+  'dossier',
   'compute_natal_positions', 'ephemeris_cache_year', 'event_anchors',
   'ganita_ayurdaya_get', 'ganita_chart_facts_get', 'ganita_condition_get',
   // SARVA-SIDDHI W-4 D-4 (CR-30): dedicated first-class KP cusp/sub-lord face.

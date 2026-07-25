@@ -200,6 +200,108 @@ function errOut(tool: string, msg: string, extra?: Record<string, unknown>) {
   return { ...dualOutput({ ok: false, error: msg, tool, ...extra }), isError: true as const }
 }
 
+// ── EL-41 / B-1: per-requested-category receipt ─────────────────────────────────
+// Every multi-category tool must report what happened to EACH requested category — never
+// let one silently vanish from the response shape, even when its result is genuinely empty.
+//
+// Shape is the FROZEN C2 contract (~/elev-v2-shared/contracts/C2_PER_CATEGORY_RECEIPT_v1_0.md),
+// not an ad-hoc one — γ builds against this exact shape. `receipt_state` is C8's closed,
+// mechanically-derived enum (CONFIRMED|CATALOG_ONLY|DARK|MIXED); C8 §2 says the (0,0,0) triple
+// is omitted as "never touched" — but every category THIS handler was explicitly asked for is,
+// by construction, touched. A requested category with no real rows and no catalog-only match is
+// therefore recorded as `dark_count: 1` (an obligation this response should have covered per the
+// caller's own request, and didn't) rather than as a bare (0,0,0) — this keeps the EL-41 "never
+// silently vanish" guarantee compatible with C8's closed enum instead of inventing a 5th state.
+type CategoryReceiptState = 'CONFIRMED' | 'CATALOG_ONLY' | 'DARK' | 'MIXED'
+interface CategoryReceipt {
+  fact_category: string
+  confirmed_count: number
+  catalog_only_count: number
+  dark_count: number
+  receipt_state: CategoryReceiptState
+  note?: string
+}
+function deriveReceiptState(confirmed: number, catalogOnly: number, dark: number): CategoryReceiptState {
+  const nonZero = [confirmed > 0, catalogOnly > 0, dark > 0].filter(Boolean).length
+  if (nonZero > 1) return 'MIXED'
+  if (confirmed > 0) return 'CONFIRMED'
+  if (catalogOnly > 0) return 'CATALOG_ONLY'
+  return 'DARK'
+}
+
+/**
+ * Defensive unwrap for callRegistryCap's return value. /api/retrieval/capability's handler
+ * contract is `{ content: <realPayload>, is_error: boolean }` (see register_p1_ganita.ts's
+ * documented A4 fix for the identical bug class — callRegistryCap in THIS file returns
+ * `res.json().content`, which is that whole `{content, is_error}` object one level too
+ * shallow, not the real payload) — but callers historically treated it as already-unwrapped.
+ * Handles both shapes so a receipt/count built from `data` never silently reads past the
+ * real payload into `undefined`.
+ */
+function unwrapCapabilityPayload(data: unknown): Record<string, unknown> {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    if ('is_error' in obj && 'content' in obj && obj['content'] && typeof obj['content'] === 'object') {
+      return obj['content'] as Record<string, unknown>
+    }
+    return obj
+  }
+  return {}
+}
+
+function extractRowsForReceipt(data: unknown): Record<string, unknown>[] {
+  const payload = unwrapCapabilityPayload(data)
+  return Array.isArray(payload['rows']) ? payload['rows'] as Record<string, unknown>[] : []
+}
+
+/** Builds a CategoryReceipt entry (frozen C2 shape) for every REQUESTED alias — never omits one,
+ * even if empty (see the `dark_count: 1` note on the type above for why "empty" is never (0,0,0)). */
+function buildCategoryReceipts(
+  requestedAliases: string[],
+  aliasMap: Record<string, string[]>,
+  rows: Record<string, unknown>[],
+): CategoryReceipt[] {
+  const countByRealCategory = new Map<string, number>()
+  for (const r of rows) {
+    const cat = r['fact_category']
+    if (typeof cat === 'string') countByRealCategory.set(cat, (countByRealCategory.get(cat) ?? 0) + 1)
+  }
+  return requestedAliases.map((alias): CategoryReceipt => {
+    const realCats = aliasMap[alias]
+    if (!realCats || realCats.length === 0) {
+      const confirmed = 0, catalogOnly = 0, dark = 1
+      return {
+        fact_category: alias, confirmed_count: confirmed, catalog_only_count: catalogOnly, dark_count: dark,
+        receipt_state: deriveReceiptState(confirmed, catalogOnly, dark),
+        note: `"${alias}" has no known backing fact_category mapping — this alias is not wired to any stored data.`,
+      }
+    }
+    const count = realCats.reduce((sum, c) => sum + (countByRealCategory.get(c) ?? 0), 0)
+    if (count > 0) {
+      return {
+        fact_category: alias, confirmed_count: count, catalog_only_count: 0, dark_count: 0,
+        receipt_state: deriveReceiptState(count, 0, 0),
+      }
+    }
+    const confirmed = 0, catalogOnly = 0, dark = 1
+    return {
+      fact_category: alias, confirmed_count: confirmed, catalog_only_count: catalogOnly, dark_count: dark,
+      receipt_state: deriveReceiptState(confirmed, catalogOnly, dark),
+      note: `No ${realCats.join('/')} rows exist for this chart/ayanamsha — genuinely empty, not dropped.`,
+    }
+  })
+}
+
+// EL-41/B-1 (ganita_special_lagnas_get): public alias name → real backing chart_facts
+// fact_category set. Live-verified against chart 482012f1 — see the tool registration's
+// comment for the full root-cause writeup (only 'special_lagna' happened to match verbatim).
+const SPECIAL_LAGNA_CATEGORY_MAP: Record<string, string[]> = {
+  special_lagna: ['special_lagna'],
+  upagraha: ['upagraha_position', 'sun_derived_upagraha'],
+  saham: ['saham_position'],
+  sensitive_point: ['sensitive_point_gulika_mandi', 'sensitive_degree_check', 'nakshatra_pada_sensitive'],
+}
+
 function signalsSection(): TrimmableSection<Record<string, unknown>> {
   return {
     path: 'signals', label: 'signals', minKeep: 20,
@@ -498,7 +600,16 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   )
 
   // get_positions → ganita_positions_get
-  regAlias(server, 'ganita_positions_get',
+  // EL-41/B-1 sweep item: broken out of the generic regAlias into a bespoke handler so an
+  // EXPLICIT `categories` request gets a `category_receipts` entry per requested category
+  // (never silently absent, even when genuinely empty) — same discipline as
+  // ganita_special_lagnas_get and phala_predictive_anchors_get above. Unlike special-lagnas,
+  // these category names already match get_positions.ts's real fact_category values verbatim
+  // (no alias-mapping bug here) — this is the "an empty category must say so" half of
+  // EL-41/B-1, not a naming fix. Only fires when `categories` is explicitly passed — the
+  // CR-50 default page (no categories, no include_upagrahas) isn't a multi-category request.
+  server.tool(
+    'ganita_positions_get',
     'L1 graha positions (same as get_positions). R5 W2: frame (lagna/chandra/surya/arudha/' +
     'karakamsha, default lagna) re-bases house_d1 onto the requested reference sign, adding ' +
     'house_from_frame per row — e.g. frame="chandra" answers "what house is X in, from Moon" ' +
@@ -508,8 +619,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'CR-50: the default page serves ONLY the 9 classical grahas + Lagna — pass ' +
     'include_upagrahas=true to also fetch upagrahas/aprakasha bodies (served after, never ' +
     'interleaved into the default page).',
-    'marsys://tool/L1/get_positions',
     {
+      ...ChartBase,
       frame:  z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional(),
       planet: z.string().optional().describe(
         'Filter to a single graha (e.g. "Sun", "Moon", "Mars"). SC-20 fix: this alias previously ' +
@@ -518,8 +629,31 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         'CR-50: when true, also serves upagraha_position/aprakasha_position rows AFTER the 9 ' +
         'grahas + Lagna. Default false — the default page is grahas + Lagna only.'),
       categories: z.array(z.enum(['graha_position', 'upagraha_position', 'aprakasha_position'])).optional()
-        .describe('Explicit category list — overrides the CR-50 default and include_upagrahas entirely.'),
-    }, principal)
+        .describe('Explicit category list — overrides the CR-50 default and include_upagrahas entirely. ' +
+          'When passed, the response carries a `category_receipts` entry for EVERY requested category ' +
+          '(EL-41/B-1) — never silently absent even if a category is genuinely empty for this chart.'),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, limit, offset, ...rest } = params as Record<string, unknown>
+      if (!chart_id) return errOut('ganita_positions_get', 'chart_id is required')
+      try {
+        const requestedCategories = rest['categories'] as string[] | undefined
+        const data = await callRegistryCap('marsys://tool/L1/get_positions', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
+        }, principal)
+        const payload = unwrapCapabilityPayload(data)
+        if (requestedCategories && requestedCategories.length > 0) {
+          const rows = Array.isArray(payload['rows']) ? payload['rows'] as Record<string, unknown>[] : []
+          // Identity map: these category names already equal their own real fact_category
+          // (verified against get_positions.ts's SQL) — no alias translation needed here.
+          const identityMap = Object.fromEntries(requestedCategories.map(c => [c, [c]]))
+          payload['category_receipts'] = buildCategoryReceipts(requestedCategories, identityMap, rows)
+        }
+        return dualOutput(payload, 'ganita_positions_get')
+      } catch (err) { return errOut('ganita_positions_get', String(err), { chart_id }) }
+    }
+  )
 
   // ── W4-loop-1 (E-6 group4): fronting tools for computed-but-unserved assets ──────
   // Registry capabilities existed (or were added this pass) but had NO LLM-facing MCP tool.
@@ -809,17 +943,59 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // honest cardinality-null blocks on phala_anchors rows) was correct but unreachable by
   // any live MCP tool call. Named distinctly from phala_anchors_get to avoid repeating
   // that collision.
-  regAlias(server, 'phala_predictive_anchors_get',
+  //
+  // EL-41/B-1 fix: this WAS a generic `regAlias(...)` registration, which forwards
+  // callRegistryCap's return value verbatim into dualOutput. query_predictive_anchors.ts
+  // (the underlying L4 capability) ALREADY computes an honest `empty_reason`/`known_gap`
+  // block whenever `anchors` comes back empty (§N.6 Serving Density Principle — see that
+  // file's own comment) — but callRegistryCap's return value is one level too shallow
+  // (`{content: <realPayload>, is_error}`, the SAME unwrap-depth bug register_p1_ganita.ts's
+  // A4 comment documents, never fixed in this file — see unwrapCapabilityPayload above), so
+  // `empty_reason`/`known_gap` were buried under an extra `.content` a caller reading the
+  // top-level response would never find: "returns empty with NO empty_reason/known_gap field
+  // in some request shapes" (every request shape that returns zero anchors). Broken out into
+  // a bespoke handler (instead of the shared regAlias) so this ONE tool can unwrap correctly
+  // without touching regAlias's ~40 other callers.
+  server.tool(
+    'phala_predictive_anchors_get',
     'L4 predictive anchors (phala_anchors/ph_nimitta) — magnitude, confidence band, karmic frame, ' +
-    'malleability, and posterior_provenance (base_rate_source + honest cardinality-null where unfit) per anchor',
-    'marsys://tool/L4/query_predictive_anchors',
+    'malleability, and posterior_provenance (base_rate_source + honest cardinality-null where unfit) per ' +
+    'anchor. When the result is empty, `empty_reason` + `known_gap` (e.g. CR-66) always explain why ' +
+    '(genuine zero-anchor build vs. a filter miss vs. an unreachable backing table) — never a bare empty array.',
     {
+      ...ChartBase,
       domain: z.string().optional(),
       event_type: z.string().optional(),
       direction: z.string().optional(),
       horizon_tier: z.string().optional(),
       top_k: z.number().optional(),
-    }, principal)
+    },
+    async (params) => {
+      const p = params as Record<string, unknown>
+      const chartId = p['chart_id'] as string | undefined
+      if (!chartId) return errOut('phala_predictive_anchors_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L4/query_predictive_anchors', {
+          chart_id: chartId,
+          ayanamsha_id: na(p['ayanamsha_id'] as string | undefined),
+          domain: p['domain'], event_type: p['event_type'], direction: p['direction'],
+          horizon_tier: p['horizon_tier'], top_k: p['top_k'],
+        }, principal)
+        const payload = unwrapCapabilityPayload(data)
+        // Defensive floor: guarantee empty_reason/known_gap are NEVER silently absent when
+        // anchors is empty, even if the underlying capability's own disclosure changes shape
+        // in the future — this tool's whole point is that this field must always be reachable.
+        const anchors = Array.isArray(payload['anchors']) ? payload['anchors'] : []
+        if (anchors.length === 0 && payload['empty_reason'] == null) {
+          payload['empty_reason'] = 'phala_predictive_anchors_get returned zero anchors and the ' +
+            'backing capability supplied no reason — treat as an honest empty pending investigation, ' +
+            'not a confirmed zero-prediction result.'
+          payload['known_gap'] = payload['known_gap'] ?? null
+        }
+        return dualOutput(payload, 'phala_predictive_anchors_get')
+      } catch (err) { return errOut('phala_predictive_anchors_get', String(err), { chart_id: chartId }) }
+    }
+  )
 
   // SARVA-SIDDHI W-2 P-1 (2026-07-24) — standing_predictions_read: the READ side of the LIVE
   // prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane A-4). This is the
@@ -1615,6 +1791,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // stored special_lagna/upagraha/saham facts are served from chart_facts via the entitlement-gated
   // registry capability marsys://tool/L1/get_sensitive_points (categories filter) — the same
   // canonical rows the rest of the estate reads. Birth-data path retained for un-built charts.
+  //
+  // EL-41 / B-1 fix: the public `categories` enum here ('special_lagna'/'upagraha'/'saham'/
+  // 'sensitive_point') are ALIAS names, not literal chart_facts.fact_category values — only
+  // 'special_lagna' happens to match exactly. get_sensitive_points.ts filters
+  // `fact_category = ANY($2)` on whatever is passed VERBATIM, so 'upagraha', 'saham', and
+  // 'sensitive_point' matched ZERO real rows (live-verified against 482012f1: real categories
+  // are 'upagraha_position'/'sun_derived_upagraha', 'saham_position', and
+  // 'sensitive_point_gulika_mandi'/'sensitive_degree_check'/'nakshatra_pada_sensitive'
+  // respectively) — a requested category silently vanishing from the response with no signal
+  // at all. SPECIAL_LAGNA_CATEGORY_MAP below maps each public alias to its real backing
+  // fact_category set so data actually returns, and every REQUESTED alias gets an entry in
+  // `category_receipts` (never silently absent, even when genuinely empty).
   server.tool(
     'ganita_special_lagnas_get',
     '[Phase-1 alias] Special lagnas + upagrahas. TWO input modes: (1) chart_id — serves the ' +
@@ -1638,15 +1826,26 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         if (chartId) {
           // Chart-keyed path: stored special-lagna facts via the entitlement-gated capability.
-          const cats = (p['categories'] as string[] | undefined) ?? ['special_lagna', 'upagraha']
+          const requestedAliases = (p['categories'] as string[] | undefined) ?? ['special_lagna', 'upagraha']
+          // EL-41/B-1: expand each public alias to its REAL backing fact_category set so
+          // 'upagraha'/'saham'/'sensitive_point' actually retrieve data instead of matching
+          // nothing (see comment above the tool registration).
+          const realCategories = [...new Set(
+            requestedAliases.flatMap(a => SPECIAL_LAGNA_CATEGORY_MAP[a] ?? []),
+          )]
           const data = await callRegistryCap('marsys://tool/L1/get_sensitive_points', {
             chart_id: chartId,
             ayanamsha_id: na(p['ayanamsha_id'] as string | undefined),
-            categories: cats,
+            categories: realCategories,
             limit: (p['limit'] as number) ?? 25000,
             offset: (p['offset'] as number) ?? 0,
           }, principal)
-          return dualOutput(data, 'ganita_special_lagnas_get')
+          const payload = unwrapCapabilityPayload(data)
+          const rows = extractRowsForReceipt(data)
+          const category_receipts = buildCategoryReceipts(
+            requestedAliases, SPECIAL_LAGNA_CATEGORY_MAP, rows,
+          )
+          return dualOutput({ ...payload, category_receipts }, 'ganita_special_lagnas_get')
         }
         if (!p['datetime_iso']) {
           return errOut('ganita_special_lagnas_get',

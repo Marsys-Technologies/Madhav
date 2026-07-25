@@ -117,10 +117,17 @@ import { registerResources } from './resources/index.js'
 import { registerPrompts } from './prompts/index.js'
 // D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (+ capability-version staleness kill)
 import { registerVidhiPlanTool } from './tools/register_vidhi_plan.js'
+// Elevation Campaign v2.1 · Stream γ (PŪRṆA) · Lane Ω5 — dossier: gather-then-compose paging
+// engine with a structural synthesis gate (NATIVE-RULED-001, scoped server.ts exception —
+// registerDossierTool itself lives in tools/dossier.ts, γ's own file; this import+registration
+// is the sole change server.ts needed).
+import { registerDossierTool } from './tools/dossier.js'
 // W6 — prashna_ask: job-handle-first full-loop engine call (Task 7)
 import { registerPrashnaAskTool } from './tools/register_prashna_ask.js'
 // W6 Part 3 — prashna_status: poll a prashna_ask job's progress/final result
 import { registerPrashnaStatusTool } from './tools/register_prashna_status.js'
+// EL-13 — mcp_server_info: catalog_version/tools_changed_at + tools/list_changed staleness kill
+import { registerServerInfoTool, MCP_SERVER_NAME, MCP_SERVER_VERSION } from './tools/register_server_info.js'
 
 const app = express()
 app.use(express.json())
@@ -328,8 +335,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   void responseFormat
 
   const server = new McpServer({
-    name: 'marsys-jis',
-    version: '1.0.0',
+    name: MCP_SERVER_NAME,
+    version: MCP_SERVER_VERSION,
   })
 
   // RC-14 breaking flip (MCP_TOOL_NAMING_STANDARD §4 Phase-3): remove the 43 legacy
@@ -370,6 +377,12 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // never have produced a job_id in the first place — it just gets the honest
   // "unknown or expired job_id" error), so no handler-level profile gate here.
   registerPrashnaStatusTool(server as unknown as import('./tools/register_prashna_status.js').PrashnaStatusRegisteringServer)
+
+  // EL-13 — mcp_server_info, registered BEFORE applyProfileGate for the same reason as
+  // prashna_ask/prashna_status: catalog-staleness detection must be reachable under every MCP
+  // surface profile (full/compact/consult), not just whichever ones the generated
+  // MCP_SURFACE_PROFILES manifest happens to list it under.
+  registerServerInfoTool(server)
 
   const profileGate = applyProfileGate(server as unknown as ToolRegisteringServer, mcpProfile)
 
@@ -457,6 +470,12 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // S-3: principal threaded through so the M0 entitlement gate (remoteAuthorize) can check
   // the caller against the requested chart_id before compiling a plan (GT-35).
   registerVidhiPlanTool(server, principal)
+
+  // Elevation Campaign v2.1 · Stream γ (PŪRṆA) · Lane Ω5 — dossier(domain, chart_id, budget_kb?,
+  // cursor?): pages a domain's entire TCI/C7-accounted slice under the C1 budget cap, structurally
+  // withholding interpretive surfaces until synthesis_gate reads OPEN. Chart-scoped like the other
+  // per-chart tools above; principal threaded through for remoteAuthorize's entitlement check.
+  registerDossierTool(server, principal)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -558,10 +577,14 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // M3+M4 Session tools (recall_session + list_my_sessions):        2
 // ── BASELINE SUBTOTAL: ────────────────────────────────────────────            53
 // ── BA-P1 ADDITIONS ───────────────────────────────────────────────────────────
-// P1 Group 1 — computed-chart tools (registerP1GanitaTools):      9
+// P1 Group 1 — computed-chart tools (registerP1GanitaTools):      12
 //   ganita_strength_get, ganita_structural_get, ganita_condition_get,
 //   ganita_sade_sati_get, ganita_tajaka_get, ganita_nakshatra_get,
-//   ganita_yogas_get, phala_rectification_get, ganita_transit_anchors_get
+//   ganita_yogas_get, phala_rectification_get, ganita_transit_anchors_get,
+//   ganita_database_schema_get, ganita_concept_locate, ganita_planet_get
+//   (last 3: Elevation Campaign v2.1 STREAM α Lane-H — front the batch-1 registry
+//   capabilities get_database_schema/concept_locate/query_planet, which existed in the
+//   L1_ganita registry index with no MCP-facing tool)
 // P1 Group 2 — reference tools (registerP1ReferenceTools):        7
 //   ref_rules_search, ref_yogas_get, ref_doshas_get,
 //   ref_dignity_reference_get, ref_dasha_systems_get, ref_nakshatra_get,
@@ -610,7 +633,11 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // mechanism_read planner primitive's live_tool to bodha_mechanisms_get but never registered the
 // corresponding MCP tool (registerP1AliasTools now does, delegating to query_mechanisms.ts).
 // 79 + 1 = 80.
-const REGISTERED_TOOL_COUNT = 80
+// Elevation Campaign v2.1 STREAM α Lane-H (2026-07-25): +3 ganita_database_schema_get,
+// ganita_concept_locate, ganita_planet_get — front the 3 batch-1 registry capabilities
+// (get_database_schema/concept_locate/query_planet) that existed in the L1_ganita registry
+// index with no MCP-facing tool (registerP1GanitaTools now does). 80 + 3 = 83.
+const REGISTERED_TOOL_COUNT = 83
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({

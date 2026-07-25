@@ -1,0 +1,181 @@
+{
+  "artifact": "OMEGA6_MECHANISMS_COVERAGE",
+  "version": "1.0",
+  "status": "CURRENT",
+  "lane": "Elevation Campaign v2.1 · Stream γ (PŪRṆA) · Lane Ω6 — patterns/chains/mechanisms as mandatory first-class TCI members",
+  "generated_by": "gamma Lane Ω6 builder",
+  "generated_at": "2026-07-25",
+  "run_chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "canonical_charts": [
+    "482012f1-710e-4a25-994a-93821f5871aa",
+    "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  ],
+  "purpose": "Live-confirmed coverage census for the full pattern/chain/mechanism surface named in the Ω6 charter spec (ELEVATION_CAMPAIGN_CHARTER_v2_1.md §Ω6). Records, per charter item, whether the structure is genuinely served/queryable now that Stream α's C6 fix (EL-37, bodha_mechanisms_get returns-200 guarantee) is live in production. This is a probe-grounded artifact: every 'served'/'empty'/'gap' status below was established by a live MCP call against the run chart, not asserted from source.",
+  "why_a_separate_artifact_not_a_tci_patch": "The Ω1 TCI (TOTAL_CONCEPT_INVENTORY_v1_0.json) is owned and independently verified on branch elev/gamma-Omega-tci and does NOT exist on this lane's branch (elev/gamma-Omega-mechanisms, off elev/gamma). Editing it here would either be impossible (file absent) or create a divergent copy that collides at reconciliation. A separate additive coverage artifact (a) does not touch another lane's verified deliverable, (b) precisely records live-confirmed-vs-gap per charter item AFTER the C6 fix — the exact Ω6 mandate — and (c) carries the cross-manifest reconciliation notes for the RECONCILE pass to fold into the TCI without me pre-empting it. The TCI's 10 mechanism_class entries and asset.bo_yantra_mechanism entry are already present and correct in kind; this artifact confirms their live serving status and flags two row_count semantics notes below.",
+
+  "c6_dependency": {
+    "contract": "C6_MECHANISMS_ROW_SHAPE_v1_0",
+    "shared_status_file": "~/elev-v2-shared/implementations/C6.live",
+    "deployed_revision": "amjis-mcp-00470-lzr",
+    "live_confirmed_by_this_lane": true,
+    "probe": "bodha_mechanisms_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa)",
+    "probe_result": "HTTP 200, is_error:false, total_matching=123, count=50 (25 kept post-budget-trim), real rows. The previously-500 path (EL-37 SQL param-count bug) is fixed.",
+    "returns_200_guarantee_verified": "Confirmed on the empty case too: bodha_mechanisms_get(mechanism_class='dispositor_cycle') returns 200, is_error:false, rows:[], with a descriptive empty_reason (a correct negative, not an error) — exactly the frozen C6 behavior. This was the case that previously 500'd.",
+    "lane_unblocked": true
+  },
+
+  "headline_findings": [
+    "C6 is LIVE. bodha_mechanisms_get returns 200 with real rows on the run chart and honest empty_reason on empty classes. Lane Ω6 is unblocked.",
+    "Mechanism-class materialization is UNCHANGED by the C6 fix: still 4/10 classes materialized, 6/10 honest-gap (empty-for-corpus). The C6 fix was a SERVING fix (500→200), not a DATA change. Materialization is a property of the bo_yantra_mechanism writer, and the 6 empty classes are correctly enumerated + honestly gapped in the Ω1 TCI (honest_gap_ref = CR-mech-*).",
+    "ALL 11 charter Ω6 structures are live-served and queryable. Every structure named in the Ω6 spec resolves to a working MCP surface returning real data on the run chart (or an honest, contract-correct empty).",
+    "Two row_count SEMANTICS notes for the RECONCILE pass (not data bugs): (1) the TCI's row_count_per_canonical_chart for mechanism classes is the sum across all 5 ayanamshas, while the served tool defaults to one ayanamsha (lahiri_chitrapaksha) — a naive consumer reading TCI=5 and then calling the tool sees 1. (2) contradiction poles are best served by bodha_graph_subgraph_get mode=contradictions, not the bodha_quality_get scorecard the TCI points at (the scorecard is a summary and does not enumerate the pole rows)."
+  ],
+
+  "mechanism_classes_10": {
+    "serving_tool": "bodha_mechanisms_get",
+    "materialized_count": 4,
+    "honest_gap_count": 6,
+    "note": "Counts below are live: served_count_lahiri is the per-ayanamsha count the tool returns by default (from response facets.by_mechanism_class over the full match set); db_count_all_ayanamshas is the total across all 5 ayanamshas (direct DB, matches the TCI row_count). n_ayanamshas=5.",
+    "classes": [
+      {"mechanism_class": "convergent_dispositor_chain", "is_chain_circuit": true, "status": "SERVED", "served_count_lahiri": 1, "db_count_all_ayanamshas": 5, "tci_row_count_482": 5, "note": "The dominant chain/circuit structure on this chart: 8 grahas converge onto self-ruling Jupiter (no closed circuit). This IS the 'full dispositor closure to its final node' charter item."},
+      {"mechanism_class": "mutual_aspect", "is_chain_circuit": false, "status": "SERVED", "served_count_lahiri": 36, "db_count_all_ayanamshas": 180, "tci_row_count_482": 180},
+      {"mechanism_class": "mutual_aspect_triangle", "is_chain_circuit": false, "status": "SERVED", "served_count_lahiri": 84, "db_count_all_ayanamshas": 420, "tci_row_count_482": 420},
+      {"mechanism_class": "graha_bhava_affliction", "is_chain_circuit": false, "status": "SERVED", "served_count_lahiri": 2, "db_count_all_ayanamshas": 10, "tci_row_count_482": 10},
+      {"mechanism_class": "dispositor_cycle", "is_chain_circuit": true, "status": "HONEST_GAP", "served_count_lahiri": 0, "db_count_all_ayanamshas": 0, "tci_row_count_482": 0, "honest_gap_ref": "CR-mech-dispositor_cycle", "note": "Enumerated by writer; no rows materialized in any chart build (empty-for-corpus). Tool returns 200 + empty_reason — verified live."},
+      {"mechanism_class": "house_lordship_cycle", "is_chain_circuit": true, "status": "HONEST_GAP", "served_count_lahiri": 0, "db_count_all_ayanamshas": 0, "tci_row_count_482": 0, "honest_gap_ref": "CR-mech-house_lordship_cycle"},
+      {"mechanism_class": "yoga_cluster", "is_chain_circuit": false, "status": "HONEST_GAP", "served_count_lahiri": 0, "db_count_all_ayanamshas": 0, "tci_row_count_482": 0, "honest_gap_ref": "CR-mech-yoga_cluster"},
+      {"mechanism_class": "mutual_reception", "is_chain_circuit": false, "status": "HONEST_GAP", "served_count_lahiri": 0, "db_count_all_ayanamshas": 0, "tci_row_count_482": 0, "honest_gap_ref": "CR-mech-mutual_reception"},
+      {"mechanism_class": "parivartana_chain", "is_chain_circuit": false, "status": "HONEST_GAP", "served_count_lahiri": 0, "db_count_all_ayanamshas": 0, "tci_row_count_482": 0, "honest_gap_ref": "CR-mech-parivartana_chain"},
+      {"mechanism_class": "stellium", "is_chain_circuit": false, "status": "HONEST_GAP", "served_count_lahiri": 0, "db_count_all_ayanamshas": 0, "tci_row_count_482": 0, "honest_gap_ref": "CR-mech-stellium"}
+    ]
+  },
+
+  "charter_items": [
+    {
+      "item": "All 10 bodha_mechanisms classes",
+      "status": "SERVED (4/10 materialized, 6/10 honest-gap)",
+      "serving_tool": "bodha_mechanisms_get",
+      "serving_args": {"chart_id": "<chart_id>", "mechanism_class": "<optional>", "valence": "<optional>", "chain_circuit_only": "<optional bool>"},
+      "live_evidence": "total_matching=123 (lahiri); facets.by_mechanism_class = {mutual_aspect_triangle:84, mutual_aspect:36, graha_bhava_affliction:2, convergent_dispositor_chain:1}; 6 classes return honest empty (200 + empty_reason). See mechanism_classes_10 above.",
+      "tci_concepts": ["l2.mechanism_class.*", "asset.bo_yantra_mechanism"]
+    },
+    {
+      "item": "CGM subgraphs + edges with centrality",
+      "status": "SERVED",
+      "serving_tool": "bodha_graph_subgraph_get / bodha_graph_traverse_get",
+      "serving_args": {"chart_id": "<chart_id>", "mode": "neighbors|paths|convergence|contradictions"},
+      "live_evidence": "mode=convergence: topology_summary total_nodes=92, total_edges=174 (page); full graph per bodha_quality_get scorecard cgm_node_count=438, cgm_edge_count=865. Per-node pagerank/betweenness/eigenvector centrality + hub_nodes + graph_density/hub_dominance/fragmentation all served. Top hubs: Moon(deg15), Saturn(14), Jupiter(13), Mars(13), Mercury(12).",
+      "tci_concepts": ["l2.cgm_node.*", "l2.cgm_edge_relclass.*"]
+    },
+    {
+      "item": "Full dispositor closure to its final node",
+      "status": "SERVED",
+      "serving_tool": "bodha_mechanisms_get (convergent_dispositor_chain) + bodha_graph_traverse_get (dispositor edges)",
+      "live_evidence": "Served as the convergent_dispositor_chain mechanism: all 8 grahas resolve to self-ruling Jupiter as the final node (Jupiter in own sign = chain sink; no closed circuit). CGM dispositor edges (edge_type='dispositor', relationship_basis='sign_lordship') are individually traversable. topology_summary.dispositor_cycle_jsonb=[] confirms — consistently with the dispositor_cycle class being empty — that this chart has a convergent chain, not a cycle.",
+      "tci_concepts": ["l2.mechanism_class.convergent_dispositor_chain"]
+    },
+    {
+      "item": "Argala / virodha-argala webs",
+      "status": "SERVED (multi-surface)",
+      "serving_tool": "ganita_chart_facts_get (L1 argala_natal_matrix / virodha_argala_natal_matrix) + bodha_signals_get (MSR argala/virodha signals) + bodha_graph_traverse_get (CGM argala_virodha edge relclass)",
+      "live_evidence": "L1: argala_natal_matrix + virodha_argala_natal_matrix facts present (per-varga sign matrices, TCI rc=60 each). L2 CGM: argala_virodha edge relclass present (TCI rc=44). L2 MSR: virodha_argala_natal_matrix signal_type_class present.",
+      "tci_concepts": ["l1.fact.argala_natal_matrix.*", "l1.fact.virodha_argala_natal_matrix.*", "l2.cgm_edge_relclass.argala_virodha", "l2.msr_signal_type.virodha_argala_natal_matrix_*"]
+    },
+    {
+      "item": "Convergence domains (MSR)",
+      "status": "SERVED",
+      "serving_tool": "bodha_domain_reading_get (l2.convergence_domain.*) + bodha_signals_get (convergence_count signals)",
+      "live_evidence": "l2.convergence_domain.<domain> served via bodha_domain_reading_get (per-domain, e.g. career rc=5). MSR convergence_count signal family present (convergence_count_total_edges, TCI rc=2344). CGM convergence mode also exposes hub convergence directly.",
+      "tci_concepts": ["l2.convergence_domain.*", "l2.msr_signal_type.convergence_count_*"]
+    },
+    {
+      "item": "Contradiction poles + their adjudication",
+      "status": "SERVED",
+      "serving_tool": "bodha_graph_subgraph_get mode=contradictions (poles + tension_class + participant signals); bodha_quality_get (scorecard summary only)",
+      "live_evidence": "mode=contradictions returned 3 contradiction poles on run chart, each with tension_class='domain_promise_vs_denial', combined_salience, domains_affected, participant_signals (the opposed yoga vs dosha spine), and a resolution_hint_jsonb field (adjudication slot; currently null on these poles — honest present-but-unadjudicated). Yoga-vs-dosha example: 'Yuga Yoga' (benefic) vs 'kendradhipati_dosha' (malefic) over career.",
+      "cross_manifest_note": "TCI maps l2.contradiction_pole.domain_promise_vs_denial to serving_tool=bodha_quality_get, but bodha_quality_get returns only a scorecard summary (msr_signal_count, cdlm_cell_count, node/edge counts, verification %s) and does NOT enumerate the pole rows. The pole rows themselves are served by bodha_graph_subgraph_get mode=contradictions. See cross_manifest_notes CMN-2.",
+      "tci_concepts": ["l2.contradiction_pole.domain_promise_vs_denial", "l2.msr_signal_type.contradiction_pair_*", "l1.fact.contradiction_pair.*"]
+    },
+    {
+      "item": "Discovery / anomaly rows",
+      "status": "SERVED",
+      "serving_tool": "bodha_discoveries_get",
+      "live_evidence": "total=1269 discoveries on run chart. Rows carry discovery_class, discovery_subsystem, non_obviousness_score, consequence_score, composite_discovery_rank, reasoning_chain_jsonb, why_an_acharya_misses_it, surface/depth readings, falsifier_jsonb, novelty_class. Real data.",
+      "tci_concepts": ["asset.bo_anveshana", "l2.discovery.*"]
+    },
+    {
+      "item": "Retrodiction mechanisms",
+      "status": "SERVED",
+      "serving_tool": "mechanism_retrodiction_get",
+      "live_evidence": "ok:true. House-6 (Virgo, lord Mercury) mechanism fired 1x — 1995-07-01 health/chronic_onset event under Mercury AD. Reports fired/unmapped/not-confirmed events, sealed test split (>=2020-01-01 excluded), CONFIRMATION-ONLY guard. Real data.",
+      "tci_concepts": ["l5.retrodiction_mechanism.*"]
+    },
+    {
+      "item": "Varga-ratification divergences",
+      "status": "SERVED",
+      "serving_tool": "bodha_signals_get (signal_type_class=varga_ratification_divergence)",
+      "live_evidence": "3 rows on run chart. Example: 'SATURN: D1 exalted vs D9 debilitated — career ratification fails in D9' (signature_tier=major, valence=malefic), plus the health-domain twin. Note the specific JUP_wealth divergence the TCI indexes is 0-row on this chart (honest) but the class is materialized and served.",
+      "tci_concepts": ["l2.msr_signal_type.varga_ratification_divergence_*"]
+    },
+    {
+      "item": "Sudarshana chakra agreement",
+      "status": "SERVED",
+      "serving_tool": "bodha_signals_get (signal_type_class=sudarshana_agreement)",
+      "live_evidence": "9 rows (one per graha) on run chart. Tri-frame (Lagna/Moon/Sun) house-class agreement per graha: e.g. Saturn partial_2frame (kendra 2-of-3), Jupiter CONTRADICTED (H9 trikona vs H11 upachaya vs H12 dusthana). Real data. Note asset.bo_sudarshana appears in catalog with rc482=0 in the catalog listing — the actual sudarshana rows live as bodha_msr_signals and ARE served (see CMN-3).",
+      "tci_concepts": ["l2.msr_signal_type.sudarshana_agreement_*", "asset.bo_sudarshana"]
+    },
+    {
+      "item": "Bhavat-bhavam amplifiers",
+      "status": "SERVED",
+      "serving_tool": "bodha_signals_get (signal_type_class=bhavat_bhavam_amplifier)",
+      "live_evidence": "12 rows on run chart. Gated, no-chaining amplifiers: e.g. 'H7 (derived from H1) corroborates H1' via graha_dignity_per_varga dignity_state. configuration_jsonb carries derived_house/primary_house/gated_amplifier/no_chaining/bounded_emission. Real data.",
+      "tci_concepts": ["l2.msr_signal_type.bhavat_bhavam_amplifier_*"]
+    }
+  ],
+
+  "cross_manifest_notes": [
+    {
+      "id": "CMN-1",
+      "severity": "note",
+      "disposition": "PARKED-HONEST (for Ω1 TCI / RECONCILE pass; NOT a data bug, NOT fixed by this lane)",
+      "title": "TCI mechanism-class row_count_per_canonical_chart is summed across all 5 ayanamshas; served tool defaults to one",
+      "detail": "For every materialized mechanism class, the TCI row_count_per_canonical_chart is exactly 5x the count bodha_mechanisms_get returns by default. Verified: convergent_dispositor_chain TCI=5 / served-lahiri=1 / db-all-ayanamshas=5; mutual_aspect 180/36/180; mutual_aspect_triangle 420/84/420; graha_bhava_affliction 10/2/10 (n_ayanamshas=5). The TCI number is the multi-ayanamsha total; the served facet is per-ayanamsha (default lahiri_chitrapaksha). A naive consumer who reads the TCI count and then calls the tool will see 1/5 of the expected rows and could mis-read it as under-serving. Suggested reconcile action: annotate mechanism-class TCI entries with is_ayanamsha_summed:true (or split per-ayanamsha), mirroring the entry_schema's existing is_ayanamsha_variant flag.",
+      "not_my_manifest": "bodha_mechanisms_get default ayanamsha behavior is α's serving surface (query_mechanisms.ts / register_p1_aliases.ts) and is contract-correct per C6; the TCI row_count semantics are Ω1/β's. Reported, not touched."
+    },
+    {
+      "id": "CMN-2",
+      "severity": "note",
+      "disposition": "PARKED-HONEST (for Ω1 TCI / RECONCILE pass)",
+      "title": "Contradiction-pole TCI entry points at bodha_quality_get, but the poles are served by bodha_graph_subgraph_get mode=contradictions",
+      "detail": "TCI concept l2.contradiction_pole.domain_promise_vs_denial has serving_tool=bodha_quality_get (rc482=15). Live, bodha_quality_get returns only the chart scorecard summary (no pole enumeration). The actual contradiction-pole rows (contradiction_id, signal_a/b, tension_class, combined_salience, resolution_hint_jsonb, participant_signals) are served by bodha_graph_subgraph_get mode=contradictions (provenance tables: bodha_contradictions, bodha_msr_signals). Suggested reconcile action: repoint the contradiction-pole serving_tool to bodha_graph_subgraph_get mode=contradictions (or list both).",
+      "not_my_manifest": "The graph_subgraph/quality serving surfaces are α's. Reported, not touched."
+    },
+    {
+      "id": "CMN-3",
+      "severity": "info",
+      "disposition": "PARKED-HONEST (for Ω1 TCI / RECONCILE pass) — informational, no action may be needed",
+      "title": "asset.bo_sudarshana / ka_sangam catalog rows show rc482=0 while their derived signals ARE served",
+      "detail": "In the catalog_assets listing, asset.bo_sudarshana and asset.ka_sangam carry row_count 0 for the run chart, which could read as 'sudarshana absent'. In fact the sudarshana-agreement data is materialized and served as bodha_msr_signals (signal_type_class=sudarshana_agreement, 9 rows live). The 0 is the asset's own-table count, not the served-signal count. Suggested reconcile action: cross-link the asset entry to its serving signal_type_class so an empty own-table asset count is not mistaken for an unserved concept.",
+      "not_my_manifest": "Catalog count_sql and MSR signal materialization are β/L2 build concerns. Reported, not touched."
+    },
+    {
+      "id": "CMN-4",
+      "severity": "info",
+      "disposition": "OBSERVED (α surface, contract-correct) — no action",
+      "title": "bodha_quality_get DEFECT-001 live alert: 5.5% orphaned constituent_facts on scorecard-wide join",
+      "detail": "bodha_quality_get emits a live DEFECT-001 alert: 3918/71430 (5.5%) constituent_facts_array references orphaned chart-wide (severity HIGH in the envelope, but explicitly 'reference-only, not an error — do not fail joins'). Note the stored scorecard field unresolved_constituent_facts_count=0 was computed pre L1-SHA-rebuild and is not refreshed. This is an α/L1-hash serving concern surfaced by the tool's own honesty machinery, not an Ω6 deliverable. Per-signal-class probes (sudarshana, bhavat_bhavam, varga_ratification) each showed 0% orphan on their own served rows, so the mechanism surfaces this lane touches are clean.",
+      "not_my_manifest": "L1 SHA hash / scorecard refresh is α + β territory. Reported, not touched."
+    }
+  ],
+
+  "summary": {
+    "charter_items_total": 11,
+    "charter_items_served": 11,
+    "charter_items_gap": 0,
+    "mechanism_classes_materialized": 4,
+    "mechanism_classes_honest_gap": 6,
+    "c6_live_confirmed": true,
+    "lane_status": "COMPLETE — the full pattern/chain/mechanism surface is genuinely served and queryable post-C6; all 11 charter structures live-confirmed on the run chart; 6/10 mechanism classes are honest empty-for-corpus gaps (correctly enumerated + gapped in the TCI), unchanged by the C6 serving fix.",
+    "parked_honest_cross_manifest_items": ["CMN-1", "CMN-2", "CMN-3", "CMN-4"]
+  }
+}

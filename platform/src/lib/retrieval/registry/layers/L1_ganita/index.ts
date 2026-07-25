@@ -49,6 +49,14 @@ import { getPrashnaLagnaCapability }        from './get_prashna_lagna'
 // SARVA-SIDDHI W-4 lane D-4 (CR-30): dedicated first-class KP (Krishnamurti Paddhati)
 // cusp/sub-lord serving face over the already-stored KP fact categories (no new computation).
 import { getKpCuspsCapability }             from './get_kp_cusps'
+// Elevation Campaign v2.1, STREAM α Lane-H, Task 1: discovery substrate (C3 SchemaMap) +
+// concept-alias resolver.
+import { getDatabaseSchemaCapability }      from './get_database_schema'
+import { conceptLocateCapability }          from './concept_locate'
+// Elevation Campaign v2.1, STREAM α Lane-H, Task 3 (EL-31): canonical assembled-entity faces.
+// query_house (the house-entity face) is PARKED-HONEST this session — not yet built; only
+// query_planet is wired. See session report for scope-cut rationale.
+import { queryPlanetCapability }            from './query_planet'
 
 registerCapability(getPositionsCapability)
 registerCapability(getStrengthCapability)
@@ -84,3 +92,6 @@ registerCapability(getAvTransitGatingCapability)
 registerCapability(getConditionCompositeCapability)
 registerCapability(getPrashnaLagnaCapability)
 registerCapability(getKpCuspsCapability)
+registerCapability(getDatabaseSchemaCapability)
+registerCapability(conceptLocateCapability)
+registerCapability(queryPlanetCapability)

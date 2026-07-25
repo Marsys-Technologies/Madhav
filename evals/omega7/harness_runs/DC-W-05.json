@@ -1,0 +1,48 @@
+[
+  {
+    "tool": "ToolSearch",
+    "arguments": {
+      "query": "select:mcp__marsys-jis-direct__assess_wealth,mcp__marsys-jis-direct__bodha_domain_reading_get,mcp__marsys-jis-direct__kala_windows_get,mcp__marsys-jis-direct__judgment_query,mcp__marsys-jis-direct__phala_outlook_get",
+      "max_results": 5
+    },
+    "result_raw": "Loaded schemas for: mcp__marsys-jis-direct__assess_wealth, mcp__marsys-jis-direct__bodha_domain_reading_get (Phase-1 alias, question-lens paginated), mcp__marsys-jis-direct__kala_windows_get (L3 temporal activation windows), mcp__marsys-jis-direct__judgment_query (classical bhava-adhyaya judgment recipe; domain=wealth -> bhava 2, karaka Jupiter, operative varga D2; response_format v3 available), mcp__marsys-jis-direct__phala_outlook_get (L4 Phala composite predictive outlook). Tool loaded."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__assess_wealth",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+    },
+    "result_raw": "Error: result (116,397 characters) exceeds maximum allowed tokens. Output has been saved to /Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav--worktrees-gamma/c4d56864-7dd3-494c-a77e-4fbb3bb71056/tool-results/mcp-marsys-jis-direct-assess_wealth-1784964920562.txt. Format: JSON with schema: {type: string, object: {orientation_context: {...}, orientation_ok: boolean, content: {...}, is_error: boolean, budget_kb_applied: number, trim_report: [{...}], drill_pointers: [], judgment_flags: [{...}]}}. judgment_flags = [{\"code\":\"budget_exceeded_after_trim\",\"detail\":\"40kb budget still exceeded after full trim.\"}]. content top-level keys = [activating_dasha, ayanamsha_id, chart_id, citations, contradictions, domain, domain_label, house_analysis, judgment_flags, karaka_analysis, provenance, ranking_basis, step_results, varga_analysis, verdict_skeleton, yoga_fact_ids]."
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq extract of assess_wealth saved file: top keys, judgment_flags"
+    },
+    "result_raw": "=== top keys ===\n[activating_dasha, ayanamsha_id, chart_id, citations, contradictions, domain, domain_label, house_analysis, judgment_flags, karaka_analysis, provenance, ranking_basis, step_results, varga_analysis, verdict_skeleton, yoga_fact_ids]\n=== judgment_flags ===\n[{\"code\":\"budget_exceeded_after_trim\",\"detail\":\"40kb budget still exceeded after full trim.\"}]"
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq extract: verdict_skeleton.top_10_composite, activating_dasha, domain_label, ranking_basis"
+    },
+    "result_raw": "verdict_skeleton.top_10_composite (top structural composite_state signals): lord_placement Saturn_in_H7; lord_placement Saturn_in_H10; aspect_parashari_given house_2 graha=KET_MEAN target_house=2; lord_placement Jupiter_in_H9; bhava_significance_link lord_placed trikona_link (x2); more trikona/aspect composite rows. All source_subsystem=structural, composite_score/final_rank_score null."
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq extract: house_analysis, karaka_analysis (cdlm_cells), varga_analysis, citations, contradictions"
+    },
+    "result_raw": "house_analysis.question_lenses[0] question_type=property, signal_count=336, domains_matched=[wealth]; all_relevant_ranked_jsonb total_count=25, top ranked: graha dignity per varga D54 house7 Leo neutral (salience 2.485); D1 house7 Libra EXALTED (salience 2.485); D150 house3 Leo neutral; more graha_dignity_per_varga supporting rows.\nkaraka_analysis.cdlm_cells (5): relationship->wealth shared_signal_count=250 net_linkage=174.99 computed=339.83; career->wealth shared=212 net=158.24 computed=300.18; character->wealth shared=19; health->wealth shared=7; spirituality->wealth shared=7.\nvarga_analysis: note 'Varga refinement (D9/D10/D6) available via chart_facts_query with divisional_chart filter.'\ncitations: note 'Classical citations available via classical_attribution_lookup for signal_id_refs' (large signal_id_refs list).\ncontradictions.items (3): domain_promise_vs_denial affecting career (combined_salience 1.857); domain_promise_vs_denial character (1.857); domain_promise_vs_denial health (1.3455). discoveries: ga_sade_sati distributional_anomaly outliers affecting career/health/relationship (sade_sati phase concurrent mudda lord)."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__judgment_query",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "domain": "wealth",
+      "response_format": "v3",
+      "verbosity": "concise"
+    },
+    "result_raw": "envelope_version v3, tool judgment_query. chart_header: Abhisek Mohanty, Lagna Aries 12.43deg, Moon Aquarius, Sun Capricorn, ayanamsha lahiri_chitrapaksha, current_maha_antar 'Mercury MD / Saturn AD'. VERDICT: domain=wealth, label 'Wealth / Prosperity', bhava=2, verdict_grade='convergent_moderate', composite_score=2.38, d1_score=1.15, d1_only_grade='convergent_moderate', operative_varga=D2, varga_term=0 (varga_moved_verdict=false), yoga_term=1.23 (yoga_moved_verdict=false). varga_subscores: bhavesha Venus D2 dignity neutral weight 0; karaka Jupiter D2 dignity neutral weight 0. yoga_subscore: domain_bearing_firings=3, total_fired_on_chart=13. receipt: {bhava:true, bhavesha:true, karaka:true, from_moon:true, varga_confirmed:'D2 ok', varga_weighted_into_verdict:true, yogas_checked:13, bhanga_checked:true, timing_anchored:true}. CHECKLIST: bhava_condition from_lagna sign Taurus house 2; from_chandra Pisces house 2. bhavesha_condition from_lagna: Venus (VEN) house 9 Sagittarius, dignity neutral, dignity_weight 0, shadbala_rupa 4.64. from_chandra: Jupiter (JUP) house 9 Sagittarius, dignity OWN, dignity_weight 1.5, shadbala_rupa 7.8. karaka_condition: Jupiter house 9 Sagittarius dignity OWN weight 1.5 shadbala 7.8. occupants from_lagna [Rahu], from_chandra [Rahu]. aspecting_grahas [Ketu, Mars]. varga_confirmation D2 rows []. BEARING_YOGAS (ga_yoga_firings, confirmed): dhana_yoga_2_5_9_11 strength 1.0218 constituent [venus,jupiter] house 9 domain_match true; dhana_yoga_house_lords strength 1.0218 bhanga_active false; raja_yoga_kendra_trikona strength 1.0218 bhanga_active false. bearing_yogas_corroboration (MSR catalog labels, secondary): Gola Yoga, Yuga Yoga, Shoola Yoga, Kedara Yoga, Vasi Yoga, Sasa Yoga, Anapha Yoga, is_yoga_karaka=false. BEARING_AFFLICTIONS (threat layer): SAT aspect house_4 (malefic salience 2.161); SAT aspect house_1 (malefic 2.161); SAT aspect house_9 (malefic 2.161). affliction_mechanisms: 'Rahu occupies dhana (2nd) bhava (mixed)' — Rahu (Taurus) tenants 2nd, valence mixed net -0.50 (natural -1.0, dignity +0.50). TIMING_HOOKS.kala_activations: window 2024-12-08 -> 2027-08-18 peak 2026-04-13 (signal 281151af SUBSYSTEM, domains career/relationship/wealth, convergence 1, dasha_proximity 0.8778); window 2024-12-08 -> 2027-08-18 peak 2026-04-13 (YOGA signal 64df95c1, domains career/wealth/health/relationship/spirituality); window 2010-08-18 -> 2027-08-18 peak 2019-02-16 (signal 9a7cfc2c, career/relationship/wealth). resolution_chains: 'House 2 from lagna (Aries) = Taurus; Taurus ruled by Venus; 2nd lord Venus placed in 9th (Sagittarius).' orientation digest: msr_signal_count 9946, yoga_count 15, dosha_count 26, avg_salience 0.6749, max_salience 2.4852, contradiction_count 3, weakest_graha=Venus (shadbala_total_min, BPHS Ch.27). convergence_domains: wealth convergence_count 336 convergence_score 307.10 cross_tradition_count 3 contradiction_count 0. epistemic grade structural_prior (uncalibrated). judgment_flags: bearing_yogas_corroboration_caveat; notably_absent_not_checked; kala_activations_trimmed; kala_activations_single_cycle; afflictions_present (15 adverse signals + 1 affliction mechanism in THREAT layer); budget_exceeded_after_trim (6kb). reading_contract: structural_prior, grounded in 31 resolvable L1 fact refs, 5 judgment flags."
+  }
+]

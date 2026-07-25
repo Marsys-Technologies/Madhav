@@ -129,9 +129,30 @@ describe('classifyScope — entitlement tier', () => {
   it('reference intents get reference entitlement', () => {
     expect(classifyScope('What does the BPHS say about Rahu?').scope_tuple.entitlement).toBe('reference')
   })
-  it('chart-specific intents default to the least-privilege restricted entitlement ' +
-    '(no session context is available to this deterministic classifier to justify native)', () => {
-    expect(classifyScope('What is my wealth outlook?').scope_tuple.entitlement).toBe('restricted')
+  // Ω4 defect fix: the native's own charts must NOT be tagged 'restricted'. On this single-native
+  // instrument (§B) a chart-specific "my …" query with no explicit chart context is about the
+  // native's own chart → 'native'. A THIRD-PARTY chart_id is the only chart-specific case that
+  // drops to least-privilege 'restricted'.
+  it('chart-specific intents with no chart context default to native (single-native instrument)', () => {
+    expect(classifyScope('What is my wealth outlook?').scope_tuple.entitlement).toBe('native')
+  })
+  it('a native chart_id resolves entitlement to native (482012f1 — Abhisek)', () => {
+    expect(
+      classifyScope('What is my wealth outlook?', { chartId: '482012f1-710e-4a25-994a-93821f5871aa' })
+        .scope_tuple.entitlement,
+    ).toBe('native')
+  })
+  it('the second native chart_id also resolves to native (1c826d5a — Abhinandan)', () => {
+    expect(
+      classifyScope('What sign is my Moon in?', { chartId: '1c826d5a-41cb-4450-b4dc-59d440e5f75a' })
+        .scope_tuple.entitlement,
+    ).toBe('native')
+  })
+  it('a third-party chart_id drops to least-privilege restricted', () => {
+    expect(
+      classifyScope('What is my wealth outlook?', { chartId: 'deadbeef-0000-0000-0000-000000000000' })
+        .scope_tuple.entitlement,
+    ).toBe('restricted')
   })
 })
 

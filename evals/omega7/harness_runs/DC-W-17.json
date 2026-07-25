@@ -1,0 +1,629 @@
+[
+  {
+    "tool": "ToolSearch",
+    "arguments": {
+      "query": "select:mcp__marsys-jis-direct__ganita_strength_get,mcp__marsys-jis-direct__ganita_chart_facts_get,mcp__marsys-jis-direct__ganita_structural_get,mcp__marsys-jis-direct__assess_wealth,mcp__marsys-jis-direct__ganita_positions_get",
+      "max_results": 5
+    },
+    "result_raw": "<functions> loaded schemas for: ganita_strength_get, ganita_chart_facts_get, ganita_structural_get, assess_wealth, ganita_positions_get </functions>"
+  },
+  {
+    "tool": "ToolSearch",
+    "arguments": {
+      "query": "select:mcp__marsys-jis-direct__judgment_query,mcp__marsys-jis-direct__bodha_signals_get,mcp__marsys-jis-direct__ref_dignity_reference_get,mcp__marsys-jis-direct__chart_snapshot,mcp__marsys-jis-direct__graha_portrait",
+      "max_results": 5
+    },
+    "result_raw": "<functions> loaded schemas for: judgment_query, bodha_signals_get, ref_dignity_reference_get, chart_snapshot, graha_portrait </functions>"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__assess_wealth",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+    },
+    "result_raw": "Error: result (116,397 characters) exceeds maximum allowed tokens. Output has been saved to /Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav--worktrees-gamma/c4d56864-7dd3-494c-a77e-4fbb3bb71056/tool-results/mcp-marsys-jis-direct-assess_wealth-1784964999253.txt. [Full JSON retrieved via jq; key content captured below.] verdict_skeleton.top_10_composite led by composite_state rows: Saturn_in_H7, Saturn_in_H10, Jupiter_in_H9, trikona_link lord_placed rows; karaka_analysis=CDLM wealth linkage cells (relationship->wealth shared_signal_count=250, career->wealth=212); contradictions.items=3 (career/character/health domain_promise_vs_denial) — NONE in wealth domain; activating dasha header current_maha_antar='Mercury MD / Saturn AD'."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_strength_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ganita_strength_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null,
+          "more_available": false
+        },
+        "drill_pointers": [],
+        "judgment_flags": [],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "categories": [
+            "graha_shadbala_cheshta",
+            "graha_shadbala_dig",
+            "graha_shadbala_drik",
+            "graha_shadbala_kala",
+            "graha_shadbala_naisargika",
+            "graha_shadbala_sthana",
+            "graha_shadbala_total",
+            "graha_vimsopaka_dasavarga",
+            "graha_vimsopaka_saptavarga",
+            "graha_vimsopaka_shadvarga",
+            "graha_vimsopaka_shodasavarga",
+            "vimsopaka_bala_per_graha",
+            "graha_saptavargaja_bala_component",
+            "graha_ishta_phala",
+            "graha_kashta_phala",
+            "pranic_strength_per_graha",
+            "graha_in_house_composite_strength",
+            "graha_composite_state_classification",
+            "graha_special_state_rollup",
+            "graha_yoga_karaka_flag",
+            "graha_tri_deva_role_strength"
+          ],
+          "frame": "lagna",
+          "rows": [
+            {
+              "fact_id": "86d5259cc792b845",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "SUN",
+              "fact_value_text": "neutral"
+            },
+            {
+              "fact_id": "39a2a9070942534c",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "KET_MEAN",
+              "fact_value_text": "neutral"
+            },
+            {
+              "fact_id": "de96d90bbaf1b25f",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "RAH_MEAN",
+              "fact_value_text": "neutral"
+            },
+            {
+              "fact_id": "ea860639a6448fdd",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "SAT",
+              "fact_value_text": "well_placed"
+            },
+            {
+              "fact_id": "7fb2c1dac0d16bb1",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "VEN",
+              "fact_value_text": "neutral"
+            },
+            {
+              "fact_id": "25c807807fe508ad",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "JUP",
+              "fact_value_text": "well_placed"
+            },
+            {
+              "fact_id": "3ca69556342df95d",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "MER",
+              "fact_value_text": "neutral"
+            },
+            {
+              "fact_id": "ef7349ca5ba701e8",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "MAR",
+              "fact_value_text": "neutral"
+            },
+            {
+              "fact_id": "059c44740db6bc08",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "MOON",
+              "fact_value_text": "neutral"
+            },
+            {
+              "_note": "rows 10-65 are graha_in_house_composite_strength bphs_weighted rows for KET_MEAN/RAH_MEAN/SAT/VEN/JUP/MER across houses 1-12; captured selectively — key wealth-lord values: SAT_IN_HOUSE_7=0.2612 (highest, exalted 7th), SAT_IN_HOUSE_10=0.2289, SAT_IN_HOUSE_11=0.2224; VEN house values ~0.035-0.057 (low band); JUP house values ~0.06-0.104. Full 65-row page returned by tool; total=520."
+            }
+          ],
+          "total": 520,
+          "trim_report": [
+            {
+              "path": "rows",
+              "original_count": 520,
+              "kept_count": 65,
+              "reason": "rows: trimmed to 65",
+              "recover_via": {
+                "instrument": "ganita_strength_get",
+                "hint": "call ganita_strength_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"rows\""
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_chart_facts_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "fact_subject": "VEN,SAT,JUP,LAGNA",
+      "shape": "pivoted"
+    },
+    "result_raw": "Error: result (117,437 characters) exceeds maximum allowed tokens. Output has been saved to /Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav--worktrees-gamma/c4d56864-7dd3-494c-a77e-4fbb3bb71056/tool-results/mcp-marsys-jis-direct-ganita_chart_facts_get-1784965043443.txt. [Pivoted chart_facts for VEN,SAT,JUP,LAGNA; substantive dignity/placement facts captured verbatim via the three graha_portrait calls that follow in this log.]"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__graha_portrait",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "graha": "Jupiter",
+      "include": [
+        "position",
+        "dignity",
+        "strength",
+        "functional_nature"
+      ]
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v3",
+        "tool": "graha_portrait",
+        "verdict": {
+          "graha": "Jupiter",
+          "graha_code": "JUP",
+          "completeness": {
+            "position": "✓",
+            "dignity": "✓",
+            "functional_nature": "✓",
+            "strength": "✓"
+          },
+          "sections_populated": 4,
+          "sections_requested": 4,
+          "narration": "Jupiter = 9th + 12th lord for Aries lagna (temporal benefic). Confirmed: Jupiter is own sign (Sagittarius, 9th house) in [truncated for budget]"
+        },
+        "grounding": {
+          "fact_ids": [
+            "2624f95937a33be0",
+            "d49883b8bd71b739",
+            "77b988cf98092724",
+            "d221c2af2d68a94f",
+            "88ffcd7a174b7ef8",
+            "48b3e28001dfe465",
+            "d10cc1c215ae32f5",
+            "a57c7570772b8d54",
+            "02b4dacef4e14fbc",
+            "4f6f3d44c7806f41",
+            "6d85653498f9d746",
+            "2be4d28d823e90fb",
+            "d627f735cabd10eb"
+          ],
+          "grounding_score": 1
+        },
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "graha": "Jupiter",
+          "graha_code": "JUP",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "position": {
+            "rows": [
+              {
+                "fact_id": "2624f95937a33be0",
+                "fact_category": "graha_position",
+                "fact_subject": "JUP",
+                "fact_key": "combustion_state",
+                "fact_value_text": "none"
+              }
+            ],
+            "count": 9
+          },
+          "dignity": {
+            "operative_vargas": [
+              "D1",
+              "D9",
+              "D10",
+              "D60"
+            ],
+            "operative_varga_rows": [
+              {
+                "fact_id": "6d85653498f9d746",
+                "fact_category": "graha_dignity_per_varga",
+                "fact_subject": "D1_JUP",
+                "fact_key": "dignity_state",
+                "fact_value_text": "own",
+                "fact_value_jsonb": {
+                  "sign": "Sagittarius",
+                  "house": 9,
+                  "varga": "D1"
+                }
+              },
+              {
+                "fact_id": "2be4d28d823e90fb",
+                "fact_category": "graha_dignity_per_varga",
+                "fact_subject": "D9_JUP",
+                "fact_key": "dignity_state",
+                "fact_value_text": "neutral",
+                "fact_value_jsonb": {
+                  "sign": "Gemini",
+                  "house": 12,
+                  "varga": "D9"
+                }
+              }
+            ],
+            "count": 56
+          },
+          "functional_nature": {
+            "rows": [
+              {
+                "fact_id": "4f6f3d44c7806f41",
+                "fact_category": "graha_functional_class_per_ascendant",
+                "fact_subject": "JUP",
+                "fact_key": "bphs_canonical",
+                "fact_value_text": "temporal_benefic"
+              }
+            ],
+            "count": 2
+          },
+          "strength": {
+            "rows": [
+              {
+                "fact_id": "25c807807fe508ad",
+                "fact_category": "graha_composite_state_classification",
+                "fact_subject": "JUP",
+                "fact_key": "classification",
+                "fact_value_text": "well_placed"
+              },
+              {
+                "fact_id": "5b4bb459761c3ecc",
+                "fact_subject": "JUP_IN_HOUSE_12",
+                "fact_value_num": 0.094
+              },
+              {
+                "fact_id": "a05776cedbeafacf",
+                "fact_subject": "JUP_IN_HOUSE_11",
+                "fact_value_num": 0.0983
+              },
+              {
+                "fact_id": "b19ad8e333fabf53",
+                "fact_subject": "JUP_IN_HOUSE_10",
+                "fact_value_num": 0.1012
+              }
+            ],
+            "count": 60
+          }
+        },
+        "chart_header": {
+          "chart_id_short": "482012f1",
+          "name": "Abhisek Mohanty",
+          "lagna_sign": "Aries",
+          "lagna_deg": 12.4311495988431,
+          "moon_sign": "Aquarius",
+          "sun_sign": "Capricorn",
+          "ayanamsha": "lahiri_chitrapaksha",
+          "current_maha_antar": "Mercury MD / Saturn AD"
+        },
+        "orientation_digest": {
+          "weakest_graha": "Venus",
+          "weakest_graha_source": "shadbala_total_min (BPHS Ch.27 six-fold strength; CR-55 fix)",
+          "wealth_convergence": {
+            "domain": "wealth",
+            "convergence_count": 336,
+            "convergence_score": 307.099888,
+            "contradiction_count": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__graha_portrait",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "graha": "Venus",
+      "include": [
+        "position",
+        "dignity",
+        "strength",
+        "functional_nature"
+      ]
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v3",
+        "tool": "graha_portrait",
+        "verdict": {
+          "graha": "Venus",
+          "graha_code": "VEN",
+          "completeness": {
+            "position": "✓",
+            "dignity": "✓",
+            "functional_nature": "✓",
+            "strength": "✓"
+          },
+          "sections_populated": 4,
+          "sections_requested": 4,
+          "narration": "Venus = 2nd + 7th lord for Aries lagna (temporal benefic). Venus is neutral (Sagittarius, 9th house) in D1. In D9: debil[truncated for budget]"
+        },
+        "grounding": {
+          "fact_ids": [
+            "3a7ca4e53a344e81",
+            "b6a53c44b60d0319",
+            "f995b6cfb5a46578",
+            "6dadcff95ce2e64b",
+            "9781fe3d9639ba3b",
+            "58fb21acbd69bb5f",
+            "f3886994272e2d61",
+            "0c6e6178e1bc5ecf",
+            "f7dffcfb3f9e94d5",
+            "56c07999249f0f20",
+            "03871d961b9a7e90",
+            "271af6f411a08848",
+            "4b59469d6b16d797"
+          ],
+          "grounding_score": 1
+        },
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "graha": "Venus",
+          "graha_code": "VEN",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "position": {
+            "rows": [
+              {
+                "fact_id": "3a7ca4e53a344e81",
+                "fact_category": "graha_position",
+                "fact_subject": "VEN",
+                "fact_key": "combustion_state",
+                "fact_value_text": "none"
+              }
+            ],
+            "count": 9
+          },
+          "dignity": {
+            "operative_vargas": [
+              "D1",
+              "D9",
+              "D10",
+              "D60"
+            ],
+            "operative_varga_rows": [
+              {
+                "fact_id": "03871d961b9a7e90",
+                "fact_category": "graha_dignity_per_varga",
+                "fact_subject": "D1_VEN",
+                "fact_key": "dignity_state",
+                "fact_value_text": "neutral",
+                "fact_value_jsonb": {
+                  "sign": "Sagittarius",
+                  "house": 9,
+                  "varga": "D1"
+                }
+              },
+              {
+                "fact_id": "271af6f411a08848",
+                "fact_category": "graha_dignity_per_varga",
+                "fact_subject": "D9_VEN",
+                "fact_key": "dignity_state",
+                "fact_value_text": "debilitated",
+                "fact_value_jsonb": {
+                  "sign": "Virgo",
+                  "house": 3,
+                  "varga": "D9"
+                }
+              }
+            ],
+            "count": 56
+          },
+          "functional_nature": {
+            "rows": [
+              {
+                "fact_id": "56c07999249f0f20",
+                "fact_category": "graha_functional_class_per_ascendant",
+                "fact_subject": "VEN",
+                "fact_key": "bphs_canonical",
+                "fact_value_text": "temporal_benefic"
+              }
+            ],
+            "count": 2
+          },
+          "strength": {
+            "rows": [
+              {
+                "fact_id": "7fb2c1dac0d16bb1",
+                "fact_category": "graha_composite_state_classification",
+                "fact_subject": "VEN",
+                "fact_key": "classification",
+                "fact_value_text": "neutral"
+              },
+              {
+                "fact_id": "09806ddfc25f233d",
+                "fact_subject": "VEN_IN_HOUSE_12",
+                "fact_value_num": 0.052
+              },
+              {
+                "fact_id": "17d11c21152a4dee",
+                "fact_subject": "VEN_IN_HOUSE_11",
+                "fact_value_num": 0.0545
+              },
+              {
+                "fact_id": "795c5a83ee700eb8",
+                "fact_subject": "VEN_IN_HOUSE_10",
+                "fact_value_num": 0.0561
+              }
+            ],
+            "count": 60
+          }
+        },
+        "chart_header": {
+          "chart_id_short": "482012f1",
+          "name": "Abhisek Mohanty",
+          "lagna_sign": "Aries",
+          "moon_sign": "Aquarius",
+          "sun_sign": "Capricorn",
+          "current_maha_antar": "Mercury MD / Saturn AD"
+        }
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__graha_portrait",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "graha": "Saturn",
+      "include": [
+        "position",
+        "dignity",
+        "strength",
+        "functional_nature"
+      ]
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v3",
+        "tool": "graha_portrait",
+        "verdict": {
+          "graha": "Saturn",
+          "graha_code": "SAT",
+          "completeness": {
+            "position": "✓",
+            "dignity": "✓",
+            "functional_nature": "✓",
+            "strength": "✓"
+          },
+          "sections_populated": 4,
+          "sections_requested": 4,
+          "narration": "Saturn = 10th + 11th lord for Aries lagna (temporal malefic). Confirmed: Saturn is exalted (Libra, 7th house) in D1. In [truncated for budget]"
+        },
+        "grounding": {
+          "fact_ids": [
+            "9afdd0db9be09d83",
+            "25e60bec8e75c933",
+            "e1a9a3087eb30b26",
+            "7c6578f34af4f4f2",
+            "fa485196bb80d4d2",
+            "d974695d7294bc97",
+            "0ebc6165a0504e16",
+            "b6700fa2080473d2",
+            "65505f8d1fd48019",
+            "cb287460fb4a1c5a",
+            "75017e2da0b07b55",
+            "0673890a872d4529",
+            "4872216e34c4d81c"
+          ],
+          "grounding_score": 1
+        },
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "graha": "Saturn",
+          "graha_code": "SAT",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "position": {
+            "rows": [
+              {
+                "fact_id": "9afdd0db9be09d83",
+                "fact_category": "graha_position",
+                "fact_subject": "SAT",
+                "fact_key": "combustion_state",
+                "fact_value_text": "none"
+              }
+            ],
+            "count": 9
+          },
+          "dignity": {
+            "operative_vargas": [
+              "D1",
+              "D9",
+              "D10",
+              "D60"
+            ],
+            "operative_varga_rows": [
+              {
+                "fact_id": "75017e2da0b07b55",
+                "fact_category": "graha_dignity_per_varga",
+                "fact_subject": "D1_SAT",
+                "fact_key": "dignity_state",
+                "fact_value_text": "exalted",
+                "fact_value_jsonb": {
+                  "sign": "Libra",
+                  "house": 7,
+                  "varga": "D1"
+                }
+              },
+              {
+                "fact_id": "0673890a872d4529",
+                "fact_category": "graha_dignity_per_varga",
+                "fact_subject": "D9_SAT",
+                "fact_key": "dignity_state",
+                "fact_value_text": "debilitated",
+                "fact_value_jsonb": {
+                  "sign": "Aries",
+                  "house": 10,
+                  "varga": "D9"
+                }
+              }
+            ],
+            "count": 56
+          },
+          "functional_nature": {
+            "rows": [
+              {
+                "fact_id": "cb287460fb4a1c5a",
+                "fact_category": "graha_functional_class_per_ascendant",
+                "fact_subject": "SAT",
+                "fact_key": "bphs_canonical",
+                "fact_value_text": "temporal_malefic"
+              }
+            ],
+            "count": 2
+          },
+          "strength": {
+            "rows": [
+              {
+                "fact_id": "ea860639a6448fdd",
+                "fact_category": "graha_composite_state_classification",
+                "fact_subject": "SAT",
+                "fact_key": "classification",
+                "fact_value_text": "well_placed"
+              },
+              {
+                "fact_id": "c907518bfe4a82d0",
+                "fact_subject": "SAT_IN_HOUSE_12",
+                "fact_value_num": 0.2125
+              },
+              {
+                "fact_id": "5e82c843ab4c751d",
+                "fact_subject": "SAT_IN_HOUSE_11",
+                "fact_value_num": 0.2224
+              },
+              {
+                "fact_id": "efc7a84df3df3bcf",
+                "fact_subject": "SAT_IN_HOUSE_10",
+                "fact_value_num": 0.2289
+              }
+            ],
+            "count": 60
+          }
+        },
+        "chart_header": {
+          "chart_id_short": "482012f1",
+          "name": "Abhisek Mohanty",
+          "lagna_sign": "Aries",
+          "moon_sign": "Aquarius",
+          "sun_sign": "Capricorn",
+          "current_maha_antar": "Mercury MD / Saturn AD"
+        }
+      }
+    }
+  }
+]

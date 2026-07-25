@@ -1,0 +1,8 @@
+{
+  "_comment": "C7 accounting-invariant gate scope (see ~/elev-v2-shared/contracts/C7_ACCOUNTING_INVARIANT_v1_0.md, section 'Scope'). An allowlist of {tool, domain} pairs. OUTSIDE the allowlist, PASS(chart_id, domain) is computed and reported but never blocks CI (report-only). INSIDE the allowlist, pass===false fails the build.",
+  "_promotion_note": "wealth+career promoted by the Stream-Conductor 2026-07-25 after (a) Ω3's accounting-row generator ran end-to-end for both domains on both canonical charts, all 4 runs pass:true, zero unaccounted, AND (b) an independent Stream-Verifier G4 pass recomputed the invariant from raw rows (not the builder's summary), spot-checked served fact_ids against live DB with correct per-chart resolution, exhaustively cross-checked all 55,290 accounting rows against the independently-verified Ω1 TCI (0 misclassifications), and confirmed slice_size matches Ω2's relevance map byte-for-byte. See PROXY-RULED-003 (domain selection) and the Ω3 Verifier verdict in the campaign transcript. 'tool':'*' reflects that the invariant is currently computed at domain-granularity (per Ω3's generator), not yet decomposed per serving-tool — a future refinement, not a gap in what's gated today.",
+  "tools": [
+    { "tool": "*", "domain": "wealth" },
+    { "tool": "*", "domain": "career" }
+  ]
+}

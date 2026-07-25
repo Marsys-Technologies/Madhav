@@ -380,28 +380,86 @@ const VERBOSITY_ZOD = z.enum(['concise', 'detailed']).optional().describe(
   "'detailed' (default if omitted) keeps the normal, wider ceiling."
 )
 
+// ── C1 — budget_kb request-side override (contract C1) ────────────────────────
+//
+// `budget_kb` is an ADDITIVE, optional request-level knob: the caller's own ceiling on the
+// wire size of THIS response, in KB. Its ONLY server-side effect is to tighten (never widen)
+// the ceiling the existing applyResponseBudget/finalizeMcpBudget trim is measured against —
+// no new trimming algorithm, no per-tool default change.
+//
+//   maxKb = budget_kb ? min(budget_kb, STATIC_DEFAULT) : STATIC_DEFAULT
+//
+// A budget_kb LOWER than the tool's static default is honored (tighter budget); a HIGHER one
+// is clamped to the static default — the server ceiling is a hard cap, not a suggestion.
+// Composes with `verbosity`: 'concise' still halves the static default; the final ceiling is
+// the tighter of (verbosity-resolved default) and (budget_kb clamped to the static default),
+// so neither knob can be used to WIDEN past the static ceiling and either can tighten.
+const BUDGET_KB_ZOD = z.number().min(1).max(64).optional().describe(
+  "C1 response-budget override (KB, 1–64). Omit to use this tool's server default. A value " +
+  "BELOW the default tightens the response (fewer/leaner rows survive); a value ABOVE the " +
+  "default is clamped to the default (the server ceiling is a hard cap). When a response is " +
+  "actually trimmed, `budget_kb_applied` (the ceiling used) — and `budget_kb_requested` if " +
+  "you supplied one — are echoed back on the envelope."
+)
+
 /**
- * A trimmable section targeting `orientation_context.entity_profiles` — shared by every
- * B.11-orienting tool response (get_chart_orientation's own digest output, pre-fetched
- * alongside each of these three instruments). Kept small (floor 3) since orientation is a
- * frame, not the point of these calls — get_chart_orientation itself remains the full-
- * detail path.
+ * Resolve the effective wire-budget ceiling for a tool call from (a) the tool's static
+ * default ceiling, (b) an optional caller-supplied `budget_kb`, and (c) an optional
+ * `verbosity` knob. `budget_kb` clamps to the static default (hard cap); the final result is
+ * the tighter of the verbosity-resolved default and the clamped request. This is the single
+ * shared resolution mechanism the C1 contract asks for — every call site funnels through it.
+ */
+function resolveMaxKb(
+  toolName: keyof typeof MCP_RESPONSE_BUDGET_KB,
+  budgetKb: number | undefined,
+  verbosity?: 'concise' | 'detailed',
+): number {
+  const staticDefault = MCP_RESPONSE_BUDGET_KB[toolName]
+  const afterVerbosity = resolveVerbosityMaxKb(staticDefault, verbosity)
+  if (budgetKb === undefined) return afterVerbosity
+  // Clamp the request to the static ceiling first (hard cap), then take the tighter of that
+  // and the verbosity-resolved default so a below-4 budget_kb is honored even under 'concise'
+  // (whose CONCISE_MIN_KB floor otherwise applies only to the default, not the caller cap).
+  return Math.min(afterVerbosity, budgetKb, staticDefault)
+}
+
+/**
+ * A trimmable section targeting the B.11 orientation preamble's `entity_profiles` digest —
+ * prepended to every B.11-orienting tool response (get_chart_orientation's own digest output,
+ * pre-fetched alongside each instrument). This is GENERIC framing (a digest of essentially
+ * every other entity in the chart), not the point of an entity-scoped call, and is fully
+ * recoverable from get_chart_orientation — so it is the FIRST thing a budget trim sacrifices:
+ * `minKeep: 0` (droppable to nothing) and NO `hardFloor` (PASS 2 may zero it entirely). This
+ * inverts the pre-EL-36 priority, under which the entity-specific payload arrays (which DO
+ * carry the answer) were floored to 0 while this generic preamble survived.
+ *
+ * EL-36 path fix: `callRegistryCapability` returns the double-wrapped capability shape
+ * `{ content: <payload>, is_error }` (see its stub in the r5w3 portrait test and
+ * `fetchOrientationContext`), so the live array lives at `orientation_context.content.
+ * entity_profiles`, NOT the top-level `orientation_context.entity_profiles` this section
+ * used to point at — a silent no-op that was a direct cause of the "generic preamble
+ * survives" half of EL-36. The getter/setter below tolerate BOTH nesting levels so the
+ * section keeps biting regardless of whether a caller passes the wrapped or unwrapped shape.
  */
 function orientationEntityProfilesSection(): TrimmableSection<Record<string, unknown>> {
+  const locate = (root: Record<string, unknown>): { holder: Record<string, unknown>; arr: unknown[] } | undefined => {
+    const oc = root['orientation_context'] as Record<string, unknown> | undefined
+    if (!oc) return undefined
+    const inner = oc['content'] as Record<string, unknown> | undefined
+    if (inner && Array.isArray(inner['entity_profiles'])) return { holder: inner, arr: inner['entity_profiles'] as unknown[] }
+    if (Array.isArray(oc['entity_profiles'])) return { holder: oc, arr: oc['entity_profiles'] as unknown[] }
+    return undefined
+  }
   return {
-    path: 'orientation_context.entity_profiles',
-    getArray: (root) => {
-      const oc = root['orientation_context'] as Record<string, unknown> | undefined
-      const arr = oc?.['entity_profiles']
-      return Array.isArray(arr) ? arr : undefined
-    },
+    path: 'orientation_context.content.entity_profiles',
+    getArray: (root) => locate(root)?.arr,
     setArray: (root, kept) => {
-      const oc = root['orientation_context'] as Record<string, unknown> | undefined
-      if (oc) oc['entity_profiles'] = kept
+      const found = locate(root)
+      if (found) found.holder['entity_profiles'] = kept
     },
-    minKeep: 3,
-    recover: { instrument: 'get_chart_orientation', hint: 'full entity_profiles digest (this call kept only a lean slice to fit the MCP response budget).' },
-    label: 'orientation_context.entity_profiles',
+    minKeep: 0,
+    recover: { instrument: 'get_chart_orientation', hint: 'full entity_profiles digest (this entity-scoped call dropped the generic orientation preamble to protect the entity-specific payload — recover the full holistic digest here).' },
+    label: 'orientation_context.entity_profiles (generic preamble — first-sacrificed)',
   }
 }
 
@@ -419,9 +477,10 @@ function applyMcpBudget<T extends Record<string, unknown>>(
   response: T,
   maxKb: number,
   sections: TrimmableSection<T>[],
+  budgetKbRequested?: number,
 ): T {
   const allSections = [...sections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
-  return finalizeMcpBudget(response, { maxKb, sections: allSections })
+  return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
 }
 
 /**
@@ -449,10 +508,11 @@ function applyMcpBudgetAuto<T extends Record<string, unknown>>(
   response: T,
   maxKb: number,
   toolName: string,
+  budgetKbRequested?: number,
 ): T {
   const autoSections = autoDetectTrimmableSections(response, toolName)
   const allSections = [...autoSections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
-  return finalizeMcpBudget(response, { maxKb, sections: allSections })
+  return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
 }
 
 /**
@@ -835,8 +895,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ),
       envelope_format: z.enum(['legacy', 'v3']).optional()
         .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/ranking_basis/drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default). Distinct from response_format, which governs digest verbosity."),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, top_k_signals, top_k_entities, response_format, envelope_format }) => {
+    async ({ chart_id, ayanamsha_id, top_k_signals, top_k_entities, response_format, envelope_format, budget_kb }) => {
       if (!chart_id) return errorOutput('get_chart_orientation', 'chart_id is required')
       try {
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
@@ -879,7 +940,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         }
 
         if (format !== 'v3') {
-          return dualOutputBudgeted(applyMcpBudgetAuto(envelope(bounded, 'get_chart_orientation') as unknown as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_chart_orientation, 'get_chart_orientation'))
+          return dualOutputBudgeted(applyMcpBudgetAuto(envelope(bounded, 'get_chart_orientation') as unknown as Record<string, unknown>, resolveMaxKb('get_chart_orientation', budget_kb), 'get_chart_orientation', budget_kb))
         }
 
         // ── v3 population (design §10/§E-6) ──────────────────────────────────
@@ -950,7 +1011,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         return dualOutputBudgeted(applyMcpBudgetAuto(
           envelope(bounded, 'get_chart_orientation', undefined, 'v3',
             { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags, coverage }) as unknown as Record<string, unknown>,
-          MCP_RESPONSE_BUDGET_KB.get_chart_orientation, 'get_chart_orientation',
+          resolveMaxKb('get_chart_orientation', budget_kb), 'get_chart_orientation', budget_kb,
         ))
       } catch (err) {
         return errorOutput('get_chart_orientation', String(err), { chart_id })
@@ -982,8 +1043,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       response_format: z.enum(['default', 'full']).optional().describe(
         "Payload verbosity. 'default': token-safe (shared_signal_ids_array omitted, signal_id_refs ≤200). 'full': includes arrays (signal_id_refs ≤2000)."
       ),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, domain, ayanamsha_id, cursor, max_lenses, max_signals_per_lens, max_signal_refs, response_format }) => {
+    async ({ chart_id, domain, ayanamsha_id, cursor, max_lenses, max_signals_per_lens, max_signal_refs, response_format, budget_kb }) => {
       if (!chart_id) return errorOutput('get_domain_reading', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before domain drill.
@@ -1052,7 +1114,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           lenses_total: lenses.length,
           lenses_returned: boundedLenses.length,
           token_safety_note: `Bounded to ${maxLenses} lenses × ${maxSig} signals. Pass max_lenses=12 + max_signals_per_lens=100 for full payload.`,
-        }, MCP_RESPONSE_BUDGET_KB.get_domain_reading, 'get_domain_reading'))
+        }, resolveMaxKb('get_domain_reading', budget_kb), 'get_domain_reading', budget_kb))
       } catch (err) {
         return errorOutput('get_domain_reading', String(err), { chart_id, domain })
       }
@@ -1088,8 +1150,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       paradigm: z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional().describe(
         'R5 W2: filters to one signal_tradition. Default: unfiltered (every tradition, each individually tagged) — required for whole-chart-read (B.11) discipline.'
       ),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format, frame, paradigm }) => {
+    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format, frame, paradigm, budget_kb }) => {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
@@ -1118,7 +1181,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           return dualOutputBudgeted(applyMcpBudgetAuto({
             orientation_context, orientation_ok,
             ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: null }),
-          }, MCP_RESPONSE_BUDGET_KB.get_signals, 'get_signals'))
+          }, resolveMaxKb('get_signals', budget_kb), 'get_signals', budget_kb))
         }
 
         // ── v3 population (design §10/§E-6) ──────────────────────────────────
@@ -1185,7 +1248,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           orientation_context, orientation_ok,
           ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: totalMatchingFilters },
             'v3', { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags, coverage }),
-        }, MCP_RESPONSE_BUDGET_KB.get_signals, 'get_signals'))
+        }, resolveMaxKb('get_signals', budget_kb), 'get_signals', budget_kb))
       } catch (err) {
         return errorOutput('get_signals', String(err), { chart_id })
       }
@@ -1223,8 +1286,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         'R5 W2: filter traversal/edges to computed_strength >= this floor.'
       ),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, seed_signal_ids, mode, depth, about, about_from, about_to, direction, min_strength, verbosity }) => {
+    async ({ chart_id, seed_signal_ids, mode, depth, about, about_from, about_to, direction, min_strength, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('traverse_graph', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before graph traversal (S1: parallelized)
@@ -1252,7 +1316,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // judgment_query (response_budget.ts) — generic array-section auto-detection plus
         // the self-verifying finalizeMcpBudget re-measure and string-truncation fallback.
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.traverse_graph, verbosity), 'traverse_graph'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('traverse_graph', budget_kb, verbosity), 'traverse_graph', budget_kb))
       } catch (err) {
         return errorOutput('traverse_graph', String(err), { chart_id })
       }
@@ -1270,8 +1334,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       frame: z.enum(['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']).optional().describe(
         "R5 W2: re-bases house_d1 onto this reference sign (adds house_from_frame per row). Default: lagna."
       ),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, planet, frame }) => {
+    async ({ chart_id, ayanamsha_id, planet, frame, budget_kb }) => {
       if (!chart_id) return errorOutput('get_positions', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1279,7 +1344,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), planet, frame },
           chart_id, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_positions, 'get_positions'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('get_positions', budget_kb), 'get_positions', budget_kb))
       } catch (err) {
         return errorOutput('get_positions', String(err), { chart_id })
       }
@@ -1302,8 +1367,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ),
       limit: z.number().int().min(1).max(200).optional().describe('Max dasha rows (default: 50)'),
       cursor: z.string().optional().describe('Pagination cursor'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, system_id, date_from, limit, cursor }) => {
+    async ({ chart_id, ayanamsha_id, system_id, date_from, limit, cursor, budget_kb }) => {
       if (!chart_id) return errorOutput('get_dashas', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1318,7 +1384,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_dashas, 'get_dashas'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('get_dashas', budget_kb), 'get_dashas', budget_kb))
       } catch (err) {
         return errorOutput('get_dashas', String(err), { chart_id })
       }
@@ -1339,8 +1405,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         'Point-in-time date YYYY-MM-DD — returns only windows active AS OF this date; overrides date_from/date_to.'
       ),
       include_convergence: z.boolean().optional().describe('Include convergence windows (default: true)'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, date_from, date_to, as_of, include_convergence }) => {
+    async ({ chart_id, ayanamsha_id, date_from, date_to, as_of, include_convergence, budget_kb }) => {
       if (!chart_id) return errorOutput('get_temporal_windows', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before temporal domain query (S1: parallelized)
@@ -1352,7 +1419,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, MCP_RESPONSE_BUDGET_KB.get_temporal_windows, 'get_temporal_windows'))
+        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, resolveMaxKb('get_temporal_windows', budget_kb), 'get_temporal_windows', budget_kb))
       } catch (err) {
         return errorOutput('get_temporal_windows', String(err), { chart_id })
       }
@@ -1372,8 +1439,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         'Max projections to return (default: 20; was unbounded at 117KB+).'
       ),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, horizon_years, max_projections, verbosity }) => {
+    async ({ chart_id, ayanamsha_id, domain, horizon_years, max_projections, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('get_projections', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before predictive projection (S1: parallelized)
@@ -1404,7 +1472,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           projections_total: projections.length,
           projections_returned: boundedProjections.length,
         }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.get_projections, verbosity), 'get_projections'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('get_projections', budget_kb, verbosity), 'get_projections', budget_kb))
       } catch (err) {
         return errorOutput('get_projections', String(err), { chart_id })
       }
@@ -1421,14 +1489,15 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       text_ids: z.array(z.string()).optional().describe('Optional: limit to specific text IDs'),
       limit: z.number().int().min(1).max(20).optional().describe('Max results (default: 5)'),
       cursor: z.string().optional().describe('Pagination cursor'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ query, text_ids, limit, cursor }) => {
+    async ({ query, text_ids, limit, cursor, budget_kb }) => {
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L0/query_classical_texts',
           { query, text_ids, limit: limit ?? 5, cursor }, undefined, principal,
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_classical_citation, 'get_classical_citation'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('get_classical_citation', budget_kb), 'get_classical_citation', budget_kb))
       } catch (err) {
         return errorOutput('get_classical_citation', String(err))
       }
@@ -1443,8 +1512,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       domain: z.string().optional().describe('Filter remedies by life domain'),
       remedy_type: z.string().optional().describe('Filter by type: mantra, gemstone, ritual, upaya'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, domain, remedy_type }) => {
+    async ({ chart_id, domain, remedy_type, budget_kb }) => {
       if (!chart_id) return errorOutput('get_remedies', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before remedy prescription (S1: parallelized)
@@ -1456,7 +1526,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, MCP_RESPONSE_BUDGET_KB.get_remedies, 'get_remedies'))
+        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, resolveMaxKb('get_remedies', budget_kb), 'get_remedies', budget_kb))
       } catch (err) {
         return errorOutput('get_remedies', String(err), { chart_id })
       }
@@ -1469,8 +1539,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'get_chart_quality',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id }) => {
+    async ({ chart_id, budget_kb }) => {
       if (!chart_id) return errorOutput('get_chart_quality', 'chart_id is required')
       try {
         // B.11: fetch holistic orientation before quality/calibration surface (S1: parallelized)
@@ -1482,7 +1553,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id, principal
           ),
         ])
-        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, MCP_RESPONSE_BUDGET_KB.get_chart_quality, 'get_chart_quality'))
+        return dualOutputBudgeted(applyMcpBudgetAuto({ orientation_context, orientation_ok, ...data as Record<string, unknown> }, resolveMaxKb('get_chart_quality', budget_kb), 'get_chart_quality', budget_kb))
       } catch (err) {
         return errorOutput('get_chart_quality', String(err), { chart_id })
       }
@@ -1506,15 +1577,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       has_writer: z.boolean().optional().describe('Filter to assets with (true) or without (false) a registered writer'),
       limit: z.number().int().min(1).max(200).optional().describe('Max assets (default: 81)'),
       cursor: z.string().optional().describe('Pagination cursor'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ layer, asset_type, catalog_status, scope, is_active, has_writer, limit, cursor }) => {
+    async ({ layer, asset_type, catalog_status, scope, is_active, has_writer, limit, cursor, budget_kb }) => {
       try {
         // list_assets → platform cockpit registry (direct HTTP; no @/ import possible)
         const data = await callRegistryCapability(
           'marsys://resource/asset-registry/all',
           { layer, asset_type, catalog_status, scope, is_active, has_writer, limit: limit ?? 81, cursor }, undefined, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto({ ...(data as Record<string, unknown>), pagination: { cursor, limit } }, MCP_RESPONSE_BUDGET_KB.list_assets, 'list_assets'))
+        return dualOutputBudgeted(applyMcpBudgetAuto({ ...(data as Record<string, unknown>), pagination: { cursor, limit } }, resolveMaxKb('list_assets', budget_kb), 'list_assets', budget_kb))
       } catch (err) {
         return errorOutput('list_assets', String(err))
       }
@@ -1540,14 +1612,15 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       query: z.string().describe('Keyword(s) describing the capability you need (e.g. "dasha", "muhurta timing", "remedy for saturn").'),
       limit: z.number().int().min(1).max(100).optional().describe('Max matching tools to return (default 20, max 100).'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ query, limit }) => {
+    async ({ query, limit, budget_kb }) => {
       if (!query || !query.trim()) return errorOutput('tool_search', 'query is required')
       try {
         const data = await callRegistryCapability(
           'marsys://tool/L0/tool_search', { query, limit }, undefined, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.tool_search, 'tool_search'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('tool_search', budget_kb), 'tool_search', budget_kb))
       } catch (err) {
         return errorOutput('tool_search', String(err), { query })
       }
@@ -1569,8 +1642,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_marriage', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1585,7 +1659,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_marriage, verbosity), 'assess_marriage'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_marriage', budget_kb, verbosity), 'assess_marriage', budget_kb))
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
       }
@@ -1602,8 +1676,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_career', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1618,7 +1693,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_career, verbosity), 'assess_career'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_career', budget_kb, verbosity), 'assess_career', budget_kb))
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
       }
@@ -1635,8 +1710,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_health', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1651,7 +1727,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_health, verbosity), 'assess_health'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_health', budget_kb, verbosity), 'assess_health', budget_kb))
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
       }
@@ -1668,8 +1744,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_wealth', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1684,7 +1761,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_wealth, verbosity), 'assess_wealth'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_wealth', budget_kb, verbosity), 'assess_wealth', budget_kb))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
       }
@@ -1705,8 +1782,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End of window (YYYY-MM-DD). Default: 3 years from today.'),
       top_k: z.number().int().min(1).max(200).optional().describe('Max activated yogas to return (default: 30).'),
       min_salience: z.number().min(0).max(1).optional().describe('Minimum salience threshold (0–1, default: 0).'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, dasha_period, date_from, date_to, top_k, min_salience }) => {
+    async ({ chart_id, ayanamsha_id, dasha_period, date_from, date_to, top_k, min_salience, budget_kb }) => {
       if (!chart_id) return errorOutput('yoga_activation_by_dasha', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1722,7 +1800,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.yoga_activation_by_dasha, 'yoga_activation_by_dasha'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('yoga_activation_by_dasha', budget_kb), 'yoga_activation_by_dasha', budget_kb))
       } catch (err) {
         return errorOutput('yoga_activation_by_dasha', String(err), { chart_id })
       }
@@ -1764,8 +1842,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         'R5 W2: filter traversal/edges to computed_strength >= this floor.'
       ),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id, about, about_from, about_to, direction, min_strength, verbosity }) => {
+    async ({ chart_id, mode, seed_node_ids, depth, seed_node, target_node, query_text, ayanamsha_id, about, about_from, about_to, direction, min_strength, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('get_cgm_subgraph', 'chart_id is required')
       try {
         // S1 fix: orientation + graph traversal parallelized (independent HTTP calls)
@@ -1794,7 +1873,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // D-1.6 S-5 (R-1/R-8/CR-49 residual): live probe measured 99.7KB default page — over
         // the 64KB Gate Ś ceiling. Same generic auto-budget mechanism as traverse_graph.
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.get_cgm_subgraph, verbosity), 'get_cgm_subgraph'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('get_cgm_subgraph', budget_kb, verbosity), 'get_cgm_subgraph', budget_kb))
       } catch (err) {
         return errorOutput('get_cgm_subgraph', String(err), { chart_id })
       }
@@ -1841,8 +1920,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       shape: z.enum(['pivoted', 'rows']).optional().describe('"pivoted" (default, one wide row per subject) or "rows" (flat EAV rows).'),
       limit: z.number().int().min(1).max(1000).optional().describe('Max subjects/rows to return (default: 100, max: 1000).'),
       offset: z.number().int().min(0).optional().describe('Pagination offset — rows (shape="rows") or subjects (shape="pivoted") to skip before the next `limit` (default: 0).'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, fact_subject, shape, limit, offset }) => {
+    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, fact_subject, shape, limit, offset, budget_kb }) => {
       if (!chart_id) return errorOutput('query_chart_facts', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1868,7 +1948,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.query_chart_facts, 'query_chart_facts'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('query_chart_facts', budget_kb), 'query_chart_facts', budget_kb))
       } catch (err) {
         return errorOutput('query_chart_facts', String(err), { chart_id })
       }
@@ -1880,13 +1960,15 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // occupants w/ degrees, Lagna marked, <=2KB. D9 (navamsa) only on explicit include_navamsa=true.
   server.tool(
     'chart_snapshot',
-    'The compact "show me the chart" answer: a 12-rashi D1 (rashi chart) text grid — every graha\'s sign + degree-in-sign, Lagna sign clearly marked — sized for direct display in a chat client (hard-capped at 2KB). Pass include_navamsa=true to ALSO get the D9 (navamsa) grid in the same response — D9 is never included by default. Renders already-computed chart_divisionals positions; no new computation. chart_id is required.',
+    'The compact "show me the chart" answer: a 12-rashi D1 (rashi chart) text grid — every graha\'s sign + degree-in-sign, Lagna sign clearly marked — sized for direct display in a chat client (hard-capped at 2KB). Pass include_navamsa=true to ALSO get the D9 (navamsa) grid in the same response — D9 is never included by default. Pass vargas:["D2","D10",...] to ADDITIVELY assemble any number of further divisional-chart grids server-side (EL-48) — served in `additional_vargas`, alongside the unchanged D1(+D9) grid/text shape; a requested varga this chart has no data for is named honestly in `unresolved_vargas`. Renders already-computed chart_divisionals positions; no new computation. chart_id is required.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       include_navamsa: z.boolean().optional().describe('Also include the D9 (navamsa) grid. Default: false (D1 only).'),
+      vargas: z.array(z.string()).optional().describe('Additional varga codes to assemble (e.g. ["D2","D10","D11"]), additive to D1 (and D9 if include_navamsa is set) — served in `additional_vargas`, never replacing the D1/D9 default. Standard codes: D1-D10, D12, D16, D20, D24, D27, D30, D40, D45, D60.'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, include_navamsa }) => {
+    async ({ chart_id, ayanamsha_id, include_navamsa, vargas, budget_kb }) => {
       if (!chart_id) return errorOutput('chart_snapshot', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1895,10 +1977,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id,
             ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
             ...(include_navamsa != null ? { include_navamsa } : {}),
+            ...(vargas && vargas.length > 0 ? { vargas } : {}),
           },
           chart_id, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.chart_snapshot, 'chart_snapshot'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('chart_snapshot', budget_kb), 'chart_snapshot', budget_kb))
       } catch (err) {
         return errorOutput('chart_snapshot', String(err), { chart_id })
       }
@@ -1915,8 +1998,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe('Filter by ayanamsha. Omit for all ayanamshas present.'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id }) => {
+    async ({ chart_id, ayanamsha_id, budget_kb }) => {
       if (!chart_id) return errorOutput('get_graha_yuddha', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1927,7 +2011,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.get_graha_yuddha, 'get_graha_yuddha'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('get_graha_yuddha', budget_kb), 'get_graha_yuddha', budget_kb))
       } catch (err) {
         return errorOutput('get_graha_yuddha', String(err), { chart_id })
       }
@@ -1945,8 +2029,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       doc_type: z.array(z.string()).optional().describe(
         'Document type filter (e.g. ["domain_report"], ["signal_narrative"], ["classical_text"]). Omit for all types.'
       ),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ query_text, top_k, doc_type }) => {
+    async ({ query_text, top_k, doc_type, budget_kb }) => {
       if (!query_text) return errorOutput('vector_search', 'query_text is required')
       try {
         const data = await callPlatformPrimitive('vector_search', {
@@ -1954,7 +2039,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           top_k: top_k ?? 10,
           ...(doc_type ? { doc_type } : {}),
         }, principal)
-        return dualOutputBudgeted(applyMcpBudgetAuto(unwrapDoubleEncodedToolBundleResults(data) as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.vector_search, 'vector_search'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(unwrapDoubleEncodedToolBundleResults(data) as Record<string, unknown>, resolveMaxKb('vector_search', budget_kb), 'vector_search', budget_kb))
       } catch (err) {
         return errorOutput('vector_search', String(err))
       }
@@ -2006,8 +2091,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         'Max yoga/dosha signals to include in the bearing-yogas check (default: 15, max: 50).'
       ),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, bhava, response_format, max_signals, verbosity }) => {
+    async ({ chart_id, ayanamsha_id, domain, bhava, response_format, max_signals, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('judgment_query', 'chart_id is required')
       if (!domain && bhava === undefined) {
         return errorOutput('judgment_query', 'either `domain` or `bhava` is required')
@@ -2190,7 +2276,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'judgment_query', undefined, 'legacy', undefined, entitled) }
-          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.judgment_query, verbosity), judgmentSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveMaxKb('judgment_query', budget_kb, verbosity), judgmentSections, budget_kb))
         }
 
         // ── v3 population (design §10/§28.6) ──────────────────────────────────
@@ -2217,7 +2303,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
           }, entitled),
         }
-        const budgeted = applyMcpBudget(v3Response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.judgment_query, verbosity), judgmentSections)
+        const budgeted = applyMcpBudget(v3Response, resolveMaxKb('judgment_query', budget_kb, verbosity), judgmentSections, budget_kb)
         // R-21 fix: `receipt.varga_confirmed`/`receipt.timing_anchored` were stamped from the
         // PRE-TRIM capability output (register_d9_judgment.ts) — reconcile against what
         // actually survived applyMcpBudget so e.g. varga_confirmed:"D10✓" is never served
@@ -2424,12 +2510,22 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
                 ? 'the strong-dispositor cancellation condition IS met (treat as a candidate bhanga, not a full multi-condition confirmation — other classical conditions like kendra placement aren\'t covered by this depth-1 neighborhood).'
                 : 'the strong-dispositor cancellation condition is NOT met from this data; no cancellation confirmed here — a full multi-condition audit needs deeper dispositor-chain traversal.'}`,
             )
+          } else if (nodes.length === 0) {
+            // EL-07 Absence Protocol: distinguish "the neighborhood query itself returned
+            // nothing" (a genuine grounding gap worth naming explicitly) from the dispositor
+            // simply not being among an otherwise-populated node set (the branch below).
+            sentences.push(
+              `Neecha-bhanga could not be checked against dispositor-chain data: this portrait's ` +
+              `cgm_neighborhood.nodes returned 0 rows for ${grahaName} — no cancellation condition ` +
+              `evaluated (not a claim that ${dispositor} lacks cancellation, only that this depth-1 ` +
+              `neighborhood query had nothing to check it against); traverse_graph can re-query directly.`,
+            )
           } else {
             sentences.push(
               `Neecha-bhanga checked against the dispositor-chain data this portrait retrieves: dispositor ` +
-              `${dispositor} is not present in the depth-1 cgm_neighborhood returned here — no cancellation ` +
-              `condition met in what's available; a full multi-condition audit needs deeper dispositor-chain ` +
-              `traversal (see drill_pointers).`,
+              `${dispositor} is not among the ${nodes.length} node(s) present in the depth-1 cgm_neighborhood ` +
+              `returned here — no cancellation condition met in what's available; a full multi-condition audit ` +
+              `needs deeper dispositor-chain traversal (see drill_pointers).`,
             )
           }
         }
@@ -2580,8 +2676,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       include: z.array(z.enum(['position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'special_states', 'yogas', 'dashas', 'cgm_neighborhood'])).optional().describe('Subset of sections to compute (default: all). R-6 fix: functional_nature (served under the dignity call, now independently requestable) and special_states (alias for avasthas — the classical name for the baladi/jagrad/deepta/lajjitadi/sayanadi system) are now valid options; previously the former was unenumerated and the latter errored as invalid.'),
       response_format: z.enum(['legacy', 'v3']).optional().describe("Envelope shape: 'legacy' (default, unchanged — the raw portrait object) or 'v3' (adds populated verdict/grounding/drill_pointers/judgment_flags/chart_header per the R5 unified envelope)."),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format, verbosity }) => {
+    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('graha_portrait', 'chart_id is required')
       if (!graha) return errorOutput('graha_portrait', 'graha is required')
       try {
@@ -2660,6 +2757,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 2,
             recover: { instrument: 'ganita_condition_get', hint: 'full operative-varga dignity rows (D1/D9/D10/D60) — this response kept a lean slice. (SC-18: was "get_dignity", a non-existent MCP tool name; use facet="dignity").' },
             label: 'dignity.operative_varga_rows',
+            // EL-36: the operative-varga dignity highlight IS the "how is my Saturn" answer —
+            // hardFloor so PASS 2 can never zero it (the generic orientation preamble goes first).
+            hardFloor: true,
           },
           {
             path: 'content.strength.rows',
@@ -2675,6 +2775,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 4,
             recover: { instrument: 'ganita_strength_get', hint: 'full shadbala decomposition (this response kept a lean slice of the 6-component + vimsopaka + ishta/kashta breakdown). (SC-18: was "get_strength", a non-existent MCP tool name).' },
             label: 'strength.rows',
+            hardFloor: true, // EL-36: confirmed shadbala — protected from PASS 2 zeroing.
           },
           {
             path: 'content.avasthas.rows',
@@ -2690,6 +2791,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 3,
             recover: { instrument: 'ganita_condition_get', hint: 'full avastha rows across all five systems (baladi/jagrad/deepta/lajjitadi/sayanadi). (SC-18: was "get_avasthas", a non-existent MCP tool name; use facet="avasthas").' },
             label: 'avasthas.rows',
+            hardFloor: true, // EL-36: confirmed deterministic avasthas — protected from PASS 2 zeroing.
           },
           {
             path: 'content.yogas.catalog_yoga_matches',
@@ -2740,6 +2842,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 3,
             recover: { instrument: 'get_signals', hint: 'full signal_type_class=parivartana MSR matches for this graha (structural exchange yogas).' },
             label: 'yogas.parivartana_exchanges',
+            // EL-36 + §N.6: parivartana exchanges are served as REAL chart-specific data
+            // (confirmed, not requires_pass catalog labels) — hardFloor. The catalog_yoga_/
+            // catalog_dosha_matches arrays above are lower-density catalog labels and stay
+            // floorable-to-zero (trimmed before this confirmed section).
+            hardFloor: true,
           },
           {
             path: 'content.cgm_neighborhood.edges',
@@ -2755,6 +2862,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 3,
             recover: { instrument: 'traverse_graph', hint: 'full CGM edge set (this response kept a lean slice of the depth-1 neighborhood).' },
             label: 'cgm_neighborhood.edges',
+            hardFloor: true, // EL-36: confirmed CGM structure — protected from PASS 2 zeroing.
           },
           {
             path: 'content.cgm_neighborhood.nodes',
@@ -2770,6 +2878,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 3,
             recover: { instrument: 'traverse_graph', hint: 'full CGM node set (this response kept a lean slice of the depth-1 neighborhood).' },
             label: 'cgm_neighborhood.nodes',
+            hardFloor: true, // EL-36: confirmed CGM structure — protected from PASS 2 zeroing.
           },
           {
             // R5.1 C1 fix: even with every data section above floored to 0, live
@@ -2809,6 +2918,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 1,
             recover: { instrument: 'get_positions', hint: 'full position rows for this graha across every category.' },
             label: 'position.rows',
+            hardFloor: true, // EL-36: the graha's position is the irreducible core of the portrait.
           },
           {
             path: 'content.functional_nature.rows',
@@ -2824,6 +2934,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 1,
             recover: { instrument: 'ganita_condition_get', hint: 'full functional-class rows for this graha across ascendant variants. (SC-18: was "get_dignity", a non-existent MCP tool name; use facet="dignity").' },
             label: 'functional_nature.rows',
+            hardFloor: true, // EL-36: benefic/malefic/yoga-karaka classification — confirmed core.
           },
           {
             path: 'content.dashas.rows',
@@ -2839,12 +2950,39 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             minKeep: 2,
             recover: { instrument: 'get_dashas', hint: 'full Mahadasha-level dasha periods for this graha (1900-2100 window kept only a lean slice).' },
             label: 'dashas.rows',
+            hardFloor: true, // EL-36: confirmed Mahadasha windows — protected from PASS 2 zeroing.
           },
         ]
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'graha_portrait') }
-          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.graha_portrait, verbosity), portraitSections))
+          const legacyBudgeted = applyMcpBudget(legacyResponse, resolveMaxKb('graha_portrait', budget_kb, verbosity), portraitSections, budget_kb)
+          // EL-36 residual (R-21 receipt integrity, extended to the legacy escape hatch):
+          // the v3 path below reconciles `completeness` against what actually survived
+          // applyMcpBudget's trim; the legacy shape carries the SAME `content.completeness`
+          // object (envelope()'s legacy branch wraps `inner` as `content` verbatim — see
+          // buildRetrievalEnvelope/redactProvenanceTables, which returns the same reference
+          // when entitled) so the identical reconciliation applies cleanly here too, reading
+          // post-trim state from `legacyBudgeted` (never the pre-trim `inner`) so a section
+          // PASS 2 floored to 0 never ships next to a stale "✓". No numeric receipt
+          // (verdict.sections_populated / grounding.grounding_score) exists on the legacy
+          // shape to re-derive — those are v3-only fields — so this is the complete legacy
+          // reconciliation, not a partial one.
+          const legacyContent = (legacyBudgeted as Record<string, unknown>)['content'] as Record<string, unknown> | undefined
+          const legacyCompleteness = legacyContent?.['completeness'] as Record<string, unknown> | undefined
+          if (legacyCompleteness) {
+            reconcileReceiptWithTrimReport(legacyCompleteness, {
+              dignity: ['content.dignity.all_varga_rows', 'content.dignity.other_rows', 'content.dignity.operative_varga_rows'],
+              functional_nature: ['content.functional_nature.rows'],
+              strength: ['content.strength.rows'],
+              avasthas: ['content.avasthas.rows'],
+              yogas: ['content.yogas.catalog_yoga_matches', 'content.yogas.catalog_dosha_matches', 'content.yogas.parivartana_exchanges'],
+              dashas: ['content.dashas.rows'],
+              position: ['content.position.rows'],
+              cgm_neighborhood: ['content.cgm_neighborhood.edges', 'content.cgm_neighborhood.nodes'],
+            }, legacyBudgeted['trim_report'] as TrimReportEntry[] | null | undefined)
+          }
+          return dualOutputBudgeted(legacyBudgeted)
         }
 
         // ── v3 population ─────────────────────────────────────────────────
@@ -2905,7 +3043,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           orientation_context, orientation_ok,
           ...envelope(inner, 'graha_portrait', undefined, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }),
         }
-        const budgeted = applyMcpBudget(v3Response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.graha_portrait, verbosity), portraitSections)
+        const budgeted = applyMcpBudget(v3Response, resolveMaxKb('graha_portrait', budget_kb, verbosity), portraitSections, budget_kb)
         // R-21 fix: `completeness` was stamped '✓'/'zero_rows'/'error' from the PRE-TRIM
         // capability output; reconcile against what actually survived applyMcpBudget so a
         // section trimmed all the way to 0 rows is never served with a stale '✓'.
@@ -2919,6 +3057,25 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           position: ['content.position.rows'],
           cgm_neighborhood: ['content.cgm_neighborhood.edges', 'content.cgm_neighborhood.nodes'],
         }, budgeted['trim_report'] as TrimReportEntry[] | null | undefined)
+        // EL-36 receipt truth: reconcileReceiptWithTrimReport may have downgraded one or more
+        // `completeness` marks from '✓' to a 'trimmed_to_empty …' string. The NUMERIC receipt
+        // (verdict.sections_populated + grounding.grounding_score) was computed PRE-trim and
+        // would now over-report sections that did not survive onto the wire — re-derive both
+        // from the reconciled `completeness` so the counts and the marks agree. verdict is
+        // stored by reference in the envelope (buildRetrievalEnvelope) so mutating it here lands
+        // on the wire; grounding is rebuilt into a fresh object by the envelope, so its score is
+        // written through `budgeted.grounding`. (This can only ever lower the count — a genuine
+        // survivor keeps its '✓'.)
+        const populatedAfterTrim = Object.values(completeness).filter(v => v === '✓').length
+        if (populatedAfterTrim !== sectionsPopulated) {
+          verdict.sections_populated = populatedAfterTrim
+          const groundingBlock = (budgeted as Record<string, unknown>)['grounding'] as { grounding_score: number | null } | undefined
+          if (groundingBlock) {
+            groundingBlock.grounding_score = sectionsRequested > 0
+              ? Math.round((populatedAfterTrim / sectionsRequested) * 1000) / 1000
+              : null
+          }
+        }
         return dualOutputBudgeted(budgeted)
       } catch (err) {
         return errorOutput('graha_portrait', String(err), { chart_id, graha })
@@ -2977,8 +3134,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         'Forwarded to judgment_query for the PROMISE stage (default: 15, max: 50).'
       ),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, bhava, as_of_date, response_format, max_signals, verbosity }) => {
+    async ({ chart_id, ayanamsha_id, domain, bhava, as_of_date, response_format, max_signals, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('pact_query', 'chart_id is required')
       if (!domain && bhava === undefined) {
         return errorOutput('pact_query', 'either `domain` or `bhava` is required')
@@ -3051,7 +3209,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'pact_query') }
-          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.pact_query, verbosity), pactSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveMaxKb('pact_query', budget_kb, verbosity), pactSections, budget_kb))
         }
 
         // ── v3 population ──────────────────────────────────────────────────
@@ -3134,7 +3292,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             as_of_date: resolvedAsOfDate,
           }),
         }
-        return dualOutputBudgeted(applyMcpBudget(v3Response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.pact_query, verbosity), pactSections))
+        return dualOutputBudgeted(applyMcpBudget(v3Response, resolveMaxKb('pact_query', budget_kb, verbosity), pactSections, budget_kb))
       } catch (err) {
         return errorOutput('pact_query', String(err), { chart_id })
       }

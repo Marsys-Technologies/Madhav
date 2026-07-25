@@ -1,0 +1,372 @@
+{
+  "artifact": "FLOOR_COVERAGE_ACCOUNTING",
+  "version": "1.0",
+  "contract_id": "C7-floor",
+  "status": "GENERATED",
+  "lane": "Ω8 (Elevation Campaign v2.1, Stream γ / PŪRṆA) — floor reconciliation",
+  "generator": "platform/scripts/census/generate_floor_regeneration.mjs",
+  "generated_at": "2026-07-25T07:21:19.209Z",
+  "source_tci": {
+    "path": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma-lane-omega-floors/00_ARCHITECTURE/llm_consumption_audit/capability_map/TOTAL_CONCEPT_INVENTORY_v1_0.json",
+    "version": "1.0"
+  },
+  "source_relevance_map": {
+    "path": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma-lane-omega-floors/00_ARCHITECTURE/llm_consumption_audit/capability_map/DOMAIN_RELEVANCE_MAP_v1_0.json",
+    "version": "1.0"
+  },
+  "method_note": "Floors regenerated FROM the TCI slice + Ω2 relevance map (NEVER hand-curated). divisional_facts vargas = universal {D1,D9} ∪ Ω2-primary(domain); ashtakavarga_scan = full D1+per-varga AV family; special_lagna_read = full lagna+saham+upapada set; argala/dispositor/mechanism/cross-ayanamsha added as domain-relevant floor items. Coverage accounted into the five Ω3 states (SAME rule as C7/Ω3).",
+  "gate_rule": "For each (domain × chart): served + empty_for_this_chart + not_computed_globally + superseded_by_aggregate + excluded_by_named_rule == 100% of the floor's own TCI-derived slice; AND every floor item resolves to ≥1 TCI concept (no dead/fabricated floor item). Same accounting states as Ω3/C7. superseded/excluded intentionally 0 (TCI lacks subsumption edges; slice audit must not surface excluded — mirrors Ω3's SUPERSEDED_NOTE).",
+  "all_pass": true,
+  "results": [
+    {
+      "domain": "wealth",
+      "intent": "wealth_deepdive",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "floor_slice_size": 2245,
+      "accounted": 2245,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2238,
+        "empty_for_this_chart": 1,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9969,
+      "pass": true
+    },
+    {
+      "domain": "wealth",
+      "intent": "wealth_deepdive",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "floor_slice_size": 2245,
+      "accounted": 2245,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2234,
+        "empty_for_this_chart": 5,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9951,
+      "pass": true
+    },
+    {
+      "domain": "career",
+      "intent": "career_deepdive",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "floor_slice_size": 2244,
+      "accounted": 2244,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2237,
+        "empty_for_this_chart": 1,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9969,
+      "pass": true
+    },
+    {
+      "domain": "career",
+      "intent": "career_deepdive",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "floor_slice_size": 2244,
+      "accounted": 2244,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2233,
+        "empty_for_this_chart": 5,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9951,
+      "pass": true
+    },
+    {
+      "domain": "marriage",
+      "intent": "marriage_deepdive",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "floor_slice_size": 2243,
+      "accounted": 2243,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2236,
+        "empty_for_this_chart": 1,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9969,
+      "pass": true
+    },
+    {
+      "domain": "marriage",
+      "intent": "marriage_deepdive",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "floor_slice_size": 2243,
+      "accounted": 2243,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2232,
+        "empty_for_this_chart": 5,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9951,
+      "pass": true
+    },
+    {
+      "domain": "health",
+      "intent": "health_deepdive",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "floor_slice_size": 2245,
+      "accounted": 2245,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2238,
+        "empty_for_this_chart": 1,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9969,
+      "pass": true
+    },
+    {
+      "domain": "health",
+      "intent": "health_deepdive",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "floor_slice_size": 2245,
+      "accounted": 2245,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2234,
+        "empty_for_this_chart": 5,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9951,
+      "pass": true
+    },
+    {
+      "domain": "spirituality",
+      "intent": "spirituality_deepdive",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "floor_slice_size": 2244,
+      "accounted": 2244,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2237,
+        "empty_for_this_chart": 1,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9969,
+      "pass": true
+    },
+    {
+      "domain": "spirituality",
+      "intent": "spirituality_deepdive",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "floor_slice_size": 2244,
+      "accounted": 2244,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2233,
+        "empty_for_this_chart": 5,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9951,
+      "pass": true
+    },
+    {
+      "domain": "education",
+      "intent": "education_deepdive",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "floor_slice_size": 2244,
+      "accounted": 2244,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2237,
+        "empty_for_this_chart": 1,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9969,
+      "pass": true
+    },
+    {
+      "domain": "education",
+      "intent": "education_deepdive",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "floor_slice_size": 2244,
+      "accounted": 2244,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2233,
+        "empty_for_this_chart": 5,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9951,
+      "pass": true
+    },
+    {
+      "domain": "progeny",
+      "intent": "progeny_deepdive",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "floor_slice_size": 2244,
+      "accounted": 2244,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2237,
+        "empty_for_this_chart": 1,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9969,
+      "pass": true
+    },
+    {
+      "domain": "progeny",
+      "intent": "progeny_deepdive",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "floor_slice_size": 2244,
+      "accounted": 2244,
+      "unaccounted_count": 0,
+      "unaccounted_sample": [],
+      "dead_floor_items": [],
+      "state_counts": {
+        "served": 2233,
+        "empty_for_this_chart": 5,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "agnostic_universal_counts": {
+        "served": 6,
+        "empty_for_this_chart": 0,
+        "not_computed_globally": 0
+      },
+      "served_fraction": 0.9951,
+      "pass": true
+    }
+  ]
+}

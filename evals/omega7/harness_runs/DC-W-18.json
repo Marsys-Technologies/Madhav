@@ -1,0 +1,77 @@
+[
+  {
+    "tool": "ToolSearch",
+    "arguments": {
+      "query": "select:mcp__marsys-jis-direct__assess_wealth,mcp__marsys-jis-direct__ganita_positions_get,mcp__marsys-jis-direct__ganita_chart_facts_get,mcp__marsys-jis-direct__synth_tail_divergence_get,mcp__marsys-jis-direct__ganita_natal_positions_compute",
+      "max_results": 5
+    },
+    "result_raw": "Loaded schemas for: mcp__marsys-jis-direct__assess_wealth, mcp__marsys-jis-direct__ganita_positions_get, mcp__marsys-jis-direct__ganita_chart_facts_get, mcp__marsys-jis-direct__synth_tail_divergence_get, mcp__marsys-jis-direct__ganita_natal_positions_compute (full JSONSchema definitions returned in <functions> block; tools now callable)."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_positions_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "limit": 2000
+    },
+    "result_raw": "See ayanamsha=lahiri_chitrapaksha rows below. Wealth-relevant subset (fact_key sign / house_d1 / longitude_sidereal): LAGNA sign=Aries house=1 long=12.4311495988431; VEN sign=Sagittarius house=9 long=259.172696089456 (nakshatra=Purva Ashadha); SAT sign=Libra house=7 long=202.431986059195 (nakshatra=Vishakha); JUP sign=Sagittarius house=9 long=249.787497023181 (nakshatra=Mula); MOON sign=Aquarius house=11 long=327.055230133129 (nakshatra=Purva Bhadrapada); RAH_MEAN sign=Taurus house=2 long=49.0330441002811; KET_MEAN sign=Scorpio house=8 long=229.033044100281; SUN sign=Capricorn house=10 long=291.962617284992 (nakshatra=Shravana); MER sign=Capricorn house=10 long=270.838753918698 (nakshatra=Uttara Ashadha); MAR sign=Libra house=7 long=198.519187554622. total=86 rows, include_upagrahas=false. (Full 86-row EAV payload returned verbatim by the tool; each row carries fact_id, fact_category=graha_position, fact_subject, ayanamsha_id=lahiri_chitrapaksha, fact_key in {combustion_state,house_d1,longitude_sidereal,nakshatra,nakshatra_lord,pada,retrograde_flag,sign,sign_lord}, fact_value_num/text, unit, verification_pass_status=single, citation_ref.)"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_positions_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "krishnamurti",
+      "limit": 2000
+    },
+    "result_raw": "ayanamsha=krishnamurti. Wealth-relevant subset: LAGNA sign=Aries house=1 long=12.5280019321739; VEN sign=Sagittarius house=9 long=259.269548422787 (Purva Ashadha); SAT sign=Libra house=7 long=202.528838392526 (Vishakha); JUP sign=Sagittarius house=9 long=249.884349356512 (Mula); MOON sign=Aquarius house=11 long=327.15208246646 (Purva Bhadrapada); RAH_MEAN sign=Taurus house=2 long=49.1298964336119; KET_MEAN sign=Scorpio house=8 long=229.129896433612; SUN sign=Capricorn house=10 long=292.059469618322 (Shravana); MER sign=Capricorn house=10 long=270.935606252029 (Uttara Ashadha); MAR sign=Libra house=7 long=198.616039887953. total=86 rows, include_upagrahas=false. (Full 86-row EAV payload returned verbatim, all rows ayanamsha_id=krishnamurti.)"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_positions_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "raman",
+      "limit": 2000
+    },
+    "result_raw": "ayanamsha=raman. Wealth-relevant subset: LAGNA sign=Aries house=1 long=13.8774509321739; VEN sign=Sagittarius house=9 long=260.618997422787 (Purva Ashadha); SAT sign=Libra house=7 long=203.878287392526 (Vishakha); JUP sign=Sagittarius house=9 long=251.233798356512 (Mula); MOON sign=Aquarius house=11 long=328.50153146646 (Purva Bhadrapada); RAH_MEAN sign=Taurus house=2 long=50.4793454336119; KET_MEAN sign=Scorpio house=8 long=230.479345433612; SUN sign=Capricorn house=10 long=293.408918618322 (nakshatra=Dhanishta — shifted from Shravana); MER sign=Capricorn house=10 long=272.285055252029 (Uttara Ashadha); MAR sign=Libra house=7 long=199.965488887953 (Swati). total=86 rows, include_upagrahas=false. (Full 86-row EAV payload returned verbatim, all rows ayanamsha_id=raman.)"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_positions_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "surya_siddhanta_classical",
+      "limit": 2000
+    },
+    "result_raw": "ayanamsha=surya_siddhanta_classical. Wealth-relevant subset: LAGNA sign=Aries house=1 long=15.3931824105297; VEN sign=Sagittarius house=9 long=262.134728882485 (Purva Ashadha); SAT sign=Libra house=7 long=205.394018852224 (Vishakha); JUP sign=Sagittarius house=9 long=252.74952981621 (Mula); MOON sign=Pisces house=12 long=330.017262926157 (Purva Bhadrapada) <-- DIVERGENCE: Moon crosses Aquarius/Pisces cusp into 12th house; RAH_MEAN sign=Taurus house=2 long=51.9950769119677; KET_MEAN sign=Scorpio house=8 long=231.995076911968; SUN sign=Capricorn house=10 long=294.92465007802 (Dhanishta); MER sign=Capricorn house=10 long=273.800786711727 (Uttara Ashadha); MAR sign=Libra house=7 long=201.481220347651 (nakshatra=Vishakha — shifted from Swati). total=86 rows, include_upagrahas=false. (Full 86-row EAV payload returned verbatim, all rows ayanamsha_id=surya_siddhanta_classical.)"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_positions_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "true_chitra",
+      "limit": 2000
+    },
+    "result_raw": "NOTE: tool returned rows stamped ayanamsha_id=lahiri_chitrapaksha (true_chitra request resolved to the lahiri_chitrapaksha payload — true_chitra and Lahiri differ by <1 arcmin at this epoch, so the served rows are effectively the Lahiri set). Wealth-relevant subset identical to Lahiri: LAGNA Aries/1; VEN Sagittarius/9 (259.17); SAT Libra/7 (202.43); JUP Sagittarius/9 (249.79); MOON Aquarius/11 (327.06); RAH Taurus/2; KET Scorpio/8; SUN Capricorn/10 (Shravana); MER Capricorn/10; MAR Libra/7. total=86 rows. (Full 86-row EAV payload returned verbatim.)"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__assess_wealth",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+    },
+    "result_raw": "Error: result (116,397 characters) exceeds maximum allowed tokens. Output has been saved to /Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav--worktrees-gamma/c4d56864-7dd3-494c-a77e-4fbb3bb71056/tool-results/mcp-marsys-jis-direct-assess_wealth-1784965049151.txt. Format: JSON with schema: {type: string, object: {orientation_context, orientation_ok: boolean, content, is_error: boolean, budget_kb_applied: number, trim_report, drill_pointers, judgment_flags}}. content keys = [activating_dasha, ayanamsha_id, chart_id, citations, contradictions, domain, domain_label, house_analysis, judgment_flags, karaka_analysis, provenance, ranking_basis, step_results, varga_analysis, verdict_skeleton, yoga_fact_ids]. content.ayanamsha_id = lahiri_chitrapaksha. judgment_flags = [{code:budget_exceeded_after_trim, detail:'40kb budget still exceeded after full trim.'}]."
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq -c '.object.content | {keys}' + jq '.object.judgment_flags' on mcp-marsys-jis-direct-assess_wealth-1784965049151.txt",
+      "description": "Extract keys and flags from assess_wealth"
+    },
+    "result_raw": "{\"keys\":[\"activating_dasha\",\"ayanamsha_id\",\"chart_id\",\"citations\",\"contradictions\",\"domain\",\"domain_label\",\"house_analysis\",\"judgment_flags\",\"karaka_analysis\",\"provenance\",\"ranking_basis\",\"step_results\",\"varga_analysis\",\"verdict_skeleton\",\"yoga_fact_ids\"]}\n---FLAGS---\n[{\"code\":\"budget_exceeded_after_trim\",\"detail\":\"40kb budget still exceeded after full trim.\"}]"
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq on assess_wealth file: .object.content.ayanamsha_id, .object.content.house_analysis, .object.content.karaka_analysis, .object.content.verdict_skeleton",
+      "description": "Extract wealth significator analysis"
+    },
+    "result_raw": "ayanamsha=lahiri_chitrapaksha. house_analysis.question_lenses[0]: domains_matched=[wealth], signal_count=336. all_relevant_ranked total_count=25; top ranked composite_state signals from ga_structural graha_dignity_per_varga incl. 'dignity_state=exalted, house=7, sign=Libra, varga=D1' (Saturn exalted in Libra 7th in rasi). karaka_analysis.cdlm_cells: wealth strongly cross-linked to relationship (shared_signal_count=250, linkage 339.8), career (212, 300.2), then character/health/spirituality (small). verdict_skeleton.top_10_composite: lord_in_house_per_varga Saturn_in_H7, Saturn_in_H10; aspect_parashari KET_MEAN -> house_2 (target_house=2); lord_in_house_per_varga Jupiter_in_H9; bhava_significance_link trikona_link (lord_placed). Confirms wealth significators = Saturn (11th/10th lord, exalted, H7), Jupiter (9th lord + dhana karaka, H9 own sign), 2nd house (Rahu occupant + Ketu aspect from H8), Venus (2nd lord)."
+  }
+]

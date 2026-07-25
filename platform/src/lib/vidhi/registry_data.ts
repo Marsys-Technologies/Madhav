@@ -320,6 +320,69 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
     cr27_prevents: [],
   },
   {
+    // EL-27 + EL-56 (Elevation Campaign v2.1, Stream γ Lane I): the planner's FIRST ayanamsha-
+    // expressible axis. Before this primitive the word "ayanamsha" appeared ZERO times in the
+    // vidhi planner registry (charter §0.2.A, confirmed). Reads the SAME point once per REAL
+    // ayanamsha and scores dignity/house/vargottama agreement as a confidence field.
+    // The `ayanamsha_axis` value is the 5 REAL ayanamshas ONLY — the INVARIANT sentinel is
+    // excluded (Ω1-verified baseline; see lib/vidhi/ayanamsha_variation.ts REAL_AYANAMSHAS for
+    // the canonical list + the n/5-not-n/6 rationale). A runtime import of that constant is
+    // deliberately NOT taken here: this file is single-type-import by contract (the mirror
+    // codegen, generate_vidhi_registry_mirror.ts, HALTS on a second/non-type-only import), so
+    // the list is inlined and kept in sync with ayanamsha_variation.ts.
+    primitive_id: 'cross_ayanamsha_variation',
+    version: 1,
+    definition:
+      'Cross-ayanamsha agreement for a planet/point: dignity, bhāva-shift, and vargottama deltas ' +
+      'computed across the 5 REAL ayanamshas (INVARIANT sentinel excluded), emitting ' +
+      'ayanamsha_agreement "n/5" as a confidence field. Full agreement compresses; disagreement ' +
+      'surfaces as a rarity signal (EL-56 family-collapse-safe). The planner\'s only ayanamsha axis.',
+    category: 'signal',
+    live_tool: 'ganita_chart_facts_get',
+    tool_args: {
+      chart_id: '{chart_id}',
+      about: '{point}',
+      // 5 REAL ayanamshas (mirror of ayanamsha_variation.REAL_AYANAMSHAS). NOT six — INVARIANT excluded.
+      ayanamsha_axis: ['krishnamurti', 'lahiri_chitrapaksha', 'raman', 'surya_siddhanta_classical', 'true_chitra'],
+    },
+    fallback_face: 'ganita_chart_facts_get(ayanamsha_id={ayanamsha})',
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
+    // EL-61 + Ω5 (Elevation Campaign v2.1, Stream γ · Lane Ω-planner-wire): the FULL-COVERAGE path.
+    // Every OTHER primitive here reads ONE atom (a bhava, a kāraka, one varga's ratification). This
+    // one is the domain-SWEEP: `dossier` pages a domain's ENTIRE concept slice (every Ω1-inventory
+    // concept for the domain, e.g. wealth = 13820 concepts for 482012f1) in budget-capped pages and
+    // STRUCTURALLY withholds every interpretive surface until coverage reaches 100% accounting
+    // (synthesis_gate: BLOCKED→OPEN). It is not "one more atom among many" — it is the planner's
+    // guaranteed route to whole-domain coverage, which the atom list alone does NOT provide (a naive
+    // consumer routing to assess_wealth hits ~2/13 of the frozen required concepts; the dossier sweep
+    // is what closes that gap). Fired FIRST on the deepdive floor (order 1, hard_floor) so the reading
+    // gathers the whole territory before composing. NO computation reimplemented (B.10): each dossier
+    // page hands back live serving_tool + serving_args drill handles, never inlined chart values.
+    // live_tool 'dossier' is deployed + independently verified (Ω5 close). Flagship slices exist for
+    // {wealth, career} × the two canonical charts — so ONLY the wealth/career deepdive floors consume
+    // this primitive; a domain with no pre-compiled slice would get an honest slice_not_available.
+    primitive_id: 'full_domain_dossier',
+    version: 1,
+    definition:
+      'Whole-domain gather-then-compose sweep: pages the domain\'s ENTIRE concept slice (all ' +
+      'Ω1-inventory concepts) in budget-capped pages via the Ω5 `dossier` engine, structurally ' +
+      'withholding every interpretive surface until coverage is 100% accounted (synthesis_gate ' +
+      'OPEN). The planner\'s guaranteed route to FULL domain coverage — the atom-by-atom floor ' +
+      'reads single facts; this reads the whole territory. Call it FIRST; follow `cursor` to ' +
+      'exhaustion before composing. Flagship slices: {wealth, career} × the two canonical charts.',
+    category: 'utility',
+    live_tool: 'dossier',
+    tool_args: { domain: '{domain}', chart_id: '{chart_id}', budget_kb: 24 },
+    fallback_face: null,
+    known_gap: null,
+    mandatory_tags: [],
+    cr27_prevents: [],
+  },
+  {
     primitive_id: 'dasha_window',
     version: 1,
     definition: 'Bounded daśā window query (level-scoped, natally enriched: lord house/dignity/shadbala).',
@@ -787,74 +850,88 @@ function elevationTail(domain: string, from: number): FloorItem[] {
  * tag and every CR-27 instance for the gate's flagship (wealth) domain.
  */
 const WEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
-  { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 2 } },
-  { primitive_id: 'bhavesha_condition', order: 2, band: 'acharya_floor', args_override: { house: 2 } },
-  { primitive_id: 'karaka_condition', order: 3, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
-  { primitive_id: 'from_moon_view', order: 4, band: 'acharya_floor' },
-  { primitive_id: 'chalit_cusp_read', order: 5, band: 'acharya_floor' },
-  { primitive_id: 'bhava_bala_scan', order: 6, band: 'acharya_floor' },
-  { primitive_id: 'ashtakavarga_scan', order: 7, band: 'acharya_floor' },
-  { primitive_id: 'sensitive_degree_check', order: 8, band: 'acharya_floor' },
-  { primitive_id: 'divisional_facts', order: 9, band: 'acharya_floor', args_override: { varga: 'D2' } },
+  // EL-61 / Ω5 (Elevation Campaign v2.1, Stream γ · Lane Ω-planner-wire): the FULL-COVERAGE sweep
+  // leads the floor. Fired FIRST (order 1, hard_floor) so the reading pages the WHOLE wealth slice
+  // through the Ω5 gather-then-compose gate BEFORE it touches the atom-by-atom reads below — this is
+  // the item that guarantees whole-domain coverage the atom list alone does not (a naive route to
+  // assess_wealth hits only ~2/13 of the frozen required concepts; the dossier sweep closes that).
+  { primitive_id: 'full_domain_dossier', order: 1, band: 'acharya_floor', args_override: { domain: 'wealth' }, hard_floor: true },
+  { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 2 } },
+  { primitive_id: 'bhavesha_condition', order: 3, band: 'acharya_floor', args_override: { house: 2 } },
+  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'jupiter' } },
+  { primitive_id: 'from_moon_view', order: 5, band: 'acharya_floor' },
+  { primitive_id: 'chalit_cusp_read', order: 6, band: 'acharya_floor' },
+  { primitive_id: 'bhava_bala_scan', order: 7, band: 'acharya_floor' },
+  { primitive_id: 'ashtakavarga_scan', order: 8, band: 'acharya_floor' },
+  { primitive_id: 'sensitive_degree_check', order: 9, band: 'acharya_floor' },
+  { primitive_id: 'divisional_facts', order: 10, band: 'acharya_floor', args_override: { varga: 'D2' } },
   {
     primitive_id: 'varga_ratification',
-    order: 10,
+    order: 11,
     band: 'acharya_floor',
     args_override: { vargas: ['D2', 'D9', 'D11'] },
   },
-  { primitive_id: 'karakamsa_read', order: 11, band: 'acharya_floor' },
-  { primitive_id: 'kp_cusp_sublord_read', order: 12, band: 'acharya_floor' },
+  { primitive_id: 'karakamsa_read', order: 12, band: 'acharya_floor' },
+  { primitive_id: 'kp_cusp_sublord_read', order: 13, band: 'acharya_floor' },
   {
     primitive_id: 'special_lagna_read',
-    order: 13,
+    order: 14,
     band: 'acharya_floor',
     args_override: { lagnas: ['indu', 'sree'] },
   },
-  { primitive_id: 'chara_karaka_read', order: 14, band: 'acharya_floor', args_override: { chara_karaka: 'AmK' } },
-  { primitive_id: 'dhana_yoga_scan', order: 15, band: 'acharya_floor', args_override: { domain: 'wealth' } },
-  { primitive_id: 'nbry_scan', order: 16, band: 'acharya_floor' },
-  { primitive_id: 'wealth_loss_mechanism_scan', order: 17, band: 'acharya_floor', args_override: { domain: 'wealth' } },
-  { primitive_id: 'sudarshana_agreement_check', order: 18, band: 'acharya_floor' },
-  { primitive_id: 'bhavat_bhavam_check', order: 19, band: 'acharya_floor' },
-  { primitive_id: 'nakshatra_semantics', order: 20, band: 'acharya_floor' },
+  { primitive_id: 'chara_karaka_read', order: 15, band: 'acharya_floor', args_override: { chara_karaka: 'AmK' } },
+  { primitive_id: 'dhana_yoga_scan', order: 16, band: 'acharya_floor', args_override: { domain: 'wealth' } },
+  { primitive_id: 'nbry_scan', order: 17, band: 'acharya_floor' },
+  { primitive_id: 'wealth_loss_mechanism_scan', order: 18, band: 'acharya_floor', args_override: { domain: 'wealth' } },
+  { primitive_id: 'sudarshana_agreement_check', order: 19, band: 'acharya_floor' },
+  { primitive_id: 'bhavat_bhavam_check', order: 20, band: 'acharya_floor' },
+  { primitive_id: 'nakshatra_semantics', order: 21, band: 'acharya_floor' },
+  // EL-27 (Elevation Campaign v2.1, Lane I): the flagship wealth floor carries its dhana kāraka's
+  // cross-ayanamsha agreement — a debilitated-vs-friend dignity flip on Jupiter between ayanamshas
+  // is a load-bearing wealth signal the planner previously could not express at all.
+  { primitive_id: 'cross_ayanamsha_variation', order: 22, band: 'acharya_floor', args_override: { point: 'JUPITER' } },
   // P-3b: mechanism_read + statistical_context relocated to the E-7 insight band (elevationTail);
   // lel_retrodiction likewise now arrives via the tail (still a design-§3 atom — present, just re-banded).
-  { primitive_id: 'dasha_spine_lord_capability', order: 21, band: 'machine_band' },
-  { primitive_id: 'taranga_curve', order: 22, band: 'machine_band', args_override: { domain: 'wealth' } },
-  { primitive_id: 'intervention_synthesis', order: 23, band: 'machine_band', args_override: { domain: 'wealth' } },
-  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=wealth; orders 24-32).
-  ...elevationTail('wealth', 24),
+  { primitive_id: 'dasha_spine_lord_capability', order: 23, band: 'machine_band' },
+  { primitive_id: 'taranga_curve', order: 24, band: 'machine_band', args_override: { domain: 'wealth' } },
+  { primitive_id: 'intervention_synthesis', order: 25, band: 'machine_band', args_override: { domain: 'wealth' } },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=wealth; orders 26-34).
+  ...elevationTail('wealth', 26),
 ];
 
 const CAREER_DEEPDIVE_ITEMS: readonly FloorItem[] = [
-  { primitive_id: 'bhava_condition', order: 1, band: 'acharya_floor', args_override: { house: 10 } },
-  { primitive_id: 'bhavesha_condition', order: 2, band: 'acharya_floor', args_override: { house: 10 } },
-  { primitive_id: 'karaka_condition', order: 3, band: 'acharya_floor', args_override: { karaka: 'sun' } },
-  { primitive_id: 'divisional_facts', order: 4, band: 'acharya_floor', args_override: { varga: 'D10' } },
-  { primitive_id: 'divisional_facts', order: 5, band: 'acharya_floor', args_override: { varga: 'D9' } },
-  { primitive_id: 'varga_ratification', order: 6, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D10'] } },
+  // EL-61 / Ω5 (Elevation Campaign v2.1, Stream γ · Lane Ω-planner-wire): the FULL-COVERAGE sweep
+  // leads the career floor exactly as it does wealth — page the WHOLE career slice through the Ω5
+  // gather-then-compose gate FIRST (order 1, hard_floor) before the atom-by-atom reads below.
+  { primitive_id: 'full_domain_dossier', order: 1, band: 'acharya_floor', args_override: { domain: 'career' }, hard_floor: true },
+  { primitive_id: 'bhava_condition', order: 2, band: 'acharya_floor', args_override: { house: 10 } },
+  { primitive_id: 'bhavesha_condition', order: 3, band: 'acharya_floor', args_override: { house: 10 } },
+  { primitive_id: 'karaka_condition', order: 4, band: 'acharya_floor', args_override: { karaka: 'sun' } },
+  { primitive_id: 'divisional_facts', order: 5, band: 'acharya_floor', args_override: { varga: 'D10' } },
+  { primitive_id: 'divisional_facts', order: 6, band: 'acharya_floor', args_override: { varga: 'D9' } },
+  { primitive_id: 'varga_ratification', order: 7, band: 'acharya_floor', args_override: { vargas: ['D1', 'D9', 'D10'] } },
   // §B0.4 mandatory-surface floor-completeness additions (RETRIEVAL_PLANE_ELEVATION_PLAN §R-3.3):
   // brings career to the full §B0.4 tag set held by the flagship wealth floor.
-  { primitive_id: 'chalit_cusp_read', order: 7, band: 'acharya_floor' },
-  { primitive_id: 'bhava_bala_scan', order: 8, band: 'acharya_floor' },
-  { primitive_id: 'ashtakavarga_scan', order: 9, band: 'acharya_floor' },
-  { primitive_id: 'sensitive_degree_check', order: 10, band: 'acharya_floor' },
-  { primitive_id: 'karakamsa_read', order: 11, band: 'acharya_floor' },
-  { primitive_id: 'kp_cusp_sublord_read', order: 12, band: 'acharya_floor' },
-  { primitive_id: 'sudarshana_agreement_check', order: 13, band: 'acharya_floor' },
-  { primitive_id: 'bhavat_bhavam_check', order: 14, band: 'acharya_floor' },
-  { primitive_id: 'dhana_yoga_scan', order: 15, band: 'acharya_floor', args_override: { domain: 'career', family: 'raja' } },
-  { primitive_id: 'nakshatra_semantics', order: 16, band: 'acharya_floor' },
+  { primitive_id: 'chalit_cusp_read', order: 8, band: 'acharya_floor' },
+  { primitive_id: 'bhava_bala_scan', order: 9, band: 'acharya_floor' },
+  { primitive_id: 'ashtakavarga_scan', order: 10, band: 'acharya_floor' },
+  { primitive_id: 'sensitive_degree_check', order: 11, band: 'acharya_floor' },
+  { primitive_id: 'karakamsa_read', order: 12, band: 'acharya_floor' },
+  { primitive_id: 'kp_cusp_sublord_read', order: 13, band: 'acharya_floor' },
+  { primitive_id: 'sudarshana_agreement_check', order: 14, band: 'acharya_floor' },
+  { primitive_id: 'bhavat_bhavam_check', order: 15, band: 'acharya_floor' },
+  { primitive_id: 'dhana_yoga_scan', order: 16, band: 'acharya_floor', args_override: { domain: 'career', family: 'raja' } },
+  { primitive_id: 'nakshatra_semantics', order: 17, band: 'acharya_floor' },
   // VIDHI-PŪRṆATĀ P-3 (F7 career-completeness, 2026-07-23): the Amātyakāraka (AmK) — the Jaimini
   // significator of profession/minister — was absent from the career floor. Data-backed via
   // ganita_condition_get facet=karakas (chara-karaka category, two_pass_verified).
-  { primitive_id: 'chara_karaka_read', order: 17, band: 'acharya_floor', args_override: { chara_karaka: 'AmK' } },
+  { primitive_id: 'chara_karaka_read', order: 18, band: 'acharya_floor', args_override: { chara_karaka: 'AmK' } },
   // P-3b: mechanism_read relocated to the E-7 insight band (elevationTail) — present, re-banded.
-  { primitive_id: 'dasha_spine_lord_capability', order: 18, band: 'machine_band' },
-  { primitive_id: 'taranga_curve', order: 19, band: 'machine_band', args_override: { domain: 'career' } },
-  { primitive_id: 'intervention_synthesis', order: 20, band: 'machine_band', args_override: { domain: 'career' } },
-  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=career; orders 21-29).
-  ...elevationTail('career', 21),
+  { primitive_id: 'dasha_spine_lord_capability', order: 19, band: 'machine_band' },
+  { primitive_id: 'taranga_curve', order: 20, band: 'machine_band', args_override: { domain: 'career' } },
+  { primitive_id: 'intervention_synthesis', order: 21, band: 'machine_band', args_override: { domain: 'career' } },
+  // E-1/E-2/E-5/E-6/E-7 shared elevation tail (domain=career; orders 22-30).
+  ...elevationTail('career', 22),
 ];
 
 const HEALTH_DEEPDIVE_ITEMS: readonly FloorItem[] = [
@@ -935,6 +1012,10 @@ const STRUCTURE_READ_ITEMS: readonly FloorItem[] = [
   { primitive_id: 'shadbala_rank', order: 3, band: 'acharya_floor' },
   { primitive_id: 'chalit_cusp_read', order: 4, band: 'acharya_floor' },
   { primitive_id: 'bhava_bala_scan', order: 5, band: 'acharya_floor' },
+  // EL-27: a structural "show me my D1" read is exactly where ayanamsha sensitivity bites —
+  // a near-cusp graha's house/dignity can flip between ayanamshas. Wire the lagna's cross-
+  // ayanamsha agreement in so the read carries its own ayanamsha_agreement confidence.
+  { primitive_id: 'cross_ayanamsha_variation', order: 6, band: 'acharya_floor', args_override: { point: 'LAGNA' } },
 ];
 
 /** Panoramic-breadth — "unleash my financial potential"-shaped wide sweep, domain-agnostic. */
