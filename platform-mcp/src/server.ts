@@ -117,6 +117,11 @@ import { registerResources } from './resources/index.js'
 import { registerPrompts } from './prompts/index.js'
 // D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (+ capability-version staleness kill)
 import { registerVidhiPlanTool } from './tools/register_vidhi_plan.js'
+// Elevation Campaign v2.1 · Stream γ (PŪRṆA) · Lane Ω5 — dossier: gather-then-compose paging
+// engine with a structural synthesis gate (NATIVE-RULED-001, scoped server.ts exception —
+// registerDossierTool itself lives in tools/dossier.ts, γ's own file; this import+registration
+// is the sole change server.ts needed).
+import { registerDossierTool } from './tools/dossier.js'
 // W6 — prashna_ask: job-handle-first full-loop engine call (Task 7)
 import { registerPrashnaAskTool } from './tools/register_prashna_ask.js'
 // W6 Part 3 — prashna_status: poll a prashna_ask job's progress/final result
@@ -465,6 +470,12 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // S-3: principal threaded through so the M0 entitlement gate (remoteAuthorize) can check
   // the caller against the requested chart_id before compiling a plan (GT-35).
   registerVidhiPlanTool(server, principal)
+
+  // Elevation Campaign v2.1 · Stream γ (PŪRṆA) · Lane Ω5 — dossier(domain, chart_id, budget_kb?,
+  // cursor?): pages a domain's entire TCI/C7-accounted slice under the C1 budget cap, structurally
+  // withholding interpretive surfaces until synthesis_gate reads OPEN. Chart-scoped like the other
+  // per-chart tools above; principal threaded through for remoteAuthorize's entitlement check.
+  registerDossierTool(server, principal)
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
