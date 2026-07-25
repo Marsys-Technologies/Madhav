@@ -1,0 +1,72 @@
+{
+  "artifact": "K2_BENCHMARK_PAIRS",
+  "version": "1.0",
+  "status": "FROZEN — pairs are membership-frozen for the run; wording may only be amended via a\n    dated changelog entry, per B.8 versioning discipline",
+  "lane": "Elevation Campaign v2.1, Stream γ (PŪRṆA), Lane K2 · EL-05, EL-14",
+  "purpose": "Naive-vs-expert benchmark pairs — same underlying astrological topic, asked in\n    maximally-naive lay phrasing vs classically-fluent expert phrasing. Per EL-14 ('product must\n    not depend on answerer intelligence for completeness') and EL-05 (DARPANA S1-01 vs S1-07: a\n    naive wealth query volunteered ~1/5 founding-incident findings vs an expert-phrased twin at\n    5/5, on the IDENTICAL chart). The instrument's depth/quality must not be gated behind knowing\n    what to ask. Run both members of a pair through the SEALED_EVALUATOR_HARNESS_v1_0.md consumer\n    configuration (fresh sub-agent, sealed system prompt) against the SAME chart_id, then diff the\n    two transcripts with evals/k2/benchmark_pairs_runner.ts.",
+  "consumer_config_note": "Reuses SEALED_EVALUATOR_HARNESS_v1_0.md §1 verbatim — no charter text,\n    no EL vocabulary in the system prompt. Only the user's one-turn question text differs between\n    the naive and expert member of a pair.",
+  "flagship_domains": ["wealth", "career"],
+  "pairs": [
+    {
+      "pair_id": "BP-WEALTH-01",
+      "domain": "wealth",
+      "topic": "overall financial potential / dhana yoga",
+      "naive": { "question": "How is my wealth?" },
+      "expert": {
+        "question": "What dhana yogas are firing in my chart, and how do the 2nd- and 11th-lord dispositor chains plus D2/D11 varga placements confirm or complicate them?"
+      },
+      "same_underlying_topic": "the chart's dhana-yoga formation and its 2nd/11th-lord dispositor-chain grounding — EL-05's own founding-incident topic (S1-01/S1-07)."
+    },
+    {
+      "pair_id": "BP-WEALTH-02",
+      "domain": "wealth",
+      "topic": "wealth timing",
+      "naive": { "question": "When will I get rich?" },
+      "expert": {
+        "question": "Which Vimśottarī daśā/bhukti windows activate my dhana yoga, and what do the corresponding gochara triggers show for those windows?"
+      },
+      "same_underlying_topic": "dasha-anchored wealth-activation timing windows."
+    },
+    {
+      "pair_id": "BP-WEALTH-03",
+      "domain": "wealth",
+      "topic": "wealth-loss / risk mechanism",
+      "naive": { "question": "Will I lose money?" },
+      "expert": {
+        "question": "What does my 2nd-house affliction pattern (occupants, aspects, dispositor strength) indicate about wealth-loss risk, and is there a mitigating yoga or remedy?"
+      },
+      "same_underlying_topic": "the H2 wealth-loss mechanism (per reading_notes_get CR-71 for the native chart: exalted Rahu in H2 + 8L Mars full aspect)."
+    },
+    {
+      "pair_id": "BP-CAREER-01",
+      "domain": "career",
+      "topic": "overall career strength / 10th-lord grounding",
+      "naive": { "question": "How is my career?" },
+      "expert": {
+        "question": "What does my 10th lord's placement, dignity, and D10 confirmation indicate about career strength, and which yogas support professional status?"
+      },
+      "same_underlying_topic": "10th-house/10th-lord career-strength grounding, the career-domain analogue of BP-WEALTH-01, per SEALED_EVALUATOR_HARNESS_v1_0.md's career required_concepts list."
+    },
+    {
+      "pair_id": "BP-CAREER-02",
+      "domain": "career",
+      "topic": "career timing",
+      "naive": { "question": "When will I get a promotion?" },
+      "expert": {
+        "question": "Which daśā windows activate my 10th lord or Karakāṁśa significations, and what do the corresponding gochara/transit triggers show for those windows?"
+      },
+      "same_underlying_topic": "dasha-anchored career-activation timing windows, the career-domain analogue of BP-WEALTH-02."
+    },
+    {
+      "pair_id": "BP-CAREER-03",
+      "domain": "career",
+      "topic": "career direction / field fit",
+      "naive": { "question": "What career suits me?" },
+      "expert": {
+        "question": "Given my 10th lord, Karakāṁśa, and the planet with the strongest shadbala aspecting my 10th house, what professional domains are classically indicated?"
+      },
+      "same_underlying_topic": "karaka-driven career-field indication."
+    }
+  ],
+  "grading_note": "evals/k2/benchmark_pairs_runner.ts grades each member with\n    evals/k2/consumption_grader.ts (consumption_ratio + volunteered_findings_count) and reports\n    the naive→expert DELTA per pair — the direct, reusable instrument for Darpana §8's\n    'naive-vs-expert gap' pattern read (UAT_DARPANA_DESIGN_v1_0.md §8 item 5), now runnable\n    against ANY future battery execution, not just the one-off S1-01/S1-07 comparison EL-05 was\n    built from."
+}

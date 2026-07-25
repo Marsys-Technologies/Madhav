@@ -1,0 +1,10 @@
+{
+  "_note": "SMOKE-TEST manifest only — proves benchmark_pairs_runner.ts's grading/delta mechanics work end to end. Only BP-WEALTH-01 has a captured (synthetic) run; every other pair is honestly reported not_yet_run. A real benchmark execution needs fresh sealed-harness sub-agent runs per SEALED_EVALUATOR_HARNESS_v1_0.md §1, not this fixture.",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "runs": {
+    "BP-WEALTH-01": {
+      "naive": { "transcript": "evals/k2/__fixtures__/wealth_smoke.transcript.json" },
+      "expert": { "transcript": "evals/k2/__fixtures__/wealth_expert_smoke.transcript.json" }
+    }
+  }
+}

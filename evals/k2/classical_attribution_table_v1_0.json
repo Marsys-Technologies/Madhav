@@ -1,0 +1,227 @@
+{
+  "artifact": "CLASSICAL_ATTRIBUTION_TABLE",
+  "version": "1.0",
+  "status": "CURRENT",
+  "lane": "Elevation Campaign v2.1, Stream γ (PŪRṆA), Lane K2 · EL-09",
+  "purpose": "~20 core classical Jyotish attributions, checked over served prose. Bounded to the\n    ELEVATION_REGISTER's own documented instances (EL-09: Sun/Moon karakatva swap, Sade-Sati\n    phase inversion, 9th-house over-read, lay house-glosses) plus well-known classical\n    misattribution classes of comparable severity — NOT an exhaustive dogmatics table. Each entry\n    is checked by evals/k2/classical_attribution_checker.ts, a pattern-style scan over served\n    prose (not a chart-fact verifier — this table is about CLASSICAL CORRECTNESS of general\n    astrological claims, independent of any specific chart).",
+  "entries": [
+    {
+      "id": "ATTR-01",
+      "claim_family": "naisargika karaka — Sun vs Moon",
+      "wrong_patterns": [
+        "\\bMoon\\b[^.\\n]{0,50}\\b(is|as)\\b[^.\\n]{0,20}\\b(your |the )?(soul|ātmakāraka|atmakaraka)\\b",
+        "\\bMoon\\b[^.\\n]{0,40}\\bsoul[- ]?(indicator|significator|karaka)\\b",
+        "\\bSun\\b[^.\\n]{0,40}\\b(is|as)\\b[^.\\n]{0,20}\\b(your |the )?mind\\b"
+      ],
+      "correct_attribution": "Sun = naisargika ātmakāraka (soul/self-significator). Moon = manas karaka (mind, emotions, mother) — NOT the soul.",
+      "classical_basis": "BPHS Ch.3, naisargika (natural) karaka scheme.",
+      "severity": "T",
+      "note": "This is EL-09's own cited instance (S1-06, S2-03: 'Moon repeatedly called soul-indicator')."
+    },
+    {
+      "id": "ATTR-02",
+      "claim_family": "Jupiter karakatva — wisdom/dharma, not direct wealth",
+      "wrong_patterns": [
+        "\\bJupiter\\b[^.\\n]{0,40}\\b(the )?(wealth|money|riches|dhana)[- ]?(karaka|significator|planet)\\b",
+        "\\bJupiter\\b[^.\\n]{0,30}\\bgoverns?\\b[^.\\n]{0,20}\\byour wealth\\b"
+      ],
+      "correct_attribution": "Jupiter is karaka for jñāna/dharma/guru (wisdom, higher learning, dharma) and putra (children) — not the direct/primary dhana (wealth) karaka. Wealth is governed by the 2nd/11th-lord combinations (dhana yogas), not by Jupiter's naisargika karakatva.",
+      "classical_basis": "BPHS Ch.3; dhana yoga doctrine is bhāva-lord (house-lord) based, not naisargika-karaka based.",
+      "severity": "V",
+      "note": "Charter's own cited example (ELEVATION_CAMPAIGN_CHARTER_v2_1.md §γ.K2: 'Jupiter = guru/wisdom not wealth directly')."
+    },
+    {
+      "id": "ATTR-03",
+      "claim_family": "Mars karakatva — siblings/courage, not general marriage",
+      "wrong_patterns": [
+        "\\bMars\\b[^.\\n]{0,40}\\b(marriage|spouse)[- ]?(karaka|significator)\\b",
+        "\\bMars\\b[^.\\n]{0,30}\\bgoverns?\\b[^.\\n]{0,20}\\byour marriage\\b"
+      ],
+      "correct_attribution": "Mars is karaka for bhrātṛ (siblings), parākrama (courage/valor), and land; it is NOT the general karaka for marriage. Mars's marital relevance is specific to Kuja/Maṅgal Doṣa affliction (see ATTR-19), not general marriage karakatva — that role belongs to Venus / the 7th lord / Jupiter (for a female native).",
+      "classical_basis": "BPHS Ch.3 naisargika karakas; Kuja Doṣa as a distinct, bounded doctrine.",
+      "severity": "V"
+    },
+    {
+      "id": "ATTR-04",
+      "claim_family": "Mercury karakatva — speech/intellect, not siblings",
+      "wrong_patterns": [
+        "\\bMercury\\b[^.\\n]{0,40}\\bsiblings?[- ]?(karaka|significator)\\b",
+        "\\bMercury\\b[^.\\n]{0,30}\\bgoverns?\\b[^.\\n]{0,15}\\byour (brother|sister|siblings)\\b"
+      ],
+      "correct_attribution": "Mercury is karaka for vidyā/buddhi (speech, intellect, commerce) — the karaka for siblings is Mars, not Mercury.",
+      "classical_basis": "BPHS Ch.3.",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-05",
+      "claim_family": "Venus karakatva — spouse/bhoga, not \"the wealth planet\"",
+      "wrong_patterns": [
+        "\\bVenus\\b[^.\\n]{0,30}\\b(the )?(planet|karaka|significator) of wealth\\b",
+        "\\bVenus\\b[^.\\n]{0,30}\\bis\\b[^.\\n]{0,15}\\bthe wealth planet\\b"
+      ],
+      "correct_attribution": "Venus is karaka for kalātra (spouse, for a male native primarily) and bhoga (comforts, luxury, vehicles, arts) — not interchangeable with 'the wealth planet.' Dhana yogas are 2nd/11th-lord combinations; Venus's link to material life is via bhoga/enjoyment, not direct dhana karakatva.",
+      "classical_basis": "BPHS Ch.3.",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-06",
+      "claim_family": "Saturn — not a uniform malefic",
+      "wrong_patterns": [
+        "\\bSaturn\\b[^.\\n]{0,30}\\b(is )?(always|purely|only|simply)\\b[^.\\n]{0,15}\\b(malefic|bad|unlucky|inauspicious)\\b"
+      ],
+      "correct_attribution": "Saturn well-placed (e.g. exalted/own-sign in a kendra, forming Śaśa Yoga — one of the Pañca Mahāpuruṣa Yogas) confers status, discipline, and durable material gains. Treating Saturn as uniformly malefic ignores this well-established classical exception.",
+      "classical_basis": "BPHS Pañca Mahāpuruṣa Yoga doctrine (Śaśa Yoga).",
+      "severity": "V"
+    },
+    {
+      "id": "ATTR-07",
+      "claim_family": "3rd house — parākrama, not siblings-only",
+      "wrong_patterns": [
+        "\\b3rd house\\b[^.\\n]{0,20}\\b(is|=|means)\\b[^.\\n]{0,15}\\bsiblings\\b(?![^.\\n]{0,60}\\b(courage|valor|valour|parākrama|parakrama|effort)\\b)"
+      ],
+      "correct_attribution": "The 3rd house's classical core signification is parākrama (courage, self-effort, valor) — siblings (specifically younger siblings) is ONE signification among several (short journeys, communication, skill/display), not the whole house. Reducing it to 'siblings' under-reads it.",
+      "classical_basis": "Classical bhāva doctrine (BPHS bhāva chapters).",
+      "severity": "C",
+      "note": "Cited by the charter as a 'lay gloss' pattern (ELEVATION_REGISTER_v1_0.md EL-09)."
+    },
+    {
+      "id": "ATTR-08",
+      "claim_family": "9th house — bhāgya, not literal \"income channel\"",
+      "wrong_patterns": [
+        "\\b9th house\\b[^.\\n]{0,40}\\bincome\\b",
+        "\\bninth house\\b[^.\\n]{0,40}\\bincome\\b"
+      ],
+      "correct_attribution": "The 9th house governs bhāgya (fortune), dharma, father, guru, and long journeys/pilgrimage — it is NOT a direct 'income channel.' Income streams are governed primarily by the 2nd house (accumulated wealth) and 11th house (gains), with the 10th for profession-derived income; the 9th's link to prosperity is via bhāgya (fortune), not literal cash flow.",
+      "classical_basis": "Classical bhāva doctrine.",
+      "severity": "V",
+      "note": "EL-09's own cited instance: '9th-house income channel over-read (S1-01)'."
+    },
+    {
+      "id": "ATTR-09",
+      "claim_family": "Kemadruma Yoga cancellation conditions",
+      "wrong_patterns": [
+        "\\bKemadruma\\b[^.\\n]{0,60}\\bcancel(led|s|lation)?\\b[^.\\n]{0,60}\\b(any planet|some planet|a planet)\\b(?![^.\\n]{0,40}\\b(kendra|2nd|12th|sunapha|anapha|durudhara)\\b)"
+      ],
+      "correct_attribution": "Kemadruma Yoga cancellation requires SPECIFIC conditions: planets in kendra from the Moon or Lagna that are not debilitated/combust, OR the Moon itself forming Sunāpha/Anāpha/Durudharā (occupied 2nd and/or 12th from Moon) — not cancellation by the generic presence of 'some other planet in the chart.'",
+      "classical_basis": "BPHS Kemadruma Yoga chapter + Sunāpha/Anāpha/Durudharā doctrine.",
+      "severity": "V",
+      "note": "The native chart's own reading-notes get this right: 'Anapha Yoga genuinely fires ... Kemadruma is FALSE' (reading_notes_get, CR-80) — the wrong-pattern here targets a LOOSER, unsupported cancellation claim."
+    },
+    {
+      "id": "ATTR-10",
+      "claim_family": "Sade-Sati phase structure — the peak is NOT easing",
+      "wrong_patterns": [
+        "\\b(peak|second phase|middle phase)\\b[^.\\n]{0,60}\\bSade[- ]?Sati\\b[^.\\n]{0,40}\\b(easing|tail|winding down|lessening|calming)\\b",
+        "\\bSade[- ]?Sati\\b[^.\\n]{0,60}\\b(tail|easing)\\b[^.\\n]{0,60}\\b(peak|over (the |your )?(natal )?Moon|Janma Rashi)\\b"
+      ],
+      "correct_attribution": "Sade-Sati's three phases are: rising (Saturn transiting the 12th-from-Moon), PEAK (Saturn transiting the natal Moon sign / Janma Rāśi — maximum intensity), and setting (Saturn transiting the 2nd-from-Moon). The peak phase is the period of MAXIMUM intensity, never 'tail' or 'easing' — calling it that inverts the classical structure.",
+      "classical_basis": "Classical Sade-Sati (Śani-Sāḍesātī) transit doctrine.",
+      "severity": "T",
+      "note": "EL-09's own cited instance, S4-06: 'Sade-Sati 2023 called tail/easing when it was Janma-Shani peak.'"
+    },
+    {
+      "id": "ATTR-11",
+      "claim_family": "Rahu/Ketu — chāyā graha, not Parāśari sign-lords",
+      "wrong_patterns": [
+        "\\bRahu\\b[^.\\n]{0,20}\\brules?\\b[^.\\n]{0,20}\\bAquarius\\b(?![^.\\n]{0,60}\\b(Jaimini|alternate|some traditions?|certain systems?)\\b)",
+        "\\bKetu\\b[^.\\n]{0,20}\\brules?\\b[^.\\n]{0,20}\\bScorpio\\b(?![^.\\n]{0,60}\\b(Jaimini|alternate|some traditions?|certain systems?)\\b)"
+      ],
+      "correct_attribution": "Rahu and Ketu are chāyā grahas (shadow points / lunar nodes), not physical grahas with their own rāśi rulership in the baseline Parāśari system. 'Rahu rules Aquarius' / 'Ketu rules Scorpio' is a Jaimini/alternate-system claim (co-lordship), not a Parāśari-system fact — it should be labelled as such, not stated as flat baseline fact.",
+      "classical_basis": "Parāśari vs Jaimini system distinction; BPHS graha chapters (7 classical grahas own the 12 signs) vs Jaimini co-lordship convention.",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-12",
+      "claim_family": "Ketu — not purely malefic",
+      "wrong_patterns": [
+        "\\bKetu\\b[^.\\n]{0,30}\\b(is )?(just|purely|only|simply) a malefic\\b",
+        "\\bKetu\\b[^.\\n]{0,30}\\b(is )?(always|purely) negative\\b"
+      ],
+      "correct_attribution": "Ketu is karaka for mokṣa (liberation), vairāgya (detachment), and past-life karma — traditionally described as sharing qualities with Jupiter ('headless Jupiter,' per the Puranic Samudra-Manthan imagery). Reducing Ketu to 'just a malefic' drops its spiritual karakatva entirely.",
+      "classical_basis": "Traditional Jyotish commentary on the chāyā grahas' spiritual significations.",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-13",
+      "claim_family": "Neecha-Bhaṅga (debilitation-cancellation) requires specific conditions",
+      "wrong_patterns": [
+        "\\bneecha[- ]?bhanga\\b[^.\\n]{0,60}\\baspected by\\b[^.\\n]{0,20}\\b(a |any )benefic\\b(?![^.\\n]{0,60}\\b(dispositor|exaltation|kendra)\\b)",
+        "\\bdebilitat(ed|ion)\\b[^.\\n]{0,40}\\bcancell?ed\\b[^.\\n]{0,40}\\bbenefic aspect\\b(?![^.\\n]{0,60}\\b(dispositor|exaltation|kendra)\\b)"
+      ],
+      "correct_attribution": "Neecha-Bhaṅga (debilitation-cancellation) requires SPECIFIC classical conditions — e.g. the dispositor of the debilitated planet's sign is in a kendra from Lagna/Moon, or the debilitated planet's exaltation-lord is likewise well-placed — not simple 'aspected by any benefic.'",
+      "classical_basis": "BPHS Neecha-Bhaṅga Rāja Yoga chapter.",
+      "severity": "V",
+      "note": "The native chart's own reading-notes correctly ground this: 'both debilities carry NBRY grounds' (CR-71) — the wrong-pattern targets the looser, unsupported claim."
+    },
+    {
+      "id": "ATTR-14",
+      "claim_family": "Daśā system must be named, not generic",
+      "wrong_patterns": [
+        "\\byour dasha\\b(?![^.\\n]{0,40}\\b(vimśottarī|vimshottari|yogini|chara|kalachakra|ashtottari|narayana)\\b)[^.\\n]{0,60}\\b(shows?|indicates?|activates?)\\b"
+      ],
+      "correct_attribution": "Every daśā (mahādaśā/bhukti) claim must name WHICH system produced it (Vimśottarī, Yogini, Chara, Aṣṭottarī, etc.) — Vimśottarī is the default in most modern practice but is not the only system, and presenting a result as generic unnamed \"your dasha\" is a precision-class error (conflating systems, or hiding which one is actually in play).",
+      "classical_basis": "Multiple parallel daśā systems coexist classically (BPHS + Jaimini + regional traditions); DR-14 in this codebase already tracks 'dasha systems beyond Vimśottarī.'",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-15",
+      "claim_family": "Arudha Lagna — perception, not literal circumstance",
+      "wrong_patterns": [
+        "\\bArudha Lagna\\b[^.\\n]{0,60}\\b(actually|literally|really) (is|means|shows)\\b"
+      ],
+      "correct_attribution": "Arudha Lagna (AL) reflects how the native's material circumstances APPEAR to others (perception/public image) — the literal, actual circumstances are the Lagna's domain. Treating Arudha Lagna results as literal fact rather than 'perceived image' misapplies Jaimini theory.",
+      "classical_basis": "Jaimini Sūtras, Arudha Pada doctrine.",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-16",
+      "claim_family": "Ashtakavarga bindus — a strength overlay, not a standalone yoga",
+      "wrong_patterns": [
+        "\\b\\d+ bindus?\\b[^.\\n]{0,30}\\b(is|=|means)\\b[^.\\n]{0,20}\\b(a |the )?(wealth |career |marriage )?yoga\\b"
+      ],
+      "correct_attribution": "Ashtakavarga bindus are a STRENGTH-modifying overlay used to assess transit/daśā results against an existing rāśi/graha-based structure — they do not, by themselves, form a 'yoga.' A bindu count alone (e.g. '8 bindus in the 2nd house') is not a substitute for an actual rāśi-chart or varga-chart yoga.",
+      "classical_basis": "BPHS Ashtakavarga chapters — an auxiliary strength system, not a yoga-forming mechanism.",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-17",
+      "claim_family": "Combustion (astāṅgata) — planet-specific orbs, not a uniform threshold",
+      "wrong_patterns": [
+        "\\bcombust\\b[^.\\n]{0,40}\\b(within|closer than|less than)\\b[^.\\n]{0,10}\\b(1|one) degree\\b(?![^.\\n]{0,40}\\bMercury\\b)"
+      ],
+      "correct_attribution": "Classical combustion (astāṅgata) orb thresholds are PLANET-SPECIFIC, not a single uniform degree value across all grahas — approximate classical figures (sources vary slightly): Moon ~12°, Mars ~17°, Mercury ~14° (tighter, ~12°, retrograde), Jupiter ~11°, Venus ~10° (tighter, ~8°, retrograde), Saturn ~15°. Treating 'close to the Sun' as one fixed threshold for every planet is a precision-class error.",
+      "classical_basis": "Classical astāṅgata (combustion) tables; exact orb values vary slightly by source text.",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-18",
+      "claim_family": "Vargottama — specifically the D1↔D9 relationship",
+      "wrong_patterns": [
+        "\\bvargottama\\b[^.\\n]{0,80}\\bD(1|10|12|3|4|6|7)\\b[^.\\n]{0,20}\\band\\b[^.\\n]{0,20}\\bD(1|10|12|3|4|6|7)\\b(?![^.\\n]{0,20}\\bD9\\b)"
+      ],
+      "correct_attribution": "Vargottama specifically refers to a planet or lagna occupying the SAME sign in both D1 (rāśi) and D9 (navāṁśa) — not the same sign repeating across any two arbitrary divisional charts. Calling a planet 'vargottama' for repeating a sign in, say, D1 and D10, misapplies the term.",
+      "classical_basis": "Classical varga doctrine; navāṁśa (D9) is the chart vargottama is specifically defined against.",
+      "severity": "C"
+    },
+    {
+      "id": "ATTR-19",
+      "claim_family": "Kuja/Maṅgal Doṣa — house-and-aspect specific, not \"Mars anywhere\"",
+      "wrong_patterns": [
+        "\\b(manglik|mangal dosha|kuja dosha)\\b[^.\\n]{0,40}\\bMars\\b[^.\\n]{0,20}\\banywhere in\\b"
+      ],
+      "correct_attribution": "Kuja/Maṅgal Doṣa is HOUSE-AND-ASPECT specific — classically assessed from Mars's placement in the 1st, 2nd, 4th, 7th, 8th, or 12th house from Lagna (and, in several regional traditions, cross-checked from the Moon and Venus too), not 'Mars anywhere in the chart.'",
+      "classical_basis": "Classical Kuja Doṣa doctrine (house-specific formulation; regional traditions add Moon/Venus cross-checks).",
+      "severity": "V"
+    },
+    {
+      "id": "ATTR-20",
+      "claim_family": "Gaja-Kesari Yoga — Jupiter in KENDRA from Moon, not just \"strong\" or loosely related",
+      "wrong_patterns": [
+        "\\bGaja[- ]?Kesari\\b[^.\\n]{0,60}\\b(both|Moon and Jupiter)[^.\\n]{0,30}\\b(strong|well-placed)\\b(?![^.\\n]{0,40}\\bkendra\\b)"
+      ],
+      "correct_attribution": "Gaja-Kesari Yoga classically forms when Jupiter occupies a KENDRA (1st, 4th, 7th, or 10th) from the Moon — not merely whenever 'Moon and Jupiter are both strong' or vaguely well-disposed. Conjunction (kendra distance zero) is the most cited case but not the only qualifying kendra relationship.",
+      "classical_basis": "BPHS Gaja-Kesari Yoga definition (kendra from Moon).",
+      "severity": "C"
+    }
+  ]
+}
