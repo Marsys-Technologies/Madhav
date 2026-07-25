@@ -54,6 +54,7 @@ import { query } from '@/lib/db/client'
 import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME, type HouseNumber } from '@/lib/retrieval/address_resolver'
 import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 import { PANCHANGA_CATEGORIES } from './L1_ganita/get_panchanga'
+import { resolveConceptWithLiveFallback, liveFactCategories, noConceptMatchNote } from './L1_ganita/resolve_concept'
 
 // Category-alias resolution (chart_facts_query category filter): bare umbrella terms that do
 // not themselves exist as a fact_category but have an obvious real-category family behind them.
@@ -1341,6 +1342,79 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
               ? `Capped at ${DIVISIONAL_FACTS_CAP} of ${dvTotal} rows; narrow with category= to reach the rest.`
               : '',
           ].filter(Boolean).join(' '),
+        }
+      }
+
+      // ── SATYA-ŚEṢA W1 (SATYA_SHESHA_BRIEF_v1_0.md §2 W1) — no bare empties ──────────────
+      // UAT-DARPANA S4-03: `ganita_chart_facts_get(keyword="gulika")` returned a bare
+      // `{facts: [], total: 0}` (the `keyword` filter only ILIKEs fact_key/fact_value_text —
+      // it never searches fact_category, and GULIKA lives under category
+      // `sensitive_point_gulika_mandi`). The answering LLM then asserted, in self-branded
+      // "honest" language, that Gulika "isn't in your computed chart data." It IS there. The
+      // bug was never the LLM's synthesis — it was that this serving layer returned a bare,
+      // contextless empty with no signal that a resolvable alias exists.
+      //
+      // `total` (the disclosed-pagination true count over the WHOLE matching set, not just
+      // this page — see the WP-1.3(f)/LCA-3-EXT comment above) is the honest empty signal:
+      // total===0 means zero facts matched this filter set anywhere in the chart, not merely
+      // that this page came up short. When that happens, every response now carries:
+      //   - `empty_reason`: exactly what was searched, over what universe/filter.
+      //   - `resolver_suggestion`: the top concept-resolver match for the query term (alias
+      //     table first, then a live fact_category substring fallback — same two-pass logic
+      //     `concept_locate` uses), so a caller can retry with the real category instead of
+      //     concluding "there is nothing".
+      // Never fabricated: if the resolver ALSO has no match, `resolver_suggestion` is `null`
+      // and the note says so explicitly — that IS the honest empty (B.10).
+      if (total === 0) {
+        const appliedFilters: string[] = []
+        if (categoriesRaw) appliedFilters.push(`category="${categoriesRaw}"`)
+        if (args['keyword']) appliedFilters.push(`keyword="${String(args['keyword'])}"`)
+        if (args['planet']) appliedFilters.push(`planet="${String(args['planet'])}"`)
+        if (typeof args['house'] === 'number') appliedFilters.push(`house=${args['house']}`)
+        if (args['sign']) appliedFilters.push(`sign="${String(args['sign'])}"`)
+        if (args['nakshatra']) appliedFilters.push(`nakshatra="${String(args['nakshatra'])}"`)
+        if (args['divisional_chart']) appliedFilters.push(`divisional_chart="${String(args['divisional_chart'])}"`)
+        if (args['fact_subject']) appliedFilters.push(`fact_subject="${String(args['fact_subject'])}"`)
+        if (args['about'] != null) appliedFilters.push(`about=${JSON.stringify(args['about'])}`)
+
+        content['empty_reason'] = appliedFilters.length > 0
+          ? `No chart_facts rows matched ${appliedFilters.join(' AND ')} for chart_id=${chart_id}, ` +
+            `ayanamsha_id=${ayanamsha_id} (searched the whole chart_facts table — this is the true ` +
+            `total over every matching subject, not just this page).`
+          : `No chart_facts rows exist for chart_id=${chart_id}, ayanamsha_id=${ayanamsha_id} — no ` +
+            `filters were applied, which would mean the chart itself has zero stored facts. Worth ` +
+            `flagging independently of any single query.`
+
+        // Resolve against the term a caller most plausibly typed with resolvable intent —
+        // prefer the free-text `keyword` (the most naive/S4-03-shaped guess), then a supplied
+        // category (may itself be a wrong/guessed name — exactly concept_locate's job to
+        // correct), then the other subject-selecting filters.
+        const resolverTerm =
+          (args['keyword'] as string | undefined) ||
+          categoriesRaw ||
+          (args['planet'] as string | undefined) ||
+          (args['sign'] as string | undefined) ||
+          (args['nakshatra'] as string | undefined) ||
+          (args['fact_subject'] as string | undefined) ||
+          null
+
+        if (resolverTerm) {
+          const suggestion = await resolveConceptWithLiveFallback(resolverTerm, chart_id)
+          if (suggestion) {
+            content['resolver_suggestion'] = suggestion
+          } else {
+            // Genuine MISS on BOTH resolver passes — never fabricate a pointer. This IS the
+            // honest empty (SATYA_SHESHA_BRIEF §2 W1: "if the resolver has no match, say 'no
+            // concept match either'").
+            const liveCategories = await liveFactCategories(chart_id)
+            content['resolver_suggestion'] = null
+            content['resolver_suggestion_note'] = noConceptMatchNote(resolverTerm, chart_id, liveCategories.length)
+          }
+        } else {
+          content['resolver_suggestion'] = null
+          content['resolver_suggestion_note'] = `No free-text term to resolve (only positional filters — ` +
+            `house/divisional_chart/about — were supplied, all of which are structurally valid; a zero ` +
+            `result here means no facts exist under that exact address, not that the address is unknown).`
         }
       }
 

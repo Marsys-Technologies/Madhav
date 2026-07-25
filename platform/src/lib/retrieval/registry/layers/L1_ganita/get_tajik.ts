@@ -130,32 +130,45 @@ export const getTajikCapability: CapabilityDescriptor = {
         varshaRows = (vResult.rows ?? []).map(r => ({ ...r, _source_table: 'l1_tajik_varsha_year_lords' }))
       }
 
-      return {
-        content: {
-          chart_id: chartId,
-          chart_facts_categories: TAJIK_CF_CATEGORIES,
-          hadda_lord_facts: {
-            rows: haddaRows,
-            offset, limit,
-            total: haddaTotal,
-            returned_count: haddaRows.length,
-          },
-          varsha_year_lords: {
-            rows: varshaRows,
-            offset, limit,
-            total: varshaTotal,
-            returned_count: varshaRows.length,
-            varsha_year_filter: args.varsha_year ?? null,
-          },
-          // Deprecated combined view — retained for byte-for-byte back-compat with
-          // callers reading `rows`/`total` directly, but now an HONEST concatenation of
-          // the two SEPARATELY-paginated sections above (never a source of the flip-flop
-          // bug R-25 documented: each section's own total is now correct and stable).
-          rows: [...haddaRows, ...varshaRows],
-          total: haddaTotal + varshaTotal,
+      const content: Record<string, unknown> = {
+        chart_id: chartId,
+        chart_facts_categories: TAJIK_CF_CATEGORIES,
+        hadda_lord_facts: {
+          rows: haddaRows,
+          offset, limit,
+          total: haddaTotal,
+          returned_count: haddaRows.length,
         },
-        is_error: false,
+        varsha_year_lords: {
+          rows: varshaRows,
+          offset, limit,
+          total: varshaTotal,
+          returned_count: varshaRows.length,
+          varsha_year_filter: args.varsha_year ?? null,
+        },
+        // Deprecated combined view — retained for byte-for-byte back-compat with
+        // callers reading `rows`/`total` directly, but now an HONEST concatenation of
+        // the two SEPARATELY-paginated sections above (never a source of the flip-flop
+        // bug R-25 documented: each section's own total is now correct and stable).
+        rows: [...haddaRows, ...varshaRows],
+        total: haddaTotal + varshaTotal,
       }
+
+      // SATYA-ŚEṢA W1 (sibling sweep off chart_facts_query's own fix; SATYA_SHESHA_BRIEF_v1_0.md
+      // §2 W1): a bare {rows: [], total: 0} here has no free-text term to run through the
+      // concept resolver (this tool's categories are fixed, not caller-guessed), so the honest
+      // fix is disclosure, not a resolver_suggestion — exactly what was searched, over what
+      // universe, so a caller cannot silently read "no rows" as "Tajik data doesn't exist".
+      if (haddaTotal === 0 && varshaTotal === 0) {
+        content['empty_reason'] = `No chart_facts rows under fact_category IN (${TAJIK_CF_CATEGORIES.map(c => `"${c}"`).join(', ')}) ` +
+          `and no l1_tajik_varsha_year_lords rows, for chart_id=${chartId}` +
+          (args.ayanamsha_id ? `, ayanamsha_id=${String(args.ayanamsha_id)}` : '') +
+          (args.varsha_year != null ? `, varsha_year=${String(args.varsha_year)}` : '') +
+          `. Searched the whole matching set (true totals, not just this page) — Tajika/Varshaphal ` +
+          `has genuinely not been computed/stored for this chart+filter combination.`
+      }
+
+      return { content, is_error: false }
     } catch (err) {
       return { content: String(err), is_error: true }
     }

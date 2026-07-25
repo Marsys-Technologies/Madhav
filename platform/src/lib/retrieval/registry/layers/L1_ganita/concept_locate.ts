@@ -11,6 +11,15 @@
  * such a claim should call this capability (or its MCP-facing `concept_locate` tool) first
  * and cite the miss — see `empty_reason` below, which names exactly what was checked
  * (N seed aliases + M live fact_category values) rather than asserting absence unconditionally.
+ *
+ * SATYA-ŚEṢA W1 (SATYA_SHESHA_BRIEF_v1_0.md §2): the same two-pass resolution logic (seed
+ * alias table, then live fact_category substring fallback) is now ALSO available as a shared,
+ * chart-scoped function in `resolve_concept.ts` (`resolveConceptWithLiveFallback`), so
+ * `chart_facts_query` and sibling query-shaped tools can build the SAME honest
+ * `resolver_suggestion` on a bare empty. This handler's own response shape is left exactly as
+ * it was (byte-for-byte) to avoid any regression on an already-verified-live tool — it is not
+ * refactored to delegate, deliberately, to keep this change zero-risk to concept_locate's
+ * existing callers/tests.
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'

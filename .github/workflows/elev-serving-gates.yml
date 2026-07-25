@@ -1,6 +1,6 @@
 name: Elevation Campaign — Serving Gates (Stream α / SATYA, Lane K1)
 
-# α's (SATYA) K1 CI gate battery — platform/scripts/census/elev_gates/**. Three gates so far:
+# α's (SATYA) K1 CI gate battery — platform/scripts/census/elev_gates/**. Gates so far:
 #   - smoke_gate.ts          — every registered MCP tool called; fails on HTTP >=500 or a hang.
 #   - budget_census_gate.ts  — every tool's worst-case response measured against its declared
 #                              MCP_RESPONSE_BUDGET_KB ceiling (registry_bridge.ts).
@@ -12,6 +12,12 @@ name: Elevation Campaign — Serving Gates (Stream α / SATYA, Lane K1)
 #                              phrasing not backed by a resolver-miss code path nearby. Pure
 #                              source-tree scan, no MCP calls — report-only (WARN) by default;
 #                              ABSENCE_LINT_STRICT=true upgrades ungrounded candidates to FAIL.
+#   - w1_bare_empty_census_gate.ts — SATYA-ŚEṢA W1 (SATYA_SHESHA_BRIEF_v1_0.md §2 W1). Probes
+#                              all 46 Phase-0.7-census concepts by their naive English/Sanskrit
+#                              name against chart_facts_query's `keyword` filter (the S4-03
+#                              front door); FAILS the build on any bare empty (no rows AND no
+#                              resolver_suggestion). ADDITIVE — does not gate or modify any
+#                              pre-existing job in this workflow.
 #
 # Each script runs in TWO modes, matching the codebase's TAP-9 discipline ("an absent oracle
 # must be declared, never silently passed" — see tap-ci.yml's header for the same doctrine):
@@ -103,6 +109,25 @@ jobs:
       - name: absence_lint_gate — ontological-absence phrasing candidates (WARN, non-blocking)
         run: npx tsx scripts/census/elev_gates/absence_lint_gate.ts
 
+  w1-bare-empty-census-gate-plan:
+    # SATYA-ŚEṢA W1 (SATYA_SHESHA_BRIEF_v1_0.md §2 W1) — ADDITIVE job; does not touch or gate
+    # any pre-existing job above.
+    name: W1 — bare_empty_census_gate (PLAN mode)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: w1_bare_empty_census_gate — static 46-concept census validation + call plan (no live calls)
+        run: npx tsx scripts/census/elev_gates/w1_bare_empty_census_gate.ts
+
   serving-gates-live:
     # D-2 Lane V-0 precedent (ci.yml's census-battery job): a live-estate check against the
     # deployed connector is workflow_dispatch-only and self-skips (exit 0, not a fabricated
@@ -121,15 +146,19 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-      - name: K1 gates — smoke + budget-census + receipt (LIVE, paced)
+      - name: K1 + W1 gates — smoke + budget-census + receipt + bare-empty-census (LIVE, paced)
         env:
           MCP_SERVER_URL: ${{ secrets.MARSYS_MCP_URL }}
           MCP_BEARER: ${{ secrets.MARSYS_MCP_KEY }}
         run: |
           if [ -z "$MCP_SERVER_URL" ]; then
-            echo "MARSYS_MCP_URL secret not configured — skipping the live K1 gate battery (never a fabricated pass)." >&2
+            echo "MARSYS_MCP_URL secret not configured — skipping the live K1/W1 gate battery (never a fabricated pass)." >&2
             exit 0
           fi
           npx tsx scripts/census/elev_gates/smoke_gate.ts
           npx tsx scripts/census/elev_gates/budget_census_gate.ts
           npx tsx scripts/census/elev_gates/receipt_gate.ts
+          # SATYA-ŚEṢA W1 (SATYA_SHESHA_BRIEF_v1_0.md §2 W1) — ADDITIVE: 46-concept bare-empty
+          # census against BOTH canonical charts. A bare empty here fails this job (and the
+          # build), same discipline as the pre-existing K1 gates above.
+          npx tsx scripts/census/elev_gates/w1_bare_empty_census_gate.ts
