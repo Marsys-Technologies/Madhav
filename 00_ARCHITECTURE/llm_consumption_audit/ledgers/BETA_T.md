@@ -163,6 +163,21 @@ reach completion from this session's start state.
 (depends on actual throughput, which varies run to run — 4.1 vs 4.65 min/substep spans a real
 range).
 
+**ADDENDUM (Stream-Conductor, 2026-07-25, post-lane-close) — sweep now genuinely complete.**
+The autonomous Cloud Run dispatch this lane started continued running independently after this
+lane's own turn ended, per its own design (state advances via `build_substep_progress`
+regardless of session liveness). Live-verified directly against prod via read-only SQL:
+`build_runs` row `60954f5a-370e-43e0-b6e2-ca58a7d513b3` (`asset_id/current_asset_id =
+ka_gochara_sweep`, `chart_id = 482012f1-…`) shows `state = 'completed'`, `ended_at =
+2026-07-25T15:27:58Z`. `build_substep_progress` for the same (asset_id, chart_id) now shows
+**303/303 substep rows, 8465 total rows_written** — matching this ledger's own stated target
+exactly (303 = 86 + 44 + 44 × the T-2 correct-span replan, as derived above). **Disposition
+updated: `VERIFIED-CLOSED`** (live state + row-count target match; superseding the
+session-end `PARKED-HONEST` above, which was accurate at the time it was written). This also
+means EL-15 ("Tell me when" S3 queries) now has a complete, non-stale gochara substrate to
+re-run against — the S3 re-run itself remains native-attended/out of scope per this lane's
+original brief, but the blocking data gap it was waiting on is gone.
+
 ---
 
 ## EL-17 — CR-66 (phala domain anchors) + CR-37 (activation dating) re-verification
