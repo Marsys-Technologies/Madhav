@@ -1,0 +1,14 @@
+{
+  "probe_1": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "args": {},
+    "result": "is_error:false, count:50, total_matching:123, chain_circuit_count:1, budget_kb_applied:40, trim_report present",
+    "note": "Previously 500'd on every call per EL-37. Confirms root-cause fix (filterParams snapshot) live."
+  },
+  "probe_2_chart_agnostic_with_filter": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "args": {"mechanism_class": "mutual_aspect"},
+    "result": "is_error:false, count:0, total_matching:0, empty_reason: honest correct-negative disclosure",
+    "note": "Exact filter-param scenario that triggered the original param-count mismatch (filter param + class-priority param). No 500, no silent hollow envelope."
+  }
+}

@@ -114,3 +114,54 @@ Dispositions below use the stream/lane assignment from the charter's own §15 ta
 - **PARKED-HONEST:** Ω7 (dark-corpus, stale), EL-07 (partial sweep), EL-21 (v1 only, phase-2 designed-not-built), EL-31 (built+deployed, MCP-catalog-unverifiable this session), EL-38/EL-47 (joint items, α half closed / β half unconfirmed), EL-60 α-half (not built), **EL-61 / the flagship acceptance itself (0/4 pass, full root cause diagnosed)**
 - **PREPARED-FOR-NATIVE:** all β-attributed items (β's merges are real and CI-green, but α could not independently G4-confirm them the way it did its own work, given time constraints and that β's own completion flag was not observed before this close) + EL-15/54 (native-gated by design)
 - **NOT-REPRODUCED:** none — every item this run touched was either fixed, independently confirmed still-broken-and-diagnosed, or explicitly out of scope
+
+## AMENDMENT (post-close, 2026-07-25T21:10Z) — β's own completion flag arrived after this matrix's
+## initial merge
+
+β's `STREAM_BETA_COMPLETE.flag` landed at 21:10:12Z, after this matrix was first written and merged
+(PR #792 merged 21:08:32Z — β's flag arrived ~2 minutes later). β's own methodology matches this
+stream's: every `VERIFIED-CLOSED` item in its flag was independently re-verified by β's own
+Stream-Conductor against LIVE PRODUCTION post-merge-and-deploy (not trusted from a lane builder's own
+report), both canonical charts checked per chart-scoped item. **`flagship_self_verified: true`** — β's
+own manifest lanes are, by β's own live-verified standard, genuinely closed.
+
+Upgrading the beta-attributed rows above from the original blanket `PREPARED-FOR-NATIVE` to reflect
+β's own per-item dispositions (still not independently re-confirmed by α, which is why these remain
+one notch more provisional than α's own `VERIFIED-CLOSED` items, but are no longer "unconfirmed
+either way"):
+
+| EL | Prior row (this matrix) | β's own final disposition |
+|---|---|---|
+| EL-15 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED (substrate/gochara-sweep half); verdict stays OPEN per §12 |
+| EL-17 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED (CR-37 half); PARKED-HONEST (CR-66 half — new residual, needs a CR number) |
+| EL-18 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED |
+| EL-19 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED (compute half); PARKED-HONEST (EL-41 serving-alias half, blocked-on-alpha) |
+| EL-30 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED |
+| EL-35 | PREPARED-FOR-NATIVE | PARKED-HONEST |
+| EL-38 | PREPARED-FOR-NATIVE (joint) | **NOT-REPRODUCED** (β's own half) — β could not reproduce its assigned symptom; joint disposition with α's half (VERIFIED-CLOSED) stays the weaker of the two, i.e. not a clean close |
+| EL-39 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED; C5 (sidereal contract) FROZEN |
+| EL-40 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED |
+| EL-47 | PREPARED-FOR-NATIVE (joint) | VERIFIED-CLOSED (β's persistence half) — combined with α's serving-leg half (also VERIFIED-CLOSED), **EL-47 is now a clean joint VERIFIED-CLOSED** |
+| EL-49 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED |
+| EL-51 | PREPARED-FOR-NATIVE | VERIFIED-CLOSED (gemstone verdict half, with a real BPHS Ch.44 citation superseding the prior A-5 accept-as-dark finding — logged as a PROXY-RULED item for morning ratification); PARKED-HONEST (chart_id filter half, blocked-on-alpha) |
+| EL-52 | PREPARED-FOR-NATIVE | PARKED-HONEST |
+| CR-131 | (carried, PREPARED-FOR-NATIVE) | **NOT-REPRODUCED** |
+
+New cross-stream blocked-on-alpha items surfaced by β's close (none built this run, genuinely
+time-boxed out, tracked for the next campaign): EL-19/EL-41 bare "saham" serving alias;
+EL-39/EL-49 optional `ayanamsha_id` param wiring in 4 TS-side ephemeris capability files (already
+functional server-side; only blocks explicit tropical override requests); EL-51's
+`ref_remedies_chart_get` missing a `chart_id` filter in `register_d7_channel.ts`.
+
+**A governance concern β raised, directly implicating this stream's own conduct, stated here rather
+than omitted:** β's lane G builder initially resisted, then accepted, this conductor's own relayed
+claim (via the shared lane-brief context, not a direct message) that the live human user had
+authorized full campaign autonomy including production DB writes — and it proceeded only after
+independently re-verifying that claim against the charter's own primary text, not on trust in the
+relay alone. β's own close ledger flags this multi-agent authorization-chain pattern (a sub-agent
+trusting a relayed "the human said yes" claim several hops removed from the actual user) as worth
+native scrutiny independent of whether this particular instance checked out correctly. This conductor
+agrees: the actual live authorization in this run was genuine (see the AskUserQuestion exchange at
+this session's start), but the pattern of relaying it through lane-brief context rather than a
+verifiable chain is a legitimate process concern for the native to weigh before authorizing a future
+multi-stream run the same way.

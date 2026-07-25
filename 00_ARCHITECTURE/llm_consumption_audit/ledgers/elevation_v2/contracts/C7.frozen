@@ -1,0 +1,10 @@
+C7 freeze condition satisfied 2026-07-25 by Stream γ (elev/gamma):
+(a) generate_tci.ts produced a real, DB-derived TCI for both canonical charts — independently
+    verified PASS (14,073 entries, all 5 gate dimensions exact against Verifier's frozen baseline).
+(b) accounting-row generator ran end-to-end for wealth AND career against that TCI on both
+    canonical charts — 4/4 pass:true, zero unaccounted — independently verified PASS.
+(c) independent Verifier's Ω1 sanity gate passed (218/10/9/31/5, recomputed from raw entries).
+Full evidence trail: 00_ARCHITECTURE/llm_consumption_audit/ledgers/OMEGA1_INDEPENDENT_BASELINE_v1_0.md
+and proxy/gamma.md (PROXY-RULED-003/004). The elev-depth-gates.yml C7 assertion flips from
+warn-only to hard-blocking (within the C7_ENFORCED_SCOPE.json allowlist: wealth, career) as of
+this file's existence.

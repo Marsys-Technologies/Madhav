@@ -1,0 +1,10 @@
+{
+  "probe": "chart_snapshot(chart_id=482012f1, vargas=[D2,D10])",
+  "result": {
+    "D1_unchanged": true,
+    "additional_vargas": ["D2 (lagna Leo, real grahas placed)", "D10 (lagna Leo, real grahas placed)"],
+    "unresolved_vargas": [],
+    "backward_compat": "D1-only call (no vargas param) confirmed byte-identical structure to pre-merge behavior"
+  },
+  "verdict": "EL-48 confirmed live: multi-varga assembly works, additive to D1, no fabricated values (matches chart_divisionals verbatim per provenance note)."
+}

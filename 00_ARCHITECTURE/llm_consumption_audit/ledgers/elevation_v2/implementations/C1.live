@@ -1,0 +1,11 @@
+{
+  "contract": "C1",
+  "deploy_target": "amjis-mcp",
+  "revision": "amjis-mcp-00470-lzr",
+  "image_sha": "c9e61f8ccf187238b19b7bf9d54fadcd0f8a2e10",
+  "prod_probe_payload_ref": "~/elev-v2-shared/probe_evidence/C6_bodha_mechanisms_live_probe.json",
+  "verified_at": "2026-07-25T06:34:09Z",
+  "verified_by": "alpha (conductor, direct MCP probe against live prod)",
+  "note": "budget_kb_applied + trim_report response fields confirmed live (stamped on the trimmed bodha_mechanisms_get response above). Request-side budget_kb override wired for 5 representative tools (graha_portrait, assess_wealth, get_signals, query_chart_facts, chart_snapshot) per Lane A's report; not independently live-probed with an explicit budget_kb value this pass (chart_snapshot's response for 482012f1 is naturally under budget/never trims, so the override path wasn't exercised by available probes). Remaining ~30 call sites PARKED-HONEST for a follow-up merge.",
+  "canonical_charts_checked": ["482012f1-710e-4a25-994a-93821f5871aa"]
+}

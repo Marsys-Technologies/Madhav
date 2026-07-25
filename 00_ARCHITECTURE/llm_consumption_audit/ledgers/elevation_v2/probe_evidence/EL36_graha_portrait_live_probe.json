@@ -1,0 +1,13 @@
+{
+  "probe": "graha_portrait(chart_id=482012f1, graha=Venus, include=[position,dignity], response_format=v3)",
+  "before_this_merge_evidence": "charter §5.α.A live repro: position.rows:[] count:9; dignity arrays [] count:56; receipt: complete_2_2; judgment_flags:[]. 65 rows located, 0 served, receipt says complete.",
+  "after_this_merge_live_result": {
+    "position": {"count": 9, "rows_shown": 1, "note": "real row present (combustion_state), count honestly discloses 9 total"},
+    "dignity": {"count": 56, "operative_varga_rows_shown": 2, "sample": ["D1_VEN dignity_state=neutral sign=Sagittarius house=9", "D9_VEN dignity_state=debilitated sign=Virgo house=3"]},
+    "completeness": {"position": "check", "dignity": "check", "note": "both TRUE this time -- real data backs the marks, not a false positive over an empty array"},
+    "orientation_context.entity_profiles": [],
+    "narration_present": true,
+    "budget_kb_applied": 12
+  },
+  "verdict": "EL-36 fix confirmed live: real entity-specific data now survives the budget trim, the generic orientation preamble is what gets cut instead, and the completeness receipt reflects the true post-trim state."
+}

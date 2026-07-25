@@ -1,0 +1,22 @@
+{
+  "probe": "assess_wealth(chart_id=482012f1)",
+  "result": {
+    "domain_completeness": {
+      "slice_size": 13820,
+      "accounted": 13820,
+      "pct": 100,
+      "synthesis_gate": "OPEN",
+      "chain_pattern_units": 45,
+      "coverage_map": "trimmed to empty under budget pressure (not hardFloor) -- honest degradation, not silent",
+      "full_hydration": {"tool": "dossier", "note": "pointer present"},
+      "composition_scaffold": "present"
+    },
+    "completeness_directive": "COMPLETE ACCOUNTING ATTACHED: this response is backed by the full wealth concept slice (13820 concepts, 100% accounted)...",
+    "judgment_flags": [
+      "complete_domain_accounting_attached: ... Call dossier(domain=\"wealth\", chart_id) to page the full slice row-by-row.",
+      "budget_exceeded_after_trim (honestly disclosed, not hidden)"
+    ],
+    "budget_kb_applied": 40
+  },
+  "verdict": "CONFIRMED LIVE: assess_wealth (the tool a naive caller actually reaches for) now carries the complete 100%-accounted domain map, a hard directive to the hydrating dossier follow-up, and honest disclosure when the budget itself is exceeded. This is the exact behavior the fix was designed to produce. Whether this moves a genuinely naive sealed-harness consumer's score is a Phase-4 question, not asserted here -- but the mechanism a naive agent's own likely first call now returns is materially different from before (was: shallow default ~15% hit rate; now: complete accounting attached to that same first call)."
+}

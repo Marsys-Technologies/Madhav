@@ -1,0 +1,81 @@
+{
+  "runway_model": "in_repo_git_worktrees",
+  "supersedes": "prior sibling-worktree PREFLIGHT.json from the earlier pre-flight session; this session (RUNWAY) relocated the worktrees in-repo and performed reconcile + cleanup + Phase 0",
+  "session": "RUNWAY (charter M2.4) — reconcile, cleanup, Phase 0; not a competing stream",
+  "worktrees": {
+    "alpha": {
+      "path": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/alpha",
+      "branch": "elev/alpha",
+      "head": "06d92ab6",
+      "pushed_to_origin": true,
+      "relocated_from": "/Users/Dev/Vibe-Coding/Apps/madhav-wt-alpha (git worktree move)"
+    },
+    "beta": {
+      "path": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/beta",
+      "branch": "elev/beta",
+      "head": "06d92ab6",
+      "pushed_to_origin": true,
+      "relocated_from": "/Users/Dev/Vibe-Coding/Apps/madhav-wt-beta (git worktree move)"
+    },
+    "gamma": {
+      "path": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma",
+      "branch": "elev/gamma",
+      "head": "06d92ab6",
+      "pushed_to_origin": true,
+      "relocated_from": "/Users/Dev/Vibe-Coding/Apps/madhav-wt-gamma (git worktree move)"
+    }
+  },
+  "root_checkout": {
+    "path": "/Users/Dev/Vibe-Coding/Apps/Madhav",
+    "branch": "main",
+    "note": "Fast-forwarded to merged head after PR #765 (charter reconcile) and PR #766 (Phase 0 artifacts). See RUNWAY final report for exact head sha."
+  },
+  "deps_installed": {
+    "alpha": true, "beta": true, "gamma": true,
+    "method": "git worktree move preserved node_modules (gitignored but moved with the directory, not re-cloned) — re-verified with green npm run typecheck in platform-mcp for all three after relocation and after each PR sync"
+  },
+  "env_files_present": {
+    "files": [".env.rag", "platform/.env", "platform/.env.local"],
+    "verified_present_post_relocation": true
+  },
+  "gc_auto": 0,
+  "worktree_prune": {
+    "run_from": "/Users/Dev/Vibe-Coding/Apps/Madhav (canonical path)",
+    "dry_run_result": "0 prunable — all registered worktrees have live directories on disk",
+    "action_taken": "none (nothing genuinely dead to prune)"
+  },
+  "concurrency_proof": {
+    "result": "PASS post-relocation",
+    "test": "simultaneous git fetch --no-write-fetch-head from alpha + beta worktrees, then a commit+amend cycle on each of alpha/beta's own branch, run concurrently",
+    "observed": "no index.lock/ref-lock contention; each worktree's HEAD moved independently; root HEAD untouched; test commits reset --hard back to origin tips afterward"
+  },
+  "cleanup": {
+    "deleted_clone_dirs": ["/Users/Dev/madhav-alpha", "/Users/Dev/madhav-beta", "/Users/Dev/madhav-gamma"],
+    "deleted_size_gb": 10.8,
+    "sibling_worktree_dirs_after_move": "none remaining (git worktree move fully vacated them)",
+    "docs_archived": [
+      "PREFLIGHT_PROMPT_v1_0.md (clone-based, superseded)",
+      "RECONCILE_AND_CLEANUP_PROMPT_v1_0.md (earlier draft of RUNWAY_PROMPT_v1_0.md, superseded)"
+    ],
+    "not_touched": [
+      "../madhav-wave-vidhi-purnata (live, unrelated worktree)",
+      ".claude/worktrees/* (10 live agent worktrees, unrelated sessions)"
+    ]
+  },
+  "amendment_prs": [
+    {"number": 765, "title": "reconcile charter v2.1 to in-repo worktree layout + archive superseded prompts", "merged": true, "merge_method": "squash via gh pr merge --auto"},
+    {"number": 766, "title": "Phase 0 artifacts — contracts, schema-map generator, frozen test assets", "merged": "pending CI at time of this write — see PHASE0_COMPLETE.flag / PHASE0_FAILED.flag for final outcome", "merge_method": "squash via gh pr merge --auto"}
+  ],
+  "phase0": {
+    "run_start_tag": "elev-v2-run-start",
+    "db_backup_id": "1784938159545",
+    "baseline_ledger": "~/elev-v2-shared/ledgers/ELEVATION_V2_BASELINE.md",
+    "contracts_frozen": ["C1", "C2", "C3", "C6", "C8"],
+    "contracts_draft": ["C4", "C5", "C7"],
+    "schema_map_generator": "00_ARCHITECTURE/llm_consumption_audit/briefs/elevation_campaign/phase0/schema_map_generate.cjs (live-tested, both canonical charts)",
+    "sealed_harness": "~/elev-v2-shared/ledgers/SEALED_EVALUATOR_HARNESS_v1_0.md",
+    "routing_suite": "~/elev-v2-shared/ledgers/ROUTING_SUITE_60_v1_0.json (60 items, 20 narrow, 15/domain)",
+    "dark_replay_set": "~/elev-v2-shared/ledgers/DARK_CORPUS_REPLAY_SET_v1_0.json (21 wealth + 21 career)",
+    "overflow_queue": "~/elev-v2-shared/ledgers/OVERFLOW_QUEUE.md"
+  }
+}
