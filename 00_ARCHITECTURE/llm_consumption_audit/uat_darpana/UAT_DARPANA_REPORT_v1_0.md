@@ -590,3 +590,30 @@ remediation campaign plus audit-completion, then re-assess.*
 
 *End of UAT_DARPANA_REPORT_v1_0.md — CLOSED. Opus Synthesist (max effort), Phase 4-5, 2026-07-25.
 Supersedes the 2026-07-24 INTERIM edition.*
+
+---
+
+## ADDENDUM (SATYA-ŚEṢA campaign, Builder B4, 2026-07-25) — retiring the 9.58 mean from summary use
+
+**Appended, not a revision — nothing above this line is altered.** This addendum exists because the
+headline "mean 9.58/10" figure elsewhere in this report, taken alone and out of the process context
+§3/§10 already document, invites exactly the false-confidence reading the two vetoes below are about.
+It must not be quoted in isolation in any future summary, deck, or handoff.
+
+**The number to carry forward instead:** **45/45 closed; 2 confirmed FAIL (veto); ~32 never
+independently audited; audited-overturn ~23%. An unaudited grade is not verified-safe.**
+
+Context for that number (already established in this report's own body, restated here for a reader
+who only sees this addendum): of the queries independently audited by adversarial DB check, roughly
+23% were overturned from their first-pass grade (3 of ~13: S4-03 and S4-05 down to veto/FAIL, S4-06
+corrected to PASS) — and the two overturns to FAIL are both veto-grade, trust-breaking false-confidence
+failures (S4-03 Gulika, S4-05 gochara health) that a single first-pass grading pass scored DELIGHT.
+Roughly 32 of the 45 scored queries were never independently audited at all, so the true
+false-confidence count in this corpus is unknown and empirically ≥ 2 — the 9.58 mean describes a
+lightly-verified single grading pass, not a verified-safe result.
+
+**Disposition:** the SATYA-ŚEṢA campaign (`SATYA_SHESHA_BRIEF_v1_0.md`) was scoped specifically to
+close the mechanism behind these two vetoes (see ELEVATION_REGISTER EL-62, and the partial-close
+annotations on EL-07/EL-11/EL-41/EL-42) and to codify a mandatory audit gate for absence/coverage
+claims (`UAT_BATTERY_v1_0.md`, the audit-gate rule appended 2026-07-25) so this class of failure is
+caught before a future battery run ships, not only after, by adversarial audit, once it already has.
