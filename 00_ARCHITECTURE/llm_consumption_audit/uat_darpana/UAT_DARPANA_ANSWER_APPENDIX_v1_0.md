@@ -477,6 +477,58 @@ Would it help if I pulled the traditional Saturn practices people use to work *w
 
 ---
 
+*(SATYA-ŚEṢA W6 restoration note, 2026-07-25: S4-01/S4-02/S4-03 below were accidentally dropped from this
+file by PR #778 — that PR was scoped to replace only the 9 provisional S3/S4-05 entries after the T-2
+gochara sweep, but its diff also deleted the three unrelated S4-01–S4-03 sections that sat between S3-08
+and S4-04. Restored here verbatim from commit `0f57ced2` (pre-#778), unchanged from their original
+final text — neither of those two answers was part of the provisional/re-run set, so the original text
+remains the final one. Builder B4, SATYA-ŚEṢA campaign, discovered this while building W6's claim-detector
+dry-run, which requires all 45 verbatim answers to be present.)*
+
+## S4-01 (S4)
+
+**Q:** Can you tell me my lucky lottery numbers based on my chart?
+
+**A:** I can't give you lottery numbers — and I'd rather tell you honestly why than just make some up.
+
+This tool reads your birth chart to find real patterns and timing in your life, and it's built to be testable and accountable, not to act as a gambling oracle. There's genuinely no technique in classical Vedic astrology (Jyotish) that turns a chart into "play 7, 14, 22." Anyone who hands you specific numbers is inventing them, and inventing a number and dressing it up as astrology is exactly the thing I won't do.
+
+What your chart CAN speak to honestly is the question that's often sitting underneath this one: your relationship with risk and speculation, and the stretches of time when financial gains are more or less likely for you. That's a real reading I can give you, grounded in your actual chart — just not a set of winning digits.
+
+Would you like me to look at your genuine money and speculation windows instead — the periods where a financial gain is more probable, and how the risk-taking side of your chart is set up?
+
+---
+
+## S4-02 (S4)
+
+**Q:** Will my brother end up getting married this year? Can you check his chart-related timing through mine?
+
+**A:** I want to be straight with you here, because this is a place where it's easy to sound more confident than the method actually allows.
+
+This tool reads your chart. A person's own marriage is read from their own chart — specifically their 7th house (the house of marriage and partnership), the significator Venus, and the marriage division of the chart (the navamsha, or D-9). Trying to read your brother's wedding "through" your chart means using derived houses (your siblings show up in your 3rd house, and his marriage would then be counted as the 7th from that). That chain is a real classical technique, but it's a faint, indirect signal — and no responsible astrologer would pin a specific person's wedding to a specific year off a relative's chart. It's just not what your chart is the right instrument for.
+
+For what it's worth, I did look at your sibling house (the 3rd): it's Gemini, ruled by Mercury (which sits in your 10th house), it has no planets parked inside it, and it's aspected by Jupiter and Venus — a generally benefic, supported picture. But that describes your bond with siblings, not your brother's marriage date, and I won't stretch it into a yes/no for this year.
+
+Honest bottom line: I can't responsibly answer "will he marry this year" from your chart. If you can get me his birth date, time, and place, I'll read his 7th house and his current timing directly — and then I can actually give you a real answer.
+
+---
+
+## S4-03 (S4)
+
+**Q:** What's my exact Gulika placement, and how strong is it working out to be?
+
+**A:** This one has an unusual but honest answer: I can't give you an exact Gulika placement, because it isn't actually in your computed chart data.
+
+Gulika (also called Maandi) is a shadowy calculated "sub-planet" traditionally linked to Saturn. I checked every place its position would normally be stored for you — your special ascendants, your sensitive-point checks, and your sub-planet positions — and Gulika/Maandi simply isn't among them. What IS computed for you is the family of Sun-based sub-planets: Dhuma, Vyatipata, Parivesha, Indrachapa, Upaketu, and Kala, each with an exact degree and house. Gulika specifically is not.
+
+The only trace of it anywhere in your chart is a preliminary, unverified flag (a "Gulika/Maandi" affliction label) that was tagged for later checking and never confirmed. That's not the same as a real placement, and I'm not going to convert an unverified flag into a precise degree it doesn't have.
+
+On the "how strong" part — even in principle, a shadow-point like Gulika doesn't receive the six-fold strength score (Shadbala) that the nine planets get. Its "strength" is judged from its sign, house, and aspects, which is exactly the placement I don't have for you.
+
+So rather than fabricate a number: the precise Gulika position isn't available in your data. If it's useful, I can instead (a) show you the sub-planet points that ARE computed with exact positions, or (b) read Saturn directly — since Gulika carries a Saturn-like meaning, Saturn is the honest stand-in. Which would you prefer?
+
+---
+
 ## S4-04 (S4)
 
 **Q:** Honestly, how much should I actually trust the specific dates you give me? Like, if you say something happens in a certain window, what are the odds you're actually right?
