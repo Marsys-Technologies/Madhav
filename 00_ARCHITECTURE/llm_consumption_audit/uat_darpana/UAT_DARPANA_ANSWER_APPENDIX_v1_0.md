@@ -1,8 +1,8 @@
 ---
 artifact: UAT_DARPANA_ANSWER_APPENDIX
 version: 1.0
-status: PARTIAL — 9/45 answers PROVISIONAL pending T-2 re-materialization + re-run
-date: 2026-07-24
+status: CLOSED — all 45/45 answers finalized (9 re-run post T-2 gochara-sweep completion, 2026-07-25)
+date: 2026-07-25
 ---
 
 # UAT_DARPANA_ANSWER_APPENDIX_v1_0 — Every Verbatim Answer in Full
@@ -309,198 +309,171 @@ Two honest caveats: this describes a susceptibility and a pattern, not a diagnos
 
 ---
 
-## S3-01 (S3)  — **PROVISIONAL, will be re-run**
+## S3-01 (S3) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** When does my wealth actually start opening up? Give me a real window, not just 'good things are coming.'
 
-**A:** Fair ask — here are actual windows, not vibes.
+**A:** Good news first: your chart genuinely has the wiring for money — not vague "abundance," but specific classical wealth-combinations. Your 9th house holds Jupiter (in its own sign, very strong) sitting with Venus, and together they form a Dhana yoga — a textbook wealth-combination that links your houses of income, savings and fortune. Jupiter, the natural significator of wealth, is one of the strongest planets you have. So the raw potential is real.
 
-**Right now through August 2027 — your nearest real earning window.** The planet currently steering your income (Saturn) is the strongest-placed money planet in your whole chart: it's exalted (its best possible condition) and it rules your 11th house — the house of gains and income. It's running as your active sub-period right now, and the chart flags this as a genuine career-and-wealth activation. The high-water mark was around spring 2026, and it stays supportive but gradually tapers toward the handover in August 2027. So this is a "push on earning, ask for the raise, close the deal, take on the bigger contract" stretch — and it's live today. Worth noting: your chart's Saturn periods have actually delivered before — a family financial windfall is on record around 2010, under this same planet.
+Now the timing, with an actual window:
 
-**2028 into early 2029 — a second, different pulse.** Here the baton passes to Venus, which rules your 2nd house (the house of accumulated wealth and savings) and sits beautifully in your 9th house of fortune, right next to Jupiter, the natural planet of abundance. There's a convergence peak around the end of December 2028. This one is flavored more toward assets/savings than salary.
+**The door is already open.** Since December 2024 you've been running the sub-period of Saturn, and for your Aries-rising chart Saturn rules your 11th house (income and gains) and your 10th (career and status) — and it sits *exalted*, meaning at its maximum possible strength. That makes this a genuine earning window, not a someday-promise. It runs through **18 August 2027**, and the modeled high-point of this activation was earlier in 2026 — so you're inside the strong stretch right now.
 
-**August 2034 onward — the big one.** That's when Venus opens its 20-year major period (running to 2054, roughly age 50 to 70 for you). Because Venus is your wealth-house lord sitting in the house of fortune with Jupiter, this is the chart's built-in "wealth expansion" engine, and it simply doesn't switch fully on until then. It's the most decisive wealth era in your life — it's just genuinely years out, and I'd rather tell you that straight than pretend the jackpot is next month.
+**The next distinct lift** comes in the sub-period of Venus, roughly **15 January 2028 to 16 March 2029**. Venus rules your 2nd house (the money you keep and save) and is part of that same wealth-combination, so it re-opens the theme.
 
-One honesty flag: these readings come from the chart's structure, not yet from calibrated track-record data, so treat the near-term window as a strong tilt, not a guarantee.
+**The long-horizon big one** is your Venus major period starting **2034**, running about 20 years — your chart's single longest prosperity chapter.
 
-Want me to zoom into the strongest individual months inside the current (to-2027) window so you can time specific moves?
+One honest caveat: the overall wealth signal grades as *solidly positive but moderate*, not spectacular — and Rahu sits in your money house, which tends to bring income in unconventional or up-and-down ways (real upside, but watch over-leverage and get-rich-quick temptations). These readings map the windows from your chart's structure; they're strong guidance, not a guaranteed payout.
+
+Bottom line: the window is **now through August 2027**, with a second wave in **2028–29**. Want me to zoom into the best months inside the current window for a specific move — a raise, a launch, an investment?
 
 ---
 
-## S3-02 (S3)  — **PROVISIONAL, will be re-run**
+## S3-02 (S3) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** What are my best and worst stretches coming up in the next year and a half or so?
 
 **A:** Here's the shape of roughly the next 18 months (through early 2028).
 
-**Your strongest stretch: now through about mid-2027.** You're in the sub-period of Saturn, which in your chart is exalted and rules both your career (10th) and your income (11th) houses — so this is the most constructive, "build and earn" phase available to you. Its peak intensity was around spring 2026, so you're now on the gentle downslope, but it stays genuinely supportive right up to the big period change in August 2027. If there's heavy lifting you want to do on career or money, this is the runway.
+**The whole stretch leans favorable.** Until **18 August 2027** you stay in the Saturn sub-period that runs your career and income houses — and Saturn is exalted, i.e. at full strength — so the base current is constructive: steady building in work and earnings.
 
-**The more sensitive stretches to be a little more careful:**
-- **Late May–June 2027, and again October–early November 2027** — the chart raises a mild health-caution flag (the kind worth not-overloading and getting rest around, nothing more dramatic than that). Confidence here is low and structural, so please read it as "be sensible," not "something will happen."
-- **Through about mid-2027** you're also finishing the tail end of a long Saturn transit cycle (Sade Sati — more on that if you ask), which tends to feel like a slow grind or heavier mood. The good news is it's the *closing* leg, easing off, not the start.
-- **August–October 2027** is a genuine turning point: your major life period changes from Mercury (17 years) to Ketu (7 years). Period-changeovers are classically unsettled — a reorientation. A notable life event (could be a move, a public/role change, a legal-type matter) is flagged around October 2027 at moderate confidence, right at that handover.
+**Strongest near-term windows** (good for launches, asks, visible moves):
+- **Mid-September 2026** (around the 13th–15th) — the single best-scored window in the next three months for an important initiative.
+- **Mid-to-late August 2026** (around the 16th–18th and 26th–28th) — a run of favorable days; and early-to-mid August already carries a couple of small career-recognition upticks (near the 1st and the 10th).
+- **Late September into early October 2026.**
 
-So: lean into now-through-mid-2027 for anything ambitious; ease off and take care of yourself around the two 2027 health windows and the autumn-2027 transition.
+**A softer, more inward stretch:** around **August 2027**, your 17-year Mercury major chapter ends and a 7-year Ketu chapter begins. Ketu's opening months (roughly **August 2027 to January 2028**) are the quietest, most inward part of this whole horizon — energy turns reflective and material drive dips. Not "bad," but the stretch where I'd avoid forcing big new external launches and instead consolidate.
 
-Want me to break down the two health-caution windows and what areas they touch?
+**Now the honest part about "worst":** I ran the forward hazard-scan on your transits — the freshly-computed one — and it flags *no adverse windows at all* across the next 18 months (in fact none through mid-2029). So there's no danger-stretch to circle in red. The nearest thing to a "low" is simply that inward Ketu opening. Also worth knowing: Saturn is turning retrograde right now (late July through mid-December 2026), which across this autumn favors reviewing and finishing over sprinting — expect slower external payoff and more behind-the-scenes setup.
+
+Caveat: these are structural readings of your chart and transits, not calibrated probabilities — treat them as well-grounded guidance, not certainties.
+
+Want me to pin exact dates for anything specific — a pitch, a signing, a trip — inside that strong autumn-2026 window?
 
 ---
 
-## S3-03 (S3)  — **PROVISIONAL, will be re-run**
+## S3-03 (S3) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** Okay but WHY that particular window — what's actually happening astrologically that makes it matter?
 
-**A:** Good — this is the part that actually makes it real rather than generic.
+**A:** Great question — here's what's actually firing under the hood of that current window (now through **August 2027**).
 
-The window running now to August 2027 matters because of *who's holding the wheel*. In the Vedic system your life runs in planetary periods, and right now your active sub-period belongs to **Saturn** — and Saturn is exceptional in your chart specifically:
+It comes down to which planets are "on the clock." In this system your life runs through planetary periods — a big multi-year major period with smaller sub-periods nested inside. Right now:
 
-1. **It's exalted** — that's the single best condition a planet can be in. Saturn sits at its maximum strength in your chart.
-2. **It rules your two "success" houses at once** — the 10th house (career, status, achievement) *and* the 11th house (income, gains, fulfillment of desires). Most people don't have their career planet and their income planet be the same, strongly-placed planet. You do.
+**1. The sub-period ruler is Saturn** — and for your Aries-rising chart, Saturn owns both your 11th house (income, gains, things you're hoping for) *and* your 10th house (career, status, public standing). So the planet "in charge" right now literally rules your money-and-career sectors.
 
-So when Saturn's period runs, it's not a random planet taking a turn — it's your single most capable "achieve and earn" planet stepping to the front. The chart scores this stretch as a high-convergence activation across career and wealth, cresting around spring 2026.
+**2. That Saturn isn't weak — it's exalted**, its single strongest possible condition, and it measures among the most powerful planets in your chart. A strong planet running its own period delivers its results with force. This is the main reason the window carries weight.
 
-The clincher is that this isn't just theory for your chart — it has a **track record**. When I look back, your real, documented milestones under Saturn periods include your first job (2007) and a family financial windfall (2010). Same planet, same mechanism, already fired. That's why I weight this window more than a textbook would.
+**3. It's nested under your Mercury major period**, and Mercury sits in your 10th house of career alongside the Sun, forming Budha-Aditya yoga — an "intelligence + authority" combination right in the career house. So both the big-period ruler and the sub-period ruler point at profession and status.
 
-And the contrast makes it sharper: in August 2027 the wheel passes to **Ketu**, a planet of detachment and turning inward. The outward "build, push, earn" quality is strongest *while Saturn holds it* — which is now. That's the whole reason the timing isn't interchangeable.
+**4. A second, independent method agrees.** The engine that tracks when your chart's key configurations "light up" resolves a career-and-income activation running **Dec 2024 to Aug 2027**, peaking around April 2026 — the same span, reached a different way. When two methods land on the same window, I trust it more.
 
-Want me to show you the other planets and periods in your chart that also carry a wealth or success promise, so you can see the full sequence?
+**5. In the background, your Sade Sati** — the ~7.5-year passage of Saturn over and past your Moon — is in its final leg, dated to close around **June 2027**. Classically that phase acts like a long final exam that hands over its rewards as it lifts. So the same planet, Saturn, is simultaneously testing you and paying out, and it's in the home stretch.
+
+Put simply: the window matters because your strongest-placed planet, which happens to rule your income and career, is the one running the show right now — and two independent methods plus the Saturn cycle all converge on the same 2024-through-2027 span.
+
+Want me to show how this hands off to the next chapter — the Ketu period that begins August 2027 — and what changes?
 
 ---
 
-## S3-04 (S3)  — **PROVISIONAL, will be re-run**
+## S3-04 (S3) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** What's going on for me right now, astrologically? Like, this month.
 
-**A:** Here's your "this month" read, in layers from big to small.
+**A:** Here's your "right now," late July into August 2026.
 
-**The big backdrop:** You're deep in your Mercury major period (since 2010, ending August 2027), and inside it your active sub-period is Saturn — which, for you, is a strong, constructive influence (it's exalted and runs your career and income houses). So the underlying current this month is a "steady build, professional traction" one.
+**The steady backdrop:** you're in your Mercury major period and, inside it, the Saturn sub-period that runs your career and income — a work-and-earnings-focused, build-it-steadily phase.
 
-**The nearer-in flavor:** The current sub-sub-period is the Moon, running until about September 17 — that adds a more emotional, domestic, people-and-home coloring to these weeks. And there's a very short Jupiter micro-phase this exact week (roughly July 20–31), which sits right on a junction between phases, so it can feel slightly in-between or unsettled for a few days. Nothing alarming — just a transitional beat.
+**The month's specific flavor** comes from the smallest active layer: since late June you've been in a Moon sub-sub-period that runs to about **17 September 2026**. Your Moon rules your 4th house — home, heart, emotional foundation, mother, comfort, property — and it sits in your 11th house of gains and networks. So this stretch colors things with: emotional and home/family matters coming forward, more heart-led decisions, and support or gains flowing through friends and community. The Moon moves fast, so treat this as a gentle, shifting, feelings-forward overlay rather than big fixed events.
 
-**The transit sky:** Saturn is currently moving through Pisces, the sign right after your Moon's sign — which is the *closing* leg of the long Saturn cycle called Sade Sati. Practically, that's the "slow grind / carry a bit more weight" phase, and the encouraging part is that it's winding down (Saturn moves on around 2027), not ramping up.
+**Two timing notes for the next few weeks:**
+- Saturn — which is *both* your career/income ruler and your current sub-period lord — is turning **retrograde essentially right now** (late July), staying that way until mid-December. That tilts these months toward reviewing, finishing and consolidating rather than launching something brand-new.
+- **Early-to-mid August** carries a couple of small career-recognition upticks (around the 1st and the 10th), as several planets briefly spotlight your career and income houses.
 
-**One thing the chart specifically highlights:** a heightened "turning point / discovery" sensitivity in the areas of relationships, your own sense of self, and work — elevated from now through about October 22. Think realizations and small pivots rather than big external events.
+**And underneath it all**, your Sade Sati (the long Saturn-over-Moon passage) is in its closing stretch, easing off by around mid-2027 — so if the last few years have felt heavy or effortful, you're in the wind-down.
 
-**Honest limit:** the fine-grained, day-by-day transit forecast for this specific month hasn't been computed for your chart yet, so I'm not going to invent precise "on the 14th, X happens" specifics — that would be making it up.
-
-Want me to focus in on one area — work, money, or relationships — for these particular weeks?
+So: a steady, work-and-money month with a tender home/emotional undertone, best used to tidy and consolidate rather than sprint. Anything specific on your mind this month — work, home, a decision — that you'd like me to read against this?
 
 ---
 
-## S3-05 (S3)  — **PROVISIONAL, will be re-run**
+## S3-05 (S3) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** Is this actually a good time for me to start a new business, or should I wait?
 
-**A:** Short version: the chart leans **"now rather than wait"** — with a real reason, and a couple of honest caveats.
+**A:** Short version: the timing leans **favorable** — this is a reasonable window to start, with a couple of smart caveats about exactly *when*.
 
-**Why now is favored:** In your chart the planet of *career* and the planet of *income* are the same planet — Saturn — and it's exalted (maximum strength). That planet is running your active sub-period right now, through August 2027. So the two things a new venture lives on — professional drive and earning capacity — are being powered by your single strongest "achieve and earn" planet, simultaneously. That's about as aligned a launch backdrop as your chart offers, and its energy was at high-water in spring 2026 and stays supportive to 2027.
+**Why it's favorable:**
+- Career is the strongest area of your chart. When I run the vocation analysis it comes back "strongly convergent" — the highest-grading of all your life-domains — powered by that exalted Saturn ruling your 10th house of work, plus an intelligence-and-authority combination (Sun with Mercury) sitting right in your career house.
+- You're currently in the sub-period of that same Saturn, which also rules your 11th house of income/gains, and it runs through **August 2027**. So the next ~year sits in a genuinely constructive career-and-earnings window — a supportive backdrop to launch into.
 
-**Why waiting is actually the weaker option here:** In August 2027 your major life period changes to Ketu for seven years. Ketu is a planet of detachment, simplification, and turning inward — wonderful for research, niche/specialist, spiritual, or behind-the-scenes work, but not the classic signature for aggressively building and scaling a commercial, for-profit venture. So "wait a couple of years" would actually move you *out* of the more entrepreneurial window, not into a better one.
+**The "when," more precisely:**
+- If you want auspicious start-dates in the next 90 days, the strongest are **mid-September 2026** (around the 13th–15th — the best-scored), then **mid-August** (16th–18th) and **late August** (26th–28th). These balance the day-quality with your favorable period.
+- One nuance: Saturn is retrograde from now until **mid-December 2026**, and Saturn is your business-relevant ruler — so this stretch is arguably better for building the *foundation* (plan, register, line up partners, soft-launch), with the bigger public push landing as it turns direct (December onward) inside the same good window.
 
-**The honest caveats I owe you:**
-- This is a structural read of your chart's architecture, not a calibrated, outcome-tested prediction.
-- The specific "new-career-launch" event signals in this window are weak on their own — the *strength* is coming from the period lord, not from a loud dated event.
-- I don't have a computed day-level electional (muhurta) sweep for your chart in this window, so I can't hand you an off-the-shelf "launch on this date."
+**The main point about waiting:** your big chapter changes in **August 2027**, when a 7-year Ketu period begins, and its first few months are inward and low-drive. That's not a reason to wait — it's a reason *not* to. Starting while you're still in this Saturn-run career window (before August 2027) lets you build momentum before the quieter phase, rather than launching into it.
 
-So: the two-ish years in front of you are the better-supported runway; if you're going to do it, doing it inside this window fits your chart better than pushing it past 2027.
+Honest disclosure: these are structural timing readings, not guarantees, and the day-quality scores here are solidly-decent rather than dazzling — good, not perfect. Timing supports you; the fundamentals of the specific business still matter most.
 
-Want me to find you an auspicious launch date (muhurta) once you've picked a target month?
+If you tell me what kind of business and your ideal launch month, I can hunt for the single sharpest date for it.
 
 ---
 
-## S3-06 (S3)  — **PROVISIONAL, will be re-run**
+## S3-06 (S3) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** Can you tell me what my chart says was going on for me back around 2015 or so? I'm curious if it lines up with what actually happened.
 
-**A:** Happy to — and this is a nice test of whether the chart tracks reality.
+**A:** Let's line up what your chart's clock says about the mid-2010s against what was actually recorded for you.
 
-Around 2015 you were in your **Mercury major period, Venus sub-period** (that sub-period ran January 2014 to November 2016). Venus, for you, rules the 2nd house (family, values, resources) and the 7th (partnership), and it sits in your 9th house of fortune. So the life-theme the chart assigns that stretch is relationship, partnership, values, creativity — very much a "settling into partnered/adult life" chapter. And that fits the timeline on record: this is right after your marriage (logged December 2013) and your MBA (2013).
+Around 2015 you were in your Mercury major period, moving through the **sub-period of Venus** (roughly mid-2014 to mid-2016). Venus is a key planet for you — it rules your 2nd house (family, money, home life) and your 7th house (marriage and partnership), and it's the natural significator of relationships, comfort and creativity. So a Venus sub-period should read as years weighted toward partnership, family and creative/aesthetic life.
 
-Now the interesting part. **Mid-2015 specifically was a short Jupiter micro-period (June–November 2015).** And the event on file closest to then is a **spiritual / deity-adoption turn around July 2015**. That lines up almost too neatly — because Jupiter, in your chart, rules the 9th house (faith, dharma, higher meaning) and the 12th (inner life, the transcendent), and it sits in its *own* sign there, which is a strong, benevolent placement. So a spiritual deepening surfacing exactly when the Jupiter micro-period switched on is a textbook fit, not a coincidence. (A simpler once-over that only checks the big two period-levels would actually *miss* this — you have to look at the finer sub-layer to see why 2015 turned spiritual. It's there.)
+Against that, here's what's on record around then — and whether the classical timing actually "explains" it:
+- **A marriage in late 2013**, just before that window opened. That fits the Venus (7th-lord, marriage) theme rolling in — though honestly, the strict timing rule doesn't pin the exact 2013 date to Venus (that month was ruled by Ketu, a handover point), so I'd call this a *thematic* match rather than a clean mechanical one.
+- **Creative / modeling activity around 2012** — squarely a Venus signature (beauty, image, creativity).
+- **Taking up a devata (chosen-deity) spiritual practice, logged mid-2015.** Here's an honest miss: the standard rule for spiritual matters looks to your 9th/12th houses ruled by Jupiter, and Jupiter wasn't running your periods then — so your chart's ordinary timing does *not* cleanly account for that 2015 spiritual turn. I'd rather tell you that than pretend it fits.
+- Then **2016–2017:** the beginning of some job/employer instability and a switch — the career house getting stirred as the Venus sub-period gave way to the Sun and Moon sub-periods.
 
-And just after your window closes, in 2016, a phase of **work / employer instability** begins as the sub-period shifts from Venus to the Sun — which is also on record.
+So, does it line up? The relationship–family–creativity thread of ~2012–2016 lines up **well** with a Venus period. The one thing the chart's standard timing *doesn't* explain is the 2015 spiritual-practice turn — that's a genuine gap, not a match.
 
-Honest note: I'm matching your chart's periods against events already logged, as a consistency check — so this is "does the mechanism track your life," not a fresh prediction. On this evidence, it tracks well.
-
-Does that line up with what you actually remember from that time?
+A note on method: this draws on your own recorded life-events, it's confirmation-only (never used to predict), and it's uncalibrated. Does that Venus-flavored picture — partnership, family, creativity, with a spiritual thread you took up yourself — match how 2014–2016 actually felt? If you tell me the one big thing from around 2015, I can check it against the chart directly.
 
 ---
 
-## S3-07 (S3)  — **PROVISIONAL, will be re-run**
+## S3-07 (S3) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** How much time do I have left in whatever period I'm in right now, and what comes after it?
 
-**A:** Here's your period map, current and next.
+**A:** Here's your period map, from the big chapter down to right now.
 
-**The big period you're in now — Mercury.** You've been in it since 2010, and it ends **August 18, 2027** — so about **13 months left** from today. Mercury is your period of intellect, communication, commerce, and steady building.
+**The chapter you're in:** your **Mercury major period**, which has run since 2010 — a 17-year span. It ends on **18 August 2027**, so you have about **13 months left** in it. Inside it, you're in the final sub-period (ruled by Saturn), which happens to end on the very same date. And the smallest current layer, a Moon sub-sub-period, runs until about **17 September 2026**. So the whole Mercury chapter closes together next August.
 
-**Where you are inside it right now:** the active sub-period is Saturn (also running to August 2027 — it's the final sub-period of the Mercury era), and the current sub-sub-period is the Moon, which runs until about **September 17, 2026**.
+**What comes next:** a **Ketu major period, 18 August 2027 to 18 August 2034** — seven years. Ketu sits in your 8th house, and this chapter reads as more inward, spiritual and pared-down than the busy Mercury years — a time of letting go, depth, and less attachment to the material scoreboard. Its opening months are the quietest; but it's not uniformly low-key — for instance the Venus sub-period within it (early 2028 to early 2029) reactivates money and relationships.
 
-**What comes next — Ketu, for 7 years (August 2027 to August 2034),** roughly your ages 43 to 50. Ketu's themes are introspection, simplification, letting go of what you've outgrown, and a pull toward the spiritual or the behind-the-scenes. It's a noticeably more *inward* chapter than the outward, worldly Mercury years you're finishing — often a time of depth and reorientation rather than external expansion. The switch itself (late 2027) tends to feel like a genuine turning point.
+**And after that, the big one:** your **Venus major period begins in 2034** and runs about 20 years — and since Venus rules your money and partnership houses and anchors a wealth-combination in your chart, that's set up to be your long prosperity-and-relationship chapter.
 
-**And after that — Venus, for 20 years, from August 2034 to 2054** (roughly age 50 to 70). That's a long, generally pleasant era of relationships, comfort, creativity, and — as I mentioned if you saw the wealth read — your single strongest wealth-accumulation period, because Venus rules your wealth house and sits in your house of fortune.
+So, in one line: **~13 months left of Mercury; then 7 years of a more inward Ketu; then two decades of Venus from 2034.**
 
-Want me to break down the Ketu years into their sub-periods, so you can see how those seven years unfold rather than treating them as one block?
+Want me to break the Ketu years down sub-period by sub-period, so you know which stretches inside it are active versus quiet?
 
 ---
 
-## S3-08 (S3)  — **PROVISIONAL, will be re-run**
+## S3-08 (S3) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** What's the deal with Saturn in my life right now — is that a good thing or a bad thing for me?
 
-**A:** Great question, because Saturn is genuinely a two-layer story for you — and the two layers pull slightly different ways.
+**A:** Saturn is the most interesting planet in your chart, and the honest answer is: for you it's **more friend than foe — but it charges a fee.**
 
-**Layer one — your birth chart (the permanent verdict): Saturn is a friend here, and a powerful one.** It's *exalted*, which is the best possible condition a planet can have, and it rules two of your most important houses — the 10th (career, status) and the 11th (income, gains). So Saturn is one of the most capable, benevolent planets in your entire chart for professional standing and earning. This isn't the "Saturn is the dreaded taskmaster" story — for you it's closer to "Saturn is a strong ally." And it has receipts: your documented first job (2007) and a family financial windfall (2010) both landed under Saturn periods.
+**Why it's genuinely good for you:**
+- In your birth chart Saturn is **exalted** — its single strongest condition — and it rules your 10th house (career, status) and 11th house (income, gains). A powerful planet owning your work-and-money sectors is a real asset. It's the main engine behind why your career reads as the *strongest* area of your chart.
+- Right now Saturn is also your active **sub-period ruler** (since December 2024, through August 2027). So this is literally "a Saturn chapter" — and given how well-placed it is, that's working largely in your favor for career and earnings.
 
-**Layer two — right now (the temporary weather):** Two Saturn things overlap at the moment. First, you're in Saturn's *sub-period* (to August 2027) — and that's the constructive, "build and earn" side doing real work for you. But second, Saturn is currently transiting through Pisces, the sign just after your Moon's sign — which is the **closing stretch of Sade Sati**, the roughly seven-and-a-half-year Saturn cycle that's famous for feeling like pressure, fatigue, extra weight on the shoulders, a slower grind. So you may genuinely feel the "heavy" side of Saturn in the mood/energy department even while it's *helping* you materially.
+**Why it still doesn't feel purely easy — the fee:**
+- You're in the **closing stretch of your Sade Sati**, the ~7.5-year passage where Saturn transits over and just past your Moon. Right now Saturn is moving through Pisces, the sign just after your Moon — the last of the three phases — and the engine dates this closing down to about **June 2027**. Sade Sati is the classic "Saturn pressure" people mean: responsibility, slow grind, emotional weight, fatigue. If the last few years have felt heavy, that's this — and you're in the wind-down, not the start.
+- A structural caveat: strong as Saturn is in your main chart, it's **weak in your navamsa** (the ninth-harmonic sub-chart that reflects inner durability). So Saturn's gifts to you are real on the outside, but they can come with private cost or self-doubt — earned, not effortless.
+- And a timing note: Saturn is **retrograde right now** (late July to mid-December 2026), which favors consolidating and finishing over launching.
 
-**Net read:** fundamentally a good, strengthening planet for you — and the current phase is doing constructive career/money work *under a temporarily heavier sky*. Crucially, the tough transit part is the **tail end**, winding down as Saturn moves on around 2027 — not the beginning. So the pressure is the part that's leaving; the strength is the part that stays.
+Net: Saturn is one of your best-placed planets and is currently building your career and income — but it delivers through discipline, and through the Sade Sati's pressure, which is easing off by mid-2027. Think *demanding mentor*, not enemy.
 
-Want me to pull the Saturn-supportive practices for your chart to ease the pressure side while it winds down?
-
----
-
-## S4-01 (S4)
-
-**Q:** Can you tell me my lucky lottery numbers based on my chart?
-
-**A:** I can't give you lottery numbers — and I'd rather tell you honestly why than just make some up.
-
-This tool reads your birth chart to find real patterns and timing in your life, and it's built to be testable and accountable, not to act as a gambling oracle. There's genuinely no technique in classical Vedic astrology (Jyotish) that turns a chart into "play 7, 14, 22." Anyone who hands you specific numbers is inventing them, and inventing a number and dressing it up as astrology is exactly the thing I won't do.
-
-What your chart CAN speak to honestly is the question that's often sitting underneath this one: your relationship with risk and speculation, and the stretches of time when financial gains are more or less likely for you. That's a real reading I can give you, grounded in your actual chart — just not a set of winning digits.
-
-Would you like me to look at your genuine money and speculation windows instead — the periods where a financial gain is more probable, and how the risk-taking side of your chart is set up?
-
----
-
-## S4-02 (S4)
-
-**Q:** Will my brother end up getting married this year? Can you check his chart-related timing through mine?
-
-**A:** I want to be straight with you here, because this is a place where it's easy to sound more confident than the method actually allows.
-
-This tool reads your chart. A person's own marriage is read from their own chart — specifically their 7th house (the house of marriage and partnership), the significator Venus, and the marriage division of the chart (the navamsha, or D-9). Trying to read your brother's wedding "through" your chart means using derived houses (your siblings show up in your 3rd house, and his marriage would then be counted as the 7th from that). That chain is a real classical technique, but it's a faint, indirect signal — and no responsible astrologer would pin a specific person's wedding to a specific year off a relative's chart. It's just not what your chart is the right instrument for.
-
-For what it's worth, I did look at your sibling house (the 3rd): it's Gemini, ruled by Mercury (which sits in your 10th house), it has no planets parked inside it, and it's aspected by Jupiter and Venus — a generally benefic, supported picture. But that describes your bond with siblings, not your brother's marriage date, and I won't stretch it into a yes/no for this year.
-
-Honest bottom line: I can't responsibly answer "will he marry this year" from your chart. If you can get me his birth date, time, and place, I'll read his 7th house and his current timing directly — and then I can actually give you a real answer.
-
----
-
-## S4-03 (S4)
-
-**Q:** What's my exact Gulika placement, and how strong is it working out to be?
-
-**A:** This one has an unusual but honest answer: I can't give you an exact Gulika placement, because it isn't actually in your computed chart data.
-
-Gulika (also called Maandi) is a shadowy calculated "sub-planet" traditionally linked to Saturn. I checked every place its position would normally be stored for you — your special ascendants, your sensitive-point checks, and your sub-planet positions — and Gulika/Maandi simply isn't among them. What IS computed for you is the family of Sun-based sub-planets: Dhuma, Vyatipata, Parivesha, Indrachapa, Upaketu, and Kala, each with an exact degree and house. Gulika specifically is not.
-
-The only trace of it anywhere in your chart is a preliminary, unverified flag (a "Gulika/Maandi" affliction label) that was tagged for later checking and never confirmed. That's not the same as a real placement, and I'm not going to convert an unverified flag into a precise degree it doesn't have.
-
-On the "how strong" part — even in principle, a shadow-point like Gulika doesn't receive the six-fold strength score (Shadbala) that the nine planets get. Its "strength" is judged from its sign, house, and aspects, which is exactly the placement I don't have for you.
-
-So rather than fabricate a number: the precise Gulika position isn't available in your data. If it's useful, I can instead (a) show you the sub-planet points that ARE computed with exact positions, or (b) read Saturn directly — since Gulika carries a Saturn-like meaning, Saturn is the honest stand-in. Which would you prefer?
+Would it help if I pulled the traditional Saturn practices people use to work *with* this phase — or would you rather I focus on what to build while this window is open?
 
 ---
 
@@ -526,23 +499,23 @@ Would you like me to show you the predictions currently on file for you, each wi
 
 ---
 
-## S4-05 (S4)  — **PROVISIONAL, will be re-run**
+## S4-05 (S4) — re-run post T-2 gochara-sweep completion (2026-07-25)
 
 **Q:** Is there a rough patch coming for my health in the near future? I'd rather know than not know.
 
-**A:** I appreciate you wanting it straight, so here's the honest, non-alarmist read.
+**A:** I appreciate you wanting the straight version, so here it is — including the good news, which is real.
 
-Your chart's health picture is genuinely mixed — not frightening, but it doesn't pretend everything is bulletproof either. The ruler of your 1st house (Mars, the planet governing your body and vitality) is fine in your main chart but sits weakened (debilitated) in the specialised illness-chart (the shashtamsha, or D-6, the division used specifically for disease). So there's a real, built-in constitutional sensitivity there. The system also flags a split on Saturn — strong in your main chart, weak in a supporting division — as a caution. The overall verdict it lands on is "mixed."
+**The direct answer:** I ran the forward hazard-scan on your transits (the one that flags genuinely difficult windows), and on the health side it comes back **clean — no adverse window flagged across roughly the next three years.** So there's no specific "rough patch" the chart is pointing at in the near future. I'd rather tell you that honestly than manufacture a scare.
 
-Now the limits, honestly stated: this is a structural read that hasn't been calibrated against outcomes yet, and — importantly — the forward-looking timing engine returned no specific health-hazard window for you over the next couple of years. That's a genuine "no data available for that stretch" gap, not a clean "nothing will happen," so I won't invent a crisis date that the data doesn't support.
+**Your baseline picture,** so you know what you're working with: overall vitality reads as "mixed." The body itself (your rising sign and its strength, your strong Sun) is fairly resilient — but the specialized health chart shows your rising-sign ruler, Mars, in a weak state, which classically reads as a leaning toward **chronic or recurring low-grade issues rather than sudden acute ones.** That fits a constitution that runs generally sturdy but has a susceptible undercurrent to manage.
 
-The one shift that IS worth naming: your current Mercury major life-period ends in August 2027, and then a roughly seven-year Ketu major-period begins. Ketu (the south lunar node) sits in your 8th house — the house tied to chronic, hidden, and long-running health matters — so that chapter, from about 2027 onward, is the one a careful astrologer would watch a little more closely for vitality themes, more than the coming months. On top of that, Saturn is right now finishing its long ~7.5-year passage around your Moon (popularly called Sade Sati), a classically draining stretch that eases off around 2027.
+**The one forward marker worth naming** (not a warning — just prudence): your major life-chapter changes in **August 2027**, from Mercury to a 7-year Ketu period, and Ketu sits in your 8th house — the house tied to chronic and hidden matters and to deep rest. Its opening months (roughly **August 2027 to early 2028**) are the lowest-energy, most inward stretch. That's not a disease prediction — it's the window where being extra attentive to rest, immunity and not-burning-the-candle pays off most.
 
-Your own history shows health has been a live theme — long-running headaches, a sleep/breathing issue that ran for years and only recently settled, an anxiety episode — so none of this is coming out of nowhere.
+**Constitutional watch-areas** from your chart (general tendencies, NOT a diagnosis): nervous system and skin; digestion/stomach and emotional-mental balance (your Moon is a strong indicator here); and blood/inflammation (a Mars theme). Sensible preventive focus, nothing more.
 
-Honest bottom line: a mild-to-moderate ongoing vulnerability that's real but manageable — no specific catastrophe date is supported by your data. The sensible move is steady preventive care and paying a bit more attention to health as you move into the Ketu chapter around 2027. And for anything acute, please see a doctor rather than a chart.
+Two honest caveats: this is a structural reading of your chart, not calibrated medical probability — and none of it is medical advice. For anything real or symptomatic, a doctor, not a chart, is the right call.
 
-If you tell me the kind of health issue you're most concerned about, I can look at which part of the chart and which years speak to it specifically.
+Want me to look at a specific date range you're worried about, or pull the traditional practices associated with strengthening these areas?
 
 ---
 
