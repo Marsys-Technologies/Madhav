@@ -13,10 +13,13 @@
  *
  * HONEST COVERAGE (B.10 — no fabrication): Ω1's baseline names 9 systems
  * (ashtottari, chara_karaka, kalachakra, mudda, naisargika, narayana, vimshottari,
- * vimshottari_kp, yogini). chart_dashas is the L1 authority; get_dashas' KNOWN_SYSTEMS
- * verified live that `narayana` never landed. This surface reports whatever system_ids are
- * ACTUALLY present for the chart (SELECT DISTINCT) and discloses any expected-but-absent
- * system as a coverage gap — it never invents a lord for a system that has no rows.
+ * vimshottari_kp, yogini). chart_dashas is the L1 authority and system coverage is
+ * PER-CHART, not global: the native chart 482012f1 carries all 9 systems including
+ * narayana (266 rows under lahiri), whereas Abhinandan 1c826d5a carries only 8 (narayana
+ * absent). This surface therefore reports whatever system_ids are ACTUALLY present for THIS
+ * chart+ayanamsha (SELECT DISTINCT) and discloses any expected-but-absent system as a
+ * per-chart coverage gap — it never invents a lord for a system that has no rows, and never
+ * hardcodes an assumption about which systems are present.
  *
  * Chart-scoped (principle #14). Read-only.
  */
@@ -174,7 +177,7 @@ export const queryActiveDashasCapability: CapabilityDescriptor = {
             expected_present: expectedPresent,
             expected_absent: expectedAbsent,
             expected_absent_note: expectedAbsent.length
-              ? `${expectedAbsent.join(', ')} not built into chart_dashas for this chart (narayana is a known-absent system on current builds — get_dashas KNOWN_SYSTEMS). Reported honestly, not fabricated.`
+              ? `${expectedAbsent.join(', ')} not built into chart_dashas for THIS chart+ayanamsha (system coverage is per-chart — e.g. narayana is present on the native 482012f1 but absent on Abhinandan 1c826d5a). Reported honestly from a live SELECT DISTINCT, not fabricated.`
               : 'all 9 expected systems present.',
             present_but_no_active_row_on_date: presentButNoActiveRow,
             present_but_no_active_row_note: presentButNoActiveRow.length

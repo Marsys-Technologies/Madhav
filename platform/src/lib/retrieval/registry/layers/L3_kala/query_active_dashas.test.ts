@@ -17,6 +17,7 @@ type Handler = (a: Record<string, unknown>, c?: unknown) => Promise<{ content: R
 const handler = queryActiveDashasCapability.handler as Handler
 
 const NATIVE = '482012f1-710e-4a25-994a-93821f5871aa'
+const ABHINANDAN = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'  // second chart — narayana absent
 
 describe('EL-33 query_active_dashas — descriptor', () => {
   it('is a per-chart temporal L3 tool grounded to L1 facts', () => {
@@ -38,14 +39,16 @@ function routeQueries(present: string[], chainRows: Record<string, unknown>[]) {
 describe('EL-33 query_active_dashas — multi-system grouping + honest coverage', () => {
   beforeEach(() => queryMock.mockClear())
 
-  it('groups the active chain per system and reports across all present systems', async () => {
-    // 8 systems built — narayana absent, per get_dashas ground truth.
+  it('native 482012f1: all 9 systems present (incl. narayana) → no expected_absent', async () => {
+    // Ground truth (Verifier-confirmed live): the native chart carries ALL 9 systems including
+    // narayana (266 rows under lahiri). Coverage is per-chart — this is the native's reality.
     routeQueries(
-      ['ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika', 'vimshottari', 'vimshottari_kp', 'yogini'],
+      ['ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika', 'narayana', 'vimshottari', 'vimshottari_kp', 'yogini'],
       [
         { system_id: 'vimshottari', level_n: 1, lord_graha: 'Mercury', lord_sign: 'Capricorn', start_date: '2026-01-01', end_date: '2043-01-01', start_iso: null, end_iso: null },
         { system_id: 'vimshottari', level_n: 2, lord_graha: 'Venus', lord_sign: 'Aquarius', start_date: '2026-06-01', end_date: '2029-06-01', start_iso: null, end_iso: null },
         { system_id: 'vimshottari', level_n: 3, lord_graha: 'Sun', lord_sign: 'Capricorn', start_date: '2026-07-01', end_date: '2026-09-01', start_iso: null, end_iso: null },
+        { system_id: 'narayana', level_n: 1, lord_graha: 'Mars', lord_sign: 'Aries', start_date: '2020-01-01', end_date: '2032-01-01', start_iso: null, end_iso: null },
         { system_id: 'yogini', level_n: 1, lord_graha: 'Jupiter', lord_sign: 'Pisces', start_date: '2020-01-01', end_date: '2030-01-01', start_iso: null, end_iso: null },
       ],
     )
@@ -54,8 +57,8 @@ describe('EL-33 query_active_dashas — multi-system grouping + honest coverage'
     expect(res.is_error).toBeFalsy()
     const c = res.content
 
-    // grouped by system
-    expect(c['system_count']).toBe(2)
+    // grouped by system: vimshottari (3 levels), narayana + yogini (1 level each)
+    expect(c['system_count']).toBe(3)
     const systems = c['systems'] as Array<{ system_id: string; active_chain: unknown[]; levels_present: number[] }>
     const vim = systems.find(s => s.system_id === 'vimshottari')!
     expect(vim.active_chain).toHaveLength(3)
@@ -65,16 +68,35 @@ describe('EL-33 query_active_dashas — multi-system grouping + honest coverage'
     expect(chain[0].lord_graha).toBe('Mercury')
     expect(chain[1].level_name).toBe('Antardasha')
     expect(chain[2].level_name).toBe('Pratyantardasha')
+    expect(systems.find(s => s.system_id === 'narayana')).toBeDefined()
 
-    // honest coverage: 8 present, narayana disclosed absent (never fabricated)
+    // honest coverage: all 9 present for the native, nothing absent
     const cov = c['coverage'] as Record<string, unknown>
-    expect(cov['systems_present_for_chart']).toHaveLength(8)
-    expect(cov['expected_absent']).toEqual(['narayana'])
-    expect(String(cov['expected_absent_note'])).toMatch(/narayana/)
-    // yogini present but only L1 active row — chara_karaka etc. present-but-no-active-row disclosed
+    expect(cov['systems_present_for_chart']).toHaveLength(9)
+    expect(cov['expected_absent']).toEqual([])
+    expect(String(cov['expected_absent_note'])).toMatch(/all 9 expected systems present/)
+    // chara_karaka etc. present-but-no-active-row-on-date disclosed
     expect(cov['present_but_no_active_row_on_date']).toEqual(
       expect.arrayContaining(['ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika', 'vimshottari_kp']),
     )
+  })
+
+  it('Abhinandan 1c826d5a: 8 systems, narayana absent → disclosed as a per-chart coverage gap', async () => {
+    // Ground truth: the second chart lacks narayana (per-chart coverage differs). The honest-
+    // disclosure path surfaces this without fabricating a lord for the absent system.
+    routeQueries(
+      ['ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika', 'vimshottari', 'vimshottari_kp', 'yogini'],
+      [
+        { system_id: 'vimshottari', level_n: 1, lord_graha: 'Saturn', lord_sign: 'Libra', start_date: '2020-01-01', end_date: '2039-01-01', start_iso: null, end_iso: null },
+      ],
+    )
+
+    const res = await handler({ chart_id: ABHINANDAN, date: '2026-07-25' })
+    expect(res.is_error).toBeFalsy()
+    const cov = res.content['coverage'] as Record<string, unknown>
+    expect(cov['systems_present_for_chart']).toHaveLength(8)
+    expect(cov['expected_absent']).toEqual(['narayana'])
+    expect(String(cov['expected_absent_note'])).toMatch(/narayana/)
   })
 
   it('the date filter is a single-instant containment (bounded — not the heavy tree)', async () => {
