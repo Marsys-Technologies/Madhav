@@ -100,8 +100,8 @@ def _execute_run_with_bounded_retry(run_id: str, chart_id: str, assets: list[str
             cur.execute(
                 """INSERT INTO build_runs
                      (id, chart_id, scope, scope_target, action, plan, state, triggered_by)
-                   VALUES (%s, %s, 'per_chart', %s, 'build', %s, 'planned', %s)""",
-                (current_run_id, chart_id, chart_id, json.dumps(assets),
+                   VALUES (%s, %s, 'asset_set', %s, 'build', %s, 'planned', %s)""",
+                (current_run_id, chart_id, None, json.dumps(assets),
                  f"{TRIGGERED_BY}-retry{attempt}"),
             )
             for position, asset_id in enumerate(assets):
@@ -137,8 +137,8 @@ def _rebuild_one_chart(chart_id: str) -> None:
     cur.execute(
         """INSERT INTO build_runs
              (id, chart_id, scope, scope_target, action, plan, state, triggered_by)
-           VALUES (%s, %s, 'per_chart', %s, 'build', %s, 'planned', %s)""",
-        (run_id, chart_id, chart_id, json.dumps(ASSETS), TRIGGERED_BY),
+           VALUES (%s, %s, 'asset_set', %s, 'build', %s, 'planned', %s)""",
+        (run_id, chart_id, None, json.dumps(ASSETS), TRIGGERED_BY),
     )
     for position, asset_id in enumerate(ASSETS):
         cur.execute(
