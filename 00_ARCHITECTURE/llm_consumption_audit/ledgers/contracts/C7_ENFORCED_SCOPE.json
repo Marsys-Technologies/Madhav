@@ -1,0 +1,4 @@
+{
+  "_comment": "C7 accounting-invariant gate scope (see ~/elev-v2-shared/contracts/C7_ACCOUNTING_INVARIANT_v1_0.md, section 'Scope'). An allowlist of {tool, domain} pairs. OUTSIDE the allowlist, PASS(chart_id, domain) is computed and reported but never blocks CI (report-only). INSIDE the allowlist, pass===false fails the build. Default is empty: γ does NOT self-promote wealth/career into the allowlist — that is the Stream-Conductor's call once Ω3's pass result is independently verified (per the Ω3 brief and C7's 'Scope' + PROXY-RULED-003). A domain that cannot reach pass:true is PARKED-HONEST and stays out of the allowlist; the number is never lowered.",
+  "tools": []
+}
