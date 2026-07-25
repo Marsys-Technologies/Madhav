@@ -93,11 +93,66 @@ if _SWE_AVAILABLE:
         "krishnamurti":    swe.SIDM_KRISHNAMURTI,   # 5 (alias)
         "yukteshwar":      swe.SIDM_YUKTESHWAR,     # 7
         "surya_siddhanta": swe.SIDM_SURYASIDDHANTA, # 21
+        # EL-39 fix (2026-07-25, β.C): canonical 5-ayanamsha vocabulary aliases.
+        # This project has THREE independent ayanamsha-key vocabularies that
+        # pre-date this fix (see routers/ephemeris.py's comment for the full
+        # inventory): this file's own build-time keys above, panchang_engine/
+        # pyjhora_adapter's short keys, and the CANONICAL vocabulary used by
+        # routers/jaimini.py's _VALID_AYANAMSHAS, TS registry/constants.ts's
+        # DEFAULT_AYANAMSHA, and chart_facts/bodha_*/kala_*/phala_* stored
+        # ayanamsha_id ('lahiri_chitrapaksha', 'true_chitra', 'krishnamurti',
+        # 'raman', 'surya_siddhanta_classical'). Read-time HTTP-facing query
+        # functions in this file (query_planet_position/_transit/_aspects_at_time/
+        # _retrograde_periods) now default to and validate against the CANONICAL
+        # vocabulary, so it must resolve through this same map. Added as pure
+        # aliases (same SIDM_* constants) — no existing key changes meaning,
+        # so this is additive and does not require unifying the other two
+        # vocabularies (out of this fix's scope; logged as a residual in
+        # BETA_C.md).
+        "lahiri_chitrapaksha":       swe.SIDM_LAHIRI,          # alias of "lahiri"
+        "true_chitra":               swe.SIDM_TRUE_CITRA,      # new
+        "surya_siddhanta_classical": swe.SIDM_SURYASIDDHANTA,  # alias of "surya_siddhanta"
     }
 else:
     AYANAMSHA_MAP = {}
 
 _DEFAULT_AYANAMSHA = "lahiri"
+
+# EL-39 fix: the physical storage key in ephemeris_daily — every row is stored
+# once, tropical, at build time (see AYANAMSHA_ID constant above). Read-time
+# sidereal derivation always queries WHERE ayanamsha_id = _STORED_AYANAMSHA_ID
+# and then derives the caller's requested ayanamsha via derive_sidereal().
+# Querying WHERE ayanamsha_id = <a non-'tropical' value> against this table
+# returns zero rows — that was EL-39's second, subtler leak (a caller passing
+# ayanamsha_id='lahiri' to the OLD query_* functions got a silent empty, not
+# an error and not sidereal data).
+_STORED_AYANAMSHA_ID = "tropical"
+
+# EL-39 fix: sidereal-first default for the HTTP-facing read API (NOT the
+# build-time AYANAMSHA_ID constant above, which stays 'tropical' — that is
+# what is physically stored and must not change). Matches the canonical
+# vocabulary's default (TS registry/constants.ts DEFAULT_AYANAMSHA).
+_DEFAULT_READ_AYANAMSHA = "lahiri_chitrapaksha"
+
+
+def _resolve_read_ayanamsha(ayanamsha_id: str) -> tuple[bool, str | None]:
+    """
+    Validate an ayanamsha_id for the read API.
+
+    Returns (is_tropical_request, error_message). error_message is None when
+    ayanamsha_id is either the literal 'tropical' or a recognized key in
+    AYANAMSHA_MAP; otherwise it is a human-readable [EXTERNAL_COMPUTATION_REQUIRED]
+    message (B.10 — never silently fall back to a different ayanamsha or to
+    tropical when an unrecognized one was requested).
+    """
+    if ayanamsha_id == _STORED_AYANAMSHA_ID:
+        return True, None
+    if ayanamsha_id in AYANAMSHA_MAP:
+        return False, None
+    return False, (
+        f"[EXTERNAL_COMPUTATION_REQUIRED] Unknown ayanamsha_id={ayanamsha_id!r}. "
+        f"Valid values: 'tropical' or one of {sorted(AYANAMSHA_MAP)}."
+    )
 
 
 def _tropical_to_jd(d: date) -> float:
@@ -566,24 +621,94 @@ def check_volume(conn=None, dry_run: bool = False) -> dict[str, Any]:
 
 # ── Read API ──────────────────────────────────────────────────────────────────
 
+def _sidereal_position_row(row: dict[str, Any], row_date: date, ayanamsha_id: str) -> dict[str, Any]:
+    """
+    EL-39 fix: turn one stored-tropical ephemeris_daily row into a sidereal-primary
+    output row. tropical_longitude is retained as a clearly-labelled extra.
+    """
+    jd = _tropical_to_jd(row_date)
+    sid = derive_sidereal(float(row["tropical_longitude"]), jd, ayanamsha_id)
+    return {
+        "body": row["body"],
+        "longitude": sid["sidereal_longitude"],
+        "sign_number": sid["sign_number"],
+        "degree_in_sign": sid["degree_in_sign"],
+        "nakshatra_number": sid["nakshatra_number"],
+        "pada": sid["pada"],
+        "ayanamsha_offset": sid["ayanamsha_offset"],
+        "is_retrograde": row["is_retrograde"],
+        "speed_dps": row["speed_dps"],
+        "tropical_longitude": float(row["tropical_longitude"]),
+        "source_citation": row.get("source_citation"),
+    }
+
+
+def _tropical_position_row(row: dict[str, Any]) -> dict[str, Any]:
+    """
+    EL-39 fix: explicit ayanamsha_id='tropical' request. sign_number/degree_in_sign
+    remain meaningful tropically and are served as before; nakshatra_number/pada are
+    suppressed (nakshatra is an inherently sidereal division — there is no honest
+    "tropical nakshatra") in favour of an explanatory note, never served bare/wrong.
+    """
+    return {
+        "body": row["body"],
+        "tropical_longitude": float(row["tropical_longitude"]),
+        "sign_number": row["sign_number"],
+        "degree_in_sign": (
+            float(row["degree_in_sign"]) if row.get("degree_in_sign") is not None else None
+        ),
+        "nakshatra_number": None,
+        "nakshatra_note": (
+            "nakshatra is an inherently sidereal division; omitted under "
+            "ayanamsha_id='tropical' — request a sidereal ayanamsha_id "
+            "(default lahiri_chitrapaksha) to get nakshatra_number/pada."
+        ),
+        "is_retrograde": row["is_retrograde"],
+        "speed_dps": row["speed_dps"],
+        "source_citation": row.get("source_citation"),
+    }
+
+
 def query_planet_position(
     date_str: str,
     planet: str | None = None,
-    ayanamsha_id: str = "tropical",
+    ayanamsha_id: str = _DEFAULT_READ_AYANAMSHA,
     conn=None,
 ) -> dict[str, Any]:
     """
     Query planetary positions for a specific date.
 
+    EL-39 fix (2026-07-25, β.C): sidereal-first. ayanamsha_id defaults to
+    'lahiri_chitrapaksha', NEVER 'tropical'. ephemeris_daily physically stores
+    exactly one row per (date, body) — always ayanamsha_id='tropical' — so this
+    function always reads that stored row and derives the requested ayanamsha at
+    read time via derive_sidereal(). 'tropical' is still accepted EXPLICITLY, in
+    which case nakshatra_number/pada are suppressed (see _tropical_position_row).
+    An unrecognized ayanamsha_id is a loud [EXTERNAL_COMPUTATION_REQUIRED] error,
+    never a silent fallback (B.10).
+
     Args:
         date_str: YYYY-MM-DD
         planet: one of Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu (or None for all)
-        ayanamsha_id: 'tropical' (default)
+        ayanamsha_id: 'lahiri_chitrapaksha' (default) | 'true_chitra' | 'krishnamurti' |
+                      'raman' | 'surya_siddhanta_classical' | 'tropical' (explicit only)
 
-    Returns:
-        {ok, date, positions: [{body, tropical_longitude, sign_number, degree_in_sign,
-                                nakshatra_number, is_retrograde, speed_dps}], count, provenance_envelope}
+    Returns (sidereal request):
+        {ok, date, ayanamsha_id, positions: [{body, longitude, sign_number, degree_in_sign,
+                                nakshatra_number, pada, ayanamsha_offset, is_retrograde,
+                                speed_dps, tropical_longitude, source_citation}],
+         count, provenance_envelope}
+
+    Returns (ayanamsha_id='tropical'):
+        {ok, date, ayanamsha_id, positions: [{body, tropical_longitude, sign_number,
+                                degree_in_sign, nakshatra_number: null, nakshatra_note,
+                                is_retrograde, speed_dps, source_citation}],
+         count, provenance_envelope}
     """
+    is_tropical_request, err = _resolve_read_ayanamsha(ayanamsha_id)
+    if err:
+        return _error_response("query_planet_position", err)
+
     close_conn = False
     if conn is None:
         try:
@@ -593,8 +718,9 @@ def query_planet_position(
             return _error_response("query_planet_position", str(exc))
 
     try:
+        # Always read the physically-stored tropical row — see _STORED_AYANAMSHA_ID.
         conditions = ["date = %s", "ayanamsha_id = %s"]
-        params: list[Any] = [date_str, ayanamsha_id]
+        params: list[Any] = [date_str, _STORED_AYANAMSHA_ID]
         if planet:
             # Normalize planet name (capitalize first letter)
             planet_norm = planet.capitalize()
@@ -614,7 +740,7 @@ def query_planet_position(
                 params,
             )
             cols = [c.name for c in cur.description]
-            rows = []
+            raw_rows = []
             for r in cur.fetchall():
                 row = dict(zip(cols, r))
                 if hasattr(row.get("date"), "isoformat"):
@@ -625,7 +751,13 @@ def query_planet_position(
                 for k in ("speed_dps",):
                     if row.get(k) is not None:
                         row[k] = float(row[k])
-                rows.append(row)
+                raw_rows.append(row)
+
+        row_date = date.fromisoformat(date_str)
+        if is_tropical_request:
+            rows = [_tropical_position_row(r) for r in raw_rows]
+        else:
+            rows = [_sidereal_position_row(r, row_date, ayanamsha_id) for r in raw_rows]
 
         return {
             "ok": True,
@@ -651,21 +783,39 @@ def query_planet_transit(
     start_date: str,
     end_date: str,
     sign_number: int | None = None,
-    ayanamsha_id: str = "tropical",
+    ayanamsha_id: str = _DEFAULT_READ_AYANAMSHA,
     conn=None,
 ) -> dict[str, Any]:
     """
     Query planetary transit through a date range, optionally filtered by sign.
 
+    EL-39 fix (2026-07-25, β.C): sidereal-first, same discipline as
+    query_planet_position. sign_number filtering now applies to the SIDEREAL
+    sign (matches what a consumer means by "planet in Virgo") — previously it
+    filtered the stored tropical sign_number column regardless of the
+    ayanamsha_id param, and ayanamsha_id itself did nothing (WHERE-filter bug:
+    a non-'tropical' value against a tropical-only table silently returned
+    zero rows). Because sign filtering now happens after per-row derivation,
+    it is applied in Python after the raw date-range fetch (capped at 5000
+    raw days, same cap as before — a narrow sign filter over a long window
+    may now hit the days-fetched cap before the sign-matched cap; this is a
+    documented, acceptable trade-off for a single-transit-window tool, not a
+    silent truncation: `rows_fetched_before_filter` discloses it).
+
     Args:
         planet: Sun/Moon/Mars etc.
         start_date: YYYY-MM-DD
         end_date: YYYY-MM-DD
-        sign_number: 1-12 filter (optional)
-        ayanamsha_id: 'tropical'
+        sign_number: 1-12 filter (optional; sidereal unless ayanamsha_id='tropical')
+        ayanamsha_id: 'lahiri_chitrapaksha' (default) | ... | 'tropical' (explicit only)
 
-    Returns transit rows with daily longitude, sign, nakshatra.
+    Returns transit rows with daily longitude, sign, nakshatra (sidereal-primary
+    unless ayanamsha_id='tropical', matching query_planet_position's row shape).
     """
+    is_tropical_request, err = _resolve_read_ayanamsha(ayanamsha_id)
+    if err:
+        return _error_response("query_planet_transit", err)
+
     close_conn = False
     if conn is None:
         try:
@@ -676,27 +826,22 @@ def query_planet_transit(
 
     try:
         planet_norm = planet.capitalize()
-        conditions = ["body = %s", "date >= %s", "date <= %s", "ayanamsha_id = %s"]
-        params: list[Any] = [planet_norm, start_date, end_date, ayanamsha_id]
-        if sign_number is not None:
-            conditions.append("sign_number = %s")
-            params.append(sign_number)
-
-        where = " AND ".join(conditions)
+        # Always read the physically-stored tropical rows; sign_number filtering
+        # (sidereal by default) happens after per-row derivation below.
         with conn.cursor() as cur:
             cur.execute(
-                f"""
+                """
                 SELECT date, body, tropical_longitude, sign_number, degree_in_sign,
                        nakshatra_number, is_retrograde, speed_dps
                 FROM ephemeris_daily
-                WHERE {where}
+                WHERE body = %s AND date >= %s AND date <= %s AND ayanamsha_id = %s
                 ORDER BY date
                 LIMIT 5000
                 """,
-                params,
+                (planet_norm, start_date, end_date, _STORED_AYANAMSHA_ID),
             )
             cols = [c.name for c in cur.description]
-            rows = []
+            raw_rows = []
             for r in cur.fetchall():
                 row = dict(zip(cols, r))
                 if hasattr(row.get("date"), "isoformat"):
@@ -704,15 +849,31 @@ def query_planet_transit(
                 for k in ("tropical_longitude", "degree_in_sign", "speed_dps"):
                     if row.get(k) is not None:
                         row[k] = float(row[k])
-                rows.append(row)
+                raw_rows.append(row)
+
+        rows_fetched_before_filter = len(raw_rows)
+        rows = []
+        for raw in raw_rows:
+            row_date = date.fromisoformat(raw["date"])
+            if is_tropical_request:
+                out = {"date": raw["date"], **_tropical_position_row(raw)}
+                match_sign = out["sign_number"]
+            else:
+                out = {"date": raw["date"], **_sidereal_position_row(raw, row_date, ayanamsha_id)}
+                match_sign = out["sign_number"]
+            if sign_number is not None and match_sign != sign_number:
+                continue
+            rows.append(out)
 
         return {
             "ok": True,
             "planet": planet_norm,
             "window": {"start": start_date, "end": end_date},
             "sign_filter": sign_number,
+            "ayanamsha_id": ayanamsha_id,
             "rows": rows,
             "count": len(rows),
+            "rows_fetched_before_filter": rows_fetched_before_filter,
             "provenance_envelope": {
                 "source": "brahmagyan.ephemeris",
                 "asset": "BRAHMA-BG-0-6",
@@ -727,7 +888,7 @@ def query_planet_transit(
 
 def query_aspects_at_time(
     date_str: str,
-    ayanamsha_id: str = "tropical",
+    ayanamsha_id: str = _DEFAULT_READ_AYANAMSHA,
     orb_degrees: float = 1.0,
     conn=None,
 ) -> dict[str, Any]:
@@ -735,13 +896,30 @@ def query_aspects_at_time(
     Compute planetary aspects (conjunction, opposition, trine, square, sextile)
     for all body pairs on a given date.
 
+    EL-39 fix (2026-07-25, β.C): angular differences between two bodies are
+    AYANAMSHA-INVARIANT — subtracting the same ayanamsha offset from both
+    bodies' tropical longitudes preserves their difference exactly, so
+    aspect/exact_angle/actual_diff/orb never change with ayanamsha_id. What
+    was actually broken: (a) the WHERE ayanamsha_id=%s filter against the
+    tropical-only table meant any non-'tropical' value silently returned ZERO
+    aspects (not an error, not the requested ayanamsha — a straight silent
+    empty); (b) the reported absolute longitude_b1/longitude_b2 were always
+    tropical and unlabelled. Both fixed: always read the stored tropical row,
+    and report sidereal-primary longitudes by default (tropical_longitude_b1/
+    _b2 retained as labelled extras), or tropical-primary under an explicit
+    ayanamsha_id='tropical' request.
+
     Args:
         date_str: YYYY-MM-DD
-        ayanamsha_id: 'tropical'
+        ayanamsha_id: 'lahiri_chitrapaksha' (default) | ... | 'tropical' (explicit only)
         orb_degrees: tolerance in degrees (default 1.0)
 
     Returns list of active aspects with body pair, aspect type, exact_degree, orb.
     """
+    is_tropical_request, err = _resolve_read_ayanamsha(ayanamsha_id)
+    if err:
+        return _error_response("query_aspects_at_time", err)
+
     close_conn = False
     if conn is None:
         try:
@@ -766,9 +944,19 @@ def query_aspects_at_time(
                 WHERE date = %s AND ayanamsha_id = %s
                 ORDER BY body
                 """,
-                (date_str, ayanamsha_id),
+                (date_str, _STORED_AYANAMSHA_ID),
             )
             rows = cur.fetchall()
+
+        row_date = date.fromisoformat(date_str)
+        jd = _tropical_to_jd(row_date) if not is_tropical_request else None
+
+        def _labelled_lon(trop_lon: float) -> tuple[float, float]:
+            """Returns (primary_longitude, tropical_longitude_extra)."""
+            if is_tropical_request:
+                return round(trop_lon, 3), round(trop_lon, 3)
+            sid = derive_sidereal(trop_lon, jd, ayanamsha_id)
+            return round(sid["sidereal_longitude"], 3), round(trop_lon, 3)
 
         bodies = [(r[0], float(r[1])) for r in rows]
         aspects = []
@@ -776,12 +964,15 @@ def query_aspects_at_time(
             for j in range(i + 1, len(bodies)):
                 b1, lon1 = bodies[i]
                 b2, lon2 = bodies[j]
+                # Ayanamsha-invariant: computed from raw tropical longitudes directly.
                 diff = abs(lon1 - lon2)
                 if diff > 180.0:
                     diff = 360.0 - diff
                 for aspect_name, exact_angle in ASPECT_ANGLES.items():
                     orb = abs(diff - exact_angle)
                     if orb <= orb_degrees:
+                        lon1_primary, lon1_trop = _labelled_lon(lon1)
+                        lon2_primary, lon2_trop = _labelled_lon(lon2)
                         aspects.append({
                             "body1": b1,
                             "body2": b2,
@@ -789,8 +980,10 @@ def query_aspects_at_time(
                             "exact_angle": exact_angle,
                             "actual_diff": round(diff, 3),
                             "orb": round(orb, 3),
-                            "longitude_b1": round(lon1, 3),
-                            "longitude_b2": round(lon2, 3),
+                            "longitude_b1": lon1_primary,
+                            "longitude_b2": lon2_primary,
+                            "tropical_longitude_b1": lon1_trop,
+                            "tropical_longitude_b2": lon2_trop,
                         })
 
         return {
@@ -800,9 +993,12 @@ def query_aspects_at_time(
             "orb_degrees": orb_degrees,
             "aspects": aspects,
             "count": len(aspects),
+            "note": "aspect/exact_angle/actual_diff/orb are ayanamsha-invariant; "
+                    "only the reported longitude_b1/longitude_b2 labelling changes with ayanamsha_id.",
             "provenance_envelope": {
                 "source": "brahmagyan.ephemeris",
                 "asset": "BRAHMA-BG-0-6",
+                "ayanamsha_id": ayanamsha_id,
                 "computed_at": datetime.now(timezone.utc).isoformat(),
             },
         }
@@ -815,7 +1011,7 @@ def query_retrograde_periods(
     planet: str,
     start_date: str,
     end_date: str,
-    ayanamsha_id: str = "tropical",
+    ayanamsha_id: str = _DEFAULT_READ_AYANAMSHA,
     conn=None,
 ) -> dict[str, Any]:
     """
@@ -823,13 +1019,30 @@ def query_retrograde_periods(
 
     Detects sign changes in is_retrograde to find station dates.
 
+    EL-39 fix (2026-07-25, β.C): retrograde stations are speed-sign events —
+    ayanamsha-invariant (the ayanamsha offset changes at ~50"/century, far too
+    slowly to affect which day a planet's tropical-vs-sidereal speed changes
+    sign), so station_date/station_type detection is unchanged. What was
+    broken: the WHERE ayanamsha_id=%s filter (silent-empty for any non-
+    'tropical' value, same class as query_aspects_at_time) and the reported
+    longitude_deg/sign_number were always tropical and unlabelled. Fixed:
+    always read the stored tropical rows; sign_number/longitude_deg are now
+    sidereal-primary by default (tropical_sign_number/tropical_longitude_deg
+    retained as labelled extras), or tropical-primary under an explicit
+    ayanamsha_id='tropical' request.
+
     Args:
         planet: Saturn/Jupiter/Mars/Mercury/Venus (Rahu/Ketu always retrograde)
         start_date: YYYY-MM-DD
         end_date: YYYY-MM-DD
+        ayanamsha_id: 'lahiri_chitrapaksha' (default) | ... | 'tropical' (explicit only)
 
-    Returns list of {station_date, station_type, longitude_deg, sign_number}.
+    Returns list of {station_date, station_type, longitude_deg, sign_number, ...}.
     """
+    is_tropical_request, err = _resolve_read_ayanamsha(ayanamsha_id)
+    if err:
+        return _error_response("query_retrograde_periods", err)
+
     close_conn = False
     if conn is None:
         try:
@@ -849,21 +1062,31 @@ def query_retrograde_periods(
                   AND date >= %s AND date <= %s
                 ORDER BY date
                 """,
-                (planet_norm, ayanamsha_id, start_date, end_date),
+                (planet_norm, _STORED_AYANAMSHA_ID, start_date, end_date),
             )
             rows = cur.fetchall()
 
         stations = []
         prev_retro = None
         for row in rows:
-            d, is_retro, lon, sign = row
+            d, is_retro, lon, trop_sign = row
             if prev_retro is not None and is_retro != prev_retro:
                 station_type = "retrograde_start" if is_retro else "retrograde_end"
+                lon = float(lon)
+                if is_tropical_request:
+                    primary_lon, primary_sign = round(lon, 4), trop_sign
+                else:
+                    row_date = d if hasattr(d, "isoformat") else date.fromisoformat(str(d))
+                    jd = _tropical_to_jd(row_date)
+                    sid = derive_sidereal(lon, jd, ayanamsha_id)
+                    primary_lon, primary_sign = sid["sidereal_longitude"], sid["sign_number"]
                 stations.append({
                     "station_date": d.isoformat() if hasattr(d, "isoformat") else str(d),
                     "station_type": station_type,
-                    "longitude_deg": float(lon),
-                    "sign_number": sign,
+                    "longitude_deg": primary_lon,
+                    "sign_number": primary_sign,
+                    "tropical_longitude_deg": round(lon, 4),
+                    "tropical_sign_number": trop_sign,
                 })
             prev_retro = is_retro
 
@@ -875,6 +1098,7 @@ def query_retrograde_periods(
             "ok": True,
             "planet": planet_norm,
             "window": {"start": start_date, "end": end_date},
+            "ayanamsha_id": ayanamsha_id,
             "stations": stations,
             "station_count": len(stations),
             "retrograde_days": retro_days,
@@ -882,6 +1106,7 @@ def query_retrograde_periods(
             "provenance_envelope": {
                 "source": "brahmagyan.ephemeris",
                 "asset": "BRAHMA-BG-0-6",
+                "ayanamsha_id": ayanamsha_id,
                 "computed_at": datetime.now(timezone.utc).isoformat(),
             },
         }
@@ -893,11 +1118,17 @@ def query_retrograde_periods(
 def query_nakshatra_lord(
     date_str: str,
     planet: str | None = None,
-    ayanamsha_id: str = "tropical",
+    ayanamsha_id: str = _DEFAULT_READ_AYANAMSHA,
     conn=None,
 ) -> dict[str, Any]:
     """
     Get nakshatra number and lord for each planet on a date.
+
+    EL-39 fix: defaults to sidereal (was 'tropical', which now correctly
+    resolves to "Unknown" nakshatra_name/lord via query_planet_position's
+    nakshatra suppression under ayanamsha_id='tropical' — this function was
+    unwired to any router/test before this fix and remains so; fixed for
+    consistency, not because a live caller depended on the old default).
 
     Nakshatra lords cycle: Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter, Saturn, Mercury (repeating).
     Nakshatra numbers 1-27.
