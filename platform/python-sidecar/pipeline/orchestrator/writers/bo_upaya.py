@@ -103,7 +103,7 @@ INSERT INTO bodha_rm_remedy_prescriptions (
   NULL, NULL, %(targets_dosha_class)s,
   %(resonance_match_score)s, %(match_score_formula_version)s,
   %(counter_indications_array)s, NULL, NULL,
-  %(feasibility_score)s, NULL, NULL, %(ritual_complexity_class)s,
+  %(feasibility_score)s, %(estimated_cost_inr_range_jsonb)s::jsonb, NULL, %(ritual_complexity_class)s,
   %(requires_acharya_review_flag)s, NULL,
   %(cross_tradition_corroboration_count)s, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -588,6 +588,157 @@ def _fetch_msr_dosha_sigs_by_graha(conn: Any, chart_id: str, aya: str) -> dict[s
     return out
 
 
+# ── β.G / EL-51 — maraka-lordship gemstone contraindication verdict ────────────
+# Grounded in BPHS Chapter 44 "Maraka (Killer) Planets" (corpus chunks bphs_pg0439_c01
+# through bphs_pg0443_c01, [HIGH] confidence, Trans. R. Santhanam, Ranjan Publications —
+# verified live via ref_rules_search(keyword="maraka") 2026-07-25) and corroborated by
+# BPHS Ch.47 (corpus row sweep_venus_japa_1b8a46b9, PG581 — the exact passage EL-52 names
+# as its OCR-garbled example, cleaned separately in this same lane's pass): "the 2nd and
+# 7th [houses from lagna] are Maraka houses... The lords of the 2nd and the 7th ... are
+# known as Marakas." v1 scope: the unambiguous 2nd/7th-lordship rule only (BPHS's fuller
+# rule additionally covers malefic occupants of/conjunct-with 2nd/7th and Rahu/Ketu — not
+# implemented here; disclosed as a named follow-up in BETA_G.md, not silently generalized).
+MARAKA_CITATION = (
+    "BPHS Ch.44 \"Maraka (Killer) Planets\" (2-5, 3): \"the 2nd and 7th are Maraka houses... "
+    "The lords of the 2nd and the 7th ... are known as Marakas.\" Trans. R. Santhanam, "
+    "Ranjan Publications. Corroborated by BPHS Ch.47 (Venus sub-periods): \"If Venus be lord "
+    "of the 2nd or the 7th (two maraka houses) there will be during his Dasa, physical pains "
+    "and troubles.\""
+)
+
+
+def _fetch_maraka_facts(conn: Any, chart_id: str, aya: str) -> dict[str, Any] | None:
+    """L1 maraka significators — READ from chart_facts, never recomputed (§N.5).
+    Written by ga_ayurdaya_writer.py (fact_category='ayurdaya', fact_subject='CHART',
+    fact_key='maraka_grahas'): second_lord, seventh_lord, occupants_2_7, natural_maraka,
+    maraka_grahas. This IS the L1-authoritative source for the 2nd/7th-lordship rule —
+    bo_upaya references it, never restates the lordship computation itself."""
+    rows = conn.execute(
+        """SELECT fact_value_jsonb, fact_id
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'ayurdaya' AND fact_subject = 'CHART'
+             AND fact_key = 'maraka_grahas'""",
+        [chart_id, aya],
+    ).fetchall()
+    if not rows:
+        return None
+    r0 = rows[0]
+    val = r0[0] if isinstance(r0, (tuple, list)) else r0.get("fact_value_jsonb")
+    fact_id = r0[1] if isinstance(r0, (tuple, list)) else r0.get("fact_id")
+    if isinstance(val, str):
+        try:
+            val = json.loads(val)
+        except Exception:
+            val = {}
+    val = dict(val or {})
+    val["_source_fact_id"] = fact_id
+    return val
+
+
+def _compute_gemstone_maraka_verdict(graha: str, maraka_facts: dict[str, Any] | None) -> dict[str, Any]:
+    """Deterministic per-gemstone maraka-contraindication verdict for `graha`.
+
+    Rule (v1, see MARAKA_CITATION): a graha is contraindicated for gemstone-wearing on
+    maraka-lordship grounds if it is the 2nd-house lord or the 7th-house lord from lagna
+    (BPHS Ch.44's core, unambiguous rule). Never fabricated — if the L1 maraka fact is
+    absent for this chart/ayanamsha, the verdict is explicitly `unavailable`, not a
+    silent False."""
+    if not maraka_facts:
+        return {
+            "verdict": "unavailable",
+            "is_maraka_lord": None,
+            "reason": "L1 ayurdaya.maraka_grahas fact not found for this chart/ayanamsha — "
+                      "cannot compute a maraka verdict without it (never guessed).",
+            "citation": MARAKA_CITATION,
+            "rule_scope": "v1: 2nd/7th house lordship only (occupancy + Rahu/Ketu extensions "
+                          "not yet implemented — see BETA_G.md follow-up)",
+        }
+    second_lord = maraka_facts.get("second_lord")
+    seventh_lord = maraka_facts.get("seventh_lord")
+    is_second = graha == second_lord
+    is_seventh = graha == seventh_lord
+    is_maraka_lord = bool(is_second or is_seventh)
+    if is_second and is_seventh:
+        which = "both the 2nd and 7th houses (maximal maraka lordship)"
+    elif is_second:
+        which = "the 2nd house (BPHS: \"the 2nd is a powerful Maraka house\")"
+    elif is_seventh:
+        which = "the 7th house"
+    else:
+        which = None
+    reason = (
+        f"{graha} rules {which} from lagna — a maraka lord. Per BPHS Ch.44/47, wearing "
+        f"{graha}'s gemstone is classically contraindicated for this chart unless a "
+        f"qualified acharya review finds a redeeming yoga; gemstones strengthen the planet "
+        f"they represent, and strengthening a maraka is the opposite of the intended effect."
+        if is_maraka_lord else
+        f"{graha} is neither the 2nd-house lord ({second_lord}) nor the 7th-house lord "
+        f"({seventh_lord}) from lagna in this chart — no maraka-lordship contraindication "
+        f"under the v1 rule."
+    )
+    return {
+        "verdict": "contraindicated" if is_maraka_lord else "no_contraindication_found",
+        "is_maraka_lord": is_maraka_lord,
+        "second_lord": second_lord,
+        "seventh_lord": seventh_lord,
+        "reason": reason,
+        "citation": MARAKA_CITATION,
+        "rule_scope": "v1: 2nd/7th house lordship only (occupancy + Rahu/Ketu extensions "
+                      "not yet implemented — see BETA_G.md follow-up)",
+        "source_fact_id": maraka_facts.get("_source_fact_id"),
+    }
+
+
+# ── β.G / EL-51 — associated_doshas_array backfill (chart-wide 100% NULL, live-confirmed) ──
+# The existing MSR path (_fetch_msr_dosha_sigs_by_graha above) is wired but structurally dead:
+# bodha_msr_signals.configuration_jsonb for signal_type_class='dosha' rows never carries a
+# graha/primary_graha/lord key (confirmed live, 2026-07-25) — every lookup returns empty.
+# This fetcher backfills via a traceable path instead: L1 chart_facts dosha_label rows
+# (fires=true only — never a catalog-only/unevaluated formation-shape match) carry a
+# constituent_facts_array of the OTHER chart_facts rows the dosha computation consumed;
+# if one of those constituent facts' fact_subject IS a graha name, that association is
+# real and traced back to a specific fact_id — never inferred from the dosha's name/label.
+def _fetch_active_doshas_by_graha(conn: Any, chart_id: str, aya: str) -> dict[str, list[str]]:
+    rows = conn.execute(
+        """SELECT fact_subject, fact_value_text, fact_value_jsonb
+           FROM chart_facts
+           WHERE chart_id = %s AND ayanamsha_id = %s
+             AND fact_category = 'dosha_label'
+             AND fact_value_jsonb->>'fires' = 'true'""",
+        [chart_id, aya],
+    ).fetchall()
+    out: dict[str, list[str]] = {}
+    for r in rows:
+        dosha_id = r[0] if isinstance(r, (tuple, list)) else r.get("fact_subject")
+        dosha_name = r[1] if isinstance(r, (tuple, list)) else r.get("fact_value_text")
+        val = r[2] if isinstance(r, (tuple, list)) else r.get("fact_value_jsonb")
+        if isinstance(val, str):
+            try:
+                val = json.loads(val)
+            except Exception:
+                val = {}
+        val = val or {}
+        constituent_ids = val.get("constituent_facts_array") or []
+        if not constituent_ids:
+            continue
+        placeholders = ",".join(["%s"] * len(constituent_ids))
+        crows = conn.execute(
+            f"""SELECT DISTINCT fact_subject FROM chart_facts
+                WHERE chart_id = %s AND ayanamsha_id = %s AND fact_id IN ({placeholders})""",
+            [chart_id, aya, *constituent_ids],
+        ).fetchall()
+        for cr in crows:
+            subj = str((cr[0] if isinstance(cr, (tuple, list)) else cr.get("fact_subject")) or "").upper()
+            for graha in KNOWN_GRAHAS:
+                if subj == graha.upper():
+                    label = dosha_name or dosha_id
+                    out.setdefault(graha, [])
+                    if label not in out[graha]:
+                        out[graha].append(label)
+    return out
+
+
 def _fetch_leverage_weights(conn: Any) -> dict[str, Any]:
     """brahma_vichara_constants.leverage_weights — the SAME registry ga_vichara
     reads (design §11: "registry data, not literals"). Read here so B-4's
@@ -795,6 +946,18 @@ def _build_resonances_and_prescriptions(
     yoga_karakas  = _fetch_yoga_karaka_flags(conn, chart_id, aya)
     chara_roles   = _fetch_chara_roles(conn, chart_id, aya)
     dosha_by_graha = _fetch_msr_dosha_sigs_by_graha(conn, chart_id, aya)
+    # β.G / EL-51: real backfill (the MSR path above is structurally dead — see comment on
+    # _fetch_active_doshas_by_graha). Union rather than replace: if the MSR path is ever
+    # repaired upstream, both sources merge honestly instead of one silently overwriting.
+    doshas_from_facts = _fetch_active_doshas_by_graha(conn, chart_id, aya)
+    for graha, names in doshas_from_facts.items():
+        existing = dosha_by_graha.setdefault(graha, [])
+        for name in names:
+            if name not in existing:
+                existing.append(name)
+    # β.G / EL-51: L1 maraka significators (2nd/7th house lords) — fetched once per
+    # ayanamsha, referenced (never recomputed) for the gemstone contraindication verdict.
+    maraka_facts = _fetch_maraka_facts(conn, chart_id, aya)
     chart_typology = _fetch_chart_typology(conn, chart_id, aya)
     # BA-P2.5 #4: real wired inputs (see the 3 new fetchers above _fetch_chart_typology).
     dispositor_strength = _fetch_dispositor_terminal_strength(conn, chart_id, aya)
@@ -965,6 +1128,37 @@ def _build_resonances_and_prescriptions(
             )
             rm_result = resonance_match_score_v1(rm_inputs)
 
+            remedy_category = str(corpus_row.get("remedy_type") or "mantra")
+            counter_indications: list[str] = []
+            if corpus_row.get("contraindications"):
+                counter_indications.append(corpus_row["contraindications"])
+
+            # β.G / EL-51 — deterministic maraka verdict, gemstone rows only, cited.
+            maraka_verdict: dict[str, Any] | None = None
+            if remedy_category == "gemstone":
+                maraka_verdict = _compute_gemstone_maraka_verdict(graha, maraka_facts)
+                if maraka_verdict.get("verdict") == "contraindicated":
+                    counter_indications.append(
+                        f"MARAKA CONTRAINDICATION (computed, {MARAKA_CITATION.split('(')[0].strip()}): "
+                        f"{maraka_verdict['reason']}"
+                    )
+
+            # β.G / EL-51 — estimated_cost_inr_range_jsonb: real INR market pricing is not
+            # classical/deterministic data (no corpus source computes it) — B.10 forbids
+            # inventing a number here. Disclose the gap explicitly instead of leaving a bare
+            # NULL a consumer would misread as "not applicable" rather than "not computable
+            # from this corpus." cost_tier (qualitative, already real) is carried alongside.
+            cost_gap_disclosure = json.dumps({
+                "available": False,
+                "reason": "INR market pricing requires an external, time-varying market-price "
+                          "source not present in the classical-text corpus this system computes "
+                          "from — B.10 forbids inventing a figure. See cost_tier for the "
+                          "qualitative (free/low/medium/high) classification, which IS "
+                          "corpus-derived.",
+                "cost_tier": corpus_row.get("cost_tier"),
+                "external_computation_required": "market gemstone/ritual-goods pricing lookup",
+            })
+
             prescriptions.append({
                 "prescription_id": str(uuid.uuid4()),
                 "chart_id": chart_id,
@@ -983,23 +1177,31 @@ def _build_resonances_and_prescriptions(
                     "gemstone": corpus_row.get("gemstone"),
                     "charity_action": corpus_row.get("charity_action"),
                     "deity": corpus_row.get("deity"),
+                    # β.G / EL-51: structured, cited, deterministic verdict (gemstone rows
+                    # only; None for every other category — never fabricated for non-gemstone
+                    # remedies where the maraka rule doesn't apply).
+                    "maraka_contraindication_verdict": maraka_verdict,
                 }),
                 "classical_strength_rating": str(corpus_row.get("confidence") or ""),
                 "classical_sources_jsonb": json.dumps({"source_id": str(corpus_row.get("source_canonical_id") or "BPHS"), "citation": str(corpus_row.get("classical_ref") or "")}),
                 "targets_dosha_class": (dosha_by_graha.get(graha) or [None])[0],
                 "resonance_match_score": round(float(rm_result["resonance_match_score"]), 6),
                 "match_score_formula_version": rm_result["match_score_formula_version"],
-                "counter_indications_array": (
-                    [corpus_row["contraindications"]] if corpus_row.get("contraindications") else None
-                ),
+                "counter_indications_array": (counter_indications or None),
                 "feasibility_score": round(_feasibility(corpus_row), 4),
                 "ritual_complexity_class": _complexity(corpus_row),
-                "requires_acharya_review_flag": str(corpus_row.get("remedy_type") or "").lower() in ("gemstone", "homa"),
+                "requires_acharya_review_flag": (
+                    str(corpus_row.get("remedy_type") or "").lower() in ("gemstone", "homa")
+                    or bool(maraka_verdict and maraka_verdict.get("verdict") == "contraindicated")
+                ),
                 "cross_tradition_corroboration_count": 1,
                 "verification_pass_status": "documented_approximation",
                 "citation_ref": f"brahma_remedy_corpus/{corpus_row.get('remedy_id')}",
                 "citation_human": f"G27 remedy {corpus_row.get('remedy_id')} for {graha}",
                 "computed_at": now,
+                # β.G / EL-51: honest INR-cost-gap disclosure — see comment above this loop.
+                # Wired into _PRESCRIPTION_INSERT (was a hardcoded NULL; now bound).
+                "estimated_cost_inr_range_jsonb": cost_gap_disclosure,
             })
 
     return resonances, prescriptions

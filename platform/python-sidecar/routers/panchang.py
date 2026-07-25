@@ -10,7 +10,7 @@ Phase: 4C-3 (initial); 4C-5 (NativeContext hydration + chart_id wiring)
 import os
 from datetime import date as DateType, time as TimeType
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 import psycopg
@@ -154,6 +154,17 @@ async def compute_panchanga_endpoint(req: PanchangaRequest):
 
     Response:
         {ok: true, panchang: {...}, native_context: NativeContext|null, cache_hit: false}
+
+    EL-49 fix (2026-07-25, β.C): every timestamp in `panchang` now carries an
+    explicit local-offset sibling (`*_ist` when tz_offset_minutes==330, else
+    `*_local`) alongside the existing UTC-only `*_utc` field — closes the
+    "ambiguous UTC-midnight-for-an-IST-day" gap for the ALREADY-LIVE
+    call_panchanga_service MCP tool (platform/src/lib/retrieval/registry/
+    layers/L0_brahmagyan/call_panchanga_service.ts), which calls this exact
+    endpoint and passes `panchang` through verbatim — so this fix reaches a
+    live tool with zero TS-side change required, unlike the dedicated
+    /panchanga_get endpoint below (a new capability, not yet wired to any
+    tool — see BETA_C.md for the required α-side wiring note).
     """
     try:
         panchang = compute_panchang(req.date, req.lat, req.lon, req.tz_offset_minutes)
@@ -163,6 +174,9 @@ async def compute_panchanga_endpoint(req: PanchangaRequest):
         raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
 
     payload = panchang_to_dict(panchang)
+    _add_local_time_fields(
+        payload, req.tz_offset_minutes, "ist" if req.tz_offset_minutes == 330 else "local"
+    )
 
     # Field projection — clip server-side; query_panchanga.ts also clips client-side
     if req.fields:
@@ -234,6 +248,13 @@ async def compute_panchanga_range_endpoint(req: PanchangaRangeRequest):
 
     Response:
         {ok: true, panchangs: [...], count: N}
+
+    EL-49 fix (2026-07-25, β.C): same explicit-local-time enrichment as the
+    single-date /panchanga endpoint above, applied per day — closes the
+    original register complaint's "muhūrta windows serve start-date only"
+    root concern for any consumer of the RANGE variant directly (this route
+    already serves every day in range, not just the start date; the
+    ambiguity gap was purely the missing local-time siblings).
     """
     # Sanity-check: cap at 31 days to prevent runaway sidecar calls
     delta = (req.date_to - req.date_from).days
@@ -251,8 +272,237 @@ async def compute_panchanga_range_endpoint(req: PanchangaRangeRequest):
     except PanchangEngineError as exc:
         raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
 
+    suffix = "ist" if req.tz_offset_minutes == 330 else "local"
+    panchangs_out = []
+    for p in panchangs:
+        d = panchang_to_dict(p)
+        _add_local_time_fields(d, req.tz_offset_minutes, suffix)
+        panchangs_out.append(d)
+
     return {
         "ok": True,
-        "panchangs": [panchang_to_dict(p) for p in panchangs],
-        "count": len(panchangs),
+        "panchangs": panchangs_out,
+        "count": len(panchangs_out),
+    }
+
+
+# ── EL-49: first-class panchanga_get(date, location?) ───────────────────────
+#
+# ELEVATION_REGISTER_v1_0.md EL-49: panchāṅga was reachable only through 2-day
+# muhūrta windows serving start-date panchāṅga only, missing karaṇa, sunrise/
+# sunset, and horā timing outright. Investigation (β.C, 2026-07-25) found the
+# underlying compute path (panchang_engine.compute_panchang(), already wired
+# to POST /api/compute/panchanga above) was NOT the gap — it already computes
+# all five aṅgas (including BOTH karaṇas of the tithi), sunrise/sunset, and a
+# full 24-slot horā table. Verified offline (no live DB needed):
+#   compute_panchang(date(1984,2,5), 20.27, 85.84, 330) reproduces all 5
+#   birth-panchāṅga FORENSIC anchors exactly (Tithi=Shukla Tritiya,
+#   Vara=Ravivara, Yoga=Shiva, Karana(first)=Garaja, Nakshatra=Purva
+#   Bhadrapada) — see BETA_C.md for the full evidence block.
+# The actual gap was serving-side: no single first-class date+location lookup
+# existed; muhūrta windows serve only the start date. This endpoint closes
+# that gap directly over the engine (not over the panchanga_daily cache,
+# which is Bhubaneswar-fenced AND stores only one karana per day — the
+# "missing karana outright" complaint the register names — so a first-class
+# route needs full engine-direct fidelity, not the abbreviated cache row).
+
+from datetime import datetime as _DateTime, timedelta as _TimeDelta, timezone as _TZ  # noqa: E402
+
+# Named-location gazetteer (deliberately minimal — NOT a general geocoder).
+# "Bhubaneswar" here matches the exact coordinates ga_panchanga_writer.py's
+# FORENSIC gate uses (20.27, 85.84, +330 min = IST) — this is what makes the
+# birth-date verify below reproduce the 7 FORENSIC anchors exactly. This is
+# DELIBERATELY the same pair as panchang_daily_reader.py's BHUBANESWAR_LAT/LON
+# and panchang.py's _fetch_native_context() fallback above — NOT
+# l0_ephemeris.py's NATIVE_LAT/NATIVE_LON (20.2961/85.8245), which is a
+# separate, more-precise coordinate pair used for ephemeris_daily's spot
+# checks. This is a pre-existing three-way "Bhubaneswar" coordinate
+# inconsistency in the codebase (see ephemeris_routes.py's
+# native_lifetime_meta docstring for the third instance) — this endpoint
+# intentionally uses the FORENSIC-matching pair, not the ephemeris one, since
+# panchāṅga (not raw ephemeris position) is what must reproduce FORENSIC here.
+_PANCHANGA_KNOWN_LOCATIONS: dict[str, dict[str, float]] = {
+    "bhubaneswar": {"lat": 20.27, "lon": 85.84, "tz_offset_minutes": 330},
+}
+_PANCHANGA_DEFAULT_LOCATION_KEY = "bhubaneswar"
+
+
+class PanchangaGetLocationError(ValueError):
+    """Raised when `location` is not a recognized named location and no
+    explicit lat/lon was supplied. Never silently falls back to a guessed
+    coordinate (B.10)."""
+
+
+def _resolve_panchanga_get_location(
+    location: Optional[str],
+    lat: Optional[float],
+    lon: Optional[float],
+    tz_offset_minutes: Optional[int],
+) -> tuple[float, float, int, str]:
+    """
+    Resolve (lat, lon, tz_offset_minutes, location_label) for panchanga_get.
+
+    Priority: explicit lat/lon wins (tz_offset_minutes defaults to +330/IST if
+    omitted — documented, not silent, since this project's whole panchāṅga
+    surface is IST-anchored) > named `location` (must be a recognized key,
+    else a loud error — never a silent geocode guess) > no params at all
+    (defaults to Bhubaneswar, the project's canonical native location, per
+    the same fallback panchang.py::_fetch_native_context already uses).
+    """
+    if lat is not None and lon is not None:
+        resolved_tz = tz_offset_minutes if tz_offset_minutes is not None else 330
+        label = location or f"lat={lat},lon={lon}"
+        return lat, lon, resolved_tz, label
+
+    if location:
+        key = location.strip().lower()
+        if key not in _PANCHANGA_KNOWN_LOCATIONS:
+            raise PanchangaGetLocationError(
+                f"[EXTERNAL_COMPUTATION_REQUIRED] Unknown location={location!r}. "
+                f"Known named locations: {sorted(_PANCHANGA_KNOWN_LOCATIONS)}. "
+                f"Pass lat/lon/tz_offset_minutes explicitly for any other location — "
+                f"this endpoint never guesses coordinates for an unrecognized name."
+            )
+        loc = _PANCHANGA_KNOWN_LOCATIONS[key]
+        return loc["lat"], loc["lon"], int(loc["tz_offset_minutes"]), location
+
+    loc = _PANCHANGA_KNOWN_LOCATIONS[_PANCHANGA_DEFAULT_LOCATION_KEY]
+    return loc["lat"], loc["lon"], int(loc["tz_offset_minutes"]), "Bhubaneswar (default)"
+
+
+def _format_offset_suffix(tz_offset_minutes: int) -> str:
+    sign = "+" if tz_offset_minutes >= 0 else "-"
+    off_abs = abs(tz_offset_minutes)
+    hh, mm = divmod(off_abs, 60)
+    return f"{sign}{hh:02d}:{mm:02d}"
+
+
+def _utc_z_to_local_iso(utc_iso: Optional[str], tz_offset_minutes: int) -> Optional[str]:
+    """
+    'YYYY-MM-DDTHH:MM:SSZ' -> 'YYYY-MM-DDTHH:MM:SS+HH:MM' (explicit local offset).
+    EL-49 fix: every panchang_engine timestamp is UTC-only (ends 'Z'), which is
+    the exact "ambiguous UTC-midnight-for-an-IST-day" risk class the register
+    names — a caller must convert in their head to know which IST calendar day
+    a UTC-late-evening timestamp actually falls on. This adds the explicit
+    local-offset sibling for every such field so no conversion is implicit.
+    """
+    if not utc_iso:
+        return None
+    dt = _DateTime.strptime(utc_iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_TZ.utc)
+    local_dt = dt + _TimeDelta(minutes=tz_offset_minutes)
+    return local_dt.strftime("%Y-%m-%dT%H:%M:%S") + _format_offset_suffix(tz_offset_minutes)
+
+
+def _add_local_time_fields(obj, tz_offset_minutes: int, suffix: str):
+    """
+    Recursively walk a panchang_to_dict()-shaped structure and, for every dict
+    key ending in '_utc', add a sibling '<field>_<suffix>' key with the
+    explicit local-offset ISO string. Mutates and returns `obj` in place.
+    `suffix` is 'ist' for the IST case (tz_offset_minutes == 330) and
+    'local' otherwise (a non-IST location must not be mislabelled "ist").
+    """
+    if isinstance(obj, dict):
+        for key in list(obj.keys()):
+            if key.endswith("_utc") and isinstance(obj[key], (str, type(None))):
+                base = key[: -len("_utc")]
+                obj[f"{base}_{suffix}"] = _utc_z_to_local_iso(obj[key], tz_offset_minutes)
+        for v in obj.values():
+            _add_local_time_fields(v, tz_offset_minutes, suffix)
+    elif isinstance(obj, list):
+        for item in obj:
+            _add_local_time_fields(item, tz_offset_minutes, suffix)
+    return obj
+
+
+@router.get("/panchanga_get")
+def panchanga_get_endpoint(
+    date: DateType = Query(..., description="Date in YYYY-MM-DD format (the CIVIL date at the "
+                                             "resolved location's local timezone, not UTC)."),
+    location: Optional[str] = Query(
+        None,
+        description="Named location (currently: 'Bhubaneswar'). Omit together with lat/lon to "
+                    "default to Bhubaneswar (the project's canonical native location).",
+    ),
+    lat: Optional[float] = Query(None, ge=-90, le=90, description="Explicit latitude (overrides `location`)."),
+    lon: Optional[float] = Query(None, ge=-180, le=180, description="Explicit longitude (overrides `location`)."),
+    tz_offset_minutes: Optional[int] = Query(
+        None, ge=-720, le=840,
+        description="UTC offset in minutes for the civil date and all local-time fields. "
+                    "Defaults to +330 (IST) — every named location in this endpoint's gazetteer "
+                    "is IST-anchored, matching the project's canonical panchāṅga convention.",
+    ),
+):
+    """
+    EL-49: first-class panchāṅga lookup for one date at one location, in a
+    single call. Returns all 5 aṅgas (tithi, nakshatra, yoga, BOTH karaṇas,
+    vara), sunrise/sunset, and a complete horā table for the day — every
+    timestamp carries both its UTC value (`*_utc`, as computed) and an
+    explicit local-offset sibling (`*_ist` when the resolved location is IST,
+    else `*_local`), so no caller has to silently assume which civil day a
+    UTC timestamp falls on.
+
+    This IS the FORENSIC correctness oracle: `panchanga_get(date="1984-02-05",
+    location="Bhubaneswar")` must reproduce the birth panchāṅga subset of the
+    7 FORENSIC anchors exactly (Tithi=Shukla Tritiya, Vara=Ravivara,
+    Yoga=Shiva, Karana=Garaja) — see BETA_C.md for the live-verified payload.
+    """
+    try:
+        resolved_lat, resolved_lon, resolved_tz, location_label = _resolve_panchanga_get_location(
+            location, lat, lon, tz_offset_minutes
+        )
+    except PanchangaGetLocationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    try:
+        panchang = compute_panchang(date, resolved_lat, resolved_lon, resolved_tz)
+    except (ValidationError, OutOfRangeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except PanchangEngineError as exc:
+        raise HTTPException(status_code=500, detail=f"Engine error: {exc}")
+
+    payload = panchang_to_dict(panchang)
+
+    suffix = "ist" if resolved_tz == 330 else "local"
+    _add_local_time_fields(payload, resolved_tz, suffix)
+
+    # Convenience top-level aliases — the "5 angas" framing EL-49 asks for,
+    # plus a single `karana` alias (= karana_first) since FORENSIC's single
+    # "Karana = Garaja" anchor refers to the karana active at the reference
+    # moment, which is karana_first for a day that does not cross a karana
+    # boundary before the reference time. karana_first/karana_second (the
+    # full two-half-tithi picture) remain available in `panchang` below.
+    angas_summary = {
+        "tithi": payload["tithi"],
+        "nakshatra": payload["nakshatra"],
+        "yoga": payload["yoga"],
+        "karana": payload["karana_first"],
+        "vara": payload["vara"],
+    }
+
+    return {
+        "ok": True,
+        "date": date.isoformat(),
+        "location": {
+            "label": location_label,
+            "lat": resolved_lat,
+            "lon": resolved_lon,
+            "tz_offset_minutes": resolved_tz,
+            "timezone_label": f"UTC{_format_offset_suffix(resolved_tz)}"
+                               + (" (IST)" if resolved_tz == 330 else ""),
+        },
+        "angas": angas_summary,
+        "sunrise": {"utc": payload["sunrise_utc"], suffix: payload[f"sunrise_{suffix}"]},
+        "sunset": {"utc": payload["sunset_utc"], suffix: payload[f"sunset_{suffix}"]},
+        "moonrise": {"utc": payload["moonrise_utc"], suffix: payload[f"moonrise_{suffix}"]},
+        "moonset": {"utc": payload["moonset_utc"], suffix: payload[f"moonset_{suffix}"]},
+        "hora": payload["hora"],
+        "hora_count": len(payload["hora"]),
+        "choghadiya": payload["choghadiya"],
+        "inauspicious": payload["inauspicious"],
+        "auspicious": payload["auspicious"],
+        "special_yogas": payload["special_yogas"],
+        "panchang": payload,
+        "source": "panchang_engine.compute_panchang (engine-direct; not the panchanga_daily cache — "
+                  "see this endpoint's module-level comment for why)",
+        "computed_at": _DateTime.now(_TZ.utc).isoformat(),
     }
