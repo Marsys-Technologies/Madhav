@@ -198,6 +198,25 @@ not attempted here because this session was already very long and a rushed rebui
 end of it is exactly the corner-cutting this campaign's own doctrine (truth over coverage) warns
 against.
 
+**ADDENDUM (Stream-Conductor, 2026-07-25, integration phase) — live rebuild landed, VERIFIED-CLOSED.**
+`bo_upaya` rebuilt for both canonical charts via a new direct-writer runner
+(`run_elev_beta_integration_rebuild.py`, mirroring lane β.D's proven `_run_data_writer` pattern).
+**G0 recipe re-run exactly as specified above**, via the live `bodha_remedies_get` MCP tool (not
+just SQL) for 482012f1: 27 live prescriptions returned, 5 `gemstone`-category, all with real BPHS
+citations and `computed_at` timestamps matching this rebuild. Direct-SQL confirms
+`prescription_detail_jsonb->'maraka_contraindication_verdict'` populated with the full cited verdict
+object (BPHS Ch.44, "the 2nd and 7th are Maraka houses... lords of the 2nd and the 7th... are known
+as Marakas", Trans. R. Santhanam) for every gemstone row on both charts — `no_contraindication_found`
+in every case for these two charts specifically, since neither chart's 2nd/7th lord (Venus, both
+charts) currently has a gemstone-category prescription row to exercise the `contraindicated` branch
+against; the rule logic itself is real, cited, and live, not merely a stub. FORENSIC 7/7 re-confirmed
+PASS both charts. `ka_gochara_sweep`/`ka_gochara_resonance` verified untouched (binding native
+ruling). **Disposition updated: `VERIFIED-CLOSED`** for the gemstone-verdict half of EL-51 — the
+parked α-owned serving gap (`ref_remedies_chart_get` chart_id filter) remains `PARKED-HONEST` as
+before, unaffected by this rebuild. EL-35/EL-52 dispositions unchanged (not rebuilt this pass — EL-52
+is corpus-text cleanup, not chart-scoped; EL-35 not reached, as already disclosed). Full integration
+account: `~/elev-v2-shared/proxy/beta.md`.
+
 ## EL-52 — evidence block
 
 **Delivered:**

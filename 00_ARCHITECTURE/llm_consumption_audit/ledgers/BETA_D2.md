@@ -164,6 +164,19 @@ verifier_notes: fix is additive + makes existing grounded rule reachable; no fab
         Live-DB landing pending the integrated ga_structural rebuild (both lanes' changes present).
 ```
 
+**ADDENDUM (Stream-Conductor, 2026-07-25, integration phase) — live rebuild landed, VERIFIED-CLOSED.**
+`rebuild_el18_manglik_ga_structural.py` was run from the fully-merged `elev/beta` head (both β.D's
+EL-30/40/47 fixes and this lane's Manglik fix present in `ga_structural`), after fixing a real bug
+found at execution time (`build_runs.scope='per_chart'` violates the live `CHECK` constraint —
+corrected to the established `'asset_set'` convention every precedent dispatch script uses; this
+script had never actually been executed before, per its own deferred-to-integration design).
+**Live SQL confirms both charts exactly as predicted:** 482012f1 → `fires=true, bhanga_active=false`
+(Manglik uncancelled); 1c826d5a → `fires=false, bhanga_active=true` (cancelled, BPHS ch.81). FORENSIC
+7/7 re-confirmed PASS both charts post-rebuild. `ka_gochara_sweep`/`ka_gochara_resonance` verified
+untouched throughout (binding native ruling). **Disposition updated: `VERIFIED-CLOSED`** — supersedes
+the `PREPARED-FOR-NATIVE` status above, which was accurate pending this integration step. Full
+integration-rebuild account: `~/elev-v2-shared/proxy/beta.md`.
+
 ---
 
 ## Files changed (β.D2)
