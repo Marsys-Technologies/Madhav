@@ -209,7 +209,10 @@ export const predictionLifecycleSweepCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: false },
   lel_capable: true,
-  calibration_context_only: true,
+  // NOT calibration_context_only: that flag (F-R7) is for outcome/LEL-READ tools supplying raw
+  // ledger context (lel_query, query_predictions). This tool performs a lifecycle SWEEP/mutation
+  // (reclassifying lapsed rows) rather than a context read for planner consumption — a different
+  // kind of operation than the documented semantic covers, so left unset rather than force-fit.
   data_source: 'stored',
 
   llm_hints: {

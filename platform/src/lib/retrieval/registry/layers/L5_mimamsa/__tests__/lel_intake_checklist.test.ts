@@ -28,11 +28,13 @@ import { query as mockQuery } from '@/lib/db/client'
 import { lelIntakeChecklistCapability } from '../lel_intake_checklist'
 
 describe('lel_intake_checklist — descriptor shape', () => {
-  it('is per_chart, requires chart_id, lel_capable, calibration_context_only', () => {
+  it('is per_chart, requires chart_id, lel_capable, NOT calibration_context_only', () => {
     expect(lelIntakeChecklistCapability.scope).toBe('per_chart')
     expect(lelIntakeChecklistCapability.required_inputs).toContain('chart_id')
     expect(lelIntakeChecklistCapability.lel_capable).toBe(true)
-    expect(lelIntakeChecklistCapability.calibration_context_only).toBe(true)
+    // F-R7's calibration_context_only is for outcome/LEL-READ context-supply tools; this is an
+    // LEL-WRITE-assistance tool, the opposite direction, so it deliberately does not carry the flag.
+    expect(lelIntakeChecklistCapability.calibration_context_only).toBeUndefined()
   })
 
   it('passes the chart-agnostic gate with 0 violations', () => {

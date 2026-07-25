@@ -24,11 +24,13 @@ import { matchOpenPredictionsForLelEvent as mockMatchFn } from '@/lib/lel/prospe
 import { predictionLifecycleSweepCapability, LAPSED_UNOBSERVED_MIGRATION_SQL } from '../prediction_lifecycle_sweep'
 
 describe('prediction_lifecycle_sweep — descriptor shape', () => {
-  it('is per_chart, requires chart_id, lel_capable, calibration_context_only', () => {
+  it('is per_chart, requires chart_id, lel_capable, NOT calibration_context_only', () => {
     expect(predictionLifecycleSweepCapability.scope).toBe('per_chart')
     expect(predictionLifecycleSweepCapability.required_inputs).toContain('chart_id')
     expect(predictionLifecycleSweepCapability.lel_capable).toBe(true)
-    expect(predictionLifecycleSweepCapability.calibration_context_only).toBe(true)
+    // F-R7's calibration_context_only is for outcome/LEL-READ context-supply tools; this tool
+    // performs a lifecycle SWEEP/mutation, not a context read, so it deliberately does not carry it.
+    expect(predictionLifecycleSweepCapability.calibration_context_only).toBeUndefined()
   })
 
   it('passes the chart-agnostic gate with 0 violations', () => {

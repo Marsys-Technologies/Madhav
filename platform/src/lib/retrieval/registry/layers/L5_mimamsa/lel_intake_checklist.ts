@@ -206,7 +206,10 @@ export const lelIntakeChecklistCapability: CapabilityDescriptor = {
   emits_references: false,
   grounds_to: { l1_fact_ids: false },
   lel_capable: true,
-  calibration_context_only: true,
+  // NOT calibration_context_only: that flag (F-R7) is for outcome/LEL-READ tools supplying raw
+  // ledger context to the calibration loop (lel_query, query_predictions). This tool is the
+  // opposite direction — guided LEL-WRITE assistance (checklist + draft validation) — so it does
+  // not fit the documented semantic; left unset rather than force-classified under time pressure.
   data_source: 'stored',
 
   llm_hints: {
