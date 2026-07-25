@@ -566,6 +566,28 @@ export function budgetMcpContent<T>(content: T, toolName: string, maxKb = 40): T
   return finalizeMcpBudget(obj, { maxKb, sections }) as unknown as T
 }
 
+// ── SATYA-ŚEṢA W3 — kala/gochara family budget-census extension ─────────────
+// The two family members (`kala_windows_get`, `kala_bundle_get`) whose response-
+// budget ceiling is a plain `maxKb` literal at their own call site rather than a
+// per-file ledger constant like register_gochara_windows.ts's own
+// `GOCHARA_RESPONSE_BUDGET_KB` (which covers the other three family members:
+// gochara_activation_get/forecast_get/election_avoidance_get). Declared here
+// (this file, not registry_bridge.ts) because platform-mcp/src/lib/
+// response_budget.ts is this family's own budget-wiring home per the SATYA-ŚEṢA
+// W2/W3 brief's file-ownership split. Source-text-parsed by platform/scripts/
+// census/elev_gates/_tool_enumeration.ts alongside registry_bridge.ts's
+// MCP_RESPONSE_BUDGET_KB and register_gochara_windows.ts's
+// GOCHARA_RESPONSE_BUDGET_KB — together the full budget_census_gate ledger for
+// this family. Keep in sync BY HAND with:
+//   kala_windows_get → register_p1_aliases.ts's `dualOutput(data, 'kala_windows_get')`
+//                       (dualOutput's own default `maxKb = 40` parameter, this file)
+//   kala_bundle_get  → retrieval/kala_temporal.ts's `budgetMcpContent(result, TOOL_NAME)`
+//                       (budgetMcpContent's own default `maxKb = 40` parameter, this file)
+export const KALA_TEMPORAL_FAMILY_BUDGET_KB = {
+  kala_windows_get: 40,
+  kala_bundle_get: 40,
+} as const
+
 function mergeTrimPointersIntoPointers(
   pointers: DrillPointerLike[],
   trimReport: TrimReportEntry[] | null,

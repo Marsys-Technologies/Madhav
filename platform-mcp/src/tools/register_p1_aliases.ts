@@ -835,7 +835,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           ...(domain ? { domain } : {}),
           ...(limit != null ? { top_k: limit } : {}),
         }, principal)
-        return dualOutput(data)
+        // SATYA-ŚEṢA W3 (2026-07-25): this call was missing dualOutput's second
+        // (toolName) argument, so autoDetectTrimmableSections's recover_via
+        // pointer (surfaced on every trimmed response's drill_pointers) named
+        // the tool 'unknown_tool' instead of 'kala_windows_get' — a caller
+        // trying to page through a trimmed result had no honest instrument
+        // name to call back with.
+        return dualOutput(data, 'kala_windows_get')
       } catch (err) { return errOut('kala_windows_get', String(err), { chart_id }) }
     }
   )
