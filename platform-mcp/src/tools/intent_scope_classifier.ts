@@ -227,8 +227,10 @@ const DEEP_VERB =
 
 // (d) Life-domain words → DEEP. STRUCTURAL terms (house / bhava / Nth-house / planet names /
 //     karakas / lagnas) are DELIBERATELY excluded — those are the pinpoint entities, not domains.
+//     Nouns carry an optional plural suffix `s?` so "relationships"/"jobs"/"ailments" leak-proof
+//     (F-Ω4-1 robustness fix — the \b...\b boundary previously let plural forms escape).
 const DEEP_DOMAIN_WORD =
-  /\b(wealth|money|finance|financial|finances|income|riches|prosperity|affluen|net worth|debt|litigation|career|profession|professional|job|occupation|employ|livelihood|vocation|business|marriage|marry|married|marital|spouse|wife|husband|partner|partnership|relationship|romance|romantic|compatib|separation|divorce|health|disease|illness|ailment|medical|longevity|vitality|chronic|acute|surgery|children|progeny|offspring|fertility|education|academic)\b/i
+  /\b(wealth|moneys?|finances?|financial|incomes?|riches|prosperity|affluen|net worth|debts?|litigation|careers?|professions?|professional|jobs?|occupations?|employ|livelihoods?|vocations?|business(es)?|marriages?|marry|married|marital|spouses?|wi(fe|ves)|husbands?|partners?|partnerships?|relationships?|romance|romantic|compatib|separations?|divorces?|health|diseases?|illness(es)?|ailments?|medical|longevity|vitality|chronic|acute|surg(ery|eries)|child(ren)?|progeny|offspring|fertility|education|academic)\b/i
 
 // Analytical topics & breadth framings → DEEP (a pinpoint fact never asks for these).
 const DEEP_TOPIC =
@@ -239,6 +241,19 @@ const DEEP_BREADTH =
 
 // A conjunction that joins TWO topics/clauses → not a single pinpoint → DEEP.
 const DEEP_MULTI = /\b(and|or)\b.*\b(and|or)\b/i
+const CONJUNCTION = /\b(and|or)\b/i
+
+/**
+ * Count total entity MENTIONS (not distinct classes). A single conjunction joining two same-class
+ * entities ("… the Moon in and what sign is Mars in?") must trip the multi-clause gate even though
+ * both dedupe to one class downstream (F-Ω4-1 robustness fix). Overlapping matches (a house-lord
+ * also matching the bare house-ordinal) can over-count, but that only ever pushes toward DEEP and is
+ * gated behind a conjunction — no conjunction-free narrow pinpoint is affected.
+ */
+function countEntityMentions(query: string): number {
+  const g = (re: RegExp) => (query.match(new RegExp(re.source, 'gi')) ?? []).length
+  return g(PLANET) + g(HOUSE_LORD) + g(POINT_ENTITY) + g(HOUSE_ORDINAL) + g(ASCENDANT)
+}
 
 // ── Positive pinpoint shape (the narrow criteria (a) single entity + (b) single attribute) ─────
 
@@ -279,6 +294,8 @@ function detectNarrow(query: string): { narrow: boolean; confidence: number; rea
   if (DEEP_TOPIC.test(query)) deepHits.push('deep_push:analytical_topic')
   if (DEEP_BREADTH.test(query)) deepHits.push('deep_push:breadth')
   if (DEEP_MULTI.test(query)) deepHits.push('deep_push:multi_clause')
+  // F-Ω4-1: a conjunction joining ≥2 entity mentions (even same-class) is a compound query → DEEP.
+  if (CONJUNCTION.test(query) && countEntityMentions(query) >= 2) deepHits.push('deep_push:multi_entity_conjunction')
   if (deepHits.length > 0) {
     return { narrow: false, confidence: 0, reasons: deepHits }
   }

@@ -101,6 +101,14 @@ describe('Ω4 routing suite — frozen 60-question regression', () => {
     expect(violations).toEqual([])
   })
 
+  // ── F-Ω4-1 held-out robustness (outside the frozen gate) ─────────────────────
+  it('routes plural-domain-word leaks deep ("… well placed for relationships?")', () => {
+    expect(classifyScope('Is my 7th lord well placed for relationships?').route).toBe('deep')
+  })
+  it('routes same-class multi-entity conjunctions deep ("… Moon in and … Mars in?")', () => {
+    expect(classifyScope('What house is the Moon in and what sign is Mars in?').route).toBe('deep')
+  })
+
   // ── Per-domain floor: ≥4 per domain × narrow/deep all correctly recalled ──────
   it('routes all deep-labelled items deep (100% deep recall across all four domains)', () => {
     const deepItems = suite.items.filter((i) => i.depth === 'deep')
