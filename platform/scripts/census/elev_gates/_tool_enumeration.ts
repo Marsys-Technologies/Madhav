@@ -22,6 +22,15 @@ import path from 'node:path'
 const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..')
 export const MCP_TOOLS_ROOT = path.join(REPO_ROOT, 'platform-mcp/src/tools')
 export const REGISTRY_BRIDGE_PATH = path.join(MCP_TOOLS_ROOT, 'registry_bridge.ts')
+// SATYA-ŚEṢA W3 (2026-07-25): the kala/gochara family (gochara_activation_get/
+// forecast_get/election_avoidance_get, kala_windows_get, kala_bundle_get) is not
+// registered via registry_bridge.ts's own server.tool() call sites, so none of
+// it was ever in MCP_RESPONSE_BUDGET_KB — the budget_census_gate ran and passed
+// without ever measuring this family (the EL-11/EL-42 census-escape the brief
+// names). Two more source-text-parsed ledgers close it, same mechanism as the
+// registry_bridge.ts one below, merged into one flat ledger by extractResponseBudgetLedger.
+export const GOCHARA_WINDOWS_PATH = path.join(MCP_TOOLS_ROOT, 'retrieval', 'register_gochara_windows.ts')
+export const RESPONSE_BUDGET_LIB_PATH = path.join(MCP_TOOLS_ROOT, '..', 'lib', 'response_budget.ts')
 
 function walkTs(dir: string, out: string[]): void {
   let entries: string[]
@@ -80,23 +89,23 @@ export function collectRegisteredTools(): Map<string, RegisteredTool> {
 }
 
 /**
- * Extracts the `MCP_RESPONSE_BUDGET_KB` object literal from registry_bridge.ts by
- * source-text parsing (not an import — that would pull the whole registry_bridge.ts
- * module graph, including the MCP SDK and DB proxy code, into a plain analysis
- * script). The object is a flat `{ tool_name: number, ... } as const` literal
- * (confirmed by reading the file — see registry_bridge.ts ~L303-348); this walks
- * brace depth from the declaration to the matching close, then regex-matches
- * `key: number,` pairs, skipping `//` comment lines.
+ * Extracts ONE `const <marker> = { tool_name: number, ... } as const` object-literal
+ * ledger from `filePath` by source-text parsing (not an import — that would pull the
+ * whole module graph, including the MCP SDK and DB proxy code for a file like
+ * registry_bridge.ts, into a plain analysis script). Walks brace depth from the
+ * declaration to the matching close, then regex-matches `key: number,` pairs,
+ * skipping `//` comment lines. Shared by every ledger this gate reads — see
+ * `extractResponseBudgetLedger` below for the merged, multi-file result.
  */
-export function extractResponseBudgetLedger(): Record<string, number> {
-  const src = readFileSync(REGISTRY_BRIDGE_PATH, 'utf-8')
-  const startMarker = 'const MCP_RESPONSE_BUDGET_KB'
+function extractLedgerFrom(filePath: string, constName: string): Record<string, number> {
+  const src = readFileSync(filePath, 'utf-8')
+  const startMarker = `const ${constName}`
   const startIdx = src.indexOf(startMarker)
   if (startIdx === -1) {
-    throw new Error(`extractResponseBudgetLedger: '${startMarker}' not found in ${REGISTRY_BRIDGE_PATH} — has the ledger been renamed/moved?`)
+    throw new Error(`extractLedgerFrom: '${startMarker}' not found in ${filePath} — has the ledger been renamed/moved?`)
   }
   const braceOpen = src.indexOf('{', startIdx)
-  if (braceOpen === -1) throw new Error('extractResponseBudgetLedger: no opening brace found after declaration')
+  if (braceOpen === -1) throw new Error(`extractLedgerFrom: no opening brace found after '${startMarker}' in ${filePath}`)
   let depth = 0
   let i = braceOpen
   for (; i < src.length; i++) {
@@ -115,4 +124,39 @@ export function extractResponseBudgetLedger(): Record<string, number> {
     if (m) ledger[m[1]!] = Number(m[2])
   }
   return ledger
+}
+
+/**
+ * The full budget_census_gate ledger: registry_bridge.ts's `MCP_RESPONSE_BUDGET_KB`
+ * (every tool registered there) MERGED with two SATYA-ŚEṢA W3 additions for the
+ * kala/gochara family, which is registered elsewhere and was never in the original
+ * ledger (the census-escape the brief's EL-11/EL-42 names — a budget gate that runs
+ * and passes without ever measuring an entire tool family is not a real gate for
+ * that family): register_gochara_windows.ts's `GOCHARA_RESPONSE_BUDGET_KB`
+ * (gochara_activation_get/forecast_get/election_avoidance_get) and
+ * response_budget.ts's `KALA_TEMPORAL_FAMILY_BUDGET_KB` (kala_windows_get,
+ * kala_bundle_get). No key collisions expected across the three (verified at
+ * merge time below — a collision throws rather than silently picking one, since a
+ * duplicate declared ceiling for the same tool name is itself a drift bug worth
+ * surfacing, not resolving silently).
+ */
+export function extractResponseBudgetLedger(): Record<string, number> {
+  const sources: Array<{ path: string; constName: string }> = [
+    { path: REGISTRY_BRIDGE_PATH, constName: 'MCP_RESPONSE_BUDGET_KB' },
+    { path: GOCHARA_WINDOWS_PATH, constName: 'GOCHARA_RESPONSE_BUDGET_KB' },
+    { path: RESPONSE_BUDGET_LIB_PATH, constName: 'KALA_TEMPORAL_FAMILY_BUDGET_KB' },
+  ]
+  const merged: Record<string, number> = {}
+  for (const { path: filePath, constName } of sources) {
+    const partial = extractLedgerFrom(filePath, constName)
+    for (const [name, kb] of Object.entries(partial)) {
+      if (name in merged && merged[name] !== kb) {
+        throw new Error(
+          `extractResponseBudgetLedger: conflicting ceilings for '${name}' — ${merged[name]}KB vs ${kb}KB (from ${constName} in ${filePath})`
+        )
+      }
+      merged[name] = kb
+    }
+  }
+  return merged
 }

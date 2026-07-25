@@ -59,6 +59,18 @@ const WORST_CASE_OVERRIDES: Record<string, Record<string, unknown>> = {
   vector_search: { query_text: 'Saturn dignity strength career', chart_id: CANONICAL_CHART_ID, limit: 50 },
   tool_search: { query: 'chart' },
   query_chart_facts: { chart_id: CANONICAL_CHART_ID, ayanamsha_id: AYANAMSHA_ID, limit: 200 },
+  // SATYA-ŚEṢA W3 (2026-07-25): kala/gochara family — none of these five accept
+  // `ayanamsha_id`/generic defaults usefully (gochara_forecast_get/election_
+  // avoidance_get/kala_bundle_get REQUIRE date_range, no default), so the
+  // generic paramsFor() fallback below would 400 rather than measure a worst
+  // case. Ranges tuned wide (multi-year) to match this lane's own live worst-
+  // case probes (gochara_forecast_get 2026-08→2029-12; kala_bundle_get
+  // birth-year→2040 "full life arc" per its own docstring).
+  gochara_forecast_get: { chart_id: CANONICAL_CHART_ID, date_range: { start: '2026-08-01', end: '2029-12-31' }, limit: 500 },
+  gochara_activation_get: { chart_id: CANONICAL_CHART_ID },
+  gochara_election_avoidance_get: { chart_id: CANONICAL_CHART_ID, date_range: { start: '2026-08-01', end: '2029-12-31' }, limit: 200 },
+  kala_windows_get: { chart_id: CANONICAL_CHART_ID, start_date: '2026-08-01', end_date: '2029-12-31', limit: 500 },
+  kala_bundle_get: { chart_id: CANONICAL_CHART_ID, date_range: { start: '1984-02-05', end: '2040-12-31' } },
 }
 
 function paramsFor(toolName: string): Record<string, unknown> {
