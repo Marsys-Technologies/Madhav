@@ -6,12 +6,17 @@ status: READY-FOR-EXECUTION — governing charter for the 3-stream autonomous ov
 created: 2026-07-24
 amendments:
   - 2026-07-24 (pre-launch, post-pre-flight): M2.0 converted from three separate CLONES to three
-    sibling GIT WORKTREES (same isolation guarantee, matches repo convention, one object store);
+    in-repo GIT WORKTREES under `.worktrees/` (same isolation guarantee, matches repo convention,
+    one object store, and stays inside the IDE workspace the extension sessions are opened on);
     M2.2 gains the `worktree` lock and the concurrent-worktree git-hygiene rules (gc.auto 0,
     fetch --no-write-fetch-head); NEW M2.3b records that `main` is branch-protected and every merge
     including Phase 0 must use the PR + auto-merge path, with the lock-until-merged / 30-minute
     ceiling / always-release rules; M2.4 notes branches and worktrees are created by pre-flight so
-    Phase 0 verifies rather than creates. No change to scope, lanes, mandate, or verification.
+    Phase 0 verifies rather than creates; and Phase 0 itself moves to a neutral RUNWAY session so
+    all three streams launch in parallel and the graded test assets are authored by a
+    non-participant. NEW §16 specifies end-of-run cleanup (migrate evidence, delete scaffolding,
+    retain restore points), Verifier-gated. No change to scope, lanes, mandate, or verification
+    standards.
 v2_1_changelog: >
   Adversarial red-team pass (two independent Opus reviewers, 2026-07-24) found 27 defects in v2.0,
   of which 14 were run-killing. All fixed in place. The material ones: (1) the TCI could be STUBBED,
@@ -840,7 +845,12 @@ served prose (EL-09, bounded to the register's known instances + ~20 core attrib
 
 ## §7 — Phase 0, interface contracts, and the merge/deploy protocol
 
-### §7.1 — Phase 0 (serial, ~45 min, Meta-Conductor, runs ONCE before any fan-out)
+### §7.1 — Phase 0 (serial, ~90 min, runs ONCE before any stream starts)
+
+**In MODE 2 this is owned by the RUNWAY SESSION, not by α** (see M2.4) — a neutral session that is
+not competing in the campaign, so the baseline and the graded test assets are authored by a
+non-participant. In MODE 1 the Meta-Conductor performs it. Either way it happens exactly once, and
+**all three streams launch together afterwards.**
 
 1. Run-start snapshot: `git tag elev-v2-run-start` + DB snapshot.
 2. Cut the three stream integration branches: `elev/alpha`, `elev/beta`, `elev/gamma` off `main`.
@@ -936,17 +946,23 @@ clones. Worktrees deliver the same isolation guarantee more efficiently and matc
 the clone wording is superseded. Nothing else in M2 changes — all three sessions still start from the
 project root and never share a tree.)*
 
-**Layout — SIBLING directories, never nested inside the repo:**
+**Layout — IN-REPO under `.worktrees/`, the path `.gitignore` already reserves:**
 ```
-/Users/Dev/Vibe-Coding/Apps/Madhav              ← project root (main). All 3 sessions START here.
-/Users/Dev/Vibe-Coding/Apps/madhav-wt-alpha     ← worktree on branch elev/alpha
-/Users/Dev/Vibe-Coding/Apps/madhav-wt-beta      ← worktree on branch elev/beta
-/Users/Dev/Vibe-Coding/Apps/madhav-wt-gamma     ← worktree on branch elev/gamma
+/Users/Dev/Vibe-Coding/Apps/Madhav                    ← project root (main). All 3 sessions OPEN here.
+/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/alpha   ← worktree on branch elev/alpha
+/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/beta    ← worktree on branch elev/beta
+/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma   ← worktree on branch elev/gamma
 ```
-Siblings, not `.worktrees/` subdirectories, for one concrete reason: a nested worktree puts three
-additional copies of every source file inside the repo, so every `rg`/glob an agent runs at the
-project root returns triplicated hits and the agent reasons about the wrong copy. The sibling layout
-makes that impossible.
+**Why in-repo rather than sibling directories.** The sessions run as Claude Code extension windows
+inside Antigravity, opened on the project folder. An IDE-hosted session may scope file access to the
+opened workspace, in which case a sibling worktree sits OUTSIDE the workspace and every operation
+against it is either blocked or prompts for permission — fatal for an unattended overnight run.
+`.worktrees/` is inside the workspace by construction, so the question cannot arise. It is also
+already the repo's own reserved path (`.gitignore` §"Git worktrees" → `.worktrees/`), so the
+worktrees are invisible to git status and to every `.gitignore`-respecting search (ripgrep, and
+therefore the Grep tool, skip them by default). The triplicated-search-hits concern that would
+otherwise favour siblings is neutralised by that same ignore rule, and further by the root-checkout
+rule below: each session works from inside its own worktree, so root-level searches are rare.
 
 **THE ROOT-CHECKOUT RULE (absolute).** Every session starts in the project root, and its **first
 action is to `cd` into its own worktree and stay there for the entire run.** No session may run any
@@ -1015,25 +1031,72 @@ Consequences, all binding:
   `~/elev-v2-shared/PREEXISTING_CI_STATE.md`. **Any red check is therefore yours**; it may not be
   attributed to pre-existing breakage.
 
-**M2.4 · PHASE 0 AND THE START GATE (findings #7, #8).** Branches and worktrees are created by
-pre-flight, not Phase 0, so Phase 0 stays short and β/γ start sooner; α VERIFIES them rather than
-creating them. α runs Phase 0 in this order and writes
-`~/elev-v2-shared/PHASE0_COMPLETE.flag` **LAST**, containing a manifest:
+**M2.4 · PHASE 0 IS RUN BY THE RUNWAY SESSION — ALL THREE STREAMS THEN LAUNCH IN PARALLEL.**
+
+*(Amendment 2026-07-24. v2.1 as first written gave Phase 0 to α, which forced β and γ to wait ~1h
+before starting. Moving Phase 0 into the neutral runway session that already runs serially before
+the campaign removes that bottleneck entirely — and, more importantly, fixes a real independence
+defect: **α was a participant authoring the artifacts that grade the other participants.** The
+baseline, the sealed evaluator harness, the routing suite and the dark-corpus replay set are the
+instruments by which this run's honesty is judged. Having any stream author them is a weaker version
+of the same conflict §2 Ω-Verification forbids when it says γ must not grade itself. A non-competing
+session authoring them is strictly more trustworthy, and it happens to be free.)*
+
+**The runway session owns Phase 0** and performs, in order: the run-start git tag and DB snapshot ·
+the SHARED Verifier baseline against production · the α-owned contract SPECS C1, C2, C3, C6, C8
+(a contract is an interface spec, not an implementation — authoring it outside the stream that will
+implement it removes the "owner defines the interface at its own convenience" hazard) · the C3
+schema-map generator · and the frozen, read-only test assets (sealed evaluator harness, 60-item
+routing suite, dark-corpus replay set, overflow queue). It writes `PHASE0_COMPLETE.flag` LAST.
+
+**ALL FOUR SESSIONS ARE PASTED AT THE SAME TIME AND THE HUMAN THEN LEAVES.** The runway session and
+the three streams are launched together; the streams **wait on the machine's clock, never on the
+human's**. This is the whole point: no step in this campaign may require a human decision between
+paste and morning.
+
+**Consequences, all binding:**
+- **A stream's FIRST action is to WAIT — not to cd, not to read, not to touch git.** The runway
+  session is concurrently relocating worktrees, merging doc changes and taking snapshots; a stream
+  that touches the repo before `PHASE0_COMPLETE.flag` exists will race it and may find its worktree
+  mid-move. Poll every 60s with a **3-hour ceiling**, do nothing else, and only then validate,
+  `cd` into the worktree, and read.
+- **The start gate is IDENTICAL for all three streams.**
+- **If `PHASE0_FAILED.flag` appears, or the ceiling expires, the stream writes its
+  `PHASE0_TIMEOUT_<stream>.flag` and ABORTS cleanly.** It does not attempt to repair Phase 0 — a
+  clean abort with a stated reason is worth far more at 7am than three streams improvising on a
+  broken runway. The runway session retries each of its own steps up to 3 times before declaring
+  failure, so a FAILED flag means something genuinely unrecoverable.
+- **Independence is preserved because the runway session is not a stream.** It authors the baseline
+  and the graded test assets before any stream has done any work, and it has no stake in the
+  outcome (M2.4 rationale).
+- α keeps Phase 4 and Phase 5 (the close), and γ remains its deputy (M2.7). Nothing about close
+  ownership changes.
+- **β and γ own their own contracts as before** — C4/C5 (β, deadline T0+3h) and C7 (γ, T0+4h) are
+  *rulings that require investigation*; they cannot be pre-authored and are not.
+- **If a stream finds a pre-authored contract infeasible, it files an AMENDMENT row in
+  `CONTRACT_STATUS.md` within its first hour** — never silently diverges. An AMENDED row is binding
+  rework on every consumer (M2.10).
+- α still ships the EL-37 fix (C6's implementation) and `budget_kb` (C1's implementation) in its
+  first merge. γ builds against the contract specs from minute one and re-runs the affected lanes
+  when the `<Cn>.live` signals appear (M2.5) — which is exactly what that mechanism is for.
+
+`~/elev-v2-shared/PHASE0_COMPLETE.flag` is written LAST and contains a manifest:
 ```json
 {"run_start_tag":"...","db_snapshot_id":"...","baseline_ledger_path":"...","baseline_sha256":"...",
  "contracts":[{"id":"C1","path":"...","sha":"..."}, …C2,C3,C6,C8],
  "sealed_harness_path":"...","routing_suite_path":"...","dark_replay_set_path":"...",
  "overflow_queue_path":"...","branch_heads":{"alpha":"...","beta":"...","gamma":"..."}}
 ```
-β and γ **validate every field** (files exist, shas match, branches resolve) before starting lane
-work. **There is no "looks fine, proceed" fallback** — v2.0's version would have let β and γ work
+**Every stream** validates every field (files exist, shas match, branches resolve) before starting
+lane work. **There is no "looks fine, proceed" fallback** — v2.0's version would have let β and γ work
 six hours producing legally unmergeable code if α died after cutting branches but before capturing
-the baseline. On failure or a 90-minute timeout, β/γ write
-`~/elev-v2-shared/PHASE0_TIMEOUT_<stream>.flag` and **abort**. α's error path writes
-`PHASE0_FAILED.flag` so siblings fail fast instead of polling into the morning.
-Phase 0 additionally freezes, read-only, before any Ω builder exists: the **sealed evaluator
-harness** (§2 Ω-V), the **60-item routing suite** (§2 Ω4), the **dark-corpus replay set** (§2 Ω7),
-and `OVERFLOW_QUEUE.md`.
+the baseline. On any validation failure the stream writes
+`~/elev-v2-shared/PHASE0_TIMEOUT_<stream>.flag` and **aborts** — it does not attempt to repair
+Phase 0 itself. The runway session's error path writes `PHASE0_FAILED.flag` so the streams fail fast
+rather than starting on a broken runway.
+The frozen, read-only test assets — the **sealed evaluator harness** (§2 Ω-V), the **60-item routing
+suite** (§2 Ω4), the **dark-corpus replay set** (§2 Ω7) and `OVERFLOW_QUEUE.md` — are authored by the
+runway session before any stream exists, which is what makes them credible graders.
 
 **M2.5 · LIVE-IMPLEMENTATION SIGNALS (finding #2 — the flagship-fails-at-dawn path).** A published
 contract proves nothing about production. When a stream's Verifier confirms a contract's
@@ -1097,8 +1160,13 @@ Never pulls another stream's open lane.
 ## §8 — Execution timeline (projected)
 
 ```
-PHASE 0   ~45m  serial   Meta-Conductor: snapshot · branches · BASELINE capture · contracts · spawn
-PHASE 1   ~3h   ∥∥∥      α: A + B + K1        β: D.audit + C + G        γ: Ω1 + Ω2 + Ω4
+T0        ── ALL FOUR SESSIONS PASTED TOGETHER; THE HUMAN LEAVES ──
+PHASE 0   ~2h            RUNWAY SESSION (not a stream): reconcile + cleanup · snapshot + DB
+                         snapshot · BASELINE capture · contract specs C1/C2/C3/C6/C8 · schema-map
+                         generator · frozen test assets · PHASE0_COMPLETE.flag
+                         MEANWHILE α, β, γ poll for the flag and touch NOTHING (3h ceiling)
+PHASE 1   ~3h   ∥∥∥      the flag lands; all three streams validate and start within a minute
+                         α: A + B + K1        β: D.audit + C + G        γ: Ω1 + Ω2 + Ω4
                          α ships C6 (EL-37) + C1 (budget_kb) in its first merge
                          → merge-queue → DEPLOY-1 → Integration-Verifier → SNAPSHOT
 PHASE 2   ~3h   ∥∥∥      α: H + A-hardening   β: D.fix + rebuild + D2   γ: Ω3 + Ω5 + Ω8 + E
@@ -1111,7 +1179,7 @@ PHASE 4   ~1.5h serial   FLAGSHIP ACCEPTANCE (§2 Ω-Verification, both domains,
 PHASE 5   ~45m  serial   Meta-Conductor: coverage matrix finalised · register dispositions appended ·
                          CURRENT_STATE + SESSION_LOG close · branch/worktree cleanup · morning report
 ```
-**Projected wall-clock ≈ 12h** with three streams (v1.0's single-stream estimate was 8–11h for
+**Projected wall-clock ≈ 12h** end to end, entirely unattended (v1.0's single-stream estimate was 8–11h for
 *less* scope — the depth mandate is net-new work; parallelism absorbs it).
 
 ---
@@ -1251,6 +1319,7 @@ atomically; root `CLAUDECODE_BRIEF.md` flipped to COMPLETE only if the close che
 
 ---
 
+
 ## §15 — Coverage matrix (every EL + every Ω → stream · lane)
 
 | Item | Stream · Lane | Overnight outcome targeted |
@@ -1327,6 +1396,89 @@ atomically; root `CLAUDECODE_BRIEF.md` flipped to COMPLETE only if the close che
 
 *Also carried from CURRENT_STATE v6.41:* A-5 → β.G supersession · A-3/CR-131 + gochara env → β.T ·
 B-1 silent-empty → α.B · B-2 standing-prediction surfacing → γ.J.
+
+
+---
+
+## §16 — CLEANUP (Phase 5; Verifier-confirmed like everything else)
+
+*Added 2026-07-24. The run creates a great deal of scaffolding across worktrees, branches, locks,
+snapshots and shared state. Cleanup is not housekeeping — done wrong it destroys the run's own
+evidence, and done timidly it leaves a repo full of traps for the next session. Both failure modes
+are avoided by one rule:*
+
+> **EVIDENCE IS MIGRATED INTO GIT. SCAFFOLDING IS DELETED. RESTORE POINTS ARE RETAINED.
+> Nothing this run did not create is touched at all.**
+
+### §16.1 — MIGRATE FIRST, DELETE SECOND (non-negotiable order)
+
+`~/elev-v2-shared/` holds the entire evidentiary record and lives OUTSIDE the repo, so it is not
+covered by any commit. **Before a single deletion**, copy the following into
+`00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/` and merge them (PR path, M2.3b):
+
+- `ELEVATION_V2_BASELINE.md` — the before-state. **Irreplaceable**: once prod is fixed, it can never
+  be recaptured, and without it every before/after claim in the report is unfalsifiable.
+- `ELEVATION_V2_RUN_LEDGER.md` — the per-EL evidence blocks, plus every raw payload they reference.
+- `INTEGRATION_LOG.md`, the three `proxy/<stream>.md` ledgers, `PREFLIGHT.json`,
+  `PREEXISTING_CI_STATE.md`, `contracts/CONTRACT_STATUS.md` and the contract files.
+- **The frozen test assets become standing regression assets, not disposable scaffolding**: the
+  sealed evaluator harness, the 60-item routing suite, the dark-corpus replay set. They are the only
+  way a future session can re-measure the §0 mandate; they belong in the repo permanently.
+- The generated `TOTAL_CONCEPT_INVENTORY_v1_0.json` and `DOMAIN_RELEVANCE_MAP_v1_0.json` (if not
+  already committed by γ), and the run report.
+
+Only once that merge has LANDED may `~/elev-v2-shared/` be removed.
+
+### §16.2 — DELETE (only what this run created)
+
+- The three stream worktrees and every lane sub-worktree — `git worktree remove` under the
+  `worktree` lock, then `git worktree prune`, then remove `.worktrees/` if empty.
+- Every `elev/*` branch, local **and** on origin, once merged. Any still-open PR from the run is
+  merged or closed with a reason — never left dangling.
+- Stale lock directories under `~/elev-v2-shared/locks/` (after §16.1's migration).
+- Build artifacts, `node_modules` in the removed worktrees, scratch files, and **every stub or mock
+  created for contract-stubbing (M2.5)** — a surviving stub is a landmine that will silently satisfy
+  a future import.
+- The three superseded pre-run clones `~/madhav-alpha|beta|gamma`, if still present.
+
+### §16.3 — RETAIN, DO NOT DELETE
+
+- **All snapshot tags** (`elev-v2-run-start` and every phase boundary) — these are the restore
+  points; deleting them destroys the ability to recover from a defect found tomorrow.
+- **DB snapshots for at least 7 days** after the run.
+- Everything under `.claude/worktrees/`, `../madhav-wave-vidhi-purnata`, and any branch not matching
+  `elev/*` — **this run did not create them and does not touch them.** A previous pre-flight already
+  deleted 7 tracked files by over-broad `rm -rf` and had to restore them; treat that as the standing
+  warning.
+
+### §16.4 — RESTORE
+
+- `git config gc.auto` back to its pre-run value recorded in `PREFLIGHT.json` (it was UNSET, so the
+  correct restore is `git config --unset gc.auto`, not setting it to a number).
+- Any feature flag flipped purely to enable the run. **Exception:** β's house-convention flag
+  (§5.β.D step 5) is a *product* decision, not scaffolding — it stays as ruled and is reported, never
+  silently reverted.
+- Confirm the ROOT checkout is still on `main`, clean, and at the final merged head.
+
+### §16.5 — TWO SAFETY RULES ON THE DELETION ITSELF
+
+1. **Reverse-citation before any deletion** (§11.4) applies to cleanup as much as to lane work: grep
+   the live codebase for citations of anything being removed; a still-cited target becomes
+   keep-or-repoint, and the report says so.
+2. **`git worktree prune` runs ONLY from the canonical repo path** `/Users/Dev/Vibe-Coding/Apps/Madhav`.
+   Run from any other mount or alias of the same repo, git cannot resolve the recorded worktree paths
+   and reports every entry as prunable — pruning there would deregister live worktrees, including
+   other sessions'.
+
+### §16.6 — CLEANUP IS VERIFIED, NOT ASSUMED
+
+Cleanup is a Verifier gate like any other. It passes only on positive evidence:
+`git worktree list` shows main plus only pre-existing entries · `git branch -a | grep elev/` is empty
+· `git status` at root is clean on main · the migrated ledger directory exists on `main` and the
+baseline file is readable and non-empty · `gc.auto` is restored · a fresh `npm run typecheck` passes
+at the root · no open PRs remain from the run. **Any item that cannot be cleaned is reported as a
+named residual with its reason** — a silent leftover is the same class of dishonesty as a silent
+omission (§0).
 
 ---
 

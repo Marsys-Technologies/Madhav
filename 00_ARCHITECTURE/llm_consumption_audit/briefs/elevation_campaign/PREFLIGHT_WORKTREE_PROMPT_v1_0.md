@@ -3,7 +3,8 @@ artifact: PREFLIGHT_WORKTREE_PROMPT (Elevation Campaign v2.1 — Mode 2, worktre
 version: 1.0
 status: CURRENT
 purpose: >
-  Converts the runway from three clones to three sibling git worktrees, and lands the charter
+  Converts the runway from three clones to three in-repo git worktrees under .worktrees/, and
+  lands the charter
   amendment. Run AFTER the original pre-flight (which already established branch protection, the
   green CI baseline and prod health — those findings stand and are not re-derived here).
 run_from: /Users/Dev/Vibe-Coding/Apps/Madhav (project root)
@@ -13,8 +14,9 @@ run_from: /Users/Dev/Vibe-Coding/Apps/Madhav (project root)
 
 ```
 You are the PRE-FLIGHT engineer for the Elevation Campaign v2.1, converting the runway from three
-separate clones to three sibling GIT WORKTREES. The three stream sessions launch immediately after
-you finish, all of them opening on this project root.
+separate clones to three GIT WORKTREES inside this repo under .worktrees/. The three stream sessions
+launch immediately after you finish, each one a Claude Code extension window opened on this project
+root.
 
 YOUR JOB IS PREPARATION ONLY. Do NOT start the campaign, do NOT begin any lane work, do NOT touch
 application code, do NOT deploy or rebuild anything.
@@ -44,14 +46,20 @@ Do all of the following.
    Set `git config gc.auto 0` (a background auto-gc under three concurrent writers can lock refs).
    Record the previous value so it can be restored at close.
 
-3. CREATE THE THREE BRANCHES AND THREE SIBLING WORKTREES.
+3. CREATE THE THREE BRANCHES AND THREE WORKTREES, IN-REPO UNDER .worktrees/.
    Branches off current main: elev/alpha, elev/beta, elev/gamma. Push all three to origin.
-   Worktrees as SIBLINGS of the repo, never nested inside it:
-     /Users/Dev/Vibe-Coding/Apps/madhav-wt-alpha   -> elev/alpha
-     /Users/Dev/Vibe-Coding/Apps/madhav-wt-beta    -> elev/beta
-     /Users/Dev/Vibe-Coding/Apps/madhav-wt-gamma   -> elev/gamma
-   Siblings rather than .worktrees/ because a nested worktree puts three extra copies of every
-   source file inside the repo, so every rg/glob an agent runs at the root returns triplicated hits.
+   Worktrees at:
+     /Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/alpha   -> elev/alpha
+     /Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/beta    -> elev/beta
+     /Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma   -> elev/gamma
+   IN-REPO, not sibling directories: the streams run as Claude Code extension windows opened on this
+   project folder, and an IDE-hosted session may scope file access to the opened workspace — a
+   sibling worktree would sit outside it and every operation would be blocked or prompt for
+   permission, which is fatal unattended. `.worktrees/` is already the repo's reserved, gitignored
+   path (.gitignore section "Git worktrees"), so it is inside the workspace AND invisible to git
+   status and to every .gitignore-respecting search.
+   CONFIRM `.worktrees/` is genuinely matched by .gitignore before creating anything — if for any
+   reason it is not, add it and include that in the amendment PR.
    Verify each worktree is on its intended branch and that the ROOT checkout is still on main,
    untouched.
 
