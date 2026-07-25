@@ -56,6 +56,8 @@ platform/scripts/eval/results_*.json
 platform/scripts/eval/eval_results_*.json
 platform/scripts/eval/*_stderr.log
 evals/mcp-routing/results_*.json
+evals/k2/disagreement_ledger/*.json
+evals/k2/battery_runs/*.json
 
 # Claude Code local-only settings (personal permission overrides)
 .claude/settings.local.json
