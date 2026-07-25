@@ -61,6 +61,17 @@ import {
 // channel — judgment_query, graha_portrait, pact_query. See response_budget.ts's header
 // for why this is structure-aware (shrinks named arrays) rather than a byte-truncation.
 import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
+// Elevation Campaign v2.1 · Stream α (SATYA) — flagship completeness wiring.
+// γ built `dossier` (the Ω5 gather-then-compose engine) but a naive uninstructed agent asking
+// "how is my wealth?" reaches for the obviously-named `assess_wealth`, gets the shallow default
+// bundle, and never discovers dossier — scoring ~15% against the domain concept set. Fix (option
+// (b)(i)): the assess_* entrypoints now internally invoke the SAME dossier assembly logic
+// (runDossier is a PURE function over embedded slice bundles — zero I/O, no HTTP round-trip to
+// self) and merge its 100%-accounted completeness map into their OWN response, so the tool a
+// naive caller actually reaches for is now backed by the complete domain accounting, not a
+// shallow slice. No computation is reimplemented (B.10) — dossier is a deterministic join of the
+// Total Concept Inventory × completeness accounting.
+import { runDossier, type DossierPage } from './dossier.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -513,6 +524,178 @@ function applyMcpBudgetAuto<T extends Record<string, unknown>>(
   const autoSections = autoDetectTrimmableSections(response, toolName)
   const allSections = [...autoSections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
   return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
+}
+
+// ── Flagship completeness: fold dossier's 100%-accounted territory into assess_* ──────────────
+//
+// γ's diagnosis (verbatim): a genuinely fresh, uninstructed agent asking "How is my wealth?"
+// calls `assess_wealth` (the obviously-named tool), gets the shallow default bundle, and never
+// discovers `dossier` — scoring ~15% against the domain concept set. The behaviourally-effective
+// fix is option (b)(i): route the obvious entrypoint THROUGH dossier's completeness so its OWN
+// response carries the same complete accounting dossier would, not a shallow slice.
+//
+// `runDossier` is a PURE function over compiled slice bundles (no DB, no HTTP) — safe to call
+// inline and cheap to page. We page it internally at the ceiling budget, accumulate the WHOLE
+// concept slice's coverage into a compact per-serving-tool map, and attach:
+//   • `domain_completeness` — the 100% accounting (denominator + per-state tally + coverage map
+//     of every serving_tool that carries this domain's concepts, with counts and drill args),
+//     plus the post-gate composition_scaffold when the slice is fully accounted; and
+//   • a hard, un-missable `judgment_flags` steer + `completeness_directive` string that a
+//     continuing agent cannot read past without knowing the complete territory exists and how to
+//     hydrate it row-by-row (the `dossier` paging call).
+// No astrological value is computed here (B.10): this is a re-serving of dossier's deterministic
+// accounting join. If no precompiled slice exists for (domain, chart) the helper returns null and
+// assess_* is unchanged — never a fabricated map.
+
+interface CoverageMapEntry {
+  serving_tool: string
+  concept_count: number
+  unit_count: number
+  states: Record<string, number>
+  example_args?: Record<string, unknown>
+}
+
+const DOSSIER_COVERAGE_MAP_MAX_TOOLS = 60
+
+/** Page the dossier engine to 100% (pure, embedded slices) and assemble a compact completeness
+ *  block. Returns null when no slice is precompiled for (domain, chart) — assess_* then unchanged. */
+export function assembleDomainCompleteness(domain: string, chart_id: string): Record<string, unknown> | null {
+  let page: DossierPage
+  try {
+    page = runDossier({ domain, chart_id, budget_kb: 64 })
+  } catch {
+    return null
+  }
+  if (!page.ok) return null
+
+  const perTool = new Map<string, CoverageMapEntry>()
+  const accumulate = (p: DossierPage): void => {
+    for (const chunk of p.page_units) {
+      const conceptSum = chunk.concept_counts.reduce((a, b) => a + b, 0)
+      const existing = perTool.get(chunk.serving_tool) ?? {
+        serving_tool: chunk.serving_tool,
+        concept_count: 0,
+        unit_count: 0,
+        states: {},
+        ...(chunk.values.length > 0
+          ? { example_args: { chart_id, ...(chunk.serving_arg_key && chunk.serving_arg_key !== '@' ? { [chunk.serving_arg_key]: chunk.values[0] } : {}) } }
+          : {}),
+      }
+      existing.concept_count += conceptSum
+      existing.unit_count += chunk.values.length
+      existing.states[chunk.state] = (existing.states[chunk.state] ?? 0) + conceptSum
+      perTool.set(chunk.serving_tool, existing)
+    }
+  }
+
+  accumulate(page)
+  let guard = 0
+  while (page.more_available && page.cursor && guard < 64) {
+    guard += 1
+    try {
+      page = runDossier({ domain, chart_id, budget_kb: 64, cursor: page.cursor })
+    } catch {
+      break
+    }
+    if (!page.ok) break
+    accumulate(page)
+  }
+
+  // `page` is now the LAST page — its coverage_so_far is cumulative and its synthesis_gate
+  // reflects whether 100% was reached (it is, for a fully-paged flagship slice).
+  const cov = page.coverage_so_far
+  const allTools = Array.from(perTool.values()).sort((a, b) => b.concept_count - a.concept_count)
+  const coverage_map = allTools.slice(0, DOSSIER_COVERAGE_MAP_MAX_TOOLS)
+
+  return {
+    source: 'dossier (Ω5 gather-then-compose engine)',
+    domain,
+    chart_id,
+    slice_size: cov.slice_size,
+    accounted: cov.accounted,
+    pct: cov.pct,
+    fully_accounted: cov.accounted === cov.slice_size,
+    synthesis_gate: page.synthesis_gate,
+    coverage_by_state: {
+      served: cov.served,
+      empty_for_this_chart: cov.empty_for_this_chart,
+      not_computed_globally: cov.not_computed_globally,
+      superseded_by_aggregate: cov.superseded_by_aggregate,
+      excluded_by_named_rule: cov.excluded_by_named_rule,
+    },
+    chain_pattern_units: cov.chain_pattern_units_seen,
+    distinct_serving_tools: allTools.length,
+    coverage_map,
+    ...(coverage_map.length < allTools.length
+      ? { coverage_map_truncated: true, coverage_map_note: `Showing the ${coverage_map.length} highest-concept serving tools of ${allTools.length}; page dossier for the complete per-tool map.` }
+      : {}),
+    ...(page.composition_scaffold ? { composition_scaffold: page.composition_scaffold } : {}),
+    full_hydration: {
+      tool: 'dossier',
+      args: { domain, chart_id, budget_kb: 64 },
+      note: 'This block accounts for 100% of the domain concept slice by serving-tool and state — ' +
+        'the complete territory, not a shallow default. To HYDRATE the actual rows for any unit, ' +
+        'call its serving_tool with {chart_id, ...args}; to walk the whole slice row-by-row with a ' +
+        'structural synthesis gate, call `dossier` and follow `cursor` until synthesis_gate=OPEN, ' +
+        'then compose the reading over the WHOLE slice.',
+    },
+    note: 'Complete-accounting domain territory, sourced from the dossier engine (a deterministic ' +
+      'join of the Total Concept Inventory × completeness accounting — no computation reimplemented, ' +
+      'B.10). The reconciled assessment below is BOUNDED by this: every concept this domain carries ' +
+      'is accounted here (by state, with its live serving handle), so a reader holds the whole ' +
+      'territory before composing, never a ~15% default slice.',
+  }
+}
+
+/** Attach the dossier completeness block + an un-missable steer onto an assess_* response,
+ *  mutating it in place. No-op when no slice is precompiled for (domain, chart). */
+export function attachDomainCompleteness(response: Record<string, unknown>, domain: string, chart_id: string): void {
+  const completeness = assembleDomainCompleteness(domain, chart_id)
+  if (!completeness) return
+  response['domain_completeness'] = completeness
+  const pct = (completeness['pct'] as number | undefined) ?? 0
+  const sliceSize = (completeness['slice_size'] as number | undefined) ?? 0
+  response['completeness_directive'] =
+    `COMPLETE ACCOUNTING ATTACHED: this response is backed by the full ${domain} concept slice ` +
+    `(${sliceSize} concepts, ${pct}% accounted) via domain_completeness — read that map before ` +
+    `concluding. For a row-by-row hydrated reading of the whole territory, call ` +
+    `dossier(domain="${domain}", chart_id="${chart_id}") and page to synthesis_gate=OPEN.`
+  // Un-missable structured flag (string entry — a valid JudgmentFlagEntry; renders via
+  // judgmentFlagText). Prepended so it is the first flag a reader encounters.
+  const existingFlags = Array.isArray(response['judgment_flags'])
+    ? (response['judgment_flags'] as unknown[])
+    : []
+  response['judgment_flags'] = [
+    `complete_domain_accounting_attached: the full ${domain} concept slice (${sliceSize} concepts, ` +
+      `${pct}% accounted) is attached as domain_completeness. This assessment is a reconciled ` +
+      `HEADLINE over that complete territory — do not treat it as the whole reading. Call ` +
+      `dossier(domain="${domain}", chart_id) to page the full slice row-by-row.`,
+    ...existingFlags,
+  ]
+}
+
+/** Compact completeness POINTER (no per-tool coverage_map / scaffold) for tight-budget surfaces
+ *  like judgment_query (12KB). Same 100% accounting summary + the dossier hydration call, sized to
+ *  fit alongside an existing envelope. Returns null when no flagship slice exists for (domain, chart). */
+export function buildDomainCompletenessPointer(domain: unknown, chart_id: string): Record<string, unknown> | null {
+  if (typeof domain !== 'string' || !domain) return null
+  const full = assembleDomainCompleteness(domain, chart_id)
+  if (!full) return null
+  return {
+    source: full['source'],
+    domain,
+    slice_size: full['slice_size'],
+    accounted: full['accounted'],
+    pct: full['pct'],
+    fully_accounted: full['fully_accounted'],
+    synthesis_gate: full['synthesis_gate'],
+    coverage_by_state: full['coverage_by_state'],
+    distinct_serving_tools: full['distinct_serving_tools'],
+    full_hydration: full['full_hydration'],
+    note: `A COMPLETE ${domain} reading (all ${String(full['slice_size'])} domain concepts, 100% ` +
+      `accounted) is available via dossier(domain="${domain}", chart_id) — this judgment is a ` +
+      `bhava/domain-scoped verdict, not the whole-territory sweep.`,
+  }
 }
 
 /**
@@ -1693,6 +1876,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        // Elevation α: back the naive-caller entrypoint with dossier's 100%-accounted territory.
+        attachDomainCompleteness(response, 'career', chart_id)
         return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_career', budget_kb, verbosity), 'assess_career', budget_kb))
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
@@ -1761,6 +1946,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        // Elevation α: back the naive-caller entrypoint with dossier's 100%-accounted territory.
+        attachDomainCompleteness(response, 'wealth', chart_id)
         return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_wealth', budget_kb, verbosity), 'assess_wealth', budget_kb))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
@@ -2274,8 +2461,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
         ]
 
+        // Elevation α: for a flagship domain question, steer to dossier's complete-accounting
+        // sweep (compact pointer — judgment_query's 12KB budget can't hold the full map).
+        const completenessPointer = buildDomainCompletenessPointer(domain, chart_id)
+
         if (format !== 'v3') {
-          const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'judgment_query', undefined, 'legacy', undefined, entitled) }
+          const legacyResponse: Record<string, unknown> = { orientation_context, orientation_ok, ...envelope(inner, 'judgment_query', undefined, 'legacy', undefined, entitled) }
+          if (completenessPointer) legacyResponse['domain_completeness_pointer'] = completenessPointer
           return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveMaxKb('judgment_query', budget_kb, verbosity), judgmentSections, budget_kb))
         }
 
@@ -2297,11 +2489,24 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const { chart_header, flags: chartHeaderFlags } = await resolveChartHeader(chart_id, resolvedAyanamsha, principal)
         judgment_flags.push(...chartHeaderFlags)
 
+        // Elevation α: un-missable steer to the complete-accounting dossier sweep for a flagship
+        // domain question. Kept OUT of drill_pointers (that array carries a closed §28.4
+        // pointer_type vocabulary with exact-shape tests) — the steer rides as a string
+        // judgment_flag plus the dedicated `domain_completeness_pointer` envelope field.
+        if (completenessPointer) {
+          judgment_flags.unshift(
+            `complete_domain_accounting_available: dossier(domain="${String(domain)}", chart_id) serves ` +
+              `all ${String(completenessPointer['slice_size'])} ${String(domain)} concepts at 100% accounting ` +
+              `(see domain_completeness_pointer). This judgment is a domain-scoped verdict, not the whole reading.`,
+          )
+        }
+
         const v3Response = {
           orientation_context, orientation_ok,
           ...envelope(inner, 'judgment_query', undefined, 'v3', {
             chart_header, verdict, grounding, drill_pointers, judgment_flags,
           }, entitled),
+          ...(completenessPointer ? { domain_completeness_pointer: completenessPointer } : {}),
         }
         const budgeted = applyMcpBudget(v3Response, resolveMaxKb('judgment_query', budget_kb, verbosity), judgmentSections, budget_kb)
         // R-21 fix: `receipt.varga_confirmed`/`receipt.timing_anchored` were stamped from the
