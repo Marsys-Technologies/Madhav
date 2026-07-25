@@ -49,6 +49,35 @@ export type Horizon = 'past' | 'present' | 'near' | 'far' | 'atemporal'
 export type Intervention = 'none' | 'remedy' | 'muhurta' | 'mitigation'
 export type Entitlement = 'reference' | 'native' | 'restricted'
 
+/**
+ * Ω4 (Elevation Campaign v2.1) routing decision — the binary the depth-default flip governs.
+ * `deep` = full comprehensive dossier (the DEFAULT posture); `narrow` = a pinpoint pointed-fact
+ * lookup that had to be EARNED against the four narrow criteria below.
+ */
+export type Route = 'deep' | 'narrow'
+
+/**
+ * Pointer served on EVERY classification (Ω4: "even a narrow answer carries depth_available") —
+ * the machine-readable way for a caller to escalate a narrow pinpoint answer to the full dossier.
+ */
+export type DepthAvailable = {
+  /** true when a deeper reading exists that this classification did NOT deliver (i.e. narrow route). */
+  available: boolean
+  depth: Depth
+  width: Width
+  pointer: string
+}
+
+/**
+ * The two native charts (§B / L1_GANITA_CLOSURE). A chart-specific query about either resolves
+ * entitlement to `native` — NOT `restricted` (Ω4 defect fix: "restricted incorrectly applies to
+ * native's own charts"). Any OTHER explicit chart_id is a third party → least-privilege `restricted`.
+ */
+export const NATIVE_CHART_IDS: ReadonlySet<string> = new Set([
+  '482012f1-710e-4a25-994a-93821f5871aa', // Abhisek Mohanty (native)
+  '1c826d5a-41cb-4450-b4dc-59d440e5f75a', // Abhinandan Mohanty (native family — operator E2E chart)
+])
+
 export type ScopeTuple = {
   intent: Intent
   domains: Domain[]
@@ -67,6 +96,12 @@ export type ScopeClassification = {
   fallback_prompt: string
   fallback_recommended: boolean
   usage: string
+  /** Ω4: the binary depth-default routing decision. `deep` unless narrow was positively EARNED. */
+  route: Route
+  /** Ω4: the narrow-classification confidence (distinct from the intent `confidence`). Below 0.5 → DEEP. */
+  narrow_confidence: number
+  /** Ω4: escalation pointer to the full dossier — present on every classification, narrow or deep. */
+  depth_available: DepthAvailable
 }
 
 // ── Rendered prompt (retained verbatim as the fallback escape hatch) ───────────
@@ -170,6 +205,129 @@ const INTERVENTION_REMEDY = /\b(remed(y|ies|ial)|upaya|upāya|mantra|gemstone|ra
 
 const REFERENCE_INTENTS: ReadonlySet<Intent> = new Set(['classical_rule', 'panchanga'])
 
+// ── Ω4 depth-default routing (Elevation Campaign v2.1) ─────────────────────────
+// DOCTRINE: `depth: deep, width: broad` (deepdive/comprehensive) is the DEFAULT posture. A
+// `narrow` pinpoint route must be EARNED — it is granted ONLY when a query positively matches
+// a single-entity / single-attribute pinpoint shape AND trips NONE of the deep-push signals
+// below (evaluative/predictive verb, life-domain word, analytical topic, breadth, multi-entity).
+// Uncertainty resolves toward depth: narrow_confidence < 0.5 → DEEP (mirrors Ω2 default-include).
+//
+// The classifier must not be weaker than plan_retrieval's keyword fallback (scope_resolver.ts),
+// which routes EVERY life-domain-keyword question to `deepdive`. Every deep-push token below is a
+// superset of that fallback's genuine life-domain vocabulary, so any question the fallback routes
+// deep on a real domain word, this classifier also routes deep. (The fallback ALSO false-positives
+// on bare house-ordinals — "10th"/"7th" — routing pinpoint "10th house lord" queries to a career/
+// marriage deepdive; that is the exact over-routing Ω4 fixes, so house-ordinals are treated as
+// STRUCTURAL here, never as a domain word.)
+
+// (a)+(c) Evaluative / predictive / interpretive verbs & framings → DEEP. "How is my Moon" is deep
+//          ('how' is evaluative); "What is my Moon sign" is not.
+const DEEP_VERB =
+  /\b(how|why|will|would|should|could|shall|can|when|analy[sz]e|assess|assessment|evaluate|describe|discuss|explain|indicate[ds]?|affect(s|ing|ed)?|suited|suit|suggest|recommend|compare|predict|forecast|interpret|read(ing)?|tell me|show(s|n)? about|say(s)? about|does my chart|do my|is this|are there|is there|more than one)\b/i
+
+// (d) Life-domain words → DEEP. STRUCTURAL terms (house / bhava / Nth-house / planet names /
+//     karakas / lagnas) are DELIBERATELY excluded — those are the pinpoint entities, not domains.
+const DEEP_DOMAIN_WORD =
+  /\b(wealth|money|finance|financial|finances|income|riches|prosperity|affluen|net worth|debt|litigation|career|profession|professional|job|occupation|employ|livelihood|vocation|business|marriage|marry|married|marital|spouse|wife|husband|partner|partnership|relationship|romance|romantic|compatib|separation|divorce|health|disease|illness|ailment|medical|longevity|vitality|chronic|acute|surgery|children|progeny|offspring|fertility|education|academic)\b/i
+
+// Analytical topics & breadth framings → DEEP (a pinpoint fact never asks for these).
+const DEEP_TOPIC =
+  /\b(yoga|yogas|dosha|doshas|dasha|dashas|antardasha|bhukti|transit|transits|gochar|sade sati|remed(y|ies|ial)|mitigat|prospects?|outlook|trajectory|growth|risks?|obstacle|vulnerab|afflict|instabilit|fame|recognition|leadership|independent|independence|periods? (in|of|for)|best period|worst|good chart|better suited)\b/i
+
+const DEEP_BREADTH =
+  /\b(everything|comprehensive|entire|whole|overall|holistic|all aspects|big picture|life reading|full (life|reading|picture)|versus|\bvs\b)\b/i
+
+// A conjunction that joins TWO topics/clauses → not a single pinpoint → DEEP.
+const DEEP_MULTI = /\b(and|or)\b.*\b(and|or)\b/i
+
+// ── Positive pinpoint shape (the narrow criteria (a) single entity + (b) single attribute) ─────
+
+// A specific single computed point that IS the answer on its own — "What is my X" is a pinpoint.
+const POINT_ENTITY =
+  /\b(indu lagna|hora lagna|bhava lagna|ghati(ka)? lagna|arudha( lagna| pada|)|sree lagna|shree lagna|shri lagna|pranapada|vighati lagna|(atma|amatya|bhratri|bhatru|matri|putra|gnati|dara|amatra)\s?karaka|karaka)\b/i
+
+// Planets (incl. common Sanskrit) — an object you ask ONE attribute of.
+const PLANET =
+  /\b(sun|moon|mars|mercury|jupiter|venus|saturn|rahu|ketu|s[uū]rya|chandra|budha|guru|b[rṛ]haspati|shukra|[śs]ukra|shani|[śs]ani|mangal|kuja|angaraka)\b/i
+
+// A house-lord ("2nd house lord", "ascendant lord", "lagna lord", "lord of the 7th house").
+const HOUSE_LORD =
+  /\b(\d{1,2}(st|nd|rd|th)\s+(house\s+)?lord|(ascendant|lagna|rising)\s+lord|lord\s+of\s+the\s+\d{1,2}(st|nd|rd|th)\s+house|bhavesha|lagnesha)\b/i
+
+// A bare house ("7th house") — pinpoint when paired with a "sign" attribute ("7th house sign").
+const HOUSE_ORDINAL = /\b\d{1,2}(st|nd|rd|th)\s+house\b/i
+
+// The ascendant/lagna itself as an entity.
+const ASCENDANT = /\b(ascendant|lagna|rising sign|rising)\b/i
+
+// The single attribute being asked of an object entity.
+const PINPOINT_ATTR =
+  /\b(sign|r[aā][śs]i|nak[śs]atra|nakshatra|house|placement|placed|dignity|degree[s]?|longitude|pada|dispositor|exalt|debilit|combust|retrograde|dig bala|status)\b/i
+
+/**
+ * Narrow-pointed detector (Ω4). Returns the earned-narrow decision plus a confidence and the audit
+ * reasons. Narrow requires ALL of: (a) a single named entity, (b) a single named attribute,
+ * (c) no evaluative/predictive verb, (d) no domain word — and narrow_confidence ≥ 0.5.
+ */
+function detectNarrow(query: string): { narrow: boolean; confidence: number; reasons: string[] } {
+  const reasons: string[] = []
+
+  // (c)+(d) + topic/breadth/multi deep-push gate — ANY hit disqualifies narrow.
+  const deepHits: string[] = []
+  if (DEEP_VERB.test(query)) deepHits.push('deep_push:eval_verb')
+  if (DEEP_DOMAIN_WORD.test(query)) deepHits.push('deep_push:domain_word')
+  if (DEEP_TOPIC.test(query)) deepHits.push('deep_push:analytical_topic')
+  if (DEEP_BREADTH.test(query)) deepHits.push('deep_push:breadth')
+  if (DEEP_MULTI.test(query)) deepHits.push('deep_push:multi_clause')
+  if (deepHits.length > 0) {
+    return { narrow: false, confidence: 0, reasons: deepHits }
+  }
+
+  // (a) single entity — count the distinct entity CLASSES referenced (most-specific first, so a
+  //     "2nd house lord" counts once as a house-lord, not also as a bare house).
+  let entityClass: string | null = null
+  let entityCount = 0
+  const seen = new Set<string>()
+  const noteEntity = (cls: string) => { if (!seen.has(cls)) { seen.add(cls); entityCount += 1; entityClass = cls } }
+  if (HOUSE_LORD.test(query)) noteEntity('house_lord')
+  else if (POINT_ENTITY.test(query)) noteEntity('point_entity')
+  else {
+    if (PLANET.test(query)) noteEntity('planet')
+    if (HOUSE_ORDINAL.test(query)) noteEntity('house')
+    if (ASCENDANT.test(query) && !HOUSE_ORDINAL.test(query)) noteEntity('ascendant')
+    if (POINT_ENTITY.test(query)) noteEntity('point_entity')
+  }
+
+  if (entityClass === null) {
+    return { narrow: false, confidence: 0, reasons: ['narrow:no_pinpoint_entity'] }
+  }
+  if (entityCount > 1) {
+    return { narrow: false, confidence: 0, reasons: [`narrow:multi_entity(${entityCount})`] }
+  }
+  reasons.push(`narrow:entity=${entityClass}`)
+
+  // (b) single attribute. Point-entities (karaka / special lagna) are self-contained — the entity
+  //     IS the queried value, so an explicit attribute word is not required.
+  const attrMatched = PINPOINT_ATTR.test(query)
+  const selfContained = entityClass === 'point_entity'
+  if (!attrMatched && !selfContained) {
+    return { narrow: false, confidence: 0, reasons: [...reasons, 'narrow:no_pinpoint_attribute'] }
+  }
+  if (attrMatched) reasons.push('narrow:attribute')
+  else reasons.push('narrow:self_contained_point')
+
+  // Confidence: entity (0.5) + attribute-or-self-contained (0.4). Both present ≥ 0.9 ≥ 0.5.
+  let confidence = 0.5 + (attrMatched || selfContained ? 0.4 : 0)
+  confidence = Math.round(confidence * 100) / 100
+  reasons.push(`narrow_confidence:${confidence}`)
+
+  // Ω4 uncertainty rule: below 0.5 routes DEEP, never narrow.
+  if (confidence < 0.5) {
+    return { narrow: false, confidence, reasons: [...reasons, 'narrow:below_confidence_floor->deep'] }
+  }
+  return { narrow: true, confidence, reasons }
+}
+
 // ── Entitlement-gated fallback_prompt disclosure ───────────────────────────────
 // The rendered fallback_prompt is the ENTIRE internal classifier system-prompt, verbatim
 // (dev-facing prompt-engineering text). It must not reach every caller unconditionally —
@@ -198,28 +356,82 @@ function firstMatch<T>(query: string, rules: ReadonlyArray<readonly [T, RegExp]>
   return null
 }
 
+/** Optional caller context — the ONLY authorization signal this deterministic classifier honors. */
+export type ClassifyContext = {
+  /** The chart the query is about, when the caller knows it. A native chart_id → entitlement `native`. */
+  chartId?: string
+}
+
+/**
+ * Resolve the entitlement tier (Ω4 defect fix). Reference intents stay `reference`. For a
+ * chart-specific query: an explicit NATIVE chart_id → `native`; an explicit THIRD-PARTY chart_id →
+ * least-privilege `restricted`; NO chart_id supplied → `native` (this is the native's own
+ * single-native instrument — §B — so an un-qualified "my …" query is about the native's own chart;
+ * the prior blanket `restricted` default was the documented defect that mis-tagged native charts).
+ */
+function resolveEntitlement(intent: Intent, chartId: string | undefined): { entitlement: Entitlement; reason: string } {
+  if (REFERENCE_INTENTS.has(intent)) return { entitlement: 'reference', reason: 'entitlement:reference<-reference_intent' }
+  if (chartId !== undefined) {
+    return NATIVE_CHART_IDS.has(chartId)
+      ? { entitlement: 'native', reason: 'entitlement:native<-native_chart_id' }
+      : { entitlement: 'restricted', reason: 'entitlement:restricted<-third_party_chart_id' }
+  }
+  return { entitlement: 'native', reason: 'entitlement:native<-default_native_instrument' }
+}
+
+/** The escalation pointer served on every classification (Ω4 depth_available). */
+function makeDepthAvailable(route: Route): DepthAvailable {
+  return route === 'narrow'
+    ? {
+        available: true,
+        depth: 'deep',
+        width: 'broad',
+        pointer:
+          'A full comprehensive dossier is available. To escalate this pinpoint answer, re-invoke ' +
+          'with an explicit deepdive scope_tuple (depth:"deep", width:"broad") or call the domain ' +
+          'dossier / plan_retrieval for the whole-domain read.',
+      }
+    : {
+        available: false,
+        depth: 'deep',
+        width: 'broad',
+        pointer: 'Already routed to the full comprehensive (deepdive) reading — no deeper tier to escalate to.',
+      }
+}
+
 /**
  * Deterministically classify a query into a scope tuple.
  * Pure function: identical input → identical output (compiler-safe per DR-8).
+ *
+ * Ω4 (Elevation Campaign v2.1): the DEFAULT posture is `depth: deep, width: broad` (deepdive /
+ * comprehensive). A `narrow`/`shallow` route is EARNED only via {@link detectNarrow}. `context.chartId`
+ * feeds the entitlement fix ({@link resolveEntitlement}).
  */
-export function classifyScope(rawQuery: string): ScopeClassification {
+export function classifyScope(rawQuery: string, context?: ClassifyContext): ScopeClassification {
   const query = (rawQuery ?? '').trim()
   const matched: string[] = []
   const renderedFallbackPrompt = renderFallbackPrompt(query)
+  const chartId = context?.chartId
 
   if (!query) {
-    const emptyQueryEntitlement: Entitlement = 'native'
+    const emptyQueryEntitlement: Entitlement = resolveEntitlement('unknown', chartId).entitlement
+    // Ω4: even an unclassifiable query defaults to the DEEP posture (uncertainty → depth).
+    const emptyRoute: Route = 'deep'
     return {
       scope_tuple: {
-        intent: 'unknown', domains: ['general'], width: 'standard', depth: 'standard',
+        intent: 'unknown', domains: ['general'], width: 'broad', depth: 'deep',
         horizon: 'atemporal', intervention: 'none', entitlement: emptyQueryEntitlement,
       },
       confidence: 0,
       method: 'deterministic_rules',
-      matched_rules: [],
+      matched_rules: ['route:deep<-empty_query_default', `entitlement:${emptyQueryEntitlement}`],
       fallback_prompt: gateFallbackPrompt(renderedFallbackPrompt, emptyQueryEntitlement),
       fallback_recommended: true,
-      usage: 'Empty query — no deterministic classification possible. Use fallback_prompt with an LLM.',
+      usage: 'Empty query — no deterministic classification possible. Defaulted to the deep (comprehensive) ' +
+        'posture per Ω4 (uncertainty resolves toward depth). Use fallback_prompt with an LLM for a real classification.',
+      route: emptyRoute,
+      narrow_confidence: 0,
+      depth_available: makeDepthAvailable(emptyRoute),
     }
   }
 
@@ -244,16 +456,30 @@ export function classifyScope(rawQuery: string): ScopeClassification {
   }
   if (domains.length === 0) domains.push('general')
 
-  // 3. Width
-  let width: Width = 'standard'
-  if (WIDTH_BROAD.test(query)) { width = 'broad'; matched.push('width:broad') }
-  else if (WIDTH_NARROW.test(query)) { width = 'narrow'; matched.push('width:narrow') }
-  else if (domains.length >= 3) { width = 'broad'; matched.push('width:broad<-multi_domain') }
+  // ── Ω4 narrow-detection: does this query EARN the narrow pinpoint route? ──────
+  const narrowResult = detectNarrow(query)
+  matched.push(...narrowResult.reasons)
+  const narrowEarned = narrowResult.narrow
+  const route: Route = narrowEarned ? 'narrow' : 'deep'
+  matched.push(`route:${route}`)
 
-  // 4. Depth
-  let depth: Depth = 'standard'
-  if (DEPTH_DEEP.test(query)) { depth = 'deep'; matched.push('depth:deep') }
-  else if (DEPTH_SHALLOW.test(query)) { depth = 'shallow'; matched.push('depth:shallow') }
+  // 3. Width — Ω4 DEFAULT is `broad` (comprehensive); `narrow` must be EARNED. An explicit broad
+  //    keyword stays broad; an explicit narrow keyword only narrows when the pinpoint shape was
+  //    also earned (a bare "just/only" without single-entity/attribute does not qualify).
+  let width: Width
+  if (narrowEarned) { width = 'narrow'; matched.push('width:narrow<-earned_pinpoint') }
+  else if (WIDTH_BROAD.test(query)) { width = 'broad'; matched.push('width:broad') }
+  else if (domains.length >= 3) { width = 'broad'; matched.push('width:broad<-multi_domain') }
+  else { width = 'broad'; matched.push('width:broad<-default_comprehensive') }
+
+  // 4. Depth — Ω4 DEFAULT is `deep` (deepdive). An explicit brevity keyword ("quick/summary") is
+  //    honored as a caller-stated preference; an earned pinpoint drops to `shallow`; everything
+  //    else stays `deep`. `standard` is no longer a default — it must be explicitly requested.
+  let depth: Depth
+  if (DEPTH_SHALLOW.test(query)) { depth = 'shallow'; matched.push('depth:shallow<-explicit_brevity') }
+  else if (DEPTH_DEEP.test(query)) { depth = 'deep'; matched.push('depth:deep<-explicit') }
+  else if (narrowEarned) { depth = 'shallow'; matched.push('depth:shallow<-earned_pinpoint') }
+  else { depth = 'deep'; matched.push('depth:deep<-default_deepdive') }
 
   // 5. Horizon (present/near/far/past/atemporal). Precedence: explicit future > present > past.
   let horizon: Horizon = 'atemporal'
@@ -271,14 +497,14 @@ export function classifyScope(rawQuery: string): ScopeClassification {
   else if (INTERVENTION_REMEDY.test(query)) { intervention = 'remedy'; matched.push('intervention:remedy') }
   else if (INTERVENTION_MITIGATION.test(query)) { intervention = 'mitigation'; matched.push('intervention:mitigation') }
 
-  // 7. Entitlement — best-effort disclosure tier. Reference/panchanga = public reference data;
-  //    everything else defaults to the LEAST-PRIVILEGE tier ('restricted') — this classifier has
-  //    no visibility into the calling principal's session, so it must never hint 'native' for a
-  //    chart-specific query on the strength of a regex match alone. The compiler is the one that
-  //    upgrades to 'native' when an explicit authenticated native-session signal is present in the
-  //    caller's context; this function only ever offers a hint, never an authorization decision.
-  const entitlement: Entitlement = REFERENCE_INTENTS.has(intent) ? 'reference' : 'restricted'
-  matched.push(`entitlement:${entitlement}`)
+  // 7. Entitlement (Ω4 defect fix). Reference/panchanga = public reference data. For a chart-
+  //    specific query the tier follows the caller's chart context: a native chart_id → 'native';
+  //    an explicit third-party chart_id → least-privilege 'restricted'; NO chart context → 'native'
+  //    (single-native instrument, §B — the prior blanket 'restricted' default mis-tagged the
+  //    native's own charts, the exact defect this lane resolves). See resolveEntitlement.
+  const entResolved = resolveEntitlement(intent, chartId)
+  const entitlement: Entitlement = entResolved.entitlement
+  matched.push(entResolved.reason)
 
   // Confidence: intent match is the dominant term; corroborating dimensions add smaller weight.
   const intentMatched = intent !== 'unknown'
@@ -304,5 +530,8 @@ export function classifyScope(rawQuery: string): ScopeClassification {
         'Pass fallback_prompt to an LLM for a stronger classification, then correct the scope_tuple.'
       : 'Deterministic classification. V-2 echoes scope_tuple verbatim for user correction before execution. ' +
         'fallback_prompt is retained but not recommended for this query.',
+    route,
+    narrow_confidence: narrowResult.confidence,
+    depth_available: makeDepthAvailable(route),
   }
 }
