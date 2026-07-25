@@ -36,7 +36,16 @@
 // domains (wealth = 2/11 dhana-labha; relationship = 7 kalatra; moksha = 4-8-12 moksha-trikona).
 // Also adds the `moksha` domain (4-8-12 + Ketu, NOT a 9th-house/dharma alias — F-0973/0974)
 // and completes `education` as a real vidya domain (4/5/2/9 + Mercury/Jupiter/Ketu — F-0756).
-export const PRIORS_VERSION = '1.1' as const
+//
+// '1.2' (EL-55, γ.E Lane E): no formula change — this bump documents the varga-weight term
+// below (VARGA_BASE_WEIGHT) with its formal classical citation (VARGA_WEIGHT_CITATION) and
+// surfaces that citation in `ranking_basis` (composite_ranker.ts buildRankingBasis) so a
+// caller can see WHICH weighting scheme produced a signal's topic_relevance term, not just
+// the resulting number. §3's per-line "Vimśopaka N.N" comments were already the correct
+// Shodasavarga (16-fold) Vimsopaka Bala values (BPHS Ch.6 tradition; the same 16-varga
+// scheme underlies L1's own `graha_vimsopaka_shodasavarga` chart_facts category) — this
+// version bump makes that citation a named, exported object instead of only inline comments.
+export const PRIORS_VERSION = '1.2' as const
 
 // ── §2.1 — w(signal_type_class) ──────────────────────────────────────────────
 // Source: BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE §2.1 (11 values + absence)
@@ -118,6 +127,48 @@ export function classPrior(
 // Source: BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE §3.1 (30 vargas)
 // Base weight normalized so D1 = 1.00. Supplementary vargas floored at 0.18.
 // Note: D10 lifted above raw Vimśopaka (0.5→0.55) for modern career weighting.
+//
+// EL-55 (γ.E, priors v1.2) — formal citation. The per-line "— N.N" comments on
+// VARGA_BASE_WEIGHT below are the classical ṣoḍaśavarga (16-fold) VIṂŚOPAKA BALA
+// allocation (BPHS Ch.6 / the Phaladīpikā-tradition Vimśopaka scheme also implemented,
+// independently, by L1's `graha_vimsopaka_shodasavarga` chart_facts writer). "Vimśopaka" =
+// twenty-fold: the 16 classical vargas below are each assigned a fixed fraction of a
+// 20-point total, D1 (rāśi) and D9 (navāṃśa) carrying the largest shares, D60 (ṣaṣṭyāṃśa)
+// the largest of the supplementary/fine vargas ("Parāśara: D60 foremost" — BPHS 6.9).
+// VARGA_BASE_WEIGHT does NOT restate L1's computed vimśopaka number as its own truth
+// (§N.5) — it is a distinct, explicitly-labeled QUERY-TIME RANKING PRIOR (normalized so
+// D1=1.00, not summed to 20) calibrated FROM the same classical fractions, with two
+// documented deviations from raw vimśopaka: D10 lifted (0.5→0.55, modern career-practice
+// weighting) and D60 retained near its classical share rather than compressed. The 16
+// vargas below ARE the classical ṣoḍaśavarga set; the further "supplementary" vargas
+// (D5,D6,D8,D11,D14,D15,D21,D32,D33,D50,D54) and the 3 Nāḍī vargas are OUTSIDE the
+// classical 16-fold scheme (floored at 0.18 / 0.12 respectively) — not a lesser vimśopaka
+// share, an absence of one.
+//
+// The classical vimśopaka HIERARCHY (nested subsets, each renormalized to 20 points, the
+// literal "ṣoḍaśavarga hierarchy" this citation names) narrows as fewer vargas are used:
+//   Ṣaḍvarga  (6):  D1,D2,D3,D9,D12,D30
+//   Saptavarga(7):  Ṣaḍvarga + D7
+//   Daśavarga (10): Saptavarga + D10,D16,D60
+//   Ṣoḍaśavarga(16):Daśavarga + D4,D20,D24,D27,D40,D45  (== every non-supplementary key below)
+// This module implements the full 16-fold scheme uniformly (composite ranking never
+// selects a narrower N-varga group at query time); the narrower groups are cited here for
+// provenance only — L1 computes them independently and separately
+// (`graha_vimsopaka_shadvarga` / `_saptavarga` / `_dasavarga` / `_shodasavarga`).
+export const VARGA_WEIGHT_CITATION = {
+  scheme: 'Ṣoḍaśavarga (16-fold) Vimśopaka Bala',
+  source: 'Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga',
+  hierarchy: {
+    shadvarga: ['D1', 'D2', 'D3', 'D9', 'D12', 'D30'],
+    saptavarga: ['D1', 'D2', 'D3', 'D7', 'D9', 'D12', 'D30'],
+    dasavarga: ['D1', 'D2', 'D3', 'D7', 'D9', 'D10', 'D12', 'D16', 'D30', 'D60'],
+    shodasavarga: ['D1', 'D2', 'D3', 'D4', 'D7', 'D9', 'D10', 'D12', 'D16', 'D20', 'D24', 'D27', 'D30', 'D40', 'D45', 'D60'],
+  },
+  documented_deviations: [
+    'D10 lifted 0.5→0.55 base weight (raw vimśopaka share unchanged in citation; modern career-practice weighting, not a classical-value edit)',
+    'D60 retained at 0.95 (near-maximal), matching BPHS 6.9 "D60 foremost" rather than a flat proportional compression',
+  ],
+} as const
 
 export const VARGA_BASE_WEIGHT: Record<string, number> = {
   D1:   1.00,   // rāśi — Vimśopaka 3.5

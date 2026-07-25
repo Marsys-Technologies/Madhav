@@ -18,6 +18,7 @@ import {
   vargaWeight,
   bhavaAffinity,
   DIGNITY_SCORE,
+  VARGA_WEIGHT_CITATION,
 } from './priors_config'
 
 // Graha code normalizer: converts any key variant to the 2-char code used in L1ChartContext.graha_map.
@@ -362,6 +363,12 @@ export function buildRankingBasis(
       composite_score: topSig.composite_score,
       percentile_within_class: topSig.percentile_within_class,
       final_rank_score: topSig.final_rank_score,
+    },
+    // EL-55 (priors v1.2): name the varga-weight scheme feeding topic_relevance's vargaWeight()
+    // term, rather than leaving the weighting basis implicit in an opaque multiplier.
+    varga_weight_basis: {
+      scheme: VARGA_WEIGHT_CITATION.scheme,
+      source: VARGA_WEIGHT_CITATION.source,
     },
     note: 'Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_within_class.',
   }
