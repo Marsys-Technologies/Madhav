@@ -1,0 +1,56 @@
+claim_audit_gate.mjs — scanned 45 answers from /Users/Dev/Vibe-Coding/Apps/Madhav/.claude/worktrees/agent-a22d4c80f48c57acf/00_ARCHITECTURE/llm_consumption_audit/uat_darpana/UAT_DARPANA_ANSWER_APPENDIX_v1_0.md
+
+BLOCKING (absence/coverage claim present — 100% adversarial audit required before grading): 4/45
+  - S3-02 (S3) [COVERAGE_CLAIM] — "no adverse window"
+  - S4-03 (S4) [ABSENCE_CLAIM] — "isn't actually in your computed chart data", "simply isn't among them", "isn't among them", "isn't available in your", "I can't give you an exact Gulika placement, because it isn't", "isn't available in your"
+  - S4-05 (S4) [COVERAGE_CLAIM] — "clean — no adverse", "no adverse window"
+  - S5-03 (S5) [ABSENCE_CLAIM, COVERAGE_CLAIM] — "isn't computed in your", "clean bill of health"
+
+INFO-ONLY (precision claim present, non-blocking): 27/45
+  - S1-02 (S1)
+  - S1-05 (S1)
+  - S1-07 (S1)
+  - S2-01 (S2)
+  - S2-02 (S2)
+  - S2-04 (S2)
+  - S2-05 (S2)
+  - S3-01 (S3)
+  - S3-03 (S3)
+  - S3-05 (S3)
+  - S3-06 (S3)
+  - S3-07 (S3)
+  - S3-08 (S3)
+  - S4-06 (S4)
+  - S4-07 (S4)
+  - S5-01 (S5)
+  - S5-04 (S5)
+  - S5-05 (S5)
+  - S6-02 (S6)
+  - S6-03 (S6)
+  - S6-04 (S6)
+  - SN-01 (SN)
+  - SN-02 (SN)
+  - SN-03 (SN)
+  - SN-04 (SN)
+  - SN-05 (SN)
+  - SN-06 (SN)
+
+CLEAN (no claim class matched): 14/45
+  - S1-01 (S1)
+  - S1-03 (S1)
+  - S1-04 (S1)
+  - S1-06 (S1)
+  - S1-08 (S1)
+  - S2-03 (S2)
+  - S2-06 (S2)
+  - S3-04 (S3)
+  - S4-01 (S4)
+  - S4-02 (S4)
+  - S4-04 (S4)
+  - S4-08 (S4)
+  - S5-02 (S5)
+  - S6-01 (S6)
+
+--- Required-catch check ---
+S4-03 flagged BLOCKING: YES
+S4-05 flagged BLOCKING: YES

@@ -142,3 +142,26 @@ battery for a value-movement number against this CLOSED baseline.
 - Pre-registered battery: `UAT_BATTERY_v1_0.md`
 
 *Opus Synthesist (max effort), UAT-DARPANA Phase 5, 2026-07-25. CLOSED — a genuine campaign close.*
+
+---
+
+## ADDENDUM (SATYA-ŚEṢA campaign, Builder B4, 2026-07-25) — retiring the 9.58 mean from summary use
+
+**Appended, not a revision — nothing above this line is altered.** The headline "mean 9.58/10" in
+this handoff's own headline verdict, quoted in isolation, invites the exact false-confidence reading
+the two findings that lead this document are about. Do not carry it forward alone into any future
+summary or deck.
+
+**The number to carry forward instead:** **45/45 closed; 2 confirmed FAIL (veto); ~32 never
+independently audited; audited-overturn ~23%. An unaudited grade is not verified-safe.**
+
+This is the same figure this handoff's own "process finding" section already states in different
+words (~15% audited-veto rate, ~23% overturn, ~32/45 never audited) — restated here as the one
+number to lead with, retiring the mean as the headline. The two FAILs (S4-03 Gulika, S4-05 gochara
+health) were both first-pass DELIGHT, caught only by adversarial DB audit; the true false-confidence
+count across the un-audited ~32 is unknown.
+
+**Disposition:** SATYA-ŚEṢA (`SATYA_SHESHA_BRIEF_v1_0.md`) closes the mechanism behind both findings
+(ELEVATION_REGISTER EL-62 + partial-close annotations on EL-07/EL-11/EL-41/EL-42) and codifies a
+mandatory audit gate for absence/coverage claims in `UAT_BATTERY_v1_0.md`, so future battery runs
+catch this class before grading, not after.

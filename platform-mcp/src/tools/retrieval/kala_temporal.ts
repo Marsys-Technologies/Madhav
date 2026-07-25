@@ -543,11 +543,22 @@ export function registerKalaTemporalRetrievalTool(server: McpServer, principal: 
       )
       const budgeted = budgetMcpContent(result, TOOL_NAME)
 
+      // SATYA-ŚEṢA W3 (2026-07-25): this call previously pretty-printed with
+      // `JSON.stringify(budgeted, null, 2)` — `budgetMcpContent`'s own internal
+      // measurement (response_budget.ts's `estimateBytes`) always uses COMPACT
+      // JSON.stringify (no indent) to decide whether/how much to trim, so a
+      // response that measured "under the 40KB ceiling" internally could still
+      // be served far over it once the 2-space indentation was added back on
+      // the wire (live-measured: a 37.7KB compact payload became 53.1KB
+      // pretty-printed — 41% larger, enough on its own to blow the ceiling
+      // this call believed it had already enforced). Every sibling tool in
+      // this file/family (dualOutput, register_gochara_windows.ts) serves
+      // compact JSON; this now matches.
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(budgeted, null, 2),
+            text: JSON.stringify(budgeted),
           },
         ],
       }

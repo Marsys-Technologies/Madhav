@@ -103,6 +103,18 @@ empty → misread as absent); instance-fixes do not kill the class.
 Fix direction: the Absence Protocol — "not in your data" claims require a concept-resolver
 proof (EL-08); otherwise forced phrasing "not found in what I queried"; serving-time
 claim-checker (EL-21).
+> **PARTIAL-CLOSE annotation (SATYA-ŚEṢA campaign, 2026-07-25).** The concept-resolver half of
+> the fix direction (EL-08's `concept_locate` + `tool_search` steering to it) shipped in a prior
+> campaign — `tool_search("gulika")` was confirmed live-steering to `concept_locate` +
+> `get_database_schema` as of the SATYA-ŚEṢA G0 baseline probe (2026-07-25). But the OTHER half —
+> the bare-empty itself on the keyword-filtered serving path — remained fully live at that same
+> probe: `ganita_chart_facts_get(keyword="gulika")` returned `{facts: [], total: 0}` with no
+> `empty_reason`, no alias suggestion, and no resolver pointer inline in the response (SATYA_SHESHA
+> BRIEF §1, "Verified STILL BROKEN" item 1). This is what still let S4-03 happen: the resolver
+> existed but nothing in the query path told the caller to use it. SATYA-ŚEṢA W1 (Builder B1) closed
+> this remaining half by making every query-shaped bare-empty carry `empty_reason` +
+> `resolver_suggestion` inline. PR pending — item implemented in the same SATYA-ŚEṢA campaign cycle,
+> see `SATYA_SHESHA_LEDGER.md` for the final PR number.
 
 **EL-08 · No concept-resolver (canonical concept name + aliases → true serving category).
 [V→T enabler]**
@@ -148,6 +160,17 @@ client-budget parameter on every tool; CI gate asserting worst-case response per
 482012f1 fits the default cap. Note: §N.6 budget machinery exists — evidence says budgets are
 sized to a generous ceiling and/or some responses bypass the trimmer. Root cause:
 TBD-PENDING-FABLE-PASS (audit which tools exceeded, against what configured budget).
+> **PARTIAL-CLOSE annotation (SATYA-ŚEṢA campaign, 2026-07-25).** The §N.6 budget machinery
+> (`response_budget.ts`, `budgetMcpContent`) was live and enforced on several core tools by the
+> time of the SATYA-ŚEṢA G0 baseline probe, but the kala/gochara family had escaped the census
+> check entirely: `gochara_forecast_get` (2026-08→2029-12 window) served **69,404 chars** and
+> `kala_windows_get` served **50.2 KB** — both well past the ~25k-token small-client cap this item
+> names, with no trim applied (SATYA_SHESHA BRIEF §1, "Verified STILL BROKEN" item 3; same finding
+> cross-referenced at EL-42 below). SATYA-ŚEṢA W3 (Builder B2, same owner as W2) closed this by
+> extending `response_budget.ts` enforcement to `gochara_forecast_get`, `kala_windows_get`,
+> `kala_bundle_get` and family, with the W2 `coverage` block declared hardFloor-immune so honesty
+> fields survive any trim. PR pending — item implemented in the same SATYA-ŚEṢA campaign cycle, see
+> `SATYA_SHESHA_LEDGER.md` for the final PR number.
 
 **EL-12 · No client-budget negotiation. [V]**
 Symptom: the server cannot know the caller's response ceiling; one fixed budget must fit all.
@@ -241,6 +264,25 @@ substep-ledger fingerprint invalidation surprising the native; tracker shows no 
 denominator or dispatched-scope, so scoped-vs-full is invisible in the UI.
 Fix direction: reaper/self-heal for orphaned runs (affordance noted in SARVA-SIDDHI); Nirmāṇa
 surface substep progress + build scope; build_run rows carry plan metadata legibly.
+> **AMENDMENT (SATYA-ŚEṢA campaign, 2026-07-25) — the reaper/self-heal fix direction above must be
+> HEARTBEAT-based, never age-based.** New evidence, not present at this item's original filing: the
+> T-2 gochara sweep's operational run (4 dispatch cycles / ~7 hours to reach 303/303 substeps)
+> produced **1 false-positive "failed" from an overzealous watchdog reaper that nearly caused a
+> duplicate concurrent-writer dispatch** — caught and avoided, but a real near-miss on a live
+> multi-hour build (FABLE_HANDOFF_SUMMARY.md, "Protocol + operational incidents"). Root cause: the
+> reaper was judging liveness by elapsed wall-clock age since the run started, which cannot
+> distinguish a dead writer from one that is simply slow — the exact failure mode the M2.2 pattern
+> (`ELEVATION_CAMPAIGN_CHARTER_v2_1.md` §M2.2) was hardened against for the elevation-campaign lock
+> mechanism after an equivalent incident there. **The corrected rule for any reaper/self-heal
+> affordance touching `build_run`/orchestrator liveness: judge liveness by HEARTBEAT freshness
+> (the holder/writer rewrites a `heartbeat_at` on a short fixed interval), and only declare a run
+> dead after a two-phase break — write a break-intent, wait one grace interval for the holder to
+> bump its heartbeat, THEN break — never by raw elapsed age since the run started.** An age-based
+> reaper will always eventually misfire against a legitimately long-running build (a multi-hour
+> gochara sweep, a full L1 rebuild); a heartbeat-based one only fires against an actually-stalled
+> process. This amendment does not close EL-24 — the fix direction above (self-heal, tracker
+> surfacing, plan metadata) remains open — it constrains HOW any future reaper/self-heal
+> implementation must work. Cross-refs EL-24's own "Fix direction," M2.2 pattern.
 
 **EL-25 · Governance/ratification debt. [P]**
 Open: NATIVE_PROXY_LEDGER ratification (battery stamp, 3 pre-registration corrections, S4
@@ -513,6 +555,15 @@ the consumer could not learn that).
 Fix direction: every multi-category tool returns a per-requested-category receipt
 (`served` / `empty_with_reason` / `unknown_category` + alias suggestion); no requested category may
 be silently dropped from the response shape. Root cause: TBD-PENDING-FABLE-PASS.
+> **PARTIAL-CLOSE annotation (SATYA-ŚEṢA campaign, 2026-07-25).** This is the direct recurrence
+> class this item names as EL-07's sibling, and the same live probe that re-confirmed EL-07's
+> residual (SATYA_SHESHA BRIEF §1) re-confirmed this one too: `ganita_chart_facts_get`'s
+> keyword-filtered path bare-empties with no per-category receipt of any kind. SATYA-ŚEṢA W1
+> (Builder B1) closed the bare-empty shape across `query_chart_facts`/`ganita_chart_facts_get`'s
+> keyword/subject/category/sign/nakshatra filter paths (the same fix direction this item and EL-07
+> both call for), plus a CI probe iterating the Phase-0.7 census's 46 concepts so no future bare
+> empty ships unnoticed. PR pending — item implemented in the same SATYA-ŚEṢA campaign cycle, see
+> `SATYA_SHESHA_LEDGER.md` for the final PR number.
 
 #### P1 — response architecture: size, shape, consumability
 
@@ -527,6 +578,17 @@ by one consistent mechanism.
 Fix direction: response_budget applied to ALL tools with per-tool worst-case caps asserted in CI on
 chart 482012f1 (the gate EL-11 already specifies); pair it with EL-36's ordering fix so "budgeted"
 never means "hollow". Direct acceptance test for EL-28.
+> **PARTIAL-CLOSE annotation (SATYA-ŚEṢA campaign, 2026-07-25).** Confirms this item's own framing —
+> "absent on the heaviest tools" — was still true for the kala/gochara family specifically at the
+> SATYA-ŚEṢA G0 baseline: `gochara_forecast_get` served 69,404 chars and `kala_windows_get` served
+> 50.2 KB, neither trimmed (SATYA_SHESHA BRIEF §1 item 3; same evidence cross-referenced at EL-11
+> above). SATYA-ŚEṢA W3 (Builder B2) closed this for the kala/gochara family by wiring
+> `response_budget.ts` to `gochara_forecast_get`, `kala_windows_get`, `kala_bundle_get` and any
+> family member whose worst-case exceeds the default ceiling, with the budget-census CI gate
+> extended to cover them — narrowing but not fully closing this item's "not uniform" framing (other
+> tool families beyond kala/gochara remain unaudited by this campaign). PR pending — item
+> implemented in the same SATYA-ŚEṢA campaign cycle, see `SATYA_SHESHA_LEDGER.md` for the final PR
+> number.
 
 **EL-43 · EAV verbosity — served row counts are multiples of the true table size, with provenance
 boilerplate repeated per row. [V]**
@@ -744,6 +806,45 @@ reading structure (EL-29), paginated for small clients (EL-28). This is the sing
 well, converts the largest number of other EL items into acceptance tests of itself.
 
 *(native continues below)*
+
+---
+
+## SECTION H — SATYA-ŚEṢA campaign additions (2026-07-25)
+*Appended by Builder B4, SATYA-ŚEṢA campaign, per `SATYA_SHESHA_BRIEF_v1_0.md` W5. This section is
+purely additive — nothing above this line in the register was edited or removed. See also the
+partial-close annotations inserted in-place immediately after EL-07, EL-11, EL-24, EL-41, EL-42
+above (each block-quoted and timestamped so it reads as a clearly-separate append, not a rewrite
+of the original entry).*
+
+**EL-62 · Category-coverage attestation absent on scanning tools — execution coverage ≠ category
+coverage. [T, flagship — the S4-05 mechanism]**
+Symptom: a scanner/sweep-backed tool can be 100% complete over the universe of event classes it was
+built to sweep, and STILL never have looked at the domain a caller actually asked about — and both
+states read identically to a consumer as "clean." Concretely: `gochara_forecast_get`'s T-2 sweep
+completed 303/303 substeps (genuine, verified, full execution coverage) but its event-class universe
+is `career_advancement` + `marriage` only — **zero health event class, and no coverage/attestation
+field anywhere in the response** that would let a caller learn this (SATYA_SHESHA BRIEF §1, "Verified
+STILL BROKEN" item 2, live probe 2026-07-25). A health-timing question routed through this tool has no
+way to discover it queried the wrong universe.
+Expectation violated: EL-60's own coverage-attestation elevation ("pair every coverage claim with a
+build-coverage attestation so 'no adverse windows' is provably checked rather than merely unswept")
+— EL-62 is the concrete, second-veto-scale instance of the gap EL-60 flagged as a risk, now confirmed
+live and confirmed as the direct mechanism behind a veto-grade failure, not a hypothetical.
+Evidence: **S4-05** (UAT-DARPANA's most severe finding — see `FABLE_HANDOFF_SUMMARY.md`) — asked "Is
+there a rough patch coming for my health?", the answerer ran the gochara hazard scan, got nothing
+(because health was never in the swept universe), and served "clean — no adverse window flagged
+across roughly the next three years" as an affirmative clearance. The health-capable instrument
+(`kala_windows` domain=health) carries a two-pass-verified adverse DOSHA window
+**2029-07-22 → 2030-02-20, peak 2029-11**, never surfaced. Plus today's live probe confirming the
+zero-coverage-field state persists as of 2026-07-25 (SATYA_SHESHA BRIEF §1).
+Fix direction: W2 (SATYA-ŚEṢA campaign) — every scanner/sweep-backed tool carries in EVERY response a
+mechanically-derived `coverage: {event_classes_covered, domains_not_covered, universe_source,
+sweep_completeness}` block, plus a server-side refusal rule: a request naming/filtering a domain
+outside the covered set gets a `not_covered: {domain, cross_pointer}` shape naming the capable
+instrument, never a bare empty presented as a scan result. PR pending — implemented in the same
+SATYA-ŚEṢA campaign cycle, see `SATYA_SHESHA_LEDGER.md` for the final PR number.
+Severity: **T** (Trust-breaking) — this is the data-layer root of S4-05, the most severe finding in
+the UAT-DARPANA campaign.
 
 ---
 

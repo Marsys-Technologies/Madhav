@@ -63,6 +63,20 @@ const ALLOWED_TABLES = new Set([
   // mitigation from (global read-only reference). Read-only; no write path added.
   'kala_gochara_windows',
   'brahma_remedy_corpus',
+  // SATYA-ŚEṢA W2 (2026-07-25): gochara_forecast_get/activation_get/election_avoidance_get's
+  // new category-coverage attestation (`coverage` block, S4-05 fix) computes, mechanically per
+  // call, which event_class values the D-5 G-1 sweep actually looked at for THIS chart
+  // (gochara_resonance_map — the writer's own docstring: "one substep per populated
+  // gochara_resonance_map event_class x decade" — the true "did the sweep even look at this
+  // category" source, since kala_gochara_windows can under-report a class that was swept but
+  // produced zero rows) and resolves each to a life domain + the full domain universe via
+  // brahma_event_ontology (domain column, migration 456). build_substep_progress backs the
+  // coverage block's sweep_completeness (execution-axis) disclosure — the same table migration
+  // 436 introduced for cross-attempt substep resumption; read-only here, no write path added.
+  // Chart-scoped or global read-only reference tables; no write path added by any of the three.
+  'gochara_resonance_map',
+  'brahma_event_ontology',
+  'build_substep_progress',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.
