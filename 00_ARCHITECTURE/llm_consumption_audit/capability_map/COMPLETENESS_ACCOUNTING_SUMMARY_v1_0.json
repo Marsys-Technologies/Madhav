@@ -1,0 +1,102 @@
+{
+  "artifact": "COMPLETENESS_ACCOUNTING_SUMMARY",
+  "version": "1.0",
+  "contract_id": "C7",
+  "campaign": "Elevation Campaign v2.1, Stream gamma (PURNA), Lane Omega-3 (Completeness Contract)",
+  "generator": "platform/scripts/census/generate_completeness_accounting.mjs",
+  "generated_at": "2026-07-25T06:32:45.838Z",
+  "inputs": {
+    "tci": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma-lane-omega-tci/00_ARCHITECTURE/llm_consumption_audit/capability_map/TOTAL_CONCEPT_INVENTORY_v1_0.json",
+    "relevance_map": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma-lane-omega-relevance/00_ARCHITECTURE/llm_consumption_audit/capability_map/DOMAIN_RELEVANCE_MAP_v1_0.json",
+    "tci_version": "1.0",
+    "relevance_version": "1.0"
+  },
+  "slice_rule": "S(domain) = { concept : !domain_agnostic AND domain key present in domains } (matches DOMAIN_RELEVANCE_MAP method_note; verified: |S(wealth)|=13820, |S(career)|=13825 match the relevance-map summary).",
+  "superseded_note": "superseded_by_aggregate intentionally empty: TCI lacks the citation/subsumption edges to prove C7's strict-and-cited subsumption bar; forcing structural matches would fabricate the state. Candidates accounted honestly by their own row_count instead.",
+  "results": [
+    {
+      "domain": "wealth",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "slice_size": 13820,
+      "rows": 13820,
+      "unaccounted": 0,
+      "state_counts": {
+        "served": 12450,
+        "empty_for_this_chart": 1364,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "unresolved_served_count": 0,
+      "unresolved_by_axis": {},
+      "unresolved_by_reason": {},
+      "evidence_ok": true,
+      "pass": true,
+      "out_file": "00_ARCHITECTURE/llm_consumption_audit/capability_map/COMPLETENESS_ACCOUNTING_wealth_482012f1_v1_0.json"
+    },
+    {
+      "domain": "wealth",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "slice_size": 13820,
+      "rows": 13820,
+      "unaccounted": 0,
+      "state_counts": {
+        "served": 12203,
+        "empty_for_this_chart": 1611,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "unresolved_served_count": 0,
+      "unresolved_by_axis": {},
+      "unresolved_by_reason": {},
+      "evidence_ok": true,
+      "pass": true,
+      "out_file": "00_ARCHITECTURE/llm_consumption_audit/capability_map/COMPLETENESS_ACCOUNTING_wealth_1c826d5a_v1_0.json"
+    },
+    {
+      "domain": "career",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chart8": "482012f1",
+      "slice_size": 13825,
+      "rows": 13825,
+      "unaccounted": 0,
+      "state_counts": {
+        "served": 12455,
+        "empty_for_this_chart": 1364,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "unresolved_served_count": 0,
+      "unresolved_by_axis": {},
+      "unresolved_by_reason": {},
+      "evidence_ok": true,
+      "pass": true,
+      "out_file": "00_ARCHITECTURE/llm_consumption_audit/capability_map/COMPLETENESS_ACCOUNTING_career_482012f1_v1_0.json"
+    },
+    {
+      "domain": "career",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "chart8": "1c826d5a",
+      "slice_size": 13825,
+      "rows": 13825,
+      "unaccounted": 0,
+      "state_counts": {
+        "served": 12207,
+        "empty_for_this_chart": 1612,
+        "not_computed_globally": 6,
+        "superseded_by_aggregate": 0,
+        "excluded_by_named_rule": 0
+      },
+      "unresolved_served_count": 0,
+      "unresolved_by_axis": {},
+      "unresolved_by_reason": {},
+      "evidence_ok": true,
+      "pass": true,
+      "out_file": "00_ARCHITECTURE/llm_consumption_audit/capability_map/COMPLETENESS_ACCOUNTING_career_1c826d5a_v1_0.json"
+    }
+  ]
+}
