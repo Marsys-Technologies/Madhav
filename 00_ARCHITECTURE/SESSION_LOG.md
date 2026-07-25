@@ -33719,3 +33719,112 @@ repointed; live re-verify the full gochara materialization span reaches birth+10
 genuine v2.1 close.
 
 *End of SARVA-SIDDHI-2026-07-24 entry — 2026-07-24.*
+
+---
+
+## ELEVATION-V2-ALPHA-2026-07-25
+
+```yaml
+session_open:
+  session_id: ELEVATION-V2-ALPHA-2026-07-25
+  campaign: ELEVATION_CAMPAIGN_v2_1
+  mode: "MODE 2 — three-process autonomous overnight run (charter M2.4-M2.11); this entry covers
+    Stream alpha (SATYA), which also held Phase 0 validation, Phase 4 flagship acceptance and
+    Phase 5 close ownership per M2.7."
+  may_touch: "platform-mcp/src/lib/**, platform-mcp/src/tools/** (except tools/vidhi/**,
+    tools/muhurta_finder.ts, tools/dossier.ts contents -- read/call only, not edit),
+    platform-mcp/src/resources/** (except resources/vidhi/**), platform/src/lib/retrieval/registry/
+    layers/{L0_brahmagyan,L1_ganita,L2_bodha}/**, register_d*.ts (except register_d8_assess_domain.ts),
+    descriptor_defaults.ts/envelope.ts/catalog.ts, address_resolver.ts,
+    .github/workflows/elev-serving-gates.yml, platform/scripts/census/schema_map*.ts +
+    platform/scripts/census/elev_gates/**, plus this run's own ledgers/reports under
+    00_ARCHITECTURE/llm_consumption_audit/."
+  must_not_touch: "beta's and gamma's file manifests per charter §4; the FROZEN orchestrator
+    contract; the sealed L5 split; FORENSIC birth anchors; canonical registries beyond the
+    declared Phase-5 close-edits; .claude/worktrees/*, ../madhav-wave-vidhi-purnata, any
+    non-elev/* branch."
+red_team_due: "Charter's own red-team cadence (every 3rd session / macro-phase close) does not
+  bind an Elevation-Campaign-internal run the same way; a scoped chart-agnostic/contamination
+  check was run in place of a full adversarial pass, explicitly disclosed as a scope decision
+  in ELEVATION_V2_RUN_REPORT_v1_0.md, not silently skipped."
+```
+
+### Body
+
+Full narrative, evidence, per-EL dispositions, deploy revisions, and the honest §0 mandate verdict
+are in `00_ARCHITECTURE/llm_consumption_audit/ELEVATION_V2_RUN_REPORT_v1_0.md` (this session's
+morning report) and `.../ledgers/elevation_v2/ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md` +
+`.../ledgers/elevation_v2/ALPHA_FLAGSHIP_ACCEPTANCE_GRADING_v1_0.md`. Summary: 4 merges shipped by
+this stream (PR #768, #771, #772, and an urgent cross-stream unblock PR #782), each independently
+live-verified against production on both canonical charts before release, zero regressions
+(confirmed by diffing against the clean pre-merge baseline every time, never assumed). Stream gamma
+signaled COMPLETE with all 16 of its own lane items VERIFIED-CLOSED. Stream beta merged 5 PRs with
+CI green throughout; its formal completion flag was not observed before this close, so its items are
+dispositioned PREPARED-FOR-NATIVE rather than VERIFIED-CLOSED. The campaign's flagship acceptance
+criterion (a fresh, mechanically-graded sealed-harness run, never played by the Verifier) scored
+15-33% against the required 90% bar on all 4 tested (domain, chart) combinations -- a precisely
+diagnosed, not vague, shortfall: every layer the campaign built works correctly in isolation; a naive
+consumer's own tool choice does not reliably reach the newly-built complete-accounting mechanism even
+after this stream's urgent fix made it discoverable and directive-driven from the tool a naive
+consumer actually calls.
+
+```yaml
+session_close:
+  session_id: ELEVATION-V2-ALPHA-2026-07-25
+  campaign: ELEVATION_CAMPAIGN_v2_1
+  close_criteria_met: "PARTIAL -- alpha's own lane work (A/B/H/K1 across the charter's dossier) is
+    VERIFIED-CLOSED with live production evidence; the campaign's own flagship acceptance criterion
+    (the actual close bar per charter §2 Ω-Verification) is NOT MET, disposition PARKED-HONEST with
+    full root-cause diagnosis and two named next actions, not a vague gap."
+  verification: "Every alpha merge independently live-probed against production, both canonical
+    charts, before being counted VERIFIED-CLOSED. The flagship acceptance was graded via 4 fresh,
+    uninstructed sealed-harness sub-agent runs (SEALED_EVALUATOR_HARNESS_v1_0.md's exact frozen
+    system prompt), scored mechanically per-concept against the frozen required-concept lists --
+    the Verifier (this conductor) read the score and never played the consumer. Full per-run,
+    per-concept grading detail in ALPHA_FLAGSHIP_ACCEPTANCE_GRADING_v1_0.md."
+  deploy: "4 Cloud Run deploys (amjis-web + amjis-mcp), each confirmed via gcloud against the exact
+    merge commit SHA, not assumed from CI status alone. Final image: e50ce986622718e7fe15058b548b51dfd8db72c4."
+  product_code_writes_made: "Yes -- platform-mcp/src/lib/response_budget.ts, platform-mcp/src/tools/
+    {registry_bridge.ts, register_p1_ganita.ts, register_p1_aliases.ts, dossier.ts, server.ts,
+    register_server_info.ts (new)}, platform-mcp/src/resources/mcp_catalog_version.ts (new),
+    platform/src/lib/retrieval/registry/layers/L1_ganita/{get_argala.ts, get_divisionals.ts,
+    get_chart_snapshot.ts, index.ts, concept_aliases.ts, concept_locate.ts, get_database_schema.ts,
+    query_planet.ts (new)}, platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts,
+    platform/scripts/census/elev_gates/** (new CI gate suite), .github/workflows/
+    elev-serving-gates.yml (new), plus 2 new test files. FROZEN orchestrator, calibration tables,
+    sealed L5 split, and FORENSIC birth anchors verified untouched (no writer/migration/sealed-split
+    file appears in any alpha diff this session)."
+  native_chart_touched: true
+  current_state_updated: true
+  register_dispositions_flipped: "See ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md for the full
+    per-EL disposition table (EL-01 through EL-61 plus Ω1-8) -- ~40 items VERIFIED-CLOSED (alpha's
+    own + gamma's self-reported lane closures), several PARKED-HONEST with named root causes
+    (EL-07 partial sweep, EL-21 v1-only, EL-31 MCP-catalog-unverifiable, EL-38/EL-47 joint items,
+    Ω7 dark-corpus stale, EL-61/the flagship acceptance itself), all beta-attributed items
+    PREPARED-FOR-NATIVE pending independent G4 confirmation, zero NOT-REPRODUCED."
+  followups: "(1) Highest-value: a fresh Ω7 dark-corpus replay run against the true final head,
+    both canonical charts (gamma's existing report predates this stream's final fix and covers
+    only chart 482012f1). (2) Either have assess_wealth/assess_career internally hydrate the
+    missing concept classes (argala, indu lagna, special lagnas, cross-ayanamsha, remedies, the
+    true L2 bodha_mechanisms structures) rather than merely pointing at dossier, or make dossier
+    itself the tool a naive agent's own tool_search/catalog surfaces first -- both explicitly
+    scoped out of this run for time/risk, not overlooked. (3) A fresh Claude Code / Cowork session
+    should spot-check ganita_database_schema_get/ganita_concept_locate/ganita_planet_get end-to-end
+    over MCP -- this session's own tool-catalog connection never picked them up despite the deploy
+    being confirmed live via image SHA. (4) Independently G4-confirm beta's 5 merged PRs' claims
+    (EL-15/17/18/19/30/35/38/39/40/47/49/51/52 + CR-131) the way alpha did its own work."
+  next_session_objective: "Run the fresh both-chart Ω7 dark-corpus replay; attempt the deeper
+    dossier-discoverability fix (internal hydration or tool_search-catalog registration); confirm
+    the 3 new MCP tools live from a fresh client; G4-confirm beta's merged claims; re-run the
+    sealed-harness flagship acceptance once the above land to see whether the score has moved."
+```
+
+### Next session objective
+
+Run the fresh both-chart Ω7 dark-corpus replay against the true final head; attempt the deeper
+dossier-discoverability fix (internal hydration in assess_wealth/assess_career, or registering
+`dossier` itself in the tool_search catalog); confirm the 3 new MCP tools live from a fresh client
+connection; independently G4-confirm Stream beta's 5 merged PRs; re-run the sealed-harness flagship
+acceptance once the above land to measure whether the score has moved toward the 0.90 bar.
+
+*End of ELEVATION-V2-ALPHA-2026-07-25 entry — 2026-07-25/26.*
