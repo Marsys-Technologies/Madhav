@@ -644,8 +644,18 @@ export function runDossier(args: DossierArgs): DossierPage {
 export function registerDossierTool(server: McpServer, principal: Principal): void {
   server.tool(
     'dossier',
-    'Ω5 gather-then-compose paging engine (Elevation Campaign v2.1). Serves a domain\'s ' +
-      'ENTIRE concept slice for a chart in budget-capped PAGES, and structurally WITHHOLDS ' +
+    // Elevation α: the description leads with the naive-caller intent ("how is my wealth", a
+    // COMPLETE reading) so an uninstructed agent browsing the raw MCP tool catalog — the surface
+    // through which it found assess_wealth — sees dossier as the obvious tool for a full-domain
+    // question, not an unfamiliar specialist. This is the discoverability half (option (a)) of the
+    // flagship completeness fix; assess_wealth/assess_career also now carry dossier's accounting
+    // inline (domain_completeness) so the routing works even if this tool is never chosen.
+    'COMPLETE domain reading — the tool for "how is my wealth?", "assess my career fully", or any ' +
+      'question wanting the WHOLE picture of a life domain, not a headline. Where assess_wealth / ' +
+      'assess_career give a reconciled summary, `dossier` serves the ENTIRE domain concept slice ' +
+      '(every wealth/career concept the chart carries — thousands of them) with 100% completeness ' +
+      'accounting. Ω5 gather-then-compose paging engine (Elevation Campaign v2.1). Serves a ' +
+      'domain\'s ENTIRE concept slice for a chart in budget-capped PAGES, and structurally WITHHOLDS ' +
       'every interpretive surface until coverage reaches 100% accounting. Each page carries ' +
       'data + accounting only: coverage UNITS (each naming its live serving_tool + ' +
       'serving_args drill handle and its accounting state), a running coverage_so_far tally ' +
