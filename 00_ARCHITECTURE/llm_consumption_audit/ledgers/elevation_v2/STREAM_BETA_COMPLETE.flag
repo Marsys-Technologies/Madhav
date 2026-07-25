@@ -1,0 +1,62 @@
+{
+  "stream": "beta",
+  "lanes_dispositioned": {
+    "lane_d_el30": "VERIFIED-CLOSED",
+    "lane_d_el40": "VERIFIED-CLOSED",
+    "lane_d_el47": "VERIFIED-CLOSED",
+    "lane_d_el38": "NOT-REPRODUCED",
+    "lane_d2_el18": "VERIFIED-CLOSED",
+    "lane_d2_el19_compute": "VERIFIED-CLOSED",
+    "lane_d2_el19_el41_serving_alias": "PARKED-HONEST",
+    "lane_c_el39": "VERIFIED-CLOSED",
+    "lane_c_el49": "VERIFIED-CLOSED",
+    "lane_c_alpha_ts_wiring": "PARKED-HONEST",
+    "lane_g_el51_gemstone_verdict": "VERIFIED-CLOSED",
+    "lane_g_el51_chart_id_filter": "PARKED-HONEST",
+    "lane_g_el35": "PARKED-HONEST",
+    "lane_g_el52": "PARKED-HONEST",
+    "lane_t_cr131": "NOT-REPRODUCED",
+    "lane_t_el15_substrate_gochara_sweep": "VERIFIED-CLOSED",
+    "lane_t_el17_cr37": "VERIFIED-CLOSED",
+    "lane_t_el17_cr66": "PARKED-HONEST",
+    "msr_l2_l5_cascade_refresh": "PARKED-HONEST"
+  },
+  "parked_blocked_on": [
+    "blocked-on-alpha: EL-19/EL-41 bare 'saham' category serving alias (needs alpha-owned serving files)",
+    "blocked-on-alpha: EL-39/EL-49 optional ayanamsha_id param wiring in 4 TS ephemeris capability files (already functional; only blocks explicit tropical requests)",
+    "blocked-on-alpha: EL-51 ref_remedies_chart_get missing chart_id filter (register_d7_channel.ts, outside beta's manifest; bodha_remedies_get already serves the fix live)",
+    "blocked-on-native: MSR L2->L5 cascade refresh (671 dangling bodha_msr_signals refs from L1 rebuild's build_id rotation, expected per section N.5; restoration needs a bo_laksana+downstream cascade outside this session's binding native-ruling-bound enumerated scope)",
+    "blocked-on-native: EL-17/CR-66 wealth-domain phala anchors still 0/64 post-rebuild -- new residual, needs a CR number assigned",
+    "out-of-scope-by-design: EL-16 (D-6 GOCHARA-SWEEP-2.0) and the Darpana S3 re-run itself -- native-attended, unblocked by this stream but not performed here"
+  ],
+  "flagship_self_verified": true,
+  "flagship_self_verified_detail": "Every VERIFIED-CLOSED item in this flag was independently re-verified by the Stream-Conductor against LIVE PRODUCTION post-merge-and-deploy (commit-sha 8fd9343b, amjis-sidecar revision amjis-sidecar-00912-rv7), via the actual MCP-served path and/or direct authenticated HTTP calls to the deployed sidecar -- not merely trusted from a lane builder's own pre-merge report. Both canonical charts (482012f1, 1c826d5a) checked for every chart-scoped item. The binding native ka_gochara_sweep protection ruling was verified compliant before any rebuild and re-checked after every one of 7 dispatches across the whole stream -- row count only ever held steady or climbed (285 to 303, completing independently mid-session), never dropped.",
+  "ledger_path": "00_ARCHITECTURE/llm_consumption_audit/ledgers/STREAM_BETA_CLOSE_v1_0.md",
+  "proxy_ledger_path": "~/elev-v2-shared/proxy/beta.md",
+  "integration_log_entries": "1 lane-batch merge (#786, 1 fix-forward + 2 rebases) + 1 integration-rebuild pass + 2 doc-only follow-up merges (#791, #793), all logged in ~/elev-v2-shared/INTEGRATION_LOG.md",
+  "prs_merged_to_main": [
+    "#786",
+    "#791",
+    "#793"
+  ],
+  "contracts_authored": [
+    "C4 (house/sign convention) -- FROZEN",
+    "C5 (sidereal ephemeris) -- FROZEN"
+  ],
+  "contracts_consumed": [
+    "C1",
+    "C6"
+  ],
+  "contracts_still_draft_at_close": [],
+  "native_rulings": [
+    "Native ruling received mid-session: protect ka_gochara_sweep (~93% through ~20h non-recoverable compute) -- enumerate exact rebuild scope before every dispatch, never touch the gochara subtree, verify row count never drops. Held throughout, verified compliant, zero violations across 7 dispatches.",
+    "PROXY-RULED (lane G, open for morning ratification): superseded CURRENT_STATE's prior A-5 'remedy accept-as-dark' finding with a real BPHS Ch.44 citation for the gemstone maraka-lordship rule -- per charter section 10's explicit MAY-list naming this action by ID."
+  ],
+  "process_notes": [
+    "GOVERNANCE FLAG FOR NATIVE REVIEW: lane G initially resisted, then accepted, the Stream-Conductor's relayed claim that the live human user had authorized full autonomy (including the A-5 supersession and production DB writes) -- it ultimately proceeded only after independently re-verifying the claim against the charter's own primary text, not on trust in the relay alone. Both the lane and the conductor agree this multi-agent authorization-chain pattern deserves native scrutiny independent of whether this particular instance checked out. Full account: proxy/beta.md and STREAM_BETA_CLOSE_v1_0.md.",
+    "Real infra incident: agent worktree isolation failed to create separate physical directories for 3 of 5 lane agents (parent conductor session was itself already inside a worktree when spawning them). Each lane independently discovered and self-recovered with zero data loss; conductor independently audited and confirmed before proceeding, then directed remaining lanes to dedicated git worktrees.",
+    "Two real regressions found and fixed forward during integration: an invalid build_runs.scope value ('per_chart', violates the live CHECK constraint) in an untested lane-D2 rebuild script, and a registry-hygiene test's hardcoded expected-set not updated for a new bespoke detector -- caught by CI's Governance Gates job, not by local per-lane test runs.",
+    "Background-task completion notifications delivered hours late at one point for lane D (real compute finished in ~36 minutes; the session sat idle for ~7 hours waiting for the notification). Self-corrected by bundling remaining work into one continuous autonomous driver rather than yield-and-wait per step."
+  ],
+  "completed_at": "2026-07-25T21:10:12Z"
+}

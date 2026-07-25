@@ -1,0 +1,22 @@
+{
+  "contract": "DOSSIER",
+  "deploy_target": "amjis-mcp",
+  "revision": "amjis-mcp-00473-6lh",
+  "git_merge_commit_sha": "48156bd3a92bb6666a29442abaea02f3c340b63c",
+  "container_image_digest": "sha256:22fed7d5...(see gcloud run services describe amjis-mcp for full digest)",
+  "image_tag": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:48156bd3a92bb6666a29442abaea02f3c340b63c",
+  "verified_at": "2026-07-25T10:32:00Z",
+  "verified_by": "gamma (conductor), per NATIVE-RULED-001",
+  "verification_method": "gcloud run services describe amjis-mcp --region=asia-south1 -- confirmed status.latestReadyRevisionName == status.traffic[0].revisionName == amjis-mcp-00473-6lh, receiving 100% traffic, image tag == PR #773's merge commit sha (48156bd3) exactly (tag, not digest -- corrected field naming per the live-verification agent's finding that a prior draft of this record mislabeled the git commit sha as 'image_sha'). GitHub Actions 'Deploy to Cloud Run' workflow_run 30154555933 (triggered by CI success on the merge commit) shows job 'Build & Deploy MCP' = success.",
+  "functional_probe": {
+    "status": "PASS - live, both flagship domains, both canonical charts",
+    "verified_by": "fresh agent, raw JSON-RPC tools/call against the live endpoint (this session's MCP connector had a stale cached tool list not yet reflecting the new tool)",
+    "result": "page counts, structural synthesis gate (composition_scaffold absent on every BLOCKED page), and monotonic coverage all match the independently-verified worktree build exactly, live on production rev amjis-mcp-00473-6lh"
+  },
+  "flagship_criteria_impact": {
+    "status": "NOT YET MOVED - honest finding",
+    "reason": "a genuinely fresh sealed-harness consumer still routes to assess_wealth, not dossier, because nothing in plan_retrieval's floor or a naive tool-selection pass recommends it. dossier working live is necessary but not sufficient for the Sec.2 flagship criteria; the planner-discovery gap is being fixed separately (in-manifest, tracked in proxy/gamma.md) rather than left as a permanent PARKED-HONEST, since it is not cross-stream."
+  },
+  "note": "dossier tool registered in platform-mcp/src/server.ts (NATIVE-RULED-001 scoped exception) and deployed live; functional probe confirms it works correctly end-to-end on production.",
+  "canonical_charts_intended": ["482012f1-710e-4a25-994a-93821f5871aa", "1c826d5a-41cb-4450-b4dc-59d440e5f75a"]
+}

@@ -1,0 +1,45 @@
+{
+  "stream": "gamma",
+  "lanes_dispositioned": {
+    "omega1_tci": "VERIFIED-CLOSED",
+    "omega2_relevance_map": "VERIFIED-CLOSED",
+    "omega3_completeness_c7": "VERIFIED-CLOSED",
+    "omega4_routing": "VERIFIED-CLOSED",
+    "omega5_dossier": "VERIFIED-CLOSED",
+    "omega6_mechanisms": "VERIFIED-CLOSED",
+    "omega7_dark_corpus_report": "VERIFIED-CLOSED",
+    "omega8_floors": "VERIFIED-CLOSED",
+    "lane_i_planner": "VERIFIED-CLOSED",
+    "lane_f_muhurta": "VERIFIED-CLOSED",
+    "lane_j_calibration": "VERIFIED-CLOSED",
+    "lane_k2_metric": "VERIFIED-CLOSED",
+    "lane_e_assessors": "VERIFIED-CLOSED",
+    "native_ruled_001_dossier_wiring": "VERIFIED-CLOSED",
+    "planner_wire_fix": "VERIFIED-CLOSED",
+    "section2_omega_verification_flagship_acceptance": "PARKED-HONEST"
+  },
+  "parked_blocked_on": [
+    "blocked-on-alpha: section2 flagship acceptance (naive-consumer discoverability of dossier — tool-catalog/tool_search indexing gap, platform-mcp/src/lib/** territory)",
+    "blocked-on-alpha: Omega8 floor-consumer wiring (VIDHI_INTENT_FLOORS registry_data.ts + migration 440 seed, platform/src/lib/vidhi/registry_data.ts consumer)",
+    "blocked-on-alpha: Lane K2 EL-60a reading_notes_get auto-accretion fix (needs platform-mcp/src/tools/**)",
+    "blocked-on-alpha: Lane E rank-vocabulary cross-file reconciliation (query_remedies.ts / query_rm_resonances.ts)",
+    "blocked-on-beta: Lane F target_graha live transit checks (C5 sidereal ephemeris contract still DRAFT at close)",
+    "blocked-on-beta: Lane J EL-58 lapsed_unobserved migration (needs platform/migrations/**, SQL ready and exported)"
+  ],
+  "flagship_self_verified": false,
+  "flagship_self_verified_detail": "Every layer gamma owns for the sec.2 flagship acceptance is built, deployed, and independently live-verified working correctly in isolation (TCI/relevance/accounting accuracy; dossier's structural 100%-accounting paging, live-proven on production across both flagship domains and both canonical charts; plan_retrieval's floor genuinely recommending dossier first, live-proven via direct HTTP call; intent_classify's deep-default routing, live-confirmed). The flagship number itself (naive-consumer coverage) has NOT moved: a genuinely fresh sealed-harness consumer still scores 2/13 (~15%) against the frozen required wealth concepts, unchanged before and after every fix applied this session, because it never calls plan_retrieval and cannot discover dossier through the live tool-catalog/tool_search index. Root cause precisely diagnosed and handed off (see ledger), not left vague or silently omitted.",
+  "ledger_path": "00_ARCHITECTURE/llm_consumption_audit/ledgers/STREAM_GAMMA_CLOSE_v1_0.md",
+  "proxy_ledger_path": "~/elev-v2-shared/proxy/gamma.md",
+  "integration_log_entries": "7 merge batches (1 corrective), all logged in ~/elev-v2-shared/INTEGRATION_LOG.md",
+  "prs_merged_to_main": ["#773", "#775", "#777", "#780", "#781"],
+  "contracts_authored": ["C7 (accounting invariant) — FROZEN, contracts/C7.frozen written"],
+  "contracts_consumed": ["C1", "C4", "C6"],
+  "contracts_still_draft_at_close": ["C5 (beta)"],
+  "native_rulings": ["NATIVE-RULED-001: scoped server.ts exception for dossier wiring — executed in full (wire, deploy, live-reverify, honest report)"],
+  "process_notes": [
+    "Lane E's Verifier brief was never actually dispatched despite being tracked as queued for a large part of the session (an internal tracking error) -- caught when the user asked directly whether the queue was stuck or working, and the conductor checked the underlying agent state rather than assuming. Corrected immediately; Lane E cleared cleanly once briefed.",
+    "Lane J and Lane K2 were independently Verifier-PASSED but never actually merged into elev/gamma -- this flag's own first draft (and ledger v1.0) listed them VERIFIED-CLOSED based on verification alone, conflating 'verified' with 'merged and integrated'. Caught only when 'git branch -d' refused to delete either branch as not-fully-merged during final worktree cleanup, a git safety mechanism, not proactive self-checking. Both branches were intact; nothing lost. Merged via PR #781, which also caught and fixed one real regression (a descriptor-field misclassification) that the isolated per-lane Verifier check structurally could not have seen -- only surfaced by re-running the full integration battery after the corrective merge."
+  ],
+  "ledger_version_at_close": "1.1 (v1.0 corrected the same day, before any external report was made on it)",
+  "completed_at": "2026-07-25T17:50:00Z"
+}

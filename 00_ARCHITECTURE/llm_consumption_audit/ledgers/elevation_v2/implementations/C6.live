@@ -1,0 +1,10 @@
+{
+  "contract": "C6",
+  "deploy_target": "amjis-mcp",
+  "revision": "amjis-mcp-00470-lzr",
+  "image_sha": "c9e61f8ccf187238b19b7bf9d54fadcd0f8a2e10",
+  "prod_probe_payload_ref": "~/elev-v2-shared/probe_evidence/C6_bodha_mechanisms_live_probe.json",
+  "verified_at": "2026-07-25T06:34:09Z",
+  "verified_by": "alpha (conductor, direct MCP probe against live prod)",
+  "canonical_charts_checked": ["482012f1-710e-4a25-994a-93821f5871aa", "1c826d5a-41cb-4450-b4dc-59d440e5f75a"]
+}

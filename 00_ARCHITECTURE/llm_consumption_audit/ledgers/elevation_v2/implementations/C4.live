@@ -1,0 +1,9 @@
+{
+  "contract": "C4",
+  "deploy_target": "amjis-sidecar",
+  "revision": "amjis-sidecar-00912-rv7",
+  "image_sha": "sha256:da22607f06622ed767116c1e205f9f9cc75d7e5d654bfbd3ba566a657b716e82",
+  "commit_sha": "8fd9343b8411dcea9843183c27f6b941f2a9ad9c",
+  "prod_probe_payload_ref": "live ganita_chart_facts_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, category=arudha_pada, fact_subject=ARUDHA_A1,A7,A10) -> house_d1=10,11,1 (whole-sign 1-indexed from lagna, per C4 ruling); ~/elev-v2-shared/INTEGRATION_LOG.md [STREAM beta] entry",
+  "verified_at": "2026-07-25T19:42:21Z"
+}
