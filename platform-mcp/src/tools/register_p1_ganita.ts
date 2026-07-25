@@ -292,6 +292,15 @@ export const FACET_CATEGORIES: Record<string, string[]> = {
 // Facets with no valid backing category at all — rejected before dispatch (see comment above).
 const NO_BACKING_FACETS = new Set(['functional'])
 
+// EL-38 fix: the shared 25000 default below was sized for the OTHER facets on this tool
+// (bounded row sets); argala is a per-varga × per-sign × per-offset matrix — live-verified
+// 41,760 rows across 29 vargas for chart 482012f1 — and timed out at that default. Give
+// argala its own sane default; every other facet keeps the existing 25000 default unchanged.
+const FACET_DEFAULT_LIMIT: Record<string, number> = {
+  argala: 500,
+}
+const STRUCTURAL_DEFAULT_LIMIT = 25000
+
 // R5.3 B2 (Q9-N-3 ruling): Pancha Mahapurusha classical rule table (own-sign/exaltation +
 // kendra). Static classical astrology (not chart data) — used only to LABEL already-fetched
 // per-chart facts (yoga_label rows + graha_position sign/house_d1), never to compute a new
@@ -479,7 +488,12 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     '(fired/not-fired, Rahu/Ketu house axis) sourced from the genuinely computed ' +
     'kala_sarpa_per_varga L1 fact rather than the unrelated dosha_label catalog row. ' +
     'B9 dosha gate (D-1.5b): for facet=dosha_fires, shared-stub dosha_label rows (fire_reason=' +
-    'requires_pass) are excluded from the default page — pass all=true to include them.',
+    'requires_pass) are excluded from the default page — pass all=true to include them. ' +
+    'EL-38 (facet=argala only): a per-varga × per-sign × per-offset matrix — pass `varga` ' +
+    '(e.g. "D1", "D9") to scope to one divisional chart instead of all ~29 at once (default ' +
+    'limit is 500 for this facet specifically, not the shared 25000, to avoid timing out on ' +
+    'the full matrix); `shape` controls whether rows carry a resolved `argala_on_house` ' +
+    '(default) or the raw sign-indexed matrix (shape="matrix", backward compat).',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       facet: z.enum([
@@ -488,7 +502,8 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         'functional', 'graha_yuddha', 'kala_sarpa',
       ]).describe('Which structural relationship layer to retrieve.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
-      limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
+      limit: z.number().int().min(1).max(25000).optional()
+        .describe('Max rows (default: 25000; facet=argala defaults to 500 instead — see facet description).'),
       offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
       response_format: z.enum(['legacy', 'v3']).optional()
         .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/" +
@@ -496,8 +511,13 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
       all: z.boolean().optional().describe(
         'B9 dosha gate: for facet=dosha_fires, if true, includes catalog-only dosha_label rows ' +
         '(fire_reason=requires_pass) that are excluded by default. Ignored for other facets.'),
+      varga: z.string().optional().describe(
+        'facet=argala only: scope to one divisional chart (e.g. "D1", "D9"). Ignored for other facets.'),
+      shape: z.enum(['resolved', 'matrix']).optional().describe(
+        'facet=argala only: "resolved" (default) adds argala_on_house per row; "matrix" returns ' +
+        'the raw sign-indexed rows (backward compat). Ignored for other facets.'),
     },
-    async ({ chart_id, facet, ayanamsha_id, limit, offset, response_format, all }) => {
+    async ({ chart_id, facet, ayanamsha_id, limit, offset, response_format, all, varga, shape }) => {
       if (!chart_id) return errorOutput('ganita_structural_get', 'chart_id is required')
       // R-17 fix: reject facets with no backing category outright, rather than silently
       // serving whatever unrelated rows the routed-to tool happens to return.
@@ -517,10 +537,18 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
         const format = resolveEnvelopeFormat(response_format)
         const declaredCategories = FACET_CATEGORIES[facet]
+        // EL-38: per-facet default (argala=500) instead of the shared 25000 — see
+        // FACET_DEFAULT_LIMIT comment above.
+        const resolvedLimit = limit ?? FACET_DEFAULT_LIMIT[facet] ?? STRUCTURAL_DEFAULT_LIMIT
         const data = await callRegistryCapability(uri, {
           chart_id, ayanamsha_id: resolvedAyanamsha,
-          limit: limit ?? 25000, offset: resolvedOffset, facet,
+          limit: resolvedLimit, offset: resolvedOffset, facet,
           ...(facet === 'dosha_fires' ? { all: all === true } : {}),
+          // EL-38: argala's own varga scope + house-resolution shape param, forwarded only
+          // for facet=argala (get_argala.ts ignores unknown args for every other facet, but
+          // being explicit here matches the existing dosha_fires `all` pattern).
+          ...(facet === 'argala' && varga ? { varga } : {}),
+          ...(facet === 'argala' && shape ? { shape } : {}),
           ...(declaredCategories ? { categories: declaredCategories } : {}),
         }, principal) as Record<string, unknown> | undefined
         const merged: Record<string, unknown> = { facet, ...(typeof data === 'object' && data ? data : { rows: data }) }

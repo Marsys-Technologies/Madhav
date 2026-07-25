@@ -121,6 +121,8 @@ import { registerVidhiPlanTool } from './tools/register_vidhi_plan.js'
 import { registerPrashnaAskTool } from './tools/register_prashna_ask.js'
 // W6 Part 3 — prashna_status: poll a prashna_ask job's progress/final result
 import { registerPrashnaStatusTool } from './tools/register_prashna_status.js'
+// EL-13 — mcp_server_info: catalog_version/tools_changed_at + tools/list_changed staleness kill
+import { registerServerInfoTool, MCP_SERVER_NAME, MCP_SERVER_VERSION } from './tools/register_server_info.js'
 
 const app = express()
 app.use(express.json())
@@ -328,8 +330,8 @@ app.post('/mcp', async (req: Request, res: Response) => {
   void responseFormat
 
   const server = new McpServer({
-    name: 'marsys-jis',
-    version: '1.0.0',
+    name: MCP_SERVER_NAME,
+    version: MCP_SERVER_VERSION,
   })
 
   // RC-14 breaking flip (MCP_TOOL_NAMING_STANDARD §4 Phase-3): remove the 43 legacy
@@ -370,6 +372,12 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // never have produced a job_id in the first place — it just gets the honest
   // "unknown or expired job_id" error), so no handler-level profile gate here.
   registerPrashnaStatusTool(server as unknown as import('./tools/register_prashna_status.js').PrashnaStatusRegisteringServer)
+
+  // EL-13 — mcp_server_info, registered BEFORE applyProfileGate for the same reason as
+  // prashna_ask/prashna_status: catalog-staleness detection must be reachable under every MCP
+  // surface profile (full/compact/consult), not just whichever ones the generated
+  // MCP_SURFACE_PROFILES manifest happens to list it under.
+  registerServerInfoTool(server)
 
   const profileGate = applyProfileGate(server as unknown as ToolRegisteringServer, mcpProfile)
 

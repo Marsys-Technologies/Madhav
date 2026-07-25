@@ -380,6 +380,49 @@ const VERBOSITY_ZOD = z.enum(['concise', 'detailed']).optional().describe(
   "'detailed' (default if omitted) keeps the normal, wider ceiling."
 )
 
+// ── C1 — budget_kb request-side override (contract C1) ────────────────────────
+//
+// `budget_kb` is an ADDITIVE, optional request-level knob: the caller's own ceiling on the
+// wire size of THIS response, in KB. Its ONLY server-side effect is to tighten (never widen)
+// the ceiling the existing applyResponseBudget/finalizeMcpBudget trim is measured against —
+// no new trimming algorithm, no per-tool default change.
+//
+//   maxKb = budget_kb ? min(budget_kb, STATIC_DEFAULT) : STATIC_DEFAULT
+//
+// A budget_kb LOWER than the tool's static default is honored (tighter budget); a HIGHER one
+// is clamped to the static default — the server ceiling is a hard cap, not a suggestion.
+// Composes with `verbosity`: 'concise' still halves the static default; the final ceiling is
+// the tighter of (verbosity-resolved default) and (budget_kb clamped to the static default),
+// so neither knob can be used to WIDEN past the static ceiling and either can tighten.
+const BUDGET_KB_ZOD = z.number().min(1).max(64).optional().describe(
+  "C1 response-budget override (KB, 1–64). Omit to use this tool's server default. A value " +
+  "BELOW the default tightens the response (fewer/leaner rows survive); a value ABOVE the " +
+  "default is clamped to the default (the server ceiling is a hard cap). When a response is " +
+  "actually trimmed, `budget_kb_applied` (the ceiling used) — and `budget_kb_requested` if " +
+  "you supplied one — are echoed back on the envelope."
+)
+
+/**
+ * Resolve the effective wire-budget ceiling for a tool call from (a) the tool's static
+ * default ceiling, (b) an optional caller-supplied `budget_kb`, and (c) an optional
+ * `verbosity` knob. `budget_kb` clamps to the static default (hard cap); the final result is
+ * the tighter of the verbosity-resolved default and the clamped request. This is the single
+ * shared resolution mechanism the C1 contract asks for — every call site funnels through it.
+ */
+function resolveMaxKb(
+  toolName: keyof typeof MCP_RESPONSE_BUDGET_KB,
+  budgetKb: number | undefined,
+  verbosity?: 'concise' | 'detailed',
+): number {
+  const staticDefault = MCP_RESPONSE_BUDGET_KB[toolName]
+  const afterVerbosity = resolveVerbosityMaxKb(staticDefault, verbosity)
+  if (budgetKb === undefined) return afterVerbosity
+  // Clamp the request to the static ceiling first (hard cap), then take the tighter of that
+  // and the verbosity-resolved default so a below-4 budget_kb is honored even under 'concise'
+  // (whose CONCISE_MIN_KB floor otherwise applies only to the default, not the caller cap).
+  return Math.min(afterVerbosity, budgetKb, staticDefault)
+}
+
 /**
  * A trimmable section targeting `orientation_context.entity_profiles` — shared by every
  * B.11-orienting tool response (get_chart_orientation's own digest output, pre-fetched
@@ -419,9 +462,10 @@ function applyMcpBudget<T extends Record<string, unknown>>(
   response: T,
   maxKb: number,
   sections: TrimmableSection<T>[],
+  budgetKbRequested?: number,
 ): T {
   const allSections = [...sections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
-  return finalizeMcpBudget(response, { maxKb, sections: allSections })
+  return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
 }
 
 /**
@@ -449,10 +493,11 @@ function applyMcpBudgetAuto<T extends Record<string, unknown>>(
   response: T,
   maxKb: number,
   toolName: string,
+  budgetKbRequested?: number,
 ): T {
   const autoSections = autoDetectTrimmableSections(response, toolName)
   const allSections = [...autoSections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
-  return finalizeMcpBudget(response, { maxKb, sections: allSections })
+  return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
 }
 
 /**
@@ -1088,8 +1133,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       paradigm: z.enum(['parashari', 'jaimini', 'kp', 'tajika']).optional().describe(
         'R5 W2: filters to one signal_tradition. Default: unfiltered (every tradition, each individually tagged) — required for whole-chart-read (B.11) discipline.'
       ),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format, frame, paradigm }) => {
+    async ({ chart_id, ayanamsha_id, domain, min_salience, limit, cursor, lel_enabled, response_format, frame, paradigm, budget_kb }) => {
       if (!chart_id) return errorOutput('get_signals', 'chart_id is required')
       try {
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
@@ -1118,7 +1164,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           return dualOutputBudgeted(applyMcpBudgetAuto({
             orientation_context, orientation_ok,
             ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: null }),
-          }, MCP_RESPONSE_BUDGET_KB.get_signals, 'get_signals'))
+          }, resolveMaxKb('get_signals', budget_kb), 'get_signals', budget_kb))
         }
 
         // ── v3 population (design §10/§E-6) ──────────────────────────────────
@@ -1185,7 +1231,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           orientation_context, orientation_ok,
           ...envelope(inner, 'get_signals', { offset: resolvedOffset, limit: resolvedLimit, total: totalMatchingFilters },
             'v3', { chart_header, verdict, ranking_basis: rankingBasis, grounding, drill_pointers, judgment_flags, coverage }),
-        }, MCP_RESPONSE_BUDGET_KB.get_signals, 'get_signals'))
+        }, resolveMaxKb('get_signals', budget_kb), 'get_signals', budget_kb))
       } catch (err) {
         return errorOutput('get_signals', String(err), { chart_id })
       }
@@ -1668,8 +1714,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_wealth', 'chart_id is required')
       try {
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
@@ -1684,7 +1731,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.assess_wealth, verbosity), 'assess_wealth'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_wealth', budget_kb, verbosity), 'assess_wealth', budget_kb))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
       }
@@ -1841,8 +1888,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       shape: z.enum(['pivoted', 'rows']).optional().describe('"pivoted" (default, one wide row per subject) or "rows" (flat EAV rows).'),
       limit: z.number().int().min(1).max(1000).optional().describe('Max subjects/rows to return (default: 100, max: 1000).'),
       offset: z.number().int().min(0).optional().describe('Pagination offset — rows (shape="rows") or subjects (shape="pivoted") to skip before the next `limit` (default: 0).'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, fact_subject, shape, limit, offset }) => {
+    async ({ chart_id, ayanamsha_id, about, category, planet, house, sign, nakshatra, divisional_chart, keyword, fact_subject, shape, limit, offset, budget_kb }) => {
       if (!chart_id) return errorOutput('query_chart_facts', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1868,7 +1916,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.query_chart_facts, 'query_chart_facts'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('query_chart_facts', budget_kb), 'query_chart_facts', budget_kb))
       } catch (err) {
         return errorOutput('query_chart_facts', String(err), { chart_id })
       }
@@ -1885,8 +1933,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       include_navamsa: z.boolean().optional().describe('Also include the D9 (navamsa) grid. Default: false (D1 only).'),
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, include_navamsa }) => {
+    async ({ chart_id, ayanamsha_id, include_navamsa, budget_kb }) => {
       if (!chart_id) return errorOutput('chart_snapshot', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1898,7 +1947,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           },
           chart_id, principal
         )
-        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, MCP_RESPONSE_BUDGET_KB.chart_snapshot, 'chart_snapshot'))
+        return dualOutputBudgeted(applyMcpBudgetAuto(data as Record<string, unknown>, resolveMaxKb('chart_snapshot', budget_kb), 'chart_snapshot', budget_kb))
       } catch (err) {
         return errorOutput('chart_snapshot', String(err), { chart_id })
       }
@@ -2580,8 +2629,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       include: z.array(z.enum(['position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'special_states', 'yogas', 'dashas', 'cgm_neighborhood'])).optional().describe('Subset of sections to compute (default: all). R-6 fix: functional_nature (served under the dignity call, now independently requestable) and special_states (alias for avasthas — the classical name for the baladi/jagrad/deepta/lajjitadi/sayanadi system) are now valid options; previously the former was unenumerated and the latter errored as invalid.'),
       response_format: z.enum(['legacy', 'v3']).optional().describe("Envelope shape: 'legacy' (default, unchanged — the raw portrait object) or 'v3' (adds populated verdict/grounding/drill_pointers/judgment_flags/chart_header per the R5 unified envelope)."),
       verbosity: VERBOSITY_ZOD,
+      budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format, verbosity }) => {
+    async ({ chart_id, graha, ayanamsha_id, operative_vargas, include, response_format, verbosity, budget_kb }) => {
       if (!chart_id) return errorOutput('graha_portrait', 'chart_id is required')
       if (!graha) return errorOutput('graha_portrait', 'graha is required')
       try {
@@ -2844,7 +2894,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'graha_portrait') }
-          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.graha_portrait, verbosity), portraitSections))
+          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveMaxKb('graha_portrait', budget_kb, verbosity), portraitSections, budget_kb))
         }
 
         // ── v3 population ─────────────────────────────────────────────────
@@ -2905,7 +2955,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           orientation_context, orientation_ok,
           ...envelope(inner, 'graha_portrait', undefined, 'v3', { chart_header, verdict, grounding, drill_pointers, judgment_flags }),
         }
-        const budgeted = applyMcpBudget(v3Response, resolveVerbosityMaxKb(MCP_RESPONSE_BUDGET_KB.graha_portrait, verbosity), portraitSections)
+        const budgeted = applyMcpBudget(v3Response, resolveMaxKb('graha_portrait', budget_kb, verbosity), portraitSections, budget_kb)
         // R-21 fix: `completeness` was stamped '✓'/'zero_rows'/'error' from the PRE-TRIM
         // capability output; reconcile against what actually survived applyMcpBudget so a
         // section trimmed all the way to 0 rows is never served with a stale '✓'.

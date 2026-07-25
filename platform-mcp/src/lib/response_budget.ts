@@ -41,6 +41,35 @@ export interface TrimReportEntry {
   recover_via: { instrument: string; hint: string }
 }
 
+/**
+ * C8 §4 — immune honesty-field set (FROZEN, contract C8
+ * `~/elev-v2-shared/contracts/C8_REGISTRY_HANDLER_ENVELOPE_v1_0.md`). When any of these
+ * fields is present on a response envelope it MUST survive ANY budget_kb (C1) / static-
+ * ceiling trim untouched: never declared a trimmable section (so PASS 1/2 can't zero it),
+ * never string-truncated by the last-resort walk. A trimmer that can zero the very fields
+ * disclosing that trimming happened (or that a result is an honest empty) defeats
+ * transparent trimming — this is the scalar-field analogue of the `hardFloor` array-section
+ * protection (§N.6). The first eight entries are the FROZEN C8 minimum; the remainder are a
+ * spirit-consistent extension for honesty fields that genuinely occur elsewhere in this
+ * estate (completeness receipts, epistemic/coverage stamps, reading contracts). Matched by
+ * KEY NAME at any nesting depth. */
+export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
+  // — FROZEN C8 §4 minimum —
+  'judgment_flags',
+  'empty_reason',
+  'catalog_only_rows_in_page',
+  'catalog_only_note',
+  'receipt_state',
+  'budget_kb_applied',
+  'budget_kb_requested',
+  'trim_report',
+  // — spirit-consistent extension (real fields elsewhere in the estate) —
+  'completeness',
+  'epistemic',
+  'coverage',
+  'reading_contract',
+])
+
 /** A single trimmable section of a tool's response content. */
 export interface TrimmableSection<T> {
   /** Dot-path label used in the trim_report (does not need to be a real JS path — just a
@@ -238,6 +267,11 @@ export interface FinalizeMcpBudgetOptions<T> {
   /** Field on `content` to append an honest over-budget note to if the hard cap below
    *  still can't close the gap. Default 'judgment_flags'. */
   judgmentFlagsField?: string
+  /** C1 (budget_kb, contract C1): the caller-supplied `budget_kb` request param, if any.
+   *  Echoed back verbatim as `budget_kb_requested` on a trimmed response. The nominal
+   *  ceiling actually applied (`maxKb`) is always echoed as `budget_kb_applied` on a trimmed
+   *  response regardless of this field. Both are members of the C8 §4 immune set. */
+  budgetKbRequested?: number
 }
 
 /**
@@ -287,6 +321,14 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
   if (!result.trimmed) return content
 
   const mutable = content as Record<string, unknown>
+  // C1 (budget_kb) response fields — attached ONLY on a trimmed response (a response that
+  // fit under budget short-circuits above and carries neither field). `budget_kb_applied` is
+  // the nominal ceiling actually applied after any caller/verbosity clamping (opts.maxKb, NOT
+  // the internal safety-margined target); `budget_kb_requested` echoes the caller's param iff
+  // supplied. Both are in the C8 §4 immune set (never subsequently trimmed). Set BEFORE the
+  // post-attachment re-measure below so their (tiny) bytes are counted in the degrade check.
+  mutable['budget_kb_applied'] = opts.maxKb
+  if (opts.budgetKbRequested !== undefined) mutable['budget_kb_requested'] = opts.budgetKbRequested
   const existingPointers = (mutable[drillPointersField] as DrillPointerLike[] | undefined) ?? []
   mutable['trim_report'] = result.trim_report
   mutable[drillPointersField] = mergeTrimPointersIntoPointers(existingPointers, result.trim_report)
@@ -374,6 +416,11 @@ function truncateLongStringsInPlace(root: unknown, maxBytes: number): void {
       return
     }
     for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      // C8 §4: an immune honesty field's string value (e.g. empty_reason, catalog_only_note,
+      // a completeness receipt mark) is never truncated, and its subtree is never descended
+      // into — these fields disclose that trimming happened / that a result is an honest
+      // empty, so mangling them defeats transparent trimming. Shed rows elsewhere instead.
+      if (IMMUNE_HONESTY_FIELDS.has(k)) continue
       if (typeof v === 'string' && v.length > MAX_STRING_CHARS) longStringSites.push({ obj: node as Record<string, unknown>, key: k })
       else walk(v, depth + 1)
     }
@@ -433,6 +480,10 @@ export function autoDetectTrimmableSections<T extends Record<string, unknown>>(
   }
 
   for (const key of Object.keys(content)) {
+    // C8 §4: never declare an immune honesty field (e.g. judgment_flags array) trimmable —
+    // it must survive any budget_kb trim untouched. Skips the field AND (if it is an object)
+    // its whole subtree from auto-detection.
+    if (IMMUNE_HONESTY_FIELDS.has(key)) continue
     const topVal = (content as Record<string, unknown>)[key]
     if (Array.isArray(topVal)) {
       declareIfArray(
@@ -442,6 +493,7 @@ export function autoDetectTrimmableSections<T extends Record<string, unknown>>(
       )
     } else if (topVal && typeof topVal === 'object' && !Array.isArray(topVal)) {
       for (const nestedKey of Object.keys(topVal as Record<string, unknown>)) {
+        if (IMMUNE_HONESTY_FIELDS.has(nestedKey)) continue
         const nestedVal = (topVal as Record<string, unknown>)[nestedKey]
         if (Array.isArray(nestedVal)) {
           const path = `${key}.${nestedKey}`

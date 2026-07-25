@@ -121,6 +121,12 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       params.push([...CHAIN_CIRCUIT_CLASSES])
     }
     const where = filters.join(' AND ')
+    // Snapshot BEFORE the class-priority param is appended: countSql's WHERE clause only ever
+    // references the filter placeholders above, so it must be bound with exactly those values —
+    // binding it against the full `params` (post class-priority push) sends more parameter
+    // values than the count query's placeholders, which postgres rejects with
+    // "bind message supplies N parameters, but prepared statement requires M" (EL-37 root cause).
+    const filterParams = [...params]
 
     // §N.6: chain/circuit family sorts FIRST (priority 0), everything else after (priority 1),
     // then by edge-strength and structural size. The class-priority list is passed as a param
@@ -156,7 +162,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       const [rowsRes, facetRes, countRes] = await Promise.all([
         query(rowsSql, [...params, limit, offset]),
         query<{ mechanism_class: string; valence: string; is_chain_circuit: boolean; n: string }>(facetSql, params),
-        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM bodha_mechanisms WHERE ${where}`, params),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM bodha_mechanisms WHERE ${where}`, filterParams),
       ])
 
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
