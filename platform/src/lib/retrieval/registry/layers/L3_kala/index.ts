@@ -29,6 +29,8 @@ import { queryTemporalViewCapability }        from './query_temporal_view'
 // WP-1.3(a) / F-L10-009,015 (LCA-19): computed-but-unserved L3 assets.
 import { queryDashaDossierCapability }        from './query_dasha_dossier'
 import { queryActivationWaveformCapability }  from './query_activation_waveform'
+// EL-33 (Elevation v2.1, γ.F): point-in-time active-dasha convenience face across all systems.
+import { queryActiveDashasCapability }        from './query_active_dashas'
 import {
   callTransitSearchCapability,
   callEphemerisAtTCapability,
@@ -45,6 +47,7 @@ registerCapability(queryObstructionPeriodsCapability)
 registerCapability(queryTemporalViewCapability)
 registerCapability(queryDashaDossierCapability)
 registerCapability(queryActivationWaveformCapability)
+registerCapability(queryActiveDashasCapability)
 
 registerCapability(callTransitSearchCapability)
 registerCapability(callEphemerisAtTCapability)
