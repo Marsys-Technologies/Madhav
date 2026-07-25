@@ -1960,14 +1960,15 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // occupants w/ degrees, Lagna marked, <=2KB. D9 (navamsa) only on explicit include_navamsa=true.
   server.tool(
     'chart_snapshot',
-    'The compact "show me the chart" answer: a 12-rashi D1 (rashi chart) text grid — every graha\'s sign + degree-in-sign, Lagna sign clearly marked — sized for direct display in a chat client (hard-capped at 2KB). Pass include_navamsa=true to ALSO get the D9 (navamsa) grid in the same response — D9 is never included by default. Renders already-computed chart_divisionals positions; no new computation. chart_id is required.',
+    'The compact "show me the chart" answer: a 12-rashi D1 (rashi chart) text grid — every graha\'s sign + degree-in-sign, Lagna sign clearly marked — sized for direct display in a chat client (hard-capped at 2KB). Pass include_navamsa=true to ALSO get the D9 (navamsa) grid in the same response — D9 is never included by default. Pass vargas:["D2","D10",...] to ADDITIVELY assemble any number of further divisional-chart grids server-side (EL-48) — served in `additional_vargas`, alongside the unchanged D1(+D9) grid/text shape; a requested varga this chart has no data for is named honestly in `unresolved_vargas`. Renders already-computed chart_divisionals positions; no new computation. chart_id is required.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
       include_navamsa: z.boolean().optional().describe('Also include the D9 (navamsa) grid. Default: false (D1 only).'),
+      vargas: z.array(z.string()).optional().describe('Additional varga codes to assemble (e.g. ["D2","D10","D11"]), additive to D1 (and D9 if include_navamsa is set) — served in `additional_vargas`, never replacing the D1/D9 default. Standard codes: D1-D10, D12, D16, D20, D24, D27, D30, D40, D45, D60.'),
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, include_navamsa, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, include_navamsa, vargas, budget_kb }) => {
       if (!chart_id) return errorOutput('chart_snapshot', 'chart_id is required')
       try {
         const data = await callRegistryCapability(
@@ -1976,6 +1977,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             chart_id,
             ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
             ...(include_navamsa != null ? { include_navamsa } : {}),
+            ...(vargas && vargas.length > 0 ? { vargas } : {}),
           },
           chart_id, principal
         )
@@ -2508,12 +2510,22 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
                 ? 'the strong-dispositor cancellation condition IS met (treat as a candidate bhanga, not a full multi-condition confirmation — other classical conditions like kendra placement aren\'t covered by this depth-1 neighborhood).'
                 : 'the strong-dispositor cancellation condition is NOT met from this data; no cancellation confirmed here — a full multi-condition audit needs deeper dispositor-chain traversal.'}`,
             )
+          } else if (nodes.length === 0) {
+            // EL-07 Absence Protocol: distinguish "the neighborhood query itself returned
+            // nothing" (a genuine grounding gap worth naming explicitly) from the dispositor
+            // simply not being among an otherwise-populated node set (the branch below).
+            sentences.push(
+              `Neecha-bhanga could not be checked against dispositor-chain data: this portrait's ` +
+              `cgm_neighborhood.nodes returned 0 rows for ${grahaName} — no cancellation condition ` +
+              `evaluated (not a claim that ${dispositor} lacks cancellation, only that this depth-1 ` +
+              `neighborhood query had nothing to check it against); traverse_graph can re-query directly.`,
+            )
           } else {
             sentences.push(
               `Neecha-bhanga checked against the dispositor-chain data this portrait retrieves: dispositor ` +
-              `${dispositor} is not present in the depth-1 cgm_neighborhood returned here — no cancellation ` +
-              `condition met in what's available; a full multi-condition audit needs deeper dispositor-chain ` +
-              `traversal (see drill_pointers).`,
+              `${dispositor} is not among the ${nodes.length} node(s) present in the depth-1 cgm_neighborhood ` +
+              `returned here — no cancellation condition met in what's available; a full multi-condition audit ` +
+              `needs deeper dispositor-chain traversal (see drill_pointers).`,
             )
           }
         }
@@ -2944,7 +2956,33 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         if (format !== 'v3') {
           const legacyResponse = { orientation_context, orientation_ok, ...envelope(inner, 'graha_portrait') }
-          return dualOutputBudgeted(applyMcpBudget(legacyResponse, resolveMaxKb('graha_portrait', budget_kb, verbosity), portraitSections, budget_kb))
+          const legacyBudgeted = applyMcpBudget(legacyResponse, resolveMaxKb('graha_portrait', budget_kb, verbosity), portraitSections, budget_kb)
+          // EL-36 residual (R-21 receipt integrity, extended to the legacy escape hatch):
+          // the v3 path below reconciles `completeness` against what actually survived
+          // applyMcpBudget's trim; the legacy shape carries the SAME `content.completeness`
+          // object (envelope()'s legacy branch wraps `inner` as `content` verbatim — see
+          // buildRetrievalEnvelope/redactProvenanceTables, which returns the same reference
+          // when entitled) so the identical reconciliation applies cleanly here too, reading
+          // post-trim state from `legacyBudgeted` (never the pre-trim `inner`) so a section
+          // PASS 2 floored to 0 never ships next to a stale "✓". No numeric receipt
+          // (verdict.sections_populated / grounding.grounding_score) exists on the legacy
+          // shape to re-derive — those are v3-only fields — so this is the complete legacy
+          // reconciliation, not a partial one.
+          const legacyContent = (legacyBudgeted as Record<string, unknown>)['content'] as Record<string, unknown> | undefined
+          const legacyCompleteness = legacyContent?.['completeness'] as Record<string, unknown> | undefined
+          if (legacyCompleteness) {
+            reconcileReceiptWithTrimReport(legacyCompleteness, {
+              dignity: ['content.dignity.all_varga_rows', 'content.dignity.other_rows', 'content.dignity.operative_varga_rows'],
+              functional_nature: ['content.functional_nature.rows'],
+              strength: ['content.strength.rows'],
+              avasthas: ['content.avasthas.rows'],
+              yogas: ['content.yogas.catalog_yoga_matches', 'content.yogas.catalog_dosha_matches', 'content.yogas.parivartana_exchanges'],
+              dashas: ['content.dashas.rows'],
+              position: ['content.position.rows'],
+              cgm_neighborhood: ['content.cgm_neighborhood.edges', 'content.cgm_neighborhood.nodes'],
+            }, legacyBudgeted['trim_report'] as TrimReportEntry[] | null | undefined)
+          }
+          return dualOutputBudgeted(legacyBudgeted)
         }
 
         // ── v3 population ─────────────────────────────────────────────────
