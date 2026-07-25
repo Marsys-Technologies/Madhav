@@ -1,5 +1,5 @@
 /**
- * P1 Group 1 — Per-chart computed-chart tools (9 tools)
+ * P1 Group 1 — Per-chart computed-chart tools (12 tools)
  * ======================================================
  * Exposes L1 Gaṇita capabilities that existed in the registry but were NOT previously
  * MCP-exposed. Per BA-P1 brief §Step 1 (RM §3.2 Group-1 table).
@@ -8,7 +8,17 @@
  *   - call callRegistryCapability() → platform /api/retrieval/capability
  *   - wrap response in RetrievalEnvelope v1 (verdict/ranking_basis null until P4/P2)
  *   - token cap: 25k default limit
- *   - scope: per_chart (chart_id required)
+ *   - scope: per_chart (chart_id required) — with 2 global exceptions, items 10-11 below
+ *     (ganita_database_schema_get / ganita_concept_locate take an OPTIONAL chart_id,
+ *     defaulting to the canonical chart — same as their underlying registry capabilities)
+ *
+ * Items 10-12 (ganita_database_schema_get, ganita_concept_locate, ganita_planet_get) were
+ * added by the Elevation Campaign v2.1 STREAM α Lane-H follow-up (2026-07-25): the batch-1
+ * registry capabilities get_database_schema / concept_locate / query_planet
+ * (platform/src/lib/retrieval/registry/layers/L1_ganita/) were registered at the registry
+ * layer but had no MCP-facing tool exposing them — the exact dark-asset gap this file exists
+ * to close for the rest of L1. Same call-through mechanism, same dualOutput()/errorOutput()
+ * envelope as items 1-9.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
@@ -1122,6 +1132,120 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
         return dualOutput(envelope(data, 'ganita_transit_anchors_get'))
       } catch (err) {
         return errorOutput('ganita_transit_anchors_get', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── 10. ganita_database_schema_get (Elevation Campaign v2.1 STREAM α Lane-H Task 1) ──────
+  // Fronts get_database_schema (registry URI marsys://tool/L1/get_database_schema) — the C3
+  // SchemaMap discovery substrate — which was registered in the L1_ganita registry index but
+  // had NO MCP-facing tool (the exact dark-asset gap this file exists to close; see the file
+  // header comment for the pattern this batch follows). Faithful pass-through: the capability
+  // itself already implements pagination (offset/limit/cursor) and declares its own budget_kb
+  // param; this tool's dualOutput() wrapper applies the file's standard auto-budget trim on
+  // top as a backstop, matching every other tool in this function.
+  server.tool(
+    'ganita_database_schema_get',
+    'Discovery substrate (L1 Gaṇita): every fact_category x fact_subject combination that ' +
+    'actually exists in the live chart_facts data model, mechanically enumerated (never ' +
+    'hand-authored), each with its observed fact_keys, row_count, and up to 3 sample fact_ids ' +
+    'for spot-checking. PAGINATED (offset/limit/cursor, budget_kb) — never an unbounded dump. ' +
+    'Also returns concept_aliases: a seeded table mapping common alternate names (e.g. ' +
+    '"Gulika"/"Maandi", "sphuta", "panchanga", "mangal") to the real fact_category value(s) ' +
+    'they resolve through. Use ganita_concept_locate to resolve a single free-text term ' +
+    'instead of scanning this whole substrate. Conforms to the C3 SchemaMap contract.',
+    {
+      chart_id: z.string().uuid().optional().describe(
+        'Chart UUID to enumerate against. Defaults to the canonical chart if omitted — the ' +
+        'schema SHAPE is deterministic across charts built by the same writers.'),
+      limit: z.number().int().min(1).max(200).optional().describe('Entries per page (default 50, max 200).'),
+      cursor: z.string().optional().describe("Opaque pagination cursor from a previous response's next_cursor."),
+      budget_kb: z.number().min(1).max(64).optional().describe(
+        'Optional response-size ceiling override, 1-64 KB (C1). Tighter than the tool default ' +
+        'is honored; wider is clamped to the default.'),
+    },
+    async ({ chart_id, limit, cursor, budget_kb }) => {
+      try {
+        const data = await callRegistryCapability('marsys://tool/L1/get_database_schema', {
+          ...(chart_id ? { chart_id } : {}),
+          ...(limit != null ? { limit } : {}),
+          ...(cursor ? { cursor } : {}),
+          ...(budget_kb != null ? { budget_kb } : {}),
+        }, principal)
+        return dualOutput(envelope(data, 'ganita_database_schema_get'))
+      } catch (err) {
+        return errorOutput('ganita_database_schema_get', String(err), { chart_id })
+      }
+    }
+  )
+
+  // ── 11. ganita_concept_locate (Elevation Campaign v2.1 STREAM α Lane-H Task 1) ───────────
+  // Fronts concept_locate (registry URI marsys://tool/L1/concept_locate). Naming: kept the
+  // source verb as the type suffix rather than forcing `_get` — mirrors the existing
+  // `resolve_entity` → `ref_entity_resolve` precedent in MCP_TOOL_NAMING_STANDARD_v1_0.md §3
+  // row 1 (a lookup-by-free-text resolver is not the same shape as a bounded/keyed `_get`).
+  server.tool(
+    'ganita_concept_locate',
+    'Resolve a free-text concept name (English or Sanskrit, e.g. "Gulika", "sphuta", ' +
+    '"panchanga", "mangal shadbala") to the real fact_category value(s) it serves through and ' +
+    'the MCP tool that serves them (L1 Gaṇita). Tries the seeded alias table first, then ' +
+    'falls back to a direct substring match against the live fact_category list. Returns an ' +
+    'HONEST MISS (resolved:false, empty_reason naming exactly what was checked) when nothing ' +
+    'matches — never a silent empty result. Use this before phrasing any answer as "not in ' +
+    'the data" / "doesn\'t exist" (Absence Protocol, EL-07).',
+    {
+      query: z.string().describe('Free-text concept name to resolve. Required.'),
+      chart_id: z.string().uuid().optional().describe(
+        'Chart UUID for the live-category fallback pass. Defaults to the canonical chart.'),
+    },
+    async ({ query, chart_id }) => {
+      if (!query) return errorOutput('ganita_concept_locate', 'query is required')
+      try {
+        const data = await callRegistryCapability('marsys://tool/L1/concept_locate', {
+          query, ...(chart_id ? { chart_id } : {}),
+        }, principal)
+        return dualOutput(envelope(data, 'ganita_concept_locate'))
+      } catch (err) {
+        return errorOutput('ganita_concept_locate', String(err), { query })
+      }
+    }
+  )
+
+  // ── 12. ganita_planet_get (Elevation Campaign v2.1 STREAM α Lane-H Task 3) ───────────────
+  // Fronts query_planet (registry URI marsys://tool/L1/query_planet) — the assembled
+  // per-graha entity face (B.10: zero new computation, assembles rows from already-served L1
+  // capabilities). ayanamsha_id follows the same optional-only-normalize pattern as
+  // ganita_transit_anchors_get above (item 9): forcing a default here would change the
+  // capability's own documented omitted-means-unfiltered behavior across the 8 handlers it
+  // fans out to.
+  server.tool(
+    'ganita_planet_get',
+    'Canonical assembled-entity face for ONE graha (L1 Gaṇita): sign, house (D1), ' +
+    'nakshatra+pada, degree, retrograde/combustion state, dignity chain (exalted/own/friend/' +
+    'neutral/enemy/debilitated + functional class), shadbala, avasthas, aspects given/' +
+    'received (best-effort matched), yogas this graha participates in (firings-authoritative ' +
+    '+ catalog-label, both flagged separately), and its dispositor chain. Gathers ALL of this ' +
+    'from already-served L1 capabilities in one call (get_positions/get_dignity/get_strength/' +
+    'get_avasthas/get_aspects/get_yoga_dosha/get_yoga_firings/get_dispositors) — no new ' +
+    'computation. Use this instead of chaining 7+ individual EAV tool calls for an ' +
+    'entity-shaped ("tell me about Saturn") question.',
+    {
+      chart_id: z.string().uuid().describe('Chart UUID. Required.'),
+      planet: z.string().describe(
+        'Graha name (English, Sanskrit, or 2-3 letter code), e.g. "Saturn", "shani", "SAT". Required.'),
+      ayanamsha_id: z.string().optional().describe("Ayanamsha filter (e.g. 'lahiri_chitrapaksha'). Omit for unfiltered."),
+    },
+    async ({ chart_id, planet, ayanamsha_id }) => {
+      if (!chart_id) return errorOutput('ganita_planet_get', 'chart_id is required')
+      if (!planet) return errorOutput('ganita_planet_get', 'planet is required')
+      try {
+        const data = await callRegistryCapability('marsys://tool/L1/query_planet', {
+          chart_id, planet,
+          ayanamsha_id: ayanamsha_id ? normalizeAyanamsha(ayanamsha_id) : undefined,
+        }, principal)
+        return dualOutput(envelope(data, 'ganita_planet_get'))
+      } catch (err) {
+        return errorOutput('ganita_planet_get', String(err), { chart_id, planet })
       }
     }
   )
