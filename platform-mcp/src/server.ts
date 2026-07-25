@@ -95,6 +95,22 @@ import { registerL0BrahmagyanTools } from './tools/l0_brahmagyan.js'
 import { registerEphemerisTools } from './tools/l0_ephemeris.js'
 // L0FR Stream F: Remedy Corpus retrieval tools
 import { registerRemedyTools } from './tools/retrieval/remedy_tools.js'
+// SATYA-ŚEṢA W4: L0FR Stream C (brahmagyan.texts) — read_classical_text.ts implements 5
+// fully-working MCP tools (backend primitives verified live via tool_name_bridge.ts's
+// MCP_TO_RETRIEVAL_TOOL whitelist: read_classical_text/search_classical_texts both resolve
+// to marsys://tool/L0/query_classical_texts; read_chapter/list_classical_texts/
+// find_verses_about resolve to their own L0 URIs) but the file was never imported here —
+// a genuine "registered capability, never wired to MCP" instance of exactly the failure
+// class this campaign targets (registered ≠ deployed ≠ callable). Classical-text citation
+// lookup is consumer-facing truth grounding (B.3 derivation-ledger citations), not an
+// internal/consult-only surface — it belongs on the live MCP tool list.
+import {
+  registerReadClassicalText,
+  registerReadChapter,
+  registerListClassicalTexts,
+  registerFindVersesAbout,
+  registerSearchClassicalTexts,
+} from './tools/read_classical_text.js'
 // D7 — Registry bridge: consolidated workflow tools from the retrieval registry
 import { registerRegistryBridgeTools } from './tools/registry_bridge.js'
 // BA-P1 — Beyond-Acharya P1 new tool registrations (Groups 1-3 + Phase-1 naming aliases)
@@ -390,6 +406,14 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerL0BrahmagyanTools(server)
   // L0 Ephemeris tools (L0FR Stream B — ephemeris_daily 1900-2150)
   registerEphemerisTools(server)
+  // L0 Classical Text tools (L0FR Stream C — brahmagyan.texts). SATYA-ŚEṢA W4 fix: these
+  // 5 tools existed fully-implemented since 2026-06-07 but were never registered on the
+  // live MCP surface — see the import comment above for the wiring verification.
+  registerReadClassicalText(server, () => principal)
+  registerReadChapter(server, () => principal)
+  registerListClassicalTexts(server, () => principal)
+  registerFindVersesAbout(server, () => principal)
+  registerSearchClassicalTexts(server, () => principal)
 
   // L1 Gaṇita — PyJHora natal computation tools (Stream G / BRAHMA-G-1)
   registerComputeNatalPositionsTool(server)    // graha_sthana: 9 planets + Lagna
@@ -637,7 +661,19 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // ganita_concept_locate, ganita_planet_get — front the 3 batch-1 registry capabilities
 // (get_database_schema/concept_locate/query_planet) that existed in the L1_ganita registry
 // index with no MCP-facing tool (registerP1GanitaTools now does). 80 + 3 = 83.
-const REGISTERED_TOOL_COUNT = 83
+// SATYA-ŚEṢA W4 fix (2026-07-25): +5 read_classical_text, read_chapter,
+// list_classical_texts, find_verses_about, search_classical_texts — L0FR Stream C tools
+// that existed fully-implemented in tools/read_classical_text.ts since 2026-06-07 but were
+// never imported/registered here (see the import comment above). 83 + 5 = 88.
+// KNOWN RESIDUAL (not fixed by this lane — flagged, not silently left inaccurate): a live
+// raw `tools/list` probe against production on 2026-07-25 (SATYA_SHESHA_MCP_SURFACE_NOTE_v1_0.md)
+// returned 111 tools for the 'full' profile, well above this hand-maintained tally. This
+// constant has been drifting stale for multiple PRs (it is manually incremented per-change,
+// not mechanically derived from the actual registration calls above) — /health's `tools`
+// field should NOT be treated as the authoritative live tool count; `tools/list` is. A
+// follow-up should replace this constant with a value computed from the request-scoped
+// server's own registered-tool count rather than hand-maintaining it further.
+const REGISTERED_TOOL_COUNT = 88
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
