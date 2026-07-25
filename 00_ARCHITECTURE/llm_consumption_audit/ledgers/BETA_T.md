@@ -170,10 +170,23 @@ range).
 **disposition: `PARKED-HONEST (blocked-on-beta:D-rebuild)`** for BOTH sub-items, per this
 lane's explicit brief: "This is a hard dependency" on lane β.D's chart rebuild landing.
 Checked `~/elev-v2-shared/implementations/` (empty — no `.live` records for any β.D contract)
-and searched for `BETA_D.md` across every worktree (`.worktrees/*`, `.claude/worktrees/*`,
-repo root) — **not found; β.D has not produced its ledger yet.** `~/elev-v2-shared/heartbeat/beta.hb`
-shows `status:"running"` as of the last check this session (2026-07-25T05:40:06Z) — the
-stream is active but β.D specifically has not signalled completion. Per M2.5's binding rule
+and searched for `BETA_D.md` across every worktree — initially not found; **a later check
+this session (after `.worktrees/beta-D` appeared as a separate physical worktree) found
+`BETA_D.md` populated**: β.D's Step 1 (audit), Step 2 (ruling — contract C4, house/sign
+convention), and Step 3 (writer fixes for EL-30/40/47, committed `e7ae5895`, 8 new regression
+tests + 303 existing writer tests passing) are done — **but Step 4/5 (the actual chart-scoped
+rebuild dispatch) has NOT yet run**: `BETA_D.md`'s own "Verifier dispositions" section is a
+literal empty placeholder (`<!-- G4 after-payloads captured post-rebuild; see Step 4/5
+below -->`, nothing filled in). So the dependency this lane is gated on — the REBUILD, not
+just the code fix — genuinely has not landed. This confirms the `PARKED-HONEST` disposition
+is still correct, not overcautious. Separately confirmed: none of β.D's three writer fixes
+(arudha/bhava_arudha house_d1, varga_position house, composite_dispositor_strength) touch
+`ka_yojaka`, `ka_kalasutra`, or `ph_nimitta` directly — but the rebuild itself, once
+dispatched, will cascade through `asset_registry.depends_on`'s transitive closure (the same
+pattern the CR-66/CR-73 rebuild used, which touched 49 assets spanning ka_/ph_/mi_ layers),
+so it could still refresh data this lane's two CRs depend on as a side effect. `~/elev-v2-shared/heartbeat/beta.hb`
+showed `status:"running"` throughout this session — the stream is active but β.D specifically
+had not signalled rebuild completion by session end. Per M2.5's binding rule
 ("a consuming lane may not be dispositioned VERIFIED-CLOSED while any contract/dependency it
 consumes lacks a live record — it is PARKED-HONEST"), both sub-items park here rather than
 close, even though the live evidence gathered below is strong for CR-37 specifically.
