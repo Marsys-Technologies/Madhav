@@ -132,5 +132,22 @@ producer (`bo_laksana`) is rebuilt. See Step 4/5 rebuild outcome for disposition
 
 # Verifier dispositions (per-EL evidence blocks)
 
-<!-- G4 after-payloads captured post-rebuild -->
+### EL-30 — house_d1 semantics (arudha)
+```
+el_id: EL-30
+status: VERIFIED-CLOSED (chart A lahiri confirmed live; full 5-ayanamsha + chart B rebuild in flight)
+before_payload: chart A arudha_pada house_d1 (lahiri) — A1=9, A7=10, A10=12 (degree-arc _house_d1)
+after_payload:  chart A arudha_pada house_d1 (lahiri) — A1=10, A7=11, A10=1, formula_id=wholesign_from_lagna:1indexed:v2
+probes_run:
+  - SQL live prod (amjis via proxy = same DB as mcp__marsys-jis-direct__*): arudha_pada house_d1 A1/A7/A10 → 10/11/1
+  - committed regression test tests/test_beta_d_house_convention.py (8 tests, reproduces EL-30 recipe on 482012f1 fixture) — PASS
+  - 303 existing ga5/ga8/arudha/sensitive tests — PASS (no regression)
+charts: 482012f1 (lahiri verified live; 4 more ayanamshas rebuilding), 1c826d5a (pending)
+verifier_notes: >
+  Root cause: _house_d1 computed a degree-arc house int((long-lagna)%360/30)+1, not whole-sign;
+  diverges when lagna is mid-sign (12.43° Aries). A10's 0° "wraparound" was the same defect
+  (0° Aries falls behind the mid-sign lagna → arc 11 → 12). Fixed to ((sign_idx-lagna_sign_idx)%12)+1.
+  Fix propagates to upagraha/karaka/bhava_arudha house_d1 (same _house_d1). C4 convention stamp applied.
+```
+<!-- EL-40 / EL-47 / EL-38 evidence blocks + full-ayanamsha + chart-B G4 appended on rebuild completion -->
 
