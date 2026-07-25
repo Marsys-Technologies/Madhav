@@ -1,0 +1,963 @@
+[
+  {
+    "tool": "ToolSearch",
+    "arguments": {
+      "query": "select:mcp__marsys-jis-direct__assess_wealth,mcp__marsys-jis-direct__bodha_domain_reading_get,mcp__marsys-jis-direct__judgment_query,mcp__marsys-jis-direct__kala_windows_get",
+      "max_results": 10
+    },
+    "result_raw": "Loaded tool schemas for: assess_wealth, bodha_domain_reading_get, judgment_query, kala_windows_get (full JSONSchema definitions returned in a <functions> block)."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__assess_wealth",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+    },
+    "result_raw": "Error: result (116,397 characters) exceeds maximum allowed tokens. Output has been saved to /Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav--worktrees-gamma/c4d56864-7dd3-494c-a77e-4fbb3bb71056/tool-results/mcp-marsys-jis-direct-assess_wealth-1784964920450.txt. Format: JSON with schema: {type: string, object: {orientation_context: {...}, orientation_ok: boolean, content: {...}, is_error: boolean, budget_kb_applied: number, trim_report: [{...}], drill_pointers: [], judgment_flags: [{...}]}} [full 116KB payload persisted to disk; content.* keys: activating_dasha, ayanamsha_id, chart_id, citations, contradictions, domain, domain_label, house_analysis, karaka_analysis, provenance, ranking_basis, step_results, varga_analysis, verdict_skeleton, yoga_fact_ids]",
+    "result_extracts_from_persisted_file": {
+      "content.judgment_flags": [
+        {
+          "code": "domain_inference_requires_acharya_validation",
+          "detail": "Wealth domain synthesis reconciles 2nd/11th lords + Jupiter karaka from L1 chart_facts (via drill). Dhana yoga identification and dasha timing require acharya review of the assembled bundle.",
+          "severity": "warning"
+        },
+        {
+          "code": "catalog_only_rows_present",
+          "detail": "bearing_yoga_firings (ga_yoga_firings) is the firings-authoritative source; by_stage.yoga / verdict_skeleton.by_stage.yoga (bodha_msr_signals) are single-pass catalog-label matches (JL-004) and must never be read as confirmed findings (CLAUDE.md B7.N.6.1).",
+          "severity": "info"
+        }
+      ],
+      "content.activating_dasha.activations[0]": {
+        "id": "3438899",
+        "signal_id": "281151af-c42b-44a6-8c7f-0676a94538ba",
+        "signature_class": "SUBSYSTEM",
+        "activation_start": "2024-12-08",
+        "activation_end": "2027-08-18",
+        "activation_peak_date": "2026-04-13",
+        "orb_strength": 1,
+        "convergence_score": 1,
+        "dasha_activation_proximity_score": 0.8778,
+        "active_dasha_periods_lord": "Saturn (antardasha 2024-12-08 -> 2027-08-18, exact_lord)"
+      },
+      "content.karaka_analysis.cdlm_cells": [
+        {
+          "domain_row": "relationship",
+          "domain_col": "wealth",
+          "shared_signal_count": 250,
+          "net_linkage_strength": 174.99403,
+          "computed_linkage_strength": 339.825046
+        },
+        {
+          "domain_row": "career",
+          "domain_col": "wealth",
+          "shared_signal_count": 212,
+          "net_linkage_strength": 158.239606,
+          "computed_linkage_strength": 300.176524
+        },
+        {
+          "domain_row": "character",
+          "domain_col": "wealth",
+          "shared_signal_count": 19,
+          "net_linkage_strength": 11.146835,
+          "computed_linkage_strength": 17.230868
+        },
+        {
+          "domain_row": "health",
+          "domain_col": "wealth",
+          "shared_signal_count": 7,
+          "net_linkage_strength": 4.78975,
+          "computed_linkage_strength": 7.521476
+        },
+        {
+          "domain_row": "spirituality",
+          "domain_col": "wealth",
+          "shared_signal_count": 7,
+          "net_linkage_strength": 4.78975,
+          "computed_linkage_strength": 7.521476
+        }
+      ],
+      "content.varga_analysis": {
+        "note": "Varga refinement (D9/D10/D6) available via chart_facts_query with divisional_chart filter.",
+        "drill_uri": "marsys://tool/L1/chart_facts_query"
+      },
+      "content.house_analysis.top_ranked_signals_summary": [
+        "graha dignity per varga: dignity state = exalted | house=7 | sign=Libra | varga=D1 (Saturn exalted in 7th, D1)",
+        "SAT aspect parashari given -> houses 1,4,9 (chart_defining)",
+        "graha effective dignity modified by aspects: effective_dignity_score=1, Mars contribution +0.25 (yogakaraka aspect)",
+        "wealth lens question_type=wealth, 336 template signals, domains_matched=[wealth], ranking verification_pass_status=documented_approximation"
+      ],
+      "content.contradictions.items": [
+        {
+          "tension_class": "domain_promise_vs_denial",
+          "domains_affected_array": [
+            "career"
+          ],
+          "combined_salience": 1.85725
+        },
+        {
+          "tension_class": "domain_promise_vs_denial",
+          "domains_affected_array": [
+            "character"
+          ],
+          "combined_salience": 1.85725
+        },
+        {
+          "tension_class": "domain_promise_vs_denial",
+          "domains_affected_array": [
+            "health"
+          ],
+          "combined_salience": 1.3455
+        }
+      ],
+      "content.contradictions.discoveries_note": "Top discoveries are ga_sade_sati distributional anomalies affecting career/health/relationship (sade_sati_phase / concurrent_mudda_lord patterns); no wealth-specific contradiction flagged.",
+      "verbatim_full_payload_location": "/Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav--worktrees-gamma/c4d56864-7dd3-494c-a77e-4fbb3bb71056/tool-results/mcp-marsys-jis-direct-assess_wealth-1784964920450.txt"
+    }
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq keys / content keys on persisted assess_wealth file",
+      "description": "Inspect saved wealth result structure"
+    },
+    "result_raw": "object keys: [budget_kb_applied, content, drill_pointers, is_error, judgment_flags, orientation_context, orientation_ok, trim_report]; content keys: [activating_dasha, ayanamsha_id, chart_id, citations, contradictions, domain, domain_label, house_analysis, karaka_analysis, provenance, ranking_basis, step_results, varga_analysis, verdict_skeleton, yoga_fact_ids]; file size 116506 bytes"
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq verdict_skeleton / domain_label / activating_dasha",
+      "description": "Read verdict skeleton and dasha"
+    },
+    "result_raw": "verdict_skeleton.top_10_composite top signals: Saturn_in_H7 (lord_in_house_per_varga), Saturn_in_H10, KET_MEAN aspect to house_2, Jupiter_in_H9, trikona bhava_significance_link (lord_placed). domain_label=wealth. (94KB verdict_skeleton persisted; composite/final rank scores null under documented_approximation ranking.)"
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq house_analysis / karaka_analysis / varga_analysis",
+      "description": "Read house, karaka, varga analysis"
+    },
+    "result_raw": {
+      "house_analysis": [
+        "graha dignity per varga: dignity state = exalted | house=7 | sign=Libra | varga=D1 (Saturn exalted in 7th, D1)",
+        "SAT aspect parashari given -> houses 1,4,9 (chart_defining)",
+        "graha effective dignity modified by aspects: effective_dignity_score=1, Mars contribution +0.25 (yogakaraka aspect)",
+        "wealth lens question_type=wealth, 336 template signals, domains_matched=[wealth], ranking verification_pass_status=documented_approximation"
+      ],
+      "karaka_analysis_cdlm_cells": [
+        {
+          "domain_row": "relationship",
+          "domain_col": "wealth",
+          "shared_signal_count": 250,
+          "net_linkage_strength": 174.99403,
+          "computed_linkage_strength": 339.825046
+        },
+        {
+          "domain_row": "career",
+          "domain_col": "wealth",
+          "shared_signal_count": 212,
+          "net_linkage_strength": 158.239606,
+          "computed_linkage_strength": 300.176524
+        },
+        {
+          "domain_row": "character",
+          "domain_col": "wealth",
+          "shared_signal_count": 19,
+          "net_linkage_strength": 11.146835,
+          "computed_linkage_strength": 17.230868
+        },
+        {
+          "domain_row": "health",
+          "domain_col": "wealth",
+          "shared_signal_count": 7,
+          "net_linkage_strength": 4.78975,
+          "computed_linkage_strength": 7.521476
+        },
+        {
+          "domain_row": "spirituality",
+          "domain_col": "wealth",
+          "shared_signal_count": 7,
+          "net_linkage_strength": 4.78975,
+          "computed_linkage_strength": 7.521476
+        }
+      ],
+      "varga_analysis": {
+        "note": "Varga refinement (D9/D10/D6) available via chart_facts_query with divisional_chart filter.",
+        "drill_uri": "marsys://tool/L1/chart_facts_query"
+      }
+    }
+  },
+  {
+    "tool": "Bash",
+    "arguments": {
+      "command": "jq activating_dasha / contradictions / judgment_flags / citations",
+      "description": "Read dasha, contradictions, flags, citations"
+    },
+    "result_raw": {
+      "activating_dasha": {
+        "id": "3438899",
+        "signal_id": "281151af-c42b-44a6-8c7f-0676a94538ba",
+        "signature_class": "SUBSYSTEM",
+        "activation_start": "2024-12-08",
+        "activation_end": "2027-08-18",
+        "activation_peak_date": "2026-04-13",
+        "orb_strength": 1,
+        "convergence_score": 1,
+        "dasha_activation_proximity_score": 0.8778,
+        "active_dasha_periods_lord": "Saturn (antardasha 2024-12-08 -> 2027-08-18, exact_lord)"
+      },
+      "contradictions": [
+        {
+          "tension_class": "domain_promise_vs_denial",
+          "domains_affected_array": [
+            "career"
+          ],
+          "combined_salience": 1.85725
+        },
+        {
+          "tension_class": "domain_promise_vs_denial",
+          "domains_affected_array": [
+            "character"
+          ],
+          "combined_salience": 1.85725
+        },
+        {
+          "tension_class": "domain_promise_vs_denial",
+          "domains_affected_array": [
+            "health"
+          ],
+          "combined_salience": 1.3455
+        }
+      ],
+      "discoveries_note": "Top discoveries are ga_sade_sati distributional anomalies affecting career/health/relationship (sade_sati_phase / concurrent_mudda_lord patterns); no wealth-specific contradiction flagged.",
+      "judgment_flags": [
+        {
+          "code": "domain_inference_requires_acharya_validation",
+          "detail": "Wealth domain synthesis reconciles 2nd/11th lords + Jupiter karaka from L1 chart_facts (via drill). Dhana yoga identification and dasha timing require acharya review of the assembled bundle.",
+          "severity": "warning"
+        },
+        {
+          "code": "catalog_only_rows_present",
+          "detail": "bearing_yoga_firings (ga_yoga_firings) is the firings-authoritative source; by_stage.yoga / verdict_skeleton.by_stage.yoga (bodha_msr_signals) are single-pass catalog-label matches (JL-004) and must never be read as confirmed findings (CLAUDE.md B7.N.6.1).",
+          "severity": "info"
+        }
+      ],
+      "citations_note": "Classical citations available via classical_attribution_lookup; ~200 signal_id_refs returned (drill only)."
+    }
+  },
+  {
+    "tool": "ToolSearch",
+    "arguments": {
+      "query": "select:mcp__marsys-jis-direct__ganita_positions_get,mcp__marsys-jis-direct__ganita_dasha_periods_get",
+      "max_results": 5
+    },
+    "result_raw": "Loaded tool schemas for: ganita_positions_get, ganita_dasha_periods_get (full JSONSchema definitions returned in a <functions> block)."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_positions_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "lahiri_chitrapaksha"
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "categories": [
+          "graha_position"
+        ],
+        "frame": "lagna",
+        "planet": null,
+        "rows": [
+          {
+            "fact_id": "3a7ca4e53a344e81",
+            "fact_category": "graha_position",
+            "fact_subject": "VEN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.VEN.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "ad0791b8e291ef4a",
+            "fact_category": "graha_position",
+            "fact_subject": "MOON",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MOON.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "c41dbeaeb6d063a6",
+            "fact_category": "graha_position",
+            "fact_subject": "RAH_MEAN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.RAH_MEAN.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "9afdd0db9be09d83",
+            "fact_category": "graha_position",
+            "fact_subject": "SAT",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.SAT.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "b40157db32cc4c6f",
+            "fact_category": "graha_position",
+            "fact_subject": "KET_MEAN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.KET_MEAN.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "2624f95937a33be0",
+            "fact_category": "graha_position",
+            "fact_subject": "JUP",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.JUP.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "6863e9c890aee919",
+            "fact_category": "graha_position",
+            "fact_subject": "MER",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MER.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "393839a84be7a6a2",
+            "fact_category": "graha_position",
+            "fact_subject": "MAR",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MAR.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "6f881812f281494d",
+            "fact_category": "graha_position",
+            "fact_subject": "SUN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.SUN.combustion_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "d49883b8bd71b739",
+            "fact_category": "graha_position",
+            "fact_subject": "JUP",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 9,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.JUP.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "caa47ad481abdd5e",
+            "fact_category": "graha_position",
+            "fact_subject": "MER",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 10,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MER.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "505ff4fbd4e8ca30",
+            "fact_category": "graha_position",
+            "fact_subject": "KET_MEAN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 8,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.KET_MEAN.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "2c42d78259c29642",
+            "fact_category": "graha_position",
+            "fact_subject": "SUN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 10,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.SUN.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "d65c0359225a9991",
+            "fact_category": "graha_position",
+            "fact_subject": "RAH_MEAN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 2,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.RAH_MEAN.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "36b7a0aa8e47ba0f",
+            "fact_category": "graha_position",
+            "fact_subject": "MOON",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 11,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MOON.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "25e60bec8e75c933",
+            "fact_category": "graha_position",
+            "fact_subject": "SAT",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 7,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.SAT.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "68b89f8fad9a3ea1",
+            "fact_category": "graha_position",
+            "fact_subject": "LAGNA",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 1,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.LAGNA.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "b6a53c44b60d0319",
+            "fact_category": "graha_position",
+            "fact_subject": "VEN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 9,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.VEN.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "8af68ed74d361be0",
+            "fact_category": "graha_position",
+            "fact_subject": "MAR",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 7,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MAR.house_d1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_subject": "VEN",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 259.172696089456,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "SAT",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 202.431986059195,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "SUN",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 291.962617284992,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "MOON",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 327.055230133129,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "MER",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 270.838753918698,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "RAH_MEAN",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 49.0330441002811,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "JUP",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 249.787497023181,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "LAGNA",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 12.4311495988431,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "KET_MEAN",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 229.033044100281,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "MAR",
+            "fact_key": "longitude_sidereal",
+            "fact_value_num": 198.519187554622,
+            "unit": "deg"
+          },
+          {
+            "fact_subject": "KET_MEAN",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Jyeshtha"
+          },
+          {
+            "fact_subject": "SUN",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Shravana"
+          },
+          {
+            "fact_subject": "MOON",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Purva Bhadrapada"
+          },
+          {
+            "fact_subject": "MAR",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Swati"
+          },
+          {
+            "fact_subject": "MER",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Uttara Ashadha"
+          },
+          {
+            "fact_subject": "JUP",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Mula"
+          },
+          {
+            "fact_subject": "VEN",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Purva Ashadha"
+          },
+          {
+            "fact_subject": "SAT",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Vishakha"
+          },
+          {
+            "fact_subject": "RAH_MEAN",
+            "fact_key": "nakshatra",
+            "fact_value_text": "Rohini"
+          },
+          {
+            "fact_subject": "MOON",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Jupiter"
+          },
+          {
+            "fact_subject": "VEN",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Venus"
+          },
+          {
+            "fact_subject": "JUP",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Ketu"
+          },
+          {
+            "fact_subject": "KET_MEAN",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Mercury"
+          },
+          {
+            "fact_subject": "RAH_MEAN",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Moon"
+          },
+          {
+            "fact_subject": "MAR",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Rahu"
+          },
+          {
+            "fact_subject": "SUN",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Moon"
+          },
+          {
+            "fact_subject": "MER",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Sun"
+          },
+          {
+            "fact_subject": "SAT",
+            "fact_key": "nakshatra_lord",
+            "fact_value_text": "Jupiter"
+          },
+          {
+            "fact_subject": "LAGNA",
+            "fact_key": "pada",
+            "fact_value_num": 4
+          },
+          {
+            "fact_subject": "KET_MEAN",
+            "fact_key": "pada",
+            "fact_value_num": 1
+          },
+          {
+            "fact_subject": "SAT",
+            "fact_key": "pada",
+            "fact_value_num": 1
+          },
+          {
+            "fact_subject": "JUP",
+            "fact_key": "pada",
+            "fact_value_num": 3
+          },
+          {
+            "fact_subject": "MER",
+            "fact_key": "pada",
+            "fact_value_num": 2
+          },
+          {
+            "fact_subject": "MOON",
+            "fact_key": "pada",
+            "fact_value_num": 3
+          },
+          {
+            "fact_subject": "SUN",
+            "fact_key": "pada",
+            "fact_value_num": 4
+          },
+          {
+            "fact_subject": "RAH_MEAN",
+            "fact_key": "pada",
+            "fact_value_num": 3
+          },
+          {
+            "fact_subject": "VEN",
+            "fact_key": "pada",
+            "fact_value_num": 2
+          },
+          {
+            "fact_subject": "MAR",
+            "fact_key": "pada",
+            "fact_value_num": 4
+          },
+          {
+            "fact_subject": "VEN",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "RAH_MEAN",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "SUN",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "MER",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "MAR",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "KET_MEAN",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "JUP",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "SAT",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "MOON",
+            "fact_key": "retrograde_flag",
+            "fact_value_text": "direct"
+          },
+          {
+            "fact_subject": "JUP",
+            "fact_key": "sign",
+            "fact_value_text": "Sagittarius"
+          },
+          {
+            "fact_subject": "LAGNA",
+            "fact_key": "sign",
+            "fact_value_text": "Aries"
+          },
+          {
+            "fact_subject": "MER",
+            "fact_key": "sign",
+            "fact_value_text": "Capricorn"
+          },
+          {
+            "fact_subject": "VEN",
+            "fact_key": "sign",
+            "fact_value_text": "Sagittarius"
+          },
+          {
+            "fact_subject": "SAT",
+            "fact_key": "sign",
+            "fact_value_text": "Libra"
+          },
+          {
+            "fact_subject": "MAR",
+            "fact_key": "sign",
+            "fact_value_text": "Libra"
+          },
+          {
+            "fact_subject": "RAH_MEAN",
+            "fact_key": "sign",
+            "fact_value_text": "Taurus"
+          },
+          {
+            "fact_subject": "SUN",
+            "fact_key": "sign",
+            "fact_value_text": "Capricorn"
+          },
+          {
+            "fact_subject": "MOON",
+            "fact_key": "sign",
+            "fact_value_text": "Aquarius"
+          },
+          {
+            "fact_subject": "KET_MEAN",
+            "fact_key": "sign",
+            "fact_value_text": "Scorpio"
+          },
+          {
+            "fact_subject": "KET_MEAN",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Mars"
+          },
+          {
+            "fact_subject": "MOON",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Saturn"
+          },
+          {
+            "fact_subject": "RAH_MEAN",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Venus"
+          },
+          {
+            "fact_subject": "SAT",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Venus"
+          },
+          {
+            "fact_subject": "MAR",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Venus"
+          },
+          {
+            "fact_subject": "SUN",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Saturn"
+          },
+          {
+            "fact_subject": "LAGNA",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Mars"
+          },
+          {
+            "fact_subject": "VEN",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Jupiter"
+          },
+          {
+            "fact_subject": "MER",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Saturn"
+          },
+          {
+            "fact_subject": "JUP",
+            "fact_key": "sign_lord",
+            "fact_value_text": "Jupiter"
+          }
+        ],
+        "total": 86,
+        "include_upagrahas": false
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_dasha_periods_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "lahiri_chitrapaksha",
+      "as_of_date": "2026-07-25"
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "source_table": "chart_dashas",
+          "facets_applied": {
+            "system": "vimshottari",
+            "level": "cap<=3",
+            "window": null,
+            "date_filter": {
+              "as_of_date": "2026-07-25"
+            },
+            "fields": "compact"
+          },
+          "rows": [
+            {
+              "dasha_row_id": "0eceaec2-69e0-4e53-a3f8-62acb2f54d4d",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "system_id": "vimshottari",
+              "level_n": 1,
+              "parent_row_id": null,
+              "lord_graha": "Mercury",
+              "lord_sign": "Capricorn",
+              "start_date": "2010-08-18",
+              "end_date": "2027-08-18",
+              "sandhi_flag": false,
+              "lord_natal_house_d1": 10,
+              "lord_natal_sign": "Capricorn",
+              "lord_natal_nakshatra": "Uttara Ashadha",
+              "lord_natal_dignity_d1": "neutral",
+              "lord_natal_shadbala_total": 7.55,
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "chart_dashas.vimshottari.L1.Mercury@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"
+            },
+            {
+              "dasha_row_id": "8b26d66d-7060-44f1-be50-eae4b60d8055",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "system_id": "vimshottari",
+              "level_n": 2,
+              "parent_row_id": "0eceaec2-69e0-4e53-a3f8-62acb2f54d4d",
+              "lord_graha": "Saturn",
+              "lord_sign": "Libra",
+              "start_date": "2024-12-08",
+              "end_date": "2027-08-18",
+              "sandhi_flag": false,
+              "lord_natal_house_d1": 7,
+              "lord_natal_sign": "Libra",
+              "lord_natal_nakshatra": "Vishakha",
+              "lord_natal_dignity_d1": "exalted",
+              "lord_natal_shadbala_total": 7.83,
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "chart_dashas.vimshottari.L2.Mercury-Saturn@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"
+            },
+            {
+              "dasha_row_id": "62baf71d-51e5-4cf9-92d9-ed5df8dc6252",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "system_id": "vimshottari",
+              "level_n": 3,
+              "parent_row_id": "8b26d66d-7060-44f1-be50-eae4b60d8055",
+              "lord_graha": "Moon",
+              "lord_sign": "Aquarius",
+              "start_date": "2026-06-27",
+              "end_date": "2026-09-17",
+              "sandhi_flag": false,
+              "lord_natal_house_d1": 11,
+              "lord_natal_sign": "Aquarius",
+              "lord_natal_nakshatra": "Purva Bhadrapada",
+              "lord_natal_dignity_d1": "neutral",
+              "lord_natal_shadbala_total": 5.65,
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Moon@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"
+            }
+          ],
+          "total": 3,
+          "natal_condition_provenance": "chart_facts:re-derived@serve (WP-1.8/R-43)",
+          "narration": "You are in Mercury Mahadasha (ends 2027-08-18, age ~43) -> Saturn Antardasha (ends 2027-08-18, age ~43) -> Moon Pratyantardasha (current, ends 2026-09-17, age ~42). Saturn, your Antardasha lord, is exalted in your 7 house (Vishakha). Moon, your Pratyantardasha lord, is neutral in your 11 house (Purva Bhadrapada).",
+          "drill_pointers": [
+            {
+              "instrument": "get_dashas",
+              "hint": "The period after the current Pratyantardasha (ends 2026-09-17) is not returned by an as_of_date call - re-call with as_of_date just after 2026-09-17 (or window_start=2026-09-17) to see the next lord and its natal condition.",
+              "pointer_type": "dasha_of_promise"
+            }
+          ]
+        },
+        "is_error": false
+      }
+    }
+  }
+]

@@ -199,6 +199,14 @@ def main():
         'chart_482012f1_status': 'EXECUTED (both flagship domains)',
         'chart_1c826d5a_status': 'NOT EXECUTED — time budget; queued for next Omega-7 iteration',
     }
+    report['audit_trail'] = {
+        'raw_transcripts': 'evals/omega7/harness_runs/DC-{W,C}-NN.json — the 42 verbatim consumer '
+                           'transcripts (tool, arguments, result_raw) the report is computed from; proves '
+                           'the report was run over a FRESH replay execution, not incidental run traffic '
+                           '(red-team finding #13).',
+        'replay_set_source': '~/elev-v2-shared/ledgers/DARK_CORPUS_REPLAY_SET_v1_0.json (FROZEN, read-only)',
+        'reproduce': 'python3 evals/omega7/build_report.py evals/omega7/harness_runs <capability_map_dir> <out_dir>',
+    }
     outp = os.path.join(out_dir, 'DARK_CORPUS_REPORT_v1_0.json')
     json.dump(report, open(outp, 'w'), indent=2)
     print('WROTE', outp)

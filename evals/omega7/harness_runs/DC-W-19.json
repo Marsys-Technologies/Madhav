@@ -1,0 +1,42 @@
+[
+  {
+    "tool": "ToolSearch",
+    "arguments": {"query": "select:mcp__marsys-jis-direct__ganita_positions_get,mcp__marsys-jis-direct__ganita_structural_get,mcp__marsys-jis-direct__assess_wealth,mcp__marsys-jis-direct__ganita_chart_facts_get,mcp__marsys-jis-direct__ganita_strength_get", "max_results": 5},
+    "result_raw": "Loaded schemas for: mcp__marsys-jis-direct__ganita_positions_get, mcp__marsys-jis-direct__ganita_structural_get, mcp__marsys-jis-direct__assess_wealth, mcp__marsys-jis-direct__ganita_chart_facts_get, mcp__marsys-jis-direct__ganita_strength_get (full JSONSchema definitions returned in <functions> block)."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_positions_get",
+    "arguments": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "ayanamsha_id": "lahiri_chitrapaksha"},
+    "result_raw": "chart_id=482012f1-710e-4a25-994a-93821f5871aa, categories=[graha_position], frame=lagna, total=86 rows (9 grahas + Lagna). D1 house_d1 / sign / sign_lord: JUP house_d1=9 sign=Sagittarius sign_lord=Jupiter (nak Mula, direct); MER house_d1=10 sign=Capricorn sign_lord=Saturn (nak Uttara Ashadha); KET_MEAN house_d1=8 sign=Scorpio sign_lord=Mars (nak Jyeshtha); SUN house_d1=10 sign=Capricorn sign_lord=Saturn (nak Shravana); RAH_MEAN house_d1=2 sign=Taurus sign_lord=Venus (nak Rohini); MOON house_d1=11 sign=Aquarius sign_lord=Saturn (nak Purva Bhadrapada); SAT house_d1=7 sign=Libra sign_lord=Venus (nak Vishakha, direct); LAGNA house_d1=1 sign=Aries sign_lord=Mars (pada 4); VEN house_d1=9 sign=Sagittarius sign_lord=Jupiter (nak Purva Ashadha, direct); MAR house_d1=7 sign=Libra sign_lord=Venus (nak Swati, direct). longitude_sidereal (deg): VEN=259.172696, SAT=202.431986, SUN=291.962617, MOON=327.055230, MER=270.838754, RAH_MEAN=49.033044, JUP=249.787497, LAGNA=12.431150, KET_MEAN=229.033044, MAR=198.519188. All grahas combustion_state=none; all retrograde_flag=direct."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__assess_wealth",
+    "arguments": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+    "result_raw": "Error: result (116,397 characters) exceeds maximum allowed tokens. Output has been saved to /Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav--worktrees-gamma/c4d56864-7dd3-494c-a77e-4fbb3bb71056/tool-results/mcp-marsys-jis-direct-assess_wealth-1784965007302.txt. Format: JSON with schema {type, object:{orientation_context, orientation_ok, content, is_error, budget_kb_applied, trim_report, drill_pointers, judgment_flags}}. (Result not consumed inline; the deterministic structural facets below were used instead to answer the geometry question.)"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_structural_get",
+    "arguments": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "facet": "parivartana"},
+    "result_raw": "facet=parivartana, categories=[parivartana_per_varga], total=42. D1 (natal rasi) mutual_exchange rows: ONLY 'Jupiter_in_Sagittarius_Jupiter_in_Sagittarius' (D1_JUP_JUP) — a self-reference (Jupiter in own sign), NOT a genuine two-planet exchange. No genuine two-planet parivartana exists in D1. Genuine two-planet exchanges appear only in vargas: D3 Mercury(Capricorn)-Saturn(Gemini); D4 Mars(Gemini)-Mercury(Aries); D6 Sun(Aquarius)-Saturn(Leo); D7 Jupiter(Aquarius)-Saturn(Pisces); D10 Mercury(Libra)-Venus(Gemini); D12 Moon(Pisces)-Jupiter(Cancer); D24 Mars(Gemini)-Mercury(Aries); D33 Venus(Capricorn)-Saturn(Libra); D54 Sun(Capricorn)-Saturn(Leo) and Mercury(Sagittarius)-Jupiter(Virgo). Remaining rows are self-reference (own-sign) entries (D2 Sun/Moon, D5 Saturn, D8/D20/D32 Moon, D11/D20/D40/D50/D108/D2700 Mars, D14 Sun/Jupiter/Venus/Saturn, D16 Venus, D21 Mars/Venus/Saturn, D27/D50/D2700 Jupiter, D60 Mercury, D150 Venus)."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_structural_get",
+    "arguments": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "facet": "conjunctions"},
+    "result_raw": "facet=conjunctions, categories=[conjunction_within_orb, conjunction_per_varga], total=113 (trimmed to 56 shown). D1 same-sign conjunctions: D1_MAR_SAT orb_deg=3.9128 sign=Libra house=7 (Mars+Saturn same-sign, verification single); D1_JUP_VEN orb_deg=9.3852 sign=Sagittarius house=9 (Jupiter+Venus same-sign, single). No 3-planet same-sign cluster in D1 (Sun+Mercury share Capricorn/H10 but that pair was not returned in the trimmed D1 set; remaining rows are per-varga D2/D3/D4/D7/D9/D10/D12/D16/D20/D24/D27/D40 and D2700). D2 (Hora) shows a large same-sign cluster in Cancer/H12 (Moon,Mars,Mercury,Venus,Saturn pairwise) and Leo/H1 (Sun,Jupiter,Rahu,Ketu pairwise)."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_structural_get",
+    "arguments": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "facet": "aspects"},
+    "result_raw": "facet=aspects, categories=[aspect_parashari_given, aspect_parashari_received, aspect_parashari_per_varga, aspect_matrix_summary], total=601 (trimmed to 75 shown). aspect_matrix_summary aspects_received_count by house: H1=3, H2=2, H3=2, H4=4, H5=2, H6=1, H7=0, H8=1, H9=1, H10=2, H11=0, H12=1. D1 aspect_parashari_given (graha drishti, house targets): SAT.house_1, SAT.house_4, SAT.house_9; MAR.house_1, MAR.house_2, MAR.house_10; JUP.house_1, JUP.house_3, JUP.house_5; RAH_MEAN.house_6, RAH_MEAN.house_8, RAH_MEAN.house_10; KET_MEAN.house_2, KET_MEAN.house_4, KET_MEAN.house_12; SUN.house_4; MER.house_4; VEN.house_3; MOON.house_5. (Remaining rows are aspect_parashari_per_varga across D1..D2700.)"
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_structural_get",
+    "arguments": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "facet": "aspects_jaimini"},
+    "result_raw": "facet=aspects_jaimini, categories=[aspect_jaimini, aspect_jaimini_per_varga], total=3240 (trimmed to 101 shown). Rows are sign-on-sign rasi-drishti entries (e.g. Taurus.on_Aquarius, Aquarius.on_Aries, Aries.on_Sagittarius, Taurus.on_Cancer, Taurus.on_Capricorn, Taurus.on_Libra, Libra.on_Aquarius, Cancer.on_Aquarius, etc.), two_pass_verified. Classical natal rasi-drishti relevant to wealth (hand-verified from occupancy Aries lagna): Taurus(2nd,fixed) casts rasi drishti on movable Cancer(4th), Libra(7th), Capricorn(10th); Aquarius(11th,fixed) casts on movable Aries(1st), Cancer(4th), Libra(7th). Both dhana houses (2nd Taurus + 11th Aquarius) converge rasi-drishti on Libra(7th) which holds 11th lord Saturn + Mars, and on Cancer(4th). The two fixed dhana houses do not aspect each other."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_structural_get",
+    "arguments": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "facet": "sambandha"},
+    "result_raw": "facet=sambandha, categories=[lord_aspects_lord_per_varga, lord_in_house_per_varga], total=521 (trimmed to 65 shown). Key D1 (natal) lord-aspects-lord row: D1_SAT.aspects_JUP strength=1 (lord_a=Saturn lord_a_house=7, lord_b=Jupiter lord_b_house=9, aspect_offset=3) — i.e. 11th lord Saturn (in Libra/7th) casts its graha 3rd-aspect onto Jupiter (9th lord/dhanakaraka, in Sagittarius/9th, conjoining 2nd lord Venus). No D1 Venus<->Saturn or Venus<->Jupiter mutual lord-aspect row present (those pairings appear only in vargas: e.g. D20_VEN.aspects_JUP, D54_VEN.aspects_JUP, D9_VEN.aspects_MAR). Remaining rows are per-varga lord-aspect entries (D3,D4,D5,D6,D7,D8,D9,D11,D16,D21,D24,D27,D32,D40,D45,D50,D54,D60,D108,D150,D2700)."
+  }
+]
