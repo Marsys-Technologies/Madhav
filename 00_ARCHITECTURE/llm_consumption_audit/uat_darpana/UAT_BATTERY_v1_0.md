@@ -1236,3 +1236,98 @@ Full reasoning for all three, plus the native's Stream SN authorship in full, is
 
 *End of UAT_BATTERY_v1_0.md — 39 scripted queries (S1×8, S2×6, S3×8, S4×8, S5×5, S6×4) + 6
 native Stream SN queries. Status: STAMPED (2026-07-24).*
+
+---
+
+## §5 — THE AUDIT GATE (SATYA-ŚEṢA campaign, Builder B4, appended 2026-07-25)
+
+**Appended per `SATYA_SHESHA_BRIEF_v1_0.md` W6 — nothing above this line in §§0–4 is altered.** This
+section codifies, as standing process for every future run of this battery (and any successor
+battery that inherits its rubric), the gate that would have caught both UAT-DARPANA vetoes (S4-03
+Gulika, S4-05 gochara health) before either was scored DELIGHT on a first pass.
+
+### §5.1 — The rule (BLOCKING)
+
+**Any answer containing an ABSENCE CLAIM or a COVERAGE CLAIM receives adversarial DB-audit at
+100%, as a BLOCKING gate that must clear before any grade is recorded for that answer.** Sampling
+(partial audit) remains acceptable for every other answer, per the process this report's own §3/§10
+already document.
+
+- **ABSENCE CLAIM** — the answer asserts that something is not present / not computed / not
+  available in the native's data (e.g. *"not in your data"*, *"no X exists"*, *"isn't in your
+  computed chart data"*). This is EL-07's failure shape, named directly: an empty naive probe
+  escalated into an ontological absence claim.
+- **COVERAGE CLAIM** — the answer asserts that a scan/sweep came back with nothing adverse, framing
+  a null result as an affirmative clearance (e.g. *"clean"*, *"no adverse window"*, *"nothing
+  found"*, *"comes back clean"*). This is the S4-05 / EL-62 failure shape: execution coverage over a
+  narrow universe read as category coverage over the whole domain.
+
+**Why the gate is unconditional, not judgment-gated on how the claim reads:** both S4-03 and S4-05
+were written in careful, self-branded "honest" language — S4-03 explicitly says it won't fabricate a
+number; S4-05 explicitly says *"I'd rather tell you that honestly than manufacture a scare."* A grader
+reading for tone alone will pass exactly the answers this gate exists to catch. The gate fires on the
+CLAIM'S PRESENCE, mechanically, regardless of how well-hedged or honest-sounding the surrounding
+prose is — that is precisely what a single first-pass grading pass got wrong twice in this campaign
+(ELEVATION_REGISTER EL-10).
+
+### §5.2 — The claim-detection heuristic (mechanical, not judgment)
+
+A literal, runnable detector — not prose the grader has to interpret — lives at
+`00_ARCHITECTURE/llm_consumption_audit/uat_darpana/scripts/claim_audit_gate.mjs` (plain Node.js,
+zero dependencies, `node claim_audit_gate.mjs [path-to-answer-appendix.md]`). It parses each `## 
+<query_id> (<stream>)` block in the answer appendix, extracts the `**A:**` text, and matches it
+against a regex claim-class list seeded from:
+
+- **EL-07** (`ELEVATION_REGISTER_v1_0.md`) — the exact S4-03 shape, *"isn't actually in your computed
+  chart data."*
+- **EL-09** (`ELEVATION_REGISTER_v1_0.md`) — the general "confident checkable claim" class, which
+  motivates the script's separate (non-blocking, informational) `PRECISION_CLAIM` category —
+  reported for visibility but deliberately NOT part of the blocking gate itself, to keep §5.1's rule
+  scoped to exactly what it claims to cover.
+- **EL-21** (`ELEVATION_REGISTER_v1_0.md`) — "absence claims / exact values / phase-timing
+  assertions" as the claim shapes a serving-time claim-checker must verify; absence claims are §5.1's
+  first blocking class, exact-value/phase-timing claims are the informational class above.
+- **S4-03 / S4-05 verbatim** (`UAT_DARPANA_ANSWER_APPENDIX_v1_0.md`) — the two failures' exact
+  phrasings, seeding the `ABSENCE_CLAIM` and `COVERAGE_CLAIM` regex lists directly.
+
+Two blocking claim classes (`ABSENCE_CLAIM`, `COVERAGE_CLAIM`) trigger the gate; one informational
+class (`PRECISION_CLAIM`) is reported but does not block, consistent with §5.1's scope. The detector
+is deliberately mechanical (regex over the verbatim answer text) so the gate itself is reproducible
+and auditable, not a second layer of LLM judgment that could itself be gamed by honest-sounding
+phrasing — the same failure mode this gate exists to close.
+
+### §5.3 — Dry-run result (2026-07-25, against all 45 DARPANA answers)
+
+Run against `UAT_DARPANA_ANSWER_APPENDIX_v1_0.md` (post-restoration of S4-01–S4-03, which had been
+accidentally dropped by PR #778's provisional-replacement diff — see that file's inline restoration
+note dated 2026-07-25). Full output archived at
+`00_ARCHITECTURE/llm_consumption_audit/uat_darpana/scripts/DRY_RUN_2026-07-25.txt`.
+
+**BLOCKING (4/45) — both vetoes present, plus 2 more, confirming the gate is not hand-tuned to only
+the two known failures:**
+- **S4-03** (S4) — `ABSENCE_CLAIM`: *"isn't actually in your computed chart data"*, *"simply isn't
+  among them"*, *"isn't available in your"* — the Gulika veto itself.
+- **S4-05** (S4) — `COVERAGE_CLAIM`: *"clean — no adverse"*, *"no adverse window"* — the gochara
+  health veto itself.
+- **S3-02** (S3) — `COVERAGE_CLAIM`: *"no adverse window"* (the freshly-computed forward hazard-scan
+  reads as genuinely clean here — S3-02 was audited and confirmed correct in the DARPANA report, so
+  this is the gate correctly pulling in a TRUE coverage claim that happened to audit clean, exactly
+  the "sampling wasn't enough, audit everything that makes this shape of claim" behavior §5.1 wants).
+- **S5-03** (S5) — `ABSENCE_CLAIM` + `COVERAGE_CLAIM`: *"isn't computed in your"*, *"clean bill of
+  health"* — notably, S5-03's answer explicitly self-discloses the gap (*"that's a gap on my side,
+  not a clean bill of health"*) and would likely read as honest to a first-pass grader; the gate
+  fires anyway, per §5.1's design (claim presence, not tone, decides).
+
+INFO-ONLY (27/45) and CLEAN (14/45) lists are in the archived full output; not reproduced here as
+they carry no blocking obligation.
+
+**Required-catch check: PASS.** Both S4-03 and S4-05 are in the BLOCKING set. Exit code 0.
+
+### §5.4 — How this wires into execution
+
+Any future run of this battery (or a successor inheriting §1's rubric) runs
+`claim_audit_gate.mjs` over the answer appendix as soon as answers land, BEFORE Phase 4 grading
+begins. Every BLOCKING-flagged `query_id` is routed to 100% adversarial DB-audit; its grade is not
+finalized until that audit clears. This is now load-bearing process, not a one-time retrospective
+check — the point of this section is that the NEXT S4-03/S4-05-shaped failure gets caught here,
+before a grade ships, not months later by a second campaign.
