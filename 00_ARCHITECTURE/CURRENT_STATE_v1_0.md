@@ -5434,6 +5434,29 @@ block (post-rebuild era), and proceeds.
 > `wave/D-4b/*` branches or PRs; recorded as a drift finding (`MARSYS_DEFECT_GAP_REGISTER_v2_0.md`
 > CR-119), annotated not reverted. Working branch for the open: `wave/D-4b/open`.
 >
+> 🔔 **CROSS-CAMPAIGN NOTE (2026-07-25/26, from the SATYA-ŚEṢA / Truth-Residue campaign — read-only
+> note, this file's doctrine-wave banners above are untouched): SATYA-ŚEṢA is CLOSED, all six work
+> items VERIFIED-CLOSED.** Brief:
+> `00_ARCHITECTURE/llm_consumption_audit/briefs/satya_shesha/SATYA_SHESHA_BRIEF_v1_0.md`. Killed the
+> UAT-DARPANA S4-03/S4-05 false-confidence failure mode (absence-of-evidence served as
+> evidence-of-absence) at five layers: W1 bare-empty resolver (`ganita_chart_facts_get` keyword
+> misses now carry `empty_reason`+`resolver_suggestion`, PR #788), W2 category-coverage attestation
+> + refusal shape on the gochara/kala family (PR #787), W3 response-budget enforcement on the same
+> family (PR #787, same PR), W4 MCP deploy-surface wiring (`concept_locate`/`get_database_schema`
+> confirmed live-callable, `read_classical_text.ts`'s 5 orphaned tools wired, PR #785), W5 register
+> updates (EL-62 + partial-close annotations on EL-07/11/41/42 + EL-24 heartbeat-reaper amendment +
+> UAT-DARPANA 9.58-mean retirement addendum, PR #784), W6 mandatory-audit-gate + claim-detector
+> (flags both vetoes live, 4/45 blocking overall, PR #784). Independent Opus Verifier G4-checked all
+> six against LIVE production on both canonical charts; regression guard on the §1 baseline's
+> "verified FIXED" list PASSED 4/4. `amjis-mcp` explicitly redeployed (image
+> `deff15d341b970b118163b2ab28bae4907718160`); `platform` auto-deployed on every merge. Full
+> evidence: `00_ARCHITECTURE/llm_consumption_audit/ledgers/SATYA_SHESHA_LEDGER.md`,
+> `00_ARCHITECTURE/llm_consumption_audit/briefs/satya_shesha/SATYA_SHESHA_REPORT_v1_0.md`. A
+> follow-on addendum (`SATYA_SHESHA_W7_ADDENDUM_v1_0.md`, flagship substance-inline on
+> assess_wealth/assess_career) arrived from Fable mid-campaign but was NOT adopted this run — it is
+> a new work item outside the closed brief's W1-W6 scope, flagged for a fresh conductor session. No
+> D-4b/doctrine-wave files touched by this campaign.
+>
 > 🔔 **CROSS-CAMPAIGN NOTE for the D-4b conductor (2026-07-24, later same day, from the
 > SARVA-SIDDHI Stage-1 wrap-up pass — read-only note, this file's doctrine-wave banners above
 > are untouched): supersedes the v1.1-era note immediately below in currency (that note's
