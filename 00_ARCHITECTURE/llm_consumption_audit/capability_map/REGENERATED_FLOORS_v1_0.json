@@ -1,0 +1,902 @@
+{
+  "artifact": "REGENERATED_FLOORS",
+  "version": "1.0",
+  "status": "GENERATED",
+  "lane": "Ω8 (Elevation Campaign v2.1, Stream γ / PŪRṆA) — floor reconciliation",
+  "generator": "platform/scripts/census/generate_floor_regeneration.mjs",
+  "generated_at": "2026-07-25T07:21:19.209Z",
+  "source_tci": {
+    "path": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma-lane-omega-floors/00_ARCHITECTURE/llm_consumption_audit/capability_map/TOTAL_CONCEPT_INVENTORY_v1_0.json",
+    "version": "1.0"
+  },
+  "source_relevance_map": {
+    "path": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma-lane-omega-floors/00_ARCHITECTURE/llm_consumption_audit/capability_map/DOMAIN_RELEVANCE_MAP_v1_0.json",
+    "version": "1.0"
+  },
+  "method_note": "Floors regenerated FROM the TCI slice + Ω2 relevance map (NEVER hand-curated). divisional_facts vargas = universal {D1,D9} ∪ Ω2-primary(domain); ashtakavarga_scan = full D1+per-varga AV family; special_lagna_read = full lagna+saham+upapada set; argala/dispositor/mechanism/cross-ayanamsha added as domain-relevant floor items. Coverage accounted into the five Ω3 states (SAME rule as C7/Ω3).",
+  "cross_manifest_wiring_note": "The floor CONSUMER (VIDHI_INTENT_FLOORS in platform/src/lib/vidhi/registry_data.ts and its DB seed vidhi_intent_floors / vidhi_floor_items, migration 440) is OUTSIDE γ's manifest. This artifact is the correct TCI-derived floor DATA, ready for α (or a later pass) to wire in — PARKED-HONEST, blocked-on-α. Same pattern Lane E used for rank_vocabulary.ts.",
+  "domains": [
+    {
+      "domain": "wealth",
+      "intent": "wealth_deepdive",
+      "omega2_primary_vargas": [
+        "D11",
+        "D2"
+      ],
+      "floor_vargas": [
+        "D1",
+        "D11",
+        "D2",
+        "D9"
+      ],
+      "floor_item_count": 10,
+      "floor_items": [
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D1"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D11"
+          },
+          "classical_role": "omega2_primary_for_domain",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D2"
+          },
+          "classical_role": "omega2_primary_for_domain",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D9"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "ashtakavarga_scan",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "D1 + per-varga Ashtakavarga (ashtakavarga_bindu / _sign / _per_varga / pinda_* / *_shodhana / kakshya).",
+          "covered_count": 504,
+          "covered_sample": [
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_1",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_10",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_11",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_12",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_2"
+          ]
+        },
+        {
+          "floor_tool": "special_lagna_read",
+          "live_tool": "ganita_special_lagnas_get",
+          "selector": "Full lagna + saham set: 7 special lagnas (Indu/Sree/Ghati/Hora/Bhava/Varnada/Vighati) + 70 sahams + Upapada.",
+          "covered_count": 78,
+          "covered_sample": [
+            "l1.fact.saham_position.SAHAM_AASTHA",
+            "l1.fact.saham_position.SAHAM_AKSA",
+            "l1.fact.saham_position.SAHAM_AMRTA",
+            "l1.fact.saham_position.SAHAM_APAMRITYU",
+            "l1.fact.saham_position.SAHAM_AROGA"
+          ]
+        },
+        {
+          "floor_tool": "argala_read",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "Argala / virodha-argala natal matrix + per-varga net argala (intervention structure on the bhavas).",
+          "covered_count": 1044,
+          "covered_sample": [
+            "l1.fact.argala_natal_matrix.D108_SIGN_1",
+            "l1.fact.argala_natal_matrix.D108_SIGN_10",
+            "l1.fact.argala_natal_matrix.D108_SIGN_11",
+            "l1.fact.argala_natal_matrix.D108_SIGN_12",
+            "l1.fact.argala_natal_matrix.D108_SIGN_2"
+          ]
+        },
+        {
+          "floor_tool": "dispositor_closure_read",
+          "live_tool": "ganita_chart_facts_get + bodha_mechanisms_get",
+          "selector": "Dispositor-strength closure (composite_dispositor_strength …) + convergent-dispositor-chain / dispositor-cycle mechanism classes.",
+          "covered_count": 607,
+          "covered_sample": [
+            "l1.fact.composite_dispositor_strength.JUP",
+            "l1.fact.composite_dispositor_strength.KET_MEAN",
+            "l1.fact.composite_dispositor_strength.MAR",
+            "l1.fact.composite_dispositor_strength.MER",
+            "l1.fact.composite_dispositor_strength.MOON"
+          ]
+        },
+        {
+          "floor_tool": "mechanism_read",
+          "live_tool": "bodha_mechanisms_get",
+          "selector": "The 10 CGM mechanism classes (chains/circuits). Per CMN-1 the TCI row_count is ayanamsha-summed.",
+          "covered_count": 10,
+          "covered_sample": [
+            "l2.mechanism_class.convergent_dispositor_chain",
+            "l2.mechanism_class.dispositor_cycle",
+            "l2.mechanism_class.house_lordship_cycle",
+            "l2.mechanism_class.yoga_cluster",
+            "l2.mechanism_class.mutual_reception"
+          ]
+        },
+        {
+          "floor_tool": "cross_ayanamsha_agreement",
+          "live_tool": "ganita_positions_get",
+          "selector": "Cross-ayanamsha agreement (5-ayanamsha spread per anchor). Domain-agnostic universal — accounted in its own bucket.",
+          "domain_agnostic_universal": true,
+          "covered_count": 6,
+          "covered_sample": [
+            "meta.ayanamsha.INVARIANT",
+            "meta.ayanamsha.krishnamurti",
+            "meta.ayanamsha.lahiri_chitrapaksha",
+            "meta.ayanamsha.raman",
+            "meta.ayanamsha.surya_siddhanta_classical"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "career",
+      "intent": "career_deepdive",
+      "omega2_primary_vargas": [
+        "D10"
+      ],
+      "floor_vargas": [
+        "D1",
+        "D10",
+        "D9"
+      ],
+      "floor_item_count": 9,
+      "floor_items": [
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D1"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D10"
+          },
+          "classical_role": "omega2_primary_for_domain",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D9"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "ashtakavarga_scan",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "D1 + per-varga Ashtakavarga (ashtakavarga_bindu / _sign / _per_varga / pinda_* / *_shodhana / kakshya).",
+          "covered_count": 504,
+          "covered_sample": [
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_1",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_10",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_11",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_12",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_2"
+          ]
+        },
+        {
+          "floor_tool": "special_lagna_read",
+          "live_tool": "ganita_special_lagnas_get",
+          "selector": "Full lagna + saham set: 7 special lagnas (Indu/Sree/Ghati/Hora/Bhava/Varnada/Vighati) + 70 sahams + Upapada.",
+          "covered_count": 78,
+          "covered_sample": [
+            "l1.fact.saham_position.SAHAM_AASTHA",
+            "l1.fact.saham_position.SAHAM_AKSA",
+            "l1.fact.saham_position.SAHAM_AMRTA",
+            "l1.fact.saham_position.SAHAM_APAMRITYU",
+            "l1.fact.saham_position.SAHAM_AROGA"
+          ]
+        },
+        {
+          "floor_tool": "argala_read",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "Argala / virodha-argala natal matrix + per-varga net argala (intervention structure on the bhavas).",
+          "covered_count": 1044,
+          "covered_sample": [
+            "l1.fact.argala_natal_matrix.D108_SIGN_1",
+            "l1.fact.argala_natal_matrix.D108_SIGN_10",
+            "l1.fact.argala_natal_matrix.D108_SIGN_11",
+            "l1.fact.argala_natal_matrix.D108_SIGN_12",
+            "l1.fact.argala_natal_matrix.D108_SIGN_2"
+          ]
+        },
+        {
+          "floor_tool": "dispositor_closure_read",
+          "live_tool": "ganita_chart_facts_get + bodha_mechanisms_get",
+          "selector": "Dispositor-strength closure (composite_dispositor_strength …) + convergent-dispositor-chain / dispositor-cycle mechanism classes.",
+          "covered_count": 607,
+          "covered_sample": [
+            "l1.fact.composite_dispositor_strength.JUP",
+            "l1.fact.composite_dispositor_strength.KET_MEAN",
+            "l1.fact.composite_dispositor_strength.MAR",
+            "l1.fact.composite_dispositor_strength.MER",
+            "l1.fact.composite_dispositor_strength.MOON"
+          ]
+        },
+        {
+          "floor_tool": "mechanism_read",
+          "live_tool": "bodha_mechanisms_get",
+          "selector": "The 10 CGM mechanism classes (chains/circuits). Per CMN-1 the TCI row_count is ayanamsha-summed.",
+          "covered_count": 10,
+          "covered_sample": [
+            "l2.mechanism_class.convergent_dispositor_chain",
+            "l2.mechanism_class.dispositor_cycle",
+            "l2.mechanism_class.house_lordship_cycle",
+            "l2.mechanism_class.yoga_cluster",
+            "l2.mechanism_class.mutual_reception"
+          ]
+        },
+        {
+          "floor_tool": "cross_ayanamsha_agreement",
+          "live_tool": "ganita_positions_get",
+          "selector": "Cross-ayanamsha agreement (5-ayanamsha spread per anchor). Domain-agnostic universal — accounted in its own bucket.",
+          "domain_agnostic_universal": true,
+          "covered_count": 6,
+          "covered_sample": [
+            "meta.ayanamsha.INVARIANT",
+            "meta.ayanamsha.krishnamurti",
+            "meta.ayanamsha.lahiri_chitrapaksha",
+            "meta.ayanamsha.raman",
+            "meta.ayanamsha.surya_siddhanta_classical"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "marriage",
+      "intent": "marriage_deepdive",
+      "omega2_primary_vargas": [
+        "D9"
+      ],
+      "floor_vargas": [
+        "D1",
+        "D9"
+      ],
+      "floor_item_count": 8,
+      "floor_items": [
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D1"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D9"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "ashtakavarga_scan",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "D1 + per-varga Ashtakavarga (ashtakavarga_bindu / _sign / _per_varga / pinda_* / *_shodhana / kakshya).",
+          "covered_count": 504,
+          "covered_sample": [
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_1",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_10",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_11",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_12",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_2"
+          ]
+        },
+        {
+          "floor_tool": "special_lagna_read",
+          "live_tool": "ganita_special_lagnas_get",
+          "selector": "Full lagna + saham set: 7 special lagnas (Indu/Sree/Ghati/Hora/Bhava/Varnada/Vighati) + 70 sahams + Upapada.",
+          "covered_count": 78,
+          "covered_sample": [
+            "l1.fact.saham_position.SAHAM_AASTHA",
+            "l1.fact.saham_position.SAHAM_AKSA",
+            "l1.fact.saham_position.SAHAM_AMRTA",
+            "l1.fact.saham_position.SAHAM_APAMRITYU",
+            "l1.fact.saham_position.SAHAM_AROGA"
+          ]
+        },
+        {
+          "floor_tool": "argala_read",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "Argala / virodha-argala natal matrix + per-varga net argala (intervention structure on the bhavas).",
+          "covered_count": 1044,
+          "covered_sample": [
+            "l1.fact.argala_natal_matrix.D108_SIGN_1",
+            "l1.fact.argala_natal_matrix.D108_SIGN_10",
+            "l1.fact.argala_natal_matrix.D108_SIGN_11",
+            "l1.fact.argala_natal_matrix.D108_SIGN_12",
+            "l1.fact.argala_natal_matrix.D108_SIGN_2"
+          ]
+        },
+        {
+          "floor_tool": "dispositor_closure_read",
+          "live_tool": "ganita_chart_facts_get + bodha_mechanisms_get",
+          "selector": "Dispositor-strength closure (composite_dispositor_strength …) + convergent-dispositor-chain / dispositor-cycle mechanism classes.",
+          "covered_count": 607,
+          "covered_sample": [
+            "l1.fact.composite_dispositor_strength.JUP",
+            "l1.fact.composite_dispositor_strength.KET_MEAN",
+            "l1.fact.composite_dispositor_strength.MAR",
+            "l1.fact.composite_dispositor_strength.MER",
+            "l1.fact.composite_dispositor_strength.MOON"
+          ]
+        },
+        {
+          "floor_tool": "mechanism_read",
+          "live_tool": "bodha_mechanisms_get",
+          "selector": "The 10 CGM mechanism classes (chains/circuits). Per CMN-1 the TCI row_count is ayanamsha-summed.",
+          "covered_count": 10,
+          "covered_sample": [
+            "l2.mechanism_class.convergent_dispositor_chain",
+            "l2.mechanism_class.dispositor_cycle",
+            "l2.mechanism_class.house_lordship_cycle",
+            "l2.mechanism_class.yoga_cluster",
+            "l2.mechanism_class.mutual_reception"
+          ]
+        },
+        {
+          "floor_tool": "cross_ayanamsha_agreement",
+          "live_tool": "ganita_positions_get",
+          "selector": "Cross-ayanamsha agreement (5-ayanamsha spread per anchor). Domain-agnostic universal — accounted in its own bucket.",
+          "domain_agnostic_universal": true,
+          "covered_count": 6,
+          "covered_sample": [
+            "meta.ayanamsha.INVARIANT",
+            "meta.ayanamsha.krishnamurti",
+            "meta.ayanamsha.lahiri_chitrapaksha",
+            "meta.ayanamsha.raman",
+            "meta.ayanamsha.surya_siddhanta_classical"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "health",
+      "intent": "health_deepdive",
+      "omega2_primary_vargas": [
+        "D30",
+        "D6"
+      ],
+      "floor_vargas": [
+        "D1",
+        "D30",
+        "D6",
+        "D9"
+      ],
+      "floor_item_count": 10,
+      "floor_items": [
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D1"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D30"
+          },
+          "classical_role": "omega2_primary_for_domain",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D6"
+          },
+          "classical_role": "omega2_primary_for_domain",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D9"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "ashtakavarga_scan",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "D1 + per-varga Ashtakavarga (ashtakavarga_bindu / _sign / _per_varga / pinda_* / *_shodhana / kakshya).",
+          "covered_count": 504,
+          "covered_sample": [
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_1",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_10",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_11",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_12",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_2"
+          ]
+        },
+        {
+          "floor_tool": "special_lagna_read",
+          "live_tool": "ganita_special_lagnas_get",
+          "selector": "Full lagna + saham set: 7 special lagnas (Indu/Sree/Ghati/Hora/Bhava/Varnada/Vighati) + 70 sahams + Upapada.",
+          "covered_count": 78,
+          "covered_sample": [
+            "l1.fact.saham_position.SAHAM_AASTHA",
+            "l1.fact.saham_position.SAHAM_AKSA",
+            "l1.fact.saham_position.SAHAM_AMRTA",
+            "l1.fact.saham_position.SAHAM_APAMRITYU",
+            "l1.fact.saham_position.SAHAM_AROGA"
+          ]
+        },
+        {
+          "floor_tool": "argala_read",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "Argala / virodha-argala natal matrix + per-varga net argala (intervention structure on the bhavas).",
+          "covered_count": 1044,
+          "covered_sample": [
+            "l1.fact.argala_natal_matrix.D108_SIGN_1",
+            "l1.fact.argala_natal_matrix.D108_SIGN_10",
+            "l1.fact.argala_natal_matrix.D108_SIGN_11",
+            "l1.fact.argala_natal_matrix.D108_SIGN_12",
+            "l1.fact.argala_natal_matrix.D108_SIGN_2"
+          ]
+        },
+        {
+          "floor_tool": "dispositor_closure_read",
+          "live_tool": "ganita_chart_facts_get + bodha_mechanisms_get",
+          "selector": "Dispositor-strength closure (composite_dispositor_strength …) + convergent-dispositor-chain / dispositor-cycle mechanism classes.",
+          "covered_count": 607,
+          "covered_sample": [
+            "l1.fact.composite_dispositor_strength.JUP",
+            "l1.fact.composite_dispositor_strength.KET_MEAN",
+            "l1.fact.composite_dispositor_strength.MAR",
+            "l1.fact.composite_dispositor_strength.MER",
+            "l1.fact.composite_dispositor_strength.MOON"
+          ]
+        },
+        {
+          "floor_tool": "mechanism_read",
+          "live_tool": "bodha_mechanisms_get",
+          "selector": "The 10 CGM mechanism classes (chains/circuits). Per CMN-1 the TCI row_count is ayanamsha-summed.",
+          "covered_count": 10,
+          "covered_sample": [
+            "l2.mechanism_class.convergent_dispositor_chain",
+            "l2.mechanism_class.dispositor_cycle",
+            "l2.mechanism_class.house_lordship_cycle",
+            "l2.mechanism_class.yoga_cluster",
+            "l2.mechanism_class.mutual_reception"
+          ]
+        },
+        {
+          "floor_tool": "cross_ayanamsha_agreement",
+          "live_tool": "ganita_positions_get",
+          "selector": "Cross-ayanamsha agreement (5-ayanamsha spread per anchor). Domain-agnostic universal — accounted in its own bucket.",
+          "domain_agnostic_universal": true,
+          "covered_count": 6,
+          "covered_sample": [
+            "meta.ayanamsha.INVARIANT",
+            "meta.ayanamsha.krishnamurti",
+            "meta.ayanamsha.lahiri_chitrapaksha",
+            "meta.ayanamsha.raman",
+            "meta.ayanamsha.surya_siddhanta_classical"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "spirituality",
+      "intent": "spirituality_deepdive",
+      "omega2_primary_vargas": [
+        "D20",
+        "D9"
+      ],
+      "floor_vargas": [
+        "D1",
+        "D20",
+        "D9"
+      ],
+      "floor_item_count": 9,
+      "floor_items": [
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D1"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D20"
+          },
+          "classical_role": "omega2_primary_for_domain",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D9"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "ashtakavarga_scan",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "D1 + per-varga Ashtakavarga (ashtakavarga_bindu / _sign / _per_varga / pinda_* / *_shodhana / kakshya).",
+          "covered_count": 504,
+          "covered_sample": [
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_1",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_10",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_11",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_12",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_2"
+          ]
+        },
+        {
+          "floor_tool": "special_lagna_read",
+          "live_tool": "ganita_special_lagnas_get",
+          "selector": "Full lagna + saham set: 7 special lagnas (Indu/Sree/Ghati/Hora/Bhava/Varnada/Vighati) + 70 sahams + Upapada.",
+          "covered_count": 78,
+          "covered_sample": [
+            "l1.fact.saham_position.SAHAM_AASTHA",
+            "l1.fact.saham_position.SAHAM_AKSA",
+            "l1.fact.saham_position.SAHAM_AMRTA",
+            "l1.fact.saham_position.SAHAM_APAMRITYU",
+            "l1.fact.saham_position.SAHAM_AROGA"
+          ]
+        },
+        {
+          "floor_tool": "argala_read",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "Argala / virodha-argala natal matrix + per-varga net argala (intervention structure on the bhavas).",
+          "covered_count": 1044,
+          "covered_sample": [
+            "l1.fact.argala_natal_matrix.D108_SIGN_1",
+            "l1.fact.argala_natal_matrix.D108_SIGN_10",
+            "l1.fact.argala_natal_matrix.D108_SIGN_11",
+            "l1.fact.argala_natal_matrix.D108_SIGN_12",
+            "l1.fact.argala_natal_matrix.D108_SIGN_2"
+          ]
+        },
+        {
+          "floor_tool": "dispositor_closure_read",
+          "live_tool": "ganita_chart_facts_get + bodha_mechanisms_get",
+          "selector": "Dispositor-strength closure (composite_dispositor_strength …) + convergent-dispositor-chain / dispositor-cycle mechanism classes.",
+          "covered_count": 607,
+          "covered_sample": [
+            "l1.fact.composite_dispositor_strength.JUP",
+            "l1.fact.composite_dispositor_strength.KET_MEAN",
+            "l1.fact.composite_dispositor_strength.MAR",
+            "l1.fact.composite_dispositor_strength.MER",
+            "l1.fact.composite_dispositor_strength.MOON"
+          ]
+        },
+        {
+          "floor_tool": "mechanism_read",
+          "live_tool": "bodha_mechanisms_get",
+          "selector": "The 10 CGM mechanism classes (chains/circuits). Per CMN-1 the TCI row_count is ayanamsha-summed.",
+          "covered_count": 10,
+          "covered_sample": [
+            "l2.mechanism_class.convergent_dispositor_chain",
+            "l2.mechanism_class.dispositor_cycle",
+            "l2.mechanism_class.house_lordship_cycle",
+            "l2.mechanism_class.yoga_cluster",
+            "l2.mechanism_class.mutual_reception"
+          ]
+        },
+        {
+          "floor_tool": "cross_ayanamsha_agreement",
+          "live_tool": "ganita_positions_get",
+          "selector": "Cross-ayanamsha agreement (5-ayanamsha spread per anchor). Domain-agnostic universal — accounted in its own bucket.",
+          "domain_agnostic_universal": true,
+          "covered_count": 6,
+          "covered_sample": [
+            "meta.ayanamsha.INVARIANT",
+            "meta.ayanamsha.krishnamurti",
+            "meta.ayanamsha.lahiri_chitrapaksha",
+            "meta.ayanamsha.raman",
+            "meta.ayanamsha.surya_siddhanta_classical"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "education",
+      "intent": "education_deepdive",
+      "omega2_primary_vargas": [
+        "D24"
+      ],
+      "floor_vargas": [
+        "D1",
+        "D24",
+        "D9"
+      ],
+      "floor_item_count": 9,
+      "floor_items": [
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D1"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D24"
+          },
+          "classical_role": "omega2_primary_for_domain",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D9"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "ashtakavarga_scan",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "D1 + per-varga Ashtakavarga (ashtakavarga_bindu / _sign / _per_varga / pinda_* / *_shodhana / kakshya).",
+          "covered_count": 504,
+          "covered_sample": [
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_1",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_10",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_11",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_12",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_2"
+          ]
+        },
+        {
+          "floor_tool": "special_lagna_read",
+          "live_tool": "ganita_special_lagnas_get",
+          "selector": "Full lagna + saham set: 7 special lagnas (Indu/Sree/Ghati/Hora/Bhava/Varnada/Vighati) + 70 sahams + Upapada.",
+          "covered_count": 78,
+          "covered_sample": [
+            "l1.fact.saham_position.SAHAM_AASTHA",
+            "l1.fact.saham_position.SAHAM_AKSA",
+            "l1.fact.saham_position.SAHAM_AMRTA",
+            "l1.fact.saham_position.SAHAM_APAMRITYU",
+            "l1.fact.saham_position.SAHAM_AROGA"
+          ]
+        },
+        {
+          "floor_tool": "argala_read",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "Argala / virodha-argala natal matrix + per-varga net argala (intervention structure on the bhavas).",
+          "covered_count": 1044,
+          "covered_sample": [
+            "l1.fact.argala_natal_matrix.D108_SIGN_1",
+            "l1.fact.argala_natal_matrix.D108_SIGN_10",
+            "l1.fact.argala_natal_matrix.D108_SIGN_11",
+            "l1.fact.argala_natal_matrix.D108_SIGN_12",
+            "l1.fact.argala_natal_matrix.D108_SIGN_2"
+          ]
+        },
+        {
+          "floor_tool": "dispositor_closure_read",
+          "live_tool": "ganita_chart_facts_get + bodha_mechanisms_get",
+          "selector": "Dispositor-strength closure (composite_dispositor_strength …) + convergent-dispositor-chain / dispositor-cycle mechanism classes.",
+          "covered_count": 607,
+          "covered_sample": [
+            "l1.fact.composite_dispositor_strength.JUP",
+            "l1.fact.composite_dispositor_strength.KET_MEAN",
+            "l1.fact.composite_dispositor_strength.MAR",
+            "l1.fact.composite_dispositor_strength.MER",
+            "l1.fact.composite_dispositor_strength.MOON"
+          ]
+        },
+        {
+          "floor_tool": "mechanism_read",
+          "live_tool": "bodha_mechanisms_get",
+          "selector": "The 10 CGM mechanism classes (chains/circuits). Per CMN-1 the TCI row_count is ayanamsha-summed.",
+          "covered_count": 10,
+          "covered_sample": [
+            "l2.mechanism_class.convergent_dispositor_chain",
+            "l2.mechanism_class.dispositor_cycle",
+            "l2.mechanism_class.house_lordship_cycle",
+            "l2.mechanism_class.yoga_cluster",
+            "l2.mechanism_class.mutual_reception"
+          ]
+        },
+        {
+          "floor_tool": "cross_ayanamsha_agreement",
+          "live_tool": "ganita_positions_get",
+          "selector": "Cross-ayanamsha agreement (5-ayanamsha spread per anchor). Domain-agnostic universal — accounted in its own bucket.",
+          "domain_agnostic_universal": true,
+          "covered_count": 6,
+          "covered_sample": [
+            "meta.ayanamsha.INVARIANT",
+            "meta.ayanamsha.krishnamurti",
+            "meta.ayanamsha.lahiri_chitrapaksha",
+            "meta.ayanamsha.raman",
+            "meta.ayanamsha.surya_siddhanta_classical"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "progeny",
+      "intent": "progeny_deepdive",
+      "omega2_primary_vargas": [
+        "D7"
+      ],
+      "floor_vargas": [
+        "D1",
+        "D7",
+        "D9"
+      ],
+      "floor_item_count": 9,
+      "floor_items": [
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D1"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D7"
+          },
+          "classical_role": "omega2_primary_for_domain",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "divisional_facts",
+          "live_tool": "ganita_positions_get",
+          "serving_args": {
+            "chart_id": "<chart_id>",
+            "varga": "D9"
+          },
+          "classical_role": "universal_foundation",
+          "covered_count": 1
+        },
+        {
+          "floor_tool": "ashtakavarga_scan",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "D1 + per-varga Ashtakavarga (ashtakavarga_bindu / _sign / _per_varga / pinda_* / *_shodhana / kakshya).",
+          "covered_count": 504,
+          "covered_sample": [
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_1",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_10",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_11",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_12",
+            "l1.fact.ashtakavarga_bindu.JUP_HOUSE_2"
+          ]
+        },
+        {
+          "floor_tool": "special_lagna_read",
+          "live_tool": "ganita_special_lagnas_get",
+          "selector": "Full lagna + saham set: 7 special lagnas (Indu/Sree/Ghati/Hora/Bhava/Varnada/Vighati) + 70 sahams + Upapada.",
+          "covered_count": 78,
+          "covered_sample": [
+            "l1.fact.saham_position.SAHAM_AASTHA",
+            "l1.fact.saham_position.SAHAM_AKSA",
+            "l1.fact.saham_position.SAHAM_AMRTA",
+            "l1.fact.saham_position.SAHAM_APAMRITYU",
+            "l1.fact.saham_position.SAHAM_AROGA"
+          ]
+        },
+        {
+          "floor_tool": "argala_read",
+          "live_tool": "ganita_chart_facts_get",
+          "selector": "Argala / virodha-argala natal matrix + per-varga net argala (intervention structure on the bhavas).",
+          "covered_count": 1044,
+          "covered_sample": [
+            "l1.fact.argala_natal_matrix.D108_SIGN_1",
+            "l1.fact.argala_natal_matrix.D108_SIGN_10",
+            "l1.fact.argala_natal_matrix.D108_SIGN_11",
+            "l1.fact.argala_natal_matrix.D108_SIGN_12",
+            "l1.fact.argala_natal_matrix.D108_SIGN_2"
+          ]
+        },
+        {
+          "floor_tool": "dispositor_closure_read",
+          "live_tool": "ganita_chart_facts_get + bodha_mechanisms_get",
+          "selector": "Dispositor-strength closure (composite_dispositor_strength …) + convergent-dispositor-chain / dispositor-cycle mechanism classes.",
+          "covered_count": 607,
+          "covered_sample": [
+            "l1.fact.composite_dispositor_strength.JUP",
+            "l1.fact.composite_dispositor_strength.KET_MEAN",
+            "l1.fact.composite_dispositor_strength.MAR",
+            "l1.fact.composite_dispositor_strength.MER",
+            "l1.fact.composite_dispositor_strength.MOON"
+          ]
+        },
+        {
+          "floor_tool": "mechanism_read",
+          "live_tool": "bodha_mechanisms_get",
+          "selector": "The 10 CGM mechanism classes (chains/circuits). Per CMN-1 the TCI row_count is ayanamsha-summed.",
+          "covered_count": 10,
+          "covered_sample": [
+            "l2.mechanism_class.convergent_dispositor_chain",
+            "l2.mechanism_class.dispositor_cycle",
+            "l2.mechanism_class.house_lordship_cycle",
+            "l2.mechanism_class.yoga_cluster",
+            "l2.mechanism_class.mutual_reception"
+          ]
+        },
+        {
+          "floor_tool": "cross_ayanamsha_agreement",
+          "live_tool": "ganita_positions_get",
+          "selector": "Cross-ayanamsha agreement (5-ayanamsha spread per anchor). Domain-agnostic universal — accounted in its own bucket.",
+          "domain_agnostic_universal": true,
+          "covered_count": 6,
+          "covered_sample": [
+            "meta.ayanamsha.INVARIANT",
+            "meta.ayanamsha.krishnamurti",
+            "meta.ayanamsha.lahiri_chitrapaksha",
+            "meta.ayanamsha.raman",
+            "meta.ayanamsha.surya_siddhanta_classical"
+          ]
+        }
+      ]
+    }
+  ]
+}

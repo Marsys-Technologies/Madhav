@@ -169,7 +169,10 @@ function resolutionFor(entry) {
     return { table, cols: [{ name: col, val: args[col] }] };
   }
   if (ax.startsWith('L1:chart_facts')) {
-    return { table: 'chart_facts', cols: [{ name: 'fact_category', val: args.fact_category }] };
+    // The DB COLUMN is `fact_category`; the live-tool PARAM (and thus the TCI serving_args key,
+    // post Ω8-fixup) is `category`. Accept either serving_args key so this resolver keeps working
+    // both before and after the Ω8 TCI serving_args rename (fact_category -> category).
+    return { table: 'chart_facts', cols: [{ name: 'fact_category', val: args.category ?? args.fact_category }] };
   }
   if (ax.startsWith('meta:chart_facts')) {
     return { table: 'chart_facts', cols: [{ name: 'ayanamsha_id', val: args.ayanamsha_id }] };
