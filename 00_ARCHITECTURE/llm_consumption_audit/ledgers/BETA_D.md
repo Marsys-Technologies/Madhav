@@ -130,6 +130,35 @@ producer (`bo_laksana`) is rebuilt. See Step 4/5 rebuild outcome for disposition
 
 ---
 
+## Step 4b — ka_gochara_sweep protection (binding native ruling, 2026-07-25)
+
+Native ruling: `ka_gochara_sweep` for 482012f1 is ~93% through a ~20h non-recoverable compute and
+MUST be protected. Baseline (native-captured): **285 substep rows, 7695 rows_written, latest
+completed_at 2026-07-25T13:57:15Z** — must never drop.
+
+**Compliance (by construction):** `run_elev_beta_d_rebuild.py` has a hardcoded allowlist of exactly
+`{ga_sensitive, ga_structural, ga_vargas}` and calls the FROZEN orchestrator's single-asset
+`_run_data_writer` directly — no cascade, no reset-to-dormant, no `build_substep_progress` DELETE,
+no gochara touch. The v2 driver additionally runs an inline guard before AND after every writer that
+halts if the sweep drops below 285 rows / 7695 rows_written.
+
+**Dispatch enumeration (exact asset/chart list; `ka_gochara_sweep`/`ka_gochara_resonance` are NOT in
+it):**
+- ga_structural · 482012f1 · ga_vargas · 482012f1 · ga_sensitive · 1c826d5a · ga_structural ·
+  1c826d5a · ga_vargas · 1c826d5a.
+
+**Post-rebuild re-checks (rows must equal 285 / 7695):**
+- After ga_sensitive · 482012f1 (completed 06:35Z): 285 / 7695 ✓ (rechecked 13:34Z).
+- After ga_structural · 482012f1 attempt 1 (FAILED — proxy connection lost, no commit): 285 / 7695 ✓.
+
+## Step 4c — ga_structural · 482012f1 attempt 1 outcome
+
+FAILED with `psycopg.OperationalError: the connection is lost` (Cloud SQL Auth Proxy dropped the
+heavy writer's long connection; the gochara Cloud Run sweep is concurrently loading the same
+instance). No substep committed — `composite_dispositor_strength` still shows the pre-rebuild uniform
+0.875 (computed_at 2026-07-24). ga_structural is per-substep committed → idempotent retry is safe.
+Driver rebuilt as v2 with 5× per-writer retry + gochara guard. ka_gochara_sweep unaffected (285/7695).
+
 # Verifier dispositions (per-EL evidence blocks)
 
 ### EL-30 — house_d1 semantics (arudha)
