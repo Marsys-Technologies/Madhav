@@ -32,6 +32,10 @@ import { queryInsightEmbeddingsCapability }  from './query_insight_embeddings'
 import { queryJournalCapability }            from './query_journal'
 import { queryLoadBearingCapability }        from './query_load_bearing'
 import { queryManifestationSetsCapability }  from './query_manifestation_sets'
+// Elevation Campaign v2.1, Lane γ.J: EL-54 guided LEL intake checklist + EL-58
+// prediction/window lifecycle sweep.
+import { lelIntakeChecklistCapability }      from './lel_intake_checklist'
+import { predictionLifecycleSweepCapability } from './prediction_lifecycle_sweep'
 
 registerCapability(queryInsightsCapability)
 registerCapability(queryCalibrationCapability)
@@ -46,3 +50,5 @@ registerCapability(queryInsightEmbeddingsCapability)
 registerCapability(queryJournalCapability)
 registerCapability(queryLoadBearingCapability)
 registerCapability(queryManifestationSetsCapability)
+registerCapability(lelIntakeChecklistCapability)
+registerCapability(predictionLifecycleSweepCapability)
