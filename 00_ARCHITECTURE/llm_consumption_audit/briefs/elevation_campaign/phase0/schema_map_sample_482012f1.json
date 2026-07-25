@@ -1,0 +1,102 @@
+{
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "generated_at": "2026-07-25T00:04:06.682Z",
+  "source": "live DB \u2014 chart_facts, mechanically enumerated",
+  "entries": [
+    {
+      "fact_category": "anumukha_shani_period",
+      "fact_subject": "CYCLE_1.ANUMUKHA",
+      "fact_keys": [
+        "duration_days",
+        "period_end_iso",
+        "period_start_iso",
+        "saturn_dignity",
+        "saturn_sign"
+      ],
+      "row_count": 25,
+      "sample_fact_ids": [
+        "8943a6f70e6a8425",
+        "2e2ea08c88a15622",
+        "caedd7a5575de4bd"
+      ]
+    },
+    {
+      "fact_category": "anumukha_shani_period",
+      "fact_subject": "CYCLE_2.ANUMUKHA",
+      "fact_keys": [
+        "duration_days",
+        "period_end_iso",
+        "period_start_iso",
+        "saturn_dignity",
+        "saturn_sign"
+      ],
+      "row_count": 25,
+      "sample_fact_ids": [
+        "b3f7786ff1375c8e",
+        "47161eef976bd74e",
+        "8dc455196aa75359"
+      ]
+    },
+    {
+      "fact_category": "anumukha_shani_period",
+      "fact_subject": "CYCLE_3.ANUMUKHA",
+      "fact_keys": [
+        "duration_days",
+        "period_end_iso",
+        "period_start_iso",
+        "saturn_dignity",
+        "saturn_sign"
+      ],
+      "row_count": 25,
+      "sample_fact_ids": [
+        "dc8943e762129b3d",
+        "92d4427a4bcd5c89",
+        "08a01fe8cf9bff8d"
+      ]
+    },
+    {
+      "fact_category": "anumukha_shani_period",
+      "fact_subject": "CYCLE_4.ANUMUKHA",
+      "fact_keys": [
+        "duration_days",
+        "period_end_iso",
+        "period_start_iso",
+        "saturn_dignity",
+        "saturn_sign"
+      ],
+      "row_count": 25,
+      "sample_fact_ids": [
+        "290571489e353a56",
+        "b5309a81c03f58fc",
+        "06fb3782114fba96"
+      ]
+    },
+    {
+      "fact_category": "aprakasha_position",
+      "fact_subject": "DHWAJA",
+      "fact_keys": [
+        "house_d1",
+        "longitude_sidereal",
+        "nakshatra",
+        "nakshatra_lord",
+        "pada",
+        "sign",
+        "sign_lord"
+      ],
+      "row_count": 35,
+      "sample_fact_ids": [
+        "4fdd61c54ac8f317",
+        "fa6dcba1a0e92eec",
+        "388c5c8a56c7c487"
+      ]
+    }
+  ],
+  "concept_aliases": [],
+  "pagination": {
+    "offset": 0,
+    "limit": 5,
+    "total": 11082,
+    "next_cursor": "<opaque>"
+  },
+  "_note": "Truncated to 5 of 11082 entries for repo smoke-test fixture. Full live output: run schema_map_generate.cjs, or see ~/elev-v2-shared/phase0_evidence/ for the RUNWAY-session full run against both canonical charts."
+}
