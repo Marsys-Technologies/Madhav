@@ -33722,7 +33722,7 @@ genuine v2.1 close.
 
 ---
 
-## ELEVATION-V2-ALPHA-2026-07-25
+## ELEVATION-V2-ALPHA-2026-07-25 — Elevation Campaign v2.1, Stream α (SATYA) autonomous overnight run: Phase 0-5 close, flagship acceptance NOT MET (root cause diagnosed)
 
 ```yaml
 session_open:
