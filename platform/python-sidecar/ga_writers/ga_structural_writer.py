@@ -2444,9 +2444,9 @@ def _cancel_manglik(
     """CR-73: manglik cancellation per brahma_dosha_catalog's own stored
     `cancellation_conditions` (BPHS ch.81 tradition) — encodes the classical
     grounds literally, evaluated against THIS chart, never a re-derivation
-    of a different classical source. `finding` is None (manglik runs the
-    generic catalog-rule path, not a bespoke detector) — Mars's house and
-    sign are read directly from chart_output."""
+    of a different classical source. `finding` is the `_detect_manglik`
+    bespoke-detector result (EL-18) but is unused here — Mars's house and
+    sign are read directly from chart_output, the single source of truth."""
     ref = "bphs:manglik:own_exalt_or_jupiter_aspect_or_sign_specific_cancels"
     mars_house = _graha_house(chart_output, "Mars")
     mars_sign = _graha_in_sign(chart_output, "Mars")
@@ -2489,6 +2489,58 @@ def _cancel_manglik(
             "Both-partners-Manglik cancellation is a synastry-only ground and is "
             "out of scope for a single-chart evaluation (documented, not silently dropped)."
         ),
+    }
+
+
+# Manglik / Kuja Dosha houses (BPHS ch.78 Kuja-dosha / ch.81 Manglik tradition):
+# Mars in the 1/2/4/7/8/12 reckoned from the lagna (and additionally checked
+# from the Moon and from Venus, the kalatra-karaka) — read literally from
+# brahma_dosha_catalog.manglik.formation_rule_jsonb
+# ({"houses":[1,2,4,7,8,12], "planet":"mars", "reference":["lagna","moon","venus"]}).
+_MANGLIK_HOUSES: frozenset[int] = frozenset({1, 2, 4, 7, 8, 12})
+
+
+def _detect_manglik(chart_output: dict[str, Any]) -> dict[str, Any] | None:
+    """Manglik / Kuja Dosha formation — bespoke detector (EL-18 / CR-73 completion).
+
+    Why a bespoke detector is required (root cause, EL-18): the generic
+    `_evaluate_catalog_rule` implements only the `requires` / `all_planets_in`
+    / `distinct_signs_occupied` / `benefics_in` rule shapes. It has NO handler
+    for the ``{"houses": [...], "planet": ..., "reference": [...]}`` shape that
+    brahma_dosha_catalog.manglik (and the per-house kuja_dosha_* rows) store,
+    so manglik fails closed with `rule_format_unimplemented`, never forms, and
+    the fully-built, BPHS-cited `_cancel_manglik` cancellation callable
+    (registered in DOSHA_CANCELLATIONS) is unreachable. This detector restores
+    formation detection *literally from the catalog's own stored
+    formation_rule_jsonb* so the classical cancellation can be adjudicated.
+
+    Houses are read from the D1 positions the writer already loads
+    (`house_d1` = house-from-lagna); Mars-from-Moon and Mars-from-Venus are the
+    same houses counted from those reference bodies. No new computation, no new
+    data source (§N.5 L1-authority). Returns None when Mars occupies none of
+    the dosha houses from any of the three references — an honest
+    non-formation, never a dark stub.
+    """
+    mars_h = _graha_house(chart_output, "Mars")
+    if not mars_h:
+        return None
+    references: list[str] = []
+    if mars_h in _MANGLIK_HOUSES:
+        references.append("lagna")
+    for ref_name, ref_planet in (("moon", "Moon"), ("venus", "Venus")):
+        ref_h = _graha_house(chart_output, ref_planet)
+        if not ref_h:
+            continue
+        mars_from_ref = ((mars_h - ref_h) % 12) + 1
+        if mars_from_ref in _MANGLIK_HOUSES:
+            references.append(f"{ref_name}(h{mars_from_ref})")
+    if not references:
+        return None  # Mars in no Manglik house from any reference — honest absence
+    return {
+        "constituent_planets": ["Mars"],
+        "constituent_houses": [mars_h],
+        "references": references,
+        "mars_house": mars_h,
     }
 
 
@@ -2574,12 +2626,20 @@ BESPOKE_DOSHA_DETECTORS: dict[str, Callable[[dict[str, Any]], dict[str, Any] | N
     "kemadruma": _detect_kemadruma,
     "daridra": _detect_daridra,
     "kala_sarpa": _detect_kala_sarpa_dosha,
-    # CR-73 completion: manglik runs the generic per-chart catalog-rule path
-    # (formation_rule_jsonb already narrowly evaluable — no bespoke detector
-    # needed), but the 12 named Kala Sarpa variants DO need bespoke wiring
-    # since their canonical_ids are distinct catalog rows narrowing the base
-    # kala_sarpa verdict to a specific Rahu house (no second detector — see
-    # `_make_kala_sarpa_named_variant_detector`'s docstring).
+    # EL-18 (Elevation v2.1, this lane): manglik REQUIRES a bespoke detector.
+    # A prior note here claimed manglik "runs the generic per-chart catalog-rule
+    # path (no bespoke detector needed)" — that was incorrect and left the dosha
+    # dark: `_evaluate_catalog_rule` has no handler for manglik's
+    # {"houses","planet","reference"} formation shape, so it returned
+    # (False, "rule_format_unimplemented"), the dosha never formed, and the
+    # fully-built BPHS-cited `_cancel_manglik` (registered in DOSHA_CANCELLATIONS)
+    # was unreachable dead code. `_detect_manglik` restores formation from the
+    # catalog's own stored formation_rule_jsonb so the cancellation is adjudicated
+    # (verified empirically 2026-07-25). The 12 named Kala Sarpa variants DO need
+    # bespoke wiring since their canonical_ids are distinct catalog rows narrowing
+    # the base kala_sarpa verdict to a specific Rahu house (no second detector —
+    # see `_make_kala_sarpa_named_variant_detector`'s docstring).
+    "manglik": _detect_manglik,
     **{
         canonical_id: _make_kala_sarpa_named_variant_detector(house)
         for canonical_id, house in KALA_SARPA_NAMED_VARIANT_HOUSE.items()
