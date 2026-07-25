@@ -178,5 +178,88 @@ verifier_notes: >
   (0° Aries falls behind the mid-sign lagna → arc 11 → 12). Fixed to ((sign_idx-lagna_sign_idx)%12)+1.
   Fix propagates to upagraha/karaka/bhava_arudha house_d1 (same _house_d1). C4 convention stamp applied.
 ```
-<!-- EL-40 / EL-47 / EL-38 evidence blocks + full-ayanamsha + chart-B G4 appended on rebuild completion -->
+EL-30 full completion: chart A all 5 ayanamshas rebuilt (95 stamped arudha house rows, 0 legacy);
+chart B rebuilt (arudha A1=11/A7=5/A10=6, stamped v2). FORENSIC 7/7 PASS both charts. **VERIFIED-CLOSED both charts.**
+
+### EL-40 — composite_dispositor_strength discrimination
+```
+el_id: EL-40
+status: VERIFIED-CLOSED (both charts)
+before_payload: chart A composite_dispositor_strength = 0.875 for all 9 grahas (distinct=1; terminal-only formula, every chain sinks to Jupiter own-sign)
+after_payload:  chart A = 6 distinct values {0.5938,0.625,0.6875,0.7188,0.7917,0.875}; chart B = 5 distinct {0.4167,0.4375,0.45,0.55,0.5625}
+probes_run:
+  - SQL live prod both charts: count(DISTINCT fact_value_num) = 6 (A), 5 (B) — verify bar (>=3) met
+  - regression test TestEL40DispositorChainMean through the real _build_structural_relationship_rows — PASS
+charts: 482012f1, 1c826d5a
+verifier_notes: mean of dignity-strength over all dispositor-chain members (same dignity→strength map, no new constants). source_calculation stamped ga_structural.dispositor_chain_mean_dignity_strength_v2.
+```
+
+### EL-47 — house_from_varga_lagna persistence
+```
+el_id: EL-47
+status: VERIFIED-CLOSED (both charts)
+before_payload: varga_position served house:null (client-side derivation required)
+after_payload:  chart_divisionals now carries fact_key 'house_from_varga_lagna' (1450 rows/chart); served in ganita_chart_facts_get(divisional_chart=D9).divisional_facts
+probes_run:
+  - SQL spot-check D9 chart A: house_from_varga_lagna == ((sign_id-lagna_sign_id)%12)+1 for all 10 bodies (every ok=true): LAGNA=1,SUN=1,MER=7,SAT=10,MAR=9,VEN=3,JUP=12,MOON=12,RAH=12,KET=6
+  - MCP live: ganita_chart_facts_get(divisional_chart=D9) divisional_facts surfaces varga_position.house_from_varga_lagna
+  - regression test TestEL47VargaHouse — PASS
+charts: 482012f1, 1c826d5a
+verifier_notes: >
+  Divisional facts live in the chart_divisionals table (not chart_facts). The new key is
+  self-marking (no legacy house_from_varga_lagna exists). The varga_position.house COLUMN stays
+  null by design — the register asked for a served house_from_varga_lagna field, which is what is
+  emitted + served. Whole-sign from the varga's own Lagna, 1-indexed.
+```
+
+### EL-38 — argala all-zero
+```
+el_id: EL-38
+status: NOT-REPRODUCED (as a data defect) — zeros adjudicated genuine; serving half handed to α.B
+before_payload: report "every sampled row fact_value_num:0" under limit:5
+after_payload:  distribution 1.0×992, 0.75×256, 0.5×112, 0.25×28, 0.0×2788 — 1388 non-zero cells at Jaimini argala offsets {2,4,5,11}
+probes_run: SQL GROUP BY fact_value_num on argala_natal_matrix (chart A); D1_SIGN_2 per-offset dump
+charts: 482012f1
+verifier_notes: >
+  The "all-zero" was a limit:5 sampling artifact hitting only non-argala offsets (correctly 0). No
+  writer change. The two real EL-38 problems — 25000 default-limit timeout + sign-indexed matrix
+  lacking house-from-lagna resolution — are α.B serving concerns (§15 maps EL-38 = α·B + β·D).
+  Committed a regression test is N/A (no code change); disposition rests on the raw distribution diff.
+```
+
+### DOWNSTREAM — MSR resolution (§N.5)
+```
+item: MSR drift after L1 rebuild
+status: PARKED-HONEST — L2+ auto-flagged stale; restoration requires L2→L5 cascade (outside 3-writer allowlist → native review per ka_gochara ruling)
+measurement: >
+  Post-rebuild bodha_msr_signals.constituent_facts_array resolution: chart A 59145/71430 dangling
+  (82.8%), chart B 61229/69008 (88.7%). Cause: _fact_id is build_id-scoped, so rebuilding
+  ga_sensitive/ga_structural/ga_vargas rotates fact_ids across ALL their categories (not just the
+  3 changed-value ones) — every MSR ref into those categories dangles. The underlying L1 VALUES are
+  correct; only the fact_id links broke.
+disposition: >
+  _run_data_writer auto-flagged the L2+ dependents stale (ka_avadhi, bo_cdlm_summary, ph_*, mi_*,
+  etc. — observed in the rebuild log). Restoring MSR resolution requires rebuilding the L2→L5
+  cascade (bo_laksana re-links bodha_msr_signals to current fact_ids; then ka/ph/mi). That is
+  OUTSIDE this lane's declared 3-writer allowlist; per the binding native ka_gochara ruling
+  ("anything outside the three writers → PARKED-HONEST, wait for native review"), it is NOT run
+  here. Follow-up: full 58-asset cascade rebuild via the Cloud Run job once the image carrying
+  PR #776 is deployed (or a native-approved local cascade). This is the charter's sanctioned
+  "rebuilt OR flagged" state (§5.β.D), disclosed not hidden.
+```
+
+## Step 7 — Estate safety final
+
+Built estate = exactly 2 charts (both canonical, both rebuilt + stamped). No non-canonical built
+chart holds legacy house rows → the third-chart live probe is vacuously satisfied. C4 per-row stamp
+(`formula_id=wholesign_from_lagna:1indexed:v2` on arudha/bhava_arudha; self-marking
+`house_from_varga_lagna` key for vargas) + α normalise-by-tag fallback governs all future builds.
+
+## Step 8 — FORENSIC + gochara final
+
+- FORENSIC 7/7 PASS both charts post-rebuild (driver-gated + independently re-run):
+  A = Capricorn/Purva Bhadrapada/Aries×5/Shukla Tritiya/Ravivara/Shiva/Garaja;
+  B = Aquarius/Ardra/Aries×5/Shukla Dashami/Shanivara/Ayushman/Garaja.
+- ka_gochara_sweep (482012f1) protected throughout: baseline 285/7695 → 303/8465 (grew as native's
+  sweep completed 303/303; never dropped). Guard ran before/after every writer; never fired.
 
