@@ -98,7 +98,11 @@ export const CONCEPT_ALIASES: ConceptAlias[] = [
   },
   {
     concept_id: 'dosha_label',
-    aliases: ['dosha', 'doshas', 'affliction', 'kaal sarpa', 'mangal dosha'],
+    // 'kala sarpa' added SATYA-ŚEṢA W1 (2026-07-25): the pre-existing 'kaal sarpa' spelling
+    // did not substring-match the more common 'kala sarpa' spelling (live-probe confirmed
+    // MISS on concept_locate("kala sarpa") pre-fix) even though kala_sarpa_per_varga was
+    // already a correct fact_category on this same entry.
+    aliases: ['dosha', 'doshas', 'affliction', 'kaal sarpa', 'kala sarpa', 'mangal dosha'],
     fact_categories: ['dosha_label', 'kala_sarpa_per_varga'],
   },
   {
@@ -189,6 +193,32 @@ export const CONCEPT_ALIASES: ConceptAlias[] = [
     concept_id: 'karaka_chara_position',
     aliases: ['karaka', 'chara karaka', 'atmakaraka', 'significator'],
     fact_categories: ['karaka_chara_position', 'karakatva_strength_per_significance'],
+  },
+  // ── SATYA-ŚEṢA W1 additions (2026-07-25) — UAT-DARPANA Phase-0.7's 46-concept census
+  // (RETRIEVAL_AUDIT_REPORT_v1_0.md Appendix A/A.7) probed against this table's PRE-fix state;
+  // these five entries close the concepts that MISSED on both resolver passes. Every
+  // fact_category below is grep/live-confirmed real (not invented): get_tara_chandra_bala.ts
+  // (tara/chandra bala), get_sensitive_degrees.ts (sensitive_degree_check), get_aspects.ts
+  // (aspect_jaimini), and facts_store.ts/register_d8_assess_domain.ts (special_lagna).
+  {
+    concept_id: 'tara_bala_natal_baseline',
+    aliases: ['tara bala', 'tara', 'chandra bala', 'nakshatra strength', 'birth star strength', '9-fold nakshatra strength'],
+    fact_categories: ['tara_bala_natal_baseline', 'chandra_bala_natal_baseline', 'graha_tara_bala'],
+  },
+  {
+    concept_id: 'sensitive_degree_check',
+    aliases: ['sensitive degrees', 'sensitive degree', 'pushkara', 'gandanta', 'mrityu bhaga', 'kranti', 'kartari degree'],
+    fact_categories: ['sensitive_degree_check'],
+  },
+  {
+    concept_id: 'aspect_jaimini',
+    aliases: ['jaimini aspect', 'rashi drishti', 'jaimini drishti', 'jaimini rashi drishti', 'sign aspect'],
+    fact_categories: ['aspect_jaimini', 'aspect_jaimini_per_varga'],
+  },
+  {
+    concept_id: 'special_lagna',
+    aliases: ['special lagna', 'special lagnas', 'varnada lagna', 'sree lagna', 'indu lagna', 'bhava lagna'],
+    fact_categories: ['special_lagna'],
   },
 ]
 
