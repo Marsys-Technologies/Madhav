@@ -387,3 +387,24 @@ late (past T0+3h) due to a session reconnect mid-investigation — see `[LANE-C]
 entries in `proxy/beta.md` for the honest timeline; design work was complete before
 the disconnect, so the delay was purely mechanical, not a difficulty in the design
 itself.
+
+## ADDENDUM (Stream-Conductor, 2026-07-25, post-merge-and-deploy G4) — both VERIFIED-CLOSED
+
+Deploy confirmed live: `amjis-sidecar` revision `amjis-sidecar-00912-rv7`, commit-sha label
+`8fd9343b8411dcea9843183c27f6b941f2a9ad9c` (the merged `main` head).
+
+**EL-39:** `ref_planet_position_get(date=2026-08-15, planet=Venus)` via the live MCP path →
+`sign_number:6` (Virgo, sidereal Lahiri), `ayanamsha_id:"lahiri_chitrapaksha"` (now the default),
+`tropical_longitude:188.565106` retained as a labelled extra. Matches the fix exactly.
+
+**EL-49:** live authenticated call to the deployed sidecar's new route,
+`GET /api/compute/panchanga_get?date=1984-02-05&location=Bhubaneswar`, reproduces all 5 FORENSIC
+pañchāṅga anchors exactly: Tithi=Shukla Tritiya, Nakshatra=Purva Bhadrapada, Yoga=Shiva,
+Karana=Garaja, Vara=Ravivara. Full horā table + sunrise/sunset/moonrise/moonset present with
+explicit UTC+IST timestamps.
+
+**Disposition updated: both EL-39 and EL-49 `VERIFIED-CLOSED`** — supersedes the `PREPARED-FOR-
+NATIVE` status above (which was correct at the time: this lane had no authority to perform the
+post-merge+deploy G4 step itself). The α-side capability-registration decision for `panchanga_get`
+(documented above, §"Required α-side change") remains open and un-blocking — the route is live and
+correct regardless of whether/how α later exposes it as a named MCP capability.
