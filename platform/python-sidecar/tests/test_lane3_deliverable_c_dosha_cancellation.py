@@ -419,7 +419,14 @@ class TestRegistryHygiene:
         # detector, per this file's own CR-74 non-duplication precedent
         # (see `_make_kala_sarpa_named_variant_detector` in
         # ga_structural_writer.py). Expected set grows from 3 to 15.
-        expected = {"kemadruma", "daridra", "kala_sarpa"} | {
+        # Elevation Campaign v2.1, lane β.D2 (EL-18): `manglik` added as a bespoke
+        # detector reading formation literally from
+        # `brahma_dosha_catalog.manglik.formation_rule_jsonb`, making the
+        # already-built, BPHS ch.81-cited `_cancel_manglik` reachable (it was
+        # previously unreachable dead code — `_evaluate_catalog_rule` has no
+        # handler for manglik's {houses,planet,reference} formation shape).
+        # Expected set grows from 15 to 16.
+        expected = {"kemadruma", "daridra", "kala_sarpa", "manglik"} | {
             f"kala_sarpa_{v}" for v in (
                 "anant", "kulik", "vasuki", "shankhpal", "padma", "mahapadma",
                 "takshak", "karkotak", "shankhachud", "ghatak", "vishdhar", "sheshnag",
