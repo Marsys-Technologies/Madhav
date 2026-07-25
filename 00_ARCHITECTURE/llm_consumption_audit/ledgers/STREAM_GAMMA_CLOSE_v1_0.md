@@ -1,10 +1,19 @@
 ---
 artifact: STREAM_GAMMA_CLOSE
-version: 1.0
+version: 1.1
 status: FINAL
 stream: gamma (PŪRṆA — Depth & Intelligence)
 campaign: Elevation Campaign v2.1
-closed_at: 2026-07-25T16:30:00Z (~T0+12.5h)
+closed_at: 2026-07-25T17:50:00Z (~T0+14h)
+changelog: "v1.1 — corrected: Lane J + Lane K2 had been independently Verifier-PASSED but were never
+  actually merged into elev/gamma at the time v1.0 was written (a real gap, caught only by git's own
+  safety check refusing a stale-branch delete during final cleanup, not by process discipline).
+  Merged via PR #781, which also fixed one real regression the integration battery caught (a
+  descriptor-field misclassification on 2 of Lane J's new tools) that the isolated per-lane Verifier
+  check could not have seen. v1.0's lane table already listed J/K2 as VERIFIED-CLOSED based on their
+  Verifier verdicts alone, which was accurate as to verification but not as to merge state — this
+  version corrects the PR list and adds the full account below. No disposition changes; the same two
+  lanes are VERIFIED-CLOSED, now genuinely merged, not just verified."
 ---
 
 # Stream γ (PŪRṆA) — Close Ledger
@@ -17,8 +26,9 @@ Full evidence trail, per-lane detail, and all proxy/native rulings live in
 All nine Ω lanes plus I, F, J, K2, E were built by isolated builder agents and independently
 re-verified by a separate adversarial Stream-Verifier agent (which wrote no application code) before
 merging. Every lane below merged to `elev/gamma` then to `main` via PR + CI + auto-merge
-(PRs #773, #775, #777), with a clean integration battery each time (0 regressions against the
-PREEXISTING_CI_STATE.md baseline throughout).
+(PRs #773, #775, #777, #781 — see the "merge-tracking correction" section below for why #781 exists),
+with a clean integration battery each time (0 regressions against the PREEXISTING_CI_STATE.md
+baseline throughout, and one real regression caught-and-fixed within #781 itself).
 
 | Lane | Disposition | Notes |
 |---|---|---|
@@ -105,10 +115,32 @@ live re-verify + report honestly) — fully executed, and the honest result (fla
 root cause now precisely diagnosed) is exactly what was asked for: the truth, not a better-looking
 number.
 
-## Process note (for the record)
+## Process notes (for the record — two internal tracking errors this session, both self-caught)
 
-Lane E's Stream-Verifier brief was never actually dispatched despite being tracked as "queued" in
+**1. Lane E's Verifier brief was never actually dispatched** despite being tracked as "queued" in
 this conductor's own todo list for a large part of the session — an internal tracking error, caught
-only when asked directly and the underlying agent state was checked rather than assumed. Corrected
-immediately once found; Lane E cleared verification cleanly once briefed. Noted here in the interest
-of the same honesty standard applied to every other finding in this ledger.
+only when the user asked "is it stuck or working?" directly and the underlying agent state was
+checked rather than assumed. Corrected immediately once found; Lane E cleared verification cleanly
+once briefed.
+
+**2. Lane J and Lane K2 were independently Verifier-PASSED but never actually merged** into
+`elev/gamma` — both branches sat un-merged for the remainder of the session while the conductor's own
+tracking (and this ledger's v1.0) treated them as fully closed. Caught only during final worktree
+cleanup, when `git branch -d` refused to delete either branch as "not fully merged" — a git safety
+mechanism, not a self-check the conductor performed proactively. Both branches were intact; nothing
+was lost. Merged via PR #781 (`elev/gamma-J-calibration` + `elev/gamma-K2-metric` → `elev/gamma` →
+`main`), which additionally caught and fixed a real regression the isolated per-lane Verifier check
+structurally could not have seen: Lane J's two new tools (`lel_intake_checklist`,
+`prediction_lifecycle_sweep`) had set `calibration_context_only: true` on their own descriptors,
+which doesn't fit the documented F-R7 semantic (outcome/LEL-*read* context-supply tools — neither new
+tool is that) and broke a shared, α-owned registry snapshot test once the full platform suite ran
+together. Fixed within γ's own files (the two descriptors + Lane J's own tests); no edit to α's
+`descriptor_defaults.test.ts` was made or needed.
+
+**Why this matters for how this ledger should be read:** both errors were caught by mechanisms
+external to the conductor's own confidence — a direct user challenge in one case, a git safety
+refusal in the other — not by the conductor independently noticing. The lane dispositions in this
+ledger are accurate as verified in each case, but the record is honest that "verified" and "actually
+merged and integrated" turned out to be two different claims this session, and conflating them was
+the exact failure mode. Recorded here in the interest of the same honesty standard applied to every
+technical finding above.
