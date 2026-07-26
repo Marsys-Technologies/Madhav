@@ -39,6 +39,16 @@ import { query } from '@/lib/db/client'
 import { deriveDefect001Note } from '../../provenance/freshness_notes'
 import { resolveAddress } from '../../address_resolver'
 import { SHASTRA_MAP } from './register_d9_judgment'
+// ŚODHANA T5 (PŪRTI) — the computed-but-never-joined classical legs + the served
+// reading_checklist receipt, shared with judgment_query (MC-030/031/033).
+import {
+  fetchSensitiveDegreeFirings,
+  fetchKpCuspChain,
+  fetchGocharaSweep,
+  checklistExhaustiveness,
+  DOMAIN_KP_CUSPS,
+  type ChecklistUnit,
+} from './reading_checklist'
 import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 import { applyCompositeRanking, type MsrSignalRow } from '../../ranking/composite_ranker'
 import { fetchL1Context } from '../../ranking/l1_context_fetcher'
@@ -1036,6 +1046,44 @@ async function runAssessDomain(
       boundedContradictions = contradictions
     }
 
+    // ── T5 (PŪRTI): the three computed-but-never-joined classical legs ─────────────
+    // Same legs judgment_query now serves — folded into assess_* so a consumer of the
+    // reconciled summary also gets the fired sensitive degrees (MC-030: Mars-in-puṣkara),
+    // the KP cuspal wealth/career chain (MC-031: previously tail-only), and the gochara
+    // sweep (MC-033), each in its own slot. Serving-only reads (§N.5); non-fatal on error.
+    const t5Spec = SHASTRA_MAP[domain]
+    const t5SignalDomain = t5Spec?.signal_domain ?? domain
+    const [t5Sensitive, t5Kp, t5Gochara] = await Promise.all([
+      fetchSensitiveDegreeFirings(chart_id, ayanamsha_id),
+      fetchKpCuspChain(chart_id, ayanamsha_id, DOMAIN_KP_CUSPS[domain] ?? (t5Spec ? [t5Spec.bhava as number] : [])),
+      fetchGocharaSweep(chart_id, t5SignalDomain, today),
+    ])
+    const t5KpCusps = DOMAIN_KP_CUSPS[domain] ?? (t5Spec ? [t5Spec.bhava as number] : [])
+    const reading_checklist_units: ChecklistUnit[] = [
+      { unit: 'bhava_bhavesha', state: 'served', detail: 'domain reading (question lenses + bhāveśa via CDLM cells)' },
+      { unit: 'karakas', state: 'served', detail: t5Spec ? t5Spec.karakas.join(', ') : domain },
+      { unit: 'operative_vargas', state: (vargaAnalysis && Object.keys(vargaAnalysis).length > 0) ? 'served' : 'not_computed', detail: (DOMAIN_DIRECT_VARGAS[domain] ?? []).join('+') + ' dignity + AV' },
+      { unit: 'ashtakavarga', state: 'served', detail: 'per-varga pinda/sarva folded into varga_analysis' },
+      { unit: 'special_lagnas', state: DOMAIN_INDU_LAGNA.has(domain) ? 'served' : 'not_joined', detail: DOMAIN_INDU_LAGNA.has(domain) ? 'Indu Lagna (Jaimini wealth lagna)' : 'no special-lagna leg for this domain', ...(DOMAIN_INDU_LAGNA.has(domain) ? {} : { drill: 'ganita_special_lagnas_get' }) },
+      { unit: 'sensitive_degree_firings', state: t5Sensitive.firings.length > 0 ? 'served' : (t5Sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: t5Sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
+      { unit: 'kp_cusp_chain', state: t5Kp.cusps.length > 0 ? 'served' : 'not_computed', count: t5Kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${t5KpCusps.join('/')} (MC-031)` },
+      { unit: 'yogi_avayogi', state: 'not_yet_available', detail: 'yogi/avayogi asset being built in a parallel track (T6) — slot wired, honestly absent' },
+      { unit: 'dasha_levels', state: temporalResult.ok && stageTemporal.length > 0 ? 'served' : 'empty_for_this_chart', detail: 'kala activation windows (temporal stage)' },
+      { unit: 'gochara_sweep', state: t5Gochara.domain_covered ? 'served' : (t5Gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: t5Gochara.upcoming_window_count, detail: `forward transit windows, domain='${t5SignalDomain}' (MC-033)` },
+      { unit: 'bearing_yoga_firings', state: bearingYogaFirings.length > 0 ? 'served' : 'empty_for_this_chart', count: bearingYogaFirings.length, detail: 'ga_yoga_firings (firings-authoritative)' },
+      { unit: 'contradictions', state: (contradictions.status === 'ok' && Array.isArray((contradictions as Record<string, unknown>)['items']) && ((contradictions as Record<string, unknown>)['items'] as unknown[]).length > 0) ? 'served' : 'empty_for_this_chart', detail: 'bodha_contradictions dissent surface' },
+      { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal assessment', drill: 'ganita_tajaka_get' },
+    ]
+    const t5Exhaustiveness = checklistExhaustiveness(reading_checklist_units)
+    const reading_checklist = {
+      units: reading_checklist_units,
+      ...t5Exhaustiveness,
+      note: 'The classical checklist, served: each unit names whether THIS response carried ' +
+        'it and — for every absent box — WHY. not_joined units carry a live drill handle. When ' +
+        'not every unit is served/empty, the response self-discloses non_exhaustive: ' +
+        '"salience_sampled" (an honest "this is not the whole territory").',
+    }
+
     // EL-44: the grounded verdict layer — 3-5 plain-language sentences, deterministic
     // template, every clause citing its real fact_ids (or honestly reporting it has none).
     const verdict = buildVerdictLayer({
@@ -1058,6 +1106,9 @@ async function runAssessDomain(
         ayanamsha_id,
         ranking_basis: p2RankingBasis,
         verdict,
+        // T5 (PŪRTI): the served completeness receipt — which classical units this
+        // response carried, and WHY each absent one is absent (the Offer-Law fix).
+        reading_checklist,
         verdict_skeleton,
         step_results: {
           domain_reading: { ok: true },
@@ -1091,6 +1142,18 @@ async function runAssessDomain(
         })(),
         // EL-45: direct consumption, not a "see other tool" stub — see buildVargaAnalysisDirect.
         varga_analysis: vargaAnalysis,
+        // T5 (PŪRTI): the three computed-but-never-joined classical legs, served inline.
+        sensitive_degree_firings: t5Sensitive.firings,
+        kp_cusp_chain: { cusps: t5Kp.cusps, note: t5Kp.note },
+        gochara_sweep: {
+          domain: t5SignalDomain,
+          domain_covered: t5Gochara.domain_covered,
+          upcoming_window_count: t5Gochara.upcoming_window_count,
+          valence_breakdown: t5Gochara.valence_breakdown,
+          window_range: t5Gochara.window_range,
+          top_windows: t5Gochara.windows,
+          note: t5Gochara.note,
+        },
         activating_dasha: (() => {
           const cappedActivations = temporalResult.ok
             ? capArray(temporalContent['activations'], ASSESS_DEFAULT_MAX_ACTIVATIONS, 'marsys://tool/L3/query_temporal_activation')

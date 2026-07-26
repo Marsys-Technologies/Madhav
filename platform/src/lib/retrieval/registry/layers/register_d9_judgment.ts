@@ -65,6 +65,16 @@ import { DEFAULT_AYANAMSHA } from '../constants'
 import type { DrillPointerType, JudgmentFlagEntry } from '../../envelope'
 import { judgmentFlag } from '../../envelope'
 import { derivedHouses } from '@/lib/jyotish/bhavat_bhavam_map'
+// ŚODHANA T5 (PŪRTI) — the three computed-but-never-joined classical legs + the
+// served reading_checklist receipt (MC-030/031/033 + the Offer-Law completeness fix).
+import {
+  fetchSensitiveDegreeFirings,
+  fetchKpCuspChain,
+  fetchGocharaSweep,
+  checklistExhaustiveness,
+  DOMAIN_KP_CUSPS,
+  type ChecklistUnit,
+} from './reading_checklist'
 
 // ── The Shastra Map (design §28.5) ───────────────────────────────────────────────
 
@@ -1033,6 +1043,91 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         ))
       }
 
+      // ── T5 Leg A: fired sensitive-degree checks (MC-030) ──────────────────────────
+      // The rare, high-information firings salience priors bury below routine descriptor
+      // rows (on 482012f1: Mars in puṣkara — the ONLY graha in puṣkara, and the lagneśa/
+      // Indu-lagna lord). Surfaced STRUCTURALLY in its own slot so it appears in EVERY
+      // domain judgment without the caller asking for sensitive degrees. Chart-wide, not
+      // domain-scoped: a fired sensitive degree on a chart-critical graha bears across
+      // domains. Reads the frozen L1 fact (§N.5), never recomputes.
+      const sensitive = await fetchSensitiveDegreeFirings(chart_id, ayanamsha_id)
+      for (const f of sensitive.fact_ids) fact_ids.add(f)
+      if (sensitive.firings.length > 0) {
+        judgment_flags.push(judgmentFlag(
+          'sensitive_degree_firings_present',
+          `${sensitive.firings.length} fired sensitive-degree check(s) surfaced ` +
+          `(${sensitive.firings.map(f => `${f.graha}:${f.check_type}`).join(', ')}) — rare high-information ` +
+          'events that salience-ranked surfaces floor below routine descriptor rows (MC-030); served here ' +
+          'structurally so they are never silently dropped.',
+        ))
+      } else if (sensitive.available) {
+        judgment_flags.push(judgmentFlag(
+          'sensitive_degree_firings_empty',
+          'sensitive_degree_check computed for this chart but no high-signal ' +
+          '(puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari) check fired — an honest negative, not an omission.',
+        ))
+      }
+
+      // ── T5 Leg B: KP cuspal sub-lord chain (MC-031) ───────────────────────────────
+      // Two-pass-computed + wealth/career-tagged but previously reachable ONLY via the
+      // bottom-10% dissent tail (synth_tail_divergence_get). Joined here into the domain's
+      // decisive cusps. Reuses the frozen getKpCuspsCapability (single-source, §19).
+      const kpCusps = domainKey && DOMAIN_KP_CUSPS[domainKey]
+        ? DOMAIN_KP_CUSPS[domainKey]!
+        : [spec.bhava as number]
+      const kp = await fetchKpCuspChain(chart_id, ayanamsha_id, kpCusps)
+      for (const f of kp.fact_ids) fact_ids.add(f)
+      if (kp.cusps.length === 0) {
+        judgment_flags.push(judgmentFlag(
+          'kp_cusp_chain_unavailable',
+          `no KP cuspal facts resolved for cusp(s) ${kpCusps.join('/')} ` +
+          '— the KP cuspal asset may not be built for this chart/ayanamsha.',
+        ))
+      }
+
+      // ── T5 Leg C: forward gochara sweep (MC-033) ──────────────────────────────────
+      // The gochara sweep was never joined into a domain reading by default. One
+      // domain-scoped forward sweep, compact (top windows + valence tally). Reads the
+      // untouchable kala_gochara_windows field READ-ONLY.
+      const gochara = await fetchGocharaSweep(chart_id, spec.signal_domain, as_of_date)
+      if (gochara.available && !gochara.domain_covered) {
+        judgment_flags.push(judgmentFlag(
+          'gochara_domain_not_covered',
+          `the gochara sweep does not cover the '${spec.signal_domain}' domain ` +
+          'for this chart — its silence here is NOT an all-clear (S4-05 discipline); drill kala_windows_get.',
+        ))
+      }
+
+      // ── T5: the served reading_checklist receipt ──────────────────────────────────
+      // Names WHICH classical units this response actually served, and for every absent
+      // box WHY (not_computed / not_joined / salience_floored / not_yet_available). A
+      // response that is not exhaustive over the classical territory self-discloses
+      // `non_exhaustive: 'salience_sampled'`. This is the affordable completeness receipt —
+      // the acharya's own checklist, served, not a catalog-id firehose.
+      const reading_checklist_units: ChecklistUnit[] = [
+        { unit: 'bhava_bhavesha_from_lagna', state: 'served', detail: `bhāva ${spec.bhava} sign + lord + occupants + aspects (lagna frame)` },
+        { unit: 'bhava_bhavesha_from_chandra', state: bhavaSignMoon !== null && lordConditionMoon !== null ? 'served' : 'not_computed', detail: 'Sudarshana (Moon-frame) leg' },
+        { unit: 'karakas', state: karakaConditions.length > 0 ? 'served' : 'not_joined', count: karakaConditions.length, detail: karakaConditions.length > 0 ? spec.karakas.join(', ') : 'no kāraka defined for a bare-bhāva query', ...(karakaConditions.length === 0 ? { drill: 'ganita_chart_facts_get' } : {}) },
+        { unit: 'operative_varga', state: vargaConfirmed ? 'served' : 'empty_for_this_chart', detail: `${spec.varga} confirmation of bhāveśa/kāraka` },
+        { unit: 'ashtakavarga', state: 'not_joined', detail: 'bhāva AV bindus not folded into judgment_query', drill: 'ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)' },
+        { unit: 'special_lagnas', state: 'not_joined', detail: 'Indu/Ārūḍha/Hora lagnas not folded here', drill: 'ganita_special_lagnas_get' },
+        { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
+        { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
+        { unit: 'yogi_avayogi', state: 'not_yet_available', detail: 'yogi/avayogi/dagdha-rasi asset is being built in a parallel track (T6) — wired as a checklist slot, honestly absent for now' },
+        { unit: 'dasha_levels', state: timingAnchored ? 'served' : 'empty_for_this_chart', detail: 'Vimśottarī current + lord/kāraka mahādaśā windows + kala activation' },
+        { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, domain='${spec.signal_domain}' (MC-033)` },
+        { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal judgment', drill: 'ganita_tajaka_get' },
+      ]
+      const exhaustiveness = checklistExhaustiveness(reading_checklist_units)
+      const reading_checklist = {
+        units: reading_checklist_units,
+        ...exhaustiveness,
+        note: 'The classical bhāva-adhyāya checklist, served: each unit names whether THIS ' +
+          'response carried it and — for every absent box — WHY. not_joined units carry a live ' +
+          'drill handle. When not every unit is served/empty, the response self-discloses ' +
+          'non_exhaustive: "salience_sampled" (an honest "this is not the whole territory").',
+      }
+
       // Astrologically typed per design §28.4 ("the closed pointer vocabulary becomes
       // shastra moves") — pointer_type is ADDITIVE alongside the pre-existing
       // {instrument, hint} shape (R5 W3 Phase B); no caller reading only instrument/hint
@@ -1050,6 +1145,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         { instrument: 'traverse_graph', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.`, pointer_type: 'dispositor_chain' },
         { instrument: 'ref_rules_search', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya). (RC-04: was 'query_classical_texts', the internal registry capability name (marsys://tool/L0/query_classical_texts), not a live MCP tool name — same SC-18 dead-pointer class as the two siblings above; ref_rules_search is one of the tool's live MCP aliases per mcp_capability_bridge.ts.)`, pointer_type: 'other' },
         { instrument: 'synth_tail_divergence_get', hint: `the mandatory dissent/tail-check step (design §26) — contrarian signals and unresolved tensions bearing on ${spec.label.toLowerCase()} not surfaced by this call's convergent verdict.`, pointer_type: 'tail_dissent' },
+        // T5 (PŪRTI): drill handles for the three legs now served inline.
+        { instrument: 'ganita_sensitive_degrees_get', hint: 'full sensitive-degree table (all check types, fired + not-fired, per graha) beyond the high-signal firings surfaced in sensitive_degree_firings here.', pointer_type: 'other' },
+        { instrument: 'ganita_kp_cusps_get', hint: `full 12-cusp KP picture (Placidus/Sripati degrees, ruling planets, per-graha KP chains) beyond the ${kpCusps.join('/')} cusp(s) in kp_cusp_chain here.`, pointer_type: 'other' },
+        { instrument: 'gochara_forecast_get', hint: `full forward gochara window set with signed intensities for domain='${spec.signal_domain}' beyond the compact top-windows summary in gochara_sweep here.`, pointer_type: 'other' },
       ]
 
       return {
@@ -1081,9 +1180,24 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             bearing_afflictions,
             affliction_mechanisms,
             timing_hooks: timing,
+            // T5 (PŪRTI): the three computed-but-never-joined classical legs, now served inline.
+            sensitive_degree_firings: sensitive.firings,
+            kp_cusp_chain: { cusps: kp.cusps, note: kp.note },
+            gochara_sweep: {
+              domain: spec.signal_domain,
+              domain_covered: gochara.domain_covered,
+              upcoming_window_count: gochara.upcoming_window_count,
+              valence_breakdown: gochara.valence_breakdown,
+              window_range: gochara.window_range,
+              top_windows: gochara.windows,
+              note: gochara.note,
+            },
           },
           verdict,
           receipt,
+          // T5 (PŪRTI): the served completeness receipt — which classical units this
+          // response carried, and WHY each absent one is absent (the Offer-Law fix).
+          reading_checklist,
           judgment_flags,
           drill_pointers,
           resolution_chains: {

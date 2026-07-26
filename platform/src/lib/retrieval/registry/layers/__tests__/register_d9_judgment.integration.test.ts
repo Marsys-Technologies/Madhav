@@ -122,6 +122,63 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       expect(drillPointers.length).toBeGreaterThan(0)
     })
 
+    it(`[${chartId}] T5 (PŪRTI): wealth judgment carries the three joined legs + a truthful reading_checklist`, async () => {
+      const result = await handler()({ chart_id: chartId, domain: 'wealth' })
+      expect(result.is_error, JSON.stringify(result.content)).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const checklist = content['checklist'] as Record<string, unknown>
+
+      // ── the three computed-but-never-joined legs are now served inline ──
+      expect(Array.isArray(checklist['sensitive_degree_firings'])).toBe(true)
+      const kp = checklist['kp_cusp_chain'] as Record<string, unknown>
+      expect(kp).toBeTruthy()
+      expect(Array.isArray(kp['cusps'])).toBe(true)
+      // wealth → KP cusps 2 + 11 (MC-031)
+      const kpHouses = (kp['cusps'] as Record<string, unknown>[]).map(c => c['house']).sort()
+      expect(kpHouses).toEqual([2, 11])
+      const gochara = checklist['gochara_sweep'] as Record<string, unknown>
+      expect(gochara).toBeTruthy()
+      expect('domain_covered' in gochara).toBe(true)
+
+      // ── the reading_checklist receipt is present ──
+      const rc = content['reading_checklist'] as Record<string, unknown>
+      expect(rc).toBeTruthy()
+      const units = rc['units'] as Array<Record<string, unknown>>
+      expect(Array.isArray(units)).toBe(true)
+      const unitByName = new Map(units.map(u => [u['unit'] as string, u]))
+      expect(unitByName.has('sensitive_degree_firings')).toBe(true)
+      expect(unitByName.has('kp_cusp_chain')).toBe(true)
+      expect(unitByName.has('gochara_sweep')).toBe(true)
+      // yogi/avayogi honestly absent (T6 parallel track)
+      expect(unitByName.get('yogi_avayogi')!['state']).toBe('not_yet_available')
+
+      // ── AC3: the reading_checklist is TRUTHFUL — cross-count each leg's claimed state
+      //         against what is actually served in content.checklist ──
+      const sensState = unitByName.get('sensitive_degree_firings')!['state']
+      const sensServed = (checklist['sensitive_degree_firings'] as unknown[]).length
+      if (sensState === 'served') expect(sensServed).toBeGreaterThan(0)
+      if (sensServed === 0) expect(['empty_for_this_chart', 'not_computed']).toContain(sensState)
+      const kpState = unitByName.get('kp_cusp_chain')!['state']
+      const kpServed = (kp['cusps'] as unknown[]).length
+      if (kpState === 'served') expect(kpServed).toBeGreaterThan(0)
+      const gochState = unitByName.get('gochara_sweep')!['state']
+      if (gochState === 'served') expect(gochara['domain_covered']).toBe(true)
+
+      // ── non_exhaustive self-disclosure is present and honest ──
+      expect('non_exhaustive' in rc).toBe(true)
+      if (rc['exhaustive'] === false) expect(rc['non_exhaustive']).toBe('salience_sampled')
+
+      // ── AC1 (native chart only): Mars-in-puṣkara surfaces WITHOUT asking for sensitive degrees ──
+      if (chartId === NATIVE_CHART_ID) {
+        const firings = checklist['sensitive_degree_firings'] as Array<Record<string, unknown>>
+        const marsPushkara = firings.find(
+          f => f['check_type'] === 'pushkara' && String(f['graha']).toLowerCase() === 'mars',
+        )
+        expect(marsPushkara, 'Mars-in-puṣkara must surface in the wealth judgment unprompted (MC-030)').toBeTruthy()
+        expect(marsPushkara!['state']).toBe('pushkara')
+      }
+    })
+
     it(`[${chartId}] bare bhava (no domain) still runs the full recipe, honestly reporting no karaka`, async () => {
       const result = await handler()({ chart_id: chartId, bhava: 3 })
       expect(result.is_error, JSON.stringify(result.content)).toBe(false)
