@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.42
+version: 6.43
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,29 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.43 (2026-07-26, PŪRṆA-VIRĀMA close-out — governance repair, track T3-Governance):
+    CORRECTS v6.42's §16 claim below. v6.42 (PR #792) stated "§16 cleanup executed per charter
+    (see SESSION_LOG.md same-date entry for verification evidence)" — both halves of that
+    sentence were false when written: no such SESSION_LOG.md entry existed then (PR #792 never
+    appended one for its own close, nor did the three PRs that followed it — SESSION_LOG.md's
+    last entry was ELEVATION-V2-ALPHA-2026-07-25 with close_criteria_met: "PARTIAL"), and §16
+    cleanup had not run yet at that point — PR #792 predates PR #794 (§16.1 migration of
+    ~/elev-v2-shared into git) and PR #795 (§16 cleanup verification) by hours. Corrected record,
+    per `PENDING_MANIFEST.md` (PŪRṆA-VIRĀMA close-out, thread 5) and this session's own read-only
+    filesystem/git checks: **§16 cleanup is PARTIAL as of PR #792–#795** — MIGRATION DONE (#794:
+    `ELEVATION_V2_BASELINE.md`, `INTEGRATION_LOG.md`, proxy/{alpha,beta,gamma}.md, contracts/,
+    the frozen test assets, and the STREAM_{BETA,GAMMA}_COMPLETE.flag files all committed under
+    `00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/`); #795's own verification text
+    honestly scopes itself to Stream alpha's OWN worktree/branch/`gc.auto` cleanup ONLY — it
+    explicitly does NOT claim beta/gamma worktree or branch deletion, and explicitly flags the
+    root checkout as NOT parked on main. Deletion of the stale `.worktrees/*`, the merged
+    `elev/*`/`satya-shesha/*` branches, `~/elev-v2-shared/` itself, and the root-checkout restore
+    to main all remain OPEN. Missing SESSION_LOG.md entries for PR #792/#793/#794/#795 appended
+    this session (see the `ELEVATION-V2-CLOSE-DOCS-2026-07-25` entry). Full §16 completion is
+    tracked under this PŪRṆA-VIRĀMA close-out's own T4 track (strictly after T3) — as of this
+    entry T4's disposition is whatever the close-out's own report states; this entry does NOT
+    claim T4 complete. last_session_id: PURNA-VIRAMA-T3-GOVERNANCE-2026-07-26.
+    predecessor_session: ELEVATION-V2-ALPHA-2026-07-25.
   - v6.42 (2026-07-25/26, ELEVATION CAMPAIGN v2.1 — 3-stream autonomous overnight run, CLOSED-HONEST):
     Full 3-stream (α SATYA / β GAṆITA / γ PŪRṆA) autonomous overnight run per
     `ELEVATION_CAMPAIGN_CHARTER_v2_1.md`, conducted by α per M2.7 close ownership.
@@ -5445,6 +5468,22 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🔧 **GOVERNANCE CORRECTION (2026-07-26, PŪRṆA-VIRĀMA close-out, track T3-Governance) —
+> corrects the §16 claim in the CROSS-CAMPAIGN NOTE banner immediately below, which is retained
+> as-authored for history.** That banner's last sentence reads "§16 cleanup executed per charter
+> — see SESSION_LOG.md same-date entry for verification evidence." Both halves were false when
+> written (PR #792, 2026-07-25/26): no such SESSION_LOG.md entry existed at that point (the log's
+> last entry was ELEVATION-V2-ALPHA-2026-07-25, close_criteria_met: "PARTIAL"), and §16 cleanup
+> had not run yet — PR #792 predates PR #794 (§16.1 migration) and PR #795 (§16 cleanup
+> verification) by hours. **Corrected: §16 cleanup is PARTIAL.** Migration to
+> `00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/` is DONE (#794). #795's own
+> verification text is honestly scoped to Stream alpha's own worktree/branch/`gc.auto` cleanup
+> ONLY and explicitly does not claim beta/gamma cleanup or a root-checkout-on-main state.
+> Deletion of stale worktrees/branches, removal of `~/elev-v2-shared/`, and the root-checkout
+> restore to main remain OPEN, tracked under this PŪRṆA-VIRĀMA close-out's own T4 track (not
+> claimed complete by this note). See changelog v6.43 and `PENDING_MANIFEST.md` thread 5 for
+> full evidence.**
 
 > 🔔 **CROSS-CAMPAIGN NOTE (2026-07-25/26, Elevation Campaign v2.1 — 3-stream autonomous overnight run,
 > closed by α per M2.7 close ownership): CLOSED-HONEST, §0 depth mandate NOT MET, root cause fully

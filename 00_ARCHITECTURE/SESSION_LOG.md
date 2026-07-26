@@ -33828,3 +33828,138 @@ connection; independently G4-confirm Stream beta's 5 merged PRs; re-run the seal
 acceptance once the above land to measure whether the score has moved toward the 0.90 bar.
 
 *End of ELEVATION-V2-ALPHA-2026-07-25 entry — 2026-07-25/26.*
+
+## ELEVATION-V2-CLOSE-DOCS-2026-07-25 — Elevation Campaign v2.1 docs-close batch: Phase 4/5 close (α), Stream β close ledger, §16.1 migration, §16 cleanup verification (Stream α scope only) — appended retroactively by PŪRṆA-VIRĀMA T3 to close a governance gap
+
+```yaml
+session_open:
+  session_id: ELEVATION-V2-CLOSE-DOCS-2026-07-25
+  campaign: ELEVATION_CAMPAIGN_v2_1
+  mode: "Retroactive consolidated entry, appended by the PŪRṆA-VIRĀMA close-out (track
+    T3-Governance, session PURNA-VIRAMA-T3-GOVERNANCE-2026-07-26) to cover four merged PRs that
+    closed the Elevation Campaign v2.1 arc but never received their own SESSION_LOG entries.
+    Docs-only append; no code, writer, or migration authored by this entry itself."
+  may_touch: "This entry covers, retroactively, the file scope of PR #792/#793/#794/#795 —
+    ALPHA_FLAGSHIP_ACCEPTANCE_GRADING_v1_0.md, ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md,
+    ELEVATION_V2_RUN_REPORT_v1_0.md, CURRENT_STATE_v1_0.md, SESSION_LOG.md, CLAUDECODE_BRIEF.md
+    (#792); STREAM_BETA_CLOSE_v1_0.md (#793); 00_ARCHITECTURE/llm_consumption_audit/ledgers/
+    elevation_v2/** migrated content (#794); §16 cleanup verification prose (#795)."
+  must_not_touch: "The FROZEN orchestrator contract; the sealed L5 split; FORENSIC birth anchors;
+    kala_gochara_windows; build_substep_progress; beta's/gamma's own file manifests beyond their
+    own close-ledger docs."
+red_team_due: "Not independently applicable to this retroactive docs entry — see each source PR's
+  own scope note; no red-team cadence obligation was triggered by docs-only appends."
+```
+
+### Body
+
+**Environment:** Claude Code, autonomous overnight run continuation, four separate PR merges
+across roughly 75 minutes (2026-07-25T20:27:48Z–21:40:33Z per `git log`). This SESSION_LOG entry
+is written retroactively, one calendar day later, by the PŪRṆA-VIRĀMA close-out session (track
+T3-Governance) — see `00_ARCHITECTURE/llm_consumption_audit/briefs/close_out/PENDING_MANIFEST.md`
+thread 4 for the reconciliation that found this gap.
+
+**Objective:** Close the Elevation Campaign v2.1 arc's remaining documentation debt: Stream α's
+own Phase 4/5 close (flagship acceptance grading + final coverage matrix + run report), Stream β's
+close ledger, the §16.1 evidentiary migration (charter's own "migrate first, delete second"
+ordering), and the §16 cleanup verification for the portion of §16 Stream α itself is responsible
+for.
+
+**Outputs produced (four merged PRs, this entry's actual scope):**
+- **PR #792** (commit `7012e620`, merged 2026-07-25T21:08:32Z) — Stream α Phase 4/5 close:
+  `ALPHA_FLAGSHIP_ACCEPTANCE_GRADING_v1_0.md` (4 fresh sealed-evaluator-harness sub-agent runs,
+  mechanically graded, 0/4 domain×chart pairs clear the 0.90 bar — 15-33% each);
+  `ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md` (every Ω1-8 + EL-01..EL-61 dispositioned,
+  four-state discipline); `ELEVATION_V2_RUN_REPORT_v1_0.md` (charter §14 shape); CURRENT_STATE
+  bumped v6.41→v6.42; SESSION_LOG's own `ELEVATION-V2-ALPHA-2026-07-25` entry appended (in a
+  prior commit within the same PR); `CLAUDECODE_BRIEF.md` flipped ACTIVE→COMPLETE for that run.
+  **Known defect in this PR's own CURRENT_STATE v6.42 text, corrected by PŪRṆA-VIRĀMA T3 in the
+  v6.43 changelog entry immediately above this one in the log's chronology (see CURRENT_STATE.md
+  changelog):** v6.42 claimed "§16 cleanup executed per charter — see SESSION_LOG.md same-date
+  entry for verification evidence" — false on both counts at time of writing (no such entry
+  existed yet; §16 cleanup had not run yet, since #794/#795 merged hours later).
+- **PR #793** (commit `bc88925a`, merged 2026-07-25T20:27:48Z) — `STREAM_BETA_CLOSE_v1_0.md`:
+  final disposition summary for β's 5 lanes (D/D2/C/G/T), the native `ka_gochara_sweep`
+  protection-ruling compliance record, FORENSIC 7/7 confirmation, and the authorization-chain
+  governance flag (lane β.G's initial-resist-then-independently-verify response to a relayed
+  "the human authorized this" claim — see this same PŪRṆA-VIRĀMA session's new
+  AUTHORITY-BY-ARTIFACT register item in `ELEVATION_REGISTER_v1_0.md` for the resulting rule).
+- **PR #794** (commit `fd224cc4`, merged 2026-07-25T21:22:49Z) — charter §16.1 migration:
+  every named `~/elev-v2-shared/` artifact (baseline, integration log, proxy/{alpha,beta,gamma}.md
+  rulings, PREFLIGHT/CI-state capture, C1-C8 contracts, the frozen sealed-evaluator-harness +
+  routing-suite + dark-corpus-replay standing regression assets, OVERFLOW_QUEUE, `.live`
+  implementation markers, phase0/probe evidence, both STREAM_{BETA,GAMMA}_COMPLETE.flag files)
+  copied into `00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/`, committed to main.
+  Also appends an amendment to the coverage matrix upgrading ~13 β-attributed EL items from
+  blanket PREPARED-FOR-NATIVE to β's own live-reverified per-item dispositions once β's own
+  completion flag was found to have landed ~2 minutes after PR #792 merged.
+- **PR #795** (commit `61072460`, merged 2026-07-25T21:40:33Z) — §16 cleanup verification,
+  **explicitly and honestly scoped to Stream alpha's own worktree/branch/agent-dispatch cleanup
+  only** (never claims β's or γ's worktrees/branches, which were still live/potentially active at
+  the time and are each stream's own responsibility): α's own stream worktree, α's own 9
+  lane-builder dispatch worktrees/branches, and α's own `elev/alpha` branch removed; `gc.auto`
+  restored to its pre-run unset value; the migrated evidentiary ledger confirmed present/readable
+  on main. **One named residual disclosed rather than omitted:** the root checkout was not parked
+  on main at verification time (it was on the unrelated `satya-shesha/close-out` branch with
+  active uncommitted work) — PR #795's own text confirms this conductor never mutated the root
+  checkout at any point, per the charter's own root-checkout rule.
+
+**Outcome narrative:** All four PRs are real, CI-green, and independently useful close artifacts.
+The governance gap this entry closes is procedural, not substantive: none of the four appended a
+SESSION_LOG entry for itself (PR #792 appended `ELEVATION-V2-ALPHA-2026-07-25`, which covers
+Stream α's overnight run body but not these four close-out PRs' own actions), and PR #792's
+CURRENT_STATE edit made a forward-referencing claim about a SESSION_LOG entry and a §16 completion
+state that did not yet exist at the time of writing — an honest sequencing mistake (the close
+narrative was drafted assuming #794/#795 would land and be summarized same-session; they landed as
+separate PRs hours later without a follow-up SESSION_LOG correction) rather than a fabrication.
+PŪRṆA-VIRĀMA T3 corrects the CURRENT_STATE claim (v6.43 changelog entry) and closes the SESSION_LOG
+gap with this entry, per its own governing brief's "no silent gaps" instruction.
+
+### Scope discipline observed
+
+All touched files fall within `declared_scope.may_touch` above (SESSION_LOG.md itself, plus this
+entry's citations of CURRENT_STATE.md's own already-applied v6.43 correction). No
+`must_not_touch` entry was modified. No writer, migration, or FROZEN-contract file appears in the
+diff of any of the four source PRs this entry documents (confirmed by their own commit content,
+docs/ledgers only).
+
+```yaml
+session_close:
+  session_id: ELEVATION-V2-CLOSE-DOCS-2026-07-25
+  campaign: ELEVATION_CAMPAIGN_v2_1
+  close_criteria_met: "PARTIAL — matches the true state of the work this entry documents. Stream
+    α's own Phase 4/5 close (PR #792) and Stream β's close ledger (PR #793) are complete for their
+    own declared scope. The §16.1 migration (PR #794) is COMPLETE. The §16 cleanup verification
+    (PR #795) is COMPLETE only for Stream alpha's own portion — it explicitly does not cover
+    beta/gamma worktree+branch deletion or the root-checkout restore to main, which remained open
+    at the time these PRs merged and are tracked under PŪRṆA-VIRĀMA's own T4 track."
+  verification: "Each PR's own merge commit and CI-green status (git log, confirmed by this
+    PŪRṆA-VIRĀMA T3 session against the actual merged commits 7012e620/bc88925a/fd224cc4/
+    61072460 on origin/main). Content claims in this entry are drawn verbatim from each PR's own
+    commit message and diff, not re-derived or embellished."
+  deploy: "No new deploy triggered by any of these four PRs specifically (docs/ledgers only,
+    confirmed by diff scope); the underlying campaign's own deploys are documented in
+    ELEVATION-V2-ALPHA-2026-07-25's session_close block above."
+  product_code_writes_made: "No — all four PRs are docs/ledger-only (markdown reports, ledger
+    migration, register/matrix amendments). No writer, migration, or serving-code file appears in
+    any of the four diffs."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "PR #794 amended ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md
+    upgrading ~13 β-attributed EL items from PREPARED-FOR-NATIVE to β's own per-item dispositions
+    (see that file's own AMENDMENT section for the full table). No further dispositions flipped by
+    this retroactive SESSION_LOG entry itself."
+  followups: "§16 cleanup completion (delete stale worktrees/branches, remove
+    ~/elev-v2-shared/, restore root checkout to main) — tracked under PŪRṆA-VIRĀMA's own T4 track,
+    strictly after T3's evidence needs are known, per that campaign's own governing brief."
+  next_session_objective: "Not applicable to this retroactive entry — see the PŪRṆA-VIRĀMA
+    close-out's own consolidated report for the arc's actual next objective."
+```
+
+### Next session objective
+
+Not applicable — this is a retroactive entry closing a documentation gap for work already merged
+to main on 2026-07-25. The live next-objective is whatever the PŪRṆA-VIRĀMA close-out's own
+consolidated report (or, if not yet written, its governing brief) commits to.
+
+*End of ELEVATION-V2-CLOSE-DOCS-2026-07-25 entry — appended 2026-07-26 by PŪRṆA-VIRĀMA T3.*
