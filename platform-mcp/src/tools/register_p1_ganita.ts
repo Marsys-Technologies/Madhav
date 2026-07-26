@@ -445,9 +445,26 @@ export const ganitaSadeSatiGetInputSchema = {
 // see get_tajik.ts's `Math.min((args.limit as number) ?? 200, 1000)`) — the exact same
 // "schema promises more than the server will ever return" class the R5 W0a punch-list
 // already fixed for ganita_yogas_get. Bounds now tell the truth.
+// MC-021/024 (ŚODHANA T4): `varsha_year`/`varsha_date`/`include_hadda` were silently accepted
+// and dropped before this fix — the zod schema didn't declare them, so the MCP SDK stripped
+// them before get_tajik.ts's handler (which DOES read varsha_year) ever saw them. The single
+// most consultation-relevant row (the CURRENT solar year) was therefore unreachable through
+// this tool. Now declared + threaded through to the registry capability (get_tajik.ts).
 export const ganitaTajakaGetInputSchema = {
   chart_id: z.string().uuid().describe('Chart UUID. Required.'),
   ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
+  varsha_year: z.number().int().optional().describe(
+    'Filter varsha_year_lords to this EXACT solar-return year (1 = birth year). Preferred over ' +
+    'paging when a single year (e.g. the current one) is wanted. Takes precedence over varsha_date.'),
+  varsha_date: z.string().optional().describe(
+    '"Current year" convenience: an ISO date (YYYY-MM-DD); resolved server-side to the solar-return ' +
+    'varsha_year whose window contains this date, then applied as an exact-year filter. Ignored if ' +
+    'varsha_year is also given. Omit both to get the default current-year-first ordering.'),
+  include_hadda: z.boolean().optional().describe(
+    'Include the 245 static hadda_lord/triraashipathi/vargottama chart_facts rows (do not vary by ' +
+    'year). Default FALSE — pass true to fetch them; the true count is always reported either way.'),
+  year_min: z.number().int().optional().describe('Filter varsha_year_lords to year >= this.'),
+  year_max: z.number().int().optional().describe('Filter varsha_year_lords to year <= this.'),
   limit: z.number().int().min(1).max(1000).optional().describe('Max rows per section (default: 200, hard cap: 1000)'),
   offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
 }
@@ -814,14 +831,21 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'CR-13/49: default limit is 200 rows per section (hadda_lord_facts / varsha_year_lords are ' +
     'paginated independently — see get_tajik.ts), hard cap 1000 — pass limit explicitly for a wider page.',
     ganitaTajakaGetInputSchema,
-    async ({ chart_id, ayanamsha_id, limit, offset }) => {
+    async ({ chart_id, ayanamsha_id, varsha_year, varsha_date, include_hadda, year_min, year_max, limit, offset }) => {
       if (!chart_id) return errorOutput('ganita_tajaka_get', 'chart_id is required')
       try {
         // CR-13/49 fix: `limit` now passes through UNFORCED — omitting it lets get_tajik.ts's
         // own sane default (200, hard cap 1000) apply, instead of this call site silently
         // inflating every unpaginated request to 25000 rows.
+        // MC-021/024 fix: varsha_year/varsha_date/include_hadda/year_min/year_max now actually
+        // reach get_tajik.ts's handler instead of being silently stripped at the zod boundary.
         const data = await callRegistryCapability('marsys://tool/L1/get_tajik', {
           chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit, offset: offset ?? 0,
+          ...(varsha_year != null ? { varsha_year } : {}),
+          ...(varsha_date != null ? { varsha_date } : {}),
+          ...(include_hadda != null ? { include_hadda } : {}),
+          ...(year_min != null ? { year_min } : {}),
+          ...(year_max != null ? { year_max } : {}),
         }, principal)
         return dualOutput(envelope(data, 'ganita_tajaka_get'))
       } catch (err) {

@@ -49,7 +49,12 @@ describe('get_tajik — SATYA-ŚEṢA W1: bare empty carries empty_reason', () =
       return { rows: [] }
     })
 
-    const res = await handler({ chart_id: CHART_ID, include_varsha: false })
+    // MC-021/024 (ŚODHANA T4): hadda_lord_facts rows are now gated behind include_hadda
+    // (default false — see get_tajik.ts) since they are 245 static, non-year-varying rows
+    // that previously drowned the envelope ahead of the actually-wanted current-year varsha
+    // row. Pass include_hadda: true explicitly to exercise the "real hadda rows present"
+    // path this test is pinning.
+    const res = await handler({ chart_id: CHART_ID, include_varsha: false, include_hadda: true })
 
     expect(res.content['total']).toBe(1)
     expect(res.content['empty_reason']).toBeUndefined()
