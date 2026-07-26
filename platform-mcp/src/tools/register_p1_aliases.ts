@@ -771,15 +771,28 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }, principal)
 
   // ka_tulana → kala_priority_ranking_get (registry cap marsys://tool/L3/call_priority_ranking)
+  // MC-024 (ŚODHANA T4): added domain/domains filter (previously undeclared here — silently
+  // dropped at the zod boundary even though the capability now honors it) and disclosure of
+  // the neutral-dignity down-rank the underlying capability applies (a "dignity state =
+  // neutral" descriptor row is rarely a genuine priority signal — down-ranked, not dropped).
   regAlias(server, 'kala_priority_ranking_get',
     'L3 priority-ranked signals for a chart in a period (ka_tulana service) — ranks active ' +
     'signals by salience × activation_strength × convergence. Which signals deserve attention ' +
-    'in a time window.',
+    'in a time window. Neutral-dignity descriptor rows ("dignity state = neutral") are down-' +
+    'ranked (priority_score x0.3, flagged via neutral_dignity_downranked per row) rather than ' +
+    'treated as genuine priority findings — see neutral_dignity_downranked_count. Filter by ' +
+    'domain/domains (career/character/health/relationship/spirituality/wealth) to scope to a ' +
+    'life domain.',
     'marsys://tool/L3/call_priority_ranking',
     {
       date_from: z.string().optional().describe('Start of evaluation period (YYYY-MM-DD).'),
       date_to:   z.string().optional().describe('End of evaluation period (YYYY-MM-DD).'),
       top_k:     z.number().int().min(1).max(100).optional().describe('Max signals (default 20).'),
+      domain:    z.string().optional().describe(
+        'Filter to ONE life domain (e.g. "wealth", "career", "health", "relationship", ' +
+        '"spirituality", "character"), matched case-insensitively. Takes precedence over `domains`.'),
+      domains:   z.array(z.string()).optional().describe(
+        'Filter to ANY of these life domains (OR/overlap match), case-insensitive. Ignored if `domain` is also given.'),
     }, principal)
 
   // bg_sign_medical → ref_sign_medical_get (global reference)
