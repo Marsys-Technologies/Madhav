@@ -816,23 +816,30 @@ async function fetchReadingSupplements(
     }
   }
 
-  const [argala, mechanisms, remedies, specialLagna, arudha, karakamsa, crossAyanamsha] = await Promise.all([
-    houses.length > 0
-      ? safeCall('marsys://tool/L1/chart_facts_query', {
-          category: 'net_argala_per_varga',
-          fact_subject: houses.map((h) => `D1_HOUSE_${h}`).join(','),
-          shape: 'rows',
-        })
-      : Promise.resolve(null),
-    safeCall('marsys://tool/L2/query_mechanisms', { limit: 50 }),
-    safeCall('marsys://tool/L2/query_remedies', { domain }),
-    safeCall('marsys://tool/L1/chart_facts_query', { category: 'special_lagna', shape: 'rows', limit: 200 }),
-    safeCall('marsys://tool/L1/chart_facts_query', { category: 'bhava_arudha', shape: 'rows', limit: 200 }),
-    domain === 'career'
-      ? safeCall('marsys://tool/L1/chart_facts_query', { category: 'karakamsa_position', shape: 'rows', limit: 200 })
-      : Promise.resolve(null),
-    safeCall('marsys://tool/L1/chart_facts_query', { category: 'nakshatra_cross_ayanamsha', shape: 'rows', limit: 200 }),
-  ])
+  // Diagnostic hypothesis test (PŪRṆA-VIRĀMA, W7 fix cycle attempt 3): live probes after
+  // attempt 2's fetch-error instrumentation (#800) showed NO thrown errors, yet these same
+  // 7 calls returned genuinely-empty results while identical standalone calls to the same
+  // capabilities (same args, same principal) returned rich real data. The one variable this
+  // function controls that a standalone call doesn't share: these 7 calls fire fully
+  // concurrently via Promise.all, layered on top of assess_wealth's OWN already-heavy
+  // ~26-serving-tool internal fan-out for the SAME request. Serializing them tests whether
+  // that concurrent load (connection-pool exhaustion, per-request internal rate limiting,
+  // or similar) is the actual cause, distinct from any bug in this function's own logic.
+  const argala = houses.length > 0
+    ? await safeCall('marsys://tool/L1/chart_facts_query', {
+        category: 'net_argala_per_varga',
+        fact_subject: houses.map((h) => `D1_HOUSE_${h}`).join(','),
+        shape: 'rows',
+      })
+    : null
+  const mechanisms = await safeCall('marsys://tool/L2/query_mechanisms', { limit: 50 })
+  const remedies = await safeCall('marsys://tool/L2/query_remedies', { domain })
+  const specialLagna = await safeCall('marsys://tool/L1/chart_facts_query', { category: 'special_lagna', shape: 'rows', limit: 200 })
+  const arudha = await safeCall('marsys://tool/L1/chart_facts_query', { category: 'bhava_arudha', shape: 'rows', limit: 200 })
+  const karakamsa = domain === 'career'
+    ? await safeCall('marsys://tool/L1/chart_facts_query', { category: 'karakamsa_position', shape: 'rows', limit: 200 })
+    : null
+  const crossAyanamsha = await safeCall('marsys://tool/L1/chart_facts_query', { category: 'nakshatra_cross_ayanamsha', shape: 'rows', limit: 200 })
   return { argala, mechanisms, remedies, specialLagna, arudha, karakamsa, crossAyanamsha }
 }
 
