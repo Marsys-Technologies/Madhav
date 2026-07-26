@@ -517,6 +517,108 @@ def _signal_activation_for_action(action_type: str, chart_id: str) -> float:
     return 0.55
 
 
+# ── MC-027 — native tāra-bala gate (reads L1 tara_bala_natal_baseline) ─────────
+# BPHS/Muhurta Chintamani Nava-tārā chakra: the day Moon's nakshatra relative to
+# the NATIVE'S OWN janma nakshatra classifies into 9 tārā states; Vipat(3)/
+# Pratyak(5)/Vadha(7) are the three classically adverse tārās. This is computed
+# and stored per-chart at L1 build time — ga_panchanga_writer._emit_tara_bala_baseline,
+# fact_category='tara_bala_natal_baseline', one row per of the 27 transit
+# nakshatras, fact_subject='TRANSIT_NAK_<SHORT>', fact_value_text=tara_class —
+# but the muhurta scorer never joined to it (MC-027 register finding): a window
+# whose Moon-nakshatra is Vadha-tārā for the native could rank #1/#2 with no
+# signal the day is classically inauspicious FOR THIS NATIVE specifically (this
+# is orthogonal to the generic, native-agnostic per-action nakshatra list
+# _panchanga_quality_for_action already checks — e.g. Shravana is a fine
+# "education" nakshatra in general, but can still be this native's Vadha-tārā).
+# Read here, never recomputed (§N.5) — same classical arithmetic the TS
+# muhurta_finder.ts Lane-F `computeTaraBala` helper re-derives client-side from
+# a caller-supplied `native_janma_nakshatra`, sourced instead from the chart's
+# own precomputed L1 table so the scorer never depends on a caller remembering
+# to pass the janma nakshatra at all (the gap kala_muhurta_get hit — it calls
+# this module directly and never had a native_janma_nakshatra param to begin
+# with).
+_ADVERSE_TARA = {"Vipat", "Pratyak", "Vadha"}
+_SEVERE_TARA = {"Vadha"}
+
+_NAK_NAME_TO_SHORT: dict[str, str] = {}
+
+
+def _nakshatra_short_code(name: str) -> Optional[str]:
+    """Map a panchanga_daily.moon_nakshatra full name to its NAKSHATRA_SHORT
+    code (ga_panchanga_writer's own table — imported once, cached module-level;
+    §N.5 — never re-invent a second nakshatra-naming table)."""
+    global _NAK_NAME_TO_SHORT
+    if not _NAK_NAME_TO_SHORT:
+        from ga_writers.ga_panchanga_writer import NAKSHATRA_NAMES, NAKSHATRA_SHORT
+        _NAK_NAME_TO_SHORT = dict(zip(NAKSHATRA_NAMES, NAKSHATRA_SHORT))
+    return _NAK_NAME_TO_SHORT.get(name)
+
+
+_TARA_BASELINE_CACHE: dict[tuple[str, str], dict[str, str]] = {}
+
+
+def _fetch_tara_bala_baseline(
+    chart_id: str, db_url: str, ayanamsha_id: str = "lahiri_chitrapaksha"
+) -> dict[str, str]:
+    """The chart's own tara_bala_natal_baseline (chart_facts) → {short_code: tara_class}.
+
+    Read once per (chart_id, ayanamsha_id) and cached for the process lifetime
+    (mirrors the _DASHA_LORD_CACHE pattern above) — this table is a fixed
+    27-row per-ayanamsha classification that never changes between calls for
+    the same chart/ayanamsha within a build.
+    """
+    cache_key = (chart_id, ayanamsha_id)
+    if cache_key in _TARA_BASELINE_CACHE:
+        return _TARA_BASELINE_CACHE[cache_key]
+    out: dict[str, str] = {}
+    try:
+        with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT fact_subject, fact_value_text FROM chart_facts
+                       WHERE chart_id = %s AND ayanamsha_id = %s
+                         AND fact_category = 'tara_bala_natal_baseline'""",
+                    [chart_id, ayanamsha_id],
+                )
+                for row in cur.fetchall():
+                    subj = str(row.get("fact_subject") or "")
+                    if subj.startswith("TRANSIT_NAK_"):
+                        out[subj[len("TRANSIT_NAK_"):]] = str(row.get("fact_value_text") or "")
+    except Exception as exc:
+        logger.debug(
+            "tara_bala_natal_baseline lookup failed for %s/%s: %s", chart_id, ayanamsha_id, exc
+        )
+    _TARA_BASELINE_CACHE[cache_key] = out
+    return out
+
+
+def _tara_bala_verdict(moon_nakshatra: str, baseline: dict[str, str]) -> Optional[dict[str, Any]]:
+    """The native's tāra-bala verdict for a window's day Moon-nakshatra.
+
+    Returns None when the baseline table or the nakshatra name doesn't resolve
+    (honest unavailable — e.g. a non-native chart with no L1 build yet — never
+    fabricated, per B.10).
+    """
+    short = _nakshatra_short_code(moon_nakshatra)
+    if short is None:
+        return None
+    tara_class = baseline.get(short)
+    if not tara_class:
+        return None
+    return {
+        "moon_nakshatra": moon_nakshatra,
+        "tara_class": tara_class,
+        "adverse": tara_class in _ADVERSE_TARA,
+        "severe": tara_class in _SEVERE_TARA,
+        "citation": (
+            "Nava-tārā chakra — Muhurta Chintamani, Nakshatra Prakaraṇa "
+            "(tārā counted from the native's own janma nakshatra to the day "
+            "Moon nakshatra, mod 9; Vipat/Pratyak/Vadha are the three "
+            "classically adverse tārās)."
+        ),
+    }
+
+
 def fetch_muhurta_windows(
     chart_id: str,
     action_type: str,
@@ -635,7 +737,8 @@ def _fetch_panchanga_row(
                 tithi_name,
                 vara_lord,
                 moon_nakshatra,
-                yoga
+                yoga,
+                auspicious
             FROM public.panchanga_daily
             WHERE date = %s
             LIMIT 1
@@ -686,7 +789,8 @@ def generate_muhurta_windows(
     >= min_score, ranked by score DESC, capped at `limit`.
 
     B.10 compliance:
-        panchanga_quality — derived from panchanga_daily table (classical rules)
+        panchanga_quality — derived from panchanga_daily table (classical rules),
+                            gated by the native's OWN tāra-bala baseline (MC-027)
         dasha_quality     — from chart_facts or FORENSIC defaults
         transit_quality   — simplified lunar-phase approximation
         signal_activation — from MSR v5.0 (native) or chart_facts
@@ -696,6 +800,15 @@ def generate_muhurta_windows(
     +12-month populated window) is SKIPPED, never fabricated with placeholder
     values — the caller uses `skipped_no_panchanga`/`coverage` to build an
     honest empty-with-reason response when nothing in range has coverage.
+
+    MC-027: each window is now gated against the chart's own precomputed
+    tara_bala_natal_baseline (see `_tara_bala_verdict` above) — an adverse
+    tārā (Vipat/Pratyak/Vadha) demotes panchanga_quality and files an
+    avoid_notes entry, so a Vadha-tārā window can no longer silently rank
+    top-2 with no signal it is inauspicious for THIS native specifically.
+    Intra-day auspicious sub-windows (brahma_muhurta/abhijit/amrit/labh/shubh —
+    whichever panchanga_daily.auspicious carries for the date) are surfaced
+    under factors.intraday_windows instead of only the coarse 48h block.
     """
     # Pre-fetch dasha and signal quality (chart-level, constant across windows)
     dasha_q = _dasha_quality_for_chart(chart_id, range_start)
@@ -710,6 +823,10 @@ def generate_muhurta_windows(
     coverage: tuple[Optional[str], Optional[str]] = (None, None)
     if db_url:
         coverage = _panchanga_coverage(db_url)
+
+    # MC-027: chart-level tāra-bala baseline, fetched once (constant across
+    # windows — the baseline is a fixed 27-row classification per chart/ayanamsha).
+    tara_baseline = _fetch_tara_bala_baseline(chart_id, db_url) if db_url else {}
 
     windows: list[dict[str, Any]] = []
     checked = 0
@@ -740,6 +857,18 @@ def generate_muhurta_windows(
         )
         transit_q = _transit_quality_for_window(current)
 
+        # MC-027: gate panchanga_quality against the native's OWN tāra-bala
+        # baseline for this window's day Moon-nakshatra. A demotion, not a
+        # veto — B.10 forbids silently dropping the window — but severe
+        # (Vadha) knocks the sub-score down hard enough that it cannot carry
+        # a top-2 composite score on tāra-bala grounds alone, and moderate
+        # (Vipat/Pratyak) still visibly discounts it.
+        tara_verdict = _tara_bala_verdict(moon_nakshatra, tara_baseline)
+        if tara_verdict and tara_verdict["severe"]:
+            panchanga_q = min(panchanga_q, 0.30)
+        elif tara_verdict and tara_verdict["adverse"]:
+            panchanga_q = min(panchanga_q, 0.50)
+
         score = compute_muhurta_score(panchanga_q, dasha_q, transit_q, signal_q)
 
         if score >= min_score:
@@ -750,11 +879,31 @@ def generate_muhurta_windows(
                 )
             if transit_q < 0.35:
                 avoid_notes.append("Dark moon phase — reduced lunar strength")
+            if tara_verdict and tara_verdict["adverse"]:
+                avoid_notes.append(
+                    f"{tara_verdict['tara_class']}-tārā for the native: day Moon in "
+                    f"{moon_nakshatra} is classically "
+                    f"{'severely' if tara_verdict['severe'] else 'moderately'} "
+                    "inauspicious relative to the native's own janma nakshatra "
+                    "(Nava-tārā chakra, Muhurta Chintamani)."
+                )
 
             # T-8 fix (D-1.6 S-1): resolve the live dasha lord(s) for THIS window's
             # date once, reused for both dasha_details and source_citation below
             # (cached across windows sharing the same date, see _current_dasha_lords).
             live_dasha = _current_dasha_lords(chart_id, current)
+
+            # MC-027: intra-day sub-windows already computed by panchanga_daily
+            # (brahma_muhurta/abhijit/amrit/labh/shubh — whichever the date's
+            # `auspicious` jsonb carries) — surfaced instead of only the coarse
+            # 48h block, so a caller can pick the actual auspicious slot within
+            # the window rather than treating the whole 48h span as uniform.
+            intraday_windows = panchanga.get("auspicious") or []
+            if isinstance(intraday_windows, str):
+                try:
+                    intraday_windows = json.loads(intraday_windows)
+                except Exception:
+                    intraday_windows = []
 
             windows.append({
                 "muhurta_id": None,
@@ -783,13 +932,25 @@ def generate_muhurta_windows(
                         "md_lord": live_dasha["md_lord"] if live_dasha else "unknown",
                         "ad_lord": (live_dasha.get("ad_lord") if live_dasha else None) or "unknown",
                     },
+                    # MC-027: native-specific tāra-bala verdict for this window's
+                    # day Moon-nakshatra (None when the L1 baseline/nakshatra
+                    # name doesn't resolve — honest unavailable, never fabricated).
+                    "tara_bala_natal": tara_verdict,
+                    # MC-027: intra-day auspicious sub-windows from panchanga_daily
+                    # (each {label, start_utc, end_utc}) — [] when none computed
+                    # for this date (honest empty, not fabricated).
+                    "intraday_windows": intraday_windows,
                     "avoid_notes": avoid_notes,
                 },
                 "source_citation": (
                     f"{_dasha_citation_fragment_from(live_dasha)}; "
                     f"panchanga_daily {current.date().isoformat()} "
                     f"({tithi_name}/{moon_nakshatra}/{vara_lord}); "
-                    "MSR v5.0 SIG.08/SIG.14/SIG.09 signal activation; "
+                    + (
+                        f"tara_bala_natal_baseline ({tara_verdict['tara_class']}); "
+                        if tara_verdict else ""
+                    )
+                    + "MSR v5.0 SIG.08/SIG.14/SIG.09 signal activation; "
                     "BPHS ch.46 muhurta rules; "
                     "PH-4-4 on-the-fly compute"
                 ),
