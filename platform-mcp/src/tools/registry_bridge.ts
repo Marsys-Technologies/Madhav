@@ -730,7 +730,21 @@ export function buildDomainCompletenessPointer(domain: unknown, chart_id: string
 export interface ReadingFamilyEntry {
   family: string
   label: string
-  status: 'served' | 'partial' | 'empty_for_this_chart' | 'not_computed_at_l1'
+  // MC-017 fix (SHODHANA follow-up, Dvārapāla-authorized): the prior single token
+  // `not_computed_at_l1` was ambiguous — it read as "the underlying astrological computation
+  // was never done at L1" when in every site below it actually meant "this reading-digest's
+  // curated/assessor-level block wasn't populated on this call," while the raw positions/facts
+  // usually DO exist elsewhere (chart_facts / chart_divisionals / bodha_mechanisms / bodha_upaya).
+  // Split into two distinct, verified states so a caller never over-reads an absence:
+  //   - 'domain_block_not_served': the classical concept IS computed somewhere in the system
+  //     (an L1 chart_facts category, an L1 chart_divisionals varga, or an L2 bodha_* table/
+  //     capability all exist for it) — this specific reading-digest fetch just didn't surface
+  //     it (query-param mismatch, call failure, or a not-yet-populated per-varga block).
+  //   - 'not_computed_globally': the concept was genuinely never computed at any level (no raw
+  //     data either) — mirrors MC-009's `not_computed_globally` convention for L2 mechanism
+  //     classes (dispositor_cycle/house_lordship_cycle/mutual_reception/parivartana_chain/
+  //     stellium/yoga_cluster) and must never be conflated with it.
+  status: 'served' | 'partial' | 'empty_for_this_chart' | 'domain_block_not_served' | 'not_computed_globally'
   sentences: string[]
   fact_ids: string[]
 }
@@ -843,8 +857,14 @@ async function fetchReadingSupplements(
 function readVargaFamily(vargaAnalysis: Record<string, unknown> | undefined, varga: string, purpose: string): ReadingFamilyEntry {
   const perVarga = (vargaAnalysis?.['per_varga'] as Record<string, unknown> | undefined)?.[varga] as Record<string, unknown> | undefined
   if (!perVarga) {
-    return { family: `divisional_${varga}`, label: `Divisional chart ${varga}`, status: 'not_computed_at_l1', sentences: [
-      `${varga} (${purpose}) is not in this call's varga_analysis — ${vargaAnalysis?.['note'] ? String(vargaAnalysis['note']) : 'no direct-consumption block returned'}.`,
+    // MC-017: verified this is a serving gap, not a computation gap — ${varga}'s positions are
+    // standard L1/L1.5 output (ga_vargas_writer + ga_structural_writer materialize all 30 vargas,
+    // including this one, into chart_divisionals; buildVargaAnalysisDirect then reads
+    // graha_dignity_per_varga/ashtakavarga_pinda_sarva_per_varga FROM those rows) — the raw
+    // divisional positions exist even when this call's per_varga block came back empty.
+    return { family: `divisional_${varga}`, label: `Divisional chart ${varga}`, status: 'domain_block_not_served', sentences: [
+      `${varga} (${purpose}) is not in this call's varga_analysis — ${vargaAnalysis?.['note'] ? String(vargaAnalysis['note']) : 'no direct-consumption block returned'} ` +
+        `(raw ${varga} positions exist in chart_divisionals/chart_facts graha_dignity_per_varga — see chart_facts_query with divisional_chart="${varga}").`,
     ], fact_ids: [] }
   }
   const dignityRows = Array.isArray(perVarga['graha_dignity']) ? perVarga['graha_dignity'] as Record<string, unknown>[] : []
@@ -923,7 +943,13 @@ function readKarakamshaFamily(karakamsaPayload: unknown): ReadingFamilyEntry {
   const sign = byKey.get('sign')
   const ak = byKey.get('atmakaraka_graha')
   if (!sign && !ak) {
-    return { family: 'karakamsha_or_swamsha', label: 'Karakāṁśa (Jaimini)', status: 'not_computed_at_l1', sentences: ['karakamsa_position carries no KARAKAMSA rows for this chart/ayanamsha.'], fact_ids: [] }
+    // MC-017: verified serving gap, not absence — karakamsa_position is written by
+    // ga_sensitive_writer (L1, category 18) from the Atmakaraka's D9 sign, and the raw
+    // ingredients (Atmakaraka determination + D9 navamsa positions for every graha) are
+    // standard chart_facts/chart_divisionals output for any built chart; a missing
+    // karakamsa_position row for this specific ayanamsha_id is a data-plane/query gap, not
+    // proof the underlying computation never happened.
+    return { family: 'karakamsha_or_swamsha', label: 'Karakāṁśa (Jaimini)', status: 'domain_block_not_served', sentences: ['karakamsa_position carries no KARAKAMSA rows for this chart/ayanamsha (raw Ātmakāraka + D9 navāṃśa positions exist in chart_facts/chart_divisionals — see chart_facts_query category="karaka_chara_position" or divisional_chart="D9").'], fact_ids: [] }
   }
   const factIds = [sign, ak].filter((r): r is ChartFactsRow => !!r).map((r) => String(r.fact_id ?? '')).filter(Boolean)
   return {
@@ -944,7 +970,12 @@ function readArgalaFamily(domain: string, argalaPayload: unknown, house: number)
   const rows = rowsOf(argalaPayload)
   const row = rows.find((r) => String(r.fact_subject) === `D1_HOUSE_${house}`)
   if (!row) {
-    return { family, label: `Net argala on house ${house}`, status: 'not_computed_at_l1', sentences: [`net_argala_per_varga carries no D1_HOUSE_${house} row for this chart.${diagSuffix(argalaPayload)}`], fact_ids: [] }
+    // MC-017: verified serving gap, not absence — net_argala_per_varga is written by
+    // ga_structural_writer for ALL_30_VARGAS (including D1) per house, so D1 house argala is
+    // standard L1 output for any built chart; a missing D1_HOUSE_${house} row here reflects
+    // this call/ayanamsha not surfacing it, never that the underlying house/lord positions
+    // (which exist as basic chart_facts) were never computed.
+    return { family, label: `Net argala on house ${house}`, status: 'domain_block_not_served', sentences: [`net_argala_per_varga carries no D1_HOUSE_${house} row for this chart (raw house/lord positions exist in chart_facts — see chart_facts_query category="net_argala_per_varga").${diagSuffix(argalaPayload)}`], fact_ids: [] }
   }
   const net = Number(row.fact_value_num ?? 0)
   const reading = net > 0
@@ -1006,7 +1037,14 @@ function readCrossAyanamshaFamily(domain: string, crossAyanamshaPayload: unknown
   const karakaConsistency = byKarakaKey.get('nak_5ay_consistency')
   const lagnaConsistency = byLagnaKey.get('nak_5ay_consistency')
   if (!karakaConsistency && !lagnaConsistency) {
-    return { family: 'cross_ayanamsha_agreement', label: 'Cross-ayanaṃśa agreement', status: 'not_computed_at_l1', sentences: [`nakshatra_cross_ayanamsha carries no rows for the domain kāraka or Lagna on this chart.${diagSuffix(crossAyanamshaPayload)}`], fact_ids: [] }
+    // MC-017: verified serving gap, not absence — ga_nakshatra.py's cross_ayanamsha pass writes
+    // nakshatra_cross_ayanamsha rows with ayanamsha_id='INVARIANT' (by design: the value is the
+    // SAME across all 5 sidereal ayanamshas, so it is stored once, invariantly), but this
+    // supplement fetch queries chart_facts_query with the domain's actual ayanamsha_id
+    // (e.g. lahiri_chitrapaksha) — a mismatched filter that returns zero rows even though the
+    // rows exist. The raw per-ayanamsha nakshatra positions this is derived from are themselves
+    // ordinary chart_facts output too.
+    return { family: 'cross_ayanamsha_agreement', label: 'Cross-ayanaṃśa agreement', status: 'domain_block_not_served', sentences: [`nakshatra_cross_ayanamsha carries no rows for the domain kāraka or Lagna on this chart (the rows are stored under ayanamsha_id="INVARIANT", not this call's ayanamsha_id — see chart_facts_query category="nakshatra_cross_ayanamsha" ayanamsha_id="INVARIANT").${diagSuffix(crossAyanamshaPayload)}`], fact_ids: [] }
   }
   const sentences: string[] = []
   const factIds: string[] = []
@@ -1023,7 +1061,11 @@ function readCrossAyanamshaFamily(domain: string, crossAyanamshaPayload: unknown
 
 function readMechanismsFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
   if (!mechanismsPayload || typeof mechanismsPayload !== 'object') {
-    return { family: 'all_chart_mechanisms_and_chains', label: 'L2 mechanisms (dispositor chains/cycles, yoga clusters)', status: 'not_computed_at_l1', sentences: [`query_mechanisms call failed or returned nothing for this chart.${diagSuffix(mechanismsPayload)}`], fact_ids: [] }
+    // MC-017: verified serving gap, not absence — marsys://tool/L2/query_mechanisms is a real,
+    // wired capability over the bodha_mechanisms table (also independently servable via
+    // bodha_mechanisms_get), built for any chart that ran the L2 Bodha campaign. A failed/empty
+    // call here means THIS fetch didn't reach the data, not that mechanisms were never computed.
+    return { family: 'all_chart_mechanisms_and_chains', label: 'L2 mechanisms (dispositor chains/cycles, yoga clusters)', status: 'domain_block_not_served', sentences: [`query_mechanisms call failed or returned nothing for this chart (bodha_mechanisms data may still exist — see bodha_mechanisms_get).${diagSuffix(mechanismsPayload)}`], fact_ids: [] }
   }
   const content = mechanismsPayload as Record<string, unknown>
   const rows = Array.isArray(content['rows']) ? content['rows'] as Record<string, unknown>[] : []
@@ -1054,7 +1096,10 @@ function readMechanismsFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
  *  sentence over the SAME underlying data when the concepts are genuinely distinct facets of it). */
 function readDispositorClosureFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
   if (!mechanismsPayload || typeof mechanismsPayload !== 'object') {
-    return { family: 'full_dispositor_closure', label: 'Dispositor chain/cycle closure', status: 'not_computed_at_l1', sentences: [`query_mechanisms call failed or returned nothing for this chart.${diagSuffix(mechanismsPayload)}`], fact_ids: [] }
+    // MC-017: same verified serving gap as readMechanismsFamily above — query_mechanisms is a
+    // real capability over bodha_mechanisms (also servable via bodha_mechanisms_get); a
+    // failed/empty call here is not proof dispositor closures were never computed.
+    return { family: 'full_dispositor_closure', label: 'Dispositor chain/cycle closure', status: 'domain_block_not_served', sentences: [`query_mechanisms call failed or returned nothing for this chart (bodha_mechanisms data may still exist — see bodha_mechanisms_get).${diagSuffix(mechanismsPayload)}`], fact_ids: [] }
   }
   const content = mechanismsPayload as Record<string, unknown>
   const rows = Array.isArray(content['rows']) ? content['rows'] as Record<string, unknown>[] : []
@@ -1077,7 +1122,11 @@ function readDispositorClosureFamily(mechanismsPayload: unknown): ReadingFamilyE
 
 function readRemediesFamily(remediesPayload: unknown): ReadingFamilyEntry {
   if (!remediesPayload || typeof remediesPayload !== 'object') {
-    return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'not_computed_at_l1', sentences: [`query_remedies call failed or returned nothing for this chart.${diagSuffix(remediesPayload)}`], fact_ids: [] }
+    // MC-017: verified serving gap, not absence — marsys://tool/L2/query_remedies is a real,
+    // wired capability over the bodha_upaya (bo_upaya) table, also independently servable via
+    // bodha_remedies_get, for any chart that ran the L2 Bodha campaign. A failed/empty call
+    // here means this fetch didn't reach the data, not that remedies were never computed.
+    return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'domain_block_not_served', sentences: [`query_remedies call failed or returned nothing for this chart (bodha_upaya data may still exist — see bodha_remedies_get).${diagSuffix(remediesPayload)}`], fact_ids: [] }
   }
   const content = remediesPayload as Record<string, unknown>
   const narration = content['narration'] as Record<string, unknown> | undefined
@@ -1172,9 +1221,17 @@ export async function buildDomainReading(
   add(readRemediesFamily(supplements.remedies))
   add(readContradictionsFamily(sourceData['contradictions'] as Record<string, unknown> | undefined))
 
+  // MC-017: this defensive fallback fires only if a family name in DOMAIN_READING_FAMILIES has
+  // no matching `add()` call above (currently none — every wealth/career family is wired; this
+  // guards future family-list drift). Labeled 'domain_block_not_served' rather than
+  // 'not_computed_globally' because this branch cannot verify system-wide absence — it only
+  // knows THIS reading digest has no reader wired for the family; the underlying concept may
+  // well have L1/L2 data reachable via chart_facts_query/dossier. Claiming the stronger
+  // 'not_computed_globally' would require confirming no raw data exists anywhere, which a
+  // generic wiring-gap catch cannot do.
   const reading = families.map((f) => byFamily.get(f) ?? {
-    family: f, label: titleCaseUnderscored(f), status: 'not_computed_at_l1' as const,
-    sentences: [`${f} has no wired data source in this build — served as an honest gap, not fabricated.`], fact_ids: [],
+    family: f, label: titleCaseUnderscored(f), status: 'domain_block_not_served' as const,
+    sentences: [`${f} has no wired data source in this build's reading digest — served as an honest gap, not fabricated (raw L1/L2 data for this concept, if any, may still be reachable via chart_facts_query/dossier).`], fact_ids: [],
   })
   const families_served = reading.filter((r) => r.status === 'served').length
   return { reading, families_served, families_total: families.length }
