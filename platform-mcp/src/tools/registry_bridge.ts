@@ -780,6 +780,15 @@ function rowsOf(payload: unknown): ChartFactsRow[] {
   return Array.isArray(rows) ? (rows as ChartFactsRow[]) : []
 }
 
+/** Diagnostic (PŪRṆA-VIRĀMA): if a supplement call threw (tagged by safeCall's catch), surface
+ *  the real error inline instead of letting it read identically to a genuine computed-empty. */
+function diagSuffix(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return ''
+  const p = payload as Record<string, unknown>
+  if (typeof p['__fetch_error'] !== 'string') return ''
+  return ` [DIAG fetch_error: ${p['__fetch_error']} | uri=${String(p['__fetch_uri'])} args=${JSON.stringify(p['__fetch_args'])}]`
+}
+
 /** Additional read-only capability calls the digest needs beyond what assess_wealth/career
  *  already fetched (W7.2): argala on the domain's houses, chart-wide mechanisms/chains,
  *  remedies, special lagnas + Arudha Lagna, karakamsa (career only), cross-ayanamsha
@@ -793,8 +802,19 @@ async function fetchReadingSupplements(
   specialLagna: unknown; arudha: unknown; karakamsa: unknown; crossAyanamsha: unknown
 }> {
   const houses = DOMAIN_READING_HOUSES[domain] ?? []
-  const safeCall = (uri: string, args: Record<string, unknown>): Promise<unknown> =>
-    callRegistryCapability(uri, { chart_id, ayanamsha_id, ...args }, chart_id, principal).catch(() => null)
+  // Diagnostic (PŪRṆA-VIRĀMA): distinguish "the call threw" from "the call succeeded with a
+  // genuinely empty result" — the two were previously conflated into the same `null`, which
+  // hid a real live-probed gap (5/13 families empty post-#799) behind an ambiguous "call failed
+  // or returned nothing" message. A thrown error now carries its real message through to the
+  // family sentence instead of being silently swallowed (B.10: never let a fetch failure look
+  // identical to an honest computed-empty).
+  const safeCall = async (uri: string, args: Record<string, unknown>): Promise<unknown> => {
+    try {
+      return await callRegistryCapability(uri, { chart_id, ayanamsha_id, ...args }, chart_id, principal)
+    } catch (err) {
+      return { __fetch_error: err instanceof Error ? err.message : String(err), __fetch_uri: uri, __fetch_args: args }
+    }
+  }
 
   const [argala, mechanisms, remedies, specialLagna, arudha, karakamsa, crossAyanamsha] = await Promise.all([
     houses.length > 0
@@ -924,7 +944,7 @@ function readArgalaFamily(domain: string, argalaPayload: unknown, house: number)
   const rows = rowsOf(argalaPayload)
   const row = rows.find((r) => String(r.fact_subject) === `D1_HOUSE_${house}`)
   if (!row) {
-    return { family, label: `Net argala on house ${house}`, status: 'not_computed_at_l1', sentences: [`net_argala_per_varga carries no D1_HOUSE_${house} row for this chart.`], fact_ids: [] }
+    return { family, label: `Net argala on house ${house}`, status: 'not_computed_at_l1', sentences: [`net_argala_per_varga carries no D1_HOUSE_${house} row for this chart.${diagSuffix(argalaPayload)}`], fact_ids: [] }
   }
   const net = Number(row.fact_value_num ?? 0)
   const reading = net > 0
@@ -967,7 +987,7 @@ function readSpecialLagnaFamily(specialPayload: unknown, arudhaPayload: unknown)
     family: 'special_lagnas',
     label: 'Special lagnas (Bhava/Ghati/Hora/Sree/Varnada) + Ārūḍha Lagna',
     status: parts.length > 0 ? 'served' : 'empty_for_this_chart',
-    sentences: parts.length > 0 ? [`${parts.join('; ')}.`] : ['No special-lagna rows returned for this chart/ayanamsha.'],
+    sentences: parts.length > 0 ? [`${parts.join('; ')}.`] : [`No special-lagna rows returned for this chart/ayanamsha.${diagSuffix(specialPayload)} [rows_len=${rows.length}]`],
     fact_ids: Array.from(new Set(factIds.filter(Boolean))),
   }
 }
@@ -986,7 +1006,7 @@ function readCrossAyanamshaFamily(domain: string, crossAyanamshaPayload: unknown
   const karakaConsistency = byKarakaKey.get('nak_5ay_consistency')
   const lagnaConsistency = byLagnaKey.get('nak_5ay_consistency')
   if (!karakaConsistency && !lagnaConsistency) {
-    return { family: 'cross_ayanamsha_agreement', label: 'Cross-ayanaṃśa agreement', status: 'not_computed_at_l1', sentences: ['nakshatra_cross_ayanamsha carries no rows for the domain kāraka or Lagna on this chart.'], fact_ids: [] }
+    return { family: 'cross_ayanamsha_agreement', label: 'Cross-ayanaṃśa agreement', status: 'not_computed_at_l1', sentences: [`nakshatra_cross_ayanamsha carries no rows for the domain kāraka or Lagna on this chart.${diagSuffix(crossAyanamshaPayload)}`], fact_ids: [] }
   }
   const sentences: string[] = []
   const factIds: string[] = []
@@ -1003,12 +1023,12 @@ function readCrossAyanamshaFamily(domain: string, crossAyanamshaPayload: unknown
 
 function readMechanismsFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
   if (!mechanismsPayload || typeof mechanismsPayload !== 'object') {
-    return { family: 'all_chart_mechanisms_and_chains', label: 'L2 mechanisms (dispositor chains/cycles, yoga clusters)', status: 'not_computed_at_l1', sentences: ['query_mechanisms call failed or returned nothing for this chart.'], fact_ids: [] }
+    return { family: 'all_chart_mechanisms_and_chains', label: 'L2 mechanisms (dispositor chains/cycles, yoga clusters)', status: 'not_computed_at_l1', sentences: [`query_mechanisms call failed or returned nothing for this chart.${diagSuffix(mechanismsPayload)}`], fact_ids: [] }
   }
   const content = mechanismsPayload as Record<string, unknown>
   const rows = Array.isArray(content['rows']) ? content['rows'] as Record<string, unknown>[] : []
   if (rows.length === 0) {
-    return { family: 'all_chart_mechanisms_and_chains', label: 'L2 mechanisms (dispositor chains/cycles, yoga clusters)', status: 'empty_for_this_chart', sentences: [String(content['empty_reason'] ?? 'No bodha_mechanisms rows for this chart.')], fact_ids: [] }
+    return { family: 'all_chart_mechanisms_and_chains', label: 'L2 mechanisms (dispositor chains/cycles, yoga clusters)', status: 'empty_for_this_chart', sentences: [`${String(content['empty_reason'] ?? 'No bodha_mechanisms rows for this chart.')}${diagSuffix(mechanismsPayload)} [rows_len=${rows.length} total_matching=${String(content['total_matching'])}]`], fact_ids: [] }
   }
   const totalMatching = Number(content['total_matching'] ?? rows.length)
   const chainCircuitCount = Number(content['chain_circuit_count'] ?? 0)
@@ -1034,7 +1054,7 @@ function readMechanismsFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
  *  sentence over the SAME underlying data when the concepts are genuinely distinct facets of it). */
 function readDispositorClosureFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
   if (!mechanismsPayload || typeof mechanismsPayload !== 'object') {
-    return { family: 'full_dispositor_closure', label: 'Dispositor chain/cycle closure', status: 'not_computed_at_l1', sentences: ['query_mechanisms call failed or returned nothing for this chart.'], fact_ids: [] }
+    return { family: 'full_dispositor_closure', label: 'Dispositor chain/cycle closure', status: 'not_computed_at_l1', sentences: [`query_mechanisms call failed or returned nothing for this chart.${diagSuffix(mechanismsPayload)}`], fact_ids: [] }
   }
   const content = mechanismsPayload as Record<string, unknown>
   const rows = Array.isArray(content['rows']) ? content['rows'] as Record<string, unknown>[] : []
@@ -1057,14 +1077,14 @@ function readDispositorClosureFamily(mechanismsPayload: unknown): ReadingFamilyE
 
 function readRemediesFamily(remediesPayload: unknown): ReadingFamilyEntry {
   if (!remediesPayload || typeof remediesPayload !== 'object') {
-    return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'not_computed_at_l1', sentences: ['query_remedies call failed or returned nothing for this chart.'], fact_ids: [] }
+    return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'not_computed_at_l1', sentences: [`query_remedies call failed or returned nothing for this chart.${diagSuffix(remediesPayload)}`], fact_ids: [] }
   }
   const content = remediesPayload as Record<string, unknown>
   const narration = content['narration'] as Record<string, unknown> | undefined
   const lead = typeof narration?.['lead'] === 'string' ? narration['lead'] as string : null
   const prescriptions = Array.isArray(content['prescriptions']) ? content['prescriptions'] as Record<string, unknown>[] : []
   if (!lead && prescriptions.length === 0) {
-    return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'empty_for_this_chart', sentences: ['No bo_upaya resonance/prescription rows for this chart — an honest empty, not a stub.'], fact_ids: [] }
+    return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'empty_for_this_chart', sentences: [`No bo_upaya resonance/prescription rows for this chart — an honest empty, not a stub.${diagSuffix(remediesPayload)}`], fact_ids: [] }
   }
   const sentences: string[] = []
   if (lead) sentences.push(lead)
