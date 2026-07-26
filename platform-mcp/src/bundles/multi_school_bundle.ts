@@ -13,6 +13,7 @@
  */
 
 import { computeCacheKey, cacheLookup, cacheStore } from './cache.js'
+import { computeBundleHealth, type BundleStatus } from './bundle_status.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -87,7 +88,10 @@ export interface MultiSchoolBundleEntry {
 // ── Envelope ───────────────────────────────────────────────────────────────────
 
 export interface MultiSchoolBundleEnvelope {
-  ok: true
+  // MC-002: `ok` derived from `status` (see bundle_status.ts). Note: cross_school_lookup
+  // is always PARKED (F-WP17-1), so a healthy 4-school run reports 'partial' honestly.
+  ok: boolean
+  status: BundleStatus
   bundle_name: 'multi_school_bundle'
   served_from_cache: boolean
   claim: string
@@ -366,8 +370,12 @@ export async function executeMultiSchoolBundle(
     ? extractConvergenceScore(crossSchoolEntry.data)
     : undefined
 
+  // MC-002: top-level health from errored/total ratio; `ok` derived from `status`.
+  const health = computeBundleHealth(sub_tools_errored.length, entries.length)
+
   const envelope: MultiSchoolBundleEnvelope = {
-    ok: true,
+    ok: health.ok,
+    status: health.status,
     bundle_name: 'multi_school_bundle',
     served_from_cache: false,
     claim: params.claim,

@@ -168,6 +168,48 @@ class BoPramanaMapa(WriterBase):
             [chart_id],
         )
 
+        # ── MC-001 (ŚODHANA T2, item 3): REAL unresolved-constituent count ──────
+        # The field `unresolved_constituent_facts_count` must measure how many
+        # constituent fact_id REFERENCES fail to resolve against live chart_facts —
+        # NOT how many signals have a missing/empty array (that is trap1_count above,
+        # correctly named trap1_authority_inversion_count). The prior writer stored
+        # trap1_count here, so a chart whose signals all HAVE arrays but whose members
+        # are ALL orphaned (the live MC-001 case: 100% of 71,430 refs orphaned after an
+        # L1 delete-then-insert rebuild changed every build_id-embedded fact_id) reported
+        # unresolved_constituent_facts_count = 0 — a GA.1 stored-vs-live contradiction.
+        # Derive the true live orphan count via a LEFT JOIN against chart_facts.
+        orphan_row = conn.execute(
+            """SELECT
+                 count(*)                                   AS total_refs,
+                 count(*) FILTER (WHERE cf.fact_id IS NULL)  AS orphaned_refs
+               FROM (
+                 SELECT unnest(constituent_facts_array) AS fid
+                 FROM bodha_msr_signals
+                 WHERE chart_id = %s AND constituent_facts_array IS NOT NULL
+               ) refs
+               LEFT JOIN chart_facts cf ON cf.fact_id = refs.fid""",
+            [chart_id],
+        ).fetchone()
+        if orphan_row is None:
+            total_constituent_refs = 0
+            orphaned_constituent_refs = 0
+        elif isinstance(orphan_row, (tuple, list)):
+            total_constituent_refs = int(orphan_row[0] or 0)
+            orphaned_constituent_refs = int(orphan_row[1] or 0)
+        else:
+            total_constituent_refs = int(orphan_row.get("total_refs", 0) or 0)
+            orphaned_constituent_refs = int(orphan_row.get("orphaned_refs", 0) or 0)
+        constituent_orphan_pct = (
+            round(100.0 * orphaned_constituent_refs / total_constituent_refs, 2)
+            if total_constituent_refs > 0 else 0.0
+        )
+        if orphaned_constituent_refs > 0:
+            logger.warning(
+                "[bo_pramana_mapa] MC-001: %d/%d constituent refs orphaned (%.2f%%) "
+                "against live chart_facts for chart_id=%s — Bodha↔L1 linkage is stale.",
+                orphaned_constituent_refs, total_constituent_refs, constituent_orphan_pct, chart_id,
+            )
+
         # Formula versions
         sal_ver  = _formula_version(conn, chart_id, "salience_formula_version", "bodha_msr_signals")
         link_ver = _formula_version(conn, chart_id, "linkage_formula_version", "bodha_cdlm_cells")
@@ -235,7 +277,9 @@ class BoPramanaMapa(WriterBase):
             # phrasing must replace it.
             "trap2_narration_leak_count": 0,
             # ── 8 grounding columns (were missing from INSERT) ────────────────
-            "unresolved_constituent_facts_count": trap1_count,
+            # MC-001 (item 3): REAL live orphan count (refs that don't resolve
+            # against chart_facts), not trap1_count (missing-array count).
+            "unresolved_constituent_facts_count": orphaned_constituent_refs,
             "l1_assets_projected_count": l1_assets_projected,
             "l1_assets_projected_array": l1_assets_projected_array,
             "lel_zero_leak_pass": lel_zero_leak,
@@ -254,6 +298,16 @@ class BoPramanaMapa(WriterBase):
                     "edges": edge_count, "resonances": res_count,
                     "prescriptions": presc_count, "embeddings": emb_count,
                     "convergence": conv_count, "contradictions": contr_count,
+                },
+                # MC-001: live constituent-linkage health at scorecard time. NOTE these
+                # values are a build-time snapshot — a later L1 rebuild can orphan them,
+                # so serve-time surfaces MUST re-derive live (see bodha_l1_linkage.ts) and
+                # never trust the stored unresolved_constituent_facts_count alone.
+                "constituent_linkage": {
+                    "total_refs": total_constituent_refs,
+                    "orphaned_refs": orphaned_constituent_refs,
+                    "orphan_pct": constituent_orphan_pct,
+                    "trap1_missing_array_count": trap1_count,
                 },
             }),
         }
