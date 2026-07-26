@@ -431,6 +431,14 @@ export const ganitaStrengthGetInputSchema = {
   ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
   limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
   offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+  // ŚODHANA T3 (MC-014): default false — graha_in_house_composite_strength rows are filtered
+  // to each graha's actual house (get_strength.ts's active-house filter) rather than every
+  // planet x every house counterfactual placement.
+  all: z.boolean().optional().describe(
+    'Default false — graha_in_house_composite_strength (the one category with a row per graha ' +
+    'PER HOUSE) is filtered to each graha\'s single ACTUAL house; every other strength category ' +
+    'is already one row per graha and unaffected. Pass true for every counterfactual placement.'
+  ),
 }
 
 export const ganitaSadeSatiGetInputSchema = {
@@ -438,6 +446,13 @@ export const ganitaSadeSatiGetInputSchema = {
   ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
   limit: z.number().int().min(1).max(25000).optional().describe('Max rows (default: 25000)'),
   offset: z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
+  // ŚODHANA T3 (MC-014): default false — serves only the current+adjacent Saturn period(s),
+  // not the full ~1950-2100 historical+future sweep (get_sade_sati.ts's WINDOW_YEARS filter).
+  all: z.boolean().optional().describe(
+    'Default false — serves only the CURRENT + adjacent Sade Sati/Saturn period(s), not every ' +
+    'period this chart has ever had or will ever have across ~1950-2100. Pass true for the full ' +
+    'historical+future sweep (useful for rectification / historical-events work).'
+  ),
 }
 
 // CR-13/49 (D-1.5b item 2): the prior schema (max 25000, and the call site below forcing
@@ -479,11 +494,15 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'Cheshta Bala (motional), Naisargika Bala (natural), Drig Bala (aspectual) — plus Ishta-Kashta, ' +
     'Vimsopaka, and Bhava Bala. Use to determine which planets are capable of delivering significations.',
     ganitaStrengthGetInputSchema,
-    async ({ chart_id, ayanamsha_id, limit, offset }) => {
+    async ({ chart_id, ayanamsha_id, limit, offset, all }) => {
       if (!chart_id) return errorOutput('ganita_strength_get', 'chart_id is required')
       try {
+        // MC-014 fix: `limit` no longer force-inflated to 25000 — the capability's own
+        // default (500) now actually applies. `all` threads through to the capability's
+        // actual-placement-only default filter (get_strength.ts).
         const data = await callRegistryCapability('marsys://tool/L1/get_strength', {
-          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
+          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit, offset: offset ?? 0,
+          ...(all != null ? { all } : {}),
         }, principal)
         return dualOutput(envelope(data, 'ganita_strength_get'))
       } catch (err) {
@@ -807,11 +826,16 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
     'Janma Shani, Ashtama Shani, Ardhashtama Shani, Dhaiya (Kantaka/2.5 year), and compound markers. ' +
     'Use to assess Saturn\'s current influence and upcoming heavy-transit windows.',
     ganitaSadeSatiGetInputSchema,
-    async ({ chart_id, ayanamsha_id, limit, offset }) => {
+    async ({ chart_id, ayanamsha_id, limit, offset, all }) => {
       if (!chart_id) return errorOutput('ganita_sade_sati_get', 'chart_id is required')
       try {
+        // MC-014 fix: `limit` no longer force-inflated to 25000 when omitted — the
+        // capability's own default (500, current+adjacent-window-filtered unless
+        // all:true) now actually applies, instead of every unpaginated call silently
+        // requesting the maximum page before the window filter even runs.
         const data = await callRegistryCapability('marsys://tool/L1/get_sade_sati', {
-          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit: limit ?? 25000, offset: offset ?? 0,
+          chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), limit, offset: offset ?? 0,
+          ...(all != null ? { all } : {}),
         }, principal)
         return dualOutput(envelope(data, 'ganita_sade_sati_get'))
       } catch (err) {
