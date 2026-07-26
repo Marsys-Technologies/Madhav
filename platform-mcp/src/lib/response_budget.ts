@@ -68,6 +68,19 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   'epistemic',
   'coverage',
   'reading_contract',
+  // — SATYA-ŚEṢA W7 (flagship substance-inline, W7.4): the composed digest itself and its
+  // completeness receipt are the densest, most-actionable layer of an assess_wealth/
+  // assess_career response — under §N.6.2 they are the LAST thing trimmable, not the first.
+  // A generic biggest-section-first trim would otherwise zero `reading` the instant it
+  // becomes genuinely populated (the exact D-1.5a-class regression CLAUDE.md §N.6.2
+  // documents for judgment_query's bearing_yogas). Immunity here means these keys are never
+  // even declared as an auto-detected trimmable array/string site (see
+  // autoDetectTrimmableSections and truncateLongStringsInPlace below) — stronger than
+  // hardFloor, not weaker: the worst-case trimmed response still carries the full digest.
+  'reading',
+  'domain_completeness',
+  'completeness_directive',
+  'coverage_map',
 ])
 
 /** A single trimmable section of a tool's response content. */
