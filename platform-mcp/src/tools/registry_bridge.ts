@@ -1116,7 +1116,20 @@ export async function buildDomainReading(
   const families = DOMAIN_READING_FAMILIES[domain]
   if (!families) return { reading: [], families_served: 0, families_total: 0 }
 
-  const vargaAnalysis = data['varga_analysis'] as Record<string, unknown> | undefined
+  // Bug fix (PŪRṆA-VIRĀMA close-out, live-probe-discovered): the L-DOMAIN/assess_wealth and
+  // L-DOMAIN/assess_career capabilities (register_d8_assess_domain.ts) return their payload
+  // wrapped as `{ content: { varga_analysis, activating_dasha, contradictions, ... } }` — the
+  // same envelope assess_wealth/assess_career spread onto `response` one level up in
+  // registry_bridge.ts (`{ orientation_context, orientation_ok, ...data }`, where `data` IS
+  // that `{ content: {...} }` object). So on the live wire, the substance this function needs
+  // lives at `data.content.varga_analysis` etc., never at `data.varga_analysis` directly — the
+  // original W7 build read the wrong depth and always found `undefined`, so every family
+  // degraded to `not_computed_at_l1`/`empty_for_this_chart` regardless of what was actually
+  // served. `w7_substance_inline.test.ts`'s fixtures called `buildDomainReading` with a flat
+  // (uncontented) `data` object, which is why the unit tests passed against this bug. Falling
+  // back to `data` itself keeps those flat-fixture unit tests valid while fixing the real shape.
+  const sourceData = (data['content'] as Record<string, unknown> | undefined) ?? data
+  const vargaAnalysis = sourceData['varga_analysis'] as Record<string, unknown> | undefined
   const vargas = DOMAIN_READING_VARGAS[domain] ?? ['D1', 'D1']
   const houses = DOMAIN_READING_HOUSES[domain] ?? []
 
@@ -1135,9 +1148,9 @@ export async function buildDomainReading(
   add(readMechanismsFamily(supplements.mechanisms))
   add(readSpecialLagnaFamily(supplements.specialLagna, supplements.arudha))
   add(readCrossAyanamshaFamily(domain, supplements.crossAyanamsha))
-  add(readTimingWindowsFamily(data['activating_dasha'] as Record<string, unknown> | undefined))
+  add(readTimingWindowsFamily(sourceData['activating_dasha'] as Record<string, unknown> | undefined))
   add(readRemediesFamily(supplements.remedies))
-  add(readContradictionsFamily(data['contradictions'] as Record<string, unknown> | undefined))
+  add(readContradictionsFamily(sourceData['contradictions'] as Record<string, unknown> | undefined))
 
   const reading = families.map((f) => byFamily.get(f) ?? {
     family: f, label: titleCaseUnderscored(f), status: 'not_computed_at_l1' as const,

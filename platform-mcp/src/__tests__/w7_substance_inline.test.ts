@@ -199,6 +199,34 @@ describe('SATYA-ŚEṢA W7 — substance-inline reading digest', () => {
     expect(Array.isArray(response['reading'])).toBe(true)
   })
 
+  it('regression (PŪRṆA-VIRĀMA, live-probe-discovered): attachDomainReading reads substance from the REAL `{ content: {...} }`-wrapped response shape, not just a flat fixture', async () => {
+    // register_d8_assess_domain.ts's L-DOMAIN/assess_wealth capability returns
+    // `{ content: { varga_analysis, activating_dasha, contradictions, ... } }`; registry_bridge.ts's
+    // assess_wealth handler spreads that directly onto `response`
+    // (`{ orientation_context, orientation_ok, ...data }`), so on the real wire the substance
+    // lives at `response.content.varga_analysis`, never `response.varga_analysis`. The original
+    // W7 build only tested against a flat (uncontented) fixture and shipped reading `undefined`
+    // for every family in production — deployed, live-probed, and found empty end-to-end.
+    const response: Record<string, unknown> = {
+      orientation_context: {}, orientation_ok: true,
+      content: { ...BASE_DATA_WEALTH },
+      domain_completeness: { slice_size: 13820, accounted: 13820, pct: 100, synthesis_gate: 'OPEN' },
+    }
+    await attachDomainReading(response, 'wealth', CHART_ID, AYANAMSHA, PRINCIPAL)
+    const reading = response['reading'] as ReadingFamilyEntry[]
+    expect(Array.isArray(reading)).toBe(true)
+    const d2 = reading.find((r) => r.family === 'divisional_D2')!
+    expect(d2.status).toBe('served')
+    expect(d2.sentences.join(' ')).toContain('Jupiter')
+    const timing = reading.find((r) => r.family === 'timing_windows')!
+    expect(timing.status).toBe('served')
+    const contradictions = reading.find((r) => r.family === 'contradictions_with_adjudication')!
+    expect(contradictions.status).toBe('served')
+    // The families_served count embedded in reading_digest_status must not read 0/N on real data.
+    const completeness = response['domain_completeness'] as Record<string, unknown>
+    expect(String(completeness['reading_digest_status'])).not.toContain('0/13')
+  })
+
   it('W7.4: `reading` and `domain_completeness` are in the trim-immune honesty set', () => {
     expect(IMMUNE_HONESTY_FIELDS.has('reading')).toBe(true)
     expect(IMMUNE_HONESTY_FIELDS.has('domain_completeness')).toBe(true)
