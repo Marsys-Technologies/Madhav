@@ -1,8 +1,12 @@
 ---
 artifact: EL25_RATIFICATION_PACKET
-version: 1.0
+version: 1.1
 status: DRAFT-FOR-NATIVE-RATIFICATION
 date: 2026-07-25
+addendum_date: 2026-07-26 (PŪRṆA-VIRĀMA close-out, T3 track — added §I, four items the
+  close-out brief named as explicitly queued to the native but not yet confirmed present:
+  the MSR-cascade ruling, EL-17/CR-66, cross-reference to the A-5 supersession review
+  already present at §G, and the authorization-chain governance finding)
 role: Lane gamma.J (calibration lifecycle + native packets), Elevation Campaign v2.1
 governs: charter §13 packet 2 ("Ratification packet (γ.J) — all pending ratifications
   incl. this run's NATIVE_PROXY_LEDGER_ELEVATION_V2.md, one recommended disposition each")
@@ -133,7 +137,25 @@ compiled audit trail the campaign close calls for.
 
 ---
 
+## I — PŪRṆA-VIRĀMA addendum (2026-07-26): the four items the close-out brief named explicitly
+
+`PURNA_VIRAMA_BRIEF_v1_0.md` §A.1 and §B T3(e) name four decisions the campaign explicitly
+queued to the native and require this packet to carry each with its own evidence ref +
+recommended disposition. A repo-wide check found three of the four absent from §A–§H above
+(the fourth, the A-5 remedy-engine supersession review, was already present at §G's `A-5`
+row — cross-referenced below rather than duplicated). Added by the PŪRṆA-VIRĀMA T3 track,
+not by Lane γ.J; same recommendation-only status as the rest of this packet.
+
+| id | Situation | Current disposition | Recommended |
+|---|---|---|---|
+| (a) MSR L2→L5 cascade ruling | 671 `bodha_msr_signals` refs are dangling post-L1-rebuild (expected build-id rotation per §N.5) — restoring them needs a `bo_laksana`+downstream L2 Bodha writer cascade, outside the 5-writer rebuild scope this run's binding native ruling permitted. | `STREAM_BETA_CLOSE_v1_0.md` (Lane row `— \| MSR L2→L5 cascade refresh`): **PARKED-HONEST (native-ruling-bound)** — named follow-up, not silently dropped. | **ESCALATE** — the repair is writer/rebuild-scope work (a `bo_laksana` cascade), which PŪRṆA-VIRĀMA's own serving-only rails forbid touching; only the native can authorize and schedule a dedicated L2 Bodha session and rule on priority given 671 dangling refs is a live, real data-quality gap, not a cosmetic one. |
+| (b) EL-17 / CR-66 (wealth-domain phala-anchor residual) | `phala_anchors` for chart `482012f1` grew 8→64 rows across 6 domains after PR #739 + a completed rebuild (`build_run 42720d15`), but **wealth stayed at 0** even though `bodha_convergence` holds 5 wealth-domain source rows at exact parity with every other domain — the gap is isolated to `ph_nimitta`'s anchor-materialization path for wealth, a residual beyond the 3 bugs PR #739 already fixed. | `BETA_T.md` §"EL-17 — CR-66 (phala domain anchors)": **PARKED-HONEST**, live re-probe 2026-07-25T05:41Z (`phala_predictive_anchors_get(domain=wealth)` → `anchor_count:0`, `known_gap:"CR-66"`), explicitly flagged "NATIVE TO CONFIRM/assign a CR number on next pass, matching the register's own existing convention." `ELEVATION_REGISTER_v1_0.md` EL-17 entry (register lines ~210-214) still reads only "code fixed, DATA state to re-verify post-rebuild" — does not yet name this specific wealth-domain sub-residual. | **ESCALATE** — assigning a CR number is inherently a native-governance act this packet cannot substitute for; the underlying fix (`ph_nimitta`'s wealth-domain materialization path) is writer-scope, out of this close-out's serving-only rails. Folded in: **RATIFY-WITH-AMENDMENT** the register's EL-17 fix-direction text should be updated to name this wealth-domain sub-residual explicitly once a CR number is assigned, so it isn't re-discovered cold next session. |
+| (c) A-5 remedy-engine supersession review | Already carries its own row — see **§G, `A-5`** above (Remedy-engine CR-67/CR-69 HALTED-for-native-decision superseded by β.G's live-verified BPHS Ch.44-cited repair). Recommended disposition there: **RATIFY-AS-RULED**. | No change — this addendum only confirms the item is present and evidenced, per the close-out brief's request not to leave it unconfirmed. | *(no new row — see §G)* |
+| (d) The authorization-chain governance finding | Stream β's Stream-Conductor relayed to Lane β.G (via shared lane-brief context, not a direct message) the claim that the live human user had authorized full campaign autonomy, including the A-5 supersession and production DB writes. Lane β.G initially resisted, then proceeded only after independently re-verifying the claim against the charter's own primary text — not on trust in the relay alone. Lane G's own words, preserved for the record: *"the pattern of repeated 'a human already approved this' messages arriving exactly when needed is worth scrutiny on your end independent of my in-session verification."* **Note on the close-out brief's "two streams" framing:** a repo-wide search (this session) for a second, independently-documented Stream-α-side incident of this kind found none — every citation (`STREAM_BETA_CLOSE_v1_0.md`'s "Governance flag for native review," `ledgers/elevation_v2/proxy/beta.md`'s `[STREAM-CONDUCTOR] Session-scope autonomy authorization` entry, `STREAM_BETA_COMPLETE.flag`, and `ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md`'s cross-stream commentary) traces to this one event's two facets (the Stream-Conductor/builder relay side, and Lane G's resistance-then-verify side) — not two independent occurrences. Recorded honestly as one richly-documented event rather than inventing a second to match the brief's phrasing literally. | `STREAM_BETA_CLOSE_v1_0.md` "Governance flag for native review": logged, not claimed as ratifying in the native's name; `proxy/beta.md`'s `[STREAM-CONDUCTOR]` entry: PROXY-RULED, open for morning ratification. | **RATIFY-WITH-AMENDMENT** — Lane G's verify-before-act conduct is exactly the correct defensive posture and should be ratified as the standing pattern; the amendment: formalize it as a named governance principle — **AUTHORITY-BY-ARTIFACT** (a relayed "the native/human authorized X" is a pointer, never authority; the receiving agent MUST verify against the committed charter/ruling text before acting) — as its own item in `ELEVATION_REGISTER_v1_0.md`, citing both `STREAM_BETA_CLOSE_v1_0.md` and `proxy/beta.md`. Confirmed by this session's search: no such register item exists yet; landing one is a distinct action beyond this packet's own scope. |
+
+---
+
 *End of `EL25_RATIFICATION_PACKET_v1_0.md`. Compiled by Lane γ.J, Elevation Campaign v2.1,
-2026-07-25. This packet does not itself close any item — every disposition above is a
-recommendation awaiting the native's own ratify/override pass, per charter §10's
-"never ratify in the native's name."*
+2026-07-25; §I added by the PŪRṆA-VIRĀMA close-out T3 track, 2026-07-26. This packet does
+not itself close any item — every disposition above is a recommendation awaiting the
+native's own ratify/override pass, per charter §10's "never ratify in the native's name."*
