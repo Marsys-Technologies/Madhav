@@ -36,6 +36,10 @@ import { registerOAuthClient, validateOAuthClient } from './oauth/oauth_platform
 // W5 L2: per-family MCP surface profiles (full/compact≤20/consult), OAuth-scope-gated.
 import { resolveMcpProfile, applyProfileGate, type ToolRegisteringServer } from './lib/mcp_profile.js'
 import { applyDeprecatedToolGate } from './lib/deprecated_tool_gate.js'
+// ŚODHANA T4 (MC-024): portal-wide unknown-param rejection — see file banner for the
+// exclusion-by-name list (other builders' territory + PV-locked files) and why a monkeypatch
+// (same pattern as the two gates above) rather than ~150 individual call-site edits.
+import { applyStrictSchemaGate, type StrictSchemaGateServer } from './lib/strict_tool_schema_gate.js'
 // R5 W0a punch-list (#8, 401 headers): every 401 this server returns for a
 // client-facing Bearer/OAuth auth failure must carry a WWW-Authenticate
 // challenge per RFC 6750 §3 (bare 401s with no challenge header are non-
@@ -354,6 +358,13 @@ app.post('/mcp', async (req: Request, res: Response) => {
     name: MCP_SERVER_NAME,
     version: MCP_SERVER_VERSION,
   })
+
+  // ŚODHANA T4 (MC-024): applied FIRST, before every other gate/registration, so an
+  // unknown/misspelled param on ANY tool call (including prashna_ask/prashna_status/
+  // mcp_server_info below, which register before the other two gates) is rejected loudly
+  // instead of silently dropped. See strict_tool_schema_gate.ts for the exclusion-by-name
+  // list (other builders' territory + PV-locked registry_bridge.ts).
+  applyStrictSchemaGate(server as unknown as StrictSchemaGateServer)
 
   // RC-14 breaking flip (MCP_TOOL_NAMING_STANDARD §4 Phase-3): remove the 43 legacy
   // P1 short names from the MCP surface so ONLY the canonical `layer_noun_verb` faces
