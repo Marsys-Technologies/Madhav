@@ -835,12 +835,21 @@ export function registerDossierTool(server: McpServer, principal: Principal): vo
       'over the five accounting states, and synthesis_gate (BLOCKED until 100%, then OPEN). ' +
       'The composition_scaffold — the only interpretive-facing surface — appears ONLY once ' +
       'the gate is OPEN. Follow `cursor` to page through the whole slice before composing. ' +
-      'Flagship slices: {wealth, career} × the two canonical charts. budget_kb (1..64, C1) ' +
-      'sizes the page to the client; 16 ≈ a 25k-token client, 64 ≈ a 200k-token client.',
+      'Flagship slices: {wealth, career} × the two canonical charts. `domain` is REQUIRED — ' +
+      'enum "wealth" | "career" (MC-011: the only two domains with pre-compiled slices). ' +
+      'budget_kb (1..64, C1) sizes the page to the client; 16 ≈ a 25k-token client, ' +
+      '64 ≈ a 200k-token client.',
     {
+      // MC-011 (ŚODHANA T8): domain was z.string() with no enum, so an omitted domain
+      // surfaced only a raw zod message ("Required, received undefined") with no guidance
+      // on what a valid value looks like. z.enum() both documents the two currently
+      // pre-compiled slice domains up front AND gives a self-describing validation error
+      // ("Invalid enum value. Expected 'wealth' | 'career' ...") if an unsupported domain is
+      // passed. Schema-only change — does not touch runDossier's gate/receipt logic.
       domain: z
-        .string()
-        .describe('Domain slice to page (e.g. "wealth", "career"). Flagship coverage: wealth, career.'),
+        .enum(['wealth', 'career'])
+        .describe('REQUIRED. Domain slice to page. Valid values: "wealth", "career" (the only ' +
+          'domains with pre-compiled dossier slices today — flagship coverage).'),
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       budget_kb: z
         .number()
