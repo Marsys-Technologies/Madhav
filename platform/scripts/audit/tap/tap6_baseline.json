@@ -147,6 +147,27 @@
       "line_hash": "0422fce605d0",
       "register_row": "M-9",
       "note": "formula_provenance_text cites 'Jaimini Sutram' for an invented 'Trikona Dasha Sphuta' (ga_sensitive_writer.py:843-848 in register evidence)"
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
+      "line_hash": "45fc7b7770ff",
+      "register_row": "M-22",
+      "note": "NOT A VIOLATION (MC-029 / Śodhana Builder T6, YOGI-BINDU): `yogi_status = \"two_pass_verified\" if yogi_ok else \"divergent_flagged\"` — yogi_ok is the real boolean result of _yogi_point_two_pass()'s independent plain-degree-vs-integer-arcsecond cross-check (agrees iff divergence <=1 arcsec, a rounding-only tolerance). The literal is the display label for a genuinely computed verifier outcome, not a fabricated stamp — same disposition as the bo_laksana.py/bo_pramana_mapa.py entries above (comparison/branch syntax the grep's regex necessarily also matches)."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
+      "line_hash": "c0aefbd52039",
+      "register_row": "M-22",
+      "note": "NOT A VIOLATION (MC-029 / Śodhana Builder T6): sibling of the entry above — `avayogi_status = \"two_pass_verified\" if avayogi_ok else \"divergent_flagged\"`, avayogi_ok from _avayogi_point_two_pass()'s equivalent independent cross-check on the Avayogi point."
+    },
+    {
+      "pattern": "two_pass_verified_literal",
+      "file": "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
+      "line_hash": "2e7410e0f078",
+      "register_row": "M-22",
+      "note": "NOT A VIOLATION (MC-029 / Śodhana Builder T6): sibling of the two entries above — `duplicate_status = \"two_pass_verified\" if duplicate_ok else \"divergent_flagged\"`, duplicate_ok from an independently re-derived arcsecond-pass sign index matching the degree-pass sign index (Duplicate-Yogi/Sahayogi rasi-lord agreement check)."
     }
   ]
 }
