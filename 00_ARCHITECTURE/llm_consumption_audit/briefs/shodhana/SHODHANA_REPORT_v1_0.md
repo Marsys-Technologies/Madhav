@@ -442,3 +442,52 @@ timeout:21600s did not complete in this run; skipped to avoid building on incomp
 is a genuine, currently-open staleness gap on the SECOND canonical chart, unrelated to anything
 this campaign's scope covers (kala_gochara_windows/ka_gochara_sweep is an explicit untouchable for
 this campaign) — noted here for the record, not remediated, per rails.
+
+## §13 — Decision 2 (§3) authorization question: CLOSED as resolved-and-verified (appended 2026-07-27, SAMĀPANA Track C)
+
+**Append-only. Does not alter §3's Decision 2 text or §12's findings above — it closes the
+question §12(c) left as the one genuinely open condition.**
+
+§3's Decision 2 PARKed *this campaign executing a Bodha rebuild* pending three conditions:
+(1) reconcile the DAG doc to the real ~25-writer roster, (2) measure 1c826d5a's orphan rate
+independently, (3) native gives explicit go-ahead. §12 resolved condition (2) (0.33%, measured
+live) and condition (3) (the native's own authenticated Cockpit Build action, `triggered_by
+xl2wYZRPwsVgPSAgtn9XJ80Xkub2` = Abhisek Mohanty). Condition (1) — the DAG-doc reconciliation —
+was left as "the one genuinely open condition" for future maintainability.
+
+**This note closes the remaining authorization question itself, independently re-verified live
+just now (2026-07-27), not copied from any prior report's figures:**
+
+- **Orphan rate, re-measured this session** via a direct read-only query against
+  `bodha_msr_signals.constituent_facts_array` vs `chart_facts.fact_id` (the same method §12(a)
+  used, re-run fresh): **482012f1: 230/71293 orphaned (0.32%)**; **1c826d5a: 234/71750 orphaned
+  (0.33%)** — identical to §12's figures and to `SAMAPANA_BRIEF_v1_0.md` §0's cited numbers,
+  confirmed independently rather than assumed from either document.
+- **Stored-vs-live disagreement also re-confirmed live:** `synthesis_quality_scorecard` carries
+  `unresolved_constituent_facts_count: 0` for both charts (482012f1 build_id `27de8de4…`, scored
+  2026-07-27T03:54:08Z; 1c826d5a build_id `2962fb9d…`, scored 2026-07-26T07:47:04Z — both
+  build_ids matching the brief's citation exactly), while the live orphan count is 230/234 —
+  the GA.1-class disagreement Track C item 2 of this same session closes at the code level (see
+  `SAMAPANA_REPORT_v1_0.md` when published, or `query_quality_scorecard.ts`'s live-derive
+  overwrite).
+- **Two-pass verification ~81%, citation 100%, zero authority/narration traps, Yogi/Avayogi live
+  and arithmetic-exact** were independently verified in the ŚODHANA-ŚEṢA campaign itself (see
+  `SHODHANA_SHESHA_REPORT_v1_0.md` §2) — not re-derived again here, cited by reference.
+
+**Disposition: the Decision 2 authorization question is CLOSED as resolved-and-verified.** A
+native-executed rebuild — via the product's own Cockpit "Build" button, **not** any campaign or
+agent — has occurred for both canonical charts (provenance independently confirmed twice now:
+`SHODHANA_REPORT_v1_0.md` §12(c) above, and again in `SHODHANA_SHESHA_REPORT_v1_0.md` §3 item 2),
+and the result has been independently re-verified against live production at the ≤0.33% orphan
+level on both charts, well inside the 99% freshness threshold. **No campaign rebuild was or will
+be executed** — §3's original PARK, on the question of *this campaign* executing a rebuild,
+stands correctly as the record of what SHODHANA itself did and did not authorize; it is not being
+retroactively reopened or reversed. This note closes the SEPARATE question of whether the
+authorization precondition is now moot for practical purposes — it is, because the rebuild already
+happened by other means and has been verified, not because Decision 2's own conditions were all
+formally satisfied by this campaign.
+
+The DAG-doc-drift precondition (condition 1) is **now moot for authorization purposes** — there is
+nothing left to authorize — but **still worth reconciling for future maintainability**; it is not
+a gate on anything as of this note. Tracked as an explicitly-deferred item, not a blocker
+(`SAMAPANA_BRIEF_v1_0.md` §4).

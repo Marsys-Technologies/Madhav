@@ -96,6 +96,17 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
       // unresolved_constituent_facts_count (computed by the writer before the L1 rebuild).
       const defect001 = await deriveDefect001Note(chart_id)
 
+      // GA.1-class fix (SAMĀPANA Track C item 2): the DB row's own
+      // unresolved_constituent_facts_count is a writer-time snapshot that goes stale the
+      // moment any L1 rebuild runs after the Bodha writer scored it — this tool used to serve
+      // that stale number verbatim inside `scorecard` while ALSO serving a correct live-derived
+      // count separately as `defect_001`, so two disagreeing numbers reached the same caller
+      // under the same field name's plain-English meaning. Overwrite the served scorecard
+      // field with the SAME live-derived count so there is only ever one number, never two.
+      if (scorecard) {
+        scorecard.unresolved_constituent_facts_count = defect001.metrics['orphan_refs'] ?? null
+      }
+
       return {
         content: {
           chart_id,
