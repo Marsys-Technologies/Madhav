@@ -1,0 +1,12 @@
+{
+  "stream": "alpha",
+  "lanes_dispositioned": "see 00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/ELEVATION_V2_COVERAGE_MATRIX_FINAL_v1_0.md",
+  "parked_blocked_on": ["see coverage matrix PARKED-HONEST rows"],
+  "flagship_self_verified": false,
+  "flagship_self_verified_detail": "Ran the flagship acceptance fresh via the sealed evaluator harness on both flagship domains and both canonical charts (4 runs, mechanically graded, Verifier never played consumer). 0/4 pairs cleared the 0.90 bar (15-33%). Root cause fully diagnosed and one urgent cross-stream fix (PR #782) already shipped this run to partially address it. See ALPHA_FLAGSHIP_ACCEPTANCE_GRADING_v1_0.md.",
+  "ledger_path": "00_ARCHITECTURE/llm_consumption_audit/ELEVATION_V2_RUN_REPORT_v1_0.md",
+  "prs_merged_to_main": ["#768", "#771", "#772", "#782", "#792", "#794", "#795"],
+  "cleanup_executed": true,
+  "cleanup_ledger": "00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/ALPHA_CLEANUP_VERIFICATION_v1_0.md",
+  "completed_at": "2026-07-25T21:41:20Z"
+}
