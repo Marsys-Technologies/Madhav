@@ -17,12 +17,36 @@
  * `deprecated_tool_gate.ts::applyDeprecatedToolGate` — both already monkeypatch this exact
  * method for their own cross-cutting concerns) so that whichever argument in the call is a
  * raw zod shape (a plain object whose every value is a Zod schema instance — as opposed to a
- * ToolAnnotations object or a description string) gets wrapped in `z.object(shape).strict()`
- * before being handed to the real SDK registration. The SDK's own `getZodSchemaObject()`
- * recognizes an already-constructed Zod schema instance (`isZodSchemaInstance`) and passes it
- * through UNCHANGED instead of re-deriving it via the non-strict `objectFromShape` — so this
- * is a drop-in behavioral upgrade with no SDK modification required, and no per-call-site
- * edits across the ~30 tool-registration files needed.
+ * ToolAnnotations object or a description string) is turned into `z.object(shape).strict()`
+ * before the tool is registered.
+ *
+ * P0 CRASH FIX (2026-07-27) — how the strict schema is DELIVERED to the SDK matters:
+ * ---------------------------------------------------------------------------------
+ * The original T4 implementation wrapped the shape into `z.object(shape).strict()` and passed
+ * that constructed ZodObject back through the POSITIONAL `server.tool(name, desc, schema, cb)`
+ * overload. That premise ("the SDK recognizes an already-constructed Zod schema instance and
+ * passes it through unchanged") is TRUE only for the SDK's internal `getZodSchemaObject()`
+ * (used by `_createRegisteredTool` / `registerTool`) — it is FALSE for the positional
+ * `.tool()` overload parser. In @modelcontextprotocol/sdk ≥1.29.0 that parser calls
+ * `isZodRawShapeCompat(firstArg)`, which returns FALSE for a constructed schema instance, so
+ * the ZodObject falls through to the ToolAnnotations branch, whose "nested object" guard
+ * (`Object.values(firstArg).some(v => typeof v === 'object')` — always true for a ZodObject,
+ * which carries `_zod`/`_def` object internals) THROWS synchronously:
+ *   `Tool <name> expected a Zod schema or ToolAnnotations, but received an unrecognized object`
+ * This crashed the Node process on the FIRST strict-ified registration reached at request time
+ * (`prashna_ask`, registered before the profile gate), taking down the whole MCP server. The
+ * bug is general — it fires for ANY strict-ified tool (a flat `{a: z.string()}` shape crashes
+ * identically); it is NOT specific to `prashna_ask` or its nested-optional `scope_tuple`.
+ *
+ * The positional `.tool(name, desc, RAW_SHAPE, cb)` overload only accepts a RAW SHAPE (which
+ * the SDK then converts via the non-strict `objectFromShape`). The SDK's supported way to hand
+ * it a fully-constructed (strict) schema is `registerTool(name, { inputSchema }, cb)` →
+ * `getZodSchemaObject()` passes a schema instance through unchanged, preserving `.strict()`.
+ * So this gate now parses the positional `.tool()` overload the same way the SDK does and, when
+ * a raw shape is present, re-issues the registration via `registerTool` with a strict
+ * `inputSchema`. Calls with no raw shape (no-param tools, annotations-only, an already-built
+ * schema) are passed through to the original `.tool()` byte-for-byte. Still no SDK
+ * modification and no per-call-site edits across the ~30 tool-registration files.
  *
  * SCOPE (ŚODHANA T4 rails): every tool EXCEPT the ones this builder was told to stay out of —
  * `dossier`, `muhurta_finder`, the 7 `remedy_tools.ts` legacy names, the 3
@@ -38,9 +62,19 @@
  */
 import { z } from 'zod'
 
-/** Structural shape this gate needs — any object with a `.tool(name, ...)` registration method. */
+/**
+ * Structural shape this gate needs: the positional `.tool(name, ...)` registration method it
+ * monkeypatches, plus the config-object `.registerTool(name, config, cb)` method it re-issues a
+ * strict-ified registration through (the positional `.tool()` overload cannot accept a
+ * constructed ZodObject in @modelcontextprotocol/sdk ≥1.29.0 — see file banner).
+ */
 export interface StrictSchemaGateServer {
   tool: (name: string, ...rest: unknown[]) => unknown
+  registerTool: (
+    name: string,
+    config: { description?: string; inputSchema: z.ZodTypeAny; annotations?: Record<string, unknown> },
+    cb: unknown,
+  ) => unknown
 }
 
 /**
@@ -97,20 +131,52 @@ function isRawZodShape(v: unknown): v is Record<string, z.ZodTypeAny> {
 /**
  * Monkeypatches `server.tool()` IN PLACE (same pattern as `applyProfileGate` /
  * `applyDeprecatedToolGate`) so every registration call for a tool name NOT in the exclusion
- * set gets its raw zod shape argument (if any) wrapped in `z.object(shape).strict()` before
- * reaching the real SDK registration — an unknown/misspelled param now fails loudly
- * (`Input validation error`) instead of being silently dropped. Call ONCE, on a fresh
- * per-request `McpServer`, before any `register*Tools()` call site runs — order relative to
- * the other two gates does not matter (each wraps whatever `server.tool` currently is at the
- * time it is applied, so the chain composes regardless of application order).
+ * set that carries a raw zod shape is re-issued as a strict registration — an unknown/misspelled
+ * param now fails loudly (`Input validation error`) instead of being silently dropped. Call
+ * ONCE, on a fresh per-request `McpServer`, before any `register*Tools()` call site runs — order
+ * relative to the other two gates does not matter (each wraps whatever `server.tool` currently
+ * is at the time it is applied; this gate is innermost when applied first, so the deprecated /
+ * profile filters have already run and delegated down by the time it executes, and re-issuing
+ * through `registerTool` therefore bypasses no filtering).
+ *
+ * The strict schema is delivered via `registerTool(name, { inputSchema }, cb)`, NOT by passing a
+ * constructed ZodObject back through the positional `.tool()` overload — the latter crashes the
+ * SDK (≥1.29.0). See the file banner ("P0 CRASH FIX") for the full mechanism. To stay faithful
+ * to the SDK's own dispatch, this parses the positional overload exactly as
+ * `McpServer.tool()` does: optional leading description string, then the params schema, then an
+ * optional ToolAnnotations object, then the callback.
  */
 export function applyStrictSchemaGate(server: StrictSchemaGateServer): void {
   const originalTool = server.tool.bind(server)
+  const originalRegisterTool = server.registerTool.bind(server)
   server.tool = (name: string, ...rest: unknown[]) => {
     if (STRICT_SCHEMA_GATE_EXCLUDED_TOOL_NAMES.has(name)) {
       return originalTool(name, ...rest)
     }
-    const wrapped = rest.map(arg => (isRawZodShape(arg) ? z.object(arg).strict() : arg))
-    return originalTool(name, ...wrapped)
+    // Mirror the SDK's positional-overload parsing (see McpServer.tool):
+    //   tool(name, [description], [paramsSchema], [annotations], cb)
+    const args = [...rest]
+    let description: string | undefined
+    if (typeof args[0] === 'string') {
+      description = args.shift() as string
+    }
+    // A raw zod shape only appears as the params-schema slot; if there is one, and there is a
+    // callback after it (length > 1), re-issue the registration strictly via registerTool.
+    if (args.length > 1 && isRawZodShape(args[0])) {
+      const rawShape = args.shift() as Record<string, z.ZodTypeAny>
+      const inputSchema = z.object(rawShape).strict()
+      let annotations: Record<string, unknown> | undefined
+      if (args.length > 1 && typeof args[0] === 'object' && args[0] !== null && !isRawZodShape(args[0])) {
+        annotations = args.shift() as Record<string, unknown>
+      }
+      const cb = args[0]
+      const config = annotations !== undefined
+        ? { description, inputSchema, annotations }
+        : { description, inputSchema }
+      return originalRegisterTool(name, config, cb)
+    }
+    // No raw shape to strict-ify (no-param tool, annotations-only, or an already-built schema):
+    // pass through to the original .tool() untouched.
+    return originalTool(name, ...rest)
   }
 }
