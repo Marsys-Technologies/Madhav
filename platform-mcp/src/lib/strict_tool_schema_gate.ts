@@ -48,14 +48,25 @@
  * schema) are passed through to the original `.tool()` byte-for-byte. Still no SDK
  * modification and no per-call-site edits across the ~30 tool-registration files.
  *
- * SCOPE (ŚODHANA T4 rails): every tool EXCEPT the ones this builder was told to stay out of —
- * `dossier`, `muhurta_finder`, the 7 `remedy_tools.ts` legacy names, the 3
- * `register_gochara_windows.ts` tools (kala_gochara_windows data is untouchable), every tool
- * `register_p1_synthesis.ts` registers (T1's territory — verdict-verb logic lives there),
- * `ganita_yogas_get`/`ganita_yoga_firings_get` (T8's yoga-firings territory), and every tool
- * `registry_bridge.ts` registers (PV-locked, DO NOT TOUCH). These names are excluded from
- * strict-ification by NAME here — this file does not edit any of those source files, so it
- * carries zero merge-conflict risk with the builders who own them. If a genuinely
+ * SCOPE WIDENED (ŚODHANA-ŚEṢA W3.4, 2026-07-27): the T1/T5/T7/T8 exclusions below existed for
+ * exactly one reason — those builders' files were being concurrently edited mid-campaign and a
+ * strict-schema behavior change landing under their feet risked a spurious rejection colliding
+ * with their own in-flight fix. All ten ŚODHANA track PRs are now merged to `main`; the
+ * merge-conflict reason no longer applies. This gate now also covers: `dossier` (T5),
+ * `muhurta_finder` + the 7 `remedy_tools.ts` legacy names (T7), every tool
+ * `register_p1_synthesis.ts` registers (T1), and `ganita_yogas_get`/`ganita_yoga_firings_get`
+ * (T8). Verified via the T3 envelope battery (`shodhana_t3_serving_battery.test.ts`) plus this
+ * file's own real-SDK regression test (`strict_tool_schema_gate.test.ts`, the #812 P0 template)
+ * — no newly-covered tool's real callers pass an undeclared param, so none needed a documented
+ * loose-param exception.
+ *
+ * SCOPE (still excluded): the 3 `register_gochara_windows.ts` tools (`kala_gochara_windows` data
+ * is untouchable — this campaign's rails do not authorize touching anything in that path, even a
+ * schema-strictness change on its serving tools) and every tool `registry_bridge.ts` registers
+ * (still PV-locked in the parent ŚODHANA brief's rails; this fast-follow's own §2 rails do not
+ * re-clear it, so it stays out of scope here). These remaining names are excluded from
+ * strict-ification by NAME here — this file does not edit either of those source files, so it
+ * carries zero merge-conflict risk with whoever eventually clears them. If a genuinely
  * load-bearing undeclared field surfaces for some OTHER tool after this gate goes live (the
  * exact risk the T4 brief flagged), add its name to the exclusion set below with a comment
  * explaining why, rather than reverting the whole gate.
@@ -78,25 +89,16 @@ export interface StrictSchemaGateServer {
 }
 
 /**
- * Tool names deliberately left OUT of the portal-wide strict-schema posture change (ŚODHANA
- * T4 rails — files/logic owned by other builders in the same campaign, or explicitly marked
- * untouchable). See file banner for the per-name rationale.
+ * Tool names deliberately left OUT of the portal-wide strict-schema posture change. As of
+ * ŚODHANA-ŚEṢA W3.4 (2026-07-27) this is narrowed to `registry_bridge.ts`'s tools (still
+ * PV-locked) and `register_gochara_windows.ts`'s tools (`kala_gochara_windows` data untouchable
+ * — this campaign's rails forbid touching anything in that path). The T1/T5/T7/T8 mid-campaign
+ * merge-conflict exclusions have been removed now that all ten ŚODHANA tracks are merged. See
+ * file banner for full rationale.
  */
 export const STRICT_SCHEMA_GATE_EXCLUDED_TOOL_NAMES: ReadonlySet<string> = new Set([
-  // tools/dossier.ts
-  'dossier',
-  // tools/muhurta_finder.ts
-  'muhurta_finder',
-  // tools/retrieval/remedy_tools.ts
-  'query_remedies', 'query_remedies_for_chart', 'list_remedies_by_category', 'read_remedy',
-  'query_tantric_remedies', 'query_remedies_by_planet', 'query_mantras',
   // tools/retrieval/register_gochara_windows.ts (kala_gochara_windows data untouchable)
   'gochara_activation_get', 'gochara_forecast_get', 'gochara_election_avoidance_get',
-  // tools/register_p1_synthesis.ts (T1's territory)
-  'mimamsa_insight_get', 'bodha_discoveries_get', 'kala_life_arc_get',
-  'synth_tail_divergence_get', 'synth_chart_brief_get', 'prashna_undertaking_get',
-  // yoga-firings serving (T8's territory)
-  'ganita_yogas_get', 'ganita_yoga_firings_get',
   // tools/registry_bridge.ts (PV-locked, DO NOT TOUCH)
   'get_chart_orientation', 'get_domain_reading', 'get_signals', 'traverse_graph',
   'get_positions', 'get_dashas', 'get_temporal_windows', 'get_projections',
