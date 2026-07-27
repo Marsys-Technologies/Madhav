@@ -4,6 +4,18 @@
  *         lal_kitab_special_point, maharsi_specific_point, midpoint,
  *         saham_position, saturn_derived_point, nakshatra_pada_sensitive
  * Tool: marsys://tool/L1/get_sensitive_points
+ *
+ * MC-029 (Śodhana-Śeṣa W2) reconciliation note: this surface's `esoteric_point_yogi` /
+ * `esoteric_point_avayogi` rows include a `bphs_93_20` formula_id variant that computes
+ * the identical BPHS Ch.20 Yogi/Avayogi construction as the `sensitive_point_yogi`
+ * category served by get_sensitive_degrees (ganita_sensitive_degrees_get) — confirmed
+ * in agreement to ~4e-7 deg for both canonical charts across all 5 ayanamshas
+ * (2026-07-27; locked by a regression test in
+ * ga_writers/__tests__/test_ga_sensitive_degree.py). The `alt_96_40` formula_id rows
+ * are a genuinely different classical convention (Krishnamurti variant), not a
+ * divergence. For a single canonical Yogi/Avayogi answer, prefer
+ * get_sensitive_degrees / sensitive_point_yogi; use this surface when the
+ * multi-formula comparison itself (or the other 18 categories) is what's needed.
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'

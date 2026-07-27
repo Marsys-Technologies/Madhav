@@ -797,6 +797,20 @@ def _build_yogi_avayogi_rows(
     Categories 4+5: esoteric_point_yogi, esoteric_point_avayogi
     Two formula variants: bphs_93_20 (Yogi = Sun + Moon + 93°20') and alt_96_40 (+ 96°40')
     Avayogi = Yogi + 186°40' (or alt: + 193°20')
+
+    MC-029 (Śodhana-Śeṣa W2) reconciliation note: `ga_sensitive_degree_writer.py`'s
+    `build_yogi_points_rows()` computes the SAME BPHS Ch.20 construction independently,
+    under the authoritative single-formula fact_category='sensitive_point_yogi' (also
+    emitting Duplicate-Yogi/Sahayogi, which this category does not). Live-production
+    comparison (both canonical charts, all 5 ayanamshas, 2026-07-27) confirmed the
+    bphs_93_20 formula_id rows here agree with that category to ~4e-7 deg (rounding
+    only) — see `test_agrees_with_legacy_ga5_bphs_93_20_yogi_avayogi_formula` in
+    ga_writers/__tests__/test_ga_sensitive_degree.py, which locks this as a permanent
+    regression guard. The alt_96_40 rows are a genuinely different classical convention
+    (Krishnamurti variant), not a divergence — kept, per WP-1.8 never-collapse discipline.
+    For a single canonical Yogi/Avayogi answer, prefer sensitive_point_yogi
+    (served by ganita_sensitive_degrees_get); this dual-formula category remains for
+    comparative/traditional-variant lookups (served by get_sensitive_points).
     """
     rows = []
     sun_long = all_longs.get("SUN", 0.0)
