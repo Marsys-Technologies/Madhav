@@ -242,6 +242,34 @@ function temporalActivation(row: MsrSignalRow, ctx: L1ChartContext): number {
   return 1.0
 }
 
+/**
+ * fired_sensitive_degree_boost (ŚODHANA T5 / MC-030):
+ *   A fired rare sensitive-degree check (puṣkara / gaṇḍānta / mṛtyu-bhāga) is a
+ *   genuine high-information EVENT, not a routine descriptor — yet the build-time
+ *   computed_salience buries the fired rows BELOW the not-fired ones (verified live
+ *   on 482012f1: the fired Mars-puṣkara signal scored 0.46 while not-fired puṣkara
+ *   rows scored 1.30). That inversion is why no salience/digest surface ever surfaced
+ *   Mars-in-puṣkara. This SERVE-TIME multiplier corrects it structurally, touching NO
+ *   stored salience column (the ranker's standing invariant): a fired high-signal
+ *   sensitive degree is lifted ×1.6 so it clears routine "dignity: neutral" rows; a
+ *   NOT-fired one is untouched (×1.0). Detection reads signal_type_id + the `fired=`
+ *   token in signal_summary_text — no new query, no recomputation (§N.5).
+ */
+const HIGH_SIGNAL_SENSITIVE_TYPES = new Set([
+  'sensitive_degree_check:pushkara',
+  'sensitive_degree_check:gandanta',
+  'sensitive_degree_check:mrityu_bhaga',
+])
+export const FIRED_SENSITIVE_DEGREE_BOOST = 1.6
+export function firedSensitiveDegreeBoost(row: MsrSignalRow): number {
+  const typeId = row.signal_type_id ?? ''
+  if (!HIGH_SIGNAL_SENSITIVE_TYPES.has(typeId)) return 1.0
+  // The fired state lives in the signal_summary_text ("fired=True"/"fired=False").
+  const summary = row.signal_summary_text ?? ''
+  const isFired = /\bfired\s*=\s*true\b/i.test(summary)
+  return isFired ? FIRED_SENSITIVE_DEGREE_BOOST : 1.0
+}
+
 // ── Main composite scorer ─────────────────────────────────────────────────────
 
 export interface ScoredSignal extends MsrSignalRow {
@@ -258,6 +286,8 @@ export interface ScoredSignal extends MsrSignalRow {
     intrinsic_strength: number
     structural_role: number
     temporal_activation: number
+    /** ŚODHANA T5 (MC-030): ×1.6 for a fired rare sensitive-degree, ×1.0 otherwise. */
+    fired_sensitive_degree_boost?: number
     priors_version: string
   }
 }
@@ -282,7 +312,9 @@ export function applyCompositeRanking(
     const isr = intrinsicStrength(row, ctx)
     const sr  = structuralRole(row)
     const ta  = temporalActivation(row, ctx)
-    const composite = cp * tr * isr * sr * ta
+    // ŚODHANA T5 (MC-030): lift a FIRED rare sensitive-degree above routine descriptors.
+    const fsd = firedSensitiveDegreeBoost(row)
+    const composite = cp * tr * isr * sr * ta * fsd
     return {
       ...row,
       composite_score: composite,
@@ -291,6 +323,7 @@ export function applyCompositeRanking(
       _subscores: {
         class_prior: cp, topic_relevance: tr, intrinsic_strength: isr,
         structural_role: sr, temporal_activation: ta,
+        fired_sensitive_degree_boost: fsd,
         priors_version: PRIORS_VERSION,
       },
     }

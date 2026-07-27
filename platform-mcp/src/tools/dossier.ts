@@ -398,6 +398,148 @@ function buildCompositionScaffold(bundle: SliceBundle): Record<string, unknown> 
   }
 }
 
+// ── The compact completeness receipt (ŚODHANA T5 / PŪRTI — the Offer-Law fix) ──
+//
+// MC-012/028/034: the synthesis_gate is the ONE mechanism enforcing full-territory
+// coverage, but SATISFYING it by paging costs thousands of low-information catalog-id
+// strings (~1.93% coverage per 16KB page → 6 pages of firehose), so real consumers
+// bypass it and compose from ranked surfaces that provably miss rare-but-decisive facts.
+// The fix: a ≤2KB gate-summary computed from the bundle's ACCOUNTING METADATA alone —
+// coverage % + per-family accounting states + the gate boolean + drill handles — with
+// ZERO per-concept `values[]` enumeration. It answers "here's what's covered and what
+// isn't, and how to reach any of it" in ONE call, decoupled entirely from the concept-
+// catalog dump (which remains available via the paged path for callers who want it).
+//
+// This is NOT the auto-hydration resolver (that is blocked-on-α, cross-lane, out of this
+// track). It needs only an aggregate view over the already-committed accounting data —
+// achievable independently of the hydration blocker.
+
+/**
+ * One family = one distinct drill handle, encoded as a COMPACT tuple to keep the
+ * receipt under its ≤2KB gate-summary target (repeating the `tool`/`concepts`/`states`
+ * key names 26× would nearly double the payload). Decoded per `families_format`:
+ *   [ serving_tool, state_codes, concept_count, arg_keys? ]
+ * e.g. ["ganita_chart_facts_get","ES",207,["category"]] — call serving_tool with
+ * { chart_id, [arg_key]: <value> } to hydrate the real rows.
+ */
+type DossierFamily = [string, string, number] | [string, string, number, string[]]
+
+export interface DossierReceipt {
+  ok: boolean
+  tool: 'dossier'
+  mode: 'receipt'
+  domain: string
+  chart_id: string
+  slice_size: number
+  coverage: Record<StateKey, number> & { accounted: number; slice_size: number; pct: number }
+  chain_pattern_units: number
+  families: DossierFamily[]
+  families_format: string
+  synthesis_gate: 'OPEN' | 'BLOCKED'
+  gate_basis: 'completeness_receipt'
+  gate_reason: string
+  reading_contract: string
+  drill_note: string
+  receipt: Record<string, unknown>
+  provenance: Record<string, unknown>
+  receipt_bytes?: number
+  judgment_flags: string[]
+  error?: { class: string; message: string }
+}
+
+/**
+ * Build the ≤2KB compact completeness receipt for a slice, from the bundle's
+ * accounting metadata ONLY — never paging the per-concept firehose. The gate here is
+ * a COMPLETENESS ATTESTATION (does the slice fully account for its territory?), gated
+ * on `sum(state_totals) === slice_size`, NOT on the caller having paged every unit.
+ */
+export function buildDossierReceipt(
+  bundle: SliceBundle,
+  domain: string,
+  chart_id: string,
+): DossierReceipt {
+  // Coverage tally from bundle.state_totals (already the exact per-state accounting).
+  const coverageTally = emptyTally()
+  for (const [k, v] of Object.entries(bundle.state_totals)) {
+    const key = k as StateKey
+    if (STATE_KEYS.includes(key)) coverageTally[key] = v
+  }
+  const accounted = STATE_KEYS.reduce((s, k) => s + coverageTally[k], 0)
+
+  // Per-family accounting, aggregated by serving_tool (NOT per concept, NOT per
+  // arg-key permutation) — the compact "how to reach it" index that replaces the
+  // per-concept firehose. One row per distinct drill handle.
+  const famMap = new Map<string, { tool: string; concepts: number; states: string; argKeys: Set<string> }>()
+  for (const block of bundle.blocks) {
+    const concepts = block.n.reduce((s, n) => s + n, 0)
+    const existing = famMap.get(block.t)
+    if (existing) {
+      existing.concepts += concepts
+      if (!existing.states.includes(block.s)) {
+        existing.states = [...existing.states.split(''), block.s].sort().join('')
+      }
+      if (block.ak) existing.argKeys.add(block.ak)
+    } else {
+      famMap.set(block.t, {
+        tool: block.t, concepts, states: block.s,
+        argKeys: new Set(block.ak ? [block.ak] : []),
+      })
+    }
+  }
+  const families: DossierFamily[] = [...famMap.values()]
+    .sort((a, b) => b.concepts - a.concepts)
+    .map(f => {
+      const argKeys = [...f.argKeys].sort()
+      return (argKeys.length > 0
+        ? [f.tool, f.states, f.concepts, argKeys]
+        : [f.tool, f.states, f.concepts]) as DossierFamily
+    })
+
+  const gateOpen = accounted === bundle.slice_size
+  const pct = Number(((accounted / bundle.slice_size) * 100).toFixed(2))
+
+  const out: DossierReceipt = {
+    ok: true,
+    tool: 'dossier',
+    mode: 'receipt',
+    domain,
+    chart_id,
+    slice_size: bundle.slice_size,
+    coverage: { ...coverageTally, accounted, slice_size: bundle.slice_size, pct },
+    chain_pattern_units: bundle.chain_pattern_units,
+    families,
+    families_format: '[serving_tool, state_codes(S=served,E=empty_for_chart,N=not_computed,A=superseded,X=excluded), concept_count, arg_keys?]',
+    synthesis_gate: gateOpen ? 'OPEN' : 'BLOCKED',
+    gate_basis: 'completeness_receipt',
+    gate_reason: gateOpen
+      ? 'slice_fully_accounted'
+      : `slice_underaccounted_${pct}pct`,
+    reading_contract: gateOpen
+      ? 'gate OPEN (completeness_receipt): slice 100% accounted. families[] is the drill index — ' +
+        'call family[0] with {chart_id,[arg_key]:v} to hydrate rows. Per-concept catalog is on the ' +
+        'paged path (omit `receipt`).'
+      : `gate BLOCKED — only ${pct}% accounted (build gap).`,
+    drill_note: 'families[] = every serving_tool for this slice + concept count + accounting states. No per-concept type-ids shipped (compact gate-summary, one call).',
+    receipt: {
+      receipt_id: `${domain}:${bundle.chart8}:compact`,
+      basis: 'completeness_receipt',
+      family_count: families.length,
+      persistence: 'in_response_only',
+      persistence_note: 'retrieval_receipts persistence needs the shared receipts writer (blocked-on-α); transient.',
+    },
+    provenance: {
+      slice_bundle: `${domain}_${bundle.chart8}.json`,
+      blocks_fingerprint: bundle.blocks_fingerprint,
+      basis_note: 'From bundle accounting metadata only — no per-concept values, no recomputation (B.10).',
+    },
+    judgment_flags: [],
+  }
+  const bytes = Buffer.byteLength(JSON.stringify(out), 'utf8')
+  out.receipt_bytes = bytes
+  if (bytes > 2048) out.judgment_flags.push('receipt_exceeds_2kb')
+  return out
+}
+
 // ── dualOutput (mirrors register_vidhi_plan.ts) ───────────────────────────────
 
 const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
@@ -453,6 +595,37 @@ export interface DossierArgs {
   budget_kb?: number
   cursor?: string
   compose?: boolean
+  /** ŚODHANA T5 (PŪRTI): return the ≤2KB compact completeness receipt instead of a
+   *  paged catalog page — the affordable gate-summary (coverage + families + gate). */
+  receipt?: boolean
+}
+
+/**
+ * ŚODHANA T5: the compact-receipt entry point. Kept SEPARATE from runDossier so the
+ * paged path's return type (DossierPage) is unchanged for its existing callers
+ * (registry_bridge.ts is PV-locked). Short-circuits BEFORE any paging.
+ */
+export function runDossierReceipt(args: Pick<DossierArgs, 'domain' | 'chart_id'>): DossierReceipt {
+  const { domain, chart_id } = args
+  const bundle = loadBundle(domain, chart_id)
+  if (!bundle) {
+    return {
+      ok: false, tool: 'dossier', mode: 'receipt', domain, chart_id, slice_size: 0,
+      coverage: { ...emptyTally(), accounted: 0, slice_size: 0, pct: 0 },
+      chain_pattern_units: 0, families: [], families_format: '',
+      synthesis_gate: 'BLOCKED', gate_basis: 'completeness_receipt',
+      gate_reason: 'slice_not_precomputed',
+      reading_contract: '', drill_note: '', receipt: {}, provenance: {},
+      judgment_flags: [],
+      error: {
+        class: 'slice_not_available',
+        message:
+          `No pre-compiled dossier slice for (domain=${domain}, chart=${chart8Of(chart_id)}). ` +
+          'Flagship coverage: {wealth, career} × {482012f1, 1c826d5a}.',
+      },
+    }
+  }
+  return buildDossierReceipt(bundle, domain, chart_id)
 }
 
 export function runDossier(args: DossierArgs): DossierPage {
@@ -693,6 +866,14 @@ export function registerDossierTool(server: McpServer, principal: Principal): vo
         .describe('Signal that you intend to compose now. If coverage is < 100%, this is ' +
           'recorded as composed_before_gate in retrieval_receipts (and interpretive surfaces ' +
           'remain withheld). Leave false until synthesis_gate reads OPEN.'),
+      receipt: z
+        .boolean()
+        .optional()
+        .describe('Return the COMPACT completeness receipt (≤2KB) instead of a paged catalog ' +
+          'page: coverage % + per-family accounting states + the synthesis_gate boolean + the ' +
+          'drill-handle index — the affordable way to satisfy the gate in ONE call, decoupled ' +
+          'from the per-concept catalog dump. Use this to decide whether to compose; page (omit ' +
+          'this) only when you need to enumerate specific concept units.'),
     },
     async (args) => {
       const authorized = await remoteAuthorize(principal, args.chart_id)
@@ -711,6 +892,11 @@ export function registerDossierTool(server: McpServer, principal: Principal): vo
         )
       }
       try {
+        // ŚODHANA T5: the compact-receipt path is a distinct, cheap entry point.
+        if (args.receipt) {
+          const r = runDossierReceipt({ domain: args.domain, chart_id: args.chart_id })
+          return dualOutput(r, !r.ok)
+        }
         const page = runDossier({
           domain: args.domain,
           chart_id: args.chart_id,

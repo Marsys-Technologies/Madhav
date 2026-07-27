@@ -970,6 +970,11 @@ export const JUDGMENT_FLAG_CODES = [
   'afflictions_fetch_failed',
   'afflictions_empty',
   'afflictions_present',
+  // ── ŚODHANA T5 (PŪRTI): the computed-but-never-joined classical legs (MC-030/031/033) ──
+  'sensitive_degree_firings_present',
+  'sensitive_degree_firings_empty',
+  'kp_cusp_chain_unavailable',
+  'gochara_domain_not_covered',
   // ── D8 assess_domain (folds the former {claim, requires_acharya_validation} object shape) ──
   'domain_inference_requires_acharya_validation',
   // ── D10 pact_query chain-honesty halts ──
