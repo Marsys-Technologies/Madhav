@@ -65,11 +65,30 @@ interface HybridRow {
   combined_score: number
 }
 
-/** Best-effort query embedding — never throws; null on any failure so the
- * caller can degrade to trigram-only ranking instead of erroring the call. */
+// PARISHODHANA B1 (newly-discovered regression): embedText()'s Vertex AI call
+// (platform/src/lib/embeddings/embedText.ts) wires no internal timeout of its own —
+// neither the ADC auth handshake (getAuth().getClient()/getAccessToken()) nor the
+// :predict fetch() carries an AbortSignal. A slow/hung credential or network path there
+// previously blocked this function INDEFINITELY, because the try/catch below only
+// catches a REJECTED promise, never a HUNG one. Every caller of the free-text/hybrid
+// path (ref_dasha_systems_get, ref_nakshatra_get, ref_rules_search, ref_vector_search —
+// anything that populates query_text/query/topic) inherited that hang and paid for it
+// as a bare "TimeoutError: The operation was aborted due to timeout" once the MCP tool's
+// own outer 15s AbortSignal.timeout finally cut the whole HTTP round-trip — an internal
+// error with no honest degradation, even though this function's own doc comment already
+// promised graceful degradation to trigram-only ranking. EMBED_TIMEOUT_MS bounds the
+// wait so a slow embedding call degrades exactly the way the comment always claimed.
+const EMBED_TIMEOUT_MS = 4_000
+
+/** Best-effort query embedding — never throws and never hangs past
+ * EMBED_TIMEOUT_MS; null on any failure OR timeout so the caller degrades to
+ * trigram-only ranking instead of blocking on an unbounded embedding call. */
 async function tryEmbedQuery(text: string): Promise<number[] | null> {
   try {
-    return await embedText(text)
+    return await Promise.race([
+      embedText(text),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), EMBED_TIMEOUT_MS)),
+    ])
   } catch {
     return null
   }
