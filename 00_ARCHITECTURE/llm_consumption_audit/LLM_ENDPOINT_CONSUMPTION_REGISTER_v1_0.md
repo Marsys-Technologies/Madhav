@@ -1,7 +1,7 @@
 ---
 canonical_id: LLM_ENDPOINT_CONSUMPTION_REGISTER
 version: 1.0
-status: ADDRESSED-v1
+status: ADDRESSED-v1.1
 opened: 2026-07-27
 closed: 2026-07-27
 owner: LLM consuming endpoint (Claude, via marsys-jis-direct MCP)
@@ -29,6 +29,16 @@ changelog:
     VERIFIED-FIXED, 3 VERIFIED-NO-DEFECT, 9 PARKED-HONEST (evidence + release conditions
     attached), 2 FAILED-REOPENED (MC-015, MC-029 — narrow, specified fixes, see report §5).
     This changelog entry is append-only; no MC item's original text below was altered.
+  - ADDRESSED-v1.1 (2026-07-27): ŚODHANA-ŚEṢA fast-follow closed both FAILED-REOPENED items.
+    MC-015 (discoveries ayanamsha dedup) and MC-029 (Yogi/Avayogi materialization) are now
+    VERIFIED-FIXED on live production, independently confirmed by an Opus Verifier who
+    reproduced the acceptance arithmetic personally (see `SHODHANA_SHESHA_REPORT_v1_0.md`
+    §5). The §0 tally is corrected from 41 to the true 42-item count (MC-008 was the
+    unaccounted item — see that report's parent, `SHODHANA_REPORT_v1_0.md` §11, for the
+    root-cause finding). Corrected final tally: 29 VERIFIED-FIXED (the original 27 plus
+    MC-015 and MC-029, moved from FAILED-REOPENED now that both are closed), 3
+    VERIFIED-NO-DEFECT, 10 PARKED-HONEST, 0 FAILED-REOPENED = 42. This changelog entry is
+    append-only; no MC item's original text below was altered.
 ---
 
 # LLM Endpoint Consumption Register — MARSYS-JIS via MCP
@@ -627,3 +637,27 @@ specified fix (MC-015, MC-029) are in `briefs/shodhana/SHODHANA_REPORT_v1_0.md` 
 same directory — this annotation does not restate the table to avoid drift between two copies of
 the same data; the report is canonical for disposition, this register remains canonical for the
 original observations. Nothing above this line was altered.
+
+---
+
+## ADDRESSED-v1.1 close annotation (append-only, 2026-07-27, ŚODHANA-ŚEṢA fast-follow)
+
+The two items ADDRESSED-v1 left FAILED-REOPENED are now closed: **MC-015** (discoveries
+ayanamsha-variant dedup) and **MC-029** (Yogi/Avayogi materialization + legacy-category
+reconciliation) are both **VERIFIED-FIXED** on live production, PR #818 and PR #819
+respectively, merged to `main` and deployed. An Opus Verifier independently reproduced the
+acceptance arithmetic for both (the discovery-family collapse counts, and the Yogi/Avayogi
+Sphuta trigonometry + nakshatra-lord lookups from each response's own disclosed Sun/Moon
+longitudes) rather than trusting the builders' self-reports — see
+`briefs/shodhana/SHODHANA_SHESHA_REPORT_v1_0.md` §5 for the full verification record.
+
+Also corrected in this fast-follow: the original ADDRESSED-v1 tally (27+3+9+2=41) undercounted
+the register's true 42-item scope by one — **MC-008** ("domain varga-consumption blocks not
+materialized") was confirmed real by the original campaign's own Phase A, explicitly re-scoped
+to track T5, but never actually delivered nor listed as an open follow-up. It is now correctly
+counted PARKED-HONEST. See `SHODHANA_REPORT_v1_0.md` §11 for the full 42-row disposition table
+and root-cause finding.
+
+Final tally: **29 VERIFIED-FIXED, 3 VERIFIED-NO-DEFECT, 10 PARKED-HONEST, 0 FAILED-REOPENED = 42.**
+Every register item now has an explicit, evidenced disposition. This changelog entry is
+append-only; no MC/WL item's original text above was altered.
