@@ -542,43 +542,41 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         return errorOutput('bodha_discoveries_get', 'AUTHZ_DENIED', { chart_id })
       }
       try {
-        // R6 0b-deadtools (R-9): bodha_discoveries has no `domain` or `salience_score`
-        // column (schema drift — these were never the real column names). The real
-        // schema carries `affected_domains_array` (text[]) for domain filtering and
-        // `composite_discovery_rank` (numeric, observed range ~0.18-1.2 in prod) as the
-        // salience-equivalent rank column. Fixed to the live bodha_discoveries schema.
-        const params: unknown[] = [chart_id]
-        const filters: string[] = ['chart_id = $1']
-        if (domain) {
-          params.push(domain)
-          filters.push(`affected_domains_array @> ARRAY[$${params.length}]::text[]`)
-        }
-        if (min_salience != null && min_salience > 0) {
-          params.push(min_salience); filters.push(`composite_discovery_rank >= $${params.length}`)
-        }
-        params.push(limit ?? 30)
-        params.push(offset ?? 0)
-        const sql = `
-          SELECT *
-          FROM bodha_discoveries
-          WHERE ${filters.join(' AND ')}
-          ORDER BY composite_discovery_rank DESC NULLS LAST
-          LIMIT $${params.length - 1} OFFSET $${params.length}
-        `
-        const result = await platformQuery(sql, params, principal)
-        // filters[] + the params consumed so far (everything before the trailing
-        // limit/offset push) form a valid standalone WHERE clause for a COUNT query.
-        const whereParams = params.slice(0, params.length - 2)
-        const countResult = await platformQuery(
-          `SELECT COUNT(*)::int AS total FROM bodha_discoveries WHERE ${filters.join(' AND ')}`,
-          whereParams,
-          principal,
-        )
+        // MC-015 (ŚODHANA-ŚEṢA W1): this handler used to run its own hand-rolled SQL
+        // directly against bodha_discoveries (R6 0b-deadtools fix, below), which meant
+        // it NEVER called the registry capability (marsys://tool/L2/query_discoveries,
+        // query_discoveries.ts) — including that capability's MC-015/026
+        // `discovery_families` cross-ayanāṃśa collapse. Result: this MCP-facing tool kept
+        // serving the raw, ~40x-duplicated-per-ayanāṃśa rows straight from the table with
+        // no family collapse, even after PR #803 landed the fix one layer away. The sibling
+        // kala_projections_get (register_p1_aliases.ts) never had this problem because it
+        // was already written as a thin proxy to marsys://tool/L3/query_projections — so it
+        // picked up `projection_families` for free. Rewired the same way here: proxy to the
+        // registry capability instead of re-deriving (and diverging from) its query logic.
+        // `min_salience` has no direct equivalent in the registry capability — the old raw
+        // SQL branch's own comment already flagged `composite_discovery_rank` as NOT a 0..1
+        // salience score (schema drift), so filtering on it was already semantically wrong.
+        // Applied here, best-effort, against `non_obviousness_score` (the field the schema
+        // actually carries in that 0..1 range) over the returned page.
+        const data = await callRegistryCapability('marsys://tool/L2/query_discoveries', {
+          chart_id,
+          ...(domain ? { domain } : {}),
+          limit: limit ?? 30,
+          offset: offset ?? 0,
+        }, principal)
+        const content = data as Record<string, unknown>
+        const allRows = (content['rows'] as Record<string, unknown>[] | undefined) ?? []
+        const rows = (min_salience != null && min_salience > 0)
+          ? allRows.filter(r => Number(r['non_obviousness_score'] ?? 0) >= min_salience)
+          : allRows
         return dualOutput(envelope({
-          discoveries: result.rows,
-          total: (countResult.rows[0]?.['total'] as number | undefined) ?? result.rows.length,
-          returned: result.rows.length,
-          filters: { domain, min_salience },
+          ...content,
+          // Back-compat field names this tool has always exposed, alongside the richer
+          // `rows` / `discovery_families` fields already on `content` from the registry.
+          discoveries: rows,
+          total: content['total_matching'] ?? rows.length,
+          returned: rows.length,
+          min_salience_filter_applied: min_salience ?? null,
           source_table: 'bodha_discoveries',
         }, 'bodha_discoveries_get', 'synthesis_cross_domain'))
       } catch (err) {
