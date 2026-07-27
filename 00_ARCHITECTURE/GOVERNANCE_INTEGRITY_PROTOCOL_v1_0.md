@@ -1027,6 +1027,28 @@ inside files matching `*_gate.ts`/`*_monkeypatch.ts` and require a co-located `*
 importing `@modelcontextprotocol/sdk` directly). Recorded here now, mechanized later, per this
 protocol's own A.6 (the protocol is a living artifact).
 
+### O.2 — Verify production traffic state directly; never trust a green deploy workflow alone (appended 2026-07-27, ŚODHANA-ŚEṢA close-out)
+
+**Origin.** During this campaign's own close, `amjis-mcp`'s Cloud Run traffic spec was found
+hard-pinned by revision name to a stale revision left over from an earlier session (a `canary2`
+tag from a prior incident response). Three consecutive automatic "Deploy to Cloud Run" workflow
+runs — each reported `conclusion: success` — built and readied new revisions that never received
+any traffic, because a named-revision traffic pin does not get overridden by a plain
+`deploy-cloudrun` action invocation the way routing-to-`latest` would. Production silently served
+stale code through all three "successful" deploys. This was caught only because the close protocol
+requires confirming production state directly, not because any CI signal flagged it.
+
+**Rail.** Before declaring "production == `main` HEAD" at any session or campaign close that
+touched `amjis-mcp` (or any other Cloud Run service with tag-based traffic history), run
+`gcloud run services describe <service> --format=json` and check `spec.traffic` directly:
+confirm either (a) traffic is split via `latestRevision: true` (always routes to newest), or (b) if
+traffic is pinned by explicit `revisionName`, that the pinned revision's image actually matches the
+commit being verified. A green deploy-workflow badge proves a new revision was BUILT and marked
+Ready; it does not prove that revision is receiving traffic. This is the same class of gap §O.1
+addresses (a passing check that doesn't test the thing that actually matters) — recorded as its
+own rail because the failure mode is different: not a code defect, but a traffic-routing state
+that silently persists across unrelated deploys until someone checks it directly.
+
 ---
 
 **END OF GOVERNANCE & INTEGRITY PROTOCOL v1.0.**
