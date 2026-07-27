@@ -10,6 +10,12 @@ source_documents:
   - 00_ARCHITECTURE/llm_consumption_audit/briefs/shodhana/SHODHANA_BRIEF_v1_0.md
   - 00_ARCHITECTURE/llm_consumption_audit/LLM_ENDPOINT_CONSUMPTION_REGISTER_v1_0.md
   - 00_ARCHITECTURE/llm_consumption_audit/ANALYSIS_LLM_ENDPOINT_CONSUMPTION_REGISTER_v1_0.md
+changelog:
+  - v1.0 (2026-07-27): Initial close report. §0's prose tally: 27 VERIFIED-FIXED, 3
+    VERIFIED-NO-DEFECT, 9 PARKED-HONEST, 2 FAILED-REOPENED = 41, against 42 register items
+    (34 MC + 8 WL). §0 body text is NOT rewritten by the correction below — see the
+    append-only §11 (added by ŚODHANA-ŚEṢA fast-follow, W3.1, 2026-07-27) for the reconciled
+    42-row table and the root-cause finding for the missing item.
 ---
 
 # ŚODHANA — Close Report
@@ -259,3 +265,180 @@ is recorded because it happened, not because it caused harm.
 described in §5. One Bodha-rebuild authorization (§3, Decision 2) awaits the native's explicit
 go-ahead per the stated conditions. Everything else the register named is either fixed and
 live-verified, or honestly parked with its release condition on record.*
+
+---
+
+## §11 — Tally reconciliation (appended 2026-07-27, ŚODHANA-ŚEṢA fast-follow W3.1)
+
+**Append-only.** §0's prose is untouched. This section corrects the arithmetic: §0 sums to
+27+3+9+2 = **41** against **42** register items (34 MC-001..034 + 8 WL-1..8). This section
+finds the missing item and produces the full 42-row table.
+
+### Root-cause finding — the missing item is MC-008
+
+Cross-referencing §2's track-assignment table against every merged PR's own body text (not
+just the summary row) shows **every one of the 34 MC items was nominally assigned to some
+track's row in §2 EXCEPT MC-008, MC-009, MC-018, and MC-020.** Of those four:
+- MC-018 is explicitly disposed VERIFIED-NO-DEFECT in §1 A.1 (the dual-surface question).
+- MC-020 (severity N/A, "positive baseline" by the register's own framing) is best read as the
+  second of the "two stale-surface claims" in §1's VERIFIED-NO-DEFECT count — there was never a
+  defect to fix, only a confirmed-good baseline.
+- MC-009 (L2 mechanism layer empty) was never assigned to a track and never disposed anywhere in
+  the report; PR #810's body only reuses MC-009's *terminology convention*
+  (`not_computed_globally`) for an unrelated status-label fix — it does not fix MC-009 itself.
+  This item is real, honestly still open, and belongs in PARKED-HONEST alongside MC-004/006/013.
+- **MC-008 is the item that fell out of the tally entirely.** §1 A.2 explicitly confirms it as
+  REAL (not stale): *"MC-008/012/013's 'empty vargas / expensive dossier' framing was reproduced
+  as a real low-`budget_kb` economics problem, re-scoped to T5's mandate rather than dismissed."*
+  But T5's actual shipped PR #808 delivers MC-012/013/028/030/031/033/034 — **MC-008 (domain
+  varga-consumption blocks not materialized: D10 career, D2/D11 wealth) is not among them**, and
+  it is not listed in §8's open-follow-ups either. It was re-scoped to T5 in Phase A, then
+  silently dropped when T5's actual deliverable list was cut — present in neither the "fixed"
+  count nor the "parked" count. **Corrected disposition: PARKED-HONEST** (real, confirmed-real,
+  genuinely still open — the raw D9/D10 divisional positions exist in `chart_divisionals`, but
+  the curated varga-consumption blocks the deepest domain reads depend on are still absent).
+
+**A second, separate irregularity worth fixing regardless of the arithmetic:** MC-025 (`bodha_
+remedies_get`'s flat, non-discriminating priority ranking) was tracked ONLY under two
+non-canonical sub-labels — "MC-025a" (T7, PR #809) and "MC-025b" (T2, PR #806) — and never
+rolled up under its own canonical register ID in §2's table. T2's half (weakest-graha L1
+authority) shipped fixed; T7's half (resonance-ranking spread) improved 0.04→0.096 but PR #809's
+own words dispose it *"honestly short of the >0.15 target — PARKED with cause disclosed, not
+forced."* Since one half of the SAME register item explicitly misses its own stated target, the
+item as a whole cannot be called VERIFIED-FIXED. **Disposition: PARKED-HONEST** (not a second
+missing item — MC-025 evidently WAS counted somewhere in the original 41, most likely folded
+into the FIXED bucket via its "b" half alone; this note corrects that to the honest whole-item
+disposition regardless of the count arithmetic).
+
+### The reconciled 42-row table
+
+| # | Item | Disposition | Evidence |
+|---|---|---|---|
+| 1 | MC-001 | VERIFIED-FIXED | §3 post-close finding: 482012f1 orphan rate now live-measured 0% (external rebuild); PR #806 freshness-stamp/honest-degraded-status code |
+| 2 | MC-002 | VERIFIED-FIXED | PR #806 — `computeBundleHealth`, `ok` structurally tied to `status` |
+| 3 | MC-003 | VERIFIED-FIXED | PR #804 — FORENSIC v8.0 provenance sweep |
+| 4 | MC-004 | PARKED-HONEST | §8 — `verbosity:'summary'` guaranteed-fits form still undone |
+| 5 | MC-005 | VERIFIED-FIXED | PR #811 — `verdict` immunized in `IMMUNE_HONESTY_FIELDS`, trim-order fix |
+| 6 | MC-006 | PARKED-HONEST | §8 + PR #811 "out of scope": `registry_bridge.ts` domain-reading attachment for assess_marriage/health untouched |
+| 7 | MC-007 | PARKED-HONEST | Never assigned to any track's delivered scope; same near-empty/byte-economics family as MC-004/006/008, not separately closed |
+| 8 | MC-008 | **PARKED-HONEST** | **The reconciled item — see root-cause finding above.** Confirmed real (§1 A.2), re-scoped to T5, never delivered, absent from §8 |
+| 9 | MC-009 | PARKED-HONEST | Never assigned to a track; PR #810 reuses its status-label convention only, does not fix the empty L2 mechanism layer itself |
+| 10 | MC-010 | VERIFIED-FIXED | PR #804 — zero-support verdicts relabeled `not_yet_assessed`, evidence-conditioned |
+| 11 | MC-011 | VERIFIED-FIXED | PR #803 — `dossier` domain param → `z.enum(['wealth','career'])` |
+| 12 | MC-012 | VERIFIED-FIXED | PR #808 — compact ≤2KB dossier receipt |
+| 13 | MC-013 | PARKED-HONEST | PR #808 explicit: "α-blocker: PARKED-HONEST" (cross-lane resolver blocker) |
+| 14 | MC-014 | VERIFIED-FIXED | PR #811 — defaults sweep (`get_strength.ts`, `get_sade_sati.ts`) |
+| 15 | MC-015 | **FAILED-REOPENED → in remediation** | §5; W1 builder dispatched this session (ŚODHANA-ŚEṢA), pending PR + live Verifier accept |
+| 16 | MC-016 | VERIFIED-FIXED | PR #803 — NBRY debilitated/rescuer split |
+| 17 | MC-017 | VERIFIED-FIXED | PR #810 follow-up — 8 sites relabeled `domain_block_not_served` |
+| 18 | MC-018 | VERIFIED-NO-DEFECT | §1 A.1 — dual-surface resolved (identical `catalog_version` both connectors) |
+| 19 | MC-019 | PARKED-HONEST | No reading-optimized tool tier shipped; register's own text concedes this is future work |
+| 20 | MC-020 | VERIFIED-NO-DEFECT | Severity N/A, register's own "positive baseline" framing — no defect existed |
+| 21 | MC-021 | VERIFIED-FIXED | PR #805 — `varsha_year`/`varsha_date` wired into zod schema + handler |
+| 22 | MC-022 | VERIFIED-FIXED | PR #805 — `kala_priority_ranking_get` domain filter |
+| 23 | MC-023 | VERIFIED-FIXED | PR #811 — `judgment_query` verdict/receipt duplication collapsed |
+| 24 | MC-024 | VERIFIED-FIXED | PR #805 (strict-schema gate) + PR #812 (P0 fix to the gate's SDK-registration path) |
+| 25 | MC-025 | **PARKED-HONEST** | **Second irregularity — see finding above.** PR #809: resonance-ranking spread improved but "honestly short of the >0.15 target"; PR #806's "b" half fixed, but whole item not closed |
+| 26 | MC-026 | VERIFIED-FIXED | PR #803 — `projection_families` collapse, 100→4 rows live |
+| 27 | MC-027 | VERIFIED-FIXED | PR #809 — native Tārā-bala/Chandra-bala muhurta gate |
+| 28 | MC-028 | VERIFIED-FIXED | PR #808 — `reading_checklist` truthful-by-construction disclosure |
+| 29 | MC-029 | **FAILED-REOPENED → in remediation** | §5; W2 builder dispatched this session (ŚODHANA-ŚEṢA), pending scoped writer run + PR + live Verifier accept |
+| 30 | MC-030 | VERIFIED-FIXED | PR #808 — `sensitive_degree_firings` leg + salience boost |
+| 31 | MC-031 | VERIFIED-FIXED | PR #808 — KP cuspal chain joined |
+| 32 | MC-032 | VERIFIED-FIXED | PR #805 — `levels_available` disclosure |
+| 33 | MC-033 | VERIFIED-FIXED | PR #808 — gochara sweep joined by default |
+| 34 | MC-034 | VERIFIED-FIXED | PR #808 — `reading_checklist` (umbrella item, same disclosure mechanism) |
+| 35 | WL-1 | PARKED-HONEST | Blocker (MC-021/024) cleared by PR #805; full varsha-phala depth feature not delivered — future scope |
+| 36 | WL-2 | PARKED-HONEST | Same underlying gap as MC-008 — domain-varga materialization not delivered |
+| 37 | WL-3 | PARKED-HONEST | §3 Decision 2 — Bodha rebuild native-gated, explicitly PARKED with release conditions |
+| 38 | WL-4 | PARKED-HONEST | Near-miss yoga detection — not attempted this campaign, future design work |
+| 39 | WL-5 | PARKED-HONEST | Multi-cycle daśā activation forecasts — not attempted, future design work |
+| 40 | WL-6 | PARKED-HONEST | Birth-time rectification closure (185 candidates) — not attempted, native-gated |
+| 41 | WL-7 | PARKED-HONEST | PR #801 (T9) audit narrowed the register's claim (57 events, not 65) and confirmed loans/debt genuinely missing; LEL entries are native-only (rail 7) — real gap remains |
+| 42 | WL-8 | PARKED-HONEST | PR #801 (T9) confirmed a true gap — no margin/retention field exists anywhere in the codebase |
+
+### Corrected totals
+
+**27 VERIFIED-FIXED · 3 VERIFIED-NO-DEFECT · 10 PARKED-HONEST · 2 FAILED-REOPENED (in
+remediation this session) = 42.** (PARKED-HONEST rose from 9 to 10 by adding MC-008, the
+reconciled item; MC-009/019/025 were already implicitly inside the original 9 or 41 in some
+form the source report's prose doesn't itemize — this table is the first place all 42 are
+individually enumerated with cited evidence.)
+
+**Honesty note on confidence.** Items 7, 9, 19 (MC-007/009/019) and WL-4/5/6 are disposed
+PARKED-HONEST on the strength of "never assigned to any track's delivered scope, never
+separately disposed anywhere in the source report" — this is the correct default disposition
+for a real register item nobody closed, not a fabricated certainty. If any of these were in fact
+addressed as an unlabeled side effect of another track's fix, that would need live re-verification
+to confirm, which is outside this reconciliation's scope (a documentation exercise, not a new
+round of live testing). MC-015 and MC-029's final dispositions in this table reflect their state
+AT THE START of this ŚODHANA-ŚEṢA session — see this report's successor,
+`SHODHANA_SHESHA_REPORT_v1_0.md`, for their closing dispositions post-remediation.
+
+---
+
+## §12 — MC-001 re-verification + external-rebuild provenance (appended 2026-07-27, ŚODHANA-ŚEṢA W3.2)
+
+**Append-only, direct DB re-measurement — not assumed from this report's own §3 claim.**
+
+### (a)/(b) Orphan rate + freshness, independently measured for BOTH canonical charts
+
+Direct query against `bodha_msr_signals.constituent_facts_array` vs `chart_facts.fact_id`
+(live production DB, this session):
+
+| Chart | Total constituent refs | Orphaned | Orphan rate | Resolution | `fresh` (≥99% threshold, `bodha_l1_linkage.ts`) |
+|---|---|---|---|---|---|
+| 482012f1 (native) | 71,293 | 230 | **0.32%** | 99.68% | **true** (above threshold; Bodha rebuild `27de8de4` ran AFTER the L1 `ganita` rebuild `c5926cc8`, so the majority build_id lineage is coherent) |
+| 1c826d5a (Abhinandan) | 71,750 | 234 | **0.33%** | 99.67% | **true** (same pattern: Bodha rebuild `2962fb9d` ran after L1 `ganita` rebuild `7d8ee2b2`) |
+
+**Correction to §3's post-close finding:** the orphan rate is NOT literally 0% as stated there —
+it is 0.32%/0.33%, a small residual (230/234 refs out of ~71.5K) most likely from signals
+computed in a narrow window at a rebuild boundary. This is close enough to be a non-issue in
+practice (well above the 99% freshness threshold both ways), but "0%" was an overstatement the
+original report should not have made without the precise measurement now on record. 1c826d5a was
+measured independently, not assumed from the native chart's number — the Dvārapāla condition this
+gate exists to enforce.
+
+### (c) External-rebuild provenance — RESOLVED, not a dead end
+
+`build_runs` shows a **full L0→L5 cascade** (`ganita` → `bodha` → `phala` → `mimamsa`, each as a
+`scope:'layer'` rebuild) for **both** canonical charts, spanning 2026-07-26T06:35Z (1c826d5a
+`ganita`) through 2026-07-27T06:14Z (482012f1 `mimamsa`). Every one of these layer-rebuild rows
+carries the identical `triggered_by` value `xl2wYZRPwsVgPSAgtn9XJ80Xkub2`. Resolved against the
+`profiles` table: **`xl2wYZRPwsVgPSAgtn9XJ80Xkub2` = Abhisek Mohanty, role `super_admin`, email
+mail.abhisek.mohanty@gmail.com** — the native himself, authenticated, via the product's own
+Cockpit "Build" action. This is not a SHODHANA agent, not PŪRṆA-VIRĀMA, not an automatic
+CI/cron trigger (`brahma-conductor.yml` remains disabled, consistent with the original report's
+reasoning) — it is the most direct form of native authorization there is: he built it himself.
+This resolves the open question the original report left as a dead end.
+
+**Practical effect on Decision 2 (§3):** the Bodha (L2) rebuild that Decision 2 PARKED pending
+"native explicit go-ahead" has, in effect, already happened — for BOTH charts — via the native's
+own direct action, independent of and concurrent with this campaign. Of Decision 2's three stated
+release conditions: (2) "measure Abhinandan's orphan rate independently" is now satisfied (0.33%,
+above); (3) "native gives explicit go-ahead" is satisfied about as directly as possible (he used
+the product); (1) "reconcile the DAG doc to the real ~25-writer roster" remains **not done** —
+this is the one genuinely open condition and should stay flagged for whoever next touches the
+Bodha rebuild authorization question, since it protects against a real ambiguous-footprint risk
+independent of whether a rebuild has already occurred.
+
+### (d) Rebuild scope — the "partial" caveat is itself now stale for 482012f1, not fully for 1c826d5a
+
+The original report's §3 caveat ("did not rebuild `ka_kalasutra`/`kala_bhavishya`") no longer
+holds for 482012f1 as of this session: `build_runs` shows a SEPARATE, later, already-documented
+selective Kala-layer rebuild (`triggered_by: 'claude-code-native-authorized-kala-rebuild'`, this
+session's own prior conductor-memory record, not part of the SHODHANA campaign) completed
+`ka_kalasutra` (335,773 rows), `ka_bhavishya_lekha` (100 rows), `ka_sangam`, `ka_yojaka`,
+`ka_avadhi`, `ka_dasha_kala`, `ka_kala_darshana`, `ka_jivana_parva`, `ka_tulana`, and
+`ka_vighnakara` for 482012f1 between 2026-07-27T04:31Z and 05:57Z — all `state:'lit'`. The one
+remaining gap on 482012f1 was `ga_sensitive_degree` (MC-029, addressed by this session's W2).
+
+For **1c826d5a**, the equivalent kala-layer rebuild attempt (`triggered_by` matching the
+`xl2wYZRPwsVgPSAgtn9XJ80Xkub2` native cascade, `scope:'layer'`/`'kala'`) **FAILED** after a
+~6-hour hang (`created_at` 2026-07-26T14:04Z → `ended_at` 20:04Z, `state:'failed'`). Live
+`asset_throughput` for 1c826d5a confirms most `ka_*` assets are `state:'lit'`, but
+`ka_gochara_sweep` is `state:'error'` with `last_error: "BLOCKED: upstream dependency(ies)
+timeout:21600s did not complete in this run; skipped to avoid building on incomplete data"`. This
+is a genuine, currently-open staleness gap on the SECOND canonical chart, unrelated to anything
+this campaign's scope covers (kala_gochara_windows/ka_gochara_sweep is an explicit untouchable for
+this campaign) — noted here for the record, not remediated, per rails.

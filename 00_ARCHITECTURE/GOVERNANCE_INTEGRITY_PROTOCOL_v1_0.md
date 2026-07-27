@@ -987,7 +987,45 @@ Every axis has at least two findings bound. Every finding has at least one axis 
 
 ## §O — APPENDICES
 
-(Placeholder section for Step 8 red-team addenda if needed. v1.0 carries none.)
+### O.1 — Integration-gate rail (appended 2026-07-27, ŚODHANA-ŚEṢA fast-follow W3.3)
+
+**Origin.** ŚODHANA's P0 production incident (`SHODHANA_REPORT_v1_0.md` §4): a portal-wide
+registration-time monkeypatch (`strict_tool_schema_gate.ts`, PR #805) passed unit tests against a
+mocked `server.tool()` and crash-looped `amjis-mcp` in production the moment a real MCP SDK call
+reached it — the mock could never have caught the SDK-version-specific positional-overload bug
+that caused the crash. Ten track PRs had already merged by the time this was caught in live
+post-merge verification, not before. This section codifies the two standing rails that close this
+gap for every future multi-track campaign, per the ŚODHANA-ŚEṢA brief's explicit instruction to
+record "the incident's lesson, codified."
+
+**Rail 1 — merged-main real-verify before any traffic shift.** Any campaign merging more than one
+serving-path PR must, before shifting ANY production traffic to a new revision: (a) build the
+deploy candidate from `main` at the exact merge commit the campaign intends to ship (never a
+revision merely "newest at the time" — ŚODHANA's own P0 response hit this exact trap on its first
+cutover attempt, targeting the wrong revision); (b) hit the deployed-but-not-yet-traffic-shifted
+candidate with REAL authenticated calls and check logs — not a health-check ping — before any
+canary; (c) canary with real traffic at a small percentage, confirm clean logs, THEN cut over
+fully. Each step is confirmed clean before proceeding to the next; a step that isn't clean rolls
+back immediately rather than proceeding "to see if it clears up."
+
+**Rail 2 — real-SDK integration test for any portal-wide registration-time gate.** Any mechanism
+that wraps or monkeypatches every tool's registration call (a "gate" or "profile" applied at
+registration time, portal-wide — as of this writing there are three: the profile gate, the
+deprecated-tool gate, the strict-schema gate) requires an integration test that drives the REAL
+`@modelcontextprotocol/sdk` `McpServer` — not a hand-rolled mock of `server.tool()` — before it
+ships. The regression test PR #812 added
+(`platform-mcp/src/lib/__tests__/strict_tool_schema_gate.test.ts`'s real-SDK addition, A/B-verified
+to fail on the pre-fix code and pass on the fix) is the template: construct a real `McpServer`
+instance, register a tool through the gate exactly as production does, and assert the registration
+does not throw — for both a flat shape and a nested-optional shape (the exact shape class that
+crashed). A mocked `server.tool()` cannot catch an SDK-version-specific registration-parser bug by
+construction; only the real SDK can.
+
+**Enforcement.** These are process rails, not (yet) mechanically enforced by `drift_detector.py`/
+`schema_validator.py` — a future step may add a static check (e.g. grep for `server.tool(` calls
+inside files matching `*_gate.ts`/`*_monkeypatch.ts` and require a co-located `*.integration.test.ts`
+importing `@modelcontextprotocol/sdk` directly). Recorded here now, mechanized later, per this
+protocol's own A.6 (the protocol is a living artifact).
 
 ---
 
