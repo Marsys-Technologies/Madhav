@@ -379,17 +379,101 @@ const MCP_RESPONSE_BUDGET_KB = {
 // exact D-1.5a scenario (a genuinely-populated bearing_yogas-shaped section) proving this
 // holds under a concise-tightened budget, not just the existing declared-budget case.
 const CONCISE_MIN_KB = 4
-export function resolveVerbosityMaxKb(baseKb: number, verbosity: 'concise' | 'detailed' | undefined): number {
+export type Verbosity = 'concise' | 'detailed' | 'exhaustive'
+export function resolveVerbosityMaxKb(baseKb: number, verbosity: Verbosity | undefined): number {
   if (verbosity !== 'concise') return baseKb
   return Math.max(Math.round(baseKb * 0.5), CONCISE_MIN_KB)
 }
-const VERBOSITY_ZOD = z.enum(['concise', 'detailed']).optional().describe(
-  "Response-size knob (W3): 'concise' tightens this call's response-budget ceiling " +
-  "(response_budget.ts) to roughly half its normal size — trimmable/catalog-style " +
-  "sections shrink first; confirmed-finding sections marked hardFloor (e.g. judgment_" +
-  "query's bearing_yogas) never drop below their declared floor, concise or not. " +
-  "'detailed' (default if omitted) keeps the normal, wider ceiling."
+// SAMAPANA Track B (brief §2 item 1): 'exhaustive' is a new named maximal tier, added
+// alongside 'concise'/'detailed' — NOT a replacement or a re-numbering of either. It shares
+// 'detailed's ceiling exactly: `resolveVerbosityMaxKb`'s `verbosity !== 'concise'` branch
+// already returns `baseKb` unchanged for any value other than 'concise', so 'exhaustive'
+// needs no new branch there to get "detailed's ceiling, never shrunk" — this is verified by
+// samapana_trackb_exhaustive.test.ts, not merely assumed. What 'exhaustive' ADDS beyond that
+// (unique to this tier) is forcing every B.11 orientation pre-fetch this call makes
+// (fetchOrientationContext below) to its own full form — response_format:'full' instead of
+// the terse 10-signal 'digest' — so a caller asking for the maximal tier actually receives
+// the maximal signal set, not just a wider byte ceiling around the same terse digest.
+// Back-compat is absolute: 'detailed' and omitted verbosity are UNCHANGED by this addition —
+// only the new 'exhaustive' branch (both here and in fetchOrientationContext) is added.
+const VERBOSITY_ZOD = z.enum(['concise', 'detailed', 'exhaustive']).optional().describe(
+  "Response-size knob (W3 + SAMAPANA Track B): 'concise' tightens this call's response-" +
+  "budget ceiling (response_budget.ts) to roughly half its normal size — trimmable/catalog-" +
+  "style sections shrink first; confirmed-finding sections marked hardFloor (e.g. judgment_" +
+  "query's bearing_yogas) never drop below their declared floor, concise or not. 'detailed' " +
+  "(default if omitted) keeps the normal, wider ceiling. 'exhaustive' keeps that SAME ceiling " +
+  "(never narrower than 'detailed') AND additionally forces this call's mandatory B.11 " +
+  "orientation pre-fetch to its full form (response_format:'full', not the default 10-signal " +
+  "digest) — the maximal tier for a beyond-acharya-grade deep dive. Prefer reading_depth:" +
+  "'deep_dive' on assess_* tools to set this (and the matching internal full-form calls) in " +
+  "one flag instead of by hand."
 )
+
+// ── SAMAPANA Track B item 2 — the reading_depth:'deep_dive' contract ───────────────────
+//
+// A single named contract a caller sets ONCE on the natural entry point (assess_wealth/
+// assess_career/assess_marriage/assess_health, and bodha_chart_digest_get for the digest
+// call directly) instead of setting verbosity + response_format + digest mode by hand on
+// every sub-call. 'deep_dive' deterministically resolves to verbosity:'exhaustive' — see
+// `resolveEffectiveVerbosity` below, which every reading_depth-bearing tool handler calls.
+export type ReadingDepth = 'standard' | 'deep_dive'
+export const READING_DEPTH_ZOD = z.enum(['standard', 'deep_dive']).optional().describe(
+  "Reading-depth contract (SAMAPANA Track B): 'deep_dive' deterministically forces " +
+  "verbosity:'exhaustive' (this call's widest — i.e. 'detailed' — byte ceiling) AND the " +
+  "mandatory B.11 orientation pre-fetch to its full form (response_format:'full', top_k_" +
+  "signals:100 — not the default 10-signal digest) — a single flag standing in for setting " +
+  "verbosity + the digest mode by hand. Never silently downgraded by a stray verbosity:" +
+  "'concise'/'detailed' also present on the same call — deep_dive always wins. 'standard' " +
+  "(default if omitted) keeps today's behavior byte-for-byte. Cannot be combined with a " +
+  "lossy summary/compact response_format on the same call — see guardDeepDiveNotLossy."
+)
+
+/** reading_depth:'deep_dive' deterministically forces the effective verbosity to 'exhaustive'
+ *  regardless of whatever the caller also passed for `verbosity` on the same call — a deep
+ *  dive is never silently downgraded by a stray verbosity:'concise'/'detailed' left over from
+ *  a copy-pasted prior call. 'standard' (or omitted reading_depth) leaves `verbosity` as-is,
+ *  so back-compat for callers that never touch reading_depth is absolute. */
+export function resolveEffectiveVerbosity(
+  verbosity: Verbosity | undefined,
+  reading_depth: ReadingDepth | undefined,
+): Verbosity | undefined {
+  return reading_depth === 'deep_dive' ? 'exhaustive' : verbosity
+}
+
+// ── SAMAPANA Track B item 3 — hard-guard against ANY lossy summary form under a deep dive ──
+//
+// No MC-004/MC-006-style "guaranteed-fits" reading_depth:'compact' projection exists in this
+// build (that is Track C's OPTIONAL item) — but the *general* shape of "a lossy summary/
+// digest projection" already exists TODAY on query_ucd/get_chart_orientation/
+// bodha_chart_digest_get: response_format:'summary' caps top_signals at 10, 'digest' caps it
+// at 0. `guardDeepDiveNotLossy` is the one bind point every current AND future lossy form
+// must be checked against before applying its reduction: if a caller sets reading_depth:
+// 'deep_dive' AND ALSO explicitly requests one of the named lossy `formValue`s on the SAME
+// call, that is a self-contradictory request — REFUSE it (throw), never silently pick one
+// side. (Omitting the lossy-form param entirely under deep_dive is fine — every deep_dive
+// call site in this file defaults that param to 'full' when reading_depth is 'deep_dive' and
+// the caller left it unset, so this guard only ever fires on an explicit contradiction.) A
+// future Track C summary form binds to this SAME function rather than inventing its own gate.
+export class DeepDiveLossyFormError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DeepDiveLossyFormError'
+  }
+}
+export function guardDeepDiveNotLossy(
+  reading_depth: ReadingDepth | undefined,
+  formParamName: string,
+  formValue: string | undefined,
+  lossyValues: readonly string[],
+): void {
+  if (reading_depth === 'deep_dive' && formValue !== undefined && lossyValues.includes(formValue)) {
+    throw new DeepDiveLossyFormError(
+      `reading_depth:'deep_dive' cannot be combined with ${formParamName}:'${formValue}' — a deep ` +
+      `dive must never be silently routed through a lossy summary/compact form (SAMAPANA Track B ` +
+      `item 3). Omit ${formParamName} (defaults to the full form under deep_dive) or pass 'full'.`
+    )
+  }
+}
 
 // ── C1 — budget_kb request-side override (contract C1) ────────────────────────
 //
@@ -423,7 +507,7 @@ const BUDGET_KB_ZOD = z.number().min(1).max(64).optional().describe(
 function resolveMaxKb(
   toolName: keyof typeof MCP_RESPONSE_BUDGET_KB,
   budgetKb: number | undefined,
-  verbosity?: 'concise' | 'detailed',
+  verbosity?: Verbosity,
 ): number {
   const staticDefault = MCP_RESPONSE_BUDGET_KB[toolName]
   const afterVerbosity = resolveVerbosityMaxKb(staticDefault, verbosity)
@@ -1592,15 +1676,28 @@ export async function resolveChartHeader(
  * stub so the domain tool can still serve — a failed orientation is non-blocking
  * but annotated in the response.
  */
+// SAMAPANA Track B item 1: pure helper so the 'exhaustive'-forces-full-digest decision is
+// unit-testable without mocking network I/O (see samapana_trackb_exhaustive.test.ts). Every
+// verbosity OTHER than 'exhaustive' (including 'concise'/'detailed'/undefined) keeps today's
+// exact digest shape — top_k_signals:10, response_format:'digest' — byte-for-byte unchanged.
+export function resolveOrientationFetchParams(
+  verbosity: Verbosity | undefined,
+): { top_k_signals: number; response_format: 'digest' | 'full' } {
+  if (verbosity === 'exhaustive') return { top_k_signals: 100, response_format: 'full' }
+  return { top_k_signals: 10, response_format: 'digest' }
+}
+
 async function fetchOrientationContext(
   chart_id: string,
   ayanamsha_id: string | undefined,
   principal: Principal,
+  verbosity?: Verbosity,
 ): Promise<{ orientation_context: unknown; orientation_ok: boolean }> {
   try {
+    const { top_k_signals, response_format } = resolveOrientationFetchParams(verbosity)
     const ucdData = await callRegistryCapability(
       'marsys://tool/L2/query_ucd',
-      { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), top_k_signals: 10, response_format: 'digest' },
+      { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), top_k_signals, response_format },
       chart_id, principal,
     )
     return { orientation_context: ucdData, orientation_ok: true }
@@ -1653,17 +1750,28 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ),
       envelope_format: z.enum(['legacy', 'v3']).optional()
         .describe("Envelope shape: 'legacy' (default, unchanged) or 'v3' (populated verdict/grounding/ranking_basis/drill_pointers/chart_header — opt-in until the R5 W4 battery flips the default). Distinct from response_format, which governs digest verbosity."),
+      reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, top_k_signals, top_k_entities, response_format, envelope_format, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, top_k_signals, top_k_entities, response_format, envelope_format, reading_depth, budget_kb }) => {
       if (!chart_id) return errorOutput('get_chart_orientation', 'chart_id is required')
       try {
+        // SAMAPANA Track B item 3: a deep dive can never be silently routed through the
+        // lossy 'summary'/'digest' projections (today's real lossy forms on this tool) —
+        // refuse the self-contradictory combination rather than silently picking a side.
+        guardDeepDiveNotLossy(reading_depth, 'response_format', response_format, ['summary', 'digest'])
         const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
-        const fmt = response_format ?? 'summary'
+        // SAMAPANA Track B item 4b (footgun fix, contract-side): reading_depth:'deep_dive'
+        // forces the full digest even if the caller never touches response_format at all —
+        // the deep-dive contract's mandatory first call always gets the full signal set, not
+        // the default top-10 'summary'. Back-compat: reading_depth omitted/'standard' leaves
+        // this branch untouched — `fmt` resolves exactly as it did before this change.
+        const fmt = response_format ?? (reading_depth === 'deep_dive' ? 'full' : 'summary')
         const format = resolveEnvelopeFormat(envelope_format)
         const raw = await callRegistryCapability(
           'marsys://tool/L2/query_ucd',
-          { chart_id, ayanamsha_id: resolvedAyanamsha, top_k_signals: top_k_signals ?? 20,
+          { chart_id, ayanamsha_id: resolvedAyanamsha,
+            top_k_signals: top_k_signals ?? (reading_depth === 'deep_dive' ? 100 : 20),
             top_k_entities: top_k_entities ?? 10, response_format: fmt },
           chart_id, principal
         )
@@ -2051,7 +2159,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       try {
         // B.11: fetch holistic orientation before graph traversal (S1: parallelized)
         const [{ orientation_context, orientation_ok }, data] = await Promise.all([
-          fetchOrientationContext(chart_id, undefined, principal),
+          fetchOrientationContext(chart_id, undefined, principal, verbosity),
           callRegistryCapability(
             'marsys://tool/L2/traverse_chart_graph',
             {
@@ -2204,7 +2312,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       try {
         // B.11: fetch holistic orientation before predictive projection (S1: parallelized)
         const [{ orientation_context, orientation_ok }, data] = await Promise.all([
-          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, verbosity),
           callRegistryCapability(
             'marsys://tool/L3/query_projections',
             { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id), domain, horizon_years: horizon_years ?? 5 },
@@ -2400,14 +2508,19 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, reading_depth, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_marriage', 'chart_id is required')
       try {
+        // SAMAPANA Track B item 2: reading_depth:'deep_dive' deterministically forces the
+        // effective verbosity to 'exhaustive' — never silently downgraded by a stray verbosity
+        // also present on this call.
+        const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
         const [{ orientation_context, orientation_ok }, data] = await Promise.all([
-          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_marriage',
             { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
@@ -2417,7 +2530,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_marriage', budget_kb, verbosity), 'assess_marriage', budget_kb))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_marriage', budget_kb, effectiveVerbosity), 'assess_marriage', budget_kb))
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
       }
@@ -2434,14 +2547,19 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, reading_depth, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_career', 'chart_id is required')
       try {
+        // SAMAPANA Track B item 2: reading_depth:'deep_dive' deterministically forces the
+        // effective verbosity to 'exhaustive' — never silently downgraded by a stray verbosity
+        // also present on this call.
+        const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
         const [{ orientation_context, orientation_ok }, data] = await Promise.all([
-          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_career',
             { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
@@ -2455,7 +2573,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         attachDomainCompleteness(response, 'career', chart_id)
         // SATYA-ŚEṢA W7: serve the reading itself, inline, not just a pointer to one.
         await attachDomainReading(response, 'career', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_career', budget_kb, verbosity), 'assess_career', budget_kb))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_career', budget_kb, effectiveVerbosity), 'assess_career', budget_kb))
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
       }
@@ -2472,14 +2590,19 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, reading_depth, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_health', 'chart_id is required')
       try {
+        // SAMAPANA Track B item 2: reading_depth:'deep_dive' deterministically forces the
+        // effective verbosity to 'exhaustive' — never silently downgraded by a stray verbosity
+        // also present on this call.
+        const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
         const [{ orientation_context, orientation_ok }, data] = await Promise.all([
-          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_health',
             { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
@@ -2489,7 +2612,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_health', budget_kb, verbosity), 'assess_health', budget_kb))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_health', budget_kb, effectiveVerbosity), 'assess_health', budget_kb))
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
       }
@@ -2506,14 +2629,19 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
       max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
       verbosity: VERBOSITY_ZOD,
+      reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
     },
-    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, budget_kb }) => {
+    async ({ chart_id, ayanamsha_id, max_signals_per_lens, max_contradictions, verbosity, reading_depth, budget_kb }) => {
       if (!chart_id) return errorOutput('assess_wealth', 'chart_id is required')
       try {
+        // SAMAPANA Track B item 2: reading_depth:'deep_dive' deterministically forces the
+        // effective verbosity to 'exhaustive' — never silently downgraded by a stray verbosity
+        // also present on this call.
+        const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
         const [{ orientation_context, orientation_ok }, data] = await Promise.all([
-          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_wealth',
             { chart_id, ayanamsha_id: normalizeAyanamsha(ayanamsha_id),
@@ -2527,7 +2655,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         attachDomainCompleteness(response, 'wealth', chart_id)
         // SATYA-ŚEṢA W7: serve the reading itself, inline, not just a pointer to one.
         await attachDomainReading(response, 'wealth', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_wealth', budget_kb, verbosity), 'assess_wealth', budget_kb))
+        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_wealth', budget_kb, effectiveVerbosity), 'assess_wealth', budget_kb))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
       }
@@ -2615,7 +2743,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       try {
         // S1 fix: orientation + graph traversal parallelized (independent HTTP calls)
         const [{ orientation_context, orientation_ok }, data] = await Promise.all([
-          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal),
+          fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, verbosity),
           callRegistryCapability(
             'marsys://tool/L2/traverse_chart_graph',
             {
@@ -2878,7 +3006,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         // B.11: fetch holistic orientation alongside the judgment recipe (S1: parallelized)
         const [{ orientation_context: rawOrientationContext, orientation_ok }, raw] = await Promise.all([
-          fetchOrientationContext(chart_id, resolvedAyanamsha, principal),
+          fetchOrientationContext(chart_id, resolvedAyanamsha, principal, verbosity),
           callRegistryCapability(
             'marsys://tool/L-JUDGMENT/judgment_query',
             { chart_id, ayanamsha_id: resolvedAyanamsha, domain, bhava, max_signals },
@@ -3473,7 +3601,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         // B.11: fetch holistic orientation before this entity-level drill.
         const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
-          fetchOrientationContext(chart_id, resolvedAyanamsha, principal),
+          fetchOrientationContext(chart_id, resolvedAyanamsha, principal, verbosity),
           callRegistryCapability(
             'marsys://tool/L2/graha_portrait',
             {
@@ -3933,7 +4061,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
 
         // B.11: fetch holistic orientation alongside the PACT chain (S1: parallelized)
         const [{ orientation_context, orientation_ok }, raw] = await Promise.all([
-          fetchOrientationContext(chart_id, resolvedAyanamsha, principal),
+          fetchOrientationContext(chart_id, resolvedAyanamsha, principal, verbosity),
           callRegistryCapability(
             'marsys://tool/L-PACT/pact_query',
             { chart_id, ayanamsha_id: resolvedAyanamsha, domain, bhava, as_of_date, max_signals },
