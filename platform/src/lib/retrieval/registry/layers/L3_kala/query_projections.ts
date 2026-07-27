@@ -1,15 +1,36 @@
 /**
  * query_projections — Forward Projections (L3 Kāla)
  * ===================================================
- * Queries kala_bhavishya (ka_bhavishya_lekha) — 50 rows per chart.
+ * Queries kala_bhavishya (ka_bhavishya_lekha) — up to ~100 rows per chart.
  * Returns probabilistic forward projections with domain labels,
  * peak_date / window bounds, falsifiability hooks, and source chains.
  *
  * Chart-agnostic: no native chart_id defaults (principle #14).
+ *
+ * MC-015/026 (ŚODHANA T8): the raw `projections` rows are frequently MANY rows
+ * sharing the exact same resolved (window_start, window_end, domain) — e.g. a
+ * chart can carry ~87 "general"-domain rows all spanning the same single window,
+ * one real finding served dozens of times. `projection_families` collapses rows
+ * sharing an identical (window_start, window_end, domain) key into one entry with
+ * bounded member refs (member_ids, member_signal_ids) — copying
+ * query_temporal_activation's `window_families` structural pattern.
  */
 
 import { query } from '@/lib/db/client'
 import type { CapabilityDescriptor } from '../../types'
+
+interface ProjectionFamilyRow {
+  window_start: string | null
+  window_end: string | null
+  domain: string | null
+  member_count: string | number
+  member_ids: string[] | null
+  member_signal_ids: string[] | null
+  probability_tier: string | null
+  max_effective_score: string | number | null
+  narrative: unknown
+  source_citation: string | null
+}
 
 export const queryProjectionsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_projections',
@@ -25,6 +46,11 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
     'Filter by probability_tier: tier_1_high (≥0.65), tier_2_moderate (0.40–0.65),',
     'tier_3_speculative (<0.40).',
     'emits_references: returns signal_id references linkable to bo_laksana / ph_pramana (L4).',
+    'MC-015/026: the raw `projections` array frequently repeats the SAME resolved window many',
+    'times (one per contributing signal) — e.g. dozens of rows can share one (window_start,',
+    'window_end, domain) triple. Prefer `projection_families` — one entry per distinct',
+    '(window_start, window_end, domain), with member_count and bounded member_ids/',
+    'member_signal_ids — copying query_temporal_activation\'s window_families pattern.',
   ].join(' '),
 
   scope: 'per_chart',
@@ -100,7 +126,7 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
       if (probability_tier) { conds.push(`probability_tier = $${p++}`); params.push(probability_tier) }
       if (domain)           { conds.push(`domain = $${p++}`);           params.push(domain) }
 
-      params.push(limit)
+      const where = conds.join(' AND ')
       const limitPh = `$${p}`
 
       // WP-1.5 F-DATE-TZ: peak_date/window_start/window_end are DATE columns → to_char to
@@ -115,12 +141,39 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
                falsifiability, convergence_id, signal_id, source_chain,
                outcome_recorded, outcome_notes, source_citation, computed_at
         FROM kala_bhavishya
-        WHERE ${conds.join(' AND ')}
+        WHERE ${where}
         ORDER BY probability_tier, projection_rank
         LIMIT ${limitPh}
       `
 
-      const result = await query(sql, params)
+      // MC-015/026: family-collapse aggregate — one row per DISTINCT (window_start,
+      // window_end, domain), computed server-side over the FULL matching set (not just the
+      // bounded `projections` page above), since the duplication ratio (e.g. 87 rows -> 1
+      // window) means a JS-side collapse of only the bounded page could undercount
+      // member_count once the page is smaller than a single family. Mirrors
+      // query_temporal_activation's window_families pattern.
+      const familySql = `
+        SELECT to_char(window_start, 'YYYY-MM-DD') AS window_start,
+               to_char(window_end, 'YYYY-MM-DD')   AS window_end,
+               domain,
+               COUNT(*) AS member_count,
+               (array_agg(id::text ORDER BY projection_rank ASC NULLS LAST))[1:10]        AS member_ids,
+               (array_agg(signal_id::text ORDER BY projection_rank ASC NULLS LAST))[1:10] AS member_signal_ids,
+               (array_agg(probability_tier ORDER BY projection_rank ASC NULLS LAST))[1]    AS probability_tier,
+               MAX(effective_score)                                                       AS max_effective_score,
+               (array_agg(narrative ORDER BY projection_rank ASC NULLS LAST))[1]           AS narrative,
+               (array_agg(source_citation ORDER BY projection_rank ASC NULLS LAST))[1]     AS source_citation
+        FROM kala_bhavishya
+        WHERE ${where}
+        GROUP BY window_start, window_end, domain
+        ORDER BY MAX(effective_score) DESC NULLS LAST, MIN(projection_rank) ASC
+        LIMIT ${limitPh}
+      `
+
+      const [result, familyResult] = await Promise.all([
+        query(sql, [...params, limit]),
+        query<ProjectionFamilyRow>(familySql, [...params, limit]),
+      ])
 
       // signal_id is a scalar per row (not an array); collect distinct refs.
       const signalRefs = new Set<string>()
@@ -128,11 +181,30 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
         if (row.signal_id) signalRefs.add(row.signal_id)
       }
 
+      const projection_families = familyResult.rows.map(f => ({
+        window_start: f.window_start,
+        window_end: f.window_end,
+        domain: f.domain,
+        member_count: Number(f.member_count ?? 0),
+        member_ids: f.member_ids ?? [],
+        member_signal_ids: f.member_signal_ids ?? [],
+        probability_tier: f.probability_tier,
+        max_effective_score: f.max_effective_score,
+        narrative: f.narrative,
+        source_citation: f.source_citation,
+      }))
+
       return {
         content: {
           chart_id,
           projections:      result.rows,
           projection_count: result.rows.length,
+          // MC-015/026: window-family collapse — one entry per DISTINCT (window_start,
+          // window_end, domain) instead of the raw (often heavily duplicate-windowed)
+          // `projections` array above. `projections` is kept for existing consumers; new
+          // callers should prefer `projection_families`.
+          projection_families,
+          projection_family_count: projection_families.length,
           signal_id_refs:   Array.from(signalRefs),
           filters: { horizon_years, probability_tier, domain, limit },
           provenance: { tables: ['kala_bhavishya'] },
