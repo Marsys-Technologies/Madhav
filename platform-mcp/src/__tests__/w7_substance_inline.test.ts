@@ -30,17 +30,32 @@ function factRow(overrides: Record<string, unknown>): Record<string, unknown> {
 }
 
 /** Routes the mocked fetch by (uri, args.category / args) to synthetic-but-real-shaped rows,
- *  mirroring the actual capability response shapes read in registry_bridge.ts. */
+ *  mirroring the actual capability response shapes read in registry_bridge.ts.
+ *
+ *  TRACK A / SAMĀPANA §1 fix (2026-07-27): every previous version of this mock returned
+ *  `{ ok: true, content }` where `content` was the UNWRAPPED inner payload directly
+ *  (`{ rows: [...] }`). That is NOT what `/api/retrieval/capability` (route.ts) actually sends:
+ *  every `CapabilityDescriptor.handler` (query_mechanisms.ts, chart_facts_query, query_remedies)
+ *  returns a `{ content: X, is_error: boolean }` ToolResult wrapper, and route.ts's
+ *  `NextResponse.json({ ok: true, content })` puts THAT WHOLE WRAPPER in the HTTP `content` field
+ *  — so the real wire shape is `{ ok: true, content: { content: {...}, is_error: false } }`,
+ *  doubly-wrapped. This mock's old flat shape was exactly the "flat fixture" failure mode already
+ *  named in the `attachDomainReading (real content-wrapped shape)` test below for the OUTER
+ *  assess_wealth payload — it just hadn't yet been applied to fetchReadingSupplements's OWN
+ *  capability calls, which is precisely why every one of the tests in this file passed while the
+ *  live 7-family emptiness bug shipped to production undetected. Wrapping `content` here in
+ *  `{ content: ..., is_error: false }` makes this mock byte-faithful to route.ts and would have
+ *  caught the bug before it shipped. */
 function mockCapabilityFetch() {
   return vi.fn(async (_url: unknown, init: { body?: string }) => {
     const body = JSON.parse(String(init?.body ?? '{}')) as { uri: string; args: Record<string, unknown> }
     const { uri, args } = body
-    let content: unknown = { rows: [] }
+    let innerContent: unknown = { rows: [] }
 
     if (uri === 'marsys://tool/L1/chart_facts_query') {
       const category = args['category']
       if (category === 'net_argala_per_varga') {
-        content = {
+        innerContent = {
           rows: [
             factRow({ fact_id: 'argala_h2', fact_subject: 'D1_HOUSE_2', fact_value_num: -4 }),
             factRow({ fact_id: 'argala_h11', fact_subject: 'D1_HOUSE_11', fact_value_num: -3 }),
@@ -48,32 +63,39 @@ function mockCapabilityFetch() {
           ],
         }
       } else if (category === 'special_lagna') {
-        content = {
+        innerContent = {
           rows: [
             factRow({ fact_id: 'bl_sign', fact_subject: 'BHAVA_LAGNA', fact_key: 'sign', fact_value_text: 'Taurus' }),
             factRow({ fact_id: 'gl_sign', fact_subject: 'GHATI_LAGNA', fact_key: 'sign', fact_value_text: 'Gemini' }),
           ],
         }
       } else if (category === 'bhava_arudha') {
-        content = { rows: [factRow({ fact_id: 'al1', fact_subject: 'AL1', fact_key: 'sign', fact_value_text: 'Leo' })] }
+        innerContent = { rows: [factRow({ fact_id: 'al1', fact_subject: 'AL1', fact_key: 'sign', fact_value_text: 'Leo' })] }
       } else if (category === 'karakamsa_position') {
-        content = {
+        innerContent = {
           rows: [
             factRow({ fact_id: 'kar_sign', fact_subject: 'KARAKAMSA', fact_key: 'sign', fact_value_text: 'Aries' }),
             factRow({ fact_id: 'kar_ak', fact_subject: 'KARAKAMSA', fact_key: 'atmakaraka_graha', fact_value_text: 'Moon' }),
           ],
         }
       } else if (category === 'nakshatra_cross_ayanamsha') {
-        content = {
-          rows: [
-            factRow({ fact_id: 'jup_consist', fact_subject: 'JUP', fact_key: 'nak_5ay_consistency', fact_value_text: '5/5' }),
-            factRow({ fact_id: 'sat_consist', fact_subject: 'SAT', fact_key: 'nak_5ay_consistency', fact_value_text: '5/5' }),
-            factRow({ fact_id: 'lagna_consist', fact_subject: 'LAGNA', fact_key: 'nak_5ay_consistency', fact_value_text: '0/5' }),
-          ],
+        // TRACK A fix: fetchReadingSupplements now overrides ayanamsha_id to 'INVARIANT' for
+        // this specific call (the rows are stored INVARIANT-wide, not per-ayanamsha) — assert
+        // that override actually arrives here, mirroring the real ga_nakshatra.py storage.
+        if (args['ayanamsha_id'] !== 'INVARIANT') {
+          innerContent = { rows: [] }
+        } else {
+          innerContent = {
+            rows: [
+              factRow({ fact_id: 'jup_consist', fact_subject: 'JUP', fact_key: 'nak_5ay_consistency', fact_value_text: '5/5' }),
+              factRow({ fact_id: 'sat_consist', fact_subject: 'SAT', fact_key: 'nak_5ay_consistency', fact_value_text: '5/5' }),
+              factRow({ fact_id: 'lagna_consist', fact_subject: 'LAGNA', fact_key: 'nak_5ay_consistency', fact_value_text: '0/5' }),
+            ],
+          }
         }
       }
     } else if (uri === 'marsys://tool/L2/query_mechanisms') {
-      content = {
+      innerContent = {
         rows: [
           { mechanism_id: 'm1', mechanism_name: 'Jupiter convergent chain', mechanism_class: 'convergent_dispositor_chain', valence: 'benefic', member_node_ids_array: ['a', 'b', 'c'] },
           { mechanism_id: 'm2', mechanism_name: 'Venus-Mercury exchange', mechanism_class: 'mutual_reception', valence: 'mixed', member_node_ids_array: ['d', 'e'] },
@@ -81,13 +103,15 @@ function mockCapabilityFetch() {
         total_matching: 2, chain_circuit_count: 1,
       }
     } else if (uri === 'marsys://tool/L2/query_remedies') {
-      content = {
+      innerContent = {
         narration: { lead: 'Your Bodha remedy layer flags Saturn as your #1 remedy-priority target — resonance_score 0.812, priority class high.' },
         prescriptions: [
           { target_graha: 'Saturn', remedy_label_human: 'Blue sapphire (test)', remedy_category: 'gemstone', tradition: 'parashari', classical_strength_rating: 'strong' },
         ],
       }
     }
+    // Real wire shape (route.ts): { ok: true, content: <handler's own { content, is_error }> }.
+    const content = { content: innerContent, is_error: false }
     return { ok: true, json: async () => ({ ok: true, content }) }
   })
 }
@@ -173,7 +197,8 @@ describe('SATYA-ŚEṢA W7 — substance-inline reading digest', () => {
     vi.stubGlobal('fetch', vi.fn(async (_url: unknown, init: { body?: string }) => {
       const body = JSON.parse(String(init?.body ?? '{}')) as { uri: string }
       if (body.uri === 'marsys://tool/L2/query_mechanisms') {
-        return { ok: true, json: async () => ({ ok: true, content: { rows: [], total_matching: 0, chain_circuit_count: 0, empty_reason: 'No mechanisms for this chart.' } }) }
+        const innerContent = { rows: [], total_matching: 0, chain_circuit_count: 0, empty_reason: 'No mechanisms for this chart.' }
+        return { ok: true, json: async () => ({ ok: true, content: { content: innerContent, is_error: false } }) }
       }
       return emptyMechanisms(_url, init)
     }))
@@ -225,6 +250,29 @@ describe('SATYA-ŚEṢA W7 — substance-inline reading digest', () => {
     // The families_served count embedded in reading_digest_status must not read 0/N on real data.
     const completeness = response['domain_completeness'] as Record<string, unknown>
     expect(String(completeness['reading_digest_status'])).not.toContain('0/13')
+  })
+
+  it('regression (SAMĀPANA Track A, 2026-07-27): fetchReadingSupplements-backed families parse ' +
+    'the REAL doubly-wrapped `{ content: { content: X, is_error }, ... }` internal-route shape — ' +
+    'the standing bug was NOT a routing/auth/concurrency divergence (that hypothesis, tested and ' +
+    'documented in PŪRṆA-VIRĀMA §4/§9.1, is refuted here); it was registry_bridge.ts reading ' +
+    '`rows`/`narration`/`prescriptions` one level too shallow off every capability handler\'s own ' +
+    '`{ content, is_error }` ToolResult wrapper, which /api/retrieval/capability (route.ts) passes ' +
+    'through unwrapped inside ITS OWN `content` field. Live-verified against the deployed chart: ' +
+    'the SAME capability + SAME args via its standalone MCP tool (bodha_mechanisms_get, ' +
+    'ganita_chart_facts_get, bodha_remedies_get) returns rich real data — proving the HTTP round-' +
+    'trip itself was never the defect, only this file\'s unwrapping of its response.', async () => {
+    const { reading } = await buildDomainReading('wealth', CHART_ID, AYANAMSHA, BASE_DATA_WEALTH, PRINCIPAL)
+    const previouslyEmptyFamilies = [
+      'argala_house_2', 'argala_house_11', 'full_dispositor_closure',
+      'all_chart_mechanisms_and_chains', 'special_lagnas', 'cross_ayanamsha_agreement', 'remedies',
+    ]
+    for (const family of previouslyEmptyFamilies) {
+      const entry = reading.find((r: ReadingFamilyEntry) => r.family === family)!
+      expect(entry, `family ${family} must be present`).toBeDefined()
+      expect(entry.status, `family ${family} must be 'served' given real (populated) supplement data`).toBe('served')
+      expect(entry.sentences.join(' ').length).toBeGreaterThan(10)
+    }
   })
 
   it('W7.4: `reading` and `domain_completeness` are in the trim-immune honesty set', () => {

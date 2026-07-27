@@ -872,9 +872,44 @@ interface ChartFactsRow {
   fact_value_jsonb?: unknown
 }
 
+/** TRACK A / SAMĀPANA §1 root-cause fix (real, confirmed root cause — NOT the routing/auth
+ *  divergence originally suspected in PŪRṆA-VIRĀMA §4/§9.1; that hypothesis is REFUTED by direct
+ *  evidence below):
+ *
+ *  Every registry `CapabilityDescriptor.handler` (query_mechanisms.ts, chart_facts_query in
+ *  register_d7_channel.ts, query_remedies, etc.) returns a `{ content: X, is_error: boolean }`
+ *  ToolResult-shaped wrapper — confirmed by reading query_mechanisms.ts's own `return { content:
+ *  {...}, is_error: false }` and chart_facts_query's identical pattern. `/api/retrieval/capability`
+ *  (route.ts) does `const content = await getOrComputeCapability(..., () => capability.handler(...))`
+ *  then `NextResponse.json({ ok: true, content })` — so the HTTP JSON body's `content` field IS
+ *  that whole `{ content, is_error }` wrapper, not the inner payload. `callRegistryCapability`
+ *  (below) returns `data.content` verbatim, so every `fetchReadingSupplements` result
+ *  (argala/mechanisms/remedies/specialLagna/arudha/karakamsa/crossAyanamsha) arrives here as the
+ *  DOUBLY-WRAPPED `{ content: { rows / narration / prescriptions / ... }, is_error }` shape.
+ *  `resolveChartHeader` (further down this file) already unwraps this correctly via
+ *  `raw?.['content']`; `buildDomainReading`'s own `sourceData = data['content'] ?? data` fixed the
+ *  SAME class of bug for the assess_wealth/assess_career payload itself (PŪRṆA-VIRĀMA close-out).
+ *  But the family readers below (`rowsOf`, `readMechanismsFamily`, `readDispositorClosureFamily`,
+ *  `readRemediesFamily`) never got that fix — they read `rows`/`narration`/`prescriptions` directly
+ *  off the WRAPPER, one level too shallow, so they always found `undefined` and reported an honest
+ *  (but false) empty/gap. No thrown error, no auth/entitlement denial, no cache poisoning, no
+ *  ayanamsha-alias divergence (that one IS real but separate — see readCrossAyanamshaFamily) — just
+ *  this shape mismatch. Live-verified (Track A, 2026-07-27): calling the SAME capability with the
+ *  SAME args via its standalone MCP tool (bodha_mechanisms_get, ganita_chart_facts_get,
+ *  bodha_remedies_get) returns rich real data for this chart, proving the internal HTTP round-trip
+ *  itself is not the defect — only this file's own unwrapping of its response was. */
+function unwrapCapabilityContent(payload: unknown): unknown {
+  if (!payload || typeof payload !== 'object') return payload
+  const p = payload as Record<string, unknown>
+  if (typeof p['__fetch_error'] === 'string') return payload // safeCall's thrown-error diagnostic stub — not a wrapper
+  if ('content' in p && typeof p['is_error'] === 'boolean') return p['content'] ?? payload
+  return payload
+}
+
 function rowsOf(payload: unknown): ChartFactsRow[] {
-  if (!payload || typeof payload !== 'object') return []
-  const rows = (payload as Record<string, unknown>)['rows']
+  const inner = unwrapCapabilityContent(payload)
+  if (!inner || typeof inner !== 'object') return []
+  const rows = (inner as Record<string, unknown>)['rows']
   return Array.isArray(rows) ? (rows as ChartFactsRow[]) : []
 }
 
@@ -929,7 +964,15 @@ async function fetchReadingSupplements(
     domain === 'career'
       ? safeCall('marsys://tool/L1/chart_facts_query', { category: 'karakamsa_position', shape: 'rows', limit: 200 })
       : Promise.resolve(null),
-    safeCall('marsys://tool/L1/chart_facts_query', { category: 'nakshatra_cross_ayanamsha', shape: 'rows', limit: 200 }),
+    // MC-017-documented second bug (distinct from the content-unwrap fix above): ga_nakshatra.py's
+    // cross_ayanamsha pass writes nakshatra_cross_ayanamsha rows under ayanamsha_id='INVARIANT'
+    // (by design — the cross-ayanamsha agreement value is the same across all 5 sidereal
+    // ayanamshas, so it is stored once, invariantly), never under the domain's own ayanamsha_id
+    // (e.g. lahiri_chitrapaksha). The outer `ayanamsha_id` in safeCall's spread was shadowing this
+    // with the domain's ayanamsha, filtering out every row. Overriding it here to 'INVARIANT'
+    // reaches the actual stored rows — readCrossAyanamshaFamily's own comment already named this
+    // exact mismatch; this wires the fix through.
+    safeCall('marsys://tool/L1/chart_facts_query', { category: 'nakshatra_cross_ayanamsha', shape: 'rows', limit: 200, ayanamsha_id: 'INVARIANT' }),
   ])
   return { argala, mechanisms, remedies, specialLagna, arudha, karakamsa, crossAyanamsha }
 }
@@ -1144,14 +1187,15 @@ function readCrossAyanamshaFamily(domain: string, crossAyanamshaPayload: unknown
 }
 
 function readMechanismsFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
-  if (!mechanismsPayload || typeof mechanismsPayload !== 'object') {
+  const unwrapped = unwrapCapabilityContent(mechanismsPayload)
+  if (!unwrapped || typeof unwrapped !== 'object') {
     // MC-017: verified serving gap, not absence — marsys://tool/L2/query_mechanisms is a real,
     // wired capability over the bodha_mechanisms table (also independently servable via
     // bodha_mechanisms_get), built for any chart that ran the L2 Bodha campaign. A failed/empty
     // call here means THIS fetch didn't reach the data, not that mechanisms were never computed.
     return { family: 'all_chart_mechanisms_and_chains', label: 'L2 mechanisms (dispositor chains/cycles, yoga clusters)', status: 'domain_block_not_served', sentences: [`query_mechanisms call failed or returned nothing for this chart (bodha_mechanisms data may still exist — see bodha_mechanisms_get).${diagSuffix(mechanismsPayload)}`], fact_ids: [] }
   }
-  const content = mechanismsPayload as Record<string, unknown>
+  const content = unwrapped as Record<string, unknown>
   const rows = Array.isArray(content['rows']) ? content['rows'] as Record<string, unknown>[] : []
   if (rows.length === 0) {
     return { family: 'all_chart_mechanisms_and_chains', label: 'L2 mechanisms (dispositor chains/cycles, yoga clusters)', status: 'empty_for_this_chart', sentences: [`${String(content['empty_reason'] ?? 'No bodha_mechanisms rows for this chart.')}${diagSuffix(mechanismsPayload)} [rows_len=${rows.length} total_matching=${String(content['total_matching'])}]`], fact_ids: [] }
@@ -1179,13 +1223,14 @@ function readMechanismsFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
  *  the two families are never byte-identical (density principle §N.6: each layer earns its own
  *  sentence over the SAME underlying data when the concepts are genuinely distinct facets of it). */
 function readDispositorClosureFamily(mechanismsPayload: unknown): ReadingFamilyEntry {
-  if (!mechanismsPayload || typeof mechanismsPayload !== 'object') {
+  const unwrapped = unwrapCapabilityContent(mechanismsPayload)
+  if (!unwrapped || typeof unwrapped !== 'object') {
     // MC-017: same verified serving gap as readMechanismsFamily above — query_mechanisms is a
     // real capability over bodha_mechanisms (also servable via bodha_mechanisms_get); a
     // failed/empty call here is not proof dispositor closures were never computed.
     return { family: 'full_dispositor_closure', label: 'Dispositor chain/cycle closure', status: 'domain_block_not_served', sentences: [`query_mechanisms call failed or returned nothing for this chart (bodha_mechanisms data may still exist — see bodha_mechanisms_get).${diagSuffix(mechanismsPayload)}`], fact_ids: [] }
   }
-  const content = mechanismsPayload as Record<string, unknown>
+  const content = unwrapped as Record<string, unknown>
   const rows = Array.isArray(content['rows']) ? content['rows'] as Record<string, unknown>[] : []
   const chains = rows.filter((r) => ['convergent_dispositor_chain', 'dispositor_cycle', 'house_lordship_cycle'].includes(String(r['mechanism_class'])))
   if (chains.length === 0) {
@@ -1205,14 +1250,15 @@ function readDispositorClosureFamily(mechanismsPayload: unknown): ReadingFamilyE
 }
 
 function readRemediesFamily(remediesPayload: unknown): ReadingFamilyEntry {
-  if (!remediesPayload || typeof remediesPayload !== 'object') {
+  const unwrapped = unwrapCapabilityContent(remediesPayload)
+  if (!unwrapped || typeof unwrapped !== 'object') {
     // MC-017: verified serving gap, not absence — marsys://tool/L2/query_remedies is a real,
     // wired capability over the bodha_upaya (bo_upaya) table, also independently servable via
     // bodha_remedies_get, for any chart that ran the L2 Bodha campaign. A failed/empty call
     // here means this fetch didn't reach the data, not that remedies were never computed.
     return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'domain_block_not_served', sentences: [`query_remedies call failed or returned nothing for this chart (bodha_upaya data may still exist — see bodha_remedies_get).${diagSuffix(remediesPayload)}`], fact_ids: [] }
   }
-  const content = remediesPayload as Record<string, unknown>
+  const content = unwrapped as Record<string, unknown>
   const narration = content['narration'] as Record<string, unknown> | undefined
   const lead = typeof narration?.['lead'] === 'string' ? narration['lead'] as string : null
   const prescriptions = Array.isArray(content['prescriptions']) ? content['prescriptions'] as Record<string, unknown>[] : []

@@ -283,6 +283,17 @@ Inherited rulings this session verified as sound (carried forward from Phase-B t
 
 None of these three block the arc's close: each is DISPOSITIONED with evidence and a sized path.
 
+**Addendum (appended 2026-07-27, SAMĀPANA Track C — append-only, no prior text altered):** the
+Bodha (L2) rebuild question referenced in this report's own historical context (this report's §3
+above is "Phase-4 spot-check corroboration," not a Bodha-rebuild decision — this arc never carried
+its own Decision-2; the actual "Decision 2 — Bodha rebuild (MC-001)" ruling lives in the separate,
+later ŚODHANA campaign) is now CLOSED as resolved-and-verified. See
+`briefs/shodhana/SHODHANA_REPORT_v1_0.md` §3 (Decision 2) + §13 (the SAMĀPANA closing annotation)
+for the full record: a native-executed rebuild via the product's own Cockpit "Build" button (not
+any campaign or agent) has occurred for both canonical charts and been independently re-verified
+live (0.32%/0.33% orphan, well inside the 99% freshness threshold). No campaign rebuild was or
+will be executed.
+
 ---
 
 ## §10 — The instrument against the §0 depth mandate, stated plainly
