@@ -19,7 +19,9 @@
  *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  *
  * L1 ground-truth:
- *   FORENSIC v8.0 §5.1 DSH.V.023–028 (Vimshottari dasha 2024-2030)
+ *   chart_facts DB table (dasha-period rows DSH.V.023–028, Vimshottari dasha 2024-2030) —
+ *   MC-003 (ŚODHANA T1): FORENSIC v8.0 markdown was deleted (PR #187 Legacy Teardown);
+ *   chart_facts is the live canonical source, not the retired document.
  *   LEL v1.7 (life event log — outcome ground-truth)
  *
  * Wiring: registerMimamsaOutcomeTool(server) → server.ts during L5 Mīmāṃsā registration.
@@ -403,7 +405,9 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
       'gate_passed, kill_switch_state, divergence_from_classical}.\n\n' +
       'Calibration = mean((confidence - outcome_binary)²) per (technique, ayanamsha_id).\n' +
       'Uninformative baseline = 0.25 (equivalent to random 50/50 at 0.5 confidence).\n\n' +
-      'L1 ground-truth: FORENSIC v8.0 §5.1 DSH.V.023–028 + LEL v1.7.\n' +
+      // MC-003 (ŚODHANA T1): FORENSIC v8.0 markdown was deleted (PR #187 Legacy
+      // Teardown) — the live L1 ground-truth source is the chart_facts DB table.
+      'L1 ground-truth: chart_facts DB table (dasha-period rows DSH.V.023–028) + LEL v1.7.\n' +
       'BRAHMA-MI-5-3 | mimamsa.outcome contract.',
     {
       // CR-51/CR-30: chart_id is now REQUIRED (matches mimamsa_calibration_get and the

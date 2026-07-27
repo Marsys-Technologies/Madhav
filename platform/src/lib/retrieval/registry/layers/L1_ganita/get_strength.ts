@@ -79,6 +79,17 @@ export const getStrengthCapability: CapabilityDescriptor = {
     },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 500 },
+    all: {
+      type: 'boolean',
+      description: 'ŚODHANA T3 (MC-014): default false — `graha_in_house_composite_strength` ' +
+        '(the one category with a row per graha PER HOUSE, 12x a graha\'s real placement) is ' +
+        'filtered to each graha\'s single ACTUAL house under `frame` by default, dropping the ' +
+        'other 11 counterfactual "what if this graha sat in house N" rows per graha. Every ' +
+        'other strength category (Shadbala, Vimsopaka, Ishta/Kashta, etc.) is one row per ' +
+        'graha already and is unaffected either way. Pass true to get every counterfactual ' +
+        'placement row for every graha (the pre-fix behavior).',
+      default: false,
+    },
   },
   required_inputs: ['chart_id'],
   scope: 'per_chart',
@@ -106,6 +117,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
         }
       }
       const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
+      const all = (args.all as boolean) === true
 
       const params: unknown[] = [chartId, categories, limit, offset]
       let sql = `
@@ -138,23 +150,31 @@ export const getStrengthCapability: CapabilityDescriptor = {
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
 
+      // ŚODHANA T3 (MC-014): active-house-by-graha is now computed for EVERY frame
+      // (previously only for frame !== 'lagna', since only the frame_context DISPLAY
+      // depended on it) — the `all:false` default below needs it for `frame:'lagna'` too,
+      // since that is the tool's own default frame and exactly where the counterfactual-row
+      // complaint was measured (~520 rows for one chart's full strength pull).
+      let activeHouseByGraha: Record<string, number> | undefined
       let frameContext: Record<string, unknown> | undefined
-      if (frame !== 'lagna') {
-        try {
-          const { sign: referenceSign } = await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
-          const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
-          const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
-            `SELECT fact_subject, fact_value_text FROM chart_facts
-             WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
-               AND fact_subject = ANY($3::text[]) AND fact_key = 'sign'`,
-            [chartId, frameAyanamsha, grahaCodes],
-          )
-          const activeHouseByGraha: Record<string, number> = {}
-          for (const r of signRes.rows) {
-            if (!r.fact_value_text) continue
-            activeHouseByGraha[GRAHA_CODE_TO_NAME[r.fact_subject] ?? r.fact_subject] =
-              houseCountedFrom(referenceSign as ZodiacSign, r.fact_value_text as ZodiacSign)
-          }
+      try {
+        const { sign: referenceSign } = await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+        const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
+        const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
+          `SELECT fact_subject, fact_value_text FROM chart_facts
+           WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
+             AND fact_subject = ANY($3::text[]) AND fact_key = 'sign'`,
+          [chartId, frameAyanamsha, grahaCodes],
+        )
+        activeHouseByGraha = {}
+        for (const r of signRes.rows) {
+          if (!r.fact_value_text) continue
+          activeHouseByGraha[GRAHA_CODE_TO_NAME[r.fact_subject] ?? r.fact_subject] =
+            houseCountedFrom(referenceSign as ZodiacSign, r.fact_value_text as ZodiacSign)
+        }
+        // frame_context is only SURFACED for a non-lagna frame (unchanged external shape —
+        // a lagna-frame active house is just the natal house, nothing new to disclose here).
+        if (frame !== 'lagna') {
           frameContext = {
             frame, reference_sign: referenceSign, ayanamsha_id: frameAyanamsha,
             active_house_by_graha: activeHouseByGraha,
@@ -163,15 +183,44 @@ export const getStrengthCapability: CapabilityDescriptor = {
               `fact_subject = "<GRAHA>_IN_HOUSE_<active_house_by_graha[GRAHA]>" from the rows above. ` +
               `Strength VALUES are frozen build-time output — only which row is "active" changes with frame.`,
           }
-        } catch (e) {
-          frameContext = { frame, error: `could not resolve frame "${frame}": ${String(e)}` }
         }
+      } catch (e) {
+        activeHouseByGraha = undefined
+        if (frame !== 'lagna') frameContext = { frame, error: `could not resolve frame "${frame}": ${String(e)}` }
+      }
+
+      let servedRows = rows
+      let counterfactualRowsDropped = 0
+      if (!all && activeHouseByGraha) {
+        const kept: Record<string, unknown>[] = []
+        for (const row of rows) {
+          if (row['fact_category'] !== 'graha_in_house_composite_strength') { kept.push(row); continue }
+          const subject = String(row['fact_subject'] ?? '')
+          const m = /^(.+)_IN_HOUSE_(\d+)$/.exec(subject)
+          if (!m) { kept.push(row); continue } // unrecognized shape — never silently drop (B.10).
+          const [, grahaCode, houseStr] = m
+          const grahaName = GRAHA_CODE_TO_NAME[grahaCode] ?? grahaCode
+          const activeHouse = activeHouseByGraha[grahaName]
+          if (activeHouse === undefined || Number(houseStr) === activeHouse) kept.push(row)
+          else counterfactualRowsDropped += 1
+        }
+        servedRows = kept
       }
 
       return {
         content: {
-          chart_id: chartId, categories, frame, rows, total: rows.length,
+          chart_id: chartId, categories, frame, rows: servedRows, total: servedRows.length,
           ...(frameContext ? { frame_context: frameContext } : {}),
+          ...(!all ? {
+            all: false,
+            counterfactual_rows_dropped: counterfactualRowsDropped,
+            note: counterfactualRowsDropped > 0
+              ? `${counterfactualRowsDropped} counterfactual graha_in_house_composite_strength row(s) ` +
+                `("what if this graha sat in a different house") were dropped — only each graha's ` +
+                `ACTUAL house (under frame:'${frame}') is served by default. Pass all:true for every ` +
+                'counterfactual placement.'
+              : 'No counterfactual graha_in_house_composite_strength rows were present to drop.',
+          } : { all: true }),
         },
         is_error: false,
       }
