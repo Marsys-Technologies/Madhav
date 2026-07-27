@@ -1113,7 +1113,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         { unit: 'special_lagnas', state: 'not_joined', detail: 'Indu/Ārūḍha/Hora lagnas not folded here', drill: 'ganita_special_lagnas_get' },
         { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
         { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
-        { unit: 'yogi_avayogi', state: 'not_yet_available', detail: 'yogi/avayogi/dagdha-rasi asset is being built in a parallel track (T6) — wired as a checklist slot, honestly absent for now' },
+        { unit: 'yogi_avayogi', state: 'not_joined', detail: 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment', drill: 'ganita_sensitive_degrees_get' },
         { unit: 'dasha_levels', state: timingAnchored ? 'served' : 'empty_for_this_chart', detail: 'Vimśottarī current + lord/kāraka mahādaśā windows + kala activation' },
         { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, domain='${spec.signal_domain}' (MC-033)` },
         { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal judgment', drill: 'ganita_tajaka_get' },

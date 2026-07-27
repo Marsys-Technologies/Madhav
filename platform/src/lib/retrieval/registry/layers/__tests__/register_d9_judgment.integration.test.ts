@@ -149,8 +149,8 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       expect(unitByName.has('sensitive_degree_firings')).toBe(true)
       expect(unitByName.has('kp_cusp_chain')).toBe(true)
       expect(unitByName.has('gochara_sweep')).toBe(true)
-      // yogi/avayogi honestly absent (T6 parallel track)
-      expect(unitByName.get('yogi_avayogi')!['state']).toBe('not_yet_available')
+      // yogi/avayogi honestly not_joined (T6/MC-029 computed it; this instrument doesn't fold it in yet)
+      expect(unitByName.get('yogi_avayogi')!['state']).toBe('not_joined')
 
       // ── AC3: the reading_checklist is TRUTHFUL — cross-count each leg's claimed state
       //         against what is actually served in content.checklist ──
