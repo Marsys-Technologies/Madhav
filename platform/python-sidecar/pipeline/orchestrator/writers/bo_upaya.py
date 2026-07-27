@@ -194,16 +194,33 @@ _SUBJECT_TO_PLANET: dict[str, str] = {
 
 
 def _fetch_shadbala(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
-    """graha → normalized shadbala (total / 390).
+    """graha → normalized shadbala strength (achieved/required ratio, CR-18).
 
-    fact_subject holds the planet code (SUN/MOON/MAR/…); fact_key = 'rupa'
-    for the rupa total rows (excluding 'required_rupa').
+    fact_subject holds the planet code (SUN/MOON/MAR/…); fact_key = 'ratio' is
+    the L1-authoritative achieved/required shadbala ratio (ga_strength_writer,
+    CR-18), already dividing each graha's OWN classical Parashara minimum
+    (SHADBALA_REQUIRED: Sun/Mars/Saturn=5.0, Moon=6.0, Mercury=7.0, Jupiter=6.5,
+    Venus=5.5 rupas) — read here, never recomputed (§N.5). Rahu/Ketu carry no
+    classical shadbala requirement (ga_strength_writer's classical_grahas list
+    excludes them) and so have no 'ratio' row; the caller falls back honestly.
+
+    PRIOR BUG (MC-025a root cause): this fetcher divided the raw 'rupa' total
+    by a flat 390.0 constant for EVERY graha. Real chart_facts 'rupa' totals
+    are on the classical scale of ~0.4-8.5 rupas (NOT the ~390-virupa scale
+    390 implies), so val/390 collapsed every graha to ~0.001-0.02, making
+    (1 - shadbala_normalized) an effective CONSTANT ~0.98-1.0 across all 9
+    grahas. That term alone carries 30% of resonance_score_v1's weakness_score
+    weight — the single largest component — so this one bug was the dominant
+    contributor to the observed flat 0.49-0.53 resonance band chart-wide.
+    Verified by hand against chart 482012f1/lahiri_chitrapaksha: real ratios
+    range 0.844 (Venus) to 1.694 (Sun), vs. the old val/390 output of
+    ~0.012-0.022 for the same grahas.
     """
     rows = conn.execute(
         """SELECT fact_subject, fact_value_num FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND fact_category = 'graha_shadbala_total'
-             AND fact_key = 'rupa'""",
+             AND fact_key = 'ratio'""",
         [chart_id, aya],
     ).fetchall()
     out: dict[str, float] = {}
@@ -212,22 +229,33 @@ def _fetch_shadbala(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
         planet  = _SUBJECT_TO_PLANET.get(subject)
         if planet is None:
             continue
-        val = float(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 390.0)
-        out[planet] = min(val / 390.0, 2.0)
+        val = r[1] if isinstance(r, tuple) else r.get("fact_value_num")
+        if val is None:
+            continue
+        out[planet] = max(0.0, float(val))
     return out
 
 
 def _fetch_bhava_bala(conn: Any, chart_id: str, aya: str) -> dict[int, float]:
-    """house → normalized bhava bala (total / 300).
+    """house → normalized bhava bala strength (achieved/required ratio).
 
-    fact_subject = 'HOUSE_1' … 'HOUSE_12'; fact_key = 'total' for total rows.
-    The actual fact_category is 'house_bhava_bala_total' (NOT 'bhava_bala_total').
+    fact_subject = 'HOUSE_1' … 'HOUSE_12'; fact_category = 'house_bhava_bala_ratio',
+    fact_key = 'strength_ratio' is the L1-precomputed strength ratio
+    (ga_strength_writer._build_bhava_bala_rows) — read here, never recomputed.
+
+    PRIOR BUG (MC-025a contributor): read fact_category='house_bhava_bala_total'
+    / fact_key='total' (the raw rupa total) and divided by a flat 300.0. Real
+    house totals for this chart run ~5.3-9.0 rupas, so val/300 collapsed every
+    house to ~0.018-0.03 — again an effective CONSTANT (1 - bh_norm) ~0.97-0.98,
+    contributing another 15%-weight flat term. Fixed by reading the
+    already-computed L1 strength_ratio directly (§N.5), matching the same
+    achieved/required-ratio pattern CR-18 established for shadbala.
     """
     rows = conn.execute(
         """SELECT fact_subject, fact_value_num FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s
-             AND fact_category = 'house_bhava_bala_total'
-             AND fact_key = 'total'""",
+             AND fact_category = 'house_bhava_bala_ratio'
+             AND fact_key = 'strength_ratio'""",
         [chart_id, aya],
     ).fetchall()
     out: dict[int, float] = {}
@@ -237,47 +265,99 @@ def _fetch_bhava_bala(conn: Any, chart_id: str, aya: str) -> dict[int, float]:
             house = int(subject.replace("HOUSE_", ""))
         except (ValueError, AttributeError):
             continue
-        val = float(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 300.0)
-        out[house] = min(val / 300.0, 2.0)
+        val = r[1] if isinstance(r, tuple) else r.get("fact_value_num")
+        if val is None:
+            continue
+        out[house] = max(0.0, float(val))
     return out
 
 
+# fact_key → special-state label, for the graha_special_state_rollup rows
+# (one boolean flag per row: fact_value_text ∈ {'true','false'}).
+_SPECIAL_STATE_LABELS: dict[str, str] = {
+    "is_combust": "combust",
+    "is_retrograde": "retrograde",
+    "is_vargottama": "vargottama",
+    "is_debilitated": "debilitated",
+    "is_exalted": "exalted",
+}
+
+
 def _fetch_special_states(conn: Any, chart_id: str, aya: str) -> dict[str, set[str]]:
-    """graha → set of special state labels (combust/debilitated/retrograde/exalted)."""
+    """graha → set of TRUE special-state labels (combust/debilitated/exalted/
+    retrograde/vargottama) from graha_special_state_rollup.
+
+    A graha present in the returned dict (even with an empty set) means the
+    rollup HAS data for it (all-false is a real, known-neutral state); a
+    graha absent means no rollup row exists at all (genuinely unknown).
+
+    PRIOR BUG (MC-025a contributor): selected only fact_key (never
+    fact_subject) and derived "graha" via key.split(':')[0] — but the real
+    schema stores the graha in fact_subject and plain keys like 'is_combust'/
+    'is_debilitated'/'is_exalted' (fact_value_text='true'/'false'), not a
+    colon-prefixed compound key. Every row's derived "graha" was therefore
+    the literal fact_key string itself, so this function's output never had
+    a real graha as a key: special_states.get(graha, set()) always hit the
+    empty-set default. That zeroed combustion_score for every graha AND made
+    debility_score's "graha not in special_states" branch permanently true
+    (debility=0.0 chart-wide, regardless of actual debility/exaltation) —
+    e.g. Saturn's real is_exalted=true was never read.
+    """
     rows = conn.execute(
-        """SELECT fact_key, fact_value_text FROM chart_facts
+        """SELECT fact_subject, fact_key, fact_value_text FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s
-             AND fact_category IN ('graha_special_state_rollup', 'graha_dignity_per_varga')
-             AND (fact_key LIKE '%%:D1%%' OR fact_category = 'graha_special_state_rollup')""",
-        [chart_id, aya],
+             AND fact_category = 'graha_special_state_rollup'
+             AND fact_key = ANY(%s)""",
+        [chart_id, aya, list(_SPECIAL_STATE_LABELS.keys())],
     ).fetchall()
     out: dict[str, set[str]] = {}
     for r in rows:
-        key = str(r[0] if isinstance(r, tuple) else r.get("fact_key", ""))
-        val = str(r[1] if isinstance(r, tuple) else r.get("fact_value_text") or "")
-        graha = key.split(":")[0]
-        if graha not in out:
-            out[graha] = set()
-        if val:
-            out[graha].update(s.strip().lower() for s in val.split(",") if s.strip())
+        subject = str(r[0] if isinstance(r, tuple) else r.get("fact_subject", ""))
+        key     = str(r[1] if isinstance(r, tuple) else r.get("fact_key", ""))
+        val     = str(r[2] if isinstance(r, tuple) else r.get("fact_value_text") or "").strip().lower()
+        planet  = _SUBJECT_TO_PLANET.get(subject)
+        if planet is None:
+            continue
+        out.setdefault(planet, set())  # a row exists -> this graha is "known"
+        if val == "true":
+            label = _SPECIAL_STATE_LABELS.get(key)
+            if label:
+                out[planet].add(label)
     return out
 
 
 def _fetch_graha_house_placements(conn: Any, chart_id: str, aya: str) -> dict[str, int]:
-    """graha → bhava number (D1 placement)."""
+    """graha → bhava number (D1 placement).
+
+    fact_subject holds the planet code; fact_category='graha_position',
+    fact_key='house_d1' is the plain D1 house-placement fact.
+
+    PRIOR BUG (MC-025a contributor): queried
+    fact_key LIKE '%:D1%:bhava%' and derived the graha via
+    key.split(':')[0] — but the real schema's graha_position fact_key is the
+    plain string 'house_d1' (no compound GRAHA:D1:bhava key exists, and the
+    graha lives in fact_subject, never selected). The LIKE filter matched
+    ZERO rows chart-wide, so every graha silently fell back to house=1 in the
+    caller — meaning all nine grahas read the SAME house's bhava_bala value,
+    collapsing 15% of resonance_score_v1's weakness weight to one identical
+    constant across the whole chart (compounding the _fetch_bhava_bala bug
+    above).
+    """
     rows = conn.execute(
-        """SELECT fact_key, fact_value_num FROM chart_facts
+        """SELECT fact_subject, fact_value_num FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'graha_position'
-             AND fact_key LIKE '%%:D1%%:bhava%%'""",
+             AND fact_key = 'house_d1'""",
         [chart_id, aya],
     ).fetchall()
     out: dict[str, int] = {}
     for r in rows:
-        key = str(r[0] if isinstance(r, tuple) else r.get("fact_key", ""))
-        graha = key.split(":")[0]
+        subject = str(r[0] if isinstance(r, tuple) else r.get("fact_subject", ""))
+        planet  = _SUBJECT_TO_PLANET.get(subject)
+        if planet is None:
+            continue
         try:
             val = int(r[1] if isinstance(r, tuple) else r.get("fact_value_num") or 1)
-            out[graha] = val
+            out[planet] = val
         except (TypeError, ValueError):
             pass
     return out
@@ -896,12 +976,34 @@ def _fetch_remedies_for_graha(conn: Any, planet: str, limit: int = 5) -> list[di
 
 # ── Priority class ─────────────────────────────────────────────────────────────
 
-def _priority_class(score: float) -> str:
-    if score >= 0.70:
+def _priority_class(rank: int, total: int) -> str:
+    """Chart-relative remedy priority class (rank-in-chart thirds).
+
+    MC-025a: the prior absolute-threshold cutoffs (critical>=0.70, high>=0.45,
+    medium>=0.25) were calibrated against the broken formula whose baseline
+    resonance_score sat near ~0.5 for every graha (see the _fetch_shadbala /
+    _fetch_bhava_bala fixes above) — that made "high" trivially true for all
+    nine grahas. Against the CORRECTED formula, weakness_score rarely
+    approaches those absolute thresholds at all for a chart without severe,
+    simultaneous affliction (combust + debilitated + heavily-afflicted), so
+    keeping fixed thresholds would only have swapped "everyone high" for
+    "everyone low" — the same degenerate flatness, inverted, and one that
+    would also make the classing depend on how afflicted a chart happens to
+    be overall rather than on which of ITS OWN grahas most needs remedial
+    attention. `weakest_rank_in_chart` already names the right frame:
+    upaya priority is inherently a comparison across THIS native's own nine
+    grahas (classical practice remedies the relatively weakest, not grahas
+    that fail a universal absolute bar). Reclassified as rank-relative thirds
+    of the chart's own N grahas: robust to any chart's overall affliction
+    severity, and guaranteed >1 distinct class whenever N>1.
+    """
+    if total <= 0:
+        return "low"
+    if rank <= 1:
         return "critical"
-    if score >= 0.45:
+    if rank <= max(1, -(-total // 3)):        # ceil(total/3)
         return "high"
-    if score >= 0.25:
+    if rank <= max(1, -(-2 * total // 3)):    # ceil(2*total/3)
         return "medium"
     return "low"
 
@@ -994,16 +1096,30 @@ def _build_resonances_and_prescriptions(
         missing_inputs: list[str] = []
         sha_norm = shadbala.get(graha, None)
         if sha_norm is None:
-            sha_norm = 0.5
+            # MC-025a: the fallback for "no L1 shadbala ratio row" (structurally
+            # true for Rahu/Ketu — classical shadbala has no defined requirement
+            # for the nodes) must be the formula's NEUTRAL/no-penalty value for
+            # this (1 - shadbala_normalized) term, i.e. 1.0, not the generic
+            # dataclass default of 0.5. 0.5 reads as "half of required" on the
+            # corrected ratio scale — an unearned weakness penalty for missing
+            # data, exactly the B.10 "absence of evidence is not evidence of
+            # weakness" principle this same file already applies to
+            # cancellation_burden/cdlm_weakest_constituent_count below.
+            sha_norm = 1.0
             inputs_complete = False
             missing_inputs.append("shadbala")
         bh_norm = bhava_bala.get(house, None)
         if bh_norm is None:
-            bh_norm = 0.5
+            bh_norm = 1.0  # same neutral-default reasoning as shadbala above
             inputs_complete = False
             missing_inputs.append("bhava_bala")
         is_yk        = graha in yoga_karakas
         chara_role   = chara_roles.get(graha)
+        # MC-025a: vargottama_absence_score wired from the now-fixed
+        # graha_special_state_rollup (was a hardcoded 0.5 placeholder for
+        # every graha regardless of the real is_vargottama fact).
+        is_vargottama = "vargottama" in states
+        vargottama_absence = 0.0 if is_vargottama else 1.0
 
         r_inputs = ResonanceInputs(
             shadbala_normalized=min(sha_norm, 1.0),
@@ -1020,7 +1136,7 @@ def _build_resonances_and_prescriptions(
             cancellation_burden=0.0,
             # BA-P2.5 #4 — WIRED: real L1 fact (ga_structural composite_dispositor_strength).
             dispositor_chain_weakness=round(1.0 - dispositor_strength.get(graha, 0.5), 6),
-            vargottama_absence_score=0.5,  # placeholder — no vargottama L1 fact yet
+            vargottama_absence_score=vargottama_absence,
             # BA-P2.5 #4 — WIRED: real GA7 chart_dashas coverage as of computed_at.
             dasha_proximity_activation_score=dasha_proximity.get(graha, 0.0),
             msr_signals_in_conflict=min(len(dosha_by_graha.get(graha, [])) * 0.1, 1.0),
@@ -1074,7 +1190,7 @@ def _build_resonances_and_prescriptions(
                 "dispositor_chain_weakness_used": round(1.0 - dispositor_strength.get(graha, 0.5), 4),
                 "dasha_proximity_activation_score_used": round(dasha_proximity.get(graha, 0.0), 4),
                 "cgm_motifs_weakest_node_used": round(cgm_motif_weakness.get(graha, 0.0), 4),
-                "vargottama_absence_score": 0.5,
+                "vargottama_absence_score": vargottama_absence,
                 "cancellation_burden": 0.0,
                 "cdlm_weakest_constituent_count": 0.0,
                 # CR-67: count of CDLM cross-domain-linkage cells this graha is a
@@ -1082,10 +1198,14 @@ def _build_resonances_and_prescriptions(
                 # resolved via constituent_facts_array → chart_facts.fact_subject.
                 "associated_cdlm_cell_count": len(graha_cdlm_cells.get(graha) or []),
                 "note": (
-                    "vargottama_absence, cancellation_burden, cdlm_weakest_constituent_count "
-                    "remain honest 0.0/0.5 placeholders (no already-computed source exists yet); "
+                    "cancellation_burden, cdlm_weakest_constituent_count remain honest 0.0 "
+                    "placeholders (no already-computed source exists yet, B.10); "
+                    "shadbala_normalized, bhava_bala_normalized, vargottama_absence_score, "
                     "dispositor_chain_weakness, dasha_proximity_activation_score, "
-                    "cgm_motifs_weakest_node are now wired to real L1/L2 data (BA-P2.5 #4)"
+                    "cgm_motifs_weakest_node are all wired to real L1/L2 data "
+                    "(MC-025a fixed shadbala/bhava_bala/vargottama; BA-P2.5 #4 wired the rest). "
+                    "shadbala/bhava_bala missing-data fallback is 1.0 (neutral/no-penalty for "
+                    "this term), not 0.5 — see _fetch_shadbala's docstring."
                 ),
             }),
             "verification_pass_status": "documented_approximation",
@@ -1095,10 +1215,22 @@ def _build_resonances_and_prescriptions(
         })
 
     # Rank by resonance_score DESC
+    # NOTE (T2 convergence): weakest_rank_in_chart is the chart's single
+    # weakest-graha authority pending T2's shared cross-writer helper (SETU-
+    # BANDHA / MC-025b) landing. Until then this ranking is sourced directly
+    # from the now-corrected L1 shadbala (_fetch_shadbala reads
+    # graha_shadbala_total/ratio) + bhava_bala + special-state inputs above —
+    # never an independently-invented weakness metric — so it already
+    # converges with L1 ṣaḍbala's own minimum (verified for 482012f1: Venus,
+    # the lowest shadbala ratio among the 7 classical grahas, ranks #1 here).
+    # Once T2's shared authority lands, swap this sort key for its output
+    # directly rather than resonance_score, per the brief's single-authority
+    # rule (§N.5).
     resonances.sort(key=lambda x: x["_resonance_score"], reverse=True)
+    _n_resonances = len(resonances)
     for rank, row in enumerate(resonances, start=1):
         row["weakest_rank_in_chart"] = rank
-        row["remedy_priority_class"] = _priority_class(row["_resonance_score"])
+        row["remedy_priority_class"] = _priority_class(rank, _n_resonances)
 
     # Distribution guard: warn if all resonance_score values are degenerate
     if len(resonances) > 2:
