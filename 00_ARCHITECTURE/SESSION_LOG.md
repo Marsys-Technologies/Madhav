@@ -33963,3 +33963,105 @@ to main on 2026-07-25. The live next-objective is whatever the PŪRṆA-VIRĀMA 
 consolidated report (or, if not yet written, its governing brief) commits to.
 
 *End of ELEVATION-V2-CLOSE-DOCS-2026-07-25 entry — appended 2026-07-26 by PŪRṆA-VIRĀMA T3.*
+
+---
+
+## PURNA-VIRAMA-FINAL-CLOSE-2026-07-27 — PŪRṆA-VIRĀMA (Full-Stop Close-Out) FINAL CLOSE: arc closed, 6 VERIFIED-CLOSED + 1 PARKED-HONEST, first COMPLETE flip of the arc
+
+```yaml
+session_open:
+  session_id: PURNA-VIRAMA-FINAL-CLOSE-2026-07-27
+  campaign: PURNA_VIRAMA_CLOSE_OUT
+  mode: "Dedicated Opus Verifier, Phase C. Never built — verified against LIVE PRODUCTION, then
+    closed. PRIME RULE: truth over completion; PARKED-HONEST is a legitimate close, faking green is
+    the only failure mode."
+  may_touch: "briefs/close_out/PURNA_VIRAMA_REPORT_v1_0.md (new); CURRENT_STATE_v1_0.md (changelog
+    v6.44 + §2 arc-closed banner); SESSION_LOG.md (this entry); CLAUDECODE_BRIEF.md (ACTIVE→COMPLETE
+    flip). Serving-side + docs only."
+  must_not_touch: "The FROZEN orchestrator contract; the sealed L5 split; FORENSIC birth anchors;
+    kala_gochara_windows; build_substep_progress (read-only re-check only); the sealed evaluator
+    harness; any writer/migration/rebuild; shodhana/* and all other concurrent-campaign files."
+red_team_due: "Not triggered — docs/verification-only close; no macro-phase build boundary crossed.
+  The arc's own honest scorecard (W7 PARKED-HONEST with measured 9/13) is itself the adversarial
+  finding this close preserves rather than papers over."
+```
+
+### Body
+
+**Environment:** Claude Code, dedicated Opus Verifier, branch `docs/purna-virama-final-close` off
+latest origin/main (which by close included #816 shodhana — a different concurrent campaign, left
+untouched). Live probes via `mcp__marsys-jis-direct__*` (deployed amjis-mcp/amjis-web) +
+`mcp__postgres__query` (read-only), ~2026-07-27T05:50Z against production head `3a61781f`.
+
+**Regression battery (Verifier-executed live, 0 regressions):** SATYA-ŚEṢA §1 verified-fixed list
+4/4 PASS — `ganita_chart_facts_get(keyword="gulika")` non-bare-empty (`empty_reason` +
+`resolver_suggestion`); `gochara_forecast_get` carries `coverage` block (event_classes_covered /
+domains_not_covered / sweep_completeness=303) + `budget_kb_applied:40` + density_contract;
+`ganita_concept_locate("gulika")` resolves live; kala/gochara family within budget. Plus 3
+independent Phase-4 spot-checks — EL-37 (`bodha_mechanisms_get`: 1 convergent_dispositor_chain onto
+Jupiter, verification_pass_status:pass), EL-41 (`ganita_positions_get`: category_receipts
+confirmed_count:42, receipt_state:CONFIRMED), EL-39 (`ref_planet_position_get(Venus,2026-08-15)`:
+tropical 188.565106 byte-identical to cited repro, sidereal 164.336139 Virgo) — all reproduce,
+corroborating `PHASE4_REGRESSION_REPROBE_v1_0.md`.
+
+**W7 flagship (PARKED-HONEST):** Live `assess_wealth(482012f1)` returns a 13-family `reading` array
+with **4 families served with real substance** (per_varga_ashtakavarga 8 fact_ids, divisional_D2 17,
+divisional_D11 9, indu_lagna 7 — e.g. "D2 piṇḍa sarva — SARVA 336, JUP 55, MER 54") + 9 honestly
+labeled non-served (3 domain_block_not_served, 6 empty_for_this_chart), `domain_completeness` 100%
+accounted / gate OPEN, and `reading_digest_status:"4/13 families summarized inline"` — HONEST, no
+overclaim. The sealed-harness median is 9/13 (69%), up from the 2/13 baseline via the #799
+content-nesting fix (a real bug fix), but short of the ≥12/13 bar. Remaining gap: 7 supplement
+families return genuinely-empty from the internal `/api/retrieval/capability` route despite
+identical external MCP calls returning rich data; concurrency hypothesis tested (#802) and refuted
+(regressed to 2/13), reverted (#813). Requires platform-log observability — out of a serving-side
+session's reach. This is the honest finding, not a session failure.
+
+**Consolidated report + disposition table:**
+`00_ARCHITECTURE/llm_consumption_audit/briefs/close_out/PURNA_VIRAMA_REPORT_v1_0.md`.
+
+**Atomic governance close:** all §16.6-style positive checks PASS (no origin arc branches; gc.auto
+unset; 4 migrated ledger flags readable; snapshot tags purna-virama-start + elev-v2-run-start
+retained; untouchable tables unchanged — kala_gochara_windows=8345, build_substep_progress=364; no
+open arc PRs). 8 local arc branches remain ONLY because checked out in harness-owned
+`.claude/worktrees/*` the rails forbid touching (origin counterparts all deleted+merged). Therefore
+CURRENT_STATE v6.44 written, this SESSION_LOG entry appended, and root CLAUDECODE_BRIEF.md flipped
+ACTIVE→COMPLETE — the first COMPLETE flip of the arc.
+
+```yaml
+session_close:
+  session_id: PURNA-VIRAMA-FINAL-CLOSE-2026-07-27
+  campaign: PURNA_VIRAMA_CLOSE_OUT
+  close_criteria_met: "YES — all 7 threads DISPOSITIONED WITH EVIDENCE (6 VERIFIED-CLOSED, 1
+    PARKED-HONEST). Full regression battery re-run live against the final head: 0 regressions. All
+    §16.6-style positive cleanup checks pass. The single PARKED-HONEST (W7) is the honest finding,
+    correctly dispositioned per the PRIME RULE, not an unmet close criterion."
+  verification: "Live MCP probes (marsys-jis-direct) + read-only postgres re-check against
+    production head 3a61781f, this session 2026-07-27. Evidence refs throughout
+    PURNA_VIRAMA_REPORT_v1_0.md §2–§9."
+  deploy: "Deploy to Cloud Run green on every recent head (e4664009/#814, 958f3d1a/#815,
+    3a61781f/#816). W7 serving code (post-revert c76ec2b1) live and live-verified. This close is
+    docs-only; no new deploy required by it."
+  product_code_writes_made: "No — docs/governance only (report + CURRENT_STATE + SESSION_LOG +
+    CLAUDECODE_BRIEF). No writer, migration, or serving-code file touched."
+  native_chart_touched: false
+  current_state_updated: true
+  register_dispositions_flipped: "None by this close — register dispositions were finalized by
+    T3-Governance (#798, EL-63 + coverage matrix). This close reports final thread dispositions in
+    PURNA_VIRAMA_REPORT_v1_0.md §8; it does not re-edit the register."
+  followups: "(1) W7 flagship: platform-log session to instrument /api/retrieval/capability for the
+    7 empty supplement families (sized: one focused session with amjis-web server-log access).
+    (2) Trivial: git branch -D the 8 harness-worktree local branches once their owning processes
+    release them. (3) Trivial: bodha_remedies_get(fields=all) to individually confirm EL-51's
+    gemstone-verdict sub-field if desired."
+  next_session_objective: "The arc is closed. No committed next session for this arc. Per-chart
+    builds + the L5 calibration loop maturing as outcome data accrues remain the standing work
+    (CLAUDE.md §E)."
+```
+
+### Next session objective
+
+The Elevation → UAT-DARPANA → SATYA-ŚEṢA arc is closed. There is no committed next session for it.
+The instrument's serving layer is substantially advanced and honestly bounded; the one open thread
+(W7's server-side supplement-route emptiness) is PARKED-HONEST with a sized platform-log follow-up.
+
+*End of PURNA-VIRAMA-FINAL-CLOSE-2026-07-27 entry — the full stop.*

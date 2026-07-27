@@ -2,8 +2,12 @@
 artifact: CLAUDECODE_BRIEF_PURNA_VIRAMA
 type: CLAUDECODE_BRIEF (governing scope for execution sessions)
 version: 1.0
-status: ACTIVE — READY-FOR-EXECUTION (close-out session; flip to COMPLETE only when the brief's
-  §C.3 atomic close validates — this will be the first COMPLETE flip of the arc)
+status: COMPLETE — arc closed 2026-07-27 by the PŪRṆA-VIRĀMA Opus Verifier (Phase C). All 7
+  threads DISPOSITIONED WITH EVIDENCE against live production: 6 VERIFIED-CLOSED, 1 PARKED-HONEST
+  (W7 flagship — real improvement 2/13→9/13, short of the ≥12/13 bar, diagnosed server-side gap).
+  Full regression battery re-run: 0 regressions. Consolidated report + disposition table:
+  00_ARCHITECTURE/llm_consumption_audit/briefs/close_out/PURNA_VIRAMA_REPORT_v1_0.md.
+  This is the first (and final) COMPLETE flip of the arc.
 authored_by: Fable (Cowork planning session), native-commissioned 2026-07-25
 authority: >
   Per CLAUDE.md §C item 0. This brief is a POINTER: the operative mission, the Phase-A state
