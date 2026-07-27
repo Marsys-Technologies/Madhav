@@ -687,11 +687,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     principal)
 
   // ga_sensitive_degree → ganita_sensitive_degrees_get
+  // MC-029 (Śodhana Builder T6 "YOGI-BINDU"): also serves the Yogi/Avayogi/Duplicate-Yogi/
+  // Sahayogi Tajika construct (fact_category=sensitive_point_yogi) — same tool, one more
+  // served category, distinguishable via the fact_category field on each returned row.
   regAlias(server, 'ganita_sensitive_degrees_get',
-    'L1 sensitive-degree checks for a chart (gaṇḍānta/sandhi/mṛtyu-bhāga/pushkara etc.).',
+    'L1 sensitive-degree checks for a chart (gaṇḍānta/sandhi/mṛtyu-bhāga/pushkara etc.), ' +
+    'plus the Yogi/Avayogi/Duplicate-Yogi/Sahayogi Tajika construct (subjects YOGI/AVAYOGI/' +
+    'DUPLICATE_YOGI/SAHAYOGI — Yogi Sphuta = Sun+Moon+93°20\', its nakshatra lord = Yogi ' +
+    'Graha; Avayogi = Yogi+186°40\', its nakshatra lord = Avayogi Graha; Duplicate-Yogi/' +
+    'Sahayogi = the rasi lord of the Yogi Sphuta\'s own sign).',
     'marsys://tool/L1/get_sensitive_degrees',
     {
-      subject:    z.string().optional().describe('Filter by fact_subject (graha code, e.g. SUN, VEN).'),
+      subject:    z.string().optional().describe('Filter by fact_subject (graha code e.g. SUN, VEN, or a Yogi-system subject YOGI/AVAYOGI/DUPLICATE_YOGI/SAHAYOGI).'),
       check_type: z.string().optional().describe('Filter by fact_key (specific check).'),
     }, principal)
 
