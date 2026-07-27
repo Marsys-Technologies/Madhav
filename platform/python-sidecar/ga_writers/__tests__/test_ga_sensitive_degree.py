@@ -317,3 +317,55 @@ def test_yogi_rows_use_distinct_fact_ids_from_sensitive_degree_check_rows():
     fid_default = sut._fact_id("YOGI", "assigned_graha", "chart-x", "lahiri_chitrapaksha",
                                 "build-x")
     assert fid_yogi != fid_default
+
+
+# ── MC-029 W2 (Śodhana-Śeṣa): legacy-category reconciliation ─────────────────────────
+# The pre-existing GA5 writer (ga_sensitive_writer.py) independently computes the SAME
+# BPHS Ch.20 Yogi/Avayogi construction under fact_category='esoteric_point_yogi' /
+# 'esoteric_point_avayogi' (formula_id='bphs_93_20'), alongside a genuinely different
+# alternate convention (formula_id='alt_96_40', Krishnamurti 96°40' variant — NOT a bug,
+# a second classical tradition, disclosed via formula_id per WP-1.8). Live-production
+# comparison this session (both canonical charts, all 5 ayanamshas) found the bphs_93_20
+# variant of the legacy category agrees with this writer's authoritative
+# sensitive_point_yogi category to within ~4e-7 deg (rounding-only) on every point. This
+# test locks that agreement as a permanent regression guard — per §N.5 (L1 is the
+# authority over derivations; two writers independently deriving the same classical
+# quantity must never silently diverge), a future edit to either writer's formula that
+# breaks this parity is a bug, not a stored divergence, and must fail CI.
+def test_agrees_with_legacy_ga5_bphs_93_20_yogi_avayogi_formula():
+    from ga_writers import ga_sensitive_writer as legacy
+
+    new_rows = sut.build_yogi_points_rows(
+        "chart-native", "lahiri_chitrapaksha", "build-x",
+        {"Sun": {"longitude_sidereal": _NATIVE_SUN_LONG},
+         "Moon": {"longitude_sidereal": _NATIVE_MOON_LONG}},
+        _BrokenConn(),
+    )
+    new_by_key = {(r["fact_subject"], r["fact_key"]): r for r in new_rows}
+    new_yogi_long = new_by_key[("YOGI", "point_longitude")]["fact_value_num"]
+    new_avayogi_long = new_by_key[("AVAYOGI", "point_longitude")]["fact_value_num"]
+
+    legacy_rows = legacy._build_yogi_avayogi_rows(
+        {"SUN": _NATIVE_SUN_LONG, "MOON": _NATIVE_MOON_LONG, "LAGNA": 0.0},
+        "chart-native", "lahiri_chitrapaksha", "build-x", "eng-test",
+    )
+    legacy_by_key = {
+        (r["fact_category"], r["fact_key"], r["formula_id"]): r for r in legacy_rows
+    }
+    legacy_yogi_long = legacy_by_key[
+        ("esoteric_point_yogi", "longitude_sidereal", "bphs_93_20")
+    ]["fact_value_num"]
+    legacy_avayogi_long = legacy_by_key[
+        ("esoteric_point_avayogi", "longitude_sidereal", "bphs_93_20")
+    ]["fact_value_num"]
+
+    assert abs(new_yogi_long - legacy_yogi_long) < 1e-5, (
+        f"new={new_yogi_long} legacy(bphs_93_20)={legacy_yogi_long} — the authoritative "
+        "sensitive_point_yogi category and the legacy esoteric_point_yogi category's "
+        "primary (BPHS) formula have DIVERGED; this is a halt-worthy bug per §N.5, not "
+        "a value to silently accept."
+    )
+    assert abs(new_avayogi_long - legacy_avayogi_long) < 1e-5, (
+        f"new={new_avayogi_long} legacy(bphs_93_20)={legacy_avayogi_long} — Avayogi "
+        "parity broken; see the Yogi assertion above for the governing rule."
+    )
