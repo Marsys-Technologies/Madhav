@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.43
+version: 6.44
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,29 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.44 (2026-07-27, PŪRṆA-VIRĀMA close-out — FINAL CLOSE, Opus Verifier, Phase C):
+    **The arc is CLOSED.** The Elevation Campaign v2.1 → UAT-DARPANA → SATYA-ŚEṢA arc reaches its
+    full stop. All 7 PENDING_MANIFEST threads DISPOSITIONED WITH EVIDENCE against LIVE PRODUCTION:
+    **6 VERIFIED-CLOSED, 1 PARKED-HONEST** (W7 flagship). Consolidated report:
+    `00_ARCHITECTURE/llm_consumption_audit/briefs/close_out/PURNA_VIRAMA_REPORT_v1_0.md`.
+    Verifier re-ran the full regression battery against the final head (origin/main @3a61781f,
+    deployed): SATYA-ŚEṢA §1 verified-fixed list 4/4 PASS (gulika non-bare-empty; gochara coverage
+    block + budget_kb_applied:40; concept_locate live; kala/gochara within budget), plus 3
+    independent Phase-4 spot-checks (EL-37/EL-41/EL-39) all reproduce — 0 regressions. **W7 =
+    PARKED-HONEST:** the content-nesting fix (#799 e0bc3beb) moved the sealed-harness median from
+    2/13 baseline to 9/13 (69%), a real improvement, but short of the ≥12/13 (92%) bar; digest
+    serves 4/13 families with real substance (reading_digest_status honest, no overclaim);
+    remaining gap is a diagnosed server-side `/api/retrieval/capability` emptiness for 7 supplement
+    families (concurrency hypothesis tested #802 + refuted + reverted #813) requiring platform-log
+    observability beyond a serving-side session. §16 cleanup COMPLETE (T4, PRs #814/#815): no
+    origin arc branches, gc.auto unset, migrated ledgers readable (4 flags), snapshot tags
+    retained, untouchable tables unchanged (kala_gochara_windows=8345, build_substep_progress=364);
+    8 local branches remain only because they are checked out in harness-owned `.claude/worktrees/*`
+    the rails forbid touching (origin counterparts all deleted+merged). This resolves the §16-PARTIAL
+    status recorded in v6.43 below — T4 has now executed the remaining deletions/restore.
+    Root `CLAUDECODE_BRIEF.md` flipped ACTIVE→COMPLETE by this close (first COMPLETE flip of the arc).
+    last_session_id: PURNA-VIRAMA-FINAL-CLOSE-2026-07-27.
+    predecessor_session: PURNA-VIRAMA-T3-GOVERNANCE-2026-07-26.
   - v6.43 (2026-07-26, PŪRṆA-VIRĀMA close-out — governance repair, track T3-Governance):
     CORRECTS v6.42's §16 claim below. v6.42 (PR #792) stated "§16 cleanup executed per charter
     (see SESSION_LOG.md same-date entry for verification evidence)" — both halves of that
@@ -5468,6 +5491,17 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> ✅ **ARC CLOSED (2026-07-27, PŪRṆA-VIRĀMA FINAL CLOSE, Opus Verifier).** The Elevation Campaign
+> v2.1 → UAT-DARPANA → SATYA-ŚEṢA arc is at its full stop. All 7 threads DISPOSITIONED WITH
+> EVIDENCE against live production: **6 VERIFIED-CLOSED, 1 PARKED-HONEST** (W7 flagship — real
+> improvement 2/13→9/13, short of the ≥12/13 bar, diagnosed server-side gap with a sized
+> platform-log follow-up). Full regression battery re-run this session: 0 regressions. The
+> §16-PARTIAL status flagged in the GOVERNANCE CORRECTION banner immediately below is now
+> **RESOLVED** — T4 (PRs #814/#815) executed the remaining worktree/branch deletions and root
+> restore; positive cleanup checks all pass. Consolidated report + disposition table:
+> `00_ARCHITECTURE/llm_consumption_audit/briefs/close_out/PURNA_VIRAMA_REPORT_v1_0.md`. Root
+> `CLAUDECODE_BRIEF.md` flipped to COMPLETE by this close. See changelog v6.44.
 
 > 🔧 **GOVERNANCE CORRECTION (2026-07-26, PŪRṆA-VIRĀMA close-out, track T3-Governance) —
 > corrects the §16 claim in the CROSS-CAMPAIGN NOTE banner immediately below, which is retained
