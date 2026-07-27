@@ -46,15 +46,38 @@ beforeEach(() => {
 // ── R-9 / R-10 / R-12: SQL no longer references dropped columns ──────────────
 
 describe('register_p1_synthesis — R6 0b-deadtools schema-drift fixes', () => {
-  it('bodha_discoveries_get (R-9): SQL never references salience_score/bare domain columns; uses affected_domains_array/composite_discovery_rank', async () => {
+  // NOTE (MC-015, ŚODHANA-ŚEṢA W1): this test originally pinned the R-9 fix by inspecting
+  // the raw SQL this handler used to issue directly against `bodha_discoveries`. MC-015
+  // found that raw-SQL path itself was the bug — it meant bodha_discoveries_get never went
+  // through the registry capability (marsys://tool/L2/query_discoveries) and so could never
+  // see that capability's `discovery_families` ayanāṃśa-collapse (see PR #803). The handler
+  // now proxies to the registry capability instead of running SQL directly (mirroring
+  // kala_projections_get's existing, always-correct proxy pattern) — so there is no more SQL
+  // for this tool to inspect. Re-pinned as: (a) no `/api/mcp/db/query` call happens for this
+  // tool at all, (b) the registry-capability call it DOES make carries `domain` correctly.
+  // Full discovery_families pass-through regression: mc015_bodha_discoveries_family_wiring.test.ts.
+  it('bodha_discoveries_get (R-9 / MC-015): proxies to the registry capability, never issues raw SQL against bodha_discoveries', async () => {
+    const capabilityCalls: Array<{ uri: string; args: Record<string, unknown> }> = []
     const capturedSql: string[] = []
     vi.stubGlobal('fetch', vi.fn(async (url: string, opts: { body: string }) => {
-      const body = JSON.parse(opts.body) as { sql?: string }
       if (url.includes('/api/mcp/authz')) {
         return { ok: true, json: async () => ({ authorized: true }), text: async () => '' }
       }
-      if (body.sql) capturedSql.push(body.sql)
-      return { ok: true, json: async () => ({ rows: [] }), text: async () => '' }
+      if (url.includes('/api/retrieval/capability')) {
+        const body = JSON.parse(opts.body) as { uri: string; args: Record<string, unknown> }
+        capabilityCalls.push(body)
+        return {
+          ok: true,
+          json: async () => ({ ok: true, content: { chart_id: TEST_CHART_ID, rows: [], count: 0, total_matching: 0, discovery_families: [], discovery_family_count: 0, total_family_count: 0 } }),
+          text: async () => '',
+        }
+      }
+      if (url.includes('/api/mcp/db/query')) {
+        const body = JSON.parse(opts.body) as { sql?: string }
+        if (body.sql) capturedSql.push(body.sql)
+        return { ok: true, json: async () => ({ rows: [] }), text: async () => '' }
+      }
+      throw new Error(`unmocked fetch: ${url}`)
     }))
 
     const { registerP1SynthesisTools } = await import('../tools/register_p1_synthesis.js')
@@ -64,13 +87,12 @@ describe('register_p1_synthesis — R6 0b-deadtools schema-drift fixes', () => {
 
     const result = await handler({ chart_id: TEST_CHART_ID, domain: 'career', min_salience: 0.5 })
     expect(result.isError).toBeFalsy()
-    expect(capturedSql.some(s => s.includes('bodha_discoveries'))).toBe(true)
-    for (const sql of capturedSql) {
-      expect(sql).not.toMatch(/\bsalience_score\b/)
-      expect(sql).not.toMatch(/\bdomain\s*=/)
-    }
-    expect(capturedSql.some(s => s.includes('affected_domains_array'))).toBe(true)
-    expect(capturedSql.some(s => s.includes('composite_discovery_rank'))).toBe(true)
+    expect(capabilityCalls.length).toBeGreaterThan(0)
+    expect(capabilityCalls[0]!.uri).toBe('marsys://tool/L2/query_discoveries')
+    expect(capabilityCalls[0]!.args['domain']).toBe('career')
+    // The schema-drift columns R-9 originally fixed can no longer leak back in, because
+    // this tool no longer builds any SQL string at all.
+    expect(capturedSql.some(s => s.includes('bodha_discoveries'))).toBe(false)
   })
 
   it('synth_tail_divergence_get (R-10): SQL never references `tier`; uses signature_tier + stored salience_pctl_in_class', async () => {
