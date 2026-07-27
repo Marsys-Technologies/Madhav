@@ -1,0 +1,30 @@
+{
+  "run_start_tag": "elev-v2-run-start",
+  "db_snapshot_id": "1784938159545",
+  "baseline_ledger_path": "/Users/Dev/elev-v2-shared/ledgers/ELEVATION_V2_BASELINE.md",
+  "baseline_sha256": "36a75ae065a025b485bfcc4319cd54679b26c7a43a500b9022a78c4ad0a0f7b5",
+  "contracts": [
+    {"id": "C1", "path": "/Users/Dev/elev-v2-shared/contracts/C1_BUDGET_KB_PAGING_v1_0.md", "sha": "4f54a8c1b2b76d1216517510c0cf9c694ce8fc4eb347a4d62278cf271dbafebf"},
+    {"id": "C2", "path": "/Users/Dev/elev-v2-shared/contracts/C2_PER_CATEGORY_RECEIPT_v1_0.md", "sha": "8d50fe6a82f916e712e50d0c884ae38df21edf50e39b25cef6c6464e731149f2"},
+    {"id": "C3", "path": "/Users/Dev/elev-v2-shared/contracts/C3_SCHEMA_MAP_OUTPUT_v1_0.md", "sha": "3b8a30c73ceb49d42a6643d989c869cb75879619ee75efc47e97a16f7cc07ab2"},
+    {"id": "C6", "path": "/Users/Dev/elev-v2-shared/contracts/C6_MECHANISMS_ROW_SHAPE_v1_0.md", "sha": "67816150add4f3d21e4c0b53feb076cfb3a1b1748533e308fa0b7b192b475c32"},
+    {"id": "C8", "path": "/Users/Dev/elev-v2-shared/contracts/C8_REGISTRY_HANDLER_ENVELOPE_v1_0.md", "sha": "080842ed019b05186d1a5f2be66d4f1754cf48c853f53165fd6c811885358ab1"}
+  ],
+  "sealed_harness_path": "/Users/Dev/elev-v2-shared/ledgers/SEALED_EVALUATOR_HARNESS_v1_0.md",
+  "routing_suite_path": "/Users/Dev/elev-v2-shared/ledgers/ROUTING_SUITE_60_v1_0.json",
+  "dark_replay_set_path": "/Users/Dev/elev-v2-shared/ledgers/DARK_CORPUS_REPLAY_SET_v1_0.json",
+  "overflow_queue_path": "/Users/Dev/elev-v2-shared/ledgers/OVERFLOW_QUEUE.md",
+  "branch_heads": {
+    "alpha": "43116c42fb03229b44055c2f98a937c982370bf4",
+    "beta": "43116c42fb03229b44055c2f98a937c982370bf4",
+    "gamma": "43116c42fb03229b44055c2f98a937c982370bf4"
+  },
+  "worktree_paths": {
+    "alpha": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/alpha",
+    "beta": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/beta",
+    "gamma": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma"
+  },
+  "main_head": "43116c42fb03229b44055c2f98a937c982370bf4",
+  "written_by": "RUNWAY session",
+  "note": "All fields verified true at write time: db backup 1784938159545 status=SUCCESSFUL; git tag elev-v2-run-start pushed; PR #765 and #766 both MERGED to main with all required checks green; all three elev/* branches fast-forwarded to main's merged head (43116c42) and pushed; typecheck green in all three worktrees post-sync; push --dry-run clean for all three."
+}
