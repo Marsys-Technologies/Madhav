@@ -42,6 +42,7 @@ import {
   resolveType,
   toJsonSchema,
   MCP_NAME_PATTERN,
+  MCP_NATIVE_DISCOVERY_ENTRIES,
 } from '../../../../../scripts/manifest/projection_builders'
 import {
   extractRegistryBridgeTools,
@@ -308,14 +309,20 @@ describe('R-1 projection compiler — (e) web↔MCP tool-name bridge', () => {
 // ── 6. (f) W5 Lane L4 — tool-search index + search ───────────────────────────
 
 describe('R-1 projection compiler — (f) tool-search index (W5 Lane L4)', () => {
-  it('index covers every live getCatalog() capability, 1:1, no drops or dupes (no projection_tags filter)', () => {
+  it('index covers every live getCatalog() capability plus the MCP-native discovery supplement, no drops or dupes', () => {
     const caps = getCatalog()
     const index = buildToolSearchIndex(caps)
-    expect(index.length).toBe(caps.length)
+    // The index is the 1:1 registry projection PLUS the MCP-native discovery supplement
+    // (dossier — a platform-mcp server.tool with no CapabilityDescriptor; PARIŚODHANA B2).
+    const expectedLen = caps.length + MCP_NATIVE_DISCOVERY_ENTRIES.length
+    expect(index.length).toBe(expectedLen)
     const uris = new Set(index.map((e) => e.uri))
-    expect(uris.size).toBe(caps.length)
+    expect(uris.size).toBe(expectedLen)
     for (const cap of caps) {
       expect(uris.has(cap.uri), `missing tool-search index entry for ${cap.uri}`).toBe(true)
+    }
+    for (const entry of MCP_NATIVE_DISCOVERY_ENTRIES) {
+      expect(uris.has(entry.uri), `missing MCP-native discovery entry ${entry.uri}`).toBe(true)
     }
   })
 
