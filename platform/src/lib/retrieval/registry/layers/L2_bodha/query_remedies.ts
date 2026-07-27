@@ -42,6 +42,31 @@
  *  - CR-69: this tool now reads `leverage_ranked` and ranks targets by the L1
  *    chart_vichara.leverage_index composite (§N.5, read-not-recomputed). See
  *    LEVERAGE_FORMULA_DOC.
+ *
+ * PARISHODHANA B1 (R-29/EL-51 follow-up) — two serving-layer fixes:
+ *  - `tradition` filter was matching ONLY the `tradition` column, which the
+ *    bo_upaya writer always sets to the literal string 'parashari' for every
+ *    prescription row it writes — the mantra/gemstone/charity/vrata/yantra/
+ *    ayurvedic axis this param's own enum documents actually lives in
+ *    `remedy_category`, a DIFFERENT column. `tradition=gemstone` (or any other
+ *    enum value) therefore silently matched ZERO rows, always — including the
+ *    tool's own `drill_pointers` hint recommending exactly that call. Fixed by
+ *    OR-matching both columns: never narrows previously-correct results (there
+ *    is currently only one `tradition` value in the data), and restores the
+ *    documented single-category drill-down (mantra|gemstone|charity|...) the
+ *    enum has always advertised.
+ *  - `maraka_contraindication_verdict` (β.G/EL-51, VERIFIED-CLOSED 2026-07-25 —
+ *    a real, cited, deterministic BPHS Ch.44 verdict computed by bo_upaya for
+ *    every gemstone-category prescription) was written into
+ *    `prescription_detail_jsonb`, which the compact (default) output path drops
+ *    entirely as "redundant" — so this safety-relevant, already-computed field
+ *    was invisible unless a caller both discovered the correct `fields='all'`
+ *    escape hatch *and* could reach it (it wasn't declared on the MCP alias
+ *    schema either — see register_p1_aliases.ts fix). Now extracted and
+ *    surfaced directly on the compact row (null when not a gemstone
+ *    prescription — never fabricated), per the §N.6 Serving Density Principle:
+ *    a confirmed, cited finding must not be silently dropped behind a recovery
+ *    path a caller cannot reach.
  */
 
 import type { CapabilityDescriptor } from '../../types'
@@ -176,6 +201,19 @@ function classicalCitation(classical_sources_jsonb: unknown): string | null {
   if (classical_sources_jsonb && typeof classical_sources_jsonb === 'object') {
     const c = (classical_sources_jsonb as Record<string, unknown>)['citation']
     if (typeof c === 'string' && c.length > 0) return c
+  }
+  return null
+}
+
+// PARISHODHANA B1 (EL-51 follow-up): pull the already-computed maraka-contraindication
+// verdict (β.G, BPHS Ch.44-cited, deterministic, gemstone-category rows only) out of
+// prescription_detail_jsonb so it survives the compact-mode column drop. Returns null
+// for every non-gemstone row (and for gemstone rows where the writer found no
+// contraindication) — never fabricated, just no longer hidden.
+function marakaVerdictFrom(prescription_detail_jsonb: unknown): Record<string, unknown> | null {
+  if (prescription_detail_jsonb && typeof prescription_detail_jsonb === 'object') {
+    const v = (prescription_detail_jsonb as Record<string, unknown>)['maraka_contraindication_verdict']
+    if (v && typeof v === 'object') return v as Record<string, unknown>
   }
   return null
 }
@@ -329,7 +367,13 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       const preConds = ['chart_id = $1', 'ayanamsha_id = $2']
       const preParams: unknown[] = [chart_id, ayanamsha_id]
       let pp = 3
-      if (tradition)  { preConds.push(`LOWER(tradition) = LOWER($${pp++})`);  preParams.push(tradition) }
+      // PARISHODHANA B1 fix: `tradition` (schema-tradition, e.g. parashari) and
+      // `remedy_category` (mantra/gemstone/charity/vrata/yantra/ayurvedic — what this
+      // param's own enum documents) are different columns. bo_upaya always writes
+      // tradition='parashari', so a category-style value would previously match zero
+      // rows. OR-match both so the documented category filter actually works, without
+      // narrowing any query that a real future `tradition` value would still match.
+      if (tradition)  { preConds.push(`(LOWER(tradition) = LOWER($${pp}) OR LOWER(remedy_category) = LOWER($${pp}))`); preParams.push(tradition); pp++ }
       // CR-42/CR-10 fix (D-1.6 S-1): same case-sensitivity gap as the resonance-side
       // filter above, on target_graha.
       if (graha)      { preConds.push(`LOWER(target_graha) = LOWER($${pp++})`); preParams.push(graha) }
@@ -497,6 +541,10 @@ export const queryRemediesCapability: CapabilityDescriptor = {
           requires_acharya_review_flag: r['requires_acharya_review_flag'],
           cost_tier_estimate: costTierFor(r['remedy_category'], r['ritual_complexity_class']),
           classical_citation: citation,
+          // PARISHODHANA B1 (EL-51 follow-up): surfaced from prescription_detail_jsonb —
+          // non-null only for gemstone-category rows the bo_upaya writer scored (BPHS
+          // Ch.44-cited, deterministic). See marakaVerdictFrom() doc comment.
+          maraka_contraindication_verdict: marakaVerdictFrom(r['prescription_detail_jsonb']),
           computed_at: r['computed_at'],
         }
       })
