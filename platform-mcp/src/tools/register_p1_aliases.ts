@@ -22,7 +22,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
-import { describeProxyFailure, resolveChartFactsAyanamsha } from './registry_bridge.js'
+import {
+  describeProxyFailure, resolveChartFactsAyanamsha,
+  READING_DEPTH_ZOD, guardDeepDiveNotLossy, DeepDiveLossyFormError, type ReadingDepth,
+} from './registry_bridge.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 import { classifyScope } from './intent_scope_classifier.js'
 
@@ -439,10 +442,67 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // ── D7 + D8 Registry bridge aliases ──────────────────────────────────────
 
   // get_chart_orientation → bodha_chart_digest_get
-  regAlias(server, 'bodha_chart_digest_get',
-    'L2 UCD chart orientation digest (same as get_chart_orientation)',
-    'marsys://tool/L2/query_ucd',
-    { mode: z.enum(['summary', 'full']).optional() }, principal)
+  //
+  // SAMAPANA Track B item 4a (correctness fix, independent of the footgun question below):
+  // `mode` was a DEAD parameter. This tool used to be registered via the generic `regAlias`
+  // helper, which spreads every extra param straight through under its own key — `mode` rode
+  // through under the literal key "mode", but query_ucd.ts's handler only ever reads
+  // `response_format` (defaulting to 'summary' when that key is absent/invalid). No
+  // `paramAliases` entry mapped mode → response_format (contrast bodha_remedies_get's
+  // `planet` → `graha` mapping below), so `bodha_chart_digest_get(mode:'full')` always
+  // silently served response_format:'summary' server-side — unfixable by the caller via the
+  // documented param. This is a bespoke registration (not `regAlias`) because it also needs
+  // the reading_depth deep-dive guard (item 3) and the footgun fix's contract-side forcing
+  // (item 4b), neither of which `regAlias`'s generic plumbing supports.
+  //
+  // Item 4 footgun disposition: per the brief, the PREFERRED fix is contract-side (less
+  // blast radius) — the deep-dive contract's mandatory first call always passes 'full'
+  // rather than flipping this tool's own default. That is what `reading_depth` does below.
+  // The default itself is left at 'summary' (footgun still live for a caller who omits BOTH
+  // `mode` and `reading_depth`) — documented here per the brief's explicit instruction to
+  // record the footgun-nature even when choosing the contract-side fix.
+  server.tool(
+    'bodha_chart_digest_get',
+    '[Phase-1 alias] L2 UCD chart orientation digest (same as get_chart_orientation). ' +
+    'Delegates to the same handler as the legacy tool name. FOOTGUN NOTICE: `mode` defaults ' +
+    "to 'summary' (top-10 signals) — this is the MANDATORY first call of every reading (B.11), " +
+    "so an unqualified call opens every reading with a terse digest unless overridden. Pass " +
+    "reading_depth:'deep_dive' (forces mode:'full' regardless of what you pass for `mode`) for " +
+    "a beyond-acharya-grade deep dive, or mode:'full' directly for a one-off.",
+    {
+      ...ChartBase,
+      mode: z.enum(['summary', 'full']).optional().describe(
+        "Output verbosity, mapped onto the underlying query_ucd 'response_format'. 'summary' " +
+        "(default if reading_depth is not 'deep_dive'): top-10 signals — a lossy reduction, " +
+        "not a mere byte-ceiling knob. 'full': uncapped top_signals (up to top_k_signals, " +
+        "forced to 100 under reading_depth:'deep_dive')."
+      ),
+      reading_depth: READING_DEPTH_ZOD,
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, limit, offset, mode, reading_depth, ...rest } = params as Record<string, unknown>
+      if (!chart_id) return errOut('bodha_chart_digest_get', 'chart_id is required')
+      try {
+        const rd = reading_depth as ReadingDepth | undefined
+        // Item 3 guard: a deep dive can never be silently routed through the lossy 'summary'
+        // form — refuse the self-contradictory combination instead of picking a side.
+        guardDeepDiveNotLossy(rd, 'mode', mode as string | undefined, ['summary'])
+        // Item 4b: reading_depth:'deep_dive' forces the full digest even if the caller never
+        // touches `mode` at all.
+        const response_format = rd === 'deep_dive' ? 'full' : (mode as string | undefined ?? 'summary')
+        const data = await callRegistryCap('marsys://tool/L2/query_ucd', {
+          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0,
+          ...rest, response_format,
+          ...(rd === 'deep_dive' ? { top_k_signals: 100 } : {}),
+        }, principal)
+        return dualOutput(data, 'bodha_chart_digest_get')
+      } catch (err) {
+        if (err instanceof DeepDiveLossyFormError) return errOut('bodha_chart_digest_get', err.message)
+        return errOut('bodha_chart_digest_get', String(err), { chart_id })
+      }
+    }
+  )
 
   // get_domain_reading → bodha_domain_reading_get
   regAlias(server, 'bodha_domain_reading_get',
