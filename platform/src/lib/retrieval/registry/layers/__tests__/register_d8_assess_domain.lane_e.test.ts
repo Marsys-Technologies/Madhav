@@ -371,3 +371,42 @@ describe('R6-lens-dedup — identical question_lenses collapsed', () => {
     expect(ha['lenses_deduped_count']).toBe(0)
   })
 })
+
+// ── ŚODHANA T5 (PŪRTI): the joined classical legs + reading_checklist ──────────────
+describe('T5 (PŪRTI) — computed-but-never-joined legs + reading_checklist on assess_wealth', () => {
+  it('assess_wealth carries kp_cusp_chain, sensitive_degree_firings, gochara_sweep, and a reading_checklist (AC2/AC3 structural presence)', async () => {
+    const content = await run('marsys://tool/L-DOMAIN/assess_wealth')
+
+    // AC2: the KP cuspal chain is present in assess_wealth's OWN response (not tail-only).
+    const kp = content['kp_cusp_chain'] as Record<string, unknown>
+    expect(kp).toBeDefined()
+    expect(Array.isArray(kp['cusps'])).toBe(true)
+
+    // The other two joined legs are present as their own slots.
+    expect(Array.isArray(content['sensitive_degree_firings'])).toBe(true)
+    const gochara = content['gochara_sweep'] as Record<string, unknown>
+    expect(gochara).toBeDefined()
+    expect('domain_covered' in gochara).toBe(true)
+
+    // AC3: the reading_checklist receipt is present and names every classical unit.
+    const rc = content['reading_checklist'] as Record<string, unknown>
+    expect(rc).toBeDefined()
+    const units = rc['units'] as Array<Record<string, unknown>>
+    const names = new Set(units.map(u => u['unit']))
+    expect(names.has('kp_cusp_chain')).toBe(true)
+    expect(names.has('sensitive_degree_firings')).toBe(true)
+    expect(names.has('gochara_sweep')).toBe(true)
+    expect(names.has('yogi_avayogi')).toBe(true)
+    expect('non_exhaustive' in rc).toBe(true)
+
+    // AC3 truthfulness cross-count: the checklist's claimed state for each leg must match
+    // what is actually served (under this mock the legs resolve empty → NOT 'served').
+    const byName = new Map(units.map(u => [u['unit'] as string, u]))
+    const kpServed = (kp['cusps'] as unknown[]).length
+    if (byName.get('kp_cusp_chain')!['state'] === 'served') expect(kpServed).toBeGreaterThan(0)
+    else expect(kpServed).toBe(0)
+    const sensServed = (content['sensitive_degree_firings'] as unknown[]).length
+    if (byName.get('sensitive_degree_firings')!['state'] === 'served') expect(sensServed).toBeGreaterThan(0)
+    else expect(sensServed).toBe(0)
+  })
+})

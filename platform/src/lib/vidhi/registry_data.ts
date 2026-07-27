@@ -298,12 +298,14 @@ export const VIDHI_PRIMITIVES: readonly VidhiPrimitive[] = [
   {
     primitive_id: 'sensitive_degree_check',
     version: 1,
-    definition: 'Sensitive-degree checks (mrityu-bhaga, gandanta, pushkara, kartari, 22nd drekkana) per graha.',
+    definition: 'Sensitive-degree checks (mrityu-bhaga, gandanta, pushkara, kartari, 22nd drekkana) per graha, ' +
+      'plus the Yogi/Avayogi/Duplicate-Yogi/Sahayogi Tajika construct (fact_category=sensitive_point_yogi; ' +
+      'MC-029, Śodhana Builder T6) — same tool, both categories served, distinguishable by fact_category.',
     category: 'structural',
     live_tool: 'ganita_sensitive_degrees_get',
     tool_args: { chart_id: '{chart_id}' },
     fallback_face: 'ganita_chart_facts_get',
-    known_gap: null, // R-47 CLOSED — live.
+    known_gap: null, // R-47 CLOSED — live. MC-029 CLOSED — Yogi-system added, same tool.
     mandatory_tags: ['sensitive_degree'],
     cr27_prevents: [],
   },

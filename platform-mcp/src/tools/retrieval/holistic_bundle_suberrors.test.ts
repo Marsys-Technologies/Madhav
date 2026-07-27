@@ -41,4 +41,24 @@ describe('collectBundleSubErrors — CR-14/39', () => {
   it('handles a bundle with no entries array gracefully', () => {
     expect(collectBundleSubErrors({})).toEqual([])
   })
+
+  // MC-002: holistic/multi_school bundle entries mark failure as `errored:true`
+  // with `sub_tool` + `error_class` — previously undetected (the live 5-of-8 hole).
+  it('catches errored:true entries (holistic/multi_school shape)', () => {
+    const result = {
+      envelope: {
+        ok: false,
+        status: 'degraded',
+        bundle_entries: [
+          { sub_tool: 'UCN', errored: false, rows_returned: 1 },
+          { sub_tool: 'MSR', errored: true, error_class: 'tool_error' },
+          { sub_tool: 'CGM', errored: true, error_class: 'tool_error' },
+          { sub_tool: 'LEL', errored: true, error_class: 'timeout' },
+        ],
+      },
+    }
+    const errs = collectBundleSubErrors(result)
+    expect(errs.map((e) => e.subsystem).sort()).toEqual(['CGM', 'LEL', 'MSR'])
+    expect(errs.find((e) => e.subsystem === 'MSR')!.error).toContain('tool_error')
+  })
 })

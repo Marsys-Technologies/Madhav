@@ -373,6 +373,12 @@ function buildRankedThemes(
         `${name}: grade ${gradeStr} carries n_support=0 (zero backing evidence rows) — ` +
         `treat as unverified/provisional, not a confirmed grade.`
       )
+      // MC-010 (P0-safety, ŚODHANA T1): a zero-evidence structural prior must never be
+      // SERVED with a pass/fail verb ("denied"/"promised"/"confirmed") — flagging it in
+      // verdict_quality_flags alone is not enough, because the headline verb is what a
+      // skimming reader sees first. Overwrite the served status label itself (not just
+      // the flag) on safety-sensitive domains this is a harm issue, not a style issue.
+      status = ZERO_SUPPORT_SAFE_LABEL
     }
 
     let sentence: string
@@ -388,9 +394,13 @@ function buildRankedThemes(
     if (conflicting) sentence += ' [CONTRADICTORY RAW STATEMENT — status resolved conservatively; see verdict_quality_flags]'
     if (zeroSupport) sentence += ' [UNVERIFIED — n_support=0]'
 
+    // MC-010: strengths/weaknesses verbs ('promised'/'denied') are only ever bucketed
+    // when n_support > 0 — a zero-evidence row's status was already overwritten above
+    // (status !== 'promised'/'denied' in that case), the `!zeroSupport` guard here is
+    // deliberate defense-in-depth against any future refactor that stops overwriting it.
     if (status === 'promised' && !zeroSupport && (grade == null || grade >= 6)) {
       strengths.push(sentence)
-    } else if (status === 'denied') {
+    } else if (status === 'denied' && !zeroSupport) {
       weaknesses.push(sentence)
     } else {
       openQuestions.push(sentence)
@@ -400,6 +410,34 @@ function buildRankedThemes(
   return { strengths, weaknesses, open_questions: openQuestions, verdict_quality_flags: verdictQualityFlags }
 }
 
+// MC-010 (P0-safety, ŚODHANA T1): verdict_summary[].statement is the RAW L5
+// mimamsa_insight_units.statement text (e.g. "Marriage: denied (grade 1.6/10)") —
+// served alongside (not replaced by) the narrated ranked_themes sentences built in
+// buildRankedThemes below. A skimming reader (human or LLM) reading a pass/fail verb
+// next to a safety-sensitive domain (marriage/health/childbirth/financial loss) on a
+// zero-evidence STRUCTURAL-mode row will misread it as a confirmed categorical finding.
+// This never invents a new value — it only masks the verb token when n_support=0 proves
+// there is zero backing evidence for the grade the verb rides on.
+const ZERO_SUPPORT_VERB_RE = /\b(promised|denied|conditional|confirmed)\b/gi
+const ZERO_SUPPORT_SAFE_LABEL = 'not_yet_assessed (structural prior, no evidence rows)'
+
+function sanitizeZeroSupportStatement(row: Record<string, unknown>): Record<string, unknown> {
+  const nSupport = typeof row['n_support'] === 'number' ? row['n_support'] as number : null
+  const statement = row['statement']
+  if (nSupport !== 0 || typeof statement !== 'string') return row
+  ZERO_SUPPORT_VERB_RE.lastIndex = 0
+  if (!ZERO_SUPPORT_VERB_RE.test(statement)) return row
+  ZERO_SUPPORT_VERB_RE.lastIndex = 0
+  return {
+    ...row,
+    statement: statement.replace(ZERO_SUPPORT_VERB_RE, ZERO_SUPPORT_SAFE_LABEL),
+    statement_verb_masked_note:
+      'Original statement carried a pass/fail verb (promised/denied/conditional/confirmed) ' +
+      'with n_support=0 (zero backing evidence rows) — verb replaced with a safe status label ' +
+      '(MC-010, ŚODHANA T1). Never claim a categorical finding with no supporting evidence.',
+  }
+}
+
 // Drop redundant/empty scaffolding from a raw insight row before it goes into
 // the response: (a) per-row surface_formula_version is a constant already
 // stated once at brief.formula_version; (b) empty classical_sources[] arrays
@@ -407,7 +445,8 @@ function buildRankedThemes(
 // is capped to its top 3 entries by salience with a recover_via pointer for
 // the full chain. Trims byte weight to stay clear of DUAL_OUTPUT_TEXT_THRESHOLD_BYTES.
 function trimInsightRow(row: Record<string, unknown>): Record<string, unknown> {
-  const { surface_formula_version: _drop, ...rest } = row
+  const { surface_formula_version: _drop, ...rest0 } = row
+  const rest = sanitizeZeroSupportStatement(rest0)
   const pc = getProvenanceChain(rest)
   if (!pc) return rest
   const trimmedEvidence = (pc.ranked_evidence ?? [])
