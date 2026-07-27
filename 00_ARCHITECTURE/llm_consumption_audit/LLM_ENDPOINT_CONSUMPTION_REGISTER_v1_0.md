@@ -80,6 +80,14 @@ prevention, not blame-shifting.
   every Bodha-derived tool response with a `bodha_l1_linkage_fresh: bool` + build-id pair,
   not just `bodha_quality_get`; (c) fix the stored `unresolved_constituent_facts_count` so
   it cannot disagree with the live value (or delete the stored field and always derive live).
+- **Cross-reference note (appended 2026-07-27, SAMĀPANA Track C — append-only, no text above
+  altered).** The rebuild-authorization question this item names is CLOSED as
+  resolved-and-verified — see `briefs/shodhana/SHODHANA_REPORT_v1_0.md` §3 (Decision 2) + §13
+  for the full record; live-reverified orphan rate is now 0.32%/0.33% on both canonical charts
+  (down from this item's original 82.9%). Recommendation (c) above is separately addressed at
+  the code level this same session: `query_quality_scorecard.ts` now overwrites the served
+  `scorecard.unresolved_constituent_facts_count` with the same live-derived count already used
+  for `defect_001`, so the two numbers can never disagree.
 
 ### MC-002 — `bodha_bundle_get` silently degraded: 5/8 sub-tools errored under `ok:true` · Severity: HIGH
 - **What happened.** The flagship "holistic_bundle" aggregation returned
