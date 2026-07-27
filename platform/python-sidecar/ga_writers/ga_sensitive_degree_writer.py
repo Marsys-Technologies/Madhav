@@ -36,6 +36,17 @@ Facets computed (each by its CLASSICAL rule, cited — CLAUDE.md §B.10, no inve
                            Pisces + first 3°20' of Leo/Sagittarius/Aries = the Ashlesha-Magha
                            / Jyeshtha-Mula / Revati-Ashwini nakshatra junctions).
 
+  9. yogi_system         — MC-029 (Śodhana Builder T6 "YOGI-BINDU"): Yogi/Avayogi/
+                           Duplicate-Yogi/Sahayogi, under a SEPARATE fact_category
+                           'sensitive_point_yogi' (see build_yogi_points_rows below).
+                           Yogi Sphuta = Sun + Moon + 93°20'; Yogi Graha = nakshatra lord
+                           of that point (BPHS Ch.20 / Tajik Nilakanthi). Avayogi Sphuta =
+                           Yogi Sphuta + 186°40'; Avayogi Graha = its nakshatra lord.
+                           Duplicate-Yogi = rasi (sign) lord of the Yogi Sphuta's own sign.
+                           Sahayogi = the SAME classical quantity as Duplicate-Yogi under
+                           its Tajik Nilakanthi name (cross-checked against PyJHora's own
+                           reference implementation — see citations on that function).
+
 B.10 posture: every degree constant here is either (a) delegated from PyJHora's shipped
 classical arrays (mrityu bhaga, pushkara) with the array cited, or (b) computed by a
 stated deterministic rule (kartari counting, gandanta arc, declination formula). No degree
@@ -44,7 +55,11 @@ vedha table) emit honest evidence rows carrying provenance_status for the W3 jyo
 verifier to adjudicate — never a fabricated fired/not-fired verdict.
 
 Idempotency: L1 delete-then-insert scoped to (chart_id, ayanamsha_id, fact_category) via
-ga_writers._idempotency.replace_prior_chart_facts (fact_category='sensitive_degree_check').
+ga_writers._idempotency.replace_prior_chart_facts (fact_category='sensitive_degree_check'
+for facets 1-8; fact_category='sensitive_point_yogi' for facet 9 — both categories are
+present in the combined `rows` list build_ga_sensitive_degree_substep passes to
+replace_prior_chart_facts, which scopes its DELETE to every distinct fact_category found
+in the rows it's given, so neither category accretes on rebuild — §N.3).
 """
 from __future__ import annotations
 
@@ -64,6 +79,10 @@ logger = logging.getLogger(__name__)
 
 GA_SENSITIVE_DEGREE_ASSET_ID = "ga_sensitive_degree"
 FACT_CATEGORY = "sensitive_degree_check"
+
+# MC-029 (Śodhana Builder T6 "YOGI-BINDU"): Yogi/Avayogi/Duplicate-Yogi/Sahayogi live under
+# their OWN fact_category — distinct from the 8 facets above — per the builder's brief §5.
+YOGI_CATEGORY = "sensitive_point_yogi"
 
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
@@ -300,10 +319,257 @@ def compute_kranti(longitude_tropical_deg: float) -> dict:
     }
 
 
+# ── Yogi / Avayogi / Duplicate-Yogi / Sahayogi ─────────────────────────────────────
+# MC-029 (Śodhana Builder T6 "YOGI-BINDU"). Standard classical Tajika/Jyotish construct,
+# confirmed absent from every existing L1 serving surface before this pass.
+#
+# Yogi Sphuta   = Sun + Moon + 93°20' (mod 360°)               — BPHS Ch.20 / Tajik Nilakanthi
+# Yogi Graha    = nakshatra LORD of the Yogi Sphuta
+# Avayogi Sphuta= Yogi Sphuta + 186°40' (mod 360°)
+# Avayogi Graha = nakshatra LORD of the Avayogi Sphuta
+# Duplicate-Yogi= rasi (SIGN) lord of the Yogi Sphuta's own sign (NOT the nakshatra lord)
+# Sahayogi      = PyJHora's own reference implementation
+#                 (jhora/horoscope/chart/sphuta.py, __main__ demo block) computes
+#                 `sahayogi_planet = const._house_owners_list[yh]` where `yh` is the Yogi
+#                 Sphuta's rasi index — i.e. Sahayogi and Duplicate-Yogi are the SAME
+#                 classical quantity under two attested names (Raman's "Duplicate Yogi" vs
+#                 Tajik Nilakanthi's "Sahayogi"), not two independent constructs. Both are
+#                 served as their own subject rows (not merely aliased) so either name is
+#                 independently queryable, per this builder's brief.
+YOGI_OFFSET_DEG = 93.0 + 20.0 / 60.0          # 93°20'
+AVAYOGI_OFFSET_DEG = 186.0 + 40.0 / 60.0      # 186°40' beyond the Yogi Sphuta
+
+YOGI_NAKSHATRAS = [
+    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
+    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
+    "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
+    "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha",
+    "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
+]
+YOGI_NAK_SPAN_DEG = 360.0 / 27.0  # 13°20'
+
+# Fallback tables (correct Parashari/vimshottari classics) — used only if the L0 reference
+# tables (reference_signs / reference_nakshatra) are unreachable at build time. Mirrors the
+# fallback discipline already established in ga_sensitive_writer.py / ga_dashas_writer.py.
+_YOGI_FALLBACK_SIGN_LORDS = ["Mars", "Venus", "Mercury", "Moon", "Sun", "Mercury",
+                             "Venus", "Mars", "Jupiter", "Saturn", "Saturn", "Jupiter"]
+_YOGI_FALLBACK_NAK_LORDS = (
+    ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"] * 3
+)
+
+YOGI_POINT_CITATION = (
+    "BPHS Ch.20 / Tajik Nilakanthi: Yogi Sphuta = Sun + Moon + 93°20' (mod 360°); Yogi "
+    "Graha = nakshatra lord of the Yogi Sphuta. Cross-checked against PyJHora "
+    "jhora.horoscope.chart.sphuta.yogi_sphuta (add_yogi_longitude=True adds exactly "
+    "93+20/60 degrees to Moon+Sun)."
+)
+AVAYOGI_POINT_CITATION = (
+    "BPHS Ch.20 / Tajik Nilakanthi: Avayogi Sphuta = Yogi Sphuta + 186°40' (mod 360°); "
+    "Avayogi Graha = nakshatra lord of the Avayogi Sphuta. Cross-checked against PyJHora "
+    "jhora.horoscope.chart.sphuta.avayogi_sphuta (yogi_long + 186+40/60 degrees)."
+)
+DUPLICATE_YOGI_CITATION = (
+    "Classical 'Duplicate Yogi' (Raman, Hindu Predictive Astrology): rasi (sign) lord of "
+    "the Yogi Sphuta's own sign — distinct from the Yogi Graha (the NAKSHATRA lord of the "
+    "same point). Cross-checked against PyJHora jhora.const._house_owners_list[yogi_rasi]."
+)
+SAHAYOGI_CITATION = (
+    "Tajik Nilakanthi Sahayogi Graha. PyJHora's own reference implementation "
+    "(jhora/horoscope/chart/sphuta.py __main__ demo: "
+    "'sahayogi_planet = const._house_owners_list[yh]', yh = Yogi Sphuta's rasi) computes "
+    "Sahayogi identically to the Duplicate-Yogi construction above: both are the rasi lord "
+    "of the Yogi Sphuta's sign. This row is served independently (not merely an alias of "
+    "DUPLICATE_YOGI) so the Tajik Nilakanthi name is directly queryable by fact_subject."
+)
+
+
+def _load_yogi_sign_lords(conn: Any) -> list[str]:
+    """0-based (Aries=0) sign→lord, from L0 reference_signs. Falls back to Parashari classics
+    if the table is unreachable (never fabricates a divergent lordship table)."""
+    try:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute("SELECT lord FROM reference_signs ORDER BY sign_id")
+            lords = [r[0].capitalize() for r in cur.fetchall()]
+        if len(lords) == 12:
+            return lords
+    except Exception as exc:
+        logger.warning("[ga_sensitive_degree][yogi] reference_signs unavailable (%s); "
+                       "using Parashari fallback lords", exc)
+    return list(_YOGI_FALLBACK_SIGN_LORDS)
+
+
+def _load_yogi_nakshatra_lords(conn: Any) -> list[str]:
+    """0-based (Ashwini=0) nakshatra→vimshottari lord, from the CANONICAL L0
+    reference_nakshatra table (28 rows incl. Abhijit; migration 302 deprecated the older
+    reference_nakshatras — this reads only the canonical singular table, never the
+    deprecated one). Falls back to the standard 9-lord vimshottari cycle if unreachable."""
+    try:
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute(
+                "SELECT vimshottari_lord FROM reference_nakshatra "
+                "WHERE nakshatra_id <= 27 ORDER BY nakshatra_id"
+            )
+            lords = [r[0].capitalize() for r in cur.fetchall()]
+        if len(lords) == 27:
+            return lords
+    except Exception as exc:
+        logger.warning("[ga_sensitive_degree][yogi] reference_nakshatra unavailable (%s); "
+                       "using vimshottari-cycle fallback lords", exc)
+    return list(_YOGI_FALLBACK_NAK_LORDS)
+
+
+def _yogi_point_two_pass(sun_long: float, moon_long: float) -> tuple[float, float, bool]:
+    """Two INDEPENDENTLY-WRITTEN code paths for the Yogi Sphuta longitude (mirrors the
+    ga_tajaka_writer ephemeris_audit_jsonb two-pass discipline):
+      Pass A — plain floating-point degree arithmetic.
+      Pass B — integer-arcsecond arithmetic (a different representation/rounding path,
+               sharing no intermediate float state with Pass A).
+    Returns (yogi_deg [Pass A value, the one served], divergence_arcsec, agrees)."""
+    yogi_a = (sun_long + moon_long + YOGI_OFFSET_DEG) % 360.0
+
+    sun_asec = round(sun_long * 3600.0)
+    moon_asec = round(moon_long * 3600.0)
+    offset_asec = round(YOGI_OFFSET_DEG * 3600.0)  # 93*3600 + 20*60 = 335600
+    yogi_asec = (sun_asec + moon_asec + offset_asec) % (360 * 3600)
+    yogi_b = yogi_asec / 3600.0
+
+    diff = abs(yogi_a - yogi_b)
+    diff = min(diff, 360.0 - diff)
+    divergence_arcsec = diff * 3600.0
+    agrees = divergence_arcsec <= 1.0  # rounding-only tolerance (1 arcsec)
+    return yogi_a, divergence_arcsec, agrees
+
+
+def _avayogi_point_two_pass(yogi_deg: float) -> tuple[float, float, bool]:
+    """Same two-pass discipline as `_yogi_point_two_pass`, for Avayogi = Yogi + 186°40'."""
+    avayogi_a = (yogi_deg + AVAYOGI_OFFSET_DEG) % 360.0
+
+    yogi_asec = round(yogi_deg * 3600.0)
+    offset_asec = round(AVAYOGI_OFFSET_DEG * 3600.0)
+    avayogi_asec = (yogi_asec + offset_asec) % (360 * 3600)
+    avayogi_b = avayogi_asec / 3600.0
+
+    diff = abs(avayogi_a - avayogi_b)
+    diff = min(diff, 360.0 - diff)
+    divergence_arcsec = diff * 3600.0
+    agrees = divergence_arcsec <= 1.0
+    return avayogi_a, divergence_arcsec, agrees
+
+
+def _yogi_nakshatra_of(long_deg: float, nak_lords: list[str]) -> tuple[str, str, int]:
+    """(nakshatra_name, nakshatra_lord, 0-based sign_num) for a Yogi-system longitude."""
+    long_norm = long_deg % 360.0
+    nak_idx = min(int(long_norm / YOGI_NAK_SPAN_DEG), 26)
+    sign_idx = int(long_norm / 30.0) % 12
+    return YOGI_NAKSHATRAS[nak_idx], nak_lords[nak_idx], sign_idx
+
+
+def build_yogi_points_rows(
+    chart_id: str, ayanamsha_id: str, build_id: str,
+    positions: dict[str, dict], conn: Any,
+) -> list[dict]:
+    """MC-029 (Śodhana Builder T6 "YOGI-BINDU"): Yogi / Avayogi / Duplicate-Yogi / Sahayogi.
+
+    L1-authority discipline (§N.5): Sun/Moon longitudes are READ from `positions` (sourced
+    from chart_facts by `load_positions`, never recomputed here) — this function only
+    derives the Yogi-system points from those already-authoritative longitudes.
+
+    Emits under fact_category=YOGI_CATEGORY ('sensitive_point_yogi'), a category distinct
+    from FACT_CATEGORY so it is separately addressable; both categories share this writer's
+    (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id) idempotency
+    key and are both covered by the single replace_prior_chart_facts() call in
+    build_ga_sensitive_degree_substep (§N.3 — no accretion on rebuild).
+    """
+    sun = positions.get("Sun")
+    moon = positions.get("Moon")
+    if not sun or not moon:
+        logger.warning("[ga_sensitive_degree][yogi] Sun/Moon absent for chart=%s aya=%s; "
+                       "skipping", chart_id, ayanamsha_id)
+        return []
+    sun_long = sun.get("longitude_sidereal")
+    moon_long = moon.get("longitude_sidereal")
+    if sun_long is None or moon_long is None:
+        logger.warning("[ga_sensitive_degree][yogi] Sun/Moon longitude_sidereal missing for "
+                       "chart=%s aya=%s; skipping", chart_id, ayanamsha_id)
+        return []
+
+    sign_lords = _load_yogi_sign_lords(conn)
+    nak_lords = _load_yogi_nakshatra_lords(conn)
+    now = datetime.now(timezone.utc)
+
+    yogi_deg, yogi_div_asec, yogi_ok = _yogi_point_two_pass(sun_long, moon_long)
+    yogi_nak, yogi_graha, yogi_sign_idx = _yogi_nakshatra_of(yogi_deg, nak_lords)
+    yogi_status = "two_pass_verified" if yogi_ok else "divergent_flagged"
+
+    avayogi_deg, avayogi_div_asec, avayogi_ok = _avayogi_point_two_pass(yogi_deg)
+    avayogi_nak, avayogi_graha, avayogi_sign_idx = _yogi_nakshatra_of(avayogi_deg, nak_lords)
+    avayogi_status = "two_pass_verified" if avayogi_ok else "divergent_flagged"
+
+    # Duplicate-Yogi / Sahayogi two-pass: agree iff (a) the Yogi point itself two-pass
+    # verified AND (b) the sign index re-derived from the independent arcsecond pass
+    # (recomputed here, not threaded through, to keep this a genuinely independent
+    # re-derivation rather than reusing Pass B's own state) matches the degree-pass sign.
+    sun_asec = round(sun_long * 3600.0)
+    moon_asec = round(moon_long * 3600.0)
+    offset_asec = round(YOGI_OFFSET_DEG * 3600.0)
+    yogi_asec_b = (sun_asec + moon_asec + offset_asec) % (360 * 3600)
+    sign_idx_b = int((yogi_asec_b / 3600.0) / 30.0) % 12
+    duplicate_ok = yogi_ok and (sign_idx_b == yogi_sign_idx)
+    duplicate_status = "two_pass_verified" if duplicate_ok else "divergent_flagged"
+    duplicate_yogi_graha = sign_lords[yogi_sign_idx]
+
+    rows: list[dict] = [
+        _row(chart_id, ayanamsha_id, build_id, "YOGI", "point_longitude",
+             round(yogi_deg, 6), None,
+             {"divergence_arcsec": round(yogi_div_asec, 4), "offset_deg": YOGI_OFFSET_DEG,
+              "sun_longitude_sidereal": sun_long, "moon_longitude_sidereal": moon_long},
+             YOGI_POINT_CITATION, now, provenance=yogi_status, category=YOGI_CATEGORY),
+        _row(chart_id, ayanamsha_id, build_id, "YOGI", "sign",
+             None, SIGNS[yogi_sign_idx], None,
+             YOGI_POINT_CITATION, now, provenance=yogi_status, category=YOGI_CATEGORY),
+        _row(chart_id, ayanamsha_id, build_id, "YOGI", "nakshatra",
+             None, yogi_nak, None,
+             YOGI_POINT_CITATION, now, provenance=yogi_status, category=YOGI_CATEGORY),
+        _row(chart_id, ayanamsha_id, build_id, "YOGI", "assigned_graha",
+             None, yogi_graha, None,
+             YOGI_POINT_CITATION, now, provenance=yogi_status, category=YOGI_CATEGORY),
+
+        _row(chart_id, ayanamsha_id, build_id, "AVAYOGI", "point_longitude",
+             round(avayogi_deg, 6), None,
+             {"divergence_arcsec": round(avayogi_div_asec, 4), "offset_deg": AVAYOGI_OFFSET_DEG},
+             AVAYOGI_POINT_CITATION, now, provenance=avayogi_status, category=YOGI_CATEGORY),
+        _row(chart_id, ayanamsha_id, build_id, "AVAYOGI", "sign",
+             None, SIGNS[avayogi_sign_idx], None,
+             AVAYOGI_POINT_CITATION, now, provenance=avayogi_status, category=YOGI_CATEGORY),
+        _row(chart_id, ayanamsha_id, build_id, "AVAYOGI", "nakshatra",
+             None, avayogi_nak, None,
+             AVAYOGI_POINT_CITATION, now, provenance=avayogi_status, category=YOGI_CATEGORY),
+        _row(chart_id, ayanamsha_id, build_id, "AVAYOGI", "assigned_graha",
+             None, avayogi_graha, None,
+             AVAYOGI_POINT_CITATION, now, provenance=avayogi_status, category=YOGI_CATEGORY),
+
+        _row(chart_id, ayanamsha_id, build_id, "DUPLICATE_YOGI", "sign",
+             None, SIGNS[yogi_sign_idx], None,
+             DUPLICATE_YOGI_CITATION, now, provenance=duplicate_status, category=YOGI_CATEGORY),
+        _row(chart_id, ayanamsha_id, build_id, "DUPLICATE_YOGI", "assigned_graha",
+             None, duplicate_yogi_graha, None,
+             DUPLICATE_YOGI_CITATION, now, provenance=duplicate_status, category=YOGI_CATEGORY),
+
+        _row(chart_id, ayanamsha_id, build_id, "SAHAYOGI", "sign",
+             None, SIGNS[yogi_sign_idx], None,
+             SAHAYOGI_CITATION, now, provenance=duplicate_status, category=YOGI_CATEGORY),
+        _row(chart_id, ayanamsha_id, build_id, "SAHAYOGI", "assigned_graha",
+             None, duplicate_yogi_graha, None,
+             SAHAYOGI_CITATION, now, provenance=duplicate_status, category=YOGI_CATEGORY),
+    ]
+    return rows
+
+
 # ── DB helpers ────────────────────────────────────────────────────────────────────
 
-def _fact_id(subject: str, key: str, chart_id: str, ayanamsha_id: str, build_id: str) -> str:
-    raw = f"{FACT_CATEGORY}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+def _fact_id(subject: str, key: str, chart_id: str, ayanamsha_id: str, build_id: str,
+             category: str = FACT_CATEGORY) -> str:
+    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
@@ -387,13 +653,13 @@ def _ayanamsha_offset_deg(conn: Any, ayanamsha_id: str) -> Optional[float]:
 # ── row builder ────────────────────────────────────────────────────────────────────
 
 def _row(chart_id, ayanamsha_id, build_id, subject, key, num, text, jsonb,
-         citation, computed_at, provenance="single") -> dict:
+         citation, computed_at, provenance="single", category: str = FACT_CATEGORY) -> dict:
     return {
-        "fact_id": _fact_id(subject, key, chart_id, ayanamsha_id, build_id),
+        "fact_id": _fact_id(subject, key, chart_id, ayanamsha_id, build_id, category),
         "chart_id": chart_id,
         "ayanamsha_id": ayanamsha_id,
         "build_id": build_id,
-        "fact_category": FACT_CATEGORY,
+        "fact_category": category,
         "fact_subject": subject,
         "fact_key": key,
         "fact_value_text": text,
@@ -532,6 +798,11 @@ def build_ga_sensitive_degree_substep(
         return 0
     offset = _ayanamsha_offset_deg(conn, ayanamsha_id)
     rows = build_sensitive_degree_rows(chart_id, build_id, ayanamsha_id, positions, offset)
+    # MC-029 (Śodhana Builder T6): Yogi/Avayogi/Duplicate-Yogi/Sahayogi, under the separate
+    # YOGI_CATEGORY fact_category. Appended into the SAME rows list so the single
+    # replace_prior_chart_facts() call below scopes its delete-then-insert over BOTH
+    # fact_categories present (§N.3 — neither category accretes on rebuild).
+    rows.extend(build_yogi_points_rows(chart_id, ayanamsha_id, build_id, positions, conn))
     if not rows:
         return 0
     replace_prior_chart_facts(conn, rows)

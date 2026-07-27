@@ -519,6 +519,19 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
       type: 'number',
       description: 'Max signals to return (default: 20, max: 100).',
     },
+    domain: {
+      type: 'string',
+      description:
+        'MC-024 (ŚODHANA T4): filter to signals affecting ONE life domain (e.g. "wealth", ' +
+        '"career", "health", "relationship", "spirituality", "character") — matched against ' +
+        'domains_affected_array (case-insensitive). Takes precedence over `domains` if both given.',
+    },
+    domains: {
+      type: 'array',
+      description:
+        'MC-024: filter to signals affecting ANY of these life domains (OR/overlap match ' +
+        'against domains_affected_array, case-insensitive). Ignored if `domain` is also given.',
+    },
   },
 
   llm_hints: {
@@ -537,12 +550,39 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
     const date_to      = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]
     const top_k        = Math.min(Number(args['top_k'] ?? 20), 100)
 
+    // MC-024 (ŚODHANA T4): domain/domains facet. `domain` (singular) wins if both are passed —
+    // same precedence pattern used elsewhere in this codebase (e.g. system > dasha_system).
+    // Normalized to lowercase since domains_affected_array is seeded lowercase
+    // (career/character/health/relationship/spirituality/wealth).
+    const rawDomain  = args['domain'] as string | undefined
+    const rawDomains = args['domains'] as unknown
+    let domainsFilter: string[] | null = null
+    if (rawDomain) {
+      domainsFilter = [rawDomain.toLowerCase()]
+    } else if (Array.isArray(rawDomains) && rawDomains.length > 0) {
+      domainsFilter = rawDomains.map(d => String(d).toLowerCase())
+    }
+
     try {
       // Join activation with signals to compute combined priority.
       // WP-1.5: prior SQL referenced columns that do not exist on kala_activation
       // (activation_strength/window_start/window_end/trigger_type) → every call errored.
       // Real columns: orb_strength (activation strength proxy), activation_start/_end (DATE),
       // signature_class. F-DATE-TZ: activation_start/_end emitted via to_char as 'YYYY-MM-DD'.
+      // MC-024 fix: a "graha dignity per varga: dignity state = neutral" descriptor row is
+      // rarely a genuine priority signal (a neutral dignity is a non-finding, not a strength
+      // or weakness worth surfacing near the top) — down-ranked via a priority_score penalty
+      // multiplier rather than dropped (B.10: never silently drop data), and flagged per-row
+      // (neutral_dignity_downranked) plus summarized in the envelope so a caller can tell a
+      // downranked row apart from one that genuinely scored low.
+      const params: unknown[] = [chart_id, ayanamsha_id, date_from, date_to]
+      let domainClause = ''
+      if (domainsFilter && domainsFilter.length > 0) {
+        params.push(domainsFilter)
+        domainClause = ` AND m.domains_affected_array && $${params.length}::text[]`
+      }
+      params.push(top_k)
+
       const sql = `
         SELECT
           m.signal_id,
@@ -554,7 +594,10 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
           to_char(a.activation_start, 'YYYY-MM-DD') AS window_start,
           to_char(a.activation_end, 'YYYY-MM-DD')   AS window_end,
           a.signature_class AS trigger_type,
-          (m.computed_salience * COALESCE(a.orb_strength, 0.5)) AS priority_score
+          (m.signal_headline_text ILIKE '%dignity%neutral%') AS neutral_dignity_downranked,
+          (m.computed_salience * COALESCE(a.orb_strength, 0.5) *
+            (CASE WHEN m.signal_headline_text ILIKE '%dignity%neutral%' THEN 0.3 ELSE 1.0 END)
+          ) AS priority_score
         FROM bodha_msr_signals m
         JOIN kala_activation a ON m.signal_id = a.signal_id
           AND a.chart_id = m.chart_id
@@ -562,13 +605,15 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
         WHERE m.chart_id = $1
           AND m.ayanamsha_id = $2
           AND a.activation_end >= $3::date
-          AND a.activation_start <= $4::date
+          AND a.activation_start <= $4::date${domainClause}
         ORDER BY priority_score DESC NULLS LAST
-        LIMIT $5
+        LIMIT $${params.length}
       `
 
-      const result = await query(sql, [chart_id, ayanamsha_id, date_from, date_to, top_k])
+      const result = await query(sql, params)
       const signalRefs = (result.rows as Array<{ signal_id?: string }>).map(r => r.signal_id).filter(Boolean) as string[]
+      const downrankedCount = (result.rows as Array<{ neutral_dignity_downranked?: boolean }>)
+        .filter(r => r.neutral_dignity_downranked === true).length
 
       return {
         content: {
@@ -576,9 +621,17 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
           ayanamsha_id,
           date_from,
           date_to,
+          domain_filter: domainsFilter,
           ranked_signals: result.rows,
           signal_count:   result.rows.length,
           signal_id_refs: [...new Set(signalRefs)],
+          neutral_dignity_downranked_count: downrankedCount,
+          ...(downrankedCount > 0
+            ? { neutral_dignity_note: `${downrankedCount} row(s) carry a neutral-dignity descriptor ` +
+                `("graha dignity per varga: dignity state = neutral") and were down-ranked (priority_score ` +
+                `x0.3) rather than treated as a genuine priority signal — see neutral_dignity_downranked ` +
+                `per row.` }
+            : {}),
         },
         is_error: false,
       }

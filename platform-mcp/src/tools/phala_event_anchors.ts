@@ -22,7 +22,9 @@
  *   chart_id: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  *
  * L1 ground-truth:
- *   FORENSIC v8.0 §5.1 DSH.V.023–028 (Vimshottari dasha 2024-2030)
+ *   chart_facts DB table (dasha-period rows DSH.V.023–028, Vimshottari dasha 2024-2030) —
+ *   MC-003 (ŚODHANA T1): FORENSIC v8.0 markdown was deleted (PR #187 Legacy Teardown);
+ *   chart_facts is the live canonical source, not the retired document.
  *   MSR v5.0 SIG.09/SIG.14/SIG.08/SIG.12/SIG.04/SIG.11 (signal ensemble)
  *
  * Wiring: registerPhalaEventAnchorsTool(server) → server.ts during L4 Phala registration.
@@ -297,8 +299,10 @@ export function registerPhalaEventAnchorsTool(server: McpServer, principal: Prin
       '  falsifier  = explicit "If [event] does not occur by [date], this is false" clause\n' +
       '  contributing_dashas   = Vimshottari/Yogini dasha lords active in the window\n' +
       '  contributing_signals  = MSR signal IDs from bodha_signals grounding this anchor\n' +
-      '  source_citation       = L1 FORENSIC + MSR citations (non-null, B.3 compliant)\n\n' +
-      'L1 ground-truth: FORENSIC v8.0 §5.1 DSH.V.023–028 (Vimshottari 2024-2030).\n' +
+      '  source_citation       = L1 chart_facts + MSR citations (non-null, B.3 compliant)\n\n' +
+      // MC-003 (ŚODHANA T1): FORENSIC v8.0 markdown was deleted (PR #187 Legacy Teardown) —
+      // live L1 ground-truth is the chart_facts DB table (dasha-period rows DSH.V.023–028).
+      'L1 ground-truth: chart_facts DB table (dasha-period rows DSH.V.023–028, Vimshottari 2024-2030).\n' +
       'Dasha regime 2026-2030: Mercury MD/Saturn AD → Ketu MD (Ketu/Venus/Sun/Moon/Mars ADs).\n' +
       'BRAHMA-PH-4-1 | phala.anchors contract.',
     InputSchema.shape,

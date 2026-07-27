@@ -81,6 +81,23 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   'domain_completeness',
   'completeness_directive',
   'coverage_map',
+  // — ŚODHANA T3 (MC-005/MC-023 regression check): the deterministic VERDICT layer —
+  // assess_*'s `verdict.clauses[].text` (EL-44 grounded prose sentences) and
+  // judgment_query's top-level `verdict` (verdictBlock + receipt + note, design §28.6) —
+  // is, per §N.6, the densest and most-actionable layer of any of these responses. Before
+  // this fix, `verdict`/`clauses` were NOT immune: they were invisible to
+  // `autoDetectTrimmableSections` (arrays of ≤5 clauses never exceed the length>10
+  // auto-detect threshold) but VISIBLE to `truncateLongStringsInPlace`'s last-resort scalar
+  // walk — which truncated a clause's >120-char prose sentence mid-sentence while the same
+  // clause's `fact_ids` array (short strings) survived untouched, inverting the Serving
+  // Density Principle this file exists to enforce. Immunizing the whole `verdict` subtree
+  // (clauses, sentence_count, fact_ids_cited, template, note, receipt) means it is never
+  // string-truncated AND never auto-detected as a trimmable array site — the same
+  // stronger-than-hardFloor protection already given to `reading` above. Safe to blanket by
+  // key name: no `verdict` object anywhere in this estate carries a >10-row array (verdict
+  // is always a handful of composed sentences/flags, never a raw signal/fact dump — those
+  // live in sibling `verdict_skeleton`/`checklist` keys, which remain fully trimmable).
+  'verdict',
 ])
 
 /** A single trimmable section of a tool's response content. */
@@ -221,15 +238,35 @@ export function applyResponseBudget<T>(
       .map(section => ({ section, arr: section.getArray(content) }))
       .filter((x): x is { section: TrimmableSection<T>; arr: unknown[] } => Array.isArray(x.arr) && x.arr.length > 0)
       .map(x => ({ ...x, size: estimateBytes(x.arr) }))
-      .sort((a, b) => b.size - a.size)
 
-    for (const { section, arr } of ranked) {
-      if (estimateBytes(content) <= maxBytes) break
-      const floor = floorOverride === 'zero' && !section.hardFloor ? 0 : section.minKeep
-      if (arr.length <= floor) continue // nothing left to cut at this tier for this section
-      const kept = shrinkSectionTo(content, section, arr, floor, maxBytes)
-      if (kept < arr.length) {
-        recordTrim(section, arr.length, kept, floorOverride === 'zero')
+    // Trim-order inversion fix (ŚODHANA T3, MC-005/MC-023 regression check): before this
+    // fix, ALL sections were ranked into ONE list by absolute byte size, biggest-first — so
+    // a `hardFloor`-declared dense/confirmed section that simply happened to be the biggest
+    // (e.g. because it just became genuinely populated) could be the FIRST and ONLY section
+    // touched, with the loop `break`ing under-budget before ever reaching smaller, cheaper
+    // `fact_id`/signal-id arrays. `hardFloor` previously only protected a section from PASS
+    // 2's floor-to-0 override — it never protected a section from being picked FIRST. Fact-
+    // id/signal-id arrays and other disposable (non-hardFloor) sections now form the tier
+    // that absorbs every cut FIRST, regardless of size; a hardFloor section is only touched
+    // once every disposable section in the response has already been cut to its own floor
+    // and the response is still over budget. Within each tier, biggest-first still applies
+    // (fewest cuts needed to close the gap) — this only changes tier ORDER, not per-tier
+    // logic, and does not change hardFloor's existing PASS-2 zero-override exemption.
+    const tiers = [
+      ranked.filter(x => !x.section.hardFloor).sort((a, b) => b.size - a.size),
+      ranked.filter(x => x.section.hardFloor).sort((a, b) => b.size - a.size),
+    ]
+
+    tierLoop:
+    for (const tier of tiers) {
+      for (const { section, arr } of tier) {
+        if (estimateBytes(content) <= maxBytes) break tierLoop
+        const floor = floorOverride === 'zero' && !section.hardFloor ? 0 : section.minKeep
+        if (arr.length <= floor) continue // nothing left to cut at this tier for this section
+        const kept = shrinkSectionTo(content, section, arr, floor, maxBytes)
+        if (kept < arr.length) {
+          recordTrim(section, arr.length, kept, floorOverride === 'zero')
+        }
       }
     }
   }

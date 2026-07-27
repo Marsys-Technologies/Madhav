@@ -30,7 +30,11 @@ Overall readiness score:
   0.85-1.0:  HIGHLY FAVORABLE — rare multi-layer convergence; act decisively
 
 Source: All PH-4-x-V2 assets; l3_convergence.py; l3_obstruction.py;
-        FORENSIC v8.0 §5.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md).
+        chart_facts DB table (L1, built by the ga_* writers). MC-003 (SODHANA T1,
+        2026-07-27): FORENSIC v8.0 markdown was deleted in PR #187 Legacy Teardown;
+        chart_facts is the live canonical source, not the retired document (a cold
+        archived benchmark copy is retained at
+        99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md for audit reference only).
 Authors: Silpī (WS-2 l4-phala session)
 Version: 1.0 — 2026-06-05
 BRAHMA-PH-4-5-V2
@@ -59,10 +63,15 @@ router = APIRouter()
 NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 DEFAULT_HORIZON_DAYS = 90
 
+# MC-003 (SODHANA T1): FORENSIC v8.0 markdown was deleted in PR #187 Legacy Teardown —
+# the live L1 ground-truth source is the chart_facts DB table (built by the L1 ga_*
+# writers), not the retired document. A cold archived benchmark copy is retained at
+# 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md for audit reference only.
 SOURCE_CITATION = (
     "PH-4-1-V2 (phala.anchors); PH-4-2-V2 (phala.mitigation); "
     "PH-4-4-V2 (phala.muhurta); l3_convergence.py; l3_obstruction.py; "
-    "FORENSIC v8.0 §5.1 §22 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)"
+    "chart_facts DB table (L1 ga_* writers; FORENSIC v8.0 markdown retired PR #187 — "
+    "archived copy: 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md, audit-only)"
 )
 
 # ── L3 data inline (convergence + obstruction windows for upcoming 90-180 days) ──
@@ -377,7 +386,11 @@ def phala_outlook(
             ],
             "l3_kala_integrated": True,
             "l2_signal_basis": "MSR SIG.* (via anchor signal_basis fields)",
-            "l1_ground_truth": "FORENSIC v8.0 (chart_facts via forensic_render; md archived 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md)",
+            # MC-003 (SODHANA T1, 2026-07-27): FORENSIC v8.0 markdown was deleted in
+            # PR #187 Legacy Teardown; chart_facts is the live canonical L1 source.
+            "l1_ground_truth": "chart_facts DB table (L1, built by the ga_* writers). "
+            "FORENSIC v8.0 markdown retired PR #187 Legacy Teardown — cold archived "
+            "benchmark copy: 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md (audit-only, not authoritative).",
         },
 
         "provenance_envelope": {

@@ -221,7 +221,16 @@ async function generateChartSnapshot(chartId: string, userUid: string): Promise<
   lines.push(`# MARSYS-JIS Chart Snapshot (auto-generated, last refresh: ${now})`)
   lines.push('')
   lines.push('*All L1 values sourced live from chart_facts DB table. No values are hardcoded.*')
-  lines.push('*Source artifact: FORENSIC_ASTROLOGICAL_DATA_v8_0.md (L1) as seeded into chart_facts.*')
+  // MC-003 (ŚODHANA T1): FORENSIC_ASTROLOGICAL_DATA_v8_0.md was deleted in PR #187
+  // Legacy Teardown — it is not a live artifact any served response may cite as its
+  // source. The live canonical source is the chart_facts DB table itself, built by the
+  // L1 ga_* writers (see CLAUDE.md §B); a cold archived benchmark copy (informational
+  // only, not authoritative) lives at 99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md.
+  lines.push('*L1 provenance: chart_facts DB table (built by the L1 ga_* writers). ' +
+    'The historical FORENSIC v8.0 markdown this table was originally seeded from was retired ' +
+    'in PR #187 Legacy Teardown; a cold archived benchmark copy is retained at ' +
+    '99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md for audit reference only — ' +
+    'it is not the live source.*')
   lines.push('')
 
   // Lagna — from DB

@@ -687,11 +687,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     principal)
 
   // ga_sensitive_degree → ganita_sensitive_degrees_get
+  // MC-029 (Śodhana Builder T6 "YOGI-BINDU"): also serves the Yogi/Avayogi/Duplicate-Yogi/
+  // Sahayogi Tajika construct (fact_category=sensitive_point_yogi) — same tool, one more
+  // served category, distinguishable via the fact_category field on each returned row.
   regAlias(server, 'ganita_sensitive_degrees_get',
-    'L1 sensitive-degree checks for a chart (gaṇḍānta/sandhi/mṛtyu-bhāga/pushkara etc.).',
+    'L1 sensitive-degree checks for a chart (gaṇḍānta/sandhi/mṛtyu-bhāga/pushkara etc.), ' +
+    'plus the Yogi/Avayogi/Duplicate-Yogi/Sahayogi Tajika construct (subjects YOGI/AVAYOGI/' +
+    'DUPLICATE_YOGI/SAHAYOGI — Yogi Sphuta = Sun+Moon+93°20\', its nakshatra lord = Yogi ' +
+    'Graha; Avayogi = Yogi+186°40\', its nakshatra lord = Avayogi Graha; Duplicate-Yogi/' +
+    'Sahayogi = the rasi lord of the Yogi Sphuta\'s own sign).',
     'marsys://tool/L1/get_sensitive_degrees',
     {
-      subject:    z.string().optional().describe('Filter by fact_subject (graha code, e.g. SUN, VEN).'),
+      subject:    z.string().optional().describe('Filter by fact_subject (graha code e.g. SUN, VEN, or a Yogi-system subject YOGI/AVAYOGI/DUPLICATE_YOGI/SAHAYOGI).'),
       check_type: z.string().optional().describe('Filter by fact_key (specific check).'),
     }, principal)
 
@@ -771,15 +778,28 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }, principal)
 
   // ka_tulana → kala_priority_ranking_get (registry cap marsys://tool/L3/call_priority_ranking)
+  // MC-024 (ŚODHANA T4): added domain/domains filter (previously undeclared here — silently
+  // dropped at the zod boundary even though the capability now honors it) and disclosure of
+  // the neutral-dignity down-rank the underlying capability applies (a "dignity state =
+  // neutral" descriptor row is rarely a genuine priority signal — down-ranked, not dropped).
   regAlias(server, 'kala_priority_ranking_get',
     'L3 priority-ranked signals for a chart in a period (ka_tulana service) — ranks active ' +
     'signals by salience × activation_strength × convergence. Which signals deserve attention ' +
-    'in a time window.',
+    'in a time window. Neutral-dignity descriptor rows ("dignity state = neutral") are down-' +
+    'ranked (priority_score x0.3, flagged via neutral_dignity_downranked per row) rather than ' +
+    'treated as genuine priority findings — see neutral_dignity_downranked_count. Filter by ' +
+    'domain/domains (career/character/health/relationship/spirituality/wealth) to scope to a ' +
+    'life domain.',
     'marsys://tool/L3/call_priority_ranking',
     {
       date_from: z.string().optional().describe('Start of evaluation period (YYYY-MM-DD).'),
       date_to:   z.string().optional().describe('End of evaluation period (YYYY-MM-DD).'),
       top_k:     z.number().int().min(1).max(100).optional().describe('Max signals (default 20).'),
+      domain:    z.string().optional().describe(
+        'Filter to ONE life domain (e.g. "wealth", "career", "health", "relationship", ' +
+        '"spirituality", "character"), matched case-insensitively. Takes precedence over `domains`.'),
+      domains:   z.array(z.string()).optional().describe(
+        'Filter to ANY of these life domains (OR/overlap match), case-insensitive. Ignored if `domain` is also given.'),
     }, principal)
 
   // bg_sign_medical → ref_sign_medical_get (global reference)

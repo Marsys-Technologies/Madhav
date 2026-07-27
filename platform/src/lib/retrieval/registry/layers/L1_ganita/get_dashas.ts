@@ -527,10 +527,36 @@ export const getDashasCapability: CapabilityDescriptor = {
         }
       }
 
+      // MC-021/024 (ŚODHANA T4): the envelope never told a caller how DEEP this chart's dasha
+      // data actually goes — level<=3 was the silent default cap, and nothing disclosed that
+      // level 4 (Sūkṣma) exists and is requestable (`level=4` or `all_levels=true`), or that
+      // level 5 (Prāṇa) is NOT built. Computed independently of whatever level/all_levels facet
+      // THIS call applied (scoped only to chart_id + the same system/ayanamsha filter, so it
+      // answers "how deep does this chart go", not "how deep did this particular page go").
+      let levelsAvailable: number | null = null
+      try {
+        const lvlParams: unknown[] = [chartId]
+        let lvlSql = `SELECT MAX(level_n)::int AS max_level FROM chart_dashas WHERE chart_id = $1`
+        if (args.ayanamsha_id) {
+          lvlSql += ` AND ayanamsha_id = $${lvlParams.length + 1}`
+          lvlParams.push(args.ayanamsha_id as string)
+        }
+        if (systemApplied) {
+          lvlSql += ` AND system_id = $${lvlParams.length + 1}`
+          lvlParams.push(systemApplied)
+        }
+        const lvlResult = await query<{ max_level: number | null }>(lvlSql, lvlParams)
+        levelsAvailable = lvlResult.rows[0]?.max_level ?? null
+      } catch {
+        // Non-blocking meta field — a failure here must not break the base response.
+        levelsAvailable = null
+      }
+
       return {
         content: {
           chart_id: chartId,
           source_table: 'chart_dashas',
+          levels_available: levelsAvailable,
           facets_applied: {
             system: systemApplied ?? 'all',
             level: levelApplied,
