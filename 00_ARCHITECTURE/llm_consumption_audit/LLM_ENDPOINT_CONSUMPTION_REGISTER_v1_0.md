@@ -1,7 +1,7 @@
 ---
 canonical_id: LLM_ENDPOINT_CONSUMPTION_REGISTER
 version: 1.0
-status: ADDRESSED-v1.1
+status: ADDRESSED-v1.2
 opened: 2026-07-27
 closed: 2026-07-27
 owner: LLM consuming endpoint (Claude, via marsys-jis-direct MCP)
@@ -39,6 +39,31 @@ changelog:
     MC-015 and MC-029, moved from FAILED-REOPENED now that both are closed), 3
     VERIFIED-NO-DEFECT, 10 PARKED-HONEST, 0 FAILED-REOPENED = 42. This changelog entry is
     append-only; no MC item's original text below was altered.
+  - ADDRESSED-v1.2 (2026-07-27): SAMĀPANA program-wrap-up closed the three genuine threads
+    named in `briefs/samapana/SAMAPANA_BRIEF_v1_0.md` — full disposition + evidence in
+    `briefs/samapana/SAMAPANA_REPORT_v1_0.md`. Track A (W7 flagship internal-route defect):
+    root-caused and VERIFIED-FIXED at the serving layer (a doubly-wrapped capability-response
+    envelope in `fetchReadingSupplements`, refuting the standing routing/auth hypothesis;
+    PR #823) — 12/13 wealth families now serve real substance (was 4/13); sealed n=3 harness
+    median moved 9/13 → 11/13, still short of the harness's own ≥12/13 bar, so the flagship
+    item itself is disposed PARKED-HONEST with `special_lagnas` named as the precise residual
+    (served with real substance at the data layer, but not consistently surfaced into a naive
+    consumer's final prose — 3/3 harness runs). Track B (verbosity/deep-dive contract):
+    VERIFIED-FIXED — `'exhaustive'` verbosity tier, `reading_depth:'deep_dive'` contract, and
+    a live-firing hard-guard against any lossy summary form under a deep dive, plus a genuine
+    dead-parameter fix (`bodha_chart_digest_get`'s `mode` never reached the underlying
+    `response_format` key before this fix) (PR #824). Track C (hygiene): VERIFIED-FIXED — the
+    Bodha-rebuild-park authorization question closed as native-verified (append-only annotation
+    of the real Decision-2 location, correcting a stale cross-reference in the brief itself),
+    and the `unresolved_constituent_facts_count` GA.1-class stored-vs-live disagreement
+    eliminated by deriving it live at serve time (PR #822). All three independently confirmed
+    by an Opus Verifier against live production (not builder self-report), including a real
+    stale-traffic-pin incident this campaign found and corrected mid-close (production had
+    silently been serving a stale revision through the first two merges; corrected via
+    canary-then-cutover to `--to-latest`, replacing a by-name pin, per the standing traffic-pin
+    governance rail). This changelog entry is append-only; no prior item's original text above
+    was altered. The program now has no open campaign — only the two `SAMAPANA_BRIEF_v1_0.md`
+    §4 tickets remain, each independently launchable when the native chooses.
 ---
 
 # LLM Endpoint Consumption Register — MARSYS-JIS via MCP
