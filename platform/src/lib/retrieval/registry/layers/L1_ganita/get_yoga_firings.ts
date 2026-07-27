@@ -10,11 +10,85 @@
  *
  * §N.5 note: each row's constituent_fact_ids resolve back to chart_facts.fact_id;
  * this tool serves the stored firing rows verbatim — it does not re-derive them.
+ *
+ * MC-016 (ŚODHANA T8): the top-level `constituent_planets` field is ONE FLAT array
+ * mixing structurally distinct planet roles (e.g. for neecha_bhanga_raja_yoga, the
+ * DEBILITATED grahas and the RESCUER grahas that cancel the debility) — the split
+ * is already present per-planet inside `grounds_jsonb` (each entry's `planet` +
+ * `debilitation_sign` vs its fired grounds' `detail.supporting_planets`), but a
+ * fast reader (LLM or human) sees the flat array first and can miscast a rescuer
+ * as a debilitated subject (confirmed twice independently — e.g. Mars in Libra,
+ * which is neutral, mis-read as "debilitated" because it sat in the flat array
+ * alongside Venus/Saturn, which ARE debilitated in this firing). `deriveRoleSplit`
+ * below derives labeled role fields server-side from `grounds_jsonb`:
+ *   - neecha_bhanga_raja_yoga: `debilitated_planets` / `rescuer_planets`.
+ *   - any other yoga family carrying the same per-planet grounds_jsonb shape:
+ *     `principal_planets` (the planet each ground-block is keyed on) /
+ *     `supporting_planets` (union of fired grounds' `detail.supporting_planets`).
+ * `constituent_planets` is KEPT for back-compat but is now documented as
+ * DEPRECATED for role-sensitive reads — see `constituent_planets_deprecated_note`
+ * on each row and the tool description below.
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
 const MAX_LIMIT = 50
+
+const CONSTITUENT_PLANETS_DEPRECATED_NOTE =
+  'DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of ' +
+  'every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it ' +
+  'mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role ' +
+  'fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when ' +
+  'present — see constituent_planets_role_split_available.'
+
+interface GroundCheckDetail { supporting_planets?: string[] | null }
+interface GroundCheck { fired?: boolean; detail?: GroundCheckDetail | null }
+interface PlanetGroundBlock { planet?: string; grounds?: GroundCheck[]; debilitation_sign?: string }
+
+/**
+ * Derive a (principal, supporting) planet-role split from a firing row's
+ * grounds_jsonb, generically — not hardcoded to NBRY's rule shape. Each entry in
+ * grounds_jsonb is keyed on one "principal" planet (the subject of that ground
+ * block — for NBRY, the debilitated planet) and carries a `grounds` array of
+ * per-rule checks; a FIRED rule's `detail.supporting_planets` names the planet(s)
+ * whose placement satisfies that rule (for NBRY, the rescuer). Returns null when
+ * grounds_jsonb is absent/empty/malformed — callers must not assume a split
+ * exists for every yoga family (most do not carry this Lane-3 data yet).
+ */
+function deriveRoleSplit(groundsJsonb: unknown): { principal_planets: string[]; supporting_planets: string[] } | null {
+  if (!Array.isArray(groundsJsonb) || groundsJsonb.length === 0) return null
+  const principals = new Set<string>()
+  const supporters = new Set<string>()
+  for (const entry of groundsJsonb as PlanetGroundBlock[]) {
+    if (entry?.planet) principals.add(entry.planet)
+    for (const g of entry?.grounds ?? []) {
+      if (g?.fired && g.detail?.supporting_planets) {
+        for (const sp of g.detail.supporting_planets) if (sp) supporters.add(sp)
+      }
+    }
+  }
+  if (principals.size === 0) return null
+  // A planet cannot be its own rescuer/supporter — exclude self-references defensively.
+  for (const p of principals) supporters.delete(p)
+  return { principal_planets: [...principals], supporting_planets: [...supporters] }
+}
+
+/** Attach labeled role-split fields (MC-016) to one served firing row, in place semantics (returns a new object). */
+function withRoleSplit(row: Record<string, unknown>): Record<string, unknown> {
+  const split = deriveRoleSplit(row['grounds_jsonb'])
+  if (!split) {
+    return { ...row, constituent_planets_role_split_available: false, constituent_planets_deprecated_note: CONSTITUENT_PLANETS_DEPRECATED_NOTE }
+  }
+  const isNbry = row['yoga_canonical_id'] === 'neecha_bhanga_raja_yoga'
+  return {
+    ...row,
+    ...(isNbry
+      ? { debilitated_planets: split.principal_planets, rescuer_planets: split.supporting_planets }
+      : { principal_planets: split.principal_planets, supporting_planets: split.supporting_planets }),
+    constituent_planets_role_split_available: true,
+    constituent_planets_deprecated_note: CONSTITUENT_PLANETS_DEPRECATED_NOTE,
+  }
+}
 
 export const getYogaFiringsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L1/get_yoga_firings',
@@ -27,7 +101,14 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     'Each row: yoga_canonical_id, fired (bool), strength + strength_label,',
     'partial_formation_pct + is_partial, bhanga_active + bhanga_rule_fired (cancellation),',
     'constituent_planets/houses/fact_ids, family_ids, activation_dasha_periods, derivation.',
-    'Filters: fired (default true), ayanamsha_id, bhanga_active, is_partial,',
+    'MC-016: constituent_planets is a flat, role-blind union — DEPRECATED for role-sensitive',
+    'reads (constituent_planets_deprecated_note explains why). When grounds_jsonb is present,',
+    'each row also carries labeled role-split fields derived server-side: for',
+    'neecha_bhanga_raja_yoga specifically, debilitated_planets (the debilitated grahas) vs',
+    'rescuer_planets (the grahas whose placement cancels the debility); for any other yoga',
+    'family carrying the same per-planet grounds_jsonb shape, principal_planets vs',
+    'supporting_planets. constituent_planets_role_split_available (bool) discloses whether the',
+    'split could be derived for that row. Filters: fired (default true), ayanamsha_id, bhanga_active, is_partial,',
     'yoga_canonical_id. Weak-tail and cancelled firings are included (strength is a column,',
     'not a gate). Includes grounds_jsonb (Lane 3 CR-59 grounds-checked-per-verdict ledger) when',
     'present. Default fired=true — a catalog-only (not-fired) row is NEVER served as a finding',
@@ -126,10 +207,17 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
         }
       }
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      // MC-016: attach labeled role-split fields (debilitated_planets/rescuer_planets for
+      // neecha_bhanga_raja_yoga; principal_planets/supporting_planets generically) derived
+      // from grounds_jsonb, alongside the retained (now-deprecated-for-role-reads) flat
+      // constituent_planets array. No-op when grounds_jsonb isn't in this environment/row.
+      const rows = groundsIncluded
+        ? (rowsRes.rows as Array<Record<string, unknown>>).map(withRoleSplit)
+        : rowsRes.rows
       return {
         content: {
           chart_id,
-          rows: rowsRes.rows,
+          rows,
           count: rowsRes.rows.length,
           total_matching,
           more_available: total_matching > rowsRes.rows.length,
