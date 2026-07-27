@@ -236,6 +236,28 @@ def _fetch_shadbala(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
     return out
 
 
+def _weakest_graha_by_shadbala(shadbala: dict[str, float]) -> str | None:
+    """§N.5 single-authority weakest graha (MC-025b reconciliation).
+
+    The ONE authoritative "weakest graha" is the graha with the MINIMUM L1
+    graha_shadbala_total (rupa) — read straight from L1, never recomputed from a
+    composite. bo_upaya's `weakest_rank_in_chart` is a COMPOSITE remedy-priority
+    rank (resonance_score DESC: shadbala + bhava_bala + dispositor + cdlm + cgm +
+    dasha), a DIFFERENT question, and must not be conflated with this shadbala
+    minimum. Before this fix bo_upaya's rank-1 (Mercury, composite) and
+    bodha_chart_digest (Venus, shadbala) disagreed on "the single most
+    remedy-relevant fact". Both must now read THIS function's answer for the
+    shadbala-weakest designation. For chart 482012f1 → Venus (VEN, 4.64 rupa).
+
+    NB: `shadbala` here is the normalized dict from `_fetch_shadbala` (total/390);
+    the argmin is invariant under that monotonic normalization, so the minimum
+    graha is identical to the minimum of the raw rupa totals.
+    """
+    if not shadbala:
+        return None
+    return min(shadbala.items(), key=lambda kv: kv[1])[0]
+
+
 def _fetch_bhava_bala(conn: Any, chart_id: str, aya: str) -> dict[int, float]:
     """house → normalized bhava bala strength (achieved/required ratio).
 
@@ -1042,6 +1064,9 @@ def _build_resonances_and_prescriptions(
     )
 
     shadbala      = _fetch_shadbala(conn, chart_id, aya)
+    # MC-025b (§N.5): the single L1-authoritative weakest graha by shadbala.
+    # Both bo_upaya and bo_chart_digest must read this — never recompute their own.
+    weakest_graha_shadbala = _weakest_graha_by_shadbala(shadbala)
     bhava_bala    = _fetch_bhava_bala(conn, chart_id, aya)
     special_states = _fetch_special_states(conn, chart_id, aya)
     placements    = _fetch_graha_house_placements(conn, chart_id, aya)
@@ -1190,6 +1215,19 @@ def _build_resonances_and_prescriptions(
                 "dispositor_chain_weakness_used": round(1.0 - dispositor_strength.get(graha, 0.5), 4),
                 "dasha_proximity_activation_score_used": round(dasha_proximity.get(graha, 0.0), 4),
                 "cgm_motifs_weakest_node_used": round(cgm_motif_weakness.get(graha, 0.0), 4),
+                # MC-025b (§N.5): L1-authoritative weakest-graha designation, distinct from
+                # the COMPOSITE weakest_rank_in_chart. Both bo_upaya and bo_chart_digest read
+                # this single L1 source (min graha_shadbala_total.rupa) — for 482012f1 → VEN.
+                "weakest_graha_by_shadbala_l1": weakest_graha_shadbala,
+                "is_weakest_by_shadbala_l1": (graha == weakest_graha_shadbala),
+                "weakest_graha_authority_note": (
+                    "weakest_graha_by_shadbala_l1 = min(L1 graha_shadbala_total.rupa) — the §N.5 "
+                    "single source of truth for 'weakest graha'. weakest_rank_in_chart is a SEPARATE "
+                    "composite remedy-priority rank; do not read it as the shadbala-weakest graha."
+                ),
+                # T7 (UPĀYA-ŚODHANA, PR #809): vargottama_absence_score is now wired from the
+                # fixed special-state fetch (was hardcoded 0.5 for everyone). Preserved as-is —
+                # independent of the weakest-graha fields above (different source: is_vargottama).
                 "vargottama_absence_score": vargottama_absence,
                 "cancellation_burden": 0.0,
                 "cdlm_weakest_constituent_count": 0.0,

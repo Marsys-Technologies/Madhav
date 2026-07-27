@@ -12,6 +12,7 @@
  */
 
 import { computeCacheKey, cacheLookup, cacheStore } from './cache.js'
+import { computeBundleHealth, type BundleStatus } from './bundle_status.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -80,7 +81,10 @@ export type BundleEntry = BundleEntrySuccess | BundleEntryError
 // ── Bundle envelope ────────────────────────────────────────────────────────────
 
 export interface HolisticBundleEnvelope {
-  ok: true
+  // MC-002: `ok` is DERIVED from `status` (never a bare literal) — structurally
+  // impossible to be true when a majority of sub-tools errored. See bundle_status.ts.
+  ok: boolean
+  status: BundleStatus
   bundle_name: 'holistic_bundle'
   served_from_cache: boolean
   bundle_entries: BundleEntry[]
@@ -351,8 +355,12 @@ export async function executeHolisticBundle(
       )
     : bundle_entries
 
+  // MC-002: top-level health from errored/total ratio; `ok` derived from `status`.
+  const health = computeBundleHealth(sub_tools_errored.length, bundle_entries.length)
+
   const envelope: HolisticBundleEnvelope = {
-    ok: true,
+    ok: health.ok,
+    status: health.status,
     bundle_name: 'holistic_bundle',
     served_from_cache: false,
     bundle_entries: finalEntries,

@@ -37,6 +37,7 @@ import { z } from 'zod'
 import { callPlatformBundle } from '../../client.js'
 import type { Principal, McpEnvelopeError } from '../../types.js'
 import { finalizeMcpBudget, type TrimmableSection } from '../../lib/response_budget.js'
+import { computeBundleHealth, type BundleStatus } from '../../bundles/bundle_status.js'
 
 // R5.2 A2 (punch #3, estate-wide budget sweep): this tool's default call measured 544KB
 // on the native chart (worst offender in the estate) — envelope.bundle_entries carries the
@@ -98,19 +99,21 @@ export function collectBundleSubErrors(result: Record<string, unknown>): BundleS
     const status = String(entry['status'] ?? entry['grounding_status'] ?? '').toUpperCase()
     const failed =
       entry['ok'] === false ||
+      entry['errored'] === true ||   // MC-002: holistic/multi_school entries mark failure as `errored:true`
       entry['is_error'] === true ||
       entry['isError'] === true ||
       entry['error'] != null ||
       status === 'ERROR' || status === 'FAILED' || status === 'FAIL'
     if (!failed) continue
     const subsystem = String(
-      entry['subsystem'] ?? entry['name'] ?? entry['source'] ?? entry['key'] ?? entry['category'] ?? 'unknown',
+      entry['sub_tool'] ?? entry['subsystem'] ?? entry['name'] ?? entry['source'] ?? entry['key'] ?? entry['category'] ?? 'unknown',
     )
     const errObj = entry['error']
     const error =
       typeof errObj === 'string' ? errObj
       : errObj && typeof errObj === 'object' && typeof (errObj as Record<string, unknown>)['message'] === 'string'
         ? (errObj as Record<string, unknown>)['message'] as string
+        : typeof entry['error_class'] === 'string' ? `sub-tool errored (${entry['error_class'] as string})`
         : `sub-tool reported status=${status || 'error'}`
     out.push({ subsystem, error })
   }
@@ -180,13 +183,34 @@ export function registerHolisticBundleRetrievalTool(server: McpServer, getPrinci
         // never hides a missing subsystem behind an ok envelope.
         const subErrors = collectBundleSubErrors(resultObj)
 
+        // MC-002: compute an honest top-level bundle health status from the
+        // errored/total ratio and surface it as `status` on the served envelope.
+        // Prefer the inner bundle envelope's own `status` if the platform path
+        // already stamped one (bundle_adapters); otherwise derive it here so the
+        // tool is authoritative regardless of upstream plumbing.
+        const nestedForCount = resultObj['envelope'] as Record<string, unknown> | undefined
+        const entriesArr =
+          (nestedForCount && Array.isArray(nestedForCount['bundle_entries']) ? nestedForCount['bundle_entries'] : undefined) ??
+          (Array.isArray(resultObj['bundle_entries']) ? resultObj['bundle_entries'] : undefined) ??
+          []
+        const upstreamStatus = (nestedForCount?.['status'] ?? resultObj['status']) as BundleStatus | undefined
+        const bundleHealth = ['ok', 'partial', 'degraded'].includes(String(upstreamStatus))
+          ? { status: upstreamStatus as BundleStatus, ok: upstreamStatus !== 'degraded' }
+          : computeBundleHealth(subErrors.length, (entriesArr as unknown[]).length)
+        resultObj['status'] = bundleHealth.status
+        resultObj['bundle_status'] = bundleHealth.status  // stable alias (status is also used for PARTIAL_ERROR legacy string)
+        resultObj['ok'] = bundleHealth.ok
+
         // W3-L5 (budget unification, W-8): the sub_errors annotations below are now written
         // BEFORE the budget pass runs (previously they were appended AFTER — an un-measured
         // attachment, the exact gap finalizeMcpBudget's self-verifying re-measurement exists
         // to close) so the final trim decision accounts for the true full content, not a
         // pre-annotation snapshot of it.
         if (subErrors.length > 0) {
-          resultObj['status'] = 'PARTIAL_ERROR'
+          // MC-002: `status` now carries the machine-readable health enum
+          // (ok|partial|degraded) set above — do NOT clobber it with the legacy
+          // 'PARTIAL_ERROR' string. Keep a separate legacy flag for old consumers.
+          resultObj['partial_error'] = true
           resultObj['b11_floor_passed'] = false
           resultObj['sub_errors'] = subErrors
           resultObj['sub_errors_note'] =

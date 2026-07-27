@@ -23,6 +23,7 @@
 import { createHash } from 'crypto'
 import { getMcpSurfaceSpec } from '@/lib/retrieval/maro'
 import type { ModelFamily } from '@/lib/retrieval/maro'
+import { computeBundleHealth } from './bundle_status'
 
 // ── Response format type ──────────────────────────────────────────────────────
 
@@ -386,8 +387,12 @@ export async function executeHolisticBundle(
       }
     : undefined
 
+  // MC-002: top-level health from errored/total ratio; `ok` derived from `status`.
+  const health = computeBundleHealth(sub_tools_errored.length, bundle_entries.length)
+
   const envelope = {
-    ok: true,
+    ok: health.ok,
+    status: health.status,
     bundle_name: 'holistic_bundle',
     served_from_cache: false,
     // R4 metadata in envelope
@@ -501,8 +506,12 @@ export async function executeMultiSchoolBundle(
       }
     : undefined
 
+  // MC-002: top-level health from errored/total ratio; `ok` derived from `status`.
+  const health = computeBundleHealth(sub_tools_errored.length, entries.length)
+
   const envelope = {
-    ok: true,
+    ok: health.ok,
+    status: health.status,
     bundle_name: 'multi_school_bundle',
     served_from_cache: false,
     claim: params.claim,
