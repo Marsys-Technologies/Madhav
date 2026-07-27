@@ -157,3 +157,163 @@ def test_build_rows_emit_all_facets_and_cite():
     for r in rows:
         assert r["fact_category"] == "sensitive_degree_check"
         assert r["citation_human"]
+
+
+# ── MC-029 (Śodhana Builder T6 "YOGI-BINDU"): Yogi/Avayogi/Duplicate-Yogi/Sahayogi ────
+# FORENSIC anchor: chart 482012f1 (Abhisek), ayanamsha=lahiri_chitrapaksha. Sun/Moon
+# sidereal longitudes below are the LIVE chart_facts values for that (chart, ayanamsha)
+# pair (confirmed via direct DB read this session) — NOT invented. Expected result,
+# independently verified by the native before this pass:
+#   Yogi point ~352.35 deg -> Revati -> Yogi Graha = Mercury
+#   Avayogi point ~179.02 deg -> Chitra -> Avayogi Graha = Mars
+_NATIVE_SUN_LONG = 291.962617284992
+_NATIVE_MOON_LONG = 327.055230133129
+
+
+def test_yogi_point_two_pass_matches_forensic_expectation():
+    yogi_deg, div_arcsec, ok = sut._yogi_point_two_pass(_NATIVE_SUN_LONG, _NATIVE_MOON_LONG)
+    assert ok is True
+    assert div_arcsec <= 1.0
+    assert abs(yogi_deg - 352.3511807514543) < 1e-6
+
+    nak_name, nak_lord, sign_idx = sut._yogi_nakshatra_of(yogi_deg, sut._YOGI_FALLBACK_NAK_LORDS)
+    assert nak_name == "Revati"
+    assert nak_lord == "Mercury"
+    assert sut.SIGNS[sign_idx] == "Pisces"
+
+
+def test_avayogi_point_two_pass_matches_forensic_expectation():
+    yogi_deg, _, _ = sut._yogi_point_two_pass(_NATIVE_SUN_LONG, _NATIVE_MOON_LONG)
+    avayogi_deg, div_arcsec, ok = sut._avayogi_point_two_pass(yogi_deg)
+    assert ok is True
+    assert div_arcsec <= 1.0
+
+    nak_name, nak_lord, sign_idx = sut._yogi_nakshatra_of(avayogi_deg, sut._YOGI_FALLBACK_NAK_LORDS)
+    assert nak_name == "Chitra"
+    assert nak_lord == "Mars"
+    assert sut.SIGNS[sign_idx] == "Virgo"
+
+
+def test_duplicate_yogi_and_sahayogi_are_the_sign_lord_of_yogi_rasi():
+    yogi_deg, _, _ = sut._yogi_point_two_pass(_NATIVE_SUN_LONG, _NATIVE_MOON_LONG)
+    _, _, sign_idx = sut._yogi_nakshatra_of(yogi_deg, sut._YOGI_FALLBACK_NAK_LORDS)
+    assert sut.SIGNS[sign_idx] == "Pisces"
+    assert sut._YOGI_FALLBACK_SIGN_LORDS[sign_idx] == "Jupiter"
+
+
+class _FakeYogiCursor:
+    """Mimics psycopg's cursor for reference_signs / reference_nakshatra reads."""
+    def __init__(self, rows):
+        self._rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        self._sql = sql
+
+    def fetchall(self):
+        return self._rows
+
+
+class _FakeYogiConn:
+    """Routes SELECT lord FROM reference_signs / vimshottari_lord FROM reference_nakshatra
+    to DB-realistic fixture rows (mirrors the live values read from Postgres this session)."""
+    _SIGN_ROWS = [
+        ("mars",), ("venus",), ("mercury",), ("moon",), ("sun",), ("mercury",),
+        ("venus",), ("mars",), ("jupiter",), ("saturn",), ("saturn",), ("jupiter",),
+    ]
+    _NAK_ROWS = [
+        ("ketu",), ("venus",), ("sun",), ("moon",), ("mars",), ("rahu",), ("jupiter",),
+        ("saturn",), ("mercury",), ("ketu",), ("venus",), ("sun",), ("moon",), ("mars",),
+        ("rahu",), ("jupiter",), ("saturn",), ("mercury",), ("ketu",), ("venus",), ("sun",),
+        ("moon",), ("mars",), ("rahu",), ("jupiter",), ("saturn",), ("mercury",),
+    ]
+
+    def cursor(self, *a, **k):
+        # Distinguish by which query is about to run isn't possible without SQL sniffing
+        # in this minimal fake, so return whichever fixture the caller's SQL implies —
+        # ga_sensitive_degree_writer always queries signs before nakshatras in each of
+        # _load_yogi_sign_lords / _load_yogi_nakshatra_lords (separate calls), so a
+        # call-order-aware cursor is unnecessary: each function opens its own cursor and
+        # immediately executes its own single SELECT, so we sniff the SQL text instead.
+        return _SniffingCursor(self._SIGN_ROWS, self._NAK_ROWS)
+
+
+class _SniffingCursor(_FakeYogiCursor):
+    def __init__(self, sign_rows, nak_rows):
+        super().__init__(None)
+        self._sign_rows = sign_rows
+        self._nak_rows = nak_rows
+
+    def execute(self, sql, params=None):
+        self._rows = self._nak_rows if "reference_nakshatra" in sql else self._sign_rows
+
+
+def test_load_yogi_sign_lords_from_l0_reference_signs():
+    lords = sut._load_yogi_sign_lords(_FakeYogiConn())
+    assert lords == sut._YOGI_FALLBACK_SIGN_LORDS  # DB fixture matches classical fallback
+
+
+def test_load_yogi_nakshatra_lords_from_l0_reference_nakshatra():
+    lords = sut._load_yogi_nakshatra_lords(_FakeYogiConn())
+    assert lords == sut._YOGI_FALLBACK_NAK_LORDS  # DB fixture matches classical fallback
+
+
+class _BrokenConn:
+    """Simulates an unreachable L0 reference table — every function must fall back to
+    the classical constant tables rather than raising or fabricating a divergent value."""
+    def cursor(self, *a, **k):
+        raise RuntimeError("no DB in this test")
+
+
+def test_yogi_lord_loaders_fall_back_when_db_unreachable():
+    assert sut._load_yogi_sign_lords(_BrokenConn()) == sut._YOGI_FALLBACK_SIGN_LORDS
+    assert sut._load_yogi_nakshatra_lords(_BrokenConn()) == sut._YOGI_FALLBACK_NAK_LORDS
+
+
+def test_build_yogi_points_rows_full_native_chart():
+    positions = {
+        "Sun":  {"longitude_sidereal": _NATIVE_SUN_LONG},
+        "Moon": {"longitude_sidereal": _NATIVE_MOON_LONG},
+    }
+    rows = sut.build_yogi_points_rows("chart-native", "lahiri_chitrapaksha", "build-x",
+                                       positions, _BrokenConn())
+
+    assert rows, "expected Yogi-system rows"
+    for r in rows:
+        assert r["fact_category"] == "sensitive_point_yogi"
+        assert r["verification_pass_status"] == "two_pass_verified"
+        assert r["citation_human"]
+
+    by_subj_key = {(r["fact_subject"], r["fact_key"]): r for r in rows}
+    assert by_subj_key[("YOGI", "assigned_graha")]["fact_value_text"] == "Mercury"
+    assert by_subj_key[("YOGI", "nakshatra")]["fact_value_text"] == "Revati"
+    assert by_subj_key[("AVAYOGI", "assigned_graha")]["fact_value_text"] == "Mars"
+    assert by_subj_key[("AVAYOGI", "nakshatra")]["fact_value_text"] == "Chitra"
+    assert by_subj_key[("DUPLICATE_YOGI", "assigned_graha")]["fact_value_text"] == "Jupiter"
+    assert by_subj_key[("SAHAYOGI", "assigned_graha")]["fact_value_text"] == "Jupiter"
+    # Duplicate-Yogi and Sahayogi are the SAME classical quantity (see SAHAYOGI_CITATION)
+    assert (by_subj_key[("DUPLICATE_YOGI", "assigned_graha")]["fact_value_text"]
+            == by_subj_key[("SAHAYOGI", "assigned_graha")]["fact_value_text"])
+
+
+def test_build_yogi_points_rows_skips_cleanly_without_sun_or_moon():
+    assert sut.build_yogi_points_rows("chart-x", "lahiri_chitrapaksha", "build-x",
+                                       {"Sun": {"longitude_sidereal": 10.0}}, _BrokenConn()) == []
+    assert sut.build_yogi_points_rows("chart-x", "lahiri_chitrapaksha", "build-x",
+                                       {}, _BrokenConn()) == []
+
+
+def test_yogi_rows_use_distinct_fact_ids_from_sensitive_degree_check_rows():
+    """Regression guard: the YOGI_CATEGORY plumbing through _fact_id/_row must actually
+    change the category-scoped hash, not silently collide with FACT_CATEGORY rows sharing
+    the same subject/key (there is no such collision today, but this locks the contract)."""
+    fid_yogi = sut._fact_id("YOGI", "assigned_graha", "chart-x", "lahiri_chitrapaksha",
+                             "build-x", category=sut.YOGI_CATEGORY)
+    fid_default = sut._fact_id("YOGI", "assigned_graha", "chart-x", "lahiri_chitrapaksha",
+                                "build-x")
+    assert fid_yogi != fid_default

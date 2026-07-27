@@ -8,6 +8,15 @@
  * Sensitive degrees = classically flagged longitudes (gaṇḍānta, sandhi, mṛtyu-bhāga,
  * pushkara, etc.) checked against each graha's placement.
  *
+ * MC-029 (Śodhana Builder T6 "YOGI-BINDU"): also serves fact_category=
+ * 'sensitive_point_yogi' — the Yogi/Avayogi/Duplicate-Yogi/Sahayogi rows the same
+ * ga_sensitive_degree writer now computes (a standard classical Tajika/Jyotish
+ * construct that had NO served category anywhere before this pass). Both categories
+ * share this one surface rather than splitting into a second tool, since callers
+ * already treat this as "the sensitive-degree tool" and a caller filtering by
+ * check_type/subject gets both transparently; `fact_category` is now returned on
+ * every row so a caller can tell the two families apart.
+ *
  * Chart-scoped (principle #14): chart_id is the entitlement key; the capability route
  * enforces authorizeChartAccess before this handler runs. Bounded serving.
  */
@@ -15,6 +24,11 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
 const MAX_LIMIT = 200
+
+// MC-029: the set of fact_category values this surface serves. Extending this array
+// (rather than a single hardcoded string) is how a future sensitive-point category gets
+// added to this tool without a second serving surface or a breaking schema change.
+const SERVED_FACT_CATEGORIES = ['sensitive_degree_check', 'sensitive_point_yogi'] as const
 
 export const getSensitiveDegreesCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L1/get_sensitive_degrees',
@@ -24,17 +38,22 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
 
   description: [
     'Retrieve sensitive-degree checks for a chart from chart_facts',
-    "(fact_category='sensitive_degree_check', 275 rows/chart). Classically flagged",
+    "(fact_category='sensitive_degree_check'). Classically flagged",
     'longitudes (gaṇḍānta, sandhi, mṛtyu-bhāga, pushkara, etc.) checked against each',
-    "graha's placement. Filter by ayanamsha_id, subject (fact_subject, e.g. graha code),",
-    'or check_type (fact_key). Bounded with a disclosed total.',
+    "graha's placement. Also serves fact_category='sensitive_point_yogi' — the Yogi/",
+    'Avayogi/Duplicate-Yogi/Sahayogi Tajika construct (Yogi Sphuta = Sun+Moon+93°20\', ',
+    'Yogi Graha = its nakshatra lord; Avayogi = Yogi+186°40\', its nakshatra lord; ',
+    'Duplicate-Yogi/Sahayogi = the rasi lord of the Yogi Sphuta\'s own sign). Filter by ',
+    "ayanamsha_id, subject (fact_subject, e.g. graha code or YOGI/AVAYOGI/DUPLICATE_YOGI/",
+    "SAHAYOGI), or check_type (fact_key). Every row carries fact_category so the two ",
+    'families are distinguishable. Bounded with a disclosed total.',
   ].join(' '),
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
     ayanamsha_id: { type: 'string', description: "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all." },
-    subject:      { type: 'string', description: 'Filter by fact_subject (e.g. a graha code like SUN, VEN). Omit for all.' },
-    check_type:   { type: 'string', description: 'Filter by fact_key (the specific sensitive-degree check). Omit for all.' },
+    subject:      { type: 'string', description: "Filter by fact_subject (e.g. a graha code like SUN, VEN, or a Yogi-system subject YOGI/AVAYOGI/DUPLICATE_YOGI/SAHAYOGI). Omit for all." },
+    check_type:   { type: 'string', description: 'Filter by fact_key (the specific sensitive-degree or Yogi-system check). Omit for all.' },
     limit:        { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },
 
@@ -61,20 +80,22 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
     const check_type   = args['check_type'] ? String(args['check_type']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
-    const filters: string[] = ["chart_id = $1", "fact_category = 'sensitive_degree_check'"]
-    const params: unknown[] = [chart_id]
-    let p = 2
+    // MC-029: fact_category = ANY(...) rather than a single '=' so this surface serves
+    // BOTH sensitive_degree_check and sensitive_point_yogi without a schema/route change.
+    const filters: string[] = ["chart_id = $1", "fact_category = ANY($2)"]
+    const params: unknown[] = [chart_id, [...SERVED_FACT_CATEGORIES]]
+    let p = 3
     if (ayanamsha_id) { filters.push(`ayanamsha_id = $${p++}`); params.push(ayanamsha_id) }
     if (subject)      { filters.push(`UPPER(fact_subject) = UPPER($${p++})`); params.push(subject) }
     if (check_type)   { filters.push(`fact_key = $${p++}`); params.push(check_type) }
     const where = filters.join(' AND ')
 
     const sql = `
-      SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
+      SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num, fact_value_text,
              fact_value_jsonb, unit, ayanamsha_id, citation_ref
       FROM chart_facts
       WHERE ${where}
-      ORDER BY ayanamsha_id, fact_subject, fact_key
+      ORDER BY ayanamsha_id, fact_category, fact_subject, fact_key
       LIMIT $${p}`
 
     try {
@@ -94,7 +115,7 @@ export const getSensitiveDegreesCapability: CapabilityDescriptor = {
           ...(total_matching === 0
             ? { empty_reason: `No sensitive-degree checks for chart ${chart_id}${subject ? ` subject '${subject}'` : ''}${check_type ? ` check '${check_type}'` : ''}.` }
             : {}),
-          provenance: { tables: ['chart_facts'], fact_category: 'sensitive_degree_check' },
+          provenance: { tables: ['chart_facts'], fact_category: [...SERVED_FACT_CATEGORIES] },
         },
         is_error: false,
       }
