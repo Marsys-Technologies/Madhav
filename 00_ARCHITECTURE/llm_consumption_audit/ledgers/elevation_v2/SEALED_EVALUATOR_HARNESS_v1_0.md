@@ -88,3 +88,128 @@ not chart-tuned.
 This harness's consumer configuration (fresh sub-agent, sealed system prompt, transcript capture) is
 reused verbatim to execute `ROUTING_SUITE_60_v1_0.json` and `DARK_CORPUS_REPLAY_SET_v1_0.json` — the
 only variable across all three uses is the user turn and the grading rule applied to the transcript.
+
+---
+
+## 5. Append-only annotation — PARIŚODHANA Phase C3 regime reconciliation + real grader certification (2026-07-28)
+
+**This section is an append-only annotation. §1–§4 above are unmodified — FROZEN, per rail — and
+this annotation records evidence, not a change to the harness, its prompts, or its grading list.**
+
+### 5.1 — Why this annotation exists
+
+`PARISHODHANA_BRIEF_v1_0.md` §3 item 3 named an unresolved ambiguity: two historical numbers for
+the wealth flagship — **2/13** (`STREAM_GAMMA_CLOSE_v1_0.md`, `ALPHA_FLAGSHIP_ACCEPTANCE_GRADING_
+v1_0.md` §"Wealth × 1c826d5a") and **≥12/13** (`PURNA_VIRAMA_BRIEF_v1_0.md`'s cited pass bar) — were
+being compared as if they graded the same thing. They do not. This annotation (a) states which
+consumer regime each number describes, per §1's own protocol, and (b) records the result of
+**actually executing** `evals/k2/consumption_grader.ts` and `evals/r5-w4-full-battery/llm_grader.ts`
+against live production (chart `482012f1-710e-4a25-994a-93821f5871aa`, both flagship domains,
+2026-07-28, all 12 PARIŚODHANA PRs merged and deployed), rather than the "good-faith manual
+grading" `SHODHANA_REPORT_v1_0.md` §7 explicitly flagged as a non-certified substitute.
+
+### 5.2 — The two regimes, named
+
+- **Naive-routing regime** (this harness's own §1 protocol): a consumer with no charter/tool-catalog
+  knowledge, one user turn, calling whatever it judges useful. Historically this regime reached
+  only `assess_wealth`'s pre-B2 *headline* content and never discovered `dossier` — hence **2/13**.
+  `T1-1` in `PROGRAM_LEDGER_AND_ELEVATION_ROADMAP_v1_0.md` names the root cause: `dossier` was
+  absent from the served `tool_search` index, so even a tool-searching agent could not find it.
+- **Dossier-paging regime**: a consumer that knows to call `dossier(domain, chart_id)` explicitly
+  and page through its Ω5 gather-then-compose engine to 100% accounting before composing. This is
+  a **different consumer**, not a better-performing run of the same one — it requires knowledge the
+  naive protocol's system prompt (§1) deliberately withholds. This is the regime `PURNA_VIRAMA_
+  BRIEF_v1_0.md`'s **≥12/13** figure describes.
+
+`"11/13 against the 12/13 bar"` (as reported in `SAMAPANA_REPORT_v1_0.md`) is therefore a
+comparison across two regimes unless the consumer's routing path is stated alongside the score.
+Going forward: **always name the regime** — "naive-routing: N/13" or "dossier-paging: N/13" — never
+a bare score.
+
+### 5.3 — Live finding this session: the regime gap has substantially closed in production
+
+Two real, live, unmodified-production tool calls this session (`assess_wealth` and `assess_career`,
+chart `482012f1`, no other args) — the SAME single call a naive-routing consumer reaches first
+(confirmed by a live `tool_search(query="how is my wealth")` / `tool_search(query="how is my
+career")` call this session: `assess_wealth`/`assess_career` rank #1 by score, `dossier` ranks #2)
+— returned, inline in ONE call, a server-computed `completeness_directive` and `reading` array
+scoring against this harness's own frozen §3 concept-family lists:
+
+- **Wealth: 12/13 families served** (`contradictions_with_adjudication` honestly
+  `empty_for_this_chart` — a correct negative, not a gap) — `reading[].status` verified directly
+  from the live response.
+- **Career: 11/12 families served** (`divisional_D9` returned `domain_block_not_served`) — same
+  direct verification.
+
+This means the **naive-routing regime, as actually deployed today, now reaches parity with the
+historical dossier-paging ceiling for the frozen concept-family grade** — `assess_wealth`/
+`assess_career` now inline `dossier`'s completeness accounting and per-family substance directly,
+which is the "inline coverage bridge" `PARISHODHANA_BRIEF_v1_0.md` §2 B2.1 named as unowned. The
+naive consumer no longer needs to discover or page `dossier` separately to reach the ≥12/13 ceiling
+for this specific grade. **Caveat:** this was verified by this agent acting as the consumer (a
+Claude Code session with full campaign context), not by re-running a genuinely blind fresh
+sub-agent under §1's exact isolation — the tool-call results themselves are real, live, and
+unmodified, but a from-scratch blind harness re-run (per §1's isolation guarantee) is the more
+rigorous confirmation a future session should still perform before this is treated as a formally
+re-sealed number.
+
+### 5.4 — Real execution of `evals/k2/consumption_grader.ts` (this session, live)
+
+Invocation (per `evals/k2/README.md`'s documented convention, no flags guessed):
+`npx tsx evals/k2/consumption_grader.ts <transcript.json> wealth 482012f1-710e-4a25-994a-93821f5871aa`.
+Two real transcripts were assembled from genuine tool-call results captured this session (not
+fabricated): (a) naive — one `assess_wealth` call; (b) broad — `assess_wealth` plus real
+`ganita_dashas_get`/`ganita_positions_get`/`bodha_signals_get` calls. **Both scored
+`consumption_ratio: 0 / 12450`.**
+
+This is a real, non-fabricated result, and it is NOT a claim that current production regressed —
+it is a **diagnosed grader-scope finding, reported per rail (not fixed, since fixing would be a
+grader change)**: this K2 broader Ω3-scale metric (§`consumption_grader.ts` header: "the BROADER
+Ω3-scale accounting", distinct from this harness's own §2 mechanism) only credits a concept when
+the SPECIFIC underlying primitive tool it cites in `COMPLETENESS_ACCOUNTING_*.json` (e.g.
+`ganita_chart_facts_get`, `ganita_positions_get`, `bodha_signals_get` — 26 distinct primitives for
+wealth) was itself called in the transcript AND the exact cited `fact_id`/`signal_id` string
+appears verbatim in that tool's raw result. An orchestrating tool (`assess_wealth`, `dossier`)
+aggregates hundreds of these primitive calls server-side; that aggregation is invisible to a
+client-side transcript capture, so no realistic consumer transcript — naive OR expert — can score
+above ~0% on this metric today without the transcript itself logging the orchestrator's internal
+primitive calls. A secondary, separately-diagnosed observation: at least one concept family's
+recorded evidence `fact_id`s (`ganita_positions_get`/`ganita_dashas_get` rows) are UUID-formatted in
+`COMPLETENESS_ACCOUNTING_wealth_482012f1_v1_0.json`, while the live tool's own `fact_id` field for
+the same subjects returns a 16-hex-character id with no dashes — a possible accounting-file/live-
+schema drift, flagged for native review, not corrected here (the accounting file is data the grader
+reads, not the grader itself, but no rail authorizes this campaign to alter it either).
+
+### 5.5 — Real execution of `evals/r5-w4-full-battery/llm_grader.ts` (this session, live)
+
+Its exported `llmRubric()` was called for real (not mocked) against a genuine `assess_wealth` raw
+response, with `GOOGLE_GENERATIVE_AI_API_KEY` and `DEEPSEEK_API_KEY` read from `process.env` exactly
+as the module does internally. Both are **absent from this sandboxed execution environment**. The
+real, unmodified function returned:
+
+```json
+{"applicable": true, "floor": 11, "structuralProxyScore": null, "status": "NOT_LLM_GRADED",
+ "note": "Both graders failed for this item. Gemini: GOOGLE_GENERATIVE_AI_API_KEY not set. DeepSeek: DEEPSEEK_API_KEY not set.",
+ "grader": "none", "grading_latency_ms": 0}
+```
+
+This is the honest result, not a fabricated score — it confirms, by actually running the code
+rather than assuming it, `battery_runner.ts`'s own header comment: *"this harness has NO access to
+a live Gemini/DeepSeek grader in this sandboxed environment."* Certifying a real numeric rubric
+score requires running this from an environment with one of those two keys provisioned; that is a
+credentials/infrastructure gap, not a code defect, and is reported here rather than papered over
+with a plausible-looking number.
+
+### 5.6 — Standing recommendation
+
+1. Every future report citing a sealed-harness score states the regime (`naive-routing` vs
+   `dossier-paging`) alongside the fraction — a bare "N/13" is no longer a well-posed statement as
+   of this annotation.
+2. §5.3's finding should be re-verified by a genuinely blind fresh-subagent run (true §1 isolation)
+   before being treated as a formal re-seal of the flagship number — this annotation's verification
+   was real-production but not blind-consumer.
+3. `evals/k2/consumption_grader.ts`'s orchestrator-tool blind spot (§5.4) and the `fact_id` format
+   drift it surfaced are native-review items, not fixed here per the untouchable-harness rail.
+4. `evals/r5-w4-full-battery/llm_grader.ts` needs a `GOOGLE_GENERATIVE_AI_API_KEY` or
+   `DEEPSEEK_API_KEY` provisioned in whatever environment is meant to certify R5 W4 rubric scores —
+   it cannot produce a real number without one, by design (it refuses to fabricate one).
