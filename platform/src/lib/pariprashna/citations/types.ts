@@ -29,13 +29,45 @@ export const CITATION_EVENT_CONTRACT_VERSION = '0.2.0-s3'
 // The verification tier a resolved reference carries. `unverified` is the
 // terminal grade for a sentinel that has no matching source (the hallucination
 // case) — it is still surfaced (B.10: never silently drop), but flagged.
+//
+// `prior_reading` — PB-2 (SMṚTI) lane M-4 addition (additive; does not alter
+// the four grades above or any existing S-3 test's behavior). Tags a citation
+// that recalls a PRIOR conversation's conclusion from an OTHER thread of the
+// same chart (see `../recall/`), surfaced via vector-similarity + freshness
+// ranking rather than resolved fresh against this turn's live tool calls. It
+// is DELIBERATELY the weakest grade in the enum — see `CITATION_GRADE_WEIGHT`
+// below for the machine-checkable ranking, and `../citations/floor_gate.ts`
+// for the structural (not merely documented) enforcement that a
+// `prior_reading` citation can never by itself satisfy the B.11 acharya-floor
+// completeness receipt.
 export const CitationGradeSchema = z.enum([
   'primary', // directly grounded in an L1 fact / firings-authoritative signal
   'supporting', // corroborating / secondary
   'contextual', // background, low-weight
   'unverified', // sentinel present, NO matching source found → hallucination
+  'prior_reading', // PB-2/M-4: recalled cross-thread conclusion — weakest grade
 ])
 export type CitationGrade = z.infer<typeof CitationGradeSchema>
+
+/**
+ * Structural strength ranking for `CitationGrade` — higher is stronger.
+ * `prior_reading` is pinned BELOW `unverified` (the hallucination-flagged
+ * grade): a recalled prior-thread conclusion, even though it is a REAL,
+ * non-hallucinated citation, carries less evidentiary weight for THIS turn's
+ * floor than even a flagged-unverified sentinel, because it was never
+ * resolved against this turn's live chart-fact evidence at all. Any code
+ * that needs to compare grade strength (sorting, floor-eligibility, UI
+ * emphasis) should read this map rather than re-deriving an ad-hoc order —
+ * see `citation_grade.test.ts` for the machine-checked invariant that
+ * `prior_reading` is the strict minimum.
+ */
+export const CITATION_GRADE_WEIGHT: Readonly<Record<CitationGrade, number>> = {
+  primary: 4,
+  supporting: 3,
+  contextual: 2,
+  unverified: 1,
+  prior_reading: 0,
+}
 
 // ── Resolved citation ────────────────────────────────────────────────────────
 // What a resolver returns for a well-formed sentinel reference. The

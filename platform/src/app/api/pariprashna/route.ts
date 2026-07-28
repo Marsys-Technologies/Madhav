@@ -42,6 +42,8 @@ import {
   updateConversationTitle,
 } from '@/lib/conversations'
 import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
+import { extractCitations } from '@/lib/citations/citation_data_part'
+import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
 import { generateConversationTitle } from '@/lib/conversations/title'
 import {
@@ -104,9 +106,23 @@ import {
   type ReadingDepth,
   type LengthTier,
 } from '@/lib/pariprashna/protocol/events'
+import { openTurnBuffer, appendBufferedEvent } from '@/lib/pariprashna/protocol/ring_buffer'
 import { getCapability } from '@/lib/retrieval/registry'
 import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
 import { resolveReaderLabel, FALLBACK_READER_LABEL } from '@/lib/pariprashna/lexicon'
+import { writeTurn } from '@/lib/pariprashna/store/writer'
+import { CANONICAL_SCHEMA_VERSION, type CanonicalMessage, type MessagePartInput } from '@/lib/pariprashna/store/schema'
+import {
+  textPartFromBlock,
+  citationPartFromDetection,
+  predictionCandidatePartFromDetection,
+} from '@/lib/pariprashna/store/route_writer_adapter'
+import {
+  computeTurnProvenanceStamp,
+  getLastTurnStamp,
+  detectTurnProvenanceDrift,
+  withProvenanceStamp,
+} from '@/lib/pariprashna/provenance/stamp'
 
 export const maxDuration = 120
 
@@ -276,7 +292,15 @@ export async function POST(request: Request): Promise<Response> {
   // ── Open the stream. `turn.open` + `phase{plan,start}` are the FIRST bytes. ─
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const em = new PariprashnaEmitter(controller)
+      // PB-2/M-5: seed this turn's ring buffer BEFORE the first event is
+      // emitted, so a resume request that races the very first byte still
+      // finds turn metadata. Awaited (not fire-and-forget) for exactly that
+      // reason — the write is a single Redis SET (or in-memory Map.set) and
+      // is not on the model-latency critical path.
+      await openTurnBuffer({ turnId, chartId, conversationId })
+      const em = new PariprashnaEmitter(controller, (event) => {
+        void appendBufferedEvent(turnId, event)
+      })
 
       // FIRST BYTES — before the planner, before any DB/LLM work.
       em.turnOpen({
@@ -571,6 +595,32 @@ export async function POST(request: Request): Promise<Response> {
           currentMahaAntar,
         })
 
+        // ── PB-2/M-3 (SMṚTI durable summaries) — narrow, additive splice. ──────
+        // Folds a durable, citation-preserving summary of EARLIER canonical
+        // turns into a FIXED structural slot ahead of the system content built
+        // above (src/lib/pariprashna/summaries/assemble.ts) so the assembled
+        // prefix's cache-relevant structure is unchanged turn-to-turn when no
+        // new summarization threshold crossing occurred. Best-effort and
+        // non-fatal, same convention as `orientationPromise`'s `.catch()` above.
+        //
+        // Assistant turns persist canonically via lane M-2's `writeTurn`
+        // (below), so `message_parts` rows exist for pariprashna conversations
+        // and this splice is LIVE. Disclosed scope residual: only assistant
+        // rows are canonical today — user/history messages still persist via
+        // the legacy path, so summaries are built from assistant turns only.
+        let conversationSummaryText: string | null = null
+        try {
+          const { getConversationSummaryForSplice } = await import('@/lib/pariprashna/summaries/splice')
+          conversationSummaryText = await getConversationSummaryForSplice(conversationId)
+        } catch (err) {
+          console.error('[pariprashna] durable-summary splice failed (non-fatal):', err)
+        }
+        const { assembleSynthesisPrefix } = await import('@/lib/pariprashna/summaries/assemble')
+        const systemContentWithSummary = assembleSynthesisPrefix({
+          precedingBlock: systemContent ?? '',
+          summaryText: conversationSummaryText,
+        })
+
         // ── Adapter + agentic loop wiring (SAME engine as consult). ────────────
         const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
           anthropic: 'anthropic',
@@ -586,7 +636,7 @@ export async function POST(request: Request): Promise<Response> {
           return finish('error')
         }
         const adapterMessages = buildAdapterMessages(trimmedConversationHistory, queryText)
-        let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
+        let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContentWithSummary)
         const adapter = getAdapter(adapterId)
         const AGENTIC_PROVIDERS = new Set<string>(['anthropic', 'google', 'openai', 'deepseek', 'nvidia'])
         const useAgenticLoop = AGENTIC_PROVIDERS.has(adapterId)
@@ -616,9 +666,16 @@ export async function POST(request: Request): Promise<Response> {
         let currentBlock: { id: string; role: 'prose' | 'thinking'; text: string } | null = null
         let accumulatedText = ''
 
+        // PB-2/M-2: every committed block, role included — the SOURCE data for the
+        // canonical `text` parts written via M-1's DAL (see finalize, below). Only
+        // 'prose' blocks become `text` parts (`reasoning` kind is left for a future
+        // lane — see route_writer_adapter.ts's header).
+        const committedBlocks: Array<{ id: string; role: 'prose' | 'thinking'; text: string }> = []
+
         const commitBlock = (): void => {
           if (currentBlock) {
             em.blockCommit({ block_id: currentBlock.id, text: currentBlock.text })
+            committedBlocks.push({ id: currentBlock.id, role: currentBlock.role, text: currentBlock.text })
             currentBlock = null
           }
         }
@@ -721,20 +778,67 @@ export async function POST(request: Request): Promise<Response> {
           console.error('[pariprashna] citation gate error', err)
         }
 
-        // ── Finalize: persistence via the SHARED existing write path. ──────────
+        // ── Finalize: persistence. ──────────────────────────────────────────────
+        // PB-2/M-2: the ASSISTANT turn's content persists via M-1's canonical
+        // `writeTurn` DAL (transactional message row + kind-typed parts) — see
+        // the `persistence.writeMessages` closure below. This REPLACES the
+        // legacy write-through for the assistant's content; it is never run in
+        // parallel with it for the same row.
+        //
+        // Scope decision (M-2, disclosed): conversation HISTORY (every message
+        // prior to this turn, including the user's current query) still
+        // persists via the pre-existing legacy `writeConversationMessages`
+        // helper, UNCHANGED. Migrating user-message persistence onto a
+        // canonical schema is not part of M-1's schema/DAL charter (M-1 built
+        // `message_parts` for the ASSISTANT turn's kind-typed content) and is
+        // well beyond "persistence seam only" scope — rearchitecting it here
+        // risks a real regression (silently dropped user-message history) for
+        // no requested benefit. See the M-2 report.
         em.phase({ phase: 'finalize', status: 'start' })
         const pendingStreamWriter = createPendingStreamWriter(queryId, conversationId, user.uid)
 
         if (accumulatedText) {
+          const historyMsgs: UIMessage[] = (messages as UIMessage[]).map(
+            (m) => ({ ...m, id: crypto.randomUUID() }) as UIMessage,
+          )
+          const assistantMessageId = crypto.randomUUID()
+          // Used for onfinish's title-generation step only (needs the FULL
+          // turn incl. assistant text) — NOT for persistence (see the
+          // `persistence.writeMessages` closure below, which ignores
+          // `args.messages` and writes history/assistant separately).
           const persistMsgs: UIMessage[] = [
-            ...(messages as UIMessage[]).map((m) => ({ ...m, id: crypto.randomUUID() }) as UIMessage),
-            { id: crypto.randomUUID(), role: 'assistant' as const, parts: [{ type: 'text', text: accumulatedText }] } as UIMessage,
+            ...historyMsgs,
+            { id: assistantMessageId, role: 'assistant' as const, parts: [{ type: 'text', text: accumulatedText }] } as UIMessage,
           ]
           const lastUserText = ((lastUserMessage?.parts ?? []) as Array<{ type: string; text?: string }>)
             .filter((p) => p.type === 'text')
             .map((p) => p.text ?? '')
             .join(' ')
             .trim()
+
+          // ── D-16 provenance stamp (lane PB-2/M-6). Computed fresh, per turn,
+          // from live sources ONLY (chart build_runs, priors_config, the live
+          // ranking config); `now_context_date` is the genuine wall-clock date.
+          // This is DATA THAT COMES OUT of the answer as a record of what
+          // produced it — it is never fed back into planning/synthesis above,
+          // and it is DB-only: it lands in the persisted
+          // `conversation_messages.metadata_json` and is never emitted on the
+          // SSE wire (audit-drawer-only, PB-1 design plan ruling 8c). The one
+          // exception is the reader-facing edge-state flag below, which
+          // carries only the closed-lexicon display string, never a stamp
+          // field/value.
+          const [previousProvenanceStamp, provenanceStamp] = await Promise.all([
+            getLastTurnStamp(conversationId),
+            computeTurnProvenanceStamp(chartId),
+          ])
+          const provenanceDrift = detectTurnProvenanceDrift(previousProvenanceStamp, provenanceStamp)
+          if (provenanceDrift.drift && provenanceDrift.edge_state_label) {
+            em.flag({
+              code: 'chart_rebuilt',
+              level: 'info',
+              detail: provenanceDrift.edge_state_label,
+            })
+          }
 
           // Adapter-writer: maps the write-through's AI-SDK data-parts onto the
           // Paripraśna vocabulary. Typed with a narrow event interface (NOT
@@ -802,22 +906,28 @@ export async function POST(request: Request): Promise<Response> {
               finalMessages: persistMsgs,
               assistantText: accumulatedText,
               lastUserQuery: lastUserText,
-              lastAssistantMetadata: {
-                custom: {
-                  model: modelId,
-                  queryId,
-                  planning_model_id: plannerModelId,
-                  planning_latency_ms: plannerLatencyMs,
-                  disclosure_tier: isSuperAdmin ? 'super_admin' : 'client',
-                  query_class: plan.query_class,
-                  stack: selectedStack,
-                  style,
-                  reading_depth: readingDepth,
-                  length_tier: lengthTier,
-                  pipeline: 'pariprashna',
-                  conversationId,
+              // provenance_stamp rides as an ADDITIVE sibling of `custom` (never
+              // inside it) — DB-only metadata, never read back into planning/
+              // synthesis, never streamed (see the D-16 note above).
+              lastAssistantMetadata: withProvenanceStamp(
+                {
+                  custom: {
+                    model: modelId,
+                    queryId,
+                    planning_model_id: plannerModelId,
+                    planning_latency_ms: plannerLatencyMs,
+                    disclosure_tier: isSuperAdmin ? 'super_admin' : 'client',
+                    query_class: plan.query_class,
+                    stack: selectedStack,
+                    style,
+                    reading_depth: readingDepth,
+                    length_tier: lengthTier,
+                    pipeline: 'pariprashna',
+                    conversationId,
+                  },
                 },
-              },
+                provenanceStamp,
+              ),
               modelId,
               modelMaxContext: modelMeta.maxInputTokens ?? null,
               synthUsage: null,
@@ -837,7 +947,83 @@ export async function POST(request: Request): Promise<Response> {
               },
             },
             {
-              persistence: { writeMessages: (args) => writeConversationMessages(args) },
+              persistence: {
+                writeMessages: async (args) => {
+                  // History rows — legacy path, UNCHANGED (see scope-decision
+                  // comment above). `args.messages` (== persistMsgs, history +
+                  // assistant) is deliberately NOT used here — the assistant
+                  // row is written canonically below instead.
+                  const historyResult = await writeConversationMessages({
+                    conversationId,
+                    messages: historyMsgs,
+                  })
+
+                  // Assistant row — PB-2/M-2 canonical path. Built from the
+                  // route's own in-memory turn data via
+                  // route_writer_adapter.ts's production mapping functions —
+                  // the SAME functions lane M-2's byte-equality gate
+                  // (tests/pariprashna/reducer/canonical_serialization_golden.test.ts)
+                  // exercises independently against a client-reducer simulation.
+                  const canonicalParts: MessagePartInput[] = []
+                  let partSeq = 0
+                  for (const b of committedBlocks) {
+                    if (b.role === 'prose') {
+                      canonicalParts.push(textPartFromBlock({ block_id: b.id, text: b.text }, partSeq++))
+                    }
+                  }
+                  const citationsFound = extractCitations(accumulatedText)
+                  if (citationsFound.length > 0) {
+                    const snippets = await fetchMsrSnippets(citationsFound.map((c) => c.signal_id))
+                    for (const c of citationsFound) {
+                      canonicalParts.push(
+                        citationPartFromDetection(
+                          {
+                            index: c.index,
+                            signal_id: c.signal_id,
+                            layer: c.layer,
+                            snippet: snippets.get(c.signal_id) ?? '',
+                          },
+                          partSeq++,
+                        ),
+                      )
+                    }
+                  }
+                  const predictionCandidatesFound = detectPredictionCandidates(accumulatedText).filter(
+                    (c) => c.score >= 0.5,
+                  )
+                  for (const c of predictionCandidatesFound) {
+                    canonicalParts.push(
+                      predictionCandidatePartFromDetection(
+                        { text: c.text, score: c.score, horizon: c.horizon },
+                        partSeq++,
+                      ),
+                    )
+                  }
+
+                  const canonicalMessage: CanonicalMessage = {
+                    id: assistantMessageId,
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    schema_version: CANONICAL_SCHEMA_VERSION,
+                    model_id: modelId,
+                    provider: modelMeta.provider,
+                    metadata: args.lastAssistantMetadata,
+                  }
+
+                  let canonicalOk = true
+                  try {
+                    await writeTurn(canonicalMessage, canonicalParts)
+                  } catch (err) {
+                    console.error('[pariprashna] canonical writeTurn failed', err)
+                    canonicalOk = false
+                  }
+
+                  return {
+                    verified: historyResult.verified && canonicalOk,
+                    messageIds: [...historyResult.messageIds, assistantMessageId],
+                  }
+                },
+              },
               pricing: {
                 getPricing: (mid) => getModelPricingSync(mid),
                 computeUsd: (pricing, tokens) => computeCostUsd(pricing as Parameters<typeof computeCostUsd>[0], tokens),

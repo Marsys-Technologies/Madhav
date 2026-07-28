@@ -263,6 +263,38 @@ export const ErrorEventSchema = z.object({
 })
 export type ErrorEvent = z.infer<typeof ErrorEventSchema>
 
+/**
+ * `snapshot.apply` — ADDITIVE (lane PB-2/M-5, resume protocol). Emitted by
+ * the reconnect path (`/api/pariprashna/resume`) INSTEAD OF an incremental
+ * replay when the client's requested `Last-Event-ID` seq has already been
+ * evicted from the server's per-turn ring buffer (buffer too small / too
+ * much time passed since disconnect). Carries the CURRENT COMMITTED STATE as
+ * ONE blob — never a partial replay — so the client applies it in a single
+ * write with NO replay animation (B.10: never silently lose data; never
+ * silently duplicate a block). Always paired with a preceding `flag` event
+ * `code: 'resumed_via_snapshot'` for disclosure — reusing the existing `flag`
+ * event type (its `code` is a free string) rather than adding a new field,
+ * per the additive-only extension constraint on this module.
+ */
+export const SnapshotApplyEventSchema = z.object({
+  type: z.literal('snapshot.apply'),
+  ...EnvelopeShape,
+  turn_id: z.string(),
+  /** Full committed-so-far text (all committed blocks + any open tail), one blob. */
+  text: z.string(),
+  citations: z.array(
+    z.object({
+      index: z.number().int(),
+      signal_id: z.string(),
+      layer: z.string(),
+      snippet: z.string(),
+    }),
+  ),
+  /** What state the turn is in as of the snapshot — `open` may still be tailed live. */
+  turn_status: z.enum(['open', 'closed', 'interrupted']),
+})
+export type SnapshotApplyEvent = z.infer<typeof SnapshotApplyEventSchema>
+
 // ---------------------------------------------------------------------------
 // Discriminated union
 // ---------------------------------------------------------------------------
@@ -282,6 +314,7 @@ export const PariprashnaEventSchema = z.discriminatedUnion('type', [
   TurnCommitEventSchema,
   TurnCloseEventSchema,
   ErrorEventSchema,
+  SnapshotApplyEventSchema,
 ])
 export type PariprashnaEvent = z.infer<typeof PariprashnaEventSchema>
 
@@ -301,6 +334,7 @@ export const PARIPRASHNA_EVENT_TYPES = [
   'turn.commit',
   'turn.close',
   'error',
+  'snapshot.apply',
 ] as const
 export type PariprashnaEventType = (typeof PARIPRASHNA_EVENT_TYPES)[number]
 
