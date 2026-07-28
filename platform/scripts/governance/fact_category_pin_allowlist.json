@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief \u00a75 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) \u2014 line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason \u2014 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) \u2014 see the ci-lint lane's session report for the full disposition rationale of every entry.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 32,
+  "entry_count": 31,
   "entries": [
     {
       "file": "platform-mcp/src/tools/register_p1_ganita.ts",
@@ -114,27 +114,21 @@
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": 830,
+      "line": 888,
       "pattern": null,
-      "justification": "KNOWN DEFECT \u2014 this is SUDDHA_VACA_FIX_LEDGER_v1_0.md P0-5 exactly (_build_strength_lookup, graha_shadbala_total, no fact_key, no ORDER BY). Fixed in parallel by lane:bo-laksana this same wave (worktree .worktrees/suddhavaca-bo-laksana). Allowlisted only until that lane's fix merges to main; if this entry is ever hit again after that merge, it is a real regression and this allowlist entry should be deleted, not re-justified."
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_dignity_lookup: fact_category='graha_dignity_per_varga', pinned only by fact_value_jsonb->>'varga'='D1', no fact_key, no ORDER BY \u2014 the function's own comment already flags 'first row wins (avoid overwriting with duplicates)' as an explicit non-determinism guard). Recommend folding into lane:bo-laksana's P0-5 fix scope since it's the same file/same rebuild \u2014 newly discovered by this lint, not previously ledgered. [line updated 861->888 after \u015aUDDHA-V\u0100CA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": 861,
+      "line": 919,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_dignity_lookup: fact_category='graha_dignity_per_varga', pinned only by fact_value_jsonb->>'varga'='D1', no fact_key, no ORDER BY \u2014 the function's own comment already flags 'first row wins (avoid overwriting with duplicates)' as an explicit non-determinism guard). Recommend folding into lane:bo-laksana's P0-5 fix scope since it's the same file/same rebuild \u2014 newly discovered by this lint, not previously ledgered."
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_av_lookup: fact_category='ashtakavarga_bindu', no fact_key, no ORDER BY, pinned only by a fact_subject LIKE pattern). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 892->919 after \u015aUDDHA-V\u0100CA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": 892,
+      "line": 2318,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (_build_av_lookup: fact_category='ashtakavarga_bindu', no fact_key, no ORDER BY, pinned only by a fact_subject LIKE pattern). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint."
-    },
-    {
-      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
-      "line": 2291,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (second graha_dignity_per_varga selector, no fact_key, no ORDER BY). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint."
+      "justification": "PRE-EXISTING, not in this wave's scope. Same file/defect-shape as P0-5 (second graha_dignity_per_varga selector, no fact_key, no ORDER BY). Recommend folding into lane:bo-laksana's P0-5 fix scope. Newly discovered by this lint. [line updated 2291->2318 after \u015aUDDHA-V\u0100CA P0-5/P0-6 fix (#838) shifted line numbers via docstring expansion; same defect, unchanged.]"
     },
     {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
