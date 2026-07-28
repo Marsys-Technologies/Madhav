@@ -1,0 +1,51 @@
+{
+  "name": "unclosed-sentinel",
+  "description": "Stream ends gracefully (server closes the HTTP response normally) but never emits turn.commit/turn.close — the \"hung turn\" case, distinct from a hard disconnect.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "unclosed-sentinel-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "turn_id": "unclosed-sentinel",
+        "reading_depth": "standard"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "unclosed-sentinel-1",
+        "seq": 1,
+        "t": 20,
+        "type": "block.open",
+        "block_id": "b1",
+        "kind": "paragraph",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "unclosed-sentinel-2",
+        "seq": 2,
+        "t": 40,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "The retrieval layer surfaces three corroborating signals for this window."
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "unclosed-sentinel-3",
+        "seq": 3,
+        "t": 50,
+        "type": "block.commit",
+        "block_id": "b1",
+        "final_text": "The retrieval layer surfaces three corroborating signals for this window."
+      }
+    }
+  ]
+}

@@ -1,0 +1,285 @@
+{
+  "name": "adaptive-3-pass",
+  "description": "Three sequential retrieval passes (adaptive depth escalation) followed by a two-block synthesis.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "adaptive-3-pass-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "turn_id": "adaptive-3-pass",
+        "reading_depth": "deep_dive"
+      }
+    },
+    {
+      "delay_ms": 30,
+      "event": {
+        "id": "adaptive-3-pass-1",
+        "seq": 1,
+        "t": 30,
+        "type": "phase",
+        "phase": "planning",
+        "label": "Scoping the question"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "adaptive-3-pass-2",
+        "seq": 2,
+        "t": 50,
+        "type": "activity.upsert",
+        "key": "pass-1-retrieval",
+        "pass_id": "pass-1",
+        "label_key": "activity.retrieval.pass",
+        "status": "pending"
+      }
+    },
+    {
+      "delay_ms": 40,
+      "event": {
+        "id": "adaptive-3-pass-3",
+        "seq": 3,
+        "t": 90,
+        "type": "activity.upsert",
+        "key": "pass-1-retrieval",
+        "pass_id": "pass-1",
+        "label_key": "activity.retrieval.pass",
+        "status": "active",
+        "detail": "pass 1 of 3"
+      }
+    },
+    {
+      "delay_ms": 60,
+      "event": {
+        "id": "adaptive-3-pass-4",
+        "seq": 4,
+        "t": 150,
+        "type": "activity.upsert",
+        "key": "pass-1-retrieval",
+        "pass_id": "pass-1",
+        "label_key": "activity.retrieval.pass",
+        "status": "done",
+        "detail": "pass 1 of 3 — 4 signals"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "adaptive-3-pass-5",
+        "seq": 5,
+        "t": 170,
+        "type": "activity.upsert",
+        "key": "pass-2-retrieval",
+        "pass_id": "pass-2",
+        "label_key": "activity.retrieval.pass",
+        "status": "pending"
+      }
+    },
+    {
+      "delay_ms": 40,
+      "event": {
+        "id": "adaptive-3-pass-6",
+        "seq": 6,
+        "t": 210,
+        "type": "activity.upsert",
+        "key": "pass-2-retrieval",
+        "pass_id": "pass-2",
+        "label_key": "activity.retrieval.pass",
+        "status": "active",
+        "detail": "pass 2 of 3"
+      }
+    },
+    {
+      "delay_ms": 60,
+      "event": {
+        "id": "adaptive-3-pass-7",
+        "seq": 7,
+        "t": 270,
+        "type": "activity.upsert",
+        "key": "pass-2-retrieval",
+        "pass_id": "pass-2",
+        "label_key": "activity.retrieval.pass",
+        "status": "done",
+        "detail": "pass 2 of 3 — 4 signals"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "adaptive-3-pass-8",
+        "seq": 8,
+        "t": 290,
+        "type": "activity.upsert",
+        "key": "pass-3-retrieval",
+        "pass_id": "pass-3",
+        "label_key": "activity.retrieval.pass",
+        "status": "pending"
+      }
+    },
+    {
+      "delay_ms": 40,
+      "event": {
+        "id": "adaptive-3-pass-9",
+        "seq": 9,
+        "t": 330,
+        "type": "activity.upsert",
+        "key": "pass-3-retrieval",
+        "pass_id": "pass-3",
+        "label_key": "activity.retrieval.pass",
+        "status": "active",
+        "detail": "pass 3 of 3"
+      }
+    },
+    {
+      "delay_ms": 60,
+      "event": {
+        "id": "adaptive-3-pass-10",
+        "seq": 10,
+        "t": 390,
+        "type": "activity.upsert",
+        "key": "pass-3-retrieval",
+        "pass_id": "pass-3",
+        "label_key": "activity.retrieval.pass",
+        "status": "done",
+        "detail": "pass 3 of 3 — 4 signals"
+      }
+    },
+    {
+      "delay_ms": 30,
+      "event": {
+        "id": "adaptive-3-pass-11",
+        "seq": 11,
+        "t": 420,
+        "type": "phase",
+        "phase": "synthesizing"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "adaptive-3-pass-12",
+        "seq": 12,
+        "t": 440,
+        "type": "block.open",
+        "block_id": "b1",
+        "kind": "paragraph",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 15,
+      "event": {
+        "id": "adaptive-3-pass-13",
+        "seq": 13,
+        "t": 455,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "The retrieval layer surfaces three corroborating signals for this window. "
+      }
+    },
+    {
+      "delay_ms": 15,
+      "event": {
+        "id": "adaptive-3-pass-14",
+        "seq": 14,
+        "t": 470,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "A structural tension appears between the timing anchor and the natal placement. "
+      }
+    },
+    {
+      "delay_ms": 15,
+      "event": {
+        "id": "adaptive-3-pass-15",
+        "seq": 15,
+        "t": 485,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "This pattern recurs across two independent sub-systems, which raises its weight. "
+      }
+    },
+    {
+      "delay_ms": 15,
+      "event": {
+        "id": "adaptive-3-pass-16",
+        "seq": 16,
+        "t": 500,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "No contradiction was found against the prior turn's working hypothesis. "
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "adaptive-3-pass-17",
+        "seq": 17,
+        "t": 510,
+        "type": "block.commit",
+        "block_id": "b1",
+        "final_text": "The retrieval layer surfaces three corroborating signals for this window. A structural tension appears between the timing anchor and the natal placement. This pattern recurs across two independent sub-systems, which raises its weight. No contradiction was found against the prior turn's working hypothesis. "
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "adaptive-3-pass-18",
+        "seq": 18,
+        "t": 530,
+        "type": "block.open",
+        "block_id": "b2",
+        "kind": "heading",
+        "index": 1
+      }
+    },
+    {
+      "delay_ms": 15,
+      "event": {
+        "id": "adaptive-3-pass-19",
+        "seq": 19,
+        "t": 545,
+        "type": "block.delta",
+        "block_id": "b2",
+        "text": "Summary across passes"
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "adaptive-3-pass-20",
+        "seq": 20,
+        "t": 555,
+        "type": "block.commit",
+        "block_id": "b2",
+        "final_text": "Summary across passes"
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "adaptive-3-pass-21",
+        "seq": 21,
+        "t": 565,
+        "type": "turn.commit",
+        "turn_id": "adaptive-3-pass",
+        "block_count": 2,
+        "citation_count": 0
+      }
+    },
+    {
+      "delay_ms": 5,
+      "event": {
+        "id": "adaptive-3-pass-22",
+        "seq": 22,
+        "t": 570,
+        "type": "turn.close",
+        "turn_id": "adaptive-3-pass",
+        "reason": "complete"
+      }
+    }
+  ]
+}
