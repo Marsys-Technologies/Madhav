@@ -27,6 +27,17 @@ interface HardPattern {
   re: RegExp
   /** id-shaped tokens are REWRITE-eligible; others go straight to REDACT. */
   idShaped: boolean
+  /**
+   * When true, a match preceded by a bare article ("The X", "the X", "a X",
+   * "an X" — captured as part of the match itself, see the patterns below)
+   * swaps the WHOLE article+token span for a neutral demonstrative
+   * ("This"/"this") instead of deleting just the token. Deleting only the
+   * token here leaves a subject-less sentence: "The UCN concludes..." ->
+   * "The concludes...". Matches with no leading article (bare citation
+   * markers like "(UCN §XX)") keep the original delete-only behavior, which
+   * already reads fine as "( §XX)" — confirmed by the pre-existing S-3 tests.
+   */
+  subjectSafe?: boolean
 }
 
 // Internal DB table-name prefixes, harvested from platform/migrations/*.sql
@@ -53,8 +64,29 @@ const HARD_PATTERNS: HardPattern[] = [
     re: new RegExp(`\\b(?:${TABLE_PREFIXES.join('|')})_[a-z][a-z_]*\\b`, 'g'),
     idShaped: false,
   },
-  // Register acronyms: MSR / UCN / CGM / CDLM / LEL as standalone words.
-  { name: 'register_acronym', re: /\b(?:MSR|UCN|CGM|CDLM|LEL)\b/g, idShaped: false },
+  // Register acronyms: MSR / UCN / CGM / CDLM / LEL / RM as standalone words.
+  // The leading article is captured AS PART OF the match (group 1) so the
+  // subjectSafe replacement below can swap the whole span at once — see
+  // HardPattern.subjectSafe.
+  {
+    name: 'register_acronym',
+    re: /\b(?:([Tt]he|[Aa]n?)\s+)?(?:MSR|UCN|CGM|CDLM|LEL|RM)\b/g,
+    idShaped: false,
+    subjectSafe: true,
+  },
+  // Spelled-out register names — the model sometimes narrates the full name
+  // instead of (or alongside) the acronym; the acronym pattern above cannot
+  // catch that. Longest-alternative-first so "Cross-Domain Linkage Matrix"
+  // wins over the shorter "Cross-Domain Linkage" prefix. Both "Chart Graph
+  // Model" (CLAUDE.md's canonical name) and "Causal Graph Model" (the name
+  // actually used in b11_guard.ts's LAYER_MARKERS, which is what a model
+  // reading that context would echo) are included.
+  {
+    name: 'register_full_name',
+    re: /\b(?:([Tt]he|[Aa]n?)\s+)?(?:Master Signal Register|Cross-Domain Linkage Matrix|Cross-Domain Linkage|Unified Chart Narrative|Causal Graph Model|Chart Graph Model|Resonance Map|Life Event Log)\b/g,
+    idShaped: false,
+    subjectSafe: true,
+  },
 ]
 
 // ── Near-miss patterns (TELEMETRY only — never alter text) ───────────────────
@@ -110,33 +142,64 @@ function lintInner(text: string, resolver?: CitationResolver): LintResult {
 
   // Hard patterns: apply REWRITE or REDACT by replacing each match in-place.
   for (const pat of HARD_PATTERNS) {
-    clean = clean.replace(new RegExp(pat.re.source, pat.re.flags), (match) => {
-      leakCount += 1
-      // (a) REWRITE — id-shaped + a reader label exists.
-      if (pat.idShaped && resolver) {
-        const label = safeReaderLabel(resolver, match)
-        if (label && !wouldStillLeak(label)) {
-          flags.push({
-            type: 'flag',
-            flag: 'register_leak',
-            verdict: 'rewrite',
-            pattern: pat.name,
-            original: match,
-            replacement: label,
-          })
-          return label
+    clean = clean.replace(
+      new RegExp(pat.re.source, pat.re.flags),
+      (match: string, article: string | undefined, offset: number, whole: string) => {
+        leakCount += 1
+        // (a) REWRITE — id-shaped + a reader label exists.
+        if (pat.idShaped && resolver) {
+          const label = safeReaderLabel(resolver, match)
+          if (label && !wouldStillLeak(label)) {
+            flags.push({
+              type: 'flag',
+              flag: 'register_leak',
+              verdict: 'rewrite',
+              pattern: pat.name,
+              original: match,
+              replacement: label,
+            })
+            return label
+          }
         }
-      }
-      // (b) REDACT+FLAG — strip from reader prose.
-      flags.push({
-        type: 'flag',
-        flag: 'register_leak',
-        verdict: 'redact',
-        pattern: pat.name,
-        original: match,
-      })
-      return ''
-    })
+        // (b1) subjectSafe: a bare citation marker like "(UCN §XX)" or
+        // "Cross-Domain Linkage Matrix (CDLM)" reads fine with the token just
+        // deleted (the existing S-3 behavior, preserved exactly) — detected
+        // by the match sitting directly inside an open paren. Everywhere
+        // else the token is standing in for a noun (subject, object of a
+        // preposition, ...); deleting it alone leaves a dangling sentence
+        // ("The UCN concludes..." -> "The concludes..."), so the whole
+        // matched span (including any captured leading article) is swapped
+        // for a neutral demonstrative instead.
+        if (pat.subjectSafe) {
+          const precedingTrimmed = whole.slice(0, offset).trimEnd()
+          const isBareCitationMarker = precedingTrimmed.endsWith('(')
+          if (!isBareCitationMarker) {
+            const capitalize = article
+              ? /^[A-Z]/.test(article)
+              : precedingTrimmed === '' || /[.!?]['"”’]?$/.test(precedingTrimmed)
+            const replacement = capitalize ? 'This' : 'this'
+            flags.push({
+              type: 'flag',
+              flag: 'register_leak',
+              verdict: 'redact',
+              pattern: pat.name,
+              original: match,
+              replacement,
+            })
+            return replacement
+          }
+        }
+        // (b2) REDACT+FLAG — strip from reader prose.
+        flags.push({
+          type: 'flag',
+          flag: 'register_leak',
+          verdict: 'redact',
+          pattern: pat.name,
+          original: match,
+        })
+        return ''
+      },
+    )
   }
 
   // Tidy whitespace left by redactions ("word  ." → "word.", doubled spaces).
@@ -177,10 +240,12 @@ function safeReaderLabel(resolver: CitationResolver, token: string): string | nu
 /** Collapse artifacts left by removing a token from mid-sentence. */
 function tidyAfterRedaction(s: string): string {
   return s
-    .replace(/ {2,}/g, ' ') // doubled spaces
-    .replace(/\s+([,.;:!?])/g, '$1') // space before punctuation
     .replace(/\(\s*\)/g, '') // emptied parens
     .replace(/\[\s*\]/g, '') // emptied brackets
+    .replace(/\s+([,.;:!?])/g, '$1') // space before punctuation
+    .replace(/ {2,}/g, ' ') // doubled spaces — LAST: removing emptied parens/
+    // brackets above can itself introduce a fresh double space that an
+    // earlier collapse pass would never see.
 }
 
 /** Exposed for tests / callers that want the pattern inventory. */
