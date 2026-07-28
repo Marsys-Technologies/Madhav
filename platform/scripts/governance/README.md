@@ -97,6 +97,37 @@ Run with: `cd platform && npx vitest run tests/governance/coverage_gate`
 
 ---
 
+### `check_fact_category_pinning.py`
+Permanent CI lint (ŚUDDHA-VĀCA C.7) flagging any `chart_facts` selection reduced to one row by
+`fact_category` alone (no `fact_key` pin, no deterministic `ORDER BY ... LIMIT 1`/`DISTINCT ON`).
+`--self-test` runs the bundled `fact_category_pin_fixtures/`; default scans the live repo tree
+against `fact_category_pin_allowlist.json`. Wired into `ci.yml` (static, no network).
+
+### `check_reconciliation_cadence.py` ← **PARIŚODHANA Phase C2**
+The standing reconciliation cadence recommended by `POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md`'s
+"ships-but-register-never-flips" standing note: cross-references `cr_status.ts`'s
+OPEN_CRS/LOGGED_CRS/CLOSED_CRS allowlists (both the `platform` and `platform-mcp` copies) and every
+`known_gap: 'CR-N'` citation in `registry_data.ts` against the live disposition recorded in
+`POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md` / `MARSYS_DEFECT_GAP_REGISTER_v2_0.md` / the
+`ELEVATION_REGISTER_v1_0.md` prose blocks. Reports six divergence classes — the headline one being
+a register row still marked OPEN for an id the code already treats as CLOSED (or the mirror-image).
+Also catches the two copies of `cr_status.ts`/`registry_data.ts` disagreeing with each other
+directly (`DUAL_COPY_DRIFT`).
+
+**Not part of `ci.yml`.** `--live` performs real network calls against the deployed MCP server
+(needs `MCP_CANARY_KEY`) — a different risk profile than every other script in this directory, so
+it is invoked manually or via the opt-in `.github/workflows/reconciliation-cadence.yml`
+(`workflow_dispatch`; its `schedule:` trigger is commented out — a maintainer must opt in). The
+default (no `--live`) pass is static, network-free, and safe to run anytime.
+
+```
+python platform/scripts/governance/check_reconciliation_cadence.py --self-test   # hermetic
+python platform/scripts/governance/check_reconciliation_cadence.py               # static scan
+MCP_CANARY_KEY=... python platform/scripts/governance/check_reconciliation_cadence.py --live
+```
+
+---
+
 ## Shared library: `_ca_loader.py`
 
 Internal loader for `CANONICAL_ARTIFACTS_v1_0.md`. Imported by `drift_detector.py` and
