@@ -107,6 +107,12 @@ import {
 import { getCapability } from '@/lib/retrieval/registry'
 import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
 import { resolveReaderLabel, FALLBACK_READER_LABEL } from '@/lib/pariprashna/lexicon'
+import {
+  computeTurnProvenanceStamp,
+  getLastTurnStamp,
+  detectTurnProvenanceDrift,
+  withProvenanceStamp,
+} from '@/lib/pariprashna/provenance/stamp'
 
 export const maxDuration = 120
 
@@ -736,6 +742,30 @@ export async function POST(request: Request): Promise<Response> {
             .join(' ')
             .trim()
 
+          // ── D-16 provenance stamp (lane PB-2/M-6). Computed fresh, per turn,
+          // from live sources ONLY (chart build_runs, priors_config, the live
+          // ranking config); `now_context_date` is the genuine wall-clock date.
+          // This is DATA THAT COMES OUT of the answer as a record of what
+          // produced it — it is never fed back into planning/synthesis above,
+          // and it is DB-only: it lands in the persisted
+          // `conversation_messages.metadata_json` and is never emitted on the
+          // SSE wire (audit-drawer-only, PB-1 design plan ruling 8c). The one
+          // exception is the reader-facing edge-state flag below, which
+          // carries only the closed-lexicon display string, never a stamp
+          // field/value.
+          const [previousProvenanceStamp, provenanceStamp] = await Promise.all([
+            getLastTurnStamp(conversationId),
+            computeTurnProvenanceStamp(chartId),
+          ])
+          const provenanceDrift = detectTurnProvenanceDrift(previousProvenanceStamp, provenanceStamp)
+          if (provenanceDrift.drift && provenanceDrift.edge_state_label) {
+            em.flag({
+              code: 'chart_rebuilt',
+              level: 'info',
+              detail: provenanceDrift.edge_state_label,
+            })
+          }
+
           // Adapter-writer: maps the write-through's AI-SDK data-parts onto the
           // Paripraśna vocabulary. Typed with a narrow event interface (NOT
           // `any`) — assignable to WriteThroughWriter because its `write` param
@@ -802,22 +832,28 @@ export async function POST(request: Request): Promise<Response> {
               finalMessages: persistMsgs,
               assistantText: accumulatedText,
               lastUserQuery: lastUserText,
-              lastAssistantMetadata: {
-                custom: {
-                  model: modelId,
-                  queryId,
-                  planning_model_id: plannerModelId,
-                  planning_latency_ms: plannerLatencyMs,
-                  disclosure_tier: isSuperAdmin ? 'super_admin' : 'client',
-                  query_class: plan.query_class,
-                  stack: selectedStack,
-                  style,
-                  reading_depth: readingDepth,
-                  length_tier: lengthTier,
-                  pipeline: 'pariprashna',
-                  conversationId,
+              // provenance_stamp rides as an ADDITIVE sibling of `custom` (never
+              // inside it) — DB-only metadata, never read back into planning/
+              // synthesis, never streamed (see the D-16 note above).
+              lastAssistantMetadata: withProvenanceStamp(
+                {
+                  custom: {
+                    model: modelId,
+                    queryId,
+                    planning_model_id: plannerModelId,
+                    planning_latency_ms: plannerLatencyMs,
+                    disclosure_tier: isSuperAdmin ? 'super_admin' : 'client',
+                    query_class: plan.query_class,
+                    stack: selectedStack,
+                    style,
+                    reading_depth: readingDepth,
+                    length_tier: lengthTier,
+                    pipeline: 'pariprashna',
+                    conversationId,
+                  },
                 },
-              },
+                provenanceStamp,
+              ),
               modelId,
               modelMaxContext: modelMeta.maxInputTokens ?? null,
               synthUsage: null,
