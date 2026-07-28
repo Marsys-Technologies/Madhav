@@ -7,17 +7,12 @@
  * return the summary text to fold into the FIXED structural slot
  * (`assemble.ts`) ahead of the route's existing system content.
  *
- * KNOWN RESIDUAL (disclosed, not hidden): the live pariprashna route's
- * write-through path still persists turns via the LEGACY
- * `writeConversationMessages` (`@/lib/persistence/conversation_writer`), not
- * M-1's `writeTurn` — wiring that swap is PB-2 lane M-2's job ("the
- * persistence seam"), not this lane's. Until M-2 lands, canonical
- * `message_parts` rows are never written for pariprashna-route conversations,
- * so `listCanonicalMessagesForConversation` returns an empty list for every
- * real conversation today and this function resolves to `null` — a documented
- * no-op, not a silent bug. The moment M-2 wires `writeTurn` into the route,
- * this function starts seeing real canonical turns with zero further changes
- * needed here.
+ * Assistant turns now persist canonically via PB-2 lane M-2's `writeTurn`
+ * wiring in the route, so `listCanonicalMessagesForConversation` returns real
+ * rows for pariprashna-route conversations and this function is LIVE.
+ * Disclosed scope residual (inherited from M-2, not this lane): only
+ * assistant rows are canonical today — user/history messages still persist
+ * via the legacy path, so summaries are built from assistant turns only.
  */
 import 'server-only'
 

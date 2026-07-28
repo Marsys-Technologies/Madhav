@@ -603,12 +603,11 @@ export async function POST(request: Request): Promise<Response> {
         // new summarization threshold crossing occurred. Best-effort and
         // non-fatal, same convention as `orientationPromise`'s `.catch()` above.
         //
-        // KNOWN RESIDUAL (disclosed): this route's write-through still
-        // persists via the LEGACY `writeConversationMessages` path below (PB-2
-        // lane M-2, "the persistence seam", has not wired `writeTurn` into this
-        // route yet) — so canonical `message_parts` rows stay empty for
-        // pariprashna conversations today and this resolves to `null`. The
-        // splice activates with zero further changes here once M-2 lands.
+        // Assistant turns persist canonically via lane M-2's `writeTurn`
+        // (below), so `message_parts` rows exist for pariprashna conversations
+        // and this splice is LIVE. Disclosed scope residual: only assistant
+        // rows are canonical today — user/history messages still persist via
+        // the legacy path, so summaries are built from assistant turns only.
         let conversationSummaryText: string | null = null
         try {
           const { getConversationSummaryForSplice } = await import('@/lib/pariprashna/summaries/splice')

@@ -105,9 +105,18 @@ describe.skipIf(!ENABLED)('conversation_summaries store — DB round-trip', () =
 
   it('is append-only: a second insert() adds a new row; findLatest() returns the most recent', async () => {
     const store = new PgSummaryStore()
+    // A second, distinct assistant row (the FK requires it exist before
+    // conversation_summaries can reference it — a random UUID here would
+    // violate the FK, not exercise append-only behavior).
+    const secondMessageId = randomUUID()
+    await query(
+      `INSERT INTO conversation_messages (id, conversation_id, role) VALUES ($1, $2, 'assistant')
+       ON CONFLICT (id) DO NOTHING`,
+      [secondMessageId, CONVERSATION_ID],
+    )
     const second = await store.insert({
       conversation_id: CONVERSATION_ID,
-      covers_through_message_id: randomUUID(),
+      covers_through_message_id: secondMessageId,
       summary_text: 'A later summary, folded on top of the first.',
       model_id: 'test-model',
     })

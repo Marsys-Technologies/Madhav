@@ -99,9 +99,10 @@ export async function computeTurnProvenanceStamp(chartId: string): Promise<TurnP
  * Attach the stamp to a `metadata_json` object as an additive sub-object
  * (never replaces existing keys — e.g. the route's `custom` block). This is
  * the ONLY place the stamp is written; it lands in
- * `conversation_messages.metadata_json.provenance_stamp` via the existing
- * `writeConversationMessages` write-through — no new persistence path, no
- * schema change (per M-6 file scope: no migration owned by this lane).
+ * `conversation_messages.metadata_json.provenance_stamp` via whichever
+ * write-through persists the assistant row (PB-2 lane M-2's `writeTurn` for
+ * the pariprashna route as of this wave) — no new persistence path of its
+ * own, no schema change (per M-6 file scope: no migration owned by this lane).
  */
 export function withProvenanceStamp(
   metadata: Record<string, unknown>,
