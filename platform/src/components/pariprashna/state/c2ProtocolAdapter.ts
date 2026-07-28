@@ -69,7 +69,14 @@
 
 import type { Citation, Grade, WireEvent } from './types'
 import type { ScheduledEvent } from '../fixtures/types'
-import { resolveRetrievalFacet } from './lexicon'
+// S-2's canonical closed vocabulary (PB-1/integrate — replaced the C-1 stand-in).
+import { RETRIEVAL_FACET_NAMES, type RetrievalFacetKey } from '@/lib/pariprashna/lexicon'
+
+/** Resolve a retrieval facet key to its reader-safe plain name via S-2's closed
+ *  vocabulary; unknown keys fall back to a generic label (never a raw id). */
+function resolveRetrievalFacet(facetKey: string): string {
+  return RETRIEVAL_FACET_NAMES[facetKey as RetrievalFacetKey] ?? 'Chart data'
+}
 
 export interface C2RawScheduledEvent {
   delay_ms: number

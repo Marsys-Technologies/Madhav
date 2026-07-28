@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import type { TurnState } from '../state/types'
-import { SETTLED_BAND_TEMPLATE } from '../state/lexicon'
+// S-2's canonical closed vocabulary (PB-1/integrate — replaced the C-1 stand-in).
+import { renderSealCompleteLabel } from '@/lib/pariprashna/lexicon'
 
 function formatElapsed(totalSeconds: number): string {
   const s = Math.max(0, totalSeconds)
@@ -55,7 +56,9 @@ export function WorkingBand({ turn, expanded, onToggle }: WorkingBandProps) {
   } else if (turn.status === 'interrupted') {
     label = 'Stopped — kept what arrived'
   } else if (turn.status === 'settled' || turn.status === 'settling') {
-    label = <b>{SETTLED_BAND_TEMPLATE(turn.grounding?.factorCount ?? 0, turn.grounding?.classicalCount ?? 0, formatElapsed(elapsed))}</b>
+    // S-2's sealed-band label: "Grounded in N sources · Ts" (N = chart factors
+    // + classical sources; elapsed is the numeric client-clock seconds).
+    label = <b>{renderSealCompleteLabel((turn.grounding?.factorCount ?? 0) + (turn.grounding?.classicalCount ?? 0), elapsed)}</b>
   } else if (turn.status === 'reconnecting') {
     label = <>{currentLiveLabel(turn)}<span style={{ color: 'var(--pp-gold-tertiary)' }}> — reconnecting…</span></>
   } else {
