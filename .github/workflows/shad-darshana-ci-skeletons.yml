@@ -1,0 +1,178 @@
+name: ṢAḌ-DARŚANA — W0.6 CI Skeletons (Lane shad-darshana-ci-skeletons)
+
+# SHAD_DARSHANA_BRIEF_v2_0.md §0.6 / §3 W0.6's six CI skeletons:
+#   1. specificity_gate_v0.ts               — item 1  (E3 hard-gate precursor)
+#   2. shad_darshana_w0_prose_survival_battery.test.ts — item 2 (hardFloor prose survival)
+#   3. shad_darshana_w0_tri_plane_no_dead_end.test.ts (unit) +
+#      tri_plane_no_dead_end_gate.ts (live) — item 3 (item 43)
+#   4. completeness_census_seed.ts           — item 4  (registry 1-44 + E1-E8)
+#   5. authority_basis_census_seed.ts        — item 5  (item 44 seed)
+#   6. shad_darshana_w0_mode3_routing.test.ts (unit) +
+#      mode3_single_route_gate.ts (live)     — item 6  (Elevation §8 Mode-3 routing rule)
+#
+# Same PLAN/LIVE discipline as the precedent this lane follows
+# (`.github/workflows/elev-serving-gates.yml`'s own header, quoted in spirit here):
+#   PLAN mode (no MCP_SERVER_URL) — static-only (source-tree registration checks + call
+#     plan), always exits 0 for the registration-dependent live gates (specificity,
+#     tri-plane, mode3-route) since the eight kala_* facades are built by concurrent
+#     sibling lanes that may not be merged yet. The two pure-static census seeds
+#     (completeness, authority-basis) are FULL real gates even in this job — they need no
+#     live server and have real teeth (CLAUDE.md §N.7) from day one.
+#   LIVE mode (MCP_SERVER_URL + MARSYS_MCP_KEY secret) — drives the real deployed
+#     connector. workflow_dispatch only (never on every push — rate-limit + secret
+#     availability), and self-skips (exit 0, not a fabricated pass) if the secret is not
+#     configured for this repo/branch.
+#
+# The two unit-level vitest batteries (prose-survival, tri-plane unit half, mode3-routing)
+# need no live server and no facade merge — they exercise `kala_envelope.ts` /
+# `argument_composer.ts` / `response_budget.ts` directly (already merged at W0.3) and are
+# expected green from the moment this PR lands. Cherry-picked by exact test file, matching
+# this repo's own established precedent (see `density-census` job in `ci.yml`'s own header
+# comment: "platform-mcp's full `npm test` currently carries pre-existing unrelated
+# failures ... wiring the whole suite into CI is a follow-on hygiene item, not this lane's
+# job" — the same reasoning applies here, unchanged).
+
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  unit-batteries:
+    name: W0.6 — unit-level batteries (prose-survival, tri-plane, mode3-routing)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform-mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform-mcp/package-lock.json
+      - run: npm ci
+      - name: item 2 — minimum-budget prose-survival battery (hardFloor)
+        run: npx vitest run src/__tests__/shad_darshana_w0_prose_survival_battery.test.ts
+      - name: item 3 — tri-plane no-dead-end battery (unit level)
+        run: npx vitest run src/__tests__/shad_darshana_w0_tri_plane_no_dead_end.test.ts
+      - name: item 6 — Mode-3 single-route assertion (unit level; SKIPS honestly pre-merge of the sibling upaya-ritual-stub lane)
+        run: npx vitest run src/__tests__/shad_darshana_w0_mode3_routing.test.ts
+
+  completeness-census-seed:
+    name: W0.6 item 4 — completeness census seed (registry 1-44 + E1-E8)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: completeness_census_seed — structural validation (real gate, no live server needed)
+        run: npx tsx scripts/census/shad_darshana_gates/completeness_census_seed.ts
+
+  authority-basis-census-seed:
+    name: W0.6 item 5 — authority-basis census seed (item 44)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: authority_basis_census_seed — enumeration + presence-detector validation (real gate, no live server needed)
+        run: npx tsx scripts/census/shad_darshana_gates/authority_basis_census_seed.ts
+
+  specificity-gate-v0-plan:
+    name: W0.6 item 1 — specificity_gate_v0 (PLAN mode)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: specificity_gate_v0 — static registration census + call plan (no live calls)
+        run: npx tsx scripts/census/shad_darshana_gates/specificity_gate_v0.ts
+
+  tri-plane-no-dead-end-gate-plan:
+    name: W0.6 item 3 — tri_plane_no_dead_end_gate (PLAN mode)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: tri_plane_no_dead_end_gate — static registration census + call plan (no live calls)
+        run: npx tsx scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts
+
+  mode3-single-route-gate-plan:
+    name: W0.6 item 6 — mode3_single_route_gate (PLAN mode)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: mode3_single_route_gate — static registration check + call plan (no live calls)
+        run: npx tsx scripts/census/shad_darshana_gates/mode3_single_route_gate.ts
+
+  live-gates:
+    # Mirrors elev-serving-gates.yml's own `serving-gates-live` job precedent exactly:
+    # workflow_dispatch-only, self-skips (exit 0, not a fabricated pass) when the secret
+    # is absent.
+    name: W0.6 — live gates (deployed connector; items 1/3/6)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: items 1/3/6 — specificity + tri-plane + mode3-route (LIVE, paced)
+        env:
+          MCP_SERVER_URL: ${{ secrets.MARSYS_MCP_URL }}
+          MCP_BEARER: ${{ secrets.MARSYS_MCP_KEY }}
+        run: |
+          if [ -z "$MCP_SERVER_URL" ]; then
+            echo "MARSYS_MCP_URL secret not configured — skipping the live W0.6 gate battery (never a fabricated pass)." >&2
+            exit 0
+          fi
+          npx tsx scripts/census/shad_darshana_gates/specificity_gate_v0.ts
+          npx tsx scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts
+          npx tsx scripts/census/shad_darshana_gates/mode3_single_route_gate.ts
