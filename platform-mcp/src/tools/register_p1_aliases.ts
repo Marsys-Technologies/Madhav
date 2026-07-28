@@ -995,6 +995,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // therefore served ALL grahas' resonances/prescriptions unfiltered — the exact "Saturn
   // query must never serve Jupiter remedies" failure mode this fix closes. `planet` is
   // accepted as an alias of the capability's native `graha` param name.
+  // PARISHODHANA B1 (R-29/EL-51 follow-up): `fields` was not declared on this alias's
+  // zod schema — same silent-param-strip failure mode CR-42 fixed for graha/planet
+  // above. The underlying L2/query_remedies capability's `fields='all'` recovery path
+  // (its own drill_pointers advertise it, and it's the documented way to reach
+  // associated_*_array / estimated_cost_inr_range_jsonb / the raw prescription_detail_jsonb)
+  // was therefore unreachable through this MCP tool — always silently forced to
+  // 'compact' regardless of what a caller passed. Now declared and forwarded.
   regAlias(server, 'bodha_remedies_get',
     'L2 remedy recommendations via Bodha (PRIMARY Phase-1 name for get_remedies)',
     'marsys://tool/L2/query_remedies',
@@ -1003,6 +1010,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       graha: z.string().optional().describe('Filter by target graha (e.g. Saturn, Venus) — case-insensitive.'),
       planet: z.string().optional().describe('Alias of `graha`.'),
       tradition: z.string().optional(),
+      fields: z.enum(['compact', 'all']).optional().describe(
+        "'compact' (default) narrates + drops always-null/redundant columns; 'all' returns full raw rows."),
     }, principal, { paramAliases: { planet: 'graha' } })
 
   // Also: bodha_remedies_search as secondary alias
@@ -1015,6 +1024,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       graha: z.string().optional().describe('Filter by target graha (e.g. Saturn, Venus) — case-insensitive.'),
       planet: z.string().optional().describe('Alias of `graha`.'),
       tradition: z.string().optional(),
+      fields: z.enum(['compact', 'all']).optional().describe(
+        "'compact' (default) narrates + drops always-null/redundant columns; 'all' returns full raw rows."),
     }, principal, { paramAliases: { planet: 'graha' } })
 
   // get_chart_quality → bodha_quality_get
