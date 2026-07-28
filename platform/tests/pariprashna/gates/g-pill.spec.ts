@@ -12,7 +12,7 @@
  * is silently ignored — the pill never appears.
  */
 import { test, expect, type Page } from '@playwright/test'
-import { gotoHarness } from './_helpers'
+import { gotoHarness, mainRunViolate } from './_helpers'
 
 async function scrollUpMidStream(page: Page, fixture: string, violate: 'pill' | null): Promise<void> {
   await gotoHarness(page, fixture, violate)
@@ -39,7 +39,7 @@ async function scrollUpMidStream(page: Page, fixture: string, violate: 'pill' | 
 
 test.describe('G-PILL — follow pill appears on scroll-up and re-pins on click', () => {
   test('giant-table: pill appears after scrolling up mid-stream, re-pins on click', async ({ page }) => {
-    await scrollUpMidStream(page, 'giant-table', null)
+    await scrollUpMidStream(page, 'giant-table', mainRunViolate('pill'))
     const pill = page.getByTestId('follow-pill')
     await expect(pill).toBeVisible()
 
