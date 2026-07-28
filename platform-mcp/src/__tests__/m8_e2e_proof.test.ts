@@ -537,13 +537,12 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
 
     // The declared constant — WP-1.3(h)/F-WP13-testcleanup reconciled to post-B2 actual
     // (was 45, pre-B2). The subset wired here grew because registry_bridge now registers
-    // 26 tools (WP-1.3 a/f/i added computed-but-unserved assets; W5 Lane L4 added
-    // tool_search, the "tool-search metadata" capability); the retired
-    // registerQueryDashaPeriodsTool (−1) was removed. Measured = 58.
-    // ṢAḌ-DARŚANA W0.4: +2 — registerRegistryBridgeTools now also registers
-    // kala_now_get + kala_ahead_get (tools/kala_views/{now,ahead}.ts), the first two of
-    // eight kala_* view facades, wired at the bottom of that function. 58 + 2 = 60.
-    const REGISTERED_TOOL_COUNT = 60
+    // more tools (WP-1.3 a/f/i added computed-but-unserved assets; W5 Lane L4 added
+    // tool_search, the "tool-search metadata" capability; ṢAḌ-DARŚANA W0.4 added four
+    // facades across two parallel lanes — kala_now_get + kala_ahead_get (this lane, +2)
+    // and kala_priority_get + kala_explain_get (sibling lane, +2)); the retired
+    // registerQueryDashaPeriodsTool (−1) was removed. Measured empirically after merge.
+    const REGISTERED_TOOL_COUNT = 62
     expect(toolCount).toBe(REGISTERED_TOOL_COUNT)
   })
 })
@@ -601,13 +600,14 @@ describe('V6 — Invariants: tool names snake_case, no hyphens', () => {
       expect(name).toMatch(/^[a-z][a-z0-9_]*$/)
       expect(name).not.toContain('-')
     }
-    // WP-1.3(h) / F-WP13-testcleanup: post-B2 the D7 registry bridge registers 26 tools
+    // WP-1.3(h) / F-WP13-testcleanup: post-B2 the D7 registry bridge registers 30 tools
     // (WP-1.3 a/f/i lanes added the computed-but-unserved assets + dedup surface; W5
-    // Lane L4 added tool_search, the "tool-search metadata" capability). Was 12 (stale
-    // pre-B2 count), then 25 (pre-W5-L4 count).
-    // ṢAḌ-DARŚANA W0.4: +2 — kala_now_get + kala_ahead_get, both already snake_case
-    // (asserted by the loop above). 26 + 2 = 28.
-    expect(toolNames.length).toBe(28)
+    // Lane L4 added tool_search, the "tool-search metadata" capability; ṢAḌ-DARŚANA W0.4
+    // added four facades across two parallel lanes — kala_now_get + kala_ahead_get (+2,
+    // both already snake_case per the loop above) and kala_priority_get + kala_explain_get
+    // (+2)). Was 12 (stale pre-B2 count), then 25 (pre-W5-L4 count), then 26 (pre-W0.4
+    // count).
+    expect(toolNames.length).toBe(30)
   })
 
   it('all chart-selection tool names are snake_case', async () => {
