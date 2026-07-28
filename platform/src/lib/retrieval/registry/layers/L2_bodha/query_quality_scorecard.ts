@@ -117,13 +117,26 @@ export const queryQualityScorecardCapability: CapabilityDescriptor = {
           defect_001: defect001,
           // Legacy field retained (additive) for callers of the prior wave's shape; text
           // now sourced from the same live derivation rather than a hardcoded literal.
+          //
+          // PARISHODHANA B3 fix (stale prose, flagged as a cosmetic residual in
+          // SAMAPANA_REPORT_v1_0.md §3 item 2): this message used to say the served
+          // scorecard field "may not reflect this" / "is not refreshed here" — true before
+          // the GA.1-class fix above (line ~107), but self-contradicting the moment that fix
+          // landed, since `scorecard.unresolved_constituent_facts_count` IS now overwritten
+          // with this same live-derived count on every call. The residual gap is narrower and
+          // still worth disclosing: the underlying DB ROW in synthesis_quality_scorecard
+          // remains an unrefreshed writer-time snapshot — only the SERVED field is corrected,
+          // in memory, at response time.
           defect_001_alert: {
             severity: defect001.status === 'RESOLVED' ? 'INFO' : defect001.status === 'UNKNOWN' ? 'UNKNOWN' : 'HIGH',
             message: [
               `DEFECT-001 status (derived live, as_of=${defect001.as_of}): ${defect001.status}.`,
               defect001.note,
-              'The stored scorecard field unresolved_constituent_facts_count may not reflect this —',
-              'it was computed by the Bodha writer before the L1 SHA hash rebuild and is not refreshed here.',
+              'The served scorecard.unresolved_constituent_facts_count field above is overwritten',
+              'with this same live-derived count (SAMĀPANA Track C, GA.1-class fix) — it no longer',
+              'disagrees with defect_001. The underlying synthesis_quality_scorecard DB row itself',
+              'remains a writer-time snapshot from before the L1 SHA hash rebuild and is not',
+              'updated in place; only the value served here is corrected.',
             ].join(' '),
             ...defect001.metrics,
           },

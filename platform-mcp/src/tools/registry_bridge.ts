@@ -782,6 +782,62 @@ export function buildDomainCompletenessPointer(domain: unknown, chart_id: string
   }
 }
 
+/** PARIŚODHANA R-10 fix: join the already-computed L1 `ga_vichara` leverage_index family
+ *  (chart_vichara, served live via `marsys://tool/L1/get_vichara` / ganita_vichara_get) into
+ *  an assess_* response, mutating in place. Confirmed live (chart 482012f1-…): 7 real,
+ *  populated rows (one per graha) existed for domain="wealth" via ganita_vichara_get, but the
+ *  field was completely ABSENT — not null — from assess_wealth's response shape. Pure
+ *  serving-layer wiring; no new computation (B.10) and no restatement of the L1 value (§N.5)
+ *  — every emitted row is a read-only projection of the vichara row's own fields
+ *  (value_num/value_jsonb/constituent_fact_ids/formula_version/source_citation), so a caller
+ *  can always resolve back to chart_vichara/chart_facts via the same ids the row already
+ *  carries. Never throws: a failed join degrades to an honest empty array + reason, never a
+ *  fabricated substitute. */
+export async function attachLeverageIndex(
+  response: Record<string, unknown>, domain: string, chart_id: string, ayanamsha_id: string, principal: Principal,
+): Promise<void> {
+  const drillPointer = `ganita_vichara_get(chart_id, family="leverage_index", domain="${domain}")`
+  try {
+    const payload = await callRegistryCapability(
+      'marsys://tool/L1/get_vichara',
+      { chart_id, ayanamsha_id, family: 'leverage_index', domain },
+      chart_id, principal,
+    )
+    const inner = unwrapCapabilityContent(payload) as Record<string, unknown> | undefined
+    const rawRows = inner && Array.isArray(inner['rows']) ? inner['rows'] as Record<string, unknown>[] : []
+    response['leverage_index_by_graha'] = rawRows.map((r) => {
+      const j = (r['value_jsonb'] as Record<string, unknown> | undefined) ?? {}
+      return {
+        subject: r['subject'],
+        leverage_index: r['value_num'],
+        capability: j['capability'],
+        dignity_score: j['dignity_score'],
+        domain_load_bearing_weight: j['domain_load_bearing_weight'],
+        dasha_runway_weight: j['dasha_runway_weight'],
+        years_to_start: j['years_to_start'],
+        constituent_fact_ids: r['constituent_fact_ids'],
+        formula_version: r['formula_version'],
+        source_citation: r['source_citation'],
+      }
+    })
+    response['leverage_index_note'] =
+      `leverage_index (domain_load_bearing_weight ÷ capability, dasha-runway-weighted — the ` +
+      `number remedy/intervention-timing ranks on) sourced read-only from L1 ga_vichara ` +
+      `(chart_vichara, §N.5 — never restated/recomputed here). Full per-row breakdown + ` +
+      `constituent_fact_ids: call ${drillPointer}.`
+    if (rawRows.length === 0) {
+      response['leverage_index_empty_reason'] = typeof inner?.['empty_reason'] === 'string'
+        ? inner['empty_reason']
+        : `No leverage_index rows for domain="${domain}" on this chart — call ${drillPointer} for the live honest-empty diagnostic.`
+    }
+  } catch (err) {
+    // Never fabricate a value on failure — degrade to an honest, clearly-labeled gap instead.
+    response['leverage_index_by_graha'] = []
+    response['leverage_index_empty_reason'] =
+      `leverage_index join failed (${err instanceof Error ? err.message : String(err)}) — call ${drillPointer} directly.`
+  }
+}
+
 // ── W7 — Substance-inline domain reading (SATYA-ŚEṢA W7 addendum) ──────────────────────────
 //
 // The Offer Law (SATYA_SHESHA_W7_ADDENDUM_v1_0.md §1, proven live by the sealed evaluator
@@ -1481,6 +1537,51 @@ function enforceTimingAnchoredHonesty(
       'kala_activations) are all empty on the wire — receipt.timing_anchored downgraded from an ' +
       'affirmative pre-trim/pre-serve value rather than shipping a "✓-with-empty-evidence" receipt ' +
       '(Gate Ś #10; CLAUDE.md §N.6 point 3 / B.10).',
+    ))
+  }
+}
+
+// PARIŚODHANA Phase B1 fix (CR-2/CR-63/R-38 — receipt-honesty violation, live-confirmed
+// 2026-07-27 on chart 482012f1-710e-4a25-994a-93821f5871aa across wealth/career/marriage):
+// `enforceTimingAnchoredHonesty` above closes the gap for `timing_anchored` — but its
+// SIBLING receipt field, `varga_confirmed`, has no equivalent guard. `reconcileReceiptWithTrimReport`
+// (the R-21 fix) only downgrades `varga_confirmed` when the FINAL `budgeted.trim_report`
+// still names `content.checklist.varga_confirmation.rows` with `kept_count: 0` — but
+// `finalizeMcpBudget`'s own post-attachment degrade step (response_budget.ts's
+// "re-measure the WHOLE object" pass) can collapse the ENTIRE trim_report array down to a
+// single one-line `(trim_report)` summary entry when attaching the full report would
+// reopen the byte-budget gap. That is exactly what happens on every judgment_query call at
+// its default 12KB ceiling (confirmed live: trim_report collapses from 8 real entries to 1
+// summary entry) — erasing the per-path record `reconcileReceiptWithTrimReport` depends on
+// to catch this case. The result: a `varga_confirmed:"D2✓"` / `"D10✓"` / `"D9✓"` receipt
+// mark survives unreconciled next to a genuinely-empty served `checklist.varga_confirmation.rows`,
+// reproducing on every domain regardless of dignity strength (CR-2/CR-63/R-38). Fix:
+// re-derive `varga_confirmed` from what actually SURVIVED onto the wire — never from the
+// trim_report's own (possibly-collapsed) bookkeeping — same discipline as
+// enforceTimingAnchoredHonesty, so it is immune to whatever caused the emptiness (real
+// budget trim, trim_report collapse, or rows that were already empty pre-trim).
+function enforceVargaConfirmedHonesty(
+  receipt: Record<string, unknown>,
+  servedContent: Record<string, unknown> | undefined,
+  judgmentFlags: JudgmentFlagEntry[],
+): void {
+  const checklist = servedContent?.['checklist'] as Record<string, unknown> | undefined
+  const vargaConfirmation = checklist?.['varga_confirmation'] as Record<string, unknown> | undefined
+  const rows = vargaConfirmation?.['rows']
+  const servedVargaConfirmed = Array.isArray(rows) && rows.length > 0
+
+  const priorMark = receipt['varga_confirmed']
+  const priorAffirmative = priorMark === true ||
+    (typeof priorMark === 'string' && priorMark.includes('✓'))
+  if (!servedVargaConfirmed && priorAffirmative) {
+    const varga = typeof vargaConfirmation?.['varga'] === 'string' ? vargaConfirmation['varga'] as string : null
+    receipt['varga_confirmed'] = false
+    judgmentFlags.push(judgmentFlag(
+      'varga_confirmed_forced_false',
+      'the served checklist.varga_confirmation.rows are empty on the wire' +
+      (varga ? ` (operative varga ${varga})` : '') + ' — receipt.varga_confirmed downgraded from ' +
+      `"${String(priorMark)}" rather than shipping a "✓-with-empty-evidence" receipt ` +
+      '(CR-2/CR-63/R-38; CLAUDE.md §N.6 point 3 / B.10).',
     ))
   }
 }
@@ -2701,6 +2802,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         attachDomainCompleteness(response, 'wealth', chart_id)
         // SATYA-ŚEṢA W7: serve the reading itself, inline, not just a pointer to one.
         await attachDomainReading(response, 'wealth', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
+        // PARIŚODHANA R-10: join the already-computed L1 ga_vichara leverage_index family in —
+        // it was fully computed (7 rows/chart) but completely absent from this response shape.
+        await attachLeverageIndex(response, 'wealth', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
         return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_wealth', budget_kb, effectiveVerbosity), 'assess_wealth', budget_kb))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
@@ -3280,6 +3384,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           budgeted['content'] as Record<string, unknown> | undefined,
           budgeted['judgment_flags'] as JudgmentFlagEntry[] | undefined ?? [],
         )
+        // PARIŚODHANA Phase B1 (CR-2/CR-63/R-38): the varga_confirmed sibling of the
+        // timing_anchored guard above — see enforceVargaConfirmedHonesty's docstring.
+        enforceVargaConfirmedHonesty(
+          receipt,
+          budgeted['content'] as Record<string, unknown> | undefined,
+          budgeted['judgment_flags'] as JudgmentFlagEntry[] | undefined ?? [],
+        )
         return dualOutputBudgeted(budgeted)
       } catch (err) {
         return errorOutput('judgment_query', String(err), { chart_id })
@@ -3304,9 +3415,6 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     Aries: 'Mars', Taurus: 'Venus', Gemini: 'Mercury', Cancer: 'Moon', Leo: 'Sun',
     Virgo: 'Mercury', Libra: 'Venus', Scorpio: 'Mars', Sagittarius: 'Jupiter',
     Capricorn: 'Saturn', Aquarius: 'Saturn', Pisces: 'Jupiter',
-  }
-  const SHADBALA_REQUIRED_RUPAS: Record<string, number> = {
-    Sun: 5.0, Moon: 6.0, Mars: 5.0, Mercury: 7.0, Jupiter: 6.5, Venus: 5.5, Saturn: 5.0,
   }
   const DUSTHANA_HOUSES = new Set([6, 8, 12])
   const ORDINAL_WORDS = [
@@ -3370,9 +3478,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     for (const v of Object.values(obj)) stripCitationRefDeep(v)
   }
 
-  function buildGrahaPortraitNarration(
+  async function buildGrahaPortraitNarration(
     chartId: string, grahaName: string, lagnaSign: string | null, inner: Record<string, unknown>,
-  ): { narration: string; extraFactIds: string[] } {
+    principal: Principal,
+  ): Promise<{ narration: string; extraFactIds: string[] }> {
     const sentences: string[] = []
     const extraFactIds: string[] = []
 
@@ -3494,14 +3603,50 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
 
     // ── shadbala ───────────────────────────────────────────────────────────
+    // ŚUDDHA-VĀCA P0-1..4 fix (lane:serve-shadbala — the native's originating complaint):
+    // graha_shadbala_total carries TWO fact_key variants for the same (chart_id,
+    // ayanamsha_id, fact_subject) — 'ratio' (L1 achieved/required, ~0.8-1.7) and 'rupa'
+    // (raw achieved, ~4.6-8.5). The prior code selected whichever row `.find()` landed on
+    // first (no fact_key pin — D1_MISSELECT) and printed it labeled "rupas" regardless of
+    // which one it actually was, against a hardcoded SHADBALA_REQUIRED_RUPAS constant
+    // (D3_HARDCODED_DRIFT) — producing "1.69 rupas vs 5.00 required — grade: weak (deficit)"
+    // for Sun, the chart's single strongest planet. Fix: pin fact_key='rupa' for the
+    // achieved value, and REFERENCE (never re-derive, §N.5) the graha's own L1
+    // `required_rupa` fact — stored under ayanamsha_id='INVARIANT' since it does not vary
+    // by ayanamsha, confirmed live for chart 482012f1.
     const strengthRows = rowsOf(inner, 'strength', 'rows')
-    const totalRow = strengthRows.find(r => r['fact_category'] === 'graha_shadbala_total')
+    const totalRow = strengthRows.find(r => r['fact_category'] === 'graha_shadbala_total' && r['fact_key'] === 'rupa')
     if (totalRow) {
       const fid = factIdOf(totalRow); if (fid) extraFactIds.push(fid)
       const rupas = numOf(totalRow)
-      const required = SHADBALA_REQUIRED_RUPAS[grahaName]
       if (rupas != null) {
+        let required: number | null = null
+        let requiredFid: string | null = null
+        try {
+          const requiredPayload = await callRegistryCapability(
+            'marsys://tool/L1/chart_facts_query',
+            {
+              chart_id: chartId, ayanamsha_id: 'INVARIANT', category: 'graha_shadbala_total',
+              planet: grahaName, fact_key: 'required_rupa', shape: 'rows',
+            },
+            chartId, principal,
+          )
+          const unwrapped = (requiredPayload && typeof requiredPayload === 'object' &&
+            'content' in (requiredPayload as Record<string, unknown>) &&
+            typeof (requiredPayload as Record<string, unknown>)['is_error'] === 'boolean')
+            ? (requiredPayload as Record<string, unknown>)['content']
+            : requiredPayload
+          const requiredRows = Array.isArray((unwrapped as Record<string, unknown> | undefined)?.['rows'])
+            ? (unwrapped as Record<string, unknown>)['rows'] as PortraitRow[]
+            : []
+          const requiredRow = requiredRows[0]
+          required = requiredRow ? numOf(requiredRow) : null
+          requiredFid = requiredRow ? factIdOf(requiredRow) : null
+        } catch {
+          required = null
+        }
         if (required != null) {
+          if (requiredFid) extraFactIds.push(requiredFid)
           const surplus = rupas - required
           const grade = surplus >= 0 ? 'strong (surplus)' : 'weak (deficit)'
           sentences.push(
@@ -3509,7 +3654,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             `(${surplus >= 0 ? '+' : ''}${surplus.toFixed(2)} rupas).`,
           )
         } else {
-          sentences.push(`Shadbala: ${rupas.toFixed(2)} rupas total.`)
+          // §N.7.6 — an honest null beats an invented judgment: no fallback threshold,
+          // no fabricated grade, when the L1 required_rupa fact can't be reached.
+          sentences.push(`Shadbala: ${rupas.toFixed(2)} rupas total (required-rupa threshold unavailable from L1 this call — no grade assigned).`)
         }
       }
     }
@@ -3958,8 +4105,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // the UNTRIMMED capability output — BEFORE applyMcpBudget runs below, so it can
         // safely cite any fetched row even if that row is later trimmed off the wire.
         const grahaNameResolved = typeof inner['graha'] === 'string' ? inner['graha'] as string : graha
-        const { narration, extraFactIds } = buildGrahaPortraitNarration(
-          chart_id, grahaNameResolved, chart_header?.lagna_sign ?? null, inner,
+        const { narration, extraFactIds } = await buildGrahaPortraitNarration(
+          chart_id, grahaNameResolved, chart_header?.lagna_sign ?? null, inner, principal,
         )
         // New budget headroom (Pratinidhi-R ruling): citation_ref is internal MCP-lineage
         // provenance, never a classical citation — strip it from every row now that

@@ -37,7 +37,10 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
     'life events used by the L5 Mīmāṃsā calibration loop. Reads the chart-scoped',
     'life_events table (NOT MSR signals). Returns event_id, event_date, description,',
     'domain, category, significance, event_type, source, and outcome_observed.',
-    'Filters: category, domain, significance, start_date, end_date. Bounded to 50 rows.',
+    'Filters: category, domain, significance, start_date, end_date, query (case-insensitive',
+    'substring text search over description/domain/category/event_type/source_citation —',
+    'multi-word queries require every word to match, AND semantics). Paginate with',
+    'limit + offset. Bounded to 50 rows per page.',
     'NO-LEAKAGE: life_events is a calibration corpus only — it must never feed prediction',
     'generation; consume it only to score predictions against observed reality.',
   ].join(' '),
@@ -73,9 +76,19 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
       description: 'Include events on or before this date (YYYY-MM-DD).',
       required: false,
     },
+    query: {
+      type: 'string',
+      description: 'Case-insensitive text search over description/domain/category/event_type/source_citation. Whitespace-separated words all must match (AND semantics). Omit for no text filter.',
+      required: false,
+    },
     limit: {
       type: 'number',
-      description: `Max events to return (default: 50, max: ${MAX_LIMIT}).`,
+      description: `Max events to return per page (default: 50, max: ${MAX_LIMIT}).`,
+      required: false,
+    },
+    offset: {
+      type: 'number',
+      description: 'Rows to skip before the page starts (pagination; default: 0).',
       required: false,
     },
   },
@@ -111,7 +124,11 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
     const significance = args['significance'] ? String(args['significance']) : null
     const start_date   = args['start_date'] ? String(args['start_date']) : null
     const end_date     = args['end_date'] ? String(args['end_date']) : null
+    const rawQuery     = typeof args['query'] === 'string' ? args['query'].trim() : ''
+    const search_query = rawQuery.length > 0 ? rawQuery : null
     const limit        = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
+    const offsetInput  = Number(args['offset'] ?? 0)
+    const offset       = Number.isFinite(offsetInput) ? Math.max(Math.trunc(offsetInput), 0) : 0
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
@@ -123,25 +140,48 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
     if (start_date)   { filters.push(`event_date >= $${p++}`);   params.push(start_date) }
     if (end_date)     { filters.push(`event_date <= $${p++}`);   params.push(end_date) }
 
+    // WP-B1 F-LEL-NOOP: `query` was accepted into the schema and forwarded verbatim by
+    // the mimamsa_lel_query alias but never read here — every call returned the same
+    // byte-identical page regardless of search text. Wire it as a case-insensitive
+    // substring (ILIKE) search over the descriptive text columns, split on whitespace
+    // with AND semantics (every word must match somewhere), so a non-matching query
+    // honestly narrows to zero rows instead of silently ignoring the filter.
+    if (search_query) {
+      const words = search_query.split(/\s+/).filter(Boolean)
+      for (const word of words) {
+        filters.push(
+          `(description ILIKE $${p} OR domain ILIKE $${p} OR category ILIKE $${p} ` +
+          `OR event_type ILIKE $${p} OR source_citation ILIKE $${p})`,
+        )
+        params.push(`%${word}%`)
+        p++
+      }
+    }
+
     const where = filters.join(' AND ')
 
-    // D5 coverage receipt: family size BEFORE the LIMIT, same filters as the page.
+    // D5 coverage receipt: family size BEFORE the LIMIT/OFFSET, same filters as the page.
     const countPromise = query<{ total: string }>(
       `SELECT COUNT(*)::text AS total FROM life_events WHERE ${where}`,
       [...params],
     )
 
-    const eventsParams = [...params, limit]
+    const limitParamIdx  = p
+    const offsetParamIdx = p + 1
+    const eventsParams = [...params, limit, offset]
     // WP-1.5 F-DATE-TZ: event_date is a DATE column — to_char to 'YYYY-MM-DD' (raw return →
     // node-postgres IST-midnight → UTC off-by-one, e.g. a 1990-05-14 event → "1990-05-13...Z").
+    // WP-B1 F-LEL-NOOP: OFFSET now wired to `offset` — previously accepted+forwarded but
+    // never applied, so every page (regardless of offset) returned the same first rows.
     const eventsSql = `
       SELECT event_id, to_char(event_date, 'YYYY-MM-DD') AS event_date,
              category, domain, description, significance,
              event_type, source_citation, source_section, outcome_observed
       FROM life_events
       WHERE ${where}
-      ORDER BY event_date ASC
-      LIMIT $${p}
+      ORDER BY event_date ASC, event_id ASC
+      LIMIT $${limitParamIdx}
+      OFFSET $${offsetParamIdx}
     `
 
     try {
@@ -150,14 +190,19 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
         countPromise,
       ])
       const total_matching = Number(countResult.rows[0]?.total ?? 0)
+      const count = eventsResult.rows.length
+      // Honest end-of-results indicator (WP-B1 F-LEL-NOOP): lets a caller paging with
+      // `offset` know whether another page exists rather than guessing from `count`.
+      const has_more = offset + count < total_matching
 
       return {
         content: {
           chart_id,
           events: eventsResult.rows,
-          count: eventsResult.rows.length,
+          count,
           total_matching,
-          filters: { category, domain, significance, start_date, end_date, limit },
+          has_more,
+          filters: { category, domain, significance, start_date, end_date, query: search_query, limit, offset },
           provenance: {
             tables: ['life_events'],
             no_leakage_note:

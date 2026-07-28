@@ -252,6 +252,115 @@ def test_build_signal_row_specificity_reflects_agreement_grade():
     assert row_confirmed["computed_salience"] > row_contradicted["computed_salience"]
 
 
+# ── P0-7 D4_GRADE_INVERSION: valence must come from matching_class (the
+# classical quadrant), never from agreement (the tri-frame corroboration
+# tier). Pre-fix, ALL confirmed_3frame rows were hardcoded "benefic"
+# regardless of quadrant — including a confirmed DUSTHANA placement, which
+# is classically inauspicious. Agreement answers "how sure are we this
+# fired"; matching_class answers "is this auspicious or not" — they are
+# orthogonal and must not be conflated. ──────────────────────────────────
+
+def test_confirmed_3frame_dusthana_must_not_be_labeled_benefic():
+    """Contrived: Lagna=0, Moon=6, Sun=10; graha=5 -> house_from(0,5)=6,
+    house_from(6,5)=12, house_from(10,5)=8 — all three land in DUSTHANA
+    (6/8/12), i.e. maximal corroboration (confirmed_3frame) of an
+    INAUSPICIOUS quadrant."""
+    tri = compute_tri_frame(graha_sign0=5, lagna_sign0=0, moon_sign0=6, sun_sign0=10)
+    assert tri["house_from_lagna"] == 6
+    assert tri["house_from_moon"] == 12
+    assert tri["house_from_sun"] == 8
+    assert tri["class_from_lagna"] == tri["class_from_moon"] == tri["class_from_sun"] == "dusthana"
+    assert tri["agreement"] == "confirmed_3frame"
+    assert tri["matching_class"] == "dusthana"
+
+    row = build_signal_row(
+        chart_id="482012f1-710e-4a25-994a-93821f5871aa",
+        ayanamsha_id="lahiri_chitrapaksha",
+        build_id="00000000-0000-0000-0000-000000000000",
+        graha_code="SAT",
+        tri_frame=tri,
+        fact_ids={"graha": "f1", "lagna": "f2", "moon": "f3", "sun": "f4"},
+        now="2026-07-15T00:00:00+00:00",
+    )
+    # The defect: valence was keyed on `agreement` alone, so confirmed_3frame
+    # always produced "benefic" — even here, a confirmed DUSTHANA placement.
+    assert row["valence"] != "benefic", (
+        "confirmed_3frame agreement must not force 'benefic' valence when "
+        "matching_class is dusthana (classically inauspicious) — valence "
+        "must be derived from matching_class, not agreement"
+    )
+    # Positive assertion of the correct behavior: dusthana quadrant -> malefic.
+    assert row["valence"] == "malefic"
+
+
+def test_confirmed_3frame_trikona_is_benefic():
+    """Sanity check the other direction: confirmed_3frame + trikona (the
+    classically auspicious pillar) should still read benefic — the fix must
+    not flip valence to something worse than agreement-only did for the
+    genuinely auspicious case."""
+    tri = compute_tri_frame(graha_sign0=4, lagna_sign0=0, moon_sign0=4, sun_sign0=8)
+    assert tri["agreement"] == "confirmed_3frame"
+    assert tri["matching_class"] == "trikona"
+    row = build_signal_row(
+        chart_id="c", ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+        graha_code="JUP", tri_frame=tri,
+        fact_ids={"graha": "f1", "lagna": "f2", "moon": "f3", "sun": "f4"},
+        now="2026-07-15T00:00:00+00:00",
+    )
+    assert row["valence"] == "benefic"
+
+
+def test_contradicted_matching_class_none_is_honest_neutral():
+    """agreement='contradicted' has matching_class=None (no single quadrant
+    to restate) — valence must be an honest neutral, not a fabricated
+    judgment call (§1.2: narration may only restate computed facts)."""
+    tri = compute_tri_frame(graha_sign0=9, lagna_sign0=0, moon_sign0=10, sun_sign0=9)
+    assert tri["agreement"] == "contradicted"
+    assert tri["matching_class"] is None
+    row = build_signal_row(
+        chart_id="c", ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+        graha_code="SUN", tri_frame=tri,
+        fact_ids={"graha": "f1", "lagna": "f2", "moon": "f3", "sun": "f4"},
+        now="2026-07-15T00:00:00+00:00",
+    )
+    assert row["valence"] == "neutral"
+
+
+def test_valence_keyed_off_matching_class_not_agreement():
+    """Direct regression guard for D4_GRADE_INVERSION: two rows with the SAME
+    agreement tier (partial_2frame) but DIFFERENT matching_class (kendra vs
+    dusthana) must get DIFFERENT valence. If valence were still keyed off
+    agreement alone, these would be identical."""
+    tri_kendra = compute_tri_frame(graha_sign0=6, lagna_sign0=0, moon_sign0=10, sun_sign0=9)
+    assert tri_kendra["agreement"] == "partial_2frame"
+    assert tri_kendra["matching_class"] == "kendra"
+
+    tri_dusthana = compute_tri_frame(graha_sign0=5, lagna_sign0=0, moon_sign0=10, sun_sign0=2)
+    assert tri_dusthana["house_from_lagna"] == 6
+    assert tri_dusthana["house_from_moon"] == 8
+    assert tri_dusthana["house_from_sun"] == 4
+    assert tri_dusthana["class_from_lagna"] == "dusthana"
+    assert tri_dusthana["class_from_moon"] == "dusthana"
+    assert tri_dusthana["class_from_sun"] == "kendra"
+    assert tri_dusthana["agreement"] == "partial_2frame"
+    assert tri_dusthana["matching_class"] == "dusthana"
+
+    row_kendra = build_signal_row(
+        chart_id="c", ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+        graha_code="VEN", tri_frame=tri_kendra,
+        fact_ids={"graha": "f1", "lagna": "f2", "moon": "f3", "sun": "f4"},
+        now="2026-07-15T00:00:00+00:00",
+    )
+    row_dusthana_maraka_kendra = build_signal_row(
+        chart_id="c", ayanamsha_id="lahiri_chitrapaksha", build_id="b",
+        graha_code="MAR", tri_frame=tri_dusthana,
+        fact_ids={"graha": "f1", "lagna": "f2", "moon": "f3", "sun": "f4"},
+        now="2026-07-15T00:00:00+00:00",
+    )
+    assert row_kendra["valence"] == "benefic"
+    assert row_dusthana_maraka_kendra["valence"] != row_kendra["valence"]
+
+
 def test_all_9_grahas_covered():
     assert len(GRAHAS) == 9
     assert set(GRAHAS) == {"SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN"}

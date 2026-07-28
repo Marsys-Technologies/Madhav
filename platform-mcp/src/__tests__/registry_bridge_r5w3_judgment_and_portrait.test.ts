@@ -274,6 +274,85 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
     const flags = envelope['judgment_flags'] as Array<{ code: string } | string>
     expect(flags.some(f => typeof f !== 'string' && f.code === 'timing_anchored_forced_false')).toBe(false)
   })
+
+  // PARIŚODHANA Phase B1 (CR-2/CR-63/R-38 — receipt-honesty violation, live-confirmed
+  // 2026-07-27 on chart 482012f1-710e-4a25-994a-93821f5871aa across wealth/career/marriage):
+  // the varga_confirmed sibling of the Gate Ś #10 timing_anchored fix above. register_d9_judgment.ts
+  // can stamp receipt.varga_confirmed:"D2✓" from its own pre-trim computation, while the
+  // SERVED checklist.varga_confirmation.rows ends up empty on the wire — whether from
+  // response-budget trimming (PASS 2's hard-cap fallback can floor this non-hardFloor
+  // section to 0) or from finalizeMcpBudget's own trim_report-collapse step erasing the
+  // per-path record reconcileReceiptWithTrimReport depends on. Either way, a caller must
+  // never see an affirmative "✓" receipt next to zero backing evidence (CLAUDE.md §N.6
+  // point 3 / B.10).
+  it('forces receipt.varga_confirmed=false when served varga_confirmation.rows are empty, even if the capability stamped "D2✓" (CR-2/CR-63/R-38)', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID,
+        about: { domain: 'wealth', bhava: 2, label: 'Wealth / Artha', karakas: ['Jupiter'], operative_varga: 'D2' },
+        checklist: {
+          varga_confirmation: { varga: 'D2', rows: [] },
+        },
+        // The capability honestly believed the varga was confirmed pre-serve (e.g. real
+        // chart_divisionals rows existed at write time) — but nothing survived onto the wire.
+        receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D2✓', yogas_checked: 1, bhanga_checked: false, timing_anchored: false },
+        fact_id_refs: [],
+        drill_pointers: [],
+        judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'wealth', response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    const receipt = verdict['receipt'] as Record<string, unknown>
+    expect(receipt['varga_confirmed']).toBe(false)
+    const flags = envelope['judgment_flags'] as Array<{ code: string } | string>
+    expect(flags.some(f => typeof f !== 'string' && f.code === 'varga_confirmed_forced_false')).toBe(true)
+  })
+
+  it('leaves receipt.varga_confirmed="D9✓" untouched when varga_confirmation.rows genuinely carry data', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID,
+        about: { domain: 'marriage', bhava: 7, label: 'Marriage / Partnership', karakas: ['Venus'], operative_varga: 'D9' },
+        checklist: {
+          varga_confirmation: {
+            varga: 'D9',
+            rows: [{ role: 'bhavesha', graha: 'Venus', sign: 'Sagittarius', fact_id: 'f-1' }],
+          },
+        },
+        receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D9✓', yogas_checked: 1, bhanga_checked: false, timing_anchored: false },
+        fact_id_refs: [],
+        drill_pointers: [],
+        judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'marriage', response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    const receipt = verdict['receipt'] as Record<string, unknown>
+    expect(receipt['varga_confirmed']).toBe('D9✓')
+    const flags = envelope['judgment_flags'] as Array<{ code: string } | string>
+    expect(flags.some(f => typeof f !== 'string' && f.code === 'varga_confirmed_forced_false')).toBe(false)
+  })
 })
 
 // ── graha_portrait ────────────────────────────────────────────────────────────
@@ -329,6 +408,119 @@ describe('graha_portrait — MCP tool registration + seam reachability', () => {
     const result = await handler({ chart_id: TEST_CHART_ID })
     expect(result.isError).toBe(true)
     expect(captured.find(c => c.uri === 'marsys://tool/L2/graha_portrait')).toBeUndefined()
+  })
+
+  // ŚUDDHA-VĀCA P0-1..4 (lane:serve-shadbala): the native's originating complaint. The
+  // strength.rows array for a graha under fact_category='graha_shadbala_total' carries TWO
+  // fact_key variants for the SAME (chart_id, ayanamsha_id, fact_subject) — 'ratio' (L1
+  // achieved/required, ~0.8-1.7) and 'rupa' (raw achieved, ~4.6-8.5) — confirmed live for
+  // chart 482012f1's Sun: ratio=1.694, rupa=8.47. The buggy code selected whichever row
+  // `.find()` landed on first (no fact_key pin), got the ratio row, and printed it labeled
+  // "rupas" against a hardcoded SHADBALA_REQUIRED_RUPAS[Sun]=5.0 constant — producing
+  // "1.69 rupas vs 5.00 required — grade: weak (deficit)" for the chart's single strongest
+  // planet. The fix pins fact_key='rupa' AND fetches `required_rupa` from its own L1 fact
+  // (stored under ayanamsha_id='INVARIANT', §N.5 — never a wrapper-local constant).
+  describe('shadbala narration (P0-1..4 — the native-caught Sun-reads-weak defect)', () => {
+    const strengthRowsWithBothFactKeys = [
+      {
+        fact_id: 'fid-ratio', fact_category: 'graha_shadbala_total', fact_subject: 'SUN',
+        ayanamsha_id: 'lahiri_chitrapaksha', fact_key: 'ratio', fact_value_num: 1.694,
+        fact_value_text: null, fact_value_jsonb: null, unit: null, verification_pass_status: 'two_pass_verified',
+      },
+      {
+        fact_id: 'fid-rupa', fact_category: 'graha_shadbala_total', fact_subject: 'SUN',
+        ayanamsha_id: 'lahiri_chitrapaksha', fact_key: 'rupa', fact_value_num: 8.47,
+        fact_value_text: null, fact_value_jsonb: null, unit: null, verification_pass_status: 'two_pass_verified',
+      },
+    ]
+
+    it('grades Sun STRONG at 8.47 rupas vs 5.00 required — never the ratio row mislabeled as rupas', async () => {
+      const { server, handlers } = makeCapturingServer()
+      const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+      stubFetch({
+        'marsys://tool/L2/graha_portrait': {
+          chart_id: TEST_CHART_ID, graha: 'Sun', graha_code: 'SUN',
+          strength: { rows: strengthRowsWithBothFactKeys, count: 2 },
+          completeness: { strength: '✓' },
+          notes: [],
+        },
+        'marsys://tool/L1/chart_facts_query': {
+          rows: [{
+            fact_id: 'fid-required-rupa', fact_category: 'graha_shadbala_total', fact_subject: 'SUN',
+            ayanamsha_id: 'INVARIANT', fact_key: 'required_rupa', fact_value_num: 5.0,
+            fact_value_text: null, fact_value_jsonb: null, unit: null, verification_pass_status: 'two_pass_verified',
+          }],
+        },
+      }, captured)
+
+      const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+      registerRegistryBridgeTools(server, PRINCIPAL)
+      const handler = handlers.get('graha_portrait')!
+
+      const result = await handler({ chart_id: TEST_CHART_ID, graha: 'Sun', response_format: 'v3', include: ['strength'] })
+      expect(result.isError).toBeFalsy()
+      const envelope = result.structuredContent?.object as Record<string, unknown>
+      const verdict = envelope['verdict'] as Record<string, unknown>
+      const narration = String(verdict['narration'])
+
+      expect(narration).toContain('8.47 rupas vs 5.00 required')
+      expect(narration).toContain('strong (surplus)')
+      expect(narration).toContain('+3.47 rupas')
+      expect(narration).not.toContain('1.69 rupas')
+      expect(narration).not.toContain('weak (deficit)')
+
+      // The required_rupa fetch must be the real thing — fact_key pinned, INVARIANT-scoped,
+      // never a guessed/hardcoded ayanamsha or category.
+      const requiredCall = captured.find(c => c.uri === 'marsys://tool/L1/chart_facts_query')
+      expect(requiredCall).toBeDefined()
+      expect(requiredCall!.args['ayanamsha_id']).toBe('INVARIANT')
+      expect(requiredCall!.args['fact_key']).toBe('required_rupa')
+      expect(requiredCall!.args['category']).toBe('graha_shadbala_total')
+    })
+
+    it('emits an honest null grade (never a fabricated threshold) when the L1 required_rupa fetch fails', async () => {
+      const { server, handlers } = makeCapturingServer()
+      const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+      vi.stubGlobal('fetch', vi.fn(async (_url: string, opts: { body: string }) => {
+        const body = JSON.parse(opts.body) as { uri: string; args: Record<string, unknown> }
+        captured.push(body)
+        if (body.uri === 'marsys://tool/L1/chart_facts_query') {
+          throw new Error('simulated required_rupa fetch failure')
+        }
+        if (body.uri === 'marsys://tool/L2/graha_portrait') {
+          return {
+            ok: true,
+            json: async () => ({ ok: true, content: { content: {
+              chart_id: TEST_CHART_ID, graha: 'Sun', graha_code: 'SUN',
+              strength: { rows: strengthRowsWithBothFactKeys, count: 2 },
+              completeness: { strength: '✓' }, notes: [],
+            }, is_error: false } }),
+            text: async () => '',
+          }
+        }
+        return {
+          ok: true,
+          json: async () => ({ ok: true, content: { content: { chart_id_short: '482012f1', name: 'native', lagna_sign: 'Aries', lagna_deg: 1.2, moon_sign: 'Purva Bhadrapada', sun_sign: 'Capricorn', ayanamsha: 'lahiri_chitrapaksha', current_maha_antar: 'Saturn/Mercury' }, is_error: false } }),
+          text: async () => '',
+        }
+      }))
+
+      const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+      registerRegistryBridgeTools(server, PRINCIPAL)
+      const handler = handlers.get('graha_portrait')!
+
+      const result = await handler({ chart_id: TEST_CHART_ID, graha: 'Sun', response_format: 'v3', include: ['strength'] })
+      expect(result.isError).toBeFalsy()
+      const envelope = result.structuredContent?.object as Record<string, unknown>
+      const verdict = envelope['verdict'] as Record<string, unknown>
+      const narration = String(verdict['narration'])
+
+      // §1.2 / §N.7.6 — an honest null beats an invented judgment: never fall back to a
+      // guessed/hardcoded required-rupa threshold just because the real L1 fetch failed.
+      expect(narration).toContain('8.47 rupas')
+      expect(narration).not.toContain('5.00 required')
+      expect(narration).not.toMatch(/grade: (strong|weak)/)
+    })
   })
 
   it('response_format=v3 populates typed drill_pointers (design §28.4), additive alongside instrument/hint', async () => {

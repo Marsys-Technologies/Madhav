@@ -1,0 +1,69 @@
+{
+  "name": "stop-mid-pass",
+  "description": "User hits Stop while a retrieval pass is still active and a block is still open — turn.close(reason:\"stopped\") arrives with no commit for either.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "stop-mid-pass-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "conversation_id": "conv-stop-mid-pass",
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "model_id": "gemini-2.5-pro",
+        "length_tier": "standard",
+        "turn_id": "stop-mid-pass",
+        "reading_depth": "standard"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "stop-mid-pass-1",
+        "seq": 1,
+        "t": 20,
+        "type": "activity.upsert",
+        "key": "pass-1-retrieval",
+        "pass_id": "pass-1",
+        "label_key": "activity.retrieval.pass",
+        "status": "active",
+        "detail": "pass 1 of 2"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "stop-mid-pass-2",
+        "seq": 2,
+        "t": 40,
+        "type": "block.open",
+        "block_id": "b1",
+        "kind": "paragraph",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "stop-mid-pass-3",
+        "seq": 3,
+        "t": 60,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "The retrieval layer surfa"
+      }
+    },
+    {
+      "delay_ms": 30,
+      "event": {
+        "id": "stop-mid-pass-4",
+        "seq": 4,
+        "t": 90,
+        "type": "turn.close",
+        "turn_id": "stop-mid-pass",
+        "reason": "stopped"
+      }
+    }
+  ]
+}

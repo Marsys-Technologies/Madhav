@@ -161,6 +161,13 @@ export type FeatureFlag =
   // note — not a production override without the D-4b-quiet check).
   // Env: MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED.
   | 'RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED'
+  // PB-1 DHĀRĀ — Paripraśna. Gates the new adaptive conversation surface:
+  // the `/clients/[id]/pariprashna` page (redirects to `consult` when off)
+  // and the `/api/pariprashna` route (returns a 404 disabled-feature error
+  // when off). Default OFF — new unreleased surface; rollback for the whole
+  // PB-1 wave IS this flag (route ships dark, flipped on deliberately post-
+  // deploy). Env: MARSYS_FLAG_PARIPRASHNA_ENABLED.
+  | 'PARIPRASHNA_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -258,6 +265,10 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // compose_large_n). Set MARSYS_FLAG_RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED=false
   // to force the legacy hand-maintained path (emergency rollback only).
   RETRIEVAL_SINGLE_BOOTSTRAP_ENABLED: true,
+  // PB-1 DHĀRĀ — Paripraśna. Default false — new unreleased surface; flip
+  // via MARSYS_FLAG_PARIPRASHNA_ENABLED=true once the native is ready to
+  // exercise the deployed route.
+  PARIPRASHNA_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)
