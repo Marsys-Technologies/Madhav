@@ -1,0 +1,109 @@
+{
+  "name": "honest-gap",
+  "description": "A seam resolves to citation_id: null (no source found) and a flag reports the gap — must render as an honest gap, never silently dropped.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "honest-gap-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "turn_id": "honest-gap",
+        "reading_depth": "standard"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "honest-gap-1",
+        "seq": 1,
+        "t": 20,
+        "type": "block.open",
+        "block_id": "b1",
+        "kind": "paragraph",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 15,
+      "event": {
+        "id": "honest-gap-2",
+        "seq": 2,
+        "t": 35,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "No contradiction was found against the prior turn's working hypothesis. "
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "honest-gap-3",
+        "seq": 3,
+        "t": 45,
+        "type": "seam.open",
+        "seam_id": "s1",
+        "block_id": "b1",
+        "anchor_offset": 72
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "honest-gap-4",
+        "seq": 4,
+        "t": 55,
+        "type": "block.commit",
+        "block_id": "b1",
+        "final_text": "No contradiction was found against the prior turn's working hypothesis. "
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "honest-gap-5",
+        "seq": 5,
+        "t": 65,
+        "type": "seam.set",
+        "seam_id": "s1",
+        "citation_id": null
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "honest-gap-6",
+        "seq": 6,
+        "t": 75,
+        "type": "flag",
+        "flag_key": "honest_gap.no_citation_found",
+        "severity": "notice",
+        "detail": "No classical source located for this claim within the current pass budget."
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "honest-gap-7",
+        "seq": 7,
+        "t": 85,
+        "type": "turn.commit",
+        "turn_id": "honest-gap",
+        "block_count": 1,
+        "citation_count": 0
+      }
+    },
+    {
+      "delay_ms": 5,
+      "event": {
+        "id": "honest-gap-8",
+        "seq": 8,
+        "t": 90,
+        "type": "turn.close",
+        "turn_id": "honest-gap",
+        "reason": "complete"
+      }
+    }
+  ]
+}

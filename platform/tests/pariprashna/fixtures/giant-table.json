@@ -1,0 +1,404 @@
+{
+  "name": "giant-table",
+  "description": "A 30-row markdown table streamed row-by-row — exercises G-CLS/G-VIEWPORT/G-CARET under a large, growing block.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "giant-table-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "turn_id": "giant-table",
+        "reading_depth": "standard"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "giant-table-1",
+        "seq": 1,
+        "t": 20,
+        "type": "block.open",
+        "block_id": "tbl1",
+        "kind": "table",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "giant-table-2",
+        "seq": 2,
+        "t": 30,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| Period | Ruler | Signal |\n|---|---|---|\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-3",
+        "seq": 3,
+        "t": 38,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P1 | R2 | S1 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-4",
+        "seq": 4,
+        "t": 46,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P2 | R3 | S2 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-5",
+        "seq": 5,
+        "t": 54,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P3 | R4 | S3 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-6",
+        "seq": 6,
+        "t": 62,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P4 | R5 | S4 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-7",
+        "seq": 7,
+        "t": 70,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P5 | R6 | S5 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-8",
+        "seq": 8,
+        "t": 78,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P6 | R7 | S6 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-9",
+        "seq": 9,
+        "t": 86,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P7 | R8 | S7 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-10",
+        "seq": 10,
+        "t": 94,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P8 | R9 | S8 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-11",
+        "seq": 11,
+        "t": 102,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P9 | R1 | S9 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-12",
+        "seq": 12,
+        "t": 110,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P10 | R2 | S10 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-13",
+        "seq": 13,
+        "t": 118,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P11 | R3 | S11 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-14",
+        "seq": 14,
+        "t": 126,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P12 | R4 | S12 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-15",
+        "seq": 15,
+        "t": 134,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P13 | R5 | S13 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-16",
+        "seq": 16,
+        "t": 142,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P14 | R6 | S14 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-17",
+        "seq": 17,
+        "t": 150,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P15 | R7 | S15 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-18",
+        "seq": 18,
+        "t": 158,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P16 | R8 | S16 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-19",
+        "seq": 19,
+        "t": 166,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P17 | R9 | S17 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-20",
+        "seq": 20,
+        "t": 174,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P18 | R1 | S18 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-21",
+        "seq": 21,
+        "t": 182,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P19 | R2 | S19 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-22",
+        "seq": 22,
+        "t": 190,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P20 | R3 | S20 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-23",
+        "seq": 23,
+        "t": 198,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P21 | R4 | S21 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-24",
+        "seq": 24,
+        "t": 206,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P22 | R5 | S22 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-25",
+        "seq": 25,
+        "t": 214,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P23 | R6 | S23 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-26",
+        "seq": 26,
+        "t": 222,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P24 | R7 | S24 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-27",
+        "seq": 27,
+        "t": 230,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P25 | R8 | S25 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-28",
+        "seq": 28,
+        "t": 238,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P26 | R9 | S26 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-29",
+        "seq": 29,
+        "t": 246,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P27 | R1 | S27 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-30",
+        "seq": 30,
+        "t": 254,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P28 | R2 | S28 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-31",
+        "seq": 31,
+        "t": 262,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P29 | R3 | S29 |\n"
+      }
+    },
+    {
+      "delay_ms": 8,
+      "event": {
+        "id": "giant-table-32",
+        "seq": 32,
+        "t": 270,
+        "type": "block.delta",
+        "block_id": "tbl1",
+        "text": "| P30 | R4 | S30 |\n"
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "giant-table-33",
+        "seq": 33,
+        "t": 280,
+        "type": "block.commit",
+        "block_id": "tbl1",
+        "final_text": "| Period | Ruler | Signal |\n|---|---|---|\n| P1 | R2 | S1 |\n| P2 | R3 | S2 |\n| P3 | R4 | S3 |\n| P4 | R5 | S4 |\n| P5 | R6 | S5 |\n| P6 | R7 | S6 |\n| P7 | R8 | S7 |\n| P8 | R9 | S8 |\n| P9 | R1 | S9 |\n| P10 | R2 | S10 |\n| P11 | R3 | S11 |\n| P12 | R4 | S12 |\n| P13 | R5 | S13 |\n| P14 | R6 | S14 |\n| P15 | R7 | S15 |\n| P16 | R8 | S16 |\n| P17 | R9 | S17 |\n| P18 | R1 | S18 |\n| P19 | R2 | S19 |\n| P20 | R3 | S20 |\n| P21 | R4 | S21 |\n| P22 | R5 | S22 |\n| P23 | R6 | S23 |\n| P24 | R7 | S24 |\n| P25 | R8 | S25 |\n| P26 | R9 | S26 |\n| P27 | R1 | S27 |\n| P28 | R2 | S28 |\n| P29 | R3 | S29 |\n| P30 | R4 | S30 |\n"
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "giant-table-34",
+        "seq": 34,
+        "t": 290,
+        "type": "turn.commit",
+        "turn_id": "giant-table",
+        "block_count": 1,
+        "citation_count": 0
+      }
+    },
+    {
+      "delay_ms": 5,
+      "event": {
+        "id": "giant-table-35",
+        "seq": 35,
+        "t": 295,
+        "type": "turn.close",
+        "turn_id": "giant-table",
+        "reason": "complete"
+      }
+    }
+  ]
+}
