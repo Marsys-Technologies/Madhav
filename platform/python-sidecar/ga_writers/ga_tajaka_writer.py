@@ -218,6 +218,20 @@ def _ang_diff(a: float, b: float) -> float:
     return ((a - b + 180.0) % 360.0) - 180.0
 
 
+def _aspects_lagna(planet: str, full_long: float, varsha_lagna_long: float) -> bool:
+    """Tajik aspect (Ithasala-class) test: does `planet` at longitude `full_long`
+    aspect the Varsha-Lagna degree within its own classical deeptamsa orb?
+
+    ŚUDDHA-VĀCA P0-9 fix: uses the graha's own per-graha DEEPTAMSA orb (the same
+    M-13 table already used by `_tajik_yogas`'s mutual-aspect precondition) —
+    this call site was the one M-13 missed, still comparing against a flat 7°
+    that ignores the classical per-graha spread (Sun 15°, Saturn 9°, Mercury
+    7°, etc.), which could mis-select the Varshesha (year-lord) that grades the
+    entire annual chart."""
+    orb = DEEPTAMSA.get(planet, 7.0)
+    return abs(_ang_diff(full_long, varsha_lagna_long)) <= orb
+
+
 def _solar_return(varsha_year: int, natal_sun_long: float, aya_adapter: str,
                   birth_params: dict | None = None) -> tuple[datetime, dict[str, Any]]:
     """Root-find the local-wallclock instant in calendar year
@@ -526,8 +540,10 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
         g = grahas_by_name.get(planet)
         full_long = float(g["longitude"]) if g else 0.0
         pv = _panchavargiya_bala(planet, full_long)
-        # Tajik aspect (Ithasala-class) to the Varsha-Lagna degree.
-        aspects_lagna = abs(_ang_diff(full_long, varsha_lagna_long)) <= 7.0
+        # Tajik aspect (Ithasala-class) to the Varsha-Lagna degree. ŚUDDHA-VĀCA
+        # P0-9: per-graha deeptamsa orb (M-13's own fix, applied here — this call
+        # site was the one M-13 missed), not a flat 7° ignoring the classical spread.
+        aspects_lagna = _aspects_lagna(planet, full_long, varsha_lagna_long)
         scored[office] = {
             "planet": planet,
             "panchavargiya_bala": pv["bala"],
