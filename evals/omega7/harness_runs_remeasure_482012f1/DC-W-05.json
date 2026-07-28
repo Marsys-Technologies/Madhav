@@ -1,0 +1,905 @@
+[
+  {
+    "tool": "mcp__marsys-jis-direct__assess_wealth",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+    },
+    "result_raw": "Error: result (150,604 characters) exceeds maximum allowed tokens. Output has been saved to /Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav/e25aa6cf-6840-4c48-9a73-803668e573db/tool-results/mcp-marsys-jis-direct-assess_wealth-1785244720707.txt.\nFormat: JSON with schema: {type: string, object: {orientation_context: {...}, orientation_ok: boolean, content: {...}, is_error: boolean, domain_completeness: {...}, completeness_directive: string, judgment_flags: [string], reading: [{...}], leverage_index_by_graha: [{...}], leverage_index_note: string, ...}}\n- For targeted queries (find a value, filter by field): use jq on the file directly.\n- For analysis or summarization that requires reading the full content: first probe the structure (e.g., jq 'type, length, keys?' /Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav/e25aa6cf-6840-4c48-9a73-803668e573db/tool-results/mcp-marsys-jis-direct-assess_wealth-1785244720707.txt), then extract slices with jq or python — Read's line-based offset/limit will not chunk this file.\n- If the Agent tool is available, do this inside a subagent so the full output stays out of your main context. Give it the instruction above verbatim, and be explicit about what it must return — e.g. \"/Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav/e25aa6cf-6840-4c48-9a73-803668e573db/tool-results/mcp-marsys-jis-direct-assess_wealth-1785244720707.txt is JSON with schema: {type: string, object: {orientation_context: {...}, orientation_ok: boolean, content: {...}, is_error: boolean, domain_completeness: {...}, completeness_directive: string, judgment_flags: [string], reading: [{...}], leverage_index_by_graha: [{...}], leverage_index_note: string, ...}}; probe the structure with jq (type/length/keys), then extract and read the content in full with jq or python, then summarize and quote any key findings verbatim.\" A vague \"summarize this\" may lose detail."
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__judgment_query",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "domain": "wealth"
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "orientation_context": {
+          "content": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "response_format": "digest",
+            "digest": {
+              "msr_signal_count": 9922,
+              "yoga_count": 15,
+              "dosha_count": 5,
+              "avg_salience": 0.7003,
+              "max_salience": 2.4852,
+              "contradiction_count": 3,
+              "weakest_graha": "Venus",
+              "weakest_graha_source": "shadbala_total_min (BPHS Ch.27 six-fold strength; CR-55 fix)",
+              "top_priority_class": "critical",
+              "trap1_count": 0
+            },
+            "entity_profiles": [],
+            "top_signals": [],
+            "convergence_domains": [
+              {"domain": "character", "convergence_count": 7320, "convergence_score": 7933.214401, "cross_tradition_count": 6, "salience_weighted_sum": 5289.026364, "contradiction_count": 1},
+              {"domain": "relationship", "convergence_count": 3570, "convergence_score": 3483.744583, "cross_tradition_count": 6, "salience_weighted_sum": 2322.496389, "contradiction_count": 0},
+              {"domain": "career", "convergence_count": 3091, "convergence_score": 3201.353323, "cross_tradition_count": 4, "salience_weighted_sum": 2134.442709, "contradiction_count": 1},
+              {"domain": "health", "convergence_count": 745, "convergence_score": 483.792147, "cross_tradition_count": 2, "salience_weighted_sum": 439.988219, "contradiction_count": 1},
+              {"domain": "wealth", "convergence_count": 337, "convergence_score": 317.11343, "cross_tradition_count": 3, "salience_weighted_sum": 243.933408, "contradiction_count": 0},
+              {"domain": "spirituality", "convergence_count": 231, "convergence_score": 163.632205, "cross_tradition_count": 3, "salience_weighted_sum": 125.870927, "contradiction_count": 0}
+            ],
+            "grounding": {
+              "fact_ids": ["f18017abba4dc14f","cdd092401551e0d0","e0f98e22575823cb","26bc6f72ed18766e","41aaf1f858a9b5cf","1295c30add629ed0","16f1603f92008ba1","ca5fc049eabac885","2dd1c0ac4f4a2c50","9120d4739d91af91","548ee0a79d368d4d","109f3a924e669595","b9aff08668eaca2a","c3e2524c31bb51eb","467f810da64ea029","baa102375fe373ab","47b2ded82de4dc97","a768a35846b9fbbe","63b969a564667eed","5a038de1c9dc0974","bedc139083d4367d","34ada095f74e2827","aa0764f988413099","130f40ffed8669dd","8d6640414419dfec","8af6eb77f838efe2","0ca212cb8a38a774","9c9a94662c9b4179","98d6410d7465912b","004dad87c987e4cf","4bc420bd2186b024","b122a6c16eb61134","1160c8b78f6661ba","1795712f889ed3d7","9841b10587ef1ad1","b4f63ccb53e1fb59","b6961895d5648f64","fa9ca8a30f814faa","676e20b03bb9f68b","220d1ba48454ff7f","a69b679ea49b18a3","08f4c057ec99c9fe","08d8045edb5fffe8","dd74f0ddbe530eba","412a3ae9e3a09804","d2f042a6586930e7","3fef25c7745cb061","9f3097364d7ac02c","7533f1b928391307"],
+              "resolvable": true,
+              "resolved_fact_count": 456,
+              "note": "WP-1.2(a): fact_ids are the resolvable L1 chart_facts.fact_id set backing the ranked entity_profiles (each id verified p…[truncated for budget]"
+            },
+            "attribution": {
+              "served_unattributed_entities": 0,
+              "served_unattributed_share": 0,
+              "candidate_pool_size": 300,
+              "candidate_pool_unattributed": 0,
+              "note": "WP-1.2β: 0% UNATTRIBUTED on the served ranked surface — every served entity_profile resolves to a graha or a bhāva (char…[truncated for budget]"
+            },
+            "ranking_basis": {
+              "mode": "composite_4d",
+              "priors_version": "1.2",
+              "domain": null,
+              "top_signal": {
+                "signal_id": "c3afa5f0-2a73-4ec5-9b62-130a5757f582",
+                "class_prior": 1.3125,
+                "topic_relevance": 1,
+                "intrinsic_strength": 0.58792,
+                "structural_role": 1.2,
+                "temporal_activation": 1,
+                "composite_score": 0.925974,
+                "percentile_within_class": 1,
+                "final_rank_score": 0.9266943609066666
+              },
+              "varga_weight_basis": {
+                "scheme": "Ṣoḍaśavarga (16-fold) Vimśopaka Bala",
+                "source": "Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga"
+              },
+              "note": "Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_with…[truncated for budget]"
+            },
+            "filters": {"top_k": 10, "top_k_entities": 10, "signal_class": null, "min_salience": 0},
+            "provenance": {
+              "tables": ["vw_chart_digest", "bodha_msr_signals", "bodha_convergence"],
+              "ranking_note": "E-6: entity_profiles + top_signals both composite-ranked (priors_version=1.2) — same pipeline as query_signals.ts, not a…[truncated for budget]",
+              "aggregation_note": "Hierarchical aggregation: 300 atomic candidate signals → 7 entity profile(s) (design §E-6).",
+              "family_aggregation_note": "E-6 completion (R5.1 C2 item 2): 300 atomic candidates → 103 family-collapsed row(s) before the top_k=10 cut; 29 of thos…[truncated for budget]"
+            }
+          },
+          "is_error": false
+        },
+        "orientation_ok": true,
+        "envelope_version": "v3",
+        "tool": "judgment_query",
+        "verdict": {
+          "domain": "wealth",
+          "domain_label": "Wealth / Prosperity",
+          "bhava": 2,
+          "verdict_grade": "convergent_moderate",
+          "composite_score": 2.38,
+          "d1_score": 1.15,
+          "d1_only_grade": "convergent_moderate",
+          "operative_varga": "D2",
+          "varga_term": 0,
+          "varga_moved_verdict": false,
+          "varga_subscores": {
+            "bhavesha": {"graha": "Venus", "varga": "D2", "dignity_state": "neutral", "weight": 0, "contribution": 0},
+            "karakas": [{"graha": "Jupiter", "varga": "D2", "dignity_state": "neutral", "weight": 0}],
+            "note": "Operative-varga (D2) dignity of bhāveśa (×0.75) + kāraka(s) mean (×0.5) — the amsha as the ripening of the rasi promise (BPHS Ch.6-7; Parashari D9-is-the-fruit dictum)."
+          },
+          "yoga_term": 1.23,
+          "yoga_subscore": {
+            "domain_bearing_firings": 3,
+            "total_fired_on_chart": 13,
+            "note": "3 fired ga_yoga_firings row(s) name only this domain's bhāveśa/kāraka(s) — strength summed (×0.4, bhaṅga-active firings discounted to ×0.25), capped at 2."
+          },
+          "note": "Deterministic classical-checklist verdict + completeness receipt (design §28.6) — see `receipt` for which checklist items were actually checked this call.",
+          "d1_plus_varga_grade": "convergent_moderate",
+          "receipt": {
+            "bhava": true, "bhavesha": true, "karaka": true, "from_moon": true,
+            "varga_confirmed": false, "varga_weighted_into_verdict": true,
+            "yogas_checked": 13, "bhanga_checked": true, "timing_anchored": true
+          }
+        },
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": ["d51ebcf573ede3b8","d8a7abb0ddd0e257","cf50fa9de2b92509","5b37658d20718508","f52a7246f0e754b5","0d86167b422c5f5e","57b1e67590d8c757","5da9e97606327b48","00a3aefff8bf67f5","257d3586c654b47f","8af6eb77f838efe2","b60de5f4b57a293b","fa12deba8f109bc9","6d84e5ad413705d4","019c05265e952d95","c3e2524c31bb51eb","164a6ee54996058a","467f810da64ea029","68aff57cd9e76d67","faf2d7df05cca4c5","c71c7550a51b649c","ce8acb00f6a6cd29","8cca211f8f50b912","f5822d2e3972ebb1","1a2e24ce3b607325","60573b2e16d4a9a6","3a17ad37f760f0e6","22e73489da9f254b","ce7148208ceac570","99fb0b4d3d2ef09a","3d66db0cec82488c","30094a7c874cefa7","ef2d99cf67ae58ef","385984e48f26402d","3168fd93e6e457cc","ef5a6b4b2015e05d","a470572ddbdbc25d","aa84edc7b11236ac","8d299169455432ae","6fd8119550c1e039","b1752debccda7484","326f27e66313362a","ad1220cdbb51c5b0","e83b2f9efe47ee47","7359e82ffc9830c0","457d5354f901bb27","4029c549ad56e896","f8f2c6c2e95c7896","1b5adfba627ee9d7","fd6f82082edc17f4","6224910c3c97e849","d66905d848341f2d","49e9c217fefe7cba","ad9615ec120275d7","c9d2452984142e2a","d7e6225b57234e50","b0bbf21a3c386f81","c92db7b23633b540","1607407a1a424e73","8277dcdc1a16843c","e54e7e9737d3234c","e473d6396e3a8541","96d7fcdb21276867","fca760f851fca16c","026058b9798b5be8","50b010be2e3f0b3e"],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {"offset": 0, "limit": 0, "total": null, "next_cursor": null, "more_available": false},
+        "drill_pointers": [
+          {"instrument": "ganita_chart_facts_get", "hint": "divisional_chart=D2: full D2 placements for every graha (this call confirmed only bhāveśa/kāraka). (SC-18: was 'get_divi…[truncated for budget]", "pointer_type": "confirm_in_varga"},
+          {"instrument": "ganita_yoga_firings_get", "hint": "full fired-yoga detail (strength, bhaṅga/cancellation, partial-formation %, dāśā-activation) beyond the domain-bearing s…[truncated for budget]", "pointer_type": "opposing_yoga"},
+          {"instrument": "get_signals", "hint": "domain=wealth, full yoga+dosha+karaka_alignment MSR signal set beyond bearing_yogas_corroboration's top 15 shown here — …[truncated for budget]", "pointer_type": "opposing_yoga"},
+          {"instrument": "get_dashas", "hint": "full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.", "pointer_type": "dasha_of_promise"},
+          {"instrument": "traverse_graph", "hint": "about:lord_of(bhava 2) — causal graph context for the bhāveśa.", "pointer_type": "dispositor_chain"},
+          {"instrument": "ref_rules_search", "hint": "verse citations for wealth / prosperity judgment (BPHS/Phaladeepika bhava-adhyaya). (RC-04: was 'query_classical_texts',…[truncated for budget]", "pointer_type": "other"},
+          {"instrument": "synth_tail_divergence_get", "hint": "the mandatory dissent/tail-check step (design §26) — contrarian signals and unresolved tensions bearing on wealth / pros…[truncated for budget]", "pointer_type": "tail_dissent"},
+          {"instrument": "ganita_sensitive_degrees_get", "hint": "full sensitive-degree table (all check types, fired + not-fired, per graha) beyond the high-signal firings surfaced in s…[truncated for budget]", "pointer_type": "other"},
+          {"instrument": "ganita_kp_cusps_get", "hint": "full 12-cusp KP picture (Placidus/Sripati degrees, ruling planets, per-graha KP chains) beyond the 2/11 cusp(s) in kp_cu…[truncated for budget]", "pointer_type": "other"},
+          {"instrument": "gochara_forecast_get", "hint": "full forward gochara window set with signed intensities for domain='wealth' beyond the compact top-windows summary in go…[truncated for budget]", "pointer_type": "other"}
+        ],
+        "judgment_flags": [
+          "complete_domain_accounting_available: dossier(domain=\"wealth\", chart_id) serves all 13820 wealth concepts at 100% accounting (see domain_completeness_pointer). This judgment is a domain-scoped verdict, not the whole reading.",
+          {"code": "bearing_yogas_corroboration_caveat", "detail": "bearing_yogas_corroboration (MSR yoga signals) are requires_pass catalog label matches (single-pass evaluation against L1 facts) — not cross-verified confirmed firings. bearing_yogas above (ga_yoga_firings) is the primary, firings-authoritative source (A3/R-3); this corroboration is secondary context only (JL-004)."},
+          {"code": "notably_absent_not_checked", "detail": "near-miss (\"almost formed but for one leg\") yoga detection requires a data-plane addition (design §12 D3) not yet built for any chart — reported honestly, not fabricated. Bhaṅga (cancellation) state on FIRED yogas IS consulted above (ga_yoga_firings.bhanga_active discounts a firing's verdict contribution, A3/R-3)."},
+          {"code": "kala_activations_trimmed", "detail": "10 raw activation row(s) deduped by window to 4 distinct window(s); per-row activation_predicted_dates_jsonb / active_dasha_periods_jsonb dropped from this envelope (§N.6 budget) — full predicted-date detail via the kala temporal-activation drill."},
+          {"code": "kala_activations_single_cycle", "detail": "the kala_activations timing hook reflects ONE resolved dasha/convergence window per signal, not an exhaustive multi-cycle recurrence forecast (the multi-cycle generator is out of this wave's scope, D-3) — treat as \"at least one activation window exists\", not \"the only one ever\"."},
+          {"code": "afflictions_present", "detail": "15 adverse signal(s) + 1 affliction mechanism(s) served in the THREAT layer (DR-9 Part B, native-ratified). The verdict is a SIGNED composite; the supporting (bearing_yogas) and threatening (bearing_afflictions/affliction_mechanisms) layers are served SEPARATELY, each with its own §N.6 hardFloor — neither crowds out the other. A unified top-K would fill with the benefic yogas and hide the adverse content (D-16/G-04)."},
+          {"code": "sensitive_degree_firings_present", "detail": "5 fired sensitive-degree check(s) surfaced (Mars:pushkara, Jupiter:kartari, Mercury:kartari, Sun:kartari, Venus:kartari) — rare high-information events that salience-ranked surfaces floor below routine descriptor rows (MC-030); served here structurally so they are never silently dropped."},
+          {"code": "budget_exceeded_after_trim", "detail": "12kb budget still exceeded after full trim."},
+          {"code": "varga_confirmed_forced_false", "detail": "the served checklist.varga_confirmation.rows are empty on the wire (operative varga D2) — receipt.varga_confirmed downgraded from \"D2✓\" rather than shipping a \"✓-with-empty-evidence\" receipt (CR-2/CR-63/R-38; CLAUDE.md §N.6 point 3 / B.10)."}
+        ],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "about": {"domain": "wealth", "bhava": 2, "label": "Wealth / Prosperity", "karakas": ["Jupiter"], "operative_varga": "D2"},
+          "checklist": {
+            "bhava_condition": {
+              "from_lagna": {"sign": "Taurus", "house_number": 2, "frame": "lagna"},
+              "from_chandra": {"sign": "Pisces", "house_number": 2, "frame": "chandra"}
+            },
+            "bhavesha_condition": {
+              "from_lagna": {"graha": "Venus", "graha_code": "VEN", "house": 9, "sign": "Sagittarius", "dignity_state": "neutral", "dignity_weight": 0, "shadbala_rupa": 4.64, "fact_ids": ["f52a7246f0e754b5","0d86167b422c5f5e","57b1e67590d8c757","5da9e97606327b48"]},
+              "from_chandra": {"graha": "Jupiter", "graha_code": "JUP", "house": 9, "sign": "Sagittarius", "dignity_state": "own", "dignity_weight": 1.5, "shadbala_rupa": 7.8, "fact_ids": ["00a3aefff8bf67f5","257d3586c654b47f","8af6eb77f838efe2","b60de5f4b57a293b"]}
+            },
+            "karaka_condition": [
+              {"graha": "Jupiter", "graha_code": "JUP", "house": 9, "sign": "Sagittarius", "dignity_state": "own", "dignity_weight": 1.5, "shadbala_rupa": 7.8, "fact_ids": ["00a3aefff8bf67f5","257d3586c654b47f","8af6eb77f838efe2","b60de5f4b57a293b"]}
+            ],
+            "occupants": {"from_lagna": ["Rahu"], "from_chandra": ["Rahu"]},
+            "aspecting_grahas": ["Ketu", "Mars"],
+            "varga_confirmation": {"varga": "D2", "rows": []},
+            "bearing_yogas": [
+              {"yoga_canonical_id": "dhana_yoga_2_5_9_11", "strength": 1.0218, "strength_label": "computed_extension", "bhanga_active": null, "bhanga_rule_fired": null, "constituent_planets": ["venus","jupiter"], "constituent_houses": [9], "source": "ga_yoga_firings", "domain_match": true},
+              {"yoga_canonical_id": "dhana_yoga_house_lords", "strength": 1.0218, "strength_label": "computed_extension", "bhanga_active": false, "bhanga_rule_fired": null, "constituent_planets": ["venus","jupiter"], "constituent_houses": [9], "source": "ga_yoga_firings", "domain_match": true},
+              {"yoga_canonical_id": "raja_yoga_kendra_trikona", "strength": 1.0218, "strength_label": "computed_extension", "bhanga_active": false, "bhanga_rule_fired": null, "constituent_planets": ["venus","jupiter"], "constituent_houses": [9], "source": "ga_yoga_firings", "domain_match": true}
+            ],
+            "bearing_yogas_corroboration": [
+              {"signal_id": "8c78ad11-0923-4442-ac9f-5d8f8f86d9a3", "signal_summary": "category=yoga_label | key=yoga_name | value_text=Shoola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] …[truncated for budget]", "computed_salience": 0.68425, "signal_tradition": "parashari"},
+              {"signal_id": "565b5d1b-729a-4995-889a-470cac57d26f", "signal_summary": "category=yoga_label | key=yoga_name | value_text=Yuga Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] …[truncated for budget]", "computed_salience": 0.68425, "signal_tradition": "parashari"},
+              {"signal_id": "694b9c6d-92bf-4fe5-9592-99427d8c361a", "signal_summary": "category=yoga_label | key=yoga_name | value_text=Sasa Yoga | classical_citations=[{'chapter': 75, 'text_id': 'bphs'}, {'…[truncated for budget]", "computed_salience": 0.68425, "signal_tradition": "parashari"},
+              {"signal_id": "e177ee01-1637-44b8-ba42-51f8160f6988", "signal_summary": "category=yoga_label | key=yoga_name | value_text=Anapha Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, …[truncated for budget]", "computed_salience": 0.68425, "signal_tradition": "parashari"},
+              {"signal_id": "4252933b-9ace-439f-bed8-75c9839846bb", "signal_summary": "category=yoga_label | key=yoga_name | value_text=Kedara Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] …[truncated for budget]", "computed_salience": 0.68425, "signal_tradition": "parashari"},
+              {"signal_id": "24aeb445-f52a-4ccc-a5b8-7d98adcca4a4", "signal_summary": "category=yoga_label | key=yoga_name | value_text=Vasi Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'…[truncated for budget]", "computed_salience": 0.68425, "signal_tradition": "parashari"},
+              {"signal_id": "acf83eef-458f-4868-8d2d-590fcd38e973", "signal_summary": "category=yoga_label | key=yoga_name | value_text=Gola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] …[truncated for budget]", "computed_salience": 0.68425, "signal_tradition": "parashari"},
+              {"signal_id": "5a503d43-a14a-4364-9bfa-f24643a87ef4", "signal_summary": "category=graha_yoga_karaka_flag | key=is_yoga_karaka | value_text=false", "computed_salience": 0.89677, "signal_tradition": "jaimini"}
+            ],
+            "bearing_afflictions": [
+              {"signal_id": "a1e9176e-739b-41a7-b728-c352e03f7a30", "signal_type_id": "aspect_parashari_given:house_1", "signal_summary": "category=aspect_parashari_given | key=house_1 | value_num=1 | graha=SAT | target_house=1", "valence": "malefic", "valence_source": "ga_vichara_v1", "computed_salience": 2.16108, "constituent_facts_array": ["c3e2524c31bb51eb"]},
+              {"signal_id": "02d1dc48-0196-4602-a253-95bf81764771", "signal_type_id": "aspect_parashari_given:house_4", "signal_summary": "category=aspect_parashari_given | key=house_4 | value_num=1 | graha=SAT | target_house=4", "valence": "malefic", "valence_source": "ga_vichara_v1", "computed_salience": 2.16108, "constituent_facts_array": ["164a6ee54996058a"]},
+              {"signal_id": "d77780ac-331e-4d0c-8c57-2b3249c56e7f", "signal_type_id": "aspect_parashari_given:house_9", "signal_summary": "category=aspect_parashari_given | key=house_9 | value_num=1 | graha=SAT | target_house=9", "valence": "malefic", "valence_source": "ga_vichara_v1", "computed_salience": 2.16108, "constituent_facts_array": ["467f810da64ea029"]}
+            ],
+            "affliction_mechanisms": [
+              {"mechanism_name": "Rahu occupies dhana (2nd) bhāva (mixed)", "mechanism_class": "graha_bhava_affliction", "valence": "mixed", "citation_human": "Rahu (Taurus) tenants the dhana (2nd) bhāva — valence mixed (net -0.50); natural -1.0, dignity +0.50"}
+            ],
+            "timing_hooks": {
+              "current": [],
+              "lord_mahadasha_windows": [],
+              "karaka_mahadasha_windows": [],
+              "kala_activations": [
+                {"id": "5989903", "signal_id": "02d1dc48-0196-4602-a253-95bf81764771", "signature_class": "SUBSYSTEM", "activation_start": "2024-12-08", "activation_peak_date": "2026-04-13", "activation_end": "2027-08-18", "convergence_score": 1, "dasha_activation_proximity_score": 0.8778, "orb_strength": 1, "domains_affected_array": ["career","relationship","wealth"], "source_citation": "ka_kalasutra:v1.0:signal=02d1dc48:src=dasha_timeline:period=1"},
+                {"id": "5714603", "signal_id": "85fa7389-3a63-4c9f-822b-478ea1874b78", "signature_class": "DISPOSITOR_RELATIONAL", "activation_start": "2010-08-18", "activation_peak_date": "2019-02-16", "activation_end": "2027-08-18", "convergence_score": null, "dasha_activation_proximity_score": 0.3023, "orb_strength": null, "domains_affected_array": ["career","wealth","relationship"], "source_citation": "ka_kalasutra:v1.0:signal=85fa7389:src=dasha_timeline:period=0"},
+                {"id": "5802825", "signal_id": "6e9d002a-d09f-4bc0-b12f-76886b738aad", "signature_class": "SUBSYSTEM", "activation_start": "2010-08-18", "activation_peak_date": "2019-02-16", "activation_end": "2027-08-18", "convergence_score": null, "dasha_activation_proximity_score": 0.28025, "orb_strength": null, "domains_affected_array": ["relationship","wealth"], "source_citation": "ka_kalasutra:v1.0:signal=6e9d002a:src=dasha_timeline:period=0"},
+                {"id": "5697233", "signal_id": "bbc2bb47-8e58-417b-8962-b11b1ae4f724", "signature_class": "CLASSIFY_RESIDUAL", "activation_start": "2010-08-18", "activation_peak_date": "2019-02-16", "activation_end": "2027-08-18", "convergence_score": null, "dasha_activation_proximity_score": 0.28025, "orb_strength": null, "domains_affected_array": ["wealth"], "source_citation": "ka_kalasutra:v1.0:signal=bbc2bb47:src=dasha_timeline:period=0"}
+              ],
+              "mahadasha_windows_by_graha": {}
+            },
+            "sensitive_degree_firings": [
+              {"graha": "Mars", "graha_code": "MAR", "check_type": "pushkara", "state": "pushkara", "fact_id": "ef5a6b4b2015e05d", "detail": {"fired": true, "bhaga_orb_deg": 5.4808, "graha_deg_in_sign": 18.5192, "on_pushkara_bhaga": false, "pushkara_bhaga_deg": 24, "in_pushkara_navamsa": true, "pushkara_navamsa_start_deg": 16.6667}},
+              {"graha": "Jupiter", "graha_code": "JUP", "check_type": "kartari", "state": "papa_kartari", "fact_id": "30094a7c874cefa7", "detail": {"fired": true, "benefics_2nd": ["Mercury"], "kartari_type": "papa_kartari", "malefics_2nd": ["Sun"], "second_house": 10, "benefics_12th": [], "malefics_12th": ["Ketu"], "twelfth_house": 8}},
+              {"graha": "Mercury", "graha_code": "MER", "check_type": "kartari", "state": "shubha_kartari", "fact_id": "ef2d99cf67ae58ef", "detail": {"fired": true, "benefics_2nd": ["Moon"], "kartari_type": "shubha_kartari", "malefics_2nd": [], "second_house": 11, "benefics_12th": ["Jupiter","Venus"], "malefics_12th": [], "twelfth_house": 9}},
+              {"graha": "Sun", "graha_code": "SUN", "check_type": "kartari", "state": "shubha_kartari", "fact_id": "385984e48f26402d", "detail": {"fired": true, "benefics_2nd": ["Moon"], "kartari_type": "shubha_kartari", "malefics_2nd": [], "second_house": 11, "benefics_12th": ["Jupiter","Venus"], "malefics_12th": [], "twelfth_house": 9}},
+              {"graha": "Venus", "graha_code": "VEN", "check_type": "kartari", "state": "papa_kartari", "fact_id": "3168fd93e6e457cc", "detail": {"fired": true, "benefics_2nd": ["Mercury"], "kartari_type": "papa_kartari", "malefics_2nd": ["Sun"], "second_house": 10, "benefics_12th": [], "malefics_12th": ["Ketu"], "twelfth_house": 8}}
+            ],
+            "kp_cusp_chain": {
+              "cusps": [
+                {"house": 2, "sign": "Taurus", "sign_lord": "Venus", "star_lord": "Moon", "sub_lord": "Rahu", "sub_sub_lord": "Jupiter", "significators": ["Venus","Moon","Rahu"], "fact_ids": ["a470572ddbdbc25d","aa84edc7b11236ac","8d299169455432ae","6fd8119550c1e039","b1752debccda7484","326f27e66313362a","ad1220cdbb51c5b0","e83b2f9efe47ee47","7359e82ffc9830c0","457d5354f901bb27","4029c549ad56e896","f8f2c6c2e95c7896","1b5adfba627ee9d7","fd6f82082edc17f4","6224910c3c97e849"]},
+                {"house": 11, "sign": "Aquarius", "sign_lord": "Saturn", "star_lord": "Mars", "sub_lord": "Mercury", "sub_sub_lord": "Mars", "significators": ["Saturn","Mars","Mercury"], "fact_ids": ["d66905d848341f2d","49e9c217fefe7cba","ad9615ec120275d7","c9d2452984142e2a","d7e6225b57234e50","b0bbf21a3c386f81","c92db7b23633b540","1607407a1a424e73","8277dcdc1a16843c","e54e7e9737d3234c","e473d6396e3a8541","96d7fcdb21276867","fca760f851fca16c","026058b9798b5be8","50b010be2e3f0b3e"]}
+              ],
+              "note": "KP cuspal sub-lord chain (Krishnamurti Paddhati): the cusp sub-lord is the final arbiter of a bhāva's promise; its signi…[truncated for budget]"
+            },
+            "gochara_sweep": {
+              "domain": "wealth", "domain_covered": true, "upcoming_window_count": 0, "valence_breakdown": {},
+              "window_range": {"start": "2026-07-28", "end": "2029-07-28"}, "top_windows": [],
+              "note": "Forward gochara (transit) sweep over the kala_gochara_windows signed-intensity field, domain-scoped (MC-033). Compact to…[truncated for budget]"
+            }
+          },
+          "verdict": {
+            "domain": "wealth", "domain_label": "Wealth / Prosperity", "bhava": 2, "verdict_grade": "convergent_moderate",
+            "composite_score": 2.38, "d1_score": 1.15, "d1_only_grade": "convergent_moderate", "operative_varga": "D2",
+            "varga_term": 0, "varga_moved_verdict": false,
+            "varga_subscores": {
+              "bhavesha": {"graha": "Venus", "varga": "D2", "dignity_state": "neutral", "weight": 0, "contribution": 0},
+              "karakas": [{"graha": "Jupiter", "varga": "D2", "dignity_state": "neutral", "weight": 0}],
+              "note": "Operative-varga (D2) dignity of bhāveśa (×0.75) + kāraka(s) mean (×0.5) — the amsha as the ripening of the rasi promise (BPHS Ch.6-7; Parashari D9-is-the-fruit dictum)."
+            },
+            "yoga_term": 1.23,
+            "yoga_subscore": {"domain_bearing_firings": 3, "total_fired_on_chart": 13, "note": "3 fired ga_yoga_firings row(s) name only this domain's bhāveśa/kāraka(s) — strength summed (×0.4, bhaṅga-active firings discounted to ×0.25), capped at 2."},
+            "note": "Deterministic weighted aggregation of already-computed dignity/shadbala/occupant/aspect signals PLUS a re-derived operative-varga (amsha) term PLUS a bearing-yoga (ga_yoga_firings) term — NOT an LLM judgment and NOT a calibrated probability (that is L4/L5's domain). D1 weights: dignity ±2..−2, benefic/malefic occupant ±0.5, benefic/malefic aspect ±0.3, weak-lord (<3 rupas) −0.5, from-Moon lord dignity ×0.5. Varga term (R-46/WP-1.8): bhāveśa operative-varga dignity ×0.75 + kāraka(s) mean ×0.5strength ×0.4 (bhaṅga-active ×0.25), capped at 2. composite_score = d1_score + varga_term + yoga_term; d1_only_grade shows the pre-varga-and-yoga verdict; d1_plus_varga_grade shows the pre-yoga verdict.",
+            "d1_plus_varga_grade": "convergent_moderate"
+          },
+          "receipt": {"deduplicated": true, "note": "Identical to `verdict.receipt` — see that field rather than here (MC-023 de-duplication; this was a byte-identical dupli…[truncated for budget]"},
+          "reading_checklist": {
+            "units": [
+              {"unit": "bhava_bhavesha_from_lagna", "state": "served", "detail": "bhāva 2 sign + lord + occupants + aspects (lagna frame)"},
+              {"unit": "bhava_bhavesha_from_chandra", "state": "served", "detail": "Sudarshana (Moon-frame) leg"},
+              {"unit": "karakas", "state": "served", "count": 1, "detail": "Jupiter"},
+              {"unit": "operative_varga", "state": "served", "detail": "D2 confirmation of bhāveśa/kāraka"},
+              {"unit": "ashtakavarga", "state": "not_joined", "detail": "bhāva AV bindus not folded into judgment_query", "drill": "ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)"},
+              {"unit": "special_lagnas", "state": "not_joined", "detail": "Indu/Ārūḍha/Hora lagnas not folded here", "drill": "ganita_special_lagnas_get"},
+              {"unit": "sensitive_degree_firings", "state": "served", "count": 5, "detail": "puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)"},
+              {"unit": "kp_cusp_chain", "state": "served", "count": 2, "detail": "KP sub-lord chain for cusp(s) 2/11 (MC-031)"},
+              {"unit": "yogi_avayogi", "state": "not_joined", "detail": "yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded i…[truncated for budget]", "drill": "ganita_sensitive_degrees_get"},
+              {"unit": "dasha_levels", "state": "served", "detail": "Vimśottarī current + lord/kāraka mahādaśā windows + kala activation"},
+              {"unit": "gochara_sweep", "state": "served", "count": 0, "detail": "forward transit windows, domain='wealth' (MC-033)"},
+              {"unit": "tajaka", "state": "not_joined", "detail": "annual (varṣaphala/tājaka) not folded into the natal judgment", "drill": "ganita_tajaka_get"}
+            ],
+            "exhaustive": false, "non_exhaustive": "salience_sampled", "units_served": 8, "units_total": 12,
+            "units_unserved": ["ashtakavarga","special_lagnas","yogi_avayogi","tajaka"],
+            "note": "The classical bhāva-adhyāya checklist, served: each unit names whether THIS response carried it and — for every absent b…[truncated for budget]"
+          },
+          "judgment_flags": [
+            "complete_domain_accounting_available: dossier(domain=\"wealth\", chart_id) serves all 13820 wealth concepts at 100% accounting (see domain_completeness_pointer). This judgment is a domain-scoped verdict, not the whole reading.",
+            {"code": "bearing_yogas_corroboration_caveat", "detail": "bearing_yogas_corroboration (MSR yoga signals) are requires_pass catalog label matches (single-pass evaluation against L1 facts) — not cross-verified confirmed firings. bearing_yogas above (ga_yoga_firings) is the primary, firings-authoritative source (A3/R-3); this corroboration is secondary context only (JL-004)."},
+            {"code": "notably_absent_not_checked", "detail": "near-miss (\"almost formed but for one leg\") yoga detection requires a data-plane addition (design §12 D3) not yet built for any chart — reported honestly, not fabricated. Bhaṅga (cancellation) state on FIRED yogas IS consulted above (ga_yoga_firings.bhanga_active discounts a firing's verdict contribution, A3/R-3)."},
+            {"code": "kala_activations_trimmed", "detail": "10 raw activation row(s) deduped by window to 4 distinct window(s); per-row activation_predicted_dates_jsonb / active_dasha_periods_jsonb dropped from this envelope (§N.6 budget) — full predicted-date detail via the kala temporal-activation drill."},
+            {"code": "kala_activations_single_cycle", "detail": "the kala_activations timing hook reflects ONE resolved dasha/convergence window per signal, not an exhaustive multi-cycle recurrence forecast (the multi-cycle generator is out of this wave's scope, D-3) — treat as \"at least one activation window exists\", not \"the only one ever\"."},
+            {"code": "afflictions_present", "detail": "15 adverse signal(s) + 1 affliction mechanism(s) served in the THREAT layer (DR-9 Part B, native-ratified). The verdict is a SIGNED composite; the supporting (bearing_yogas) and threatening (bearing_afflictions/affliction_mechanisms) layers are served SEPARATELY, each with its own §N.6 hardFloor — neither crowds out the other. A unified top-K would fill with the benefic yogas and hide the adverse content (D-16/G-04)."},
+            {"code": "sensitive_degree_firings_present", "detail": "5 fired sensitive-degree check(s) surfaced (Mars:pushkara, Jupiter:kartari, Mercury:kartari, Sun:kartari, Venus:kartari) — rare high-information events that salience-ranked surfaces floor below routine descriptor rows (MC-030); served here structurally so they are never silently dropped."}
+          ],
+          "drill_pointers": [
+            {"instrument": "ganita_chart_facts_get", "hint": "divisional_chart=D2: full D2 placements for every graha (this call confirmed only bhāveśa/kāraka). (SC-18: was 'get_divi…[truncated for budget]", "pointer_type": "confirm_in_varga"},
+            {"instrument": "ganita_yoga_firings_get", "hint": "full fired-yoga detail (strength, bhaṅga/cancellation, partial-formation %, dāśā-activation) beyond the domain-bearing s…[truncated for budget]", "pointer_type": "opposing_yoga"},
+            {"instrument": "get_signals", "hint": "domain=wealth, full yoga+dosha+karaka_alignment MSR signal set beyond bearing_yogas_corroboration's top 15 shown here — …[truncated for budget]", "pointer_type": "opposing_yoga"},
+            {"instrument": "get_dashas", "hint": "full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.", "pointer_type": "dasha_of_promise"},
+            {"instrument": "traverse_graph", "hint": "about:lord_of(bhava 2) — causal graph context for the bhāveśa.", "pointer_type": "dispositor_chain"},
+            {"instrument": "ref_rules_search", "hint": "verse citations for wealth / prosperity judgment (BPHS/Phaladeepika bhava-adhyaya). (RC-04: was 'query_classical_texts',…[truncated for budget]", "pointer_type": "other"},
+            {"instrument": "synth_tail_divergence_get", "hint": "the mandatory dissent/tail-check step (design §26) — contrarian signals and unresolved tensions bearing on wealth / pros…[truncated for budget]", "pointer_type": "tail_dissent"},
+            {"instrument": "ganita_sensitive_degrees_get", "hint": "full sensitive-degree table (all check types, fired + not-fired, per graha) beyond the high-signal firings surfaced in s…[truncated for budget]", "pointer_type": "other"},
+            {"instrument": "ganita_kp_cusps_get", "hint": "full 12-cusp KP picture (Placidus/Sripati degrees, ruling planets, per-graha KP chains) beyond the 2/11 cusp(s) in kp_cu…[truncated for budget]", "pointer_type": "other"},
+            {"instrument": "gochara_forecast_get", "hint": "full forward gochara window set with signed intensities for domain='wealth' beyond the compact top-windows summary in go…[truncated for budget]", "pointer_type": "other"}
+          ],
+          "resolution_chains": {
+            "bhava_lagna": ["House 2 counted from lagna (Aries) = Taurus."],
+            "bhavesha_lagna": ["House 2 counted from lagna (Aries) = Taurus.", "Taurus is ruled by Venus (classical rulership).", "The 2nd lord is Venus, placed in the 9th (Sagittarius)."],
+            "occupants_lagna": ["House 2 from lagna = Taurus in D1; occupants: Rahu."]
+          },
+          "fact_id_refs": []
+        },
+        "trim_report": [
+          {"path": "(trim_report)", "original_count": 8, "kept_count": 1, "reason": "full trim_report omitted to fit budget", "recover_via": {"instrument": "response_format:legacy", "hint": "full untrimmed response"}}
+        ],
+        "response_format": "v3",
+        "chart_header": {"chart_id_short": "482012f1", "name": "Abhisek Mohanty", "lagna_sign": "Aries", "lagna_deg": 12.4311495988431, "moon_sign": "Aquarius", "sun_sign": "Capricorn", "ayanamsha": "lahiri_chitrapaksha", "current_maha_antar": "Mercury MD / Saturn AD"},
+        "epistemic": {"grade": "structural_prior", "verified_fraction": null, "note": "No epistemic signal computed for this response."},
+        "timing": {"as_of_date": "2026-07-28", "computed_at": "2026-07-28T13:18:42.686Z"},
+        "coverage": null,
+        "prediction": null,
+        "build_id": null,
+        "ledger_version": null,
+        "register": [
+          {"token": "karaka_alignment", "label": "Significator (karaka) alignment — how a matter’s natural significator is placed and supported.", "kind": "signal_class"},
+          {"token": "annual", "label": "Annual (varshaphala / Tajaka) signal keyed to a solar-return year.", "kind": "signal_class"},
+          {"token": "yoga", "label": "Yoga signal — a named benefic/combinatorial planetary combination.", "kind": "signal_class"},
+          {"token": "dosha", "label": "Dosha signal — a named affliction/blemish planetary combination.", "kind": "signal_class"},
+          {"token": "varga_ratification_divergence", "label": "Varga ratification/divergence — whether the divisional chart confirms or contradicts the rasi promise.", "kind": "signal_class"},
+          {"token": "marsys://tool/L0/query_classical_texts", "label": "L0 Brahmagyan tool — classical-text / reference retrieval.", "kind": "drill_uri"},
+          {"token": "structural_prior", "label": "Structural prior — a structural (uncalibrated) estimate; no outcome data yet backs the number.", "kind": "epistemic_grade"},
+          {"token": "complete_domain_accounting_available", "label": "Judgment flag — an honest coverage/resolution disclosure (complete_domain_accounting_available); see the flag text for d…[truncated for budget]", "kind": "flag"},
+          {"token": "bearing_yogas_corroboration_caveat", "label": "Judgment flag — an honest coverage/resolution disclosure (bearing_yogas_corroboration_caveat); see the flag text for det…[truncated for budget]", "kind": "flag"},
+          {"token": "notably_absent_not_checked", "label": "Judgment flag — an honest coverage/resolution disclosure (notably_absent_not_checked); see the flag text for detail.", "kind": "flag"},
+          {"token": "kala_activations_trimmed", "label": "Judgment flag — an honest coverage/resolution disclosure (kala_activations_trimmed); see the flag text for detail.", "kind": "flag"},
+          {"token": "kala_activations_single_cycle", "label": "Judgment flag — an honest coverage/resolution disclosure (kala_activations_single_cycle); see the flag text for detail.", "kind": "flag"},
+          {"token": "afflictions_present", "label": "Judgment flag — an honest coverage/resolution disclosure (afflictions_present); see the flag text for detail.", "kind": "flag"},
+          {"token": "sensitive_degree_firings_present", "label": "Judgment flag — an honest coverage/resolution disclosure (sensitive_degree_firings_present); see the flag text for detai…[truncated for budget]", "kind": "flag"},
+          {"token": "confirm_in_varga", "label": "Next step: confirm the promise in the operative divisional chart.", "kind": "pointer_type"},
+          {"token": "opposing_yoga", "label": "Next step: a yoga/dosha of OPPOSITE valence also bears on this matter — weigh it.", "kind": "pointer_type"},
+          {"token": "dasha_of_promise", "label": "Next step: locate which dasha period carries/activates the promise.", "kind": "pointer_type"},
+          {"token": "dispositor_chain", "label": "Next step: follow the lord-of-the-lord (dispositor) indirection one level deeper.", "kind": "pointer_type"},
+          {"token": "other", "label": "Next step outside the closed classical-move vocabulary (see the pointer hint).", "kind": "pointer_type"},
+          {"token": "tail_dissent", "label": "Next step: the mandatory dissent / tail-check step of the investigation protocol.", "kind": "pointer_type"}
+        ],
+        "reading_contract": "This response is graded structural_prior: Structural prior — a structural (uncalibrated) estimate; no outcome data yet backs the number. Its reading is grounded in 66 resolvable L1 fact reference(s) — you may follow each fact_id down to its deterministic source. It carries 7 judgment flag(s) disclosing coverage/resolution gaps (see judgment_flags) — read each as a stated limit on the verdict, not decoration. Internal tokens in this envelope (signal_class, drill_uri, epistemic_grade, flag, pointer_type) each have a plain-language label in the `register` block — read the label adjacent to any token you do not recognise rather than guessing.",
+        "signal_reader_text": {
+          "karaka_alignment": "A karaka-alignment signal reports how the natural significator of a matter (e.g. Jupiter for children, Venus for spouse)…[truncated for budget]",
+          "annual": "An annual signal is keyed to a solar-return (varshaphala / Tajaka) year. Read it as a one-year overlay on the natal prom…[truncated for budget]",
+          "yoga": "A yoga signal names a benefic/combinatorial planetary combination. IMPORTANT: an MSR yoga-class row is a catalog-level m…[truncated for budget]",
+          "dosha": "A dosha signal names an affliction/blemish combination. As with yoga, an MSR dosha row is catalog-level: check for cance…[truncated for budget]",
+          "varga_ratification_divergence": "A varga-ratification/divergence signal states whether the divisional chart confirms or contradicts the rasi promise. Rea…[truncated for budget]"
+        },
+        "domain_completeness_pointer": {
+          "source": "dossier (Ω5 gather-then-compose engine)", "domain": "wealth", "slice_size": 13820, "accounted": 13820, "pct": 100, "fully_accounted": true, "synthesis_gate": "OPEN",
+          "coverage_by_state": {"served": 12450, "empty_for_this_chart": 1364, "not_computed_globally": 6, "superseded_by_aggregate": 0, "excluded_by_named_rule": 0},
+          "distinct_serving_tools": 26,
+          "full_hydration": {"tool": "dossier", "args": {"domain": "wealth", "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "budget_kb": 64}, "note": "This block accounts for 100% of the domain concept slice by serving-tool and state — the complete territory, not a shall…[truncated for budget]"},
+          "note": "A COMPLETE wealth reading (all 13820 domain concepts, 100% accounted) is available via dossier(domain=\"wealth\", chart_id…[truncated for budget]"
+        },
+        "budget_kb_applied": 12
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__phala_outlook_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "ok": true,
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "horizon_months": 12,
+        "query_window": {"start": "2026-07-28", "end": "2027-07-23"},
+        "anchors": [
+          {"anchor_id": "872b8c63-5142-4e95-b002-ec4f5eaba185", "window": {"start": "2025-03-29", "end": "2027-09-12"}, "domain": "career", "event_type": "career_entry", "direction": "mixed", "confidence": 0.089, "confidence_band": {"low": 0.039, "high": 0.139, "basis": "structural_not_yet_empirical"}, "magnitude": "minor", "falsifier": "REFUTED if no career event of magnitude ≥ minor is independently documented by 2027-09-12. CONFIRMED if a career-domain event of matching magnitude is recorded in the Life-Event Log before 2027-09-12. Attestation: lel_entry.", "structured_falsifier": {"domain": "career", "window_end": "2027-09-12", "event_class_id": "career_entry", "magnitude_floor": "minor", "attestation_required": "lel_entry", "refutation_condition": "No career event of magnitude ≥ minor independently documented by 2027-09-12.", "confirmation_condition": "Career-domain event of matching magnitude recorded in Life-Event Log before 2027-09-12."}, "derivation_ledger": {"signal_id": "6ccd945a-c8a3-406d-8655-9db6837eb7f8", "elevations": ["V1","V2","V3","V4","V5"], "axes_applied": ["1","2","3","5","6","7"], "anchor_source": "convergence", "convergence_id": 429574, "posterior_inputs": {"base_rate": 0.06172839506172839, "pratijna_grade": 3.779, "pratijna_status": "conditional", "av_transit_potency": 0, "n_independent_currents": 1, "multi_system_confirmation": 0}}, "causal_chain": {"centrality": 3, "root_graha": "Jupiter (self-ruling / final dispositor)", "cgm_path_ids": ["01c0502b-e997-468d-90f3-d21ad7b572aa","0367532a-4f0e-474d-8b6f-2f0243bf033b","0825939d-d2e0-4fab-a485-5a8fa2b6669b","0a0bb4c8-80dd-433e-8da5-dd3b87082c0d","0ae4acf5-caf2-4130-8fc7-1c31aa74376c","1057d5de-b051-4316-b465-cb91ff4680cd","123c96fd-ffc6-4aef-a612-90a227b2fbfa","134380ca-1278-4aee-a75c-d175cb029c1e","1d9e648f-6645-44cd-a7dd-99bfe9ea7cc2","21b51250-7383-4cd2-9923-4d78653b423c"]}, "source_citation": "mode_c/SUBSYSTEM/Saturn@Pisces/2025-03-29"},
+          {"anchor_id": "f528c575-a2f5-4b2c-91bf-b92179af7b6b", "window": {"start": "2025-10-18", "end": "2026-10-14"}, "domain": "transition", "event_type": "transition_convergence_event", "direction": "mixed", "confidence": 0.322, "confidence_band": {"low": 0.272, "high": 0.372, "basis": "structural_not_yet_empirical"}, "magnitude": "minor", "falsifier": "REFUTED if no transition event of magnitude ≥ minor is independently documented by 2026-10-14. CONFIRMED if a transition-domain event of matching magnitude is recorded in the Life-Event Log before 2026-10-14. Attestation: lel_entry.", "structured_falsifier": {"domain": "transition", "window_end": "2026-10-14", "event_class_id": null, "magnitude_floor": "minor", "attestation_required": "lel_entry", "refutation_condition": "No transition event of magnitude ≥ minor independently documented by 2026-10-14.", "confirmation_condition": "Transition-domain event of matching magnitude recorded in Life-Event Log before 2026-10-14."}, "derivation_ledger": {"signal_id": "8bf6a291-1151-4237-8b79-0214cdd4bfef", "elevations": ["V1","V2","V3","V4","V5"], "axes_applied": ["1","2","3","5","6","7"], "anchor_source": "convergence", "convergence_id": 440482, "posterior_inputs": {"base_rate": 0.2, "pratijna_grade": 5, "pratijna_status": "conditional", "av_transit_potency": 0, "n_independent_currents": 1, "multi_system_confirmation": 0}}, "causal_chain": {"centrality": 3, "root_graha": "Jupiter (self-ruling / final dispositor)", "cgm_path_ids": ["01c0502b-e997-468d-90f3-d21ad7b572aa","0367532a-4f0e-474d-8b6f-2f0243bf033b","0825939d-d2e0-4fab-a485-5a8fa2b6669b","0a0bb4c8-80dd-433e-8da5-dd3b87082c0d","0ae4acf5-caf2-4130-8fc7-1c31aa74376c","1057d5de-b051-4316-b465-cb91ff4680cd","123c96fd-ffc6-4aef-a612-90a227b2fbfa","134380ca-1278-4aee-a75c-d175cb029c1e","1d9e648f-6645-44cd-a7dd-99bfe9ea7cc2","21b51250-7383-4cd2-9923-4d78653b423c"]}, "source_citation": "mode_d/av_bindhu/Jupiter@Cancer/SAV=32/2025-10-18"},
+          {"anchor_id": "9f90729f-9f1c-4120-ab6b-2811a2182137", "window": {"start": "2025-10-18", "end": "2026-10-14"}, "domain": "spirituality", "event_type": "spiritual_turn", "direction": "mixed", "confidence": 0.2264, "confidence_band": {"low": 0.176, "high": 0.276, "basis": "structural_not_yet_empirical"}, "magnitude": "minor", "falsifier": "REFUTED if no spirituality event of magnitude ≥ minor is independently documented by 2026-10-14. CONFIRMED if a spirituality-domain event of matching magnitude is recorded in the Life-Event Log before 2026-10-14. Attestation: lel_entry.", "structured_falsifier": {"domain": "spirituality", "window_end": "2026-10-14", "event_class_id": "spiritual_turn", "magnitude_floor": "minor", "attestation_required": "lel_entry", "refutation_condition": "No spirituality event of magnitude ≥ minor independently documented by 2026-10-14.", "confirmation_condition": "Spirituality-domain event of matching magnitude recorded in Life-Event Log before 2026-10-14."}, "derivation_ledger": {"signal_id": "c581d41f-8aeb-4c8a-a0d8-f76352c7459a", "elevations": ["V1","V2","V3","V4","V5"], "axes_applied": ["1","2","3","5","6","7"], "anchor_source": "convergence", "convergence_id": 442367, "posterior_inputs": {"base_rate": 0.2916666666666667, "pratijna_grade": 1.955, "pratijna_status": "denied", "av_transit_potency": 0, "n_independent_currents": 1, "multi_system_confirmation": 0}}, "causal_chain": {"centrality": 3, "root_graha": "Jupiter (self-ruling / final dispositor)", "cgm_path_ids": ["01c0502b-e997-468d-90f3-d21ad7b572aa","0367532a-4f0e-474d-8b6f-2f0243bf033b","0825939d-d2e0-4fab-a485-5a8fa2b6669b","0a0bb4c8-80dd-433e-8da5-dd3b87082c0d","0ae4acf5-caf2-4130-8fc7-1c31aa74376c","1057d5de-b051-4316-b465-cb91ff4680cd","123c96fd-ffc6-4aef-a612-90a227b2fbfa","134380ca-1278-4aee-a75c-d175cb029c1e","1d9e648f-6645-44cd-a7dd-99bfe9ea7cc2","21b51250-7383-4cd2-9923-4d78653b423c"]}, "source_citation": "mode_d/av_bindhu/Jupiter@Cancer/SAV=32/2025-10-18"},
+          {"anchor_id": "c94c48a6-34f7-429e-8a88-fe51ac82f47b", "window": {"start": "2026-06-01", "end": "2027-05-28"}, "domain": "transition", "event_type": "transition_convergence_event", "direction": "mixed", "confidence": 0.322, "confidence_band": {"low": 0.272, "high": 0.372, "basis": "structural_not_yet_empirical"}, "magnitude": "minor", "falsifier": "REFUTED if no transition event of magnitude ≥ minor is independently documented by 2027-05-28. CONFIRMED if a transition-domain event of matching magnitude is recorded in the Life-Event Log before 2027-05-28. Attestation: lel_entry.", "structured_falsifier": {"domain": "transition", "window_end": "2027-05-28", "event_class_id": null, "magnitude_floor": "minor", "attestation_required": "lel_entry", "refutation_condition": "No transition event of magnitude ≥ minor independently documented by 2027-05-28.", "confirmation_condition": "Transition-domain event of matching magnitude recorded in Life-Event Log before 2027-05-28."}, "derivation_ledger": {"signal_id": "8bf6a291-1151-4237-8b79-0214cdd4bfef", "elevations": ["V1","V2","V3","V4","V5"], "axes_applied": ["1","2","3","5","6","7"], "anchor_source": "convergence", "convergence_id": 440483, "posterior_inputs": {"base_rate": 0.2, "pratijna_grade": 5, "pratijna_status": "conditional", "av_transit_potency": 0, "n_independent_currents": 1, "multi_system_confirmation": 0}}, "causal_chain": {"centrality": 3, "root_graha": "Jupiter (self-ruling / final dispositor)", "cgm_path_ids": ["01c0502b-e997-468d-90f3-d21ad7b572aa","0367532a-4f0e-474d-8b6f-2f0243bf033b","0825939d-d2e0-4fab-a485-5a8fa2b6669b","0a0bb4c8-80dd-433e-8da5-dd3b87082c0d","0ae4acf5-caf2-4130-8fc7-1c31aa74376c","1057d5de-b051-4316-b465-cb91ff4680cd","123c96fd-ffc6-4aef-a612-90a227b2fbfa","134380ca-1278-4aee-a75c-d175cb029c1e","1d9e648f-6645-44cd-a7dd-99bfe9ea7cc2","21b51250-7383-4cd2-9923-4d78653b423c"]}, "source_citation": "mode_d/av_bindhu/Jupiter@Cancer/SAV=32/2026-06-01"},
+          {"anchor_id": "4ac4bbe7-c497-4338-83ba-99d2f055fcb2", "window": {"start": "2026-06-01", "end": "2027-05-28"}, "domain": "spirituality", "event_type": "spiritual_turn", "direction": "mixed", "confidence": 0.2264, "confidence_band": {"low": 0.176, "high": 0.276, "basis": "structural_not_yet_empirical"}, "magnitude": "minor", "falsifier": "REFUTED if no spirituality event of magnitude ≥ minor is independently documented by 2027-05-28. CONFIRMED if a spirituality-domain event of matching magnitude is recorded in the Life-Event Log before 2027-05-28. Attestation: lel_entry.", "structured_falsifier": {"domain": "spirituality", "window_end": "2027-05-28", "event_class_id": "spiritual_turn", "magnitude_floor": "minor", "attestation_required": "lel_entry", "refutation_condition": "No spirituality event of magnitude ≥ minor independently documented by 2027-05-28.", "confirmation_condition": "Spirituality-domain event of matching magnitude recorded in Life-Event Log before 2027-05-28."}, "derivation_ledger": {"signal_id": "c581d41f-8aeb-4c8a-a0d8-f76352c7459a", "elevations": ["V1","V2","V3","V4","V5"], "axes_applied": ["1","2","3","5","6","7"], "anchor_source": "convergence", "convergence_id": 442368, "posterior_inputs": {"base_rate": 0.2916666666666667, "pratijna_grade": 1.955, "pratijna_status": "denied", "av_transit_potency": 0, "n_independent_currents": 1, "multi_system_confirmation": 0}}, "causal_chain": {"centrality": 3, "root_graha": "Jupiter (self-ruling / final dispositor)", "cgm_path_ids": ["01c0502b-e997-468d-90f3-d21ad7b572aa","0367532a-4f0e-474d-8b6f-2f0243bf033b","0825939d-d2e0-4fab-a485-5a8fa2b6669b","0a0bb4c8-80dd-433e-8da5-dd3b87082c0d","0ae4acf5-caf2-4130-8fc7-1c31aa74376c","1057d5de-b051-4316-b465-cb91ff4680cd","123c96fd-ffc6-4aef-a612-90a227b2fbfa","134380ca-1278-4aee-a75c-d175cb029c1e","1d9e648f-6645-44cd-a7dd-99bfe9ea7cc2","21b51250-7383-4cd2-9923-4d78653b423c"]}, "source_citation": "mode_d/av_bindhu/Jupiter@Cancer/SAV=32/2026-06-01"}
+        ],
+        "mitigations": [
+          {"mitigation_id": "1d2b66ba-447b-40dd-aa0f-069a7beec8d6", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28780, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "1996-02-16", "window_end": "1998-08-01", "re_evaluation_date": "1998-08-01", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28780/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "d5a56593-9a69-47c6-acae-4e5396c7d0ca", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28779, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "2022-07-12", "window_end": "2024-12-25", "re_evaluation_date": "2024-12-25", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28779/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "0c715adf-d3d0-4044-a2d9-5eefe0e157ba", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28849, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "2022-07-12", "window_end": "2024-12-25", "re_evaluation_date": "2024-12-25", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28849/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "ddb25609-38d9-4fba-a6b6-ae11f0bffbbd", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28881, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "1966-12-19", "window_end": "1969-06-03", "re_evaluation_date": "1969-06-03", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28881/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "903adede-6c41-49ac-ab2a-e3686f65c4ed", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28866, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "1966-04-08", "window_end": "1968-09-21", "re_evaluation_date": "1968-09-21", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28866/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "e635bf39-f6a9-4f7b-89e5-d8283b6414c3", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28820, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "1996-02-16", "window_end": "1998-08-01", "re_evaluation_date": "1998-08-01", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28820/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "9aa09cc8-3b2a-4a98-aba9-8d0981b45fdf", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28777, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "1995-06-02", "window_end": "1997-11-14", "re_evaluation_date": "1997-11-14", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28777/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "c648032f-98f2-4b51-8cde-03b943552628", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28880, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "2022-07-12", "window_end": "2024-12-25", "re_evaluation_date": "2024-12-25", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28880/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "c7acdaff-1f58-48f5-8ea5-cb48394fd13a", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28819, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "1966-12-19", "window_end": "1969-06-03", "re_evaluation_date": "1969-06-03", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28819/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"},
+          {"mitigation_id": "8e5c3c8c-3994-4320-9060-b139714cfcf4", "anchor_id": "7b4aad77-8e70-4c58-b654-aac095fde8a6", "obstruction_id": 28884, "afflicting_graha": "saturn", "obstruction_severity": "medium", "intensity_tier": "light", "program": {"scheduled_ids": [], "sequence_basis": "prerequisite_topo_sort + incompatible_exclusion", "total_scheduled": 0}, "tradition_options": {"vastu": [], "vedic": [], "modern": [], "tantra": [], "ayurvedic": [], "lal_kitab": []}, "cross_tradition_corroboration": 0, "recommended_tier": {"free": [], "low_cost": [], "high_investment": []}, "proportionality_basis": "severity=medium × anchor_magnitude=minor → light", "window_start": "2022-07-12", "window_end": "2024-12-25", "re_evaluation_date": "2024-12-25", "classical_citation": "Brihat Parashara Hora Shastra — Upaya chapter", "source_citation": "ph_pratikara/28884/7b4aad77-8e70-4c58-b654-aac095fde8a6", "computed_at": "2026-07-28T10:17:47.772568Z"}
+        ],
+        "rectification": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "confidence": "unresolved", "auto_action": "stage_for_review", "train_score": 0, "offset_minutes": 0, "best_lagna_sign": "Aries", "candidate_count": 185, "confidence_range": {"low": -0.2, "high": 0.2}, "best_candidate_time": "10:43"},
+        "auspicious_windows": [
+          {"date": "2026-07-28", "tithi": 14, "vara": "Mangalavara", "moon_nakshatra": "Purva Ashadha", "yoga": "Vishkambha", "karana": "Vanija", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-07-27T23:02:06Z", "start_utc": "2026-07-27T22:14:06Z"}, "abhijit": {"label": "abhijit", "end_utc": "2026-07-28T06:49:15Z", "start_utc": "2026-07-28T05:56:52Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-07-28T19:02:06Z", "start_utc": "2026-07-28T17:26:06Z"}}, "top_windows": [{"type": "labh", "start_time": "2026-07-28T04:44:49Z", "end_time": "2026-07-28T06:23:04Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-07-28T06:23:04Z", "end_time": "2026-07-28T08:01:18Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-07-28T09:39:33Z", "end_time": "2026-07-28T11:17:47Z", "score": 0.7}, {"type": "labh", "start_time": "2026-07-28T14:17:50Z", "end_time": "2026-07-28T15:39:38Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-07-28T17:01:27Z", "end_time": "2026-07-28T18:23:15Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-07-29", "tithi": 15, "vara": "Budhavara", "moon_nakshatra": "Uttara Ashadha", "yoga": "Priti", "karana": "Vishti", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-07-28T23:02:29Z", "start_utc": "2026-07-28T22:14:29Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-07-29T15:50:29Z", "start_utc": "2026-07-29T14:14:29Z"}}, "top_windows": [{"type": "labh", "start_time": "2026-07-28T23:50:29Z", "end_time": "2026-07-29T01:28:37Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-07-29T01:28:37Z", "end_time": "2026-07-29T03:06:45Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-07-29T04:44:54Z", "end_time": "2026-07-29T06:23:02Z", "score": 0.7}, {"type": "labh", "start_time": "2026-07-29T11:17:27Z", "end_time": "2026-07-29T12:55:36Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-07-29T14:17:30Z", "end_time": "2026-07-29T15:39:24Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-07-30", "tithi": 16, "vara": "Guruvara", "moon_nakshatra": "Shravana", "yoga": "Ayushman", "karana": "Balava", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-07-29T23:02:51Z", "start_utc": "2026-07-29T22:14:51Z"}, "abhijit": {"label": "abhijit", "end_utc": "2026-07-30T06:49:08Z", "start_utc": "2026-07-30T05:56:51Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-07-30T17:26:51Z", "start_utc": "2026-07-30T15:50:51Z"}}, "top_windows": [{"type": "shubh", "start_time": "2026-07-29T23:50:51Z", "end_time": "2026-07-30T01:28:53Z", "score": 0.7}, {"type": "labh", "start_time": "2026-07-30T06:23:00Z", "end_time": "2026-07-30T08:01:02Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-07-30T08:01:02Z", "end_time": "2026-07-30T09:39:04Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-07-30T11:17:06Z", "end_time": "2026-07-30T12:55:09Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-07-30T12:55:09Z", "end_time": "2026-07-30T14:17:09Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-07-31", "tithi": 17, "vara": "Shukravara", "moon_nakshatra": "Dhanishtha", "yoga": "Saubhagya", "karana": "Taitila", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-07-30T23:03:12Z", "start_utc": "2026-07-30T22:15:12Z"}, "abhijit": {"label": "abhijit", "end_utc": "2026-07-31T06:49:04Z", "start_utc": "2026-07-31T05:56:50Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-07-31T03:03:12Z", "start_utc": "2026-07-31T01:27:12Z"}}, "top_windows": [{"type": "labh", "start_time": "2026-07-31T01:29:08Z", "end_time": "2026-07-31T03:07:04Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-07-31T03:07:04Z", "end_time": "2026-07-31T04:45:00Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-07-31T06:22:57Z", "end_time": "2026-07-31T08:00:53Z", "score": 0.7}, {"type": "labh", "start_time": "2026-07-31T15:38:55Z", "end_time": "2026-07-31T17:01:01Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-07-31T18:23:08Z", "end_time": "2026-07-31T19:45:14Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-08-01", "tithi": 18, "vara": "Shanivara", "moon_nakshatra": "Shatabhisha", "yoga": "Shobhana", "karana": "Vanija", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-07-31T23:03:34Z", "start_utc": "2026-07-31T22:15:34Z"}, "abhijit": {"label": "abhijit", "end_utc": "2026-08-01T06:48:58Z", "start_utc": "2026-08-01T05:56:48Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-08-01T20:39:34Z", "start_utc": "2026-08-01T19:03:34Z"}}, "top_windows": [{"type": "shubh", "start_time": "2026-08-01T01:29:23Z", "end_time": "2026-08-01T03:07:13Z", "score": 0.7}, {"type": "labh", "start_time": "2026-08-01T08:00:43Z", "end_time": "2026-08-01T09:38:33Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-08-01T09:38:33Z", "end_time": "2026-08-01T11:16:23Z", "score": 0.7}, {"type": "labh", "start_time": "2026-08-01T12:54:13Z", "end_time": "2026-08-01T14:16:25Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-01T15:38:38Z", "end_time": "2026-08-01T17:00:51Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-08-02", "tithi": 19, "vara": "Ravivara", "moon_nakshatra": "Purva Bhadrapada", "yoga": "Atiganda", "karana": "Bava", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-08-01T23:03:55Z", "start_utc": "2026-08-01T22:15:55Z"}, "abhijit": {"label": "abhijit", "end_utc": "2026-08-02T06:48:52Z", "start_utc": "2026-08-02T05:56:45Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-08-02T22:15:55Z", "start_utc": "2026-08-02T20:39:55Z"}}, "top_windows": [{"type": "labh", "start_time": "2026-08-02T03:07:22Z", "end_time": "2026-08-02T04:45:05Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-08-02T04:45:05Z", "end_time": "2026-08-02T06:22:49Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-02T08:00:32Z", "end_time": "2026-08-02T09:38:16Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-02T12:53:43Z", "end_time": "2026-08-02T14:16:02Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-08-02T14:16:02Z", "end_time": "2026-08-02T15:38:21Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-08-03", "tithi": 20, "vara": "Somavara", "moon_nakshatra": "Uttara Bhadrapada", "yoga": "Sukarman", "karana": "Kaulava", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-08-02T23:04:17Z", "start_utc": "2026-08-02T22:16:17Z"}, "abhijit": {"label": "abhijit", "end_utc": "2026-08-03T06:48:46Z", "start_utc": "2026-08-03T05:56:42Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-08-03T02:16:17Z", "start_utc": "2026-08-03T00:40:17Z"}}, "top_windows": [{"type": "amrit", "start_time": "2026-08-02T23:52:17Z", "end_time": "2026-08-03T01:29:53Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-03T03:07:30Z", "end_time": "2026-08-03T04:45:07Z", "score": 0.7}, {"type": "labh", "start_time": "2026-08-03T09:37:58Z", "end_time": "2026-08-03T11:15:35Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-08-03T11:15:35Z", "end_time": "2026-08-03T12:53:12Z", "score": 0.7}, {"type": "labh", "start_time": "2026-08-03T17:00:29Z", "end_time": "2026-08-03T18:22:55Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-08-04", "tithi": 21, "vara": "Mangalavara", "moon_nakshatra": "Revati", "yoga": "Dhriti", "karana": "Garaja", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-08-03T23:04:38Z", "start_utc": "2026-08-03T22:16:38Z"}, "abhijit": {"label": "abhijit", "end_utc": "2026-08-04T06:48:39Z", "start_utc": "2026-08-04T05:56:39Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-08-04T23:52:38Z", "start_utc": "2026-08-04T22:16:38Z"}}, "top_windows": [{"type": "labh", "start_time": "2026-08-04T04:45:09Z", "end_time": "2026-08-04T06:22:39Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-08-04T06:22:39Z", "end_time": "2026-08-04T08:00:09Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-04T09:37:40Z", "end_time": "2026-08-04T11:15:10Z", "score": 0.7}, {"type": "labh", "start_time": "2026-08-04T14:15:13Z", "end_time": "2026-08-04T15:37:45Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-04T17:00:17Z", "end_time": "2026-08-04T18:22:50Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-08-05", "tithi": 22, "vara": "Budhavara", "moon_nakshatra": "Ashwini", "yoga": "Shula", "karana": "Vishti", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-08-04T23:04:59Z", "start_utc": "2026-08-04T22:16:59Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-08-05T21:28:59Z", "start_utc": "2026-08-05T19:52:59Z"}}, "top_windows": [{"type": "labh", "start_time": "2026-08-04T23:52:59Z", "end_time": "2026-08-05T01:30:22Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-08-05T01:30:22Z", "end_time": "2026-08-05T03:07:46Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-05T04:45:09Z", "end_time": "2026-08-05T06:22:33Z", "score": 0.7}, {"type": "labh", "start_time": "2026-08-05T11:14:44Z", "end_time": "2026-08-05T12:52:08Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-05T14:14:46Z", "end_time": "2026-08-05T15:37:25Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"},
+          {"date": "2026-08-06", "tithi": 23, "vara": "Guruvara", "moon_nakshatra": "Bharani", "yoga": "Ganda", "karana": "Balava", "auspicious_metadata": {"brahma_muhurta": {"label": "brahma_muhurta", "end_utc": "2026-08-05T23:05:19Z", "start_utc": "2026-08-05T22:17:19Z"}, "abhijit": {"label": "abhijit", "end_utc": "2026-08-06T06:48:23Z", "start_utc": "2026-08-06T05:56:30Z"}, "varjyam": {"label": "varjyam", "end_utc": "2026-08-06T05:29:19Z", "start_utc": "2026-08-06T03:53:19Z"}}, "top_windows": [{"type": "shubh", "start_time": "2026-08-05T23:53:19Z", "end_time": "2026-08-06T01:30:35Z", "score": 0.7}, {"type": "labh", "start_time": "2026-08-06T06:22:26Z", "end_time": "2026-08-06T07:59:43Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-08-06T07:59:43Z", "end_time": "2026-08-06T09:37:00Z", "score": 0.7}, {"type": "shubh", "start_time": "2026-08-06T11:14:17Z", "end_time": "2026-08-06T12:51:34Z", "score": 0.7}, {"type": "amrit", "start_time": "2026-08-06T12:51:34Z", "end_time": "2026-08-06T14:14:19Z", "score": 0.7}], "source": "panchanga_daily / phala.outlook-PH-4-4"}
+        ],
+        "summary_confidence": 0.27121428571428574,
+        "provenance_envelope": {
+          "source": "phala.outlook", "asset": "PH-4-5", "asset_version": "1.0", "layers": ["PH-4-1","PH-4-2","PH-4-3","PH-4-4"],
+          "layer_provenances": {
+            "PH-4-1": {"source": "phala.anchors", "asset": "PH-4-1", "algorithm": "dasha_quality × signal_strength × convergence_score", "min_confidence_applied": 0, "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "queried_at": "2026-07-28T13:18:43.813623+00:00", "l1_ground_truth": "FORENSIC v8.0 §5.1 DSH.V.023–028; CHART_FACTS_EXTRACTION_v1_0.yaml", "b3_citation_compliant": true, "all_falsifiers_present": true},
+            "PH-4-2": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "anchor_id_filter": null, "mitigation_type_filter_requested": null, "mitigation_type_filter_applied": false, "mitigation_type_filter_note": null, "asset": "phala.mitigation", "asset_version": "1.0", "build_tag": "PH-4-2", "source": "phala.mitigation", "computed_at": "2026-07-28T13:18:43.966310+00:00"},
+            "PH-4-3": {"asset": "PH-4-3", "source": "phala.rectification", "algorithm": "dasha_alignment_lel_train_test_split", "scored_at": "2026-07-28T10:18:03.386406+00:00", "test_split": "events 44–57 (25%, held-out)", "train_split": "events 1–43 (75%)", "leakage_check": "PASS — test events not used for candidate selection", "b10_compliance": "Dasha-level only; no Swiss Ephemeris re-run", "leakage_firewall_note": "[basis=lel_fit] LEAKAGE-FIREWALL: 39 training events (all pre-2020-01-01, exact/month-exact, none from LEL v1.7 M5-A-S1 enrichment). Post-2020 + enrichment events held out for out-of-sample validation."},
+            "PH-4-4": {"source": "panchanga_daily", "asset": "PH-4-4 / PANCHANG_DAILY", "date_range": {"start": "2026-07-28", "end": "2027-07-23"}, "rows_returned": 30, "queried_at": "2026-07-28T13:18:44.193212+00:00"}
+          },
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "horizon_months": 12, "date_range": {"start": "2026-07-28", "end": "2027-07-23"},
+          "summary_confidence_algorithm": "mean(anchor.confidence) across all returned anchors", "computed_at": "2026-07-28T13:18:43.587366+00:00"
+        },
+        "budget_kb_applied": 40,
+        "trim_report": [
+          {"path": "mitigations", "original_count": 100, "kept_count": 10, "reason": "mitigations: trimmed to 10", "recover_via": {"instrument": "phala_outlook_get", "hint": "call phala_outlook_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"mitigations\""}},
+          {"path": "auspicious_windows", "original_count": 30, "kept_count": 10, "reason": "auspicious_windows: trimmed to 10", "recover_via": {"instrument": "phala_outlook_get", "hint": "call phala_outlook_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"auspicious_windows\""}},
+          {"path": "anchors", "original_count": 14, "kept_count": 5, "reason": "anchors: floored to 5 (hard-cap)", "recover_via": {"instrument": "phala_outlook_get", "hint": "call phala_outlook_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"anchors\""}}
+        ],
+        "drill_pointers": [
+          {"instrument": "phala_outlook_get", "hint": "call phala_outlook_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"mitigations\""},
+          {"instrument": "phala_outlook_get", "hint": "call phala_outlook_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"auspicious_windows\""},
+          {"instrument": "phala_outlook_get", "hint": "call phala_outlook_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"anchors\""}
+        ]
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_dasha_periods_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "ayanamsha_id": "lahiri_chitrapaksha"
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "source_table": "chart_dashas",
+          "levels_available": 4,
+          "facets_applied": {"system": "vimshottari", "level": "cap<=3", "window": {"start": "2021-07-28", "end": "2031-07-28"}, "date_filter": {"default_window_applied": true}, "fields": "compact"},
+          "rows": [
+            {"dasha_row_id": "19d7b8f7-fd7a-4dea-b528-7b44f6605ce0", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 1, "parent_row_id": null, "lord_graha": "Mercury", "lord_sign": "Capricorn", "start_date": "2010-08-18", "end_date": "2027-08-18", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Uttara Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 7.55, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L1.Mercury@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "dc65c3a3-fa62-4444-b7a4-d8690cdd11ad", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 2, "parent_row_id": "19d7b8f7-fd7a-4dea-b528-7b44f6605ce0", "lord_graha": "Rahu", "lord_sign": "Taurus", "start_date": "2020-02-14", "end_date": "2022-09-02", "sandhi_flag": false, "lord_natal_house_d1": 2, "lord_natal_sign": "Taurus", "lord_natal_nakshatra": "Rohini", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.375, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L2.Mercury-Rahu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "a45a2e53-97cb-437e-b6a6-5ebde4fd87c3", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "dc65c3a3-fa62-4444-b7a4-d8690cdd11ad", "lord_graha": "Mercury", "lord_sign": "Capricorn", "start_date": "2021-03-31", "end_date": "2021-08-10", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Uttara Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 7.55, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Rahu-Mercury@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "33ef5c52-74ff-4b01-bb09-834e421c0824", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "dc65c3a3-fa62-4444-b7a4-d8690cdd11ad", "lord_graha": "Ketu", "lord_sign": "Scorpio", "start_date": "2021-08-10", "end_date": "2021-10-04", "sandhi_flag": false, "lord_natal_house_d1": 8, "lord_natal_sign": "Scorpio", "lord_natal_nakshatra": "Jyeshtha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.625, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Rahu-Ketu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "5b1d30ae-91a6-42d4-b7e6-e42540f27968", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "dc65c3a3-fa62-4444-b7a4-d8690cdd11ad", "lord_graha": "Venus", "lord_sign": "Sagittarius", "start_date": "2021-10-04", "end_date": "2022-03-08", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Purva Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 4.64, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Rahu-Venus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "669f9e93-013c-4974-a4de-270f3f6aee38", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "dc65c3a3-fa62-4444-b7a4-d8690cdd11ad", "lord_graha": "Sun", "lord_sign": "Capricorn", "start_date": "2022-03-08", "end_date": "2022-04-23", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Shravana", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 8.47, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Rahu-Sun@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "c686880b-603b-4b85-a4c1-5a4259d2be29", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "dc65c3a3-fa62-4444-b7a4-d8690cdd11ad", "lord_graha": "Moon", "lord_sign": "Aquarius", "start_date": "2022-04-23", "end_date": "2022-07-10", "sandhi_flag": false, "lord_natal_house_d1": 11, "lord_natal_sign": "Aquarius", "lord_natal_nakshatra": "Purva Bhadrapada", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.65, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Rahu-Moon@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "03f4e4eb-f04d-41b2-aff3-df6e15f15f75", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "dc65c3a3-fa62-4444-b7a4-d8690cdd11ad", "lord_graha": "Mars", "lord_sign": "Libra", "start_date": "2022-07-10", "end_date": "2022-09-02", "sandhi_flag": false, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Swati", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.57, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Rahu-Mars@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 2, "parent_row_id": "19d7b8f7-fd7a-4dea-b528-7b44f6605ce0", "lord_graha": "Jupiter", "lord_sign": "Sagittarius", "start_date": "2022-09-02", "end_date": "2024-12-08", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Mula", "lord_natal_dignity_d1": "own", "lord_natal_shadbala_total": 7.8, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L2.Mercury-Jupiter@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "c9ea1eff-a48e-449d-96be-17d109d312ee", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Jupiter", "lord_sign": "Sagittarius", "start_date": "2022-09-02", "end_date": "2022-12-22", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Mula", "lord_natal_dignity_d1": "own", "lord_natal_shadbala_total": 7.8, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Jupiter@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "090b2a2a-a14d-496f-949c-4a89b078f087", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Saturn", "lord_sign": "Libra", "start_date": "2022-12-22", "end_date": "2023-05-02", "sandhi_flag": false, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Vishakha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 7.83, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Saturn@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "044f257b-5ee7-467b-9936-c918025e1989", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Mercury", "lord_sign": "Capricorn", "start_date": "2023-05-02", "end_date": "2023-08-27", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Uttara Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 7.55, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Mercury@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "37253d76-5fd9-49c1-b8e7-00df0e24b92a", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Ketu", "lord_sign": "Scorpio", "start_date": "2023-08-27", "end_date": "2023-10-14", "sandhi_flag": false, "lord_natal_house_d1": 8, "lord_natal_sign": "Scorpio", "lord_natal_nakshatra": "Jyeshtha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.625, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Ketu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "32b12563-6c7c-4222-a123-af1837364e03", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Venus", "lord_sign": "Sagittarius", "start_date": "2023-10-14", "end_date": "2024-02-29", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Purva Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 4.64, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Venus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "d5ffc7e5-c7f1-4e45-b505-1097bf33b48d", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Sun", "lord_sign": "Capricorn", "start_date": "2024-02-29", "end_date": "2024-04-11", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Shravana", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 8.47, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Sun@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "bcb36762-ff60-4f44-b427-4627f513f386", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Moon", "lord_sign": "Aquarius", "start_date": "2024-04-11", "end_date": "2024-06-19", "sandhi_flag": false, "lord_natal_house_d1": 11, "lord_natal_sign": "Aquarius", "lord_natal_nakshatra": "Purva Bhadrapada", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.65, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Moon@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "8e03094c-4159-429d-b3cf-195f1457639e", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Mars", "lord_sign": "Libra", "start_date": "2024-06-19", "end_date": "2024-08-06", "sandhi_flag": false, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Swati", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.57, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Mars@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "ee6f62a5-571a-48e4-ae90-11f5eace70ca", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "257e73e9-d60f-4238-8d60-bd8eee7e3c4c", "lord_graha": "Rahu", "lord_sign": "Taurus", "start_date": "2024-08-06", "end_date": "2024-12-08", "sandhi_flag": false, "lord_natal_house_d1": 2, "lord_natal_sign": "Taurus", "lord_natal_nakshatra": "Rohini", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.375, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Jupiter-Rahu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "45986c0d-eb49-4c28-b147-2a264d9752ae", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Saturn", "lord_sign": "Libra", "start_date": "2024-12-08", "end_date": "2025-05-13", "sandhi_flag": false, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Vishakha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 7.83, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Saturn@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 2, "parent_row_id": "19d7b8f7-fd7a-4dea-b528-7b44f6605ce0", "lord_graha": "Saturn", "lord_sign": "Libra", "start_date": "2024-12-08", "end_date": "2027-08-18", "sandhi_flag": false, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Vishakha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 7.83, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L2.Mercury-Saturn@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "62a005b2-14a9-4280-b4be-d5d6787f1b12", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Mercury", "lord_sign": "Capricorn", "start_date": "2025-05-13", "end_date": "2025-09-29", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Uttara Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 7.55, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Mercury@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "877db5e3-bfbb-428f-ae72-a0f2798fab0f", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Ketu", "lord_sign": "Scorpio", "start_date": "2025-09-29", "end_date": "2025-11-26", "sandhi_flag": false, "lord_natal_house_d1": 8, "lord_natal_sign": "Scorpio", "lord_natal_nakshatra": "Jyeshtha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.625, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Ketu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "a11a4d29-c4af-4ff3-a63f-f232e34cc9e3", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Venus", "lord_sign": "Sagittarius", "start_date": "2025-11-26", "end_date": "2026-05-08", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Purva Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 4.64, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Venus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "0c05b58e-10cb-4da1-87ae-83886c7bf51a", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Sun", "lord_sign": "Capricorn", "start_date": "2026-05-08", "end_date": "2026-06-27", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Shravana", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 8.47, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Sun@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "d21f5b0d-2db9-4c0e-8be3-50687d701ed0", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Moon", "lord_sign": "Aquarius", "start_date": "2026-06-27", "end_date": "2026-09-17", "sandhi_flag": false, "lord_natal_house_d1": 11, "lord_natal_sign": "Aquarius", "lord_natal_nakshatra": "Purva Bhadrapada", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.65, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Moon@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "7f45637b-961c-404a-a386-df5b85de8efc", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Mars", "lord_sign": "Libra", "start_date": "2026-09-17", "end_date": "2026-11-13", "sandhi_flag": false, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Swati", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.57, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Mars@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "7a444dcc-4ce0-409d-a185-40bd2ec92182", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Rahu", "lord_sign": "Taurus", "start_date": "2026-11-13", "end_date": "2027-04-09", "sandhi_flag": false, "lord_natal_house_d1": 2, "lord_natal_sign": "Taurus", "lord_natal_nakshatra": "Rohini", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.375, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Rahu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "977358cd-cbf2-40e9-b006-f7a01fcc222b", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "984431dd-cb81-4b2e-8d1d-30b084f1d8a5", "lord_graha": "Jupiter", "lord_sign": "Sagittarius", "start_date": "2027-04-09", "end_date": "2027-08-18", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Mula", "lord_natal_dignity_d1": "own", "lord_natal_shadbala_total": 7.8, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Mercury-Saturn-Jupiter@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 2, "parent_row_id": "d476f2f3-443d-4cdf-9a9a-9cb17498b3ee", "lord_graha": "Ketu", "lord_sign": "Scorpio", "start_date": "2027-08-18", "end_date": "2028-01-15", "sandhi_flag": false, "lord_natal_house_d1": 8, "lord_natal_sign": "Scorpio", "lord_natal_nakshatra": "Jyeshtha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.625, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L2.Ketu-Ketu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "d476f2f3-443d-4cdf-9a9a-9cb17498b3ee", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 1, "parent_row_id": null, "lord_graha": "Ketu", "lord_sign": "Scorpio", "start_date": "2027-08-18", "end_date": "2034-08-18", "sandhi_flag": false, "lord_natal_house_d1": 8, "lord_natal_sign": "Scorpio", "lord_natal_nakshatra": "Jyeshtha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.625, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L1.Ketu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "4774fa21-934e-484b-abea-cc6c233c945b", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Ketu", "lord_sign": "Scorpio", "start_date": "2027-08-18", "end_date": "2027-08-27", "sandhi_flag": true, "lord_natal_house_d1": 8, "lord_natal_sign": "Scorpio", "lord_natal_nakshatra": "Jyeshtha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.625, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Ketu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "00f2db26-706c-446f-927a-29fda881b6b3", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Venus", "lord_sign": "Sagittarius", "start_date": "2027-08-27", "end_date": "2027-09-21", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Purva Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 4.64, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Venus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "21fd0044-7cac-4c13-b47b-9ad71b1742d0", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Sun", "lord_sign": "Capricorn", "start_date": "2027-09-21", "end_date": "2027-09-28", "sandhi_flag": true, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Shravana", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 8.47, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Sun@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "3265f1c0-ab1a-4945-8391-24fe06849023", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Moon", "lord_sign": "Aquarius", "start_date": "2027-09-28", "end_date": "2027-10-11", "sandhi_flag": true, "lord_natal_house_d1": 11, "lord_natal_sign": "Aquarius", "lord_natal_nakshatra": "Purva Bhadrapada", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.65, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Moon@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "09952bf0-3fe7-4274-aac6-3c38dd47502e", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Mars", "lord_sign": "Libra", "start_date": "2027-10-11", "end_date": "2027-10-20", "sandhi_flag": true, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Swati", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.57, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Mars@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "4e22e827-5d05-412f-8f6f-6c2b12589ca9", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Rahu", "lord_sign": "Taurus", "start_date": "2027-10-20", "end_date": "2027-11-11", "sandhi_flag": false, "lord_natal_house_d1": 2, "lord_natal_sign": "Taurus", "lord_natal_nakshatra": "Rohini", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 0.375, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Rahu@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "34caa7b6-ef48-4188-bc7f-3dc879fe2fc7", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Jupiter", "lord_sign": "Sagittarius", "start_date": "2027-11-11", "end_date": "2027-12-01", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Mula", "lord_natal_dignity_d1": "own", "lord_natal_shadbala_total": 7.8, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Jupiter@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "68f55b00-92e8-43da-a296-cd7bee41838c", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Saturn", "lord_sign": "Libra", "start_date": "2027-12-01", "end_date": "2027-12-24", "sandhi_flag": false, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Vishakha", "lord_natal_dignity_d1": "exalted", "lord_natal_shadbala_total": 7.83, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Saturn@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "ccdf0fe9-9e26-4f7a-86c4-1aac5e5e229a", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "c23356ce-0228-41c0-a285-820475006ef7", "lord_graha": "Mercury", "lord_sign": "Capricorn", "start_date": "2027-12-24", "end_date": "2028-01-15", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Uttara Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 7.55, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Ketu-Mercury@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "6251285d-4e97-49bf-aa70-07ea6c771a62", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "03d43132-0af9-4dcf-a4d9-d8d543b7d87a", "lord_graha": "Venus", "lord_sign": "Sagittarius", "start_date": "2028-01-15", "end_date": "2028-03-26", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Purva Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 4.64, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Venus-Venus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "03d43132-0af9-4dcf-a4d9-d8d543b7d87a", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 2, "parent_row_id": "d476f2f3-443d-4cdf-9a9a-9cb17498b3ee", "lord_graha": "Venus", "lord_sign": "Sagittarius", "start_date": "2028-01-15", "end_date": "2029-03-16", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Purva Ashadha", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 4.64, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L2.Ketu-Venus@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "6d7998b5-3239-4cdd-ac2f-69def5471b08", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "03d43132-0af9-4dcf-a4d9-d8d543b7d87a", "lord_graha": "Sun", "lord_sign": "Capricorn", "start_date": "2028-03-26", "end_date": "2028-04-16", "sandhi_flag": false, "lord_natal_house_d1": 10, "lord_natal_sign": "Capricorn", "lord_natal_nakshatra": "Shravana", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 8.47, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Venus-Sun@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "517473a0-49a0-4d2e-97c8-f0253c139e0e", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "03d43132-0af9-4dcf-a4d9-d8d543b7d87a", "lord_graha": "Moon", "lord_sign": "Aquarius", "start_date": "2028-04-16", "end_date": "2028-05-21", "sandhi_flag": false, "lord_natal_house_d1": 11, "lord_natal_sign": "Aquarius", "lord_natal_nakshatra": "Purva Bhadrapada", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.65, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Venus-Moon@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"},
+            {"dasha_row_id": "3d7cfc7e-2a73-4a05-bb62-0ef120c1d044", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 3, "parent_row_id": "03d43132-0af9-4dcf-a4d9-d8d543b7d87a", "lord_graha": "Mars", "lord_sign": "Libra", "start_date": "2028-05-21", "end_date": "2028-06-15", "sandhi_flag": false, "lord_natal_house_d1": 7, "lord_natal_sign": "Libra", "lord_natal_nakshatra": "Swati", "lord_natal_dignity_d1": "neutral", "lord_natal_shadbala_total": 5.57, "verification_pass_status": "two_pass_verified", "citation_ref": "chart_dashas.vimshottari.L3.Ketu-Venus-Mars@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora_adapter/0.1.0"}
+          ],
+          "total": 89,
+          "natal_condition_provenance": "chart_facts:re-derived@serve (WP-1.8/R-43)"
+        },
+        "is_error": false,
+        "budget_kb_applied": 40,
+        "trim_report": [
+          {"path": "content.rows", "original_count": 89, "kept_count": 44, "reason": "content.rows: trimmed to 44", "recover_via": {"instrument": "ganita_dasha_periods_get", "hint": "call ganita_dasha_periods_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.rows\""}}
+        ],
+        "drill_pointers": [
+          {"instrument": "ganita_dasha_periods_get", "hint": "call ganita_dasha_periods_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.rows\""}
+        ]
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__graha_portrait",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "graha": "Jupiter",
+      "include": ["position", "dignity", "strength", "dashas"]
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "orientation_context": {
+          "content": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "response_format": "digest",
+            "digest": {
+              "msr_signal_count": 9922, "yoga_count": 15, "dosha_count": 5, "avg_salience": 0.7003, "max_salience": 2.4852,
+              "contradiction_count": 3, "weakest_graha": "Venus", "weakest_graha_source": "shadbala_total_min (BPHS Ch.27 six-fold strength; CR-55 fix)",
+              "top_priority_class": "critical", "trap1_count": 0
+            },
+            "entity_profiles": [],
+            "top_signals": [],
+            "convergence_domains": [
+              {"domain": "character", "convergence_count": 7320, "convergence_score": 7933.214401, "cross_tradition_count": 6, "salience_weighted_sum": 5289.026364, "contradiction_count": 1},
+              {"domain": "relationship", "convergence_count": 3570, "convergence_score": 3483.744583, "cross_tradition_count": 6, "salience_weighted_sum": 2322.496389, "contradiction_count": 0},
+              {"domain": "career", "convergence_count": 3091, "convergence_score": 3201.353323, "cross_tradition_count": 4, "salience_weighted_sum": 2134.442709, "contradiction_count": 1},
+              {"domain": "health", "convergence_count": 745, "convergence_score": 483.792147, "cross_tradition_count": 2, "salience_weighted_sum": 439.988219, "contradiction_count": 1},
+              {"domain": "wealth", "convergence_count": 337, "convergence_score": 317.11343, "cross_tradition_count": 3, "salience_weighted_sum": 243.933408, "contradiction_count": 0},
+              {"domain": "spirituality", "convergence_count": 231, "convergence_score": 163.632205, "cross_tradition_count": 3, "salience_weighted_sum": 125.870927, "contradiction_count": 0}
+            ],
+            "grounding": {
+              "fact_ids": ["f18017abba4dc14f","cdd092401551e0d0","e0f98e22575823cb","26bc6f72ed18766e","41aaf1f858a9b5cf","1295c30add629ed0","16f1603f92008ba1","ca5fc049eabac885","2dd1c0ac4f4a2c50","9120d4739d91af91","548ee0a79d368d4d","109f3a924e669595","b9aff08668eaca2a","c3e2524c31bb51eb","467f810da64ea029","baa102375fe373ab","47b2ded82de4dc97","a768a35846b9fbbe","63b969a564667eed","5a038de1c9dc0974","bedc139083d4367d","34ada095f74e2827","aa0764f988413099","130f40ffed8669dd","8d6640414419dfec","8af6eb77f838efe2","0ca212cb8a38a774","9c9a94662c9b4179","98d6410d7465912b","004dad87c987e4cf","4bc420bd2186b024","b122a6c16eb61134","1160c8b78f6661ba","1795712f889ed3d7","9841b10587ef1ad1","b4f63ccb53e1fb59","b6961895d5648f64","fa9ca8a30f814faa","676e20b03bb9f68b","220d1ba48454ff7f","a69b679ea49b18a3","08f4c057ec99c9fe","08d8045edb5fffe8","dd74f0ddbe530eba","412a3ae9e3a09804","d2f042a6586930e7","3fef25c7745cb061","9f3097364d7ac02c","7533f1b928391307"],
+              "resolvable": true, "resolved_fact_count": 456,
+              "note": "WP-1.2(a): fact_ids are the resolvable L1 chart_facts.fact_id set backing the ranked entity_profiles (each id verified p…[truncated for budget]"
+            },
+            "attribution": {"served_unattributed_entities": 0, "served_unattributed_share": 0, "candidate_pool_size": 300, "candidate_pool_unattributed": 0, "note": "WP-1.2β: 0% UNATTRIBUTED on the served ranked surface — every served entity_profile resolves to a graha or a bhāva (char…[truncated for budget]"},
+            "ranking_basis": {
+              "mode": "composite_4d", "priors_version": "1.2", "domain": null,
+              "top_signal": {"signal_id": "c3afa5f0-2a73-4ec5-9b62-130a5757f582", "class_prior": 1.3125, "topic_relevance": 1, "intrinsic_strength": 0.58792, "structural_role": 1.2, "temporal_activation": 1, "composite_score": 0.925974, "percentile_within_class": 1, "final_rank_score": 0.9266943609066666},
+              "varga_weight_basis": {"scheme": "Ṣoḍaśavarga (16-fold) Vimśopaka Bala", "source": "Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga"},
+              "note": "Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_with…[truncated for budget]"
+            },
+            "filters": {"top_k": 10, "top_k_entities": 10, "signal_class": null, "min_salience": 0},
+            "provenance": {"tables": ["vw_chart_digest","bodha_msr_signals","bodha_convergence"], "ranking_note": "E-6: entity_profiles + top_signals both composite-ranked (priors_version=1.2) — same pipeline as query_signals.ts, not a…[truncated for budget]", "aggregation_note": "Hierarchical aggregation: 300 atomic candidate signals → 7 entity profile(s) (design §E-6).", "family_aggregation_note": "E-6 completion (R5.1 C2 item 2): 300 atomic candidates → 103 family-collapsed row(s) before the top_k=10 cut; 29 of thos…[truncated for budget]"}
+          },
+          "is_error": false
+        },
+        "orientation_ok": true,
+        "envelope_version": "v3",
+        "tool": "graha_portrait",
+        "verdict": {
+          "graha": "Jupiter", "graha_code": "JUP",
+          "completeness": {"position": "✓", "dignity": "✓", "functional_nature": "not_requested", "strength": "✓", "avasthas": "not_requested", "yogas": "not_requested", "dashas": "✓", "cgm_neighborhood": "not_requested"},
+          "sections_populated": 4, "sections_requested": 4,
+          "narration": "Jupiter = 9th + 12th lord for Aries lagna. Confirmed: Jupiter is own sign (Sagittarius, 9th house) in D1. In D9: neutral (Gemini, 12th house) — and natal strength undercut by navamsha stress. Shadbala: 7.80 rupas vs 6.50 required — grade: strong (surplus) (+1.30 rupas). Yogas: no parivartana exchange and no catalog yoga/dosha candidates for Jupiter in this chart — yoga_fires/dosha_fires are honestly 0 rows for this build (JL-004: a requires_pass catalog, not confirmed firings). Next Jupiter Mahadasha: 2095-08-18 → 2100-12-31 (age 111). Single-tradition read: dignity/strength above are BPHS/classical-dignity based only (JL-004 caveat) — not cross-checked against Jaimini/KP. Scope: graha_portrait assesses Jupiter alone — any bhava-level claim (e.g. marriage promise via the 7th house, career via the 10th) needs judgment_query for the complete promise-register verdict.",
+          "note": "completeness uses the design §28.6 classical-units receipt vocabulary (✓ / zero_rows / error / not_requested) per section. narration is assembled from the sections already fetched by this same call (see grounding.fact_ids for the specific L1/L2 facts it cites) — never a new chart computation."
+        },
+        "ranking_basis": null,
+        "grounding": {"fact_ids": ["695a4a0f03f013a0","00a3aefff8bf67f5","f6478512e19e7639","93ec9f440f4bc459","399b385b81d4521d","5624ca6606c492cc","fe6bb416319a24d0","257d3586c654b47f","9f737f278148375e","8af6eb77f838efe2","585faa2b0ef9d2ef","b60de5f4b57a293b","9d34c16706fbe647"], "citations": [], "grounding_score": 1},
+        "pagination": {"offset": 0, "limit": 0, "total": null, "next_cursor": null, "more_available": false},
+        "drill_pointers": [
+          {"instrument": "get_dashas", "hint": "Antardasha-level (level=2+) detail for this graha's Mahadasha periods, narrower window.", "pointer_type": "dasha_of_promise"},
+          {"instrument": "traverse_graph", "hint": "deeper CGM traversal (depth>1, paths mode) from this graha's neighborhood.", "pointer_type": "dispositor_chain"},
+          {"instrument": "get_signals", "hint": "raw MSR signal evidence for any yoga/dosha match surfaced here.", "pointer_type": "karaka_condition"},
+          {"instrument": "judgment_query", "hint": "the complete bhava-level (7th-house marriage, 10th-house career, etc.) promise-register verdict — this entity-scoped cal…[truncated for budget]", "pointer_type": "karaka_condition"}
+        ],
+        "judgment_flags": [{"code": "budget_exceeded_after_trim", "detail": "12kb budget still exceeded after full trim."}],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "graha": "Jupiter", "graha_code": "JUP", "ayanamsha_id": "lahiri_chitrapaksha",
+          "position": {"rows": [{"fact_id": "695a4a0f03f013a0", "fact_category": "graha_position", "fact_subject": "JUP", "ayanamsha_id": "lahiri_chitrapaksha", "fact_key": "combustion_state", "fact_value_num": null, "fact_value_text": "none", "fact_value_jsonb": null, "unit": null, "verification_pass_status": "single"}], "count": 9},
+          "dignity": {
+            "operative_vargas": ["D1","D9","D10","D60"],
+            "operative_varga_rows": [
+              {"fact_id": "585faa2b0ef9d2ef", "fact_category": "graha_dignity_per_varga", "fact_subject": "D9_JUP", "ayanamsha_id": "lahiri_chitrapaksha", "fact_key": "dignity_state", "fact_value_num": null, "fact_value_text": "neutral", "fact_value_jsonb": {"sign": "Gemini", "house": 12, "varga": "D9", "ayanamsha_id": "lahiri_chitrapaksha", "uncatalogued": false}, "unit": null, "verification_pass_status": "two_pass_verified"},
+              {"fact_id": "f587179cf27b8139", "fact_category": "graha_dignity_per_varga", "fact_subject": "D10_JUP", "ayanamsha_id": "lahiri_chitrapaksha", "fact_key": "dignity_state", "fact_value_num": null, "fact_value_text": "own", "fact_value_jsonb": {"sign": "Pisces", "house": 8, "varga": "D10", "ayanamsha_id": "lahiri_chitrapaksha", "uncatalogued": false}, "unit": null, "verification_pass_status": "two_pass_verified"}
+            ],
+            "all_varga_rows": [], "other_rows": [], "count": 56
+          },
+          "strength": {
+            "rows": [
+              {"fact_id": "7bef82b662187299", "fact_category": "graha_composite_state_classification", "fact_subject": "JUP", "ayanamsha_id": "lahiri_chitrapaksha", "fact_key": "classification", "fact_value_num": null, "fact_value_text": "well_placed", "fact_value_jsonb": null, "unit": null, "verification_pass_status": "single_pass"},
+              {"fact_id": "cd4c04602dc34e53", "fact_category": "graha_in_house_composite_strength", "fact_subject": "JUP_IN_HOUSE_9", "ayanamsha_id": "lahiri_chitrapaksha", "fact_key": "bphs_weighted", "fact_value_num": 0.0906, "fact_value_text": null, "fact_value_jsonb": null, "unit": null, "verification_pass_status": "two_pass_verified"},
+              {"fact_id": "2bacc36254501a99", "fact_category": "graha_in_house_composite_strength", "fact_subject": "JUP_IN_HOUSE_9", "ayanamsha_id": "lahiri_chitrapaksha", "fact_key": "cross_formula_divergence", "fact_value_num": 0.4003, "fact_value_text": null, "fact_value_jsonb": null, "unit": null, "verification_pass_status": "two_pass_verified"},
+              {"fact_id": "2db341e662f6ec83", "fact_category": "graha_in_house_composite_strength", "fact_subject": "JUP_IN_HOUSE_9", "ayanamsha_id": "lahiri_chitrapaksha", "fact_key": "simple_multiplication", "fact_value_num": 0.4909, "fact_value_text": null, "fact_value_jsonb": null, "unit": null, "verification_pass_status": "two_pass_verified"}
+            ],
+            "count": 27
+          },
+          "dashas": {
+            "system": "vimshottari", "level": "maha",
+            "rows": [
+              {"dasha_row_id": "a435764e-8dba-44de-adf1-aa440548b158", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 1, "parent_row_id": null, "lord_graha": "Jupiter", "lord_sign": "Sagittarius", "start_date": "1975-08-18", "end_date": "1991-08-18", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Mula", "lord_natal_dignity_d1": "own", "lord_natal_shadbala_total": 7.8, "verification_pass_status": "two_pass_verified"},
+              {"dasha_row_id": "b581bb88-66ac-4c21-817b-e01e7e14f16e", "ayanamsha_id": "lahiri_chitrapaksha", "system_id": "vimshottari", "level_n": 1, "parent_row_id": null, "lord_graha": "Jupiter", "lord_sign": "Sagittarius", "start_date": "2095-08-18", "end_date": "2100-12-31", "sandhi_flag": false, "lord_natal_house_d1": 9, "lord_natal_sign": "Sagittarius", "lord_natal_nakshatra": "Mula", "lord_natal_dignity_d1": "own", "lord_natal_shadbala_total": 7.8, "verification_pass_status": "two_pass_verified"}
+            ],
+            "count": 2,
+            "note": "Mahadasha-level (level=1) periods where this graha is lord, across a wide 1900-2100 window (not the tool's ±5y default) …[truncated for budget]"
+          },
+          "completeness": {"position": "✓", "dignity": "✓", "functional_nature": "not_requested", "strength": "✓", "avasthas": "not_requested", "yogas": "not_requested", "dashas": "✓", "cgm_neighborhood": "not_requested"},
+          "notes": [],
+          "provenance": {"synthesis_of": [], "design_ref": "RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §28.2"}
+        },
+        "trim_report": [{"path": "(trim_report)", "original_count": 8, "kept_count": 1, "reason": "full trim_report omitted to fit budget", "recover_via": {"instrument": "response_format:legacy", "hint": "full untrimmed response"}}],
+        "response_format": "v3",
+        "chart_header": {"chart_id_short": "482012f1", "name": "Abhisek Mohanty", "lagna_sign": "Aries", "lagna_deg": 12.4311495988431, "moon_sign": "Aquarius", "sun_sign": "Capricorn", "ayanamsha": "lahiri_chitrapaksha", "current_maha_antar": "Mercury MD / Saturn AD"},
+        "epistemic": {"grade": "structural_prior", "verified_fraction": null, "note": "No epistemic signal computed for this response."},
+        "timing": {"as_of_date": "2026-07-28", "computed_at": "2026-07-28T13:19:42.927Z"},
+        "coverage": null, "prediction": null, "build_id": null, "ledger_version": null,
+        "register": [
+          {"token": "marsys://tool/L1/get_positions", "label": "L1 Ganita tool — deterministic chart-fact lookup.", "kind": "drill_uri"},
+          {"token": "marsys://tool/L1/get_dignity", "label": "L1 Ganita tool — deterministic chart-fact lookup.", "kind": "drill_uri"},
+          {"token": "marsys://tool/L1/get_strength", "label": "L1 Ganita tool — deterministic chart-fact lookup.", "kind": "drill_uri"},
+          {"token": "marsys://tool/L1/get_avasthas", "label": "L1 Ganita tool — deterministic chart-fact lookup.", "kind": "drill_uri"},
+          {"token": "marsys://tool/L1/get_yoga_dosha", "label": "L1 Ganita tool — deterministic chart-fact lookup.", "kind": "drill_uri"},
+          {"token": "marsys://tool/L1/get_dashas", "label": "L1 Ganita tool — deterministic chart-fact lookup.", "kind": "drill_uri"},
+          {"token": "marsys://tool/L2/query_signals", "label": "L2 Bodha tool — interpreted signal / synthesis surface.", "kind": "drill_uri"},
+          {"token": "marsys://tool/L2/traverse_chart_graph", "label": "L2 Bodha tool — interpreted signal / synthesis surface.", "kind": "drill_uri"},
+          {"token": "structural_prior", "label": "Structural prior — a structural (uncalibrated) estimate; no outcome data yet backs the number.", "kind": "epistemic_grade"},
+          {"token": "dasha_of_promise", "label": "Next step: locate which dasha period carries/activates the promise.", "kind": "pointer_type"},
+          {"token": "dispositor_chain", "label": "Next step: follow the lord-of-the-lord (dispositor) indirection one level deeper.", "kind": "pointer_type"},
+          {"token": "karaka_condition", "label": "Next step: examine the significator (karaka) graha’s own condition directly.", "kind": "pointer_type"}
+        ],
+        "reading_contract": "This response is graded structural_prior: Structural prior — a structural (uncalibrated) estimate; no outcome data yet backs the number. Its reading is grounded in 13 resolvable L1 fact reference(s) — you may follow each fact_id down to its deterministic source. Internal tokens in this envelope (drill_uri, epistemic_grade, pointer_type) each have a plain-language label in the `register` block — read the label adjacent to any token you do not recognise rather than guessing.",
+        "signal_reader_text": {},
+        "budget_kb_applied": 12
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__ganita_yoga_firings_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "yoga_canonical_id": "dhana_yoga_2_5_9_11"
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "rows": [
+            {
+              "id": 2277, "yoga_canonical_id": "dhana_yoga_2_5_9_11", "ayanamsha_id": "lahiri_chitrapaksha", "fired": true, "strength": 1.0218, "strength_label": "computed_extension",
+              "partial_formation_pct": null, "is_partial": false, "bhanga_active": null, "bhanga_rule_fired": null,
+              "bhanga_na_reason": "no classical bhanga (cancellation) rule exists for this yoga type",
+              "constituent_planets": ["venus","jupiter"], "constituent_houses": [9],
+              "constituent_fact_ids": ["f52a7246f0e754b5","00a3aefff8bf67f5"], "family_ids": [], "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:dhana_yoga_2_5_9_11:constituent_bala_v1@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "dhana_yoga_2_5_9_11 strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['jupiter', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null, "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            }
+          ],
+          "count": 1, "total_matching": 1, "more_available": false,
+          "filters": {"fired": true, "all": false, "ayanamsha_id": "lahiri_chitrapaksha", "bhanga_active": null, "is_partial": null, "yoga_canonical_id": "dhana_yoga_2_5_9_11", "limit": 50},
+          "provenance": {
+            "tables": ["ga_yoga_firings"],
+            "note": "constituent_fact_ids resolve back to chart_facts.fact_id (§N.5). Default fired=true — a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43).",
+            "source": "L1 Gaṇita yoga-firing detail; served chart-scoped.",
+            "grounds_jsonb_available": true
+          }
+        },
+        "is_error": false
+      }
+    }
+  },
+  {
+    "tool": "mcp__marsys-jis-direct__kala_windows_get",
+    "arguments": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "domain": "wealth",
+      "as_of": "2026-07-28"
+    },
+    "result_raw": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "activations": [
+            {"id": "5989903", "signal_id": "02d1dc48-0196-4602-a253-95bf81764771", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "activation_start": "2024-12-08", "activation_end": "2027-08-18", "activation_peak_date": "2026-04-13", "orb_strength": 1, "convergence_score": 1, "dasha_activation_proximity_score": 0.8778,
+              "active_dasha_periods_jsonb": [
+                {"end": "1994-08-21", "graha": "Saturn", "level": "antardasha", "start": "1991-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2027-08-18", "graha": "Saturn", "level": "antardasha", "start": "2024-12-08", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2033-08-21", "graha": "Saturn", "level": "antardasha", "start": "2032-07-12", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2050-08-18", "graha": "Saturn", "level": "antardasha", "start": "2047-06-19", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2058-06-06", "graha": "Saturn", "level": "antardasha", "start": "2057-06-24", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2066-06-18", "graha": "Saturn", "level": "antardasha", "start": "2064-11-17", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2074-02-17", "graha": "Saturn", "level": "antardasha", "start": "2073-01-08", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2085-07-31", "graha": "Saturn", "level": "antardasha", "start": "2082-09-24", "source": "chart_dashas", "match_kind": "exact_lord"}
+              ],
+              "activation_predicted_dates_jsonb": [
+                {"date": "1991-08-18", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "1993-02-17", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "1994-08-21", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2024-12-08", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2026-04-13", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2027-08-18", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2032-07-12", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2033-01-30", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2033-08-21", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2047-06-19", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2049-01-17", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2050-08-18", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2057-06-24", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2057-12-14", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2058-06-06", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2064-11-17", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2065-09-02", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2066-06-18", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2073-01-08", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2073-07-29", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2074-02-17", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2082-09-24", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2084-02-26", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2085-07-31", "graha": "Saturn", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"}
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=02d1dc48:src=dasha_timeline:period=1", "domains_affected_array": ["career","relationship","wealth"]
+            },
+            {"id": "5988529", "signal_id": "bc5e3b97-bf7e-46e3-a181-23f6e19f751b", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "activation_start": "2010-08-18", "activation_end": "2027-08-18", "activation_peak_date": "2019-02-16", "orb_strength": null, "convergence_score": null, "dasha_activation_proximity_score": 0.3023,
+              "active_dasha_periods_jsonb": [
+                {"end": "2027-08-18", "graha": "Mercury", "level": "mahadasha", "start": "2010-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "1997-04-30", "graha": "Mercury", "level": "antardasha", "start": "1994-08-21", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2013-01-14", "graha": "Mercury", "level": "antardasha", "start": "2010-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2034-08-18", "graha": "Mercury", "level": "antardasha", "start": "2033-08-21", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2053-06-18", "graha": "Mercury", "level": "antardasha", "start": "2050-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2059-04-13", "graha": "Mercury", "level": "antardasha", "start": "2058-06-06", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2067-11-18", "graha": "Mercury", "level": "antardasha", "start": "2066-06-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2075-02-14", "graha": "Mercury", "level": "antardasha", "start": "2074-02-17", "source": "chart_dashas", "match_kind": "exact_lord"}
+              ],
+              "activation_predicted_dates_jsonb": [
+                {"date": "2010-08-18", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2019-02-16", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2027-08-18", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "1994-08-21", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "1995-12-25", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "1997-04-30", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2010-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2011-11-01", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2013-01-14", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2033-08-21", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2034-02-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2034-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2050-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2052-01-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2053-06-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2058-06-06", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2058-11-08", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2059-04-13", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2066-06-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2067-03-04", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2067-11-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2074-02-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2074-08-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2075-02-14", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"}
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=bc5e3b97:src=dasha_timeline:period=0", "domains_affected_array": ["career","wealth"]
+            },
+            {"id": "5802801", "signal_id": "f86654bb-b0fc-40a0-994d-bcc8a54c943b", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "activation_start": "2010-08-18", "activation_end": "2027-08-18", "activation_peak_date": "2019-02-16", "orb_strength": null, "convergence_score": null, "dasha_activation_proximity_score": 0.28025,
+              "active_dasha_periods_jsonb": [
+                {"end": "2027-08-18", "graha": "Mercury", "level": "mahadasha", "start": "2010-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "1997-04-30", "graha": "Mercury", "level": "antardasha", "start": "1994-08-21", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2013-01-14", "graha": "Mercury", "level": "antardasha", "start": "2010-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2034-08-18", "graha": "Mercury", "level": "antardasha", "start": "2033-08-21", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2053-06-18", "graha": "Mercury", "level": "antardasha", "start": "2050-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2059-04-13", "graha": "Mercury", "level": "antardasha", "start": "2058-06-06", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2067-11-18", "graha": "Mercury", "level": "antardasha", "start": "2066-06-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2075-02-14", "graha": "Mercury", "level": "antardasha", "start": "2074-02-17", "source": "chart_dashas", "match_kind": "exact_lord"}
+              ],
+              "activation_predicted_dates_jsonb": [
+                {"date": "2010-08-18", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2019-02-16", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2027-08-18", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "1994-08-21", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "1995-12-25", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "1997-04-30", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2010-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2011-11-01", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2013-01-14", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2033-08-21", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2034-02-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2034-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2050-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2052-01-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2053-06-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2058-06-06", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2058-11-08", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2059-04-13", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2066-06-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2067-03-04", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2067-11-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2074-02-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2074-08-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2075-02-14", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"}
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=f86654bb:src=dasha_timeline:period=0", "domains_affected_array": ["relationship","wealth"]
+            },
+            {"id": "5802993", "signal_id": "0f038619-8657-4176-a2df-2425661b6569", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "activation_start": "2010-08-18", "activation_end": "2027-08-18", "activation_peak_date": "2019-02-16", "orb_strength": null, "convergence_score": null, "dasha_activation_proximity_score": 0.28025,
+              "active_dasha_periods_jsonb": [
+                {"end": "2027-08-18", "graha": "Mercury", "level": "mahadasha", "start": "2010-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "1997-04-30", "graha": "Mercury", "level": "antardasha", "start": "1994-08-21", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2013-01-14", "graha": "Mercury", "level": "antardasha", "start": "2010-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2034-08-18", "graha": "Mercury", "level": "antardasha", "start": "2033-08-21", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2053-06-18", "graha": "Mercury", "level": "antardasha", "start": "2050-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2059-04-13", "graha": "Mercury", "level": "antardasha", "start": "2058-06-06", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2067-11-18", "graha": "Mercury", "level": "antardasha", "start": "2066-06-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2075-02-14", "graha": "Mercury", "level": "antardasha", "start": "2074-02-17", "source": "chart_dashas", "match_kind": "exact_lord"}
+              ],
+              "activation_predicted_dates_jsonb": [
+                {"date": "2010-08-18", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2019-02-16", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2027-08-18", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "1994-08-21", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "1995-12-25", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "1997-04-30", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2010-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2011-11-01", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2013-01-14", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2033-08-21", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2034-02-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2034-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2050-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2052-01-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2053-06-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2058-06-06", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2058-11-08", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2059-04-13", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2066-06-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2067-03-04", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2067-11-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2074-02-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2074-08-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2075-02-14", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"}
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=0f038619:src=dasha_timeline:period=0", "domains_affected_array": ["career","relationship","wealth"]
+            },
+            {"id": "5803009", "signal_id": "86bfb2d6-59d5-4b99-b227-2e6d86fa9890", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "activation_start": "2010-08-18", "activation_end": "2027-08-18", "activation_peak_date": "2019-02-16", "orb_strength": null, "convergence_score": null, "dasha_activation_proximity_score": 0.28025,
+              "active_dasha_periods_jsonb": [
+                {"end": "2027-08-18", "graha": "Mercury", "level": "mahadasha", "start": "2010-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "1997-04-30", "graha": "Mercury", "level": "antardasha", "start": "1994-08-21", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2013-01-14", "graha": "Mercury", "level": "antardasha", "start": "2010-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2034-08-18", "graha": "Mercury", "level": "antardasha", "start": "2033-08-21", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2053-06-18", "graha": "Mercury", "level": "antardasha", "start": "2050-08-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2059-04-13", "graha": "Mercury", "level": "antardasha", "start": "2058-06-06", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2067-11-18", "graha": "Mercury", "level": "antardasha", "start": "2066-06-18", "source": "chart_dashas", "match_kind": "exact_lord"},
+                {"end": "2075-02-14", "graha": "Mercury", "level": "antardasha", "start": "2074-02-17", "source": "chart_dashas", "match_kind": "exact_lord"}
+              ],
+              "activation_predicted_dates_jsonb": [
+                {"date": "2010-08-18", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2019-02-16", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2027-08-18", "graha": "Mercury", "level": 1, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "1994-08-21", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "1995-12-25", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "1997-04-30", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2010-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2011-11-01", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2013-01-14", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2033-08-21", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2034-02-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2034-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2050-08-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2052-01-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2053-06-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2058-06-06", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2058-11-08", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2059-04-13", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2066-06-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2067-03-04", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2067-11-18", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"},
+                {"date": "2074-02-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.6, "point_kind": "period_start"},
+                {"date": "2074-08-17", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 1, "point_kind": "period_peak"},
+                {"date": "2075-02-14", "graha": "Mercury", "level": 2, "source": "dasha_timeline", "trigger": "subsystem_trigger", "strength": 0.4, "point_kind": "period_end"}
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=86bfb2d6:src=dasha_timeline:period=0", "domains_affected_array": ["career","relationship","wealth"]
+            }
+          ],
+          "activation_count": 50,
+          "window_families": [
+            {"window_start": "2024-12-08", "window_end": "2027-08-18", "window_peak": "2026-04-13", "member_count": 11, "member_signal_ids": ["02d1dc48-0196-4602-a253-95bf81764771","f557dc17-e28c-4902-b1fe-79737aa83c89","89f114a8-46ca-4f1d-8bf8-85be1f57961b","b8f92466-e91f-481f-81a7-7008a912eca8","1e82ea3a-bbad-4863-8f31-aac0377d11fd","8c8c950d-be02-47c7-9fd8-de3a4a23a424","f2d5a95f-c082-473d-a3eb-8f107be8fdf5","28b7a73d-5787-4304-8b4c-8cafa2c8ac48","694b9c6d-92bf-4fe5-9592-99427d8c361a","892d49a8-a1a4-48f3-aac8-b8fae2e65cb0"], "signature_classes": ["SUBSYSTEM","YOGA"], "domains": ["career","relationship","wealth","character","health","spirituality"], "max_orb_strength": 1},
+            {"window_start": "2010-08-18", "window_end": "2027-08-18", "window_peak": "2019-02-16", "member_count": 39, "member_signal_ids": ["bc5e3b97-bf7e-46e3-a181-23f6e19f751b","f86654bb-b0fc-40a0-994d-bcc8a54c943b","0f038619-8657-4176-a2df-2425661b6569","86bfb2d6-59d5-4b99-b227-2e6d86fa9890","26217fc3-9068-4a09-b385-006cb1547d1a","a3a460e5-542b-426c-99fa-3f9c13b66a88","2f17813a-b639-4953-b946-199212cfc662","37297a7c-b4ca-44eb-98e3-f0d857fded12","cc3e6464-7f46-4c08-97f3-58302cdd0138","cbc236cb-26f5-471b-87b3-e0a9a0e2bfc8"], "signature_classes": ["SUBSYSTEM","DISPOSITOR_RELATIONAL","CLASSIFY_RESIDUAL","DIGNITY","YOGA"], "domains": ["career","wealth","relationship","health","spirituality"], "max_orb_strength": 0}
+          ],
+          "window_family_count": 2,
+          "forward_windows": [], "forward_window_count": 0,
+          "predicates": [
+            {"id": "3292068", "signal_id": "02d1dc48-0196-4602-a253-95bf81764771", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Saturn"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3689, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 1, "non_affliction": 0.8778}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3292618", "signal_id": "060775f4-d645-44df-adae-abee1ab9fa6d", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Mercury"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3637, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.5605}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3295813", "signal_id": "0b120691-83e6-44f3-ab39-00b27bc86006", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Mercury"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.5, "constituent_lords_source": "ka_yojaka:fact_subject_tokens", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.6046}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3293306", "signal_id": "0b94e4c2-fa02-4c76-a999-cfda4ba7ef70", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Mercury"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3637, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.5605}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3292726", "signal_id": "0f038619-8657-4176-a2df-2425661b6569", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Mercury"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3637, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.5605}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3301062", "signal_id": "12a9e982-90f1-488d-ae42-b30443afc15c", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Mercury"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3637, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.5605}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3301030", "signal_id": "1e82ea3a-bbad-4863-8f31-aac0377d11fd", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Saturn"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3689, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.5605}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3292788", "signal_id": "26217fc3-9068-4a09-b385-006cb1547d1a", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Mercury"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3637, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.5605}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3293342", "signal_id": "28b7a73d-5787-4304-8b4c-8cafa2c8ac48", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Saturn"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3689, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.5605}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"},
+            {"id": "3292791", "signal_id": "2f17813a-b639-4953-b946-199212cfc662", "ayanamsha_id": "lahiri_chitrapaksha", "signature_class": "SUBSYSTEM", "dasha_eligibility_rule_jsonb": {"type": "subsystem_specific", "subsystem": "composite_state", "pratijna_ids": [], "constituent_lords": ["Mercury"], "cdlm_domain_strength": 0.5, "cgm_centrality_weight": 0.3637, "constituent_lords_source": "ka_yojaka:extract_lords_from_config", "multi_system_confirmation_count": 0}, "transit_trigger_jsonb": {"type": "subsystem_trigger", "subsystem": "composite_state"}, "strength_affliction_hook_jsonb": {"scale_by": "subsystem_severity", "dignity_score": 0.5, "non_affliction": 0.5605}, "derivation_ledger_jsonb": {"ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2", "template_version": "v1.0", "bg_transit_rules_ids": []}, "template_version": "v1.0"}
+          ],
+          "predicate_count": 50,
+          "signal_id_refs": ["02d1dc48-0196-4602-a253-95bf81764771","bc5e3b97-bf7e-46e3-a181-23f6e19f751b","f86654bb-b0fc-40a0-994d-bcc8a54c943b","0f038619-8657-4176-a2df-2425661b6569","86bfb2d6-59d5-4b99-b227-2e6d86fa9890","26217fc3-9068-4a09-b385-006cb1547d1a","a3a460e5-542b-426c-99fa-3f9c13b66a88","2f17813a-b639-4953-b946-199212cfc662","37297a7c-b4ca-44eb-98e3-f0d857fded12","cc3e6464-7f46-4c08-97f3-58302cdd0138"],
+          "filters": {"date_from": "2026-07-28", "date_to": "2027-07-28", "as_of": "2026-07-28", "top_k": 50, "min_strength": 0, "domain": "wealth"},
+          "date_filter": {"mode": "point_in_time", "as_of": "2026-07-28", "date_from": null, "date_to": null, "range_defaulted": false, "honored": true},
+          "empty_reason": null, "awaiting_activation_dates": false,
+          "caveats": ["single_cycle_per_signal: each activation/window here reflects one resolved dasha or convergence cycle per signal — not an exhaustive multi-cycle recurrence forecast (the multi-cycle generator is D-3 scope).", "near_tier_build_date_relative: convergence \"near\"-tier windows are computed relative to this chart's last build date, not the current query time — a chart that has not been rebuilt recently may carry a stale near-tier horizon."],
+          "drill_next": ["marsys://tool/L3/query_convergence_windows", "marsys://tool/L3/query_life_arc"],
+          "provenance": {"tables": ["kala_activation","kala_activation_predicates"]}
+        },
+        "is_error": false,
+        "budget_kb_applied": 40,
+        "trim_report": [
+          {"path": "content.activations", "original_count": 50, "kept_count": 5, "reason": "content.activations: floored to 5 (hard-cap)", "recover_via": {"instrument": "kala_windows_get", "hint": "call kala_windows_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.activations\""}},
+          {"path": "content.predicates", "original_count": 50, "kept_count": 10, "reason": "content.predicates: trimmed to 10", "recover_via": {"instrument": "kala_windows_get", "hint": "call kala_windows_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.predicates\""}},
+          {"path": "content.signal_id_refs", "original_count": 50, "kept_count": 10, "reason": "content.signal_id_refs: trimmed to 10", "recover_via": {"instrument": "kala_windows_get", "hint": "call kala_windows_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.signal_id_refs\""}}
+        ],
+        "drill_pointers": [
+          {"instrument": "kala_windows_get", "hint": "call kala_windows_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.activations\""},
+          {"instrument": "kala_windows_get", "hint": "call kala_windows_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.predicates\""},
+          {"instrument": "kala_windows_get", "hint": "call kala_windows_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.signal_id_refs\""}
+        ]
+      }
+    }
+  }
+]

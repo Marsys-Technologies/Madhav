@@ -4,10 +4,10 @@
   "contract_id": "C7",
   "campaign": "Elevation Campaign v2.1, Stream gamma (PURNA), Lane Omega-3 (Completeness Contract)",
   "generator": "platform/scripts/census/generate_completeness_accounting.mjs",
-  "generated_at": "2026-07-25T06:32:45.838Z",
+  "generated_at": "2026-07-28T13:16:07.388Z",
   "inputs": {
-    "tci": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma-lane-omega-tci/00_ARCHITECTURE/llm_consumption_audit/capability_map/TOTAL_CONCEPT_INVENTORY_v1_0.json",
-    "relevance_map": "/Users/Dev/Vibe-Coding/Apps/Madhav/.worktrees/gamma-lane-omega-relevance/00_ARCHITECTURE/llm_consumption_audit/capability_map/DOMAIN_RELEVANCE_MAP_v1_0.json",
+    "tci": "/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/llm_consumption_audit/capability_map/TOTAL_CONCEPT_INVENTORY_v1_0.json",
+    "relevance_map": "/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/llm_consumption_audit/capability_map/DOMAIN_RELEVANCE_MAP_v1_0.json",
     "tci_version": "1.0",
     "relevance_version": "1.0"
   },
@@ -28,11 +28,21 @@
         "superseded_by_aggregate": 0,
         "excluded_by_named_rule": 0
       },
-      "unresolved_served_count": 0,
-      "unresolved_by_axis": {},
-      "unresolved_by_reason": {},
-      "evidence_ok": true,
-      "pass": true,
+      "unresolved_served_count": 11,
+      "unresolved_by_axis": {
+        "axis:bodha_msr_signals.signal_type_id": 2,
+        "axis:bodha_cgm_edges.edge_type": 2,
+        "axis:bodha_cgm_edges.relationship_class": 2,
+        "axis:bodha_discoveries.discovery_class": 1,
+        "axis:phala_anchors.event_type": 1,
+        "axis:phala_sodhana.anomaly_type": 2,
+        "axis:phala_pramana.window_status": 1
+      },
+      "unresolved_by_reason": {
+        "value_not_found_in_db": 11
+      },
+      "evidence_ok": false,
+      "pass": false,
       "out_file": "00_ARCHITECTURE/llm_consumption_audit/capability_map/COMPLETENESS_ACCOUNTING_wealth_482012f1_v1_0.json"
     },
     {
@@ -49,11 +59,18 @@
         "superseded_by_aggregate": 0,
         "excluded_by_named_rule": 0
       },
-      "unresolved_served_count": 0,
-      "unresolved_by_axis": {},
-      "unresolved_by_reason": {},
-      "evidence_ok": true,
-      "pass": true,
+      "unresolved_served_count": 7,
+      "unresolved_by_axis": {
+        "axis:kala_jivana_parva.parva_quality": 2,
+        "axis:kala_jivana_parva.dominant_signal_class": 1,
+        "axis:kala_obstruction.obstruction_type": 1,
+        "axis:phala_anchors.event_type": 3
+      },
+      "unresolved_by_reason": {
+        "value_not_found_in_db": 7
+      },
+      "evidence_ok": false,
+      "pass": false,
       "out_file": "00_ARCHITECTURE/llm_consumption_audit/capability_map/COMPLETENESS_ACCOUNTING_wealth_1c826d5a_v1_0.json"
     },
     {
@@ -70,11 +87,21 @@
         "superseded_by_aggregate": 0,
         "excluded_by_named_rule": 0
       },
-      "unresolved_served_count": 0,
-      "unresolved_by_axis": {},
-      "unresolved_by_reason": {},
-      "evidence_ok": true,
-      "pass": true,
+      "unresolved_served_count": 11,
+      "unresolved_by_axis": {
+        "axis:bodha_msr_signals.signal_type_id": 2,
+        "axis:bodha_cgm_edges.edge_type": 2,
+        "axis:bodha_cgm_edges.relationship_class": 2,
+        "axis:bodha_discoveries.discovery_class": 1,
+        "axis:phala_anchors.event_type": 1,
+        "axis:phala_sodhana.anomaly_type": 2,
+        "axis:phala_pramana.window_status": 1
+      },
+      "unresolved_by_reason": {
+        "value_not_found_in_db": 11
+      },
+      "evidence_ok": false,
+      "pass": false,
       "out_file": "00_ARCHITECTURE/llm_consumption_audit/capability_map/COMPLETENESS_ACCOUNTING_career_482012f1_v1_0.json"
     },
     {
@@ -91,11 +118,19 @@
         "superseded_by_aggregate": 0,
         "excluded_by_named_rule": 0
       },
-      "unresolved_served_count": 0,
-      "unresolved_by_axis": {},
-      "unresolved_by_reason": {},
-      "evidence_ok": true,
-      "pass": true,
+      "unresolved_served_count": 8,
+      "unresolved_by_axis": {
+        "axis:kala_bhavishya.domain": 1,
+        "axis:kala_jivana_parva.parva_quality": 2,
+        "axis:kala_jivana_parva.dominant_signal_class": 1,
+        "axis:kala_obstruction.obstruction_type": 1,
+        "axis:phala_anchors.event_type": 3
+      },
+      "unresolved_by_reason": {
+        "value_not_found_in_db": 8
+      },
+      "evidence_ok": false,
+      "pass": false,
       "out_file": "00_ARCHITECTURE/llm_consumption_audit/capability_map/COMPLETENESS_ACCOUNTING_career_1c826d5a_v1_0.json"
     }
   ]
