@@ -275,3 +275,59 @@ class TestPhaladeskAntiDrift:
             "DB CHECK must not list any claude-* model ID"
         assert 'anthropic' not in check_body, \
             "DB CHECK must not list any Anthropic model"
+
+    def test_migration_narration_model_check_matches_permitted_models_exactly(self):
+        """DB CHECK allowlist for narration_model must be byte-for-byte the same set as
+        the Python-side PERMITTED_NARRATION_MODELS (services/ph_phaladesa/engine.py) —
+        the DB constraint is the last line of defense per the migration's own docstring
+        ('Any code that passes an Anthropic model name to narration_model is a policy
+        violation and will be caught by the DB CHECK constraint'), and a stale DB
+        allowlist silently reopens any model the Python side has already banned (the
+        P0-N2 finding: 'gpt-4o'/'gpt-4-turbo' were removed from PERMITTED_NARRATION_MODELS
+        by the earlier P2 one-liner fix, but migration 339's own CHECK constraint was
+        never updated to match, leaving both OpenAI models still DB-permitted).
+
+        Scans ALL migrations in numeric order and evaluates the constraint as of the
+        LAST migration that touches it (339's original inline CHECK, then any later
+        surgical ALTER CONSTRAINT such as migration 469) — never re-reads only 339,
+        since surgical-migrations-only discipline means 339's own historical text is
+        never rewritten; the live/final definition is whatever the last touching
+        migration leaves it as."""
+        import glob, os, re
+        migrations_dir = os.path.join(
+            os.path.dirname(__file__), '..', '..', 'supabase', 'migrations',
+        )
+
+        def _migration_sort_key(path):
+            base = os.path.basename(path)
+            m = re.match(r'(\d+)_', base)
+            return (int(m.group(1)) if m else 0, base)
+
+        migration_paths = sorted(
+            glob.glob(os.path.join(migrations_dir, '*.sql')), key=_migration_sort_key,
+        )
+        db_allowed = None
+        touching_files = []
+        for path in migration_paths:
+            with open(path) as f:
+                src = f.read()
+            src_no_comments = re.sub(r'--[^\n]*', '', src)
+            # Anchor specifically on the constraint's own "IS NULL OR narration_model IN"
+            # phrasing (used verbatim by both the original inline CHECK in migration 339
+            # and the ALTER-CONSTRAINT form in migration 469+) — NOT a bare
+            # `narration_model IN (...)` WHERE-clause, which a later guard/backfill
+            # migration may also contain (e.g. 469's own pre-flight existing-rows check).
+            check_match = re.search(
+                r"narration_model\s+IS\s+NULL\s+OR\s+narration_model\s+IN\s*\((.*?)\)",
+                src_no_comments, re.DOTALL | re.IGNORECASE,
+            )
+            if check_match:
+                db_allowed = set(re.findall(r"'([^']+)'", check_match.group(1)))
+                touching_files.append(os.path.basename(path))
+        assert db_allowed is not None, "No migration defines the narration_model CHECK constraint"
+        assert db_allowed == PERMITTED_NARRATION_MODELS, (
+            f"DB CHECK allowlist has drifted from PERMITTED_NARRATION_MODELS "
+            f"(final definition from {touching_files[-1]}, touched by {touching_files}).\n"
+            f"  DB-only (should not be permitted at the DB level): {db_allowed - PERMITTED_NARRATION_MODELS}\n"
+            f"  Python-only (DB should also permit): {PERMITTED_NARRATION_MODELS - db_allowed}"
+        )
