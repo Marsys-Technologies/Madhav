@@ -460,9 +460,15 @@ export async function POST(request: Request): Promise<Response> {
         const noLeakageFiltered = filterLeakedCapabilities(toolsAuthorized)
         if (noLeakageFiltered.length !== toolsAuthorized.length) {
           const stripped = toolsAuthorized.filter((t) => !noLeakageFiltered.includes(t))
+          // Raw capability names are server-log-only (gate 11 [integrity]) —
+          // the wire flag reports only a count, never the stripped identifiers.
           console.warn('[pariprashna] NO-LEAKAGE stripped capabilities:', stripped)
           judgmentFlags.push('no_leakage_capabilities_stripped')
-          em.flag({ code: 'no_leakage_capabilities_stripped', level: 'warn', detail: stripped.join(', ') })
+          em.flag({
+            code: 'no_leakage_capabilities_stripped',
+            level: 'warn',
+            detail: `${stripped.length} capabilit${stripped.length === 1 ? 'y' : 'ies'} excluded (calibration-context-only)`,
+          })
           plan.tool_calls = plan.tool_calls.filter((tc) => noLeakageFiltered.includes(tc.tool_name))
           toolsAuthorized.splice(0, toolsAuthorized.length, ...noLeakageFiltered)
         }
@@ -873,10 +879,14 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         // Completeness + aggregated judgment flags (grade/flag — always emitted).
+        // `coverage` is a {floor_item_total, served, empty, dark} object, never a
+        // scalar — String(coverage) previously produced the literal "[object
+        // Object]" on the wire. Report the served/total fraction instead.
         if (completenessReceipt) {
+          const { served, floor_item_total } = completenessReceipt.coverage
           em.grade({
             subject: 'completeness',
-            grade: String(completenessReceipt.coverage),
+            grade: `${served}/${floor_item_total}`,
             detail: completenessReceipt.channel_note,
           })
         }
