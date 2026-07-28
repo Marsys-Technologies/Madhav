@@ -69,6 +69,7 @@
 
 import type { Citation, Grade, WireEvent } from './types'
 import type { ScheduledEvent } from '../fixtures/types'
+import { emptyGradeTally, rollUpGradeSummaryLabel, tallyGrade } from './groundingRollup'
 // S-2's canonical closed vocabulary (PB-1/integrate — replaced the C-1 stand-in).
 import { RETRIEVAL_FACET_NAMES, type RetrievalFacetKey } from '@/lib/pariprashna/lexicon'
 
@@ -122,6 +123,7 @@ export function adaptC2Fixture(turnId: string, raw: C2Fixture): ScheduledEvent[]
   // anchor can still be spliced into the RIGHT committed block's html.
   const blockTextById = new Map<string, string>()
   let citationCountSeen = 0
+  const gradeTally = emptyGradeTally()
   let lastEventId = ''
 
   for (const { delay_ms, event } of raw.events) {
@@ -238,13 +240,15 @@ export function adaptC2Fixture(turnId: string, raw: C2Fixture): ScheduledEvent[]
         const n = nextCitationN++
         citationNByCitationId.set(citationId, n)
         citationCountSeen += 1
+        const grade = verificationToGrade(event.verification)
+        tallyGrade(gradeTally, grade)
         const citation: Citation = {
           n,
           title: String(event.label ?? `Source ${n}`),
           sourceClass: 'chart_factor',
           relevance: 'From lane C-2 recorded fixture.',
           ref: String(event.source_ref ?? ''),
-          grade: verificationToGrade(event.verification),
+          grade,
         }
         out.push({ atMs, event: { type: 'citation.define', turnId, citation, eventId: String(event.id) } })
         break
@@ -284,7 +288,9 @@ export function adaptC2Fixture(turnId: string, raw: C2Fixture): ScheduledEvent[]
               factorCount,
               classicalCount: 0,
               elapsedLabel: `0:${String(Math.round(atMs / 1000)).padStart(2, '0')}`,
-              gradeSummaryLabel: factorCount > 0 ? 'Core claim: WELL-GROUNDED' : 'Honest gap — silence verified across consulted factors.',
+              // Honest rollup from the real per-citation grade distribution — never
+              // a confident verdict on the strength of a bare count (B.1/B.10, §6.7).
+              gradeSummaryLabel: rollUpGradeSummaryLabel(gradeTally),
             },
             eventId: String(event.id),
           },

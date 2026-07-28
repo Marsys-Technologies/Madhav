@@ -27,11 +27,16 @@
  *     contextual|unverified) to C-1's Grade; source class defaults to
  *     'chart_factor' (S-1 carries `layer`, not a reader source-class).
  *   • turn.commit.grounding: S-1's turn.commit carries persistence metadata,
- *     NOT a grounding summary. The summary is synthesized from the citations
- *     seen on the stream + the client elapsed clock. This is the single biggest
- *     honest gap: a real grounding summary (factor/classical split, grade
- *     rollup) needs S-1's wire to carry it (future PB work) — until then the
- *     client shows a best-effort count.
+ *     NOT a grounding summary. The factor/classical COUNTS and the elapsed
+ *     clock are synthesized here from the citations seen on the stream. The
+ *     `gradeSummaryLabel` (the confident WELL-GROUNDED/SUPPORTED/CATALOG-ONLY
+ *     chip) is derived HONESTLY from the actual distribution of per-citation
+ *     grades (`CitationDefineEvent.grade`, S-3's pipeline) via
+ *     `groundingRollup.rollUpGradeSummaryLabel` — it NEVER defaults to a
+ *     confident verdict on the strength of a bare citation count. If the wire
+ *     carries no grade for a citation, that citation resolves to `catalog`
+ *     (unverified), so a stream with no real grade data rolls up to
+ *     CATALOG-ONLY — UNVERIFIED, never WELL-GROUNDED.
  *   • `grade` and bare `flag` events do not drive C-1 reducer state (the reducer
  *     treats them as lastEventId-only), so they map to a `flag`/no-op; a `grade`
  *     event is dropped (returns []).
@@ -47,6 +52,7 @@ import type {
 } from './types'
 import type { PariprashnaEvent } from '@/lib/pariprashna/protocol/events'
 import { RETRIEVAL_FACET_NAMES, type RetrievalFacetKey } from '@/lib/pariprashna/lexicon'
+import { emptyGradeTally, rollUpGradeSummaryLabel, tallyGrade } from './groundingRollup'
 
 /** S-3 citation grade enum → C-1 reader Grade. */
 function mapGrade(grade: string | undefined): Grade {
@@ -143,6 +149,9 @@ export function makeS1LiveAdapter(
 ): S1LiveAdapter {
   let citationsSeen = 0
   let classicalSeen = 0
+  // Real per-citation grade distribution (from CitationDefineEvent.grade) — the
+  // honest basis for the grounding summary chip, never the bare citation count.
+  const gradeTally = emptyGradeTally()
 
   const map = (ev: PariprashnaEvent): WireEvent[] => {
     const eventId = `${clientTurnId}-${ev.seq}`
@@ -209,13 +218,15 @@ export function makeS1LiveAdapter(
             ? ('classical_source' as const)
             : ('chart_factor' as const)
         if (sourceClass === 'classical_source') classicalSeen += 1
+        const grade = mapGrade(ev.grade)
+        tallyGrade(gradeTally, grade)
         const citation: Citation = {
           n: ev.index,
           title: ev.reader_label ?? ev.snippet,
           sourceClass,
           relevance: ev.snippet,
           ref: ev.signal_id,
-          grade: mapGrade(ev.grade),
+          grade,
         }
         return [{ type: 'citation.define', turnId, citation, eventId }]
       }
@@ -235,10 +246,9 @@ export function makeS1LiveAdapter(
           factorCount: Math.max(0, factorCount),
           classicalCount: classicalSeen,
           elapsedLabel: `0:${String(elapsedSeconds).padStart(2, '0')}`,
-          gradeSummaryLabel:
-            citationsSeen > 0
-              ? 'Core claim: WELL-GROUNDED'
-              : 'Honest gap — silence verified across consulted factors.',
+          // HONEST rollup from the real per-citation grade distribution — never a
+          // confident verdict on the strength of a bare count (B.1/B.10, §6.7).
+          gradeSummaryLabel: rollUpGradeSummaryLabel(gradeTally),
         }
         return [{ type: 'turn.commit', turnId, grounding, eventId }]
       }
