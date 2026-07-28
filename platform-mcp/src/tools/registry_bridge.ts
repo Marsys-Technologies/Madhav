@@ -3416,9 +3416,6 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     Virgo: 'Mercury', Libra: 'Venus', Scorpio: 'Mars', Sagittarius: 'Jupiter',
     Capricorn: 'Saturn', Aquarius: 'Saturn', Pisces: 'Jupiter',
   }
-  const SHADBALA_REQUIRED_RUPAS: Record<string, number> = {
-    Sun: 5.0, Moon: 6.0, Mars: 5.0, Mercury: 7.0, Jupiter: 6.5, Venus: 5.5, Saturn: 5.0,
-  }
   const DUSTHANA_HOUSES = new Set([6, 8, 12])
   const ORDINAL_WORDS = [
     '0th', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th',
@@ -3481,9 +3478,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     for (const v of Object.values(obj)) stripCitationRefDeep(v)
   }
 
-  function buildGrahaPortraitNarration(
+  async function buildGrahaPortraitNarration(
     chartId: string, grahaName: string, lagnaSign: string | null, inner: Record<string, unknown>,
-  ): { narration: string; extraFactIds: string[] } {
+    principal: Principal,
+  ): Promise<{ narration: string; extraFactIds: string[] }> {
     const sentences: string[] = []
     const extraFactIds: string[] = []
 
@@ -3605,14 +3603,50 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
 
     // ── shadbala ───────────────────────────────────────────────────────────
+    // ŚUDDHA-VĀCA P0-1..4 fix (lane:serve-shadbala — the native's originating complaint):
+    // graha_shadbala_total carries TWO fact_key variants for the same (chart_id,
+    // ayanamsha_id, fact_subject) — 'ratio' (L1 achieved/required, ~0.8-1.7) and 'rupa'
+    // (raw achieved, ~4.6-8.5). The prior code selected whichever row `.find()` landed on
+    // first (no fact_key pin — D1_MISSELECT) and printed it labeled "rupas" regardless of
+    // which one it actually was, against a hardcoded SHADBALA_REQUIRED_RUPAS constant
+    // (D3_HARDCODED_DRIFT) — producing "1.69 rupas vs 5.00 required — grade: weak (deficit)"
+    // for Sun, the chart's single strongest planet. Fix: pin fact_key='rupa' for the
+    // achieved value, and REFERENCE (never re-derive, §N.5) the graha's own L1
+    // `required_rupa` fact — stored under ayanamsha_id='INVARIANT' since it does not vary
+    // by ayanamsha, confirmed live for chart 482012f1.
     const strengthRows = rowsOf(inner, 'strength', 'rows')
-    const totalRow = strengthRows.find(r => r['fact_category'] === 'graha_shadbala_total')
+    const totalRow = strengthRows.find(r => r['fact_category'] === 'graha_shadbala_total' && r['fact_key'] === 'rupa')
     if (totalRow) {
       const fid = factIdOf(totalRow); if (fid) extraFactIds.push(fid)
       const rupas = numOf(totalRow)
-      const required = SHADBALA_REQUIRED_RUPAS[grahaName]
       if (rupas != null) {
+        let required: number | null = null
+        let requiredFid: string | null = null
+        try {
+          const requiredPayload = await callRegistryCapability(
+            'marsys://tool/L1/chart_facts_query',
+            {
+              chart_id: chartId, ayanamsha_id: 'INVARIANT', category: 'graha_shadbala_total',
+              planet: grahaName, fact_key: 'required_rupa', shape: 'rows',
+            },
+            chartId, principal,
+          )
+          const unwrapped = (requiredPayload && typeof requiredPayload === 'object' &&
+            'content' in (requiredPayload as Record<string, unknown>) &&
+            typeof (requiredPayload as Record<string, unknown>)['is_error'] === 'boolean')
+            ? (requiredPayload as Record<string, unknown>)['content']
+            : requiredPayload
+          const requiredRows = Array.isArray((unwrapped as Record<string, unknown> | undefined)?.['rows'])
+            ? (unwrapped as Record<string, unknown>)['rows'] as PortraitRow[]
+            : []
+          const requiredRow = requiredRows[0]
+          required = requiredRow ? numOf(requiredRow) : null
+          requiredFid = requiredRow ? factIdOf(requiredRow) : null
+        } catch {
+          required = null
+        }
         if (required != null) {
+          if (requiredFid) extraFactIds.push(requiredFid)
           const surplus = rupas - required
           const grade = surplus >= 0 ? 'strong (surplus)' : 'weak (deficit)'
           sentences.push(
@@ -3620,7 +3654,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
             `(${surplus >= 0 ? '+' : ''}${surplus.toFixed(2)} rupas).`,
           )
         } else {
-          sentences.push(`Shadbala: ${rupas.toFixed(2)} rupas total.`)
+          // §N.7.6 — an honest null beats an invented judgment: no fallback threshold,
+          // no fabricated grade, when the L1 required_rupa fact can't be reached.
+          sentences.push(`Shadbala: ${rupas.toFixed(2)} rupas total (required-rupa threshold unavailable from L1 this call — no grade assigned).`)
         }
       }
     }
@@ -4069,8 +4105,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // the UNTRIMMED capability output — BEFORE applyMcpBudget runs below, so it can
         // safely cite any fetched row even if that row is later trimmed off the wire.
         const grahaNameResolved = typeof inner['graha'] === 'string' ? inner['graha'] as string : graha
-        const { narration, extraFactIds } = buildGrahaPortraitNarration(
-          chart_id, grahaNameResolved, chart_header?.lagna_sign ?? null, inner,
+        const { narration, extraFactIds } = await buildGrahaPortraitNarration(
+          chart_id, grahaNameResolved, chart_header?.lagna_sign ?? null, inner, principal,
         )
         // New budget headroom (Pratinidhi-R ruling): citation_ref is internal MCP-lineage
         // provenance, never a classical citation — strip it from every row now that
