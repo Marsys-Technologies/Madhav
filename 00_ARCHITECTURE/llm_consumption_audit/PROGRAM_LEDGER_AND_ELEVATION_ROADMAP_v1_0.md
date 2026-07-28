@@ -1,7 +1,7 @@
 ---
 artifact: PROGRAM_LEDGER_AND_ELEVATION_ROADMAP
 canonical_id: PROGRAM_LEDGER_v1_0
-version: 1.0
+version: 1.1
 status: LIVING — supersedes scattered per-campaign residual lists as the single "what is actually open" document
 created: 2026-07-27
 author: Fable (Cowork), from an exhaustive sweep of the full llm_consumption_audit corpus
@@ -14,6 +14,19 @@ method: >
   documents. Their claims were then SPOT-VERIFIED against live code and file state. Four checks
   were run; three of the sweep's most alarming claims proved FALSE. §0 is therefore the most
   important section of this document.
+changelog:
+  - "v1.1 (2026-07-28): PARIŚODHANA campaign closed. Every Tier-1/Tier-2 item in §1 below now
+    has a live-evidenced final disposition — see PARISHODHANA_RECONCILIATION_v1_0.md v1.1 §1/§6
+    (the authoritative row-by-row table) and PARISHODHANA_REPORT_v1_0.md (the close report) for
+    full detail, evidence, and PR references. Net: 21 item-groups were ALREADY-FIXED (register
+    drift, now annotated in their source registers); of the remainder, most LIVE-OPEN items were
+    fixed and deployed this campaign (12 PRs); a handful are PARKED-HONEST as genuinely
+    out-of-scope (L1/L2/L4 writer changes, capability-additions, native-gated decisions) or
+    still-open after two fix attempts (holistic_bundle's residual self-call bug). This document's
+    §1 table itself is NOT rewritten row-by-row (that duplication is exactly the drift class this
+    campaign exists to prevent) — treat PARISHODHANA_RECONCILIATION_v1_0.md as authoritative for
+    current status of every item listed below; this ledger's §1 reflects the pre-campaign sweep
+    and is retained for historical/audit trail."
 ---
 
 # MARSYS-JIS — Program Ledger & Elevation Roadmap
