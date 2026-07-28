@@ -80,6 +80,8 @@ export const getAshtakavargaCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: true },
   lel_capable: false,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  register: { reader_label: 'Consulting the chart — Strengths & dignities' },
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 70, always_include: false },

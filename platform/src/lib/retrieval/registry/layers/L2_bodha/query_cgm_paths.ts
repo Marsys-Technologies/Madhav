@@ -42,6 +42,9 @@ export const queryCgmPathsCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: false },
   lel_capable: false,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  // Band phase 4 ("Reading the whole chart") — B.11 whole-chart-read (CGM graph paths).
+  register: { reader_label: 'Reading the whole chart' },
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 55, always_include: false },
