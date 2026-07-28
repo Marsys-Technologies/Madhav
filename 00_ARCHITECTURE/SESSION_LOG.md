@@ -34179,3 +34179,142 @@ makes the native's original complaint (Sun's Ṣaḍbala grading) visibly correc
 not just correct in stored data. If still open, hold the park and re-check again.
 
 *End of SUDDHA-VACA-PHASE-CDEF-2026-07-28 entry — PARTIAL, not COMPLETE.*
+
+## SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28 — ŚUDDHA-VĀCA final close: PARISHODHANA #827/#828 landed, both parked lanes (serve-shadbala, ga-tajaka) VERIFIED-FIXED, arc COMPLETE (7/7 P0 lanes)
+
+```yaml
+session_open:
+  session_id: SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28
+  campaign: SUDDHA_VACA
+  mode: "Fully autonomous, no human gates. Conductor (Opus) + Sonnet builders in
+    .worktrees/suddhavaca-* + one Opus Verifier that never writes code + one Dvārapāla. Continuation
+    of the same-day SUDDHA-VACA-PHASE-CDEF-2026-07-28 close, re-opened per that entry's own
+    next-session instruction: re-check PARISHODHANA #827/#828 first."
+  may_touch: "platform-mcp/src/tools/registry_bridge.ts; platform-mcp/src/__tests__/
+    registry_bridge_r5w3_judgment_and_portrait.test.ts; platform/python-sidecar/ga_writers/
+    ga_tajaka_writer.py; platform/python-sidecar/ga_writers/__tests__/
+    test_ga_tajaka_varshesha_orb.py; platform/scripts/governance/fact_category_pin_allowlist.json;
+    CLAUDECODE_BRIEF.md; SUDDHA_VACA_REPORT_v1_0.md; SUDDHA_VACA_FIX_LEDGER_v1_0.md;
+    CURRENT_STATE_v1_0.md; SESSION_LOG.md. Chart-scoped DB rebuild of ga_tajaka's downstream
+    closure on both the canonical and operator E2E charts (data only, no schema/migration)."
+  must_not_touch: "The FROZEN orchestrator contract; the sealed L5 split; FORENSIC birth anchors;
+    any file under active PARISHODHANA or PARIPRAŚNA BUILD campaign ownership; any writer/migration
+    outside the two named lanes; must not run any rebuild while PARIPRAŚNA BUILD holds an
+    active/planned build_runs row (checked live before each rebuild pass)."
+  red_team_due: "Not triggered — this closes an already-scoped, pre-authorized brief (5 of 7 lanes
+    closed last wave under full Phase 0-F discipline including an Opus Verifier pass); this session
+    extends that same verified methodology to the remaining 2 lanes rather than opening new scope."
+```
+
+### Body
+
+**Step 1 — PARISHODHANA #827/#828, reviewed properly, not rubber-stamped.** Confirmed CI green
+(TypeScript, Unit Tests, Secret Scan, Governance Gates) on both, no line-level overlap with merged
+ŚV work (#835-840, #846), and no fact_category selection without a fact_key pin in either diff
+(C.7 lint verified passing). #827 merged (`assess_wealth` leverage_index wiring). #828 merged
+(`enforceVargaConfirmedHonesty` honest-downgrade fix).
+
+**Governance correction, addressed first per this session's own opening instruction:** root
+`CLAUDECODE_BRIEF.md` on disk (working tree only, on `parishodhana/phase-a-reconciliation`) carried
+an uncommitted v1.1 ŚUDDHA-VĀCA pointer while the committed HEAD still showed the superseded
+`CLAUDECODE_BRIEF_PURNA_VIRAMA` v1.0 — exactly the same "written but never committed" failure mode
+the pointer's own `history_note` warned about. Committed via PR #851 first, before any other work.
+
+**Step 2 — the two pre-authorized lanes, TEST-FIRST on both.**
+- `lane:serve-shadbala` (P0-1..4): pinned `fact_key='rupa'` on the raw-rupas selection, deleted the
+  `SHADBALA_REQUIRED_RUPAS` wrapper constant, read the required-rupas threshold live from L1's
+  `required_rupa` fact (`ayanamsha_id='INVARIANT'`), honest-null fallback on fetch failure. PR #852,
+  deployed to `amjis-mcp`, no DB rebuild needed. Live-confirmed post-deploy.
+- `lane:ga-tajaka` (P0-9): added `_aspects_lagna()` reusing the existing per-graha `DEEPTAMSA`
+  classical-orb table in place of a flat 7° in the Varshesha-scoring loop. Confirmed the dormant
+  `fix/D-2-ga-tajaka-solar-return-resilience` branch was already merged with no overlap. PR #853.
+
+**Step 3 — rebuild, both charts, with the failures disclosed honestly rather than smoothed over.**
+Snapshotted 25 tables + tested-rollback drill PROVEN before touching anything. Confirmed
+PARIPRAŚNA BUILD held zero active/planned runs throughout. The canonical-chart rebuild took **three
+corrective passes** to reach 0 non-lit assets: pass 1's 27-asset direct closure missed 9 sibling
+out-of-plan dependencies left `stale` by an earlier same-session `bo_laksana` determinism-proof run
+(not a PARIPRAŚNA BUILD conflict — verified); pass 2 hit a genuine transient Cloud SQL connection
+drop mid-substep, cascading a block to ~25 downstream assets and leaving two zombie Postgres
+backends holding the chart's advisory lock (`pg_terminate_backend` cleared both safely — nothing
+had committed); three residual-closure retries (recomputing the live non-lit set each time)
+converged to all 44 assets `lit`. The operator chart needed one explicit forced reset of `ga_tajaka`
+(built under pre-fix code) plus its closure, hit the same transient-connection pattern once, and
+converged clean after one residual retry. Verified: 0 non-lit in either chart's `ga_tajaka` closure
+(one pre-existing, unrelated `ka_gochara_sweep` error on the operator chart, since 2026-07-26,
+dispositioned PARKED-HONEST); 0 zombie backends; 0 orphaned `build_runs` rows; operator chart's data
+confirmed untouched throughout the canonical-chart recovery (every operator-side delta exactly 0).
+Row-count deltas on the canonical chart (some large, e.g. `kala_activation` 1,095→332,723) traced
+via the frozen snapshot tables to the *pre-rebuild snapshot itself* having captured an
+already-incomplete state from the session's own earlier churn — post-rebuild counts sit within ~1%
+of the operator chart's stable baseline, consistent with restored completeness, not accretion.
+
+**Step 4 — PROVE.** `graha_portrait`, all 7 grahas, canonical chart, live post-rebuild — exact match
+to brief §5 C.8's golden table (Sun 8.47/5.00 strong +3.47, Moon 5.65/6.00 weak -0.35, Mars 5.57/5.00
+strong +0.57, Mercury 7.55/7.00 strong +0.55, Jupiter 7.80/6.50 strong +1.30, Venus 4.64/5.50 weak
+-0.86, Saturn 7.83/5.00 strong +2.83). FORENSIC anchors spot-confirmed unaffected (Lagna=Aries,
+Vara=Ravivara, Tithi=Shukla Tritiya, Sun=Capricorn) — structurally guaranteed since `ga_tajaka` never
+writes to `chart_facts`. CI guard green: `Ganga Quality Gate` (incl. C.7 lint) passed on all 3
+merge commits; `TAP CI` fails identically on all 3 including the no-op docs commit, confirmed
+pre-existing (`SC-pointer:x`, traced to SHODHANA #811), not a regression, not merge-blocking.
+
+**Step 5 — disposition + close.** All §10 acceptance criteria now hold. Updated
+`SUDDHA_VACA_REPORT_v1_0.md` (v1.2→v1.3, PARTIAL→COMPLETE, new "Phase C2/D2/E2/F2" section) and
+`SUDDHA_VACA_FIX_LEDGER_v1_0.md` (v1.1→v1.2). Flipped `CLAUDECODE_BRIEF.md` v1.1→v1.2, ACTIVE→
+COMPLETE, with the full 9-row lane disposition table. Six items remain honestly open (five findings
+carried from last wave + `ka_gochara_sweep`), all correctly PARKED-HONEST/NOT-APPLICABLE per the
+brief's own four-way disposition model — none are unmet acceptance criteria of this brief.
+
+```yaml
+session_close:
+  session_id: SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28
+  campaign: SUDDHA_VACA
+  close_criteria_met: "YES — all 7 of 7 P0 lanes VERIFIED-FIXED. graha_portrait matches the golden
+    Ṣaḍbala table exactly for all 7 grahas on the canonical chart, live post-rebuild. FORENSIC
+    anchors spot-confirmed unaffected. Both charts' ga_tajaka closures fully rebuilt (0 non-lit,
+    save one pre-existing unrelated finding). CI guard (Ganga Quality Gate) green on all 3 merges;
+    TAP CI's failure confirmed pre-existing/unrelated. Zero regressions from this session's work."
+  verification: "Live MCP probes (mcp__marsys-jis-direct__graha_portrait,
+    mcp__marsys-jis-direct__ganita_chart_facts_get) + direct postgres queries against production
+    (asset_throughput, build_runs, pg_stat_activity, the frozen ssv_20260728b snapshot tables) +
+    gh CI-run inspection for the 3 merge commits (cf330fca, 6030073a, 00e09c3c), this session
+    2026-07-28."
+  deploy: "amjis-mcp redeployed via Cloud Run on #852 merge (serve-shadbala), green. #853
+    (ga-tajaka) required no serve-side deploy, only the DB rebuild executed this session. #851
+    (brief-pointer fix) is docs-only, deploy green as a no-op."
+  product_code_writes_made: "Yes — platform-mcp/src/tools/registry_bridge.ts (#852) and
+    platform/python-sidecar/ga_writers/ga_tajaka_writer.py (#853), both TEST-FIRST with golden
+    tests proven failing pre-fix. Plus a chart-scoped data rebuild (no schema/migration) of
+    ga_tajaka's downstream closure on both charts."
+  native_chart_touched: true
+  current_state_updated: true
+  register_dispositions_flipped: "CLAUDECODE_BRIEF.md v1.1→v1.2 (ACTIVE→COMPLETE);
+    SUDDHA_VACA_REPORT_v1_0.md v1.2→v1.3 (PARTIAL→COMPLETE); SUDDHA_VACA_FIX_LEDGER_v1_0.md
+    v1.1→v1.2 (PARTIAL→COMPLETE). P0-1..4 and P0-9 disposition rows flipped PARKED-HONEST→
+    VERIFIED-FIXED in both documents."
+  followups: "(1) ga_structural_writer.py:3369/3378 P0-shaped L1 defect — real, confirmed,
+    dedicated future wave (L1→L5 radius) recommended, same as last wave's disposition, unchanged
+    by this session (out of this session's two-lane authorization). (2) migration 339
+    OpenAI-in-CHECK-constraint — needs its own surgical ALTER-CONSTRAINT migration. (3)
+    mi_darshana.py verdict_note tradition-blindness — PLAUSIBLE, needs a dedicated
+    two-axis-restructuring session. (4) ka_gochara_sweep error state, operator chart, since
+    2026-07-26 — pre-existing, unrelated to any ŚV fix, flagged for its owning campaign. (5) A
+    concurrent session appears to be advancing CLAUDE.md (already at v6.5 with a new §N.7 by the
+    time this session started its close) and other suddha_vaca-adjacent scratch paths under
+    llm_consumption_audit/briefs/ — no conflict observed with this session's tracked-file changes,
+    but a future session should sanity-check for duplicate/overlapping ŚV close work before
+    assuming this is the only such close."
+  next_session_objective: "The ŚUDDHA-VĀCA arc is closed. No committed next session for it. The
+    six PARKED-HONEST/NOT-APPLICABLE items above are each independently sizeable; any one is a
+    reasonable next-wave candidate, prioritized by the native. No other action required by this
+    close."
+```
+
+### Next session objective
+
+The ŚUDDHA-VĀCA narration-purification arc is closed — 7 of 7 P0 lanes VERIFIED-FIXED, the native's
+originating complaint fixed end-to-end and live-verified. There is no committed next session for
+this arc. Six real, out-of-scope findings remain honestly parked for a future wave, prioritized at
+the native's discretion.
+
+*End of SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28 entry — the arc's actual full stop.*

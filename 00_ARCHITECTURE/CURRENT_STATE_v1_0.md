@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.44
+version: 6.45
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,25 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.45 (2026-07-28, ŚUDDHA-VĀCA final close — Phase C2/D2/E2/F2, session
+    SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28): **The ŚUDDHA-VĀCA narration-purification arc is
+    CLOSED — 7 of 7 P0 lanes VERIFIED-FIXED (up from 5/7 at last wave's PARTIAL close).**
+    PARISHODHANA PRs #827/#828 landed this session, unblocking the two previously-parked lanes:
+    `lane:serve-shadbala` (PR #852, registry_bridge.ts now pins fact_key='rupa' and reads the
+    required-rupa threshold live from L1, deployed to amjis-mcp) and `lane:ga-tajaka` (PR #853,
+    ga_tajaka_writer.py now uses the graha's own classical deeptamsa orb instead of a flat 7°,
+    L1→L5 rebuilt on both canonical and operator E2E charts after recovering from a mid-rebuild
+    sibling-dependency-closure gap and transient Cloud SQL connection drops — full honest account
+    in SESSION_LOG.md same-date entry). `graha_portrait` now matches brief §5 C.8's golden Ṣaḍbala
+    table exactly for all 7 grahas on the canonical chart — the native's originating complaint
+    (Sun read "weak" when it is the chart's strongest planet) is fixed end-to-end and live-verified.
+    FORENSIC anchors spot-confirmed unaffected. `CLAUDECODE_BRIEF.md` flipped ACTIVE→COMPLETE.
+    Six findings remain honestly PARKED-HONEST/NOT-APPLICABLE for a future wave (none block this
+    close): `ga_structural_writer.py` P0-shaped L1 defect, migration 339 OpenAI-in-CHECK-constraint,
+    `mi_darshana.py` verdict_note tradition-blindness (PLAUSIBLE), `bo_laksana_rerank` watchdog
+    timeout (self-healed), `mi_gunanaka.py:337` snapshot bug, `ka_gochara_sweep` operator-chart
+    error (pre-existing since 2026-07-26, unrelated). Full evidence: `SUDDHA_VACA_REPORT_v1_0.md`
+    §"Phase C2/D2/E2/F2" (v1.3) + `SUDDHA_VACA_FIX_LEDGER_v1_0.md` (v1.2).
   - v6.44 (2026-07-27, PŪRṆA-VIRĀMA close-out — FINAL CLOSE, Opus Verifier, Phase C):
     **The arc is CLOSED.** The Elevation Campaign v2.1 → UAT-DARPANA → SATYA-ŚEṢA arc reaches its
     full stop. All 7 PENDING_MANIFEST threads DISPOSITIONED WITH EVIDENCE against LIVE PRODUCTION:
@@ -5492,7 +5511,31 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟡 **PARTIAL CLOSE (2026-07-28, ŚUDDHA-VĀCA Phase C/D/E/F, Conductor+Verifier).** Narration
+> ✅ **ARC CLOSED (2026-07-28, ŚUDDHA-VĀCA Phase C2/D2/E2/F2, session
+> SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28) — supersedes the 🟡 PARTIAL CLOSE banner immediately
+> below, retained for history.** PARISHODHANA PRs #827/#828 landed this session (reviewed properly,
+> confirmed CI green and no fact_category/fact_key conflicts, not rubber-stamped), unblocking the
+> two lanes the PARTIAL close below left parked. **All 7 of 7 P0 verdict-inverting narration
+> defects are now VERIFIED-FIXED:** `lane:serve-shadbala` (P0-1..4, PR #852 — `registry_bridge.ts`
+> pins `fact_key='rupa'`, reads the required-rupa threshold live from L1, deployed to `amjis-mcp`)
+> and `lane:ga-tajaka` (P0-9, PR #853 — `ga_tajaka_writer.py` now uses the graha's own classical
+> deeptamsa orb instead of a flat 7°, L1→L5 rebuilt on both the canonical chart (482012f1) and the
+> operator E2E chart (1c826d5a); the rebuild took multiple corrective passes to reach 0 non-lit
+> assets after a missed sibling-dependency closure and transient Cloud SQL connection drops — both
+> root-caused and recovered honestly, full account in `SESSION_LOG.md` same-date entry, no data
+> corruption at any point). **The native's originating complaint is fixed end-to-end and
+> live-verified:** `graha_portrait` on the canonical chart now matches the brief's golden Ṣaḍbala
+> table exactly for all 7 grahas (Sun 8.47/5.00 strong, previously read 1.69/5.00 weak). FORENSIC
+> anchors spot-confirmed unaffected. `CLAUDECODE_BRIEF.md` flipped ACTIVE→COMPLETE by this close.
+> Six findings remain honestly PARKED-HONEST/NOT-APPLICABLE for a future wave (none block this
+> close — see `SUDDHA_VACA_REPORT_v1_0.md`'s disposition table): `ga_structural_writer.py`
+> P0-shaped L1 defect, migration 339 OpenAI-in-CHECK-constraint, `mi_darshana.py` verdict_note
+> tradition-blindness (PLAUSIBLE), `bo_laksana_rerank` watchdog timeout (self-healed), pre-existing
+> `mi_gunanaka.py:337` snapshot bug, and a pre-existing unrelated `ka_gochara_sweep` error on the
+> operator chart. See changelog v6.45.
+
+> 🟡 **PARTIAL CLOSE (2026-07-28, ŚUDDHA-VĀCA Phase C/D/E/F, Conductor+Verifier) — SUPERSEDED by the
+> ✅ ARC CLOSED banner immediately above; retained for history.** Narration
 > Purification wave closed as PARTIAL per native-issued `SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md`.
 > **5 of 7 P0 verdict-inverting narration defects VERIFIED-FIXED, rebuilt into both the canonical
 > chart (482012f1) and the operator E2E chart (1c826d5a), and independently re-verified by a
