@@ -34065,3 +34065,117 @@ The instrument's serving layer is substantially advanced and honestly bounded; t
 (W7's server-side supplement-route emptiness) is PARKED-HONEST with a sized platform-log follow-up.
 
 *End of PURNA-VIRAMA-FINAL-CLOSE-2026-07-27 entry — the full stop.*
+
+---
+
+## SUDDHA-VACA-PHASE-CDEF-2026-07-28 — Narration Purification, Phase C/D/E/F (PARTIAL close)
+
+```yaml
+session_open:
+  session_id: SUDDHA-VACA-PHASE-CDEF-2026-07-28
+  campaign: SUDDHA_VACA
+  mode: "Conductor (Opus) + parallel Sonnet lane builders (test-first) + dedicated Opus Verifier
+    that never writes code. No human gates. PRIME RULE: truth over completion; PARKED-HONEST is a
+    legitimate close. Resumed directly from SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md per explicit
+    native instruction — disclosed honestly below rather than asserting a full §C handshake this
+    session did not run."
+  may_touch: "platform/python-sidecar/{pipeline/orchestrator/writers,bodha_writers,brahmagyan/kala,
+    services/ph_nimitta,services/ph_phaladesa}/** (the 5 authorized lanes' files only);
+    platform/scripts/governance/** (C.7 lint); production DB tables in the fix blast radius
+    (snapshot-guarded); 00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/**; CLAUDE.md;
+    CURRENT_STATE_v1_0.md; SESSION_LOG.md."
+  must_not_touch: "platform/src/** and platform/scripts/** (PARIPRASHNA BUILD territory, per
+    authorization §4); lane:serve-shadbala (registry_bridge.ts) and lane:ga-tajaka
+    (ga_tajaka_writer.py) — both remain PARKED on PARISHODHANA; the FROZEN orchestrator contract;
+    the sealed evaluator harness; kala_gochara_windows; build_substep_progress; any PB branch/
+    worktree/stash; root CLAUDECODE_BRIEF.md (governs a separate, already-COMPLETE arc)."
+  red_team_due: "Not triggered this session — narration-defect fix wave, not a macro-phase boundary
+    crossing. The Opus Verifier's adversarial re-verification of every one of the 6 merged lanes
+    (reproducing each pre-fix failure and post-fix pass independently) is this wave's own
+    equivalent adversarial check."
+```
+
+**Disclosure on the mandatory reading chain (CLAUDE.md §C):** this session resumed a
+native-authorized in-flight campaign (`SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md`) directly per the
+native's explicit instruction; it read the authorization, the operative brief, the fix ledger, and
+this file's own history rather than the full 16-item §C chain. A formal `SESSION_OPEN` handshake per
+`SESSION_OPEN_TEMPLATE_v1_0.md` was not emitted before work began — the YAML block above is recorded
+retroactively, honestly labeled as such, rather than silently asserting it ran at session start. This
+is the same disclosure discipline the prior ŚUDDHA-VĀCA session (Phase A/B) used.
+
+**What happened:** re-verified PARISHODHANA PR state (still 7 open, #827/#828 confirmed unmerged) →
+opened 6 isolated worktrees → dispatched Sonnet builders test-first per lane → independently
+re-verified each with a dedicated Opus Verifier that reproduced pre-fix failures and post-fix passes
+itself → merged PRs #835-840 to `main` → built (for the first time in this codebase) a genuine
+data-level snapshot-with-tested-restore mechanism → computed the true 46-asset rebuild closure live
+from `asset_registry` (not assumed from the ledger) → rebuilt both the canonical (482012f1) and
+operator E2E (1c826d5a) charts end-to-end via the FROZEN orchestrator, zero failures, zero accretion
+→ proved FORENSIC 7/7, the golden Ṣaḍbala table, and `bo_laksana` double-build determinism live
+against production data → found and correctly parked 5 new defects rather than rushing fixes →
+closed as PARTIAL per the authorization's own pre-specified terms.
+
+**Result:** 5 of 7 P0 lanes VERIFIED-FIXED and rebuilt into stored data; 2 remain PARKED on
+PARISHODHANA. The native's original complaint (Sun's Ṣaḍbala narration) is fixed at the writer level
+but **not yet visible in served output** — a separate, still-parked serve-side code path
+(`registry_bridge.ts`) owns that sentence. Full evidence:
+`00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_REPORT_v1_0.md`. New doctrine:
+CLAUDE.md §N.7. Root `CLAUDECODE_BRIEF.md` is unrelated (governs the already-COMPLETE PŪRṆA-VIRĀMA
+arc) and was correctly left untouched.
+
+**Next session committed to:** re-check PARISHODHANA PR #827/#828 state first. If landed,
+`lane:serve-shadbala` and `lane:ga-tajaka` release under `SUDDHA_VACA_BRIEF_v1_0.md` with no further
+authorization needed — that closes the loop on the native's original complaint being user-visible.
+If still open, continue to hold the park and re-check again next session.
+
+```yaml
+session_close:
+  session_id: SUDDHA-VACA-PHASE-CDEF-2026-07-28
+  campaign: SUDDHA_VACA
+  close_criteria_met: "PARTIAL — 5 of 7 P0 lanes VERIFIED-FIXED with evidence (independently
+    re-verified, merged, rebuilt into both charts); 2 of 7 correctly PARKED-HONEST on documented
+    external dependency (PARISHODHANA PRs #827/#828, confirmed open at close). This is the closure
+    SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md §5 specified in advance, not a shortfall."
+  verification: "Opus Verifier independently reproduced each lane's pre-fix failure and post-fix
+    pass (not just re-reading builder transcripts). Live production evidence: FORENSIC 7/7,
+    golden Sadbala table exact match, bo_laksana double-build determinism, zero duplicate accretion
+    on both charts — all queried live post-rebuild, not asserted. Full detail:
+    SUDDHA_VACA_REPORT_v1_0.md Phase C/D/E/F section."
+  deploy: "6 PRs merged to main via squash auto-merge on green required CI (#835-840). Python
+    sidecar orchestrator rebuild executed locally against a fresh main checkout with live Cloud SQL
+    Auth Proxy access — not a Cloud Run Job deploy; no platform/platform-mcp deploy required by a
+    python-sidecar-only writer fix."
+  product_code_writes_made: "Yes — 5 writer/service-engine files fixed at origin (bo_laksana.py,
+    sudarshana_emitter.py, l3_convergence.py, mi_darshana.py, services/ph_nimitta/engine.py) plus
+    services/ph_phaladesa/engine.py's one-line allowlist fix and a new CI lint script. Destructive
+    per-chart rebuilds executed for both 482012f1 and 1c826d5a, snapshot-guarded with a tested
+    restore proven beforehand."
+  native_chart_touched: true
+  current_state_updated: true
+  register_dispositions_flipped: "SUDDHA_VACA_FIX_LEDGER_v1_0.md updated: P0-5/6/7/8/10/11 + the
+    P2 one-liner + C.7 -> VERIFIED-FIXED; P0-1..4 and P0-9 remain PARKED (unchanged); 5 new findings
+    added (ga_structural_writer.py P0-class, migration 339 contamination, mi_darshana verdict_note,
+    orchestrator watchdog race, mi_gunanaka snapshot-publish bug), all correctly PARKED-HONEST or
+    NOT-APPLICABLE, none fixed this wave."
+  followups: "(1) Re-check PARISHODHANA PR #827/#828 at the start of the next session — release
+    lane:serve-shadbala + lane:ga-tajaka under the original brief if landed. (2) The native's
+    original complaint (Sun Sadbala narration) will not be visibly fixed to a user until
+    lane:serve-shadbala lands. (3) ga_structural_writer.py's newly-found P0-class defect and
+    migration 339's contamination both need their own future waves. (4) The C.7 lint's allowlist is
+    line-pinned and will need a refresh whenever files it tracks (bo_laksana.py, registry_bridge.ts)
+    next change line count."
+  next_session_objective: "Re-check PARISHODHANA PRs #827/#828. If merged: open lane:serve-shadbala
+    and lane:ga-tajaka under SUDDHA_VACA_BRIEF_v1_0.md (no further authorization needed per the
+    Phase-C authorization's own terms), fix+verify+rebuild+re-prove exactly as this session did for
+    the other 5 lanes, and only then can SUDDHA_VACA_REPORT_v1_0.md's acceptance criteria be fully
+    met and CLAUDECODE_BRIEF-equivalent closure considered. If still open: re-check again next
+    session; no other action needed on this campaign in the meantime."
+```
+
+### Next session objective
+
+Re-check PARISHODHANA PRs #827/#828. If merged, release `lane:serve-shadbala` and `lane:ga-tajaka`
+under `SUDDHA_VACA_BRIEF_v1_0.md` with no further authorization needed, and complete the loop that
+makes the native's original complaint (Sun's Ṣaḍbala grading) visibly correct in served narration,
+not just correct in stored data. If still open, hold the park and re-check again.
+
+*End of SUDDHA-VACA-PHASE-CDEF-2026-07-28 entry — PARTIAL, not COMPLETE.*
