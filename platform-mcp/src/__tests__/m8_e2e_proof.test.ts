@@ -537,12 +537,13 @@ describe('G12 — REGISTERED_TOOL_COUNT is truthful', () => {
 
     // The declared constant — WP-1.3(h)/F-WP13-testcleanup reconciled to post-B2 actual
     // (was 45, pre-B2). The subset wired here grew because registry_bridge now registers
-    // 32 tools (WP-1.3 a/f/i added computed-but-unserved assets; W5 Lane L4 added
-    // tool_search, the "tool-search metadata" capability; ṢAḌ-DARŚANA W0.4 added four
-    // facades across two parallel lanes — kala_upaya_get + kala_ritual_get (this lane, +2)
-    // and kala_priority_get + kala_explain_get (sibling lane, +2)); the retired
-    // registerQueryDashaPeriodsTool (−1) was removed. Measured = 62.
-    const REGISTERED_TOOL_COUNT = 62
+    // 34 tools (WP-1.3 a/f/i added computed-but-unserved assets; W5 Lane L4 added
+    // tool_search, the "tool-search metadata" capability; ṢAḌ-DARŚANA W0.4 added six
+    // facades across three parallel lanes — kala_upaya_get + kala_ritual_get (upaya-
+    // ritual-stub lane, +2), kala_priority_get + kala_explain_get (priority-explain lane,
+    // +2), kala_elect_get + kala_story_get (this lane, +2)); the retired
+    // registerQueryDashaPeriodsTool (−1) was removed. Measured = 64.
+    const REGISTERED_TOOL_COUNT = 64
     expect(toolCount).toBe(REGISTERED_TOOL_COUNT)
   })
 })
@@ -600,13 +601,15 @@ describe('V6 — Invariants: tool names snake_case, no hyphens', () => {
       expect(name).toMatch(/^[a-z][a-z0-9_]*$/)
       expect(name).not.toContain('-')
     }
-    // WP-1.3(h) / F-WP13-testcleanup: post-B2 the D7 registry bridge registers 30 tools
+    // WP-1.3(h) / F-WP13-testcleanup: post-B2 the D7 registry bridge registers 32 tools
     // (WP-1.3 a/f/i lanes added the computed-but-unserved assets + dedup surface; W5
     // Lane L4 added tool_search, the "tool-search metadata" capability; ṢAḌ-DARŚANA W0.4
-    // added four facades across two parallel lanes — kala_upaya_get + kala_ritual_get
-    // (this lane, +2) and kala_priority_get + kala_explain_get (sibling lane, +2)). Was
-    // 12 (stale pre-B2 count), then 25 (pre-W5-L4 count), then 26 (pre-ṢAḌ-DARŚANA count).
-    expect(toolNames.length).toBe(30)
+    // added six facades across three parallel lanes — kala_upaya_get + kala_ritual_get
+    // (upaya-ritual-stub lane, +2), kala_priority_get + kala_explain_get (priority-explain
+    // lane, +2), kala_elect_get + kala_story_get (this lane, +2), all snake_case, no
+    // hyphens). Was 12 (stale pre-B2 count), then 25 (pre-W5-L4 count), then 26
+    // (pre-ṢAḌ-DARŚANA count). Measured = 32.
+    expect(toolNames.length).toBe(32)
   })
 
   it('all chart-selection tool names are snake_case', async () => {
