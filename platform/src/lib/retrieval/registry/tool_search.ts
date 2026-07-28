@@ -122,13 +122,63 @@ export function buildToolSearchIndexEntry(cap: CapabilityDescriptor): ToolSearch
 }
 
 /**
+ * MCP-native discovery supplement (PARIŚODHANA B2 — Reachability Triangle T1-1).
+ *
+ * `dossier` is a platform-mcp-native `server.tool` (registered in `platform-mcp/src/server.ts`
+ * via `registerDossierTool`; body in `platform-mcp/src/tools/dossier.ts`). Its engine
+ * (`runDossier` + the precompiled slices) lives in `platform-mcp`, NOT in the platform Next.js
+ * app that executes registry capabilities — so it has NO `CapabilityDescriptor` in `getCatalog()`
+ * and is therefore structurally absent from an index built purely from `caps`. A tool-searching
+ * agent asking "how is my wealth?" / "assess my career fully" would never surface the one tool
+ * (`dossier`) that serves the WHOLE domain concept slice at 100% completeness accounting.
+ *
+ * Rather than fabricate a platform-side `CapabilityDescriptor` with a fake executable handler
+ * (which would either duplicate the engine or fail the registry's handler-execution invariants),
+ * this is an explicit, honest supplement: an index entry that points a searcher at the real,
+ * already-deployed MCP-native tool. It is NOT a registry capability — `getCatalog()` is unchanged,
+ * every registry-derived projection (census, surface profiles) is unchanged — it is purely an
+ * additional row in the search index. The tool-search parity assertion accounts for it by name.
+ */
+export const MCP_NATIVE_DISCOVERY_ENTRIES: ToolSearchIndexEntry[] = [
+  {
+    uri: 'marsys://tool/MCP/dossier',
+    name: 'dossier',
+    type: 'utility',
+    layer: 'MCP',
+    scope: 'chart',
+    family: 'cross_domain',
+    tool_role: 'full_domain_sweep',
+    short_label: 'Complete domain reading',
+    one_line: 'Complete wealth/career reading — the whole domain concept slice at 100% accounting.',
+    description:
+      'COMPLETE domain reading for "how is my wealth?", "assess my career fully", or any question ' +
+      'wanting the WHOLE picture of a life domain. Serves the ENTIRE domain concept slice (thousands ' +
+      'of concepts) with 100% completeness accounting, paged. Where assess_wealth/assess_career give a ' +
+      'reconciled headline, dossier serves the full territory. domain enum: wealth | career.',
+    keywords: Array.from(new Set(tokenize(
+      'dossier complete completeness whole entire full domain reading wealth career prosperity ' +
+      'finances money profession job assessment coverage concept slice sweep gather compose ' +
+      'accounting hundred percent panoramic exhaustive'))).sort(),
+  },
+]
+
+/**
  * Build the full search index — one entry per live capability, no filtering,
  * no dropping. Deliverable requirement (a): "for every capability, emit a
  * normalized set of search fields" — this is that function; completeness is
- * asserted by the CI parity test (index.length === getCatalog().length).
+ * asserted by the CI parity test
+ * (index.length === getCatalog().length + MCP_NATIVE_DISCOVERY_ENTRIES.length).
+ *
+ * The MCP-native discovery supplement (`MCP_NATIVE_DISCOVERY_ENTRIES`) is appended so that
+ * MCP-native `server.tool`s with no `CapabilityDescriptor` (currently `dossier`) are still
+ * findable via `tool_search`. Both the live capability (`layers/L0_brahmagyan/tool_search.ts`)
+ * and the projection compiler (`scripts/manifest/generate_projections.ts`) call this SAME
+ * function, so the supplement flows into both the live index and the regenerated JSON snapshot
+ * with no drift, by construction.
  */
 export function buildToolSearchIndex(caps: CapabilityDescriptor[]): ToolSearchIndexEntry[] {
-  return caps.map(buildToolSearchIndexEntry).sort((a, b) => a.uri.localeCompare(b.uri))
+  return [...caps.map(buildToolSearchIndexEntry), ...MCP_NATIVE_DISCOVERY_ENTRIES]
+    .sort((a, b) => a.uri.localeCompare(b.uri))
 }
 
 // ── Search ────────────────────────────────────────────────────────────────────
