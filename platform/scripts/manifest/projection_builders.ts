@@ -53,6 +53,7 @@ export {
   buildToolSearchIndexEntry,
   searchToolIndex,
   tokenize as toolSearchTokenize,
+  MCP_NATIVE_DISCOVERY_ENTRIES,
   type ToolSearchIndexEntry,
   type ToolSearchMatch,
   type ToolSearchResult,
