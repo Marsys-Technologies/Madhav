@@ -109,6 +109,17 @@ const GRAHA_NAME_TO_CODE: Record<string, string> = {
 }
 
 const SIDECAR_URL = process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001'
+// CR-40 fix: forward the sidecar API key when configured — same WP-1.7 pattern as
+// query_planet_position.ts (`if (SIDECAR_API_KEY) headers['x-api-key'] = SIDECAR_API_KEY`).
+// register_d10_pact.ts (commit d22c0c9c, 2026-07-09) predates WP-1.7 (commit 2385fb62,
+// 2026-07-13) by 4 days and was never brought onto that fix. The sidecar's verify_api_key
+// dependency 401s on a missing/mismatched x-api-key whenever PYTHON_SIDECAR_API_KEY is
+// set (see main.py); this call's `if (res.ok)` check silently swallowed that 401 as an
+// empty row set, indistinguishable from a genuinely unreachable sidecar — so TRIGGER
+// reported 'unreachable'/'chain_incomplete_infra' even though the sidecar was reachable
+// (confirmed live: the identical /brahmagyan/ephemeris/planet_transit route succeeds when
+// called WITH the header, e.g. via ref_planet_transit_get / l0_ephemeris.ts's sidecarGet).
+const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
 
 export const pactQueryCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L-PACT/pact_query',
@@ -381,9 +392,16 @@ export const pactQueryCapability: CapabilityDescriptor = {
       let triggerStatus: 'gate_data_fetched' | 'unreachable' = 'unreachable'
       let triggerReason = ''
       try {
+        // CR-40 fix: forward x-api-key (see SIDECAR_API_KEY comment above) — without it
+        // every one of these calls 401s when the sidecar has an API key configured, and
+        // the 401 was silently read as "no rows" (res.ok false → skip), not surfaced as
+        // an auth failure, so this loop could never produce a row even though the route
+        // itself was live and correct.
+        const triggerHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (SIDECAR_API_KEY) triggerHeaders['x-api-key'] = SIDECAR_API_KEY
         for (const name of relevantNames) {
           const params = new URLSearchParams({ planet: name, start_date: as_of_date, end_date: as_of_date })
-          const res = await fetch(`${SIDECAR_URL}/brahmagyan/ephemeris/planet_transit?${params}`, { headers: { 'Content-Type': 'application/json' } })
+          const res = await fetch(`${SIDECAR_URL}/brahmagyan/ephemeris/planet_transit?${params}`, { headers: triggerHeaders })
           if (res.ok) {
             const body = await res.json() as { rows?: Array<Record<string, unknown>> }
             triggerRows.push(...(body.rows ?? []).map(r => ({ graha: name, ...r })))
