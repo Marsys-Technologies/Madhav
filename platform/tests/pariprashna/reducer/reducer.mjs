@@ -14,7 +14,19 @@
 // exact same `applyEvent` function, so a bug caught by one is a bug the
 // other would have hit too.
 //
-// Contract (mirrors src/lib/pariprashna/protocol/events.ts):
+// TERMINOLOGY (PB-1/integrate): this harness's `citation_anchor.open` /
+// `citation_anchor.set` events (an inline citation-anchor primitive: a
+// char-offset inside a block's text that later resolves to a citation-or-null)
+// are a HARNESS-INTERNAL concept. They were originally named `seam.open` /
+// `seam.set`, which COLLIDED with S-1's real wire, where `seam.open` /
+// `seam.set` are PASS-BOUNDARY events (the canonical §5.8.0 ruling-8a meaning,
+// rendered by C-1's PassSeamLive/SeamBlock). Renamed here to stop the
+// collision. `citation_anchor.*` does NOT correspond to any S-1 wire event; it
+// only exists in these recorded fixtures + this reference reducer + the DOM
+// harness. A live client consuming the real wire never sees it.
+//
+// Contract (mirrors src/lib/pariprashna/protocol/events.ts, plus the
+// harness-only citation_anchor.* pair above):
 //  - Events may redeliver. Dedup key is `event.id`; a repeated id is a no-op.
 //  - A `block.delta` or `block.commit` targeting an already-committed block
 //    is a PROTOCOL VIOLATION — the reducer throws. This is the enforcement
@@ -45,7 +57,7 @@
  * @property {string[]} block_order
  * @property {Map<string, object>} activities   // key -> latest row
  * @property {string[]} activity_order          // first-seen order of keys
- * @property {Map<string, object>} seams         // seam_id -> {block_id, anchor_offset, citation_id}
+ * @property {Map<string, object>} citation_anchors         // anchor_id -> {block_id, anchor_offset, citation_id}
  * @property {Map<string, object>} citations     // citation_id -> definition
  * @property {object[]} flags
  * @property {object[]} grades
@@ -67,7 +79,7 @@ export function createInitialState() {
     block_order: [],
     activities: new Map(),
     activity_order: [],
-    seams: new Map(),
+    citation_anchors: new Map(),
     citations: new Map(),
     flags: [],
     grades: [],
@@ -178,19 +190,19 @@ export function applyEvent(state, event, opts = {}) {
       block.final_text = event.final_text
       break
     }
-    case 'seam.open': {
-      state.seams.set(event.seam_id, {
-        seam_id: event.seam_id,
+    case 'citation_anchor.open': {
+      state.citation_anchors.set(event.anchor_id, {
+        anchor_id: event.anchor_id,
         block_id: event.block_id,
         anchor_offset: event.anchor_offset,
         citation_id: undefined,
       })
       break
     }
-    case 'seam.set': {
-      const seam = state.seams.get(event.seam_id)
+    case 'citation_anchor.set': {
+      const seam = state.citation_anchors.get(event.anchor_id)
       if (!seam) {
-        state.violations.push(`seam.set targets unknown seam_id=${event.seam_id}`)
+        state.violations.push(`citation_anchor.set targets unknown anchor_id=${event.anchor_id}`)
         break
       }
       seam.citation_id = event.citation_id
@@ -275,7 +287,7 @@ export function snapshot(state) {
     phase: state.phase,
     blocks: state.block_order.map((id) => state.blocks.get(id)),
     activities: state.activity_order.map((key) => state.activities.get(key)),
-    seams: Array.from(state.seams.values()),
+    citation_anchors: Array.from(state.citation_anchors.values()),
     citations: Array.from(state.citations.values()),
     flags: state.flags,
     grades: state.grades,

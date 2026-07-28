@@ -70,7 +70,7 @@ function setDone(v) {
 let state = createInitialState()
 const citationDefs = new Map() // citation_id -> {label, verification, source_ref}
 const openBlockEls = new Map() // block_id -> element (while un-committed)
-const seamEls = new Map() // seam_id -> element
+const seamEls = new Map() // anchor_id -> element
 const blockRectSnapshots = new Map() // block_id -> {top,left,width,height}
 
 // ─── coalesced render scheduling (G-RAF) ────────────────────────────────────
@@ -188,12 +188,12 @@ if (violate === 'viewport') viewport.classList.add('violate-viewport')
 //    an incremental fragment (a table needs a whole new <tr>, a list a new
 //    structural parse), so every delta rebuilds the kind's DOM wholesale
 //    from the block's accumulated raw text. Safe because these kinds never
-//    carry inline seams in this harness.
+//    carry inline citation_anchors in this harness.
 //  - APPEND kinds (paragraph/heading/blockquote/code): a delta appends a
 //    plain text node with ONLY the new chunk. This is deliberate — an
 //    earlier version re-set `contentEl.textContent` from the full
 //    accumulated string on every delta, which silently wiped out any
-//    `seam.open` placeholder <span> already inserted as a sibling (textContent
+//    `citation_anchor.open` placeholder <span> already inserted as a sibling (textContent
 //    replaces ALL children with one text node). That bug made a citation
 //    seam disappear the moment the next delta arrived. Appending preserves
 //    whatever seam/citation-chip elements are already in the DOM.
@@ -253,19 +253,19 @@ function renderTable(el, rawText) {
 
 // ─── seam / citation rendering ───────────────────────────────────────────────
 
-function renderSeamPending(seamId) {
+function renderSeamPending(anchorId) {
   const span = document.createElement('span')
   span.className = 'seam seam-pending'
-  span.dataset.seamId = seamId
+  span.dataset.anchorId = anchorId
   span.textContent = '\u2022'
-  seamEls.set(seamId, span)
+  seamEls.set(anchorId, span)
   return span
 }
 
-function renderSeamResolved(seamId) {
-  const span = seamEls.get(seamId)
+function renderSeamResolved(anchorId) {
+  const span = seamEls.get(anchorId)
   if (!span) return
-  const seam = state.seams.get(seamId)
+  const seam = state.citation_anchors.get(anchorId)
   if (!seam) return
   if (seam.citation_id === null) {
     span.className = 'seam honest-gap-marker'
@@ -294,11 +294,11 @@ function renderSeamResolved(seamId) {
   })
   const wrap = document.createElement('span')
   wrap.className = 'seam'
-  wrap.dataset.seamId = seamId
+  wrap.dataset.anchorId = anchorId
   wrap.appendChild(btn)
   wrap.appendChild(detail)
   span.replaceWith(wrap)
-  seamEls.set(seamId, wrap)
+  seamEls.set(anchorId, wrap)
 }
 
 // ─── activity rendering ──────────────────────────────────────────────────────
@@ -448,16 +448,16 @@ function handleTypedEvent(event) {
       })
       break
     }
-    case 'seam.open': {
+    case 'citation_anchor.open': {
       scheduleRender(() => {
         const el = openBlockEls.get(event.block_id)
         if (!el || !el.__contentEl) return
-        el.__contentEl.appendChild(renderSeamPending(event.seam_id))
+        el.__contentEl.appendChild(renderSeamPending(event.anchor_id))
       })
       break
     }
-    case 'seam.set': {
-      scheduleRender(() => renderSeamResolved(event.seam_id))
+    case 'citation_anchor.set': {
+      scheduleRender(() => renderSeamResolved(event.anchor_id))
       break
     }
     case 'citation.define': {
@@ -546,7 +546,7 @@ async function run() {
 
   const KNOWN_TYPES = new Set([
     'turn.open', 'phase', 'activity.upsert', 'block.open', 'block.delta',
-    'block.commit', 'seam.open', 'seam.set', 'citation.define', 'flag',
+    'block.commit', 'citation_anchor.open', 'citation_anchor.set', 'citation.define', 'flag',
     'grade', 'turn.commit', 'turn.close', 'error',
   ])
 

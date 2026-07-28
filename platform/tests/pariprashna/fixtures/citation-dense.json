@@ -1,6 +1,6 @@
 {
   "name": "citation-dense",
-  "description": "One block with two inline citation seams, one confirmed and one catalog_only — exercises chip density + verification tiering.",
+  "description": "One block with two inline citation citation_anchors, one confirmed and one catalog_only — exercises chip density + verification tiering.",
   "events": [
     {
       "delay_ms": 0,
@@ -42,8 +42,8 @@
         "id": "citation-dense-3",
         "seq": 3,
         "t": 45,
-        "type": "seam.open",
-        "seam_id": "s1",
+        "type": "citation_anchor.open",
+        "anchor_id": "s1",
         "block_id": "b1",
         "anchor_offset": 80
       }
@@ -65,8 +65,8 @@
         "id": "citation-dense-5",
         "seq": 5,
         "t": 70,
-        "type": "seam.open",
-        "seam_id": "s2",
+        "type": "citation_anchor.open",
+        "anchor_id": "s2",
         "block_id": "b1",
         "anchor_offset": 161
       }
@@ -101,8 +101,8 @@
         "id": "citation-dense-8",
         "seq": 8,
         "t": 100,
-        "type": "seam.set",
-        "seam_id": "s1",
+        "type": "citation_anchor.set",
+        "anchor_id": "s1",
         "citation_id": "c1"
       }
     },
@@ -125,8 +125,8 @@
         "id": "citation-dense-10",
         "seq": 10,
         "t": 120,
-        "type": "seam.set",
-        "seam_id": "s2",
+        "type": "citation_anchor.set",
+        "anchor_id": "s2",
         "citation_id": "c2"
       }
     },

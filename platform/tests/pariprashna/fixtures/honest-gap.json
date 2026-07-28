@@ -42,8 +42,8 @@
         "id": "honest-gap-3",
         "seq": 3,
         "t": 45,
-        "type": "seam.open",
-        "seam_id": "s1",
+        "type": "citation_anchor.open",
+        "anchor_id": "s1",
         "block_id": "b1",
         "anchor_offset": 72
       }
@@ -65,8 +65,8 @@
         "id": "honest-gap-5",
         "seq": 5,
         "t": 65,
-        "type": "seam.set",
-        "seam_id": "s1",
+        "type": "citation_anchor.set",
+        "anchor_id": "s1",
         "citation_id": null
       }
     },

@@ -269,15 +269,15 @@ function malformedSentinelVariants(): FixtureSpec {
 function citationDense(): FixtureSpec {
   return buildFixture(
     'citation-dense',
-    'One block with two inline citation seams, one confirmed and one catalog_only — exercises chip density + verification tiering.',
+    'One block with two inline citation citation_anchors, one confirmed and one catalog_only — exercises chip density + verification tiering.',
     (t) => {
       t.push('turn.open', { turn_id: t.turnId, reading_depth: 'standard' }, 0)
       t.push('block.open', { block_id: 'b1', kind: 'paragraph', index: 0 }, 20)
       t.push('block.delta', { block_id: 'b1', text: sentence(1) + ' ' }, 15)
-      t.push('seam.open', { seam_id: 's1', block_id: 'b1', anchor_offset: sentence(1).length + 1 }, 10)
+      t.push('citation_anchor.open', { anchor_id: 's1', block_id: 'b1', anchor_offset: sentence(1).length + 1 }, 10)
       t.push('block.delta', { block_id: 'b1', text: sentence(2) + ' ' }, 15)
-      t.push('seam.open', {
-        seam_id: 's2',
+      t.push('citation_anchor.open', {
+        anchor_id: 's2',
         block_id: 'b1',
         anchor_offset: sentence(1).length + 1 + sentence(2).length + 1,
       }, 10)
@@ -289,14 +289,14 @@ function citationDense(): FixtureSpec {
         verification: 'confirmed',
         source_ref: 'fixture://citation-dense/c1',
       }, 10)
-      t.push('seam.set', { seam_id: 's1', citation_id: 'c1' }, 10)
+      t.push('citation_anchor.set', { anchor_id: 's1', citation_id: 'c1' }, 10)
       t.push('citation.define', {
         citation_id: 'c2',
         label: 'Saravali 4.3 (fixture, unverified)',
         verification: 'catalog_only',
         source_ref: 'fixture://citation-dense/c2',
       }, 10)
-      t.push('seam.set', { seam_id: 's2', citation_id: 'c2' }, 10)
+      t.push('citation_anchor.set', { anchor_id: 's2', citation_id: 'c2' }, 10)
       t.push('turn.commit', { turn_id: t.turnId, block_count: 1, citation_count: 2 }, 10)
       t.push('turn.close', { turn_id: t.turnId, reason: 'complete' }, 5)
     },
@@ -336,9 +336,9 @@ function honestGap(): FixtureSpec {
       t.push('turn.open', { turn_id: t.turnId, reading_depth: 'standard' }, 0)
       t.push('block.open', { block_id: 'b1', kind: 'paragraph', index: 0 }, 20)
       t.push('block.delta', { block_id: 'b1', text: sentence(3) + ' ' }, 15)
-      t.push('seam.open', { seam_id: 's1', block_id: 'b1', anchor_offset: sentence(3).length + 1 }, 10)
+      t.push('citation_anchor.open', { anchor_id: 's1', block_id: 'b1', anchor_offset: sentence(3).length + 1 }, 10)
       t.push('block.commit', { block_id: 'b1', final_text: sentence(3) + ' ' }, 10)
-      t.push('seam.set', { seam_id: 's1', citation_id: null }, 10)
+      t.push('citation_anchor.set', { anchor_id: 's1', citation_id: null }, 10)
       t.push('flag', {
         flag_key: 'honest_gap.no_citation_found',
         severity: 'notice',

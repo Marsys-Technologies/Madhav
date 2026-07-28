@@ -23,7 +23,7 @@
  * computed from the `x-fixture-event-count` header) to 25/50/75/100% and,
  * at each checkpoint, re-reads every already-committed block's LIVE
  * `innerHTML` and compares it against the FROZEN snapshot. A citation seam
- * (`[data-seam-id]`) is explicitly exempted — `seam.set` resolving after a
+ * (`[data-anchor-id]`) is explicitly exempted — `citation_anchor.set` resolving after a
  * block commits is the one sanctioned exception in the protocol (see
  * events.ts) — everything else in the block must be byte-identical.
  *
@@ -58,14 +58,14 @@ async function progressCheckpoints(page: Page): Promise<void> {
         const div = document.createElement('div')
         div.innerHTML = html
         // Replace the WHOLE seam element (attributes, class, children —
-        // not just its text) with a plain placeholder text node. seam.set
+        // not just its text) with a plain placeholder text node. citation_anchor.set
         // resolving after commit is the one sanctioned mutation in the
         // protocol: a pending seam marker (`<span class="seam-pending">`)
         // legitimately becomes a citation-chip wrapper (`<span
         // class="seam"><button class="citation-chip">...`). Clearing only
         // textContent left the class/structure change visible and caused a
         // false-positive transmutation failure the first time this ran.
-        div.querySelectorAll('[data-seam-id]').forEach((el) => {
+        div.querySelectorAll('[data-anchor-id]').forEach((el) => {
           el.replaceWith(document.createTextNode('[[seam]]'))
         })
         return div.innerHTML

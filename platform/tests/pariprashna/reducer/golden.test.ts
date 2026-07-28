@@ -67,7 +67,7 @@ describe('golden protocol — idempotent duplicate-id handling', () => {
       // Structural state must be identical...
       expect(afterDuplicates.blocks).toEqual(baseline.blocks)
       expect(afterDuplicates.activities).toEqual(baseline.activities)
-      expect(afterDuplicates.seams).toEqual(baseline.seams)
+      expect(afterDuplicates.citation_anchors).toEqual(baseline.citation_anchors)
       expect(afterDuplicates.citations).toEqual(baseline.citations)
       expect(afterDuplicates.turn_commit).toEqual(baseline.turn_commit)
       expect(afterDuplicates.turn_close).toEqual(baseline.turn_close)
@@ -135,7 +135,7 @@ describe('golden protocol — per-fixture structural assertions', () => {
         typeof raw.type === 'string' &&
         [
           'turn.open', 'phase', 'activity.upsert', 'block.open', 'block.delta',
-          'block.commit', 'seam.open', 'seam.set', 'citation.define', 'flag',
+          'block.commit', 'citation_anchor.open', 'citation_anchor.set', 'citation.define', 'flag',
           'grade', 'turn.commit', 'turn.close', 'error',
         ].includes(raw.type as string)
       if (!looksValid) {
@@ -153,7 +153,7 @@ describe('golden protocol — per-fixture structural assertions', () => {
   it('honest-gap: seam resolves to null citation AND a flag reports the gap (never silently dropped)', () => {
     const fixture = loadFixture('honest-gap')
     const snap = snapshot(reduceAll(fixture.events.map((e) => e.event)))
-    const seam = snap.seams.find((s: { seam_id: string }) => s.seam_id === 's1')
+    const seam = snap.citation_anchors.find((s: { anchor_id: string }) => s.anchor_id === 's1')
     expect(seam?.citation_id).toBeNull()
     expect(snap.flags.some((f: { flag_key: string }) => f.flag_key === 'honest_gap.no_citation_found')).toBe(true)
   })
