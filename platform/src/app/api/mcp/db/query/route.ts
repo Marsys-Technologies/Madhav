@@ -77,6 +77,15 @@ const ALLOWED_TABLES = new Set([
   'gochara_resonance_map',
   'brahma_event_ontology',
   'build_substep_progress',
+  // PARISHODHANA B1 (newly-discovered regression, distinct from CR-42): the D-1.6 S-1
+  // CR-42 fix rewrote ref_dignity_reference_get (register_p1_reference.ts) to query this
+  // structured L0 table directly by graha instead of routing `planet` through the
+  // classical-text hybrid search — but the corresponding whitelist entry was never added
+  // here, so every live call 400'd with "Table 'bg_dignity_reference' is not in the
+  // read-only whitelist for this route." (same failure class e2fe0bdd already fixed once
+  // for bg_transit_rules). Read-only L0 Brahmagyan reference table (migration 250); no
+  // write path added.
+  'bg_dignity_reference',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.
