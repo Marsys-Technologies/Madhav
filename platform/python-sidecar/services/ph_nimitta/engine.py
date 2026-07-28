@@ -434,8 +434,16 @@ def derive_anchor_from_convergence(
     domain    = _canonical_domain(ctx.signal_domain, cf.get('domain'), row.get('domain'))
     evt_type  = _resolve_event_type(ctx.event_class_id, domain, 'convergence')
 
-    raw_dir  = cf.get('direction', 'elevated')
-    direction = raw_dir if raw_dir in ('elevated', 'suppressed', 'mixed') else 'elevated'
+    # P0-11 (SUDDHA-VACA D4_GRADE_INVERSION): a missing or malformed direction value
+    # must never silently launder into the favorable-sounding 'elevated'. The
+    # phala_anchors.direction column is NOT NULL CHECK IN ('elevated','suppressed','mixed')
+    # (migration 330), so an honest null/'unknown' sentinel cannot be persisted — the
+    # DB-legal honest-unknown value is 'mixed' (neutral, not favorable), which is already
+    # this file's own convention: AnchorRecord.direction defaults to 'mixed', and
+    # derive_anchor_from_bhavishya's prob_tier resolution below falls back to 'mixed' for
+    # any value it doesn't recognize. This mirrors that same convention for convergence rows.
+    raw_dir = cf.get('direction')
+    direction = raw_dir if raw_dir in ('elevated', 'suppressed', 'mixed') else 'mixed'
 
     rarity_years    = row.get('rarity_years')
     effective_score = row.get('convergence_score') or row.get('effective_score', 0.5)
