@@ -580,6 +580,33 @@ export async function POST(request: Request): Promise<Response> {
           currentMahaAntar,
         })
 
+        // ── PB-2/M-3 (SMṚTI durable summaries) — narrow, additive splice. ──────
+        // Folds a durable, citation-preserving summary of EARLIER canonical
+        // turns into a FIXED structural slot ahead of the system content built
+        // above (src/lib/pariprashna/summaries/assemble.ts) so the assembled
+        // prefix's cache-relevant structure is unchanged turn-to-turn when no
+        // new summarization threshold crossing occurred. Best-effort and
+        // non-fatal, same convention as `orientationPromise`'s `.catch()` above.
+        //
+        // KNOWN RESIDUAL (disclosed): this route's write-through still
+        // persists via the LEGACY `writeConversationMessages` path below (PB-2
+        // lane M-2, "the persistence seam", has not wired `writeTurn` into this
+        // route yet) — so canonical `message_parts` rows stay empty for
+        // pariprashna conversations today and this resolves to `null`. The
+        // splice activates with zero further changes here once M-2 lands.
+        let conversationSummaryText: string | null = null
+        try {
+          const { getConversationSummaryForSplice } = await import('@/lib/pariprashna/summaries/splice')
+          conversationSummaryText = await getConversationSummaryForSplice(conversationId)
+        } catch (err) {
+          console.error('[pariprashna] durable-summary splice failed (non-fatal):', err)
+        }
+        const { assembleSynthesisPrefix } = await import('@/lib/pariprashna/summaries/assemble')
+        const systemContentWithSummary = assembleSynthesisPrefix({
+          precedingBlock: systemContent ?? '',
+          summaryText: conversationSummaryText,
+        })
+
         // ── Adapter + agentic loop wiring (SAME engine as consult). ────────────
         const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
           anthropic: 'anthropic',
@@ -595,7 +622,7 @@ export async function POST(request: Request): Promise<Response> {
           return finish('error')
         }
         const adapterMessages = buildAdapterMessages(trimmedConversationHistory, queryText)
-        let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
+        let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContentWithSummary)
         const adapter = getAdapter(adapterId)
         const AGENTIC_PROVIDERS = new Set<string>(['anthropic', 'google', 'openai', 'deepseek', 'nvidia'])
         const useAgenticLoop = AGENTIC_PROVIDERS.has(adapterId)
