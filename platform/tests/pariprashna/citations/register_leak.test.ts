@@ -121,10 +121,75 @@ describe('register-leak lint: 0 leaks over the synthetic corpus', () => {
         'asset_id',
         'table_name',
         'register_acronym',
+        'register_full_name',
+        'fact_id_namespace',
         'partial_signal_id',
         'lowercase_register',
       ]),
     )
+  })
+
+  it('a truncated SIG reference (no numeric tail) stays a TELEMETRY-only near-miss, not a fact_id_namespace hard redact', () => {
+    // fact_id_namespace's generic \b[A-Z]{2,6}\. shape would otherwise also
+    // match "SIG.FOO" — it must defer to SIG's own dedicated signal_id /
+    // partial_signal_id patterns instead of hard-redacting it.
+    const { clean, flags } = lintReaderProse('a dangling SIG.FOO reference')
+    expect(clean).toBe('a dangling SIG.FOO reference')
+    expect(flags.some((f) => f.pattern === 'fact_id_namespace')).toBe(false)
+  })
+})
+
+describe('register-leak lint: L1 fact_id / CGM node-id namespace codes', () => {
+  // PB-2 hotfix #3 fixture: a real production reading (post hotfix #2) leaked
+  // bare chart_facts.fact_id / CGM node-id codes (namespace.SUBJECT[.KEY],
+  // per ganita/types.ts's own doc comment) — a different, more opaque leak
+  // class than register acronyms, always appearing as a parenthetical aside,
+  // often backtick-wrapped as inline code.
+
+  const REAL_LEAKED_IDS = [
+    'PLN.SUN',
+    'PLN.MERCURY',
+    'PLN.SATURN',
+    'HSE.7',
+    'HSE.10',
+    'KRK.C8.AMATYA',
+    'SEN.ARD.AL',
+    'SEN.MISC.YOG_POINT',
+    'SEN.SAH.PARADESA',
+    'YGA.BUDH_ADITYA',
+    'YGA.MERCURY_OPERATIONAL_SPINE',
+  ]
+
+  it('catches every real leaked fact_id / CGM node-id token', () => {
+    for (const id of REAL_LEAKED_IDS) {
+      const { clean, leakCount } = lintReaderProse(`Some text mentions ${id} here.`)
+      expect(clean, `leaked token: ${id}`).not.toContain(id)
+      expect(leakCount).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  it('cleans a backtick-wrapped id inside parens to a grammatical, artifact-free sentence', () => {
+    const { clean } = lintReaderProse(
+      'Saturn (`PLN.SATURN`), the lord of your 10th house, is exalted in Libra in the 7th house (`HSE.7`). It is your Amatya Karaka (`KRK.C8.AMATYA`), the Jaimini significator.',
+    )
+    expect(clean).not.toMatch(/PLN\.SATURN|HSE\.7|KRK\.C8\.AMATYA/)
+    expect(clean).not.toMatch(/`/) // no orphaned backticks
+    expect(clean).toBe(
+      'Saturn, the lord of your 10th house, is exalted in Libra in the 7th house. It is your Amatya Karaka, the Jaimini significator.',
+    )
+  })
+
+  it('cleans a bare (non-backtick-wrapped) id inside parens with a trailing colon', () => {
+    const { clean } = lintReaderProse('**The Career House (HSE.10):** Your 10th house of profession.')
+    expect(clean).toBe('**The Career House:** Your 10th house of profession.')
+  })
+
+  it('does not touch legitimate jyotish shorthand that happens to share letters but has no dot (AL, AmK, 10H)', () => {
+    const { clean, leakCount } = lintReaderProse(
+      'Your professional reputation (AL in 10H) and your Amatya Karaka (AmK) are linked.',
+    )
+    expect(clean).toBe('Your professional reputation (AL in 10H) and your Amatya Karaka (AmK) are linked.')
+    expect(leakCount).toBe(0)
   })
 })
 
