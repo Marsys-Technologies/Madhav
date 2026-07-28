@@ -240,6 +240,45 @@ jobs:
         # waves to clean up. See platform/scripts/governance/naming_rules.yaml.
         run: python platform/scripts/governance/naming_lint.py
 
+  fact-category-pin-lint:
+    # ŚUDDHA-VĀCA Phase C, lane:ci-lint (brief §5 C.7 — the systemic guard).
+    # Permanent CI enforcement against the whole "D1 defect class": a selector
+    # that picks/reduces a chart_facts row by fact_category alone, without
+    # pinning fact_key, so which row wins is undefined the moment more than
+    # one row matches (the exact bugs fixed individually this wave in
+    # bo_laksana.py P0-5 and registry_bridge.ts P0-1 — see
+    # SUDDHA_VACA_FIX_LEDGER_v1_0.md). Stdlib-only script (no pyyaml needed).
+    name: Fact-Category Pinning Gate (§5 C.7)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fact-category pin lint — self-test (bundled fixtures)
+        # Bundled PASS/FAIL fixtures (Python SQL + TypeScript .find/.filter)
+        # prove the scanner catches the unsafe pattern in both languages and
+        # does NOT flag the correctly key-pinned + ordered/sorted form, before
+        # it's trusted to scan the real repo.
+        run: python platform/scripts/governance/check_fact_category_pinning.py --self-test
+
+      - name: Fact-category pin lint — repo scan (allowlist-aware)
+        # Fails ONLY on violations not present in
+        # fact_category_pin_allowlist.json, each entry of which carries a
+        # written justification. Pre-existing debt found at rollout is
+        # allowlisted with an honest disposition (see that file); a NEW,
+        # non-allowlisted violation is always a hard fail — this lint has no
+        # baseline-style auto-accept for future violations.
+        run: python platform/scripts/governance/check_fact_category_pinning.py
+
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +
@@ -356,6 +395,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      - name: Setup Python (vidhi registry parity gate shells the Python DB-seed writers)
+        # PARIŚODHANA B2: check_vidhi_registry_parity.mjs runs `python bg_vidhi_*.py --dump-json`
+        # (no DB, no pip deps — the writers guard their orchestrator import for standalone dump mode).
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: platform-mcp deps (density harness imports response_budget.ts)
         working-directory: platform-mcp
         run: npm ci
@@ -372,6 +417,13 @@ jobs:
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/vidhi_codegen_parity.test.ts
+      - name: vidhi registry Ω8 parity gate (TS ↔ Python DB-seed writers ↔ Ω8-regen coverage) — PARIŚODHANA B2
+        # Keeps the FOUR Vidhi registry copies (canonical TS, generated mirror, SQL seed, Python
+        # seed writers) from silently drifting — the Python writers had drifted to 37 primitives /
+        # 8 floors before B2 (a latent regression bomb). Deep-compares the canonical TS dump against
+        # the two Python writers' --dump-json output + asserts Ω8-regen floor coverage + re-runs the
+        # floor-coverage gate (14/14). See check_vidhi_registry_parity.mjs's header.
+        run: node scripts/census/check_vidhi_registry_parity.mjs
       - name: R-1 projection compiler — generate (chat/MCP/census/docs projections, additive-only)
         # RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §3 R-1 item 2. DB-free (getCatalog() only
         # enumerates already-registered descriptor objects; TOOL_CONTRACTS is a static
