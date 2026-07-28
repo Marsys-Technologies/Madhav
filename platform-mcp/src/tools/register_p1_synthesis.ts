@@ -25,7 +25,7 @@ import { judgmentFlag, type JudgmentFlagEntry } from '../generated/envelope.js'
 // fetched — never a static placeholder, never a new query. Best-effort: walks only the
 // content's own top-level shape (arrays / a `total`/`returned` scalar), the same depth every
 // tool in this file already exposes to its caller.
-function deriveHollowEnvelopeFlags(content: unknown): JudgmentFlagEntry[] {
+function deriveHollowEnvelopeFlags(content: unknown, primaryField?: string): JudgmentFlagEntry[] {
   if (content === null || content === undefined) {
     return [judgmentFlag('zero_rows_returned', 'no content returned for this call.')]
   }
@@ -35,6 +35,29 @@ function deriveHollowEnvelopeFlags(content: unknown): JudgmentFlagEntry[] {
     return [judgmentFlag('hollow_envelope_shape_not_evaluated', 'content is not a keyed object — no row-count field available to check.')]
   }
   const obj = content as Record<string, unknown>
+
+  // PARISHODHANA B3 fix (deprecated top-level alias masking hollowness): a caller may pass a
+  // `primaryField` naming the ONE array the tool actually serves as its answer (e.g.
+  // bodha_discoveries_get's caller-facing, filter-applied `discoveries`). Some tools' `content`
+  // ALSO carries other, unfiltered back-compat arrays for the same underlying data (e.g.
+  // query_discoveries.ts's raw `rows` / `discovery_families`, both explicitly documented as
+  // "kept for back-compat" and NOT filtered by this tool's own `min_salience` param). Before
+  // this fix, the generic "every array field empty" check below looked at ALL of those arrays
+  // together, so a non-empty unfiltered back-compat array silently suppressed the hollow flag
+  // even when the field the caller actually reads (`discoveries`) was empty because the
+  // filter matched nothing — a misleading judgment_flags (no honest-gap signal when there
+  // plainly was one). When `primaryField` is supplied and present as an array, it alone
+  // decides hollowness; the generic multi-field walk below is the fallback for tools that
+  // don't pass one (unchanged behavior for those).
+  if (primaryField) {
+    const primary = obj[primaryField]
+    if (Array.isArray(primary)) {
+      return primary.length === 0
+        ? [judgmentFlag('hollow_envelope_no_data_rows', `the served '${primaryField}' field is empty for this call (other back-compat fields on this response may still carry unfiltered data — see the tool's field docs).`)]
+        : []
+    }
+  }
+
   const arrayFields = Object.entries(obj).filter(([, v]) => Array.isArray(v)) as Array<[string, unknown[]]>
   if (arrayFields.length > 0) {
     const allEmpty = arrayFields.every(([, v]) => v.length === 0)
@@ -104,7 +127,7 @@ async function platformQuery(
   return res.json() as Promise<{ rows: Record<string, unknown>[] }>
 }
 
-function envelope(content: unknown, toolName: string, queryClass: string) {
+function envelope(content: unknown, toolName: string, queryClass: string, primaryField?: string) {
   return {
     envelope_version: 'v1',
     tool: toolName,
@@ -113,7 +136,7 @@ function envelope(content: unknown, toolName: string, queryClass: string) {
     grounding: { fact_ids: [], citations: [], grounding_score: null },
     pagination: { offset: 0, limit: 0, total: null, next_cursor: null },
     drill_pointers: [],
-    judgment_flags: deriveHollowEnvelopeFlags(content),
+    judgment_flags: deriveHollowEnvelopeFlags(content, primaryField),
     insight_type: null,
     query_class: queryClass,
     content,
@@ -578,7 +601,13 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           returned: rows.length,
           min_salience_filter_applied: min_salience ?? null,
           source_table: 'bodha_discoveries',
-        }, 'bodha_discoveries_get', 'synthesis_cross_domain'))
+          // PARISHODHANA B3 fix: `content.rows`/`content.discovery_families` are
+          // query_discoveries.ts's own unfiltered, "kept for back-compat" arrays — they are
+          // NOT narrowed by this tool's `min_salience` filter the way `discoveries` (above)
+          // is. Naming `discoveries` as the primaryField below means judgment_flags reports
+          // hollowness off the field this tool actually serves as its filtered answer, not
+          // off whichever back-compat array happens to still have unfiltered rows in it.
+        }, 'bodha_discoveries_get', 'synthesis_cross_domain', 'discoveries'))
       } catch (err) {
         return errorOutput('bodha_discoveries_get', String(err), { chart_id })
       }

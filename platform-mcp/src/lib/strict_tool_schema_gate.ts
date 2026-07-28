@@ -62,13 +62,27 @@
  *
  * SCOPE (still excluded): the 3 `register_gochara_windows.ts` tools (`kala_gochara_windows` data
  * is untouchable — this campaign's rails do not authorize touching anything in that path, even a
- * schema-strictness change on its serving tools) and every tool `registry_bridge.ts` registers
- * (still PV-locked in the parent ŚODHANA brief's rails; this fast-follow's own §2 rails do not
- * re-clear it, so it stays out of scope here). These remaining names are excluded from
- * strict-ification by NAME here — this file does not edit either of those source files, so it
- * carries zero merge-conflict risk with whoever eventually clears them. If a genuinely
- * load-bearing undeclared field surfaces for some OTHER tool after this gate goes live (the
- * exact risk the T4 brief flagged), add its name to the exclusion set below with a comment
+ * schema-strictness change on its serving tools; this is a PERMANENT exclusion, not a lock that
+ * lifts) and every tool `registry_bridge.ts` registers.
+ *
+ * PARISHODHANA B3 correction (2026-07-27): the ORIGINAL reason recorded here for the
+ * `registry_bridge.ts` group — "still PV-locked in the parent ŚODHANA brief's rails" — is now
+ * STALE prose: PŪRṆA-VIRĀMA closed (`briefs/close_out/PURNA_VIRAMA_REPORT_v1_0.md`, status
+ * COMPLETE, 2026-07-27), so that specific lock has lifted. The exclusion itself is CORRECTLY
+ * still in force for an independent reason that was always true and remains true: this is a
+ * ~4,200-line, extremely high-traffic file (24 registered tools; touched by SATYA-ŚEṢA,
+ * SAMĀPANA, and SHODHANA within the same week this correction was written) carrying every
+ * `assess_*`/`judgment_query`/`chart_snapshot`-class flagship tool. Flipping it to strict-schema
+ * rejection is a real behavior change for live callers (any caller currently passing an
+ * undeclared param on any of these 24 tools starts getting a hard `Input validation error`
+ * instead of a silent drop) that needs a dedicated per-tool audit of real caller payloads before
+ * it is safe — not a mechanical, low-effort trivia-tier change. Left excluded, PARKED-HONEST,
+ * pending that dedicated review; not routed to a specific future campaign here since none is
+ * yet named for it. These remaining names are excluded from strict-ification by NAME here —
+ * this file does not edit either of those source files, so it carries zero merge-conflict risk
+ * with whoever eventually clears them. If a genuinely load-bearing undeclared field surfaces for
+ * some OTHER tool after this gate goes live (the exact risk the T4 brief flagged), add its name
+ * to the exclusion set below with a comment
  * explaining why, rather than reverting the whole gate.
  */
 import { z } from 'zod'
@@ -90,16 +104,22 @@ export interface StrictSchemaGateServer {
 
 /**
  * Tool names deliberately left OUT of the portal-wide strict-schema posture change. As of
- * ŚODHANA-ŚEṢA W3.4 (2026-07-27) this is narrowed to `registry_bridge.ts`'s tools (still
- * PV-locked) and `register_gochara_windows.ts`'s tools (`kala_gochara_windows` data untouchable
- * — this campaign's rails forbid touching anything in that path). The T1/T5/T7/T8 mid-campaign
- * merge-conflict exclusions have been removed now that all ten ŚODHANA tracks are merged. See
- * file banner for full rationale.
+ * ŚODHANA-ŚEṢA W3.4 (2026-07-27) this is narrowed to `registry_bridge.ts`'s tools and
+ * `register_gochara_windows.ts`'s tools (`kala_gochara_windows` data untouchable — this
+ * campaign's rails forbid touching anything in that path). The T1/T5/T7/T8 mid-campaign
+ * merge-conflict exclusions have been removed now that all ten ŚODHANA tracks are merged.
+ * PARISHODHANA B3 correction (2026-07-27): `registry_bridge.ts`'s PV-lock has since lifted
+ * (PŪRṆA-VIRĀMA closed COMPLETE the same day) — it stays excluded on its own independent
+ * merit now (large, hot, flagship-tool file; strict-ifying it is a real behavior change
+ * needing a dedicated per-tool caller-payload audit, not a low-effort trivia fix). See file
+ * banner for full rationale.
  */
 export const STRICT_SCHEMA_GATE_EXCLUDED_TOOL_NAMES: ReadonlySet<string> = new Set([
-  // tools/retrieval/register_gochara_windows.ts (kala_gochara_windows data untouchable)
+  // tools/retrieval/register_gochara_windows.ts (kala_gochara_windows data untouchable —
+  // permanent exclusion under this campaign's rails)
   'gochara_activation_get', 'gochara_forecast_get', 'gochara_election_avoidance_get',
-  // tools/registry_bridge.ts (PV-locked, DO NOT TOUCH)
+  // tools/registry_bridge.ts (PV-lock lifted 2026-07-27; excluded pending a dedicated
+  // per-tool strict-schema audit — see file banner, "SCOPE (still excluded)")
   'get_chart_orientation', 'get_domain_reading', 'get_signals', 'traverse_graph',
   'get_positions', 'get_dashas', 'get_temporal_windows', 'get_projections',
   'get_classical_citation', 'get_remedies', 'get_chart_quality', 'list_assets',
