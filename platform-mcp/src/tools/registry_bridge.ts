@@ -72,10 +72,14 @@ import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection }
 // shallow slice. No computation is reimplemented (B.10) — dossier is a deterministic join of the
 // Total Concept Inventory × completeness accounting.
 import { runDossier, type DossierPage } from './dossier.js'
-// ṢAḌ-DARŚANA W0.4 (SHAD_DARSHANA_BRIEF_v2_0.md §3 W0.4 · §2 file map) — the two facades this
-// lane owns: kala_priority_get (PRIORITIZE) and kala_explain_get (EXPLAIN). Each is a thin
-// wrapper over an EXISTING registry capability (see registerRegistryBridgeTools's own
-// registration block below for the exact capability URIs each wraps) — no new computation.
+// ṢAḌ-DARŚANA W0.4 (SHAD_DARSHANA_BRIEF_v2_0.md §0.4/§3/§2 file map) — the view facades over
+// the elevated kala envelope. Each registers itself inline via `server.tool(...)`; each
+// import + its call inside `registerRegistryBridgeTools` below is its ONE canonical
+// registration site (brief §2: "one canonical registration per tool, asserted by test").
+// upaya-ritual-stub lane:
+import { registerKalaUpayaGet } from './kala_views/upaya.js'
+import { registerKalaRitualGet } from './kala_views/ritual.js'
+// priority-explain lane:
 import { registerKalaPriorityTool } from './kala_views/priority.js'
 import { registerKalaExplainTool } from './kala_views/explain.js'
 
@@ -4414,6 +4418,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       }
     }
   )
+
+  // ── ṢAḌ-DARŚANA W0.4 — kala_upaya_get / kala_ritual_get (brief §0.4 · §2) ──────────
+  // Both are W0 facade shells over the shared kala envelope (lib/kala_envelope.ts +
+  // lib/argument_composer.ts) — see kala_views/upaya.ts and kala_views/ritual.ts for the full
+  // implementation. kala_ritual_get additionally implements the Mode-3 routing rule
+  // (KALA_SUPREME_ELEVATION_v1_0.md §8): a Mode-3-shaped call (a non-blank `undertaking`
+  // field) never reaches any Mode-1/2 logic here — it returns an honest `wrong_view` naming
+  // `kala_elect_get`, with no passthrough/proxy/delegation to the muhūrta substrate.
+  registerKalaUpayaGet(server, principal)
+  registerKalaRitualGet(server, principal)
 
   // ── ṢAḌ-DARŚANA W0.4 — kala_priority_get / kala_explain_get ──────────────────
   // Two of the eight kala_* views (brief §2 file map: "tools/kala_views/ — now.ts, ahead.ts,
