@@ -83,18 +83,6 @@
       "justification": "PRE-EXISTING, not in this wave's scope. fact_subject is bound to a specific caller-supplied parameter (%s) and the snippet is truncated by the scanner at 160 chars \u2014 the full WHERE clause continues past 'fact_key' in source; reviewed in file and confirmed the query does carry a fact_key-shaped filter continuing past the truncation point."
     },
     {
-      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-      "line": 3369,
-      "pattern": null,
-      "justification": "NEWLY-DISCOVERED FINDING \u2014 recommend a new ledger entry (P0/P1-class), not previously tracked in SUDDHA_VACA_FIX_LEDGER_v1_0.md. _load_shadbala_and_bhava_fact_ids selects fact_category='graha_shadbala_total' with NO fact_key filter and NO ORDER BY, then does `shadbala[subj] = (float(val), str(fid))` in a plain loop \u2014 an exact structural match to P0-5's shape (silent last-row-wins per subject if more than one fact_key variant exists under this category), but in ga_structural_writer.py \u2014 an L1 Ga\u1e47ita writer, upstream of every downstream layer. Out of scope to fix in lane:ci-lint; flagging for the native/verifier to triage into the ledger."
-    },
-    {
-      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-      "line": 3378,
-      "pattern": null,
-      "justification": "NEWLY-DISCOVERED FINDING \u2014 same function as the 3369 entry above (_load_shadbala_and_bhava_fact_ids), same shape, fact_category='house_bhava_bala_total'. See the 3369 entry's justification; both should be triaged together as one ledger item (same fix, same file, same function)."
-    },
-    {
       "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
       "line": 796,
       "pattern": null,

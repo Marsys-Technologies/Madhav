@@ -1,0 +1,218 @@
+name: Fresh-Chart Schema-Drift Smoke
+
+# Native-authorized item 2c (fleet-wide vocabulary-drift close-out wave,
+# 2026-07-28): builds ONE synthetic ("fixture") chart through the FULL active
+# asset plan (every ga_*/bo_*/ka_*/ph_*/mi_* writer, topologically ordered)
+# against a database that has JUST had the current branch's migrations applied
+# on top of a real production schema snapshot. Any writer whose emitted
+# vocabulary drifts from a live CHECK constraint — the exact P0-N1/ka_bhavishya
+# defect class this wave found and dispositioned — fails LOUDLY here, on the
+# branch that introduced the drift, instead of surfacing later as a parked
+# finding discovered by hand.
+#
+# NOT wired to push/pull_request: a full end-to-end build includes at least two
+# writers (ka_gochara_sweep, ka_sangam) whose substep-heavy design needs many
+# hours of wall-clock even after the writer_timeout_seconds increase in
+# migration 462 (see that migration's own header for the measured throughput).
+# Gating every PR on a multi-hour job is not a workable CI experience, so this
+# runs on a schedule (so the schema-drift class dies structurally within days,
+# not "eventually, if someone re-derives it by hand") plus workflow_dispatch
+# for on-demand verification of a specific branch.
+#
+# Local validation performed before this workflow was authored (2026-07-28):
+#   - Confirmed platform/scripts/migrate.ts CANNOT bootstrap a genuinely empty
+#     database: 0000_seed_legacy_applied.sql / 0000b_seed_legacy_v2.sql
+#     fake-mark ~80 foundational migrations (including the one creating
+#     public.charts) as already-applied WITHOUT running them, because they
+#     were originally applied to production by hand via psql before
+#     migrate.ts tracking began. A truly empty DB therefore never gets those
+#     tables. This is why the bootstrap below starts from a real pg_dump of
+#     production (schema + the ~85 global L0/reference tables' data + the
+#     _migrations_applied tracking table's own content), not an empty DB.
+#   - Confirmed the schema requires the `vector` extension (pgvector) and the
+#     Supabase-convention `service_role`/`anon`/`authenticated` roles (used by
+#     RLS policies) to restore cleanly — both provisioned below.
+#   - Ran the bootstrap script (fresh_chart_smoke_bootstrap.py) against a local
+#     restore built this way; it created a fixture chart, computed the correct
+#     107-asset topological plan, and began executing it (caught and fixed one
+#     real bug in the bootstrap script itself — an invalid build_runs.scope
+#     literal — exactly the kind of thing this smoke test exists to catch,
+#     just one layer up). A full run through the substep-heavy writers above
+#     was not completed locally (multi-hour, see above) — the first scheduled
+#     CI run is this mechanism's real proving ground for that portion.
+
+on:
+  schedule:
+    # Wednesday 03:00 UTC — offset from icr_weekly_scan.yml's Sunday cadence so
+    # the two expensive scheduled jobs don't compete for runner minutes.
+    - cron: '0 3 * * 3'
+  workflow_dispatch:
+
+jobs:
+  fresh-chart-smoke:
+    name: Fresh-chart end-to-end build (schema-drift smoke)
+    runs-on: ubuntu-latest
+    # Generous ceiling for the substep-heavy writers (ka_gochara_sweep alone is
+    # budgeted writer_timeout_seconds=21600 / 6h per migration 462; ka_sangam is
+    # comparably heavy). Well within GitHub Actions' own 6h per-job default in
+    # spirit but explicit here since the default depends on plan/runner config.
+    timeout-minutes: 480
+
+    permissions:
+      contents: read
+      id-token: write
+
+    services:
+      postgres:
+        # Vanilla postgres images lack pgvector; several bo_*/L2 tables
+        # (bodha_signal_embeddings and friends) use the `vector` column type.
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fresh_chart_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy (read path for the production schema snapshot)
+        # Read-only in effect: this job only ever SELECTs from production (via
+        # pg_dump) — it never writes to the production connection. Follow-up
+        # hygiene item: provision a dedicated read-only DB role for this job
+        # instead of reusing the deploy pipeline's WIF service account, so a
+        # bug in this workflow cannot theoretically reach a write path.
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5433 \
+            madhav-astrology:asia-south1:amjis-postgres &
+          sleep 5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install platform deps (migrate.ts + pg_dump orchestration)
+        working-directory: platform
+        run: npm ci
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python sidecar deps
+        run: pip install -r platform/python-sidecar/requirements.txt --quiet
+
+      - name: Snapshot production schema + reference data + migration state
+        # Four dumps, deliberately separate:
+        #   1. --schema-only  : every table/constraint/index/policy, no rows.
+        #   2. --data-only, explicit --table list : the ~85 GLOBAL reference
+        #      tables (bg_*, brahma_*, reference_*, classical_*, ephemeris_daily,
+        #      panchanga_daily, asset_registry, asset_coefficients, ...) that
+        #      writers read but never chart-scope — never chart_facts/bodha_*/
+        #      kala_*/phala_*/mimamsa_* or any per-chart table.
+        #   3. --data-only, _migrations_applied only : WITHOUT this, migrate.ts
+        #      sees an empty tracker and tries to REPLAY all ~350 historical
+        #      migrations against a schema that's already at their end state —
+        #      several are non-idempotent (RENAME COLUMN etc.) and fail. This
+        #      dump is what tells migrate.ts "these are already done", so it
+        #      correctly applies only what's new on this branch.
+        #   4. --data-only, asset_throughput WHERE chart_id IS NULL : the ~32
+        #      GLOBAL-scope assets (bg_ephemeris and friends) are chart-
+        #      independent singletons already 'lit' in production. Without this,
+        #      the orchestrator has no record of that and redundantly recomputes
+        #      e.g. bg_ephemeris's full historical date range from scratch on
+        #      every scheduled run (confirmed locally: ~825k ephemeris_daily rows
+        #      restored by dump #2 above, but bg_ephemeris still re-derived them
+        #      because it had no asset_throughput row saying that work is done).
+        env:
+          PROD_DATABASE_URL: postgresql://postgres@127.0.0.1:5433/amjis
+        run: |
+          REFTABLES=(asset_registry asset_coefficients build_dependencies \
+            capability_asset_tool_bindings capability_tool_registry \
+            fact_category_ownership mimamsa_negative_controls mimamsa_signal_families \
+            bg_avastha_schemes bg_combustion_orbs bg_dignity_reference bg_graha_dik \
+            bg_graha_naisargika_friendship bg_medical_mappings bg_motion_state_thresholds \
+            bg_nakshatra_medical bg_prashna_fructification_rules bg_prashna_lagna_methods \
+            bg_prashna_significators bg_prashna_special_techniques bg_prashna_tajik_yogas \
+            bg_shashtiamsha_deities bg_sign_medical bg_transit_av_gates bg_transit_engine \
+            bg_transit_moorti bg_transit_rules bg_transit_vedha bg_vastu_direction_remedials \
+            bg_vastu_directions brahma_activity_ontology brahma_class_priors \
+            brahma_compendium_index brahma_dasha_systems brahma_dosha_catalog \
+            brahma_event_ontology brahma_formula_constants brahma_ontology \
+            brahma_remedy_corpus brahma_vichara_constants brahma_yoga_catalog \
+            classical_attributions classical_text_chunks classical_texts \
+            classical_texts_source ephemeris_daily panchanga_daily reference_aspects \
+            reference_constants reference_dasha_systems reference_doshas \
+            reference_glossary reference_houses reference_karakas reference_nakshatra \
+            reference_nakshatra_matrix reference_nakshatra_pada reference_nakshatras \
+            reference_planets reference_signs reference_strength_systems \
+            reference_topic_tags reference_upagrahas reference_vargas reference_yogas \
+            sutravali_review sutravali_rules vidhi_floor_items vidhi_intent_floors \
+            vidhi_primitives tool_registry)
+          ARGS=()
+          for t in "${REFTABLES[@]}"; do ARGS+=(--table="$t"); done
+          pg_dump "$PROD_DATABASE_URL" --schema-only --no-owner --no-privileges \
+            -f schema_only.sql
+          pg_dump "$PROD_DATABASE_URL" --data-only --disable-triggers "${ARGS[@]}" \
+            -f refdata.sql
+          pg_dump "$PROD_DATABASE_URL" --data-only --disable-triggers \
+            --table=_migrations_applied -f migrations_state.sql
+          psql "$PROD_DATABASE_URL" -c "\copy (SELECT * FROM asset_throughput WHERE chart_id IS NULL) TO 'global_asset_throughput.csv' WITH CSV HEADER"
+
+      - name: Restore snapshot into the ephemeral service-container database
+        env:
+          PGPASSWORD: postgres
+          SMOKE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
+        run: |
+          psql "$SMOKE_DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          psql "$SMOKE_DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+          psql "$SMOKE_DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          # Supabase-convention roles used by RLS policies in the dumped schema.
+          psql "$SMOKE_DATABASE_URL" -c "
+            DO \$\$
+            BEGIN
+              IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role; END IF;
+              IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon; END IF;
+              IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated; END IF;
+            END
+            \$\$;"
+          psql "$SMOKE_DATABASE_URL" -v ON_ERROR_STOP=1 -f schema_only.sql
+          psql "$SMOKE_DATABASE_URL" -v ON_ERROR_STOP=1 -f refdata.sql
+          psql "$SMOKE_DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations_state.sql
+          psql "$SMOKE_DATABASE_URL" -c "\copy asset_throughput FROM 'global_asset_throughput.csv' WITH CSV HEADER"
+
+      - name: Apply any migrations new on this branch
+        # Everything already reflected in migrations_state.sql above is
+        # correctly skipped (see the job's header comment on why that dump is
+        # required); only genuinely new migrations introduced by this branch
+        # actually run here — the first real place a schema change and the
+        # writer fleet meet before landing on main.
+        working-directory: platform
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
+        run: npx tsx scripts/migrate.ts
+
+      - name: Build one fixture chart through every active asset
+        working-directory: platform
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/fresh_chart_smoke
+        run: python3 scripts/ci/fresh_chart_smoke_bootstrap.py

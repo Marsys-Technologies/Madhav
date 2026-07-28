@@ -3361,6 +3361,17 @@ def _load_shadbala_and_bhava_fact_ids(
 ) -> tuple[dict[str, tuple[float, str]], dict[str, tuple[float, str]]]:
     """Load shadbala and bhava bala values + fact_ids from chart_facts.
     Returns (shadbala_map, bhava_bala_map) where values are (value_num, fact_id).
+
+    P0-N1 fix (ŚUDDHA-VĀCA parked finding, native-authorized): `graha_shadbala_total`
+    carries 3 fact_key variants per graha ('rupa' raw achieved, 'ratio'
+    achieved/required, 'required_rupa' INVARIANT-only) — an unpinned selection let
+    Postgres's unordered row return silently decide which variant survived the
+    dict-overwrite below. Pinned to 'rupa' (the raw achieved value this function's
+    own caller normalizes against _COMPOSITE_SHADBALA_REQUIRED), matching the same
+    convention already established by the bo_laksana.py (P0-5) and
+    registry_bridge.ts (P0-1..4) fixes. `house_bhava_bala_total` has only one
+    fact_key ('total') live today but is pinned too, defensively, per the N.7
+    Narration Fidelity Principle (§N.7.2).
     """
     shadbala: dict[str, tuple[float, str]] = {}
     bhava_bala: dict[str, tuple[float, str]] = {}
@@ -3371,6 +3382,7 @@ def _load_shadbala_and_bhava_fact_ids(
                 FROM chart_facts
                 WHERE chart_id = %s AND ayanamsha_id = %s
                   AND fact_category = 'graha_shadbala_total'
+                  AND fact_key = 'rupa'
             """, (chart_id, ayanamsha_id))
             for subj, val, fid in cur.fetchall():
                 if val is not None:
@@ -3380,6 +3392,7 @@ def _load_shadbala_and_bhava_fact_ids(
                 FROM chart_facts
                 WHERE chart_id = %s AND ayanamsha_id = %s
                   AND fact_category = 'house_bhava_bala_total'
+                  AND fact_key = 'total'
             """, (chart_id, ayanamsha_id))
             for subj, val, fid in cur.fetchall():
                 if val is not None:
