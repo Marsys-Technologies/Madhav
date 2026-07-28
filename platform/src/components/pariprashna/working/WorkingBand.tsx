@@ -9,20 +9,22 @@ function formatElapsed(totalSeconds: number): string {
   return `0:${String(s).padStart(2, '0')}`
 }
 
-/** Client clock derived from `openedAtMs` — never round-trips through the reducer (§8.5). */
+/**
+ * Client clock derived from `openedAtMs` — never round-trips through the
+ * reducer (§8.5). A 1s-resolution "calm clock, not a stopwatch" (§5.3): the
+ * interval only runs while `running`; once the turn settles, the last tick
+ * it wrote simply stops being updated (frozen final elapsed), which is why
+ * this holds no `else` branch that recomputes from `Date.now()` — that
+ * would make a settled turn's displayed time drift upward forever.
+ */
 function useElapsedSeconds(openedAtMs: number, running: boolean): number {
-  const [seconds, setSeconds] = useState(0)
+  const [tickSeconds, setTickSeconds] = useState(() => Math.floor((Date.now() - openedAtMs) / 1000))
   useEffect(() => {
     if (!running) return
-    const id = setInterval(() => {
-      setSeconds(Math.floor((Date.now() - openedAtMs) / 1000))
-    }, 1000)
+    const id = setInterval(() => setTickSeconds(Math.floor((Date.now() - openedAtMs) / 1000)), 1000)
     return () => clearInterval(id)
   }, [openedAtMs, running])
-  useEffect(() => {
-    if (!running) setSeconds(Math.floor((Date.now() - openedAtMs) / 1000))
-  }, [running, openedAtMs])
-  return seconds
+  return tickSeconds
 }
 
 function currentLiveLabel(turn: TurnState): string {

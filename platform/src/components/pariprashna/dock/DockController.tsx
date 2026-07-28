@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
 interface ActiveCitation {
   turnId: string
@@ -51,27 +51,30 @@ export function DockControllerProvider({ children, defaultOpen }: { children: Re
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | null>(null)
   const [mobileSheetCitation, setMobileSheetCitation] = useState<ActiveCitation | null>(null)
 
-  const setOpen = (next: boolean) => {
+  const setOpen = useCallback((next: boolean) => {
     setOpenState(next)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(STORAGE_KEY, next ? '0' : '1')
     }
-  }
+  }, [])
 
-  const openToCitation = (turnId: string, n: number) => {
-    if (isNarrowViewport()) {
-      setMobileSheetCitation({ turnId, n })
-      return
-    }
-    setOpen(true)
-    setActiveCitation({ turnId, n })
-  }
+  const openToCitation = useCallback(
+    (turnId: string, n: number) => {
+      if (isNarrowViewport()) {
+        setMobileSheetCitation({ turnId, n })
+        return
+      }
+      setOpen(true)
+      setActiveCitation({ turnId, n })
+    },
+    [setOpen],
+  )
 
-  const closeMobileSheet = () => setMobileSheetCitation(null)
+  const closeMobileSheet = useCallback(() => setMobileSheetCitation(null), [])
 
   const value = useMemo(
     () => ({ open, setOpen, activeCitation, mobileSheetCitation, closeMobileSheet, openToCitation }),
-    [open, activeCitation, mobileSheetCitation],
+    [open, activeCitation, mobileSheetCitation, setOpen, openToCitation, closeMobileSheet],
   )
 
   return <DockContext.Provider value={value}>{children}</DockContext.Provider>

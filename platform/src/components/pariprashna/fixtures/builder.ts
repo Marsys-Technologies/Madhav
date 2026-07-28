@@ -1,5 +1,6 @@
 import type {
   Citation,
+  GroundingSummary,
   PredictionCardData,
   ReadingRole,
   TableBlockContent,
@@ -135,7 +136,7 @@ export class FixtureBuilder {
     })
   }
 
-  turnCommit(grounding: WireEvent extends { type: 'turn.commit'; grounding: infer G } ? G : never) {
+  turnCommit(grounding: GroundingSummary) {
     this.push({ type: 'turn.commit', turnId: this.turnId, grounding, eventId: nextEventId() })
   }
 
