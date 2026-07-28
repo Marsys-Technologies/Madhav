@@ -115,13 +115,16 @@ describe('R-1.1 descriptor migration — universal field coverage', () => {
     // projection). Everything else gets a tag set.
     expect(total - withProjectionTags).toBe(CLASSIFICATION.INTERNAL_INTROSPECTION_URIS.size)
 
-    // register.glossary and family_overrides are deliberately NOT populated
+    // register.glossary and family_overrides are still deliberately NOT populated
     // this pass (genuine per-capability editorial work — see
-    // descriptor_defaults.ts's module doc comment). Asserting zero here
-    // documents that as an intentional, CI-visible gap rather than a silent
-    // one — this assertion should FAIL (and force an update) the day a
-    // future editorial wave starts populating either field.
-    expect(withRegister).toBe(0)
+    // descriptor_defaults.ts's module doc comment). `register` itself, however,
+    // is no longer universally undefined: Paripraśna Build PB-1 Lane S-2 (the
+    // "future editorial wave" this comment predicted) populated
+    // `register.reader_label` — NOT `register.glossary` — on the ~30
+    // capabilities the acharya-grade interpretive floor surfaces a working-band
+    // label for (see platform/src/lib/pariprashna/lexicon.ts). withRegister now
+    // tracks that count; withFamilyOverrides remains an honest zero.
+    expect(withRegister).toBe(33)
     expect(withFamilyOverrides).toBe(0)
   })
 

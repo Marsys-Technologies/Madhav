@@ -1,0 +1,173 @@
+name: Paripraśna Acceptance Harness — CI
+
+# Lane C-2 (PB-1 / DHĀRĀ) — the acceptance instrument other Paripraśna lanes
+# (S-1 protocol/route, S-2 lexicon, S-3 citations, C-1 renderer) merge
+# against. Unlike chat-v2-ci.yml, this workflow has NO dependency on the
+# Next.js app, Firebase, or any secret — the whole battery runs against the
+# standalone replay server (scripts/replay/server.ts) + a static test-only
+# harness page, so it is fully self-contained and should need zero secret
+# wiring even once real CI runs this. That is why this stub is more complete
+# than a typical "TODO" placeholder; the remaining TODOs are noted inline.
+#
+# TODO(S-1 lane, post-merge): once the real SSE route exists, add a second
+#   job here that points the SAME gate battery at the real route instead of
+#   the replay server (swap `pariprashna:replay-server` for the real dev
+#   server + a real-fixture-mode flag) — the gates themselves should not
+#   need to change, only what they're pointed at.
+# TODO: wire branch protection to require `gate-battery-chromium` once this
+#   lane merges (native/Cowork governance action, not this lane's to set).
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'platform/tests/pariprashna/**'
+      - 'platform/scripts/replay/**'
+      - 'platform/src/lib/pariprashna/**'
+      - '.github/workflows/pariprashna-ci.yml'
+  push:
+    branches:
+      - 'pb/1/**'
+    paths:
+      - 'platform/tests/pariprashna/**'
+      - 'platform/scripts/replay/**'
+      - 'platform/src/lib/pariprashna/**'
+
+env:
+  NODE_VERSION: '20'
+
+defaults:
+  run:
+    working-directory: platform
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 1 — reducer unit tests + fixture-build validation
+  # Gate: HARD
+  # ───────────────────────────────────────────────────────────────────────
+  reducer-and-fixtures:
+    name: 'Reducer tests + fixture build'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Rebuild fixtures (validates against the canonical event schema)
+        run: npm run pariprashna:fixtures:build
+
+      - name: Fixtures are up to date (no uncommitted diff after rebuild)
+        run: |
+          git diff --exit-code -- tests/pariprashna/fixtures/ \
+            || (echo "::error::Fixture JSON is stale — run 'npm run pariprashna:fixtures:build' and commit the result." && exit 1)
+
+      - name: Golden reducer tests (determinism + idempotent dedup)
+        run: npx vitest run tests/pariprashna/reducer/golden.test.ts
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 2 — gate battery, desktop chromium
+  # Gate: HARD — this is the acceptance instrument; it must stay green.
+  # ───────────────────────────────────────────────────────────────────────
+  gate-battery-chromium:
+    name: 'Gate battery (chromium)'
+    runs-on: ubuntu-latest
+    needs: reducer-and-fixtures
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run gate battery (G-CLS, G-CARET, G-TRANSMUTE, G-RAF, G-VIEWPORT, G-PILL, G-AXE, G-MOBILE)
+        run: npx playwright test --config=tests/pariprashna/playwright.config.ts --project=chromium --reporter=github
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pariprashna-gate-report-chromium
+          path: platform/test-results/
+          retention-days: 7
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 3 — gate battery, mobile viewport (390x844)
+  # Gate: HARD (G-MOBILE requires the FULL battery at this viewport)
+  # ───────────────────────────────────────────────────────────────────────
+  gate-battery-mobile:
+    name: 'Gate battery (mobile 390x844)'
+    runs-on: ubuntu-latest
+    needs: reducer-and-fixtures
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run gate battery at 390x844
+        run: npx playwright test --config=tests/pariprashna/playwright.config.ts --project=mobile-390x844 --reporter=github
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pariprashna-gate-report-mobile
+          path: platform/test-results/
+          retention-days: 7
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 4 — red-then-green selftest (non-decoration proof)
+  # Gate: SOFT (informational) — runs every gate twice (violated + clean);
+  # roughly 2x the runtime of Job 2, so kept soft rather than blocking every
+  # PR. Promote to HARD (drop continue-on-error) once lane C-2 is stable and
+  # the extra ~1 more minute of CI time is judged worth spending on every PR
+  # touching this path, or move it to the weekly schedule pattern chat-v2-ci
+  # uses if per-PR cost is too high.
+  # ───────────────────────────────────────────────────────────────────────
+  gate-battery-selftest:
+    name: 'Gate battery selftest (red-then-green proof) [soft]'
+    runs-on: ubuntu-latest
+    needs: gate-battery-chromium
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Red-then-green selftest — every gate must fail seeded, pass clean
+        run: npm run pariprashna:selftest

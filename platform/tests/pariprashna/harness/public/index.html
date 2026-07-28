@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Paripraśna acceptance harness (test-only)</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-testid="harness-root" data-progress="0" data-done="false">
+  <header class="hdr">
+    <span data-testid="phase-label" id="phase-label">idle</span>
+  </header>
+
+  <section class="activities" data-testid="activities" id="activities" aria-label="Retrieval activity"></section>
+
+  <main
+    id="thread-viewport"
+    data-testid="thread-viewport"
+    role="region"
+    aria-label="Conversation thread"
+  >
+    <div id="settled" data-testid="settled-region"></div>
+    <div
+      id="tail"
+      data-testid="tail-block"
+      role="log"
+      aria-live="polite"
+      aria-atomic="false"
+      aria-label="Streaming response"
+    ></div>
+  </main>
+
+  <button
+    id="follow-pill"
+    data-testid="follow-pill"
+    aria-label="Jump to latest"
+    hidden
+  >Follow ▼</button>
+
+  <section class="flags" data-testid="flags" id="flags" aria-label="Notices"></section>
+
+  <footer class="composer">
+    <label for="composer-input" class="sr-only">Message input</label>
+    <input
+      id="composer-input"
+      data-testid="composer-input"
+      type="text"
+      aria-label="Message input"
+      placeholder="Ask about the chart..."
+    />
+    <button id="send-btn" data-testid="send-btn" aria-label="Send message">Send</button>
+    <button id="abort-btn" data-testid="abort-btn" aria-label="Stop generating response" hidden>Stop</button>
+  </footer>
+
+  <pre id="debug-json" data-testid="debug-json" hidden></pre>
+
+  <script type="module" src="/client.mjs"></script>
+</body>
+</html>
