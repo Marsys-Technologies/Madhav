@@ -134,8 +134,13 @@ function measureCaret() {
   if (!caret || caret.hidden) return
   harness.caretChecks += 1
   const caretRect = caret.getBoundingClientRect()
-  const tailTarget = violate === 'caret' ? (settled.firstElementChild || tail) : tail
-  const tailRect = tailTarget.getBoundingClientRect()
+  // NOTE: this is the DETECTOR — it must always check against ground truth
+  // (the real tail block), never against the same violate-redirected target
+  // placeCaret() used to position the caret. Redirecting both sides made an
+  // earlier version of this violation self-consistent (the caret was
+  // "contained" within the very element it was wrongly positioned against)
+  // and silently non-detecting.
+  const tailRect = tail.getBoundingClientRect()
   const isSubset =
     caretRect.top >= tailRect.top - 1 &&
     caretRect.left >= tailRect.left - 1 &&
@@ -486,6 +491,20 @@ function handleTypedEvent(event) {
           spacer.className = 'violate-cls-spacer'
           settled.insertBefore(spacer, settled.firstChild)
         }
+
+        if (violate === 'transmute') {
+          // Deliberate violation: mutate a PREVIOUSLY-committed block's
+          // content (a "prose reflow after commit" / prose-to-chip flip
+          // bug) — appends a marker to the first other committed block, if
+          // one exists, so a later re-serialization diff catches it.
+          const otherCommitted = Array.from(settled.querySelectorAll('.block[data-committed="true"]')).find(
+            (b) => b.dataset.blockId !== event.block_id,
+          )
+          if (otherCommitted && otherCommitted.__contentEl) {
+            otherCommitted.__contentEl.appendChild(document.createTextNode(' [mutated-post-commit]'))
+          }
+        }
+
         hideCaret()
         maybeAutoScroll()
       })

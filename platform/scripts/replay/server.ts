@@ -55,7 +55,14 @@ function sleep(ms: number): Promise<void> {
 }
 
 /** Write `payload` to the response, optionally in `chunkBytes`-sized pieces
- *  with a 1ms pause between pieces (simulates a fragmenting transport). */
+ *  instead of one write() call — simulates a fragmenting transport so the
+ *  client's SSE frame-reassembly is genuinely exercised across many small
+ *  chunks. Deliberately does NOT add a per-chunk delay: the fixture's own
+ *  `delay_ms` already controls per-EVENT pacing, and adding real wall-clock
+ *  latency per BYTE as well (as an earlier version did, at 1ms/byte) made a
+ *  ~100-byte-per-event, 78-event fixture take 10+ real seconds to replay for
+ *  no benefit — frame-reassembly robustness only requires that the bytes
+ *  arrive as separate writes, not that they arrive slowly. */
 async function writeChunked(res: ServerResponse, payload: string, chunkBytes?: number): Promise<void> {
   if (!chunkBytes || chunkBytes <= 0 || chunkBytes >= payload.length) {
     res.write(payload)
@@ -64,9 +71,11 @@ async function writeChunked(res: ServerResponse, payload: string, chunkBytes?: n
   const buf = Buffer.from(payload, 'utf8')
   for (let i = 0; i < buf.length; i += chunkBytes) {
     res.write(buf.subarray(i, i + chunkBytes))
-    // eslint-disable-next-line no-await-in-loop
-    await sleep(1)
   }
+  // Yield once after the whole frame so Node actually flushes the writes as
+  // distinct chunks on the wire instead of the OS/runtime coalescing a tight
+  // synchronous loop into one packet.
+  await sleep(0)
 }
 
 async function handleStream(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
