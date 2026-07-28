@@ -177,8 +177,45 @@ if (violate === 'viewport') viewport.classList.add('violate-viewport')
 
 // ─── block content rendering (kind-aware) ───────────────────────────────────
 
-function renderBlockContent(el, block) {
+// Two rendering strategies, chosen per block kind:
+//
+//  - REBUILDABLE kinds (table, list): the DOM has no stable place to append
+//    an incremental fragment (a table needs a whole new <tr>, a list a new
+//    structural parse), so every delta rebuilds the kind's DOM wholesale
+//    from the block's accumulated raw text. Safe because these kinds never
+//    carry inline seams in this harness.
+//  - APPEND kinds (paragraph/heading/blockquote/code): a delta appends a
+//    plain text node with ONLY the new chunk. This is deliberate — an
+//    earlier version re-set `contentEl.textContent` from the full
+//    accumulated string on every delta, which silently wiped out any
+//    `seam.open` placeholder <span> already inserted as a sibling (textContent
+//    replaces ALL children with one text node). That bug made a citation
+//    seam disappear the moment the next delta arrived. Appending preserves
+//    whatever seam/citation-chip elements are already in the DOM.
+const REBUILDABLE_KINDS = new Set(['table', 'list'])
+
+function initBlockContent(el, block) {
   el.dataset.kind = block.kind
+  if (REBUILDABLE_KINDS.has(block.kind)) {
+    rebuildBlockContent(el, block)
+    return
+  }
+  const tag = block.kind === 'heading' ? 'h2' : block.kind === 'blockquote' ? 'blockquote' : block.kind === 'code' ? 'pre' : 'p'
+  const contentEl = document.createElement(tag)
+  el.appendChild(contentEl)
+  el.__contentEl = contentEl
+}
+
+function appendBlockDelta(el, block, deltaText) {
+  if (REBUILDABLE_KINDS.has(block.kind)) {
+    rebuildBlockContent(el, block)
+    return
+  }
+  if (!el.__contentEl) initBlockContent(el, block)
+  el.__contentEl.appendChild(document.createTextNode(deltaText))
+}
+
+function rebuildBlockContent(el, block) {
   if (block.kind === 'table') {
     renderTable(el, block.text)
   } else if (block.kind === 'list') {
@@ -189,12 +226,6 @@ function renderBlockContent(el, block) {
       ul.appendChild(li)
     }
     el.replaceChildren(ul)
-  } else {
-    const tag = block.kind === 'heading' ? 'h2' : block.kind === 'blockquote' ? 'blockquote' : block.kind === 'code' ? 'pre' : 'p'
-    const contentEl = el.__contentEl && el.__contentEl.tagName.toLowerCase() === tag ? el.__contentEl : document.createElement(tag)
-    contentEl.textContent = block.text
-    if (!el.contains(contentEl)) el.replaceChildren(contentEl)
-    el.__contentEl = contentEl
   }
 }
 
@@ -307,8 +338,17 @@ function placeCaret() {
   const target = violate === 'caret' ? (settled.lastElementChild || tail) : tail
   const rect = target.getBoundingClientRect()
   const viewportRect = viewport.getBoundingClientRect()
-  caret.style.top = `${rect.bottom - viewportRect.top + viewport.scrollTop - 16}px`
-  caret.style.left = `${rect.left - viewportRect.left + 8}px`
+  // The caret must be a subset of the target block's rect at every frame
+  // (G-CARET). A fixed 16px caret height can overshoot a target that is
+  // itself shorter than 16px (e.g. the first frame of a table block with
+  // only a thin header row rendered so far) — clamp the caret's own height
+  // to the target's available height so containment holds by construction,
+  // never by coincidence.
+  const caretHeight = Math.max(1, Math.min(16, rect.height))
+  caret.style.height = `${caretHeight}px`
+  caret.style.top = `${rect.bottom - viewportRect.top + viewport.scrollTop - caretHeight}px`
+  const leftOffset = Math.min(8, Math.max(0, rect.width - 2))
+  caret.style.left = `${rect.left - viewportRect.left + leftOffset}px`
   caret.hidden = false
 }
 
@@ -360,9 +400,13 @@ followPill.addEventListener('click', () => {
 // ─── event -> DOM ─────────────────────────────────────────────────────────────
 
 function handleTypedEvent(event) {
-  const prevState = state
+  // NOTE: reducer.mjs's applyEvent mutates state IN PLACE and returns the
+  // same object reference — comparing state to itself after the call would
+  // always be trivially "equal" (same Set instance). Capture the dedup
+  // count BEFORE calling, not by snapshotting the reference.
+  const sizeBefore = state.applied_ids.size
   state = applyEvent(state, event, { strict: false })
-  if (state.applied_ids.size === prevState.applied_ids.size) return // was a duplicate, no-op
+  if (state.applied_ids.size === sizeBefore) return // was a duplicate, no-op
 
   switch (event.type) {
     case 'phase': {
@@ -383,7 +427,7 @@ function handleTypedEvent(event) {
         el.dataset.committed = 'false'
         tail.appendChild(el)
         openBlockEls.set(event.block_id, el)
-        renderBlockContent(el, state.blocks.get(event.block_id))
+        initBlockContent(el, state.blocks.get(event.block_id))
         placeCaret()
         maybeAutoScroll()
       })
@@ -393,7 +437,7 @@ function handleTypedEvent(event) {
       scheduleRender(() => {
         const el = openBlockEls.get(event.block_id)
         if (!el) return
-        renderBlockContent(el, state.blocks.get(event.block_id))
+        appendBlockDelta(el, state.blocks.get(event.block_id), event.text)
         placeCaret()
         maybeAutoScroll()
       })
