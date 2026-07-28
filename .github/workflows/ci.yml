@@ -240,6 +240,45 @@ jobs:
         # waves to clean up. See platform/scripts/governance/naming_rules.yaml.
         run: python platform/scripts/governance/naming_lint.py
 
+  fact-category-pin-lint:
+    # ŚUDDHA-VĀCA Phase C, lane:ci-lint (brief §5 C.7 — the systemic guard).
+    # Permanent CI enforcement against the whole "D1 defect class": a selector
+    # that picks/reduces a chart_facts row by fact_category alone, without
+    # pinning fact_key, so which row wins is undefined the moment more than
+    # one row matches (the exact bugs fixed individually this wave in
+    # bo_laksana.py P0-5 and registry_bridge.ts P0-1 — see
+    # SUDDHA_VACA_FIX_LEDGER_v1_0.md). Stdlib-only script (no pyyaml needed).
+    name: Fact-Category Pinning Gate (§5 C.7)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fact-category pin lint — self-test (bundled fixtures)
+        # Bundled PASS/FAIL fixtures (Python SQL + TypeScript .find/.filter)
+        # prove the scanner catches the unsafe pattern in both languages and
+        # does NOT flag the correctly key-pinned + ordered/sorted form, before
+        # it's trusted to scan the real repo.
+        run: python platform/scripts/governance/check_fact_category_pinning.py --self-test
+
+      - name: Fact-category pin lint — repo scan (allowlist-aware)
+        # Fails ONLY on violations not present in
+        # fact_category_pin_allowlist.json, each entry of which carries a
+        # written justification. Pre-existing debt found at rollout is
+        # allowlisted with an honest disposition (see that file); a NEW,
+        # non-allowlisted violation is always a hard fail — this lint has no
+        # baseline-style auto-accept for future violations.
+        run: python platform/scripts/governance/check_fact_category_pinning.py
+
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +
