@@ -1,11 +1,14 @@
 ---
 artifact: SUDDHA_VACA_FIX_LEDGER
 canonical_id: SUDDHA_VACA_FIX_LEDGER
-version: 1.1
-status: PARTIAL — P0-5,6,7,8,10,11 + the P2 allowlist one-liner + C.7 VERIFIED-FIXED and merged to
-  main (PRs #835-840); P0-1..4 (lane:serve-shadbala) and P0-9 (lane:ga-tajaka) remain PARKED on
-  PARISHODHANA PRs #827/#828 (confirmed open at this update). See SUDDHA_VACA_REPORT_v1_0.md's
-  Phase C/D/E/F section for full evidence.
+version: 1.2
+status: COMPLETE — all 7 P0 items (P0-1..11 across the 7 lanes) + the P2 allowlist
+  one-liner + C.7 VERIFIED-FIXED and merged to main (PRs #835-840, #852-853).
+  PARISHODHANA #827/#828 landed 2026-07-28, unblocking lane:serve-shadbala and
+  lane:ga-tajaka, both now fixed/merged/deployed-or-rebuilt/verified. See
+  SUDDHA_VACA_REPORT_v1_0.md's "Phase C2/D2/E2/F2" section for full evidence. The
+  P0-NEW / P3-NEW findings below remain PARKED-HONEST, correctly out of this
+  ledger's authorization — not unmet items of this ledger's own 7 lanes.
 created: 2026-07-28
 chart_under_test: 482012f1-710e-4a25-994a-93821f5871aa
 source: NARRATION_SURFACE_CENSUS_v1_0.md (Wave 1) + seed-reconciliation pass over
