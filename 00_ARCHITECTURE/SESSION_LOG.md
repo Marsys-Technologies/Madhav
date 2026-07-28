@@ -34318,3 +34318,188 @@ this arc. Six real, out-of-scope findings remain honestly parked for a future wa
 the native's discretion.
 
 *End of SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28 entry — the arc's actual full stop.*
+
+## PARKED-FINDINGS-3ITEM-2026-07-28 — 3-item native authorization: migration-339 (DONE), ga_structural + vocabulary audit + CI smoke (DONE), ka_gochara_sweep parity (PARKED-HONEST, native-directed stop)
+
+```yaml
+session_open:
+  session_id: PARKED-FINDINGS-3ITEM-2026-07-28
+  campaign: SUDDHA_VACA_PARKED_FINDINGS
+  mode: "Fully autonomous, strict item-by-item order, one dedicated Opus Verifier
+    gate per item before the next item starts. Same rails as ŚUDDHA-VĀCA: TEST-FIRST,
+    snapshot-first-tested-rollback before any destructive/long-running DB operation,
+    PRIME RULE (truth over completion)."
+  may_touch: "platform/supabase/migrations/469_*.sql (new); platform/python-sidecar/
+    tests/test_ph_wave7.py; platform/python-sidecar/ga_writers/ga_structural_writer.py;
+    platform/python-sidecar/ga_writers/__tests__/test_ga_structural_shadbala_fact_key_pin.py
+    (new); platform/scripts/governance/fact_category_pin_allowlist.json;
+    platform/scripts/ci/fresh_chart_smoke_bootstrap.py (new);
+    .github/workflows/fresh_chart_smoke.yml (new);
+    00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/PARKED_FINDINGS_CLOSE_v1_0.md
+    (new); CURRENT_STATE_v1_0.md; SESSION_LOG.md (this entry). Chart-scoped DB
+    operations on the operator E2E chart (1c826d5a) for ka_gochara_sweep only."
+  must_not_touch: "The FROZEN orchestrator contract (pipeline/orchestrator/*.py) —
+    even after discovering a real defect in it this session, per the freeze's own
+    rule (raise with the native, do not patch); FORENSIC birth anchors; the
+    canonical chart's (482012f1) any data; any file under active PARISHODHANA or
+    PARIPRAŚNA BUILD campaign ownership."
+  red_team_due: "Not triggered — this closes three specifically-scoped, natively-
+    authorized items (two code fixes with their own TEST-FIRST + Verifier
+    discipline, one data operation), not a macro-phase boundary."
+```
+
+### Body
+
+**Item 1 — migration-339 narration_model OpenAI-allowlist drift (P0-N2, carried
+from last wave's disposition table): VERIFIED-FIXED.** `phala_phaladesa
+.narration_model`'s DB CHECK constraint permitted `'gpt-4o'`/`'gpt-4-turbo'`
+despite the codebase's Gemini/DeepSeek-only policy — the Python allowlist had
+already excluded them, the DB constraint (documented as the last line of
+defense) had not. New surgical migration 469 (guarded pre-flight check, no
+existing row affected), new regression test scanning all migrations for the
+constraint's final definition. Merged PR #862, applied directly to production,
+live-verified. Opus Verifier: **VERIFIED-FIXED**, no caveats.
+
+**Item 2 — `ga_structural_writer.py` L1 defect + fleet-wide vocabulary audit +
+fresh-chart CI smoke: VERIFIED-FIXED-WITH-CAVEATS (cosmetic only).**
+`_load_shadbala_and_bhava_fact_ids` selected `graha_shadbala_total`/
+`house_bhava_bala_total` by `fact_category` alone — the same D1_MISSELECT shape
+as P0-5, against a category confirmed to carry 3 fact_key variants. TEST-FIRST
+proved the defect (MOON resolving to the wrong fact_key value depending on row
+order) before pinning `fact_key='rupa'`/`'total'`. Ran a fleet-wide audit of
+all 50 enum-shaped CHECK constraints against the writers that populate them (4
+parallel research passes): 47 clean, 1 fixed (above), 2 new findings
+PARKED-HONEST (`ka_bhavishya_lekha.py`'s stale post-migration-386 domain
+vocabulary — can fail a live build; `chart_dashas`'s CLI-only scope-cap
+sentinel — silently swallowed, low urgency). `mimamsa_*` tables confirmed
+clean (TypeScript-validated). Added a new scheduled (+ `workflow_dispatch`)
+`fresh_chart_smoke.yml`: builds one fixture chart through the full active
+asset plan against a database bootstrapped from a real production schema
+snapshot with the branch's migrations applied on top. Discovered along the
+way that `migrate.ts` cannot bootstrap a genuinely empty database (a fake
+legacy-seed migration marks ~80 foundational migrations as already-applied
+without running them) — documented in the workflow's own header. Local
+validation progressed cleanly through the full L0/L1/L2 fleet into L3 with
+zero CHECK-constraint failures, catching one real bug in the bootstrap script
+itself (an invalid `build_runs.scope` literal) along the way. Merged PR #864.
+Opus Verifier: **VERIFIED-FIXED-WITH-CAVEATS** — every substantive claim
+independently reproduced (including reverting the fix in an isolated copy and
+confirming the test fails exactly as claimed); the only discrepancies are a
+stale `entry_count` metadata field and one weak-but-non-load-bearing test
+assertion, neither undermining the fix.
+
+**Item 3 — `ka_gochara_sweep` operator-chart parity: PARKED-HONEST, native-
+directed stop. A first-pass claim of success was caught and corrected within
+this same session — recorded in full, not smoothed over.** Snapshot + tested-
+rollback drill performed first (proven). A resumption dispatch loop was run
+repeatedly against production via the FROZEN orchestrator's `execute_run()`.
+Recurring transient connection drops (zombie backends + stale `build_runs`,
+cleared each time via a self-healing check added to the dispatch script)
+were eventually traced to a stale, ~7-day-old local Cloud SQL Auth Proxy
+process; restarting it appeared to resolve the instability, and a subsequent
+dispatch reported `state='lit'`. **This was reported as complete and was
+wrong.** An independent Opus Verifier caught it: `build_substep_progress` was
+still frozen at 78/303 substeps, every row dated 2026-07-26 — nothing new was
+actually written this session. The apparent success was the FROZEN
+orchestrator's own no-op-completion rescue (`asset_runner.py`'s "D-1.6
+root-cause fix" block) misfiring — it reclassifies a writer's 0-new-rows
+report as `'lit'` whenever the target table already has *any* data present,
+without checking whether `build_substep_progress` reflects the *full* substep
+plan. Correct for a writer that's genuinely 100% done reporting a redundant
+no-op; wrong here, where substep 79 onward apparently needs a longer
+uninterrupted connection window than any dispatch this session achieved (one
+54-minute continuous run still wasn't enough). **This is a real, newly-
+discovered defect in the FROZEN orchestrator — not fixed this session** (the
+freeze's own rule: raise with the native, don't patch). Corrective action:
+`asset_throughput` was reset from the false `'lit'` back to an honest
+`'error'` state with a full diagnostic note; all zombie backends and stale
+`build_runs` cleared; the canonical chart confirmed untouched throughout. The
+native then directed a stop to further chasing full completion. Final state:
+operator chart's `ka_gochara_sweep` remains at 78/303 substeps (transit
+horizon truncated at 2027 vs. canonical's full span to 2084) —
+**genuinely, honestly incomplete.** Opus Verifier's own verdict (issued before
+the native's stop direction): **NOT-VERIFIED** on the parity claim; every
+other claim in that report (snapshot integrity, zero duplicates, zero
+orphans, canonical-untouched) independently reproduced and stands.
+
+**Security-shape confirmation (native's explicit ask, addressed before closing):**
+none of the six items now parked — three carried from the prior ŚUDDHA-VĀCA
+wave (`mi_darshana.py` verdict_note, `bo_laksana_rerank` watchdog,
+`mi_gunanaka.py:337` snapshot bug — individually re-confirmed non-security-
+shaped this session) plus three newly discovered this session
+(`ka_bhavishya_lekha.py` domain drift, `chart_dashas` CLI sentinel, the
+orchestrator no-op-completion rescue gap) — are security-shaped. All six are
+data-correctness or build-integrity issues; none touch auth, injection,
+secrets, or an externally-reachable attack surface. Full detail:
+`PARKED_FINDINGS_CLOSE_v1_0.md` (v1.1).
+
+```yaml
+session_close:
+  session_id: PARKED-FINDINGS-3ITEM-2026-07-28
+  campaign: SUDDHA_VACA_PARKED_FINDINGS
+  close_criteria_met: "PARTIAL — 2 of 3 authorized items VERIFIED-FIXED and merged
+    (migration-339 clean; ga_structural+audit+CI-smoke with cosmetic-only
+    caveats). Item 3 (ka_gochara_sweep parity) did NOT complete; a false
+    completion signal was caught by the independent Verifier and corrected
+    within this session (DB left in an honest error state, not a false lit),
+    and the native then directed a stop to further attempts. This is an honest
+    PARTIAL close per the PRIME RULE, not a 3/3 claim."
+  verification: "Independent Opus Verifier (never writes code) ran a dedicated
+    acceptance pass per item, reproducing claims against the actual merged
+    commits and/or live production DB rather than trusting the session's own
+    report. Item 1: VERIFIED-FIXED. Item 2: VERIFIED-FIXED-WITH-CAVEATS
+    (cosmetic only). Item 3: NOT-VERIFIED on the parity claim (correctly
+    caught the no-op-completion misfire); all other claims in that report
+    (snapshot/rollback integrity, zero duplicates, zero orphans, canonical
+    chart untouched) independently reproduced."
+  deploy: "PR #862 (migration-339) applied directly to production DB + merged.
+    PR #864 (ga_structural fix + CI smoke workflow) merged; no chart rebuild
+    needed for the code fix itself (existing chart_facts rows are unaffected
+    by a query-level fact_key pin). fresh_chart_smoke.yml's first real proof
+    is its own first scheduled/dispatched run (Wed 03:00 UTC or on-demand)."
+  product_code_writes_made: "Yes — platform/supabase/migrations/469_*.sql (new,
+    applied to prod); platform/python-sidecar/ga_writers/ga_structural_writer.py
+    (fact_key pin); platform/scripts/governance/fact_category_pin_allowlist.json
+    (2 stale entries removed); new test files; new CI workflow +
+    bootstrap script. Item 3 was a data-only operation (no code changed) —
+    the operator chart's asset_throughput row for ka_gochara_sweep was reset
+    to an honest error state, no chart_facts or other L1 data touched."
+  native_chart_touched: true
+  current_state_updated: true
+  register_dispositions_flipped: "None — this session's findings are recorded
+    in a new artifact (PARKED_FINDINGS_CLOSE_v1_0.md v1.1) rather than
+    reopening the already-COMPLETE ŚUDDHA-VĀCA brief/report/ledger, since this
+    is a distinct, separately-authorized 3-item follow-on, not a continuation
+    of that closed arc."
+  followups: "(1) ka_gochara_sweep operator-chart parity remains genuinely
+    open — 78/303 substeps, native-directed stop, snapshot retained as the
+    resumption anchor for whenever this is picked back up. (2) NEW: the
+    orchestrator's no-op-completion rescue (asset_runner.py) needs a
+    build_substep_progress-completeness check before trusting a 0-new-rows
+    report as genuine completion for a substep-heavy writer — real defect,
+    FROZEN orchestrator, needs native-authorized fix, not attempted this
+    session. (3) ka_bhavishya_lekha.py's stale domain vocabulary
+    (finance/spiritual vs. canonical wealth/spirituality) — real, can fail a
+    live build, needs its own authorized fix. (4) chart_dashas CLI-only
+    scope-cap sentinel silently swallowed — real, low urgency, CLI-path only.
+    (5) The recurring transient-connection-drop pattern across this and the
+    prior ŚUDDHA-VĀCA wave (zombie backends, stale build_runs) has now been
+    traced at least once to a stale local Cloud SQL Auth Proxy process —
+    worth a standing hygiene note (restart the proxy periodically, or run
+    long dispatches from a more stable environment closer to the DB) for
+    whichever session next does a long-running chart rebuild."
+  next_session_objective: "No committed next session. Item 3 (ka_gochara_sweep
+    operator-chart parity) and the three new findings above are each
+    independently sizeable candidates for a future authorized wave,
+    prioritized at the native's discretion."
+```
+
+### Next session objective
+
+No committed next session. Two of three authorized items are done and merged; the third
+(`ka_gochara_sweep` operator-chart parity) is genuinely open, native-directed to stop rather than
+force further tonight. Three new findings from this session's own audit work — the orchestrator
+no-op-completion rescue gap, `ka_bhavishya_lekha.py`'s stale domain vocabulary, and `chart_dashas`'s
+CLI-only sentinel — join the parked-findings backlog for a future wave.
+
+*End of PARKED-FINDINGS-3ITEM-2026-07-28 entry.*

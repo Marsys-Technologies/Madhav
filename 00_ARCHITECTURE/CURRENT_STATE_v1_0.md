@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.45
+version: 6.46
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,32 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.46 (2026-07-28, PARKED-FINDINGS-3ITEM close — 3-item native authorization
+    following the ŚUDDHA-VĀCA close): **2 of 3 items VERIFIED-FIXED and merged;
+    item 3 is an honest PARTIAL, native-directed stop.** Item 1: migration-339's
+    `narration_model` DB CHECK constraint drift (permitted `gpt-4o`/`gpt-4-turbo`
+    despite the Gemini/DeepSeek-only policy) closed via surgical migration 469,
+    PR #862, live-verified. Item 2: `ga_structural_writer.py`'s unpinned
+    `fact_key` selection on `graha_shadbala_total` (same D1_MISSELECT shape as
+    P0-5) fixed with TEST-FIRST proof, PR #864; a fleet-wide audit of all 50
+    enum-shaped CHECK constraints found 2 new PARKED-HONEST findings
+    (`ka_bhavishya_lekha.py` stale domain vocabulary — can fail a live build;
+    `chart_dashas` CLI-only scope-cap sentinel — silently swallowed); a new
+    scheduled `fresh_chart_smoke.yml` CI job was added so future vocabulary
+    drift fails in CI instead of being discovered by hand. **Item 3
+    (`ka_gochara_sweep` operator-chart parity) did NOT complete** — a
+    same-session false-completion claim (`state='lit'` via the FROZEN
+    orchestrator's no-op-completion rescue misfiring over a genuinely partial
+    78/303-substep build) was caught by an independent Opus Verifier and
+    corrected (state reset to an honest `error`, full diagnostic note, zero
+    orphans/zombies left behind); the native then directed a stop to further
+    attempts. **NEW finding, not fixed:** the orchestrator's no-op-completion
+    rescue lacks a `build_substep_progress`-completeness check — a real defect
+    in already-FROZEN code, flagged for a dedicated future wave, not patched
+    this session per the freeze's own "raise with the native" rule. Full
+    evidence: `00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/
+    PARKED_FINDINGS_CLOSE_v1_0.md` (v1.1). Security-shape of all six now-parked
+    items (three carried, three new) reconfirmed non-security-shaped.
   - v6.45 (2026-07-28, ŚUDDHA-VĀCA final close — Phase C2/D2/E2/F2, session
     SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28): **The ŚUDDHA-VĀCA narration-purification arc is
     CLOSED — 7 of 7 P0 lanes VERIFIED-FIXED (up from 5/7 at last wave's PARTIAL close).**
@@ -5510,6 +5536,23 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> 🟡 **PARTIAL (2026-07-28, PARKED-FINDINGS-3ITEM close, session
+> PARKED-FINDINGS-3ITEM-2026-07-28) — a 3-item native authorization that followed the ✅ ARC CLOSED
+> ŚUDDHA-VĀCA banner immediately below; that banner's own close stands, untouched by this note.**
+> 2 of 3 items VERIFIED-FIXED and merged: migration-339's `narration_model` OpenAI-allowlist drift
+> (PR #862) and `ga_structural_writer.py`'s unpinned-fact_key P0-N1 defect + a fleet-wide 50-constraint
+> vocabulary audit + a new scheduled `fresh_chart_smoke.yml` CI job (PR #864, VERIFIED-FIXED-WITH-
+> CAVEATS, cosmetic only). **Item 3 (`ka_gochara_sweep` operator-chart parity) did NOT complete** —
+> a same-session false-completion claim (the FROZEN orchestrator's no-op-completion rescue misfiring
+> `state='lit'` over a genuinely partial 78/303-substep build) was caught by an independent Opus
+> Verifier and corrected before this close (state reset to honest `error`); the native then directed
+> a stop to further attempts. **New, unfixed finding:** the orchestrator's no-op-completion rescue
+> lacks a `build_substep_progress`-completeness check — real defect in already-FROZEN code, flagged
+> for a dedicated future wave. Two more new findings from the vocabulary audit
+> (`ka_bhavishya_lekha.py` stale domain vocabulary; `chart_dashas` CLI-only scope-cap sentinel) also
+> parked. Full evidence: `00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/
+> PARKED_FINDINGS_CLOSE_v1_0.md` (v1.1). See changelog v6.46.
 
 > ✅ **ARC CLOSED (2026-07-28, ŚUDDHA-VĀCA Phase C2/D2/E2/F2, session
 > SUDDHA-VACA-PHASE-C2DEF-CLOSE-2026-07-28) — supersedes the 🟡 PARTIAL CLOSE banner immediately
