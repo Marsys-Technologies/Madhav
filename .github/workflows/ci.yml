@@ -395,6 +395,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      - name: Setup Python (vidhi registry parity gate shells the Python DB-seed writers)
+        # PARIŚODHANA B2: check_vidhi_registry_parity.mjs runs `python bg_vidhi_*.py --dump-json`
+        # (no DB, no pip deps — the writers guard their orchestrator import for standalone dump mode).
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: platform-mcp deps (density harness imports response_budget.ts)
         working-directory: platform-mcp
         run: npm ci
@@ -411,6 +417,13 @@ jobs:
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/vidhi_codegen_parity.test.ts
+      - name: vidhi registry Ω8 parity gate (TS ↔ Python DB-seed writers ↔ Ω8-regen coverage) — PARIŚODHANA B2
+        # Keeps the FOUR Vidhi registry copies (canonical TS, generated mirror, SQL seed, Python
+        # seed writers) from silently drifting — the Python writers had drifted to 37 primitives /
+        # 8 floors before B2 (a latent regression bomb). Deep-compares the canonical TS dump against
+        # the two Python writers' --dump-json output + asserts Ω8-regen floor coverage + re-runs the
+        # floor-coverage gate (14/14). See check_vidhi_registry_parity.mjs's header.
+        run: node scripts/census/check_vidhi_registry_parity.mjs
       - name: R-1 projection compiler — generate (chat/MCP/census/docs projections, additive-only)
         # RETRIEVAL_PLANE_ELEVATION_PLAN_v1_0.md §3 R-1 item 2. DB-free (getCatalog() only
         # enumerates already-registered descriptor objects; TOOL_CONTRACTS is a static
