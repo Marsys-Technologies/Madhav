@@ -87,6 +87,24 @@ const HARD_PATTERNS: HardPattern[] = [
     idShaped: false,
     subjectSafe: true,
   },
+  // L1 chart_facts.fact_id / CGM node-id namespace codes: `namespace.SUBJECT`
+  // or `namespace.SUBJECT.KEY` (ganita/types.ts's own doc comment: "namespace.
+  // SUBJECT.KEY (e.g. PLN.SUN.LON_DEG)"), e.g. PLN.SUN, HSE.10, KRK.C8.AMATYA,
+  // SEN.ARD.AL — confirmed leaking in production, always as a bare
+  // parenthetical aside (often backtick-wrapped: "(`PLN.SUN`)"), never as a
+  // sentence subject, so this pattern is NOT subjectSafe (plain delete, same
+  // treatment as signal_id/table_name). No resolver exists for these today,
+  // so REDACT rather than REWRITE (idShaped: false). `SIG.` is EXCLUDED here —
+  // that namespace already has its own dedicated hard pattern (signal_id,
+  // requires a numeric tail) and its own dedicated near-miss pattern
+  // (partial_signal_id, telemetry-only for a truncated SIG ref with no
+  // numeric tail); this generic pattern would otherwise hard-redact exactly
+  // the truncated refs partial_signal_id is meant to leave untouched.
+  {
+    name: 'fact_id_namespace',
+    re: /\b(?!SIG\.)[A-Z]{2,6}\.[A-Z0-9_]{1,40}(?:\.[A-Z0-9_]{1,40}){0,2}\b/g,
+    idShaped: false,
+  },
 ]
 
 // ── Near-miss patterns (TELEMETRY only — never alter text) ───────────────────
@@ -240,6 +258,11 @@ function safeReaderLabel(resolver: CitationResolver, token: string): string | nu
 /** Collapse artifacts left by removing a token from mid-sentence. */
 function tidyAfterRedaction(s: string): string {
   return s
+    .replace(/`\s*`/g, '') // emptied inline-code backticks (e.g. redacting the
+    // id inside `PLN.SUN` leaves a bare `` pair) — runs before the emptied-
+    // parens/brackets cleanup below since a backtick-wrapped id sitting
+    // inside parens, e.g. "(`PLN.SUN`)", needs the backticks gone first
+    // before "()" is recognizable as empty.
     .replace(/\(\s*\)/g, '') // emptied parens
     .replace(/\[\s*\]/g, '') // emptied brackets
     .replace(/\s+([,.;:!?])/g, '$1') // space before punctuation
