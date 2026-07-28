@@ -19,3 +19,6 @@ export * from './detector'
 export * from './kala_rekha'
 export * from './lifecycle_label'
 export * from './confirm'
+// PB-3 L-5: conversational outcome recording + Brier calibration (pure half + orchestrator).
+export * from './outcome_calibration'
+export * from './outcome_recorder'
