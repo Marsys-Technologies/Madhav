@@ -30,7 +30,7 @@ import pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from pipeline.orchestrator import asset_runner as ar
-from pipeline.orchestrator.writers import WriterBase, WriterResult
+from pipeline.orchestrator.writers import SubStep, WriterBase, WriterResult
 
 
 # ── Fakes ─────────────────────────────────────────────────────────────────────
@@ -42,11 +42,12 @@ class FakeCursor:
     """Scriptable cursor: answers registry/count queries; records everything."""
 
     def __init__(self, rows_present: int | None = None, count_sql: str | None = COUNT_SQL,
-                 target_floor=None, rowcount: int = 1):
+                 target_floor=None, rowcount: int = 1, has_substeps: bool | None = None):
         self.executed: list[tuple[str, object]] = []
         self._rows_present = rows_present
         self._count_sql = count_sql
         self._target_floor = target_floor
+        self._has_substeps = has_substeps
         self.rowcount = rowcount
         self._next_fetch = None
 
@@ -58,6 +59,8 @@ class FakeCursor:
             self._next_fetch = {"count_sql": self._count_sql}
         elif "SELECT target_floor FROM asset_registry" in s:
             self._next_fetch = {"target_floor": self._target_floor}
+        elif "SELECT has_substeps FROM asset_registry" in s:
+            self._next_fetch = {"has_substeps": self._has_substeps}
         elif self._count_sql and s.startswith(self._count_sql.replace("$1", "%s").split(" WHERE")[0]):
             self._next_fetch = {"count": self._rows_present}
 
@@ -101,6 +104,22 @@ class _ZeroRowWriter(WriterBase):
         return WriterResult(asset_id=self.asset_id, rows_inserted=0, rows_updated=0)
 
 
+class _PartialPlanWriter(WriterBase):
+    """SATYA-DIPA: mimics a genuinely-incomplete resumable writer — a substep
+    still remains (plan_substeps() reports non-empty) even though this round's
+    chunk nets zero rows and earlier-committed chunks left data present. Unlike
+    _ResumeSkipAllWriter (D-1.6's true shape: plan_substeps() reports EMPTY,
+    meaning nothing is left), this writer's own bookkeeping says work remains —
+    the no-op-completion rescue must not paper over that."""
+    asset_id = "_test_partial_plan_satyadipa"
+
+    def plan_substeps(self, ctx):
+        return [SubStep(key="year:79", label="year 79")]
+
+    def run_substep(self, ctx, step):
+        return WriterResult(asset_id=self.asset_id, rows_inserted=0, rows_updated=0)
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _patch_common(monkeypatch, writer_cls, events: list | None = None):
@@ -139,6 +158,60 @@ def test_d16_repro_resume_skip_all_with_data_present_marks_lit(monkeypatch):
     # rows_written should reflect the present data, not 0 (cockpit truth)
     assert _final_rows_written(cur) == 2488
     # and the reclassification must be loud (event emitted)
+    assert any(e.get("type") == "asset.noop_completion" for e in events)
+
+
+def test_satyadipa_d16_preserved_through_completeness_check(monkeypatch):
+    """D-1.6 preserved THROUGH the new substep-completeness check (not merely by
+    bypassing it): has_substeps=True (so the new check IS exercised) AND
+    plan_substeps() still reports empty (truly nothing left) -> must stay 'lit',
+    downstream deps must stay unblocked. A fix that trades false-unblocking for
+    false-blocking is not a fix (SATYA_DIPA_BRIEF_v1_0.md, prime directive)."""
+    events: list = []
+    _patch_common(monkeypatch, _ResumeSkipAllWriter, events)
+    conn, cur = FakeConn(), FakeCursor(rows_present=2488, has_substeps=True)
+    ar._run_data_writer(conn, cur, "run-71b260c7", "chart-482012f1", _ResumeSkipAllWriter.asset_id)
+    assert _final_state(cur) == "lit", (
+        "D-1.6 regression THROUGH the completeness check: the writer's own "
+        "plan_substeps() confirms nothing remains -> must still promote to 'lit', "
+        "got %r" % _final_state(cur)
+    )
+    assert _final_rows_written(cur) == 2488
+    assert any(e.get("type") == "asset.noop_completion" for e in events)
+
+
+def test_satyadipa_partial_substep_plan_with_rows_present_not_lit(monkeypatch):
+    """THE SATYA-DIPA fix: has_substeps=True AND the writer's own plan_substeps()
+    reports a substep still remaining, even though this round nets 0 rows and
+    data from earlier committed substeps IS present -> must NOT be reclassified
+    to 'lit' (would falsely unblock downstream on an incomplete build). Must not
+    be 'dormant' either (data is not absent) -> new 'incomplete' state."""
+    events: list = []
+    _patch_common(monkeypatch, _PartialPlanWriter, events)
+    conn, cur = FakeConn(), FakeCursor(rows_present=1267, has_substeps=True)
+    ar._run_data_writer(conn, cur, "run-partial", "chart-1c826d5a", _PartialPlanWriter.asset_id)
+    final = _final_state(cur)
+    assert final not in ("lit", "service_ok"), (
+        "SATYA-DIPA regression: a genuinely partial substep plan with rows present "
+        "must not satisfy downstream dependency gating, got %r" % final
+    )
+    assert final == "incomplete", final
+    assert any(e.get("type") == "asset.noop_completion_rejected" for e in events)
+    rejected = [e for e in events if e.get("type") == "asset.noop_completion_rejected"][0]
+    assert rejected["rows_present"] == 1267
+    assert rejected["substeps_remaining"] == 1
+
+
+def test_satyadipa_light_writer_no_substep_plan_behaves_as_before(monkeypatch):
+    """has_substeps unset/False (light writer, no real substep plan) -> the new
+    completeness check does not apply at all; old no-op-completion behavior
+    holds unchanged (SATYA_DIPA_BRIEF_v1_0.md §4.1: "An asset with no substep
+    plan defined behaves as before")."""
+    events: list = []
+    _patch_common(monkeypatch, _ZeroRowWriter, events)
+    conn, cur = FakeConn(), FakeCursor(rows_present=45, has_substeps=False)
+    ar._run_data_writer(conn, cur, "run-1", "chart-abc", _ZeroRowWriter.asset_id)
+    assert _final_state(cur) == "lit"
     assert any(e.get("type") == "asset.noop_completion" for e in events)
 
 
