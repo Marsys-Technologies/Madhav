@@ -69,10 +69,19 @@ describe('buildFieldSnapshotIdStub', () => {
   })
 })
 
+// NOTE: test fixtures below deliberately use ALREADY-REGISTERED live MCP tool names
+// (e.g. 'kala_windows_get', 'kala_bundle_get') as stand-ins for a generic instrument
+// pointer, NOT the eight future kala_* view/capability tool names this campaign will
+// register in a later lane (W0.4+). The CI boot-time pointer validator (SC-17/18/19,
+// platform/scripts/audit/tap/sc_pointer_validation.ts) statically scans every
+// `instrument: '<name>'` literal in the repo — including test fixtures — against the
+// currently-registered tool set; a fixture naming a not-yet-built tool reads as a real
+// regression to that gate.
+
 describe('tri-plane pointer helpers', () => {
   it('pointerTo builds a live drill pointer', () => {
-    expect(pointerTo('kala_ahead_get', 'see the forward window')).toEqual({
-      instrument: 'kala_ahead_get',
+    expect(pointerTo('kala_bundle_get', 'see the forward window')).toEqual({
+      instrument: 'kala_bundle_get',
       hint: 'see the forward window',
     })
   })
@@ -84,7 +93,7 @@ describe('tri-plane pointer helpers', () => {
   })
 
   it('isNoLever is false for a live pointer and for null/undefined', () => {
-    expect(isNoLever(pointerTo('kala_elect_get', 'x'))).toBe(false)
+    expect(isNoLever(pointerTo('kala_windows_get', 'x'))).toBe(false)
     expect(isNoLever(null)).toBe(false)
     expect(isNoLever(undefined)).toBe(false)
   })
@@ -163,7 +172,7 @@ describe('makeKalaEnvelope', () => {
       fieldSnapshotId: buildFieldSnapshotIdStub({ ga_chart_facts: 'a1' }),
       triPlane: {
         interpretation_ref: null,
-        prediction_ref: pointerTo('kala_ahead_get', 'forward window'),
+        prediction_ref: pointerTo('kala_bundle_get', 'forward window'),
         intervention_ref: noLeverPointer('pure interpretation-plane NOW state'),
       },
       coverage: [computedCoverage('mercury_combustion')],
@@ -198,7 +207,7 @@ describe('kalaEvidenceTrimmableSection — §N.6 hardFloor discipline', () => {
   type Content = { reading: ArgumentReading; padding: string }
 
   it('declares hardFloor:true and a minKeep of 1', () => {
-    const section = kalaEvidenceTrimmableSection<Content>({ instrument: 'kala_now_get', hint: 'recall full evidence' })
+    const section = kalaEvidenceTrimmableSection<Content>({ instrument: 'kala_windows_get', hint: 'recall full evidence' })
     expect(section.hardFloor).toBe(true)
     expect(section.minKeep).toBe(1)
     expect(section.path).toBe('reading.evidence')
@@ -216,7 +225,7 @@ describe('kalaEvidenceTrimmableSection — §N.6 hardFloor discipline', () => {
     }
 
     const evidenceSection = kalaEvidenceTrimmableSection<typeof content>({
-      instrument: 'kala_now_get',
+      instrument: 'kala_windows_get',
       hint: 'recall full evidence',
     })
     const catalogSection = {
@@ -227,7 +236,7 @@ describe('kalaEvidenceTrimmableSection — §N.6 hardFloor discipline', () => {
       setArray: (c: typeof content, kept: unknown[]) => {
         c.catalog = kept as typeof content.catalog
       },
-      recover: { instrument: 'kala_now_get', hint: 'call again for the full catalog' },
+      recover: { instrument: 'kala_windows_get', hint: 'call again for the full catalog' },
     }
 
     const result = applyResponseBudget(content, 1, [evidenceSection, catalogSection])
