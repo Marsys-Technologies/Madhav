@@ -11,6 +11,7 @@ Override any flag at runtime via env var `MARSYS_FLAG_<FLAG_NAME>=true|false`.
 | `AUDIT_VIEW_VISIBLE` | — | OFF | Shows audit log browser in the Consume UI | After native reviews 1–2 weeks of audit data |
 | `PANEL_MODE_ENABLED` | ON | — | Panel synthesis runs server-side on every query | Ready — already running |
 | `PANEL_CHECKBOX_VISIBLE` | — | OFF | Shows "Enable Panel Mode" checkbox in query UI | After native validates panel answer quality |
+| `PARIPRASHNA_ENABLED` | OFF | OFF | Single flag gates BOTH the `/api/pariprashna` route (returns 404 when off) and the `/clients/[id]/pariprashna` page (redirects to `consult` when off) — there is no separate `_VISIBLE` companion flag; flipping it to `true` turns on backend + UI together | After PB-1 deploy verification, when the campaign's Q-1 lane is ready to run real readings against the deployed route |
 
 ## How to flip a flag
 

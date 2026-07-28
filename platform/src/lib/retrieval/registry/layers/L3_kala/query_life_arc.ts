@@ -33,6 +33,8 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
   emits_references: false,
   grounds_to: { l1_fact_ids: true },
   lel_capable: false,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  register: { reader_label: 'Consulting the chart — Daśā structure' },
 
   required_inputs: ['chart_id'],
 

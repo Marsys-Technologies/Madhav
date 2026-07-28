@@ -156,7 +156,17 @@ class MiDarshanaWriter(WriterBase):
         for i, r in enumerate(gram_rows):
             ch = r["channel_id"]
             dom = r.get("domain", "unknown")
-            prop = float(r.get("channel_propensity") or r.get("prior_propensity") or 0.5)
+            # P2 mislabel/drift fix (same file as P0-10, same truthiness pattern):
+            # channel_propensity (migration 352) is nullable and a genuinely
+            # computed 0.0 means "this channel never fires" — a real value, not
+            # an absence marker. Only fall back to prior_propensity (NOT NULL)
+            # when channel_propensity is actually missing (None).
+            _channel_prop_raw = r.get("channel_propensity")
+            if _channel_prop_raw is not None:
+                prop = float(_channel_prop_raw)
+            else:
+                _prior_prop_raw = r.get("prior_propensity")
+                prop = float(_prior_prop_raw) if _prior_prop_raw is not None else 0.5
             n = r.get("n_support") or 0
             statement = (
                 f"For {dom} events, the '{ch}' channel fires with {prop:.0%} propensity "
@@ -313,7 +323,14 @@ class MiDarshanaWriter(WriterBase):
                     domain = pr.get("domain") or "unknown"
                     name_en = pr.get("name_en") or event_class_id
                     status = pr.get("status", "conditional")
-                    grade = float(pr.get("grade") or 5.0)
+                    # D4_GRADE_INVERSION fix (P0-10): `pr.get("grade") or 5.0` used
+                    # Python truthiness, which treats a genuinely computed 0.0 grade
+                    # (per bodha_pratijna migration 391: "0=strongly denied,
+                    # 10=strongly promised") as absent and silently substitutes the
+                    # neutral default. Only an actually-missing grade (None) should
+                    # fall back to 5.0.
+                    _raw_grade = pr.get("grade")
+                    grade = float(_raw_grade) if _raw_grade is not None else 5.0
 
                     sup_ids = [str(s) for s in (pr.get("supporting_signal_ids") or [])][:5]
                     ranked_evidence = [

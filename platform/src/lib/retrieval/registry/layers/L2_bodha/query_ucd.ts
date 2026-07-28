@@ -217,6 +217,9 @@ export const queryUcdCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: true },
   lel_capable: true,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  // Band phase 4 ("Reading the whole chart") — B.11 whole-chart-read (UCN/UCD digest).
+  register: { reader_label: 'Reading the whole chart' },
 
   llm_hints: {
     agentic: {
