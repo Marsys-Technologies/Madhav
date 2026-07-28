@@ -112,6 +112,7 @@ import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
 import { resolveReaderLabel, FALLBACK_READER_LABEL } from '@/lib/pariprashna/lexicon'
 import { writeTurn } from '@/lib/pariprashna/store/writer'
 import { CANONICAL_SCHEMA_VERSION, type CanonicalMessage, type MessagePartInput } from '@/lib/pariprashna/store/schema'
+import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
 import {
   textPartFromBlock,
   citationPartFromDetection,
@@ -674,6 +675,24 @@ export async function POST(request: Request): Promise<Response> {
 
         const commitBlock = (): void => {
           if (currentBlock) {
+            // Gate 11 [integrity] backstop: every prose block is scanned for
+            // internal-identifier leaks (SIG.* ids, asset-id prefixes, register
+            // acronyms MSR/UCN/CGM/CDLM/LEL, table names) before it ever reaches
+            // the wire or the canonical store — the model's own prose can and
+            // does reference these terms directly (confirmed in production),
+            // independent of the citation-sentinel path. Never fails the turn;
+            // hits are rewritten/redacted and reported as a telemetry flag.
+            if (currentBlock.role === 'prose') {
+              const lint = lintReaderProse(currentBlock.text)
+              if (lint.leakCount > 0) {
+                currentBlock.text = lint.clean
+                em.flag({
+                  code: 'register_leak_scrubbed',
+                  level: 'warn',
+                  detail: `${lint.leakCount} internal identifier(s) scrubbed from reader prose`,
+                })
+              }
+            }
             em.blockCommit({ block_id: currentBlock.id, text: currentBlock.text })
             committedBlocks.push({ id: currentBlock.id, role: currentBlock.role, text: currentBlock.text })
             currentBlock = null
@@ -713,9 +732,27 @@ export async function POST(request: Request): Promise<Response> {
                 awaitingResume = false
               }
               const blk = ensureBlock('prose')
-              blk.text += event.text
-              em.blockDelta({ block_id: blk.id, delta: event.text })
-              accumulatedText += event.text
+              // Gate 11 [integrity]: lint EVERY delta chunk before it reaches the
+              // wire — the model's own prose directly references internal
+              // register acronyms (confirmed in production: "(UCN §...)",
+              // "Cross-Domain Linkage Matrix (CDLM)"), independent of the
+              // citation-sentinel path this route already guards. Never fails
+              // the turn; a hit is scrubbed and reported as a telemetry flag.
+              // Residual: a leak pattern split exactly across a delta chunk
+              // boundary can still slip through here — commitBlock()'s
+              // whole-block lint pass is the backstop for that case.
+              const deltaLint = lintReaderProse(event.text)
+              const cleanDelta = deltaLint.clean
+              if (deltaLint.leakCount > 0) {
+                em.flag({
+                  code: 'register_leak_scrubbed',
+                  level: 'warn',
+                  detail: `${deltaLint.leakCount} internal identifier(s) scrubbed from streamed prose`,
+                })
+              }
+              blk.text += cleanDelta
+              em.blockDelta({ block_id: blk.id, delta: cleanDelta })
+              accumulatedText += cleanDelta
               proseSeenInPass = true
             } else if (event.type === 'thinking_delta') {
               const blk = ensureBlock('thinking')
