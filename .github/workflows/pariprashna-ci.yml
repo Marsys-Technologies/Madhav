@@ -26,6 +26,8 @@ on:
       - 'platform/scripts/replay/**'
       - 'platform/src/lib/pariprashna/**'
       - '.github/workflows/pariprashna-ci.yml'
+      - 'platform/src/lib/pipeline/no_leakage_filter.ts'
+      - 'platform/src/lib/retrieval/registry/**'
   push:
     branches:
       - 'pb/1/**'
@@ -33,6 +35,8 @@ on:
       - 'platform/tests/pariprashna/**'
       - 'platform/scripts/replay/**'
       - 'platform/src/lib/pariprashna/**'
+      - 'platform/src/lib/pipeline/no_leakage_filter.ts'
+      - 'platform/src/lib/retrieval/registry/**'
 
 env:
   NODE_VERSION: '20'
@@ -171,3 +175,39 @@ jobs:
 
       - name: Red-then-green selftest — every gate must fail seeded, pass clean
         run: npm run pariprashna:selftest
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Job 5 — NO-LEAKAGE arm-4 canary + COLLECT-ONLY gate + byte-identity harness
+  # (PB-3 lane L-6, SAMĪKṢĀ) [integrity]. Gate: HARD.
+  #
+  # Arm-4 (§14.10 / BRIEF_PB-3 §G item 10): "no serving-path plan reaches a
+  # leakage-flagged tool." The door-3 runtime canary drives the REAL
+  # /api/pariprashna route with a compromised planner that authorizes a real
+  # calibration_context_only tool, against the REAL registry + REAL filter, and
+  # asserts it never reaches dispatch — with a PERMANENT negative control that
+  # proves the assertion is load-bearing (not vacuously green). Also runs the
+  # COLLECT-ONLY grep gate + runtime guard (§14.6 C1 / W-3) and the serving
+  # byte-identity harness the Final Proof depends on. Pure vitest — no browser,
+  # no secret, no live DB/LLM (all boundary-mocked).
+  # ───────────────────────────────────────────────────────────────────────
+  no-leakage-canary:
+    name: 'NO-LEAKAGE canary + COLLECT-ONLY gate [integrity]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: NO-LEAKAGE arm-4 canary + COLLECT-ONLY gate + byte-identity harness
+        run: >-
+          npx vitest run
+          tests/pariprashna/no_leakage_route_canary.test.ts
+          tests/pariprashna/collect_only_grep.test.ts
+          tests/pariprashna/serving_byte_identity.test.ts
