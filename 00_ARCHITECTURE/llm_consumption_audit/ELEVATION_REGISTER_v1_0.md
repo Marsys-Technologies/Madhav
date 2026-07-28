@@ -229,6 +229,22 @@ Evidence: census A.7 — zero saham rows under every category tried; honest gap,
 bug. Fix direction: decide compute-vs-defer (L1 writer addition; Tājaka sahams have classical
 grounding — natural companion to the existing ganita_tajaka surface).
 
+> **CLOSED — STALE-CORRECTED (PARIŚODHANA A7, 2026-07-27).** The "never computed" premise was
+> already disproven by β.D2 (2026-07-25, `ledgers/BETA_D2.md`): 70+ Tājaka sahams ARE computed by
+> `ga_writers/ga_sensitive_writer.py::_build_saham_rows` and stored under fact_category
+> `saham_position` (2800 rows/chart, `two_pass_verified`, recompute-exact to <1e-6°). β.D2 left one
+> residual PARKED-HONEST and handed it to α: the public `categories` alias `'saham'` matched zero
+> rows because `get_sensitive_points.ts` filtered `fact_category = ANY($2)` verbatim against the
+> literal string `'saham'` instead of the real `'saham_position'` category. That alias fix has since
+> landed (`register_p1_aliases.ts` `SPECIAL_LAGNA_CATEGORY_MAP` / `EL-41 / B-1 fix` comment block +
+> `address_resolver.ts`'s `saham` → `saham_position` mapping). Live-reverified this session:
+> `ganita_special_lagnas_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, categories:['saham'])`
+> returns 560 `saham_position` rows with `category_receipts:[{fact_category:'saham',
+> confirmed_count:560, dark_count:0, receipt_state:'CONFIRMED'}]`. EL-19 is now fully closed —
+> both the compute half (β.D2) and the serving-alias half (α, since landed) are confirmed live.
+> No further action needed; R-27 (same item, PROGRAM_LEDGER_AND_ELEVATION_ROADMAP_v1_0.md §1)
+> cross-annotated to match.
+
 **EL-20 · Serving-rank residuals — arudha/UL ranking (CR-61), nakshatra-semantic ranking
 (CR-64): raw rows serve, salience ranking absent. [C→V]**
 Fix direction: deterministic salience ranks (documented formulas) on both surfaces; NO

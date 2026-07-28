@@ -64,7 +64,6 @@ class TestNarrationModelPolicy:
     @pytest.mark.parametrize("model", [
         'gemini-pro', 'gemini-ultra', 'gemini-2.0-flash',
         'deepseek-chat', 'deepseek-r1',
-        'gpt-4o', 'gpt-4-turbo',
     ])
     def test_permitted_models_valid(self, model):
         validate_narration_model(model)  # no exception
@@ -88,6 +87,24 @@ class TestNarrationModelPolicy:
     def test_unknown_model_rejected(self):
         with pytest.raises(NarrationModelError):
             validate_narration_model('some-random-model-2026')
+
+    def test_openai_models_not_in_allowlist(self):
+        """SUDDHA-VACA Phase C §2 authorization: the file's own documented policy
+        ('Model policy allowlist (Gemini/DeepSeek only)') must actually hold —
+        gpt-4o/gpt-4-turbo (OpenAI) do not belong in PERMITTED_NARRATION_MODELS
+        regardless of vendor, per this file's own stated intent."""
+        assert 'gpt-4o' not in PERMITTED_NARRATION_MODELS
+        assert 'gpt-4-turbo' not in PERMITTED_NARRATION_MODELS
+        # gemini/deepseek entries remain
+        for model in ('gemini-pro', 'gemini-ultra', 'gemini-2.0-flash',
+                      'deepseek-chat', 'deepseek-r1'):
+            assert model in PERMITTED_NARRATION_MODELS
+
+    def test_openai_models_rejected_by_validator(self):
+        with pytest.raises(NarrationModelError):
+            validate_narration_model('gpt-4o')
+        with pytest.raises(NarrationModelError):
+            validate_narration_model('gpt-4-turbo')
 
 
 # ══════════════════════════════════════════════════════════════════════════════

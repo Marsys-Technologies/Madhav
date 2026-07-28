@@ -276,7 +276,7 @@ SIGNAL_ANCHORS: list[dict[str, Any]] = [
 CONVERGENCE_DOMAINS = {
     "career_peak":      frozenset({"career", "career_peak", "authority", "intellect", "technology"}),
     "relationship":     frozenset({"relationship", "creativity", "luxury", "home", "emotions"}),
-    "health_attention": frozenset({"conflict", "separation", "transformation", "hardship"}),
+    "health_attention": frozenset({"health_attention", "conflict", "separation", "transformation", "hardship"}),
     "spiritual_peak":   frozenset({"spiritual", "detachment", "moksha", "spiritual_peak", "guru", "dharma"}),
     "wealth":           frozenset({"wealth", "expansion", "foreign", "ambition", "innovation"}),
     "general":          frozenset(),  # fallback

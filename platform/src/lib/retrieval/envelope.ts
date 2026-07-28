@@ -966,6 +966,11 @@ export const JUDGMENT_FLAG_CODES = [
   'kala_activations_single_cycle',
   'timing_anchored_false',
   'timing_anchored_forced_false',
+  // PARIŚODHANA Phase B1 (CR-2/CR-63/R-38): varga_confirmed's sibling of
+  // timing_anchored_forced_false — served checklist.varga_confirmation.rows genuinely
+  // empty on the wire while receipt.varga_confirmed still carried an affirmative "✓" mark
+  // (registry_bridge.ts's enforceVargaConfirmedHonesty).
+  'varga_confirmed_forced_false',
   'timing_hook_failed',
   'afflictions_fetch_failed',
   'afflictions_empty',

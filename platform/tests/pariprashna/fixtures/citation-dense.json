@@ -1,0 +1,161 @@
+{
+  "name": "citation-dense",
+  "description": "One block with two inline citation citation_anchors, one confirmed and one catalog_only — exercises chip density + verification tiering.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "citation-dense-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "conversation_id": "conv-citation-dense",
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "model_id": "gemini-2.5-pro",
+        "length_tier": "standard",
+        "turn_id": "citation-dense",
+        "reading_depth": "standard"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "citation-dense-1",
+        "seq": 1,
+        "t": 20,
+        "type": "block.open",
+        "block_id": "b1",
+        "kind": "paragraph",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 15,
+      "event": {
+        "id": "citation-dense-2",
+        "seq": 2,
+        "t": 35,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "A structural tension appears between the timing anchor and the natal placement. "
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "citation-dense-3",
+        "seq": 3,
+        "t": 45,
+        "type": "citation_anchor.open",
+        "anchor_id": "s1",
+        "block_id": "b1",
+        "anchor_offset": 80
+      }
+    },
+    {
+      "delay_ms": 15,
+      "event": {
+        "id": "citation-dense-4",
+        "seq": 4,
+        "t": 60,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "This pattern recurs across two independent sub-systems, which raises its weight. "
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "citation-dense-5",
+        "seq": 5,
+        "t": 70,
+        "type": "citation_anchor.open",
+        "anchor_id": "s2",
+        "block_id": "b1",
+        "anchor_offset": 161
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "citation-dense-6",
+        "seq": 6,
+        "t": 80,
+        "type": "block.commit",
+        "block_id": "b1",
+        "final_text": "A structural tension appears between the timing anchor and the natal placement. This pattern recurs across two independent sub-systems, which raises its weight. "
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "citation-dense-7",
+        "seq": 7,
+        "t": 90,
+        "type": "citation.define",
+        "citation_id": "c1",
+        "label": "BPHS 6.12 (fixture)",
+        "verification": "confirmed",
+        "source_ref": "fixture://citation-dense/c1"
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "citation-dense-8",
+        "seq": 8,
+        "t": 100,
+        "type": "citation_anchor.set",
+        "anchor_id": "s1",
+        "citation_id": "c1"
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "citation-dense-9",
+        "seq": 9,
+        "t": 110,
+        "type": "citation.define",
+        "citation_id": "c2",
+        "label": "Saravali 4.3 (fixture, unverified)",
+        "verification": "catalog_only",
+        "source_ref": "fixture://citation-dense/c2"
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "citation-dense-10",
+        "seq": 10,
+        "t": 120,
+        "type": "citation_anchor.set",
+        "anchor_id": "s2",
+        "citation_id": "c2"
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "citation-dense-11",
+        "seq": 11,
+        "t": 130,
+        "type": "turn.commit",
+        "turn_id": "citation-dense",
+        "block_count": 1,
+        "citation_count": 2
+      }
+    },
+    {
+      "delay_ms": 5,
+      "event": {
+        "id": "citation-dense-12",
+        "seq": 12,
+        "t": 135,
+        "type": "turn.close",
+        "turn_id": "citation-dense",
+        "reason": "complete"
+      }
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "name": "single-pass",
+  "description": "Minimal single retrieval pass, one paragraph block.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "single-pass-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "conversation_id": "conv-single-pass",
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "model_id": "gemini-2.5-pro",
+        "length_tier": "standard",
+        "turn_id": "single-pass",
+        "reading_depth": "standard"
+      }
+    },
+    {
+      "delay_ms": 40,
+      "event": {
+        "id": "single-pass-1",
+        "seq": 1,
+        "t": 40,
+        "type": "activity.upsert",
+        "key": "pass-1-retrieval",
+        "pass_id": "pass-1",
+        "label_key": "activity.retrieval.pass",
+        "status": "done",
+        "detail": "pass 1 of 1 — 2 signals"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "single-pass-2",
+        "seq": 2,
+        "t": 60,
+        "type": "block.open",
+        "block_id": "b1",
+        "kind": "paragraph",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "single-pass-3",
+        "seq": 3,
+        "t": 80,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "The retrieval layer surfaces three corroborating signals for this window."
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "single-pass-4",
+        "seq": 4,
+        "t": 90,
+        "type": "block.commit",
+        "block_id": "b1",
+        "final_text": "The retrieval layer surfaces three corroborating signals for this window."
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "single-pass-5",
+        "seq": 5,
+        "t": 100,
+        "type": "turn.commit",
+        "turn_id": "single-pass",
+        "block_count": 1,
+        "citation_count": 0
+      }
+    },
+    {
+      "delay_ms": 5,
+      "event": {
+        "id": "single-pass-6",
+        "seq": 6,
+        "t": 105,
+        "type": "turn.close",
+        "turn_id": "single-pass",
+        "reason": "complete"
+      }
+    }
+  ]
+}

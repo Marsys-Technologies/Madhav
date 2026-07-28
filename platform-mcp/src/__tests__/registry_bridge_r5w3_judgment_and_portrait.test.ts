@@ -274,6 +274,85 @@ describe('judgment_query — MCP tool registration + seam reachability', () => {
     const flags = envelope['judgment_flags'] as Array<{ code: string } | string>
     expect(flags.some(f => typeof f !== 'string' && f.code === 'timing_anchored_forced_false')).toBe(false)
   })
+
+  // PARIŚODHANA Phase B1 (CR-2/CR-63/R-38 — receipt-honesty violation, live-confirmed
+  // 2026-07-27 on chart 482012f1-710e-4a25-994a-93821f5871aa across wealth/career/marriage):
+  // the varga_confirmed sibling of the Gate Ś #10 timing_anchored fix above. register_d9_judgment.ts
+  // can stamp receipt.varga_confirmed:"D2✓" from its own pre-trim computation, while the
+  // SERVED checklist.varga_confirmation.rows ends up empty on the wire — whether from
+  // response-budget trimming (PASS 2's hard-cap fallback can floor this non-hardFloor
+  // section to 0) or from finalizeMcpBudget's own trim_report-collapse step erasing the
+  // per-path record reconcileReceiptWithTrimReport depends on. Either way, a caller must
+  // never see an affirmative "✓" receipt next to zero backing evidence (CLAUDE.md §N.6
+  // point 3 / B.10).
+  it('forces receipt.varga_confirmed=false when served varga_confirmation.rows are empty, even if the capability stamped "D2✓" (CR-2/CR-63/R-38)', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID,
+        about: { domain: 'wealth', bhava: 2, label: 'Wealth / Artha', karakas: ['Jupiter'], operative_varga: 'D2' },
+        checklist: {
+          varga_confirmation: { varga: 'D2', rows: [] },
+        },
+        // The capability honestly believed the varga was confirmed pre-serve (e.g. real
+        // chart_divisionals rows existed at write time) — but nothing survived onto the wire.
+        receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D2✓', yogas_checked: 1, bhanga_checked: false, timing_anchored: false },
+        fact_id_refs: [],
+        drill_pointers: [],
+        judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'wealth', response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    const receipt = verdict['receipt'] as Record<string, unknown>
+    expect(receipt['varga_confirmed']).toBe(false)
+    const flags = envelope['judgment_flags'] as Array<{ code: string } | string>
+    expect(flags.some(f => typeof f !== 'string' && f.code === 'varga_confirmed_forced_false')).toBe(true)
+  })
+
+  it('leaves receipt.varga_confirmed="D9✓" untouched when varga_confirmation.rows genuinely carry data', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    stubFetch({
+      'marsys://tool/L-JUDGMENT/judgment_query': {
+        chart_id: TEST_CHART_ID,
+        about: { domain: 'marriage', bhava: 7, label: 'Marriage / Partnership', karakas: ['Venus'], operative_varga: 'D9' },
+        checklist: {
+          varga_confirmation: {
+            varga: 'D9',
+            rows: [{ role: 'bhavesha', graha: 'Venus', sign: 'Sagittarius', fact_id: 'f-1' }],
+          },
+        },
+        receipt: { bhava: true, bhavesha: true, karaka: true, from_moon: true, varga_confirmed: 'D9✓', yogas_checked: 1, bhanga_checked: false, timing_anchored: false },
+        fact_id_refs: [],
+        drill_pointers: [],
+        judgment_flags: [],
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const handler = handlers.get('judgment_query')!
+
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'marriage', response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    const receipt = verdict['receipt'] as Record<string, unknown>
+    expect(receipt['varga_confirmed']).toBe('D9✓')
+    const flags = envelope['judgment_flags'] as Array<{ code: string } | string>
+    expect(flags.some(f => typeof f !== 'string' && f.code === 'varga_confirmed_forced_false')).toBe(false)
+  })
 })
 
 // ── graha_portrait ────────────────────────────────────────────────────────────
