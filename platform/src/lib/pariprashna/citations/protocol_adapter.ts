@@ -34,14 +34,19 @@
  * required), OR bless the `grade{subject:'citation:N'}` convention above.
  *
  * ── Wire-safety invariant (load-bearing) ─────────────────────────────────────
- * A register_leak flag's `original` field holds the LEAKED INTERNAL TOKEN — the
- * exact string that must never reach a client. The wire `detail` is
- * client-visible, so the adapter emits ONLY the pattern name + verdict (+ the
- * clean reader label on a rewrite). `original` and `audit_detail`'s
- * table/fact-id internals are server-audit-channel only and are NEVER placed on
- * the wire by this adapter. See protocol_adapter.test.ts for the proof.
+ * Every string this adapter places on a client-visible wire field is either (a)
+ * an already-clean value (reader_label, a pattern name, a normalization note, a
+ * grade enum), or (b) run through `lintReaderProse` first. Specifically:
+ *   • A register_leak flag's `original` (the LEAKED INTERNAL TOKEN) is NEVER
+ *     emitted — only the pattern name + verdict (+ the clean reader label on a
+ *     rewrite) go on the wire.
+ *   • A citation's `audit_detail` DOES contain table/fact-id internals (e.g.
+ *     "resolved from bodha_msr_signals where signal_id='SIG.MSR.413'"), so it is
+ *     passed through `lintReaderProse` before it can reach `grade.detail`.
+ * See protocol_adapter.test.ts for both proofs.
  */
 
+import { lintReaderProse } from './register_leak_lint'
 import type { PariprashnaCitationEvent } from './types'
 
 // ── Local MIRROR of lane S-1 wire shapes (delete post-merge) ────────────────
@@ -104,13 +109,14 @@ export function toWireEvents(
         layer: DEFAULT_CITATION_LAYER,
         snippet: event.reader_label, // reader-safe label, never the raw id
       }
+      // audit_detail carries table/fact-id internals — scrub before the wire.
       const grade: S1GradeWire = {
         type: 'grade',
         seq: env.nextSeq(),
         t: env.t,
         subject: `citation:${event.n}`,
         grade: event.grade,
-        detail: event.audit_detail,
+        detail: lintReaderProse(event.audit_detail).clean,
       }
       return [define, grade]
     }

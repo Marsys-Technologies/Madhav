@@ -120,6 +120,36 @@ describe('protocol adapter: WIRE-SAFETY — leaked token never reaches the wire'
     }
   })
 
+  it('never places a citation `audit_detail`s table/fact-id internals on the wire', () => {
+    // audit_detail deliberately contains an internal table name AND a signal id.
+    const internal: PariprashnaCitationEvent = {
+      type: 'citation.define',
+      n: 7,
+      reader_label: 'Mercury eight-system convergence',
+      grade: 'primary',
+      audit_detail: "resolved from bodha_msr_signals where signal_id='SIG.MSR.413'",
+      ref: 'SIG.MSR.413',
+    }
+    const wire = toWireBatch([internal], env())
+
+    // The internal TABLE NAME must not survive onto ANY wire field.
+    const serialized = JSON.stringify(wire)
+    expect(serialized, 'leaked table name to the wire').not.toContain('bodha_msr_signals')
+
+    // grade.detail (a client-visible field) must be scrubbed of BOTH the table
+    // name and the signal id that audit_detail carried.
+    const grade = wire.find((e) => e.type === 'grade')!
+    expect(grade.detail).not.toContain('bodha_msr_signals')
+    expect(grade.detail).not.toContain('SIG.MSR.413')
+    expect(grade.grade).toBe('primary')
+
+    // The signal id legitimately rides on citation.define.signal_id (S-1's
+    // by-design reference field), and the reader-safe label still ships.
+    const define = wire.find((e) => e.type === 'citation.define')!
+    expect(define.signal_id).toBe('SIG.MSR.413')
+    expect(define.snippet).toBe('Mercury eight-system convergence')
+  })
+
   it('a rewrite exposes only the clean replacement label, not the original id', () => {
     const wire = toWireEvents(
       {
