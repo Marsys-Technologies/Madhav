@@ -849,7 +849,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'ranked (priority_score x0.3, flagged via neutral_dignity_downranked per row) rather than ' +
     'treated as genuine priority findings — see neutral_dignity_downranked_count. Filter by ' +
     'domain/domains (career/character/health/relationship/spirituality/wealth) to scope to a ' +
-    'life domain.',
+    'life domain. [ṢAḌ-DARŚANA W0.4] Superseded by kala_priority_get (VIEW 5 PRIORITIZE), ' +
+    'which wraps this SAME capability on the elevated kala_* envelope (argument-shaped ' +
+    'reading, tri-plane pointers into EXPLAIN/AHEAD/ELECT, coverage, freshness, ' +
+    'calibration_maturity) — prefer kala_priority_get for new callers. This alias remains ' +
+    'live, not retired.',
     'marsys://tool/L3/call_priority_ranking',
     {
       date_from: z.string().optional().describe('Start of evaluation period (YYYY-MM-DD).'),

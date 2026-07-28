@@ -72,13 +72,16 @@ import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection }
 // shallow slice. No computation is reimplemented (B.10) — dossier is a deterministic join of the
 // Total Concept Inventory × completeness accounting.
 import { runDossier, type DossierPage } from './dossier.js'
-// ṢAḌ-DARŚANA W0.4 (lane shad-darshana/upaya-ritual-stub; SHAD_DARSHANA_BRIEF_v2_0.md §0.4 /
-// §2 file map) — the two capability facades over the elevated kala envelope. Both tools
-// register themselves inline via `server.tool(...)`; this import + the two calls inside
-// `registerRegistryBridgeTools` below are their ONE canonical registration site (brief §2:
-// "one canonical registration per tool, asserted by test").
+// ṢAḌ-DARŚANA W0.4 (SHAD_DARSHANA_BRIEF_v2_0.md §0.4/§3/§2 file map) — the view facades over
+// the elevated kala envelope. Each registers itself inline via `server.tool(...)`; each
+// import + its call inside `registerRegistryBridgeTools` below is its ONE canonical
+// registration site (brief §2: "one canonical registration per tool, asserted by test").
+// upaya-ritual-stub lane:
 import { registerKalaUpayaGet } from './kala_views/upaya.js'
 import { registerKalaRitualGet } from './kala_views/ritual.js'
+// priority-explain lane:
+import { registerKalaPriorityTool } from './kala_views/priority.js'
+import { registerKalaExplainTool } from './kala_views/explain.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -4223,7 +4226,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'activating graha(s) as an honest PARTIAL gate check (full sidereal vedha/aspect gating is ' +
     'a documented data-plane gap, reported not fabricated). Pass `domain` or `bhava` exactly ' +
     'as judgment_query accepts. response_format=\'v3\' (opt-in; default \'legacy\') returns the ' +
-    'R5 unified envelope with typed drill_pointers carrying `pact_stage` metadata.',
+    'R5 unified envelope with typed drill_pointers carrying `pact_stage` metadata. ' +
+    '[ṢAḌ-DARŚANA W0.4] Superseded by kala_explain_get (VIEW 6 EXPLAIN), which wraps this ' +
+    'SAME capability on the elevated kala_* envelope (argument-shaped reading naming the ' +
+    'weakest link, tri-plane pointers into UPĀYA/ELECT/AHEAD, coverage, freshness, ' +
+    'calibration_maturity) — prefer kala_explain_get for new callers. This tool remains live, ' +
+    'not retired.',
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')"),
@@ -4420,4 +4428,18 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // `kala_elect_get`, with no passthrough/proxy/delegation to the muhūrta substrate.
   registerKalaUpayaGet(server, principal)
   registerKalaRitualGet(server, principal)
+
+  // ── ṢAḌ-DARŚANA W0.4 — kala_priority_get / kala_explain_get ──────────────────
+  // Two of the eight kala_* views (brief §2 file map: "tools/kala_views/ — now.ts, ahead.ts,
+  // elect.ts, story.ts, priority.ts, explain.ts, upaya.ts, ritual.ts + one registration block
+  // in registry_bridge.ts (one canonical registration per tool, asserted by test)"). Thin W0
+  // facades over EXISTING substrate — kala_priority_get wraps the same
+  // marsys://tool/L3/call_priority_ranking capability kala_priority_ranking_get already calls;
+  // kala_explain_get wraps the same marsys://tool/L-PACT/pact_query capability pact_query
+  // already calls — re-served on the elevated kala_envelope.ts shape (argument-shaped reading,
+  // question_frame, field_snapshot_id, tri-plane pointers, 3-state coverage, freshness,
+  // calibration_maturity). Legacy tools (kala_priority_ranking_get, pact_query) are unaffected
+  // — aliases live, nothing retired (brief §3 W0.4).
+  registerKalaPriorityTool(server, principal)
+  registerKalaExplainTool(server, principal)
 }
