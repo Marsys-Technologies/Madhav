@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { query } from '@/lib/db/client'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
+import { configService } from '@/lib/config/index'
 import { PariprashnaApp } from '@/components/pariprashna/PariprashnaApp'
 
 function formatBornLine(birthDate: string, birthTime: string, birthPlace: string): string {
@@ -34,6 +35,13 @@ function formatBornLine(birthDate: string, birthTime: string, birthPlace: string
  */
 export default async function PariprashnaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+
+  // PB-1 rollback gate — flag OFF means this surface does not exist yet for
+  // this deploy; send the native back to the existing consult page for the
+  // same chart rather than rendering a half-wired route.
+  if (!configService.getFlag('PARIPRASHNA_ENABLED')) {
+    redirect(`/clients/${id}/consult`)
+  }
 
   const access = await resolveChartPageAccess(id)
   if (!access) redirect('/login')

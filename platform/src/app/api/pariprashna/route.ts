@@ -189,6 +189,13 @@ export async function POST(request: Request): Promise<Response> {
   const user = await getServerUser()
   if (!user) return res.unauthenticated()
 
+  // PB-1 rollback gate — the whole wave's rollback design IS this flag.
+  // Off means this route does not exist for this deploy: a deliberate 404,
+  // never silent processing of a half-wired surface.
+  if (!configService.getFlag('PARIPRASHNA_ENABLED')) {
+    return res.notFound('Paripraśna is not enabled.')
+  }
+
   let body: RequestBody
   try {
     body = await request.json()
