@@ -1,6 +1,18 @@
 /**
  * Adapter: lane C-2's recorded-fixture protocol → this renderer's `WireEvent`.
  *
+ * PATH ROLE (PB-1/integrate): this is the DEV FIXTURE-FORMAT path (used by the
+ * `c2-single` / `c2-gap` dev fixture modes only). The LIVE production path is
+ * `state/s1LiveAdapter.ts`, which maps S-1's real merged `PariprashnaEvent`
+ * wire directly. This adapter is retained because C-2's recorded fixtures are a
+ * genuinely different-shaped event source that exercises the same reducer +
+ * components; it is NOT on the production wire path.
+ *
+ * NB: C-2's inline citation-anchor events were renamed `seam.open`/`seam.set`
+ * → `citation_anchor.open`/`citation_anchor.set` at integration (they collided
+ * in name with S-1's real PASS-BOUNDARY `seam.open`/`seam.set`); the C-1 copies
+ * in `fixtures/c2_recorded_samples.ts` and the cases below were renamed to match.
+ *
  * C-2 (`Madhav-pb-1-c2`, `platform/tests/pariprashna/{fixtures,reducer}/`)
  * built a real protocol scaffold + golden reducer ahead of S-1's live wire,
  * with its own event field names (`turn_id`, `block_id`, `text`,
@@ -41,7 +53,7 @@
  *                          against real data
  *
  * DELIBERATELY NOT MAPPED — an open integration question, not an oversight:
- * C-2's `seam.open`/`seam.set` is a CITATION-ANCHOR primitive: it marks a
+ * C-2's `citation_anchor.open`/`citation_anchor.set` is a CITATION-ANCHOR primitive: it marks a
  * character offset inside a block's text where a citation resolves (or
  * resolves to `null` for "no source found"). That is a different concept
  * from the design plan's §5.8.1 PASS SEAM — the mockup's inline "Looking
@@ -79,8 +91,8 @@ function verificationToGrade(v: unknown): Grade {
 
 /**
  * Splices a citation chip token (`⟦n⟧`) into accumulated block text at a
- * character offset — the real mechanics C-2's `seam.open{anchor_offset}` +
- * `seam.set{citation_id}` pair implies, worked all the way through rather
+ * character offset — the real mechanics C-2's `citation_anchor.open{anchor_offset}` +
+ * `citation_anchor.set{citation_id}` pair implies, worked all the way through rather
  * than dropped on the floor.
  */
 function spliceCitationAnchor(text: string, offset: number, token: string): string {
@@ -95,8 +107,8 @@ export function adaptC2Fixture(turnId: string, raw: C2Fixture): ScheduledEvent[]
   const passIndexByPassId = new Map<string, number>()
   const citationNByCitationId = new Map<string, number>()
   let nextCitationN = 1
-  // pending anchors: seam_id → { blockId, offset } captured at seam.open,
-  // resolved into a splice once seam.set delivers a citation_id (or a
+  // pending anchors: anchor_id → { blockId, offset } captured at citation_anchor.open,
+  // resolved into a splice once citation_anchor.set delivers a citation_id (or a
   // synthesized gap block, for citation_id: null).
   const pendingAnchors = new Map<string, { blockId: string; offset: number }>()
   // accumulate per-block text as we see deltas/commits, so a late-resolving
@@ -185,16 +197,16 @@ export function adaptC2Fixture(turnId: string, raw: C2Fixture): ScheduledEvent[]
         })
         break
       }
-      case 'seam.open': {
-        pendingAnchors.set(String(event.seam_id), {
+      case 'citation_anchor.open': {
+        pendingAnchors.set(String(event.anchor_id), {
           blockId: String(event.block_id),
           offset: Number(event.anchor_offset ?? 0),
         })
         break
       }
-      case 'seam.set': {
-        const anchor = pendingAnchors.get(String(event.seam_id))
-        pendingAnchors.delete(String(event.seam_id))
+      case 'citation_anchor.set': {
+        const anchor = pendingAnchors.get(String(event.anchor_id))
+        pendingAnchors.delete(String(event.anchor_id))
         if (!anchor) break
         const citationId = event.citation_id
         if (citationId == null) {

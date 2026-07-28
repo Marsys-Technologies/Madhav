@@ -4,14 +4,18 @@
  * These mirror the wire protocol described in
  * `00_ARCHITECTURE/PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md` §8.3.
  *
- * STUB NOTE: the real SSE wire (server → client event stream) does not exist
- * in this worktree yet — that is lane S-1's job. This module defines the
- * *shape* the reducer consumes; `fixtures/` supplies recorded event arrays
- * that a real server would eventually emit, and `useFixtureStream` replays
- * them with timing so the renderer can be built and demoed against them.
- * When S-1 lands a live stream, only the transport (EventSource / fetch
- * stream → dispatch) needs to change — the reducer and every component here
- * consume `WireEvent` regardless of where it came from.
+ * INTEGRATION NOTE (PB-1/integrate): S-1's real SSE wire protocol
+ * (`@/lib/pariprashna/protocol/events` — the canonical, Zod-typed
+ * `PariprashnaEvent` union) is now MERGED. `WireEvent` below remains the
+ * CLIENT-SIDE reducer action shape (richer/curation-facing than the minimal
+ * wire), and `state/s1LiveAdapter.ts` is the seam that maps S-1's real
+ * `PariprashnaEvent` → these `WireEvent`s at the live boundary (consumed by
+ * `hooks/useLiveStream.ts`, which decodes the real SSE stream via S-1's
+ * `decodeEvent`). `fixtures/` + `useFixtureStream` still supply recorded event
+ * arrays for local dev / component work through the SAME reducer + components.
+ * So the reducer and every component here consume `WireEvent` regardless of
+ * whether it came from the live route or a fixture. See s1LiveAdapter's header
+ * for the honest list of fields synthesized where S-1's wire is minimal.
  */
 
 // ── Roles / grades / block kinds ────────────────────────────────────────────

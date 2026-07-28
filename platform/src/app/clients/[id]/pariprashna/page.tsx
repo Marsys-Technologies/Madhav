@@ -25,10 +25,12 @@ function formatBornLine(birthDate: string, birthTime: string, birthPlace: string
  * `consume`/`consult` chat trees — this is a wholly new route + component
  * tree per this lane's file scope.
  *
- * STUB NOTE: the reading itself is fixture-driven (see
- * `components/pariprashna/state/useFixtureStream.ts`) until lane S-1's live
- * wire lands — this page wires real chart identity/auth, not yet a real
- * engine call.
+ * TRANSPORT: `PariprashnaApp` picks its transport at mount. With
+ * `NEXT_PUBLIC_PARIPRASHNA_LIVE=1` (deploy-behind-a-flag), it opens a REAL SSE
+ * stream against lane S-1's `/api/pariprashna` route via `useLiveStream`;
+ * otherwise it replays canned fixtures via `useFixtureStream` (dev / component
+ * work). Either way this page wires real chart identity + auth and passes the
+ * chartId the live route requires.
  */
 export default async function PariprashnaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -46,6 +48,7 @@ export default async function PariprashnaPage({ params }: { params: Promise<{ id
 
   return (
     <PariprashnaApp
+      chartId={id}
       chartPin={{
         name: chart.name,
         bornLine: formatBornLine(chart.birth_date, chart.birth_time, chart.birth_place),

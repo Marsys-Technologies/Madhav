@@ -46,8 +46,9 @@ describe('protocol adapter: citation.define → S-1 citation.define (reader_labe
     expect(typeof define.seq).toBe('number')
     expect(typeof define.t).toBe('number')
 
-    // No separate `grade` event is emitted for a citation any more.
-    expect(wire.some((e) => e.type === 'grade')).toBe(false)
+    // No separate `grade` event is emitted for a citation any more — the only
+    // event on the wire for a citation is the single citation.define.
+    expect(wire.every((e) => e.type === 'citation.define')).toBe(true)
   })
 
   it('honors an explicit source layer on the internal event instead of the default', () => {

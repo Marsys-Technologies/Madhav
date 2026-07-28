@@ -1,7 +1,7 @@
 'use client'
 
 import '../pariprashna/pariprashna.css'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ThreadHeader, type ChartPin } from './ThreadHeader'
 import { Transcript } from './Transcript'
 import { EmptyState } from './EmptyState'
@@ -10,7 +10,21 @@ import { RightDock } from './dock/RightDock'
 import { OverlayLayer } from './overlay/OverlayLayer'
 import { DockControllerProvider } from './dock/DockController'
 import { useFixtureStream } from './state/useFixtureStream'
+import { useLiveStream } from './hooks/useLiveStream'
 import type { FixtureMode } from './fixtures'
+import type { ThreadState } from './state/types'
+
+/**
+ * The transport-agnostic stream contract the surface consumes. Both
+ * `useFixtureStream` (dev replay) and `useLiveStream` (real SSE) satisfy it:
+ * `submit(text, mode)` — the fixture host plays `mode` as a canned fixture; the
+ * live host maps `mode` onto a `reading_depth` and calls the real route.
+ */
+export interface PariprashnaStream {
+  state: ThreadState
+  submit: (text: string, mode: FixtureMode) => string | void
+  stop: (turnId: string) => void
+}
 
 const EXAMPLE_PROMPTS = [
   'What does this period ask of my career?',
@@ -50,8 +64,59 @@ function DevFixturePicker({ onPick, disabled }: { onPick: (mode: FixtureMode) =>
   )
 }
 
-export function PariprashnaApp({ chartPin }: { chartPin: ChartPin }) {
-  const { state, submit, stop } = useFixtureStream()
+/**
+ * Paripraśna app entry. Chooses the transport HOST at mount:
+ *   • live SSE against `/api/pariprashna` when a chartId is present AND the
+ *     `NEXT_PUBLIC_PARIPRASHNA_LIVE` flag is on (the deploy-behind-a-flag path);
+ *   • otherwise the fixture-replay host (dev / component work / no chartId).
+ * The two hosts are distinct components so each calls exactly one transport
+ * hook (React hook rules) and both render the same `<PariprashnaSurface>`.
+ */
+export function PariprashnaApp({ chartPin, chartId }: { chartPin: ChartPin; chartId?: string }) {
+  const liveEnabled = process.env.NEXT_PUBLIC_PARIPRASHNA_LIVE === '1' && !!chartId
+  if (liveEnabled && chartId) {
+    return <PariprashnaAppLive chartPin={chartPin} chartId={chartId} />
+  }
+  return <PariprashnaAppFixture chartPin={chartPin} />
+}
+
+/** Fixture-replay host (default): canned event streams, no backend. */
+function PariprashnaAppFixture({ chartPin }: { chartPin: ChartPin }) {
+  const stream = useFixtureStream()
+  return <PariprashnaSurface chartPin={chartPin} stream={stream} showDevPicker />
+}
+
+/** Live host: real SSE via `/api/pariprashna`. Maps the composer's fixture
+ *  `mode` onto a `reading_depth` (single → auto, everything else → deep_dive). */
+function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId: string }) {
+  const live = useLiveStream(chartId)
+  const stream = useMemo<PariprashnaStream>(
+    () => ({
+      state: live.state,
+      submit: (text: string, mode: FixtureMode) =>
+        live.submit(text, { reading_depth: mode === 'single' ? 'auto' : 'deep_dive' }),
+      stop: live.stop,
+    }),
+    [live],
+  )
+  return <PariprashnaSurface chartPin={chartPin} stream={stream} showDevPicker={false} />
+}
+
+/**
+ * The presentational shell — transport-agnostic. Receives a `PariprashnaStream`
+ * and renders header / transcript / composer / dock / overlay. Identical markup
+ * for both hosts; only the dev fixture picker is fixture-host-only.
+ */
+function PariprashnaSurface({
+  chartPin,
+  stream,
+  showDevPicker,
+}: {
+  chartPin: ChartPin
+  stream: PariprashnaStream
+  showDevPicker: boolean
+}) {
+  const { state, submit, stop } = stream
   const activeTurn = state.turns[state.turns.length - 1]
   const streaming = !!activeTurn && !['settled', 'interrupted', 'errored'].includes(activeTurn.status)
 
@@ -93,7 +158,7 @@ export function PariprashnaApp({ chartPin }: { chartPin: ChartPin }) {
             ) : (
               <Transcript turns={state.turns} />
             )}
-            <DevFixturePicker onPick={handleDevPick} disabled={streaming} />
+            {showDevPicker && <DevFixturePicker onPick={handleDevPick} disabled={streaming} />}
             <Composer streaming={streaming} onSubmit={handleSubmit} onStop={handleStop} />
           </div>
           <RightDock turns={state.turns} />

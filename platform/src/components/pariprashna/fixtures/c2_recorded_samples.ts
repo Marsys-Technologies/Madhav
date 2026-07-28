@@ -66,7 +66,7 @@ const C2_HONEST_GAP: C2Fixture = {
         text: "No contradiction was found against the prior turn's working hypothesis. ",
       },
     },
-    { delay_ms: 10, event: { id: 'honest-gap-3', seq: 3, t: 45, type: 'seam.open', seam_id: 's1', block_id: 'b1', anchor_offset: 72 } },
+    { delay_ms: 10, event: { id: 'honest-gap-3', seq: 3, t: 45, type: 'citation_anchor.open', anchor_id: 's1', block_id: 'b1', anchor_offset: 72 } },
     {
       delay_ms: 10,
       event: {
@@ -74,7 +74,7 @@ const C2_HONEST_GAP: C2Fixture = {
         final_text: "No contradiction was found against the prior turn's working hypothesis. ",
       },
     },
-    { delay_ms: 10, event: { id: 'honest-gap-5', seq: 5, t: 65, type: 'seam.set', seam_id: 's1', citation_id: null } },
+    { delay_ms: 10, event: { id: 'honest-gap-5', seq: 5, t: 65, type: 'citation_anchor.set', anchor_id: 's1', citation_id: null } },
     {
       delay_ms: 10,
       event: {
