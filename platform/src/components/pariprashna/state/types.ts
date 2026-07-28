@@ -149,7 +149,18 @@ export interface TurnState {
   citations: Record<number, Citation>
   grounding: GroundingSummary | null
   error: ClassifiedError | null
+  /** Most-recently-applied event id (debug/telemetry only — NOT the dedup key). */
   lastEventId: string | null
+  /**
+   * The set of every event id already applied to this turn — the dedup key.
+   * A proper seen-set (not a single-slot last-id) so a NON-adjacent duplicate
+   * (e.g. a reconnect replaying an earlier batch) is still recognized and
+   * dropped, never double-applied. S-1's `seq` is monotonic + gapless per turn
+   * and the live adapter encodes it into each `eventId` (`${turnId}-${seq}`),
+   * so id-based dedup subsumes seq-based dedup while also covering the fixture
+   * transport (which keys on string event ids).
+   */
+  seenEventIds: Set<string>
   reconnectHollowCaret: boolean
 }
 

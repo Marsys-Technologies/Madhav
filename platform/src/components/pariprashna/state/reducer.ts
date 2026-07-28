@@ -44,6 +44,7 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     grounding: null,
     error: null,
     lastEventId: null,
+    seenEventIds: new Set<string>(),
     reconnectHollowCaret: false,
   }
 }
@@ -85,9 +86,21 @@ function upsertActivity(activities: ActivityRow[], row: ActivityRow): ActivityRo
   return next
 }
 
+/**
+ * Duplicate iff this exact event id has ALREADY been applied to this turn.
+ * Uses the per-turn seen-SET (not a single last-id slot), so a non-adjacent
+ * redelivery — the reconnect-replays-an-earlier-batch case — is correctly
+ * recognized, not just a back-to-back repeat.
+ */
 function isDuplicateEvent(turn: TurnState, eventId: string | undefined): boolean {
   if (!eventId) return false
-  return turn.lastEventId === eventId
+  return turn.seenEventIds.has(eventId)
+}
+
+/** Return a new seen-set with `eventId` recorded (immutable update). */
+function addSeen(turn: TurnState, eventId: string | undefined): Set<string> {
+  if (!eventId) return turn.seenEventIds
+  return new Set(turn.seenEventIds).add(eventId)
 }
 
 export function threadReducer(state: ThreadState, action: ThreadAction): ThreadState {
@@ -121,7 +134,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
     case 'phase': {
       return updateTurn(state, action.turnId, (t) => {
         if (isDuplicateEvent(t, action.eventId)) return t
-        return { ...t, status: t.status === 'submitted' ? 'thinking' : t.status, phaseLabel: action.label, lastEventId: action.eventId }
+        return { ...t, status: t.status === 'submitted' ? 'thinking' : t.status, phaseLabel: action.label, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
@@ -143,6 +156,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           activities: upsertActivity(t.activities, row),
           passIndex: Math.max(t.passIndex, action.row.passIndex),
           lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
         }
       })
     }
@@ -156,6 +170,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           passIndex: action.passIndex,
           activeSeam: { blockId: action.blockId, passIndex: action.passIndex, liveLabel: action.liveLabel },
           lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
         }
       })
     }
@@ -169,6 +184,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           activeSeam: null,
           blocks: [...t.blocks, { id: action.blockId, kind: 'seam', html: '', seamSummary: action.summary }],
           lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
         }
       })
     }
@@ -176,7 +192,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
     case 'block.open': {
       return updateTurn(state, action.turnId, (t) => {
         if (isDuplicateEvent(t, action.eventId)) return t
-        const next: TurnState = { ...t, status: 'streaming', lastEventId: action.eventId }
+        const next: TurnState = { ...t, status: 'streaming', lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
         if (action.kind === 'paragraph' || action.kind === 'list') {
           next.tail = { blockId: action.blockId, kind: action.kind, role: action.role, text: '' }
         }
@@ -189,7 +205,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
       return updateTurn(state, action.turnId, (t) => {
         if (isDuplicateEvent(t, action.eventId)) return t
         if (!t.tail || t.tail.blockId !== action.blockId) return t
-        return { ...t, tail: { ...t.tail, text: t.tail.text + action.textDelta }, lastEventId: action.eventId }
+        return { ...t, tail: { ...t.tail, text: t.tail.text + action.textDelta }, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
@@ -211,6 +227,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           blocks: [...t.blocks, committed],
           tail: tailCleared,
           lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
         }
       })
     }
@@ -222,42 +239,43 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           ...t,
           citations: { ...t.citations, [action.citation.n]: action.citation },
           lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
         }
       })
     }
 
     case 'flag': {
-      return updateTurn(state, action.turnId, (t) => ({ ...t, lastEventId: action.eventId }))
+      return updateTurn(state, action.turnId, (t) => ({ ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }))
     }
 
     case 'grade': {
-      return updateTurn(state, action.turnId, (t) => ({ ...t, lastEventId: action.eventId }))
+      return updateTurn(state, action.turnId, (t) => ({ ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }))
     }
 
     case 'turn.commit': {
       return updateTurn(state, action.turnId, (t) => {
         if (isDuplicateEvent(t, action.eventId)) return t
-        return { ...t, status: 'settling', grounding: action.grounding, lastEventId: action.eventId }
+        return { ...t, status: 'settling', grounding: action.grounding, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
     case 'turn.close': {
       return updateTurn(state, action.turnId, (t) => {
-        if (t.status === 'settling') return { ...t, status: 'settled', lastEventId: action.eventId }
-        return { ...t, lastEventId: action.eventId }
+        if (t.status === 'settling') return { ...t, status: 'settled', lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        return { ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
     case 'error': {
-      return updateTurn(state, action.turnId, (t) => ({ ...t, status: 'errored', error: action.error, lastEventId: action.eventId }))
+      return updateTurn(state, action.turnId, (t) => ({ ...t, status: 'errored', error: action.error, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }))
     }
 
     case 'reconnecting': {
-      return updateTurn(state, action.turnId, (t) => ({ ...t, status: 'reconnecting', reconnectHollowCaret: true, lastEventId: action.eventId }))
+      return updateTurn(state, action.turnId, (t) => ({ ...t, status: 'reconnecting', reconnectHollowCaret: true, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }))
     }
 
     case 'reconnected': {
-      return updateTurn(state, action.turnId, (t) => ({ ...t, status: 'streaming', reconnectHollowCaret: false, lastEventId: action.eventId }))
+      return updateTurn(state, action.turnId, (t) => ({ ...t, status: 'streaming', reconnectHollowCaret: false, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }))
     }
 
     case 'interrupted': {
@@ -265,7 +283,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const blocks = t.tail
           ? [...t.blocks, { id: t.tail.blockId, kind: t.tail.kind, role: t.tail.role, html: t.tail.text }]
           : t.blocks
-        return { ...t, status: 'interrupted', tail: null, blocks, lastEventId: action.eventId }
+        return { ...t, status: 'interrupted', tail: null, blocks, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
