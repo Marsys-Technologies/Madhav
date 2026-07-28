@@ -23,7 +23,7 @@
 import { z } from 'zod'
 
 /** Bump on ANY change to the on-the-wire event shapes below. S-1 reads this. */
-export const CITATION_EVENT_CONTRACT_VERSION = '0.1.0-s3'
+export const CITATION_EVENT_CONTRACT_VERSION = '0.2.0-s3'
 
 // ── Citation grade ───────────────────────────────────────────────────────────
 // The verification tier a resolved reference carries. `unverified` is the
@@ -82,6 +82,14 @@ export const CitationDefineEventSchema = z.object({
   audit_detail: z.string(),
   /** Normalized reference token (audit channel). */
   ref: z.string(),
+  /**
+   * Optional source-layer tag for the citation (e.g. 'L2.5', 'L1'). When a
+   * resolver knows the true layer a citation is grounded in, it sets this and
+   * `protocol_adapter.ts` forwards it onto the S-1 `citation.define.layer`
+   * field; absent it, the adapter applies its documented default. Optional so
+   * existing resolvers/fixtures stay valid.
+   */
+  layer: z.string().optional(),
 })
 export type CitationDefineEvent = z.infer<typeof CitationDefineEventSchema>
 

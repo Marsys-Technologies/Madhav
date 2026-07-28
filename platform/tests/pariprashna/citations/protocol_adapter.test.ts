@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import { toWireEvents, toWireBatch } from '@/lib/pariprashna/citations'
 import type {
   PariprashnaCitationEvent,
-  S1WireEvent,
+  CitationWireEvent,
 } from '@/lib/pariprashna/citations'
 
 function env() {
@@ -18,8 +18,8 @@ function env() {
   return { nextSeq: () => seq++, t: 1000 }
 }
 
-describe('protocol adapter: citation.define → S-1 citation.define + grade', () => {
-  it('maps a resolved citation to a define (reader label as snippet) + a grade', () => {
+describe('protocol adapter: citation.define → S-1 citation.define (reader_label + grade ride on the define)', () => {
+  it('maps a resolved citation to a SINGLE define carrying reader_label + grade (no split grade event)', () => {
     const internal: PariprashnaCitationEvent = {
       type: 'citation.define',
       n: 3,
@@ -29,7 +29,8 @@ describe('protocol adapter: citation.define → S-1 citation.define + grade', ()
       ref: 'SIG.MSR.413',
     }
     const wire = toWireEvents(internal, env())
-    expect(wire).toHaveLength(2)
+    // Reconciled: one event, not a define + a correlated grade event.
+    expect(wire).toHaveLength(1)
 
     const define = wire.find((e) => e.type === 'citation.define')!
     expect(define).toMatchObject({
@@ -38,17 +39,30 @@ describe('protocol adapter: citation.define → S-1 citation.define + grade', ()
       signal_id: 'SIG.MSR.413',
       layer: 'L2.5',
       snippet: 'Mercury eight-system convergence',
+      reader_label: 'Mercury eight-system convergence',
+      grade: 'primary',
     })
     // Every wire event carries the S-1 envelope.
     expect(typeof define.seq).toBe('number')
     expect(typeof define.t).toBe('number')
 
-    const grade = wire.find((e) => e.type === 'grade')!
-    expect(grade).toMatchObject({
-      type: 'grade',
-      subject: 'citation:3',
+    // No separate `grade` event is emitted for a citation any more.
+    expect(wire.some((e) => e.type === 'grade')).toBe(false)
+  })
+
+  it('honors an explicit source layer on the internal event instead of the default', () => {
+    const internal: PariprashnaCitationEvent = {
+      type: 'citation.define',
+      n: 1,
+      reader_label: 'Saturn in the birth chart',
       grade: 'primary',
-    })
+      audit_detail: 'resolved from chart_facts',
+      ref: 'FACT.L1.001',
+      layer: 'L1',
+    }
+    const wire = toWireEvents(internal, env())
+    const define = wire.find((e) => e.type === 'citation.define')!
+    expect(define).toMatchObject({ layer: 'L1' })
   })
 })
 
@@ -113,14 +127,14 @@ describe('protocol adapter: WIRE-SAFETY — leaked token never reaches the wire'
       pattern: 'table_name',
       original: tok,
     }))
-    const wire: S1WireEvent[] = toWireBatch(internal, env())
+    const wire: CitationWireEvent[] = toWireBatch(internal, env())
     const serialized = JSON.stringify(wire)
     for (const tok of leakedTokens) {
       expect(serialized, `leaked to wire: ${tok}`).not.toContain(tok)
     }
   })
 
-  it('never places a citation `audit_detail`s table/fact-id internals on the wire', () => {
+  it('never places a citation `audit_detail`s table-name internals on the wire', () => {
     // audit_detail deliberately contains an internal table name AND a signal id.
     const internal: PariprashnaCitationEvent = {
       type: 'citation.define',
@@ -132,22 +146,22 @@ describe('protocol adapter: WIRE-SAFETY — leaked token never reaches the wire'
     }
     const wire = toWireBatch([internal], env())
 
-    // The internal TABLE NAME must not survive onto ANY wire field.
+    // The internal TABLE NAME must not survive onto ANY wire field. Reconciled
+    // adapter does not forward audit_detail at all, so this holds by
+    // construction — the guard stays as a permanent regression proof.
     const serialized = JSON.stringify(wire)
     expect(serialized, 'leaked table name to the wire').not.toContain('bodha_msr_signals')
-
-    // grade.detail (a client-visible field) must be scrubbed of BOTH the table
-    // name and the signal id that audit_detail carried.
-    const grade = wire.find((e) => e.type === 'grade')!
-    expect(grade.detail).not.toContain('bodha_msr_signals')
-    expect(grade.detail).not.toContain('SIG.MSR.413')
-    expect(grade.grade).toBe('primary')
+    // The free-text audit sentence ("resolved from …") must not ship either.
+    expect(serialized, 'leaked audit sentence to the wire').not.toContain('resolved from')
 
     // The signal id legitimately rides on citation.define.signal_id (S-1's
-    // by-design reference field), and the reader-safe label still ships.
+    // by-design reference field); the reader-safe label + grade still ship on
+    // the same define event.
     const define = wire.find((e) => e.type === 'citation.define')!
     expect(define.signal_id).toBe('SIG.MSR.413')
     expect(define.snippet).toBe('Mercury eight-system convergence')
+    expect(define.reader_label).toBe('Mercury eight-system convergence')
+    expect(define.grade).toBe('primary')
   })
 
   it('a rewrite exposes only the clean replacement label, not the original id', () => {

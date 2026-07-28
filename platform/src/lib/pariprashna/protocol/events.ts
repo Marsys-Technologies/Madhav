@@ -168,7 +168,22 @@ export const SeamSetEventSchema = z.object({
 })
 export type SeamSetEvent = z.infer<typeof SeamSetEventSchema>
 
-/** `citation.define` — defines a citation the prose references (SIG.MSR.NNN etc). */
+/**
+ * `citation.define` — defines a citation the prose references (SIG.MSR.NNN etc).
+ *
+ * `reader_label` + `grade` are OPTIONAL, additive fields (PB-1/integrate
+ * reconciliation with lane S-3's citation pipeline). S-3 resolves each citation
+ * to a reader-safe label + a verification grade; carrying them here lets that
+ * rich data ride on the SINGLE `citation.define` event rather than forcing a
+ * correlated split `grade` event. Both are optional so pre-S-3 emitters (and
+ * the isomorphic decoder) stay valid without them.
+ *   • `snippet` remains the reader-visible short text (S-3 sets it = reader_label).
+ *   • `reader_label` is the explicit reader-safe label (never an internal id).
+ *   • `grade` is S-3's verification tier (primary | supporting | contextual |
+ *     unverified) rendered as a string — a graded assessment, not narration.
+ * Audit-channel internals (source table, fact ids) are DELIBERATELY not carried
+ * on this event — they stay server-side (see citations/protocol_adapter.ts).
+ */
 export const CitationDefineEventSchema = z.object({
   type: z.literal('citation.define'),
   ...EnvelopeShape,
@@ -176,6 +191,8 @@ export const CitationDefineEventSchema = z.object({
   signal_id: z.string(),
   layer: z.string(),
   snippet: z.string(),
+  reader_label: z.string().optional(),
+  grade: z.string().optional(),
 })
 export type CitationDefineEvent = z.infer<typeof CitationDefineEventSchema>
 
