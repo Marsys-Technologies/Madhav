@@ -1,0 +1,62 @@
+name: Reconciliation Cadence (PARIŚODHANA Phase C2)
+
+# Standing implementation of the reconciliation cadence recommended by
+# POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md's "Standing note (recurring drift class)": a
+# periodic check that greps every `known_gap: 'CR-N'` / register-cited defect id against its live
+# disposition, so the "ships-but-register-never-flips" drift class this campaign exists to close
+# does not have to be rediscovered from scratch again.
+#
+# NOT part of the default CI gate (ci.yml) — deliberately. This workflow is opt-in:
+#   - `workflow_dispatch` always runs the STATIC pass only (no network, no secrets needed) unless
+#     you explicitly tick "run_live".
+#   - The `schedule` trigger below is commented out by design. Enabling it is a maintainer
+#     decision, not something this PR turns on for you — see the PR description for why (a cron
+#     job that silently starts making live production calls on someone else's secret is exactly
+#     the kind of "quietly changed behavior" this whole campaign is about). Uncomment the
+#     `schedule:` block to opt in.
+# schedule:
+#   - cron: '0 4 * * 1'   # Monday 04:00 UTC — weekly, mirrors icr_weekly_scan.yml's cadence
+on:
+  workflow_dispatch:
+    inputs:
+      run_live:
+        description: 'Also attempt live MCP probes (requires MCP_CANARY_KEY secret to be configured)'
+        type: boolean
+        default: false
+
+jobs:
+  reconciliation-cadence:
+    name: Reconciliation Cadence Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Static reconciliation pass (no network, always runs)
+        run: |
+          python3 platform/scripts/governance/check_reconciliation_cadence.py --self-test
+          python3 platform/scripts/governance/check_reconciliation_cadence.py --out reconciliation_report.md
+        continue-on-error: true
+        id: static_pass
+
+      - name: Live MCP probe pass (opt-in — only with run_live=true AND the secret configured)
+        if: ${{ inputs.run_live == true }}
+        env:
+          MCP_CANARY_KEY: ${{ secrets.MCP_CANARY_KEY }}
+        run: |
+          if [ -z "${MCP_CANARY_KEY:-}" ]; then
+            echo "run_live was requested but MCP_CANARY_KEY is not configured as a repo/org secret — skipping the live pass rather than failing the static pass's already-collected result." >&2
+            exit 0
+          fi
+          python3 platform/scripts/governance/check_reconciliation_cadence.py --live --out reconciliation_report_live.md
+
+      - name: Upload report(s) as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reconciliation-cadence-report
+          path: reconciliation_report*.md
+          retention-days: 90
+
+      - name: Surface static-pass exit status
+        if: steps.static_pass.outcome == 'failure'
+        run: |
+          echo "::warning::Reconciliation cadence found register/code divergence(s) this run — see the uploaded report artifact. This does not fail the workflow (divergence is a finding to triage, not a build break)."
