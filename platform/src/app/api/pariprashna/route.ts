@@ -104,10 +104,31 @@ import {
   type ReadingDepth,
   type LengthTier,
 } from '@/lib/pariprashna/protocol/events'
+import { getCapability } from '@/lib/retrieval/registry'
+import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
+import { resolveReaderLabel, FALLBACK_READER_LABEL } from '@/lib/pariprashna/lexicon'
 
 export const maxDuration = 120
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Gate 11 [integrity]: `label_key`/`detail` on activity.upsert are CLIENT-VISIBLE
+// wire content (design plan §7.8/§8.4.4 — server resolves label_key -> display
+// string; the client renders verbatim). Never pass a raw tool name / registry
+// URI / layer name through to either field — resolve via S-2's closed-lexicon
+// reader_label mapping, falling back to FALLBACK_READER_LABEL + a CI warning
+// exactly like the registry's own resolveReaderLabel() contract.
+function resolveActivityLabel(toolNameOrUri: string): string {
+  const uri = toolNameOrUri.startsWith('marsys://') ? toolNameOrUri : TOOL_NAME_TO_URI[toolNameOrUri]
+  const capability = uri ? getCapability(uri) : undefined
+  if (!capability) {
+    console.warn(
+      `[pariprashna] activity label: no registry capability resolved for "${toolNameOrUri}" — using fallback reader label`,
+    )
+    return FALLBACK_READER_LABEL
+  }
+  return resolveReaderLabel(capability)
+}
 
 // deep_dive raises the agentic-loop iteration cap so the model can retrieve
 // exhaustively across adaptive passes — the web engine's "dossier / maximal
@@ -485,10 +506,11 @@ export async function POST(request: Request): Promise<Response> {
         const toolResults = await Promise.all(
           toolsAuthorized.map(async (toolName): Promise<ToolBundle | null> => {
             if (request.signal.aborted) return null
-            em.activity({ key: `retrieve:${toolName}`, label_key: `pariprashna.retrieve.${toolName}`, pass_id: PASS_ONE, status: 'running', detail: toolName })
+            const activityLabel = resolveActivityLabel(toolName)
+            em.activity({ key: `retrieve:${toolName}`, label_key: activityLabel, pass_id: PASS_ONE, status: 'running' })
             const t = getToolByName(toolName) as RetrievalTool | undefined
             if (!t) {
-              em.activity({ key: `retrieve:${toolName}`, label_key: `pariprashna.retrieve.${toolName}`, pass_id: PASS_ONE, status: 'error', detail: 'unregistered' })
+              em.activity({ key: `retrieve:${toolName}`, label_key: activityLabel, pass_id: PASS_ONE, status: 'error' })
               return null
             }
             const toolStart = Date.now()
@@ -499,12 +521,12 @@ export async function POST(request: Request): Promise<Response> {
                 run: () => executeWithCache(t, queryPlan, cache, plannerParamsMap.get(toolName)),
               })
               const ms = Date.now() - toolStart
-              em.activity({ key: `retrieve:${toolName}`, label_key: `pariprashna.retrieve.${toolName}`, pass_id: PASS_ONE, status: 'done', detail: toolName, count: result.results.length, ms })
+              em.activity({ key: `retrieve:${toolName}`, label_key: activityLabel, pass_id: PASS_ONE, status: 'done', count: result.results.length, ms })
               toolEventLog.push({ name: toolName, status: 'done', ms, ok_count: result.results.length, err_count: 0 })
               return result
-            } catch (err) {
+            } catch {
               const ms = Date.now() - toolStart
-              em.activity({ key: `retrieve:${toolName}`, label_key: `pariprashna.retrieve.${toolName}`, pass_id: PASS_ONE, status: 'error', detail: String(err), ms })
+              em.activity({ key: `retrieve:${toolName}`, label_key: activityLabel, pass_id: PASS_ONE, status: 'error', ms })
               toolEventLog.push({ name: toolName, status: 'error', ms, ok_count: 0, err_count: 1 })
               return null
             }
@@ -637,7 +659,7 @@ export async function POST(request: Request): Promise<Response> {
               blk.text += event.thinking
               em.blockDelta({ block_id: blk.id, delta: event.thinking })
             } else if (event.type === 'tool_use_start') {
-              em.activity({ key: `pass${passId}:tool:${event.id}`, label_key: `pariprashna.tool.${event.name}`, pass_id: passId, status: 'running', detail: event.name })
+              em.activity({ key: `pass${passId}:tool:${event.id}`, label_key: resolveActivityLabel(event.name), pass_id: passId, status: 'running' })
             } else if (event.type === 'tool_use_complete') {
               // Engine re-entered retrieval. If prose was already emitted this
               // pass, THIS is a pass boundary (real control-flow truth).
@@ -652,7 +674,7 @@ export async function POST(request: Request): Promise<Response> {
               } else {
                 lastToolInSeam = event.name
               }
-              em.activity({ key: `pass${passId}:tool:${event.id}`, label_key: `pariprashna.tool.${event.name}`, pass_id: passId, status: 'done', detail: event.name })
+              em.activity({ key: `pass${passId}:tool:${event.id}`, label_key: resolveActivityLabel(event.name), pass_id: passId, status: 'done' })
             } else if (event.type === 'error') {
               console.error('[pariprashna] adapter error event:', event.error)
               em.flag({ code: 'adapter_error', level: 'warn', detail: event.error })
