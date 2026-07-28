@@ -24,6 +24,11 @@ export default defineConfig({
       'tests/e2e/portal/**',
       // D-S5 Playwright e2e spec — runs via playwright test, not vitest.
       'tests/e2e/new-client-flow.spec.ts',
+      // PB-1 Paripraśna acceptance gates — Playwright specs, run via
+      // `pnpm pariprashna:gates` (tests/pariprashna/playwright.config.ts), NOT
+      // vitest. The reducer golden + citation/lexicon/dedup *.test.ts under
+      // tests/pariprashna/ ARE vitest and stay included.
+      'tests/pariprashna/gates/**',
       // Playwright visual spec — no env vars in unit mode, file-level FAIL without this guard.
       'tests/visual/R11B_brand_preservation.spec.ts',
       // Integration tests requiring uvicorn (Python sidecar) — not available in CI.

@@ -234,6 +234,10 @@ export const querySignalsCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: true, l0_citation_ids: true },
   lel_capable: true,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  // Band phase 4 ("Reading the whole chart") — B.11 whole-chart-read (MSR signals), not a
+  // phase-5 per-family retrieval facet.
+  register: { reader_label: 'Reading the whole chart' },
   // Lane 5 (§N.6 (iv), Doctrine Campaign D-1 Night-1): backs bodha_signals_get/get_signals.
   density_contract: {
     max_digest_bytes: 1_500_000, // existing H-12 size guard on this tool (see estimatedBytes check below)

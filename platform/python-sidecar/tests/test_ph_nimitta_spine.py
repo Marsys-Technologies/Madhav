@@ -654,6 +654,50 @@ class TestCr66HorizonTier:
         assert a.horizon_tier == 'lifetime'
 
 
+# ── P0-11 (SUDDHA-VACA D4_GRADE_INVERSION): direction honesty ────────────────
+
+class TestDirectionHonestFallback:
+    """P0-11: derive_anchor_from_convergence's directional-valence read must never
+    silently launder a missing or malformed `constituent_factors['direction']` into
+    the favorable-sounding 'elevated'. The correct honest-unknown value within the
+    frozen 3-way phala_anchors.direction CHECK ('elevated'|'suppressed'|'mixed') is
+    'mixed' — already the AnchorRecord dataclass's own default (engine.py line ~388)
+    and already the established unknown-fallback in derive_anchor_from_bhavishya's
+    prob_tier resolution. A suppressed/mixed/unknown signal must never read as
+    elevated."""
+
+    def _row(self, constituent_factors):
+        return {
+            'convergence_id': 1, 'signal_id': None, 'mode': 'A',
+            'peak_date': date(2026, 9, 15), 'window_start': date(2026, 8, 1),
+            'window_end': date(2026, 11, 30), 'convergence_score': 0.72,
+            'rarity_years': 7.5, 'constituent_factors': constituent_factors,
+            'source_citation': 'kala_convergence/1', 'independent_current_count': 1,
+            'confidence_score': 0.72, 'confidence_label': 'high',
+        }
+
+    def test_missing_direction_key_is_not_elevated(self):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence, NimittaContext
+        row = self._row({'dasha_score': 0.8})   # no 'direction' key at all
+        a = derive_anchor_from_convergence(row, NimittaContext(), n_independent=1)
+        assert a.direction != 'elevated'
+        assert a.direction == 'mixed'
+
+    def test_garbled_direction_value_is_not_elevated(self):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence, NimittaContext
+        row = self._row({'direction': 'garbled_unexpected_value'})
+        a = derive_anchor_from_convergence(row, NimittaContext(), n_independent=1)
+        assert a.direction != 'elevated'
+        assert a.direction == 'mixed'
+
+    @pytest.mark.parametrize("legit", ['elevated', 'suppressed', 'mixed'])
+    def test_legitimate_direction_values_pass_through_unchanged(self, legit):
+        from services.ph_nimitta.engine import derive_anchor_from_convergence, NimittaContext
+        row = self._row({'direction': legit})
+        a = derive_anchor_from_convergence(row, NimittaContext(), n_independent=1)
+        assert a.direction == legit
+
+
 # ── Anti-drift ───────────────────────────────────────────────────────────────
 
 class TestAntiDrift:

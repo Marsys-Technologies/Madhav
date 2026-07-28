@@ -36,10 +36,13 @@ __all__ = [
 ]
 
 # Model policy allowlist (Gemini/DeepSeek only)
+# SUDDHA-VACA Phase C §2: 'gpt-4o' / 'gpt-4-turbo' (OpenAI) were previously included
+# here despite the comment's own stated "Gemini/DeepSeek only" policy — a standing
+# contamination hole letting an OpenAI model pass any permission check against this
+# frozenset. Removed to match the file's own documented intent.
 PERMITTED_NARRATION_MODELS: frozenset[str] = frozenset({
     'gemini-pro', 'gemini-ultra', 'gemini-2.0-flash',
     'deepseek-chat', 'deepseek-r1',
-    'gpt-4o', 'gpt-4-turbo',
 })
 
 # Any model whose ID starts with one of these prefixes is BANNED

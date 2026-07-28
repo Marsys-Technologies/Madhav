@@ -50,6 +50,8 @@ export const queryDashaDossierCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: false },
   lel_capable: false,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  register: { reader_label: 'Consulting the chart — Daśā structure' },
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 50, always_include: false },
