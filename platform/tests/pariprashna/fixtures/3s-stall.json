@@ -1,0 +1,89 @@
+{
+  "name": "3s-stall",
+  "description": "A 3000ms gap mid-stream with no events — client must not shift layout, crash, or show a phantom commit while waiting.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "3s-stall-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "conversation_id": "conv-3s-stall",
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "model_id": "gemini-2.5-pro",
+        "length_tier": "standard",
+        "turn_id": "3s-stall",
+        "reading_depth": "standard"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "3s-stall-1",
+        "seq": 1,
+        "t": 20,
+        "type": "block.open",
+        "block_id": "b1",
+        "kind": "paragraph",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "3s-stall-2",
+        "seq": 2,
+        "t": 40,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "The retrieval layer surfaces t"
+      }
+    },
+    {
+      "delay_ms": 3000,
+      "event": {
+        "id": "3s-stall-3",
+        "seq": 3,
+        "t": 3040,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "hree corroborating signals for this window."
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "3s-stall-4",
+        "seq": 4,
+        "t": 3050,
+        "type": "block.commit",
+        "block_id": "b1",
+        "final_text": "The retrieval layer surfaces three corroborating signals for this window."
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "3s-stall-5",
+        "seq": 5,
+        "t": 3060,
+        "type": "turn.commit",
+        "turn_id": "3s-stall",
+        "block_count": 1,
+        "citation_count": 0
+      }
+    },
+    {
+      "delay_ms": 5,
+      "event": {
+        "id": "3s-stall-6",
+        "seq": 6,
+        "t": 3065,
+        "type": "turn.close",
+        "turn_id": "3s-stall",
+        "reason": "complete"
+      }
+    }
+  ]
+}
