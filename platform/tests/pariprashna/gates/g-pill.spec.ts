@@ -12,9 +12,9 @@
  * is silently ignored — the pill never appears.
  */
 import { test, expect, type Page } from '@playwright/test'
-import { gotoHarness, mainRunViolate } from './_helpers'
+import { gotoHarness, mainRunViolate, type ViolateKey } from './_helpers'
 
-async function scrollUpMidStream(page: Page, fixture: string, violate: 'pill' | null): Promise<void> {
+async function scrollUpMidStream(page: Page, fixture: string, violate: ViolateKey | null): Promise<void> {
   await gotoHarness(page, fixture, violate)
   // Wait until the thread viewport is ACTUALLY scrollable (content taller
   // than the fixed 480px viewport) before scrolling up — giant-table's

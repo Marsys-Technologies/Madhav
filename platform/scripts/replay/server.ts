@@ -110,11 +110,9 @@ async function handleStream(req: IncomingMessage, res: ServerResponse, url: URL)
 
   for (const entry of fixture.events) {
     if (closed) return
-    // eslint-disable-next-line no-await-in-loop
     await sleep(entry.delay_ms)
     if (closed) return
     const frame = `data: ${JSON.stringify(entry.event)}\n\n`
-    // eslint-disable-next-line no-await-in-loop
     await writeChunked(res, frame, fixture.chunk_bytes)
 
     const seq = (entry.event as { seq?: number }).seq
@@ -176,7 +174,6 @@ const server = createServer((req, res) => {
           : handleStatic(req, res, url.pathname)
 
   handler.catch((err) => {
-    // eslint-disable-next-line no-console
     console.error('[replay/server] request handler error', err)
     if (!res.headersSent) res.writeHead(500)
     res.end(String(err))
@@ -184,8 +181,6 @@ const server = createServer((req, res) => {
 })
 
 server.listen(PORT, () => {
-  // eslint-disable-next-line no-console
   console.log(`[replay/server] listening on http://localhost:${PORT}`)
-  // eslint-disable-next-line no-console
   console.log(`[replay/server] fixtures dir: ${FIXTURES_DIR}`)
 })

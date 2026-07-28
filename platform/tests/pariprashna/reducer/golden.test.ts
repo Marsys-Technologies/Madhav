@@ -106,7 +106,7 @@ describe('golden protocol — per-fixture structural assertions', () => {
     // events up to and including abrupt_end_after_seq are ever delivered.
     const delivered = fixture.events
       .map((e) => e.event)
-      .filter((e: { seq: number }) => e.seq <= (fixture.abrupt_end_after_seq ?? Infinity))
+      .filter((e) => (e as { seq: number }).seq <= (fixture.abrupt_end_after_seq ?? Infinity))
     const snap = snapshot(reduceAll(delivered, { strict: false }))
     expect(snap.blocks.find((b: { id: string }) => b.id === 'b1')?.committed).toBe(false)
     expect(snap.turn_close).toBeNull()

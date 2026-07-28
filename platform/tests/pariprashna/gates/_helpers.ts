@@ -25,6 +25,7 @@ import type { Locator, Page } from '@playwright/test'
 export type ViolateKey =
   | 'cls'
   | 'caret'
+  | 'transmute'
   | 'raf'
   | 'viewport'
   | 'pill'

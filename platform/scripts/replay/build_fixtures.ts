@@ -184,7 +184,6 @@ function disconnectMidBlock(): FixtureSpec {
   turn.push('turn.open', { turn_id: turn.turnId, reading_depth: 'standard' }, 0)
   turn.push('block.open', { block_id: 'b1', kind: 'paragraph', index: 0 }, 20)
   turn.push('block.delta', { block_id: 'b1', text: sentence(0).slice(0, 20) }, 20)
-  const cutSeq = turn.lastSeq
   turn.push('block.delta', { block_id: 'b1', text: sentence(0).slice(20, 40) }, 20)
   // Events after this point are defined so the fixture reads naturally, but
   // abrupt_end_after_seq means the server never actually sends them — the

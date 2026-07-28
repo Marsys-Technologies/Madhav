@@ -15,7 +15,7 @@
 //
 // window.__harness exposes counters/state for Playwright to assert on
 // (see each gate spec under tests/pariprashna/gates/ for exact usage).
-import { applyEvent, createInitialState, snapshot } from '/reducer.mjs'
+import { applyEvent, createInitialState } from '/reducer.mjs'
 
 const params = new URLSearchParams(location.search)
 const fixtureName = params.get('fixture')
@@ -574,17 +574,16 @@ async function run() {
   }
 
   try {
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
-      let idx
-      // eslint-disable-next-line no-cond-assign
-      while ((idx = buffer.indexOf('\n\n')) !== -1) {
+      let idx = buffer.indexOf('\n\n')
+      while (idx !== -1) {
         const frame = buffer.slice(0, idx)
         buffer = buffer.slice(idx + 2)
         if (frame.trim()) processFrame(frame)
+        idx = buffer.indexOf('\n\n')
       }
     }
   } catch (err) {
