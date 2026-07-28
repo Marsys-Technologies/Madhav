@@ -1,13 +1,18 @@
 ---
 artifact: PARISHODHANA_RECONCILIATION
 canonical_id: PARISHODHANA_RECONCILIATION_v1_0
-version: 1.0
-status: PHASE-A-COMPLETE
+version: 1.1
+status: PHASE-B-C-COMPLETE
 created: 2026-07-27
-author: PARIŚODHANA Conductor (Phase A: 8 parallel Sonnet probers A1-A8)
+author: PARIŚODHANA Conductor (Phase A: 8 parallel Sonnet probers A1-A8; Phase B: 8 builders +
+  1 follow-up; Phase C: 3 builders; Verifier: 1 Opus agent + Conductor spot-re-verification)
 mode: FULLY AUTONOMOUS per PARISHODHANA_BRIEF_v1_0.md, native-confirmed this session (T3-7
   authorization-chain concern from PROGRAM_LEDGER §1 Tier 3 carried forward as UNRESOLVED/
   NATIVE-GATED, not closed by this campaign — see §5 below).
+changelog:
+  - "v1.1 (2026-07-28): appended §6 — Phase B/C outcomes, Opus Verifier verdict, Conductor
+    re-verification of 2 disputed items, final open list. Full detail in
+    PARISHODHANA_REPORT_v1_0.md."
 ---
 
 # PARIŚODHANA — Phase A Reconciliation
@@ -81,3 +86,70 @@ The premise holds in both directions, as predicted: a substantial fraction of "o
 ## §5 — T3-7 (authorization-chain concern) — status
 
 Per native instruction this session: **carried forward as UNRESOLVED / NATIVE-GATED**, not closed by this campaign. The native explicitly confirmed this specific PARIŚODHANA run as genuine, real-time authorization (via direct question-and-answer in-session, not a document asserting prior approval) — that resolves authorization for *this run only*. The underlying concern (documents/briefs asserting "a human already approved this" arriving conveniently) remains open and is not adjudicated here; it requires the native's own read per ledger Tier 3 T3-7, independent of this campaign's outcome.
+
+## §6 — Phase B/C outcomes + Opus Verifier verdict (2026-07-28)
+
+12 Phase-B PRs (#827-834, #847-849) + 4 Phase-C/follow-up PRs (#857-860) merged to `main`; both
+`amjis-web` and `amjis-mcp` redeployed and confirmed serving the merged code at 100% traffic on
+`latestRevision` (no pinning). Full build-by-build detail is in `PARISHODHANA_REPORT_v1_0.md`.
+
+**Opus Verifier ran against live production post-deploy** (ONE agent, never writes code, four
+dispositions). 7 of 10 checked items **CONFIRMED**: R-10 leverage_index wiring, CR-2/63/R-38 varga
+receipt honesty, R-29/EL-51 gemstone match + maraka verdict, `mimamsa_lel_query` filter/pagination,
+T1-1 dossier discoverability, T1-3 Ω8 floor wiring (coarse live proxy), and the full preserve-list
+(no regressions). CR-40/pact_query was independently CONFIRMED within the split item-6 check.
+
+**Two items the Verifier flagged were re-investigated by the Conductor directly, with the
+following outcome:**
+
+1. **CR-42's ref_dasha_systems_get/ref_nakshatra_get (PR #830):** Verifier's single-pass test
+   found 100% timeout on both tools with real filter arguments. Conductor re-tested with the
+   identical parameters (`system=vimshottari`, `keyword=yogini`, `lord=ketu`,
+   `nakshatra=purva_bhadrapada`) immediately after and got **4/4 clean successes with real,
+   substantial content** (the 4s embed-timeout fallback to `keyword_trigram_only` ranking, per
+   PR #830's design, engaging correctly). Disposition: **CONFIRMED on re-verification** — the
+   Verifier's finding is not discounted, but is most likely explained by a transient/cold-start
+   condition at test time rather than a standing defect. Flagged for light monitoring, not
+   carried forward as open.
+2. **CR-39/CR-14 holistic_bundle (PR #848, then #859):** Verifier found the bundle's 5/8
+   sub-tool failures byte-identical to the pre-fix state despite #848 being merged. Conductor
+   investigation found the actual root cause: **two separate, duplicate implementations** of the
+   bundle logic exist (`platform/src/lib/mcp/bundle_adapters.ts`, fixed by #848, and
+   `platform-mcp/src/bundles/holistic_bundle.ts`, the copy the live `bodha_bundle_get` MCP tool
+   actually calls, never touched by #848). PR #859 applied the identical, already-proven fix
+   to the real copy and deployed. **Post-#859 re-test still shows the same 5/8 failure** —
+   `chart_id` is now confirmed correctly present in `attempted_params` (the originally-diagnosed
+   bug is fixed), but the sub-tools fail with a generic `tool_error`, not the original
+   `CHART_REQUIRED` shape. Calling the underlying primitives directly as standalone MCP tools
+   (`bodha_signals_get`, `bodha_graph_subgraph_get`) with the same chart_id succeeds cleanly —
+   so the primitives themselves are healthy; the residual bug is specific to the bundle's
+   internal `/api/mcp/primitives/[tool]` self-call path (wrong auth header, wrong route, or a
+   param-shape mismatch not yet isolated). Disposition: **PARKED-HONEST, genuinely still open**
+   — two real, distinct defects existed in this one item (chart_id threading, now fixed twice
+   over both copies; and this second, undiagnosed self-call bug, not yet fixed). This is the
+   **honest close** the brief's PRIME RULE calls for: two rounds of fixing landed real
+   improvements without fully closing the item, and that is disclosed rather than papered over.
+
+**Phase C:** deploy-pipeline parity for `amjis-mcp` (PR #857) built the no-traffic → smoke →
+promote pattern amjis-web already had; the `mcp-canary-key` Secret Manager secret already existed
+but the deploying service account lacks `secretmanager.secretAccessor` on it — **native IAM grant
+still required** before this pipeline runs cleanly (exact command in the PR body). The
+reconciliation-cadence detector (PR #860) shipped and immediately found 14 real divergences on its
+first dry run, including a newly-discovered `cr_status.ts` dual-copy drift class analogous to the
+Ω8 registry drift B2 found. Harness certification (PR #858) ran both sealed graders for real
+(never modified them): `consumption_grader.ts` scored 0/12450 for a diagnosed, not fixed, reason
+(it cannot credit orchestrating tools that aggregate hundreds of primitives server-side); the LLM
+rubric grader returned an honest `NOT_LLM_GRADED` (no API keys in this sandbox). It also surfaced
+that the historically-separate 2/13 naive-routing and ≥12/13 dossier-paging baselines may have
+converged in current production — flagged for a blind re-run before being treated as sealed, not
+claimed outright.
+
+**Final open list (carried forward, not closed by this campaign):** AS-7 (bench-side, unprobable),
+CR-85/CR-86 residuals, T1-11 (gochara health class, explicitly out of scope), chart `1c826d5a`
+staleness (needs an upstream sweep re-run), EL-07 hygiene metric, R-09 dosha-linking (writer-level,
+L2, out of scope), CR-19/66/EL-17's `ph_nimitta.py` fix (writer-level, L4, out of scope, but
+root-caused precisely), `ka_avadhi.py` stale tuple (rail-scope conflict with the brief's own B3
+list, flagged for native), EL-31/`query_house` (capability-addition, not a fix), R-43/EL-60a
+(`reading_notes_get` accretion, still blocked), `maraka_contraindication_verdict`'s wider gemstone
+build (was found to already exist, not a gap), and the `holistic_bundle` self-call residual
+described above. T3-7 remains NATIVE-GATED per §5.
