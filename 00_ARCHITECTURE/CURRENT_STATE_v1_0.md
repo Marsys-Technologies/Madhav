@@ -5492,6 +5492,30 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟡 **PARTIAL CLOSE (2026-07-28, ŚUDDHA-VĀCA Phase C/D/E/F, Conductor+Verifier).** Narration
+> Purification wave closed as PARTIAL per native-issued `SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md`.
+> **5 of 7 P0 verdict-inverting narration defects VERIFIED-FIXED, rebuilt into both the canonical
+> chart (482012f1) and the operator E2E chart (1c826d5a), and independently re-verified by a
+> dedicated Opus Verifier**: `bo_laksana.py` shadbala fact_key mis-selection (P0-5/P0-6, the L2 root
+> — golden-table exact match + double-build determinism both proven live), `sudarshana_emitter.py`
+> valence/agreement conflation (P0-7), `l3_convergence.py` health_attention self-exclusion (P0-8),
+> `mi_darshana.py` grade=0.0 truthiness (P0-10), `ph_nimitta/engine.py` direction-elevated-fallback
+> (P0-11) — plus a P2 OpenAI-allowlist one-liner and a new permanent CI guard
+> (`fact-category-pin-lint`) against the whole defect class. PRs #835-840, all merged to `main`.
+> **2 of 7 remain PARKED, correctly, on documented external dependency**: `lane:serve-shadbala`
+> (`registry_bridge.ts`, P0-1..4) and `lane:ga-tajaka` (P0-9) — both blocked on PARISHODHANA PRs
+> #827/#828, confirmed still OPEN at this update. **Honest gap that must not be missed by a future
+> session:** the native's original complaint (`graha_portrait` showing Sun's Ṣaḍbala as "weak") is
+> **fixed at the writer/data level but not yet visible in served narration**, because the sentence a
+> user reads is assembled by the still-parked `registry_bridge.ts` path, not by `bo_laksana.py`. Full
+> disposition table, evidence, and 5 newly-discovered (correctly parked) findings:
+> `00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_REPORT_v1_0.md`. New doctrine:
+> CLAUDE.md §N.7 Narration Fidelity Principle (v6.5). Root `CLAUDECODE_BRIEF.md` was **NOT** touched —
+> it governs the separate, already-COMPLETE PŪRṆA-VIRĀMA arc, not this campaign; there is no
+> ŚUDDHA-VĀCA-specific root brief to flip. **Next session picking this up: re-check PARISHODHANA PR
+> #827/#828 state first — if landed, `lane:serve-shadbala` and `lane:ga-tajaka` release under the
+> original `SUDDHA_VACA_BRIEF_v1_0.md` with no further authorization needed.**
+
 > ✅ **ARC CLOSED (2026-07-27, PŪRṆA-VIRĀMA FINAL CLOSE, Opus Verifier).** The Elevation Campaign
 > v2.1 → UAT-DARPANA → SATYA-ŚEṢA arc is at its full stop. All 7 threads DISPOSITIONED WITH
 > EVIDENCE against live production: **6 VERIFIED-CLOSED, 1 PARKED-HONEST** (W7 flagship — real

@@ -34065,3 +34065,41 @@ The instrument's serving layer is substantially advanced and honestly bounded; t
 (W7's server-side supplement-route emptiness) is PARKED-HONEST with a sized platform-log follow-up.
 
 *End of PURNA-VIRAMA-FINAL-CLOSE-2026-07-27 entry — the full stop.*
+
+---
+
+## SUDDHA-VACA-PHASE-CDEF-2026-07-28 — Narration Purification, Phase C/D/E/F (PARTIAL close)
+
+**Disclosure on the mandatory reading chain (CLAUDE.md §C):** this session resumed a
+native-authorized in-flight campaign (`SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md`) directly per the
+native's explicit instruction; it read the authorization, the operative brief, the fix ledger, and
+this file's own history rather than the full 16-item §C chain. A formal `SESSION_OPEN` handshake per
+`SESSION_OPEN_TEMPLATE_v1_0.md` was not emitted. This is recorded honestly rather than silently
+asserting full-chain compliance — the same disclosure discipline the prior ŚUDDHA-VĀCA session (Phase
+A/B) used.
+
+**What happened:** re-verified PARISHODHANA PR state (still 7 open, #827/#828 confirmed unmerged) →
+opened 6 isolated worktrees → dispatched Sonnet builders test-first per lane → independently
+re-verified each with a dedicated Opus Verifier that reproduced pre-fix failures and post-fix passes
+itself → merged PRs #835-840 to `main` → built (for the first time in this codebase) a genuine
+data-level snapshot-with-tested-restore mechanism → computed the true 46-asset rebuild closure live
+from `asset_registry` (not assumed from the ledger) → rebuilt both the canonical (482012f1) and
+operator E2E (1c826d5a) charts end-to-end via the FROZEN orchestrator, zero failures, zero accretion
+→ proved FORENSIC 7/7, the golden Ṣaḍbala table, and `bo_laksana` double-build determinism live
+against production data → found and correctly parked 5 new defects rather than rushing fixes →
+closed as PARTIAL per the authorization's own pre-specified terms.
+
+**Result:** 5 of 7 P0 lanes VERIFIED-FIXED and rebuilt into stored data; 2 remain PARKED on
+PARISHODHANA. The native's original complaint (Sun's Ṣaḍbala narration) is fixed at the writer level
+but **not yet visible in served output** — a separate, still-parked serve-side code path
+(`registry_bridge.ts`) owns that sentence. Full evidence:
+`00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_REPORT_v1_0.md`. New doctrine:
+CLAUDE.md §N.7. Root `CLAUDECODE_BRIEF.md` is unrelated (governs the already-COMPLETE PŪRṆA-VIRĀMA
+arc) and was correctly left untouched.
+
+**Next session committed to:** re-check PARISHODHANA PR #827/#828 state first. If landed,
+`lane:serve-shadbala` and `lane:ga-tajaka` release under `SUDDHA_VACA_BRIEF_v1_0.md` with no further
+authorization needed — that closes the loop on the native's original complaint being user-visible.
+If still open, continue to hold the park and re-check again next session.
+
+*End of SUDDHA-VACA-PHASE-CDEF-2026-07-28 entry — PARTIAL, not COMPLETE.*
