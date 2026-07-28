@@ -260,20 +260,33 @@ async function storeCache(params: {
 const HOLISTIC_SUB_TOOLS = ['MSR', 'CGM', 'UCN', 'RM', 'CDLM', 'LEL', 'PANCHANG', 'DASHA'] as const
 type HolisticSubTool = (typeof HOLISTIC_SUB_TOOLS)[number]
 
+// CR-39/CR-14 fix: MSR/CGM/LEL/PANCHANG/DASHA all resolve to scope:'per_chart' registry
+// capabilities (msr_sql, cgm_graph_walk, L5/lel_query, L1/get_panchanga, L1/get_dashas —
+// see tool_name_bridge.ts). The primitives route (/api/mcp/primitives/[tool]/route.ts)
+// 400s any per-chart primitive with CHART_REQUIRED when chart_id is absent from both
+// `params` and the X-MCP-Chart-Id header. This function never received chart_id at all
+// (only queryText/focusDomains/timeWindow), so every per-chart sub-tool call 400'd and
+// runSubTool's catch turned that into `errored:true` — uniformly, for exactly these five
+// (UCN/RM/CDLM all route through `vector_search` → query_classical_texts, scope:'global',
+// so they never needed chart_id and kept succeeding). Root cause was NOT the sidecar/DB
+// being down — it was this wiring gap: HolisticBundleParams.chart_id was threaded into
+// the cache key (below) but never into the actual sub-tool params.
 function buildHolisticParams(
   name: HolisticSubTool,
   queryText: string,
+  chartId?: string,
   focusDomains?: string[],
   timeWindow?: { start?: string; end?: string }
 ): { toolName: string; params: Record<string, unknown> } {
+  const chartParam = chartId ? { chart_id: chartId } : {}
   switch (name) {
     case 'MSR':
       return {
         toolName: 'query_signals',
-        params: { ...(focusDomains?.length ? { domain: focusDomains[0] } : {}), limit: 100 },
+        params: { ...chartParam, ...(focusDomains?.length ? { domain: focusDomains[0] } : {}), limit: 100 },
       }
     case 'CGM':
-      return { toolName: 'get_cgm_subgraph', params: { query: queryText, hops: 3 } }
+      return { toolName: 'get_cgm_subgraph', params: { ...chartParam, query: queryText, hops: 3 } }
     case 'UCN':
       return { toolName: 'vector_search', params: { query: queryText, source_filter: 'UCN_v4_1', top_k: 25 } }
     case 'RM':
@@ -281,11 +294,11 @@ function buildHolisticParams(
     case 'CDLM':
       return { toolName: 'vector_search', params: { query: queryText, source_filter: 'CDLM_v1_3', top_k: 15 } }
     case 'LEL':
-      return { toolName: 'lel_query', params: timeWindow ?? {} }
+      return { toolName: 'lel_query', params: { ...chartParam, ...(timeWindow ?? {}) } }
     case 'PANCHANG':
-      return { toolName: 'query_panchanga', params: { date: new Date().toISOString().slice(0, 10) } }
+      return { toolName: 'query_panchanga', params: { ...chartParam, date: new Date().toISOString().slice(0, 10) } }
     case 'DASHA':
-      return { toolName: 'query_dasha_periods', params: { active_only: true } }
+      return { toolName: 'query_dasha_periods', params: { ...chartParam, active_only: true } }
   }
 }
 
@@ -358,7 +371,7 @@ export async function executeHolisticBundle(
   })
 
   const tasks = activeTools.map(name => {
-    const spec = buildHolisticParams(name, params.query_text, params.focus_domains, params.time_window)
+    const spec = buildHolisticParams(name, params.query_text, params.chart_id, params.focus_domains, params.time_window)
     return runSubTool(name, spec.toolName, spec.params, principal, onEvent)
   })
 

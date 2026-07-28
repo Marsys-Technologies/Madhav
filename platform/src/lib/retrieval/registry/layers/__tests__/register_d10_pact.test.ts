@@ -16,7 +16,7 @@
  *      never fabricating a gate check against a window that has not opened.
  *   4. All four stages actually run and complete when every gate passes ('chain_complete').
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
@@ -227,5 +227,80 @@ describe('pact_query — input validation', () => {
   it('requires domain or bhava', async () => {
     const result = await pactQueryCapability.handler({ chart_id: CHART_ID }, undefined)
     expect(result.is_error).toBe(true)
+  })
+})
+
+// CR-40 regression: register_d10_pact.ts's TRIGGER stage predates the WP-1.7 x-api-key
+// forwarding fix (query_planet_position.ts) by 4 days and was never brought onto it — the
+// live symptom was pact_status='chain_incomplete_infra' even though the sidecar's
+// /brahmagyan/ephemeris/planet_transit route was reachable and correct (confirmed live via
+// the same route through l0_ephemeris.ts's sidecarGet, which DOES send the header). A missing
+// or mismatched x-api-key 401s against verify_api_key whenever PYTHON_SIDECAR_API_KEY is set;
+// this call's `if (res.ok)` check silently read that 401 as "no rows", indistinguishable from
+// a genuinely unreachable sidecar. Module-level SIDECAR_API_KEY is read once at import, so this
+// suite isolates the module with vi.resetModules() + a fresh dynamic import per case, after
+// stubbing process.env, to exercise both the "key configured" and "no key configured" paths.
+describe('pact_query — TRIGGER stage forwards the sidecar API key (CR-40)', () => {
+  const activeNowJudgment = () => judgmentContent({
+    checklist: {
+      bhavesha_condition: { from_lagna: { graha: 'Venus' } },
+      timing_hooks: {
+        current: [{ lord_graha: 'Venus', level_n: 1, start_date: '2020-01-01', end_date: '2040-01-01' }],
+        mahadasha_windows_by_graha: { Venus: [{ start_date: '2020-01-01', end_date: '2040-01-01' }] },
+      },
+    },
+  })
+
+  afterEach(() => {
+    delete process.env['PYTHON_SIDECAR_API_KEY']
+    vi.unstubAllGlobals()
+  })
+
+  it('sends x-api-key on the TRIGGER fetch when PYTHON_SIDECAR_API_KEY is configured', async () => {
+    process.env['PYTHON_SIDECAR_API_KEY'] = 'test-sidecar-key'
+    vi.resetModules()
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true, status: 200, json: async () => ({ rows: [{ longitude: 123.45 }] }),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    mockJudgmentHandler.mockResolvedValue({ is_error: false, content: activeNowJudgment() })
+    mockQuery.mockResolvedValue({ rows: [{ fact_id: 'df-4', fact_value_text: 'exalted' }] })
+
+    const { pactQueryCapability: freshCapability } = await import('../register_d10_pact')
+    const result = await freshCapability.handler(
+      { chart_id: CHART_ID, domain: 'marriage', as_of_date: '2026-07-08' }, undefined,
+    )
+    const content = result.content as Record<string, unknown>
+    expect(content['pact_status']).toBe('chain_complete')
+
+    expect(fetchMock).toHaveBeenCalled()
+    const [, requestInit] = fetchMock.mock.calls[0] as unknown as [string, { headers?: Record<string, string> }]
+    expect(requestInit?.headers?.['x-api-key']).toBe('test-sidecar-key')
+  })
+
+  it('omits x-api-key entirely when PYTHON_SIDECAR_API_KEY is not configured (no fabricated header)', async () => {
+    delete process.env['PYTHON_SIDECAR_API_KEY']
+    vi.resetModules()
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true, status: 200, json: async () => ({ rows: [{ longitude: 123.45 }] }),
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    mockJudgmentHandler.mockResolvedValue({ is_error: false, content: activeNowJudgment() })
+    mockQuery.mockResolvedValue({ rows: [{ fact_id: 'df-4', fact_value_text: 'exalted' }] })
+
+    const { pactQueryCapability: freshCapability } = await import('../register_d10_pact')
+    const result = await freshCapability.handler(
+      { chart_id: CHART_ID, domain: 'marriage', as_of_date: '2026-07-08' }, undefined,
+    )
+    const content = result.content as Record<string, unknown>
+    expect(content['pact_status']).toBe('chain_complete')
+
+    expect(fetchMock).toHaveBeenCalled()
+    const [, requestInit] = fetchMock.mock.calls[0] as unknown as [string, { headers?: Record<string, string> }]
+    expect(requestInit?.headers?.['x-api-key']).toBeUndefined()
   })
 })
