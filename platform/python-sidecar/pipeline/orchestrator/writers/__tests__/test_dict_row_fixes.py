@@ -17,6 +17,8 @@ import sys
 import os
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 
 
@@ -68,22 +70,36 @@ def test_bo_laksana_fetch_dict_returns_plain_dicts():
 
 
 def test_bo_laksana_build_strength_lookup_returns_floats():
-    """_build_strength_lookup must return dict[str, float], not dict[str, dict]."""
+    """_build_strength_lookup must return dict[str, float], not dict[str, dict].
+
+    Updated for the ŚUDDHA-VĀCA P0-5/P0-6 fix (2026-07-28,
+    SUDDHA_VACA_FIX_LEDGER_v1_0.md, lane:bo-laksana). Pre-fix this test's
+    fixture used a stale pre-B2 contract (fact_key holding 'Sun:D1' etc.,
+    when graha actually lives in fact_subject) and asserted the buggy
+    raw-rupa/1.0 normalization — it was already failing against the current
+    (pre-this-fix) source before this edit. The fixed function keys off
+    fact_subject and returns the L1-precomputed 'ratio' (achieved/required
+    shadbala) fact_value_num, pinned by fact_key='ratio' at the SQL layer;
+    this mock does not model the WHERE clause, so the fixture below feeds it
+    exactly what a fact_key='ratio' SELECT already yields. See
+    test_bo_laksana_p05_p06_shadbala_ratio.py for the full golden-table
+    coverage (determinism + normalization) with a query-aware fake conn.
+    """
     from pipeline.orchestrator.writers.bo_laksana import _build_strength_lookup
 
     fake_shadbala_rows = [
-        {"fact_key": "Sun:D1", "fact_value_num": 390.0},
-        {"fact_key": "Moon:D1", "fact_value_num": 195.0},
-        {"fact_key": "Mars:D1", "fact_value_num": 312.0},
+        {"fact_subject": "SUN", "fact_value_num": 1.694},
+        {"fact_subject": "MOON", "fact_value_num": 0.9417},
+        {"fact_subject": "MAR", "fact_value_num": 1.114},
     ]
     conn, cur, _ = _conn_mock(fake_shadbala_rows)
 
     lookup = _build_strength_lookup(conn, "chart-123", "lahiri_chitrapaksha")
 
-    assert "Sun" in lookup
-    assert isinstance(lookup["Sun"], float), f"expected float, got {type(lookup['Sun'])}: {lookup['Sun']!r}"
-    assert lookup["Sun"] == min(390.0 / 390.0, 2.0)   # = 1.0
-    assert lookup["Moon"] == min(195.0 / 390.0, 2.0)  # = 0.5
+    assert "SUN" in lookup
+    assert isinstance(lookup["SUN"], float), f"expected float, got {type(lookup['SUN'])}: {lookup['SUN']!r}"
+    assert lookup["SUN"] == pytest.approx(1.694)
+    assert lookup["MOON"] == pytest.approx(0.9417)
 
 
 # ── FIX 2: bo_drishti._fetch_dict ─────────────────────────────────────────────

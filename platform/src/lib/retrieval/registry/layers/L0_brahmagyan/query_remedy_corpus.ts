@@ -59,6 +59,8 @@ export const queryRemedyCorpusCapability: CapabilityDescriptor = {
   tool_role: 'hybrid_retrieval',
   emits_references: false,
   lel_capable: false,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  register: { reader_label: 'Consulting the chart — Remedial tradition' },
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 65, always_include: false },

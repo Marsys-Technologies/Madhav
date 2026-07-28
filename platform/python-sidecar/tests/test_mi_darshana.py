@@ -34,16 +34,28 @@ class _FakeCursor:
     def execute(self, sql, params=None):
         s = " ".join(sql.split())
         if "information_schema.tables" in s:
-            # Section-5 bodha tables absent → verdict_object branch skipped.
-            self._result = []
+            # Section-5 bodha tables present iff the test opted in via
+            # conn.existing_tables (default empty → verdict_object branch skipped).
+            table_name = params[0] if params else None
+            self._result = [{"exists": 1}] if table_name in self._conn.existing_tables else []
         elif "FROM mimamsa_reliability" in s:
             self._result = list(self._conn.reliability_rows)
         elif "FROM mimamsa_manifestation_grammar" in s:
-            self._result = []
+            self._result = list(self._conn.grammar_rows)
         elif "FROM mimamsa_discoveries" in s:
             self._result = []
         elif "FROM mimamsa_load_bearing" in s:
             self._result = []
+        elif "JOIN brahma_event_ontology" in s:
+            self._result = list(self._conn.pratijna_rows)
+        elif "SELECT COUNT(DISTINCT ayanamsha_id) FROM bodha_pratijna" in s:
+            self._result = [{"count": self._conn.aya_count}]
+        elif "FROM bodha_msr_signals" in s:
+            self._result = list(self._conn.msr_signal_rows)
+        elif "FROM bodha_contradictions" in s:
+            self._result = list(self._conn.contradiction_rows)
+        elif "FROM bodha_triangulation" in s:
+            self._result = list(self._conn.triangulation_rows)
         else:
             self._result = []
 
@@ -61,7 +73,15 @@ class _FakeCursor:
 class _FakeConn:
     def __init__(self, reliability_rows):
         self.reliability_rows = list(reliability_rows)
+        self.grammar_rows: list[dict] = []
         self.inserted_rows: list[tuple] = []
+        # Section-5 (bodha_pratijna verdict_object) fakes — opt-in per test.
+        self.existing_tables: set[str] = set()
+        self.pratijna_rows: list[dict] = []
+        self.msr_signal_rows: list[dict] = []
+        self.contradiction_rows: list[dict] = []
+        self.triangulation_rows: list[dict] = []
+        self.aya_count = 1
 
     def cursor(self, row_factory=None):
         return _FakeCursor(self)
@@ -69,6 +89,50 @@ class _FakeConn:
 
 def _run(reliability_rows):
     conn = _FakeConn(reliability_rows)
+    writer = MiDarshanaWriter()
+    result = writer._substep_insight_units(conn, NATIVE_CHART_ID, t0=0.0)
+    return conn, result
+
+
+def _pratijna_row(event_class_id, grade, status="conditional", domain="career", name_en=None):
+    return {
+        "event_class_id": event_class_id,
+        "status": status,
+        "grade": grade,
+        "supporting_signal_ids": [],
+        "contradicting_signal_ids": [],
+        "name_en": name_en or event_class_id,
+        "domain": domain,
+    }
+
+
+def _grammar_row(channel_propensity, prior_propensity, channel_id="ch1", domain="career", n=10):
+    return {
+        "channel_id": channel_id,
+        "domain": domain,
+        "channel_propensity": channel_propensity,
+        "prior_propensity": prior_propensity,
+        "n_support": n,
+        "evidence_grade": "empirical",
+    }
+
+
+def _run_grammar(grammar_rows):
+    conn = _FakeConn([])
+    conn.grammar_rows = grammar_rows
+    writer = MiDarshanaWriter()
+    result = writer._substep_insight_units(conn, NATIVE_CHART_ID, t0=0.0)
+    return conn, result
+
+
+def _run_verdict(pratijna_rows):
+    """Drive the Section-5 verdict_object branch: bodha_pratijna +
+    bodha_triangulation both 'exist', with the given pratijna rows and no
+    corroborating signals/contradictions/triangulation (kept empty so the
+    test isolates the grade-fallback logic under scrutiny)."""
+    conn = _FakeConn([])
+    conn.existing_tables = {"bodha_pratijna", "bodha_triangulation"}
+    conn.pratijna_rows = pratijna_rows
     writer = MiDarshanaWriter()
     result = writer._substep_insight_units(conn, NATIVE_CHART_ID, t0=0.0)
     return conn, result
@@ -142,3 +206,84 @@ def test_low_n_stratum_skipped():
     conn, result = _run([_calibrated_row(Decimal("0.73"), Decimal("0.12"), n=1)])
     assert result.rows_inserted == 0
     assert conn.inserted_rows == []
+
+
+# ── P0-10 / D4_GRADE_INVERSION — verdict_object grade fallback ────────────────
+#
+# bodha_pratijna (migration 391_bodha_pratijna.sql) defines grade [0-10]:
+# "0=strongly denied, 10=strongly promised" — 0.0 is a genuine, meaningful,
+# computed value (the most-refuted possible score), not an absence marker.
+# Only a NULL/missing grade means "not yet scored" and should fall back to
+# the neutral default 5.0. `grade = float(pr.get("grade") or 5.0)` uses
+# Python truthiness, which conflates a real 0.0 with "missing" and silently
+# reports the neutral default instead — inverting the verdict.
+
+def test_grade_zero_preserved_not_defaulted():
+    """A genuinely computed grade of 0.0 (strongly denied) must survive into
+    the verdict_object insight unit's provenance and narration verbatim —
+    not be silently replaced by the neutral default 5.0."""
+    import json
+
+    conn, result = _run_verdict([
+        _pratijna_row("ec_denied", grade=0.0, status="denied"),
+    ])
+
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert prov["grade"] == 0.0
+    assert "grade 0.0/10" in row[STATEMENT]
+    assert "Mixed or insufficient evidence." in row[STATEMENT]
+
+
+def test_grade_missing_falls_back_to_neutral_default():
+    """Regression cover for the legitimate fallback: an absent/None grade
+    (bodha_pratijna has not yet scored this event_class) must still default
+    to the neutral 5.0 — this path must not break when the truthiness bug
+    is fixed."""
+    import json
+
+    conn, result = _run_verdict([
+        _pratijna_row("ec_unscored", grade=None, status="conditional"),
+    ])
+
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert prov["grade"] == 5.0
+    assert "grade 5.0/10" in row[STATEMENT]
+
+
+# ── P2 (same file, mi_darshana.py:159, CONFIRMED mislabel/drift) ─────────────
+#
+# mimamsa_manifestation_grammar (migration 352) declares channel_propensity
+# NULLABLE and prior_propensity NOT NULL — channel_propensity is only computed
+# once there's enough fire/opportunity data, and a genuinely-computed 0.0
+# means "this channel never fires" (a real, meaningful extreme, not a missing
+# value). The same `or` truthiness pattern as P0-10 masks that 0.0 behind
+# prior_propensity (or the 0.5 default).
+
+def test_channel_propensity_zero_preserved_not_masked_by_prior():
+    """A genuinely computed channel_propensity of 0.0 must survive — not be
+    silently replaced by a nonzero prior_propensity."""
+    import json
+
+    conn, result = _run_grammar([_grammar_row(channel_propensity=0.0, prior_propensity=0.8)])
+
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert row[RANK_CONSEQUENCE] == 0.0
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert prov["propensity"] == 0.0
+    assert "0% propensity" in row[STATEMENT]
+
+
+def test_channel_propensity_missing_falls_back_to_prior():
+    """Regression cover for the legitimate fallback: a genuinely-absent
+    channel_propensity (None — not yet computed) must still fall back to
+    prior_propensity."""
+    conn, result = _run_grammar([_grammar_row(channel_propensity=None, prior_propensity=0.35)])
+
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert row[RANK_CONSEQUENCE] == 0.35
