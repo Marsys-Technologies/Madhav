@@ -186,9 +186,9 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-      "line": 225,
+      "line": 227,
       "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: fact_category='dosha_label' compound-filtered by fact_subject==='kala_sarpa' (not fact_key) \u2014 dosha_label rows are one-per-dosha-name-per-chart by the writer's own emission convention, so this is a narrower risk than P0-1 (which had NO second filter at all). Still lacks the lint's required fact_key/.sort() signal; recommend a follow-up hygiene pass to add an explicit fact_key check for defense-in-depth, not urgent."
+      "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: fact_category='dosha_label' compound-filtered by fact_subject==='kala_sarpa' (not fact_key) \u2014 dosha_label rows are one-per-dosha-name-per-chart by the writer's own emission convention, so this is a narrower risk than P0-1 (which had NO second filter at all). Still lacks the lint's required fact_key/.sort() signal; recommend a follow-up hygiene pass to add an explicit fact_key check for defense-in-depth, not urgent. Line shifted 225\u2192227 by PB-1/S-2's additive 2-line reader_label comment inserted earlier in the file (commit range on pb/1/integrate) \u2014 same violation, no logic change."
     }
   ]
 }
