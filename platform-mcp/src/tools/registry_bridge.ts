@@ -72,6 +72,12 @@ import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection }
 // shallow slice. No computation is reimplemented (B.10) — dossier is a deterministic join of the
 // Total Concept Inventory × completeness accounting.
 import { runDossier, type DossierPage } from './dossier.js'
+// ṢAḌ-DARŚANA W0.4 (SHAD_DARSHANA_BRIEF_v2_0.md §2 file map): the first two of eight
+// kala_* view/capability facades. Tool logic lives in tools/kala_views/{now,ahead}.ts —
+// wired in at the bottom of registerRegistryBridgeTools (the ONE canonical registration
+// call site for each, per brief §2).
+import { registerKalaNowGetTool } from './kala_views/now.js'
+import { registerKalaAheadGetTool } from './kala_views/ahead.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -4403,4 +4409,15 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       }
     }
   )
+
+  // ── ṢAḌ-DARŚANA W0.4 (SHAD_DARSHANA_BRIEF_v2_0.md §2 file map / §3 W0.4) ──────────
+  // kala_now_get / kala_ahead_get — the first two of eight kala_* view/capability
+  // facades over the elevated envelope (lib/kala_envelope.ts + lib/argument_composer.ts).
+  // Tool logic lives in tools/kala_views/{now,ahead}.ts (brief §2 file map); this is the
+  // ONE canonical registration call site for each (brief §2: "one canonical registration
+  // per tool, asserted by test" — see m8_e2e_proof.test.ts's G12 REGISTERED_TOOL_COUNT
+  // assertion, which counts server.tool() calls reached from this function and was bumped
+  // +2 in this same change).
+  registerKalaNowGetTool(server, principal)
+  registerKalaAheadGetTool(server, principal)
 }
