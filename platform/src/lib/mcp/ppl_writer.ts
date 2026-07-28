@@ -1,83 +1,45 @@
 /**
- * ppl_writer.ts — Interim Prospective Prediction Log (PPL) writer for MCP.
+ * ppl_writer.ts — RETIRED interim Prospective Prediction Log (PPL) writer.
  *
- * PPL substrate status (per CLAUDE.md §E):
- *   The formal 06_LEARNING_LAYER/ PPL scaffold is not yet in place. This module
- *   is the interim path per "sessions that emit time-indexed predictions before
- *   Step 11 closes must still log them." Predictions are stored in the
- *   `mcp_predictions` Postgres table (migration 071) — an interim relay that
- *   survives until the formal substrate lands.
+ * ============================================================================
+ * RETIRED by PB-3 (SAMĪKṢĀ) lane L-1, per MEMO_PB-3_0 (OT-11 ruling), 2026-07-28.
+ * ============================================================================
+ * The `mcp_predictions` Postgres table this module used to write (migration 071, an interim
+ * relay predating §14) was DROPPED by migration 471. Per MEMO_PB-3_0 §2, `ppl_writer.ts`'s
+ * write path is retired "alongside it." X-5 confirmed this module was the sole non-calibration
+ * writer of that table, with no downstream analytical consumer and no inbound FK.
  *
- * TODO(MCP-MIGRATION): when 06_LEARNING_LAYER/ is scaffolded, migrate all rows
- * from `mcp_predictions` to the formal PPL API. Migration path:
- *   1. SELECT all rows WHERE migrated_at IS NULL from mcp_predictions.
- *   2. POST each to the new PPL API endpoint (authored in the M-arc PPL session).
- *   3. UPDATE mcp_predictions SET migrated_at = now(), migrated_to = <ppl_entry_id>
- *      for each migrated row.
- *   4. Retain the mcp_predictions table as archive with migrated_at populated.
+ * These functions are now INERT no-ops: they touch NO database and MUST NOT be treated as a
+ * durable prediction/outcome log. The exported types + signatures are preserved so existing
+ * callers (platform/src/app/api/mcp/writes/[action]/route.ts) keep compiling; disposition of
+ * that call chain (re-point at brahma_mimamsa_prediction_ledger vs. remove) is L-5's charge
+ * per LEDGER_MAP_PB-3.md ("L-5 disposition-owns whatever remains of this call chain").
  *
- * PPL discipline (G4, MCP_BRIEF §6; CLAUDE.md §E):
- *   "Every time-indexed prediction a session emits is logged with its confidence,
- *    horizon, and falsifier before the outcome is observed."
- *   logPrediction() MUST be called BEFORE the response is returned to the caller
- *   to ensure governance compliance. This is enforced in /api/mcp/execute for
- *   predictive calls (Item 5 of MCP-4-S1 scope).
+ * The conversational prediction loop now lives in `brahma_mimamsa_prediction_ledger` via
+ * `platform/src/lib/pariprashna/samiksha/` (PB-3 L-1). See LEDGER_MAP_PB-3.md for which table
+ * is authoritative for what.
  *
- * LEL prediction subsection format (preserved for reference — was interim path v0):
- *   ## MCP Predictions
- *   <!-- PPL.MCP.XXXXXXXX -->
- *   ```yaml
- *   prediction_id: PPL.MCP.XXXXXXXX
- *   logged_at: <ISO>
- *   horizon: <horizon>
- *   domain: <domain>
- *   prediction_text: |
- *     <text>
- *   confidence: <high|medium|low>
- *   falsifier: <text>
- *   source:
- *     key_id: <key_id>
- *     trace_id: <trace_id>
- *     caller_context: <context>
- *   ```
- *   The LEL append path was superseded by the mcp_predictions table (migration 071)
- *   per IMPORTANT_CONTEXT override in MCP-4-S1 session brief. The markdown format
- *   is preserved above for documentation and future migration tooling reference.
+ * ROLLBACK: re-enabling live writes requires BOTH the SQL rollback in migration 471 AND a git
+ * revert of this file (MEMO_PB-3_0 §2 — the SQL rollback alone does not restore live writes).
  *
  * @module ppl_writer
  */
 
 import 'server-only'
-import { query } from '@/lib/db/client'
 
-// ── Interfaces ────────────────────────────────────────────────────────────────
+// ── Interfaces (preserved for the retained call sites' type imports) ──────────
 
 /**
- * A prospective prediction entry to be logged to the PPL.
- *
- * Governance requirement: ALL fields except caller_context are mandatory.
- * falsifier must be a concrete, falsifiable statement — not a placeholder.
- * horizon must be an ISO date or quarter string (e.g. "2026-Q3" or "2026-09-30").
+ * A prospective prediction entry. Historically logged to `mcp_predictions`; now inert.
  */
 export interface PredictionEntry {
-  /** Generated: "PPL.MCP." + nanoid(8). Caller may provide; generated if absent. */
   prediction_id?: string
-  /** ISO 8601 timestamp. Defaults to now(). */
   logged_at?: string
-  /** Time horizon for the prediction, e.g. "2026-Q3" or "2026-09-30". */
   horizon: string
-  /** Domain: one of career, health, relationships, spiritual, finance, relocation, family. */
   domain: string
-  /** The prediction in prose. Max 2000 chars. */
   prediction_text: string
-  /** Calibrated confidence: high | medium | low. */
   confidence: 'high' | 'medium' | 'low'
-  /**
-   * What specific observation would disprove this prediction.
-   * Auto-logged entries set this to "[AUTO_LOGGED — native to specify falsifier]".
-   */
   falsifier: string
-  /** Provenance: required by G4 (MCP_BRIEF §6). */
   source: {
     key_id: string
     trace_id: string | null
@@ -86,135 +48,54 @@ export interface PredictionEntry {
 }
 
 /**
- * An outcome entry linked to a prior PredictionEntry.
- *
- * Call ONLY after the outcome is observable — PPL discipline rule #4
- * ("held-out prospective data is sacrosanct; the model never sees outcome
- * before prediction").
+ * An outcome entry linked to a prior PredictionEntry. Historically an UPDATE against
+ * `mcp_predictions`; now inert (the table no longer exists).
  */
 export interface OutcomeEntry {
-  /** Links to a prior PredictionEntry.prediction_id. */
   prediction_id: string
-  /** ISO 8601 timestamp. */
   recorded_at?: string
-  /** Prose description of what actually happened. */
   outcome_text: string
-  /** Did the prediction come true? Factual determination only — not interpretation. */
   verified: boolean
-  /** Optional notes on partial matches, context, etc. */
   notes: string | null
-  /** Provenance. */
   source: {
     key_id: string
     trace_id: string | null
   }
 }
 
-// ── ID generation ─────────────────────────────────────────────────────────────
+// ── ID generation (retained; deterministic shape unchanged) ───────────────────
 
-/**
- * Generate a new PPL prediction ID.
- * Format: "PPL.MCP." + 8 alphanumeric chars (from crypto.randomUUID).
- */
 function generatePredictionId(): string {
-  // Use the last 8 chars of a UUID segment for brevity and uniqueness.
   const uuid = crypto.randomUUID().replace(/-/g, '')
   return `PPL.MCP.${uuid.slice(0, 8).toUpperCase()}`
 }
 
-// ── logPrediction ─────────────────────────────────────────────────────────────
+// ── RETIRED no-ops ────────────────────────────────────────────────────────────
 
 /**
- * Log a prospective prediction to the interim PPL substrate (mcp_predictions table).
- *
- * PPL discipline: this MUST be called before returning the prediction to the
- * caller. The /api/mcp/execute route calls this for predictive mode queries
- * before assembling the response envelope.
- *
- * @param entry  The prediction to log.
- * @returns      The prediction_id (either provided or generated).
+ * RETIRED (PB-3 L-1, MEMO_PB-3_0). No longer persists anything — `mcp_predictions` is
+ * dropped. Returns a prediction_id for signature compatibility only; the prediction is NOT
+ * durably recorded anywhere by this call. Callers needing a durable conversational prediction
+ * must use the SAMĪKṢĀ ledger (platform/src/lib/pariprashna/samiksha).
  */
 export async function logPrediction(entry: PredictionEntry): Promise<string> {
   const prediction_id = entry.prediction_id ?? generatePredictionId()
-  const logged_at = entry.logged_at ?? new Date().toISOString()
-
-  // Truncate prediction text to 2000 chars to match DB column expectation.
-  const prediction_text = entry.prediction_text.slice(0, 2000)
-
-  try {
-    await query(
-      `INSERT INTO mcp_predictions (
-        prediction_id, logged_at, horizon, domain, prediction_text,
-        confidence, falsifier, key_id, trace_id, caller_context
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      ON CONFLICT (prediction_id) DO NOTHING`,
-      [
-        prediction_id,
-        logged_at,
-        entry.horizon,
-        entry.domain,
-        prediction_text,
-        entry.confidence,
-        entry.falsifier,
-        entry.source.key_id,
-        entry.source.trace_id,
-        entry.source.caller_context,
-      ]
-    )
-  } catch (err) {
-    // Log but do not throw — PPL write failure should not block the caller's response.
-    // The prediction is lost in this case; a future reconciliation pass can identify
-    // gaps by comparing query_trace_steps predictive calls with mcp_predictions rows.
-    console.error('[ppl_writer] logPrediction DB error', err)
-  }
-
+  console.warn(
+    '[ppl_writer] logPrediction is RETIRED (PB-3 L-1, MEMO_PB-3_0): mcp_predictions was ' +
+      'dropped; this call did not persist. Use brahma_mimamsa_prediction_ledger.',
+  )
   return prediction_id
 }
 
-// ── recordOutcome ─────────────────────────────────────────────────────────────
-
 /**
- * Record an outcome against a prior prediction.
- *
- * The prediction_id must match a row in mcp_predictions. If not found,
- * returns {ok: false}. The outcome fields are written to the same row
- * (not a separate table) to keep the prediction-outcome pair co-located
- * for migration to the formal PPL substrate.
- *
- * @param entry  The outcome to record.
- * @returns      {ok: true} if the prediction_id was found; {ok: false} if not.
+ * RETIRED (PB-3 L-1, MEMO_PB-3_0). The `mcp_predictions` table it updated no longer exists;
+ * always returns { ok: false }. Outcome recording for conversational predictions now lives in
+ * the SAMĪKṢĀ ledger's recordOutcome (platform/src/lib/pariprashna/samiksha), L-5's surface.
  */
-export async function recordOutcome(entry: OutcomeEntry): Promise<{ ok: boolean }> {
-  const recorded_at = entry.recorded_at ?? new Date().toISOString()
-
-  try {
-    const { rows } = await query<{ prediction_id: string }>(
-      `UPDATE mcp_predictions
-       SET outcome_text        = $2,
-           verified            = $3,
-           outcome_notes       = $4,
-           outcome_recorded_at = $5,
-           outcome_key_id      = $6,
-           outcome_trace_id    = $7
-       WHERE prediction_id = $1
-       RETURNING prediction_id`,
-      [
-        entry.prediction_id,
-        entry.outcome_text,
-        entry.verified,
-        entry.notes,
-        recorded_at,
-        entry.source.key_id,
-        entry.source.trace_id,
-      ]
-    )
-
-    if (rows.length === 0) {
-      return { ok: false }
-    }
-    return { ok: true }
-  } catch (err) {
-    console.error('[ppl_writer] recordOutcome DB error', err)
-    return { ok: false }
-  }
+export async function recordOutcome(_entry: OutcomeEntry): Promise<{ ok: boolean }> {
+  console.warn(
+    '[ppl_writer] recordOutcome is RETIRED (PB-3 L-1, MEMO_PB-3_0): mcp_predictions was ' +
+      'dropped; this call is a no-op. Use the SAMĪKṢĀ ledger (L-5 disposition).',
+  )
+  return { ok: false }
 }

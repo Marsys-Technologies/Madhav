@@ -2,9 +2,16 @@
  * /api/mcp/writes/[action] — MCP write-tool dispatcher.
  *
  * Handles three governance-critical write actions for MCP callers:
- *   log_prediction    → logPrediction() from ppl_writer.ts
- *   record_outcome    → recordOutcome() from ppl_writer.ts
+ *   log_prediction    → logPrediction() from ppl_writer.ts   [RETIRED no-op — see below]
+ *   record_outcome    → recordOutcome() from ppl_writer.ts   [RETIRED no-op — see below]
  *   flag_disagreement → flagDisagreement() from disagreement_writer.ts
+ *
+ * RETIREMENT (PB-3 SAMĪKṢĀ lane L-1, MEMO_PB-3_0, 2026-07-28): the `mcp_predictions` table
+ * behind log_prediction / record_outcome was dropped (migration 471); ppl_writer's
+ * logPrediction/recordOutcome are now inert no-ops. These two handlers therefore no longer
+ * persist anything. Their disposition (re-point at brahma_mimamsa_prediction_ledger vs.
+ * remove the actions) is L-5's charge per LEDGER_MAP_PB-3.md; L-1 only retired the table +
+ * the direct writers. flag_disagreement is unaffected.
  *
  * Auth model (two-layer, identical to /api/mcp/execute and primitives):
  *   Layer 1: X-MCP-Internal-Token — service-to-service secret.

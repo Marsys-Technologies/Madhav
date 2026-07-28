@@ -1,32 +1,31 @@
 /**
- * 4.learning_loop — calibration-stamp producer tests.
+ * calibration_producer — retired-no-op tests.
  *
- * Asserts that:
- *   1. Each call writes a row to mcp_predictions (10 calls -> 10 INSERT attempts).
- *   2. The deterministic stamp shape (chart_id, ayanamsha_id, query_hash,
- *      salience_formula_version, model_id, predicted_at_iso) is bound correctly.
- *   3. DB errors are swallowed (must never break the user's response).
- *   4. The producer is independent of LEL toggle (no LEL_CONTEXT_ENABLED branching).
+ * recordCalibrationStamp was RETIRED by PB-3 (SAMĪKṢĀ) lane L-1 (MEMO_PB-3_0): it wrote
+ * exclusively to `mcp_predictions`, dropped by migration 471. It is now an inert no-op. These
+ * tests assert:
+ *   1. It performs NO DB write (10 calls → 0 query invocations).
+ *   2. It returns { ok: false }.
+ *   3. hashQuery is retained and still produces stable 16-char hex.
+ *
+ * The DB client is mocked to a spy; asserting the spy is never called is what makes "no DB
+ * write" a real, falsifiable check (a live writer would trip it).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const queryMock = vi.fn().mockResolvedValue({ rows: [] })
-
 vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...args) }))
 
 import { hashQuery, recordCalibrationStamp } from '../calibration_producer'
 
-describe('recordCalibrationStamp', () => {
+describe('recordCalibrationStamp (RETIRED)', () => {
   beforeEach(() => {
     queryMock.mockReset()
     queryMock.mockResolvedValue({ rows: [] })
   })
+  afterEach(() => vi.restoreAllMocks())
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('writes one row per call (10 calls → 10 INSERTs)', async () => {
+  it('performs NO DB write (10 calls → 0 query invocations)', async () => {
     for (let i = 0; i < 10; i++) {
       await recordCalibrationStamp({
         chart_id: 'abhisek_mohanty_primary',
@@ -35,38 +34,18 @@ describe('recordCalibrationStamp', () => {
         model_id: 'claude-opus-4-7-1m',
       })
     }
-    expect(queryMock).toHaveBeenCalledTimes(10)
+    expect(queryMock).not.toHaveBeenCalled()
   })
 
-  it('binds the deterministic stamp into the INSERT', async () => {
-    await recordCalibrationStamp({
+  it('returns { ok: false } (retired no-op)', async () => {
+    const result = await recordCalibrationStamp({
       chart_id: 'abhisek_mohanty_primary',
       ayanamsha_id: 'jh_true_chitra',
       query_text: 'will I move abroad in 2027?',
       model_id: 'claude-opus-4-7-1m',
-      predicted_at_iso: '2026-05-28T14:00:00.000Z',
-    })
-    expect(queryMock).toHaveBeenCalledOnce()
-    const [, params] = queryMock.mock.calls[0] as [string, unknown[]]
-    // [prediction_id, logged_at, chart_id, ayanamsha_id, query_hash, formula_version, model_id, predicted_at_iso, caller_context]
-    expect(params[2]).toBe('abhisek_mohanty_primary')
-    expect(params[3]).toBe('jh_true_chitra')
-    expect(params[4]).toBe(hashQuery('will I move abroad in 2027?'))
-    expect(params[5]).toBe('v3.0')
-    expect(params[6]).toBe('claude-opus-4-7-1m')
-    expect(params[7]).toBe('2026-05-28T14:00:00.000Z')
-    expect(params[8]).toBe('wave4-calibration-stamp')
-  })
-
-  it('returns ok:false on DB error without throwing', async () => {
-    queryMock.mockRejectedValueOnce(new Error('connection refused'))
-    const result = await recordCalibrationStamp({
-      chart_id: 'abhisek_mohanty_primary',
-      ayanamsha_id: 'jh_true_chitra',
-      query_text: 'q',
-      model_id: 'm',
     })
     expect(result.ok).toBe(false)
+    expect(queryMock).not.toHaveBeenCalled()
   })
 
   it('hashQuery produces stable 16-char hex', () => {
@@ -78,18 +57,5 @@ describe('recordCalibrationStamp', () => {
 
   it('different query texts produce different hashes', () => {
     expect(hashQuery('q1')).not.toBe(hashQuery('q2'))
-  })
-
-  it('producer never branches on LEL toggle (no env-var read)', async () => {
-    process.env['MARSYS_FLAG_LEL_CONTEXT_ENABLED'] = 'false'
-    const result = await recordCalibrationStamp({
-      chart_id: 'abhisek_mohanty_primary',
-      ayanamsha_id: 'jh_true_chitra',
-      query_text: 'q',
-      model_id: 'm',
-    })
-    expect(result.ok).toBe(true)
-    expect(queryMock).toHaveBeenCalledOnce()
-    delete process.env['MARSYS_FLAG_LEL_CONTEXT_ENABLED']
   })
 })
