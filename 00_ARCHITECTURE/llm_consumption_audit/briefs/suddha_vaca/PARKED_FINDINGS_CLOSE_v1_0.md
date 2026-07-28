@@ -1,21 +1,43 @@
 ---
 artifact: PARKED_FINDINGS_CLOSE
 canonical_id: PARKED_FINDINGS_CLOSE
-version: 1.0
-status: COMPLETE — item 2 of 3 native-authorized parked-finding closures (this PR).
-  Items 1 (migration-339) and 3 (ka_gochara_sweep) are separate PRs, tracked in
-  SESSION_LOG.md.
+version: 1.1
+status: PARTIAL — items 1 (migration-339, PR #862) and 2 (ga_structural_writer.py +
+  vocabulary audit + CI smoke, PR #864) VERIFIED-FIXED (item 2 with cosmetic-only
+  caveats). Item 3 (ka_gochara_sweep operator-chart parity) is PARKED-HONEST per
+  native direction (2026-07-28) — genuinely incomplete (78/303 substeps), not
+  fixed this wave. Do NOT read this as a full 3/3 close.
 created: 2026-07-28
-chart_under_test: fixture chart (this wave's CI smoke test) + spot-checks against
+chart_under_test: fixture chart (item 2's CI smoke test) + spot-checks against
   482012f1 (canonical) and 1c826d5a (operator E2E)
 ---
 
-# Parked-Findings Close — item 2: `ga_structural_writer.py` L1 defect + fleet-wide vocabulary audit + fresh-chart CI smoke
+# Parked-Findings Close — 3-item native authorization (2026-07-28)
 
-Native authorization (2026-07-28, same-day follow-on to the ŚUDDHA-VĀCA close):
-"(2) ga_structural_writer.py L1 defect — fix the writer, THEN run a fleet-wide
-vocabulary audit ... THEN add a fresh-chart CI smoke ... so the schema-drift
-class dies structurally."
+Native authorization (2026-07-28, same-day follow-on to the ŚUDDHA-VĀCA close), in
+strict order with an independent Opus Verifier gate before each next item started:
+"(1) migration-339 OpenAI-allowlist hole ...; (2) ga_structural_writer.py L1 defect
+— fix the writer, THEN run a fleet-wide vocabulary audit ... THEN add a fresh-chart
+CI smoke ... so the schema-drift class dies structurally; (3) ka_gochara_sweep
+operator-chart error — clear 1c826d5a's staleness to full second-chart parity,
+live-verified on both charts."
+
+## Item 1 — migration-339 narration_model OpenAI-allowlist drift (P0-N2): VERIFIED-FIXED
+
+`phala_phaladesa.narration_model`'s DB CHECK constraint permitted `'gpt-4o'`/
+`'gpt-4-turbo'` since migration 339, despite the codebase's own Gemini/DeepSeek-only
+model policy (`services/ph_phaladesa/engine.py`'s `PERMITTED_NARRATION_MODELS`) —
+the Python allowlist had already been fixed; the DB constraint, documented as the
+last line of defense, had not. Fixed via surgical migration 469 (`DROP`+`ADD
+CONSTRAINT`, guarded by a pre-flight check refusing to tighten if any existing row
+already carried a value about to be forbidden — none did). New regression test
+scans all migrations for the constraint's final definition and asserts it matches
+`PERMITTED_NARRATION_MODELS` exactly. Merged PR #862, applied directly to
+production, live-verified (`INSERT ... narration_model='gpt-4o'` now raises
+`CheckViolation`; `'gemini-pro'` still accepted). Independent Opus Verifier:
+**VERIFIED-FIXED**, no caveats.
+
+## Item 2 — `ga_structural_writer.py` L1 defect + fleet-wide vocabulary audit + fresh-chart CI smoke
 
 ## Part A — `ga_structural_writer.py` fix (VERIFIED-FIXED)
 
@@ -131,13 +153,118 @@ dispatched CI run is this mechanism's proving ground for that specific tail,
 reported honestly as not yet observed to full completion, not asserted as
 passing.
 
-## Disposition summary
+## Item 2 disposition summary
 
 | Item | Status |
 |---|---|
-| `ga_structural_writer.py` P0-N1 fix | VERIFIED-FIXED, this PR |
+| `ga_structural_writer.py` P0-N1 fix | VERIFIED-FIXED, PR #864 |
 | Fleet-wide vocabulary audit (50 constraints) | COMPLETE — 47 clean, 1 fixed (above), 2 new findings PARKED-HONEST |
 | `ka_bhavishya_lekha.py` domain vocabulary drift | **NEW finding, PARKED-HONEST** — real, can fail a live build, needs its own authorized fix |
 | `chart_dashas` CLI-only scope-cap sentinel | **NEW finding, PARKED-HONEST** — real, silent, low urgency (CLI-only path) |
 | `mimamsa_*` tables | CLOSED — no drift found |
-| Fresh-chart CI smoke test | Merged this PR; first full-fleet proof is its own first scheduled/dispatched run |
+| Fresh-chart CI smoke test | Merged PR #864; first full-fleet proof is its own first scheduled/dispatched run |
+
+Independent Opus Verifier: **VERIFIED-FIXED-WITH-CAVEATS** — every substantive
+claim independently reproduced against the merged commit; the only discrepancies
+are a stale `entry_count` metadata field in the allowlist JSON (cosmetic, doesn't
+affect lint behavior) and one weak-but-non-load-bearing test assertion (the
+*behavioral* tests genuinely prove TEST-FIRST on revert). Neither caveat
+undermines the fix.
+
+## Item 3 — `ka_gochara_sweep` operator-chart parity: PARKED-HONEST (native-directed stop, 2026-07-28)
+
+**This item did NOT complete, and a first-pass claim that it had was caught and
+corrected during this same session — recorded here in full rather than smoothed
+over, per the PRIME RULE.**
+
+Snapshot + tested-rollback drill performed first (`kala_gochara_windows`,
+`build_substep_progress`, `asset_throughput`, scoped to the operator chart +
+this asset; snapshot tables `*__ssv_20260728c` retained as the rollback anchor).
+A resumption dispatch loop was then run repeatedly against production via the
+FROZEN orchestrator's own `execute_run()`. Early rounds hit the same recurring
+transient-connection-drop pattern documented in prior ŚUDDHA-VĀCA waves (zombie
+`idle in transaction` backends + stale `running`/`planned` `build_runs`, cleared
+each time); the eventual diagnosis was a **stale, ~7-day-old local Cloud SQL Auth
+Proxy process** — restarting it appeared to resolve the instability.
+
+**A dispatch round then reported `state='lit'`, and this was initially reported as
+complete. It was not.** An independent Opus Verifier caught it: `rows_written`
+matched the live `kala_gochara_windows` row count exactly (1267) and `last_error`
+was `NULL`, but `build_substep_progress` was **still frozen at 78/303**, with
+every row dated 2026-07-26 — zero new substeps or rows were dated the day of this
+session's work. The apparent "success" was the FROZEN orchestrator's own
+**no-op-completion rescue** (`pipeline/orchestrator/asset_runner.py`, the
+"D-1.6 root-cause fix" block) misfiring: that rescue exists to reclassify a
+writer's genuine 0-new-rows report as `'lit'` (not `'dormant'`) when its target
+table already has data present — correct for a writer that's truly 100% done
+reporting a redundant no-op, but it does **not** check whether `build_substep_progress`
+reflects the *full* substep plan, so it also fires over a writer that's only
+partially resumed and produced 0 new rows for a *different* reason (in this case,
+substep 79 onward apparently needing a longer uninterrupted connection window than
+any dispatch this session achieved — even one 54-minute continuous run wasn't
+enough). **This is a real defect in the FROZEN orchestrator, newly discovered by
+this session, NOT fixed here** — the orchestrator freeze means "if a writer seems
+to need a contract change → STOP and raise with the native" applies with at least
+equal force to a bug found in already-frozen code; recommend a dedicated future
+wave add a `build_substep_progress`-completeness check to the no-op-completion
+rescue before trusting a 0-new-rows report as genuine completion.
+
+**Corrective action taken this session:** `asset_throughput` for
+`(1c826d5a..., ka_gochara_sweep)` was reset from the false `'lit'` back to an
+honest `'error'` state with a detailed note (the true 78/303 progress, the
+no-op-rescue misfire, and a pointer to the retained snapshot tables). All zombie
+backends and stale `build_runs` rows were cleared. The canonical chart's own
+`ka_gochara_sweep` (303/303, 8345 rows) was independently confirmed untouched
+throughout.
+
+**Native direction (2026-07-28, same session): stop — do not continue chasing
+full completion.** Per that direction, the resumption loop and its supervisor
+were stopped; no further dispatch attempts were made. The operator chart's
+`ka_gochara_sweep` remains at 78/303 substeps (transit-forecast horizon
+truncated at 2027 vs. the canonical chart's full birth+100y span to 2084) —
+**genuinely, honestly incomplete, not parity, not live-verified as done.**
+
+Independent Opus Verifier's own final verdict on this item (issued before the
+native's stop direction, based on the DB state at the time): **NOT-VERIFIED** —
+correctly caught the no-op-completion misfire; every other claim in that same
+report (snapshot integrity, zero duplicates, zero orphans, canonical-untouched)
+was independently reproduced and stands.
+
+### Item 3 disposition summary
+
+| Item | Status |
+|---|---|
+| Snapshot + tested-rollback drill | VERIFIED-FIXED — proven, tables retained as rollback anchor |
+| Resumption dispatch mechanism (self-healing, zombie/stale-run cleanup) | Works correctly, but cannot force a writer past a substep that needs more uninterrupted connection time than achieved |
+| Stale Cloud SQL Auth Proxy | Real contributing factor, restarted, but not sufficient alone to reach full completion in the time available |
+| `ka_gochara_sweep` operator-chart parity (78/303 → 303/303) | **NOT ACHIEVED. PARKED-HONEST, native-directed stop.** |
+| **NEW: orchestrator no-op-completion rescue blind spot** (`asset_runner.py`) | **NEW finding, PARKED-HONEST** — real, can mis-promote a partially-resumed substep-heavy asset to `'lit'`; needs a dedicated future wave (FROZEN orchestrator, out of this session's authorization to fix) |
+| Canonical chart (482012f1) `ka_gochara_sweep` | Confirmed untouched, unaffected |
+
+## Full disposition summary (all 3 items)
+
+| # | Item | Final status |
+|---|---|---|
+| 1 | migration-339 OpenAI-allowlist drift | **VERIFIED-FIXED**, merged, live-verified, deployed |
+| 2 | `ga_structural_writer.py` P0-N1 + vocabulary audit + CI smoke | **VERIFIED-FIXED-WITH-CAVEATS** (cosmetic only), merged |
+| 3 | `ka_gochara_sweep` operator-chart parity | **PARKED-HONEST** — genuinely incomplete, native-directed stop |
+| — | `ka_bhavishya_lekha.py` domain vocabulary drift (new, from item 2's audit) | PARKED-HONEST — real, can fail a live build |
+| — | `chart_dashas` CLI-only scope-cap sentinel (new, from item 2's audit) | PARKED-HONEST — real, silent, low urgency |
+| — | Orchestrator no-op-completion rescue blind spot (new, from item 3) | PARKED-HONEST — real, FROZEN orchestrator, needs native-authorized fix |
+| — | `mi_darshana.py` verdict_note tradition-blindness (carried from last wave) | Confirmed non-security-shaped; remains parked |
+| — | `bo_laksana_rerank` watchdog timeout (carried from last wave) | Confirmed non-security-shaped; self-healed operational note; remains parked |
+| — | `mi_gunanaka.py:337` snapshot-publish bug (carried from last wave) | Confirmed non-security-shaped; remains parked |
+
+**Security-shape confirmation (native's explicit ask):** none of the six
+still-parked items above (three carried from the prior ŚUDDHA-VĀCA wave, three
+newly discovered this session) are security-shaped. The three carried items were
+individually re-examined at this session's start: `mi_darshana.py`'s verdict_note
+is a narration-honesty gap (no injection/auth/secrets surface); `bo_laksana_rerank`'s
+watchdog is an operational timeout, already self-healed by the orchestrator's own
+reconciliation; `mi_gunanaka.py:337`'s savepoint name (`sp = "sp_snapshot"`) is a
+hardcoded Python string literal, not attacker-influenced, so the f-string SQL
+interpolation there carries no injection risk despite the pattern. The three new
+findings are a stale domain-vocabulary mapping (data-correctness), a silently-
+dropped CLI-only sentinel row (data-correctness), and an orchestrator
+completeness-check gap (build-integrity) — none touch auth, injection, secrets,
+or any externally-reachable attack surface.
