@@ -1,0 +1,177 @@
+/*
+ * SAMĪKṢĀ prediction-card + kāla-rekhā styles — PB-3 lane L-2.
+ * Uses the Marsys token table already declared on `.pp-root` (pariprashna.css):
+ * --pp-gold, --pp-gold-dim, --pp-rule, --pp-rule-strong, --pp-ink, --pp-ink-dim,
+ * --pp-tint, --pp-font-serif, --pp-font-sans, --pp-track-eyebrow.
+ * Geometry per PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md §6.9.
+ */
+
+/* ── Prediction card (settled block, §6.9) ─────────────────────────────── */
+.pp-prediction-card {
+  border: 1px solid var(--pp-rule-strong);
+  border-radius: 4px;
+  padding: 16px;
+  background: var(--pp-surface);
+}
+.pp-prediction-card__eyebrow {
+  font-family: var(--pp-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: var(--pp-track-eyebrow);
+  text-transform: uppercase;
+  color: var(--pp-gold);
+  line-height: 16px;
+  /* fixed height — the eyebrow is the only element that changes after settle (P1) */
+  min-height: 16px;
+}
+.pp-prediction-card__claim {
+  font-family: var(--pp-font-serif);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 26px;
+  color: var(--pp-ink);
+  margin-top: 8px;
+  font-feature-settings: 'lnum' 1;
+}
+
+/* ── kāla-rekhā (the time hairline) ────────────────────────────────────── */
+.pp-kala-rekha {
+  position: relative;
+  width: 100%;
+  height: 34px;      /* line + caption band */
+  margin-top: 20px;
+}
+/* 1px --rule hairline — the line itself */
+.pp-kala-rekha__line {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--pp-rule);
+}
+/* 2px --gold window segment */
+.pp-kala-rekha__segment {
+  position: absolute;
+  top: 7px;               /* centred on the 1px line */
+  height: 2px;
+  background: var(--pp-gold);
+}
+/* 3px solid gold today-dot */
+.pp-kala-rekha__today {
+  position: absolute;
+  top: 6px;               /* centred on the line */
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--pp-gold);
+  transform: translateX(-1.5px);   /* centre the dot on its position */
+}
+.pp-kala-rekha__caption {
+  position: absolute;
+  top: 16px;
+  transform: translateX(-50%);
+  font-family: var(--pp-font-sans);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pp-gold-dim);
+  white-space: nowrap;
+}
+
+/* ── Confidence slider (numrange elicitation) ──────────────────────────── */
+.pp-conf-slider { margin-top: 12px; }
+.pp-conf-slider__eyebrow {
+  font-family: var(--pp-font-sans);
+  font-size: 10px;
+  letter-spacing: var(--pp-track-eyebrow);
+  text-transform: uppercase;
+  color: var(--pp-gold-dim);
+}
+.pp-conf-slider__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-family: var(--pp-font-sans);
+  font-size: 12px;
+  color: var(--pp-ink-dim);
+}
+.pp-conf-slider__lbl { width: 32px; }
+.pp-conf-slider__row input[type='range'] { flex: 1; accent-color: var(--pp-gold); }
+.pp-conf-slider__val { width: 40px; text-align: right; color: var(--pp-ink); }
+.pp-conf-slider__band {
+  margin-top: 6px;
+  font-family: var(--pp-font-mono);
+  font-size: 11px;
+  color: var(--pp-gold-dim);
+}
+
+/* ── Log-to-Samīkṣā affordance ─────────────────────────────────────────── */
+.pp-log-samiksha__tap {
+  font-family: var(--pp-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--pp-gold);
+  background: var(--pp-tint);
+  border: 1px solid var(--pp-rule);
+  border-radius: 3px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.pp-log-samiksha__tap:hover { border-color: var(--pp-rule-strong); }
+.pp-log-samiksha__panel {
+  border: 1px solid var(--pp-rule-strong);
+  border-radius: 4px;
+  padding: 12px;
+  background: var(--pp-surface);
+}
+.pp-log-samiksha__claim {
+  font-family: var(--pp-font-serif);
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--pp-ink);
+}
+.pp-log-samiksha__claim-edit {
+  width: 100%;
+  min-height: 48px;
+  font-family: var(--pp-font-serif);
+  font-size: 16px;
+  color: var(--pp-ink);
+  background: var(--pp-surface);
+  border: 1px solid var(--pp-rule);
+  border-radius: 3px;
+  padding: 6px;
+}
+.pp-log-samiksha__actions { display: flex; gap: 8px; margin-top: 10px; }
+.pp-log-samiksha__btn {
+  font-family: var(--pp-font-sans);
+  font-size: 12px;
+  color: var(--pp-ink-dim);
+  background: transparent;
+  border: 1px solid var(--pp-rule);
+  border-radius: 3px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.pp-log-samiksha__btn--primary { color: var(--pp-gold); border-color: var(--pp-rule-strong); }
+.pp-log-samiksha__reason {
+  width: 100%;
+  font-family: var(--pp-font-sans);
+  font-size: 13px;
+  color: var(--pp-ink);
+  background: var(--pp-surface);
+  border: 1px solid var(--pp-rule);
+  border-radius: 3px;
+  padding: 6px;
+  margin-top: 6px;
+}
+.pp-log-samiksha__reason-lbl { font-family: var(--pp-font-sans); font-size: 11px; color: var(--pp-ink-dim); }
+.pp-log-samiksha__error { margin-top: 8px; font-family: var(--pp-font-sans); font-size: 12px; color: var(--pp-ink-dim); }
+.pp-log-samiksha--done, .pp-log-samiksha--dismissed {
+  font-family: var(--pp-font-sans);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--pp-gold-dim);
+}
