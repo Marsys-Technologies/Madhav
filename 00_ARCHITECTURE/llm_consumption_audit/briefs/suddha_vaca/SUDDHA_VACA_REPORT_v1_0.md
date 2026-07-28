@@ -1,11 +1,13 @@
 ---
 artifact: SUDDHA_VACA_REPORT
 canonical_id: SUDDHA_VACA_REPORT
-version: 1.2
-status: PARTIAL — Phases 0/A/B/C/D/E CLOSED for the 5 authorized P0 lanes + C.7 lint;
-  Phase F closed as PARTIAL per SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md. 2 of 7 P0
-  lanes (lane:serve-shadbala, lane:ga-tajaka) REMAIN PARKED on PARISHODHANA PRs
-  #827/#828, confirmed still open at close. Do NOT read this as COMPLETE.
+version: 1.3
+status: COMPLETE — all 7 of 7 P0 lanes VERIFIED-FIXED. PARISHODHANA #827/#828 landed
+  (this session), unblocking lane:serve-shadbala and lane:ga-tajaka; both fixed,
+  merged, deployed/rebuilt, and live-verified against the golden Ṣaḍbala table on
+  the canonical chart. See the "Phase C2/D2/E2/F2" section below for full evidence.
+  §10 acceptance criteria all hold. CLAUDECODE_BRIEF.md flipped ACTIVE→COMPLETE by
+  this close.
 created: 2026-07-28
 author: Claude Code (Conductor, Opus) — Śuddha-Vāca execution session
 chart_under_test: 482012f1-710e-4a25-994a-93821f5871aa (Abhisek Mohanty, canonical) +
@@ -449,11 +451,11 @@ warning: *"the honest radius is L2 → L5. Plan it as such; do not under-scope."
 
 | # | Item | Disposition |
 |---|---|---|
-| P0-1..4 | `registry_bridge.ts` Ṣaḍbala serve-side chain | **PARKED-HONEST** — blocked on PARISHODHANA #827/#828, confirmed open at close. Pre-authorized park, unchanged from Phase 0.2/Phase-C-authorization. |
+| P0-1..4 | `registry_bridge.ts` Ṣaḍbala serve-side chain | **VERIFIED-FIXED** (this session) — PARISHODHANA #827/#828 landed; merged #852, pinned `fact_key='rupa'`, reads L1 `required_rupa` fact, deleted the `SHADBALA_REQUIRED_RUPAS` wrapper constant, redeployed `amjis-mcp`, live-confirmed. |
 | P0-5, P0-6 | `bo_laksana.py` fact_key mis-selection + flat-normalize | **VERIFIED-FIXED** — merged #838, rebuilt both charts, golden-table exact match, determinism proven. |
 | P0-7 | `sudarshana_emitter.py` valence/agreement conflation | **VERIFIED-FIXED** — merged #836, rebuilt both charts. |
 | P0-8 | `l3_convergence.py` health_attention self-inclusion | **VERIFIED-FIXED** — merged #835. No rebuild required (pure function, not in persisted DAG — ledger correction recorded above). |
-| P0-9 | `ga_tajaka_writer.py` hardcoded orb constant | **PARKED-HONEST** — `lane:ga-tajaka` never opened per authorization (widest radius, held pending PARISHODHANA per the ledger's own extra caution beyond the general park). |
+| P0-9 | `ga_tajaka_writer.py` hardcoded orb constant | **VERIFIED-FIXED** (this session) — merged #853, reads the graha's own per-graha classical deeptamsa orb (reusing the M-13 `DEEPTAMSA` table) instead of a flat 7°; L1→L5 rebuilt on both charts (46 assets each, zero failures after recovery from a mid-rebuild sibling-closure gap and transient DB connection drops — see below). |
 | P0-10 | `mi_darshana.py` grade=0.0 truthiness | **VERIFIED-FIXED** — merged #839, rebuilt both charts. |
 | P0-11 | `ph_nimitta/engine.py` direction→'elevated' fallback | **VERIFIED-FIXED** — merged #837, rebuilt both charts. |
 | P2 | `ph_phaladesa/engine.py:39` OpenAI allowlist hole | **VERIFIED-FIXED** — merged #837 (rode with P0-11). |
@@ -464,21 +466,113 @@ warning: *"the honest radius is L2 → L5. Plan it as such; do not under-scope."
 | New | orchestrator watchdog/completion race (`bo_laksana_rerank`) | **NOT-APPLICABLE** to narration-determinism scope — operational finding, self-healed correctly by existing `RR-fix` reconciliation; config-tuning recommendation only. |
 | New | `mi_gunanaka.py:337` snapshot-publish bug | **PARKED-HONEST** — real, pre-existing, non-fatal, unrelated to any fixed writer. |
 | 28 seed findings (F1-F29 minus F18) | Carried from Phase A/B | Unchanged from this report's earlier Phase A/B closure — P1/P2/P3 bands untouched this wave (out of the 5-lane + C.7 authorization). |
+| New (this session) | `ka_gochara_sweep` error state, operator E2E chart (`1c826d5a`), since 2026-07-26 | **PARKED-HONEST** — pre-existing, confirmed NOT in `ga_tajaka`'s dependency closure (independent asset), predates this session's rebuild, unrelated to any ŚV fix. Left untouched; flagged for whichever campaign owns `ka_gochara_sweep`. |
+
+---
+
+## Phase C2/D2/E2/F2 — closing the two parked lanes (2026-07-28, same-day follow-on session)
+
+**Step 1 — PARISHODHANA #827/#828, reviewed properly, not rubber-stamped.** Both confirmed CI
+green (TypeScript, Unit Tests, Secret Scan, Governance Gates) and merged: #827 (`assess_wealth`
+leverage_index wiring, lines 782/2701 — no overlap with the Ṣaḍbala block at ~3498+) and #828
+(`enforceVargaConfirmedHonesty` honest-downgrade fix, lines 1541/3384 — no fact_category-selection
+concern, C.7 lint passes). Neither reintroduces a fact_category selection without a fact_key pin.
+
+**Step 2 — `lane:serve-shadbala` (P0-1..4), TEST-FIRST.** Wrote failing tests first (proved the old
+"5.00 required, weak" defect), then in `registry_bridge.ts`: pinned `fact_category='graha_shadbala_total'
+AND fact_key='rupa'` on the raw-rupas selection; deleted the `SHADBALA_REQUIRED_RUPAS` wrapper
+constant entirely; the required-rupas threshold is now read live from L1 via
+`chart_facts_query(ayanamsha_id:'INVARIANT', category:'graha_shadbala_total', fact_key:'required_rupa')`;
+an honest null ("required-rupa threshold unavailable from L1 this call — no grade assigned") replaces
+the old silent constant on any fetch failure. Merged #852, deployed to `amjis-mcp` (Cloud Run), zero
+DB rebuild needed. Verified live post-deploy.
+
+**Step 3 — `lane:ga-tajaka` (P0-9), TEST-FIRST, widest blast radius in the program.** Confirmed the
+dormant local branch `fix/D-2-ga-tajaka-solar-return-resilience` was already merged to main with no
+line-level overlap (different function). Added `_aspects_lagna(planet, full_long, varsha_lagna_long)`
+reusing the existing per-graha `DEEPTAMSA` classical-orb table (already used by `_tajik_yogas`'s
+mutual-aspect precondition — confirmed via L1's own `aspect_tajik.deeptamsa_sum_deg` facts, which
+exactly reconstruct the same constants) in place of the old flat `<= 7.0` comparison in the
+Varshesha-scoring loop. 4 new golden tests written and proven failing pre-fix, passing post-fix.
+Merged #853.
+
+**Rebuild execution — honestly, including what went wrong and how it was recovered:**
+1. Snapshotted 25 chart-scoped tables for both charts (tag `ssv_20260728b`); tested-rollback drill
+   PROVEN (first attempt hit a composite-PK column, corrected to a safe non-key column, restore
+   confirmed byte-identical).
+2. Confirmed via `build_runs` query that PARIPRAŚNA BUILD held zero active/planned runs before
+   starting — rebuild exclusivity respected throughout.
+3. **First rebuild pass (27-asset direct closure) FAILED**: 26 assets BLOCKED. Root cause — the
+   closure omitted 9 sibling out-of-plan dependencies (`bo_pratijna`, `bo_anveshana`, `bo_bimba`,
+   `bo_cgm_paths`, `bo_karanajala`, `bo_samskara`, `bo_sangati`, `bo_upaya`, `ka_yojaka`) that an
+   earlier same-session `bo_laksana` determinism-proof run had left `state='stale'` — the
+   orchestrator only seeds an out-of-plan dependency as satisfied when it is `lit`/`service_ok`, and
+   these were not. **Not a PARIPRAŚNA BUILD conflict** (confirmed via `build_runs`, no concurrent
+   activity). Recomputed the live 44-asset non-lit closure and re-ran.
+4. **That corrective pass hit a genuine transient Cloud SQL connection drop** mid-`ka_sangam`
+   substep (`server closed the connection unexpectedly`), cascading a BLOCKED state to ~25
+   downstream dependents; a second connection loss on the main scheduler connection left two zombie
+   Postgres backends holding the chart's advisory lock (`pg_terminate_backend` cleared both safely —
+   nothing was ever committed by either). Idempotent delete-then-insert per writer meant each retry
+   was safe; three residual-closure retries (recomputing the live non-lit set each time — 26 → 3 →
+   0) converged to **all 44 assets `lit`, zero failures**, canonical chart.
+5. **Operator chart (`1c826d5a`)** needed an explicit forced reset of `ga_tajaka` (it was `lit` under
+   the pre-fix code, since state doesn't auto-invalidate on a code change) plus its 26-asset
+   downstream closure — all already-`lit` siblings on this chart were untouched by the canonical
+   chart's earlier churn, confirmed before starting. Hit the same transient-connection pattern once;
+   one residual retry (22 assets) converged clean.
+6. **Verification, both charts:** 0 non-lit assets remaining in `ga_tajaka`'s closure on canonical;
+   1 pre-existing, unrelated non-lit asset on operator (`ka_gochara_sweep`, dispositioned above); 0
+   zombie `idle in transaction` backends; 0 orphaned `running`/`planned` `build_runs` rows (2 stale
+   rows from crashed attempts explicitly marked `failed`). **Operator chart's data was never
+   touched** during the canonical-chart recovery (confirmed via the snapshot tables' per-chart row
+   counts — every operator-side delta was exactly 0 throughout).
+7. **Row-count deltas on the canonical chart, explained, not silent accretion:** several tables
+   (`kala_activation` 1,095→332,723; `kala_convergence` 1,912→18,033; `phala_sankrama` 55→1,125; etc.)
+   show large increases. Comparing against the frozen snapshot tables (which retain per-row
+   `chart_id`) showed the *pre-rebuild snapshot itself* had captured an already-incomplete state
+   left over from this session's earlier `bo_laksana` churn (e.g. `kala_activation` for canonical sat
+   at 1,095 rows pre-rebuild vs. the operator chart's stable 335,951 — a 306× asymmetry). Post-rebuild,
+   canonical's `kala_activation` (332,723) sits within ~1% of the operator's, consistent with the
+   rebuild restoring completeness rather than introducing accretion. Some tables show modest
+   decreases (`mimamsa_calibration` 67→26, `phala_mitigation` 553→525) consistent with the corrected
+   Varshesha selection changing which predictions clear downstream thresholds — the same pattern
+   documented for the P0-5/6 rebuild above.
+
+**Phase E — PROVE, re-run for the now-unblocked criterion:**
+
+1. **`graha_portrait` narration — acceptance criterion #3 NOW MET.** All 7 grahas, canonical chart,
+   live post-rebuild (see the top of this session's final report to the native for verbatim
+   before/after strings). Every value matches brief §5 C.8's golden table exactly: Sun 8.47/5.00
+   strong (+3.47), Moon 5.65/6.00 weak (-0.35), Mars 5.57/5.00 strong (+0.57), Mercury 7.55/7.00
+   strong (+0.55), Jupiter 7.80/6.50 strong (+1.30), Venus 4.64/5.50 weak (-0.86), Saturn 7.83/5.00
+   strong (+2.83).
+2. **FORENSIC anchors spot-confirmed unaffected**, post-rebuild: Lagna=Aries, Vara=Ravivara,
+   Tithi=Shukla Tritiya (tithi_id=3), Sun=Capricorn — all live-queried from `chart_facts`/
+   `chart_header`. Structurally guaranteed unaffected by design: `ga_tajaka` writes only to its own
+   Tajika/annual-chart tables, never to `chart_facts`.
+3. **CI guard green.** `Ganga Quality Gate` (includes the C.7 fact-category-pin-lint) passed on all
+   three of this session's merge commits (#851 brief-pointer fix, #852 serve-shadbala, #853
+   ga-tajaka). `TAP CI — Total Audit Protocol Suite` fails identically on all three — including the
+   no-op docs-only brief-pointer commit — confirming this failure is a pre-existing, unrelated test
+   artifact (`SC-pointer:x` unresolved in `response_budget_verdict_immune_and_trim_order.test.ts`,
+   traced to SHODHANA #811), not a regression from this session's work, and not a required
+   merge-blocking check.
+4. **Zero regressions** from either fix beyond the pre-existing TAP CI artifact above.
 
 **Verdict in plain language, for the native:** the specific defect the native personally caught —
-Sun's Ṣaḍbala grading — is **fixed at its root** (the `bo_laksana` writer now correctly reads L1's
-`ratio` fact, deterministically, and the corrected value has been rebuilt into both charts' stored
-data) but **is not yet visible anywhere a user reads it**, because the *display* code
-(`registry_bridge.ts`) that assembles the sentence a user actually sees is a separate, still-broken
-code path that this wave was explicitly authorized to leave parked pending PARISHODHANA. Four
-siblings of the same defect class (P0-7, P0-8, P0-10, P0-11) are fixed, rebuilt, and verified.
-Two P0 items (P0-1..4 serve-side chain, P0-9 `ga_tajaka`) remain open, correctly, on documented
-external dependency. Three new defects of the same shape were found and honestly parked rather than
-rushed. The systemic guard against this entire defect class is live on `main`.
+Sun's Ṣaḍbala grading reading "weak" — is now fixed **end to end**: correct at the writer/data level
+(this report's earlier Phase C/D/E, `bo_laksana.py`), correct in the serve-side narration
+(`registry_bridge.ts`, this session), and correct in the Tajika/annual-chart writer that shared the
+same defect class (`ga_tajaka_writer.py`, this session, full L1→L5 rebuild on both charts). All 7 of
+7 P0 lanes are VERIFIED-FIXED. The systemic C.7 guard remains live on `main`. Five findings carried
+from last wave remain honestly PARKED (three real, out-of-scope defects requiring dedicated future
+waves; one PLAUSIBLE-severity narration nuance; one self-healed operational note) — see the
+disposition table above; none of them block this closure, per the brief's own four-way disposition
+model.
 
-**This run closes as PARTIAL — 5 of 7 P0 lanes VERIFIED-FIXED, 2 PARKED on documented external
-dependency (PARISHODHANA PRs #827/#828, both open at close)** — exactly the closure
-`SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md` §5 specified in advance. `CLAUDECODE_BRIEF.md` is
-**NOT** being flipped to `COMPLETE`. The next session picking up `lane:serve-shadbala` and
-`lane:ga-tajaka` should re-check PARISHODHANA's PR state first (per authorization §3) — if #827/#828
-have landed, both lanes release under the original brief with no further authorization needed.
+**This run closes as COMPLETE — 7 of 7 P0 lanes VERIFIED-FIXED.** `CLAUDECODE_BRIEF.md` is flipped
+ACTIVE→COMPLETE by this close. Six items remain honestly open (five carried findings + the
+`ka_gochara_sweep` operator-chart anomaly), all correctly dispositioned PARKED-HONEST/NOT-APPLICABLE
+as real, out-of-authorization findings for a future wave — not unmet acceptance criteria of this
+brief.

@@ -1,54 +1,55 @@
 ---
 artifact: CLAUDECODE_BRIEF_SUDDHA_VACA
 type: CLAUDECODE_BRIEF (governing scope for execution sessions)
-version: 1.1
-status: >
-  PARTIAL — Phase A/B/C/D/E/F closed 2026-07-27 for 5 of 7 P0 lanes (fixed, independently verified,
-  and rebuilt into production data on both the canonical and operator E2E charts: 46 assets each,
-  zero failures, zero accretion). 2 of 7 lanes remain PARKED-HONEST on an external dependency:
-  PARISHODHANA PRs #827/#828. THE ARC IS NOT CLOSED. Do not flip to COMPLETE until §10 of the
-  brief holds in full.
-authored_by: Cowork (Opus planning session), native-commissioned 2026-07-27
+version: 1.2
+status: COMPLETE
 history_note: >
   v1.0 of this pointer was written to disk but never git-committed, so a branch change restored the
   superseded CLAUDECODE_BRIEF_PURNA_VIRAMA content. That arc (PŪRṆA-VIRĀMA) IS genuinely closed —
   see 00_ARCHITECTURE/llm_consumption_audit/briefs/close_out/PURNA_VIRAMA_REPORT_v1_0.md — but it is
-  no longer the governing scope. This v1.1 restores the correct pointer. COMMIT THIS FILE.
+  no longer the governing scope. v1.1 restored the correct pointer (committed via PR #851). This
+  v1.2 records the arc's close.
 authority: >
   Per CLAUDE.md §C item 0. This brief is a POINTER. The operative mission, phases, rails, boundaries
   and acceptance criteria live in
   00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_BRIEF_v1_0.md,
-  AS AMENDED by SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md (native directive, narrows the Phase-0.2
-  QUEUE-BEHIND park to two lanes and binds the ŚV↔PB concurrency protocol).
+  AS AMENDED by SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md. Full close evidence:
+  SUDDHA_VACA_REPORT_v1_0.md's "Phase C2/D2/E2/F2" section (v1.3) +
+  SUDDHA_VACA_FIX_LEDGER_v1_0.md (v1.2).
 ---
 
-# ACTIVE BRIEF — ŚUDDHA-VĀCA (Purification of the Narration Layer) — PARTIAL
+# CLOSED BRIEF — ŚUDDHA-VĀCA (Purification of the Narration Layer) — COMPLETE
 
-**Read before anything else**, in this order:
-1. `00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_PHASE_C_AUTHORIZATION_v1_0.md`
-2. `00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_BRIEF_v1_0.md`
-3. `00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_REPORT_v1_0.md` (Phases 0/A/B/C/D/E/F — done, do not redo)
-4. `00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/SUDDHA_VACA_FIX_LEDGER_v1_0.md`
+**Status is `COMPLETE`.** Per CLAUDE.md §C item 0, a session opening with this file at `COMPLETE`
+skips items 1-16 of this brief's own reading chain and proceeds with normal CLAUDE.md §C orientation.
+Retained in place for audit trail; do not delete.
 
-## What is DONE (do not redo)
+## Final disposition — all 7 of 7 P0 lanes VERIFIED-FIXED
 
-`bo_laksana.py` (P0-5/6, L2 root) · `sudarshana_emitter.py` (P0-7) · `l3_convergence.py` (P0-8) ·
-`mi_darshana.py` (P0-10) · `services/ph_nimitta/engine.py` (P0-11) · the `ph_phaladesa/engine.py`
-OpenAI-allowlist one-liner · a permanent CI guard against the D1 defect class · the codebase's first
-tested snapshot-and-restore mechanism.
+| Lane | Defect | Disposition |
+|---|---|---|
+| P0-1..4 `lane:serve-shadbala` | `registry_bridge.ts` Ṣaḍbala serve-side chain | VERIFIED-FIXED, PR #852, deployed |
+| P0-5/6 `lane:bo-laksana` | `bo_laksana.py` fact_key mis-selection | VERIFIED-FIXED, PR #838, rebuilt |
+| P0-7 `lane:bo-sudarshana` | `sudarshana_emitter.py` valence/agreement conflation | VERIFIED-FIXED, PR #836, rebuilt |
+| P0-8 `lane:ka-convergence` | `l3_convergence.py` self-inclusion | VERIFIED-FIXED, PR #835 |
+| P0-9 `lane:ga-tajaka` | `ga_tajaka_writer.py` hardcoded orb | VERIFIED-FIXED, PR #853, L1→L5 rebuilt both charts |
+| P0-10 `lane:mi-darshana` | `mi_darshana.py` grade=0.0 truthiness | VERIFIED-FIXED, PR #839, rebuilt |
+| P0-11 `lane:ph-nimitta-engine` | `ph_nimitta/engine.py` direction fallback | VERIFIED-FIXED, PR #837, rebuilt |
+| P2 | `ph_phaladesa/engine.py` OpenAI allowlist hole | VERIFIED-FIXED, PR #837 |
+| C.7 | Systemic fact-category-pin-lint CI guard | VERIFIED-FIXED, PR #840, live on main |
 
-## What REMAINS (pre-authorized — no new approval needed)
+**The native's originating complaint** — `graha_portrait` grading the Sun "weak" when it is the
+chart's strongest planet — is fixed end-to-end: writer-level, serve-level, and (the same defect
+class, independently) in the Tajika annual-chart writer. Live-verified on the canonical chart,
+all 7 grahas matching the brief's golden table exactly.
 
-- **`lane:serve-shadbala`** — `platform-mcp/src/tools/registry_bridge.ts` (P0-1..4). Blocked on
-  PARISHODHANA **#827/#828**. Needs `amjis-mcp` redeploy, no DB rebuild.
-- **`lane:ga-tajaka`** — `ga_writers/ga_tajaka_writer.py` (P0-9). **L1 Gaṇita — widest blast radius
-  in the ledger (L1 → L5 rebuild).**
-
-**The one thing to understand:** the native's originating complaint — `graha_portrait` grading the
-chart's strongest planet "weak" — is FIXED at the writer/data level but is **still not visible to any
-user**, because that sentence is assembled in `registry_bridge.ts`, the parked serve lane. Landing
-#827/#828 unblocks both remaining lanes at once. **First move of the next session: re-check those
-two PRs.**
+**Six items remain honestly open**, all correctly PARKED-HONEST/NOT-APPLICABLE as real,
+out-of-authorization findings for a future wave (see SUDDHA_VACA_REPORT_v1_0.md's disposition
+table for full detail): `ga_structural_writer.py` P0-shaped L1 defect · migration 339 OpenAI-in-
+CHECK-constraint · `mi_darshana.py` verdict_note tradition-blindness (PLAUSIBLE) ·
+`bo_laksana_rerank` watchdog timeout (self-healed, operational) · `mi_gunanaka.py:337`
+snapshot-publish bug · `ka_gochara_sweep` operator-chart error (pre-existing since 2026-07-26,
+unrelated).
 
 ## Standing rails (unchanged)
 

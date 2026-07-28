@@ -215,13 +215,18 @@ export function buildParams(
   switch (name) {
     case 'MSR':
       return {
+        ...(bundleParams.chart_id ? { chart_id: bundleParams.chart_id } : {}),
         ...(bundleParams.focus_domains?.length
           ? { domain: bundleParams.focus_domains[0] }
           : {}),
         limit: bundleParams.subset_size ?? 100,
       }
     case 'CGM':
-      return { query: bundleParams.query_text, hops: 3 }
+      return {
+        ...(bundleParams.chart_id ? { chart_id: bundleParams.chart_id } : {}),
+        query: bundleParams.query_text,
+        hops: 3,
+      }
     case 'UCN':
       return { canonical_id: 'UCN' }
     case 'RM':
@@ -229,11 +234,20 @@ export function buildParams(
     case 'CDLM':
       return { canonical_id: 'CDLM' }
     case 'LEL':
-      return bundleParams.time_window ?? {}
+      return {
+        ...(bundleParams.chart_id ? { chart_id: bundleParams.chart_id } : {}),
+        ...(bundleParams.time_window ?? {}),
+      }
     case 'PANCHANG':
-      return { date: new Date().toISOString().slice(0, 10) }
+      return {
+        ...(bundleParams.chart_id ? { chart_id: bundleParams.chart_id } : {}),
+        date: new Date().toISOString().slice(0, 10),
+      }
     case 'DASHA':
-      return { active_only: true }
+      return {
+        ...(bundleParams.chart_id ? { chart_id: bundleParams.chart_id } : {}),
+        active_only: true,
+      }
   }
 }
 
