@@ -128,6 +128,64 @@ describe('register-leak lint: 0 leaks over the synthetic corpus', () => {
   })
 })
 
+describe('register-leak lint: spelled-out full names + grammar-preserving redaction', () => {
+  // PB-2 hotfix #2 fixture: a real production reading (post hotfix #1) still
+  // leaked spelled-out register names the acronym-only pattern can't catch,
+  // and the acronym pattern's naive delete-only redaction left subject-less
+  // sentences ("The UCN concludes..." -> "The concludes...") whenever the
+  // model used the acronym/full-name as a sentence's grammatical subject.
+
+  it('catches spelled-out full register names, not just acronyms', () => {
+    const { clean, leakCount } = lintReaderProse(
+      'This draws on the Unified Chart Narrative and the Cross-Domain Linkage Matrix.',
+    )
+    expect(clean).not.toMatch(/Unified Chart Narrative|Cross-Domain Linkage/)
+    expect(leakCount).toBeGreaterThanOrEqual(2)
+  })
+
+  it('preserves grammar when a leading article precedes a bare acronym subject', () => {
+    const { clean } = lintReaderProse(
+      'The UCN concludes that career is the organizing axis of your chart.',
+    )
+    expect(clean).toBe('This concludes that career is the organizing axis of your chart.')
+  })
+
+  it('preserves grammar when a leading article precedes a spelled-out full name subject', () => {
+    const { clean } = lintReaderProse(
+      'The Cross-Domain Linkage Matrix provides a precise map of how domains interact.',
+    )
+    expect(clean).toBe('This provides a precise map of how domains interact.')
+  })
+
+  it('lowercases the substitute when the leading article is mid-sentence lowercase', () => {
+    const { clean } = lintReaderProse(
+      'As detailed in the MSR, eight independent systems converge on Mercury.',
+    )
+    expect(clean).toBe('As detailed in this, eight independent systems converge on Mercury.')
+  })
+
+  it('does not leave an orphaned bare article when the acronym is redacted', () => {
+    const { clean } = lintReaderProse(
+      'The specific linkages in the CDLM, and the contradictions therein.',
+    )
+    expect(clean).not.toMatch(/\bthe,/)
+    expect(clean).toBe('The specific linkages in this, and the contradictions therein.')
+  })
+
+  it('still redacts a bare parenthetical citation marker with no article exactly as before (no regression)', () => {
+    const { clean } = lintReaderProse('(UCN §XX)')
+    expect(clean).toBe('( §XX)')
+  })
+
+  it('the original real production leak string — a spelled-out name immediately followed by its own acronym in parens, both at sentence start with no leading article — comes out clean and grammatical', () => {
+    const { clean } = lintReaderProse(
+      'Cross-Domain Linkage Matrix (CDLM) quantifies this with a 0.92 strength score.',
+    )
+    expect(clean).not.toMatch(/Cross-Domain Linkage Matrix|CDLM/)
+    expect(clean).toBe('This quantifies this with a 0.92 strength score.')
+  })
+})
+
 describe('register-leak lint: airtight through the rewriter stream path', () => {
   it('no hard token reaches the wire even when embedded in normal prose deltas', () => {
     const rw = new CitationStreamRewriter({
