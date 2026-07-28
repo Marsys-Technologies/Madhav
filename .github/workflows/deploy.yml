@@ -437,7 +437,16 @@ jobs:
           cache-from: type=gha,scope=amjis-mcp
           cache-to: type=gha,mode=max,scope=amjis-mcp
 
+      # ── PARISHODHANA Phase C item 2: deploy-pipeline parity with deploy-web ────
+      # --no-traffic stages the new revision at 0% traffic; steps.deploy.outputs.url
+      # is the REVISION-specific URL (not the public service URL), so the smoke
+      # step below hits the candidate directly before any real user does. Traffic
+      # only moves via the explicit "Promote traffic to latest revision" step,
+      # and --to-latest there means traffic always tracks the newest revision,
+      # never a pinned name (this is the fix for the stale-pin incident class —
+      # see 00_ARCHITECTURE/llm_consumption_audit/briefs/samapana/SAMAPANA_REPORT_v1_0.md).
       - name: Deploy MCP to Cloud Run (IAM-gated, least-priv SA)
+        id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: amjis-mcp
@@ -446,7 +455,8 @@ jobs:
           # amjis-mcp is publicly invokable (allUsers:roles/run.invoker). The app-level
           # Bearer gate in server.ts is the auth enforcement layer, not Cloud Run IAM.
           # F3 posture correction: --no-allow-unauthenticated was stale; removed.
-          flags: --allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=1 --concurrency=80 --memory=512Mi
+          # --no-traffic: pre-smoke staging, same pattern as deploy-web's A-S8 step.
+          flags: --allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=1 --concurrency=80 --memory=512Mi --no-traffic
           env_vars: |
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
@@ -457,6 +467,62 @@ jobs:
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
+            MCP_CANARY_KEY=mcp-canary-key:latest
+
+      # NOTE on the runner-side fetch below (distinct from the container-side mount
+      # above): server.ts never reads MCP_CANARY_KEY as an env var — Bearer keys are
+      # validated by call-through to amjis-web's /api/mcp/keys/validate (auth.ts), not
+      # against a local secret. The mount above is included for parity/consistency
+      # with the deploy-web secrets block only. What the smoke probes below actually
+      # need is the PLAINTEXT key value inside the GitHub Actions runner process, to
+      # send as a real Authorization: Bearer header against the candidate revision —
+      # that requires the *deploying* identity (WIF_SERVICE_ACCOUNT) to itself hold
+      # secretmanager.secretAccessor on mcp-canary-key, which, as of this PR, it does
+      # NOT have (verified via `gcloud projects get-iam-policy madhav-astrology
+      # --flatten="bindings[].members" --filter="bindings.members:github-actions@
+      # madhav-astrology.iam.gserviceaccount.com"` — roles/artifactregistry.writer,
+      # roles/cloudsql.client, roles/iam.serviceAccountUser, roles/run.developer only).
+      # This is the exact structural gap the brief flags: the token exists in Secret
+      # Manager, but nothing wired for a pre-traffic MCP canary can currently read it.
+      # Native follow-up required before this step will succeed:
+      #   gcloud secrets add-iam-policy-binding mcp-canary-key \
+      #     --member="serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com" \
+      #     --role="roles/secretmanager.secretAccessor" \
+      #     --project=madhav-astrology
+      - name: Fetch MCP canary key for post-deploy smoke
+        id: canary_key
+        run: |
+          KEY=$(gcloud secrets versions access latest --secret="mcp-canary-key" --project=madhav-astrology 2>/tmp/canary_key_err) || {
+            echo "::warning::Could not read mcp-canary-key from Secret Manager — see native follow-up note above this step in deploy.yml. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
+            cat /tmp/canary_key_err || true
+            KEY=""
+          }
+          if [ -n "$KEY" ]; then
+            echo "::add-mask::$KEY"
+          fi
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Post-deploy smoke
+        id: smoke
+        env:
+          SMOKE_MCP_URL: ${{ steps.deploy.outputs.url }}
+          MCP_CANARY_KEY: ${{ steps.canary_key.outputs.key }}
+        run: |
+          bash scripts/operator/mcp_end_to_end_smoke.sh
+
+      - name: Promote traffic to latest revision
+        if: success()
+        run: |
+          gcloud run services update-traffic amjis-mcp \
+            --to-latest \
+            --region=${{ env.GCP_REGION }} \
+            --quiet
+
+      - name: Show deployment URL
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        run: echo "Deployed to $DEPLOY_URL"
+      # ── /PARISHODHANA Phase C item 2 ──
   # ── /4.edge_and_infra_hygiene ──
 
   # ── Orchestrator Convergence Phase 1: brahma-pipeline job image under CI ──
