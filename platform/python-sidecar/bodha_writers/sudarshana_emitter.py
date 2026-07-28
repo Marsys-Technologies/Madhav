@@ -164,10 +164,30 @@ _SPECIFICITY_BY_AGREEMENT: dict[str, float] = {
     "contradicted": 1.0,
 }
 
-_VALENCE_BY_AGREEMENT: dict[str, str] = {
-    "confirmed_3frame": "benefic",
-    "partial_2frame": "neutral",
-    "contradicted": "neutral",
+# ── Valence (P0-7 / D4_GRADE_INVERSION fix): keyed on `matching_class` — the
+# classical quadrant a signal falls into — NEVER on `agreement` (the tri-
+# frame corroboration tier, above). Agreement answers "how sure are we this
+# fired"; matching_class answers "is this auspicious or not" — conflating
+# them let a signal confirmed by all 3 frames (maximal corroboration) but
+# landing in a dusthāna (inauspicious) quadrant read as "benefic". This
+# mapping is a direct restatement of the classical characterization already
+# in this module's own docstring (line ~68 above, BPHS): trikoṇa and kendra
+# are "the two auspicious pillars" -> benefic; dusthāna is "inauspicious" ->
+# malefic; upachaya is "growth-only" (a distinct, non-auspicious-pillar
+# category) and maraka is "death-inflicting but only activated by dasha, not
+# a natal category in the same sense" — neither upachaya nor maraka is a
+# clean natal benefic/malefic call without dasha timing this emitter does
+# not have, so both stay neutral rather than fabricate a judgment (B.10).
+# `contradicted` has matching_class=None (no single quadrant to restate) ->
+# honest neutral. Do not key this off `agreement` again — that is the bug.
+_VALENCE_BY_MATCHING_CLASS: dict[str | None, str] = {
+    "trikona": "benefic",
+    "kendra": "benefic",
+    "dusthana": "malefic",
+    "upachaya": "neutral",
+    "maraka": "neutral",
+    "neutral": "neutral",
+    None: "neutral",
 }
 
 
@@ -211,7 +231,7 @@ def build_signal_row(
     ) if f]
 
     specificity = _SPECIFICITY_BY_AGREEMENT[agreement]
-    valence = _VALENCE_BY_AGREEMENT[agreement]
+    valence = _VALENCE_BY_MATCHING_CLASS[tri_frame["matching_class"]]
 
     inputs = SalienceInputsV2(
         orb_tightness=1.0,
