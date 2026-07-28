@@ -82,6 +82,10 @@ import { registerKalaRitualGet } from './kala_views/ritual.js'
 // priority-explain lane:
 import { registerKalaPriorityTool } from './kala_views/priority.js'
 import { registerKalaExplainTool } from './kala_views/explain.js'
+// elect-story lane (ELECT — Mode-3 sole server, KALA_SUPREME_ELEVATION_v1_0.md §8 — and
+// STORY — parva-dedup fix, §0.5):
+import { registerKalaElectTool } from './kala_views/elect.js'
+import { registerKalaStoryTool } from './kala_views/story.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -4442,4 +4446,17 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   // — aliases live, nothing retired (brief §3 W0.4).
   registerKalaPriorityTool(server, principal)
   registerKalaExplainTool(server, principal)
+
+  // ── ṢAḌ-DARŚANA W0.4 — kala_elect_get / kala_story_get ───────────────────────
+  // The remaining two of the eight kala_* views. kala_elect_get (VIEW 3, ELECT) wraps the
+  // existing muhurta_finder substrate and is THE SOLE SERVER OF MODE 3 (KALA_SUPREME_
+  // ELEVATION_v1_0.md §8 binding routing rule) — kala_ritual_get (above) redirects a
+  // Mode-3-shaped call here with `wrong_view`, never a passthrough; this is that redirect's
+  // valid landing target. kala_story_get (VIEW 4, STORY) wraps the existing
+  // kala_jivana_parva life-arc substrate and fixes its known parva-duplication defect at
+  // serving (dedup by exact span + daśā level, §0.5) — the source table is unchanged. Both
+  // register on the elevated kala_envelope.ts shape; full implementation in
+  // kala_views/{elect,story}.ts.
+  registerKalaElectTool(server, principal)
+  registerKalaStoryTool(server, principal)
 }
