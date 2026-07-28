@@ -259,6 +259,35 @@ export function makeS1LiveAdapter(
       case 'error':
         return [{ type: 'error', turnId, error: classifyError(ev.code, ev.message), eventId }]
 
+      case 'snapshot.apply': {
+        // PB-2/M-5: the reconnect path's gap-fallback. Citations arrive as a
+        // flat array (no per-citation grade on this event by design — the
+        // snapshot is a coarse "here's the current state" catch-up, not a
+        // re-run of the fine-grained citation pipeline), so they round-trip
+        // through the SAME grade mapping as a live citation.define with no
+        // grade carried (→ 'catalog', never a fabricated confident grade).
+        const citations = ev.citations.map((c) => ({
+          n: c.index,
+          title: c.snippet,
+          sourceClass: (c.layer === 'L0' || c.layer?.toLowerCase().includes('classical')
+            ? 'classical_source'
+            : 'chart_factor') as Citation['sourceClass'],
+          relevance: c.snippet,
+          ref: c.signal_id,
+          grade: mapGrade(undefined),
+        }))
+        return [
+          {
+            type: 'snapshot.apply',
+            turnId,
+            text: ev.text,
+            citations,
+            turnStatus: ev.turn_status,
+            eventId,
+          },
+        ]
+      }
+
       default: {
         // Exhaustiveness guard against S-1's real union — a new event type S-1
         // adds will surface here at compile time.

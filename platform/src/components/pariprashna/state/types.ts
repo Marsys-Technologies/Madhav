@@ -228,6 +228,22 @@ export type WireEvent =
   | { type: 'reconnecting'; turnId: string; eventId: string }
   | { type: 'reconnected'; turnId: string; eventId: string }
   | { type: 'interrupted'; turnId: string; eventId: string }
+  /**
+   * PB-2/M-5 ADDITIVE: server-side reconnect (`/api/pariprashna/resume`)
+   * fell back to a snapshot because the requested `Last-Event-ID` had
+   * already been evicted from the ring buffer. Carries the FULL
+   * committed-so-far text as one blob — the reducer REPLACES `blocks`/`tail`
+   * wholesale (never appends), so this applies as a single write with no
+   * replay animation (B.10: never silently lose data, never duplicate).
+   */
+  | {
+      type: 'snapshot.apply'
+      turnId: string
+      text: string
+      citations: Citation[]
+      turnStatus: 'open' | 'closed' | 'interrupted'
+      eventId: string
+    }
 
 // ── Query controls (composer) ───────────────────────────────────────────
 

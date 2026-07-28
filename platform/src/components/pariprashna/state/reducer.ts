@@ -287,6 +287,32 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
       })
     }
 
+    case 'snapshot.apply': {
+      // PB-2/M-5: a gap-fallback snapshot REPLACES the turn's blocks/tail
+      // wholesale — the client cannot trust its own partial block list after
+      // a buffer-eviction gap (it may be missing commits it never saw), so
+      // this is a full replace, applied as ONE write (no replay animation),
+      // never an append onto whatever was already there.
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        const citations = { ...t.citations }
+        for (const c of action.citations) citations[c.n] = c
+        const status: TurnState['status'] =
+          action.turnStatus === 'interrupted' ? 'interrupted' : action.turnStatus === 'closed' ? 'settling' : 'streaming'
+        return {
+          ...t,
+          status,
+          tail: null,
+          activeSeam: null,
+          blocks: action.text ? [{ id: `snapshot-${action.turnId}`, kind: 'paragraph' as const, html: action.text }] : t.blocks,
+          citations,
+          reconnectHollowCaret: false,
+          lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
+        }
+      })
+    }
+
     default:
       return state
   }
