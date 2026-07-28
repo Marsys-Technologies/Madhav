@@ -106,6 +106,7 @@ import {
   type ReadingDepth,
   type LengthTier,
 } from '@/lib/pariprashna/protocol/events'
+import { openTurnBuffer, appendBufferedEvent } from '@/lib/pariprashna/protocol/ring_buffer'
 import { getCapability } from '@/lib/retrieval/registry'
 import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
 import { resolveReaderLabel, FALLBACK_READER_LABEL } from '@/lib/pariprashna/lexicon'
@@ -285,7 +286,15 @@ export async function POST(request: Request): Promise<Response> {
   // ── Open the stream. `turn.open` + `phase{plan,start}` are the FIRST bytes. ─
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const em = new PariprashnaEmitter(controller)
+      // PB-2/M-5: seed this turn's ring buffer BEFORE the first event is
+      // emitted, so a resume request that races the very first byte still
+      // finds turn metadata. Awaited (not fire-and-forget) for exactly that
+      // reason — the write is a single Redis SET (or in-memory Map.set) and
+      // is not on the model-latency critical path.
+      await openTurnBuffer({ turnId, chartId, conversationId })
+      const em = new PariprashnaEmitter(controller, (event) => {
+        void appendBufferedEvent(turnId, event)
+      })
 
       // FIRST BYTES — before the planner, before any DB/LLM work.
       em.turnOpen({

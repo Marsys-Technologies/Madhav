@@ -32,7 +32,30 @@ import {
   type TurnCommitEvent,
   type TurnCloseEvent,
   type ErrorEvent,
+  type SnapshotApplyEvent,
 } from './events'
+
+/**
+ * Write an ALREADY-STAMPED event (i.e. one carrying its own `seq`/`t`, read
+ * back verbatim from the PB-2/M-5 ring buffer) directly onto a controller —
+ * used by the `/api/pariprashna/resume` replay path, which must preserve the
+ * ORIGINAL seq of a historical event rather than assign it a new one (the
+ * client's seen-set dedup keys on `seq`; re-stamping would break idempotent
+ * replay). Validates via `serializeEvent` exactly like `PariprashnaEmitter`.
+ * Returns `false` (never throws) if the controller is already closed.
+ */
+export function writeRawEvent(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  event: PariprashnaEvent,
+  encoder: TextEncoder = new TextEncoder(),
+): boolean {
+  try {
+    controller.enqueue(encoder.encode(serializeEvent(event)))
+    return true
+  } catch {
+    return false
+  }
+}
 
 /** The stamped-by-the-emitter envelope fields, omitted from every builder arg. */
 type Stamped = 'seq' | 't'
@@ -43,11 +66,31 @@ type Body<E extends PariprashnaEvent, L extends E['type']> = Omit<
 >
 
 export class PariprashnaEmitter {
-  private seq = 0
+  private seq: number
   private closed = false
   private readonly encoder = new TextEncoder()
 
-  constructor(private readonly controller: ReadableStreamDefaultController<Uint8Array>) {}
+  /**
+   * @param controller the stream controller to write to.
+   * @param onEmit PB-2/M-5 ADDITIVE hook: fired with every event AFTER it is
+   *   successfully enqueued (never on a closed/failed write). The route uses
+   *   this to mirror each event into the per-turn ring buffer (fire-and-forget)
+   *   without this module needing to know anything about buffering/storage.
+   *   Defaults to a no-op so every pre-existing call site is unaffected.
+   * @param startSeq PB-2/M-5 ADDITIVE: seed the monotonic seq counter at a
+   *   value other than 0. Used by the resume route to mint NEW synthetic
+   *   events (a `flag`/`snapshot.apply` pair, or a grace-window `turn.close`)
+   *   that continue a turn's seq sequence after replaying/tailing raw
+   *   historical events (which are written via `writeRawEvent`, bypassing
+   *   this counter entirely, so they keep their original seq).
+   */
+  constructor(
+    private readonly controller: ReadableStreamDefaultController<Uint8Array>,
+    private readonly onEmit: (event: PariprashnaEvent) => void = () => {},
+    startSeq = 0,
+  ) {
+    this.seq = startSeq
+  }
 
   /** Whether `close()` (or a terminal enqueue failure) has fired. */
   get isClosed(): boolean {
@@ -61,6 +104,12 @@ export class PariprashnaEmitter {
     } catch {
       // Controller already closed by a client disconnect — stop writing.
       this.closed = true
+      return
+    }
+    try {
+      this.onEmit(event)
+    } catch {
+      // A buffering hook must never be able to break the live stream.
     }
   }
 
@@ -122,6 +171,10 @@ export class PariprashnaEmitter {
 
   error(body: Body<ErrorEvent, 'error'>): void {
     this.write({ type: 'error', ...this.envelope(), ...body })
+  }
+
+  snapshotApply(body: Body<SnapshotApplyEvent, 'snapshot.apply'>): void {
+    this.write({ type: 'snapshot.apply', ...this.envelope(), ...body })
   }
 
   /** Close the underlying controller exactly once. */
