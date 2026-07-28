@@ -18,9 +18,9 @@
     },
     {
       "file": "platform-mcp/src/tools/registry_bridge.ts",
-      "line": 3498,
-      "pattern": null,
-      "justification": "KNOWN DEFECT \u2014 this is SUDDHA_VACA_FIX_LEDGER_v1_0.md P0-1 exactly (shadbala total row selected by fact_category alone). Owned by lane:serve-shadbala, itself QUEUE-BEHIND on PARISHODHANA PR #827/#828 per the ledger's lane-assignment note \u2014 may still be open when this lint lands. Allowlisted until that lane's fix merges; delete this entry once it does (a re-appearance after that point is a regression)."
+      "line": null,
+      "pattern": "fact_category'\\] === 'graha_shadbala_total'",
+      "justification": "KNOWN DEFECT \u2014 this is SUDDHA_VACA_FIX_LEDGER_v1_0.md P0-1 exactly (shadbala total row selected by fact_category alone). Owned by lane:serve-shadbala, itself QUEUE-BEHIND on PARISHODHANA PR #827/#828 per the ledger's lane-assignment note \u2014 may still be open when this lint lands. Allowlisted until that lane's fix merges; delete this entry once it does (a re-appearance after that point is a regression). UPDATED 2026-07-28 (PARISHODHANA Conductor): PARISHODHANA PR #827 added ~59 net lines earlier in this file (a new attachLeverageIndex function for R-10), shifting this violation from line 3498 to 3557 with no change to the violation itself \u2014 confirmed by diffing PR #827 (hunks @@-782,6 +782,62@@ and @@-2701,6 +2757,9@@, net +59 lines) and matching the identical snippet at the new location on a pre-PR827 checkout (line 3498) vs the merged tree (line 3557). Switched from an exact line match to a pattern match so this entry survives further line drift from the other queued PARISHODHANA PRs touching this same file; this is not a re-verification or a closure of the underlying P0-1 defect, which remains open and owned by lane:serve-shadbala."
     },
     {
       "file": "platform/python-sidecar/_rebuild_ga_structural_v2.py",

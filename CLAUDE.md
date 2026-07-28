@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDE.md
-version: "6.4"
+version: "6.5"
 status: CURRENT
 role: >
   Root governance surface. Master orientation document for every Claude session on the MARSYS-JIS
@@ -121,7 +121,7 @@ Canonical artifact versions and paths are defined in `00_ARCHITECTURE/CANONICAL_
 | ORCHESTRATOR_CONVERGENCE_CLOSE | `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` | 1.0 | CURRENT |
 | L1_GANITA_CLOSURE | `00_ARCHITECTURE/L1_GANITA_CLOSURE_v1_0.md` | 1.0 | CURRENT |
 | L2_BODHA_CAMPAIGN_HANDOFF | `00_ARCHITECTURE/L2_BODHA_CAMPAIGN_HANDOFF_v1_0.md` | 1.0 | CURRENT |
-| CLAUDE | `CLAUDE.md` | 6.4 | CURRENT |
+| CLAUDE | `CLAUDE.md` | 6.5 | CURRENT |
 
 Any path in this snapshot that conflicts with `CANONICAL_ARTIFACTS_v1_0.md §1` is wrong here, not there. `drift_detector.py` enforces this via the canonical-path cross-check (protocol §H.3).
 
@@ -251,6 +251,60 @@ Every served surface layers its rows/signals by verification/confidence density 
 
 **What violates this principle:** flattening confirmed and catalog-only rows into one array with no distinguishing field; a generic budget trim that can zero a response's only confirmed-finding section while a less-dense section survives; a verdict/summary layer that goes silently empty instead of reporting the honest gap via a flags field; a capability that claims `density_contract` but ships no `empty_reason` discipline behind it.
 
+### §N.7 — Narration Fidelity Principle ([[suddha_vaca]] · ŚUDDHA-VĀCA campaign, 2026-07-28)
+
+Drawn from what the code now enforces after the ŚUDDHA-VĀCA narration-purification wave — not a
+fresh idea, a codification of the discipline five independent writer fixes and a new CI guard
+converged on independently:
+
+1. **Narration is a deterministic restatement of L1-referenced facts.** A sentence that grades,
+   labels, or verbalizes a computed value must trace to a cited `fact_id` it *reads*, never one it
+   *re-derives*. Re-deriving invites drift between the restatement and the fact it claims to restate.
+2. **Every fact selection that reduces a set to one row pins `fact_key` and carries a total
+   `ORDER BY` (or `DISTINCT ON` / `LIMIT 1` equivalent).** Category-only selection (`fact_category`
+   alone, `.find()`/`.filter()[0]` without a key check) is the D1 defect class — enforced permanently
+   by the `fact-category-pin-lint` CI guard (`platform/scripts/governance/
+   check_fact_category_pinning.py`). Note the guard's honest scope: it closes fact_key-level
+   ambiguity; it does not by itself guarantee single-row-per-key across `build_id` generations —
+   that remains a write-path idempotency discipline, not a read-time lint's job.
+3. **No wrapper-local constant may shadow an L1-computed value**, even when the constant's current
+   value happens to be correct — a constant can drift from its source; a reference cannot.
+4. **A verification flag must have a real detector behind it, or be null.** A flag that reads "0
+   leaks" or "verified clean" with no code path that could ever produce a different value is not a
+   clean result — it is an unimplemented check wearing a clean result's clothes.
+5. **Verified fact ≠ verified prose.** `two_pass_verified` on a fact covers the number; it says
+   nothing about the sentence that selects among numbers and grades them. Every narration layer that
+   assembles a verdict from facts needs its own semantic/golden-value test — a passing fact-level
+   verification pass is not evidence the narration built on top of it is correct.
+6. **An honest null beats an invented judgment.** Where a sentence cannot be derived from a cited
+   fact, remove the claim or emit a null — never substitute a plausible-sounding default (the
+   `'elevated'`-on-missing-`direction` and `5.0`-on-computed-zero-`grade` defects were both exactly
+   this: a favorable/neutral-sounding invention standing in for "I don't know").
+
+**What violates this principle:** everything §N.6 already lists, plus: a grade/valence assignment
+keyed off a proxy signal (corroboration tier) instead of the actual classical fact it's supposed to
+report (agreement vs. matching_class); a fallback value chosen for how it *reads* rather than for
+being the codebase's own established neutral convention; a model-policy allowlist that contradicts
+its own docstring.
+
 ---
 
-*End of CLAUDE.md v6.4 (2026-07-19, Cowork retrieval-strategy session) — §I B.11 amended with the RS-4 proportionality carve-out (native-authorized): B.11 scoped to interpretive queries; factual lookups satisfy it via frame check + escalation valve. Mirrors the in-place amendments to `PROJECT_ARCHITECTURE_v2_2.md` §B.11/§H.4; doctrine source `RETRIEVAL_STRATEGY_v1_0.md` §3.6. Prior: v6.3 (2026-07-15, DOCTRINE-WAVES D-1.5b Lane B-7) — new §N.6 Serving Density Principle: codifies the density-layering discipline the `density_contract` field (types.ts) and the response-budget `hardFloor` mechanism (response_budget.ts) already embody, drawn from `judgment_query` and `ganita_yogas_get`'s catalog-vs-confirmed handling. Frontmatter/footer version drift corrected (frontmatter had stayed "6.0" since v6.0 while the footer advanced to "6.2" — both now read 6.3). Prior: v6.2 (2026-06-29 — L4 Phala SEALED: §E L4 BUILT→CLOSED (seal `L4_PHALA_CLOSE_v1_0.md`); §E "truly open items" note updated — all six layers L0–L5 now sealed/closed, build arc complete). v6.1 (2026-06-29 — §E layer-reality refresh: L2 NEXT→BUILT, L3 draft→CLOSED, L4 draft→BUILT, L5 draft→SEALED). v6.0 (2026-06-12 — structural realignment). Full changelog history at `00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
+*End of CLAUDE.md v6.5 (2026-07-28, ŚUDDHA-VĀCA Phase C/D/E/F session) — new §N.7 Narration Fidelity
+Principle, codifying the discipline enforced by the fact-category-pin-lint CI guard and five
+independently-verified writer fixes (bo_laksana, sudarshana_emitter, l3_convergence, mi_darshana,
+ph_nimitta/engine.py) merged this wave. Two of the seven original P0 lanes (lane:serve-shadbala,
+lane:ga-tajaka) remain PARKED on PARISHODHANA PRs #827/#828 — see `SUDDHA_VACA_REPORT_v1_0.md` for
+the full disposition table. Prior: v6.4 (2026-07-19, Cowork retrieval-strategy session) — §I B.11
+amended with the RS-4 proportionality carve-out (native-authorized): B.11 scoped to interpretive
+queries; factual lookups satisfy it via frame check + escalation valve. Mirrors the in-place
+amendments to `PROJECT_ARCHITECTURE_v2_2.md` §B.11/§H.4; doctrine source `RETRIEVAL_STRATEGY_v1_0.md`
+§3.6. Prior: v6.3 (2026-07-15, DOCTRINE-WAVES D-1.5b Lane B-7) — new §N.6 Serving Density Principle:
+codifies the density-layering discipline the `density_contract` field (types.ts) and the
+response-budget `hardFloor` mechanism (response_budget.ts) already embody, drawn from `judgment_query`
+and `ganita_yogas_get`'s catalog-vs-confirmed handling. Frontmatter/footer version drift corrected
+(frontmatter had stayed "6.0" since v6.0 while the footer advanced to "6.2" — both now read 6.3).
+Prior: v6.2 (2026-06-29 — L4 Phala SEALED: §E L4 BUILT→CLOSED (seal `L4_PHALA_CLOSE_v1_0.md`); §E
+"truly open items" note updated — all six layers L0–L5 now sealed/closed, build arc complete). v6.1
+(2026-06-29 — §E layer-reality refresh: L2 NEXT→BUILT, L3 draft→CLOSED, L4 draft→BUILT, L5
+draft→SEALED). v6.0 (2026-06-12 — structural realignment). Full changelog history at
+`00_ARCHITECTURE/CLAUDE_MD_CHANGELOG.md`.)*
