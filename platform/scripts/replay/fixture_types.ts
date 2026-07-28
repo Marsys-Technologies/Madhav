@@ -12,7 +12,11 @@
  * `platform/tests/pariprashna/fixtures/<name>.json` and served by
  * `server.ts`.
  */
-import type { PariprashnaEventT } from '../../src/lib/pariprashna/protocol/events'
+// Integration note (PB-1/integrate): S-1's canonical protocol module is now
+// merged and is the single source of truth. Its exported TYPE is
+// `PariprashnaEvent` (the schema VALUE is `PariprashnaEventSchema`). C-2's
+// draft used `PariprashnaEventT`; re-pointed to S-1's real name here.
+import type { PariprashnaEvent } from '../../src/lib/pariprashna/protocol/events'
 
 /** One entry in a fixture's event list. `delay_ms` is the pause BEFORE this
  *  event is sent, measured from when the previous event finished sending. */
@@ -21,7 +25,7 @@ export interface FixtureEventEntry {
   /** The event payload. Typed loosely (not strictly PariprashnaEventT) so
    *  fixtures can deliberately encode protocol-invalid payloads (the
    *  malformed-sentinel-variants fixture depends on this escape hatch). */
-  event: PariprashnaEventT | Record<string, unknown>
+  event: PariprashnaEvent | Record<string, unknown>
 }
 
 export interface FixtureSpec {

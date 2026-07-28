@@ -7,7 +7,16 @@
  * appends one timed event.
  */
 import type { FixtureEventEntry, FixtureSpec } from './fixture_types'
-import { PariprashnaEvent, type PariprashnaEventT } from '../../src/lib/pariprashna/protocol/events'
+// Integration note (PB-1/integrate): re-pointed to S-1's canonical protocol.
+// S-1 exports the schema VALUE as `PariprashnaEventSchema` and the TYPE as
+// `PariprashnaEvent` (C-2's draft named these `PariprashnaEvent` /
+// `PariprashnaEventT`). The committed JSON fixtures under
+// `tests/pariprashna/fixtures/` were authored against C-2's draft shape and are
+// FROZEN — the live gate/golden path reads them from disk and does NOT rebuild
+// them here. Regenerating fixtures against S-1's real schema would require
+// re-authoring each fixture's events to S-1's field shapes; that is out of
+// scope for the PB-1 integration (tracked as a known follow-up).
+import { PariprashnaEventSchema, type PariprashnaEvent } from '../../src/lib/pariprashna/protocol/events'
 
 export class Turn {
   private seq = 0
@@ -23,7 +32,7 @@ export class Turn {
    *  fixture-build time, not test time) if the payload doesn't match the
    *  canonical schema — this keeps fixtures honest as the schema evolves. */
   push(
-    type: PariprashnaEventT['type'],
+    type: PariprashnaEvent['type'],
     fields: Record<string, unknown>,
     delayMs = 20,
   ): this {
@@ -39,7 +48,7 @@ export class Turn {
     // Validate against the canonical schema so a fixture bug surfaces at
     // build time (`npm run pariprashna:fixtures:build`), not silently inside
     // a Playwright run.
-    const parsed = PariprashnaEvent.parse(base)
+    const parsed = PariprashnaEventSchema.parse(base)
     this.entries.push({ delay_ms: delayMs, event: parsed })
     return this
   }
