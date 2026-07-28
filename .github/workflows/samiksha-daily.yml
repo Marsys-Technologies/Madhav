@@ -1,0 +1,76 @@
+name: Samīkṣā Daily Job (PB-3 L-4)
+
+# ONE consolidated daily job (T-3 binds: "every always-on subsystem is a future 2 a.m.
+# debugging problem" — so this is a SINGLE scheduled run doing all three §14.5 things, never
+# three cron entries):
+#   (a) transition `open` predictions whose window has passed → `window_closed` (via the L-1
+#       legal-transition DAL) — these become L-3's Resolve queue;
+#   (b) detect `closing_soon` predictions (window_end − 14d) — a derived flag, no state write;
+#   (c) dispatch ONE consolidated digest, only when non-empty, per-day idempotent.
+#
+# ADDITIVE-ONLY: this file is new. It adds no trigger to, and modifies no step of, any existing
+# workflow.
+#
+# TRANSPORT: W-5 log-only stub — no email transport exists in this codebase, so the digest is
+# LOGGED (visible in this workflow's run log), never emailed. Wire a real DigestTransport when
+# one lands.
+#
+# SAFETY: the live run is a no-op unless a DATABASE_URL secret is configured (the step logs and
+# exits 0). So enabling this daily cron does not silently begin making live production DB calls
+# on a repo that has not opted in by setting the secret — the same discipline
+# reconciliation-cadence.yml applies to its own schedule.
+#
+# IDEMPOTENCY CAVEAT (honest): the per-day digest sent-marker (DigestJournal) defaults to a file
+# under the runner workspace, which a fresh ephemeral GitHub runner does NOT carry between
+# separate invocations. The daily cron fires once/day, so same-day double-send is not a normal
+# occurrence; the acceptance-tested guarantee (two runs of one --as-of in a persistent
+# environment → exactly one digest) holds wherever the state dir persists. A DB-backed journal
+# (a `samiksha_job_runs` table) is the production-grade store — deferred because migrations are
+# lane L-1's charge, out of L-4's may_touch grant. See REPORT_PB-3 / daily_job.ts header.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # 03:00 UTC daily
+  workflow_dispatch:
+    inputs:
+      as_of:
+        description: 'Simulated clock (YYYY-MM-DD). Blank = today (UTC).'
+        type: string
+        required: false
+      chart:
+        description: 'Restrict to one chart_id. Blank = all charts.'
+        type: string
+        required: false
+
+jobs:
+  samiksha-daily:
+    name: Samīkṣā consolidated daily run
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+
+      - name: Run the consolidated daily job (log-only digest — W-5 stub)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AS_OF: ${{ inputs.as_of }}
+          CHART: ${{ inputs.chart }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "[samiksha-daily] No DATABASE_URL secret configured — skipping live run (exit 0)."
+            echo "[samiksha-daily] Set the DATABASE_URL repo secret to enable the daily sweep."
+            exit 0
+          fi
+          ARGS=""
+          if [ -n "${AS_OF}" ]; then ARGS="$ARGS --as-of ${AS_OF}"; fi
+          if [ -n "${CHART}" ]; then ARGS="$ARGS --chart ${CHART}"; fi
+          echo "[samiksha-daily] npx tsx --conditions=react-server scripts/samiksha/daily_job.ts $ARGS"
+          npx tsx --conditions=react-server scripts/samiksha/daily_job.ts $ARGS
