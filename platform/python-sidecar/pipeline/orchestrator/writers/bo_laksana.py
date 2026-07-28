@@ -818,34 +818,61 @@ def _fetch_dict(conn: Any, sql: str, params: list) -> list[dict]:
 
 
 def _build_strength_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, float]:
-    """graha → normalized shadbala (rupas clamped to 0–2.0).
+    """graha → L1-authoritative achieved/required shadbala ratio, clamped to 2.0.
 
-    B2-fix: graha lives in fact_subject (e.g. 'SUN', 'MOON', 'MAR', …).
-    The fact_key is always 'rupa' — splitting on ':' in fact_key was wrong.
-    C2-verified: fact_value_num is already in rupas (observed: SUN=3.23, SAT=3.61,
-    JUP=2.66, MOON=2.56, MER=2.50, VEN=2.36, MAR=3.11, RAH=0.38, KET=0.63).
-    Classical minimum ≈ 1 rupa per planet; values ≥1.0 = adequate, 2.0 = 2× minimum.
+    ŚUDDHA-VĀCA P0-5 (D1_MISSELECT) fix: the SELECT previously filtered ONLY
+    on fact_category='graha_shadbala_total' — no fact_key pin, no ORDER BY.
+    Under that category, chart_facts carries TWO fact_key variants scoped to
+    the SAME (chart_id, ayanamsha_id, fact_subject) for every classical
+    graha — 'rupa' (raw achieved shadbala, scale ~4.6-8.5) and 'ratio'
+    (L1-computed achieved/required, scale ~0.8-1.7) — plus a third
+    'required_rupa' row stored under ayanamsha_id='INVARIANT' (out of this
+    filter's scope). With no fact_key pin and no ORDER BY, the dict-building
+    loop below silently kept whichever row the DB happened to return LAST
+    per graha — non-deterministic across otherwise-identical builds.
+
+    ŚUDDHA-VĀCA P0-6 (D3_HARDCODED_DRIFT) fix: whichever row won, its value
+    was normalized by a flat `raw / 1.0` constant instead of that graha's
+    own L1 `required_rupa` fact — a wrapper-local constant standing in for
+    an L1-derived per-graha value (forbidden by construction per CLAUDE.md
+    §N.5, even though `raw` itself was already correct).
+
+    Fix: pin fact_key='ratio'. `ga_strength_writer` (L1) already computes
+    this exact ratio as `achieved_total / required_rupa` per graha
+    (`ga_writers/ga_strength_writer.py::_build_shadbala_rows`, CR-18) and
+    stores it under this same fact_category, ayanamsha-scoped — reading it
+    directly means this function REFERENCES the L1-computed value rather
+    than re-deriving it independently, per §N.5. This mirrors the sibling
+    `_fetch_shadbala` in `bo_upaya.py`, which already reads this identical
+    fact_key='ratio' row for the same purpose. The ORDER BY makes the
+    result deterministic even if a duplicate/re-derived row set were ever
+    to exist (today's data has exactly one 'ratio' row per graha).
+
+    Rahu/Ketu carry no classical shadbala requirement (ga_strength_writer's
+    `classical_grahas` list excludes them) and therefore emit no 'ratio'
+    row — they are simply absent from this lookup. Callers already default
+    a missing graha to a neutral 1.0 (see `shadbala_norm` call sites),
+    mirroring bo_upaya.py's documented fallback for the nodes.
     """
     rows = _fetch_dict(conn,
-        """SELECT fact_subject, fact_value_num FROM chart_facts
-           WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='graha_shadbala_total'""",
+        """SELECT fact_subject, fact_value_num, fact_id FROM chart_facts
+           WHERE chart_id=%s AND ayanamsha_id=%s AND fact_category='graha_shadbala_total'
+             AND fact_key='ratio'
+           ORDER BY fact_subject ASC, fact_id ASC""",
         [chart_id, ayanamsha_id])
     lookup: dict[str, float] = {}
     for r in rows:
-        # fact_subject e.g. 'SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT',
-        # 'RAH_MEAN', 'KET_MEAN' — use as-is (callers match via tags/dignity keys)
+        # fact_subject e.g. 'SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT'
+        # — use as-is (callers match via tags/dignity keys)
         graha = str(r.get("fact_subject") or "").strip()
         if not graha:
             continue
-        raw = float(r.get("fact_value_num") or 0.0)
-        # C2-verified: fact_value_num is already in rupas (observed range: JUP=2.66,
-        # MER=2.50, MOON=2.56, SUN=3.23, SAT=3.61, MAR=3.11, VEN=2.36, RAH=0.38,
-        # KET=0.63 — all consistent with rupa scale, NOT virupas).
-        # Classical minimum needed ≈ 1 rupa per planet; we normalise against that
-        # floor so values ≥1.0 indicate adequate strength and 2.0 = double minimum.
-        # Dividing by 1.0 is intentional (identity — the value IS already normalised
-        # to rupas); we clamp at 2.0 to bound the salience multiplier.
-        lookup[graha] = min(raw / 1.0, 2.0)  # clamp at 2× classical minimum
+        if graha in lookup:
+            continue  # deterministic first-seen-per-graha under the stable ORDER BY
+        ratio = float(r.get("fact_value_num") or 0.0)
+        # ratio is already actual_rupa / required_rupa, both L1 facts (§N.5);
+        # clamp at 2.0 (2× classical minimum) to bound the salience multiplier.
+        lookup[graha] = min(ratio, 2.0)
     return lookup
 
 

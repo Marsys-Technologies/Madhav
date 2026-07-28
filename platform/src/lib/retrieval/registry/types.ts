@@ -8,7 +8,7 @@
  * Core shape (CapabilityDescriptor + chart-agnostic gate fields) is FROZEN.
  * New optional fields may only be added via a versioned amendment that bumps
  * the amendment_version below and documents the change.
- * amendment_version: 3 (W3 L7 demand_ranking.family_rank/rank_rationale, 2026-07-20 — see D1_AMENDMENTS)
+ * amendment_version: 4 (PB-1/S-2 register.reader_label, 2026-07-28 — see D1_AMENDMENTS)
  *
  * AMENDMENT PROCEDURE:
  * 1. Add the new OPTIONAL field to CapabilityDescriptor (never remove or rename required fields).
@@ -272,6 +272,21 @@ interface CapabilityDescriptorBase {
      * Type imported from the envelope register-block module (single source of the shape).
      */
     entries?: import('../register_block').RegisterEntry[]
+    /**
+     * Paripraśna PB-1 lane S-2 (DHĀRĀ wave): the plain-language "working band" label the
+     * streaming chat UI shows while this capability is being consulted — e.g.
+     * "Consulting the chart — DAŚĀ STRUCTURE". Sourced EXCLUSIVELY from the closed lexicon
+     * at `platform/src/lib/pariprashna/lexicon.ts` (see `RETRIEVAL_FACET_LABELS` /
+     * `resolveReaderLabel`) — never author a bespoke string here. Distinct from `display` and
+     * `description` (both LLM-facing): this field is reader-facing (the human at the other
+     * end of the stream) and MUST NEVER be, or derive from, this capability's `uri`, `name`,
+     * an asset id (`ga_`/`bo_`/`ka_`/`ph_`/`mi_`/`bg_` prefixed), a table name, or a layer name
+     * ("L0"–"L5"). Optional — additive; absent on the ~90 capabilities the acharya-grade
+     * interpretive floor does not surface a working-band moment for. A capability with no
+     * `reader_label` falls back at serve time to the closed lexicon's generic
+     * `FALLBACK_READER_LABEL` ("RETRIEVED — CHART DATA"); it never falls back to the raw uri.
+     */
+    reader_label?: string
   }
 
   /**
@@ -626,5 +641,26 @@ export const D1_AMENDMENTS: Array<{
       '(auditable justification for the rank). Both OPTIONAL, additive; no existing ' +
       'descriptor requires changes. Populated as a worked example on the L-DOMAIN ' +
       'assess_* family (assess_wealth/career/health/marriage) in descriptor_defaults.ts.',
+  },
+  {
+    version: 4,
+    date: '2026-07-28',
+    field: 'register.reader_label',
+    description:
+      'Paripraśna Build wave PB-1 (DHĀRĀ), Lane S-2 (lexicon + reader labels). Adds one ' +
+      'OPTIONAL string sub-field inside the existing (already-optional) `register` object: ' +
+      'the plain-language "working band" label the streaming chat UI shows while this ' +
+      'capability is being consulted, sourced exclusively from the closed lexicon at ' +
+      'platform/src/lib/pariprashna/lexicon.ts. Purely additive — no existing descriptor ' +
+      'requires changes, and `register` itself remains fully optional. Populated on the ' +
+      '~30 capabilities the acharya-grade floor calls for on career/timing/health-type ' +
+      'interpretive questions (dasha, transit, house/lordship, yoga, strength/dignity, ' +
+      'divisional-chart, sensitive-degree, remedial, classical-corpus, and B.11 whole-chart ' +
+      '(MSR/UCN/CDLM/CGM) families); left unset elsewhere by design (documents the ' +
+      '"why left optional" case per amendment step 4 — capabilities outside the ' +
+      'interpretive floor have no working-band moment to label). Unmapped capabilities ' +
+      'resolve to the lexicon\'s FALLBACK_READER_LABEL at serve time, never to a raw ' +
+      'uri/asset-id/table/layer name — see lexicon.ts `resolveReaderLabel()` and ' +
+      'tests/pariprashna/reader_label_fallback.test.ts.',
   },
 ]

@@ -108,6 +108,10 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
   tool_role: 'hybrid_retrieval',
   emits_references: false,
   lel_capable: false,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  // Band phase 6 ("Consulting the classics"), not a phase-5 retrieval facet — this is the
+  // classical-corpus consultation phase in the fixed band sequence.
+  register: { reader_label: 'Consulting the classics' },
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: false },
     bulk_context: { pre_fetch_priority: 55, always_include: false },

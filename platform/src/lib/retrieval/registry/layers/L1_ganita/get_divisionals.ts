@@ -55,6 +55,13 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: true },
   lel_capable: false,
+  // PB-1/S-2: reader-facing working-band label — closed lexicon, never a bespoke string.
+  // Static default (generic facet). A per-call resolver may prefer the more specific
+  // "the marriage chart" / "the career chart" / etc. plain-name form — see
+  // `renderDivisionalLabel(vargaCode)` in src/lib/pariprashna/lexicon.ts, which resolves
+  // this capability's `varga` input param to the matching DIVISIONAL_CHART_LABELS entry
+  // (falling back to this same generic label for an unmapped/omitted varga).
+  register: { reader_label: 'Consulting the chart — Divisional charts' },
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 80, always_include: false },

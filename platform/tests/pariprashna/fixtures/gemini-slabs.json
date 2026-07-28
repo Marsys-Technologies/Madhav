@@ -1,0 +1,100 @@
+{
+  "name": "gemini-slabs",
+  "description": "Few large text \"slabs\" per delta (provider batches tokens), rather than token-by-token streaming.",
+  "events": [
+    {
+      "delay_ms": 0,
+      "event": {
+        "id": "gemini-slabs-0",
+        "seq": 0,
+        "t": 0,
+        "type": "turn.open",
+        "conversation_id": "conv-gemini-slabs",
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "model_id": "gemini-2.5-pro",
+        "length_tier": "standard",
+        "turn_id": "gemini-slabs",
+        "reading_depth": "standard"
+      }
+    },
+    {
+      "delay_ms": 20,
+      "event": {
+        "id": "gemini-slabs-1",
+        "seq": 1,
+        "t": 20,
+        "type": "block.open",
+        "block_id": "b1",
+        "kind": "paragraph",
+        "index": 0
+      }
+    },
+    {
+      "delay_ms": 250,
+      "event": {
+        "id": "gemini-slabs-2",
+        "seq": 2,
+        "t": 270,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "The retrieval layer surfaces three corroborating signals for this window. A structural tension appears between the timing anchor and the natal placement. This pattern recurs across two independent sub-systems, which raises its weight. "
+      }
+    },
+    {
+      "delay_ms": 250,
+      "event": {
+        "id": "gemini-slabs-3",
+        "seq": 3,
+        "t": 520,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "No contradiction was found against the prior turn's working hypothesis. The confidence band widens once the secondary corroboration is included. "
+      }
+    },
+    {
+      "delay_ms": 250,
+      "event": {
+        "id": "gemini-slabs-4",
+        "seq": 4,
+        "t": 770,
+        "type": "block.delta",
+        "block_id": "b1",
+        "text": "The retrieval layer surfaces three corroborating signals for this window. A structural tension appears between the timing anchor and the natal placement. This pattern recurs across two independent sub-systems, which raises its weight. No contradiction was found against the prior turn's working hypothesis. The confidence band widens once the secondary corroboration is included."
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "gemini-slabs-5",
+        "seq": 5,
+        "t": 780,
+        "type": "block.commit",
+        "block_id": "b1",
+        "final_text": "The retrieval layer surfaces three corroborating signals for this window. A structural tension appears between the timing anchor and the natal placement. This pattern recurs across two independent sub-systems, which raises its weight. No contradiction was found against the prior turn's working hypothesis. The confidence band widens once the secondary corroboration is included. The retrieval layer surfaces three corroborating signals for this window. A structural tension appears between the timing anchor and the natal placement. This pattern recurs across two independent sub-systems, which raises its weight. No contradiction was found against the prior turn's working hypothesis. The confidence band widens once the secondary corroboration is included."
+      }
+    },
+    {
+      "delay_ms": 10,
+      "event": {
+        "id": "gemini-slabs-6",
+        "seq": 6,
+        "t": 790,
+        "type": "turn.commit",
+        "turn_id": "gemini-slabs",
+        "block_count": 1,
+        "citation_count": 0
+      }
+    },
+    {
+      "delay_ms": 5,
+      "event": {
+        "id": "gemini-slabs-7",
+        "seq": 7,
+        "t": 795,
+        "type": "turn.close",
+        "turn_id": "gemini-slabs",
+        "reason": "complete"
+      }
+    }
+  ]
+}
