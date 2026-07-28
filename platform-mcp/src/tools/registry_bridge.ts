@@ -1541,6 +1541,51 @@ function enforceTimingAnchoredHonesty(
   }
 }
 
+// PARIŚODHANA Phase B1 fix (CR-2/CR-63/R-38 — receipt-honesty violation, live-confirmed
+// 2026-07-27 on chart 482012f1-710e-4a25-994a-93821f5871aa across wealth/career/marriage):
+// `enforceTimingAnchoredHonesty` above closes the gap for `timing_anchored` — but its
+// SIBLING receipt field, `varga_confirmed`, has no equivalent guard. `reconcileReceiptWithTrimReport`
+// (the R-21 fix) only downgrades `varga_confirmed` when the FINAL `budgeted.trim_report`
+// still names `content.checklist.varga_confirmation.rows` with `kept_count: 0` — but
+// `finalizeMcpBudget`'s own post-attachment degrade step (response_budget.ts's
+// "re-measure the WHOLE object" pass) can collapse the ENTIRE trim_report array down to a
+// single one-line `(trim_report)` summary entry when attaching the full report would
+// reopen the byte-budget gap. That is exactly what happens on every judgment_query call at
+// its default 12KB ceiling (confirmed live: trim_report collapses from 8 real entries to 1
+// summary entry) — erasing the per-path record `reconcileReceiptWithTrimReport` depends on
+// to catch this case. The result: a `varga_confirmed:"D2✓"` / `"D10✓"` / `"D9✓"` receipt
+// mark survives unreconciled next to a genuinely-empty served `checklist.varga_confirmation.rows`,
+// reproducing on every domain regardless of dignity strength (CR-2/CR-63/R-38). Fix:
+// re-derive `varga_confirmed` from what actually SURVIVED onto the wire — never from the
+// trim_report's own (possibly-collapsed) bookkeeping — same discipline as
+// enforceTimingAnchoredHonesty, so it is immune to whatever caused the emptiness (real
+// budget trim, trim_report collapse, or rows that were already empty pre-trim).
+function enforceVargaConfirmedHonesty(
+  receipt: Record<string, unknown>,
+  servedContent: Record<string, unknown> | undefined,
+  judgmentFlags: JudgmentFlagEntry[],
+): void {
+  const checklist = servedContent?.['checklist'] as Record<string, unknown> | undefined
+  const vargaConfirmation = checklist?.['varga_confirmation'] as Record<string, unknown> | undefined
+  const rows = vargaConfirmation?.['rows']
+  const servedVargaConfirmed = Array.isArray(rows) && rows.length > 0
+
+  const priorMark = receipt['varga_confirmed']
+  const priorAffirmative = priorMark === true ||
+    (typeof priorMark === 'string' && priorMark.includes('✓'))
+  if (!servedVargaConfirmed && priorAffirmative) {
+    const varga = typeof vargaConfirmation?.['varga'] === 'string' ? vargaConfirmation['varga'] as string : null
+    receipt['varga_confirmed'] = false
+    judgmentFlags.push(judgmentFlag(
+      'varga_confirmed_forced_false',
+      'the served checklist.varga_confirmation.rows are empty on the wire' +
+      (varga ? ` (operative varga ${varga})` : '') + ' — receipt.varga_confirmed downgraded from ' +
+      `"${String(priorMark)}" rather than shipping a "✓-with-empty-evidence" receipt ` +
+      '(CR-2/CR-63/R-38; CLAUDE.md §N.6 point 3 / B.10).',
+    ))
+  }
+}
+
 // ── Dual output helper ────────────────────────────────────────────────────────
 
 // S3 fix (R5 W0a perf lane, design §21 serialization tax — measured 2.4x):
@@ -3335,6 +3380,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // array that was already empty pre-trim (never appears in trim_report at all) rather
         // than one the budget trimmer cut to zero.
         enforceTimingAnchoredHonesty(
+          receipt,
+          budgeted['content'] as Record<string, unknown> | undefined,
+          budgeted['judgment_flags'] as JudgmentFlagEntry[] | undefined ?? [],
+        )
+        // PARIŚODHANA Phase B1 (CR-2/CR-63/R-38): the varga_confirmed sibling of the
+        // timing_anchored guard above — see enforceVargaConfirmedHonesty's docstring.
+        enforceVargaConfirmedHonesty(
           receipt,
           budgeted['content'] as Record<string, unknown> | undefined,
           budgeted['judgment_flags'] as JudgmentFlagEntry[] | undefined ?? [],
