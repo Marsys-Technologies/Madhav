@@ -7,6 +7,10 @@
  *   - high-convergence count, dominant signal class
  *
  * Chart-agnostic: no native chart_id defaults (principle #14).
+ *
+ * shad-darshana/parva-dedup: dedupes rows by (span, level) before pagination — the
+ * underlying writer double-emits the antardasha sitting exactly on a mahadasha boundary
+ * (see the inline comment on the query below for the root cause).
  */
 
 import { query } from '@/lib/db/client'
@@ -123,13 +127,51 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
       params.push(offset)
       const offsetPh = `$${p}`
 
+      // shad-darshana/parva-dedup: the ka_jivana_parva writer (python-sidecar) double-emits
+      // the boundary antardasha at every mahadasha transition — once (wrongly) as the
+      // trailing AD of the outgoing MD, once (correctly) as the leading AD of the incoming
+      // MD. This happens because the writer's MD-span filter is inclusive on both ends
+      // (`md_start <= d.start_date <= md_end_actual`) and Vimshottari's own-lord-first rule
+      // means every MD's first antardasha shares the MD's own lord, so that boundary AD's
+      // start_date lands on BOTH adjoining MD spans, producing two rows with the identical
+      // (start_year, end_year, dasha_planet) span at the identical AD level (live-confirmed:
+      // kala_jivana_parva, charts 482012f1 / 1c826d5a / cb73cd3d, one duplicate pair per
+      // MD boundary). Fixing the writer is out of scope for this lane (serving-side fix
+      // per SHAD_DARSHANA_BRIEF_v2_0.md §0.5: "dedup by span+level" at serving). `parva_level`
+      // is derived from source_citation's MD=/AD=/PD= marker (the table carries no explicit
+      // level column) so an MD-level chapter and an AD-level sub-chapter that happen to
+      // share a span (e.g. a 1-year terminal MD coinciding with its own last AD) are kept
+      // distinct — only true same-span-same-level duplicates collapse. DISTINCT ON retains
+      // the highest parva_index per (span, level) group: the later-inserted row is always
+      // the correctly-attributed one (the AD nested under its own rightful MD).
       const sql = `
+        WITH leveled AS (
+          SELECT id, parva_index, dasha_planet, dominant_signal_class,
+                 start_year, end_year, parva_quality, theme_keywords,
+                 high_convergence_count, avg_effective_score,
+                 narrative, source_citation, computed_at,
+                 CASE
+                   WHEN source_citation ~ ':AD=' THEN 'AD'
+                   WHEN source_citation ~ ':PD=' THEN 'PD'
+                   ELSE 'MD'
+                 END AS parva_level
+          FROM kala_jivana_parva
+          WHERE ${conds.join(' AND ')}
+        ),
+        deduped AS (
+          SELECT DISTINCT ON (start_year, end_year, dasha_planet, parva_level)
+                 id, parva_index, dasha_planet, dominant_signal_class,
+                 start_year, end_year, parva_quality, theme_keywords,
+                 high_convergence_count, avg_effective_score,
+                 narrative, source_citation, computed_at
+          FROM leveled
+          ORDER BY start_year, end_year, dasha_planet, parva_level, parva_index DESC
+        )
         SELECT id, parva_index, dasha_planet, dominant_signal_class,
                start_year, end_year, parva_quality, theme_keywords,
                high_convergence_count, avg_effective_score,
                narrative, source_citation, computed_at
-        FROM kala_jivana_parva
-        WHERE ${conds.join(' AND ')}
+        FROM deduped
         ORDER BY parva_index
         LIMIT ${topKPh} OFFSET ${offsetPh}
       `
