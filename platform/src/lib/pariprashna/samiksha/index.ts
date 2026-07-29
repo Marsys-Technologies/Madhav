@@ -19,6 +19,9 @@ export * from './detector'
 export * from './kala_rekha'
 export * from './lifecycle_label'
 export * from './confirm'
+// PB-3.1 G1 — the loop's live entry point: turn-commit `detected`-row capture
+// (`server-only`, same as `confirm`).
+export * from './capture'
 // PB-3 L-5: conversational outcome recording + Brier calibration (pure half + orchestrator).
 export * from './outcome_calibration'
 export * from './outcome_recorder'
