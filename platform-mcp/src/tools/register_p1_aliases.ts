@@ -897,7 +897,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // is now a real filter on the primitive (joins bodha_msr_signals.domains_affected_array).
   server.tool(
     'kala_windows_get',
-    '[Phase-1 alias] L3 temporal activation windows (same as get_temporal_windows).',
+    '[Phase-1 alias] L3 temporal activation windows (same as get_temporal_windows). ' +
+    '[ṢAḌ-DARŚANA W0.4 deprecation notice — not retired, still live]: for "what is active ' +
+    'now" / "what is coming" queries, prefer kala_now_get (current state) or ' +
+    'kala_ahead_get (forward-dated windows + projections) — both re-present this same ' +
+    'substrate on the elevated argument-shaped envelope (question_frame, tri_plane ' +
+    'pointers, 3-state coverage). This tool remains the raw low-level primitive.',
     {
       ...ChartBase,
       start_date: z.string().optional().describe('Start of date range (mapped to date_from).'),
@@ -941,7 +946,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // generic regAlias() shape, including its client-side max_projections cap (F-008).
   server.tool(
     'kala_projections_get',
-    '[Phase-1 alias] L3 time-indexed probabilistic projections (same as get_projections).',
+    '[Phase-1 alias] L3 time-indexed probabilistic projections (same as get_projections). ' +
+    '[ṢAḌ-DARŚANA W0.4 deprecation notice — not retired, still live]: for "what is coming" ' +
+    'queries, prefer kala_ahead_get, which re-presents this same kala_bhavishya substrate ' +
+    '(probability_tier included) on the elevated argument-shaped envelope (question_frame, ' +
+    'tri_plane pointers, 3-state coverage, falsifier). Per SHAD_DARSHANA_BRIEF_v2_0.md §7 ' +
+    'rail, kala_ahead_get is the intended AHEAD-view replacement; this tool remains the raw ' +
+    'low-level primitive.',
     {
       ...ChartBase,
       domain: z.string().optional().describe('Domain to project (e.g. career, relationship).'),

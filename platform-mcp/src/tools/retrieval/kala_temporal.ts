@@ -502,6 +502,12 @@ When to use: Use for any temporal or predictive query about a chart (<chart_uuid
 Pair with holistic_bundle for the full picture — holistic_bundle provides the L2 natal \
 signal layer; kala_temporal_bundle provides the L3 temporal animation layer.
 
+[ṢAḌ-DARŚANA W0.4 deprecation notice — not retired, still live]: for the kala.snapshot \
+piece specifically ("what is my temporal state right now"), prefer kala_now_get, which \
+re-presents the same MD/AD/PD + kala_darshana confluence state on the elevated \
+argument-shaped envelope (question_frame, tri_plane pointers, 3-state coverage). This \
+tool remains the composite (timeline + convergence + obstruction + snapshot in one call).
+
 Requires: chart_id (UUID) — must be provided by caller. No default chart.
 
 BRAHMA-KA-3-COMPOSITE | kala.temporal_bundle retrieval tool.`

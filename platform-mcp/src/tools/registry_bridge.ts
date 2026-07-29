@@ -76,6 +76,9 @@ import { runDossier, type DossierPage } from './dossier.js'
 // the elevated kala envelope. Each registers itself inline via `server.tool(...)`; each
 // import + its call inside `registerRegistryBridgeTools` below is its ONE canonical
 // registration site (brief §2: "one canonical registration per tool, asserted by test").
+// now-ahead lane:
+import { registerKalaNowGetTool } from './kala_views/now.js'
+import { registerKalaAheadGetTool } from './kala_views/ahead.js'
 // upaya-ritual-stub lane:
 import { registerKalaUpayaGet } from './kala_views/upaya.js'
 import { registerKalaRitualGet } from './kala_views/ritual.js'
@@ -4422,6 +4425,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       }
     }
   )
+
+  // ── ṢAḌ-DARŚANA W0.4 (SHAD_DARSHANA_BRIEF_v2_0.md §2 file map / §3 W0.4) ──────────
+  // kala_now_get / kala_ahead_get — two of eight kala_* view/capability
+  // facades over the elevated envelope (lib/kala_envelope.ts + lib/argument_composer.ts).
+  // Tool logic lives in tools/kala_views/{now,ahead}.ts (brief §2 file map); this is the
+  // ONE canonical registration call site for each (brief §2: "one canonical registration
+  // per tool, asserted by test" — see m8_e2e_proof.test.ts's G12 REGISTERED_TOOL_COUNT
+  // assertion, which counts server.tool() calls reached from this function).
+  registerKalaNowGetTool(server, principal)
+  registerKalaAheadGetTool(server, principal)
 
   // ── ṢAḌ-DARŚANA W0.4 — kala_upaya_get / kala_ritual_get (brief §0.4 · §2) ──────────
   // Both are W0 facade shells over the shared kala envelope (lib/kala_envelope.ts +
