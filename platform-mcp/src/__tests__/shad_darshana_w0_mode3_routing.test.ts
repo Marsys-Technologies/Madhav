@@ -66,11 +66,16 @@ function makeCapturingServer(): { server: McpServer; handlers: Map<string, ToolH
 const PRINCIPAL: Principal = { user_uid: 'test-user', key_id: 'test-key', role: 'super_admin' }
 const TEST_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
-/** Best-effort Mode-3-shaped payload — names an UNDERTAKING (Elevation §8's own dividing
- *  line for Mode 3), the exact field name being the sibling lane's to finalize. */
+/** Mode-3-shaped payload — names an UNDERTAKING (Elevation §8's own dividing line for Mode 3).
+ *  `undertaking` is a plain string per the now-merged `kala_ritual_get`'s ratified MCP schema
+ *  (`ritual.ts`: `undertaking: z.string().optional()` — a deliberate design choice, documented
+ *  in that file's header, that the field has "no shape an undertaking could hide behind").
+ *  Originally authored as `{ intent, description }` before the sibling lane's schema was
+ *  visible; corrected post-merge to match the real, ratified contract — the routing rule
+ *  itself was never in question, only this test's payload shape. */
 const MODE3_SHAPED_PAYLOAD = {
   chart_id: TEST_CHART_ID,
-  undertaking: { intent: 'sign_contract', description: 'sign a business contract' },
+  undertaking: 'sign a business contract',
 }
 
 function extractPayload(response: Awaited<ReturnType<ToolHandler>>): unknown {
