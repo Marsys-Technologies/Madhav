@@ -19,11 +19,99 @@ binding; `deploy.yml` re-ran clean (run `30484976742`), all three auth probes pa
 traffic promoted 100% to `amjis-mcp-00517-b5q`; live production verification (direct
 authenticated JSON-RPC calls, bypassing any client-side tool-cache ambiguity) confirmed all 8
 tools registered and functionally correct on BOTH canonical charts, including a live Mode-3
-routing test. Single next action for Night 2: **resume Phase 2 fan-out** — 3 remaining W1
-serving-join lanes (mudda+sandhi-lite · 24-lite-intervals+grading-facade+frontier-v0+
-tri-plane-wiring), the citation-heavy `bg_muhurta_lattice`+`bg_parihara_rules` lane
-(deliberately held back all of Night 1), then W2 build-out per the now-merged
-`KALA_W2_FIELD_DESIGN_v1_0.md`. No blockers outstanding.
+routing test.
+
+**POST-NIGHT-1 ADVERSARIAL AUDIT COMPLETE (2026-07-30 — see the AUDIT RECORD below).** Three
+independent re-verification passes read every merged PR's actual diff against the ratified
+spec (not trusted from this ledger's own self-report). Verdict: 13 of 15 PRs
+CONFIRMED-SOUND with no defects found; two real, previously-undisclosed gaps found and
+addressed — see the AUDIT RECORD for full evidence and disposition.
+
+**Single next action for Night 2: resume Phase 2 fan-out** — 3 remaining W1 serving-join
+lanes (mudda+sandhi-lite · 24-lite-intervals+grading-facade+frontier-v0+tri-plane-wiring),
+the citation-heavy `bg_muhurta_lattice`+`bg_parihara_rules` lane (deliberately held back all
+of Night 1), then W2 build-out per the now-corrected `KALA_W2_FIELD_DESIGN_v1_0.md` (§9.3
+migration table fixed — see AUDIT RECORD). **W2's Lane D (cohort_client.py / salience+rarity)
+carries one open precondition that MUST be resolved before Lane D starts** — see AUDIT
+RECORD item 3 below; this is a real design decision, not a coding task, and the Conductor
+should either resolve it via ANTARYĀMIN or raise it if it touches a FROZEN-contract boundary
+(it does not appear to — it's a schema/approach choice, not an orchestrator-contract change).
+No other blockers outstanding.
+
+---
+
+## POST-NIGHT-1 ADVERSARIAL AUDIT RECORD (2026-07-30, between Night 1 and Night 2)
+
+Three parallel, independent agents re-read every merged Night-1 PR's actual diff against the
+ratified spec docs — deliberately NOT trusting this ledger's own self-reported dispositions,
+since the same autonomous session wrote both the code and the ledger. Method, findings, and
+what was done about each are recorded here so Night 2 inherits the corrected state, not just
+the original claims.
+
+**Confirmed sound, no defects (13 of 15 PRs):** #877 (envelope+composer), #879 (parva-dedup),
+#880 (priority+explain facades), #881 (CI skeleton battery — census numbers independently
+confirmed live-computed, not hardcoded), #882 (upaya+ritual stubs, Mode-3 routing — grep-
+confirmed zero passthrough path exists), #883 (now+ahead facades), #884 (elect+story
+facades), #885 (bash fix — root cause independently reproduced and confirmed fixed), #888
+(bg_sky_calendar — floating-point fix confirmed to eliminate the bug class), #891 (dual-
+reference gochara + daśā-lord condition — the forward-identity-pinning subtlety verified
+correct by reading the actual call sites), #892 (panchāṅga joins — L1-authority discipline
+confirmed, no re-derivation). Independent execution (fresh checkout, not the ledger's
+numbers): `tsc --noEmit` clean, 163/163 relevant vitest tests pass, full python suite green.
+
+**Real gap #1 — the Circularity Guard (item 10, PR #889) could not run in CI.** The test
+mechanism itself is genuinely real (empirically proven non-vacuous: `ka_jivana_parva` has
+zero LEL-reading code today, confirmed by direct source read) — but it is marked
+`@pytest.mark.integration`, and `ci.yml`'s only pytest invocation runs `-m "not integration"`.
+It ran exactly once, manually, at authorship, with no path to run again automatically —
+precisely the CLAUDE.md §N.7 Earned-Signal failure class ("a signal without a real detector
+is null, not green") applied to the detector's *execution*, not its *logic*.
+**DISPOSITION: FIXED.** New workflow `.github/workflows/shad-darshana-circularity-guard.yml`
+(this same PR) wires it into CI properly: reuses `deploy.yml`'s exact WIF/Cloud-SQL-Auth-
+Proxy convention (same instance connection name, same service account), on port 5433 to
+match the test's hardcoded DSN, running BOTH the static census and the empirical proof.
+Triggers: `workflow_dispatch`, nightly `schedule`, and `push` to `main` on any `ka_*` writer
+path (deliberately broader than shad-darshana-only, since the guard protects every `ka_*`
+writer, not just this campaign's — but scoped to run only this one test file, not a
+repo-wide integration sweep). Deliberately NOT a required branch-protection check yet —
+informational/nightly, does not block any PR. **The other two integration tests this file's
+own docstring names as sharing the same never-runs-in-CI gap
+(`test_cr131_gochara_db_reachability.py`, `test_ka_gochara_sweep.py`) are PRE-EXISTING and
+OUT OF SCOPE — flagged here for awareness, not fixed, per this campaign's own
+don't-touch-other-sessions discipline.**
+
+**Real gap #2 — the W2 field design doc's migration-range table (PR #886) was stale and
+already colliding.** It claimed "current max in-tree is 466" and reserved 467–476 in
+`platform/migrations/` — but 467–473 already existed on `main` (472/473 being this same
+night's own `bg_cohort`/`bg_sky_calendar` migrations, in `platform/supabase/migrations/` —
+the directory the migration runner actually applies from, not the one the design doc
+checked). Exactly the "two migration directories" trap this codebase's own history warns
+about, recurring within the same night. **DISPOSITION: FIXED** (this same PR) —
+`KALA_W2_FIELD_DESIGN_v1_0.md` §9.3 corrected: directory → `platform/supabase/migrations/`,
+range → 474–483 (473 confirmed live max at correction time), all ten table-row numbers and
+the one other in-body reference (§7.3's weights-seed migration number) renumbered to match.
+Whichever W2 lane writes the first migration still MUST re-verify the live max immediately
+before use, per the design doc's own standing instruction — this reservation can go stale
+exactly as the original one did if another campaign lands migrations first.
+
+**Real gap #3 — the W2 design's matched-sub-cohort assumption doesn't match the shipped
+cohort schema. OPEN — flagged for Night 2's Conductor/ANTARYĀMIN, not fixed here.** The
+design doc's Lane D spec requires a `cohort_charts.md_lord` field (to support Elevation
+§12.3's matched sub-cohort: same lagna + same MD-lord). The actual `bg_synthetic_cohort`
+table (PR #887) has no MD-lord field — its own docstring states this needs the dasha engine
+and was deliberately deferred; item 22's own ledger disposition already correctly scoped
+"matched sub-cohort — that's W2's job," but nobody flagged that the ALREADY-BUILT cohort
+table's schema doesn't support it either. **This needs a real decision before Lane D
+(`cohort_client.py`, stage 6 salience/rarity) starts, not a quick fix**: (a) extend
+`bg_cohort.py` to compute MD-lord for all 10,000 synthetic charts (requires running the dasha
+engine over the whole cohort — real, scoped engineering work), or (b) revise the W2 design's
+Lane D approach to compute MD-lord matching at field-build time instead of relying on a
+pre-stored cohort column (e.g., join against each synthetic chart's ephemeris data on the fly
+during rarity scoring). Native input at the elevation-planning session did not rule on this
+specific schema question — it is a genuine open engineering/design choice, not a
+FROZEN-orchestrator-contract question, so ANTARYĀMIN may resolve it autonomously per its
+standing charter; it should NOT block the rest of W2's build (Lanes A/B/C/E have no
+dependency on this), only Lane D specifically.
 
 ---
 
