@@ -15,10 +15,17 @@ name: Samīkṣā Daily Job (PB-3 L-4)
 # LOGGED (visible in this workflow's run log), never emailed. Wire a real DigestTransport when
 # one lands.
 #
-# SAFETY: the live run is a no-op unless a DATABASE_URL secret is configured (the step logs and
-# exits 0). So enabling this daily cron does not silently begin making live production DB calls
-# on a repo that has not opted in by setting the secret — the same discipline
-# reconciliation-cadence.yml applies to its own schedule.
+# SECRET: reads secrets.PROD_DATABASE_URL — the SAME repo secret deploy.yml's migration step
+# reads (deploy.yml:203), not a bespoke DATABASE_URL. (SAMĀPTI A5/G2, 2026-07-30: this job
+# previously read secrets.DATABASE_URL, a secret that does not exist in this repo, so every
+# scheduled run silently no-op'd via the exit-0 branch below and reported GREEN — the exact
+# misconfiguration this fix closes.)
+#
+# SAFETY (REVISED, A5/G2): a missing PROD_DATABASE_URL secret now FAILS the job LOUDLY
+# (`exit 1` with a `::error::` annotation) instead of exiting 0. The prior silent-exit-0
+# design was the root cause of the secret-name bug going undetected for as long as it did — a
+# misconfigured run must never again be able to report green. If this repo genuinely wants the
+# daily sweep OFF, disable/unschedule the workflow; do not rely on an absent secret to no-op it.
 #
 # IDEMPOTENCY CAVEAT (honest): the per-day digest sent-marker (DigestJournal) defaults to a file
 # under the runner workspace, which a fresh ephemeral GitHub runner does NOT carry between
@@ -95,13 +102,14 @@ jobs:
       - name: Run the consolidated daily job (log-only digest — W-5 stub)
         if: env.DATABASE_URL != ''
         env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           AS_OF: ${{ inputs.as_of }}
           CHART: ${{ inputs.chart }}
         run: |
           if [ -z "${DATABASE_URL}" ]; then
-            echo "[samiksha-daily] No DATABASE_URL secret configured — skipping live run (exit 0)."
-            echo "[samiksha-daily] Set the DATABASE_URL repo secret to enable the daily sweep."
-            exit 0
+            echo "::error::[samiksha-daily] PROD_DATABASE_URL secret not configured — failing loudly (A5/G2: a misconfigured run must never report green)."
+            echo "[samiksha-daily] Set the PROD_DATABASE_URL repo secret (same secret deploy.yml's migration step reads) to enable the daily sweep."
+            exit 1
           fi
           ARGS=""
           if [ -n "${AS_OF}" ]; then ARGS="$ARGS --as-of ${AS_OF}"; fi
