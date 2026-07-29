@@ -60,7 +60,7 @@ changelog:
     `_run_data_writer` (the ONE authorized freeze exception, `asset_runner.py:596-630`) now
     re-checks the writer's own `plan_substeps(ctx)` for `has_substeps=true` writers before
     reclassifying a 0-rows-this-run `dormant` to `lit`; a genuinely-incomplete plan is marked the
-    new `incomplete` state (migration 467) instead, correctly excluded from `runner.py`'s and
+    new `incomplete` state (migration 474) instead, correctly excluded from `runner.py`'s and
     `staleness.py`'s `lit`/`service_ok` dependency-satisfied allowlists. D-1.6 preserved and proven
     THROUGH the new check (regression test extended, fail-then-pass proven for the new partial-plan
     case). **Forensic finding:** `asset.noop_completion` events are not durably persisted anywhere

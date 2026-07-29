@@ -10,6 +10,16 @@ mode: FULLY AUTONOMOUS — Conductor + Dvārapāla + Opus-Verifier-equivalent ad
 
 # SATYA-DĪPA Close Report — Make `lit` Mean Lit
 
+> **Correction (pre-merge rebase, 2026-07-29, PB-3-GATE-CLOSE session)**: this report's §2/§3
+> narrative below correctly describes the migration being renumbered once, 466→467, to resolve a
+> collision found at the time. Between this report closing and PR #870 actually merging, an
+> unrelated campaign (PB-3) landed its own, different `467_pariprashna_canonical_message_parts.sql`
+> on `main`, reclaiming that number a second time. The migration has been renumbered again, 467→474,
+> during the pre-merge rebase onto `main`'s then-current tip — file content and logic unchanged,
+> only the filename and the two in-repo prose references to it below. This is a normal consequence
+> of two campaigns advancing the shared migration sequence concurrently, not a defect in either
+> campaign's own work. The §2/§3 narrative is retained as-authored below for history.
+
 ## Plain-language answer, first
 
 **Can `asset_throughput.state = 'lit'` be trusted now?** Yes, for the specific defect this campaign
@@ -110,7 +120,7 @@ branch). Writers with `has_substeps` false/NULL (light writers, no real substep 
 prior behavior exactly, per the brief's own §4.1 requirement.
 
 **The new honest state:** when the plan is genuinely incomplete, the asset is marked **`incomplete`**
-(new value added to `asset_throughput_state_check`, migration `467_asset_throughput_incomplete_state.sql`,
+(new value added to `asset_throughput_state_check`, migration `474_asset_throughput_incomplete_state.sql`,
 applied to production) — not `lit` (would falsely satisfy `runner.py`'s and `staleness.py`'s
 `state IN ('lit','service_ok')` dependency-satisfied allowlists, both confirmed to be allowlist-based
 so no change was needed there) and not `dormant` (data is not absent). A distinct event,
@@ -225,6 +235,7 @@ no-op-completion predicate). CLAUDE.md's own footer stale-status claim about ŚU
 Branch `satyadipa/noop-completion-fix`, cut from `origin/main` (see §2 branch-hygiene note). Files
 changed: `platform/python-sidecar/pipeline/orchestrator/asset_runner.py`,
 `platform/python-sidecar/tests/test_d16_state_write_defect.py`,
-`platform/migrations/467_asset_throughput_incomplete_state.sql` (new),
+`platform/migrations/474_asset_throughput_incomplete_state.sql` (new, renumbered from 467 during
+pre-merge rebase — see correction note at top of this report),
 `00_ARCHITECTURE/ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md`, `CLAUDE.md`, this report (new). PR opened
 against `main`, auto-merge on green CI.

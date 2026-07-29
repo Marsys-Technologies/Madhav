@@ -34651,3 +34651,22 @@ the falsely-lit population was found empty, not remediated-because-large. Four f
 parked honestly above, none urgent enough to force a same-session continuation.
 
 *End of SATYA-DIPA-CLOSE-2026-07-29 entry.*
+
+---
+
+## SATYA-DIPA-PREMERGE-REBASE-2026-07-29 — PR #870 rebase + migration renumber (mechanical, no scope change)
+
+Between this campaign's close above and PR #870 actually merging, an unrelated concurrent campaign
+(PARIPRAŚNA BUILD, PB-3) landed its own `467_pariprashna_canonical_message_parts.sql` on `main`,
+reclaiming migration number 467 a second time (the first reclaim, 466→467, is documented in the
+SATYA-DIPA-CLOSE-2026-07-29 entry above). Pre-merge safety pass for #870 (as part of PB's own
+`PB-3-GATE-CLOSE-2026-07-29` close, merge lock now released): confirmed no other campaign mid-merge,
+rebased `satyadipa/noop-completion-fix` onto `origin/main` @ `139c89c6` (clean, no conflicts),
+renumbered the migration 467→474 (`main`'s actual highest at rebase time was 473), updated the two
+living-doc parenthetical references (`ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md`,
+`CURRENT_STATE_v1_0.md`) and added a correction note + updated file-path citations in
+`SATYA_DIPA_REPORT_v1_0.md` (its own §2/§3 narrative of the first renumbering event is retained
+untouched, as history). No logic change to `asset_runner.py` or the fix itself. D-1.6 regression
+re-run on the rebased state before merge — see the merge commit for the result.
+
+*End of SATYA-DIPA-PREMERGE-REBASE-2026-07-29 entry.*

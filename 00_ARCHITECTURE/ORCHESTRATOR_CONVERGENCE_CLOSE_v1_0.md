@@ -160,7 +160,7 @@ same pattern as `_data_rows_present`) and requires it to report zero remaining s
 with `has_substeps` false/NULL (light writers, no real substep plan) are unaffected — the check is
 skipped entirely, preserving prior behavior exactly (`SATYA_DIPA_BRIEF_v1_0.md` §4.1: "An asset
 with no substep plan defined behaves as before"). When the plan is genuinely incomplete, the asset
-is marked **`incomplete`** (migration 467: new value in `asset_throughput_state_check`) — not
+is marked **`incomplete`** (migration 474: new value in `asset_throughput_state_check`) — not
 `lit` (would falsely satisfy `runner.py`'s and `staleness.py`'s `state IN ('lit','service_ok')`
 dependency-satisfied allowlists) and not `dormant` (data is not absent). A distinct event,
 `asset.noop_completion_rejected`, is emitted alongside the existing `asset.noop_completion`.
