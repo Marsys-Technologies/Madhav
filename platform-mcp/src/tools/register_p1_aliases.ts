@@ -849,7 +849,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'ranked (priority_score x0.3, flagged via neutral_dignity_downranked per row) rather than ' +
     'treated as genuine priority findings — see neutral_dignity_downranked_count. Filter by ' +
     'domain/domains (career/character/health/relationship/spirituality/wealth) to scope to a ' +
-    'life domain.',
+    'life domain. [ṢAḌ-DARŚANA W0.4] Superseded by kala_priority_get (VIEW 5 PRIORITIZE), ' +
+    'which wraps this SAME capability on the elevated kala_* envelope (argument-shaped ' +
+    'reading, tri-plane pointers into EXPLAIN/AHEAD/ELECT, coverage, freshness, ' +
+    'calibration_maturity) — prefer kala_priority_get for new callers. This alias remains ' +
+    'live, not retired.',
     'marsys://tool/L3/call_priority_ranking',
     {
       date_from: z.string().optional().describe('Start of evaluation period (YYYY-MM-DD).'),
@@ -893,7 +897,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // is now a real filter on the primitive (joins bodha_msr_signals.domains_affected_array).
   server.tool(
     'kala_windows_get',
-    '[Phase-1 alias] L3 temporal activation windows (same as get_temporal_windows).',
+    '[Phase-1 alias] L3 temporal activation windows (same as get_temporal_windows). ' +
+    '[ṢAḌ-DARŚANA W0.4 deprecation notice — not retired, still live]: for "what is active ' +
+    'now" / "what is coming" queries, prefer kala_now_get (current state) or ' +
+    'kala_ahead_get (forward-dated windows + projections) — both re-present this same ' +
+    'substrate on the elevated argument-shaped envelope (question_frame, tri_plane ' +
+    'pointers, 3-state coverage). This tool remains the raw low-level primitive.',
     {
       ...ChartBase,
       start_date: z.string().optional().describe('Start of date range (mapped to date_from).'),
@@ -937,7 +946,13 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // generic regAlias() shape, including its client-side max_projections cap (F-008).
   server.tool(
     'kala_projections_get',
-    '[Phase-1 alias] L3 time-indexed probabilistic projections (same as get_projections).',
+    '[Phase-1 alias] L3 time-indexed probabilistic projections (same as get_projections). ' +
+    '[ṢAḌ-DARŚANA W0.4 deprecation notice — not retired, still live]: for "what is coming" ' +
+    'queries, prefer kala_ahead_get, which re-presents this same kala_bhavishya substrate ' +
+    '(probability_tier included) on the elevated argument-shaped envelope (question_frame, ' +
+    'tri_plane pointers, 3-state coverage, falsifier). Per SHAD_DARSHANA_BRIEF_v2_0.md §7 ' +
+    'rail, kala_ahead_get is the intended AHEAD-view replacement; this tool remains the raw ' +
+    'low-level primitive.',
     {
       ...ChartBase,
       domain: z.string().optional().describe('Domain to project (e.g. career, relationship).'),
@@ -1735,7 +1750,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   server.tool(
     'kala_muhurta_get',
-    '[Phase-1 alias] Muhurta (auspicious timing) finder (same as muhurta_finder).',
+    '[Phase-1 alias] [DEPRECATED — superseded by kala_elect_get, ṢAḌ-DARŚANA v2 W0.4: the ' +
+    'elevated ELECT view over this same muhurta_finder substrate, with argument-shaped ' +
+    'reading, tāra-bala/target-graha dissent, tri-plane pointers, and honest coverage. ' +
+    'This alias remains live — not retired — per the campaign\'s strangler-fig discipline.] ' +
+    'Muhurta (auspicious timing) finder (same as muhurta_finder).',
     {
       chart_id:      z.string().uuid().describe('Chart UUID'),
       start_date:    z.string().optional().describe('Search window start (YYYY-MM-DD). Default: today.'),
