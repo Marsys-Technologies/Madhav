@@ -43,7 +43,8 @@ raises — it does not negotiate bilaterally.
 
 **Shared, owned by NOBODY (frozen by this document, edited only by a cross-lane PR):**
 `services/ka_kshetra/contracts.py` — the dataclasses every lane passes across a boundary; and
-`platform/migrations/467…476` — the migration range (see §9).
+`platform/supabase/migrations/474…483` — the migration range (see §9; corrected 2026-07-30 —
+see §9.3's own correction note for why the original 467–476 range and directory were wrong).
 
 **The orchestration shim** `pipeline/orchestrator/writers/ka_kshetra.py` is written ONCE by
 Lane C (it owns stage 4, the pipeline's centre of gravity) and consists of nothing but the
@@ -1296,7 +1297,7 @@ cycle `ka_kshetra → mi_bhara → ka_kshetra`.
 
 **How the calibration loop closes anyway — by version pin, not by DAG edge:**
 
-1. **`weights v0` is seeded by MIGRATION**, not by a writer. Migration `469` inserts
+1. **`weights v0` is seeded by MIGRATION**, not by a writer. Migration `476` inserts
    `kala_field_weight_versions(version_id='v0_classical', status='active', …)` plus its
    `kala_field_weights` parameter rows (the classical structural priors). Therefore **every
    chart's very first build finds an active weights version** — there is no NULL-weights code
@@ -1540,21 +1541,37 @@ PR**. A writer without a seed row is invisible to Nirmāṇa ⇒ the wave gate f
 
 ### 9.3 Migration table list (names + rough columns; the migrations themselves are builder work)
 
-Reserve **467–476** (current max in-tree is 466). One table family per migration; surgical only,
+> **CORRECTION (2026-07-30, post-Night-1 adversarial audit — see
+> `SHAD_DARSHANA_STATE.md`'s GATE W0 CLOSURE / audit record for the finding this fixes).**
+> This section originally reserved 467–476 in `platform/migrations/`, checked against a
+> claimed "current max in-tree is 466." Both were wrong: (a) this campaign's own L0
+> migrations (`bg_cohort`, `bg_sky_calendar`) already landed the same night as **472/473 in
+> `platform/supabase/migrations/`** — the directory this repo's migration runner actually
+> applies from (see `SHAD_DARSHANA_STATE.md`'s "Migration range reserved" section and its own
+> note on the two-directory trap) — so the original table's 472/473 rows collided with
+> already-shipped campaign migrations, and everything from 467 up was checking the wrong
+> directory entirely. Corrected below: **directory is `platform/supabase/migrations/`,
+> range is 474–483** (473 is the confirmed live max as of this correction). **Whichever
+> lane writes the first W2 migration MUST re-verify the live max immediately before use —
+> per brief §2's own standing instruction — since this reservation can go stale exactly as
+> the original one did if another campaign lands migrations first.**
+
+Reserve **474–483** in `platform/supabase/migrations/` (473 is the confirmed live max as of
+this correction; re-verify before first use). One table family per migration; surgical only,
 migration-guard reviewed; never `deploy.yml`-auto or bulk `migrate.ts` (§N.4).
 
 | # | Migration | Tables |
 |---|---|---|
-| 467 | `kala_field_stage0_1` | `kala_field_kinematics`, `kala_field_primitives` |
-| 468 | `kala_field_promise` | `kala_field_promise_nodes`, `kala_field_promise_edges`, `kala_field_routes` |
-| 469 | `kala_field_weights_seed` | `kala_field_weight_versions`, `kala_field_weights` **+ the `v0_classical` seed rows** (this is the acyclicity keystone — it must land BEFORE `ka_kshetra` ever runs) |
-| 470 | `kala_field_clocks` | `kala_field_clocks`, `kala_field_boundaries` |
-| 471 | `kala_field_core` | `kala_field`, `kala_field_windows` |
-| 472 | `kala_field_provenance` | `kala_field_provenance` |
-| 473 | `kala_field_null` | `kala_field_null` |
-| 474 | `kala_field_salience_insights` | `kala_field_salience`, `kala_insights` |
-| 475 | `kala_timeline_spec` | `kala_timeline_spec`, `kala_field_snapshots` |
-| 476 | `kala_field_skill_gof` | `kala_field_skill`, `kala_field_gof` + the `ka_kshetra` / `mi_bhara` / `mi_sankalpa` `asset_registry` rows and `depends_on` arrays |
+| 474 | `kala_field_stage0_1` | `kala_field_kinematics`, `kala_field_primitives` |
+| 475 | `kala_field_promise` | `kala_field_promise_nodes`, `kala_field_promise_edges`, `kala_field_routes` |
+| 476 | `kala_field_weights_seed` | `kala_field_weight_versions`, `kala_field_weights` **+ the `v0_classical` seed rows** (this is the acyclicity keystone — it must land BEFORE `ka_kshetra` ever runs) |
+| 477 | `kala_field_clocks` | `kala_field_clocks`, `kala_field_boundaries` |
+| 478 | `kala_field_core` | `kala_field`, `kala_field_windows` |
+| 479 | `kala_field_provenance` | `kala_field_provenance` |
+| 480 | `kala_field_null` | `kala_field_null` |
+| 481 | `kala_field_salience_insights` | `kala_field_salience`, `kala_insights` |
+| 482 | `kala_timeline_spec` | `kala_timeline_spec`, `kala_field_snapshots` |
+| 483 | `kala_field_skill_gof` | `kala_field_skill`, `kala_field_gof` + the `ka_kshetra` / `mi_bhara` / `mi_sankalpa` `asset_registry` rows and `depends_on` arrays |
 
 Every migration is `CREATE TABLE IF NOT EXISTS` + `INSERT … ON CONFLICT DO UPDATE` for registry
 rows, with an explicit DOWN block in a trailing comment (the existing house style — see
