@@ -385,6 +385,14 @@ function deriveDemandRanking(
 }
 
 /**
+ * EXPORTED (SAMĀPTI B-N8-CI-GATES, finding F-21): `generate_tool_census.ts`'s A4 axis
+ * re-runs this derivation and compares it to the descriptor's stored value, so it can
+ * tell a HAND-AUTHORED `density_contract` (which it then holds to a source-corroboration
+ * standard) apart from one this function stamped on. Before F-21, A4 graded the stored
+ * shape alone and therefore certified this function's own archetype-label/param-name
+ * defaults as "§N.6 enforced". Export is read-only — nothing outside this module may
+ * call it to WRITE a contract; `applyDescriptorDefaults()` remains the sole writer.
+ *
  * W3 "One Envelope" — §N.6 density_contract derivation. See MEASURED_BUDGET_KB_URIS /
  * TOOL_ROLE_DIGEST_BYTES / STRUCTURAL_PARAM_NAMES doc comments above for the evidence
  * each sub-field is derived from. Only fills in for capabilities with `density_contract
@@ -393,7 +401,7 @@ function deriveDemandRanking(
  * own real value in W-1/R5.3/R5.1-era work and are left untouched by construction, same
  * as every other field in this module).
  */
-function deriveDensityContract(cap: CapabilityDescriptor): NonNullable<CapabilityDescriptor['density_contract']> {
+export function deriveDensityContract(cap: CapabilityDescriptor): NonNullable<CapabilityDescriptor['density_contract']> {
   const measuredKb = MEASURED_BUDGET_KB_URIS.get(cap.uri)
   const max_digest_bytes = measuredKb !== undefined
     ? measuredKb * 1024
