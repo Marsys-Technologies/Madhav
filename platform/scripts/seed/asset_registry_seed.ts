@@ -485,6 +485,29 @@ export const ASSETS: AssetDef[] = [
     depends_on: [],
     scope: 'global', is_active: true, estimated_seconds: null,
   },
+  {
+    // ṢAḌ-DARŚANA campaign item 22 (SHAD_DARSHANA_BRIEF_v2_0.md §2 + §1). Mirrors
+    // migration 472's asset_registry INSERT exactly — a clean reseed must not
+    // silently drop this asset. Global L0, super-admin-triggered only (never
+    // auto-pulled into a per-chart build — brief §2.5.2).
+    asset_id: 'bg_cohort',
+    layer: 'brahmagyan', sort_order: 20,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Pratirūpa Samūha',
+    english_name: 'Synthetic Reference Cohort',
+    english_description: "Synthetic (not real-person) reference population of ~10,000 birth charts' Lahiri-sidereal graha + Lagna positions (sign/nakshatra grain) — the statistical base-rate population later waves compare a real chart against for rarity scoring. ṢAḌ-DARŚANA campaign item 22.",
+    storage_type: 'postgres_table',
+    target_table: 'bg_synthetic_cohort',
+    count_sql: 'SELECT COUNT(*) FROM bg_synthetic_cohort',
+    size_sql: "SELECT pg_total_relation_size('bg_synthetic_cohort')",
+    target_floor: 10000,
+    expected_volume_formula: 'COHORT_SIZE',
+    expected_volume_inputs: { COHORT_SIZE: 10000 },
+    volume_explanation: '10,000 synthetic birth charts, uniform-random over 1900-2099, fixed RNG seed. See bg_cohort.py module docstring for full sampling methodology.',
+    depends_on: [],
+    scope: 'global', is_active: true, estimated_seconds: null,
+    asset_kind: 'data',
+  },
 
   // ── BRAHMAGYAN continued — assets built-and-seeded 2026-06-17 (P2-C fix) ──
   {

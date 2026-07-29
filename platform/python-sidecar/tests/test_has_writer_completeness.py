@@ -72,6 +72,8 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # ── L0/L1 Brahmagyan — migration 440 (D-2 Lane V-1, vidhi registry) ──────
     "bg_vidhi_primitives",
     "bg_vidhi_floors",
+    # ── L0 Brahmagyan — migration 472 (ṢAḌ-DARŚANA item 22, synthetic cohort) ─
+    "bg_cohort",
     # ── L1 Gaṇita — migration 342 ────────────────────────────────────────────
     "ga_condition",
     "ga_dashas",
