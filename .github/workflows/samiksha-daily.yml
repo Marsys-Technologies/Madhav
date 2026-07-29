@@ -102,7 +102,7 @@ jobs:
       - name: Run the consolidated daily job (log-only digest — W-5 stub)
         if: env.DATABASE_URL != ''
         env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL_CANFAIL_PROBE_DO_NOT_USE }}
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           AS_OF: ${{ inputs.as_of }}
           CHART: ${{ inputs.chart }}
         run: |
