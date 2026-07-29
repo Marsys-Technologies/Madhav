@@ -617,6 +617,11 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
   // ── 3. kala_life_arc_get ──────────────────────────────────────────────────
   server.tool(
     'kala_life_arc_get',
+    '[DEPRECATED — superseded by kala_story_get, ṢAḌ-DARŚANA v2 W0.4: the elevated STORY ' +
+    'view over this same kala_jivana_parva substrate, with the parva-duplication defect ' +
+    'fixed at serving (dedup by span+level), per-chapter tri-plane pointers, and argument-' +
+    'shaped reading. This tool remains live — not retired — per the campaign\'s strangler-' +
+    'fig discipline; its raw (un-deduped) parva rows are still available here.] ' +
     'Retrieve the biographical life-arc (Jīvana Parva) for a chart from L3 Kāla. ' +
     'Returns the kala_jivana_parva view: the life divided into named biographical periods ' +
     '(Parvas) based on Vimshottari mahadasha + dasha-sequence logic. Each Parva covers ' +

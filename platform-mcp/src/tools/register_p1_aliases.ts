@@ -849,7 +849,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'ranked (priority_score x0.3, flagged via neutral_dignity_downranked per row) rather than ' +
     'treated as genuine priority findings — see neutral_dignity_downranked_count. Filter by ' +
     'domain/domains (career/character/health/relationship/spirituality/wealth) to scope to a ' +
-    'life domain.',
+    'life domain. [ṢAḌ-DARŚANA W0.4] Superseded by kala_priority_get (VIEW 5 PRIORITIZE), ' +
+    'which wraps this SAME capability on the elevated kala_* envelope (argument-shaped ' +
+    'reading, tri-plane pointers into EXPLAIN/AHEAD/ELECT, coverage, freshness, ' +
+    'calibration_maturity) — prefer kala_priority_get for new callers. This alias remains ' +
+    'live, not retired.',
     'marsys://tool/L3/call_priority_ranking',
     {
       date_from: z.string().optional().describe('Start of evaluation period (YYYY-MM-DD).'),
@@ -1735,7 +1739,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   server.tool(
     'kala_muhurta_get',
-    '[Phase-1 alias] Muhurta (auspicious timing) finder (same as muhurta_finder).',
+    '[Phase-1 alias] [DEPRECATED — superseded by kala_elect_get, ṢAḌ-DARŚANA v2 W0.4: the ' +
+    'elevated ELECT view over this same muhurta_finder substrate, with argument-shaped ' +
+    'reading, tāra-bala/target-graha dissent, tri-plane pointers, and honest coverage. ' +
+    'This alias remains live — not retired — per the campaign\'s strangler-fig discipline.] ' +
+    'Muhurta (auspicious timing) finder (same as muhurta_finder).',
     {
       chart_id:      z.string().uuid().describe('Chart UUID'),
       start_date:    z.string().optional().describe('Search window start (YYYY-MM-DD). Default: today.'),
