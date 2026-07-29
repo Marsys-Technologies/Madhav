@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.46
+version: 6.47
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -54,6 +54,35 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.47 (2026-07-29, SATYA-DĪPA close — "Make `lit` Mean Lit"): **The orchestrator's no-op-
+    completion promotion predicate now verifies substep-plan completeness before promoting to
+    `lit`, closing the defect flagged NEW-not-fixed at the end of v6.46.** Fix: `asset_runner.py`'s
+    `_run_data_writer` (the ONE authorized freeze exception, `asset_runner.py:596-630`) now
+    re-checks the writer's own `plan_substeps(ctx)` for `has_substeps=true` writers before
+    reclassifying a 0-rows-this-run `dormant` to `lit`; a genuinely-incomplete plan is marked the
+    new `incomplete` state (migration 474) instead, correctly excluded from `runner.py`'s and
+    `staleness.py`'s `lit`/`service_ok` dependency-satisfied allowlists. D-1.6 preserved and proven
+    THROUGH the new check (regression test extended, fail-then-pass proven for the new partial-plan
+    case). **Forensic finding:** `asset.noop_completion` events are not durably persisted anywhere
+    queryable (stdout/ephemeral Pub/Sub only) — Phase A pivoted to direct `build_substep_progress`
+    reconciliation instead. **Falsely-lit population found: empirically zero** — only `ka_sangam`
+    and `ka_gochara_sweep` ever use the substep-resumption ledger, and all current rows are honest
+    (ka_sangam 61/61 on all 3 charts; ka_gochara_sweep 303/303 canonical-lit, 78/303 and 70/303 on
+    the other two charts correctly already `error` from this same session's immediately-prior
+    manual correction). No downstream remediation needed. Also corrects CLAUDE.md's stale
+    "ŚUDDHA-VĀCA remains PARTIAL" claim carried into the SATYA-DĪPA brief: PARISHODHANA #827/#828
+    both merged 2026-07-28 (confirmed same day as v6.45's close, before the brief was authored);
+    ŚUDDHA-VĀCA is fully CLOSED 7/7, re-verified live (serve-shadbala fix still correct on canonical
+    chart). New CLAUDE.md §N.8 Earned-Signal Principle (v6.5→v6.6) generalizes the "a signal needs a
+    real detector or it's null" doctrine across four confirmed instances. Authorized freeze
+    exception logged: `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` §7.1 (v1.0→v1.1). Full report:
+    `00_ARCHITECTURE/llm_consumption_audit/briefs/satya_dipa/SATYA_DIPA_REPORT_v1_0.md`. PARKED-
+    HONEST, not touched this session: §4.4 secondary P1 lanes (`ka_bhavishya_lekha.py` vocabulary,
+    `chart_dashas` CLI sentinel — unchanged from v6.46); cockpit UI display of the new `incomplete`
+    state (5 TS files, cosmetic, functionally harmless since gating is allowlist-based); a
+    fleet-wide detector-audit sweep for the same defect class (scoped, not exhaustive); a durable
+    noop_completion event register (recommended follow-up). last_session_id: SATYA-DIPA-CLOSE-
+    2026-07-29. predecessor_session: PARKED-FINDINGS-3ITEM-2026-07-28.
   - v6.46 (2026-07-28, PARKED-FINDINGS-3ITEM close — 3-item native authorization
     following the ŚUDDHA-VĀCA close): **2 of 3 items VERIFIED-FIXED and merged;
     item 3 is an honest PARTIAL, native-directed stop.** Item 1: migration-339's
