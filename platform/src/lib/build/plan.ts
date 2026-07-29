@@ -1,6 +1,9 @@
 export type AssetId = string
+// 'incomplete' — migration 474. Ran, some data present, substep plan work still
+// remains. Not finished, so it stays a `build` candidate; not 'lit', so it never
+// satisfies a downstream dependency.
 export type AssetState =
-  | 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'service_ok' | 'service_down'
+  | 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'incomplete' | 'service_ok' | 'service_down'
 export type BuildAction = 'build' | 'update' | 'rebuild' | 'cascade'
 export type BuildScope = 'global' | 'layer' | 'asset' | 'asset_set'
 
@@ -321,7 +324,16 @@ export function resolveBuildPlan({
   if (action === 'build') {
     candidates = scopeAssets.filter(id => {
       const t = throughput.get(id)
-      return !t || t.state === 'dormant' || t.state === 'error'
+      // 'incomplete' (migration 474) means "ran, some data present, substep plan
+      // work still remains" — it is by definition NOT finished, so `build` must
+      // pick it up. Omitting it made an 'incomplete' asset unreachable by the
+      // Build button: it is not 'lit', so nothing considers it done, yet it was
+      // not a candidate either, so `build` reported "already lit, nothing to do"
+      // and silently no-op'd. Required corollary of SAMĀPTI B-WATCHDOG-LIT (DVA
+      // Ruling 10), which is the first path to write 'incomplete' from the
+      // TypeScript side; also repairs the same latent strand for the Python
+      // path's 'incomplete' (asset_runner.py:677), which predates this change.
+      return !t || t.state === 'dormant' || t.state === 'error' || t.state === 'incomplete'
     })
   } else {
     // rebuild: all assets in scope (no transitive downstream expansion)
