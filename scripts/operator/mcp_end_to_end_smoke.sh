@@ -26,7 +26,7 @@
 
 set -euo pipefail
 
-MCP_URL="${SMOKE_MCP_URL:?SMOKE_MCP_URL env var required (revision-specific URL from deploy-cloudrun's steps.deploy.outputs.url)}"
+MCP_URL="${SMOKE_MCP_URL:?SMOKE_MCP_URL env var required (revision-specific URL from the deploy-cloudrun step outputs.url)}"
 CANARY_KEY="${MCP_CANARY_KEY:-}"
 MAX_RETRIES=5
 RETRY_DELAY=6  # seconds
