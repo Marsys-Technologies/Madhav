@@ -15,6 +15,7 @@ from typing import Any
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register, ContextSpec
 from ga_writers._idempotency import replace_prior_chart_facts
+from ga_writers.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
 from ga_writers.ga_nakshatra_emitters import (
     emit_nakshatra_join, emit_kp_lords, emit_gandanta_flags,
     emit_dispositor_graph, emit_tara_bala, emit_statistics,
@@ -54,8 +55,101 @@ def _fact_id(category: str, subject: str, key: str,
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-def _enrich_rows(rows: list[dict], eng_ver: str, computed_at: str) -> list[dict]:
-    """Add fact_id, citation_ref, citation_human, verification_pass_status, engine_version, computed_at."""
+#: The (fact_category, fact_key) pairs whose VALUE is exactly the nakshatra/pada
+#: attribution that `_nakshatra_pada_verdicts` re-derives. Only these rows can inherit
+#: the detector's verdict; every other row this writer emits describes something the
+#: detector does not check (a reference-table relay, a tara-bala step count, a
+#: dispositor hop) and is therefore UNVERIFIED_DEFAULT, per §N.8.
+_ATTRIBUTION_ROWS: dict[tuple[str, str], str] = {
+    ("graha_nakshatra_join", "nakshatra_id_ref"): "nakshatra",
+    ("graha_pada_join",      "pada_number_ref"):  "pada",
+}
+
+_NAK_ARC_DEG  = 360.0 / 27.0   # 13°20' — one nakshatra
+_PADA_ARC_DEG = _NAK_ARC_DEG / 4.0  # 3°20' — one pada
+
+
+def _derive_nakshatra_pada(longitude_deg: float) -> tuple[int, int]:
+    """Independent 1-based (nakshatra, pada) from a sidereal longitude.
+
+    SECOND PASS. The first pass is PyJHora's `drik.nakshatra_pada()`, reached via
+    `pyjhora_adapter.positions._nakshatra_for_long` (grahas) and `drik.ascendant`
+    (Lagna). This is a separate implementation of the same classical division —
+    it does NOT call the library — so a boundary-convention difference, an ayanāṃśa
+    mix-up, or a longitude/attribution desynchronisation inside chart_output shows up
+    as a disagreement instead of passing silently.
+    """
+    lon = float(longitude_deg) % 360.0
+    nak = int(lon // _NAK_ARC_DEG) + 1
+    pada = int((lon % _NAK_ARC_DEG) // _PADA_ARC_DEG) + 1
+    return nak, pada
+
+
+def _nakshatra_pada_verdicts(chart_output: dict) -> dict[str, dict[str, str]]:
+    """Run the second pass for every body and return {subject: {claim: status}}.
+
+    `claim` is 'nakshatra' or 'pada'. Status is `two_pass_verified` when the engine's
+    attribution and the independent re-derivation agree, `divergent_flagged` when they
+    disagree (a halt-worthy inconsistency the row must carry, not hide), and
+    `UNVERIFIED_DEFAULT` when the body carries no usable longitude so no second pass
+    could run at all.
+    """
+    grahas = chart_output.get("grahas", []) or []
+    asc = chart_output.get("ascendant", {}) or {}
+    verdicts: dict[str, dict[str, str]] = {}
+
+    for body_data in list(grahas) + [{"name": "Lagna", **asc}]:
+        subject = PLANET_TO_SUBJECT.get(body_data.get("name", ""))
+        if not subject:
+            continue
+
+        lon = body_data.get("longitude_deg", body_data.get("longitude"))
+        engine_nak = body_data.get("nakshatra_id")
+        engine_pada = body_data.get("pada")
+
+        if lon is None:
+            verdicts[subject] = {"nakshatra": UNVERIFIED_DEFAULT, "pada": UNVERIFIED_DEFAULT}
+            continue
+
+        derived_nak, derived_pada = _derive_nakshatra_pada(lon)
+        per_claim: dict[str, str] = {}
+        for claim, engine_value, derived_value in (
+            ("nakshatra", engine_nak, derived_nak),
+            ("pada", engine_pada, derived_pada),
+        ):
+            if engine_value is None:
+                per_claim[claim] = UNVERIFIED_DEFAULT
+                continue
+            agrees = int(engine_value) == int(derived_value)
+            per_claim[claim] = "two_pass_verified" if agrees else "divergent_flagged"
+            if not agrees:
+                logger.warning(
+                    "[ga_nakshatra] second-pass DIVERGENCE for %s %s: engine=%s "
+                    "independent=%s (longitude_deg=%s) — row stored as divergent_flagged",
+                    subject, claim, engine_value, derived_value, lon,
+                )
+        verdicts[subject] = per_claim
+
+    return verdicts
+
+
+def _enrich_rows(
+    rows: list[dict],
+    eng_ver: str,
+    computed_at: str,
+    verdicts: dict[str, dict[str, str]] | None = None,
+) -> list[dict]:
+    """Add fact_id, citation_ref, citation_human, verification_pass_status, engine_version, computed_at.
+
+    `verification_pass_status` is DETECTED, never asserted (CLAUDE.md §N.8). Until
+    2026-07-30 this line wrote the literal `"PASS"` for every row with no verification
+    logic anywhere behind it — 5,428 live chart_facts rows across three charts claiming
+    a pass that never ran (SAMĀPTI A7-N8-AUDIT F-11, DVA Ruling 13). Rows whose value IS
+    the nakshatra/pada attribution now inherit the real second-pass verdict from
+    `_nakshatra_pada_verdicts`; every other row is `single` — honest, and excluded from
+    grounding by the serve layer's settled predicate.
+    """
+    verdicts = verdicts or {}
     enriched = []
     for r in rows:
         chart_id    = r["chart_id"]
@@ -77,6 +171,13 @@ def _enrich_rows(rows: list[dict], eng_ver: str, computed_at: str) -> list[dict]
         else:
             chum = f"{subject} {key} [{category}]"
 
+        claim = _ATTRIBUTION_ROWS.get((category, key))
+        status = (
+            verdicts.get(subject, {}).get(claim, UNVERIFIED_DEFAULT)
+            if claim else UNVERIFIED_DEFAULT
+        )
+        assert_legal(status)
+
         enriched.append({
             **r,
             "fact_value_jsonb":          None,
@@ -84,7 +185,7 @@ def _enrich_rows(rows: list[dict], eng_ver: str, computed_at: str) -> list[dict]
             "fact_id":                   fid,
             "citation_ref":              cref,
             "citation_human":            chum,
-            "verification_pass_status":  "PASS",
+            "verification_pass_status":  status,
             "engine_version":            eng_ver,
             "computed_at":               computed_at,
         })
@@ -181,7 +282,11 @@ def _run_ayanamsha_pass(
     all_rows += emit_tara_bala(chart_id, canonical_id, build_id, chart_output)
     all_rows += emit_statistics(chart_id, canonical_id, build_id, chart_output, nak_rows)
 
-    all_rows = _enrich_rows(all_rows, ENGINE_VERSION, computed_at)
+    # §N.8 real detector: independent second derivation of every body's nakshatra/pada
+    # from its sidereal longitude, run BEFORE enrichment so attribution rows can inherit
+    # a verdict that could genuinely have come back `divergent_flagged`.
+    verdicts = _nakshatra_pada_verdicts(chart_output)
+    all_rows = _enrich_rows(all_rows, ENGINE_VERSION, computed_at, verdicts)
 
     if ctx.dry_run:
         return WriterResult(
@@ -309,6 +414,11 @@ class NakshatraWriter(WriterBase):
                         "source_calculation": "ga_nakshatra:cross_ayanamsha",
                     })
 
+            # No verdicts: the cross-ayanamsha substep reads back already-stored facts
+            # rather than a chart_output, so no second derivation is available here.
+            # Cross-ayanamsha AGREEMENT is not verification either — a nakshatra
+            # legitimately differs between ayanāṃśas, so agreement cannot fail in a way
+            # that means "wrong". These rows are honestly `single` (§N.8).
             rows = _enrich_rows(rows, ENGINE_VERSION, computed_at)
 
             if not ctx.dry_run and rows:
