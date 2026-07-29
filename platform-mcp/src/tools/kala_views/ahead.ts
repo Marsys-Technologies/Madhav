@@ -23,6 +23,16 @@
  * yet applied to these raw windows), forward daśā-lord transit condition, the sky-event
  * calendar (ingresses/stations/eclipses/returns), Tithi-Praveśa — all named W1/W2/W3 build
  * items in the brief, not this facade's job.
+ *
+ * W1 JOIN ADDITION (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1, item 32 half): upcoming gulika-kālam
+ * windows over the forward horizon. A pure JOIN (§N.5 / B.10) — reads the SAME
+ * date-parameterized panchāṅga `call_panchanga_service` (marsys://tool/L0/
+ * call_panchanga_service, mode=range → panchang.py /api/compute/panchanga/range) already
+ * computes for any date range, extracting the already-computed `gulika_kalam` Timing per
+ * day. The range endpoint hard-caps at 31 days per call (a sidecar-load guard, not this
+ * facade's choice) — capped here at the next 30 days regardless of `horizon_years`, since
+ * gulika-kālam is an intrinsically daily/short-horizon election concept; this cap is
+ * disclosed on the served object, never silently truncated.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -156,6 +166,30 @@ const TIER_LABEL: Record<string, string> = {
   tier_3_speculative: 'speculative',
 }
 
+// ── W1 item 32 join shapes (read verbatim from call_panchanga_service mode=range —
+// never re-derived; §N.5) ────────────────────────────────────────────────────────────
+
+interface PanchangTiming {
+  label: string
+  start_utc: string | null
+  end_utc: string | null
+  [key: string]: unknown
+}
+
+interface PanchangDayPayload {
+  date: string
+  inauspicious?: PanchangTiming[]
+  [key: string]: unknown
+}
+
+export interface GulikaKalamAheadWindow {
+  date: string
+  window_start_utc: string | null
+  window_end_utc: string | null
+}
+
+const GULIKA_AHEAD_MAX_DAYS = 30 // call_panchanga_service mode=range hard-caps date_to-date_from at 30 days (31 inclusive)
+
 // ── The reading (template-over-computed-data — B.10; no generative call) ───────────
 
 function buildAheadReading(params: {
@@ -248,6 +282,8 @@ export interface KalaAheadResult {
   calibration_maturity: ReturnType<typeof noLelCalibrationMaturity>
   windows: WindowFamily[]
   projections: ProjectionFamily[]
+  gulika_kalam_ahead: GulikaKalamAheadWindow[]
+  gulika_kalam_ahead_horizon_days: number
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -257,6 +293,7 @@ export interface KalaAheadResult {
     domain: string | null
     computed_at: string
     source_citation: string
+    gulika_kalam_reachable: boolean
     windows_reachable: boolean
     projections_reachable: boolean
   }
@@ -286,7 +323,11 @@ export async function computeKalaAhead(
   const dateTo = new Date(today.getTime() + horizonYears * 365 * 86400000).toISOString().slice(0, 10)
   const horizonLabel = `${horizonYears} year(s)`
 
-  const [windowsResp, projectionsResp] = await Promise.all([
+  // item 32 join: gulika-kālam is bounded by call_panchanga_service's own 31-day range cap
+  // (a sidecar-load guard) regardless of the requested horizon_years.
+  const gulikaDateTo = new Date(today.getTime() + GULIKA_AHEAD_MAX_DAYS * 86400000).toISOString().slice(0, 10)
+
+  const [windowsResp, projectionsResp, gulikaResp] = await Promise.all([
     callRegistryCapability(
       'marsys://tool/L3/query_temporal_activation',
       {
@@ -309,6 +350,11 @@ export async function computeKalaAhead(
       },
       principal,
     ),
+    callRegistryCapability(
+      'marsys://tool/L0/call_panchanga_service',
+      { mode: 'range', date_from: dateFrom, date_to: gulikaDateTo },
+      principal,
+    ),
   ])
 
   const windowsOk = windowsResp.ok
@@ -319,6 +365,17 @@ export async function computeKalaAhead(
   const projectionsOk = projectionsResp.ok
   const projectionFamilies =
     (projectionsResp.content?.['projection_families'] as ProjectionFamily[] | undefined) ?? []
+
+  // item 32 join: extract the already-computed gulika_kalam Timing per day from the
+  // range-mode panchāṅga response — never re-derived (§N.5).
+  const gulikaOk = gulikaResp.ok
+  const gulikaDays = (gulikaResp.content?.['panchangs'] as PanchangDayPayload[] | undefined) ?? []
+  const gulikaKalamAhead: GulikaKalamAheadWindow[] = gulikaDays
+    .map((day) => {
+      const entry = (day.inauspicious ?? []).find((t) => t.label === 'gulika_kalam')
+      return entry ? { date: day.date, window_start_utc: entry.start_utc, window_end_utc: entry.end_utc } : null
+    })
+    .filter((w): w is GulikaKalamAheadWindow => w != null)
 
   const reading = buildAheadReading({ horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk })
   const composed = composeArgument(reading)
@@ -356,6 +413,11 @@ export async function computeKalaAhead(
       'tithi_pravesa',
       'Lunar-return annual chart not yet computed — SHAD_DARSHANA_BRIEF_v2_0.md item 13 (wave W3).',
     ),
+    gulikaKalamAhead.length > 0
+      ? computedCoverage('gulika_kalam_ahead')
+      : gulikaOk
+        ? honestEmptyCoverage('gulika_kalam_ahead', 'No gulika_kalam window resolved for any day in the forward horizon.')
+        : honestEmptyCoverage('gulika_kalam_ahead', 'L0 panchāṅga range service unreachable this call.'),
   ]
 
   const drillPointers: DrillPointerLike[] = [triPlane.interpretation_ref, triPlane.intervention_ref].filter(
@@ -385,15 +447,21 @@ export async function computeKalaAhead(
     reading_prose: composed.full_text,
     windows: windowFamilies,
     projections: projectionFamilies,
+    gulika_kalam_ahead: gulikaKalamAhead,
+    gulika_kalam_ahead_horizon_days: GULIKA_AHEAD_MAX_DAYS,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_ahead_get',
-      assets: ['kala_activation (ka_kalasutra, forward-dated)', 'kala_bhavishya (ka_bhavishya_lekha)'],
+      assets: [
+        'kala_activation (ka_kalasutra, forward-dated)', 'kala_bhavishya (ka_bhavishya_lekha)',
+        'call_panchanga_service (panchang.py, engine-direct, mode=range)',
+      ],
       chart_id: chartId,
       horizon_years: horizonYears,
       domain: args.domain ?? null,
       computed_at: new Date().toISOString(),
       source_citation: SOURCE_CITATION,
+      gulika_kalam_reachable: gulikaOk,
       windows_reachable: windowsOk,
       projections_reachable: projectionsOk,
     },
@@ -452,9 +520,13 @@ verbatim from kala_bhavishya, never re-graded. Honestly discloses (via \`coverag
 richer AHEAD concepts (Law-3 promise-gated forecasting, forward daśā-lord transit \
 condition, the sky-event calendar, Tithi-Praveṣa) are not yet joined into this view.
 
+W1 join (objective, raw data — no favorable/unfavorable grading): gulika_kalam_ahead — the \
+daily gulika-kālam window for each of the next ${GULIKA_AHEAD_MAX_DAYS} days (bounded by the \
+underlying panchāṅga range service's own 31-day cap, independent of horizon_years).
+
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
-projections + tri_plane (→ kala_explain_get for why, → kala_elect_get for when to act) + \
-coverage + drill_pointers.
+projections + gulika_kalam_ahead + tri_plane (→ kala_explain_get for why, → kala_elect_get \
+for when to act) + coverage + drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_projections_get for "what is coming" queries \
 per SHAD_DARSHANA_BRIEF_v2_0.md §7 rail ("AHEAD supersedes ka_bhavishya... by REPLACEMENT") \

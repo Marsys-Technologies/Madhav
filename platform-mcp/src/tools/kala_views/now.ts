@@ -20,6 +20,34 @@
  * What is genuinely NOT computed here yet (honestly disclosed via `coverage`, never
  * silently dropped): daśā-sandhi bands, per-ingress transit moorti, dual-reference
  * (Moon+lagna) gochara — all named W1/W3 build items in the brief, not this facade's job.
+ *
+ * W1 JOIN ADDITIONS (SHAD_DARSHANA_BRIEF_v2_0.md §3 W1, items 32 + 29): diśā-śūla +
+ * gulika-kālam window membership + chandrāṣṭama + horā lord + janma-tithi/vara/nakṣatra
+ * resonance. Every one of these is a JOIN, not a new computation (§N.5 / B.10):
+ *   - diśā-śūla / gulika-kālam / horā all read the SAME date-parameterized panchāṅga the
+ *     already-wired `call_panchanga_service` (marsys://tool/L0/call_panchanga_service →
+ *     panchang.py /api/compute/panchanga) already computes for any date — this facade
+ *     only adds a static vara→direction lookup (diśā-śūla; mirrors the identical
+ *     DISHA_SHUL_TABLE already live in panchang_engine/shastra_tables.py and cited in the
+ *     ga_panchanga_writer L1 emitter — not invented here) and simple UTC-instant window-
+ *     membership comparisons (gulika-kālam / horā — "is `now` inside this already-computed
+ *     window") — both squarely the "simple date/time comparison logic" the brief allows
+ *     for [J] items, never a new astrological computation.
+ *   - chandrāṣṭama reads `native_context.moon_sign_id` (birth Moon rāśi, already computed
+ *     by panchang.py's `_fetch_native_context` from the chart's own birth data) against
+ *     `panchang.planets.moon.sign_id` (today's transit Moon rāśi, same call) — a single
+ *     house-count comparison (classical Chāndra Bala rule, Muhūrta Chintāmaṇi §4; mirrors
+ *     platform/src/lib/panchang/chandra_bala.ts's identical formula, inlined here rather
+ *     than cross-package-imported per this file's own established no-cross-file-coupling
+ *     convention — see the header note above).
+ *   - janma-tithi/vara/nakṣatra resonance ("today is your janma-nakṣatra day") is a
+ *     documented classical concept, not invented for this pass — see
+ *     KALA_SIX_VIEWS_DESIGN_v2_0.md §NOW ("janma-tithi/vara/nakṣatra resonance") and
+ *     KALA_SUPREME_ELEVATION_v1_0.md §9 Chart-personal factor family. It compares TODAY's
+ *     tithi/vara/nakṣatra id (from the same panchāṅga call) against the native's OWN birth
+ *     tithi/vara/nakṣatra id, read verbatim from the L1-authoritative `chart_facts` rows
+ *     (marsys://tool/L1/get_panchanga → panchanga_tithi/panchanga_vara/
+ *     panchanga_nakshatra_moon, FORENSIC-anchored) — never re-derived (§N.5).
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -150,6 +178,137 @@ interface DarshanaRow {
   [key: string]: unknown
 }
 
+// ── W1 item 32/29 join shapes (read verbatim from call_panchanga_service /
+// get_panchanga — never re-derived; §N.5) ──────────────────────────────────────────
+
+interface PanchangAnga {
+  id: number
+  name: string
+  end_utc: string | null
+  [key: string]: unknown
+}
+
+interface PanchangTiming {
+  label: string
+  start_utc: string | null
+  end_utc: string | null
+  [key: string]: unknown
+}
+
+interface PanchangPlanetState {
+  name: string
+  sign_id: number
+  sign_name: string
+  nakshatra_id: number
+  nakshatra_name: string
+  [key: string]: unknown
+}
+
+interface PanchangPayload {
+  tithi?: PanchangAnga
+  nakshatra?: PanchangAnga
+  vara?: PanchangAnga
+  inauspicious?: PanchangTiming[]
+  hora?: PanchangTiming[]
+  planets?: Record<string, PanchangPlanetState>
+  [key: string]: unknown
+}
+
+interface NativeContext {
+  chart_id: string
+  moon_sign_id: number
+  moon_sign_name: string
+  birth_nakshatra_id: number
+  birth_nakshatra_name: string
+  [key: string]: unknown
+}
+
+interface NatalPanchangaFactRow {
+  fact_id: string
+  fact_category: string
+  ayanamsha_id: string
+  fact_key: string
+  fact_value_num: number | null
+  fact_value_text: string | null
+  [key: string]: unknown
+}
+
+// Diśā-śūla (Disha Vasa): vara_id → direction to avoid for travel. Mirrors
+// panchang_engine/shastra_tables.py's DISHA_SHUL_TABLE verbatim (Source: DP published
+// tables) — not a new rule; ga_panchanga_writer._emit_disha_shul emits the identical
+// mapping for the BIRTH-moment vara (a natal fact); this is the same classical table
+// applied to TODAY's vara (a daily-varying join, not a natal fact).
+const DISHA_SHUL_TABLE: Record<number, string> = {
+  1: 'West', 2: 'East', 3: 'North', 4: 'North', 5: 'South', 6: 'West', 7: 'East',
+}
+
+function findTimingByLabel(timings: PanchangTiming[] | undefined, label: string): PanchangTiming | null {
+  return (timings ?? []).find((t) => t.label === label) ?? null
+}
+
+/** `null` is the honest value when the [start,end) instant window cannot be evaluated
+ *  (either bound missing, or unparsable) — never defaulted to true/false (B.10). */
+function isNowWithinWindow(startUtc: string | null | undefined, endUtc: string | null | undefined, nowIso: string): boolean | null {
+  if (!startUtc || !endUtc) return null
+  const start = Date.parse(startUtc)
+  const end = Date.parse(endUtc)
+  const now = Date.parse(nowIso)
+  if (Number.isNaN(start) || Number.isNaN(end) || Number.isNaN(now)) return null
+  return now >= start && now < end
+}
+
+/** Finds the hora Timing whose [start,end) contains `nowIso`, and extracts the lord name
+ *  from its `hora_<planet>` label (panchang_engine/timings.py compute_hora — never
+ *  re-derived, only parsed back out of the label the engine already emitted). */
+function findCurrentHora(horaList: PanchangTiming[] | undefined, nowIso: string): { entry: PanchangTiming; lord: string } | null {
+  const now = Date.parse(nowIso)
+  if (Number.isNaN(now)) return null
+  for (const entry of horaList ?? []) {
+    const start = entry.start_utc ? Date.parse(entry.start_utc) : NaN
+    const end = entry.end_utc ? Date.parse(entry.end_utc) : NaN
+    if (Number.isNaN(start) || Number.isNaN(end)) continue
+    if (now >= start && now < end) {
+      const planet = entry.label.startsWith('hora_') ? entry.label.slice('hora_'.length) : entry.label
+      const lord = planet.length > 0 ? planet[0]!.toUpperCase() + planet.slice(1) : planet
+      return { entry, lord }
+    }
+  }
+  return null
+}
+
+/** Chāndra Bala house-count (Muhūrta Chintāmaṇi §4) — transit Moon's house from natal
+ *  Moon rāśi, 1-indexed, same-sign = house 1. Chandrāṣṭama = house 8. Mirrors
+ *  platform/src/lib/panchang/chandra_bala.ts's identical formula (inlined per this file's
+ *  no-cross-package-import convention). */
+function houseFromNatalMoon(nativeMoonSignId: number, transitMoonSignId: number): number {
+  const nativeIdx = nativeMoonSignId - 1
+  const transitIdx = transitMoonSignId - 1
+  return ((transitIdx - nativeIdx + 12) % 12) + 1
+}
+
+// panchanga_tithi/panchanga_vara are ayanamsha-INVARIANT (single row); panchanga_nakshatra_moon
+// carries one row per ayanamsha — pin to the chart's resolved ayanamsha so a multi-ayanamsha
+// chart doesn't silently pick whichever row sorts first (the fact-category-pin-lint class
+// of defect this codebase's §N.7 explicitly guards against).
+function pickNatalPanchangaNum(
+  rows: NatalPanchangaFactRow[], category: string, factKey: string, ayanamshaId: string,
+): { value: number | null; fact_id: string | null } {
+  const row = rows.find(
+    (r) => r.fact_category === category && r.fact_key === factKey &&
+      (r.ayanamsha_id === ayanamshaId || r.ayanamsha_id === 'INVARIANT'),
+  )
+  return { value: row?.fact_value_num ?? null, fact_id: row?.fact_id ?? null }
+}
+
+function pickNatalPanchangaText(
+  rows: NatalPanchangaFactRow[], category: string, factKey: string, ayanamshaId: string,
+): string | null {
+  return rows.find(
+    (r) => r.fact_category === category && r.fact_key === factKey &&
+      (r.ayanamsha_id === ayanamshaId || r.ayanamsha_id === 'INVARIANT'),
+  )?.fact_value_text ?? null
+}
+
 // ── The reading (template-over-computed-data — B.10; no generative call) ───────────
 
 function buildNowReading(params: {
@@ -212,6 +371,53 @@ function buildNowReading(params: {
   }
 }
 
+// ── W1 item 32/29 result shapes ─────────────────────────────────────────────────
+
+export interface DishaShulaResult {
+  vara_id: number
+  vara_name: string
+  avoid_direction: string
+  source_citation: string
+}
+
+export interface GulikaKalamNowResult {
+  window_start_utc: string | null
+  window_end_utc: string | null
+  is_active_now: boolean | null
+  checked_at_utc: string
+  not_meaningful_reason: string | null
+}
+
+export interface HoraNowResult {
+  hora_lord: string | null
+  window_start_utc: string | null
+  window_end_utc: string | null
+  checked_at_utc: string
+  not_meaningful_reason: string | null
+}
+
+export interface ChandrashtamaResult {
+  is_chandrashtama: boolean
+  house_from_natal_moon: number
+  natal_moon_sign_id: number
+  transit_moon_sign_id: number
+}
+
+export interface JanmaResonanceFlag {
+  today_id: number | null
+  today_name: string | null
+  birth_id: number | null
+  birth_name: string | null
+  birth_fact_id: string | null
+  resonance: boolean | null
+}
+
+export interface JanmaResonanceResult {
+  vara: JanmaResonanceFlag
+  nakshatra: JanmaResonanceFlag
+  tithi: JanmaResonanceFlag
+}
+
 // ── Core compute (exported for tests — mirrors computeKalaTemporalBundle's shape) ──
 
 export interface KalaNowResult {
@@ -228,6 +434,11 @@ export interface KalaNowResult {
   calibration_maturity: ReturnType<typeof noLelCalibrationMaturity>
   windows: WindowFamily[]
   darshana: DarshanaRow | null
+  disha_shula: DishaShulaResult | null
+  gulika_kalam_now: GulikaKalamNowResult | null
+  chandrashtama: ChandrashtamaResult | null
+  hora_now: HoraNowResult | null
+  janma_resonance: JanmaResonanceResult | null
   drill_pointers: DrillPointerLike[]
   provenance_envelope: {
     source: string
@@ -238,6 +449,8 @@ export interface KalaNowResult {
     source_citation: string
     windows_reachable: boolean
     darshana_reachable: boolean
+    panchanga_reachable: boolean
+    natal_panchanga_reachable: boolean
   }
 }
 
@@ -254,7 +467,7 @@ export async function computeKalaNow(
   const ayanamshaId = normalizeAyanamsha(args.ayanamsha_id)
   const asOfDate = args.as_of ?? new Date().toISOString().slice(0, 10)
 
-  const [windowsResp, darshanaResp] = await Promise.all([
+  const [windowsResp, darshanaResp, panchangaResp, natalPanchangaResp] = await Promise.all([
     callRegistryCapability(
       'marsys://tool/L3/query_temporal_activation',
       { chart_id: chartId, ayanamsha_id: ayanamshaId, as_of: asOfDate, top_k: 20 },
@@ -263,6 +476,21 @@ export async function computeKalaNow(
     callRegistryCapability(
       'marsys://tool/L3/query_temporal_view',
       { chart_id: chartId, active_on: asOfDate, limit: 1 },
+      principal,
+    ),
+    // item 32/29 join source: date-parameterized panchāṅga (today's vara/tithi/nakshatra,
+    // gulika-kālam window, horā ladder, transit Moon sign) + native_context (birth Moon
+    // sign, when chart_id resolves) — engine-direct, Swiss-Ephemeris-backed compute.
+    callRegistryCapability(
+      'marsys://tool/L0/call_panchanga_service',
+      { mode: 'single', date: asOfDate, chart_id: chartId },
+      principal,
+    ),
+    // item 29 janma-resonance source: the native's OWN birth tithi/vara/nakshatra, read
+    // verbatim from L1 chart_facts (never re-derived — §N.5).
+    callRegistryCapability(
+      'marsys://tool/L1/get_panchanga',
+      { chart_id: chartId, categories: ['panchanga_tithi', 'panchanga_vara', 'panchanga_nakshatra_moon'] },
       principal,
     ),
   ])
@@ -278,6 +506,113 @@ export async function computeKalaNow(
   const darshanaOk = darshanaResp.ok
   const darshanaRows = (darshanaResp.content?.['rows'] as DarshanaRow[] | undefined) ?? []
   const darshana = darshanaRows[0] ?? null
+
+  // ── item 32/29 joins ──────────────────────────────────────────────────────────────
+  const nowIso = new Date().toISOString()
+  const isAsOfRealNow = args.as_of == null || args.as_of === new Date().toISOString().slice(0, 10)
+  const NOT_TODAY_REASON =
+    'as_of is not the current real-world date — instant window-membership (is this window ' +
+    'active right now) is only meaningful when reading the actual present moment.'
+
+  const panchangaOk = panchangaResp.ok
+  const panchang = panchangaResp.content?.['panchang'] as PanchangPayload | undefined
+  const nativeContext = panchangaResp.content?.['native_context'] as NativeContext | null | undefined
+  const panchangaReachable = panchangaOk && panchang != null
+
+  let dishaShula: DishaShulaResult | null = null
+  if (panchangaReachable && panchang?.vara) {
+    const direction = DISHA_SHUL_TABLE[panchang.vara.id]
+    if (direction) {
+      dishaShula = {
+        vara_id: panchang.vara.id,
+        vara_name: panchang.vara.name,
+        avoid_direction: direction,
+        source_citation:
+          'Diśā-śūla (Disha Vasa) vara→direction table — DP published tables, ' +
+          'panchang_engine/shastra_tables.py DISHA_SHUL_TABLE (same table ga_panchanga_writer ' +
+          'emits for the birth-moment vara as panchanga_disha_shul).',
+      }
+    }
+  }
+
+  let gulikaKalamNow: GulikaKalamNowResult | null = null
+  if (panchangaReachable) {
+    const gulika = findTimingByLabel(panchang?.inauspicious, 'gulika_kalam')
+    if (gulika) {
+      gulikaKalamNow = {
+        window_start_utc: gulika.start_utc,
+        window_end_utc: gulika.end_utc,
+        is_active_now: isAsOfRealNow ? isNowWithinWindow(gulika.start_utc, gulika.end_utc, nowIso) : null,
+        checked_at_utc: nowIso,
+        not_meaningful_reason: isAsOfRealNow ? null : NOT_TODAY_REASON,
+      }
+    }
+  }
+
+  let horaNow: HoraNowResult | null = null
+  if (panchangaReachable) {
+    if (isAsOfRealNow) {
+      const current = findCurrentHora(panchang?.hora, nowIso)
+      horaNow = current
+        ? {
+            hora_lord: current.lord,
+            window_start_utc: current.entry.start_utc,
+            window_end_utc: current.entry.end_utc,
+            checked_at_utc: nowIso,
+            not_meaningful_reason: null,
+          }
+        : { hora_lord: null, window_start_utc: null, window_end_utc: null, checked_at_utc: nowIso, not_meaningful_reason: null }
+    } else {
+      horaNow = { hora_lord: null, window_start_utc: null, window_end_utc: null, checked_at_utc: nowIso, not_meaningful_reason: NOT_TODAY_REASON }
+    }
+  }
+
+  let chandrashtama: ChandrashtamaResult | null = null
+  const transitMoon = panchang?.planets?.['moon']
+  if (panchangaReachable && nativeContext != null && transitMoon != null) {
+    const house = houseFromNatalMoon(nativeContext.moon_sign_id, transitMoon.sign_id)
+    chandrashtama = {
+      is_chandrashtama: house === 8,
+      house_from_natal_moon: house,
+      natal_moon_sign_id: nativeContext.moon_sign_id,
+      transit_moon_sign_id: transitMoon.sign_id,
+    }
+  }
+
+  const natalPanchangaOk = natalPanchangaResp.ok
+  const natalRows = (natalPanchangaResp.content?.['rows'] as NatalPanchangaFactRow[] | undefined) ?? []
+  let janmaResonance: JanmaResonanceResult | null = null
+  if (panchangaReachable && natalPanchangaOk && natalRows.length > 0 && panchang?.vara && panchang?.tithi && panchang?.nakshatra) {
+    const birthVara = pickNatalPanchangaNum(natalRows, 'panchanga_vara', 'number', ayanamshaId)
+    const birthTithi = pickNatalPanchangaNum(natalRows, 'panchanga_tithi', 'number_in_lunar_month', ayanamshaId)
+    const birthNakshatra = pickNatalPanchangaNum(natalRows, 'panchanga_nakshatra_moon', 'number', ayanamshaId)
+    janmaResonance = {
+      vara: {
+        today_id: panchang.vara.id,
+        today_name: panchang.vara.name,
+        birth_id: birthVara.value,
+        birth_name: pickNatalPanchangaText(natalRows, 'panchanga_vara', 'name', ayanamshaId),
+        birth_fact_id: birthVara.fact_id,
+        resonance: birthVara.value != null ? birthVara.value === panchang.vara.id : null,
+      },
+      nakshatra: {
+        today_id: panchang.nakshatra.id,
+        today_name: panchang.nakshatra.name,
+        birth_id: birthNakshatra.value,
+        birth_name: pickNatalPanchangaText(natalRows, 'panchanga_nakshatra_moon', 'name', ayanamshaId),
+        birth_fact_id: birthNakshatra.fact_id,
+        resonance: birthNakshatra.value != null ? birthNakshatra.value === panchang.nakshatra.id : null,
+      },
+      tithi: {
+        today_id: panchang.tithi.id,
+        today_name: panchang.tithi.name,
+        birth_id: birthTithi.value,
+        birth_name: pickNatalPanchangaText(natalRows, 'panchanga_tithi', 'name', ayanamshaId),
+        birth_fact_id: birthTithi.fact_id,
+        resonance: birthTithi.value != null ? birthTithi.value === panchang.tithi.id : null,
+      },
+    }
+  }
 
   const reading = buildNowReading({ asOfDate, windowFamilies, darshana, windowsOk, darshanaOk })
   const composed = composeArgument(reading)
@@ -315,6 +650,33 @@ export async function computeKalaNow(
       'dual_reference_gochara',
       'Moon+lagna dual-reference gochara serving not yet joined into this view — SHAD_DARSHANA_BRIEF_v2_0.md item 8 (wave W1).',
     ),
+    dishaShula
+      ? computedCoverage('disha_shula')
+      : honestEmptyCoverage('disha_shula', panchangaOk ? "Today's vara could not be resolved from the panchāṅga service response." : 'L0 panchāṅga service unreachable this call.'),
+    gulikaKalamNow
+      ? computedCoverage('gulika_kalam_now')
+      : honestEmptyCoverage('gulika_kalam_now', panchangaOk ? 'gulika_kalam window absent from the panchāṅga service response.' : 'L0 panchāṅga service unreachable this call.'),
+    chandrashtama
+      ? computedCoverage('chandrashtama')
+      : honestEmptyCoverage(
+          'chandrashtama',
+          panchangaOk
+            ? 'native_context (birth Moon rāśi) or transit Moon position unavailable from the panchāṅga service response.'
+            : 'L0 panchāṅga service unreachable this call.',
+        ),
+    horaNow
+      ? computedCoverage('hora_now')
+      : honestEmptyCoverage('hora_now', panchangaOk ? 'horā ladder absent from the panchāṅga service response.' : 'L0 panchāṅga service unreachable this call.'),
+    janmaResonance
+      ? computedCoverage('janma_resonance')
+      : honestEmptyCoverage(
+          'janma_resonance',
+          !panchangaOk
+            ? 'L0 panchāṅga service unreachable this call.'
+            : !natalPanchangaOk
+              ? 'L1 natal panchāṅga facts (get_panchanga) unreachable this call.'
+              : 'Natal tithi/vara/nakṣatra facts or today\'s panchāṅga anga ids unavailable.',
+        ),
   ]
 
   const drillPointers: DrillPointerLike[] = [triPlane.prediction_ref, triPlane.intervention_ref].filter(
@@ -339,14 +701,24 @@ export async function computeKalaNow(
     reading_prose: composed.full_text,
     windows: windowFamilies,
     darshana,
+    disha_shula: dishaShula,
+    gulika_kalam_now: gulikaKalamNow,
+    chandrashtama,
+    hora_now: horaNow,
+    janma_resonance: janmaResonance,
     drill_pointers: drillPointers,
     provenance_envelope: {
       source: 'kala_now_get',
-      assets: ['kala_activation (ka_kalasutra)', 'kala_bhavishya (forward-window fallback)', 'kala_darshana'],
+      assets: [
+        'kala_activation (ka_kalasutra)', 'kala_bhavishya (forward-window fallback)', 'kala_darshana',
+        'call_panchanga_service (panchang.py, engine-direct)', 'get_panchanga (L1 chart_facts, natal panchāṅga)',
+      ],
       chart_id: chartId,
       as_of_date: asOfDate,
       computed_at: new Date().toISOString(),
       source_citation: SOURCE_CITATION,
+      panchanga_reachable: panchangaReachable,
+      natal_panchanga_reachable: natalPanchangaOk,
       windows_reachable: windowsOk,
       darshana_reachable: darshanaOk,
     },
@@ -399,9 +771,16 @@ snapshot already serve — no new computation. Honestly discloses (via \`coverag
 richer NOW concepts (daśā-sandhi bands, per-ingress transit moorti, dual-reference gochara) \
 are not yet joined into this view.
 
+W1 joins (objective, raw flags — no favorable/unfavorable grading): disha_shula (today's \
+diśā-śūla travel-avoid direction), gulika_kalam_now (today's gulika-kālam window + whether \
+the current moment is inside it), chandrashtama (transit Moon's house from natal Moon + \
+whether it is house 8), hora_now (current planetary-hour lord + window), janma_resonance \
+(whether today's vara/nakṣatra/tithi match the native's own birth vara/nakṣatra/tithi).
+
 Output includes: reading (structured argument) + reading_prose (composed text) + windows + \
-darshana + tri_plane (→ kala_ahead_get for what's coming, → kala_elect_get for when to act) \
-+ coverage + drill_pointers.
+darshana + disha_shula + gulika_kalam_now + chandrashtama + hora_now + janma_resonance + \
+tri_plane (→ kala_ahead_get for what's coming, → kala_elect_get for when to act) + coverage \
++ drill_pointers.
 
 Requires: chart_id (UUID). Successor to kala_windows_get for "what is my state now" queries \
 — kala_windows_get remains live (not retired).`
