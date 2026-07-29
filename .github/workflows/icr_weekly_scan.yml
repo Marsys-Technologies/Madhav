@@ -34,7 +34,44 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-      - name: Run ICR detector (scheduled_job_smoke)
+
+      # SAMĀPTI B-N8-CI-GATES / finding F-27 (2026-07-30).
+      # This job previously consisted of ONE step:
+      #     npx tsx scripts/governance/icr_pr_gate.ts --dry-run --synthetic
+      #     echo "scheduled_job_smoke: PASS"
+      # which could not go red for three independent reasons:
+      #   1. `--dry-run` suppresses the gate's only non-zero exit path
+      #      (icr_pr_gate.ts prints "would exit 1 but skipping" instead).
+      #   2. `--synthetic` makes it validate a hardcoded mini-MSR fragment
+      #      embedded in the script — the real corpus was never opened.
+      #   3. Even without --synthetic, the default path pointed at
+      #      025_HOLISTIC_SYNTHESIS/MSR_v3_0.md, absent since the MSR reached
+      #      v5.0, so the run would have died on a missing file.
+      # A weekly "conflict scan" that scans nothing and cannot fail is the
+      # §N.8 archetype. The job is now two steps with distinct jobs:
+
+      # Step 1 — POSITIVE CONTROL. The synthetic fixture plants exactly one
+      # ungrounded signal (MSR.001, sources: "BPHS Chapter 1", no FORENSIC/LEL)
+      # alongside one grounded signal, so a working detector MUST exit 1 here.
+      # Asserting exit==1 is what makes this a test; the original
+      # `--dry-run --synthetic` invocation swallowed the result and passed whether
+      # or not the detector detected anything.
+      - name: ICR detector self-check (positive control — detector must catch a planted violation)
         run: |
-          npx tsx scripts/governance/icr_pr_gate.ts --dry-run --synthetic
-          echo "scheduled_job_smoke: PASS"
+          set +e
+          npx tsx scripts/governance/icr_pr_gate.ts --synthetic
+          ec=$?
+          set -e
+          if [ "$ec" -ne 1 ]; then
+            echo "::error::ICR detector self-check FAILED — the synthetic fixture plants one ungrounded signal, so the gate must exit 1. Got exit=$ec. The detector is not detecting."
+            exit 1
+          fi
+          echo "icr detector self-check: PASS (planted violation caught, exit=1)"
+
+      # Step 2 — THE GATE. Real corpus, no --dry-run, no --synthetic, so a
+      # signal missing its FORENSIC/LEL citation exits 1 and reddens this job.
+      # The MSR is discovered (highest MSR_v*.md), not hardcoded, so this step
+      # does not silently rot at the next version bump. Verified against
+      # MSR_v5_0.md at authoring time: PASS, 0 violations.
+      - name: ICR weekly conflict scan (real MSR corpus — GATE)
+        run: npx tsx scripts/governance/icr_pr_gate.ts
